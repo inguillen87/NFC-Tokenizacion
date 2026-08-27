@@ -14,6 +14,7 @@ import { normalizeClaimPolicy } from "../../../../lib/sun-tenant-profile";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { normalizeConsentedApproximateLocation } from "../../../../lib/approximate-location";
+import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "../../../../lib/tap-commercial-rights";
 import {
   ownershipClaimPinRateScope,
   readOwnershipClaimPinInput,
@@ -94,6 +95,19 @@ export async function POST(req: Request) {
 
   const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, reason: "event_not_found", trace_id: traceId }, 404);
+  const projectedRights = evaluateTapCommercialRights(event);
+  const currentRights = projectedRights.allowed
+    ? await readCurrentTapCommercialRights(eventId)
+    : projectedRights;
+  if (!currentRights.allowed) {
+    return json({
+      ok: false,
+      reason: currentRights.reason,
+      ownership_status: "not_claimed",
+      ownership_created: false,
+      trace_id: traceId,
+    }, currentRights.reason === "manual_opening_declared" ? 409 : 503, { "cache-control": "no-store" });
+  }
 
   // 0. Query Tag and Batch Security Policies (POS Activation & PIN Requirement)
   const tagRows = await sql`

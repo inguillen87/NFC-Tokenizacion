@@ -14,6 +14,7 @@ import {
   tokenizationFailurePolicy,
 } from "./tokenization-execution-policy";
 import { buildPolygonMintIntentDigest, POLYGON_MINT_INTENT_VERSION } from "./polygon-mint-intent";
+import { readCurrentTapCommercialRights } from "./tap-commercial-rights";
 
 type AnchorInput = {
   requestId: string;
@@ -563,6 +564,32 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
   const existing = rows[0];
   if (!existing) return { ok: false, reason: "request_not_found" } as const;
   const processor = input.processor || "tokenization_engine";
+  const sourceRights = existing.source_event_id
+    ? await readCurrentTapCommercialRights(String(existing.source_event_id))
+    : { allowed: false as const, reason: "event_not_found" as const, manualOpeningDeclared: false };
+  if (!sourceRights.allowed) {
+    const currentStatus = String(existing.status || "pending").toLowerCase();
+    if (["pending", "failed"].includes(currentStatus)) {
+      await sql/*sql*/`
+        UPDATE tokenization_requests
+        SET status = 'blocked',
+            last_error = ${sourceRights.reason},
+            next_attempt_at = NULL,
+            meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, blocked_by: "source_event_commercial_rights" })}::jsonb
+        WHERE id = ${existing.id}::uuid
+          AND tenant_id = ${tenantId}::uuid
+          AND status IN ('pending', 'failed')
+      `;
+    }
+    return {
+      ok: false,
+      reason: sourceRights.reason,
+      request_id: existing.id,
+      status: currentStatus === "anchored" ? "anchored" : "blocked",
+      historical_execution: currentStatus === "anchored",
+      retryable: false,
+    } as const;
+  }
   const requestedCanonicalEvent = await recordTokenizationCanonicalEvent({
     request: existing,
     state: "requested",

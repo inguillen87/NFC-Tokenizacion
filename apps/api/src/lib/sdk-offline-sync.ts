@@ -338,7 +338,7 @@ export function redactOfflineSunVerification(input: {
   const tamperStatus = upper(body.tamper_status);
   const sealStatus = isValid && tamperStatus === "CLOSED"
     ? "CLOSED"
-    : isValid && ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(tamperStatus)
+    : isValid && ["OPENED", "OPENED_PREVIOUSLY"].includes(tamperStatus)
       ? "OPENED"
       : "UNKNOWN";
   const readCounter = Number(body.ctr);

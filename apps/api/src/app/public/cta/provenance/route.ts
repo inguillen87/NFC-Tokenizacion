@@ -4,6 +4,7 @@ import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import { sql } from "../../../../lib/db";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { ensureTicketsSchema } from "../../../../lib/commercial-runtime-schema";
 
 async function durableRow<T extends Record<string, unknown>>(query: Promise<T[]>) {
   try {
@@ -37,8 +38,9 @@ export async function GET(req: Request) {
 
   const actions = await listDemoCta(bid, uid);
   const lifecycle = buildLifecycleState(bid, uid, actions);
+  await ensureTicketsSchema();
   const durableScopeAvailable = Boolean(target.tenantId && target.batchId);
-  const [ownershipRead, tokenizationRead, anchorRead] = durableScopeAvailable
+  const [ownershipRead, tokenizationRead, anchorRead, ticketRead] = durableScopeAvailable
     ? await Promise.all([
         durableRow(sql/*sql*/`
           SELECT status, source, claimed_at, updated_at
@@ -68,8 +70,19 @@ export async function GET(req: Request) {
           ORDER BY updated_at DESC
           LIMIT 1
         `),
+        durableRow(sql/*sql*/`
+          SELECT id, status, created_at
+          FROM tickets
+          WHERE tenant_id = ${target.tenantId}
+            AND bid = ${bid}
+            AND upper(uid_hex) = ${uid.toUpperCase()}
+            AND source = 'sun_public_report'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `),
       ])
     : [
+        { available: false as const, row: null },
         { available: false as const, row: null },
         { available: false as const, row: null },
         { available: false as const, row: null },
@@ -119,13 +132,21 @@ export async function GET(req: Request) {
     boundary: "Registry state is reported from durable storage; use the proof verifier for an RPC network check.",
   };
   const warrantyRequestRecorded = actions.some((entry) => ["warranty_review_requested", "register_warranty"].includes(String(entry.action || "")));
-  const problemReportRequestRecorded = actions.some((entry) => ["problem_report_request", "report_problem"].includes(String(entry.action || "")));
+  const actionLogTicketCreated = actions.some((entry) => {
+    const payload = entry.payload && typeof entry.payload === "object" && !Array.isArray(entry.payload)
+      ? entry.payload as Record<string, unknown>
+      : {};
+    return payload.ticket_id != null && String(payload.ticket_id).trim() !== "";
+  });
+  const supportTicketCreated = Boolean(ticketRead.row) || actionLogTicketCreated;
+  const problemReportRequestRecorded = supportTicketCreated
+    || actions.some((entry) => ["problem_report_request", "report_problem"].includes(String(entry.action || "")));
   const commercialSignals = {
     ownership_claimed: ownershipRead.available ? ownershipStatus === "claimed" : null,
     warranty_request_recorded: warrantyRequestRecorded,
     warranty_registered: false,
     problem_report_request_recorded: problemReportRequestRecorded,
-    support_ticket_created: false,
+    support_ticket_created: supportTicketCreated,
     tokenization_interest: Boolean(tokenizationRead.row) || actions.some((entry) => String(entry.action || "") === "tokenize_request"),
   };
   const publicActions = actions.map((entry) => {
@@ -137,8 +158,18 @@ export async function GET(req: Request) {
       created_at: entry.created_at || null,
       request_status: typeof payload.request_status === "string" ? payload.request_status : null,
       provenance: typeof payload.provenance === "string" ? payload.provenance : "legacy_demo_action_log",
+      ticket_created: payload.ticket_id != null && String(payload.ticket_id).trim() !== "",
     };
   });
+  if (ticketRead.row && !actionLogTicketCreated) {
+    publicActions.unshift({
+      action: "problem_report_ticket",
+      created_at: ticketRead.row.created_at || null,
+      request_status: String(ticketRead.row.status || "open"),
+      provenance: "tickets",
+      ticket_created: true,
+    });
+  }
   return json({
     ok: true,
     bid,
@@ -149,17 +180,24 @@ export async function GET(req: Request) {
     ledger: durableLedger,
     proof_anchor: durableAnchor,
     timeline: [
-      ...lifecycle.timeline,
+      ...lifecycle.timeline.filter((entry) => entry.stage !== "support_ticket"),
+      {
+        stage: "support_ticket",
+        status: supportTicketCreated ? "created" : problemReportRequestRecorded ? "pending_review" : "not_requested",
+        at: ticketRead.row?.created_at || null,
+      },
       { stage: "durable_ownership", status: ownershipStatus, at: durableOwnership.updated_at },
       { stage: "durable_tokenization", status: tokenizationStatus, at: tokenizationRead.row?.updated_at || null },
       { stage: "durable_anchor_registry", status: durableAnchor.registry_status, at: anchorRead.row?.updated_at || null },
     ],
     commercial_signals: commercialSignals,
     action_log_provenance: {
-      mode: "demo_action_log",
+      mode: supportTicketCreated ? "durable_ticket_and_action_log" : "demo_action_log",
       warranty_service: "not_connected",
-      ticket_service: "not_connected",
-      boundary: "Recorded demo requests are pending review; they are not confirmed warranties or created support tickets.",
+      ticket_service: supportTicketCreated ? "tickets" : "not_connected",
+      boundary: supportTicketCreated
+        ? "A support ticket was created for the reported issue; warranty and ownership remain separate review flows."
+        : "Recorded demo requests are pending review; they are not confirmed warranties or created support tickets.",
     },
     enterprise_story: [
       "digital_product_passport",

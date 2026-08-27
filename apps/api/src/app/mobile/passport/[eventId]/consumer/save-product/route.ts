@@ -9,6 +9,7 @@ import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-run
 import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../../lib/bounded-request-body";
 import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
+import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "../../../../../../lib/tap-commercial-rights";
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const consumer = await getConsumerFromRequest(req);
@@ -45,11 +46,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     return json({ ok: false, error: "tenant_mismatch" }, 403);
   }
   if (!matchesOwnershipBatch({ eventBid: tapEvent.bid, requestedBid: body.bid })) return json({ ok: false, error: "tenant_batch_mismatch" }, 403);
-  if (!isClaimableOwnershipResult(String(tapEvent.result || ""))) return json({ ok: false, error: "tap_not_claimable" }, 409);
+  if (!evaluateTapCommercialRights(tapEvent).allowed || !isClaimableOwnershipResult(String(tapEvent.result || ""))) return json({ ok: false, error: "tap_not_claimable" }, 409);
   const capability = await consumeSunFreshHandoff(req, body as Record<string, unknown>, {
     eventId: String(tapEvent.id), bid: String(tapEvent.bid || ""), uidHex: String(tapEvent.uid_hex || ""), readCounter: tapEvent.sdm_read_ctr,
   }, "consumer_save_product");
   if (!capability.ok) return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
+  const currentRights = await readCurrentTapCommercialRights(tapEvent.id);
+  if (!currentRights.allowed) return json({ ok: false, error: currentRights.reason }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
   const savedEvent = await saveTapForConsumer({ consumerId: consumer.id, eventId });
   if (!savedEvent) return json({ ok: false, error: "event_not_found" }, 404);
   return json({ ok: true, saved: true, eventId });

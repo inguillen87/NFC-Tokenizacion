@@ -53,6 +53,7 @@ export const expectedMigrations = Object.freeze([
   '20260802300000_0095_sun_tt_conflict_target.sql',
   '20260802310000_0096_enterprise_rbac_risk_truth.sql',
   '20260802320000_0097_sun_demo_replay_isolation.sql',
+  '20260827010000_0098_sun_ticket_tenant_routing.sql',
 ]);
 
 export class EnterpriseReleasePreflightError extends Error {
@@ -189,9 +190,37 @@ export async function runEnterpriseReleasePreflight(options = {}) {
                  THEN pg_has_role(current_user, reachable_sensitive_role.oid, 'SET')
                ELSE pg_has_role(current_user, reachable_sensitive_role.oid, 'MEMBER')
              END
-         ) AS runtime_role_isolated_from_sensitive_roles,
-         to_regclass('public.schema_migrations') IS NOT NULL AS has_migration_ledger,
-         to_regclass('public.webhook_endpoints') IS NOT NULL AS has_webhook_endpoints,
+          ) AS runtime_role_isolated_from_sensitive_roles,
+          to_regclass('public.schema_migrations') IS NOT NULL AS has_migration_ledger,
+          to_regclass('public.tag_manual_tamper_overrides') IS NOT NULL
+            AS has_tag_manual_tamper_overrides,
+          COALESCE(has_table_privilege(
+            current_user,
+            to_regclass('public.tag_manual_tamper_overrides'),
+            'SELECT'
+          ), false)
+            AND COALESCE(has_table_privilege(
+              current_user,
+              to_regclass('public.tag_manual_tamper_overrides'),
+              'INSERT'
+            ), false)
+            AND COALESCE(has_table_privilege(
+              current_user,
+              to_regclass('public.tag_manual_tamper_overrides'),
+              'UPDATE'
+            ), false)
+            AND NOT COALESCE(has_table_privilege(
+              current_user,
+              to_regclass('public.tag_manual_tamper_overrides'),
+              'DELETE'
+            ), false)
+            AS can_manage_tag_manual_tamper_overrides,
+          COALESCE(has_sequence_privilege(
+            current_user,
+            to_regclass('public.tag_manual_tamper_overrides_id_seq'),
+            'USAGE'
+          ), false) AS can_use_tag_manual_tamper_overrides_sequence,
+          to_regclass('public.webhook_endpoints') IS NOT NULL AS has_webhook_endpoints,
          to_regclass('public.marketplace_products') IS NOT NULL AS has_marketplace_products,
          to_regclass('public.marketplace_brand_profiles') IS NOT NULL AS has_marketplace_brand_profiles,
          EXISTS (
@@ -1303,6 +1332,9 @@ export async function runEnterpriseReleasePreflight(options = {}) {
       ['runtime role has no superuser, BYPASSRLS, CREATEROLE, CREATEDB or REPLICATION', state.runtime_role_restricted],
       ['runtime role cannot CREATE in schema public', state.runtime_role_no_public_create],
       ['runtime role cannot SET ROLE into dangerous or private-owner roles', state.runtime_role_isolated_from_sensitive_roles],
+      ['tag_manual_tamper_overrides', state.has_tag_manual_tamper_overrides],
+      ['runtime role SELECT,INSERT,UPDATE without DELETE on tag_manual_tamper_overrides', state.can_manage_tag_manual_tamper_overrides],
+      ['runtime role USAGE on tag_manual_tamper_overrides_id_seq', state.can_use_tag_manual_tamper_overrides_sequence],
       ['webhook_endpoints', state.has_webhook_endpoints],
       ['marketplace_products', state.has_marketplace_products],
       ['marketplace_brand_profiles', state.has_marketplace_brand_profiles],

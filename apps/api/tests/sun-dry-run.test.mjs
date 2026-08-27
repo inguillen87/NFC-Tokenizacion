@@ -56,7 +56,7 @@ test("dry-run centralizes every SUN persistence sink behind the state-write gate
   assert.match(atomicHelper, /SELECT \*[\s\S]*FROM public\.nexid_persist_sun_scan_v1/);
   assert.doesNotMatch(source, /recordTapEvent|INSERT INTO events/);
 
-  assert.doesNotMatch(source, /await sql\/\*sql\*\/`\s*CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides/);
+  assert.doesNotMatch(source, /CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides/);
   assert.doesNotMatch(source, /await sql\/\*sql\*\/`\s*CREATE TABLE IF NOT EXISTS sun_scan_attempts/);
   assert.doesNotMatch(source, /await sql\/\*sql\*\/`\s*INSERT INTO sun_scan_attempts/);
   assert.doesNotMatch(source, /await sql\/\*sql\*\/`\s*UPDATE tags/);

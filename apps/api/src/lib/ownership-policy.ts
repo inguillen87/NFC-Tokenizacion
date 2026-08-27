@@ -1,5 +1,7 @@
-export const BLOCKED_OWNERSHIP_RESULTS = new Set(["REPLAY_SUSPECT", "DUPLICATE", "INVALID", "NOT_REGISTERED", "NOT_ACTIVE", "TAMPER", "TAMPERED", "REVOKED", "BROKEN"]);
-export const CLAIMABLE_OWNERSHIP_RESULTS = new Set(["VALID", "TAP_VALID", "VALID_CLOSED", "OPENED", "VALID_OPENED", "VALID_MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"]);
+import { evaluateTapCommercialRights, type TapCommercialRightsEvidence } from "./tap-commercial-rights";
+
+export const BLOCKED_OWNERSHIP_RESULTS = new Set(["REPLAY_SUSPECT", "DUPLICATE", "INVALID", "NOT_REGISTERED", "NOT_ACTIVE", "TAMPER", "TAMPERED", "REVOKED", "BROKEN", "MANUAL_OPENED", "VALID_MANUAL_OPENED"]);
+export const CLAIMABLE_OWNERSHIP_RESULTS = new Set(["VALID", "TAP_VALID", "VALID_CLOSED", "OPENED", "VALID_OPENED", "VALID_UNKNOWN_TAMPER"]);
 
 function normalizeTenantRef(value?: string | null) {
   return String(value || "").trim().toLowerCase();
@@ -37,10 +39,13 @@ export function isClaimableOwnershipResult(result: string) {
   return CLAIMABLE_OWNERSHIP_RESULTS.has(String(result || "").toUpperCase());
 }
 
-export function evaluateOwnershipEligibility(input: { result: string; tagStatus?: string | null }) {
+export function evaluateOwnershipEligibility(input: { result: string; tagStatus?: string | null } & TapCommercialRightsEvidence) {
   const result = String(input.result || "").toUpperCase();
   const tagStatus = String(input.tagStatus || "").toLowerCase();
-  const isBlocked = BLOCKED_OWNERSHIP_RESULTS.has(result) || !isClaimableOwnershipResult(result) || tagStatus === "revoked";
+  const isBlocked = !evaluateTapCommercialRights(input).allowed
+    || BLOCKED_OWNERSHIP_RESULTS.has(result)
+    || !isClaimableOwnershipResult(result)
+    || tagStatus === "revoked";
   const nextStatus = isBlocked
     ? (result === "REPLAY_SUSPECT" || result === "DUPLICATE" ? "blocked_replay" : "revoked")
     : "claimed";

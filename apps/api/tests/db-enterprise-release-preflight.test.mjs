@@ -48,7 +48,7 @@ test("enterprise release preflight pins the expected non-secret runtime database
   );
 });
 
-test("enterprise release gate requires the reviewed ordered set through 0097", () => {
+test("enterprise release gate requires the reviewed ordered set through 0098", () => {
   assert.deepEqual(expectedMigrations, [
     "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
     "20260726103000_0058_webhook_signature_v2.sql",
@@ -95,10 +95,11 @@ test("enterprise release gate requires the reviewed ordered set through 0097", (
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
     "20260802320000_0097_sun_demo_replay_isolation.sql",
+    "20260827010000_0098_sun_ticket_tenant_routing.sql",
   ]);
 });
 
-test("migration safety gate covers 0061-0097 and the historical clean-order boundaries", () => {
+test("migration safety gate covers 0061-0098 and the historical clean-order boundaries", () => {
   const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const script = fileURLToPath(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script], {
@@ -108,7 +109,7 @@ test("migration safety gate covers 0061-0097 and the historical clean-order boun
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-40).map(({ id }) => id), [
+  assert.deepEqual(report.migrations.slice(-41).map(({ id }) => id), [
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
     "20260728120000_0062_sun_atomic_persistence.sql",
     "20260728143000_0063_supplier_packaging_governance.sql",
@@ -149,6 +150,7 @@ test("migration safety gate covers 0061-0097 and the historical clean-order boun
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
     "20260802320000_0097_sun_demo_replay_isolation.sql",
+    "20260827010000_0098_sun_ticket_tenant_routing.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
   assert.equal(report.assertions.sdk_idempotency_schema_is_durable, true);
@@ -183,6 +185,7 @@ test("migration safety gate covers 0061-0097 and the historical clean-order boun
   assert.equal(report.assertions.sun_tt_conflict_target_is_durable, true);
   assert.equal(report.assertions.enterprise_rbac_risk_truth_is_durable, true);
   assert.equal(report.assertions.sun_demo_replay_isolation_is_durable, true);
+  assert.equal(report.assertions.sun_ticket_tenant_routing_is_durable, true);
   assert.equal(report.assertions.unauthorized_clean_bootstrap_fails_closed, true);
 });
 
@@ -235,6 +238,14 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           /NOT historical_routine\.prosecdef[\s\S]*wrapper_routine\.proowner = base_routine\.proowner[\s\S]*wrapper_routine\.proowner = historical_routine\.proowner[\s\S]*wrapper_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*base_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*historical_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\]/,
         );
         assert.match(String(statement), /sun_replay_watermark_repairs[\s\S]*has_sun_demo_replay_isolation/);
+        assert.match(
+          String(statement),
+          /tag_manual_tamper_overrides[\s\S]*has_table_privilege\([\s\S]*'SELECT'[\s\S]*'INSERT'[\s\S]*'UPDATE'[\s\S]*'DELETE'[\s\S]*can_manage_tag_manual_tamper_overrides/,
+        );
+        assert.match(
+          String(statement),
+          /has_sequence_privilege\([\s\S]*tag_manual_tamper_overrides_id_seq[\s\S]*'USAGE'[\s\S]*can_use_tag_manual_tamper_overrides_sequence/,
+        );
         return { rows: [{
           database_name: "nexid_test",
           database_role: runtimeRole,
@@ -243,6 +254,9 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           runtime_role_no_public_create: true,
           runtime_role_isolated_from_sensitive_roles: true,
           has_migration_ledger: true,
+          has_tag_manual_tamper_overrides: true,
+          can_manage_tag_manual_tamper_overrides: true,
+          can_use_tag_manual_tamper_overrides_sequence: true,
           has_webhook_endpoints: true,
           has_marketplace_products: true,
           has_marketplace_brand_profiles: true,
@@ -359,7 +373,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_migrations_missing"
-      && error.details.missing_migrations.includes("20260802320000_0097_sun_demo_replay_isolation.sql"),
+      && error.details.missing_migrations.includes("20260827010000_0098_sun_ticket_tenant_routing.sql"),
   );
   assert.equal(ended, true);
 
@@ -424,6 +438,44 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_schema_missing"
       && error.details.missing_schema.includes("runtime role cannot SET ROLE into dangerous or private-owner roles"),
+  );
+
+  class MissingManualTamperTableAclClient extends MissingMigrationClient {
+    async query(statement) {
+      const result = await super.query(statement);
+      if (String(statement).includes("current_database()")) {
+        result.rows[0].can_manage_tag_manual_tamper_overrides = false;
+      }
+      return result;
+    }
+  }
+  await assert.rejects(
+    runEnterpriseReleasePreflight({
+      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
+      Client: MissingManualTamperTableAclClient,
+    }),
+    (error) => error instanceof EnterpriseReleasePreflightError
+      && error.reason === "required_schema_missing"
+      && error.details.missing_schema.includes("runtime role SELECT,INSERT,UPDATE without DELETE on tag_manual_tamper_overrides"),
+  );
+
+  class MissingManualTamperSequenceAclClient extends MissingMigrationClient {
+    async query(statement) {
+      const result = await super.query(statement);
+      if (String(statement).includes("current_database()")) {
+        result.rows[0].can_use_tag_manual_tamper_overrides_sequence = false;
+      }
+      return result;
+    }
+  }
+  await assert.rejects(
+    runEnterpriseReleasePreflight({
+      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
+      Client: MissingManualTamperSequenceAclClient,
+    }),
+    (error) => error instanceof EnterpriseReleasePreflightError
+      && error.reason === "required_schema_missing"
+      && error.details.missing_schema.includes("runtime role USAGE on tag_manual_tamper_overrides_id_seq"),
   );
 
   class SunDefinerDriftClient extends MissingMigrationClient {

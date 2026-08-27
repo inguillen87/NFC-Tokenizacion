@@ -14,11 +14,17 @@ export type GlobalOpsPoint = {
   risk: number;
   verdict: string;
   tenantSlug: string;
-  lastSeen: string;
+  lastSeen?: string;
   uid?: string;
   device?: string;
   role?: "origin" | "tap" | "hub";
   productName?: string;
+  /** Only an explicit consented-browser source is eligible for consumer map rendering. */
+  locationSource?: string;
+  /** Approximate horizontal uncertainty in metres. */
+  locationAccuracyM?: number | null;
+  /** Backwards-compatible input alias; normalized to locationAccuracyM before rendering. */
+  accuracyM?: number | null;
 };
 
 export type GlobalOpsRoute = {
@@ -40,6 +46,18 @@ export type GlobalOpsRoute = {
 type Mode = "tenant" | "global" | "demo";
 type TimeWindow = "1h" | "24h" | "7d" | "all";
 type MapView = "events" | "intensity";
+const CONSENTED_CONSUMER_LOCATION_SOURCE = "browser_gps_approximate_consent";
+
+export function isConsentedConsumerLocation(point: GlobalOpsPoint) {
+  return point.locationSource === CONSENTED_CONSUMER_LOCATION_SOURCE
+    && point.role !== "origin"
+    && Number.isFinite(point.lat)
+    && Number.isFinite(point.lng)
+    && point.lat >= -90
+    && point.lat <= 90
+    && point.lng >= -180
+    && point.lng <= 180;
+}
 
 function toMs(value?: string) {
   if (!value) return 0;
@@ -97,12 +115,13 @@ export function GlobalOpsMap({
   onPointSelect?: (point: GlobalOpsPoint) => void;
   playbackEnabled?: boolean;
   riskOnly?: boolean;
-  chrome?: "full" | "compact";
+  chrome?: "full" | "compact" | "consumer";
   initialView?: MapView;
   allowViewToggle?: boolean;
   sourceLabel?: string;
   locationNote?: string;
 }) {
+  const isConsumerChrome = chrome === "consumer";
   const [tenant, setTenant] = useState("ALL");
   const [country, setCountry] = useState("ALL");
   const [windowMode, setWindowMode] = useState<TimeWindow>(mode === "demo" || chrome === "compact" ? "all" : "24h");
@@ -130,13 +149,18 @@ export function GlobalOpsMap({
     return () => clearInterval(id);
   }, [playback]);
 
-  const cutoff = !nowMs ? 0 : windowMode === "1h" ? nowMs - 3600_000 : windowMode === "24h" ? nowMs - 24 * 3600_000 : windowMode === "7d" ? nowMs - 7 * 24 * 3600_000 : 0;
+  const cutoff = isConsumerChrome || !nowMs ? 0 : windowMode === "1h" ? nowMs - 3600_000 : windowMode === "24h" ? nowMs - 24 * 3600_000 : windowMode === "7d" ? nowMs - 7 * 24 * 3600_000 : 0;
 
   const tenants = useMemo(() => ["ALL", ...Array.from(new Set(points.map((p) => p.tenantSlug))).filter(Boolean).sort()], [points]);
   const countries = useMemo(() => ["ALL", ...Array.from(new Set(points.map((p) => p.country))).filter(Boolean).sort()], [points]);
   const verdicts = useMemo(() => ["ALL", ...Array.from(new Set(points.map((p) => p.verdict))).filter(Boolean).sort()], [points]);
 
-  const basePoints = useMemo(() => points.filter((point) => {
+  const consumerPoints = useMemo(() => points
+    .filter(isConsentedConsumerLocation)
+    .sort((left, right) => toMs(right.lastSeen) - toMs(left.lastSeen))
+    .slice(0, 1), [points]);
+
+  const basePoints = useMemo(() => (isConsumerChrome ? consumerPoints : points).filter((point) => {
     const ts = toMs(point.lastSeen);
     const tenantMatch = tenant === "ALL" ? true : point.tenantSlug === tenant;
     const countryMatch = country === "ALL" ? true : point.country === country;
@@ -144,7 +168,7 @@ export function GlobalOpsMap({
     const timeMatch = point.role === "origin" ? true : cutoff === 0 ? true : ts >= cutoff;
     const riskMatch = localRiskOnly ? point.risk > 0 : true;
     return tenantMatch && countryMatch && verdictMatch && timeMatch && riskMatch;
-  }), [country, cutoff, localRiskOnly, points, tenant, verdict]);
+  }), [consumerPoints, country, cutoff, isConsumerChrome, localRiskOnly, points, tenant, verdict]);
 
   const clusteredPoints = useMemo(() => {
     if (basePoints.length <= 80) return basePoints;
@@ -165,6 +189,7 @@ export function GlobalOpsMap({
   const visiblePoints = useMemo(() => clusteredPoints, [clusteredPoints]);
 
   const filteredRoutes = useMemo(() => {
+    if (isConsumerChrome) return [];
     const filtered = routes
       .filter((route) => {
         if (localRiskOnly && route.risk <= 0) return false;
@@ -175,7 +200,7 @@ export function GlobalOpsMap({
       .sort((a, b) => toMs(a.lastSeenAt) - toMs(b.lastSeenAt));
     const max = mode === "global" ? 140 : 80;
     return filtered.slice(-max);
-  }, [cutoff, localRiskOnly, mode, routes]);
+  }, [cutoff, isConsumerChrome, localRiskOnly, mode, routes]);
 
   const visibleRoutes = useMemo(() => {
     if (!playback) return filteredRoutes;
@@ -214,7 +239,10 @@ export function GlobalOpsMap({
     scans: point.scans,
     risk: point.risk,
     tone: point.role === "origin" ? "origin" : point.role === "tap" ? "tap" : point.risk > 0 ? "risk" : /TOKEN|MINT|CLAIM/i.test(point.verdict) ? "token" : "hub",
-  })), [visiblePoints]);
+    evidence: isConsumerChrome ? "Ubicación aproximada compartida con permiso desde este dispositivo" : undefined,
+    locationSource: point.locationSource,
+    locationAccuracyM: point.locationAccuracyM ?? point.accuracyM ?? undefined,
+  })), [isConsumerChrome, visiblePoints]);
   const vectorRoutes = useMemo<VectorMapRoute[]>(() => visibleRoutes.map((route) => ({
     id: route.id,
     fromLat: route.fromLat,
@@ -276,6 +304,7 @@ export function GlobalOpsMap({
 
   const isDemoMode = mode === "demo";
   const isCompactChrome = chrome === "compact";
+  const usesCompactFrame = isCompactChrome || isConsumerChrome;
   const totalScans = visiblePoints.reduce((sum, point) => sum + point.scans, 0);
   const riskyPoints = visiblePoints.filter((point) => point.risk > 0);
   const observedLocationCount = visiblePoints.filter((point) => point.role !== "origin").length;
@@ -298,9 +327,19 @@ export function GlobalOpsMap({
       : "n/a";
   const demoProductName = selectedJourney?.productName || selectedPoint?.productName || visiblePoints.find((point) => point.productName)?.productName || "Escenario sin producto confirmado";
   const demoRiskLabel = replayTamper > 0 ? "replay/tamper" : riskyPoints.length ? "riesgo activo" : "ruta limpia";
+  const consumerPoint = visiblePoints[0] || null;
+  const consumerAccuracy = consumerPoint?.locationAccuracyM ?? consumerPoint?.accuracyM;
+  const consumerAccuracyText = Number.isFinite(Number(consumerAccuracy)) && Number(consumerAccuracy) > 0
+    ? `Margen aproximado: ${Math.round(Math.max(150, Number(consumerAccuracy)))} m.`
+    : "Precisión no informada.";
 
   return (
-    <Card className={`worldmap-card global-ops-map-card overflow-hidden ${isCompactChrome ? "p-2 md:p-3" : "p-4 md:p-6"}`}>
+    <Card
+      className={`worldmap-card global-ops-map-card overflow-hidden ${usesCompactFrame ? "p-2 md:p-3" : "p-4 md:p-6"}`}
+      data-global-map-chrome={chrome}
+      data-consumer-location-source={isConsumerChrome ? consumerPoint?.locationSource : undefined}
+      data-consumer-location-accuracy-m={isConsumerChrome && Number.isFinite(Number(consumerAccuracy)) ? Number(consumerAccuracy) : undefined}
+    >
       {isCompactChrome ? (
         <div className="global-ops-map-compact-header mb-2 flex flex-wrap items-start justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/55 p-3">
           <div className="min-w-0 flex-1">
@@ -320,7 +359,7 @@ export function GlobalOpsMap({
           ) : null}
         </div>
       ) : null}
-      {!isCompactChrome ? (
+      {!usesCompactFrame ? (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-white">{isDemoMode ? title : `${title} - mapa del scope nexID`}</p>
@@ -348,7 +387,7 @@ export function GlobalOpsMap({
       </div>
       ) : null}
 
-      {!isDemoMode && !isCompactChrome && canToggleMapView ? (
+      {!isDemoMode && !usesCompactFrame && canToggleMapView ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 p-2">
           <p className="text-[11px] text-slate-300">Eventos muestra cada ubicación reportada. Intensidad compara volumen sin mezclarlo con riesgo.</p>
           <div className="inline-grid grid-cols-2 rounded-lg border border-white/10 bg-slate-950/60 p-1" role="group" aria-label="Vista del mapa">
@@ -358,7 +397,7 @@ export function GlobalOpsMap({
         </div>
       ) : null}
 
-      {isDemoMode && !isCompactChrome ? (
+      {isDemoMode && !usesCompactFrame ? (
         <div className="global-ops-map-story mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
           <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">01 origen</p>
@@ -380,7 +419,7 @@ export function GlobalOpsMap({
         </div>
       ) : null}
 
-      <div className={isDemoMode || isCompactChrome ? "hidden" : "global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7"}>
+      <div className={isDemoMode || usesCompactFrame ? "hidden" : "global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7"}>
         <select suppressHydrationWarning aria-label="Filtrar por organización" className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
           {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: todos" : item}</option>)}
         </select>
@@ -401,28 +440,28 @@ export function GlobalOpsMap({
         <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="min-h-11 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100">Centrar mapa</button>
       </div>
 
-      <div className={`global-ops-map-layout grid gap-3 ${isCompactChrome ? "mt-0" : "mt-3"} ${isDemoMode || isCompactChrome ? "" : "lg:grid-cols-[1fr_22rem]"}`}>
-        <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(90deg,rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(160deg,#020617,#0f172a,#111827)] bg-[length:4.5rem_4.5rem,4.5rem_4.5rem,auto]">
-          <div className={`global-ops-map-canvas relative ${isCompactChrome ? "h-[26rem]" : isDemoMode ? "h-[24rem] md:h-[31rem]" : "h-[29rem]"}`}>
+      <div className={`global-ops-map-layout grid gap-3 ${usesCompactFrame ? "mt-0" : "mt-3"} ${isDemoMode || usesCompactFrame ? "" : "lg:grid-cols-[1fr_22rem]"}`}>
+        <div className={`global-ops-map-stage overflow-hidden rounded-xl border ${isConsumerChrome ? "border-cyan-900/10 bg-slate-50" : "border-white/10 bg-[linear-gradient(90deg,rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(160deg,#020617,#0f172a,#111827)] bg-[length:4.5rem_4.5rem,4.5rem_4.5rem,auto]"}`}>
+          <div className={`global-ops-map-canvas relative ${isConsumerChrome ? "h-[18rem] sm:h-[20rem]" : isCompactChrome ? "h-[26rem]" : isDemoMode ? "h-[24rem] md:h-[31rem]" : "h-[29rem]"}`}>
             <PremiumVectorMap
               key={`global-ops-map-${fitRevision}`}
-              title={isDemoMode ? "Escenario geográfico simulado" : effectiveMapView === "intensity" ? "Intensidad de eventos reportados" : "Mapa de eventos reportados"}
-              subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel}: origen declarado y tap simulado; la línea no prueba una ruta física.` : effectiveMapView === "intensity" ? "El color representa volumen por ubicación observada; el origen declarado y el riesgo se muestran por separado." : "Ubicaciones aportadas por eventos; no representan por sí solas recorrido ni custodia física."}
-              caption={isDemoMode
+              title={isConsumerChrome ? "Ubicación aproximada del teléfono" : isDemoMode ? "Escenario geográfico simulado" : effectiveMapView === "intensity" ? "Intensidad de eventos reportados" : "Mapa de eventos reportados"}
+              subtitle={isConsumerChrome ? `Compartida con tu permiso para este tap. ${consumerAccuracyText}` : isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel}: origen declarado y tap simulado; la línea no prueba una ruta física.` : effectiveMapView === "intensity" ? "El color representa volumen por ubicación observada; el origen declarado y el riesgo se muestran por separado." : "Ubicaciones aportadas por eventos; no representan por sí solas recorrido ni custodia física."}
+              caption={isConsumerChrome ? undefined : isDemoMode
                 ? "SUN, TT, claim y capa comercial se muestran como una historia demo gobernada por policy."
                 : `${sourceLabel ? `${sourceLabel}. ` : ""}${hasVisibleOrigin ? "El origen declarado se muestra como referencia y no suma intensidad. " : ""}Eventos reportados y riesgo en una vista operativa honesta.`}
               points={vectorPoints}
-              routes={vectorRoutes}
+              routes={isConsumerChrome ? [] : vectorRoutes}
               selectedPointId={selectedPoint?.id}
-              density={isDemoMode ? "route" : effectiveMapView === "intensity" ? "heat" : "route"}
-              chrome={isCompactChrome ? "minimal" : isDemoMode ? "minimal" : "compact"}
+              density={isConsumerChrome ? "route" : isDemoMode ? "route" : effectiveMapView === "intensity" ? "heat" : "route"}
+              chrome={isConsumerChrome ? "consumer" : isCompactChrome ? "minimal" : isDemoMode ? "minimal" : "compact"}
               className="h-full rounded-none border-0 shadow-none"
               heightClassName="h-full"
-              maxPoints={isDemoMode ? 28 : mode === "global" ? 120 : 64}
-              maxRoutes={isDemoMode ? 18 : mode === "global" ? 120 : 72}
-              evidenceSteps={mapEvidenceSteps}
-              ledgerItems={mapLedgerItems}
-              ariaLabel={`${title}. ${subtitle}${locationNote ? ` ${locationNote}.` : ""}`}
+              maxPoints={isConsumerChrome ? 1 : isDemoMode ? 28 : mode === "global" ? 120 : 64}
+              maxRoutes={isConsumerChrome ? 0 : isDemoMode ? 18 : mode === "global" ? 120 : 72}
+              evidenceSteps={isConsumerChrome ? [] : mapEvidenceSteps}
+              ledgerItems={isConsumerChrome ? [] : mapLedgerItems}
+              ariaLabel={isConsumerChrome ? `Ubicación aproximada compartida por este teléfono. ${consumerAccuracyText}` : `${title}. ${subtitle}${locationNote ? ` ${locationNote}.` : ""}`}
               onPointSelect={(point) => {
                 const selected = visiblePoints.find((item) => item.id === point.id);
                 if (!selected) return;
@@ -430,9 +469,9 @@ export function GlobalOpsMap({
                 onPointSelect?.(selected);
               }}
             />
-            <div className="global-ops-map-caption absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
+            {!isConsumerChrome ? <div className="global-ops-map-caption absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
               {isDemoMode ? `Conexión ilustrativa ${originLabel} -> ${tapLabel}. ${demoDistanceLabel} con datos geográficos y comerciales simulados; no prueba desplazamiento físico.` : `Relaciones entre eventos reportados, señales de riesgo y clusters (${visibleRoutes.length} conexiones renderizadas); no prueban recorridos ni custodia física.`}
-            </div>
+            </div> : null}
           </div>
         </div>
 
@@ -468,7 +507,7 @@ export function GlobalOpsMap({
           </aside>
         ) : null}
 
-        {!isDemoMode && !isCompactChrome ? (
+        {!isDemoMode && !usesCompactFrame ? (
         <aside className="global-ops-map-drawer h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200">
           <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Detalle del punto</p>
           {selectedPoint ? (
@@ -543,7 +582,7 @@ export function GlobalOpsMap({
           <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 font-semibold text-emerald-100">Reencuadrar</button>
           <span>La vista demo evita filtros tecnicos para vender la historia del producto.</span>
         </div>
-      ) : !isCompactChrome ? (
+      ) : !usesCompactFrame ? (
         <div className="mt-3">
           <input suppressHydrationWarning type="range" min={10} max={100} step={10} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="w-full" />
         </div>

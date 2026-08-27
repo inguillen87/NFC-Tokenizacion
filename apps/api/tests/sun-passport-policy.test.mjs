@@ -37,6 +37,47 @@ test("verified opened seal remains actionable as lifecycle event", () => {
   assert.equal(matrix.blockedActions.length, 0);
 });
 
+test("operator-declared opening never becomes verified TT evidence or commercial rights", () => {
+  const mapped = mapVerdictAndRisk({
+    statusCode: "MANUAL_OPENED",
+    productState: "VALID_MANUAL_OPENED",
+    reason: "manual_opened_by_operator",
+  });
+  assert.equal(mapped.verdict, "manual_opened_declared");
+  assert.equal(mapped.riskLevel, "medium");
+
+  const policy = resolveRightsPolicy({
+    verdict: mapped.verdict,
+    vertical: "wine",
+    tokenizationMode: "valid_and_opened",
+    statusCode: "MANUAL_OPENED",
+    productState: "VALID_MANUAL_OPENED",
+    reason: "manual_opened_by_operator",
+  });
+  assert.equal(policy.conditionState, "manual_opened_declared");
+  assert.deepEqual(policy.allowedActions, ["provenance"]);
+  assert.equal(policy.blockedActions.includes("claim"), true);
+  assert.equal(policy.blockedActions.includes("warranty"), true);
+  assert.equal(policy.blockedActions.includes("rewards"), true);
+  assert.equal(policy.blockedActions.includes("tokenization"), true);
+  assert.equal(policy.canClaimPublicly, false);
+  assert.equal(policy.canTokenize, false);
+  assert.equal(policy.requiresReview, true);
+  assert.equal(policy.tokenizationPolicy, "blocked_manual_declaration");
+  assert.match(policy.statusTitle, /Apertura declarada/i);
+  assert.match(policy.statusSummary, /no equivale a una apertura detectada por la etiqueta/i);
+  assert.doesNotMatch(policy.statusTitle, /SUN válido/i);
+
+  const contradictory = resolveRightsPolicy({
+    verdict: "valid_opened",
+    vertical: "wine",
+    statusCode: "MANUAL_OPENED",
+    productState: "VALID_MANUAL_OPENED",
+  });
+  assert.equal(contradictory.conditionState, "manual_opened_declared");
+  assert.deepEqual(contradictory.allowedActions, ["provenance"]);
+});
+
 test("tamper risk still blocks commercial ownership and tokenization", () => {
   const mapped = mapVerdictAndRisk({ statusCode: "TAMPER_RISK", productState: "TAMPER_RISK", reason: "invalid_tamper" });
   const matrix = resolveActionMatrix(mapped.verdict);

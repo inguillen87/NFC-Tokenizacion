@@ -60,6 +60,7 @@ const ids = [
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
   "20260802320000_0097_sun_demo_replay_isolation.sql",
+  "20260827010000_0098_sun_ticket_tenant_routing.sql",
 ];
 const checks = [];
 for (const id of ids) {
@@ -115,6 +116,7 @@ const sql94 = await readSql("20260802290000_0094_sun_runtime_acl_boundary.sql");
 const sql95 = await readSql("20260802300000_0095_sun_tt_conflict_target.sql");
 const sql96 = await readSql("20260802310000_0096_enterprise_rbac_risk_truth.sql");
 const sql97 = await readSql("20260802320000_0097_sun_demo_replay_isolation.sql");
+const sql98 = await readSql("20260827010000_0098_sun_ticket_tenant_routing.sql");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const runnerSafety = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/lib/db-apply-safety.mjs"), "utf8");
@@ -741,6 +743,28 @@ const sunDemoReplayIsolationIsDurable = sql97.includes("sun_demo_replay_isolatio
   && sql97.includes("sun_demo_replay_isolation_postcondition_failed")
   && !/hsm[_ -]?backed\s*[:=]\s*true|managed[_ -]?kms\s*[:=]\s*true/i.test(sql97);
 
+const sunTicketTenantRoutingIsDurable = sql98.includes("CREATE TABLE IF NOT EXISTS public.tag_manual_tamper_overrides")
+  && sql98.includes("UNIQUE (batch_id, uid_hex)")
+  && sql98.includes("CREATE INDEX IF NOT EXISTS idx_tag_manual_tamper_identity")
+  && sql98.includes("ON public.tag_manual_tamper_overrides(batch_id, upper(uid_hex))")
+  && sql98.includes("REVOKE ALL ON TABLE public.tag_manual_tamper_overrides FROM PUBLIC")
+  && sql98.includes("REVOKE ALL ON SEQUENCE public.tag_manual_tamper_overrides_id_seq FROM PUBLIC")
+  && sql98.includes("ALTER TABLE public.tickets")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES public.tenants(id) ON DELETE SET NULL")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS tap_event_id bigint")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS bid text")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS uid_hex text")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS category text")
+  && sql98.includes("CREATE INDEX IF NOT EXISTS idx_tickets_tenant_created_at")
+  && sql98.includes("ON public.tickets(tenant_id, created_at DESC)")
+  && sql98.includes("CREATE INDEX IF NOT EXISTS idx_tickets_sun_identity")
+  && sql98.includes("ON public.tickets(tenant_id, bid, upper(uid_hex), created_at DESC)")
+  && sql98.includes("WHERE source = 'sun_public_report'")
+  && ids.indexOf("20260802320000_0097_sun_demo_replay_isolation.sql")
+    < ids.indexOf("20260827010000_0098_sun_ticket_tenant_routing.sql")
+  && !/(?:DROP|TRUNCATE|DELETE\s+FROM|UPDATE\s+(?:public\.)?tickets|ALTER\s+COLUMN\s+\w+\s+SET\s+NOT\s+NULL)/i.test(sql98)
+  && !/REFERENCES\s+(?:public\.)?events\s*\(\s*id\s*\)/i.test(sql98);
+
 const allMigrationFiles = (await fs.readdir(root)).filter((file) => file.endsWith(".sql")).sort();
 let tenantApiKeysMaterialized = false;
 let tenantApiKeysCanonicalCreateFound = false;
@@ -821,6 +845,7 @@ const ok = checks.every((item) => item.bytes > 0)
   && sunTtConflictTargetIsDurable
   && enterpriseRbacRiskTruthIsDurable
   && sunDemoReplayIsolationIsDurable
+  && sunTicketTenantRoutingIsDurable
   && tenantApiKeysCleanOrderSafe && partitionedEventReferencesAreCompositeSafe
   && postgresTextNullDelimiterFree
   && runnerIsAtomic && unauthorizedCleanBootstrapFailsClosed && legacyBypassBlocked
@@ -878,6 +903,7 @@ console.log(JSON.stringify({
     sun_tt_conflict_target_is_durable: sunTtConflictTargetIsDurable,
     enterprise_rbac_risk_truth_is_durable: enterpriseRbacRiskTruthIsDurable,
     sun_demo_replay_isolation_is_durable: sunDemoReplayIsolationIsDurable,
+    sun_ticket_tenant_routing_is_durable: sunTicketTenantRoutingIsDurable,
     tenant_api_keys_clean_order_safe: tenantApiKeysCleanOrderSafe,
     partitioned_event_references_are_composite_safe: partitionedEventReferencesAreCompositeSafe,
     postgres_text_null_delimiter_free: postgresTextNullDelimiterFree,

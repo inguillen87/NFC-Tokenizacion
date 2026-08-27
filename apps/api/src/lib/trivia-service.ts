@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { sql } from "./db";
 import { getActiveProgram, getTapEvent } from "./loyalty-service";
+import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "./tap-commercial-rights";
 import { ensureTenantMembership } from "./consumer-portal-service";
 
 export type TriviaQuestion = {
@@ -305,6 +306,9 @@ export async function getTriviaForTap(input: {
 
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false as const, status: 404, error: "event_not_found" as const };
+  if (!evaluateTapCommercialRights(event).allowed) {
+    return { ok: false as const, status: 403, error: "tap_commercial_rights_blocked" as const };
+  }
   const program = await getActiveProgram(event.tenant_id);
   if (!program) return { ok: false as const, status: 404, error: "program_not_found" as const };
   const context = await loadProductContext(String(event.id));
@@ -396,6 +400,10 @@ export async function submitTriviaForTap(input: {
   const event = await getTapEvent(input.eventId);
   const program = event ? await getActiveProgram(event.tenant_id) : null;
   if (!event || !program) return { ok: false as const, status: 404, error: "event_not_found" as const };
+  const currentRights = await readCurrentTapCommercialRights(event.id);
+  if (!currentRights.allowed) {
+    return { ok: false as const, status: currentRights.reason === "manual_opening_declared" ? 403 : 503, error: currentRights.reason };
+  }
 
   const member = (await sql/*sql*/`
     SELECT *
@@ -437,9 +445,24 @@ export async function submitTriviaForTap(input: {
     completionBonus,
   });
   const atomicRows = await sql/*sql*/`
-    WITH locked_member AS MATERIALIZED (
+    WITH tap_rights AS MATERIALIZED (
+      SELECT true AS allowed
+      FROM events source_event
+      LEFT JOIN tag_manual_tamper_overrides manual_override
+        ON manual_override.batch_id = source_event.batch_id
+       AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
+      WHERE source_event.id = ${event.id}::bigint
+        AND UPPER(COALESCE(source_event.result, '')) NOT IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
+        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+        AND UPPER(COALESCE(manual_override.tamper_status, '')) NOT IN ('MANUAL_OPENED', 'OPENED')
+        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+    ),
+    locked_member AS MATERIALIZED (
       SELECT id, points_balance, lifetime_points
       FROM loyalty_members
+      JOIN tap_rights ON tap_rights.allowed = true
       WHERE id = ${member.id}
         AND tenant_id = ${event.tenant_id}
         AND program_id = ${program.id}

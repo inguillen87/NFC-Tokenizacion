@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { isSecurePostTapActionAllowed, type SecurePostTapActionKey } from "./post-tap-policy";
 import { selectSunTruthCopy, SUN_DEMO_COPY } from "./sun-truth-copy";
 
-type TapState = "valid" | "opened" | "blocked";
+type TapState = "valid" | "opened" | "manual_opened" | "blocked";
 type RightsPolicy = {
   conditionState?: string | null;
   claimMode?: string | null;
@@ -19,6 +19,7 @@ type ActionState = "idle" | "loading" | "success" | "error";
 type ActionKey = SecurePostTapActionKey;
 type CallResponse = {
   ok?: boolean;
+  authenticated?: boolean;
   reason?: string;
   error?: string;
   code?: string;
@@ -30,7 +31,7 @@ type CallResponse = {
   request_status?: string | null;
   provenance?: string | { mode?: string | null; status?: string | null } | null;
   warranty?: { status?: string | null } | null;
-  ticket?: { id?: string | number | null; status?: string | null } | null;
+  ticket?: { id?: string | number | null; status?: string | null; tenant_assigned?: boolean | null } | null;
   consumer?: Record<string, unknown>;
   ownership?: { status?: string | null } | null;
   ownership_status?: string | null;
@@ -189,6 +190,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [claimAuthMessage, setClaimAuthMessage] = useState("");
   const [claimAuthError, setClaimAuthError] = useState("");
   const [claimAuthLoading, setClaimAuthLoading] = useState(false);
+  const [consumerSessionLoading, setConsumerSessionLoading] = useState(false);
 
   // States for user session & receipt uploads
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -224,7 +226,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     allowedActions,
     blockedActions,
   );
-  const canStartClaim = canExecute && policyAllowsAction("claimOwnership");
+  const isManualOpenedConsumerFlow = tapState === "manual_opened";
+  const isSensorOpenedConsumerFlow = tapState === "opened";
+  const isOpenedConsumerFlow = isSensorOpenedConsumerFlow || isManualOpenedConsumerFlow;
+  const commercialActionsAllowed = canExecute && !isManualOpenedConsumerFlow;
+  const canStartClaim = commercialActionsAllowed && policyAllowsAction("claimOwnership");
+  const showReportFlow = isOpenedConsumerFlow || tapState === "blocked";
   const ownerClaimState = !canStartClaim
     ? "Protegido"
     : isAuthenticated
@@ -232,28 +239,42 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       : claimAuthStarted
         ? "Código enviado"
         : "Listo para iniciar";
-  const ownerClaimTone = canStartClaim ? "text-emerald-100 border-emerald-300/30 bg-emerald-500/10" : "text-amber-100 border-amber-300/30 bg-amber-500/10";
+  const ownerClaimTone = isOpenedConsumerFlow
+    ? "text-amber-100 border-amber-300/30 bg-amber-500/10"
+    : canStartClaim
+      ? "text-emerald-100 border-emerald-300/30 bg-emerald-500/10"
+      : "text-amber-100 border-amber-300/30 bg-amber-500/10";
   const ownerClaimSteps = [
     {
-      label: selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimTapLabel, "Evidencia NFC fresca"),
-      state: selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimTapState, canExecute ? "OK" : "Requerido"),
+      label: selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimTapLabel, isOpenedConsumerFlow ? "Estado del sello" : "Lectura digital"),
+      state: selectSunTruthCopy(
+        isDemoPreview,
+        SUN_DEMO_COPY.claimTapState,
+        isManualOpenedConsumerFlow ? "Apertura declarada" : isSensorOpenedConsumerFlow ? "Apertura detectada" : commercialActionsAllowed ? "Confirmada" : "Requerida",
+      ),
     },
     { label: "Política del lote", state: policyAllowsAction("claimOwnership") ? "Habilitada" : "No habilitada" },
     { label: "Email o celular", state: claimAuthStarted ? "Codigo enviado" : "Pendiente" },
     { label: "Ticket / POS", state: claimMode.includes("purchase") || claimMode.includes("review") ? "Revisable" : "Opcional" },
   ];
-  const primaryCtaLabel = !canExecute
+  const primaryCtaLabel = !commercialActionsAllowed
     ? "Necesito una nueva lectura NFC"
     : !policyAllowsAction("claimOwnership")
       ? "Registro de comprador no habilitado"
       : claimAuthStarted
         ? "Confirmar codigo"
-        : "Iniciar validacion de compra";
-  const primaryCtaHelp = !canExecute
-    ? "Por seguridad, este link solo muestra la prueba. Para garantia, wallet o tokenizacion, toca la etiqueta otra vez."
+        : isOpenedConsumerFlow
+          ? "Lo abrí yo: continuar con postventa"
+          : "Activar garantía o beneficios";
+  const primaryCtaHelp = !commercialActionsAllowed
+    ? isManualOpenedConsumerFlow
+      ? "La apertura fue declarada por un operador y necesita revisión. Podés avisar a la marca, pero no habilita propiedad, garantía ni tokenización."
+      : "Por seguridad, este link solo muestra la prueba. Para garantia, wallet o tokenizacion, toca la etiqueta otra vez."
     : !policyAllowsAction("claimOwnership")
       ? "La politica de este producto no permite claim publico. Usa solamente las opciones habilitadas abajo."
-      : "Confirmamos el canal de contacto y revisamos la prueba de compra antes de activar garantia, wallet, NFT o marketplace.";
+      : isOpenedConsumerFlow
+        ? "Continuá sólo si reconocés la apertura y el envase está en condiciones. La marca puede pedir contacto y comprobante."
+        : "Confirmamos el canal de contacto y revisamos la prueba de compra antes de activar garantía o beneficios.";
   const tokenSubtitle = tokenPolicy === "issuer_transfer"
     ? "Tokenizacion por transferencia del issuer: requiere prueba documental antes del mint."
     : tokenPolicy === "lot_anchor"
@@ -263,8 +284,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         : "Solicitud disponible despues de validar comprador: UID hasheado, salt privado y confirmacion Polygon solo si existe receipt real.";
   const realGatedCopy = tapState === "blocked"
     ? "Propiedad, garantia y tokenizacion quedan bloqueadas hasta que el backend valide evidencia NFC reciente; eso no prueba el producto fisico."
-    : policySummary || (tapState === "opened"
-      ? "El tag reporto TT abierto. Su significado fisico depende de la integracion al packaging; las acciones siguen la politica de la marca."
+    : policySummary || (isManualOpenedConsumerFlow
+      ? "Un operador informó una apertura. La etiqueta digital no la detectó automáticamente; la marca puede revisar el registro y acompañarte con la postventa."
+      : isSensorOpenedConsumerFlow
+      ? "La etiqueta digital informó una apertura. Si no la reconocés o el envase está dañado, no uses el producto y avisá a la marca."
       : "Mensaje SUN reciente validado por el backend. La ficha queda disponible; compra, propiedad y beneficios requieren validaciones separadas.");
   const gatedCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.gatedActions, realGatedCopy);
   const realTokenModalCopy = tokenPolicy === "issuer_transfer"
@@ -273,7 +296,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       ? "Una transaccion on-chain confirmada puede registrar hashes de eventos declarados del lote; no prueba por si sola origen fisico, recorrido ni ownership individual."
       : tokenPolicy === "manual_review"
         ? "La solicitud queda en revision comercial antes de mintear. Es ideal para pharma, cosmetica o casos con riesgo regulatorio."
-        : tapState === "opened"
+        : isOpenedConsumerFlow
     ? "Una transaccion confirmada puede registrar el estado TT reportado y claims aprobados de propiedad o provenance; no prueba por si sola una apertura fisica ni el contenido."
     : "Una transaccion confirmada puede registrar claims aprobados de propiedad, provenance o garantia; no prueba por si sola custodia ni contenido fisico.";
   const tokenModalCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.tokenModal, realTokenModalCopy);
@@ -303,8 +326,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       tone: "border-amber-300/40 bg-amber-500/10 text-amber-100 transition hover:bg-amber-500/20",
     },
     report: {
-      title: "Reportar problema",
-      subtitle: "Envía un reporte si el tap, replay o estado TT parecen inconsistentes; el equipo confirma luego si abre un ticket.",
+      title: "Avisar sobre un problema",
+      subtitle: "Registrá un ticket de revisión con el producto, el lote y esta lectura.",
       icon: "RPT",
       path: "/api/public-cta/report-problem",
       method: "POST",
@@ -316,7 +339,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     registerWarranty: "Solicitud de garantía registrada · pendiente de revisión.",
     provenance: "Provenance consultada correctamente.",
     tokenization: "Solicitud de tokenizacion registrada. No hay NFT confirmado hasta recibir tx, receipt y token ID verificables.",
-    report: "Reporte recibido · todavía no es un ticket confirmado.",
+    report: "Aviso registrado para revisión.",
   };
 
   function tokenizationStatus(data: CallResponse) {
@@ -421,7 +444,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     if (actionKey === "report") {
       const hasConfirmedTicket = Boolean(data.ticket?.id) && confirmedStatuses.has(responseStatus);
       return hasConfirmedTicket
-        ? "Ticket confirmado por el backend para revisar el tap."
+        ? data.ticket?.tenant_assigned
+          ? "Aviso registrado. Quedó asignado al equipo de la marca para revisar esta lectura."
+          : "Aviso registrado en nexID para revisar esta lectura."
         : successCopy.report;
     }
     if (actionKey !== "tokenization") return successCopy[actionKey];
@@ -433,8 +458,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     if (!policyAllowsAction(actionKey) && state === "idle") {
       return <span className="rounded-full border border-slate-400/30 bg-slate-500/10 px-2 py-0.5 text-[10px] text-slate-200">No habilitada</span>;
     }
-    if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey) && state === "idle") {
-      return <span className="rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-100">Requiere tap</span>;
+    if (!commercialActionsAllowed && SECURITY_GATED_ACTIONS.has(actionKey) && state === "idle") {
+      return <span className="rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-100">Requiere verificación</span>;
     }
     if (state === "loading") return <span className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">Procesando...</span>;
     if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Recibido</span>;
@@ -451,7 +476,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   function isActionDisabled(actionKey: ActionKey) {
-    return pending || !policyAllowsAction(actionKey) || (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey));
+    return pending || !policyAllowsAction(actionKey) || (!commercialActionsAllowed && SECURITY_GATED_ACTIONS.has(actionKey));
   }
 
   function basePayload(extra?: Record<string, unknown>) {
@@ -514,19 +539,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     };
   }, [showTokenModal]);
 
-  // Load consumer session on mount to detect authenticated users
-  useEffect(() => {
-    fetch("/api/consumer/session", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.authenticated) {
-          setIsAuthenticated(true);
-          setConsumerData(data.consumer || null);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   function normalizeReason(data: { reason?: string; error?: string; _httpStatus?: number }) {
     if (data.error) return data.error;
     const reason = String(data.reason || "").toLowerCase();
@@ -554,8 +566,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       setActionError("La politica de este producto no habilita esta accion. Revisa las opciones disponibles para este lote.");
       return;
     }
-    if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey)) {
-      setActionError("Este tap no habilita propiedad, garantia ni tokenizacion. Escanea nuevamente la etiqueta fisica.");
+    if (!commercialActionsAllowed && SECURITY_GATED_ACTIONS.has(actionKey)) {
+      setActionError(isManualOpenedConsumerFlow
+        ? "Una apertura declarada necesita revisión antes de habilitar propiedad, garantía o tokenización."
+        : "Este tap no habilita propiedad, garantia ni tokenizacion. Escanea nuevamente la etiqueta fisica.");
       setActionStates((current) => ({ ...current, [actionKey]: "error" }));
       return;
     }
@@ -578,6 +592,15 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           receiptFileName: receiptFileName || null,
           receiptFileData: receiptFileData || null,
           pin: securityPin || null,
+        };
+      } else if (actionKey === "report") {
+        extraPayload = {
+          category: isOpenedConsumerFlow ? "seal_opened" : "tap_review",
+          description: isManualOpenedConsumerFlow
+            ? "La persona solicitó revisar una apertura declarada por un operador."
+            : isSensorOpenedConsumerFlow
+            ? "La persona informó que no reconoce la apertura indicada por la etiqueta digital."
+            : "La persona solicitó revisar esta lectura.",
         };
       }
       const data = await call(path, method, basePayload(extraPayload));
@@ -726,6 +749,55 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     }
   }
 
+  async function resolveConsumerSessionForClaim(): Promise<"authenticated" | "anonymous" | "error"> {
+    if (isAuthenticated) return "authenticated";
+    if (consumerSessionLoading) return "error";
+
+    setConsumerSessionLoading(true);
+    setActionError("");
+    setLastActionMessage("");
+    setLastTraceId("");
+    try {
+      const data = await call("/api/consumer/session", "GET", null);
+      setStatus(JSON.stringify(data));
+      if (data._traceId) setLastTraceId(data._traceId);
+
+      if (data._httpStatus === 401 && data.authenticated === false) {
+        return "anonymous";
+      }
+      if (!data._httpOk || data.ok === false) {
+        setActionError(normalizeReason(data));
+        return "error";
+      }
+      if (data.authenticated !== true) {
+        setActionError("No pudimos confirmar tu sesión. Reintentá antes de continuar con la validación de compra.");
+        return "error";
+      }
+
+      setIsAuthenticated(true);
+      setConsumerData(data.consumer || null);
+      return "authenticated";
+    } catch (error) {
+      const message = normalizeUnknownError(error);
+      setActionError(message);
+      setStatus(JSON.stringify({ ok: false, reason: message }));
+      return "error";
+    } finally {
+      setConsumerSessionLoading(false);
+    }
+  }
+
+  async function continuePrimaryClaimAction() {
+    const sessionState = await resolveConsumerSessionForClaim();
+    if (sessionState === "authenticated") {
+      setShowReceiptForm(true);
+      return;
+    }
+    if (sessionState === "anonymous") {
+      setClaimAuthOpen(true);
+    }
+  }
+
   function retryLastAction() {
     if (!lastRequest || pending) return;
     void trigger(lastRequest.path, lastRequest.method, lastRequest.actionKey);
@@ -733,11 +805,13 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   function handlePrimaryClaimAction() {
     if (!canStartClaim) {
-      if (canExecute && !policyAllowsAction("claimOwnership")) {
+      if (commercialActionsAllowed && !policyAllowsAction("claimOwnership")) {
         setActionError("La politica de este producto no permite un claim publico. Usa una opcion habilitada para el lote.");
         return;
       }
-      setActionError("Para activar comprador, garantia o propiedad necesitamos una nueva lectura NFC validada por el backend.");
+      setActionError(isManualOpenedConsumerFlow
+        ? "La apertura declarada puede enviarse a revisión, pero no habilita comprador, garantía ni propiedad."
+        : "Para activar comprador, garantia o propiedad necesitamos una nueva lectura NFC validada por el backend.");
       return;
     }
     if (claimAuthStarted) {
@@ -745,7 +819,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       return;
     }
     if (!isAuthenticated) {
-      setClaimAuthOpen(true);
+      void continuePrimaryClaimAction();
       return;
     }
     setShowReceiptForm(true);
@@ -753,10 +827,32 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   return (
     <div className="sun-public-cta mt-4 space-y-2">
-      {rightsPolicy ? (
-        <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-2 text-[11px] text-cyan-100">
-          Politica: propiedad {labelPolicy(rightsPolicy.claimMode)} · token {labelPolicy(rightsPolicy.tokenizationPolicy)} · marketplace {labelPolicy(rightsPolicy.marketplaceMode)}
-        </div>
+      {showReportFlow ? (
+        <section id="report-action" className="scroll-mt-24 rounded-2xl border border-amber-300/35 bg-amber-500/10 p-4 text-amber-50" aria-labelledby="report-action-title">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">Ayuda con esta lectura</p>
+          <h3 id="report-action-title" className="mt-1 text-base font-black text-white">
+            {isOpenedConsumerFlow ? "¿No reconocés esta apertura?" : "¿Querés avisar sobre esta lectura?"}
+          </h3>
+          <p className="mt-2 text-xs leading-5 text-amber-50/85">
+            {isOpenedConsumerFlow
+              ? "No uses el producto si el envase está dañado. Podemos registrar un ticket con el producto, el lote y esta lectura para que el equipo lo revise."
+              : "Podemos registrar un ticket con el producto, el lote y esta lectura para que el equipo revise qué pasó."}
+          </p>
+          <button
+            suppressHydrationWarning
+            type="button"
+            disabled={isActionDisabled("report")}
+            onClick={() => void trigger("/api/public-cta/report-problem", "POST", "report")}
+            className="mt-3 min-h-12 w-full rounded-xl border border-amber-200/50 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {getButtonLabel("Enviar aviso para revisión", "report")}
+          </button>
+          {actionStates.report === "success" ? (
+            <p className="mt-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">
+              Aviso registrado. El equipo ya puede revisar esta lectura.
+            </p>
+          ) : null}
+        </section>
       ) : null}
       
       <div className={`rounded-2xl border p-4 ${ownerClaimTone} space-y-4`}>
@@ -1026,10 +1122,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           <>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">Tu producto, tu cuenta</p>
-                <h3 className="mt-1 text-sm font-black text-white">Alta segura de comprador</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">{isOpenedConsumerFlow ? "Si vos abriste el sello" : "Tu producto, tu cuenta"}</p>
+                <h3 className="mt-1 text-sm font-black text-white">{isOpenedConsumerFlow ? "Continuar con postventa" : "Activar garantía o beneficios"}</h3>
                 <p className="mt-1 text-[11px] leading-5 opacity-85">
-                  {selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimIntro, "El tap fisico demuestra acceso al tag en ese instante. El canal de contacto confirmado y el comprobante se evaluan por separado antes de habilitar garantia, beneficios o propiedad segun la politica de la marca.")}
+                  {selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimIntro, isOpenedConsumerFlow
+                    ? "Si reconocés la apertura y el envase está en condiciones, podés seguir. La marca puede pedir un contacto y comprobante antes de habilitar garantía o beneficios."
+                    : "La marca puede confirmar un canal de contacto y revisar el comprobante antes de habilitar garantía o beneficios.")}
                 </p>
               </div>
               <div className="shrink-0 rounded-xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right">
@@ -1054,11 +1152,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             <button
               suppressHydrationWarning
               type="button"
-              disabled={!canStartClaim || pending || claimAuthLoading || (claimAuthStarted && !isClaimCodeValid)}
+              disabled={!canStartClaim || pending || claimAuthLoading || consumerSessionLoading || (claimAuthStarted && !isClaimCodeValid)}
               onClick={handlePrimaryClaimAction}
-              className="sun-primary-claim-button mt-3 w-full rounded-xl border border-emerald-300/35 bg-emerald-400 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_16px_40px_rgba(16,185,129,0.22)] transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`sun-primary-claim-button mt-3 w-full rounded-xl border px-4 py-3 text-sm font-black text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-60 ${isOpenedConsumerFlow ? "border-amber-300/40 bg-amber-300 shadow-[0_16px_40px_rgba(245,158,11,0.18)] hover:bg-amber-200" : "border-emerald-300/35 bg-emerald-400 shadow-[0_16px_40px_rgba(16,185,129,0.22)] hover:bg-emerald-300"}`}
             >
-              {pending || claimAuthLoading ? "Procesando..." : primaryCtaLabel}
+              {consumerSessionLoading ? "Confirmando sesión..." : pending || claimAuthLoading ? "Procesando..." : primaryCtaLabel}
             </button>
             <p className="mt-2 text-[11px] leading-5 opacity-85">{primaryCtaHelp}</p>
           </>
@@ -1066,9 +1164,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       </div>
 
       <details open={!policyAllowsAction("claimOwnership") && policyAllowsAction("registerWarranty")} className="sun-advanced-actions rounded-2xl border border-white/10 bg-slate-950/45 p-3 text-xs">
-        <summary className="cursor-pointer text-sm font-black text-slate-100">Opciones avanzadas para marca, garantia y NFT</summary>
+        <summary className="cursor-pointer text-sm font-black text-slate-100">Opciones avanzadas de garantía y propiedad digital</summary>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
-        {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
+        {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).filter((key) => !(showReportFlow && key === "report")).map((key) => {
           const item = actionMeta[key];
           return (
             <button suppressHydrationWarning
@@ -1099,6 +1197,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           <p className="mt-1 text-[11px] text-emerald-50/80">{tokenSubtitle}</p>
         </button>
         </div>
+        {rightsPolicy ? (
+          <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/45 p-2 text-[10px] leading-4 text-slate-400">
+            Configuración técnica: propiedad {labelPolicy(rightsPolicy.claimMode)} · token {labelPolicy(rightsPolicy.tokenizationPolicy)} · marketplace {labelPolicy(rightsPolicy.marketplaceMode)}
+          </p>
+        ) : null}
       </details>
       <p className="sun-cta-tip text-[11px] text-slate-300">{gatedCopy}</p>
       {pending ? <p className="text-xs text-cyan-200" aria-live="polite">Ejecutando acción...</p> : null}

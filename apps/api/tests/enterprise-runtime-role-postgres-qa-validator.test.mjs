@@ -9,14 +9,16 @@ import {
   assertEnterpriseRuntimeRoleAclState,
   ENTERPRISE_RUNTIME_ROLE_FUNCTIONS,
   ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS,
+  ENTERPRISE_RUNTIME_ROLE_MUTABLE_TABLES,
   ENTERPRISE_RUNTIME_ROLE_RECEIPT_TABLES,
   ENTERPRISE_RUNTIME_ROLE_REQUIRED_MIGRATIONS,
+  ENTERPRISE_RUNTIME_ROLE_SEQUENCES,
   enterpriseRuntimeRoleName,
 } from "../scripts/validate-enterprise-runtime-role-postgres-qa.mjs";
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("runtime role surface is exact, current through 0097 and excludes internal helpers", () => {
+test("runtime role surface is exact, current through 0098 and excludes internal helpers", () => {
   assert.deepEqual(ENTERPRISE_RUNTIME_ROLE_REQUIRED_MIGRATIONS, [
     "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
     "20260802260000_0091_supplier_keyless_qa_activation.sql",
@@ -26,12 +28,19 @@ test("runtime role surface is exact, current through 0097 and excludes internal 
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
     "20260802320000_0097_sun_demo_replay_isolation.sql",
+    "20260827010000_0098_sun_ticket_tenant_routing.sql",
   ]);
   assert.equal(ENTERPRISE_RUNTIME_ROLE_FUNCTIONS.length, 9);
   assert.deepEqual(ENTERPRISE_RUNTIME_ROLE_RECEIPT_TABLES, [
     "public.supplier_qa_carrier_evidence_receipts",
     "public.supplier_keyless_production_qa_acceptance_receipts",
     "public.sun_tt_truth_receipts",
+  ]);
+  assert.deepEqual(ENTERPRISE_RUNTIME_ROLE_MUTABLE_TABLES, [
+    "public.tag_manual_tamper_overrides",
+  ]);
+  assert.deepEqual(ENTERPRISE_RUNTIME_ROLE_SEQUENCES, [
+    "public.tag_manual_tamper_overrides_id_seq",
   ]);
   assert.ok(ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS.includes(
     "public.nexid_import_tag_manifest_v2_core_0081(jsonb)",
@@ -59,7 +68,7 @@ test("ephemeral role names are identifier-safe and bounded", () => {
   }
 });
 
-test("ACL state rejects public access, missing grants and append-only mutation privileges", () => {
+test("ACL state distinguishes append-only receipts from the restricted mutable override table", () => {
   const functionRows = ENTERPRISE_RUNTIME_ROLE_FUNCTIONS.map((signature) => ({
     signature,
     exists: true,
@@ -76,17 +85,41 @@ test("ACL state rejects public access, missing grants and append-only mutation p
     public_select: false,
     public_insert: false,
   }));
+  const mutableTableRows = ENTERPRISE_RUNTIME_ROLE_MUTABLE_TABLES.map((relation) => ({
+    relation,
+    exists: true,
+    can_select: true,
+    can_insert: true,
+    can_update: true,
+    can_delete: false,
+    public_select: false,
+    public_insert: false,
+    public_update: false,
+    public_delete: false,
+  }));
+  const sequenceRows = ENTERPRISE_RUNTIME_ROLE_SEQUENCES.map((relation) => ({
+    relation,
+    exists: true,
+    can_usage: true,
+    can_select: false,
+    can_update: false,
+    public_usage: false,
+    public_select: false,
+    public_update: false,
+  }));
   const internalRows = ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS.map((signature) => ({
     signature,
     exists: true,
     can_execute: false,
     public_execute: false,
   }));
-  assert.equal(assertEnterpriseRuntimeRoleAclState({ functionRows, tableRows, internalRows }), true);
+  assert.equal(assertEnterpriseRuntimeRoleAclState({ functionRows, tableRows, mutableTableRows, sequenceRows, internalRows }), true);
   assert.throws(
     () => assertEnterpriseRuntimeRoleAclState({
       functionRows: functionRows.map((row, index) => index === 0 ? { ...row, public_execute: true } : row),
       tableRows,
+      mutableTableRows,
+      sequenceRows,
       internalRows,
     }),
     /PUBLIC may execute/,
@@ -95,6 +128,8 @@ test("ACL state rejects public access, missing grants and append-only mutation p
     () => assertEnterpriseRuntimeRoleAclState({
       functionRows,
       tableRows: tableRows.map((row, index) => index === 0 ? { ...row, can_update: true } : row),
+      mutableTableRows,
+      sequenceRows,
       internalRows,
     }),
     /may UPDATE append-only receipt/,
@@ -103,9 +138,51 @@ test("ACL state rejects public access, missing grants and append-only mutation p
     () => assertEnterpriseRuntimeRoleAclState({
       functionRows,
       tableRows,
+      mutableTableRows,
+      sequenceRows,
       internalRows: internalRows.map((row, index) => index === 0 ? { ...row, can_execute: true } : row),
     }),
     /may execute internal helper/,
+  );
+  assert.throws(
+    () => assertEnterpriseRuntimeRoleAclState({
+      functionRows,
+      tableRows,
+      mutableTableRows: mutableTableRows.map((row) => ({ ...row, can_update: false })),
+      sequenceRows,
+      internalRows,
+    }),
+    /lacks UPDATE: public\.tag_manual_tamper_overrides/,
+  );
+  assert.throws(
+    () => assertEnterpriseRuntimeRoleAclState({
+      functionRows,
+      tableRows,
+      mutableTableRows: mutableTableRows.map((row) => ({ ...row, public_delete: true })),
+      sequenceRows,
+      internalRows,
+    }),
+    /PUBLIC may DELETE mutable table/,
+  );
+  assert.throws(
+    () => assertEnterpriseRuntimeRoleAclState({
+      functionRows,
+      tableRows,
+      mutableTableRows,
+      sequenceRows: sequenceRows.map((row) => ({ ...row, can_usage: false })),
+      internalRows,
+    }),
+    /lacks USAGE: public\.tag_manual_tamper_overrides_id_seq/,
+  );
+  assert.throws(
+    () => assertEnterpriseRuntimeRoleAclState({
+      functionRows,
+      tableRows,
+      mutableTableRows,
+      sequenceRows: sequenceRows.map((row) => ({ ...row, public_usage: true })),
+      internalRows,
+    }),
+    /PUBLIC may use sequence/,
   );
 });
 
@@ -119,6 +196,10 @@ test("runtime role validator is disposable, non-production and never makes KMS o
   assert.match(source, /CREATE ROLE \$\{role\}[\s\S]*NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS/);
   assert.match(source, /GRANT \$\{role\} TO CURRENT_USER/);
   assert.match(source, /SET LOCAL ROLE \$\{role\}/);
+  assert.match(source, /GRANT SELECT, INSERT, UPDATE ON TABLE \$\{relation\} TO \$\{role\}/);
+  assert.match(source, /GRANT USAGE ON SEQUENCE \$\{relation\} TO \$\{role\}/);
+  assert.match(source, /INSERT INTO public\.tag_manual_tamper_overrides[\s\S]*UPDATE public\.tag_manual_tamper_overrides[\s\S]*SELECT id::text AS id, batch_id::text AS batch_id, uid_hex/);
+  assert.match(source, /DELETE FROM public\.tag_manual_tamper_overrides WHERE false/);
   assert.match(source, /has_schema_privilege\(current_user, 'public', 'CREATE'\)/);
   assert.match(
     source,

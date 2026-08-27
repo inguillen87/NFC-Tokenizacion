@@ -33,6 +33,7 @@ export function buildLifecycleState(bid: string, uid: string, actions: Array<Rec
   const ownershipAction = newestFirst.find((entry) => entry.action === "claim_ownership");
   const warrantyAction = newestFirst.find((entry) => ["warranty_review_requested", "register_warranty"].includes(entry.action));
   const problemReportAction = newestFirst.find((entry) => ["problem_report_request", "report_problem"].includes(entry.action));
+  const supportTicketCreated = Boolean(problemReportAction?.payload?.ticket_id);
   const tokenAction = newestFirst.find((entry) => entry.action === "tokenize_request");
 
   const ownership = {
@@ -75,7 +76,11 @@ export function buildLifecycleState(bid: string, uid: string, actions: Array<Rec
     })),
     { stage: "ownership_request", status: ownershipAction ? "request_recorded" : "not_requested", at: ownershipAction?.created_at || null },
     { stage: "warranty_request_recorded", status: warrantyAction ? "pending_review" : "not_requested", at: warrantyAction?.created_at || null },
-    { stage: "support_ticket", status: problemReportAction ? "not_created_request_pending_review" : "not_requested", at: null },
+    {
+      stage: "support_ticket",
+      status: supportTicketCreated ? "created" : problemReportAction ? "pending_review" : "not_requested",
+      at: supportTicketCreated ? problemReportAction?.created_at || null : null,
+    },
     { stage: "resale_or_transfer", status: "pending", at: null },
     { stage: "tokenization_requested", status: tokenAction ? "recorded" : "pending", at: tokenAction?.created_at || null },
     { stage: "ledger_final_state", status: "unavailable_from_demo_log", at: null },

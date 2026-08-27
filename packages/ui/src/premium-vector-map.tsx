@@ -18,6 +18,10 @@ export type VectorMapPoint = {
   stageLabel?: string;
   evidence?: string;
   lastSeen?: string;
+  /** Explicit provenance for a reported point. Consumer maps only accept consented browser geolocation. */
+  locationSource?: string;
+  /** Approximate horizontal uncertainty in metres. Never interpreted as exact device coordinates. */
+  locationAccuracyM?: number;
 };
 
 export type VectorMapRoute = {
@@ -49,7 +53,7 @@ export type VectorMapLedgerItem = {
 };
 
 export type MapDensity = "balanced" | "heat" | "route";
-type MapChrome = "full" | "compact" | "minimal" | "enterprise-atlas";
+export type MapChrome = "full" | "compact" | "minimal" | "enterprise-atlas" | "consumer";
 
 export type PremiumVectorMapProps = {
   points: VectorMapPoint[];

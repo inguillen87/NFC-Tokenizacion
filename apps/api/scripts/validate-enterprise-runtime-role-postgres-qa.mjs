@@ -20,6 +20,7 @@ export const ENTERPRISE_RUNTIME_ROLE_REQUIRED_MIGRATIONS = Object.freeze([
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
   "20260802320000_0097_sun_demo_replay_isolation.sql",
+  "20260827010000_0098_sun_ticket_tenant_routing.sql",
 ]);
 
 export const ENTERPRISE_RUNTIME_ROLE_FUNCTIONS = Object.freeze([
@@ -38,6 +39,14 @@ export const ENTERPRISE_RUNTIME_ROLE_RECEIPT_TABLES = Object.freeze([
   "public.supplier_qa_carrier_evidence_receipts",
   "public.supplier_keyless_production_qa_acceptance_receipts",
   "public.sun_tt_truth_receipts",
+]);
+
+export const ENTERPRISE_RUNTIME_ROLE_MUTABLE_TABLES = Object.freeze([
+  "public.tag_manual_tamper_overrides",
+]);
+
+export const ENTERPRISE_RUNTIME_ROLE_SEQUENCES = Object.freeze([
+  "public.tag_manual_tamper_overrides_id_seq",
 ]);
 
 export const ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS = Object.freeze([
@@ -87,16 +96,24 @@ function bool(value) {
 export function assertEnterpriseRuntimeRoleAclState({
   functionRows,
   tableRows,
+  mutableTableRows,
+  sequenceRows,
   internalRows,
 }) {
   const functions = Array.isArray(functionRows) ? functionRows : [];
   const tables = Array.isArray(tableRows) ? tableRows : [];
+  const mutableTables = Array.isArray(mutableTableRows) ? mutableTableRows : [];
+  const sequences = Array.isArray(sequenceRows) ? sequenceRows : [];
   const internals = Array.isArray(internalRows) ? internalRows : [];
 
   assert.equal(functions.length, ENTERPRISE_RUNTIME_ROLE_FUNCTIONS.length,
     "runtime role function ACL receipt count mismatch");
   assert.equal(tables.length, ENTERPRISE_RUNTIME_ROLE_RECEIPT_TABLES.length,
     "runtime role table ACL receipt count mismatch");
+  assert.equal(mutableTables.length, ENTERPRISE_RUNTIME_ROLE_MUTABLE_TABLES.length,
+    "runtime role mutable table ACL receipt count mismatch");
+  assert.equal(sequences.length, ENTERPRISE_RUNTIME_ROLE_SEQUENCES.length,
+    "runtime role sequence ACL receipt count mismatch");
   assert.equal(internals.length, ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS.length,
     "runtime role internal deny receipt count mismatch");
 
@@ -113,6 +130,26 @@ export function assertEnterpriseRuntimeRoleAclState({
     assert.equal(bool(row.can_delete), false, `runtime role may DELETE append-only receipt: ${row.relation}`);
     assert.equal(bool(row.public_select), false, `PUBLIC may SELECT private receipt table: ${row.relation}`);
     assert.equal(bool(row.public_insert), false, `PUBLIC may INSERT private receipt table: ${row.relation}`);
+  }
+  for (const row of mutableTables) {
+    assert.equal(bool(row.exists), true, `required runtime mutable table missing: ${row.relation}`);
+    assert.equal(bool(row.can_select), true, `runtime role lacks SELECT: ${row.relation}`);
+    assert.equal(bool(row.can_insert), true, `runtime role lacks INSERT: ${row.relation}`);
+    assert.equal(bool(row.can_update), true, `runtime role lacks UPDATE: ${row.relation}`);
+    assert.equal(bool(row.can_delete), false, `runtime role may DELETE mutable table: ${row.relation}`);
+    assert.equal(bool(row.public_select), false, `PUBLIC may SELECT mutable table: ${row.relation}`);
+    assert.equal(bool(row.public_insert), false, `PUBLIC may INSERT mutable table: ${row.relation}`);
+    assert.equal(bool(row.public_update), false, `PUBLIC may UPDATE mutable table: ${row.relation}`);
+    assert.equal(bool(row.public_delete), false, `PUBLIC may DELETE mutable table: ${row.relation}`);
+  }
+  for (const row of sequences) {
+    assert.equal(bool(row.exists), true, `required runtime sequence missing: ${row.relation}`);
+    assert.equal(bool(row.can_usage), true, `runtime role lacks USAGE: ${row.relation}`);
+    assert.equal(bool(row.can_select), false, `runtime role may SELECT sequence: ${row.relation}`);
+    assert.equal(bool(row.can_update), false, `runtime role may UPDATE sequence: ${row.relation}`);
+    assert.equal(bool(row.public_usage), false, `PUBLIC may use sequence: ${row.relation}`);
+    assert.equal(bool(row.public_select), false, `PUBLIC may SELECT sequence: ${row.relation}`);
+    assert.equal(bool(row.public_update), false, `PUBLIC may UPDATE sequence: ${row.relation}`);
   }
   for (const row of internals) {
     assert.equal(bool(row.exists), true, `internal runtime function missing: ${row.signature}`);
@@ -364,6 +401,70 @@ async function readRoleAclState(client) {
     LEFT JOIN pg_class relation ON relation.oid = to_regclass(required.relation)
     ORDER BY required.relation`, [ENTERPRISE_RUNTIME_ROLE_RECEIPT_TABLES])).rows;
 
+  const mutableTableRows = (await client.query(`WITH required(relation) AS (
+      SELECT unnest($1::text[])
+    )
+    SELECT
+      required.relation,
+      relation.oid IS NOT NULL AS exists,
+      COALESCE(has_table_privilege(current_user, relation.oid, 'SELECT'), false) AS can_select,
+      COALESCE(has_table_privilege(current_user, relation.oid, 'INSERT'), false) AS can_insert,
+      COALESCE(has_table_privilege(current_user, relation.oid, 'UPDATE'), false) AS can_update,
+      COALESCE(has_table_privilege(current_user, relation.oid, 'DELETE'), false) AS can_delete,
+      COALESCE(EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'SELECT'
+      ), false) AS public_select,
+      COALESCE(EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'INSERT'
+      ), false) AS public_insert,
+      COALESCE(EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'UPDATE'
+      ), false) AS public_update,
+      COALESCE(EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(relation.relacl, acldefault('r', relation.relowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'DELETE'
+      ), false) AS public_delete
+    FROM required
+    LEFT JOIN pg_class relation ON relation.oid = to_regclass(required.relation)
+    ORDER BY required.relation`, [ENTERPRISE_RUNTIME_ROLE_MUTABLE_TABLES])).rows;
+
+  const sequenceRows = (await client.query(`WITH required(relation) AS (
+      SELECT unnest($1::text[])
+    )
+    SELECT
+      required.relation,
+      sequence_relation.oid IS NOT NULL AS exists,
+      COALESCE(has_sequence_privilege(current_user, sequence_relation.oid, 'USAGE'), false) AS can_usage,
+      COALESCE(has_sequence_privilege(current_user, sequence_relation.oid, 'SELECT'), false) AS can_select,
+      COALESCE(has_sequence_privilege(current_user, sequence_relation.oid, 'UPDATE'), false) AS can_update,
+      COALESCE(EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(sequence_relation.relacl, acldefault('S', sequence_relation.relowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'USAGE'
+      ), false) AS public_usage,
+      COALESCE(EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(sequence_relation.relacl, acldefault('S', sequence_relation.relowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'SELECT'
+      ), false) AS public_select,
+      COALESCE(EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(sequence_relation.relacl, acldefault('S', sequence_relation.relowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'UPDATE'
+      ), false) AS public_update
+    FROM required
+    LEFT JOIN pg_class sequence_relation
+      ON sequence_relation.oid = to_regclass(required.relation)
+     AND sequence_relation.relkind = 'S'
+    ORDER BY required.relation`, [ENTERPRISE_RUNTIME_ROLE_SEQUENCES])).rows;
+
   const internalRows = (await client.query(`WITH required(signature) AS (
       SELECT unnest($1::text[])
     )
@@ -380,8 +481,8 @@ async function readRoleAclState(client) {
     LEFT JOIN pg_proc routine ON routine.oid = to_regprocedure(required.signature)
     ORDER BY required.signature`, [ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS])).rows;
 
-  assertEnterpriseRuntimeRoleAclState({ functionRows, tableRows, internalRows });
-  return Object.freeze({ functionRows, tableRows, internalRows });
+  assertEnterpriseRuntimeRoleAclState({ functionRows, tableRows, mutableTableRows, sequenceRows, internalRows });
+  return Object.freeze({ functionRows, tableRows, mutableTableRows, sequenceRows, internalRows });
 }
 
 async function expectPermissionDenied(client, savepoint, statement) {
@@ -431,6 +532,12 @@ async function validateEphemeralRole(client, roleName) {
     for (const relation of ENTERPRISE_RUNTIME_ROLE_RECEIPT_TABLES) {
       await client.query(`GRANT SELECT, INSERT ON TABLE ${relation} TO ${role}`);
     }
+    for (const relation of ENTERPRISE_RUNTIME_ROLE_MUTABLE_TABLES) {
+      await client.query(`GRANT SELECT, INSERT, UPDATE ON TABLE ${relation} TO ${role}`);
+    }
+    for (const relation of ENTERPRISE_RUNTIME_ROLE_SEQUENCES) {
+      await client.query(`GRANT USAGE ON SEQUENCE ${relation} TO ${role}`);
+    }
     const manifestFixture = {
       tenantId: randomUUID(),
       tenantSlug: `runtime-wrapper-${randomBytes(6).toString("hex")}`,
@@ -478,6 +585,31 @@ async function validateEphemeralRole(client, roleName) {
     );
 
     const acl = await readRoleAclState(client);
+    const manualTamperUid = randomBytes(7).toString("hex").toUpperCase();
+    const insertedManualTamper = (await client.query(`INSERT INTO public.tag_manual_tamper_overrides (
+        batch_id, uid_hex, tamper_status, reason, evidence_note, source
+      ) VALUES ($1::uuid, $2, 'MANUAL_OPENED', 'restricted runtime QA', 'synthetic ACL fixture', 'runtime_acl_qa')
+      RETURNING id::text AS id, tamper_status, source`, [
+      manifestFixture.batchId,
+      manualTamperUid,
+    ])).rows[0] || {};
+    assert.match(String(insertedManualTamper.id || ""), /^\d+$/);
+    assert.equal(String(insertedManualTamper.tamper_status), "MANUAL_OPENED");
+
+    const updatedManualTamper = (await client.query(`UPDATE public.tag_manual_tamper_overrides
+      SET reason = 'restricted runtime QA updated', updated_at = now()
+      WHERE id = $1::bigint
+      RETURNING id::text AS id, reason`, [insertedManualTamper.id])).rows[0] || {};
+    assert.equal(String(updatedManualTamper.id), String(insertedManualTamper.id));
+    assert.equal(String(updatedManualTamper.reason), "restricted runtime QA updated");
+
+    const selectedManualTamper = (await client.query(`SELECT id::text AS id, batch_id::text AS batch_id, uid_hex
+      FROM public.tag_manual_tamper_overrides
+      WHERE id = $1::bigint`, [insertedManualTamper.id])).rows[0] || {};
+    assert.equal(String(selectedManualTamper.id), String(insertedManualTamper.id));
+    assert.equal(String(selectedManualTamper.batch_id), manifestFixture.batchId);
+    assert.equal(String(selectedManualTamper.uid_hex), manualTamperUid);
+
     const capabilities = (await client.query(`SELECT
       public.nexid_supplier_carrier_qa_v1_capability() AS supplier_carrier_qa,
       public.nexid_supplier_keyless_qa_activation_v1_capability() AS supplier_keyless_qa_activation,
@@ -527,6 +659,11 @@ async function validateEphemeralRole(client, roleName) {
         "deny_carrier_delete",
         "DELETE FROM public.supplier_qa_carrier_evidence_receipts WHERE false",
       ),
+      manual_tamper_override_delete: await expectPermissionDenied(
+        client,
+        "deny_manual_tamper_override_delete",
+        "DELETE FROM public.tag_manual_tamper_overrides WHERE false",
+      ),
     });
 
     await client.query("ROLLBACK");
@@ -548,7 +685,10 @@ async function validateEphemeralRole(client, roleName) {
       }),
       granted_function_count: acl.functionRows.length,
       granted_receipt_table_count: acl.tableRows.length,
+      granted_mutable_table_count: acl.mutableTableRows.length,
+      granted_sequence_count: acl.sequenceRows.length,
       denied_internal_function_count: acl.internalRows.length,
+      mutable_table_round_trip: Object.freeze({ inserted: true, updated: true, selected: true }),
       capability_calls: capabilityReceipt,
       manifest_wrapper_reached_private_core: manifestWrapperReachedPrivateCore,
       actual_permission_denials: denied,

@@ -10,7 +10,7 @@ test("post tap and consumer portal surfaces link to public certificate", async (
 
   assert.match(sunPage, /\/certificado\//);
   assert.match(sunPage, /certificateHref=\{certificateHref\}/);
-  assert.match(postTap, /Abrir certificado verificable/);
+  assert.match(postTap, /Ver certificado digital/);
   assert.match(walletPage, /certificateHref/);
   assert.match(productsPage, /certificateHref/);
 });

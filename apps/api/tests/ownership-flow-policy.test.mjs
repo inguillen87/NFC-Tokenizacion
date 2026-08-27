@@ -30,6 +30,15 @@ test("tampered/revoked/broken no son claimables", () => {
   assert.equal(tampered.nextStatus, "revoked");
 });
 
+test("una apertura declarada por operador no habilita ownership ni engagement protegido", () => {
+  for (const result of ["MANUAL_OPENED", "VALID_MANUAL_OPENED"]) {
+    assert.equal(isClaimableOwnershipResult(result), false);
+    const verdict = evaluateOwnershipEligibility({ result, tagStatus: "active" });
+    assert.equal(verdict.isBlocked, true);
+    assert.notEqual(verdict.nextStatus, "claimed");
+  }
+});
+
 test("tenant mismatch devuelve false para proteger join/save/claim", () => {
   assert.equal(matchesOwnershipTenant({ eventTenantId: "tenant-a", requestedTenantId: "tenant-a" }), true);
   assert.equal(matchesOwnershipTenant({ eventTenantId: "tenant-a", requestedTenantId: "tenant-b" }), false);

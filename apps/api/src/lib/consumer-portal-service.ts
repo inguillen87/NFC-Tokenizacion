@@ -3,6 +3,7 @@ import { claimTapPoints, getTapEvent } from "./loyalty-service";
 import { evaluateOwnershipEligibility } from "./ownership-policy";
 import { ensureConsumerPortalSchema } from "./commercial-runtime-schema";
 import { CanonicalEventWriteError, writeCanonicalEvent } from "./canonical-event-writer";
+import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "./tap-commercial-rights";
 
 export async function ensureTenantMembership(input: { consumerId: string; tenantId: string; tapEventId?: string; source?: string }) {
   await ensureConsumerPortalSchema();
@@ -170,10 +171,21 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     return { ok: false as const, status: 403, error: "tenant_batch_mismatch" as const };
   }
   const result = String(event.result || "").toUpperCase();
-  const { isBlocked, nextStatus } = evaluateOwnershipEligibility({ result, tagStatus: tag.status || null });
+  const currentRights = await readCurrentTapCommercialRights(String(event.id));
+  const { isBlocked, nextStatus } = evaluateOwnershipEligibility({
+    result,
+    reason: event.reason,
+    manual_tamper_status: event.manual_tamper_status,
+    manual_tamper_reason: event.manual_tamper_reason,
+    tagStatus: tag.status || null,
+  });
+  const durableBlocked = isBlocked || !currentRights.allowed;
+  const durableNextStatus = durableBlocked ? "revoked" : nextStatus;
 
-  await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
-  await saveTapForConsumer({ consumerId: input.consumerId, eventId: String(event.id) });
+  if (!durableBlocked) {
+    await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
+    await saveTapForConsumer({ consumerId: input.consumerId, eventId: String(event.id) });
+  }
 
   const trustSnapshot = {
     result,
@@ -181,12 +193,13 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     city: event.city || null,
     country: event.country_code || null,
     tag_status: tag.status || null,
-    blocked: isBlocked,
+    blocked: durableBlocked,
+    commercial_rights_reason: currentRights.reason,
     ...(input.trustSnapshot || {}),
   };
 
   const uidHex = String(event.uid_hex).toUpperCase();
-  const existingClaimRows = !isBlocked ? await sql/*sql*/`
+  const existingClaimRows = !durableBlocked ? await sql/*sql*/`
     SELECT o.id, o.consumer_id
     FROM consumer_product_ownerships o
     WHERE o.tenant_id = ${event.tenant_id}
@@ -216,7 +229,25 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
           batch_id = ${tag.batch_id},
           tag_id = ${tag.id || null},
           event_id = ${event.id},
-          status = ${nextStatus},
+          status = CASE
+            WHEN EXISTS (
+              SELECT 1
+              FROM events source_event
+              LEFT JOIN tag_manual_tamper_overrides manual_override
+                ON manual_override.batch_id = source_event.batch_id
+               AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
+              WHERE source_event.id = ${event.id}::bigint
+                AND (
+                  UPPER(COALESCE(source_event.result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
+                  OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
+                  OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_OPENED%'
+                  OR UPPER(COALESCE(manual_override.tamper_status, '')) IN ('MANUAL_OPENED', 'OPENED')
+                  OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
+                  OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_OPENED%'
+                )
+            ) THEN 'revoked'
+            ELSE ${durableNextStatus}
+          END,
           source = ${input.source || "sun_passport"},
           trust_snapshot = ${JSON.stringify(trustSnapshot)}::jsonb,
           updated_at = now()
@@ -229,9 +260,25 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
       ownershipRows = await sql/*sql*/`
         INSERT INTO consumer_product_ownerships (
           tenant_id, consumer_id, batch_id, tag_id, uid_hex, event_id, status, source, trust_snapshot
-        ) VALUES (
-          ${event.tenant_id}, ${input.consumerId}, ${tag.batch_id}, ${tag.id || null}, ${uidHex}, ${event.id}, ${nextStatus}, ${input.source || "sun_passport"}, ${JSON.stringify(trustSnapshot)}::jsonb
         )
+        SELECT
+          ${event.tenant_id}, ${input.consumerId}, ${tag.batch_id}, ${tag.id || null}, ${uidHex}, ${event.id},
+          CASE
+            WHEN UPPER(COALESCE(source_event.result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
+              OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
+              OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_OPENED%'
+              OR UPPER(COALESCE(manual_override.tamper_status, '')) IN ('MANUAL_OPENED', 'OPENED')
+              OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
+              OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_OPENED%'
+            THEN 'revoked'
+            ELSE ${durableNextStatus}
+          END,
+          ${input.source || "sun_passport"}, ${JSON.stringify(trustSnapshot)}::jsonb
+        FROM events source_event
+        LEFT JOIN tag_manual_tamper_overrides manual_override
+          ON manual_override.batch_id = source_event.batch_id
+         AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
+        WHERE source_event.id = ${event.id}::bigint
         ON CONFLICT (consumer_id, event_id)
         DO UPDATE SET
           status = EXCLUDED.status,
@@ -253,10 +300,11 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     }
   }
   const ownership = ownershipRows[0];
+  const persistedNextStatus = String(ownership?.status || durableNextStatus);
 
   await sql/*sql*/`
     UPDATE consumer_products
-    SET ownership_status = ${nextStatus},
+    SET ownership_status = ${persistedNextStatus},
         latest_tap_event_id = ${event.id},
         updated_at = now()
     WHERE consumer_id = ${input.consumerId}
@@ -267,7 +315,7 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
       )
   `;
 
-  if (isBlocked) {
+  if (durableBlocked || String(ownership?.status || "") !== "claimed") {
     return {
       ok: false as const,
       status: 409,
@@ -319,6 +367,15 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
 
 export async function claimPointsForConsumer(input: { consumerId: string; eventId: string; locale?: string }) {
   await ensureConsumerPortalSchema();
+  const rightsEvent = await getTapEvent(input.eventId);
+  if (!rightsEvent) return { ok: false, error: "event_not_found" };
+  if (!evaluateTapCommercialRights(rightsEvent).allowed) {
+    return { ok: false, error: "tap_commercial_rights_blocked", reason: "manual_opening_declared" };
+  }
+  const currentRights = await readCurrentTapCommercialRights(input.eventId);
+  if (!currentRights.allowed) {
+    return { ok: false, error: "tap_commercial_rights_blocked", reason: currentRights.reason };
+  }
   const event = await saveTapForConsumer(input);
   if (!event) return { ok: false, error: "event_not_found" };
   const claim = await claimTapPoints({

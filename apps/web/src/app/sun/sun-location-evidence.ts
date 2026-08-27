@@ -1,5 +1,8 @@
 export type SunLocationEvidenceKind = "measured" | "approximate" | "declared" | "absent";
 
+export const CONSENTED_BROWSER_LOCATION_SOURCE = "browser_gps_approximate_consent";
+export const CONSENTED_BROWSER_LOCATION_FALLBACK = "Zona aproximada compartida";
+
 export type SunLocationObservation = {
   id: string;
   eventId?: string | null;
@@ -72,6 +75,51 @@ export function describeSunLocationEvidence(kind: SunLocationEvidenceKind, accur
   if (kind === "approximate") return `Ubicación aproximada${accuracy || " · precisión no informada"}`;
   if (kind === "declared") return "Origen declarado por la marca";
   return "Ubicación no disponible";
+}
+
+function cleanPlacePart(value: unknown) {
+  return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+}
+
+/**
+ * Resolves the label for the current tap without relabelling a consented phone
+ * coordinate with a city from an older event. Historical city/country values
+ * are only eligible for legacy sources; a browser-GPS point is described from
+ * the current event itself or with an explicit neutral fallback.
+ */
+export function resolveSunCurrentTapPlace(input: {
+  locationSource?: unknown;
+  currentCity?: unknown;
+  currentCountry?: unknown;
+  historicalCity?: unknown;
+  historicalCountry?: unknown;
+}) {
+  const locationSource = cleanPlacePart(input.locationSource).toLowerCase();
+  const currentCity = cleanPlacePart(input.currentCity);
+  const currentCountry = cleanPlacePart(input.currentCountry);
+
+  if (locationSource === CONSENTED_BROWSER_LOCATION_SOURCE) {
+    if (!currentCity) {
+      return {
+        city: CONSENTED_BROWSER_LOCATION_FALLBACK,
+        country: "",
+        display: CONSENTED_BROWSER_LOCATION_FALLBACK,
+      };
+    }
+    return {
+      city: currentCity,
+      country: currentCountry,
+      display: [currentCity, currentCountry].filter(Boolean).join(", "),
+    };
+  }
+
+  const city = currentCity || cleanPlacePart(input.historicalCity) || "Tap";
+  const country = currentCountry || cleanPlacePart(input.historicalCountry);
+  return {
+    city,
+    country,
+    display: [city, country].filter(Boolean).join(", "),
+  };
 }
 
 function observationIdentity(observation: SunLocationObservation, lat: number, lng: number) {

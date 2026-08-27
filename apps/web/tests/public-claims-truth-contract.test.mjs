@@ -185,9 +185,12 @@ test("SUN fallbacks and post-tap actions fail closed and stay pending until conf
   assert.match(sunPage, /const requestedWinery = readParam\(params, "winery"\) \|\| readParam\(params, "brand"\);/);
   assert.match(sunPage, /requestedRegion \|\| "N\/D"/);
   assert.match(ctaActions, /Solicitud de garant.a registrada . pendiente de revisi.n/);
-  assert.match(ctaActions, /Reporte recibido . todav.a no es un ticket confirmado/);
+  assert.match(ctaActions, /Aviso registrado para revisi.n/);
+  assert.match(ctaActions, /Boolean\(data\.ticket\?\.id\)/);
+  assert.match(ctaActions, /tenant_assigned/);
   assert.match(ctaActions, /confirmedStatuses/);
-  assert.match(ctaActions, /Evidencia NFC fresca/);
+  assert.match(ctaActions, /Lectura digital/);
+  assert.match(ctaActions, /Apertura declarada/);
   assert.match(ctaActions, /OCR solo extrae campos y un score de lectura/);
   assert.match(ctaActions, /signed_pos/);
   assert.match(ctaActions, /tenant_manual_approval/);

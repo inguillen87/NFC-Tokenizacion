@@ -10,6 +10,7 @@ export type PassportAction =
 export type PassportVerdict =
   | "valid"
   | "valid_opened"
+  | "manual_opened_declared"
   | "replay_suspect"
   | "sun_profile_mismatch"
   | "tampered"
@@ -22,6 +23,7 @@ export type PassportConditionState =
   | "sealed"
   | "authenticated_no_tamper"
   | "opened_verified"
+  | "manual_opened_declared"
   | "tamper_review"
   | "sun_profile_mismatch"
   | "replay_blocked"
@@ -267,15 +269,20 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
     return { verdict: "tampered" as const, riskLevel: "high" as const };
   }
   if (
+    code === "MANUAL_OPENED"
+    || state === "VALID_MANUAL_OPENED"
+    || reason.includes("MANUAL_OPENED")
+    || reason.includes("MANUAL OPENED")
+  ) {
+    return { verdict: "manual_opened_declared" as const, riskLevel: "medium" as const };
+  }
+  if (
     code === "VALID_OPENED"
     || code === "VALID_OPENED_PREVIOUSLY"
     || code === "OPENED"
     || code === "OPENED_PREVIOUSLY"
-    || code === "MANUAL_OPENED"
     || state === "VALID_OPENED"
     || state === "VALID_OPENED_PREVIOUSLY"
-    || state === "VALID_MANUAL_OPENED"
-    || reason.includes("OPENED")
   ) {
     return { verdict: "valid_opened" as const, riskLevel: "low" as const };
   }
@@ -320,7 +327,19 @@ export function resolveConditionState(input: {
   if (verdict === "replay_suspect" || code === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) return "replay_blocked";
   if (verdict === "revoked" || code === "REVOKED") return "revoked";
   if (verdict === "tampered" || code === "TAMPER_RISK" || state === "TAMPER_RISK") return "tamper_review";
-  if (verdict === "valid_opened" || state.includes("OPENED") || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(code)) return "opened_verified";
+  if (
+    verdict === "manual_opened_declared"
+    || code === "MANUAL_OPENED"
+    || state === "VALID_MANUAL_OPENED"
+    || reason.includes("MANUAL_OPENED")
+    || reason.includes("MANUAL OPENED")
+  ) return "manual_opened_declared";
+  if (
+    verdict === "valid_opened"
+    || state === "VALID_OPENED"
+    || state === "VALID_OPENED_PREVIOUSLY"
+    || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "OPENED", "OPENED_PREVIOUSLY"].includes(code)
+  ) return "opened_verified";
   if (state === "VALID_UNKNOWN_TAMPER") return "unknown";
   if (state === "VALID_AUTHENTIC" || code === "VALID_AUTHENTIC") return "authenticated_no_tamper";
   if (verdict === "valid" || state === "VALID_CLOSED" || ["VALID", "VALID_CLOSED", "AUTH_OK"].includes(code)) return "sealed";
@@ -367,6 +386,7 @@ function resolveTokenizationPolicy(policy: VerticalPolicy, conditionState: Passp
     if (conditionState === "sun_profile_mismatch") return "blocked_sun_profile_mismatch";
     if (conditionState === "tamper_review") return "blocked_tamper_review";
     if (conditionState === "setup_required") return "blocked_tenant_setup";
+    if (conditionState === "manual_opened_declared") return "blocked_manual_declaration";
     if (conditionState === "opened_verified") return "blocked_opened_policy";
     return "blocked_policy";
   }
@@ -387,7 +407,7 @@ export function resolveRightsPolicy(input: {
   const policy = VERTICAL_POLICIES[vertical];
   const conditionState = resolveConditionState(input);
   const claimMode = normalizeClaimMode(policy, input.claimPolicy);
-  const hardBlocked = ["replay_blocked", "sun_profile_mismatch", "tamper_review", "revoked", "setup_required", "inactive", "unregistered", "invalid"].includes(conditionState);
+  const hardBlocked = ["replay_blocked", "sun_profile_mismatch", "tamper_review", "manual_opened_declared", "revoked", "setup_required", "inactive", "unregistered", "invalid"].includes(conditionState);
   let allowedActions = hardBlocked
     ? PROVENANCE_ONLY
     : conditionState === "opened_verified"
@@ -422,6 +442,8 @@ export function resolveRightsPolicy(input: {
         ? "No pudimos validar esta lectura"
       : conditionState === "tamper_review"
         ? "Tap en revisión"
+        : conditionState === "manual_opened_declared"
+          ? "Apertura declarada · revisión necesaria"
         : conditionState === "setup_required"
           ? "Onboarding pendiente"
           : "Acción protegida"
@@ -434,7 +456,9 @@ export function resolveRightsPolicy(input: {
         : "Evidencia digital disponible";
 
   const statusSummary = hardBlocked
-    ? conditionState === "sun_profile_mismatch"
+    ? conditionState === "manual_opened_declared"
+      ? "Un operador informó que el sello fue abierto. La declaración queda registrada, pero no equivale a una apertura detectada por la etiqueta; las acciones comerciales permanecen protegidas hasta revisar el caso."
+      : conditionState === "sun_profile_mismatch"
       ? "El lote fue detectado, pero esta lectura no coincide con el perfil de seguridad cargado. Las acciones comerciales quedan bloqueadas."
       : "El historial digital disponible sigue visible, pero las acciones comerciales quedan bloqueadas hasta resolver la política de seguridad."
     : isOpened
@@ -479,6 +503,7 @@ function buildRecommendedNextStep(
   if (conditionState === "replay_blocked") return "Escanear fisicamente otra vez: la URL anterior queda solo como evidencia.";
   if (conditionState === "sun_profile_mismatch") return "Revisar claves/layout SUN del batch antes de habilitar acciones comerciales.";
   if (conditionState === "tamper_review") return "Abrir ticket de revision antes de habilitar ownership o tokenizacion.";
+  if (conditionState === "manual_opened_declared") return "Revisar la declaración del operador y el envase antes de habilitar cualquier beneficio o derecho.";
   if (conditionState === "setup_required") return "Completar tenant SUN profile, manifiesto y ownership policy.";
   if (claimMode === "retailer_or_seller_attested") return "Pedir attestation del vendedor antes de transferir ownership.";
   if (claimMode === "issuer_transfer_required") return "Validar proof of purchase o transferencia del issuer.";

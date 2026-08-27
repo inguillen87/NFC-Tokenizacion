@@ -108,8 +108,9 @@ test("real taps never fabricate sensor history, tasting awards or chain-of-custo
   assert.match(page, /sensorEvidenceKind === "reported"/);
   assert.match(page, /const usesDemoSensorEvidence = isDemoPreview && !hasReportedSensorEvidence/);
   assert.match(page, /usesDemoSensorEvidence \? "15\.2°C" : "N\/A"/);
-  assert.match(page, /Sin telemetr[ií]a IoT asociada a este lote/i);
-  assert.match(page, /no inferimos temperatura, humedad ni golpes sin evidencia/i);
+  assert.match(page, /\{hasSensorEvidence \? \(/);
+  assert.match(page, /\) : null\}/);
+  assert.doesNotMatch(page, /Sin telemetr[ií]a IoT asociada a este lote/i);
   assert.match(page, /Esta tarjeta muestra una muestra puntual/i);
   assert.match(page, /Datos simulados del Demo Lab/);
   assert.match(page, /no son certificaciones reales/i);
@@ -126,12 +127,13 @@ test("QR engagement is wine-only, policy-aware and never confirms local rewards 
   assert.match(page, /\(!isTechnicallyAuthentic && !isQrScan\)/);
   assert.match(page, /const showEngagementSuite = engagementBaseEligible && isWineProduct/);
   assert.match(page, /<QREngagementSuite[\s\S]*allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
-  assert.match(page, /postTapQuickActions\.marketplace \? \(/);
+  assert.match(page, /marketplaceHref=\{tapMarketplaceHref\}/);
+  assert.match(page, /<details id="qr-engagement"/);
   assert.match(page, /routes=\{isDemoPreview \? opsMapRoutes : \[\]\}/);
   assert.match(page, /mode=\{isDemoPreview \? "demo" : "global"\}/);
-  assert.match(page, /initialView=\{!isDemoPreview && canShowSunIntensity \? "intensity" : "events"\}/);
-  assert.match(page, /allowViewToggle=\{!isDemoPreview && canShowSunIntensity\}/);
-  assert.match(page, /ninguna l[ií]nea implica un recorrido f[ií]sico/);
+  assert.match(page, /initialView="events"/);
+  assert.match(page, /allowViewToggle=\{false\}/);
+  assert.match(page, /No inferimos un recorrido f[ií]sico entre ambos puntos/);
   assert.match(page, /no reconstruye transporte, custodia ni movimiento del producto/);
 
   assert.match(engagement, /const canUseRewards = isPostTapPolicyActionAllowed\("rewards", allowedActions, blockedActions\)/);

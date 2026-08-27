@@ -211,6 +211,11 @@ export async function ensureTicketsSchema() {
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS tickets (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
+          bid text,
+          uid_hex text,
+          tap_event_id bigint,
+          category text,
           locale text NOT NULL DEFAULT 'es-AR',
           contact text NOT NULL,
           title text NOT NULL,
@@ -222,6 +227,11 @@ export async function ensureTicketsSchema() {
           updated_at timestamptz NOT NULL DEFAULT now()
         )
       `;
+      await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL`;
+      await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS bid text`;
+      await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS uid_hex text`;
+      await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS tap_event_id bigint`;
+      await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS category text`;
       await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS locale text NOT NULL DEFAULT 'es-AR'`;
       await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS contact text NOT NULL DEFAULT 'unknown'`;
       await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT 'General inquiry'`;
@@ -232,6 +242,8 @@ export async function ensureTicketsSchema() {
       await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tickets_status_created_at ON tickets(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tickets_contact_created_at ON tickets(contact, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tickets_tenant_created_at ON tickets(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tickets_sun_identity ON tickets(tenant_id, bid, upper(uid_hex), created_at DESC) WHERE source = 'sun_public_report'`;
     }, () => {
       ticketsSchemaReady = null;
     });

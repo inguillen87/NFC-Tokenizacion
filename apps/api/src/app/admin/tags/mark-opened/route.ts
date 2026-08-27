@@ -46,20 +46,6 @@ export async function POST(req: Request) {
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
 
   await sql/*sql*/`
-    CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides (
-      id bigserial PRIMARY KEY,
-      batch_id uuid NOT NULL,
-      uid_hex text NOT NULL,
-      tamper_status text NOT NULL,
-      reason text,
-      evidence_note text,
-      source text NOT NULL DEFAULT 'operator',
-      updated_at timestamptz NOT NULL DEFAULT now(),
-      UNIQUE (batch_id, uid_hex)
-    )
-  `;
-
-  await sql/*sql*/`
     INSERT INTO tag_manual_tamper_overrides (batch_id, uid_hex, tamper_status, reason, evidence_note, source, updated_at)
     VALUES (${batch.id}, ${uidHex}, 'MANUAL_OPENED', ${String(body.reason || 'physical seal broken during demo').slice(0, 1000)}, ${String(body.evidence_note || '').slice(0, 2000)}, ${String(body.source || 'operator').slice(0, 80)}, now())
     ON CONFLICT (batch_id, uid_hex)

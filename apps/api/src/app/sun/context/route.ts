@@ -7,7 +7,7 @@ import { publishRealtimeEvent } from "../../../lib/realtime-events";
 import { findNearestCity } from "../../../lib/geo-utils";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
 import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
-import { consumeSunFreshHandoff } from "../../../lib/sun-fresh-handoff";
+import { requireSunFreshHandoff } from "../../../lib/sun-fresh-handoff";
 import { normalizeConsentedApproximateLocation } from "../../../lib/approximate-location";
 
 const MAX_CONTEXT_BODY_BYTES = 32 * 1024;
@@ -148,12 +148,15 @@ export async function POST(req: Request): Promise<Response> {
   if (ctr === null || !Number.isSafeInteger(ctr) || ctr < 0) {
     return json({ ok: false, reason: "valid ctr required" }, 400, { "cache-control": "no-store" });
   }
-  const capability = await consumeSunFreshHandoff(req, body, {
+  // Location context is a replace-by-event update, not a one-shot commercial
+  // action. Keep it retryable during the short signed capability lifetime while
+  // still binding every write to the exact physical event, tag and read counter.
+  const capability = requireSunFreshHandoff(req, body, {
     bid,
     eventId,
     uidHex: uid,
     readCounter: ctr,
-  }, "sun_context");
+  });
   if (!capability.ok) {
     return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403, { "cache-control": "no-store" });
   }
@@ -217,10 +220,13 @@ export async function POST(req: Request): Promise<Response> {
         e.result,
         e.reason,
         e.created_at,
-        e.city,
-        e.country_code,
-        e.lat,
-        e.lng,
+        COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, '')) AS city,
+        COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) AS country_code,
+        COALESCE(e.lat, e.geo_lat) AS lat,
+        COALESCE(e.lng, e.geo_lng) AS lng,
+        e.location_source,
+        e.location_accuracy_m,
+        e.geo_precision,
         e.sdm_read_ctr,
         COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
         tn.slug AS tenant_slug,
@@ -247,31 +253,42 @@ export async function POST(req: Request): Promise<Response> {
 
   let resolvedCity: string | null = null;
   let resolvedCountry: string | null = null;
-  const shouldResolveCity = hasBrowserGps && (!target.city || !target.country_code);
-  if (shouldResolveCity && lat !== null && lng !== null) {
+  if (hasBrowserGps && lat !== null && lng !== null) {
     const matchedCity = findNearestCity(lat, lng);
     if (matchedCity) {
       resolvedCity = matchedCity.city;
       resolvedCountry = matchedCity.countryCode;
     }
   }
-  const finalCity = firstText(target.city) || resolvedCity || null;
-  const finalCountry = firstText(target.country_code) || resolvedCountry || null;
+  // A consented device location supersedes the earlier edge/IP approximation.
+  // If the rounded coordinate is outside our coarse city catalog, clear the old
+  // IP label instead of attaching a known-wrong city to the new coordinates.
+  const finalCity = hasBrowserGps ? resolvedCity : firstText(target.city) || null;
+  const finalCountry = hasBrowserGps ? resolvedCountry : firstText(target.country_code) || null;
+  const persistedLocationSource = hasBrowserGps
+    ? locationSource
+    : firstText(target.location_source) || null;
+  const persistedAccuracy = hasBrowserGps
+    ? accuracy
+    : firstNumber(target.location_accuracy_m);
 
   try {
     await ensureEventLocationContextSchema();
     await sql/*sql*/`
       UPDATE events
       SET meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify(metaPayload)}::jsonb,
-          lat = COALESCE(${lat}, lat),
-          lng = COALESCE(${lng}, lng),
-          geo_lat = COALESCE(${lat}, geo_lat),
-          geo_lng = COALESCE(${lng}, geo_lng),
-          location_accuracy_m = COALESCE(${accuracy}, location_accuracy_m),
-          location_source = ${locationSource},
-          location_updated_at = now(),
-          city = COALESCE(NULLIF(city, ''), ${resolvedCity}, geo_city),
-          country_code = COALESCE(NULLIF(country_code, ''), ${resolvedCountry}, geo_country),
+          lat = CASE WHEN ${hasBrowserGps} THEN ${lat} ELSE lat END,
+          lng = CASE WHEN ${hasBrowserGps} THEN ${lng} ELSE lng END,
+          geo_lat = CASE WHEN ${hasBrowserGps} THEN ${lat} ELSE geo_lat END,
+          geo_lng = CASE WHEN ${hasBrowserGps} THEN ${lng} ELSE geo_lng END,
+          location_accuracy_m = CASE WHEN ${hasBrowserGps} THEN ${accuracy} ELSE location_accuracy_m END,
+          location_source = CASE WHEN ${hasBrowserGps} THEN ${locationSource} ELSE location_source END,
+          location_updated_at = CASE WHEN ${hasBrowserGps} THEN now() ELSE location_updated_at END,
+          geo_precision = CASE WHEN ${hasBrowserGps} THEN 'browser_rounded' ELSE geo_precision END,
+          city = CASE WHEN ${hasBrowserGps} THEN ${resolvedCity} ELSE city END,
+          country_code = CASE WHEN ${hasBrowserGps} THEN ${resolvedCountry} ELSE country_code END,
+          geo_city = CASE WHEN ${hasBrowserGps} THEN ${resolvedCity} ELSE geo_city END,
+          geo_country = CASE WHEN ${hasBrowserGps} THEN ${resolvedCountry} ELSE geo_country END,
           device_label = COALESCE(NULLIF(device_label, ''), ${device.deviceLabel})
       WHERE id = ${target.id}
     `;
@@ -288,8 +305,8 @@ export async function POST(req: Request): Promise<Response> {
       country_code: finalCountry,
       lat: lat ?? firstNumber(target.lat),
       lng: lng ?? firstNumber(target.lng),
-      location_source: locationSource,
-      location_accuracy_m: accuracy,
+      location_source: persistedLocationSource,
+      location_accuracy_m: persistedAccuracy,
       device_label: device.deviceLabel,
       device_os: device.deviceOs,
       device_type: device.deviceType,
@@ -298,7 +315,19 @@ export async function POST(req: Request): Promise<Response> {
       created_at: target.created_at || new Date().toISOString(),
       meta: metaPayload,
     });
-    return json({ ok: true, updated: true, eventId: target.id, matchedBy, source: locationSource, accuracyM: accuracy, city: finalCity, countryCode: finalCountry, client_values_verified: false }, 200, { "cache-control": "no-store" });
+    return json({
+      ok: true,
+      updated: true,
+      eventId: target.id,
+      matchedBy,
+      source: persistedLocationSource || locationSource,
+      contextSource: locationSource,
+      locationUpdated: hasBrowserGps,
+      accuracyM: persistedAccuracy,
+      city: finalCity,
+      countryCode: finalCountry,
+      client_values_verified: false,
+    }, 200, { "cache-control": "no-store" });
   } catch {
     try {
       await sql/*sql*/`
@@ -306,7 +335,19 @@ export async function POST(req: Request): Promise<Response> {
         SET meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify(metaPayload)}::jsonb
         WHERE id = ${target.id}
       `;
-      return json({ ok: true, updated: true, eventId: target.id, mode: "meta_only", matchedBy, source: locationSource, accuracyM: accuracy, client_values_verified: false }, 200, { "cache-control": "no-store" });
+      if (hasBrowserGps) {
+        return json({
+          ok: false,
+          updated: false,
+          locationUpdated: false,
+          eventId: target.id,
+          mode: "meta_only",
+          matchedBy,
+          reason: "location_persistence_unavailable",
+          client_values_verified: false,
+        }, 503, { "cache-control": "no-store" });
+      }
+      return json({ ok: true, updated: true, locationUpdated: false, eventId: target.id, mode: "meta_only", matchedBy, source: locationSource, accuracyM: accuracy, client_values_verified: false }, 200, { "cache-control": "no-store" });
     } catch {
       return json({ ok: false, updated: false, reason: "context_persistence_unavailable", eventId: target.id, mode: "legacy_schema", matchedBy }, 503, { "cache-control": "no-store" });
     }

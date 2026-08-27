@@ -90,11 +90,13 @@ test("SUN map preserves missing counts and timestamps", () => {
 
 test("SUN precision telemetry preserves the fresh handoff proof", () => {
   assert.match(sun, /freshToken=\{freshToken\}/);
-  assert.match(telemetry, /fresh_token: freshToken \|\| undefined/);
+  assert.match(telemetry, /fresh_token: activeFreshToken \|\| undefined/);
+  assert.match(telemetry, /nexid:tap-context-capability:/);
+  assert.match(telemetry, /window\.location\.replace\(`\$\{refreshUrl\.pathname\}\$\{refreshUrl\.search\}\$\{refreshUrl\.hash\}`\)/);
   assert.match(telemetry, /geoConsent: true/);
   assert.match(telemetry, /geoPrecision: "approximate"/);
   assert.match(telemetry, /onClick=\{shareApproximateLocation\}/);
-  assert.match(telemetry, /enableHighAccuracy: false/);
+  assert.match(telemetry, /enableHighAccuracy: true/);
   assert.match(telemetry, /roundApproximateCoordinate\(position\.coords\.latitude\)/);
   assert.match(telemetry, /El pasaporte sigue (?:funcionando normalmente|disponible)/);
 });

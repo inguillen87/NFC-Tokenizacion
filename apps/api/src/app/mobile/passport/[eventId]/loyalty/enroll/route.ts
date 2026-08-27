@@ -7,6 +7,7 @@ import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-li
 import { json } from "../../../../../../lib/http";
 import { getActiveProgram, getOrCreateMember, getTapEvent } from "../../../../../../lib/loyalty-service";
 import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
+import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "../../../../../../lib/tap-commercial-rights";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const BLOCKED_RESULTS = new Set(["REPLAY_SUSPECT", "INVALID", "TAMPER_RISK", "TAMPER", "REVOKED", "NOT_REGISTERED", "NOT_ACTIVE"]);
@@ -32,7 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   if (!/^\d+$/.test(eventId)) return json({ ok: false, reason: "invalid_event_id" }, 400);
   const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, reason: "event_not_found" }, 404);
-  if (BLOCKED_RESULTS.has(String(event.result || "").toUpperCase())) {
+  if (!evaluateTapCommercialRights(event).allowed || BLOCKED_RESULTS.has(String(event.result || "").toUpperCase())) {
     return json({ ok: false, reason: "event_security_blocked" }, 403);
   }
   const capability = await consumeSunFreshHandoff(req, body, {
@@ -43,6 +44,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }, "loyalty_enroll");
   if (!capability.ok) {
     return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
+  }
+  const currentRights = await readCurrentTapCommercialRights(event.id);
+  if (!currentRights.allowed) {
+    return json({ ok: false, reason: currentRights.reason }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
   }
   const program = await getActiveProgram(event.tenant_id);
   if (!program) return json({ ok: false, reason: "no_active_program" }, 404);

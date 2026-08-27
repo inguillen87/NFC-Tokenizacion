@@ -6,6 +6,7 @@ import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { CanonicalEventWriteError, writeCanonicalEvent } from "../../../../lib/canonical-event-writer";
+import { readCurrentTapCommercialRights } from "../../../../lib/tap-commercial-rights";
 
 const MAX_WARRANTY_BODY_BYTES = 32 * 1024;
 
@@ -82,6 +83,17 @@ export async function POST(req: Request) {
       share_token_status: auth.share_token_status,
       fresh_token_status: freshReason,
     }, 403);
+  }
+
+  const commercialRights = await readCurrentTapCommercialRights(eventId);
+  if (!commercialRights.allowed) {
+    return json({
+      ok: false,
+      reason: commercialRights.reason,
+      request_status: "not_recorded",
+      warranty_confirmed: false,
+      trace_id: traceId,
+    }, commercialRights.reason === "manual_opening_declared" ? 409 : 503, { "cache-control": "no-store" });
   }
 
   let saved;

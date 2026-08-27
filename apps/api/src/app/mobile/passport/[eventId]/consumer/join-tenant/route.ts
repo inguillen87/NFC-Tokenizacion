@@ -9,6 +9,7 @@ import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-run
 import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../../lib/bounded-request-body";
 import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
+import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "../../../../../../lib/tap-commercial-rights";
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const consumer = await getConsumerFromRequest(req);
@@ -45,11 +46,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     return json({ ok: false, error: "tenant_mismatch" }, 403);
   }
   if (!matchesOwnershipBatch({ eventBid: event.bid, requestedBid: body.bid })) return json({ ok: false, error: "tenant_batch_mismatch" }, 403);
-  if (!isClaimableOwnershipResult(String(event.result || ""))) return json({ ok: false, error: "tap_not_claimable" }, 409);
+  if (!evaluateTapCommercialRights(event).allowed || !isClaimableOwnershipResult(String(event.result || ""))) return json({ ok: false, error: "tap_not_claimable" }, 409);
   const capability = await consumeSunFreshHandoff(req, body as Record<string, unknown>, {
     eventId: String(event.id), bid: String(event.bid || ""), uidHex: String(event.uid_hex || ""), readCounter: event.sdm_read_ctr,
   }, "consumer_join_tenant");
   if (!capability.ok) return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
+  const currentRights = await readCurrentTapCommercialRights(event.id);
+  if (!currentRights.allowed) return json({ ok: false, error: currentRights.reason }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
   await saveTapForConsumer({ consumerId: consumer.id, eventId: String(event.id) });
   const membership = await ensureTenantMembership({ consumerId: consumer.id, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
   return json({ ok: true, membership });

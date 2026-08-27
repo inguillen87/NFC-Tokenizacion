@@ -131,7 +131,7 @@ test("tenant-capable sensitive reads are explicitly bound to the principal tenan
 });
 
 test("global sensitive reads without complete tenant ownership are super-admin only", async () => {
-  const paths = ["tickets/route.ts", "orders/route.ts", "notifications/route.ts", "diagnostics/sun/route.ts"];
+  const paths = ["orders/route.ts", "notifications/route.ts", "diagnostics/sun/route.ts"];
 
   for (const path of paths) {
     const source = await routeSource(path);
@@ -140,6 +140,15 @@ test("global sensitive reads without complete tenant ownership are super-admin o
 
     assert.match(getSource, /checkAdmin\(req,\s*\["super_admin"\]\)/, path);
   }
+});
+
+test("support tickets are visible only to the owning tenant or a global super-admin", async () => {
+  const source = await routeSource("tickets/route.ts");
+  const getSource = source.slice(source.indexOf("export async function GET"), source.indexOf("export async function POST"));
+  assert.match(getSource, /checkAdmin\(req, \["super_admin", "tenant_admin", "tenant_operator", "reseller"\]\)/);
+  assert.match(getSource, /getAdminPrincipal\(req\)/);
+  assert.match(getSource, /WHERE ticket\.tenant_id = \$\{principal\.tenantId\}::uuid/);
+  assert.match(getSource, /tenant\.slug AS tenant_slug/);
 });
 
 test("SUN tools authorize every request BID before processing or mutating", async () => {

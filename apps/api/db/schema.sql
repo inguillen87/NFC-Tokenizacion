@@ -65,6 +65,24 @@ CREATE TABLE IF NOT EXISTS tags (
   UNIQUE(batch_id, uid_hex)
 );
 
+CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides (
+  id bigserial PRIMARY KEY,
+  batch_id uuid NOT NULL,
+  uid_hex text NOT NULL,
+  tamper_status text NOT NULL,
+  reason text,
+  evidence_note text,
+  source text NOT NULL DEFAULT 'operator',
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(batch_id, uid_hex)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tag_manual_tamper_identity
+  ON tag_manual_tamper_overrides(batch_id, upper(uid_hex));
+
+REVOKE ALL ON TABLE tag_manual_tamper_overrides FROM PUBLIC;
+REVOKE ALL ON SEQUENCE tag_manual_tamper_overrides_id_seq FROM PUBLIC;
+
 CREATE TABLE IF NOT EXISTS events (
   id bigserial PRIMARY KEY,
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -150,13 +168,20 @@ CREATE TABLE IF NOT EXISTS leads (
 
 CREATE TABLE IF NOT EXISTS tickets (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
+  tap_event_id bigint,
+  bid text,
+  uid_hex text,
+  category text,
   locale text NOT NULL DEFAULT 'es-AR',
   contact text NOT NULL,
   title text NOT NULL,
   detail text,
   status text NOT NULL DEFAULT 'open',
+  source text NOT NULL DEFAULT 'web_bot',
   assigned_to text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS order_requests (

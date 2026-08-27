@@ -8,6 +8,7 @@ import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
 import { awardPoints, evaluateLoyaltyForTap, getActiveProgram, getTapEvent } from "../../../../../../lib/loyalty-service";
 import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
+import { readCurrentTapCommercialRights } from "../../../../../../lib/tap-commercial-rights";
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -40,6 +41,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }, "loyalty_claim_tap");
   if (!capability.ok) {
     return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
+  }
+  const currentRights = await readCurrentTapCommercialRights(event.id);
+  if (!currentRights.allowed) {
+    return json({ ok: false, reason: currentRights.reason, pointsAwarded: 0 }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
   }
   const program = await getActiveProgram(event.tenant_id);
   if (!program) return json({ ok: false, reason: "no_active_program" }, 404);

@@ -297,30 +297,13 @@ export async function processSunScan(input: {
 
   async function getManualTamperOverride(uidHex: string | null) {
     if (!uidHex) return null;
-    try {
-      await sunStateSql/*sql*/`
-        CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides (
-          id bigserial PRIMARY KEY,
-          batch_id uuid NOT NULL,
-          uid_hex text NOT NULL,
-          tamper_status text NOT NULL,
-          reason text,
-          evidence_note text,
-          source text NOT NULL DEFAULT 'operator',
-          updated_at timestamptz NOT NULL DEFAULT now(),
-          UNIQUE (batch_id, uid_hex)
-        )
-      `;
-      const rows = await sql/*sql*/`
-        SELECT tamper_status, reason, evidence_note, source
-        FROM tag_manual_tamper_overrides
-        WHERE batch_id = ${batch.id} AND uid_hex = ${uidHex}
-        LIMIT 1
-      `;
-      return rows[0] || null;
-    } catch {
-      return null;
-    }
+    const rows = await sql/*sql*/`
+      SELECT tamper_status, reason, evidence_note, source
+      FROM tag_manual_tamper_overrides
+      WHERE batch_id = ${batch.id} AND uid_hex = ${uidHex}
+      LIMIT 1
+    `;
+    return rows[0] || null;
   }
   async function logUnassignedAttempt(reason: string) {
     try {

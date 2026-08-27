@@ -1589,7 +1589,7 @@ function buildPublicContract(params: {
     const setupQuery = new URLSearchParams({ tenant: tenantSlug, fromTap: "1", action: "setup-required" });
     if (setupEventId) setupQuery.set("eventId", setupEventId);
     const setupProductName = params.passport?.product_name || params.passport?.sku || `Batch ${params.bid}`;
-    const setupHasValidTagEvidence = ["VALID", "VALID_AUTHENTIC", "VALID_CLOSED", "VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
+    const setupHasValidTagEvidence = ["VALID", "VALID_AUTHENTIC", "VALID_CLOSED", "VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
     const setupIsReplay = trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect";
     const setupRiskLevel = setupIsReplay || verdictRisk.verdict === "tampered"
       ?"high"
@@ -1849,7 +1849,7 @@ function buildPublicContract(params: {
     tenantSlug,
   });
   const isVerifiedOpenedTap = verdictRisk.verdict === "valid_opened"
-    || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(trust.code);
+    || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "OPENED", "OPENED_PREVIOUSLY"].includes(trust.code);
   const hasValidatedTagMessage = verdictRisk.verdict === "valid" || isVerifiedOpenedTap;
   const rightsPolicy = resolveRightsPolicy({
     verdict: verdictRisk.verdict,
@@ -2415,19 +2415,20 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     conditionState === "sun_profile_mismatch" ||
     conditionState === "blocked_sun_profile_mismatch";
   const isClosedState = productState === "VALID_CLOSED" || statusCode === "VALID_CLOSED" || ttReportsClosed;
+  const isManualOpenedState = productState === "VALID_MANUAL_OPENED" || statusCode === "MANUAL_OPENED";
   const isOpenedState =
-    productState === "VALID_MANUAL_OPENED" ||
     productState === "VALID_OPENED" ||
     productState === "VALID_OPENED_PREVIOUSLY" ||
     statusCode === "VALID_OPENED" ||
     statusCode === "VALID_OPENED_PREVIOUSLY" ||
-    statusCode === "MANUAL_OPENED" ||
     statusCode === "OPENED" ||
     statusCode === "OPENED_PREVIOUSLY" ||
     ttReportsOpened;
-  const sealTone = ttRequiresReview ? "#dc2626" : isOpenedState ? "#d97706" : isClosedState ? "#16a34a" : "#0284c7";
+  const sealTone = ttRequiresReview ? "#dc2626" : isManualOpenedState || isOpenedState ? "#d97706" : isClosedState ? "#16a34a" : "#0284c7";
   const sealLabel = ttRequiresReview
     ? (copy.lang === "en" ? "Seal signal needs review" : copy.lang === "pt-BR" ? "Sinal do selo requer revisão" : "Señal del sello por revisar")
+    : isManualOpenedState
+      ? (copy.lang === "en" ? "Opening declared" : copy.lang === "pt-BR" ? "Abertura declarada" : "Apertura declarada")
     : isOpenedState
       ? (copy.lang === "en" ? "Seal opened" : copy.lang === "pt-BR" ? "Selo aberto" : "Sello abierto")
       : isClosedState
@@ -2435,6 +2436,8 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         : (copy.lang === "en" ? "No electronic seal state" : copy.lang === "pt-BR" ? "Sem estado eletrônico do selo" : "Sin estado electrónico del sello");
   const sealSummary = ttRequiresReview
     ? (copy.lang === "en" ? "The TT bytes are invalid or contradictory." : copy.lang === "pt-BR" ? "Os bytes TT são inválidos ou contraditórios." : "Los bytes TT son inválidos o contradictorios.")
+    : isManualOpenedState
+      ? (copy.lang === "en" ? "An operator declared an opening; the digital tag did not detect it automatically." : copy.lang === "pt-BR" ? "Um operador declarou uma abertura; a etiqueta digital não a detectou automaticamente." : "Un operador declaró una apertura; la etiqueta digital no la detectó automáticamente.")
     : isOpenedState
       ? (copy.lang === "en" ? "The TT tag records opening evidence." : copy.lang === "pt-BR" ? "A etiqueta TT registra evidência de abertura." : "La etiqueta TT registra evidencia de apertura.")
       : isClosedState
@@ -2449,12 +2452,12 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     : (copy.lang === "en" ? "This SUN message was processed as a new read." : copy.lang === "pt-BR" ? "Esta mensagem SUN foi processada como uma nova leitura." : "Este mensaje SUN se procesó como una lectura nueva.");
   const authPanelMessage = isRiskBlocked || isSunProfileMismatchState
     ?copy.authReplay
+    : isManualOpenedState
+      ?labels.manualOpened
     : isClosedState
       ?(copy.lang === "en" ?"NFC message validated; TT reports closed when supported. This does not certify physical contents." : copy.lang === "pt-BR" ?"Mensagem NFC validada; TT informa fechado quando suportado. Isso não certifica o conteúdo físico." : "Mensaje NFC validado; TT reporta cerrado cuando aplica. Esto no certifica el contenido físico.")
       : isOpenedState
         ?(copy.lang === "en" ?"NFC message validated; TT reports open." : copy.lang === "pt-BR" ?"Mensagem NFC validada; TT informa aberto." : "Mensaje NFC validado; TT reporta apertura.")
-    : productState === "VALID_MANUAL_OPENED" || statusCode === "MANUAL_OPENED"
-      ?labels.manualOpened
       : productState === "VALID_OPENED" || statusCode === "VALID_OPENED" || statusCode === "OPENED"
       ?labels.opened
       : productState === "VALID_OPENED_PREVIOUSLY" || statusCode === "VALID_OPENED_PREVIOUSLY" || statusCode === "OPENED_PREVIOUSLY"

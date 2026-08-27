@@ -9,6 +9,7 @@ import {
   readStoredOfflineSyncReceipt,
   redactOfflineSunVerification,
 } from "../src/lib/sdk-offline-sync.ts";
+import { mapSealStatus } from "../src/app/api/v1/sdk/_shared.ts";
 
 const VALID_URL = "https://tags.example.test/sun?v=1&bid=LOT-2026-001&picc_data=00112233445566778899AABBCCDDEEFF&enc=00112233445566778899AABBCCDDEEFF&cmac=0011223344556677";
 const DEVICE_ID = "d877a64d-5a44-4a02-8d33-efb9f4bc0c74";
@@ -133,6 +134,31 @@ test("backend replay has priority over an otherwise cryptographically valid mess
   assert.equal(receipt.cryptographic_verification, false);
   assert.equal(receipt.seal_status, "UNKNOWN");
   assert.equal(receipt.sun_event_id, "123");
+});
+
+test("operator-declared opening never becomes a hardware-opened SDK seal", () => {
+  const receipt = redactOfflineSunVerification({
+    clientEventId: "scan-device-manual-opened",
+    bid: "LOT-2026-001",
+    result: {
+      status: 200,
+      body: {
+        ok: true,
+        result: "MANUAL_OPENED",
+        cryptographic_verification: true,
+        allowlisted: true,
+        tamper_status: "MANUAL_OPENED",
+        uid: "04AABBCCDDEEFF",
+        ctr: 10,
+      },
+    },
+  });
+
+  assert.equal(receipt.sync_status, "SYNCED_VALID");
+  assert.equal(receipt.cryptographic_verification, true);
+  assert.equal(receipt.seal_status, "UNKNOWN");
+  assert.equal(mapSealStatus("MANUAL_OPENED"), "UNKNOWN");
+  assert.equal(mapSealStatus("OPENED"), "OPENED");
 });
 
 test("stored idempotency receipts fail closed if valid was not cryptographically proven", () => {

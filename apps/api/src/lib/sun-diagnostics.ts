@@ -374,7 +374,7 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
   return contract;
 }
 
-type CurrentSnapshotTapLocation = {
+export type CurrentSnapshotTapLocation = {
   eventId: string;
   at: string | null;
   result: string | null;
@@ -423,30 +423,36 @@ async function resolveCurrentSnapshotTapLocation(eventId: string) {
   }
 }
 
-function normalizeSnapshotContractFromCurrentTap(input: unknown, tap: CurrentSnapshotTapLocation | null) {
+export function normalizeSnapshotContractFromCurrentTap(input: unknown, tap: CurrentSnapshotTapLocation | null) {
   const contract = cloneRecord(input);
   if (!tap) return contract;
   const tapContext = asRecord(contract.tapContext);
   const storedCoordinate = normalizeCoordinatePair(tapContext.lat, tapContext.lng);
-  const resolvedLat = tap.lat ?? storedCoordinate?.lat ?? null;
-  const resolvedLng = tap.lng ?? storedCoordinate?.lng ?? null;
+  const isConsentedBrowserGps = String(tap.source || "").trim().toLowerCase() === "browser_gps_approximate_consent";
+  const resolvedLat = isConsentedBrowserGps ? tap.lat : tap.lat ?? storedCoordinate?.lat ?? null;
+  const resolvedLng = isConsentedBrowserGps ? tap.lng : tap.lng ?? storedCoordinate?.lng ?? null;
   const storedAccuracy = numberOrNull(tapContext.accuracyM);
-  const resolvedAccuracy = tap.accuracyM ?? (storedAccuracy !== null && storedAccuracy > 0 ? storedAccuracy : null);
+  const resolvedAccuracy = isConsentedBrowserGps
+    ? tap.accuracyM
+    : tap.accuracyM ?? (storedAccuracy !== null && storedAccuracy > 0 ? storedAccuracy : null);
   const provenance = asRecord(contract.provenance);
   const timeline = Array.isArray(provenance.timelineSummary)
     ? provenance.timelineSummary.map((item) => cloneRecord(item))
     : [];
   const existingIndex = timeline.findIndex((item) => String(item.eventId || "") === tap.eventId);
+  const existingTimelineEvent = existingIndex >= 0 ? timeline[existingIndex] : {};
+  const currentCity = isConsentedBrowserGps ? tap.city : tap.city || textOrNull(existingTimelineEvent.city);
+  const currentCountry = isConsentedBrowserGps ? tap.country : tap.country || textOrNull(existingTimelineEvent.country);
   const timelineEvent = {
-    ...(existingIndex >= 0 ? timeline[existingIndex] : {}),
+    ...existingTimelineEvent,
     eventId: tap.eventId,
     at: tap.at,
     result: tap.result,
-    city: tap.city || (existingIndex >= 0 ? timeline[existingIndex].city : null),
-    country: tap.country || (existingIndex >= 0 ? timeline[existingIndex].country : null),
+    city: currentCity,
+    country: currentCountry,
     lat: resolvedLat,
     lng: resolvedLng,
-    locationSource: tap.source || (existingIndex >= 0 ? timeline[existingIndex].locationSource : null),
+    locationSource: tap.source || textOrNull(existingTimelineEvent.locationSource),
     accuracyM: resolvedAccuracy,
   };
   if (existingIndex >= 0) timeline[existingIndex] = timelineEvent;
@@ -454,8 +460,8 @@ function normalizeSnapshotContractFromCurrentTap(input: unknown, tap: CurrentSna
 
   contract.tapContext = {
     ...tapContext,
-    city: tap.city || tapContext.city || null,
-    country: tap.country || tapContext.country || null,
+    city: isConsentedBrowserGps ? tap.city : tap.city || textOrNull(tapContext.city),
+    country: isConsentedBrowserGps ? tap.country : tap.country || textOrNull(tapContext.country),
     lat: resolvedLat,
     lng: resolvedLng,
     locationSource: tap.source || tapContext.locationSource || (resolvedLat !== null && resolvedLng !== null ? "reported_without_source" : "none"),
@@ -467,8 +473,8 @@ function normalizeSnapshotContractFromCurrentTap(input: unknown, tap: CurrentSna
     lastVerifiedLocation: {
       ...asRecord(provenance.lastVerifiedLocation),
       at: tap.at || asRecord(provenance.lastVerifiedLocation).at || null,
-      city: tap.city || asRecord(provenance.lastVerifiedLocation).city || null,
-      country: tap.country || asRecord(provenance.lastVerifiedLocation).country || null,
+      city: isConsentedBrowserGps ? tap.city : tap.city || textOrNull(asRecord(provenance.lastVerifiedLocation).city),
+      country: isConsentedBrowserGps ? tap.country : tap.country || textOrNull(asRecord(provenance.lastVerifiedLocation).country),
       result: tap.result || asRecord(provenance.lastVerifiedLocation).result || null,
     },
     timelineSummary: timeline.slice(0, 8),

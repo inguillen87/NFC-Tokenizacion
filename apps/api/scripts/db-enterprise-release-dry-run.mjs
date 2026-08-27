@@ -46,6 +46,7 @@ const RELEASE_MIGRATIONS = Object.freeze([
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
   "20260802320000_0097_sun_demo_replay_isolation.sql",
+  "20260827010000_0098_sun_ticket_tenant_routing.sql",
 ]);
 const REQUIRED_APPLIED = Object.freeze([
   "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
@@ -921,6 +922,36 @@ try {
         )
           AND acl.grantee = 0
       ), false) AS enterprise_rbac_risk_truth,
+    to_regclass('public.tag_manual_tamper_overrides') IS NOT NULL
+      AND to_regclass('public.idx_tag_manual_tamper_identity') IS NOT NULL
+      AND NOT COALESCE(EXISTS (
+        SELECT 1
+        FROM pg_class relation_row
+        CROSS JOIN LATERAL aclexplode(
+          COALESCE(relation_row.relacl, acldefault(
+            CASE WHEN relation_row.relkind = 'S' THEN 'S'::"char" ELSE 'r'::"char" END,
+            relation_row.relowner
+          ))
+        ) acl
+        WHERE relation_row.oid IN (
+          to_regclass('public.tag_manual_tamper_overrides'),
+          to_regclass('public.tag_manual_tamper_overrides_id_seq')
+        )
+          AND acl.grantee = 0
+      ), false)
+      AND NOT EXISTS (
+        SELECT required.column_name
+        FROM (VALUES
+          ('tenant_id'), ('tap_event_id'), ('bid'), ('uid_hex'), ('category')
+        ) AS required(column_name)
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM information_schema.columns column_row
+          WHERE column_row.table_schema = 'public'
+            AND column_row.table_name = 'tickets'
+            AND column_row.column_name = required.column_name
+        )
+      ) AS sun_ticket_tenant_routing,
     (SELECT count(*)::int FROM schema_migrations WHERE id = ANY($1::text[])) AS release_ledger_count`,
     [RELEASE_MIGRATIONS])).rows[0];
   if (
@@ -988,6 +1019,7 @@ try {
     || !postcheck.sun_tt_conflict_target
     || !postcheck.sun_demo_replay_isolation
     || !postcheck.enterprise_rbac_risk_truth
+    || !postcheck.sun_ticket_tenant_routing
     || postcheck.release_ledger_count !== RELEASE_MIGRATIONS.length
   ) throw new Error("release_dry_run_postcheck_failed");
 

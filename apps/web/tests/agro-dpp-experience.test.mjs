@@ -24,6 +24,7 @@ test("Agro post-tap trust copy is exact and sensitive actions fail closed", () =
   assert.deepEqual(resolveAgroSensitiveActionGate({ statusCode: "REPLAY_SUSPECT", isFreshTap: true }), { allowed: false, reason: "REPLAY_SUSPECT" });
   assert.deepEqual(resolveAgroSensitiveActionGate({ productState: "SUN_PROFILE_MISMATCH", isFreshTap: true }), { allowed: false, reason: "SUN_PROFILE_MISMATCH" });
   assert.deepEqual(resolveAgroSensitiveActionGate({ statusCode: "VALID", verdict: "valid", isFreshTap: true }), { allowed: true, reason: "FRESH_AUTHENTICATED_TAP" });
+  assert.deepEqual(resolveAgroSensitiveActionGate({ statusCode: "MANUAL_OPENED", productState: "VALID_MANUAL_OPENED", verdict: "valid_opened", isFreshTap: true, manualPolicyAuthorized: true }), { allowed: false, reason: "MANUAL_DECLARATION_REVIEW_REQUIRED" });
   assert.deepEqual(resolveAgroSensitiveActionGate({ statusCode: "INVALID", verdict: "valid", isFreshTap: true }), { allowed: false, reason: "UNTRUSTED_STATUS" });
   assert.deepEqual(resolveAgroSensitiveActionGate({ statusCode: "NEW_UNKNOWN_STATE", verdict: "valid", isFreshTap: true }), { allowed: false, reason: "UNTRUSTED_STATUS" });
   assert.deepEqual(resolveAgroSensitiveActionGate({ statusCode: "VALID_CLOSED", verdict: "unexpected", isFreshTap: true }), { allowed: false, reason: "UNTRUSTED_VERDICT" });

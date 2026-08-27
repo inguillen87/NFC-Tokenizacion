@@ -7,6 +7,7 @@ import {
   clusterSunLocationObservations,
   describeSunLocationEvidence,
   normalizeSunCoordinatePair,
+  resolveSunCurrentTapPlace,
 } from "../src/app/sun/sun-location-evidence.ts";
 
 const [sunPage, sunApi, diagnostics] = await Promise.all([
@@ -33,6 +34,32 @@ test("SUN location labels distinguish measured, approximate, declared and absent
   assert.match(describeSunLocationEvidence("declared"), /declarado por la marca/);
 });
 
+test("consented phone location never borrows a historical city or country", () => {
+  assert.deepEqual(resolveSunCurrentTapPlace({
+    locationSource: "browser_gps_approximate_consent",
+    currentCity: null,
+    currentCountry: null,
+    historicalCity: "Buenos Aires",
+    historicalCountry: "AR",
+  }), {
+    city: "Zona aproximada compartida",
+    country: "",
+    display: "Zona aproximada compartida",
+  });
+
+  assert.deepEqual(resolveSunCurrentTapPlace({
+    locationSource: "browser_gps_approximate_consent",
+    currentCity: "Godoy Cruz",
+    currentCountry: "AR",
+    historicalCity: "Buenos Aires",
+    historicalCountry: "AR",
+  }), {
+    city: "Godoy Cruz",
+    country: "AR",
+    display: "Godoy Cruz, AR",
+  });
+});
+
 test("SUN heat density counts observed events, groups repeated coordinates and never invents invalid points", () => {
   const clusters = clusterSunLocationObservations([
     { id: "e1", eventId: "101", lat: -34.6037, lng: -58.3816, result: "VALID", source: "ip_geo", at: "2026-08-26T10:00:00Z" },
@@ -49,21 +76,23 @@ test("SUN heat density counts observed events, groups repeated coordinates and n
   assert.match(clusters[0].sourceLabel, /aproximada/i);
 });
 
-test("SUN mobile map keeps declared origin outside real density and starts heat only with multiple observed locations", () => {
+test("SUN mobile map keeps declared origin in demos and uses one consented point for consumers", () => {
   assert.match(sunPage, /scans: point\.count/);
   assert.match(sunPage, /const opsMapPoints = isDemoPreview \? \[\.\.\.demoOriginMapPoints, \.\.\.observedMapPoints\] : observedMapPoints/);
-  assert.match(sunPage, /const canShowSunIntensity = observedLocationClusters\.length >= 2/);
-  assert.match(sunPage, /initialView=\{!isDemoPreview && canShowSunIntensity \? "intensity" : "events"\}/);
-  assert.match(sunPage, /allowViewToggle=\{!isDemoPreview && canShowSunIntensity\}/);
+  assert.match(sunPage, /const consumerCurrentTapMapPoints: GlobalOpsPoint\[\] = hasConsentedDeviceLocation/);
+  assert.match(sunPage, /points=\{isDemoPreview \? opsMapPoints : consumerCurrentTapMapPoints\}/);
+  assert.match(sunPage, /routes=\{isDemoPreview \? opsMapRoutes : \[\]\}/);
+  assert.match(sunPage, /allowViewToggle=\{false\}/);
   assert.doesNotMatch(sunPage, /scans: reportedScanCount/);
-  assert.match(sunPage, /No completamos ciudades ni coordenadas con datos inventados/);
+  assert.match(sunPage, /no dibujamos una estimación por IP como si fuera tu ubicación/i);
 });
 
 test("SUN API and snapshots preserve location source, accuracy and event identity", () => {
   assert.match(sunApi, /eventId\?: string \| null/);
   assert.match(sunApi, /locationSource\?: string \| null/);
   assert.match(sunApi, /accuracyM\?: number \| null/);
-  assert.match(sunApi, /e\.id::text AS event_id/);
+  assert.match(sunApi, /eventId: null/);
+  assert.doesNotMatch(sunApi, /e\.id::text AS event_id/);
   assert.match(diagnostics, /resolveCurrentSnapshotTapLocation/);
   assert.match(diagnostics, /normalizeSnapshotContractFromCurrentTap/);
   assert.match(diagnostics, /locationSource: tap\.source/);

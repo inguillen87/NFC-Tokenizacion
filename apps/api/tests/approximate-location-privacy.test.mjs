@@ -124,7 +124,9 @@ test("SUN context and ownership claims enforce the shared privacy boundary", asy
   assert.doesNotMatch(qrRoute, /request_json: \{ bid, picc_data, enc, cmac \}/);
   assert.match(qrRoute, /const persistedRawQuery = redactSensitiveQueryValues\(input\.rawQuery\) \|\| \{\}/);
   assert.match(qrRoute, /JSON\.stringify\(persistedRawQuery\)/);
-  assert.match(sunService, /resolveTamperSignal\(\{[\s\S]*?rawQuery: input\.rawQuery/);
+  assert.match(sunService, /function resolveTamperSignal\(\)[\s\S]*?attacker-controlled[\s\S]*?complete two-byte TTStatus decrypted below/);
+  assert.match(sunService, /const tamperSignal = resolveTamperSignal\(\)/);
+  assert.doesNotMatch(sunService, /resolveTamperSignal\(\{[\s\S]*?rawQuery: input\.rawQuery/);
   assert.match(sunService, /persistSunScanAtomically\(\{[\s\S]*?rawQuery: input\.rawQuery/);
   assert.match(atomicPersistence, /redactSensitiveQueryValues\(input\.rawQuery\)/);
   assert.match(atomicPersistence, /picc_data_hash: input\.piccDataHash/);
@@ -132,4 +134,40 @@ test("SUN context and ownership claims enforce the shared privacy boundary", asy
   assert.match(diagnostics, /redactSensitiveQueryValues\(input\.request_json as Record<string, unknown>\)/);
   assert.match(diagnostics, /JSON\.stringify\(persistedRequestJson \|\| \{\}\)/);
   assert.ok(sunService.indexOf("resolveTamperSignal({") < sunService.indexOf("persistSunScanAtomically({"));
+});
+
+test("consented SUN device location supersedes IP coordinates and labels atomically", async () => {
+  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
+
+  assert.match(contextRoute, /if \(hasBrowserGps && lat !== null && lng !== null\)/);
+  assert.match(contextRoute, /const finalCity = hasBrowserGps \? resolvedCity : firstText\(target\.city\) \|\| null/);
+  assert.match(contextRoute, /lat = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lat\} ELSE lat END/);
+  assert.match(contextRoute, /lng = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lng\} ELSE lng END/);
+  assert.match(contextRoute, /geo_lat = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lat\} ELSE geo_lat END/);
+  assert.match(contextRoute, /geo_lng = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lng\} ELSE geo_lng END/);
+  assert.match(contextRoute, /city = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCity\} ELSE city END/);
+  assert.match(contextRoute, /country_code = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCountry\} ELSE country_code END/);
+  assert.match(contextRoute, /geo_city = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCity\} ELSE geo_city END/);
+  assert.match(contextRoute, /geo_country = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCountry\} ELSE geo_country END/);
+  assert.doesNotMatch(contextRoute, /city = COALESCE\(NULLIF\(city, ''\), \$\{resolvedCity\}, geo_city\)/);
+});
+
+test("SUN phone context is safely retryable but remains bound to the signed physical event", async () => {
+  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
+
+  assert.match(contextRoute, /import \{ requireSunFreshHandoff \} from .*sun-fresh-handoff/);
+  assert.match(contextRoute, /const capability = requireSunFreshHandoff\(req, body, \{[\s\S]*?bid,[\s\S]*?eventId,[\s\S]*?uidHex: uid,[\s\S]*?readCounter: ctr/);
+  assert.doesNotMatch(contextRoute, /consumeSunFreshHandoff\(req, body/);
+  assert.match(contextRoute, /WHERE e\.id = \$\{eventId\}::bigint[\s\S]*?e\.batch_id = \$\{batch\.id\}[\s\S]*?UPPER\(e\.uid_hex\) = \$\{uid\}[\s\S]*?e\.sdm_read_ctr = \$\{ctr\}/);
+});
+
+test("rejected SUN geolocation reports cannot overwrite persisted coordinate provenance", async () => {
+  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
+
+  assert.match(contextRoute, /location_accuracy_m = CASE WHEN \$\{hasBrowserGps\} THEN \$\{accuracy\} ELSE location_accuracy_m END/);
+  assert.match(contextRoute, /location_source = CASE WHEN \$\{hasBrowserGps\} THEN \$\{locationSource\} ELSE location_source END/);
+  assert.match(contextRoute, /location_updated_at = CASE WHEN \$\{hasBrowserGps\} THEN now\(\) ELSE location_updated_at END/);
+  assert.match(contextRoute, /geo_precision = CASE WHEN \$\{hasBrowserGps\} THEN 'browser_rounded' ELSE geo_precision END/);
+  assert.match(contextRoute, /const persistedLocationSource = hasBrowserGps[\s\S]*?firstText\(target\.location_source\) \|\| null/);
+  assert.match(contextRoute, /locationUpdated: hasBrowserGps/);
 });

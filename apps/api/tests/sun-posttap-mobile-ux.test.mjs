@@ -25,6 +25,26 @@ test("seal state and SUN freshness remain independent above the fold", () => {
   assert.match(route, /Sello cerrado/);
 });
 
+test("manual opening remains an operator declaration and never becomes TT evidence", () => {
+  assert.match(route, /const isManualOpenedState = productState === "VALID_MANUAL_OPENED" \|\| statusCode === "MANUAL_OPENED"/);
+  const openedStateStart = route.indexOf("const isOpenedState =");
+  const openedStateEnd = route.indexOf("const sealTone =", openedStateStart);
+  const openedStateSource = route.slice(openedStateStart, openedStateEnd);
+  assert.doesNotMatch(openedStateSource, /VALID_MANUAL_OPENED|MANUAL_OPENED/);
+  assert.match(route, /Apertura declarada/);
+  assert.match(route, /Un operador declaró una apertura; la etiqueta digital no la detectó automáticamente/);
+  assert.ok(route.indexOf(": isManualOpenedState\n      ?labels.manualOpened") < route.indexOf(': isOpenedState\n        ?(copy.lang === "en" ?"NFC message validated; TT reports open.'));
+
+  const verifiedTapStart = route.indexOf("const isVerifiedOpenedTap =");
+  const verifiedTapEnd = route.indexOf("const hasValidatedTagMessage =", verifiedTapStart);
+  const verifiedTapSource = route.slice(verifiedTapStart, verifiedTapEnd);
+  assert.doesNotMatch(verifiedTapSource, /MANUAL_OPENED|VALID_MANUAL_OPENED/);
+
+  const setupEvidenceStart = route.indexOf("const setupHasValidTagEvidence =");
+  const setupEvidenceEnd = route.indexOf("const setupIsReplay =", setupEvidenceStart);
+  assert.doesNotMatch(route.slice(setupEvidenceStart, setupEvidenceEnd), /MANUAL_OPENED|VALID_MANUAL_OPENED/);
+});
+
 test("technical bytes and unavailable actions are disclosed without a washed-out button wall", () => {
   assert.match(route, /BYTE 1 · MEMORIA PERMANENTE/);
   assert.match(route, /BYTE 2 · ESTADO ACTUAL/);

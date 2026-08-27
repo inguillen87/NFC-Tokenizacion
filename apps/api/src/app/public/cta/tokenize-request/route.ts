@@ -12,6 +12,7 @@ import { anchorTokenizationRequest, resolveTokenizationRuntimeMode } from "../..
 import { recordTokenizationCanonicalEvent, type TokenizationEventRecord } from "../../../../lib/tokenization-event-service";
 import { resolvePublicCtaTarget, type PublicCtaTokenizationPolicy } from "../../../../lib/public-cta-target";
 import { consumeSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
+import { readCurrentTapCommercialRights } from "../../../../lib/tap-commercial-rights";
 import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
@@ -465,6 +466,18 @@ export async function POST(req: Request) {
       share_token_status: auth.share_token_status,
       fresh_token_status: freshReason,
     }, 403);
+  }
+
+  const commercialRights = await readCurrentTapCommercialRights(eventId);
+  if (!commercialRights.allowed) {
+    return json({
+      ok: false,
+      reason: commercialRights.reason,
+      action: "tokenize_request",
+      trace_id: traceId,
+      share_token_status: auth.share_token_status,
+      fresh_token_status: "accepted",
+    }, commercialRights.reason === "manual_opening_declared" ? 409 : 503, { "cache-control": "no-store" });
   }
 
   const requestedNetworkHint = sanitizeText(body.ledger_network, 40).toLowerCase();

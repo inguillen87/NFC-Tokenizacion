@@ -1,13 +1,13 @@
 export const SUN_DEMO_BADGE = "MUESTRA DEMO · SIN TAP FÍSICO";
 
 export const SUN_DEMO_COPY = {
-  decision: "Resultado de muestra: la fixture ilustra un mensaje SUN válido y un estado TT abierto reportado por el tag. No se realizó un tap físico ni existe persistencia o evidencia pública en esta vista.",
-  trust: "Preview guiado: la identidad digital, el estado TT reportado, la ruta y las acciones son datos simulados. No verifican el sello físico, el contenido ni la custodia.",
+  decision: "Resultado de muestra: la etiqueta digital informa una apertura en este ejemplo. No se realizó un tap físico ni existe evidencia real en esta vista.",
+  trust: "Vista guiada: el producto, el estado del sello, la ruta y las acciones son datos simulados. No describen un envase real ni su contenido.",
   productStatusTitle: "Producto físico de muestra",
   productStatusBody: "Esta fixture permite recorrer la ficha y la trazabilidad simulada. Un resultado real requiere leer la etiqueta física y validar la evidencia del evento.",
   productBadge: "Producto físico · muestra",
-  stageTitle: "Producto físico de muestra · TT abierto reportado en la simulación",
-  stageBody: "El estado TT reportado y el resultado SUN forman parte del preview. No se realizó ningún tap físico ni se inspeccionó el sello.",
+  stageTitle: "Sello abierto en esta simulación",
+  stageBody: "La etiqueta digital de muestra informa una apertura. No se realizó un toque NFC real ni se inspeccionó un envase físico.",
   journeyLabel: "Producto físico de muestra",
   journeyDetail: "Preview simulado",
   passportEventLabel: "Se simuló",
@@ -18,7 +18,7 @@ export const SUN_DEMO_COPY = {
   claimIntro: "Esta muestra explica cómo un tap físico y una validación separada del comprador protegerían garantía, beneficios o propiedad.",
   claimTapLabel: "Tap físico",
   claimTapState: "No realizado · muestra",
-  gatedActions: "El estado TT reportado y las acciones son simulados. No certifican el sello físico; la garantía, procedencia y tokenización reales requieren un tap físico y la política de la marca.",
+  gatedActions: "El estado del sello y las acciones son simulados. La garantía, la procedencia y la propiedad digital reales requieren un toque NFC y la política de la marca.",
   tokenModal: "La muestra ilustra una solicitud de token asociada al lifecycle; no confirma el estado físico del sello, la propiedad ni evidencia on-chain real.",
 } as const;
 

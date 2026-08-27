@@ -145,7 +145,6 @@ export function resolveAgroSensitiveActionGate(input: {
   isOffline?: boolean;
   isQr?: boolean;
   isFreshTap?: boolean;
-  manualPolicyAuthorized?: boolean;
 }) {
   const stateSignals = [input.statusCode, input.productState]
     .map((value) => String(value || "").trim().toUpperCase());
@@ -159,11 +158,8 @@ export function resolveAgroSensitiveActionGate(input: {
   if (input.isQr) return { allowed: false as const, reason: "NOT_CRYPTOGRAPHICALLY_AUTHENTICATED" };
   if (!input.isFreshTap) return { allowed: false as const, reason: "FRESH_TAP_REQUIRED" };
   const manualState = stateSignals.some((signal) => ["VALID_MANUAL_OPENED", "MANUAL_OPENED"].includes(signal));
-  if (manualState && !input.manualPolicyAuthorized) {
-    return { allowed: false as const, reason: "MANUAL_POLICY_REQUIRED" };
-  }
-  const trustedState = stateSignals.some((signal) => TRUSTED_NFC_STATES.has(signal))
-    || (manualState && input.manualPolicyAuthorized === true);
+  if (manualState) return { allowed: false as const, reason: "MANUAL_DECLARATION_REVIEW_REQUIRED" };
+  const trustedState = stateSignals.some((signal) => TRUSTED_NFC_STATES.has(signal));
   if (!trustedState) return { allowed: false as const, reason: "UNTRUSTED_STATUS" };
   if (!TRUSTED_VERDICTS.has(verdict)) return { allowed: false as const, reason: "UNTRUSTED_VERDICT" };
   return { allowed: true as const, reason: "FRESH_AUTHENTICATED_TAP" };

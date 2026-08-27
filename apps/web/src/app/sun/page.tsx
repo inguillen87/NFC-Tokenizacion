@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowDown, ExternalLink, AlertTriangle, LockKeyhole, MapPin, MessageCircle, Package, RotateCcw, Search, ShieldCheck, ShoppingBag } from "lucide-react";
+import { ArrowDown, ExternalLink, AlertTriangle, LockKeyhole, MessageCircle, Package, RotateCcw, Search, ShieldCheck } from "lucide-react";
 import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { TapPrecisionTelemetry } from "./tap-precision-telemetry";
@@ -12,7 +12,14 @@ import { AgroDppExperience } from "./agro-dpp-experience";
 import { normalizeAgroDppProfile } from "./agro-dpp-model";
 import { resolveCommercialTapFreshness, resolvePostTapQuickActionAvailability } from "./post-tap-policy";
 import { fmtDistance, haversineKm, selectCanonicalSunMapRoutes } from "./sun-route-distance";
-import { clusterSunLocationObservations, classifySunLocationEvidence, describeSunLocationEvidence } from "./sun-location-evidence";
+import {
+  clusterSunLocationObservations,
+  classifySunLocationEvidence,
+  CONSENTED_BROWSER_LOCATION_FALLBACK,
+  CONSENTED_BROWSER_LOCATION_SOURCE,
+  describeSunLocationEvidence,
+  resolveSunCurrentTapPlace,
+} from "./sun-location-evidence";
 import { qualifySunStatusForPreview, selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
 import { resolveSunTtEvidence, type SunTtTechnicalInput } from "./sun-tt-evidence";
 import { productUrls } from "@product/config";
@@ -295,9 +302,9 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     ok: true,
     status: {
       code: "AUTH_OK",
-      label: "SUN válido, TT abierto",
+      label: "Etiqueta digital válida · apertura informada",
       tone: "good",
-      summary: "Mensaje SUN válido en la simulación; TT abierto y origen declarado por el dataset demo.",
+      summary: "La etiqueta digital de muestra informa una apertura y un origen declarado dentro de la simulación.",
       reason: "demo_preview",
       productState: "VALID_OPENED",
       tamperSupported: true,
@@ -463,15 +470,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     result = snapshotResult || parsedResult || sunFallbackResult(params, false);
   }
 
-  // Proactively fetch loyalty overview if we know the tenant
-  let loyaltyData = null;
-  if (result.ok && result.identity?.tenantSlug) {
-    const memKey = "anonymous"; // using anonymous mode for the public passport
-    loyaltyData = await fetch(`${resolvedApiBase}/mobile/loyalty/overview?tenantSlug=${result.identity.tenantSlug}&memberKey=${memKey}`, { cache: "no-store" })
-      .then((res) => res.json())
-      .catch(() => null);
-  }
-
   const bid = String(result.identity?.bid || params.bid || "");
   const uid = String(result.identity?.uid || "");
   const uidMasked = String(result.identity?.uidMasked || result.identity?.uid || "");
@@ -520,12 +518,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || statusReason.includes("replay")
     || statusReason.includes("copied url")
     || (!isQrScan && trustSignals.antiReplay === false);
-  const isVerifiedOpenedState = ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(statusCode)
+  const isManualOpenedState = statusCode === "MANUAL_OPENED"
+    || productState === "VALID_MANUAL_OPENED";
+  const isVerifiedOpenedState = ["OPENED", "OPENED_PREVIOUSLY"].includes(statusCode)
     || productState === "VALID_OPENED"
     || productState === "VALID_OPENED_PREVIOUSLY"
-    || productState === "VALID_MANUAL_OPENED"
     || ttStatus === "opened"
     || ttStatus === "opened_previously";
+  const isOpenedAttentionState = isVerifiedOpenedState || isManualOpenedState;
   const verdictName = String(result.verdict || "").toLowerCase();
   const isTamperRisk = Boolean(trustSignals.tamperRisk)
     || result.status?.tone === "risk"
@@ -547,6 +547,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     && !isReplay
     && !isTamperRisk
     && !isSunProfileMismatch
+    && !isManualOpenedState
     && (hasAuthenticTone || ["VALID", "AUTH_OK"].includes(statusCode) || isVerifiedOpenedState || verdictName === "valid" || verdictName === "valid_opened");
   // Freshness and authenticity are properties of the tap, not a requirement
   // that every commercial action be enabled. Each CTA applies its own policy.
@@ -556,10 +557,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     isSnapshotView,
   });
   const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState && ["VALID", "AUTH_OK"].includes(statusCode);
-  const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || (!isTechnicallyAuthentic && !isQrScan);
+  const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || isManualOpenedState || (!isTechnicallyAuthentic && !isQrScan);
   const agroProfile = normalizeAgroDppProfile(result.product?.agro);
   const isAgroDpp = Boolean(agroProfile);
-  const engagementBaseEligible = (isQrScan || isFreshCommercialTap || isVerifiedOpenedState) && !isRiskBlocked && !isSnapshotView;
+  const engagementBaseEligible = (isQrScan || isFreshCommercialTap || isVerifiedOpenedState) && !isManualOpenedState && !isRiskBlocked && !isSnapshotView;
   const troubleshooting = result.troubleshooting || [];
   const timelinePoints = (result.provenance?.timelineSummary || [])
     .map((item) => {
@@ -602,8 +603,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const hasCurrentTapCoords = isUsableCoordinate(result.tapContext?.lat, result.tapContext?.lng);
   const currentTapLat = hasCurrentTapCoords ? Number(result.tapContext?.lat) : null;
   const currentTapLng = hasCurrentTapCoords ? Number(result.tapContext?.lng) : null;
-  const currentTapCity = result.tapContext?.city || result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city || "Tap";
-  const currentTapCountry = result.tapContext?.country || result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country || "--";
+  const rawLocationSource = String(result.tapContext?.locationSource || "").toLowerCase();
+  const currentTapPlace = resolveSunCurrentTapPlace({
+    locationSource: rawLocationSource,
+    currentCity: result.tapContext?.city,
+    currentCountry: result.tapContext?.country,
+    historicalCity: result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city,
+    historicalCountry: result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country,
+  });
+  const currentTapCity = currentTapPlace.city;
+  const currentTapCountry = currentTapPlace.country;
   const currentTapPoint = currentTapLat != null && currentTapLng != null
     ? [{
       city: currentTapCity,
@@ -659,11 +668,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? `${wineryPoint[0].city}, ${wineryPoint[0].country}`
     : result.provenance?.origin || result.product?.region || "Origen no informado";
   const tapDisplay = currentTapPoint.length
-    ? `${currentTapPoint[0].city}, ${currentTapPoint[0].country}`
+    ? currentTapPlace.display
+    : rawLocationSource === CONSENTED_BROWSER_LOCATION_SOURCE
+      ? CONSENTED_BROWSER_LOCATION_FALLBACK
     : result.provenance?.lastVerifiedLocation?.city
       ? `${result.provenance.lastVerifiedLocation.city}, ${result.provenance.lastVerifiedLocation.country || "--"}`
       : "Tap actual no geolocalizado";
-  const rawLocationSource = String(result.tapContext?.locationSource || "").toLowerCase();
   const accuracyM = Number(result.tapContext?.accuracyM);
   const hasAccuracy = Number.isFinite(accuracyM) && accuracyM > 0;
   const tapLocationEvidenceKind = classifySunLocationEvidence(rawLocationSource, hasCurrentTapCoords);
@@ -759,7 +769,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     })),
   ]);
   const observedEventCount = observedLocationClusters.reduce((sum, point) => sum + point.count, 0);
-  const canShowSunIntensity = observedLocationClusters.length >= 2;
   const observedMapPoints: GlobalOpsPoint[] = observedLocationClusters.map((point) => ({
     id: point.id,
     city: point.city,
@@ -773,9 +782,32 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     lastSeen: point.lastSeen,
     uid: mapUid,
     device: point.sourceLabel,
+    accuracyM: point.accuracyM,
     role: point.current ? "tap" as const : "hub" as const,
     productName: mapProductName,
   }));
+  const hasConsentedDeviceLocation = rawLocationSource === CONSENTED_BROWSER_LOCATION_SOURCE && currentTapPoint.length > 0;
+  const consumerCurrentTapMapPoints: GlobalOpsPoint[] = hasConsentedDeviceLocation
+    ? currentTapPoint.map((point, index) => ({
+      id: `consumer-tap-${eventId || index}`,
+      city: point.city,
+      country: point.country,
+      lat: point.lat,
+      lng: point.lng,
+      scans: 1,
+      risk: point.risk,
+      verdict: point.status,
+      tenantSlug: mapTenant,
+      lastSeen: point.lastSeen || "",
+      uid: mapUid,
+      device: "Zona compartida por este teléfono",
+      role: "tap" as const,
+      productName: mapProductName,
+      locationSource: point.locationSource || CONSENTED_BROWSER_LOCATION_SOURCE,
+      locationAccuracyM: point.accuracyM,
+      accuracyM: point.accuracyM,
+    }))
+    : [];
   const demoOriginMapPoints: GlobalOpsPoint[] = wineryPoint.map((point, index) => ({
       id: `origin-${mapUid}-${index}`,
       city: point.city,
@@ -814,8 +846,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "QR / Ficha Informativa"
     : isValid
       ? "SUN VÁLIDO · TT CERRADO"
+      : isManualOpenedState
+        ? "APERTURA DECLARADA POR OPERADOR"
       : isVerifiedOpenedState && isTechnicallyAuthentic
-        ? "SUN VÁLIDO · TT ABIERTO"
+        ? "ETIQUETA VÁLIDA · APERTURA INFORMADA"
         : isReplay
           ? "REPLAY / ENLACE REUTILIZADO"
           : isSunProfileMismatch
@@ -825,7 +859,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   const securityTone = isValid
     ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
-    : isVerifiedOpenedState && isTechnicallyAuthentic
+    : isOpenedAttentionState
       ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
       : isSunProfileMismatch
         ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
@@ -860,9 +894,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.75)]"
     : isSunProfileMismatch
     ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
+    : isManualOpenedState
+    ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
     : isRiskBlocked
     ? "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]"
-    : isVerifiedOpenedState
+    : isOpenedAttentionState
       ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
       : "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]";
   const statusHeadline = isSunProfileMismatch
@@ -874,7 +910,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : ttStatus === "invalid"
       ? "TagTamper no inicializado o configuración inválida."
     : productState === "VALID_MANUAL_OPENED"
-      ? "Mensaje SUN válido. Estado TT marcado como abierto por un operador."
+      ? "Un operador registró el estado abierto; no proviene de la medición criptográfica del sello."
     : productState === "VALID_OPENED"
       ? "Mensaje SUN válido. Estado TT abierto reportado."
     : productState === "VALID_UNKNOWN_TAMPER" || ttStatus === "not_available"
@@ -894,10 +930,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "Consulta segura"
     : isSunProfileMismatch
     ? "Batch tecnico bloqueado"
+    : isManualOpenedState
+      ? "Apertura declarada por operador"
     : isRiskBlocked
     ? "Riesgo alto"
     : isVerifiedOpenedState
-      ? "Estado TT abierto reportado"
+      ? "Apertura informada por la etiqueta"
       : trustScore != null && trustScore >= 85
         ? "Score alto reportado"
         : trustScore != null && trustScore >= 65
@@ -909,10 +947,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "Simulación guiada: mensaje SUN válido y estado TT abierto."
     : isQrScan
       ? "Ficha publica QR / SDK"
-      : rightsTitle || (isVerifiedOpenedState && isTechnicallyAuthentic
-        ? "Mensaje SUN válido. El tag reporta estado TT abierto."
-        : statusHeadline);
-  const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
+      : rightsTitle || (isManualOpenedState
+        ? "Un operador registró una apertura."
+        : isVerifiedOpenedState && isTechnicallyAuthentic
+          ? "La etiqueta digital informa una apertura."
+          : statusHeadline);
+  const reportProblemHref = bid && (uid || eventId)
+    ? "#report-action"
+    : "/?contact=sales&intent=sun_mobile#contact-modal";
   const productSectionHref = isAgroDpp ? "#agro-dpp" : "#product-info";
   const consumerActionHref = isAgroDpp ? "#agro-dpp" : "#consumer-choice";
   const recommendedAction = isFreshCommercialTap
@@ -925,7 +967,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   const tenantSlug = String(result.identity?.tenantSlug || "").trim();
-  const telemetryEndpoint = `${resolvedApiBase.replace(/\/$/, "")}/sun/context`;
+  // Keep browser geolocation same-origin. The proxy validates and forwards the
+  // signed fresh-tap capability without exposing a permissive CORS surface.
+  const telemetryEndpoint = "/api/sun-context";
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
   const localizeHref = (href?: string | null) => {
     const raw = String(href || "").trim();
@@ -989,7 +1033,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     { id: "ficha", label: "Ficha", done: true },
     { id: "optin", label: "Opt-in", done: false },
   ];
-  const sealOpened = ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY" || productState === "VALID_MANUAL_OPENED";
+  const sealOpened = ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY";
   const sealClosed = ttStatus === "closed" || productState === "VALID_CLOSED";
   const rawCarrierProfileCode = String(
     result.status?.carrierProfileCode ||
@@ -1112,6 +1156,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? rightsSummary || (isCryptoCarrier
         ? "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
         : "Lectura fresca: identidad registrada y trazabilidad declarada por plataforma.")
+      : isManualOpenedState
+        ? "Un operador registró una apertura. Esa declaración no reemplaza una lectura criptográfica del sello ni una inspección del envase."
       : isVerifiedOpenedState && isTechnicallyAuthentic
         ? rightsSummary || "Mensaje SUN válido y estado TT abierto reportado. Podés iniciar una validación de compra separada para cuenta, puntos o club."
         : rightsSummary || "Lectura de control: la evidencia técnica del mensaje NFC sigue disponible, pero algunas acciones comerciales quedan restringidas.";
@@ -1127,7 +1173,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           : normalizedTokenStatus.includes("sandbox") || normalizedTokenStatus.includes("simulated")
             ? "Sandbox, sin promesa on-chain"
             : "Sin anclaje on-chain";
-  const sealLabel = sealClosed ? "TT cerrado reportado" : sealOpened ? "TT abierto reportado" : "TT no informado";
+  const sealLabel = sealClosed
+    ? "TT cerrado reportado"
+    : isManualOpenedState
+      ? "Apertura declarada por operador"
+      : sealOpened
+        ? "TT abierto reportado"
+        : "TT no informado";
   const chainLabel = tokenEvidenceLabel;
   const productName = result.product?.name || "Producto conectado";
   const productImageUrl = result.product?.imageUrl || result.product?.image_url || result.product?.photoUrl || result.product?.photo_url || null;
@@ -1154,7 +1206,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const productDisplayName = assetProfile.productName || productName;
   const isWineProduct = [result.product?.vertical, result.tenant?.vertical, productDisplayName]
     .some((value) => /\b(wine|vino|malbec|reserva|bodega)\b/i.test(String(value || "")));
-  const showEngagementSuite = engagementBaseEligible && isWineProduct;
+  const showEngagementSuite = engagementBaseEligible && isWineProduct && !isOpenedAttentionState;
   const engagementWineryName = requestedBrandDisplay || result.product?.winery || "Bodega Premium";
   const engagementTenantSlug = readParam(params, "tenant") || tenantSlug || "demobodega";
   const productHeroImageUrl = assetProfile.primaryImageUrl || productImageUrl;
@@ -1166,6 +1218,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "Consulta segura: evidencia NFC visible y trazabilidad declarada preservada. Las acciones comerciales requieren otro tap fisico."
     : isFreshHandoff
       ? "Mensaje NFC recien validado: ficha publica, eventos declarados y opciones opt-in disponibles mientras el handoff sigue fresco."
+    : isManualOpenedState
+      ? "Apertura registrada por un operador: la tratamos como una declaración y no como una detección automática del sello."
     : isVerifiedOpenedState && isTechnicallyAuthentic
       ? "Estado TT abierto reportado: el mensaje SUN sigue siendo valido; el significado fisico depende de la integracion del tag al packaging."
     : isFreshCommercialTap
@@ -1285,34 +1339,50 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "Ficha publica del producto"
       : isSunProfileMismatch
     ? "Esta lectura necesita revisión"
+    : isManualOpenedState
+    ? "Un operador registró una apertura"
     : isRiskBlocked
     ? "Necesitamos un nuevo toque"
-    : isSnapshotView
-      ? "Información del producto disponible"
-      : isVerifiedOpenedState
-        ? "Etiqueta verificada · sello abierto"
-        : "La etiqueta digital respondió correctamente";
+    : isVerifiedOpenedState
+      ? "El sello registra una apertura"
+      : isSnapshotView
+        ? "Información del producto disponible"
+        : sealClosed && isTechnicallyAuthentic
+          ? "El sello no registra aperturas"
+          : isTechnicallyAuthentic
+            ? "Etiqueta digital verificada"
+            : "Lectura recibida";
   const friendlyStageBody = isDemoPreview
     ? SUN_DEMO_COPY.stageBody
     : isQrScan
       ? "Con el QR podés conocer el producto y acceder a las opciones que la marca dejó disponibles. Garantía o titularidad requieren una validación adicional."
       : isSunProfileMismatch
     ? "Reconocimos el producto y el lote, pero no pudimos completar los controles de esta lectura. La información sigue visible y las acciones sensibles quedan protegidas."
+    : isManualOpenedState
+    ? "La apertura fue declarada por un operador. No fue detectada automáticamente por el sello; si no la reconocés o el envase está dañado, no uses el producto y avisá para revisión."
     : isRiskBlocked
     ? "Este enlace ya había sido usado. Acercá nuevamente el teléfono a la etiqueta para obtener una lectura nueva y continuar con seguridad."
-    : isSnapshotView
-      ? "Podés revisar la ficha y la información disponible. Para activar garantía o beneficios, tocá nuevamente la etiqueta."
-      : isVerifiedOpenedState
-        ? "La etiqueta respondió correctamente y reporta que el sello fue abierto. Podés consultar la ficha y elegir cómo seguir."
-        : "Ya podés conocer el producto, revisar la información de la marca y ver las opciones disponibles. No necesitás registrarte para leer la ficha.";
+    : isVerifiedOpenedState
+      ? isSnapshotView
+        ? "Esta lectura anterior informa una apertura del sello. Para confirmar el estado actual, acercá otra vez el teléfono a la etiqueta."
+        : "La etiqueta digital pasó los controles, pero informa que el sello asociado fue abierto. Si vos no lo abriste o el envase está dañado, no uses el producto y avisá a la marca."
+      : isSnapshotView
+        ? "Podés revisar la ficha y la información disponible. Para activar garantía o beneficios, tocá nuevamente la etiqueta."
+        : sealClosed && isTechnicallyAuthentic
+          ? "La etiqueta digital pasó los controles y no informa una apertura del sello. Podés conocer el producto y, si ya lo compraste, activar garantía, beneficios o atención de la marca."
+          : "Conocé el producto, revisá la información disponible y elegí cómo seguir. No necesitás registrarte para ver la ficha.";
   const primaryPostTapAction = isQrScan && isAgroDpp
     ? { label: "Ver pasaporte agro", href: "#agro-dpp", tone: "trace" }
     : isQrScan
-    ? { label: "Abrir sommelier IA", href: "#qr-engagement", tone: "trace" }
+    ? { label: "Conocer el producto", href: consumerActionHref, tone: "trace" }
     : isSunProfileMismatch
     ? { label: "Avisar a soporte", href: reportProblemHref, tone: "trace" }
-    : isFreshCommercialTap
-      ? { label: "Ver trivia y beneficios", href: showEngagementSuite ? "#qr-engagement" : consumerActionHref, tone: "trace" }
+    : isManualOpenedState
+      ? { label: "Avisar a la marca", href: reportProblemHref, tone: "risk" }
+    : isFreshCommercialTap && isVerifiedOpenedState
+      ? { label: "Avisar a la marca", href: reportProblemHref, tone: "risk" }
+      : isFreshCommercialTap
+        ? { label: "Ver garantía y beneficios", href: consumerActionHref, tone: "trace" }
     : isSnapshotView
         ? { label: "Hacer nuevo tap fisico", href: "#fresh-tap-required", tone: "fresh" }
         : isRiskBlocked
@@ -1324,17 +1394,25 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "Lectura repetida"
       : isSunProfileMismatch
         ? "Lectura por revisar"
+        : isManualOpenedState
+          ? "Apertura declarada"
+        : isVerifiedOpenedState
+          ? "Atención recomendada"
         : isTechnicallyAuthentic
-          ? "Etiqueta digital verificada"
+          ? "Lectura digital confirmada"
           : "Lectura no confirmada";
   const consumerSealLabel = sealClosed
-    ? "Cerrado, según la etiqueta"
+    ? "Sin apertura detectada"
+    : isManualOpenedState
+      ? "Declarada por un operador"
     : sealOpened
-      ? "Abierto, según la etiqueta"
-      : "Sin dato de apertura";
+      ? "Apertura detectada"
+      : "Estado del sello no disponible";
   const consumerResultTone = isReplay || isSunProfileMismatch || isTamperRisk
     ? "review"
-    : isSnapshotView || isQrScan || isVerifiedOpenedState
+    : isOpenedAttentionState
+      ? "opened"
+      : isSnapshotView || isQrScan
       ? "notice"
       : "verified";
   const simpleJourneySteps = [
@@ -1432,17 +1510,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="w-full max-w-[430px] z-10 space-y-5 mx-auto">
         
         {/* Modern minimal top bar */}
-        <header className="sun-passport-topbar flex items-center justify-between px-2.5 py-2 mb-2">
-          <div className="flex items-center gap-2">
+        <header className="sun-passport-topbar flex items-center justify-between gap-2 px-2.5 py-2 mb-2">
+          <div className="flex min-w-0 items-center gap-2">
             <BrandHomeLink locale={locale} size={36} />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+            <span className="hidden text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 sm:block">
               {isQrScan ? "pasaporte QR" : "pasaporte NFC"}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <LocaleSwitcher value={locale} options={locales as any} />
             <ThemeToggle locale={locale} />
-            <div className="sun-passport-live flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md">
+            <div className="sun-passport-live hidden items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md sm:flex">
               <span className={`w-2 h-2 rounded-full ${pulseClass} animate-pulse`} />
               <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">{livePillLabel}</span>
             </div>
@@ -1484,16 +1562,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <small>{tenantDisplayName}</small>
               <strong>{productDisplayName}</strong>
               <span>{productLine || verticalLabel}</span>
-              <div>
-                <em>{batchDisplay}</em>
-                <em>{consumerSealLabel}</em>
-              </div>
+              <div><em>{batchDisplay}</em></div>
             </div>
           </div>
 
           <div className="sun-result-card__intro">
             <div className="sun-result-card__icon" aria-hidden="true">
-              {isReplay ? <RotateCcw /> : isRiskBlocked ? <AlertTriangle /> : <ShieldCheck />}
+              {isReplay ? <RotateCcw /> : isRiskBlocked || isOpenedAttentionState ? <AlertTriangle /> : <ShieldCheck />}
             </div>
             <div>
               {isDemoPreview && (
@@ -1505,24 +1580,26 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           </div>
 
-          <ol className="sun-result-journey" aria-label="Resumen de esta experiencia">
+          <ol className="sun-result-journey" aria-label="Datos principales de esta lectura">
             <li>
               <span>01</span>
-              <div><small>Etiqueta</small><strong>{consumerSignalLabel}</strong></div>
+              <div><small>Lote</small><strong>{batchDisplay}</strong></div>
             </li>
             <li>
               <span>02</span>
-              <div><small>Sello</small><strong>{consumerSealLabel}</strong></div>
+              <div><small>Origen informado</small><strong>{originDisplay}</strong></div>
             </li>
             <li>
               <span>03</span>
-              <div><small>Próximo paso</small><strong>{primaryPostTapAction.label}</strong></div>
+              <div><small>Lectura</small><strong>{localTapTimeLabel || "Registrada ahora"}</strong></div>
             </li>
           </ol>
 
           <a className="sun-result-card__primary" href={primaryPostTapAction.href}>
             {primaryPostTapAction.label}
-            <ArrowDown aria-hidden="true" />
+            {primaryPostTapAction.href === reportProblemHref
+              ? <MessageCircle aria-hidden="true" />
+              : <ArrowDown aria-hidden="true" />}
           </a>
 
           <details className="sun-result-card__details">
@@ -1537,10 +1614,28 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div><span>Origen declarado</span><strong>{originDisplay}</strong></div>
               <div><span>Lectura registrada</span><strong>{tapDisplay}</strong></div>
             </div>
+            <p className="sun-result-card__boundary">
+              {isManualOpenedState
+                ? "La apertura fue declarada por un operador; no fue detectada automáticamente por la etiqueta digital."
+                : isVerifiedOpenedState
+                ? "La apertura informada proviene de la etiqueta digital; su relación con el envase depende de cómo fue instalada."
+                : "Este resultado corresponde a la etiqueta digital. No confirma por sí solo la autenticidad ni el estado del producto físico."}
+            </p>
             <p>{replayDecisionText}</p>
             <small>{displayStatusHeadline} · {primaryStatusLabel}</small>
           </details>
         </section>
+
+        <TapPrecisionTelemetry
+          endpoint={telemetryEndpoint}
+          enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
+          bid={bid}
+          uid={uid || null}
+          eventId={eventId || null}
+          freshToken={freshToken}
+          readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
+          contextStatus={result.status?.code || null}
+        />
 
         </> : null}
 
@@ -1559,6 +1654,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             certificateHref={certificateHref}
             walletHref={walletHref}
             reportProblemHref={reportProblemHref}
+            sealState={isVerifiedOpenedState ? "opened" : sealClosed ? "closed" : "unknown"}
             allowedActions={allowedActions}
             blockedActions={blockedActions}
           />
@@ -1587,7 +1683,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 eventId={eventId}
                 freshToken={freshToken}
                 canExecute={isFreshCommercialTap}
-                tapState={isQrScan || isSnapshotView || isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"}
+                tapState={isManualOpenedState ? "manual_opened" : isQrScan || isSnapshotView || isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"}
                 rightsPolicy={result.rightsPolicy || result.condition}
                 allowedActions={allowedActions}
                 blockedActions={blockedActions}
@@ -1598,45 +1694,63 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           {/* Sommelier and trivia for QR or verified NFC taps */}
           {showEngagementSuite && (
-            <div id="qr-engagement">
-              <QREngagementSuite
-                wineryName={engagementWineryName}
-                productName={productDisplayName}
-                tenantSlug={engagementTenantSlug}
-                eventId={eventId || null}
-                bid={bid || null}
-                allowedActions={allowedActions}
-                blockedActions={blockedActions}
-              />
-            </div>
+            <details id="qr-engagement" className="group scroll-mt-24 overflow-hidden rounded-2xl border border-violet-300/20 bg-violet-500/5">
+              <summary className="cursor-pointer list-none px-4 py-4 text-sm font-black text-violet-100 marker:content-none">
+                Tu experiencia con {tenantDisplayName}
+                <span className="mt-1 block text-[11px] font-normal leading-5 text-slate-400">Beneficios, puntos y recomendaciones opcionales.</span>
+              </summary>
+              <div className="border-t border-violet-300/10 p-2">
+                <QREngagementSuite
+                  wineryName={engagementWineryName}
+                  productName={productDisplayName}
+                  tenantSlug={engagementTenantSlug}
+                  eventId={eventId || null}
+                  bid={bid || null}
+                  allowedActions={allowedActions}
+                  blockedActions={blockedActions}
+                />
+              </div>
+            </details>
           )}
 
         </section> : null}
 
-        {/* 4. Observed SUN locations. Declared origins never become heat density. */}
-        <section className="sun-location-section rounded-3xl border border-white/5 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg space-y-4" aria-labelledby="sun-location-title">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">
-              Mapa de actividad
+        {/* 4. Location is optional and progressive. IP-derived coordinates are
+            never rendered as the phone position. */}
+        <details id="geo-trace" className="sun-location-section group scroll-mt-24 overflow-hidden rounded-3xl border border-white/5 bg-slate-900/30 backdrop-blur-md shadow-lg">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 marker:content-none">
+            <span>
+              <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">Ubicación y evidencia</span>
+              <strong className="mt-1 block text-sm text-white">
+                {hasConsentedDeviceLocation ? "Zona de este teléfono registrada" : "Ubicación del teléfono sin confirmar"}
+              </strong>
+              <small className="mt-1 block text-[10px] font-normal leading-4 text-slate-400">
+                {hasConsentedDeviceLocation ? "Abrí para ver el mapa y la fuente del dato." : "No usamos la ubicación por IP como si fuera la del teléfono."}
+              </small>
             </span>
-            <h2 id="sun-location-title" className="mt-1 text-lg font-black text-white">Dónde se registraron los toques disponibles</h2>
-            <p className="mt-2 text-xs leading-5 text-slate-400">
-              Mostramos sólo ubicaciones recibidas en lecturas reales. El origen informado por la marca aparece como referencia; ninguna línea implica un recorrido físico.
-            </p>
-          </div>
+            <ArrowDown className="h-4 w-4 shrink-0 text-cyan-300 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+
+          <div className="space-y-4 border-t border-white/5 p-5">
+            <div>
+              <h2 className="text-lg font-black text-white">Fuentes de ubicación</h2>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                Separamos la zona compartida por este teléfono del origen que informó la marca. No inferimos un recorrido físico entre ambos puntos.
+              </p>
+            </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
             <article className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-cyan-300">Este toque</span>
-                  <strong className="mt-1 block text-sm text-white">{tapDisplay}</strong>
+                  <strong className="mt-1 block text-sm text-white">{hasConsentedDeviceLocation ? tapDisplay : "Zona no compartida"}</strong>
                 </div>
-                <span className="rounded-full border border-cyan-300/25 px-2 py-1 text-[9px] font-bold text-cyan-100">{tapLocationEvidenceKind === "measured" ? "DISPOSITIVO" : tapLocationEvidenceKind === "approximate" ? "APROXIMADA" : "SIN UBICACIÓN"}</span>
+                <span className="rounded-full border border-cyan-300/25 px-2 py-1 text-[9px] font-bold text-cyan-100">{hasConsentedDeviceLocation ? "COMPARTIDA" : "OPCIONAL"}</span>
               </div>
-              <p className="mt-2 text-[11px] font-semibold text-cyan-100">{tapLocationPrecisionLabel}</p>
-              <p className="mt-1 text-[10px] leading-4 text-slate-400">{tapLocationSourceDetail}</p>
-              {tapMapHref ? (
+              <p className="mt-2 text-[11px] font-semibold text-cyan-100">{hasConsentedDeviceLocation ? tapLocationPrecisionLabel : "El teléfono todavía no compartió su zona"}</p>
+              <p className="mt-1 text-[10px] leading-4 text-slate-400">{hasConsentedDeviceLocation ? tapLocationSourceDetail : "La estimación por red queda fuera del mapa público para evitar un pin engañoso."}</p>
+              {hasConsentedDeviceLocation && tapMapHref ? (
                 <a href={tapMapHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-300/25 bg-white/5 px-3 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
                   Abrir en el mapa <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 </a>
@@ -1652,7 +1766,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <span className="rounded-full border border-emerald-300/25 px-2 py-1 text-[9px] font-bold text-emerald-100">{resolvedOriginCoords ? "DECLARADA" : "SIN GEO"}</span>
               </div>
               <p className="mt-2 text-[11px] font-semibold text-emerald-100">{originLocationLabel}</p>
-              <p className="mt-1 text-[10px] leading-4 text-slate-400">Se muestra como referencia y no altera la intensidad de los toques.</p>
+              <p className="mt-1 text-[10px] leading-4 text-slate-400">Es un dato declarado. No demuestra dónde está el producto ahora ni cómo llegó hasta allí.</p>
               {originMapHref ? (
                 <a href={originMapHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-300/25 bg-white/5 px-3 text-xs font-bold text-emerald-100 transition hover:bg-emerald-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
                   Ver origen en el mapa <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1661,38 +1775,27 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </article>
           </div>
 
-          <TapPrecisionTelemetry
-            endpoint={telemetryEndpoint}
-            enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
-            bid={bid}
-            uid={uid || null}
-            eventId={eventId || null}
-            freshToken={freshToken}
-            readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
-            contextStatus={result.status?.code || null}
-          />
-
-          <div id="geo-trace" className="rounded-2xl overflow-hidden border border-white/5 bg-slate-950 p-2 shadow-inner scroll-mt-24">
-            {opsMapPoints.length ? (
+          <div id="tap-location-map" className="sun-consumer-map-shell rounded-2xl overflow-hidden border border-white/5 p-2">
+            {(isDemoPreview ? opsMapPoints : consumerCurrentTapMapPoints).length ? (
               <GlobalOpsMap
-                title={isDemoPreview ? "Escenario geográfico del Demo Lab" : "Lecturas SUN con ubicación"}
-                subtitle={isDemoPreview ? "Datos simulados y claramente identificados" : "Intensidad construida solo con eventos observados"}
-                points={opsMapPoints}
+                title={isDemoPreview ? "Escenario geográfico del Demo Lab" : "Zona compartida por este teléfono"}
+                subtitle={isDemoPreview ? "Datos simulados y claramente identificados" : "Una ubicación aproximada, con su margen de precisión"}
+                points={isDemoPreview ? opsMapPoints : consumerCurrentTapMapPoints}
                 routes={isDemoPreview ? opsMapRoutes : []}
                 mode={isDemoPreview ? "demo" : "global"}
-                selectedPointId={opsMapPoints.find((point) => point.role === "tap")?.id || opsMapPoints[0]?.id}
+                selectedPointId={(isDemoPreview ? opsMapPoints : consumerCurrentTapMapPoints).find((point) => point.role === "tap")?.id}
                 playbackEnabled={isDemoPreview}
-                chrome={isDemoPreview ? "full" : "compact"}
-                initialView={!isDemoPreview && canShowSunIntensity ? "intensity" : "events"}
-                allowViewToggle={!isDemoPreview && canShowSunIntensity}
-                sourceLabel={isDemoPreview ? "Demo Lab · datos simulados" : "API SUN · eventos con ubicación reportada"}
+                chrome={isDemoPreview ? "full" : "consumer"}
+                initialView="events"
+                allowViewToggle={false}
+                sourceLabel={isDemoPreview ? "Demo Lab · datos simulados" : "Zona aproximada compartida con permiso"}
                 locationNote={isDemoPreview ? "Escenario ilustrativo; no representa lecturas reales." : `${tapLocationPrecisionLabel}. ${tapLocationSourceDetail}.`}
               />
             ) : (
               <div className="px-5 py-8 text-center" role="status">
                 <span aria-hidden="true" className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-300/20 bg-white/5 text-lg">⌖</span>
-                <p className="mt-3 text-sm font-black text-slate-200">Todavía no hay una ubicación para mostrar</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-500">Estas lecturas todavía no incluyen una ubicación válida. No completamos ciudades ni coordenadas con datos inventados.</p>
+                <p className="mt-3 text-sm font-black text-slate-200">El mapa espera permiso del teléfono</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-500">Usá “Usar mi zona actual” arriba. Hasta entonces no dibujamos una estimación por IP como si fuera tu ubicación.</p>
               </div>
             )}
           </div>
@@ -1747,15 +1850,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 Esta tarjeta muestra una muestra puntual. Un historial sólo se publica cuando el lote aporta una serie temporal verificable.
               </p>
             </div>
-          ) : (
-            <div role="status" className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4">
-              <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-500">Monitoreo IoT</span>
-              <p className="mt-1 text-xs font-semibold text-slate-300">Sin telemetría IoT asociada a este lote.</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
-                La identidad NFC y la bitácora de eventos siguen disponibles; no inferimos temperatura, humedad ni golpes sin evidencia.
-              </p>
-            </div>
-          )}
+          ) : null}
 
           {/* Wine content uses producer data, or explicitly labelled Demo Lab fixtures. */}
           {isWineProduct && (
@@ -1829,7 +1924,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               ))}
             </div>
           </div>
-        </section>
+          </div>
+        </details>
 
         {/* 5. Technical Specifications (Accordion) */}
         <section>
@@ -1950,41 +2046,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       </div>
 
-      {/* Floating sommelier trigger for mobile */}
-      {showEngagementSuite && (
-        <a 
-          href="#qr-engagement" 
-          className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white shadow-lg hover:bg-violet-500 active:scale-95 transition-all lg:hidden"
-        >
-          <MessageCircle className="h-4 w-4" aria-hidden="true" /> Sommelier IA
-        </a>
-      )}
-
       {/* Fixed Bottom Quick Nav Bar */}
       <nav className="sun-bottom-nav fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[390px] px-3 z-30 lg:hidden" aria-label="Accesos rápidos del pasaporte">
-        <div className="grid grid-cols-4 gap-1.5 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-xl shadow-xl">
-          <a href={productSectionHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+        <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-xl shadow-xl">
+          <a href={productSectionHref} className="flex min-h-12 flex-col items-center justify-center rounded-xl py-1.5 text-slate-300 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
             <Package className="h-4 w-4" aria-hidden="true" />
-            <span className="text-[8px] font-bold mt-0.5">Ficha</span>
+            <span className="mt-0.5 text-[11px] font-bold">Producto</span>
           </a>
-          <a href={showEngagementSuite ? "#qr-engagement" : "#geo-trace"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <MapPin className="h-4 w-4" aria-hidden="true" />
-            <span className="text-[8px] font-bold mt-0.5">Ruta</span>
+          <a href={isAgroDpp ? "#agro-dpp" : isOpenedAttentionState ? reportProblemHref : "#consumer-choice"} className="flex min-h-12 flex-col items-center justify-center rounded-xl py-1.5 text-slate-300 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+            {isOpenedAttentionState ? <MessageCircle className="h-4 w-4" aria-hidden="true" /> : <LockKeyhole className="h-4 w-4" aria-hidden="true" />}
+            <span className="mt-0.5 text-[11px] font-bold">{isOpenedAttentionState ? "Avisar" : "Acciones"}</span>
           </a>
-          {postTapQuickActions.marketplace ? (
-            <Link href={tapMarketplaceHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-              <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-              <span className="text-[8px] font-bold mt-0.5">Comprar</span>
-            </Link>
-          ) : (
-            <a href="#geo-trace" className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-              <Search className="h-4 w-4" aria-hidden="true" />
-              <span className="text-[8px] font-bold mt-0.5">Evidencia</span>
-            </a>
-          )}
-          <a href={isAgroDpp ? "#agro-dpp" : showEngagementSuite ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <LockKeyhole className="h-4 w-4" aria-hidden="true" />
-            <span className="text-[8px] font-bold mt-0.5">Acciones</span>
+          <a href="#geo-trace" className="flex min-h-12 flex-col items-center justify-center rounded-xl py-1.5 text-slate-300 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+            <Search className="h-4 w-4" aria-hidden="true" />
+            <span className="mt-0.5 text-[11px] font-bold">Evidencia</span>
           </a>
         </div>
       </nav>

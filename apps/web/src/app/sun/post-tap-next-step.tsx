@@ -36,6 +36,7 @@ type PostTapNextStepProps = {
   certificateHref?: string | null;
   walletHref: string;
   reportProblemHref: string;
+  sealState?: "closed" | "opened" | "unknown";
   allowedActions?: string[];
   blockedActions?: string[];
 };
@@ -114,6 +115,7 @@ export function PostTapNextStep({
   certificateHref,
   walletHref,
   reportProblemHref,
+  sealState = "unknown",
   allowedActions = [],
   blockedActions = [],
 }: PostTapNextStepProps) {
@@ -123,6 +125,29 @@ export function PostTapNextStep({
   const supportsRewards = (journeyKind === "wine" || journeyKind === "consumer") && available.rewards;
   const supportsWallet = (journeyKind === "wine" || journeyKind === "consumer")
     && available.wallet;
+  const isOpenedSeal = sealState === "opened";
+  const isClosedSeal = sealState === "closed";
+  const guidedBadge = isOpenedSeal ? "Atención al envase" : copy.badge;
+  const guidedTitle = isOpenedSeal
+    ? "¿Abriste vos el sello?"
+    : isClosedSeal
+      ? "El sello no registra aperturas. ¿Qué querés hacer?"
+      : copy.title;
+  const guidedSummary = isOpenedSeal
+    ? "Si lo abriste recién y el envase está bien, podés continuar. Si no lo abriste o ves algún daño, no uses el producto y avisá a la marca."
+    : isClosedSeal
+      ? "Conocé el producto y, si ya lo compraste, activá garantía, beneficios o atención de la marca. Participar del club siempre es opcional."
+      : copy.summary;
+  const guidedPrimary = isOpenedSeal
+    ? "Lo abrí yo: continuar"
+    : isClosedSeal
+      ? "Activar garantía o beneficios"
+      : copy.primary;
+  const guidedPrimaryHelp = isOpenedSeal
+    ? "Continuá sólo si reconocés la apertura y el envase está en condiciones."
+    : isClosedSeal
+      ? "La marca puede pedir un canal de contacto y un comprobante antes de activar la postventa."
+      : copy.primaryHelp;
 
   if (!isFreshTap) {
     return (
@@ -159,19 +184,19 @@ export function PostTapNextStep({
   }
 
   const secondaryActions = [
+    ...(isOpenedSeal ? [{
+      key: "report",
+      href: reportProblemHref,
+      label: "No lo abrí: avisar a la marca",
+      help: "Registrá un ticket de revisión con los datos de esta lectura.",
+      icon: AlertTriangle,
+    }] : []),
     ...(available.trace ? [{
       key: "trace",
       href: "#geo-trace",
       label: journeyKind === "logistics" ? "Revisar ruta y eventos" : "Ver origen y trazabilidad",
       help: "Separá datos declarados, eventos observados y pruebas públicas.",
       icon: MapPinned,
-    }] : []),
-    ...(certificateHref && available.certificate ? [{
-      key: "certificate",
-      href: certificateHref,
-      label: "Abrir certificado verificable",
-      help: "Consultá el comprobante público y su evidencia técnica.",
-      icon: BadgeCheck,
     }] : []),
     ...(!available.primary && available.warranty ? [{
       key: "warranty",
@@ -194,6 +219,13 @@ export function PostTapNextStep({
       help: "Explorá opciones comerciales sin alterar la evidencia del producto.",
       icon: Store,
     }] : []),
+    ...(certificateHref && available.certificate ? [{
+      key: "certificate",
+      href: certificateHref,
+      label: "Ver certificado digital",
+      help: "Consultá el comprobante y la información que lo respalda.",
+      icon: BadgeCheck,
+    }] : []),
     ...(supportsWallet ? [{
       key: "wallet",
       href: walletHref,
@@ -202,40 +234,57 @@ export function PostTapNextStep({
       icon: WalletCards,
     }] : []),
   ];
+  const featuredSecondaryActions = secondaryActions.slice(0, 2);
+  const additionalSecondaryActions = secondaryActions.slice(2);
+
+  const renderSecondaryAction = (action: (typeof secondaryActions)[number]) => {
+    const Icon = action.icon;
+    return (
+      <Link key={action.key} href={action.href} className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span>
+          <strong className="block text-xs font-black leading-4">{action.label}</strong>
+          <small className="mt-0.5 block text-[10px] leading-4 text-slate-400">{action.help}</small>
+        </span>
+      </Link>
+    );
+  };
 
   return (
-    <section data-testid="post-tap-next-step" className="rounded-3xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 via-slate-950/85 to-cyan-500/10 p-5 shadow-xl" aria-labelledby="post-tap-next-step-title">
+    <section data-testid="post-tap-next-step" className={`rounded-3xl border p-5 shadow-xl ${isOpenedSeal ? "border-amber-300/30 bg-gradient-to-br from-amber-500/12 via-slate-950/85 to-orange-500/10" : "border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 via-slate-950/85 to-cyan-500/10"}`} aria-labelledby="post-tap-next-step-title">
       <header>
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">
-          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-          {copy.badge}
+        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${isOpenedSeal ? "border-amber-300/30 bg-amber-500/10 text-amber-200" : "border-emerald-300/20 bg-emerald-500/10 text-emerald-200"}`}>
+          {isOpenedSeal ? <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}
+          {guidedBadge}
         </span>
-        <h2 id="post-tap-next-step-title" className="mt-3 text-lg font-black leading-tight text-white">{copy.title}</h2>
-        <p className="mt-2 text-xs leading-5 text-slate-300">{copy.summary}</p>
+        <h2 id="post-tap-next-step-title" className="mt-3 text-lg font-black leading-tight text-white">{guidedTitle}</h2>
+        <p className="mt-2 text-xs leading-5 text-slate-300">{guidedSummary}</p>
       </header>
 
       <ol className="mt-4 grid gap-2 sm:grid-cols-3" aria-label="Progreso después del tap">
         <li className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-3">
           <span className="text-[9px] font-black uppercase tracking-wider text-emerald-200">1 · listo</span>
-          <strong className="mt-1 block text-xs text-white">Lectura analizada</strong>
+          <strong className="mt-1 block text-xs text-white">Lectura lista</strong>
         </li>
         <li className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-3" aria-current="step">
           <span className="text-[9px] font-black uppercase tracking-wider text-cyan-200">2 · ahora</span>
-          <strong className="mt-1 block text-xs text-white">Elegí tu objetivo</strong>
+          <strong className="mt-1 block text-xs text-white">Elegí una opción</strong>
         </li>
         <li className="rounded-2xl border border-white/10 bg-slate-950/45 p-3">
           <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">3 · después</span>
-          <strong className="mt-1 block text-xs text-white">Registro auditable</strong>
+          <strong className="mt-1 block text-xs text-white">Confirmación si hace falta</strong>
         </li>
       </ol>
 
       {available.primary ? (
-        <Link href={primaryActionHref} className="mt-4 flex min-h-16 items-center justify-between gap-3 rounded-2xl bg-emerald-300 p-4 text-slate-950 shadow-[0_0_22px_rgba(110,231,183,0.18)] transition hover:bg-emerald-200 active:scale-[0.99]">
+        <Link href={primaryActionHref} className={`mt-4 flex min-h-16 items-center justify-between gap-3 rounded-2xl p-4 text-slate-950 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${isOpenedSeal ? "bg-amber-300 shadow-[0_0_22px_rgba(252,211,77,0.18)] hover:bg-amber-200" : "bg-emerald-300 shadow-[0_0_22px_rgba(110,231,183,0.18)] hover:bg-emerald-200"}`}>
           <span className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
             <span className="text-left">
-              <strong className="block text-sm font-black leading-tight">{copy.primary}</strong>
-              <small className="mt-1 block text-[10px] font-semibold leading-4 text-slate-800">{copy.primaryHelp}</small>
+              <strong className="block text-sm font-black leading-tight">{guidedPrimary}</strong>
+              <small className="mt-1 block text-[10px] font-semibold leading-4 text-slate-800">{guidedPrimaryHelp}</small>
             </span>
           </span>
           <ChevronRight className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -243,21 +292,19 @@ export function PostTapNextStep({
       ) : null}
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        {secondaryActions.map((action) => {
-          const Icon = action.icon;
-          return (
-            <Link key={action.key} href={action.href} className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-white transition hover:border-cyan-300/25 hover:bg-slate-900">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">
-                <Icon className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <span>
-                <strong className="block text-xs font-black leading-4">{action.label}</strong>
-                <small className="mt-0.5 block text-[10px] leading-4 text-slate-400">{action.help}</small>
-              </span>
-            </Link>
-          );
-        })}
+        {featuredSecondaryActions.map(renderSecondaryAction)}
       </div>
+
+      {additionalSecondaryActions.length ? (
+        <details className="mt-3 rounded-2xl border border-white/10 bg-slate-950/35 p-2">
+          <summary className="cursor-pointer rounded-xl px-2 py-2 text-xs font-black text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+            Más opciones de la marca
+          </summary>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {additionalSecondaryActions.map(renderSecondaryAction)}
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

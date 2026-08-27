@@ -95,11 +95,11 @@ test("overview uses the canonical risk taxonomy and excludes lifecycle outcomes"
 });
 
 test("trivia completion reserves attempt, points and projections in one data-modifying CTE", () => {
-  const atomicStart = trivia.indexOf("WITH locked_member AS MATERIALIZED");
+  const atomicStart = trivia.indexOf("WITH tap_rights AS MATERIALIZED");
   const atomicEnd = trivia.indexOf("SELECT * FROM finalized_attempt", atomicStart);
   const atomic = trivia.slice(atomicStart, atomicEnd);
   assert.ok(atomicStart > 0 && atomicEnd > atomicStart);
-  for (const name of ["reserved_attempt", "reserved_ledger", "updated_member", "projected_membership", "finalized_attempt"]) {
+  for (const name of ["tap_rights", "locked_member", "reserved_attempt", "reserved_ledger", "updated_member", "projected_membership", "finalized_attempt"]) {
     assert.match(atomic, new RegExp(name));
   }
   assert.doesNotMatch(trivia, /points_balance = points_balance \+/);
@@ -213,17 +213,19 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /20260802300000_0095_sun_tt_conflict_target\.sql/);
   assert.match(dbRuntime, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
   assert.match(dbRuntime, /20260802320000_0097_sun_demo_replay_isolation\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 45);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATION, "20260802320000_0097_sun_demo_replay_isolation.sql");
+  assert.match(dbRuntime, /20260827010000_0098_sun_ticket_tenant_routing\.sql/);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 46);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATION, "20260827010000_0098_sun_ticket_tenant_routing.sql");
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
   assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.every(isValidSchemaMigrationId), true);
   assert.equal(isValidSchemaMigrationId("20260802185000_0083b_vault_artifact_status_bridge.sql"), true);
   assert.equal(isValidSchemaMigrationId("20260802310000_0096_enterprise_rbac_risk_truth.sql"), true);
   assert.equal(isValidSchemaMigrationId("20260802320000_0097_sun_demo_replay_isolation.sql"), true);
+  assert.equal(isValidSchemaMigrationId("20260827010000_0098_sun_ticket_tenant_routing.sql"), true);
   assert.equal(isValidSchemaMigrationId("20260802310000_0096b.sql"), false);
   assert.equal(isValidSchemaMigrationId("../20260802310000_0096_enterprise_rbac_risk_truth.sql"), false);
-  const productionLedgerWithout0097 = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.slice(0, -1);
-  const requiredPositions = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.map((id) => productionLedgerWithout0097.indexOf(id));
+  const productionLedgerWithout0098 = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.slice(0, -1);
+  const requiredPositions = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.map((id) => productionLedgerWithout0098.indexOf(id));
   assert.equal(requiredPositions.at(-1), -1);
   assert.equal(
     requiredPositions.every((position, index) => position >= 0 && (index === 0 || position > requiredPositions[index - 1])),
@@ -274,6 +276,7 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbPreflight, /20260802300000_0095_sun_tt_conflict_target\.sql/);
   assert.match(dbPreflight, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
   assert.match(dbPreflight, /20260802320000_0097_sun_demo_replay_isolation\.sql/);
+  assert.match(dbPreflight, /20260827010000_0098_sun_ticket_tenant_routing\.sql/);
   assert.match(dbPreflight, /has_supplier_carrier_key_scope/);
   assert.match(dbPreflight, /can_probe_supplier_order_keyless_v1/);
   assert.match(dbPreflight, /has_supplier_keyless_qa_activation/);

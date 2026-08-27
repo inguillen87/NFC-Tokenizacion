@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "./db";
 import { ensureLoyaltySchema } from "./loyalty-schema";
+import { evaluateTapCommercialRights } from "./tap-commercial-rights";
 
 type TapEligibility = {
   award: boolean;
@@ -11,10 +12,18 @@ const BLOCKED_RESULTS = new Set(["REPLAY_SUSPECT", "INVALID", "NOT_ACTIVE", "NOT
 
 export async function getTapEvent(eventId: string) {
   const rows = await sql/*sql*/`
-    SELECT e.id, e.tenant_id, e.batch_id, e.uid_hex, e.sdm_read_ctr, e.result, e.reason, e.created_at, e.city, e.country_code, e.geo_lat, e.geo_lng, t.slug AS tenant_slug, b.bid
+    SELECT e.id, e.tenant_id, e.batch_id, e.uid_hex, e.sdm_read_ctr, e.result, e.reason, e.created_at, e.city, e.country_code, e.geo_lat, e.geo_lng,
+           manual_override.tamper_status AS manual_tamper_status,
+           manual_override.reason AS manual_tamper_reason,
+           manual_override.source AS manual_tamper_source,
+           manual_override.updated_at AS manual_tamper_updated_at,
+           t.slug AS tenant_slug, b.bid
     FROM events e
     JOIN tenants t ON t.id = e.tenant_id
     LEFT JOIN batches b ON b.id = e.batch_id
+    LEFT JOIN tag_manual_tamper_overrides manual_override
+      ON manual_override.batch_id = e.batch_id
+     AND UPPER(manual_override.uid_hex) = UPPER(e.uid_hex)
     WHERE e.id = ${eventId}
     LIMIT 1
   `;
@@ -59,10 +68,11 @@ export async function getOrCreateMember(input: { tenantId: string; programId: st
 }
 
 export async function evaluateLoyaltyForTap(input: { eventId: string; memberId: string; program: any; event: any }): Promise<TapEligibility> {
-  await ensureLoyaltySchema();
-  if (!input.event || BLOCKED_RESULTS.has(String(input.event.result || "").toUpperCase())) {
+  const commercialRights = evaluateTapCommercialRights(input.event);
+  if (!input.event || !commercialRights.allowed || BLOCKED_RESULTS.has(String(input.event.result || "").toUpperCase())) {
     return { award: false, reason: "blocked_validation" };
   }
+  await ensureLoyaltySchema();
   const idem = `tap:${input.eventId}:member:${input.memberId}`;
   const idemRows = await sql/*sql*/`SELECT id FROM points_ledger WHERE idempotency_key = ${idem} LIMIT 1`;
   if (idemRows[0]) return { award: false, reason: "already_awarded" };
@@ -104,9 +114,29 @@ export async function awardPoints(input: { tenantId: string; programId: string; 
   const idempotencyKey = String(input.idempotencyKey || "").trim().slice(0, 240);
   if (!idempotencyKey) return { awarded: false, duplicate: false, entry: null, error: "idempotency_key_required" as const };
   const rows = await sql/*sql*/`
-    WITH locked_member AS MATERIALIZED (
+    WITH tap_rights AS MATERIALIZED (
+      SELECT true AS allowed
+      WHERE ${delta} < 0
+         OR ${input.tapEventId || null}::bigint IS NULL
+         OR EXISTS (
+           SELECT 1
+           FROM events source_event
+           LEFT JOIN tag_manual_tamper_overrides manual_override
+             ON manual_override.batch_id = source_event.batch_id
+            AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
+           WHERE source_event.id = ${input.tapEventId || null}::bigint
+             AND UPPER(COALESCE(source_event.result, '')) NOT IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
+             AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
+             AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+             AND UPPER(COALESCE(manual_override.tamper_status, '')) NOT IN ('MANUAL_OPENED', 'OPENED')
+             AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
+             AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+         )
+    ),
+    locked_member AS MATERIALIZED (
       SELECT id, points_balance
       FROM loyalty_members
+      JOIN tap_rights ON tap_rights.allowed = true
       WHERE id = ${input.memberId}
         AND tenant_id = ${input.tenantId}
         AND program_id = ${input.programId}
@@ -201,7 +231,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
   await ensureLoyaltySchema();
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false, status: 404, error: "event_not_found" as const };
-  if (BLOCKED_RESULTS.has(String(event.result || "").toUpperCase())) {
+  if (!evaluateTapCommercialRights(event).allowed || BLOCKED_RESULTS.has(String(event.result || "").toUpperCase())) {
     return { ok: false, status: 403, error: "tap_blocked" as const };
   }
 
@@ -222,6 +252,10 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         ON member.id = ${input.memberId}
        AND member.tenant_id = reward.tenant_id
        AND member.program_id = reward.program_id
+      JOIN events source_event ON source_event.id = ${String(event.id)}::bigint
+      LEFT JOIN tag_manual_tamper_overrides manual_override
+        ON manual_override.batch_id = source_event.batch_id
+       AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
       WHERE reward.id = ${input.rewardId}
         AND reward.tenant_id = ${event.tenant_id}
         AND member.status IN ('enrolled', 'verified')
@@ -230,6 +264,12 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         AND reward.starts_at <= now()
         AND (reward.ends_at IS NULL OR reward.ends_at >= now())
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
+        AND UPPER(COALESCE(source_event.result, '')) NOT IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
+        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+        AND UPPER(COALESCE(manual_override.tamper_status, '')) NOT IN ('MANUAL_OPENED', 'OPENED')
+        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_OPENED%'
       FOR UPDATE OF reward, member
     ),
     reserved_ledger AS MATERIALIZED (

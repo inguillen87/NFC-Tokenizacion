@@ -7,6 +7,7 @@ const reportProblem = await readFile(new URL("../src/app/public/cta/report-probl
 const provenance = await readFile(new URL("../src/app/public/cta/provenance/route.ts", import.meta.url), "utf8");
 const demoCta = await readFile(new URL("../src/lib/demo-cta.ts", import.meta.url), "utf8");
 const sun = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
+const ticketMigration = await readFile(new URL("../db/migrations/20260827010000_0098_sun_ticket_tenant_routing.sql", import.meta.url), "utf8");
 
 test("warranty CTA records a tenant-policy review request and never confirms coverage", () => {
   assert.match(registerWarranty, /target\.warrantyPolicy/);
@@ -24,12 +25,19 @@ test("warranty CTA records a tenant-policy review request and never confirms cov
   assert.doesNotMatch(registerWarranty, /recordDemoCta\("register_warranty"/);
 });
 
-test("problem report records a review request without inventing a support ticket", () => {
+test("problem report creates a real support ticket before confirming the user action", () => {
   assert.match(reportProblem, /recordDemoCta\("problem_report_request"/);
-  assert.match(reportProblem, /request_status: "pending_review"/);
-  assert.match(reportProblem, /outcome: "request_recorded"/);
-  assert.match(reportProblem, /ticket_created: false/);
-  assert.match(reportProblem, /real_ticket_service: false/);
+  assert.match(reportProblem, /INSERT INTO tickets/);
+  assert.match(reportProblem, /tenant_id, bid, uid_hex, tap_event_id, category/);
+  assert.match(reportProblem, /tenant_assigned: Boolean\(ticket\?\.tenant_id\)/);
+  assert.match(reportProblem, /tenant_id: target\.tenantId \|\| undefined/);
+  assert.match(reportProblem, /source\)\s*[\s\S]*'sun_public_report'/);
+  assert.match(reportProblem, /reason: "ticket_persistence_unavailable"/);
+  assert.match(reportProblem, /outcome: "ticket_created"/);
+  assert.match(reportProblem, /ticket_created: true/);
+  assert.match(reportProblem, /real_ticket_service: true/);
+  assert.match(ticketMigration, /ADD COLUMN IF NOT EXISTS bid text/);
+  assert.match(ticketMigration, /idx_tickets_sun_identity/);
   assert.doesNotMatch(reportProblem, /recordDemoCta\("report_problem"/);
 });
 
@@ -37,8 +45,12 @@ test("public lifecycle and SUN UI preserve request-only semantics", () => {
   assert.match(demoCta, /stage: "warranty_request_recorded", status: warrantyAction \? "pending_review"/);
   assert.doesNotMatch(demoCta, /stage: "warranty_registered"/);
   assert.match(provenance, /warranty_registered: false/);
-  assert.match(provenance, /support_ticket_created: false/);
-  assert.match(provenance, /Recorded demo requests are pending review/);
+  assert.match(provenance, /support_ticket_created: supportTicketCreated/);
+  assert.match(provenance, /FROM tickets/);
+  assert.match(provenance, /status: supportTicketCreated \? "created"/);
+  assert.match(demoCta, /status: supportTicketCreated \? "created"/);
+  assert.match(provenance, /ticket_service: supportTicketCreated \? "tickets" : "not_connected"/);
+  assert.match(provenance, /A support ticket was created for the reported issue/);
   assert.match(sun, /solicitud registrada y pendiente de revision; no confirma garantia ni ticket/);
 });
 

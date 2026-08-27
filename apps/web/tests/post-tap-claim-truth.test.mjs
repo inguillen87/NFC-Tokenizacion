@@ -19,8 +19,10 @@ test("post-tap copy separates contact-channel confirmation from approved purchas
 });
 
 test("post-tap copy qualifies TT, GPS and on-chain evidence", () => {
-  assert.match(source, /El tag reporto TT abierto/);
-  assert.match(source, /Su significado fisico depende de la integracion al packaging/);
+  assert.match(source, /La etiqueta digital informó una apertura/);
+  assert.match(source, /Un operador informó una apertura/);
+  assert.match(source, /La etiqueta digital no la detectó automáticamente/);
+  assert.match(source, /no habilita propiedad, garantía ni tokenización/);
   assert.match(source, /señales auxiliares de auditoria/);
   assert.match(source, /No prueban identidad, compra ni ubicacion fisica del producto por si solos/);
   assert.match(source, /checked=\{shareApproximateLocation\}/);
@@ -31,6 +33,7 @@ test("post-tap copy qualifies TT, GPS and on-chain evidence", () => {
   assert.match(source, /Una transaccion confirmada puede registrar/);
   assert.match(source, /no prueba por si sola custodia ni contenido fisico/);
   assert.doesNotMatch(source, /Sello abierto verificado/);
+  assert.doesNotMatch(source, /MANUAL_OPENED[^\n]{0,120}(?:Apertura detectada|Sello abierto verificado)/i);
   assert.doesNotMatch(source, /Tap fresco verificado/);
   assert.doesNotMatch(source, /llaves de seguridad cruzadas/);
   assert.doesNotMatch(source, /El token ancla la apertura verificada/);

@@ -57,6 +57,6 @@ export function mapSdkVerdict(result: unknown): "VALID" | "REPLAY_SUSPECT" | "TA
 export function mapSealStatus(value: unknown): "CLOSED" | "OPENED" | "UNKNOWN" {
   const status = clean(value).toUpperCase();
   if (status === "CLOSED") return "CLOSED";
-  if (status === "OPENED" || status === "OPENED_PREVIOUSLY" || status === "MANUAL_OPENED") return "OPENED";
+  if (status === "OPENED" || status === "OPENED_PREVIOUSLY") return "OPENED";
   return "UNKNOWN";
 }
