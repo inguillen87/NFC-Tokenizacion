@@ -635,10 +635,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   // estimate captured when the tap URL opened. If reverse locality lookup has
   // no match, keep the GPS point explicitly generic instead of attaching the
   // older IP city/country to these coordinates.
-  const currentTapCity = result.tapContext?.city
-    || (hasCurrentTapCoords ? "Zona aproximada" : result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city || "Tap");
-  const currentTapCountry = result.tapContext?.country
-    || (hasCurrentTapCoords ? "--" : result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country || "--");
+  // A city without a WGS84 pair can be an edge/network hint or an older
+  // provenance value. It must never become the location of this physical tap.
+  const currentTapCity = hasCurrentTapCoords
+    ? result.tapContext?.city || "Zona aproximada"
+    : "Tap";
+  const currentTapCountry = hasCurrentTapCoords
+    ? result.tapContext?.country || "--"
+    : "--";
   const currentTapPoint = currentTapLat != null && currentTapLng != null
     ? [{
       city: currentTapCity,
@@ -868,6 +872,53 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const summaryLocationTime = result.tapContext?.localTime || result.tapContext?.utcTime || "Hora no registrada";
   const hasConsumerComparableDistance = originToTapDistance != null
     && (isDemoPreview || hasConfirmedBrowserLocation);
+  const locationSectionTitle = isDemoPreview
+    ? "Origen y ubicación de muestra"
+    : !hasCurrentTapCoords
+      ? "Origen declarado"
+      : isNetworkEstimatedLocation
+        ? "Origen y zona estimada por red"
+        : hasConfirmedBrowserLocation
+          ? "Origen y zona compartida"
+          : "Origen y ubicación reportada";
+  const locationSectionDescription = isDemoPreview
+    ? "Los puntos y la conexión son simulados y no representan un recorrido físico."
+    : !hasCurrentTapCoords
+      ? "El mapa muestra únicamente el origen declarado. Esta lectura no informó coordenadas y no se reutiliza una ciudad histórica como ubicación actual."
+      : isNetworkEstimatedLocation
+        ? "La zona de red es una referencia amplia de la conexión: no es GPS, no ubica el producto y no prueba dónde ocurrió el tap."
+        : hasConfirmedBrowserLocation
+          ? "La zona fue compartida por el teléfono después del tap y con permiso. Se muestra separada del origen, sin inventar un recorrido."
+          : "La fuente y la precisión quedan explicadas sin inventar una ruta. La coordenada informada por la integración se mantiene separada del origen.";
+  const tapLocationStoryStep = isDemoPreview && hasCurrentTapCoords
+    ? {
+      label: "Se simuló",
+      title: `${originDisplay} -> ${tapDisplay}`,
+      body: `${distanceDisplay} de separación lineal entre dos puntos de muestra; no representa un recorrido físico.`,
+    }
+    : !hasCurrentTapCoords
+      ? {
+        label: "Ubicación",
+        title: "No compartida en esta lectura",
+        body: "La validación NFC quedó registrada sin coordenadas. Las ciudades del historial o de la red no se atribuyen a este tap.",
+      }
+      : isNetworkEstimatedLocation
+        ? {
+          label: "La red estimó",
+          title: `Zona amplia de la conexión: ${tapDisplay}`,
+          body: "Es una referencia técnica de red/IP, no GPS del teléfono. No ubica el producto ni prueba dónde ocurrió el tap.",
+        }
+        : hasConfirmedBrowserLocation
+          ? {
+            label: "Se compartió",
+            title: `Zona aproximada posterior al tap: ${tapDisplay}`,
+            body: `${distanceDisplay} de separación lineal respecto del origen declarado. La zona fue autorizada después del tap y no demuestra recorrido ni custodia.`,
+          }
+          : {
+            label: "Se informó",
+            title: `Coordenada reportada por integración: ${tapDisplay}`,
+            body: "La fuente informó una coordenada para esta lectura. No se presenta como GPS, recorrido físico ni ubicación del producto.",
+          };
   const localizeHref = (href?: string | null) => {
     const raw = String(href || "").trim();
     if (!raw) return "";
@@ -1251,8 +1302,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     { label: isQrScan ? "Canal" : "Chip", value: carrierLabel },
     { label: "UID", value: visibleUid },
     { label: "Origen declarado", value: originDisplay },
-    { label: "Tap", value: tapDisplay },
-    { label: "Distancia", value: distanceDisplay },
+    { label: "Ubicación de esta lectura", value: summaryLocationDisplay },
+    ...(hasConsumerComparableDistance ? [{ label: "Separación lineal", value: distanceDisplay }] : []),
   ].filter((item) => item.value);
   const productFirstBadges = [
     isDemoPreview ? SUN_DEMO_COPY.productBadge : isQrScan ? "Ficha QR" : "Lectura NFC registrada",
@@ -1308,8 +1359,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     },
     {
       label: "Origen declarado",
-      detail: originToTapDistance != null ? distanceDisplay : "Sin geo",
-      state: originToTapDistance != null ? "done" : "warn",
+      detail: hasConsumerComparableDistance ? distanceDisplay : "Sin distancia comparable",
+      state: hasConsumerComparableDistance ? "done" : "warn",
     },
     {
       label: "Contacto opcional",
@@ -1345,7 +1396,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       { label: "Perfil SUN correcto", ok: !isSunProfileMismatch },
       { label: "Chip valido", ok: isTechnicallyAuthentic },
       { label: "Estado TT compatible", ok: !isTamperRisk },
-      { label: "Coordenadas comparables", ok: originToTapDistance != null },
+      { label: "Coordenadas comparables", ok: hasConsumerComparableDistance },
       { label: trustScore == null ? "Score no reportado" : "Score de calidad informado", ok: trustScore != null && !isRiskBlocked && trustScore >= 65 },
     ];
   const passportStorySteps = [
@@ -1354,11 +1405,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       title: result.product?.region || result.provenance?.origin || "Origen no declarado",
       body: "La marca cargó el origen declarado, el lote, el producto y sus reglas antes de salir al canal.",
     },
-    {
-      label: "Se registró",
-      title: `${originDisplay} -> ${tapDisplay}`,
-      body: `${distanceDisplay} de distancia lineal entre el origen declarado y el tap registrado; no prueba el recorrido físico.`,
-    },
+    tapLocationStoryStep,
     {
       label: isDemoPreview ? SUN_DEMO_COPY.passportEventLabel : isQrScan ? "Se consultó" : "Se analizó",
       title: isDemoPreview ? SUN_DEMO_COPY.passportEventTitle : isQrScan ? "Ficha QR abierta" : isTechnicallyAuthentic ? "Identidad NFC validada" : "Lectura en revisión",
@@ -1700,8 +1747,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="max-w-2xl">
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">Mapa del pasaporte</span>
-              <h3 id="sun-origin-title" className="mt-1 text-lg font-black text-white sm:text-xl">Origen y zona de este tap</h3>
-              <p className="mt-1 text-xs leading-5 text-slate-400">Primero ves los dos puntos disponibles. La fuente y la precisión quedan explicadas sin inventar una ruta.</p>
+              <h3 id="sun-origin-title" className="mt-1 text-lg font-black text-white sm:text-xl">{locationSectionTitle}</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400">{locationSectionDescription}</p>
             </div>
             <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-[0.08em]">
               <span className="rounded-full border border-emerald-300/15 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">Origen informado</span>

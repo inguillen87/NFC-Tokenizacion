@@ -80,7 +80,8 @@
 
 .legendItem,
 .demoBadge,
-.degradedBadge {
+.degradedBadge,
+.missingTapBadge {
   display: inline-flex;
   align-items: center;
   min-height: 1.75rem;
@@ -107,6 +108,12 @@
   color: #155e75;
   border-color: rgba(8, 145, 178, 0.22);
   background: rgba(236, 254, 255, 0.95);
+}
+
+.missingTapBadge {
+  color: #334155;
+  border-color: rgba(100, 116, 139, 0.24);
+  background: rgba(248, 250, 252, 0.96);
 }
 
 .legendDot {

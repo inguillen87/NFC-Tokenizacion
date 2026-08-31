@@ -331,16 +331,17 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         };
         fitAllRef.current = () => fitAll(true);
 
-        points.forEach(({ kind, point }, index) => {
+        points.forEach(({ kind, point }) => {
           const markerAnchor = document.createElement("div");
           markerAnchor.className = styles.markerAnchor;
           const element = document.createElement("button");
           element.type = "button";
           element.className = `${styles.marker} ${kind === "tap" ? styles.markerTap : ""}`;
           element.setAttribute("aria-label", `${kind === "origin" ? "Origen declarado" : tapSourcePresentation(point).eyebrow}: ${point.label}`);
-          const number = document.createElement("span");
-          number.textContent = String(index + 1);
-          element.append(number);
+          const markerCode = document.createElement("span");
+          markerCode.textContent = kind === "origin" ? "O" : "T";
+          markerCode.setAttribute("aria-hidden", "true");
+          element.append(markerCode);
           markerAnchor.append(element);
 
           const popup = new maplibre.Popup({ offset: 24, closeButton: true, closeOnClick: false, maxWidth: "260px" })
@@ -508,12 +509,13 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
   // Coordinates and evidence changes rebuild markers after a consented local update.
   }, [pointKey, showRoute, retryNonce]);
 
-  const renderLocation = (kind: "origin" | "tap", point: SunPassportMapLocation | null, index: number) => {
+  const renderLocation = (kind: "origin" | "tap", point: SunPassportMapLocation | null) => {
     const tapPresentation = tapSourcePresentation(point);
+    const locationCode = kind === "origin" ? "O" : "T";
     if (!point) {
       return (
         <div className={styles.locationStatic}>
-          <span className={`${styles.locationIndex} ${kind === "tap" ? styles.locationIndexTap : ""}`}>{index}</span>
+          <span className={`${styles.locationIndex} ${kind === "tap" ? styles.locationIndexTap : ""}`} aria-hidden="true">{locationCode}</span>
           <span className={styles.locationCopy}>
             <span className={styles.locationEyebrow}>{kind === "origin" ? "Origen" : tapPresentation.eyebrow}</span>
             <span className={styles.locationTitle}>{kind === "origin" ? "Origen no geolocalizado" : "Ubicación no confirmada"}</span>
@@ -531,7 +533,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           onClick={() => focusRef.current(point)}
           aria-label={`Enfocar ${kind === "origin" ? "origen" : "tap"} en el mapa: ${point.label}`}
         >
-          <span className={`${styles.locationIndex} ${kind === "tap" ? styles.locationIndexTap : ""}`}>{index}</span>
+          <span className={`${styles.locationIndex} ${kind === "tap" ? styles.locationIndexTap : ""}`} aria-hidden="true">{locationCode}</span>
           <span className={styles.locationCopy}>
             <span className={styles.locationEyebrow}>{kind === "origin" ? "Origen declarado" : tapPresentation.eyebrow}</span>
             <span className={styles.locationTitle}>{point.label}</span>
@@ -578,6 +580,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
             <div className={styles.mapLegend} aria-hidden="true">
               {origin ? <span className={styles.legendItem}><i className={styles.legendDot} />Origen</span> : null}
               {tap ? <span className={styles.legendItem}><i className={`${styles.legendDot} ${styles.legendDotTap}`} />{isNetworkEstimate ? "Zona por red" : "Esta lectura"}</span> : null}
+              {origin && !tap ? <span className={styles.missingTapBadge}>Solo origen · lectura sin coordenadas</span> : null}
               {showRoute && origin && tap ? <span className={styles.demoBadge}>Demo · conexión ilustrativa</span> : null}
               {isDegraded ? <span className={styles.degradedBadge}>Cartografía parcial</span> : null}
             </div>
@@ -586,8 +589,8 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         ) : null}
       </div>
       <div className={styles.details}>
-        {renderLocation("origin", origin, 1)}
-        {renderLocation("tap", tap, 2)}
+        {renderLocation("origin", origin)}
+        {renderLocation("tap", tap)}
       </div>
       <div className={styles.locationSourceSummary}>
         <span className={styles.sourceBadge}>{tapPresentation.badge}</span>

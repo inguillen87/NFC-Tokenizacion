@@ -76,6 +76,15 @@ test("map has mobile-sized canvas, desktop expansion and 44px controls", () => {
   assert.match(css, /prefers-reduced-motion/);
 });
 
+test("map markers are semantic and a single origin cannot look like an event count", () => {
+  assert.match(map, /markerCode\.textContent = kind === "origin" \? "O" : "T"/);
+  assert.match(map, /const locationCode = kind === "origin" \? "O" : "T"/);
+  assert.match(map, /Solo origen · lectura sin coordenadas/);
+  assert.doesNotMatch(map, /String\(index \+ 1\)/);
+  assert.doesNotMatch(map, /renderLocation\("origin", origin, 1\)/);
+  assert.match(css, /\.missingTapBadge/);
+});
+
 test("origin label comes from the same declared profile as its coordinates", () => {
   const originStart = page.indexOf("const wineryPoint = resolvedOriginCoords");
   const originEnd = page.indexOf("const hasCurrentTapCoords", originStart);

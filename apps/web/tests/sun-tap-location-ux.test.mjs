@@ -108,3 +108,35 @@ test("a historical location is never relabelled as the current tap", () => {
   assert.match(projection, /"Tap actual no geolocalizado"/);
   assert.doesNotMatch(projection, /lastVerifiedLocation|timelineSummary/);
 });
+
+test("city-only network and historical hints never become a physical tap location or route", () => {
+  const tapPointStart = page.indexOf("const hasCurrentTapCoords");
+  const tapPointEnd = page.indexOf("const originToTapDistance", tapPointStart);
+  const tapPointProjection = page.slice(tapPointStart, tapPointEnd);
+  const storyStart = page.indexOf("const tapLocationStoryStep");
+  const storyEnd = page.indexOf("const localizeHref", storyStart);
+  const storyProjection = page.slice(storyStart, storyEnd);
+  const passportStart = page.indexOf("const passportStorySteps");
+  const passportEnd = page.indexOf("return (", passportStart);
+  const passportProjection = page.slice(passportStart, passportEnd);
+
+  assert.match(tapPointProjection, /const currentTapCity = hasCurrentTapCoords/);
+  assert.match(tapPointProjection, /const currentTapCountry = hasCurrentTapCoords/);
+  assert.doesNotMatch(tapPointProjection, /lastVerifiedLocation|timelineSummary/);
+  assert.match(storyProjection, /!hasCurrentTapCoords[\s\S]*?"No compartida en esta lectura"/);
+  assert.match(storyProjection, /Las ciudades del historial o de la red no se atribuyen a este tap/);
+  assert.match(storyProjection, /isNetworkEstimatedLocation[\s\S]*?Zona amplia de la conexión/);
+  assert.match(storyProjection, /No ubica el producto ni prueba dónde ocurrió el tap/);
+  assert.match(storyProjection, /isDemoPreview && hasCurrentTapCoords[\s\S]*?`\$\{originDisplay\} -> \$\{tapDisplay\}`/);
+  assert.match(passportProjection, /tapLocationStoryStep/);
+  assert.doesNotMatch(passportProjection, /title: `\$\{originDisplay\} -> \$\{tapDisplay\}`/);
+});
+
+test("SUN headings and distance claims follow the current location evidence", () => {
+  assert.match(page, /const locationSectionTitle = isDemoPreview[\s\S]*?"Origen declarado"[\s\S]*?"Origen y zona estimada por red"[\s\S]*?"Origen y zona compartida"/);
+  assert.match(page, /const locationSectionDescription = isDemoPreview[\s\S]*?Esta lectura no informó coordenadas[\s\S]*?no es GPS, no ubica el producto y no prueba dónde ocurrió el tap/);
+  assert.match(page, /\.\.\.\(hasConsumerComparableDistance \? \[\{ label: "Separación lineal", value: distanceDisplay \}\] : \[\]\)/);
+  assert.match(page, /detail: hasConsumerComparableDistance \? distanceDisplay : "Sin distancia comparable"/);
+  assert.match(page, /\{locationSectionTitle\}/);
+  assert.match(page, /\{locationSectionDescription\}/);
+});
