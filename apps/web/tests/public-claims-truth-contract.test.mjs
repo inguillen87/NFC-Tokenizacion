@@ -58,8 +58,9 @@ test("public metadata and global SEO describe digital evidence instead of physic
 
   assert.match(layout, /Productos conectados, garantía y postventa/);
   assert.match(layout, /Connected products, warranty and after-sales/);
-  assert.match(layout, /Que la relación con tu cliente no termine en la venta/);
-  assert.match(layout, /cada producto abre un canal directo para contar su historia/i);
+  assert.match(layout, /Con NFC o QR, cada producto conecta/i);
+  assert.match(layout, /registra lecturas y acciones/i);
+  assert.doesNotMatch(layout, /cada piloto|each pilot/i);
   assert.doesNotMatch(layout, /Product Authentication|Autenticaci.n de Productos|Autentica..o de Produtos/);
 });
 

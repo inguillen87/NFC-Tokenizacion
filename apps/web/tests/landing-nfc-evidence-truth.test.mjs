@@ -9,9 +9,9 @@ const proofSection = await readFile(new URL("../src/components/landing-proof-sec
 
 test("landing content scopes tap validation to digital evidence in ES, EN and PT", () => {
   const heroBodies = [...content.matchAll(/hero:\s*\{[^{}]*badge:\s*"[^"]+"[^{}]*body:\s*"([^"]+)"[^{}]*\}/g)].map((match) => match[1]);
-  assert.match(content, /Con nexID, cada producto abre un canal directo/);
-  assert.match(content, /Com a nexID, cada produto abre um canal direto/);
-  assert.match(content, /With nexID, every product opens a direct channel/);
+  assert.match(content, /Con un toque NFC o un escaneo QR/);
+  assert.match(content, /Com um toque NFC ou uma leitura de QR/);
+  assert.match(content, /With an NFC tap or QR scan/);
   assert.equal(heroBodies.length, 3);
   for (const heroBody of heroBodies) {
     assert.doesNotMatch(heroBody, /SUN|\bTT\b|hash-only|producto físico|produto físico|physical product/i);
@@ -23,9 +23,9 @@ test("landing content scopes tap validation to digital evidence in ES, EN and PT
 });
 
 test("landing sections separate tag, TT and declared data from physical proof", () => {
-  assert.match(homeSections, /nexID checks the digital tag and shows a clear result[^.]*\. Each brand can add separate controls[^.]*physical product/);
-  assert.match(homeSections, /A nexID verifica a etiqueta digital e mostra um resultado claro[^.]*\. Cada marca pode adicionar controles separados[^.]*produto físico/);
-  assert.match(homeSections, /nexID verifica la etiqueta digital y muestra un resultado claro[^.]*\. Cada marca puede sumar controles separados[^.]*producto físico/);
+  assert.match(homeSections, /answer comes from the digital tag[^.]*\. If a brand[^.]*assess the physical product[^.]*separate checks/);
+  assert.match(homeSections, /resposta vem da etiqueta digital[^.]*\. Se a marca[^.]*avaliar o produto físico[^.]*controles específicos/);
+  assert.match(homeSections, /respuesta viene de la etiqueta digital[^.]*\. Si una marca[^.]*evaluar el producto físico[^.]*controles específicos/);
   assert.match(sections, /nexID checks the digital label and shows a clear result[^.]*\. To validate the physical product as well[^.]*specific controls/);
   assert.match(sections, /A nexID verifica a etiqueta digital e mostra um resultado claro[^.]*\. Para validar também o produto físico[^.]*controles específicos/);
   assert.match(sections, /nexID verifica la etiqueta digital y muestra un resultado claro[^.]*\. Para validar también el producto físico[^.]*controles específicos/);

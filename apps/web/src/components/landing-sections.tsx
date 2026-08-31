@@ -81,6 +81,9 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       railLabel: "Product journey steps",
       previous: "Previous step",
       next: "Next step",
+      pauseMotion: "Pause animations",
+      resumeMotion: "Resume animations",
+      motionOff: "Reduced motion is active",
       steps: [
         { label: "Discover the product", body: "Story, batch and brand information, gathered in one place." },
         { label: "Understand the reading", body: "A clear answer about the digital label and its configured checks." },
@@ -97,6 +100,9 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       railLabel: "Etapas da jornada do produto",
       previous: "Etapa anterior",
       next: "Próxima etapa",
+      pauseMotion: "Pausar animações",
+      resumeMotion: "Retomar animações",
+      motionOff: "Movimento reduzido ativo",
       steps: [
         { label: "Conheça o produto", body: "História, lote e informações da marca, reunidos em um só lugar." },
         { label: "Entenda a leitura", body: "Uma resposta clara sobre a etiqueta digital e os controles configurados." },
@@ -112,6 +118,9 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       railLabel: "Pasos del recorrido del producto",
       previous: "Paso anterior",
       next: "Paso siguiente",
+      pauseMotion: "Pausar animaciones",
+      resumeMotion: "Reanudar animaciones",
+      motionOff: "Movimiento reducido activo",
       steps: [
         { label: "Conocé el producto", body: "Historia, lote e información de la marca, reunidos en un solo lugar." },
         { label: "Entendé la lectura", body: "Una respuesta clara sobre la etiqueta digital y los controles configurados." },
@@ -128,7 +137,13 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           <p className="simple-trust-flow-body">{copy.body}</p>
         </div>
 
-        <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
+        <SimpleTrustFlowMotion
+          id="simple-trust-rail"
+          ariaLabel={copy.railLabel}
+          pauseLabel={copy.pauseMotion}
+          resumeLabel={copy.resumeMotion}
+          motionOffLabel={copy.motionOff}
+        >
           {copy.steps.map((step, index) => (
             <li key={step.label}>
               <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />
@@ -171,7 +186,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
         items: [
           { title: "A better product story", body: "Share the batch and the information your brand chooses to publish.", icon: PackageCheck },
           { title: "After-sales in one place", body: "Bring warranty, benefits and support into one simple experience.", icon: BadgeCheck },
-          { title: "Measurable learning", body: "Review readings and actions to understand what works in each pilot.", icon: RadioTower },
+          { title: "Measurable learning", body: "Review readings and actions to understand what people use most.", icon: RadioTower },
         ],
       }
     : isBr
@@ -185,7 +200,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
         items: [
           { title: "Uma história melhor contada", body: "Mostre o lote e as informações que sua marca decide publicar.", icon: PackageCheck },
           { title: "Pós-venda em um só lugar", body: "Reúna garantia, benefícios e atendimento em uma experiência simples.", icon: BadgeCheck },
-          { title: "Aprendizado mensurável", body: "Acompanhe leituras e ações para entender o que funciona em cada piloto.", icon: RadioTower },
+          { title: "Aprendizado mensurável", body: "Acompanhe leituras e ações para entender o que as pessoas mais usam.", icon: RadioTower },
         ],
       }
     : {
@@ -198,7 +213,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
         items: [
           { title: "Una historia mejor contada", body: "Mostrá el lote y la información que tu marca decide publicar.", icon: PackageCheck },
           { title: "Postventa en un solo lugar", body: "Reuní garantía, beneficios y atención en una experiencia simple.", icon: BadgeCheck },
-          { title: "Aprendizaje medible", body: "Observá lecturas y acciones para entender qué funciona en cada piloto.", icon: RadioTower },
+          { title: "Aprendizaje medible", body: "Observá lecturas y acciones para entender qué usan más las personas.", icon: RadioTower },
         ],
       };
 

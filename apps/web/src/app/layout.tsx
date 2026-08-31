@@ -21,21 +21,21 @@ const socialCopyByLocale = {
   "es-AR": {
     title: "nexID | Productos conectados, garantía y postventa",
     description:
-      "Que la relación con tu cliente no termine en la venta. Cada producto abre un canal directo para contar su historia, activar garantía y beneficios, y medir qué funciona mejor en cada piloto.",
+      "Con NFC o QR, cada producto conecta a tus clientes con su historia, garantía, beneficios y postventa. nexID registra lecturas y acciones, sin exigir una app.",
     imageAlt: "nexID conecta productos con información, garantía y postventa",
     keywords: ["Validación NFC SUN", "NFC", "Pasaporte Digital", "Cadena de Suministro Empresarial", "Trazabilidad Declarada", "Derechos Digitales", "nexID"]
   },
   "pt-BR": {
     title: "nexID | Produtos conectados, garantia e pós-venda",
     description:
-      "Que a relação com seu cliente não termine na venda. Cada produto abre um canal direto para contar sua história, ativar garantia e benefícios e medir o que funciona melhor em cada piloto.",
+      "Com NFC ou QR, cada produto conecta seus clientes à sua história, garantia, benefícios e pós-venda. A nexID registra leituras e ações, sem exigir um app.",
     imageAlt: "nexID conecta produtos com informações, garantia e pós-venda",
     keywords: ["Validação NFC SUN", "NFC", "Passaporte Digital", "Cadeia de Suprimentos Corporativa", "Rastreabilidade Declarada", "Direitos Digitais", "nexID"]
   },
   en: {
     title: "nexID | Connected products, warranty and after-sales",
     description:
-      "Do not let the customer relationship end at checkout. Every product opens a direct channel to tell its story, activate warranty and benefits, and measure what works best in each pilot.",
+      "With NFC or QR, every product connects customers to its story, warranty, benefits, and after-sales support. nexID records reads and actions without requiring an app.",
     imageAlt: "nexID connects products with information, warranties and after-sales support",
     keywords: ["NFC SUN Validation", "NFC", "Digital Product Passport", "Enterprise Supply Chain", "Declared Traceability", "Digital Rights", "nexID"]
   }

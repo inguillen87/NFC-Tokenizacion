@@ -35,9 +35,10 @@ test("home hero is large, friendly and truthful without becoming a technical das
     assert.doesNotMatch(body, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
     assert.doesNotMatch(body, /physical product|producto físico|produto físico/i);
   }
-  assert.match(heroBodies[0], /medir qué funciona mejor en cada piloto/i);
-  assert.match(heroBodies[1], /medir o que funciona melhor em cada piloto/i);
-  assert.match(heroBodies[2], /measure what works best in each pilot/i);
+  assert.match(heroBodies[0], /registra lecturas y acciones/i);
+  assert.match(heroBodies[1], /registra leituras e ações/i);
+  assert.match(heroBodies[2], /records reads and actions/i);
+  for (const body of heroBodies) assert.doesNotMatch(body, /piloto|pilot/i);
 });
 
 test("SimpleTrustFlow is three plain-language steps, one action and one physical-limit note", async () => {
@@ -51,13 +52,13 @@ test("SimpleTrustFlow is three plain-language steps, one action and one physical
   assert.doesNotMatch(flow, /href="\/sun"|audiences:|rubros:|claimTitle:|claimBody:|NFT|tenant|replay|SUN|\bTT\b|custod/i);
   assert.doesNotMatch(flow, /md:grid-cols-4/);
   assert.match(flow, /\["discover", "signal", "aftercare"\]/);
-  assert.match(flow, /<SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel=\{copy\.railLabel\}>/);
+  assert.match(flow, /<SimpleTrustFlowMotion[\s\S]*id="simple-trust-rail"[\s\S]*ariaLabel=\{copy\.railLabel\}/);
   assert.match(flow, /<HorizontalRailControls[\s\S]*railId="simple-trust-rail"/);
   assert.match(flow, /<SimpleTrustStepVisual kind=\{visualKinds\[index\] \?\? "discover"\} locale=\{locale\} \/>/);
 
-  assert.match(flow, /controles separados[^.]{0,100}evaluar el producto físico/i);
-  assert.match(flow, /controles separados[^.]{0,100}avaliar o produto físico/i);
-  assert.match(flow, /separate controls[^.]{0,100}physical product/i);
+  assert.match(flow, /evaluar el producto físico[^.]{0,100}controles específicos/i);
+  assert.match(flow, /avaliar o produto físico[^.]{0,100}controles específicos/i);
+  assert.match(flow, /assess the physical product[^.]{0,100}separate checks/i);
   assert.match(flow, /id="como-funciona"/);
 });
 

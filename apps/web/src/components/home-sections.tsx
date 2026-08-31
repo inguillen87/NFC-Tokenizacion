@@ -1,6 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, PackageCheck, RadioTower } from "lucide-react";
-import { HeroValueLoop } from "./hero-value-loop";
 import { HorizontalRailControls } from "./horizontal-rail-controls";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
@@ -21,10 +21,10 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
   const isBr = locale === "pt-BR";
   const hero = content.hero;
   const proofPoints = isEn
-    ? ["No app required", "NFC + QR", "Measurable pilot"]
+    ? ["No app required", "NFC + QR", "Reads + actions"]
     : isBr
-      ? ["Sem baixar app", "NFC + QR", "Piloto mensurável"]
-      : ["Sin descargar una app", "NFC + QR", "Piloto medible"];
+      ? ["Sem baixar um app", "NFC + QR", "Leituras + ações"]
+      : ["Sin descargar una app", "NFC + QR", "Lecturas + acciones"];
   const videoLabel = isEn
     ? "See the complete customer journey"
     : isBr
@@ -33,11 +33,25 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
 
   return (
     <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-8 pt-8 lg:pb-12 lg:pt-12">
+      <div className="hero-immersive-media pointer-events-none absolute inset-x-0 top-0 z-0" aria-hidden="true">
+        <Image
+          src="/landing/nexid-nfc-immersive.webp"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="hero-immersive-image"
+        />
+        <div className="hero-immersive-veil" />
+        <span className="hero-immersive-ring hero-immersive-ring--one" />
+        <span className="hero-immersive-ring hero-immersive-ring--two" />
+        <span className="hero-immersive-ring hero-immersive-ring--three" />
+      </div>
       <div className="hero-signal-field pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
 
       <div className="container-shell relative z-10">
-        <div className="hero-story-grid grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,0.96fr)_minmax(26rem,0.84fr)] lg:gap-12">
-          <div className="hero-main-copy min-w-0 text-left">
+        <div className="hero-story-grid grid min-w-0 items-center">
+          <div className="hero-main-copy min-w-0 max-w-[47rem] text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur-md">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400" />
               <span className="text-xs font-medium uppercase tracking-widest text-slate-300">{hero.badge}</span>
@@ -72,7 +86,6 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
             </ul>
           </div>
 
-          <HeroValueLoop locale={locale} />
         </div>
 
         <div className="hero-demo-shell relative z-20 mx-auto mt-10 max-w-5xl text-left md:mt-14">
@@ -91,48 +104,57 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
         eyebrow: "How it works",
-        title: "One tap. Three clear outcomes.",
-        body: "Customers discover, understand and act. Your brand supports each step without asking them to download an app.",
-        note: "nexID checks the digital tag and shows a clear result. Each brand can add separate controls when the physical product must also be assessed.",
+        title: "One tap. Three simple steps.",
+        body: "Customers tap or scan, understand and choose what to do next. Everything happens in the browser, with no app to download.",
+        note: "The answer comes from the digital tag. If a brand also needs to assess the physical product, it can add separate checks for that purpose.",
         primary: "Try the journey",
         railLabel: "Product journey steps",
         previous: "Previous step",
         next: "Next step",
+        pauseMotion: "Pause animations",
+        resumeMotion: "Resume animations",
+        motionOff: "Reduced motion is active",
         steps: [
-          { label: "Discover the product", body: "Story, batch and brand information, gathered in one place." },
-          { label: "Understand the reading", body: "A clear answer about the digital tag and its configured checks." },
-          { label: "Activate what comes next", body: "Warranty, benefits or support, depending on the program." },
+          { label: "Tap or scan", body: "NFC or QR opens the product story and the information chosen by the brand." },
+          { label: "Get a clear answer", body: "nexID reads the digital tag and shows the result on the phone." },
+          { label: "Choose what comes next", body: "Warranty, benefits or support appear in the same journey." },
         ],
       }
     : isBr
       ? {
           eyebrow: "Como funciona",
-          title: "Um toque. Três resultados claros.",
-          body: "O cliente descobre, entende e age. Sua marca acompanha cada etapa sem exigir o download de um app.",
-          note: "A nexID verifica a etiqueta digital e mostra um resultado claro. Cada marca pode adicionar controles separados quando também precisa avaliar o produto físico.",
+          title: "Um toque. Três passos simples.",
+          body: "O cliente aproxima ou escaneia, entende e escolhe o que fazer. Tudo acontece no navegador, sem baixar um app.",
+          note: "A resposta vem da etiqueta digital. Se a marca também precisa avaliar o produto físico, pode adicionar controles específicos em separado.",
           primary: "Testar a jornada",
           railLabel: "Etapas da jornada do produto",
           previous: "Etapa anterior",
           next: "Próxima etapa",
+          pauseMotion: "Pausar animações",
+          resumeMotion: "Retomar animações",
+          motionOff: "Movimento reduzido ativo",
           steps: [
-            { label: "Descubra o produto", body: "História, lote e informações da marca, reunidos em um só lugar." },
-            { label: "Entenda a leitura", body: "Uma resposta clara sobre a etiqueta digital e os controles configurados." },
-            { label: "Ative o próximo passo", body: "Garantia, benefícios ou atendimento, conforme o programa." },
+            { label: "Aproxime ou escaneie", body: "NFC ou QR abre a história do produto e as informações escolhidas pela marca." },
+            { label: "Receba uma resposta clara", body: "A nexID lê a etiqueta digital e mostra o resultado no celular." },
+            { label: "Escolha o próximo passo", body: "Garantia, benefícios ou atendimento aparecem na mesma jornada." },
           ],
         }
       : {
           eyebrow: "Cómo funciona",
-          title: "Un toque. Tres resultados claros.",
-          body: "El cliente descubre, entiende y actúa. Tu marca acompaña cada paso sin obligarlo a descargar una app.",
-          note: "nexID verifica la etiqueta digital y muestra un resultado claro. Cada marca puede sumar controles separados cuando también necesita evaluar el producto físico.",
+          title: "Un toque. Tres pasos simples.",
+          body: "El cliente acerca o escanea, entiende y elige qué hacer. Todo sucede en el navegador, sin descargar una app.",
+          note: "La respuesta viene de la etiqueta digital. Si una marca también necesita evaluar el producto físico, puede sumar controles específicos por separado.",
           primary: "Probar el recorrido",
           railLabel: "Pasos del recorrido del producto",
           previous: "Paso anterior",
           next: "Paso siguiente",
+          pauseMotion: "Pausar animaciones",
+          resumeMotion: "Reanudar animaciones",
+          motionOff: "Movimiento reducido activo",
           steps: [
-            { label: "Descubrí el producto", body: "Historia, lote e información de la marca, reunidos en un solo lugar." },
-            { label: "Entendé la lectura", body: "Una respuesta clara sobre la etiqueta digital y los controles configurados." },
-            { label: "Activá lo que sigue", body: "Garantía, beneficios o atención, según el programa." },
+            { label: "Acercá o escaneá", body: "NFC o QR abre la historia del producto y la información elegida por la marca." },
+            { label: "Recibí una respuesta clara", body: "nexID lee la etiqueta digital y muestra el resultado en el celular." },
+            { label: "Elegí cómo seguir", body: "Garantía, beneficios o atención aparecen en el mismo recorrido." },
           ],
         };
 
@@ -145,7 +167,13 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           <p className="simple-trust-flow-body">{copy.body}</p>
         </div>
 
-        <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
+        <SimpleTrustFlowMotion
+          id="simple-trust-rail"
+          ariaLabel={copy.railLabel}
+          pauseLabel={copy.pauseMotion}
+          resumeLabel={copy.resumeMotion}
+          motionOffLabel={copy.motionOff}
+        >
           {copy.steps.map((step, index) => (
             <li key={step.label}>
               <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />
@@ -183,7 +211,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
         items: [
           { title: "The right story, at the right moment", body: "Show the batch and the information your brand chooses to publish.", icon: PackageCheck },
           { title: "After-sales without friction", body: "Bring warranty, benefits and support into one simple experience.", icon: BadgeCheck },
-          { title: "Learning for the next sale", body: "Review readings and actions to improve each pilot.", icon: RadioTower },
+          { title: "Learning for the next sale", body: "Review readings and actions to improve each experience.", icon: RadioTower },
         ],
       }
     : isBr
@@ -197,7 +225,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           items: [
             { title: "A história certa, na hora certa", body: "Mostre o lote e as informações que sua marca decide publicar.", icon: PackageCheck },
             { title: "Pós-venda sem atrito", body: "Reúna garantia, benefícios e atendimento em uma experiência simples.", icon: BadgeCheck },
-            { title: "Aprendizado para a próxima venda", body: "Acompanhe leituras e ações para melhorar cada piloto.", icon: RadioTower },
+            { title: "Aprendizado para a próxima venda", body: "Acompanhe leituras e ações para melhorar cada experiência.", icon: RadioTower },
           ],
         }
       : {
@@ -210,7 +238,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           items: [
             { title: "La historia correcta, en el momento justo", body: "Mostrá el lote y la información que tu marca decide publicar.", icon: PackageCheck },
             { title: "Postventa sin fricción", body: "Reuní garantía, beneficios y atención en una experiencia simple.", icon: BadgeCheck },
-            { title: "Aprendizaje para la próxima venta", body: "Observá lecturas y acciones para mejorar cada piloto.", icon: RadioTower },
+            { title: "Aprendizaje para la próxima venta", body: "Observá lecturas y acciones para mejorar cada experiencia.", icon: RadioTower },
           ],
         };
 

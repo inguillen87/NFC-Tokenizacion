@@ -55528,6 +55528,152 @@ html[data-theme="light"] body .landing-root .institutional-video-panel--landing.
   }
 }
 
+/* The approved NFC artwork gives the opening a physical, memorable signal
+   without bringing an interactive explainer back into the hero. The motion is
+   a short entrance only; the three-step section below owns the explanation. */
+.hero-immersive-media {
+  height: clamp(34rem, 58vw, 46rem);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
+}
+
+.hero-immersive-image {
+  object-fit: cover;
+  object-position: center 48%;
+  opacity: 0.48;
+  filter: brightness(0.62) saturate(1.08) contrast(1.04);
+  animation: hero-immersive-enter 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-immersive-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(3, 10, 22, 0.98) 0%, rgba(3, 10, 22, 0.92) 42%, rgba(3, 10, 22, 0.34) 70%, rgba(3, 10, 22, 0.08) 100%),
+    linear-gradient(180deg, rgba(3, 10, 22, 0.05) 62%, #07111f 100%);
+}
+
+.hero-immersive-ring {
+  position: absolute;
+  top: 49%;
+  right: 20.5%;
+  width: 7rem;
+  height: 7rem;
+  border: 1px solid rgba(103, 232, 249, 0.7);
+  border-radius: 999px;
+  box-shadow: 0 0 1.5rem rgba(34, 211, 238, 0.2);
+  opacity: 0;
+  transform: translate(50%, -50%) scale(0.5);
+  animation: hero-immersive-pulse 1.35s ease-out 2 both;
+}
+
+.hero-immersive-ring--one { animation-delay: 0.25s; }
+.hero-immersive-ring--two { animation-delay: 0.48s; }
+.hero-immersive-ring--three { animation-delay: 0.71s; }
+
+.landing-hero-section .hero-story-grid {
+  min-height: clamp(31rem, 52vw, 42rem);
+  padding-block: clamp(3rem, 7vw, 6rem);
+}
+
+.landing-hero-section .hero-main-copy {
+  position: relative;
+  z-index: 2;
+}
+
+html:is(.theme-light, [data-theme="light"]) .hero-immersive-image {
+  opacity: 0.96;
+  filter: saturate(1.02) contrast(1.015);
+}
+
+html:is(.theme-light, [data-theme="light"]) .hero-immersive-veil {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.96) 38%, rgba(255, 255, 255, 0.62) 61%, rgba(255, 255, 255, 0.08) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 62%, #f7fafc 100%);
+}
+
+html:is(.theme-light, [data-theme="light"]) .hero-immersive-ring {
+  border-color: rgba(8, 145, 178, 0.48);
+  box-shadow: 0 0 1.5rem rgba(8, 145, 178, 0.14);
+}
+
+@keyframes hero-immersive-enter {
+  from { opacity: 0; transform: scale(1.025) translateX(0.8rem); }
+}
+
+@keyframes hero-immersive-pulse {
+  0% { opacity: 0; transform: translate(50%, -50%) scale(0.45); }
+  28% { opacity: 0.68; }
+  100% { opacity: 0; transform: translate(50%, -50%) scale(1.22); }
+}
+
+@media (max-width: 900px) {
+  .hero-immersive-media {
+    height: 42rem;
+  }
+
+  .hero-immersive-image {
+    object-position: 66% center;
+  }
+
+  .hero-immersive-veil,
+  html:is(.theme-light, [data-theme="light"]) .hero-immersive-veil {
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.91) 66%, rgba(255, 255, 255, 0.34) 100%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08) 52%, #f7fafc 100%);
+  }
+
+  html[data-theme="dark"] .hero-immersive-veil {
+    background:
+      linear-gradient(90deg, rgba(3, 10, 22, 0.98) 0%, rgba(3, 10, 22, 0.9) 68%, rgba(3, 10, 22, 0.46) 100%),
+      linear-gradient(180deg, rgba(3, 10, 22, 0.08) 52%, #07111f 100%);
+  }
+
+  .landing-hero-section .hero-story-grid {
+    min-height: 38rem;
+    padding-block: 3.25rem 5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-immersive-media {
+    height: 39rem;
+  }
+
+  .hero-immersive-image {
+    object-position: 72% center;
+    opacity: 0.68;
+  }
+
+  html:is(.theme-light, [data-theme="light"]) .hero-immersive-image {
+    opacity: 0.72;
+  }
+
+  .hero-immersive-ring {
+    top: 58%;
+    right: 18%;
+    width: 5.25rem;
+    height: 5.25rem;
+  }
+
+  .landing-hero-section .hero-story-grid {
+    min-height: 36rem;
+    padding-block: 2.25rem 4.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-immersive-image,
+  .hero-immersive-ring {
+    animation: none !important;
+  }
+
+  .hero-immersive-ring {
+    display: none;
+  }
+}
+
 /* Calm three-step landing narrative. Technical detail remains available from
    the mega navigation instead of competing with the primary product story. */
 .simple-trust-flow-section {
@@ -55580,6 +55726,53 @@ html[data-theme="light"] body .landing-root .institutional-video-panel--landing.
   line-height: 1.75;
 }
 
+.simple-trust-flow-motion-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 clamp(1.1rem, 2.6vw, 2.2rem) 0.8rem;
+}
+
+.simple-trust-flow-motion-toggle {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgba(103, 232, 249, 0.2);
+  border-radius: 999px;
+  background: rgba(15, 118, 128, 0.1);
+  color: #c8f5f7;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.simple-trust-flow-motion-toggle:hover:not(:disabled) {
+  border-color: rgba(103, 232, 249, 0.42);
+  background: rgba(15, 118, 128, 0.2);
+  color: #ffffff;
+}
+
+.simple-trust-flow-motion-toggle:focus-visible {
+  outline: 3px solid #67e8f9;
+  outline-offset: 3px;
+}
+
+.simple-trust-flow-motion-toggle:disabled {
+  cursor: default;
+  opacity: 0.68;
+}
+
+.simple-trust-flow-motion-toggle svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+}
+
 .simple-trust-flow-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -55597,8 +55790,18 @@ html[data-theme="light"] body .landing-root .institutional-video-panel--landing.
 }
 
 .simple-trust-flow-steps li {
+  --trust-step-delay: 0ms;
+  --trust-local-delay: 0ms;
   min-width: 0;
   padding: clamp(1.35rem, 2.6vw, 2.2rem);
+}
+
+.simple-trust-flow-steps li:nth-child(2) {
+  --trust-step-delay: 90ms;
+}
+
+.simple-trust-flow-steps li:nth-child(3) {
+  --trust-step-delay: 180ms;
 }
 
 .simple-trust-flow-steps li + li {
@@ -55783,20 +55986,17 @@ html[data-theme="light"] body .landing-root .institutional-video-panel--landing.
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-dasharray: 5 7;
-  animation: trust-visual-route 1.4s ease-out 1 both paused;
 }
 
 .trust-visual__traveller {
   fill: var(--trust-visual-accent);
   transform-box: fill-box;
   transform-origin: center;
-  animation: trust-visual-travel 1.55s ease-in-out 1 both paused;
 }
 
 .trust-visual__card {
   transform-box: fill-box;
   transform-origin: center;
-  animation: trust-visual-reveal 1.15s ease-out 1 both paused;
 }
 
 .trust-visual__positive-fill {
@@ -55827,13 +56027,11 @@ html[data-theme="light"] body .landing-root .institutional-video-panel--landing.
   stroke-linecap: round;
   transform-box: fill-box;
   transform-origin: left center;
-  animation: trust-visual-wave 1.55s ease-out 1 both paused;
 }
 
 .trust-visual__result {
   transform-box: fill-box;
   transform-origin: center;
-  animation: trust-visual-reveal 1.2s ease-out 1 both paused;
 }
 
 .trust-visual__check {
@@ -55845,25 +56043,66 @@ html[data-theme="light"] body .landing-root .institutional-video-panel--landing.
   fill: var(--trust-visual-positive);
   transform-box: fill-box;
   transform-origin: left center;
-  animation: trust-visual-progress 1.45s ease-out 1 both paused;
 }
 
 .trust-visual__action {
   transform-box: fill-box;
   transform-origin: left center;
-  animation: trust-visual-action 1.25s ease-out 1 both paused;
 }
 
 .trust-visual__action--two {
-  animation-delay: 0.22s;
+  --trust-local-delay: 220ms;
 }
 
 .trust-visual__action--three {
-  animation-delay: 0.44s;
+  --trust-local-delay: 440ms;
 }
 
-.simple-trust-flow-steps[data-motion-active="true"] .trust-visual__animated {
+.simple-trust-flow-steps[data-motion-ready="true"] > li {
+  animation: trust-flow-step-enter 720ms cubic-bezier(0.22, 1, 0.36, 1) 1 both paused;
+  animation-delay: var(--trust-step-delay);
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__route {
+  animation: trust-visual-route 1.4s ease-out 1 both paused;
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__traveller {
+  animation: trust-visual-travel 1.55s ease-in-out 1 both paused;
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__card {
+  animation: trust-visual-reveal 1.15s ease-out 1 both paused;
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__wave {
+  animation: trust-visual-wave 1.55s ease-out 1 both paused;
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__result {
+  animation: trust-visual-reveal 1.2s ease-out 1 both paused;
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__progress {
+  animation: trust-visual-progress 1.45s ease-out 1 both paused;
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__action {
+  animation: trust-visual-action 1.25s ease-out 1 both paused;
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] .trust-visual__animated {
+  animation-delay: calc(var(--trust-step-delay) + var(--trust-local-delay));
+}
+
+.simple-trust-flow-steps[data-motion-ready="true"] > li[data-motion-active="true"],
+.simple-trust-flow-steps[data-motion-ready="true"] > li[data-motion-active="true"] .trust-visual__animated {
   animation-play-state: running;
+}
+
+@keyframes trust-flow-step-enter {
+  from { opacity: 0.78; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes trust-visual-route {
@@ -56070,6 +56309,20 @@ html[data-theme="light"] .simple-trust-flow-steps p {
   color: #53657a;
 }
 
+html.theme-light .simple-trust-flow-motion-toggle,
+html[data-theme="light"] .simple-trust-flow-motion-toggle {
+  border-color: rgba(15, 118, 128, 0.2);
+  background: rgba(15, 118, 128, 0.07);
+  color: #176a73;
+}
+
+html.theme-light .simple-trust-flow-motion-toggle:hover:not(:disabled),
+html[data-theme="light"] .simple-trust-flow-motion-toggle:hover:not(:disabled) {
+  border-color: rgba(15, 118, 128, 0.38);
+  background: rgba(15, 118, 128, 0.13);
+  color: #0f4f57;
+}
+
 html.theme-light .simple-trust-flow-steps,
 html[data-theme="light"] .simple-trust-flow-steps {
   border-color: rgba(15, 35, 63, 0.1);
@@ -56163,6 +56416,10 @@ html[data-theme="light"] .simple-trust-flow-footer > p {
 
   .simple-trust-flow-intro h2 {
     font-size: clamp(2rem, 9.5vw, 2.65rem);
+  }
+
+  .simple-trust-flow-motion-controls {
+    padding-inline: 1.1rem;
   }
 
   .simple-trust-flow-steps {
@@ -56434,6 +56691,7 @@ html[data-theme="light"] .landing-root .commercial-value-intro h2 {
   html[data-theme="light"] body .landing-root .institutional-video-panel--landing .institutional-video-media--light,
   .institutional-video-light-preview,
   .institutional-video-media--light,
+  .simple-trust-flow-motion-toggle,
   .simple-trust-flow-cta,
   .commercial-value-grid li,
   .simple-trust-flow-visual * {
