@@ -79,11 +79,11 @@ test("marketplace is request-to-buy and does not claim payment or reservation", 
   assert.doesNotMatch(marketplace, /Carrito verificado|Marketplace vivo|Compr., reserv. o ped./);
 });
 
-test("SUN map preserves missing counts and timestamps", () => {
-  assert.match(sun, /const reportedScanCount = hasReportedScanCount \? rawReportedScanCount : 0/);
-  assert.match(sun, /lastSeen: point\.lastSeen \|\| ""/);
-  assert.match(sun, /lastSeen: currentTapReportedAt/);
-  assert.match(sun, /taps: routeTapCount/);
+test("SUN map uses only explicit origin and current-tap coordinates", () => {
+  assert.match(sun, /origin=\{wineryPoint\[0\] \?/);
+  assert.match(sun, /tap=\{currentTapPoint\[0\] \?/);
+  assert.match(sun, /tapTimeLabel=\{localTapTimeLabel\}/);
+  assert.doesNotMatch(sun, /lastSeen: point\.lastSeen \|\| ""/);
   assert.doesNotMatch(sun, /new Date\(index \+ 1\)|lastMapSeenAt \|\| new Date\(\)\.toISOString|Math\.max\(1, Number\(result\.identity\?\.scanCount/);
 });
 
