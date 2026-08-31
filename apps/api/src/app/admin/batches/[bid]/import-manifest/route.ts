@@ -428,6 +428,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       || row.galleryUrls.length
       || Object.keys(row.unitMetadata).length
       || row.iotData
+      || row.engagementData
       || rowCarrierCode !== batchCarrierCode,
     );
     const hasProductOverride = Boolean(row.productName || row.sku);
@@ -443,8 +444,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       profile: hasUnitManifest || hasProductOverride ? {
         sku: hasProductOverride ? row.sku : null,
         product_name: hasProductOverride ? row.productName : null,
-        notes: row.lot || row.serial || row.expiresAt || Object.keys(row.unitMetadata).length || row.iotData
-          ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt, ...row.unitMetadata, iot: row.iotData })
+        notes: row.lot || row.serial || row.expiresAt || Object.keys(row.unitMetadata).length || row.iotData || row.engagementData
+          ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt, ...row.unitMetadata, iot: row.iotData, engagement: row.engagementData })
           : null,
         image_url: row.imageUrl,
         locale_data: {
@@ -459,6 +460,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
             carrier_label: rowCarrier.label,
           },
           iot: row.iotData,
+          engagement: row.engagementData,
         },
       } : null,
       sunPayload: row.sunPayloadHashes ? {
