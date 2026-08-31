@@ -158,6 +158,8 @@ test("shared maps use no-key OpenFreeMap vector styles and reject key-required p
   assert.match(mapSource, /normalizeNoKeyMapStyleUrl/);
   assert.match(mapSource, /normalizeNoKeyRasterTileTemplate/);
   assert.match(mapSource, /KEY_REQUIRED_HOST_PATTERN/);
-  assert.doesNotMatch(`${source}\n${mapSource}`, /dark_all|light_all|voyager_nolabels|basemaps\.cartocdn\.com|tile\.openstreetmap\.org/);
+  assert.doesNotMatch(source, /dark_all|light_all|voyager_nolabels|basemaps\.cartocdn\.com|tile\.openstreetmap\.org/);
+  assert.match(mapSource, /replaceLegacyRaster/);
+  assert.match(mapSource, /return value\.includes\(LEGACY_LOW_FIDELITY_RASTER_TEMPLATE\) \|\| isLegacyAnonymousCarto[\s\S]*?DEFAULT_PUBLIC_RASTER_TEMPLATE/);
   assert.match(source, /raster-brightness-max/);
 });

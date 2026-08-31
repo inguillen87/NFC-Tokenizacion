@@ -1092,7 +1092,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                 className="mt-0.5 h-5 w-5 rounded border-white/20 bg-slate-950 accent-cyan-400"
               />
               <span>
-                <span className="block text-[11px] font-black text-cyan-100">Compartir ubicacion aproximada (opcional)</span>
+                <span className="block text-[11px] font-black text-cyan-100">Incluir zona en la solicitud de propiedad (opcional)</span>
                 <span className="mt-1 block text-[10px] leading-relaxed text-cyan-100/70">
                   Solo se solicita si marcas esta opcion. Se redondea antes de enviarla, no guarda GPS exacto y no demuestra compra, custodia ni recorrido fisico.
                 </span>

@@ -40,6 +40,12 @@ const EXTENDED_MANIFEST_COLUMNS = [
   "light_exposure",
   "transit_shock",
   "storage_zone",
+  "promotion_json",
+  "promotion_title",
+  "promotion_description",
+  "promotion_points",
+  "promotion_state",
+  "promotion_public",
 ];
 
 export async function POST(req: Request) {

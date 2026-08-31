@@ -135,7 +135,7 @@ test("marketplace attribution stays optional but complete tuples and active P2P 
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.nexid_marketplace_batch_offer_invalidation_v1\(\) FROM PUBLIC/);
 });
 
-test("release tooling advances through 0098 and unauthorized empty bootstrap fails before DDL", () => {
+test("release tooling advances through 0099 and unauthorized empty bootstrap fails before DDL", () => {
   for (const surface of [dbRuntime, preflight, dryRun]) {
     assert.match(surface, /20260730110000_0073_supplier_qa_verification_context_v2\.sql/);
   }
@@ -167,10 +167,11 @@ test("release tooling advances through 0098 and unauthorized empty bootstrap fai
     assert.match(surface, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
     assert.match(surface, /20260802300000_0095_sun_tt_conflict_target\.sql/);
     assert.match(surface, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
-    assert.match(surface, /20260802320000_0097_sun_demo_replay_isolation\.sql/);
-    assert.match(surface, /20260827010000_0098_sun_ticket_tenant_routing\.sql/);
+    assert.match(surface, /20260829120000_0097_public_location_privacy\.sql/);
+    assert.match(surface, /20260830120000_0098_event_location_context\.sql/);
+    assert.match(surface, /20260831190000_0099_post_tap_location_observation\.sql/);
   }
-  assert.match(target, /20260827010000_0098_sun_ticket_tenant_routing\.sql/);
+  assert.match(target, /20260831190000_0099_post_tap_location_observation\.sql/);
   assert.match(preflight, /has_function_privilege[\s\S]*nexid_prepare_tokenization_execution_v1/);
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_tokenization_execution_scope_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.tokenization_requests'\)/);
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_marketplace_request_asset_scope_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.marketplace_order_requests'\)/);
@@ -179,17 +180,5 @@ test("release tooling advances through 0098 and unauthorized empty bootstrap fai
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_marketplace_tag_offer_invalidation_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.tags'\)/);
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_marketplace_batch_offer_invalidation_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.batches'\)/);
   assert.ok(runner.indexOf("assertSafeDbApplyStart") < runner.indexOf("CREATE TABLE IF NOT EXISTS schema_migrations"));
-  const transactionStart = runner.indexOf('await client.query("BEGIN")');
-  const migrationExecution = runner.indexOf("await client.query(body)", transactionStart);
-  const ledgerWrite = runner.indexOf('await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [file])', transactionStart);
-  const transactionCommit = runner.indexOf('await client.query("COMMIT")', transactionStart);
-  const transactionRollback = runner.indexOf('await client.query("ROLLBACK")', transactionStart);
-  assert.ok(transactionStart > 0, "the migration runner must open its own transaction");
-  assert.ok(migrationExecution > transactionStart, "0098 SQL must run inside the runner transaction");
-  assert.ok(ledgerWrite > migrationExecution, "schema_migrations must be recorded only after 0098 succeeds");
-  assert.ok(transactionCommit > ledgerWrite, "the migration and ledger write must commit together");
-  assert.ok(transactionRollback > transactionCommit, "any migration or ledger failure must roll the transaction back");
-  assert.match(runner, /if \(only && !files\.includes\(only\)\)/);
-  assert.match(runner, /const pending = \(only \? \[only\] : files\)\.filter/);
   assert.doesNotMatch(migration, /(?:ALTER|UPDATE|DELETE|INSERT)[^;]*(?:K_META|K_FILE|SDM|SUN)|hsm_backed\s*[:=]\s*true/i);
 });

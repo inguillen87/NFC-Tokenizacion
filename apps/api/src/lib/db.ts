@@ -95,31 +95,24 @@ export const DEFAULT_REQUIRED_SCHEMA_MIGRATIONS = [
   "20260802160000_0081_supplier_manifest_atomic_import.sql",
   "20260802170000_0082_consumer_session_revocation.sql",
   "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
-  "20260802185000_0083b_vault_artifact_status_bridge.sql",
   "20260802190000_0084_tenant_vault_audited_download.sql",
   "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
   "20260802210000_0086_supplier_order_lifecycle.sql",
   "20260802220000_0087_packaging_lab_foundation.sql",
-  "20260802225000_0087b_webhook_delivery_identity_bridge.sql",
   "20260802230000_0088_enterprise_event_profile.sql",
   "20260802240000_0089_sun_carrier_trust_state.sql",
   "20260802250000_0090_supplier_carrier_key_scope.sql",
-  "20260802255000_0090b_vault_artifact_canonical_bridge.sql",
   "20260802260000_0091_supplier_keyless_qa_activation.sql",
   "20260802270000_0092_supplier_carrier_scope_integrity.sql",
   "20260802280000_0093_sun_tt_durable_truth_binding.sql",
   "20260802290000_0094_sun_runtime_acl_boundary.sql",
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
-  "20260802320000_0097_sun_demo_replay_isolation.sql",
-  "20260827010000_0098_sun_ticket_tenant_routing.sql",
+  "20260829120000_0097_public_location_privacy.sql",
+  "20260830120000_0098_event_location_context.sql",
+  "20260831190000_0099_post_tap_location_observation.sql",
 ] as const;
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATION = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1)!;
-export const SCHEMA_MIGRATION_ID_PATTERN = /^\d{14}_\d{4}[a-z]?_[a-z0-9_]+\.sql$/;
-
-export function isValidSchemaMigrationId(id: string) {
-  return SCHEMA_MIGRATION_ID_PATTERN.test(id);
-}
 
 let productionWatermarkCheck: Promise<void> | null = null;
 
@@ -214,7 +207,7 @@ async function requireProductionSchemaWatermark() {
         .map((value) => value.trim())
         .filter(Boolean);
       const required = [...new Set([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS, ...configured])].sort();
-      if (required.some((id) => !isValidSchemaMigrationId(id))) {
+      if (required.some((id) => !/^\d{14}_\d{4}_[a-z0-9_]+\.sql$/.test(id))) {
         throw new Error("required_schema_migration_id_invalid");
       }
       const query = getSql();

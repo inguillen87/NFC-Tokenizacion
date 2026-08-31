@@ -46,10 +46,13 @@ export type GlobalOpsRoute = {
 type Mode = "tenant" | "global" | "demo";
 type TimeWindow = "1h" | "24h" | "7d" | "all";
 type MapView = "events" | "intensity";
-const CONSENTED_CONSUMER_LOCATION_SOURCE = "browser_gps_approximate_consent";
+const CONSENTED_CONSUMER_LOCATION_SOURCES = new Set([
+  "browser_geolocation_approximate_consent",
+  "browser_gps_approximate_consent",
+]);
 
 export function isConsentedConsumerLocation(point: GlobalOpsPoint) {
-  return point.locationSource === CONSENTED_CONSUMER_LOCATION_SOURCE
+  return CONSENTED_CONSUMER_LOCATION_SOURCES.has(String(point.locationSource || "").toLowerCase())
     && point.role !== "origin"
     && Number.isFinite(point.lat)
     && Number.isFinite(point.lng)
@@ -105,6 +108,7 @@ export function GlobalOpsMap({
   allowViewToggle,
   sourceLabel,
   locationNote,
+  externalTiles = true,
 }: {
   title?: string;
   subtitle?: string;
@@ -120,6 +124,7 @@ export function GlobalOpsMap({
   allowViewToggle?: boolean;
   sourceLabel?: string;
   locationNote?: string;
+  externalTiles?: boolean;
 }) {
   const isConsumerChrome = chrome === "consumer";
   const [tenant, setTenant] = useState("ALL");
@@ -462,6 +467,7 @@ export function GlobalOpsMap({
               evidenceSteps={isConsumerChrome ? [] : mapEvidenceSteps}
               ledgerItems={isConsumerChrome ? [] : mapLedgerItems}
               ariaLabel={isConsumerChrome ? `Ubicación aproximada compartida por este teléfono. ${consumerAccuracyText}` : `${title}. ${subtitle}${locationNote ? ` ${locationNote}.` : ""}`}
+              externalTiles={externalTiles}
               onPointSelect={(point) => {
                 const selected = visiblePoints.find((item) => item.id === point.id);
                 if (!selected) return;

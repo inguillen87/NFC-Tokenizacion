@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "nexID Server API",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "description": "Machine-readable contract for the private nexID server SDK. API keys are server-side credentials. NFC VALID describes cryptographic message evidence and does not by itself prove physical-product authenticity, custody or ownership."
   },
   "servers": [
@@ -115,18 +115,23 @@
       "post": {
         "operationId": "reportEvent",
         "summary": "Record an external operational event",
+        "description": "Records generic tenant events. product.sensor_reading uses the strict unit-bound sensor contract: BID and UID must already belong to the authenticated tenant, one stable Idempotency-Key is mandatory per physical reading, and an accepted reading is tenant-reported evidence rather than proof of an always-online or nexID-verified device.",
         "tags": ["Events"],
+        "x-nexid-required-scope": "sdk:events",
+        "x-nexid-sensor-idempotency": "required",
         "parameters": [
           { "$ref": "#/components/parameters/TraceId" },
           { "$ref": "#/components/parameters/IdempotencyKey" }
         ],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExternalEventRequest" } } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "oneOf": [{ "$ref": "#/components/schemas/SensorReadingEventRequest" }, { "$ref": "#/components/schemas/ExternalEventRequest" }] }, "examples": { "sensorReading": { "summary": "One unit-bound reading reported by a tenant gateway", "value": { "eventType": "product.sensor_reading", "bid": "LOT-2026-0042", "uidHex": "04A1B2C3D4E5F6", "occurredAt": "2026-08-29T13:30:05-03:00", "source": "acme-cold-chain-gateway", "data": { "sensors": { "measuredAt": "2026-08-29T13:30:00-03:00", "deviceId": "logger-7", "temperatureC": 12.4, "humidityPct": 68.2, "stage": "warehouse" } } } } } } } },
         "responses": {
           "201": { "description": "Event recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExternalEventResponse" } } } },
           "400": { "$ref": "#/components/responses/ApiError" },
           "401": { "$ref": "#/components/responses/ApiError" },
           "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
           "409": { "$ref": "#/components/responses/IdempotencyConflict" },
+          "428": { "description": "product.sensor_reading requires a stable Idempotency-Key for safe retries.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
           "429": { "$ref": "#/components/responses/RateLimited" },
           "503": { "$ref": "#/components/responses/CommittedWriteUncertain" }
         }
@@ -380,8 +385,48 @@
       "EnterpriseApproximateLocation": { "type": "object", "properties": { "lat": { "type": "number", "minimum": -90, "maximum": 90, "multipleOf": 0.001 }, "lng": { "type": "number", "minimum": -180, "maximum": 180, "multipleOf": 0.001 }, "city": { "type": "string", "maxLength": 160 }, "region": { "type": "string", "maxLength": 160 }, "country": { "type": "string", "maxLength": 80 }, "source": { "type": "string", "maxLength": 80 } }, "additionalProperties": false },
       "EnterpriseEventData": { "type": "object", "description": "Business metadata accepted for canonical outbound events. Secret-named fields are rejected. Raw uidHex is accepted only at the top level for internal tenant resolution and is emitted to webhooks only as uid_hash.", "properties": { "productId": { "type": "string", "maxLength": 160 }, "sku": { "type": "string", "maxLength": 160 }, "lotNumber": { "type": "string", "maxLength": 160 }, "authStatus": { "type": "string", "maxLength": 80 }, "tamperStatus": { "type": "string", "maxLength": 80 }, "replayStatus": { "type": "string", "maxLength": 80 }, "distributorId": { "type": "string", "maxLength": 160 }, "campaignId": { "type": "string", "maxLength": 160 }, "approximateLocation": { "$ref": "#/components/schemas/EnterpriseApproximateLocation" }, "consentFlags": { "type": "object", "maxProperties": 32, "additionalProperties": { "type": "boolean" } } }, "additionalProperties": true },
       "CanonicalOutboundEvent": { "type": "object", "required": ["event_id", "event_version", "event_type", "occurred_at", "tenant_id", "request_id"], "properties": { "event_id": { "type": "string", "format": "uuid" }, "event_version": { "const": "1.0" }, "event_type": { "type": "string" }, "occurred_at": { "type": "string", "format": "date-time" }, "tenant_id": { "type": "string", "format": "uuid" }, "product_id": { "type": "string" }, "sku": { "type": "string" }, "batch_id": { "type": "string", "format": "uuid" }, "lot_number": { "type": "string" }, "uid_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "readOnly": true }, "auth_status": { "type": "string" }, "tamper_status": { "type": "string" }, "replay_status": { "type": "string" }, "risk_score": { "type": "integer", "minimum": 0, "maximum": 100 }, "risk_level": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] }, "triggered_rules": { "type": "array", "items": { "type": "string" } }, "recommended_action": { "type": "string" }, "distributor_id": { "type": "string" }, "campaign_id": { "type": "string" }, "approximate_location": { "$ref": "#/components/schemas/EnterpriseApproximateLocation" }, "consent_flags": { "type": "object", "additionalProperties": { "type": "boolean" } }, "request_id": { "type": "string", "maxLength": 256 }, "connector_profile_code": { "type": "string", "enum": ["cropwise_physical_product_event"], "description": "Generic mapping template only; not a native Cropwise integration claim." } }, "additionalProperties": false },
-      "ExternalEventRequest": { "type": "object", "required": ["eventType"], "properties": { "eventType": { "type": "string", "minLength": 1 }, "bid": { "type": "string" }, "uidHex": { "type": "string", "writeOnly": true }, "source": { "type": "string" }, "occurredAt": { "type": "string", "format": "date-time" }, "connectorProfile": { "type": "string", "enum": ["cropwise_physical_product_event"], "description": "Optional generic outbound mapping. It does not assert a contracted or native integration." }, "data": { "$ref": "#/components/schemas/EnterpriseEventData" }, "meta": { "type": "object", "additionalProperties": true }, "gps": { "type": "object", "additionalProperties": true }, "device": { "type": "object", "additionalProperties": true } }, "additionalProperties": false },
-      "ExternalEventResponse": { "type": "object", "required": ["ok", "eventId", "eventType"], "properties": { "ok": { "type": "boolean" }, "eventId": { "type": "string" }, "eventType": { "type": "string" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "bid": { "type": ["string", "null"] }, "uidMasked": { "type": ["string", "null"] }, "traceId": { "type": "string" }, "webhookOutbox": { "$ref": "#/components/schemas/WebhookOutboxReceipt" } }, "additionalProperties": true },
+      "SensorReading": {
+        "type": "object",
+        "description": "Allow-listed tenant-reported measurements. measuredAt is required unless the request supplies occurredAt. At least one physical metric is required. Credentials and arbitrary connector configuration are rejected.",
+        "properties": {
+          "temperatureC": { "type": "number", "minimum": -100, "maximum": 200 },
+          "humidityPct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "lightExposure": { "oneOf": [{ "type": "number", "minimum": 0, "maximum": 10000000 }, { "type": "string", "minLength": 1, "maxLength": 80 }] },
+          "transitShock": { "oneOf": [{ "type": "number", "minimum": 0, "maximum": 10000 }, { "type": "string", "minLength": 1, "maxLength": 80 }] },
+          "measuredAt": { "type": "string", "format": "date-time", "maxLength": 64 },
+          "deviceId": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "source": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "stage": { "type": "string", "minLength": 1, "maxLength": 80 }
+        },
+        "anyOf": [
+          { "required": ["temperatureC"] },
+          { "required": ["humidityPct"] },
+          { "required": ["lightExposure"] },
+          { "required": ["transitShock"] }
+        ],
+        "additionalProperties": false
+      },
+      "SensorReadingEventRequest": {
+        "type": "object",
+        "required": ["eventType", "bid", "uidHex", "data"],
+        "description": "Strict REST push contract for a physical gateway or company API. Requires x-nexid-api-key with sdk:events and a stable Idempotency-Key header. A successful receipt confirms ingestion of one reported reading, not continuous connector health.",
+        "properties": {
+          "eventType": { "const": "product.sensor_reading" },
+          "bid": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "uidHex": { "type": "string", "pattern": "^(?:[0-9A-Fa-f]{2}){4,32}$", "writeOnly": true },
+          "source": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "occurredAt": { "type": "string", "format": "date-time", "maxLength": 64 },
+          "data": { "type": "object", "required": ["sensors"], "properties": { "sensors": { "$ref": "#/components/schemas/SensorReading" } }, "additionalProperties": false }
+        },
+        "anyOf": [
+          { "required": ["occurredAt"] },
+          { "properties": { "data": { "properties": { "sensors": { "required": ["measuredAt"] } } } } }
+        ],
+        "additionalProperties": false
+      },
+      "SensorEvidenceReceipt": { "type": "object", "required": ["kind", "storage", "timelineEligible", "ingestionTransport", "readingStatus", "connectorStatus", "evidenceAuthority", "liveStreamConnected"], "properties": { "kind": { "const": "reported" }, "storage": { "const": "sdk_external_events" }, "timelineEligible": { "type": "boolean" }, "ingestionTransport": { "const": "rest_push" }, "readingStatus": { "type": "string", "enum": ["accepted", "quarantined"] }, "connectorStatus": { "const": "not_monitored", "description": "One accepted reading does not prove that a gateway remains online." }, "evidenceAuthority": { "const": "tenant_reported" }, "liveStreamConnected": { "const": false } }, "additionalProperties": false },
+      "ExternalEventRequest": { "type": "object", "required": ["eventType"], "properties": { "eventType": { "type": "string", "minLength": 1, "not": { "const": "product.sensor_reading" } }, "bid": { "type": "string" }, "uidHex": { "type": "string", "writeOnly": true }, "source": { "type": "string" }, "occurredAt": { "type": "string", "format": "date-time" }, "connectorProfile": { "type": "string", "enum": ["cropwise_physical_product_event"], "description": "Optional generic outbound mapping. It does not assert a contracted or native integration." }, "data": { "$ref": "#/components/schemas/EnterpriseEventData" }, "meta": { "type": "object", "additionalProperties": true }, "gps": { "type": "object", "additionalProperties": true }, "device": { "type": "object", "additionalProperties": true } }, "additionalProperties": false },
+      "ExternalEventResponse": { "type": "object", "required": ["ok", "eventId", "eventType"], "properties": { "ok": { "type": "boolean" }, "eventId": { "type": "string" }, "eventType": { "type": "string" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "bid": { "type": ["string", "null"] }, "uidMasked": { "type": ["string", "null"] }, "traceId": { "type": "string" }, "webhookOutbox": { "$ref": "#/components/schemas/WebhookOutboxReceipt" }, "sensorEvidence": { "$ref": "#/components/schemas/SensorEvidenceReceipt" } }, "additionalProperties": true },
       "PosActivationRequest": { "type": "object", "required": ["bid", "uidHex"], "description": "Unit-scoped point-of-sale activation. Batch-wide activation is intentionally not supported by this endpoint.", "properties": { "bid": { "type": "string", "minLength": 3, "maxLength": 120 }, "uidHex": { "type": "string", "minLength": 8, "maxLength": 64 }, "externalOrderId": { "type": "string" }, "retailerId": { "type": "string" }, "contact": { "type": "string" }, "pin": { "type": "string", "minLength": 8, "maxLength": 128, "writeOnly": true }, "expiresInMinutes": { "type": "integer", "minimum": 1 }, "meta": { "type": "object", "additionalProperties": true }, "gps": { "type": "object", "additionalProperties": true }, "device": { "type": "object", "additionalProperties": true } }, "additionalProperties": false },
       "PosActivationResponse": { "type": "object", "required": ["ok", "activationId", "bid", "posToken", "expiresAt"], "properties": { "ok": { "type": "boolean" }, "activationId": { "type": "string" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "bid": { "type": "string" }, "uidMasked": { "type": ["string", "null"] }, "posToken": { "type": "string", "writeOnly": true }, "expiresAt": { "type": "string", "format": "date-time" }, "policy": { "type": "object", "additionalProperties": true }, "traceId": { "type": "string" }, "webhookOutbox": { "$ref": "#/components/schemas/WebhookOutboxReceipt" } }, "additionalProperties": true },
       "LogisticsSealApplyRequest": { "type": "object", "required": ["uidHex", "shipmentId"], "properties": { "uidHex": { "type": "string" }, "shipmentId": { "type": "string" }, "ttRaw": { "type": "string" }, "location": { "type": "string" }, "scannedBy": { "type": "string" } }, "additionalProperties": false },

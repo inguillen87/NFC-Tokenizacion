@@ -189,7 +189,7 @@ export function SunProductHeroStage({
         },
       ]
     : [];
-  const traceRoutes: VectorMapRoute[] = hasTraceCoordinates
+  const traceRoutes: VectorMapRoute[] = hasTraceCoordinates && isDemoPreview
     ? [
         {
           id: "sun-origin-current-tap",
@@ -235,6 +235,15 @@ export function SunProductHeroStage({
             className="border-0 bg-transparent shadow-none"
           />
         </div>
+      ) : isDemoPreview ? (
+        <div className="sun-stage-map" aria-hidden="true" data-location-evidence="demo">
+          <span className="sun-stage-map__land sun-stage-map__land--origin" />
+          <span className="sun-stage-map__land sun-stage-map__land--tap" />
+          {isDemoPreview ? <span className="sun-stage-map__route" /> : null}
+          <span className="sun-stage-map__route sun-stage-map__route--glow" />
+          <span className="sun-stage-map__point sun-stage-map__point--origin" />
+          {isDemoPreview ? <span className="sun-stage-map__point sun-stage-map__point--tap" /> : null}
+        </div>
       ) : (
         <div
           className="sun-stage-location-empty"
@@ -247,7 +256,7 @@ export function SunProductHeroStage({
           <span>No mostramos un mapa, una ruta ni puntos de ejemplo.</span>
         </div>
       )}
-      {hasTraceCoordinates ? (
+      {hasTraceCoordinates || isDemoPreview ? (
         <>
           <span className="sun-stage-pin sun-stage-pin--origin">
             <b>{traceCopy.originPinLabel}</b>
@@ -257,9 +266,9 @@ export function SunProductHeroStage({
             <b>{traceCopy.tapPinLabel}</b>
             <em>{shortLocation(tapDisplay)}</em>
           </span>
-          <span className="sun-stage-route-label">{distanceDisplay}</span>
         </>
       ) : null}
+      {isDemoPreview && hasTraceCoordinates ? <span className="sun-stage-route-label">{distanceDisplay}</span> : null}
       <div className={`sun-three-product-shell${ready ? " sun-three-product-shell--ready" : ""}`}>
         {imageUrl ? (
           <div className={`sun-product-photo-shell sun-product-photo-shell--${state}`}>

@@ -85,14 +85,16 @@ async function run() {
   
   // Query DB to fetch the generated event details
   const eventRows = await sql`
-    SELECT id, result FROM events
+    SELECT id, result, sdm_read_ctr FROM events
     WHERE batch_id = (SELECT id FROM batches WHERE bid = ${bid} LIMIT 1)
       AND uid_hex = ${uidHex}
     ORDER BY created_at DESC LIMIT 1
   `;
   const eventId = eventRows[0]?.id;
+  const readCounter = Number(eventRows[0]?.sdm_read_ctr);
   const traceId = tapData.request_id || `trace_${Date.now()}`;
   const verdict = eventRows[0]?.result;
+  const freshToken = String(tapData.fresh_token || "");
 
   console.log("✅ Tap registrado en base de datos!");
   console.log("   ID de Evento:", eventId);
@@ -103,8 +105,16 @@ async function run() {
     console.error("❌ No se encontró ningún evento de tap registrado en DB.");
     process.exit(1);
   }
+  if (!Number.isSafeInteger(readCounter) || readCounter < 0) {
+    throw new Error("The isolated tap event did not persist a valid SDM read counter.");
+  }
+  if (!freshToken) {
+    throw new Error("The non-production demo scan did not return a server-issued fresh capability.");
+  }
 
   console.log("\n1.5. Enriqueciendo contexto GPS y validando geocoder local...");
+  const locationRequestedAt = new Date().toISOString();
+  const locationMeasuredAt = new Date(Date.now() + 1).toISOString();
   const contextResponse = await fetch(`${API_BASE}/sun/context`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -112,19 +122,20 @@ async function run() {
       bid,
       uid: uidHex,
       eventId,
+      fresh_token: freshToken,
+      ctr: readCounter,
       contextStatus: verdict || "VALID",
-      scannedAt: new Date().toISOString(),
+      scannedAt: locationRequestedAt,
+      locationRequestedAt,
       geo: {
         lat: tapLocation.lat,
         lng: tapLocation.lng,
         accuracy: tapLocation.accuracy,
+        measuredAt: locationMeasuredAt,
       },
       geoConsent: true,
       geoPrecision: "approximate",
       client: {
-        platform: "iPhone",
-        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
-        mobile: true,
         timezone: tapLocation.countryCode === "BR" ? "America/Sao_Paulo" : tapLocation.countryCode === "CL" ? "America/Santiago" : "America/Argentina/Buenos_Aires",
       },
     }),
@@ -152,10 +163,6 @@ async function run() {
   }
   console.log(`OK Contexto GPS resuelto: ${resolvedLocation.city}, ${resolvedLocation.country_code} (${resolvedLocation.location_accuracy_m || tapLocation.accuracy}m)`);
 
-  const freshToken = String(tapData.fresh_token || "");
-  if (!freshToken) {
-    throw new Error("The non-production demo scan did not return a server-issued fresh capability.");
-  }
   console.log("✅ Capability efímera emitida por el servidor para este tap.");
 
   console.log(`\n👉 2. Iniciando autenticación del Comprador (OTP a: ${testContact})`);

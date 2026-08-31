@@ -69,6 +69,29 @@ test("OpenAPI required request fields match the SDK source contract", () => {
   assert.deepEqual(spec.components.schemas.OfflineScanEvent.required, ["localId", "capturedUrl", "capturedAt"]);
 });
 
+test("OpenAPI publishes a strict, idempotent and truth-labeled physical sensor contract", () => {
+  const operation = spec.paths["/api/v1/sdk/events"].post;
+  const sensor = spec.components.schemas.SensorReadingEventRequest;
+  const readings = spec.components.schemas.SensorReading;
+  const receipt = spec.components.schemas.SensorEvidenceReceipt;
+  assert.equal(operation["x-nexid-required-scope"], "sdk:events");
+  assert.equal(operation["x-nexid-sensor-idempotency"], "required");
+  assert.match(operation.description, /one stable Idempotency-Key is mandatory/);
+  assert.match(operation.description, /tenant-reported evidence/);
+  assert.ok(operation.responses["428"]);
+  assert.equal(sensor.properties.eventType.const, "product.sensor_reading");
+  assert.deepEqual(sensor.required, ["eventType", "bid", "uidHex", "data"]);
+  assert.equal(sensor.properties.uidHex.writeOnly, true);
+  assert.equal(sensor.properties.data.additionalProperties, false);
+  assert.equal(readings.additionalProperties, false);
+  assert.equal(readings.properties.humidityPct.maximum, 100);
+  assert.equal(readings.properties.temperatureC.minimum, -100);
+  assert.equal(receipt.properties.connectorStatus.const, "not_monitored");
+  assert.equal(receipt.properties.evidenceAuthority.const, "tenant_reported");
+  assert.equal(receipt.properties.liveStreamConnected.const, false);
+  assert.equal(spec.components.schemas.ExternalEventRequest.properties.eventType.not.const, "product.sensor_reading");
+});
+
 test("OpenAPI publishes Offline Level 2 without equating hashes or local state with SUN verification", () => {
   const operation = spec.paths["/api/v1/sdk/offline-sync"].post;
   assert.equal(operation.operationId, "syncOfflineScans");

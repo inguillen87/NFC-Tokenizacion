@@ -1,6 +1,7 @@
 .git
 .vercel
 node_modules
+/.node_modules-original-junction
 .next
 apps/*/.next
 apps/*/.vercel
@@ -14,11 +15,12 @@ test-results
 # Local Codex/dev artifacts that should never be uploaded to Vercel.
 /artifacts
 /apps/api/artifacts
-tmp
-.codex
-.codex-logs
-.codex-run-logs
-.codex-*.log
+/tmp
+/.codex
+/.codex-logs
+/.codex-run-logs
+/.codex-tmp
+/.codex-*.log
 *.log
 
 # Local one-off NFC/debug helpers.

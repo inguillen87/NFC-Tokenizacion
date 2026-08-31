@@ -47,6 +47,7 @@ type QREngagementSuiteProps = {
   bid?: string | null;
   allowedActions?: string[];
   blockedActions?: string[];
+  initialTab?: EngagementTab;
 };
 
 function localTrivia(productName: string, wineryName: string): ClientTriviaQuestion[] {
@@ -103,8 +104,9 @@ export function QREngagementSuite({
   bid = null,
   allowedActions = [],
   blockedActions = [],
+  initialTab = "sommelier",
 }: QREngagementSuiteProps) {
-  const [activeTab, setActiveTab] = useState<EngagementTab>("sommelier");
+  const [activeTab, setActiveTab] = useState<EngagementTab>(initialTab);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -422,8 +424,8 @@ export function QREngagementSuite({
   };
 
   return (
-    <div className="mt-4 w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 shadow-xl backdrop-blur-md">
-      <div className="flex border-b border-white/5 bg-black/40 text-[10px] md:text-xs">
+    <div className="sun-engagement-suite mt-4 w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 shadow-xl backdrop-blur-md" data-sun-dock-avoid>
+      <div className="sun-engagement-tabs flex border-b border-white/5 bg-black/40 text-[11px] md:text-xs">
         {engagementTabs.map((tab) => (
           <button
             key={tab.id}
@@ -453,7 +455,7 @@ export function QREngagementSuite({
               className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-400"
             />
             <span>
-              Compartir ubicacion aproximada (opt-in). Se redondea antes de enviarla y nunca se guarda la coordenada exacta del dispositivo.
+              Incluir una zona aproximada en este mensaje (opcional). Se redondea antes de enviarla y nunca se guarda la coordenada exacta del dispositivo.
             </span>
           </label>
         ) : null}

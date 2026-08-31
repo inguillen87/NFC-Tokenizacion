@@ -1,13 +1,25 @@
-export type SunSensorEvidenceKind = "reported" | "simulated" | "none";
+export type SunSensorEvidenceKind = "reported" | "declared_static" | "simulated" | "none";
 
 export type SunSensorTimelineEvent = {
   at?: string | null;
   stage?: string | null;
   sensorTempC?: number | null;
   sensorHumidity?: number | null;
-  sensorSource?: "tenant_manual" | "csv_import" | "json_import" | "live_sensor" | null;
-  sensorPrivacyScope?: string | null;
-  sensorResponsible?: string | null;
+  sensorLightExposure?: string | null;
+  sensorTransitShock?: string | null;
+  sensorMeasuredAt?: string | null;
+  sensorDeviceId?: string | null;
+  sensorSource?: string | null;
+};
+
+export type SunDeclaredStaticSensorInput = {
+  observedAt: string | null;
+  deviceId: string | null;
+  temperatureC: number | null;
+  humidityPct: number | null;
+  lightExposure: string | null;
+  transitShock: string | null;
+  stage: string | null;
 };
 
 export type SunSensorHistoryItem = {
@@ -15,18 +27,18 @@ export type SunSensorHistoryItem = {
   stage: string;
   temperatureC: number | null;
   humidityPct: number | null;
+  lightExposure: string | null;
+  transitShock: string | null;
   barrelAgeMonths: number | null;
   alert: string | null;
-  source: SunSensorTimelineEvent["sensorSource"];
-  privacyScope: string | null;
-  responsible: string | null;
+  evidenceKind: Exclude<SunSensorEvidenceKind, "none">;
+  source: "event_measurement" | "manifest" | "simulation" | string;
+  deviceId: string | null;
 };
-
-const SUPPORTED_SENSOR_ORIGINS = ["tenant_manual", "csv_import", "json_import", "live_sensor"] as const;
-const SUPPORTED_SENSOR_PRIVACY_SCOPES = ["public", "tenant_only", "private", "internal"] as const;
 
 type BuildSunSensorEvidenceInput = {
   timeline: SunSensorTimelineEvent[];
+  declaredStatic?: SunDeclaredStaticSensorInput | null;
   fallbackStorage?: string | null;
   barrelMonths?: number | null;
   simulatedTempC?: number | string | null;
@@ -37,10 +49,30 @@ type BuildSunSensorEvidenceInput = {
   now?: string;
 };
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function textOrNull(value: unknown) {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    const text = textOrNull(value);
+    if (text) return text;
+  }
+  return null;
+}
+
 function finiteNumber(value: unknown) {
   if (typeof value !== "number" && typeof value !== "string") return null;
   if (typeof value === "string" && !value.trim()) return null;
-  const parsed = typeof value === "number" ? value : Number(value.trim());
+  const parsed = typeof value === "number" ? value : Number(value.trim().replace(",", "."));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -49,21 +81,42 @@ function observationTime(value: string | null) {
   return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
-export function normalizeSunSensorPrivacyScope(value: string | null) {
-  const normalized = String(value || "").trim().toLowerCase();
-  return SUPPORTED_SENSOR_PRIVACY_SCOPES.includes(normalized as (typeof SUPPORTED_SENSOR_PRIVACY_SCOPES)[number])
-    ? normalized
-    : "not_reported";
+/**
+ * Reads the allow-listed sensor projection stored with an imported unit
+ * manifest. It intentionally does not return the raw JSON object: arbitrary
+ * manifest keys are not part of the public passport contract.
+ */
+export function declaredStaticSensorFromLocaleData(localeData: unknown): SunDeclaredStaticSensorInput | null {
+  const data = asRecord(localeData);
+  const manifest = asRecord(data.manifest);
+  const iot = { ...asRecord(manifest.iot), ...asRecord(data.iot) };
+  if (!Object.keys(iot).length) return null;
+
+  const declared: SunDeclaredStaticSensorInput = {
+    observedAt: firstText(iot.measuredAt, iot.measured_at, iot.capturedAt, iot.sensor_at),
+    deviceId: firstText(iot.deviceId, iot.device_id, iot.sensor_id, iot.logger_id),
+    temperatureC: finiteNumber(iot.temperatureC ?? iot.temperature_c ?? iot.cellarTemperatureC ?? iot.storageTemperatureC),
+    humidityPct: finiteNumber(iot.humidityPct ?? iot.humidity_pct ?? iot.humidity ?? iot.relativeHumidityPct),
+    lightExposure: firstText(iot.lightExposure, iot.light_exposure, iot.light, iot.lux),
+    transitShock: firstText(iot.transitShock, iot.transit_shock, iot.shock, iot.impact_g),
+    stage: firstText(iot.stage, iot.storageZone, iot.storage_zone),
+  };
+  return Object.values(declared).some((value) => value != null) ? declared : null;
 }
 
-export function publicSunSensorResponsible(value: unknown, privacyScope: string | null) {
-  if (normalizeSunSensorPrivacyScope(privacyScope) !== "public") return null;
-  const responsible = typeof value === "string" ? value.trim().slice(0, 120) : "";
-  return responsible || null;
-}
-
-export function isPublicSunSensorObservation(privacyScope: string | null) {
-  return normalizeSunSensorPrivacyScope(privacyScope) === "public";
+function publicDeclaredStaticSensor(input: SunDeclaredStaticSensorInput | null | undefined) {
+  if (!input) return null;
+  return {
+    evidenceKind: "declared_static" as const,
+    source: "manifest" as const,
+    observedAt: input.observedAt,
+    deviceId: input.deviceId,
+    temperatureC: finiteNumber(input.temperatureC),
+    humidityPct: finiteNumber(input.humidityPct),
+    lightExposure: textOrNull(input.lightExposure),
+    transitShock: textOrNull(input.transitShock),
+    stage: textOrNull(input.stage),
+  };
 }
 
 /**
@@ -73,30 +126,32 @@ export function isPublicSunSensorObservation(privacyScope: string | null) {
  */
 export function buildSunSensorEvidence(input: BuildSunSensorEvidenceInput) {
   const measured = input.timeline.filter((event) => (
-    event.sensorTempC != null || event.sensorHumidity != null
-  ) && isPublicSunSensorObservation(event.sensorPrivacyScope || null));
+    event.sensorTempC != null
+    || event.sensorHumidity != null
+    || textOrNull(event.sensorLightExposure) != null
+    || textOrNull(event.sensorTransitShock) != null
+  ));
+  const declaredStatic = publicDeclaredStaticSensor(input.declaredStatic);
 
   if (measured.length) {
     const stages = ["cellar", "distribution", "retail", "consumer"];
     const history: SunSensorHistoryItem[] = measured.map((event, index) => {
       const temperatureC = finiteNumber(event.sensorTempC);
       const humidityPct = finiteNumber(event.sensorHumidity);
-      const privacyScope = normalizeSunSensorPrivacyScope(event.sensorPrivacyScope || null);
       return {
-        at: event.at || null,
+        at: event.sensorMeasuredAt || event.at || null,
         stage: event.stage || stages[Math.min(index, stages.length - 1)],
         temperatureC,
         humidityPct,
+        lightExposure: textOrNull(event.sensorLightExposure),
+        transitShock: textOrNull(event.sensorTransitShock),
         barrelAgeMonths: input.barrelMonths ?? null,
         // Wine, seed, pharma and chemicals cannot share an invented global
         // threshold. Alerts require an explicit, versioned tenant policy.
         alert: null,
-        source: event.sensorSource || null,
-        privacyScope,
-        // Responsibility belongs to the tenant/operator domain. It can only be
-        // projected into the public SUN contract when this exact observation
-        // explicitly opts into public visibility.
-        responsible: publicSunSensorResponsible(event.sensorResponsible, privacyScope),
+        evidenceKind: "reported" as const,
+        source: event.sensorSource?.trim() || "event_measurement",
+        deviceId: event.sensorDeviceId?.trim() || null,
       };
     });
     const latestFirst = history
@@ -104,32 +159,51 @@ export function buildSunSensorEvidence(input: BuildSunSensorEvidenceInput) {
       .sort((left, right) => observationTime(right.item.at) - observationTime(left.item.at) || left.index - right.index)
       .map(({ item }) => item);
     const latestObservation = latestFirst[0] || null;
-    const privacyScope = normalizeSunSensorPrivacyScope(latestObservation?.privacyScope || null);
     return {
       kind: "reported" as const,
-      history,
-      provenance: {
-        origin: latestObservation?.source || "event_reported_unknown",
-        capturedAt: latestObservation?.at || null,
-        privacyScope,
-        // A named person or operator is public only when that exact observation
-        // explicitly opts into public visibility. Tenant/internal responsibility
-        // stays private even though the aggregate reading may be published.
-        responsible: privacyScope === "public" ? latestObservation?.responsible || null : null,
-        supportedOrigins: SUPPORTED_SENSOR_ORIGINS,
-      },
+      history: latestFirst,
       snapshot: {
-        // Snapshot and provenance are atomic: values never borrow a different
-        // observation, timestamp, source or privacy decision.
-        cellarTemperature: latestObservation?.temperatureC != null
-          ? `${latestObservation.temperatureC.toFixed(1)}°C`
-          : null,
-        humidity: latestObservation?.humidityPct != null
-          ? `${latestObservation.humidityPct.toFixed(0)}%`
-          : null,
-        lightExposure: null,
-        transitShock: null,
+        // A snapshot is one observation, never a synthetic blend of the newest
+        // value for each metric from different devices or timestamps.
+        cellarTemperature: latestObservation?.temperatureC != null ? `${latestObservation.temperatureC.toFixed(1)}°C` : null,
+        humidity: latestObservation?.humidityPct != null ? `${latestObservation.humidityPct.toFixed(0)}%` : null,
+        lightExposure: latestObservation?.lightExposure ?? null,
+        transitShock: latestObservation?.transitShock ?? null,
+        ...(latestObservation?.at ? { observedAt: latestObservation.at } : {}),
+        ...(latestObservation?.source ? { source: latestObservation.source } : {}),
+        ...(latestObservation?.deviceId ? { deviceId: latestObservation.deviceId } : {}),
       },
+      declaredStatic,
+    };
+  }
+
+  if (declaredStatic) {
+    const history: SunSensorHistoryItem[] = [{
+      at: declaredStatic.observedAt,
+      stage: declaredStatic.stage || "manifest_iot",
+      temperatureC: declaredStatic.temperatureC,
+      humidityPct: declaredStatic.humidityPct,
+      lightExposure: declaredStatic.lightExposure,
+      transitShock: declaredStatic.transitShock,
+      barrelAgeMonths: input.barrelMonths ?? null,
+      alert: null,
+      evidenceKind: "declared_static",
+      source: "manifest",
+      deviceId: declaredStatic.deviceId,
+    }];
+    return {
+      kind: "declared_static" as const,
+      history,
+      snapshot: {
+        cellarTemperature: declaredStatic.temperatureC != null ? `${declaredStatic.temperatureC.toFixed(1)}°C` : null,
+        humidity: declaredStatic.humidityPct != null ? `${declaredStatic.humidityPct.toFixed(0)}%` : null,
+        lightExposure: declaredStatic.lightExposure,
+        transitShock: declaredStatic.transitShock,
+        ...(declaredStatic.observedAt ? { observedAt: declaredStatic.observedAt } : {}),
+        source: "manifest" as const,
+        ...(declaredStatic.deviceId ? { deviceId: declaredStatic.deviceId } : {}),
+      },
+      declaredStatic,
     };
   }
 
@@ -137,19 +211,13 @@ export function buildSunSensorEvidence(input: BuildSunSensorEvidenceInput) {
     return {
       kind: "none" as const,
       history: [] as SunSensorHistoryItem[],
-      provenance: {
-        origin: "none" as const,
-        capturedAt: null,
-        privacyScope: "not_applicable",
-        responsible: null,
-        supportedOrigins: SUPPORTED_SENSOR_ORIGINS,
-      },
       snapshot: {
         cellarTemperature: null,
         humidity: null,
         lightExposure: null,
         transitShock: null,
       },
+      declaredStatic: null,
     };
   }
 
@@ -161,28 +229,26 @@ export function buildSunSensorEvidence(input: BuildSunSensorEvidenceInput) {
     stage: "simulation",
     temperatureC,
     humidityPct,
+    lightExposure: input.simulatedLight || "Exposición baja simulada",
+    transitShock: input.simulatedShock || "Sin golpes críticos en la simulación",
     barrelAgeMonths: input.barrelMonths ?? null,
     alert: null,
-    source: null,
-    privacyScope: null,
-    responsible: null,
+    evidenceKind: "simulated",
+    source: "simulation",
+    deviceId: null,
   }];
 
   return {
     kind: "simulated" as const,
     history,
-    provenance: {
-      origin: "illustrative_scenario" as const,
-      capturedAt: history[0]?.at || null,
-      privacyScope: "not_applicable",
-      responsible: null,
-      supportedOrigins: SUPPORTED_SENSOR_ORIGINS,
-    },
     snapshot: {
       cellarTemperature: `${temperatureC.toFixed(1)}°C`,
       humidity: `${humidityPct.toFixed(0)}%`,
-      lightExposure: input.simulatedLight || "Exposición baja simulada",
-      transitShock: input.simulatedShock || "Sin golpes críticos en la simulación",
+      lightExposure: history[0].lightExposure,
+      transitShock: history[0].transitShock,
+      observedAt: history[0].at,
+      source: "simulation" as const,
     },
+    declaredStatic: null,
   };
 }

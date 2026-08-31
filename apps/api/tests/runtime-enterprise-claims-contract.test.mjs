@@ -171,27 +171,46 @@ test("QR geography preserves provenance between client-reported and edge-IP coor
   assert.doesNotMatch(sunRoute, /Object\.fromEntries\(input\.url\.searchParams\.entries\(\)\);/);
 });
 
-test("SUN passport omits invented quality scores and routes when source data is unavailable", () => {
+test("SUN passport omits invented quality scores when source data is unavailable", () => {
   const unavailableQualityContracts = sunRoute.match(/quality: \{ score: null, tier: null, basis: "unavailable" \}/g) || [];
   assert.equal(unavailableQualityContracts.length, 2);
   assert.match(sunRoute, /const hasReportedQuality = reportedQualityScore !== null/);
   assert.match(sunRoute, /N\/D · \$\{noScoreLabel\}/);
   assert.doesNotMatch(sunRoute, /deterministic_policy_heuristic/);
   assert.doesNotMatch(sunRoute, /qualityScore|setupScore|trustPenalty|sensorPenalty/);
+});
 
-  assert.match(sunRoute, /const declaredOriginAvailable = wineryLat !== null && wineryLng !== null/);
-  assert.match(sunRoute, /const tapLocationAvailable = tapLat !== null && tapLng !== null/);
-  assert.match(sunRoute, /const linearReferenceAvailable = declaredOriginAvailable && tapLocationAvailable/);
-  assert.match(sunRoute, /const routeDistanceKm = linearReferenceAvailable/);
-  assert.match(sunRoute, /routeDistanceKm === null \? "N\/D"/);
-  assert.match(sunRoute, /Map unavailable: the tap has no valid WGS84 coordinate pair/);
+test("SUN browser HTML defaults to the clean web experience and keeps inline HTML as explicit noindex compatibility", () => {
+  const inlineSelectorStart = sunRoute.indexOf("function wantsInlineApiHtml");
+  const inlineSelectorEnd = sunRoute.indexOf("function webBaseUrl", inlineSelectorStart);
+  const inlineSelector = sunRoute.slice(inlineSelectorStart, inlineSelectorEnd);
+  assert.ok(inlineSelectorStart >= 0 && inlineSelectorEnd > inlineSelectorStart);
+  assert.match(inlineSelector, /return view === "api-html" \|\| view === "legacy-html"/);
+  assert.doesNotMatch(inlineSelector, /view === "html"/);
+
+  const redirectStart = sunRoute.indexOf("const webTarget = wantsInlineApiHtml(url)");
+  const redirectEnd = sunRoute.indexOf("const shareToken", redirectStart);
+  const redirectContract = sunRoute.slice(redirectStart, redirectEnd);
+  assert.ok(redirectStart >= 0 && redirectEnd > redirectStart);
+  assert.match(redirectContract, /wantsInlineApiHtml\(url\)\s*\?\s*null\s*:\s*buildWebSunSnapshotUrl/);
+  assert.match(redirectContract, /return Response\.redirect\(webTarget, 303\)/);
+
+  const inlineResponseStart = sunRoute.indexOf("return new Response(renderSunHtml", redirectEnd);
+  const inlineResponseEnd = sunRoute.indexOf("const response = json", inlineResponseStart);
+  const inlineResponse = sunRoute.slice(inlineResponseStart, inlineResponseEnd);
+  assert.ok(inlineResponseStart >= 0 && inlineResponseEnd > inlineResponseStart);
+  assert.match(inlineResponse, /'x-robots-tag': 'noindex, nofollow'/);
+  assert.match(inlineResponse, /'referrer-policy': 'no-referrer'/);
+
+  assert.match(sunRoute, /const wineryLat = finiteCoordinate\(contract\.iot\.wineryCoordinates\?\.lat\)/);
+  assert.match(sunRoute, /const tapLat = finiteCoordinate\(contract\.tapContext\.lat\)/);
+  assert.match(sunRoute, /const mapAvailable = wineryLat !== null && wineryLng !== null && tapLat !== null && tapLng !== null/);
+  assert.match(sunRoute, /const routeDistanceKm = mapAvailable/);
+  assert.match(sunRoute, /the visual line does not prove a physical route or custody/);
   assert.doesNotMatch(sunRoute, /atlasReferencePath|nexid-evidence-routes/);
   assert.doesNotMatch(sunRoute, /-33\.0086|-68\.7794/);
-  assert.match(sunRoute, /Estado electr[oó]nico del sello/);
-  assert.match(sunRoute, /Frescura del enlace SUN/);
-  assert.match(sunRoute, /const sealLabel =/);
-  assert.match(sunRoute, /const freshnessLabel = isRepeatedRead/);
-  assert.doesNotMatch(sunRoute, /Lectura repetida \(TT reporta apertura\)/);
+  assert.match(sunRoute, /code: 'MANUAL_OPENED', label: 'Apertura declarada', summary: 'Un operador declaró el estado abierto\. No es una medición criptográfica del contenido\.'/);
+  assert.match(sunRoute, /Mensaje NFC validado; TT reporta cerrado cuando aplica\. Esto no certifica el contenido físico\./);
 });
 
 test("public AI routes enforce cost, body and caller boundaries before expensive work", () => {

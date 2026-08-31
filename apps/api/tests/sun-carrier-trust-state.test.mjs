@@ -11,6 +11,7 @@ import {
 
 const service = await readFile(new URL("../src/lib/sun-service.ts", import.meta.url), "utf8");
 const route = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
+const webPassport = await readFile(new URL("../../web/src/app/sun/page.tsx", import.meta.url), "utf8");
 const migration = await readFile(
   new URL("../db/migrations/20260802240000_0089_sun_carrier_trust_state.sql", import.meta.url),
   "utf8",
@@ -79,12 +80,15 @@ test("public SUN presentation fails closed for invalid or contradictory full TT 
   assert.match(presentationDecision, /if \(ttEvidence\.raw && !ttEvidence\.state\)/);
   assert.match(presentationDecision, /code: "TAMPER_RISK"/);
   assert.match(presentationDecision, /los dos bytes TT no forman un estado válido y coherente/);
+  assert.match(route, /function buildPublicSunTechnicalEvidence/);
   assert.match(route, /technical: publicTechnicalEvidence/);
+  assert.match(route, /cryptographicVerification: resultMeta\.cryptographic_verification === true/);
   assert.match(route, /permanentHex: permanentHex\?\.toUpperCase\(\) \|\| null/);
   assert.match(route, /currentHex: currentHex\?\.toUpperCase\(\) \|\| null/);
-  assert.match(route, /BYTE 1 · MEMORIA PERMANENTE/);
-  assert.match(route, /BYTE 2 · ESTADO ACTUAL/);
-  assert.match(route, /por sí sola no prueba el contenido, la custodia ni la integridad física del producto/);
+  assert.match(webPassport, /ttEvidence\.bytes\.length === 2/);
+  assert.match(webPassport, /Byte \{byte\.index\}/);
+  assert.match(webPassport, /0x\{byte\.hex\}/);
+  assert.match(webPassport, /Por sí solo no prueba el contenido, la custodia ni la integridad física del producto/);
 });
 
 test("legacy carrier inference never treats the substring 424 alone as TagTamper", () => {

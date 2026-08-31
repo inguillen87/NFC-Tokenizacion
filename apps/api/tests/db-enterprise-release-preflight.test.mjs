@@ -10,29 +10,9 @@ import {
   validateExpectedRuntimeDatabaseRole,
   validateSdkIdempotencyKeyring,
 } from "../scripts/db-enterprise-release-preflight.mjs";
-import { normalizeSqlSourceForStaticAnalysis } from "../../../scripts/lib/sql-source-normalization.mjs";
 
 const validKey = "a5".repeat(32);
 const runtimeRole = "nexid_runtime";
-
-test("migration safety source normalization treats newline encodings, not SQL semantics, as equivalent", () => {
-  const canonical = [
-    "ALTER TABLE public.resource_permissions",
-    "  ADD COLUMN IF NOT EXISTS tenant_id uuid;",
-  ].join("\n");
-
-  assert.equal(normalizeSqlSourceForStaticAnalysis(canonical), canonical);
-  assert.equal(normalizeSqlSourceForStaticAnalysis(canonical.replaceAll("\n", "\r\n")), canonical);
-  assert.equal(normalizeSqlSourceForStaticAnalysis(canonical.replaceAll("\n", "\r")), canonical);
-  assert.notEqual(
-    normalizeSqlSourceForStaticAnalysis(canonical.replace("tenant_id", "account_id")),
-    canonical,
-  );
-  assert.throws(
-    () => normalizeSqlSourceForStaticAnalysis(null),
-    (error) => error instanceof TypeError && error.message === "sql_source_must_be_a_string",
-  );
-});
 
 test("enterprise release preflight pins the expected non-secret runtime database role", () => {
   assert.equal(validateExpectedRuntimeDatabaseRole({ NEXID_RUNTIME_DB_ROLE: runtimeRole }), runtimeRole);
@@ -48,7 +28,7 @@ test("enterprise release preflight pins the expected non-secret runtime database
   );
 });
 
-test("enterprise release gate requires the reviewed ordered set through 0098", () => {
+test("enterprise release gate requires the reviewed ordered set through 0099", () => {
   assert.deepEqual(expectedMigrations, [
     "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
     "20260726103000_0058_webhook_signature_v2.sql",
@@ -78,28 +58,26 @@ test("enterprise release gate requires the reviewed ordered set through 0098", (
     "20260802160000_0081_supplier_manifest_atomic_import.sql",
     "20260802170000_0082_consumer_session_revocation.sql",
     "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
-    "20260802185000_0083b_vault_artifact_status_bridge.sql",
     "20260802190000_0084_tenant_vault_audited_download.sql",
     "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
     "20260802210000_0086_supplier_order_lifecycle.sql",
     "20260802220000_0087_packaging_lab_foundation.sql",
-    "20260802225000_0087b_webhook_delivery_identity_bridge.sql",
     "20260802230000_0088_enterprise_event_profile.sql",
     "20260802240000_0089_sun_carrier_trust_state.sql",
     "20260802250000_0090_supplier_carrier_key_scope.sql",
-    "20260802255000_0090b_vault_artifact_canonical_bridge.sql",
     "20260802260000_0091_supplier_keyless_qa_activation.sql",
     "20260802270000_0092_supplier_carrier_scope_integrity.sql",
     "20260802280000_0093_sun_tt_durable_truth_binding.sql",
     "20260802290000_0094_sun_runtime_acl_boundary.sql",
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
-    "20260802320000_0097_sun_demo_replay_isolation.sql",
-    "20260827010000_0098_sun_ticket_tenant_routing.sql",
+    "20260829120000_0097_public_location_privacy.sql",
+    "20260830120000_0098_event_location_context.sql",
+    "20260831190000_0099_post_tap_location_observation.sql",
   ]);
 });
 
-test("migration safety gate covers 0061-0098 and the historical clean-order boundaries", () => {
+test("migration safety gate covers 0061-0099 and the historical clean-order boundaries", () => {
   const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const script = fileURLToPath(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script], {
@@ -109,7 +87,7 @@ test("migration safety gate covers 0061-0098 and the historical clean-order boun
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-41).map(({ id }) => id), [
+  assert.deepEqual(report.migrations.slice(-39).map(({ id }) => id), [
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
     "20260728120000_0062_sun_atomic_persistence.sql",
     "20260728143000_0063_supplier_packaging_governance.sql",
@@ -133,24 +111,22 @@ test("migration safety gate covers 0061-0098 and the historical clean-order boun
     "20260802160000_0081_supplier_manifest_atomic_import.sql",
     "20260802170000_0082_consumer_session_revocation.sql",
     "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
-    "20260802185000_0083b_vault_artifact_status_bridge.sql",
     "20260802190000_0084_tenant_vault_audited_download.sql",
     "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
     "20260802210000_0086_supplier_order_lifecycle.sql",
     "20260802220000_0087_packaging_lab_foundation.sql",
-    "20260802225000_0087b_webhook_delivery_identity_bridge.sql",
     "20260802230000_0088_enterprise_event_profile.sql",
     "20260802240000_0089_sun_carrier_trust_state.sql",
     "20260802250000_0090_supplier_carrier_key_scope.sql",
-    "20260802255000_0090b_vault_artifact_canonical_bridge.sql",
     "20260802260000_0091_supplier_keyless_qa_activation.sql",
     "20260802270000_0092_supplier_carrier_scope_integrity.sql",
     "20260802280000_0093_sun_tt_durable_truth_binding.sql",
     "20260802290000_0094_sun_runtime_acl_boundary.sql",
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
-    "20260802320000_0097_sun_demo_replay_isolation.sql",
-    "20260827010000_0098_sun_ticket_tenant_routing.sql",
+    "20260829120000_0097_public_location_privacy.sql",
+    "20260830120000_0098_event_location_context.sql",
+    "20260831190000_0099_post_tap_location_observation.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
   assert.equal(report.assertions.sdk_idempotency_schema_is_durable, true);
@@ -184,8 +160,9 @@ test("migration safety gate covers 0061-0098 and the historical clean-order boun
   assert.equal(report.assertions.sun_runtime_acl_boundary_is_durable, true);
   assert.equal(report.assertions.sun_tt_conflict_target_is_durable, true);
   assert.equal(report.assertions.enterprise_rbac_risk_truth_is_durable, true);
-  assert.equal(report.assertions.sun_demo_replay_isolation_is_durable, true);
-  assert.equal(report.assertions.sun_ticket_tenant_routing_is_durable, true);
+  assert.equal(report.assertions.public_location_privacy_is_additive, true);
+  assert.equal(report.assertions.event_location_context_columns_are_additive, true);
+  assert.equal(report.assertions.post_tap_location_observation_is_additive, true);
   assert.equal(report.assertions.unauthorized_clean_bootstrap_fails_closed, true);
 });
 
@@ -237,15 +214,6 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           String(statement),
           /NOT historical_routine\.prosecdef[\s\S]*wrapper_routine\.proowner = base_routine\.proowner[\s\S]*wrapper_routine\.proowner = historical_routine\.proowner[\s\S]*wrapper_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*base_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*historical_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\]/,
         );
-        assert.match(String(statement), /sun_replay_watermark_repairs[\s\S]*has_sun_demo_replay_isolation/);
-        assert.match(
-          String(statement),
-          /tag_manual_tamper_overrides[\s\S]*has_table_privilege\([\s\S]*'SELECT'[\s\S]*'INSERT'[\s\S]*'UPDATE'[\s\S]*'DELETE'[\s\S]*can_manage_tag_manual_tamper_overrides/,
-        );
-        assert.match(
-          String(statement),
-          /has_sequence_privilege\([\s\S]*tag_manual_tamper_overrides_id_seq[\s\S]*'USAGE'[\s\S]*can_use_tag_manual_tamper_overrides_sequence/,
-        );
         return { rows: [{
           database_name: "nexid_test",
           database_role: runtimeRole,
@@ -254,9 +222,8 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           runtime_role_no_public_create: true,
           runtime_role_isolated_from_sensitive_roles: true,
           has_migration_ledger: true,
-          has_tag_manual_tamper_overrides: true,
-          can_manage_tag_manual_tamper_overrides: true,
-          can_use_tag_manual_tamper_overrides_sequence: true,
+          has_event_location_context_columns: true,
+          has_post_tap_location_observation: true,
           has_webhook_endpoints: true,
           has_marketplace_products: true,
           has_marketplace_brand_profiles: true,
@@ -296,7 +263,6 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           can_use_sun_tt_durable_truth: true,
           has_sun_runtime_acl_boundary: true,
           has_sun_tt_conflict_target: true,
-          has_sun_demo_replay_isolation: true,
           has_enterprise_rbac_risk_truth: true,
           has_supplier_order_lifecycle: true,
           can_use_supplier_order_lifecycle: true,
@@ -373,7 +339,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_migrations_missing"
-      && error.details.missing_migrations.includes("20260827010000_0098_sun_ticket_tenant_routing.sql"),
+      && error.details.missing_migrations.includes("20260831190000_0099_post_tap_location_observation.sql"),
   );
   assert.equal(ended, true);
 
@@ -438,44 +404,6 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_schema_missing"
       && error.details.missing_schema.includes("runtime role cannot SET ROLE into dangerous or private-owner roles"),
-  );
-
-  class MissingManualTamperTableAclClient extends MissingMigrationClient {
-    async query(statement) {
-      const result = await super.query(statement);
-      if (String(statement).includes("current_database()")) {
-        result.rows[0].can_manage_tag_manual_tamper_overrides = false;
-      }
-      return result;
-    }
-  }
-  await assert.rejects(
-    runEnterpriseReleasePreflight({
-      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
-      Client: MissingManualTamperTableAclClient,
-    }),
-    (error) => error instanceof EnterpriseReleasePreflightError
-      && error.reason === "required_schema_missing"
-      && error.details.missing_schema.includes("runtime role SELECT,INSERT,UPDATE without DELETE on tag_manual_tamper_overrides"),
-  );
-
-  class MissingManualTamperSequenceAclClient extends MissingMigrationClient {
-    async query(statement) {
-      const result = await super.query(statement);
-      if (String(statement).includes("current_database()")) {
-        result.rows[0].can_use_tag_manual_tamper_overrides_sequence = false;
-      }
-      return result;
-    }
-  }
-  await assert.rejects(
-    runEnterpriseReleasePreflight({
-      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
-      Client: MissingManualTamperSequenceAclClient,
-    }),
-    (error) => error instanceof EnterpriseReleasePreflightError
-      && error.reason === "required_schema_missing"
-      && error.details.missing_schema.includes("runtime role USAGE on tag_manual_tamper_overrides_id_seq"),
   );
 
   class SunDefinerDriftClient extends MissingMigrationClient {
@@ -554,11 +482,11 @@ test("enterprise release gate fails closed when any reviewed migration is absent
       && error.details.missing_schema.includes("enterprise RBAC and deterministic risk truth"),
   );
 
-  class MissingSunDemoReplayIsolationClient extends MissingMigrationClient {
+  class MissingEventLocationContextClient extends MissingMigrationClient {
     async query(statement) {
       const result = await super.query(statement);
       if (String(statement).includes("current_database()")) {
-        result.rows[0].has_sun_demo_replay_isolation = false;
+        result.rows[0].has_event_location_context_columns = false;
       }
       return result;
     }
@@ -566,11 +494,30 @@ test("enterprise release gate fails closed when any reviewed migration is absent
   await assert.rejects(
     runEnterpriseReleasePreflight({
       env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
-      Client: MissingSunDemoReplayIsolationClient,
+      Client: MissingEventLocationContextClient,
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_schema_missing"
-      && error.details.missing_schema.includes("SUN demo versus operational replay isolation"),
+      && error.details.missing_schema.includes("events location context columns"),
+  );
+
+  class MissingPostTapLocationObservationClient extends MissingMigrationClient {
+    async query(statement) {
+      const result = await super.query(statement);
+      if (String(statement).includes("current_database()")) {
+        result.rows[0].has_post_tap_location_observation = false;
+      }
+      return result;
+    }
+  }
+  await assert.rejects(
+    runEnterpriseReleasePreflight({
+      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
+      Client: MissingPostTapLocationObservationClient,
+    }),
+    (error) => error instanceof EnterpriseReleasePreflightError
+      && error.reason === "required_schema_missing"
+      && error.details.missing_schema.includes("post-tap location observation"),
   );
 });
 

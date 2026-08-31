@@ -36,24 +36,22 @@ export const expectedMigrations = Object.freeze([
   '20260802160000_0081_supplier_manifest_atomic_import.sql',
   '20260802170000_0082_consumer_session_revocation.sql',
   '20260802180000_0083_sdk_event_webhook_atomic_outbox.sql',
-  '20260802185000_0083b_vault_artifact_status_bridge.sql',
   '20260802190000_0084_tenant_vault_audited_download.sql',
   '20260802200000_0085_supplier_non_sun_qa_evidence.sql',
   '20260802210000_0086_supplier_order_lifecycle.sql',
   '20260802220000_0087_packaging_lab_foundation.sql',
-  '20260802225000_0087b_webhook_delivery_identity_bridge.sql',
   '20260802230000_0088_enterprise_event_profile.sql',
   '20260802240000_0089_sun_carrier_trust_state.sql',
   '20260802250000_0090_supplier_carrier_key_scope.sql',
-  '20260802255000_0090b_vault_artifact_canonical_bridge.sql',
   '20260802260000_0091_supplier_keyless_qa_activation.sql',
   '20260802270000_0092_supplier_carrier_scope_integrity.sql',
   '20260802280000_0093_sun_tt_durable_truth_binding.sql',
   '20260802290000_0094_sun_runtime_acl_boundary.sql',
   '20260802300000_0095_sun_tt_conflict_target.sql',
   '20260802310000_0096_enterprise_rbac_risk_truth.sql',
-  '20260802320000_0097_sun_demo_replay_isolation.sql',
-  '20260827010000_0098_sun_ticket_tenant_routing.sql',
+  '20260829120000_0097_public_location_privacy.sql',
+  '20260830120000_0098_event_location_context.sql',
+  '20260831190000_0099_post_tap_location_observation.sql',
 ]);
 
 export class EnterpriseReleasePreflightError extends Error {
@@ -177,8 +175,7 @@ export async function runEnterpriseReleasePreflight(options = {}) {
                WHERE private_relation.oid IN (
                  to_regclass('public.batch_keys'),
                  to_regclass('public.batch_key_material'),
-                 to_regclass('public.enterprise_authority_scope_locks'),
-                 to_regclass('public.sun_replay_watermark_repairs')
+                 to_regclass('public.enterprise_authority_scope_locks')
                )
              )
            )
@@ -190,37 +187,36 @@ export async function runEnterpriseReleasePreflight(options = {}) {
                  THEN pg_has_role(current_user, reachable_sensitive_role.oid, 'SET')
                ELSE pg_has_role(current_user, reachable_sensitive_role.oid, 'MEMBER')
              END
-          ) AS runtime_role_isolated_from_sensitive_roles,
-          to_regclass('public.schema_migrations') IS NOT NULL AS has_migration_ledger,
-          to_regclass('public.tag_manual_tamper_overrides') IS NOT NULL
-            AS has_tag_manual_tamper_overrides,
-          COALESCE(has_table_privilege(
-            current_user,
-            to_regclass('public.tag_manual_tamper_overrides'),
-            'SELECT'
-          ), false)
-            AND COALESCE(has_table_privilege(
-              current_user,
-              to_regclass('public.tag_manual_tamper_overrides'),
-              'INSERT'
-            ), false)
-            AND COALESCE(has_table_privilege(
-              current_user,
-              to_regclass('public.tag_manual_tamper_overrides'),
-              'UPDATE'
-            ), false)
-            AND NOT COALESCE(has_table_privilege(
-              current_user,
-              to_regclass('public.tag_manual_tamper_overrides'),
-              'DELETE'
-            ), false)
-            AS can_manage_tag_manual_tamper_overrides,
-          COALESCE(has_sequence_privilege(
-            current_user,
-            to_regclass('public.tag_manual_tamper_overrides_id_seq'),
-            'USAGE'
-          ), false) AS can_use_tag_manual_tamper_overrides_sequence,
-          to_regclass('public.webhook_endpoints') IS NOT NULL AS has_webhook_endpoints,
+         ) AS runtime_role_isolated_from_sensitive_roles,
+         to_regclass('public.schema_migrations') IS NOT NULL AS has_migration_ledger,
+         EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'events'
+             AND column_name = 'location_accuracy_m'
+             AND data_type = 'double precision'
+         ) AND EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'events'
+             AND column_name = 'location_source'
+             AND data_type = 'text'
+         ) AND EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'events'
+             AND column_name = 'location_updated_at'
+             AND data_type = 'timestamp with time zone'
+         ) AS has_event_location_context_columns,
+         EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'events'
+             AND column_name = 'post_tap_location_observation'
+             AND data_type = 'jsonb'
+         ) AND EXISTS (
+           SELECT 1 FROM pg_constraint
+           WHERE conrelid = 'public.events'::regclass
+             AND conname = 'events_post_tap_location_observation_check'
+             AND convalidated
+         ) AS has_post_tap_location_observation,
+         to_regclass('public.webhook_endpoints') IS NOT NULL AS has_webhook_endpoints,
          to_regclass('public.marketplace_products') IS NOT NULL AS has_marketplace_products,
          to_regclass('public.marketplace_brand_profiles') IS NOT NULL AS has_marketplace_brand_profiles,
          EXISTS (
@@ -477,69 +473,8 @@ export async function runEnterpriseReleasePreflight(options = {}) {
               )
                 AND acl.grantee = 0
                 AND acl.privilege_type = 'EXECUTE'
-             ), false) AS has_sun_tt_conflict_target,
-           to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()') IS NOT NULL
-             AND to_regclass('public.sun_replay_watermark_repairs') IS NOT NULL
-             AND EXISTS (
-               SELECT 1
-               FROM pg_trigger trigger_row
-               WHERE NOT trigger_row.tgisinternal
-                 AND trigger_row.tgenabled <> 'D'
-                 AND trigger_row.tgname = 'trg_sun_replay_watermark_repairs_append_only'
-                 AND trigger_row.tgrelid = to_regclass('public.sun_replay_watermark_repairs')
-             )
-             AND COALESCE((
-               SELECT NOT historical_routine.prosecdef
-                 AND historical_routine.proconfig = ARRAY['search_path=pg_catalog, public, pg_temp']::text[]
-                 AND position(
-                   'v_execution_class := CASE WHEN v_source = ''demo'' THEN ''demo'' ELSE ''operational'' END'
-                   IN pg_get_functiondef(historical_routine.oid)
-                 ) > 0
-                 AND position(
-                   'IF v_execution_class = ''operational'''
-                   IN pg_get_functiondef(historical_routine.oid)
-                 ) > 0
-                 AND position(
-                   'IF v_tag_id IS NOT NULL AND v_execution_class = ''operational'''
-                   IN pg_get_functiondef(historical_routine.oid)
-                 ) > 0
-                 AND position(
-                   '''replay_execution_class'', v_execution_class'
-                   IN pg_get_functiondef(historical_routine.oid)
-                 ) > 0
-               FROM pg_proc historical_routine
-               WHERE historical_routine.oid = to_regprocedure(
-                 'public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb)'
-               )
-             ), false)
-             AND NOT COALESCE(has_table_privilege(
-               current_user,
-               to_regclass('public.sun_replay_watermark_repairs'),
-               'INSERT,UPDATE,DELETE,TRUNCATE'
-             ), false)
-             AND NOT COALESCE(EXISTS (
-               SELECT 1
-               FROM pg_proc routine
-               CROSS JOIN LATERAL aclexplode(
-                 COALESCE(routine.proacl, acldefault('f', routine.proowner))
-               ) acl
-               WHERE routine.oid IN (
-                 to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()'),
-                 to_regprocedure('public.nexid_sun_replay_watermark_repair_immutable_v1()')
-               )
-                 AND acl.grantee = 0
-                 AND acl.privilege_type = 'EXECUTE'
-             ), false)
-             AND NOT COALESCE(EXISTS (
-               SELECT 1
-               FROM pg_class relation_row
-               CROSS JOIN LATERAL aclexplode(
-                 COALESCE(relation_row.relacl, acldefault('r', relation_row.relowner))
-               ) acl
-               WHERE relation_row.oid = to_regclass('public.sun_replay_watermark_repairs')
-                 AND acl.grantee = 0
-             ), false) AS has_sun_demo_replay_isolation,
-           to_regprocedure('public.nexid_enterprise_rbac_risk_truth_v1_capability()') IS NOT NULL
+            ), false) AS has_sun_tt_conflict_target,
+          to_regprocedure('public.nexid_enterprise_rbac_risk_truth_v1_capability()') IS NOT NULL
             AND to_regprocedure('public.nexid_compute_event_risk_v1(uuid,uuid,text,text,text,text,jsonb)') IS NOT NULL
             AND to_regprocedure('public.nexid_backfill_event_risk_v1(integer)') IS NOT NULL
             AND to_regprocedure('public.nexid_actor_has_enterprise_capability_v1(uuid,uuid,text,text)') IS NOT NULL
@@ -743,10 +678,10 @@ export async function runEnterpriseReleasePreflight(options = {}) {
                   pg_get_indexdef(index_row.indexrelid, 3, false),
                   pg_get_indexdef(index_row.indexrelid, 4, false)
                 ] = ARRAY['tenant_id', 'risk_profile_version', 'event_created_at', 'event_id']::text[]
-                AND pg_index_column_has_property(index_row.indexrelid, 1, 'asc') IS TRUE
-                AND pg_index_column_has_property(index_row.indexrelid, 2, 'asc') IS TRUE
-                AND pg_index_column_has_property(index_row.indexrelid, 3, 'desc') IS TRUE
-                AND pg_index_column_has_property(index_row.indexrelid, 4, 'desc') IS TRUE
+                AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 1, 'asc') IS TRUE
+                AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 2, 'asc') IS TRUE
+                AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 3, 'desc') IS TRUE
+                AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 4, 'desc') IS TRUE
             )
             AND COALESCE(position(
               'NEW.risk_profile_version := v_projection.risk_profile_version'
@@ -1332,9 +1267,8 @@ export async function runEnterpriseReleasePreflight(options = {}) {
       ['runtime role has no superuser, BYPASSRLS, CREATEROLE, CREATEDB or REPLICATION', state.runtime_role_restricted],
       ['runtime role cannot CREATE in schema public', state.runtime_role_no_public_create],
       ['runtime role cannot SET ROLE into dangerous or private-owner roles', state.runtime_role_isolated_from_sensitive_roles],
-      ['tag_manual_tamper_overrides', state.has_tag_manual_tamper_overrides],
-      ['runtime role SELECT,INSERT,UPDATE without DELETE on tag_manual_tamper_overrides', state.can_manage_tag_manual_tamper_overrides],
-      ['runtime role USAGE on tag_manual_tamper_overrides_id_seq', state.can_use_tag_manual_tamper_overrides_sequence],
+      ['events location context columns', state.has_event_location_context_columns],
+      ['post-tap location observation', state.has_post_tap_location_observation],
       ['webhook_endpoints', state.has_webhook_endpoints],
       ['marketplace_products', state.has_marketplace_products],
       ['marketplace_brand_profiles', state.has_marketplace_brand_profiles],
@@ -1372,10 +1306,9 @@ export async function runEnterpriseReleasePreflight(options = {}) {
       ['supplier carrier scope integrity privileges', state.can_use_supplier_carrier_scope_integrity],
       ['SUN TT durable truth schema', state.has_sun_tt_durable_truth],
       ['SUN TT durable truth privileges', state.can_use_sun_tt_durable_truth],
-       ['SUN runtime ACL boundary', state.has_sun_runtime_acl_boundary],
-       ['SUN TT deterministic receipt conflict target', state.has_sun_tt_conflict_target],
-       ['SUN demo versus operational replay isolation', state.has_sun_demo_replay_isolation],
-       ['enterprise RBAC and deterministic risk truth', state.has_enterprise_rbac_risk_truth],
+      ['SUN runtime ACL boundary', state.has_sun_runtime_acl_boundary],
+      ['SUN TT deterministic receipt conflict target', state.has_sun_tt_conflict_target],
+      ['enterprise RBAC and deterministic risk truth', state.has_enterprise_rbac_risk_truth],
       ['supplier order lifecycle schema', state.has_supplier_order_lifecycle],
       ['EXECUTE supplier order lifecycle functions', state.can_use_supplier_order_lifecycle],
       ['idx_offline_scan_events_tenant_history', state.has_offline_scan_history_index],

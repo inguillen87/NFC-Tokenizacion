@@ -2,11 +2,13 @@ import { SectionHeading } from "@product/ui";
 import { messages } from "@product/config";
 import { AnalyticsPanels } from "../../../components/analytics-panels";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
+import { PhysicalTapsCommandCenter } from "../../../components/physical-taps-command-center";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { readPhysicalTaps } from "../../../lib/physical-taps-read";
 
 type CoordinateProvenance = {
   coordinateSource?: string;
@@ -194,7 +196,14 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const translation = messages[locale] ?? messages[fallbackLocale];
   const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
   const allowDemoData = Boolean(session.isDemo || (adminContext.canSelectTenant && source === "demo"));
-  const analyticsData = await getAnalytics({ context: adminContext, source, range, country, allowDemoData });
+  const [analyticsData, physicalTapsResult] = await Promise.all([
+    getAnalytics({ context: adminContext, source, range, country, allowDemoData }),
+    readPhysicalTaps({
+      context: adminContext,
+      range: "24h",
+      isDemoSession: Boolean(session.isDemo),
+    }),
+  ]);
   const mapMode = analyticsData.source === "demo" ? "demo" : isTenantAdmin ? "tenant" : "global";
   const confirmedSourceLabel = analyticsData.source === "production"
     ? "production"
@@ -253,6 +262,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <button suppressHydrationWarning type="submit" className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Aplicar filtros</button>
         </form>
       </div>
+      <PhysicalTapsCommandCenter result={physicalTapsResult} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} />
       {analyticsData.availability === "ready" && analyticsData.data ? (
         <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData.data} mapMode={mapMode} dataSource={analyticsData.source} sourceDetail={analyticsData.detail} />
       ) : (

@@ -3,12 +3,12 @@ export const dynamic = "force-dynamic";
 
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
-import { publishRealtimeEvent } from "../../../lib/realtime-events";
 import { findNearestCity } from "../../../lib/geo-utils";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
 import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
-import { requireSunFreshHandoff } from "../../../lib/sun-fresh-handoff";
-import { normalizeConsentedApproximateLocation } from "../../../lib/approximate-location";
+import { consumeSunFreshHandoff, requireSunFreshHandoff } from "../../../lib/sun-fresh-handoff";
+import { normalizeConsentedApproximateLocation, sanitizePublicLocationProjection } from "../../../lib/approximate-location";
+import { isPostTapLocationTimingValid } from "../../../lib/sun-tap-location";
 
 const MAX_CONTEXT_BODY_BYTES = 32 * 1024;
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
@@ -19,39 +19,23 @@ type ContextBody = {
   uid?: string;
   eventId?: string | number;
   ctr?: number;
-  contextStatus?: string;
-  scannedAt?: string;
   geo?: {
     lat?: number;
     lng?: number;
     accuracy?: number | null;
+    measuredAt?: string | null;
     altitude?: number | null;
     speed?: number | null;
   };
   geoConsent?: boolean;
-  extendedContextConsent?: boolean;
   geoPrecision?: string;
+  locationRequestedAt?: string;
   client?: Record<string, unknown>;
-  geoError?: string;
 };
 
 function asNumber(value: unknown): number | null {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
-}
-
-function boundedNumber(value: unknown, min: number, max: number): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const num = Number(value);
-  return Number.isFinite(num) && num >= min && num <= max ? num : null;
-}
-
-function firstNumber(...values: unknown[]) {
-  for (const value of values) {
-    const num = Number(value);
-    if (Number.isFinite(num)) return num;
-  }
-  return null;
 }
 
 function firstText(...values: unknown[]) {
@@ -62,127 +46,51 @@ function firstText(...values: unknown[]) {
   return "";
 }
 
-function inferDeviceOs(platform: string, userAgent: string) {
-  const normalized = `${platform} ${userAgent}`.toLowerCase();
-  if (/iphone|ipad|ios/.test(normalized)) return "iOS";
-  if (/android/.test(normalized)) return "Android";
-  if (/windows/.test(normalized)) return "Windows";
-  if (/macintosh|macintel|mac os/.test(normalized)) return "macOS";
-  if (/linux/.test(normalized)) return "Linux";
-  return "";
+function sqlState(error: unknown) {
+  if (!error || typeof error !== "object") return "";
+  const direct = "code" in error ? String((error as { code?: unknown }).code || "") : "";
+  if (direct) return direct;
+  const cause = "cause" in error ? (error as { cause?: unknown }).cause : null;
+  return cause && typeof cause === "object" && "code" in cause
+    ? String((cause as { code?: unknown }).code || "")
+    : "";
 }
 
-function inferDeviceType(mobile: unknown, platform: string, userAgent: string) {
-  if (mobile === true) return "mobile";
-  const normalized = `${platform} ${userAgent}`.toLowerCase();
-  if (/ipad|tablet/.test(normalized)) return "tablet";
-  if (/mobi|iphone|android/.test(normalized)) return "mobile";
-  if (mobile === false || normalized.trim()) return "desktop";
-  return "";
-}
-
-function deviceContext(client: Record<string, unknown> | undefined) {
-  const platform = firstText(client?.platform);
-  const userAgent = firstText(client?.userAgent, client?.browser);
-  const deviceOs = firstText(client?.os) || inferDeviceOs(platform, userAgent);
-  const deviceType = firstText(client?.deviceType) || inferDeviceType(client?.mobile, platform, userAgent);
-  const model = firstText(client?.model);
-  const hardware = client?.hardware && typeof client.hardware === "object" && !Array.isArray(client.hardware)
-    ? client.hardware as Record<string, unknown>
-    : {};
-  const memoryGb = boundedNumber(hardware.memoryGb, 0.25, 128);
-  const logicalProcessors = boundedNumber(hardware.logicalProcessors, 1, 256);
-  const capabilityScore = (memoryGb !== null ? Math.min(memoryGb / 2, 5) : 0)
-    + (logicalProcessors !== null ? Math.min(logicalProcessors / 2, 5) : 0);
-  const capabilityBand = memoryGb === null && logicalProcessors === null
-    ? "unclassified"
-    : capabilityScore >= 7
-      ? "high"
-      : capabilityScore >= 4
-        ? "standard"
-        : "entry";
-  const deviceLabel = firstText(model, platform, deviceOs, deviceType);
+function safeClientContext(client: Record<string, unknown> | undefined) {
   return {
-    deviceLabel: deviceLabel.slice(0, 80) || null,
-    deviceOs: deviceOs || null,
-    deviceType: deviceType || null,
-    reportedModel: model || null,
-    reportedModelSource: firstText(client?.modelSource).slice(0, 40) || null,
-    capabilitySegment: {
-      band: capabilityBand,
-      basis: "reported_device_capability_heuristic",
-      confidence: memoryGb !== null && logicalProcessors !== null ? "medium" : capabilityBand === "unclassified" ? "none" : "low",
-      socioeconomicStatus: "not_inferred",
-    },
+    timezone: firstText(client?.timezone).slice(0, 80) || null,
   };
 }
 
-function safeClientContext(client: Record<string, unknown> | undefined, allowExtended: boolean) {
-  const viewport = client?.viewport && typeof client.viewport === "object" && !Array.isArray(client.viewport)
-    ? client.viewport as Record<string, unknown>
-    : {};
-  const screen = client?.screen && typeof client.screen === "object" && !Array.isArray(client.screen)
-    ? client.screen as Record<string, unknown>
-    : {};
-  const connection = client?.connection && typeof client.connection === "object" && !Array.isArray(client.connection)
-    ? client.connection as Record<string, unknown>
-    : {};
-  const hardware = client?.hardware && typeof client.hardware === "object" && !Array.isArray(client.hardware)
-    ? client.hardware as Record<string, unknown>
-    : {};
-  return {
-    schemaVersion: "sun-client-context/v2",
-    language: allowExtended ? firstText(client?.language).slice(0, 24) || null : null,
-    languages: allowExtended && Array.isArray(client?.languages)
-      ? client.languages.map((value) => firstText(value).slice(0, 24)).filter(Boolean).slice(0, 8)
-      : [],
-    platform: allowExtended ? firstText(client?.platform).slice(0, 80) || null : null,
-    platformVersion: allowExtended ? firstText(client?.platformVersion).slice(0, 80) || null : null,
-    model: allowExtended ? firstText(client?.model).slice(0, 120) || null : null,
-    modelSource: allowExtended ? firstText(client?.modelSource).slice(0, 40) || null : null,
-    architecture: allowExtended ? firstText(client?.architecture).slice(0, 40) || null : null,
-    bitness: allowExtended ? firstText(client?.bitness).slice(0, 16) || null : null,
-    os: allowExtended ? firstText(client?.os).slice(0, 40) || null : null,
-    deviceType: allowExtended && ["mobile", "tablet", "desktop"].includes(firstText(client?.deviceType).toLowerCase())
-      ? firstText(client?.deviceType).toLowerCase()
-      : null,
-    userAgent: allowExtended ? firstText(client?.userAgent).slice(0, 512) || null : null,
-    mobile: allowExtended && typeof client?.mobile === "boolean" ? client.mobile : null,
-    timezone: allowExtended ? firstText(client?.timezone).slice(0, 80) || null : null,
-    viewport: allowExtended ? {
-      width: boundedNumber(viewport.width, 1, 20_000),
-      height: boundedNumber(viewport.height, 1, 20_000),
-      pixelRatio: boundedNumber(viewport.pixelRatio, 0.25, 16),
-    } : null,
-    screen: allowExtended ? {
-      width: boundedNumber(screen.width, 1, 20_000),
-      height: boundedNumber(screen.height, 1, 20_000),
-      availableWidth: boundedNumber(screen.availableWidth, 1, 20_000),
-      availableHeight: boundedNumber(screen.availableHeight, 1, 20_000),
-      colorDepth: boundedNumber(screen.colorDepth, 1, 128),
-    } : null,
-    hardware: allowExtended ? {
-      memoryGb: boundedNumber(hardware.memoryGb, 0.25, 128),
-      logicalProcessors: boundedNumber(hardware.logicalProcessors, 1, 256),
-      maxTouchPoints: boundedNumber(hardware.maxTouchPoints, 0, 64),
-    } : null,
-    connection: allowExtended ? {
-      effectiveType: firstText(connection.effectiveType).slice(0, 16) || null,
-      downlinkMbps: boundedNumber(connection.downlinkMbps, 0, 100_000),
-      rttMs: boundedNumber(connection.rttMs, 0, 120_000),
-      saveData: connection.saveData === true,
-    } : null,
-  };
+function clientTimestamp(value: unknown) {
+  const text = firstText(value);
+  if (!text) return null;
+  const parsed = Date.parse(text);
+  if (!Number.isFinite(parsed)) return null;
+  const now = Date.now();
+  if (parsed > now + 60_000 || parsed < now - 15 * 60_000) return null;
+  return new Date(parsed).toISOString();
 }
 
-async function ensureEventLocationContextSchema() {
-  try {
-    await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_accuracy_m double precision`;
-    await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_source text`;
-    await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_updated_at timestamptz`;
-  } catch {
-    // Older deployments can still persist context in meta.
-  }
+async function resolveEventLocationStorage() {
+  const rows = await sql/*sql*/`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns c
+      WHERE c.table_schema = 'public'
+        AND c.table_name = 'events'
+        AND c.column_name = 'post_tap_location_observation'
+        AND c.data_type = 'jsonb'
+    ) AS has_post_tap_location_observation
+  `;
+  const row = rows[0] || {};
+  const missingColumns = row.has_post_tap_location_observation === true
+    ? []
+    : ["post_tap_location_observation"];
+  return {
+    ready: missingColumns.length === 0,
+    missingColumns,
+  };
 }
 
 export function OPTIONS(): Response {
@@ -190,12 +98,7 @@ export function OPTIONS(): Response {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const limited = await enforceCriticalRateLimit(req, {
-    rateClass: "public_write",
-    tenantId: "platform",
-    subjectId: "sun-context:capability",
-  });
-  if (limited) return limited;
+  const requestReceivedAtMs = Date.now();
   if (!String(req.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
     return json({ ok: false, reason: "unsupported_media_type" }, 415, { "cache-control": "no-store" });
   }
@@ -211,24 +114,35 @@ export async function POST(req: Request): Promise<Response> {
   const eventId = String(body.eventId || "").trim();
   const ctr = asNumber(body.ctr);
 
-  if (!BID_RE.test(bid) || !UID_RE.test(uid) || !/^\d+$/.test(eventId)) {
-    return json({ ok: false, reason: "valid bid, uid and eventId required" }, 400, { "cache-control": "no-store" });
+  if (!BID_RE.test(bid) || !/^\d+$/.test(eventId) || (uid && !UID_RE.test(uid))) {
+    return json({ ok: false, reason: "valid bid and eventId required; uid must be valid when supplied" }, 400, { "cache-control": "no-store" });
   }
   if (ctr === null || !Number.isSafeInteger(ctr) || ctr < 0) {
     return json({ ok: false, reason: "valid ctr required" }, 400, { "cache-control": "no-store" });
   }
-  // Location context is a replace-by-event update, not a one-shot commercial
-  // action. Keep it retryable during the short signed capability lifetime while
-  // still binding every write to the exact physical event, tag and read counter.
-  const capability = requireSunFreshHandoff(req, body, {
+  const preAuthLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "public_write",
+    tenantId: "platform",
+    subjectId: "sun-context:unauthenticated",
+  });
+  if (preAuthLimited) return preAuthLimited;
+  // The public passport intentionally does not expose the raw UID. Verify the
+  // signed event scope first, then bind the one-time consumption to the UID
+  // loaded from the canonical event below.
+  const capabilityPreflight = requireSunFreshHandoff(req, body, {
     bid,
     eventId,
-    uidHex: uid,
     readCounter: ctr,
   });
-  if (!capability.ok) {
-    return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403, { "cache-control": "no-store" });
+  if (!capabilityPreflight.ok) {
+    return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capabilityPreflight.reason }, 403, { "cache-control": "no-store" });
   }
+  const capabilityScopedLimit = await enforceCriticalRateLimit(req, {
+    rateClass: "public_write",
+    tenantId: `sun-bid:${bid}`,
+    subjectId: `sun-event:${eventId}`,
+  });
+  if (capabilityScopedLimit) return capabilityScopedLimit;
 
   const batchRows = await sql/*sql*/`SELECT id, tenant_id, bid FROM batches WHERE bid = ${bid} LIMIT 1`;
   const batch = batchRows[0];
@@ -244,50 +158,21 @@ export async function POST(req: Request): Promise<Response> {
   const lat = approximateLocation.lat;
   const lng = approximateLocation.lng;
   const accuracy = approximateLocation.accuracy;
-  const hasBrowserGps = approximateLocation.accepted;
-  const locationSource = hasBrowserGps
-    ? "browser_gps_approximate_consent"
-    : body.geoError
-      ? "browser_geolocation_error_reported"
-      : body.geo
-        ? "browser_geolocation_ignored_without_consent"
-        : "browser_context_reported";
-  // Extended device hints are retained only when the person granted the
-  // location/experience permission for this fresh physical event. They are
-  // browser-reported signals for aggregated marketing analysis, never an
-  // independently verified identity or socioeconomic classification.
-  const extendedContextConsent = body.extendedContextConsent === true
-    && body.geoConsent === true
-    && hasBrowserGps;
-  const client = safeClientContext(body.client, extendedContextConsent);
-  const device = deviceContext(client);
-  const metaPayload = {
-    sun_context: {
-      evidence_scope: "signed_fresh_event_capability",
-      client_values_verified: false,
-      extended_context_consent: extendedContextConsent,
-      extended_context_consent_version: extendedContextConsent ? "sun-context-explicit-v1" : null,
-      status: firstText(body.contextStatus).slice(0, 80) || "unknown",
-      clientReportedAt: firstText(body.scannedAt).slice(0, 80) || null,
-      receivedAt: new Date().toISOString(),
-      geo: {
-        source: locationSource,
-        verification: "client_reported_not_independently_verified",
-        consent: body.geoConsent === true,
-        precision: hasBrowserGps ? "approximate" : "not_stored",
-        normalization: hasBrowserGps ? "rounded_3_decimals_min_150m" : approximateLocation.reason,
-        lat,
-        lng,
-        accuracy,
-        altitude: null,
-        speed: null,
-      },
-      client,
-      device,
-      geoError: firstText(body.geoError).slice(0, 240) || null,
-    },
-  };
-
+  const hasBrowserLocation = approximateLocation.accepted;
+  if (!hasBrowserLocation) {
+    return json({ ok: false, reason: approximateLocation.reason, locationAccepted: false }, 422, { "cache-control": "no-store" });
+  }
+  const locationSource = "browser_geolocation_approximate_consent";
+  const client = safeClientContext(body.client);
+  const locationRequestedAt = clientTimestamp(body.locationRequestedAt);
+  const locationMeasuredAt = clientTimestamp(body.geo?.measuredAt);
+  if (
+    !locationRequestedAt
+    || !locationMeasuredAt
+    || Date.parse(locationMeasuredAt) < Date.parse(locationRequestedAt)
+  ) {
+    return json({ ok: false, reason: "fresh_location_measurement_required", locationAccepted: false }, 422, { "cache-control": "no-store" });
+  }
   const targetRows = await sql/*sql*/`
       SELECT
         e.id,
@@ -298,13 +183,10 @@ export async function POST(req: Request): Promise<Response> {
         e.result,
         e.reason,
         e.created_at,
-        COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, '')) AS city,
-        COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) AS country_code,
-        COALESCE(e.lat, e.geo_lat) AS lat,
-        COALESCE(e.lng, e.geo_lng) AS lng,
-        e.location_source,
-        e.location_accuracy_m,
-        e.geo_precision,
+        e.city,
+        e.country_code,
+        e.lat,
+        e.lng,
         e.sdm_read_ctr,
         COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
         tn.slug AS tenant_slug,
@@ -320,114 +202,270 @@ export async function POST(req: Request): Promise<Response> {
       LEFT JOIN tenants tn ON tn.id = COALESCE(e.tenant_id, b.tenant_id)
       WHERE e.id = ${eventId}::bigint
         AND e.batch_id = ${batch.id}
-        AND UPPER(e.uid_hex) = ${uid}
+        AND (${uid || null}::text IS NULL OR UPPER(e.uid_hex) = ${uid || null})
         AND e.sdm_read_ctr = ${ctr}
         AND e.created_at >= now() - interval '10 minutes'
       LIMIT 1
-    `;
+  `;
   const target = targetRows[0];
   if (!target) return json({ ok: false, reason: "capability_bound_event_not_found" }, 404, { "cache-control": "no-store" });
+  if (!isPostTapLocationTimingValid({
+    eventCreatedAt: target.created_at,
+    locationRequestedAt,
+    locationMeasuredAt,
+    requestReceivedAtMs,
+  })) {
+    return json({ ok: false, reason: "post_tap_location_timing_invalid", locationAccepted: false }, 422, { "cache-control": "no-store" });
+  }
+  const targetUid = String(target.uid_hex || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
+  if (!UID_RE.test(targetUid)) {
+    return json({ ok: false, reason: "capability_bound_event_uid_invalid" }, 409, { "cache-control": "no-store" });
+  }
+  let storage: Awaited<ReturnType<typeof resolveEventLocationStorage>>;
+  try {
+    storage = await resolveEventLocationStorage();
+  } catch {
+    return json({ ok: false, updated: false, reason: "sun_context_schema_check_unavailable", eventId: target.id }, 503, { "cache-control": "no-store" });
+  }
+  if (!storage.ready) {
+    return json({
+      ok: false,
+      updated: false,
+      reason: "sun_context_schema_not_ready",
+      eventId: target.id,
+      missingColumns: storage.missingColumns,
+    }, 503, { "cache-control": "no-store" });
+  }
+  const capability = await consumeSunFreshHandoff(req, body, {
+    bid,
+    eventId,
+    uidHex: targetUid,
+    readCounter: ctr,
+  }, "sun_context");
+  if (!capability.ok) {
+    return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403, { "cache-control": "no-store" });
+  }
+  const capabilityBinding = capability.payload;
+  const boundReadCounter = Number(capabilityBinding.readCounter);
+  if (!Number.isSafeInteger(boundReadCounter) || boundReadCounter < 0) {
+    return json({ ok: false, updated: false, reason: "capability_bound_snapshot_mismatch", eventId: capabilityBinding.eventId }, 409, { "cache-control": "no-store" });
+  }
   const matchedBy = "signed_event_bid_uid_ctr";
+  const locationReceivedAt = new Date(requestReceivedAtMs).toISOString();
 
   let resolvedCity: string | null = null;
   let resolvedCountry: string | null = null;
-  if (hasBrowserGps && lat !== null && lng !== null) {
+  // The edge/IP locality belongs to the HTTP tap evidence. A consented browser
+  // geolocation reading is a different, later observation, so derive its locality even
+  // when the edge already supplied a city/country.
+  const shouldResolveCity = hasBrowserLocation;
+  if (shouldResolveCity && lat !== null && lng !== null) {
     const matchedCity = findNearestCity(lat, lng);
     if (matchedCity) {
       resolvedCity = matchedCity.city;
       resolvedCountry = matchedCity.countryCode;
     }
   }
-  // A consented device location supersedes the earlier edge/IP approximation.
-  // If the rounded coordinate is outside our coarse city catalog, clear the old
-  // IP label instead of attaching a known-wrong city to the new coordinates.
-  const finalCity = hasBrowserGps ? resolvedCity : firstText(target.city) || null;
-  const finalCountry = hasBrowserGps ? resolvedCountry : firstText(target.country_code) || null;
-  const persistedLocationSource = hasBrowserGps
-    ? locationSource
-    : firstText(target.location_source) || null;
-  const persistedAccuracy = hasBrowserGps
-    ? accuracy
-    : firstNumber(target.location_accuracy_m);
+  const finalCity = hasBrowserLocation ? resolvedCity : firstText(target.city) || null;
+  const finalCountry = hasBrowserLocation ? resolvedCountry : firstText(target.country_code) || null;
+  const browserLocationObservation = {
+    schemaVersion: "sun-browser-location-observation/v1",
+    evidenceScope: "signed_fresh_event_capability",
+    clientValuesVerified: false,
+    source: locationSource,
+    verification: "client_reported_not_independently_verified",
+    consent: body.geoConsent === true,
+    precision: hasBrowserLocation ? "approximate" : "not_stored",
+    normalization: "rounded_3_decimals_min_150m",
+    city: resolvedCity,
+    countryCode: resolvedCountry,
+    lat,
+    lng,
+    accuracyM: accuracy,
+    eventOccurredAt: target.created_at ? new Date(String(target.created_at)).toISOString() : null,
+    requestedAt: locationRequestedAt,
+    measuredAt: locationMeasuredAt,
+    receivedAt: locationReceivedAt,
+    timing: "client_reported_after_tap",
+    timezone: client.timezone,
+  };
+  const publicLocation = sanitizePublicLocationProjection({
+    lat,
+    lng,
+    locationSource,
+    geoPrecision: hasBrowserLocation ? "approximate" : "none",
+    locationAccuracyM: accuracy,
+    metadata: { sun_context: { geo: browserLocationObservation } },
+  });
+  const publicBrowserLocationObservation = {
+    ...browserLocationObservation,
+    normalization: "rounded_2_decimals_public_min_150m",
+    lat: publicLocation.lat,
+    lng: publicLocation.lng,
+  };
 
+  let persistenceRows: Array<Record<string, unknown>>;
   try {
-    await ensureEventLocationContextSchema();
-    await sql/*sql*/`
-      UPDATE events
-      SET meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify(metaPayload)}::jsonb,
-          lat = CASE WHEN ${hasBrowserGps} THEN ${lat} ELSE lat END,
-          lng = CASE WHEN ${hasBrowserGps} THEN ${lng} ELSE lng END,
-          geo_lat = CASE WHEN ${hasBrowserGps} THEN ${lat} ELSE geo_lat END,
-          geo_lng = CASE WHEN ${hasBrowserGps} THEN ${lng} ELSE geo_lng END,
-          location_accuracy_m = CASE WHEN ${hasBrowserGps} THEN ${accuracy} ELSE location_accuracy_m END,
-          location_source = CASE WHEN ${hasBrowserGps} THEN ${locationSource} ELSE location_source END,
-          location_updated_at = CASE WHEN ${hasBrowserGps} THEN now() ELSE location_updated_at END,
-          geo_precision = CASE WHEN ${hasBrowserGps} THEN 'browser_rounded' ELSE geo_precision END,
-          city = CASE WHEN ${hasBrowserGps} THEN ${resolvedCity} ELSE city END,
-          country_code = CASE WHEN ${hasBrowserGps} THEN ${resolvedCountry} ELSE country_code END,
-          geo_city = CASE WHEN ${hasBrowserGps} THEN ${resolvedCity} ELSE geo_city END,
-          geo_country = CASE WHEN ${hasBrowserGps} THEN ${resolvedCountry} ELSE geo_country END,
-          device_label = COALESCE(NULLIF(device_label, ''), ${device.deviceLabel})
-      WHERE id = ${target.id}
+    persistenceRows = await sql/*sql*/`
+      WITH bound_pair AS MATERIALIZED (
+        SELECT
+          diagnostic.id AS diagnostic_id,
+          event.id AS event_id,
+          event.created_at AS event_created_at
+        FROM sun_diagnostics diagnostic
+        JOIN events event
+          ON event.id = ${capabilityBinding.eventId}::bigint
+        WHERE diagnostic.id = ${capabilityBinding.diagnosticId}
+          AND diagnostic.trace_id = ${capabilityBinding.traceId}
+          AND diagnostic.tool_type = 'sun_scan'
+          AND diagnostic.request_json->>'evidence_source' = 'public_sun_route'
+          AND diagnostic.bid = ${capabilityBinding.bid}
+          AND UPPER(diagnostic.uid_hex) = ${targetUid}
+          AND diagnostic.read_counter = ${boundReadCounter}
+          AND diagnostic.result_json #>> '{raw_result,event_id}' = ${capabilityBinding.eventId}
+          AND diagnostic.result_json #>> '{contract,identity,eventId}' = ${capabilityBinding.eventId}
+          AND diagnostic.result_json #>> '{contract,eventId}' = ${capabilityBinding.eventId}
+          AND UPPER(COALESCE(diagnostic.result_json #>> '{raw_result,bid}', '')) = UPPER(${capabilityBinding.bid})
+          AND UPPER(COALESCE(diagnostic.result_json #>> '{raw_result,uid}', '')) = ${targetUid}
+          AND diagnostic.result_json #>> '{raw_result,ctr}' = ${String(boundReadCounter)}
+          AND COALESCE(diagnostic.result_json #>> '{raw_result,tenant_id}', '') = ${String(target.tenant_id || '')}
+          AND jsonb_typeof(diagnostic.result_json #> '{contract,tapContext}') = 'object'
+          AND event.tenant_id = ${target.tenant_id}
+          AND event.batch_id = ${target.batch_id}
+          AND UPPER(event.uid_hex) = ${targetUid}
+          AND event.sdm_read_ctr = ${boundReadCounter}
+          AND COALESCE(event.read_counter, event.sdm_read_ctr) = ${boundReadCounter}
+          AND UPPER(COALESCE(event.bid, '')) = UPPER(${capabilityBinding.bid})
+          AND event.meta->>'trace_id' = ${capabilityBinding.traceId}
+          AND event.created_at >= now() - interval '10 minutes'
+          AND diagnostic.created_at >= event.created_at
+          AND diagnostic.created_at - event.created_at <= interval '5 minutes'
+          AND event.post_tap_location_observation IS NULL
+          AND NOT EXISTS (
+            SELECT 1
+            FROM supplier_qa_diagnostic_consumptions consumption
+            WHERE consumption.diagnostic_id = diagnostic.id
+               OR (
+                 consumption.canonical_event_id = event.id
+                 AND consumption.canonical_event_created_at = event.created_at
+               )
+          )
+        FOR UPDATE OF diagnostic, event
+      ),
+      unique_pair AS MATERIALIZED (
+        SELECT binding.*
+        FROM bound_pair binding
+        WHERE (SELECT COUNT(*) FROM bound_pair) = 1
+      ),
+      updated_event AS (
+        UPDATE events event
+        SET post_tap_location_observation = ${JSON.stringify(browserLocationObservation)}::jsonb
+        FROM unique_pair binding
+        WHERE event.id = binding.event_id
+          AND event.created_at = binding.event_created_at
+        RETURNING event.id, event.created_at
+      ),
+      updated_diagnostic AS (
+        UPDATE sun_diagnostics diagnostic
+        SET result_json = jsonb_set(
+          diagnostic.result_json,
+          '{contract,tapContext,browserLocationObservation}',
+          ${JSON.stringify(publicBrowserLocationObservation)}::jsonb,
+          true
+        )
+        FROM unique_pair binding
+        CROSS JOIN updated_event event
+        WHERE diagnostic.id = binding.diagnostic_id
+          AND event.id = binding.event_id
+        RETURNING diagnostic.id
+      )
+      SELECT
+        event.id AS event_id,
+        diagnostic.id AS diagnostic_id
+      FROM updated_event event
+      CROSS JOIN updated_diagnostic diagnostic
     `;
-    publishRealtimeEvent({
-      id: target.id,
-      tenant_id: target.tenant_id || null,
-      tenant_slug: target.tenant_slug || null,
-      batch_id: target.batch_id || null,
-      tag_id: target.tag_id || null,
-      bid: target.bid || bid,
-      uid_hex: target.uid_hex || uid,
-      result: target.result || "UNKNOWN",
-      city: finalCity,
-      country_code: finalCountry,
-      lat: lat ?? firstNumber(target.lat),
-      lng: lng ?? firstNumber(target.lng),
-      location_source: persistedLocationSource,
-      location_accuracy_m: persistedAccuracy,
-      device_label: device.deviceLabel,
-      device_os: device.deviceOs,
-      device_type: device.deviceType,
-      product_name: target.product_name || null,
-      source: "real",
-      created_at: target.created_at || new Date().toISOString(),
-      meta: metaPayload,
-    });
+  } catch (error) {
+    if (sqlState(error) === "55000") {
+      return json({
+        ok: false,
+        updated: false,
+        reason: "sun_context_evidence_already_consumed",
+        eventId: capabilityBinding.eventId,
+        matchedBy,
+      }, 409, { "cache-control": "no-store" });
+    }
     return json({
-      ok: true,
-      updated: true,
-      eventId: target.id,
+      ok: false,
+      updated: false,
+      reason: "context_persistence_unavailable",
+      eventId: capabilityBinding.eventId,
       matchedBy,
-      source: persistedLocationSource || locationSource,
-      contextSource: locationSource,
-      locationUpdated: hasBrowserGps,
-      accuracyM: persistedAccuracy,
+    }, 503, { "cache-control": "no-store" });
+  }
+  if (persistenceRows.length !== 1) {
+    // A QA consumption is an expected conflict, not a malformed signed
+    // snapshot. The atomic writer excludes consumed evidence; classify that
+    // zero-row outcome with a read-only check while keeping every write closed.
+    let evidenceAlreadyConsumed = false;
+    try {
+      const consumptionRows = await sql/*sql*/`
+        SELECT EXISTS (
+          SELECT 1
+          FROM supplier_qa_diagnostic_consumptions consumption
+          WHERE consumption.diagnostic_id = ${capabilityBinding.diagnosticId}
+             OR (
+               consumption.canonical_event_id = ${capabilityBinding.eventId}::bigint
+               AND consumption.canonical_event_created_at = ${target.created_at}::timestamptz
+             )
+        ) AS evidence_already_consumed
+      `;
+      evidenceAlreadyConsumed = consumptionRows[0]?.evidence_already_consumed === true;
+    } catch {
+      return json({
+        ok: false,
+        updated: false,
+        reason: "context_persistence_unavailable",
+        eventId: capabilityBinding.eventId,
+        matchedBy,
+      }, 503, { "cache-control": "no-store" });
+    }
+    if (evidenceAlreadyConsumed) {
+      return json({
+        ok: false,
+        updated: false,
+        reason: "sun_context_evidence_already_consumed",
+        eventId: capabilityBinding.eventId,
+        matchedBy,
+      }, 409, { "cache-control": "no-store" });
+    }
+    return json({
+      ok: false,
+      updated: false,
+      reason: "capability_bound_snapshot_mismatch",
+      eventId: capabilityBinding.eventId,
+      matchedBy,
+    }, 409, { "cache-control": "no-store" });
+  }
+
+  return json({
+    ok: true,
+    updated: true,
+    eventId: target.id,
+    matchedBy,
+    location: {
+      source: locationSource,
+      precision: hasBrowserLocation ? "approximate" : "none",
+      accuracyM: accuracy,
       city: finalCity,
       countryCode: finalCountry,
-      client_values_verified: false,
-    }, 200, { "cache-control": "no-store" });
-  } catch {
-    try {
-      await sql/*sql*/`
-        UPDATE events
-        SET meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify(metaPayload)}::jsonb
-        WHERE id = ${target.id}
-      `;
-      if (hasBrowserGps) {
-        return json({
-          ok: false,
-          updated: false,
-          locationUpdated: false,
-          eventId: target.id,
-          mode: "meta_only",
-          matchedBy,
-          reason: "location_persistence_unavailable",
-          client_values_verified: false,
-        }, 503, { "cache-control": "no-store" });
-      }
-      return json({ ok: true, updated: true, locationUpdated: false, eventId: target.id, mode: "meta_only", matchedBy, source: locationSource, accuracyM: accuracy, client_values_verified: false }, 200, { "cache-control": "no-store" });
-    } catch {
-      return json({ ok: false, updated: false, reason: "context_persistence_unavailable", eventId: target.id, mode: "legacy_schema", matchedBy }, 503, { "cache-control": "no-store" });
-    }
-  }
+      lat: publicLocation.lat,
+      lng: publicLocation.lng,
+      tapReceivedAt: target.created_at ? new Date(String(target.created_at)).toISOString() : null,
+      measuredAt: locationMeasuredAt,
+      receivedAt: locationReceivedAt,
+      timing: hasBrowserLocation ? "client_reported_after_tap" : "client_reported_context_after_tap",
+    },
+    client_values_verified: false,
+  }, 200, { "cache-control": "no-store" });
 }

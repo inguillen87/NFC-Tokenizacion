@@ -1,11 +1,26 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LocateFixed, MapPinned, ShieldCheck, TriangleAlert } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { requestApproximateBrowserLocation } from "./tap-location-model";
 
-type TelemetryState = "idle" | "pending" | "updated" | "denied" | "unavailable" | "error" | "fresh_required";
+type TelemetryState = "idle" | "pending" | "updated" | "denied" | "timeout" | "unsupported" | "invalid" | "stale" | "unavailable" | "error";
 
-type TapPrecisionTelemetryProps = {
+export type LocationReceipt = {
+  source?: string | null;
+  precision?: string | null;
+  accuracyM?: number | null;
+  city?: string | null;
+  countryCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  tapReceivedAt?: string | null;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  timing?: string | null;
+};
+
+export type TapPrecisionTelemetryProps = {
   endpoint: string;
   bid: string;
   uid?: string | null;
@@ -14,133 +29,43 @@ type TapPrecisionTelemetryProps = {
   readCounter?: number | null;
   contextStatus?: string | null;
   enabled?: boolean;
+  onLocationConfirmed?: (receipt: LocationReceipt) => void;
 };
 
-const APPROXIMATE_ACCURACY_FLOOR_M = 150;
-const AUTO_LOCATION_PROMPT_VERSION = "v2";
-
-type UserAgentDataLike = {
-  mobile?: boolean;
-  platform?: string;
-  getHighEntropyValues?: (hints: string[]) => Promise<Record<string, unknown>>;
-};
-
-type NavigatorWithClientHints = Navigator & {
-  deviceMemory?: number;
-  userAgentData?: UserAgentDataLike;
-  connection?: {
-    effectiveType?: string;
-    downlink?: number;
-    rtt?: number;
-    saveData?: boolean;
-  };
-};
-
-function freshTokenExpiryMs(token: string) {
-  const body = token.split(".")[0];
-  if (!body) return null;
-  try {
-    const normalized = body.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    const payload = JSON.parse(window.atob(padded)) as { exp?: unknown };
-    const expiresAt = Number(payload.exp) * 1000;
-    return Number.isFinite(expiresAt) && expiresAt > 0 ? expiresAt : null;
-  } catch {
-    return null;
-  }
-}
-
-function roundApproximateCoordinate(value: number) {
-  return Math.round(value * 1000) / 1000;
-}
-
-function cleanText(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function inferDeviceOs(platform: string, userAgent: string, maxTouchPoints: number) {
-  const value = `${platform} ${userAgent}`.toLowerCase();
-  if (/iphone|ipad|ios/.test(value)) return "iOS";
-  if (/android/.test(value)) return "Android";
-  if (/windows/.test(value)) return "Windows";
-  if (/macintosh|macintel/.test(value) && maxTouchPoints > 1) return "iPadOS";
-  if (/macintosh|mac os|macintel/.test(value)) return "macOS";
-  if (/linux/.test(value)) return "Linux";
-  return "Unknown";
-}
-
-function inferDeviceType(mobile: boolean, platform: string, userAgent: string, maxTouchPoints: number) {
-  const value = `${platform} ${userAgent}`.toLowerCase();
-  if (/ipad|tablet/.test(value) || (/macintel/.test(value) && maxTouchPoints > 1)) return "tablet";
-  if (mobile || /mobi|iphone|android/.test(value)) return "mobile";
-  return "desktop";
-}
-
-async function clientContext() {
-  const nav = window.navigator as NavigatorWithClientHints;
-  const userAgentData = nav.userAgentData;
-  let highEntropy: Record<string, unknown> = {};
-  if (typeof userAgentData?.getHighEntropyValues === "function") {
-    try {
-      highEntropy = await userAgentData.getHighEntropyValues([
-        "architecture",
-        "bitness",
-        "model",
-        "platformVersion",
-      ]);
-    } catch {
-      // UA Client Hints are optional and may be restricted by the browser.
-    }
-  }
-
-  const platform = cleanText(userAgentData?.platform) || cleanText(nav.platform) || "Unknown";
-  const userAgent = cleanText(nav.userAgent) || "";
-  const mobile = typeof userAgentData?.mobile === "boolean"
-    ? userAgentData.mobile
-    : /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
-  const connection = nav.connection;
-  const model = cleanText(highEntropy.model);
-
+function clientContext() {
   return {
-    language: nav.language || null,
-    languages: Array.isArray(nav.languages) ? nav.languages.slice(0, 8) : [],
-    platform,
-    platformVersion: cleanText(highEntropy.platformVersion),
-    architecture: cleanText(highEntropy.architecture),
-    bitness: cleanText(highEntropy.bitness),
-    model,
-    modelSource: model ? "ua_ch_high_entropy" : null,
-    userAgent: userAgent || null,
-    mobile,
-    os: inferDeviceOs(platform, userAgent, nav.maxTouchPoints || 0),
-    deviceType: inferDeviceType(mobile, platform, userAgent, nav.maxTouchPoints || 0),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      pixelRatio: window.devicePixelRatio || 1,
-    },
-    screen: {
-      width: window.screen.width,
-      height: window.screen.height,
-      availableWidth: window.screen.availWidth,
-      availableHeight: window.screen.availHeight,
-      colorDepth: window.screen.colorDepth,
-    },
-    hardware: {
-      memoryGb: Number.isFinite(nav.deviceMemory) ? nav.deviceMemory : null,
-      logicalProcessors: Number.isFinite(nav.hardwareConcurrency) ? nav.hardwareConcurrency : null,
-      maxTouchPoints: Number.isFinite(nav.maxTouchPoints) ? nav.maxTouchPoints : null,
-    },
-    connection: connection
-      ? {
-          effectiveType: cleanText(connection.effectiveType),
-          downlinkMbps: Number.isFinite(connection.downlink) ? connection.downlink : null,
-          rttMs: Number.isFinite(connection.rtt) ? connection.rtt : null,
-          saveData: connection.saveData === true,
-        }
-      : null,
   };
+}
+
+function validReceipt(value: unknown): value is LocationReceipt {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const receipt = value as LocationReceipt;
+  const source = String(receipt.source || "").toLowerCase();
+  return ["browser_geolocation_approximate_consent", "browser_gps_approximate_consent"].includes(source)
+    && receipt.precision === "approximate"
+    && typeof receipt.lat === "number"
+    && Number.isFinite(receipt.lat)
+    && receipt.lat >= -90
+    && receipt.lat <= 90
+    && typeof receipt.lng === "number"
+    && Number.isFinite(receipt.lng)
+    && receipt.lng >= -180
+    && receipt.lng <= 180;
+}
+
+function failureCopy(state: TelemetryState) {
+  if (state === "denied") return "El permiso fue denegado. Podés habilitarlo en el navegador y volver a intentar; el pasaporte sigue funcionando sin ubicación.";
+  if (state === "timeout") return "El teléfono no obtuvo una ubicación a tiempo. Revisá señal y permisos; la validación SUN sigue disponible.";
+  if (state === "unsupported") return "Este navegador o contexto no permite geolocalización. Abrí el pasaporte por HTTPS en el navegador del teléfono; la validación sigue funcionando.";
+  return "No se pudo obtener una zona aproximada. El pasaporte sigue funcionando sin ella.";
+}
+
+function receiptLocationLabel(receipt: LocationReceipt | null) {
+  return [receipt?.city, receipt?.countryCode].filter(Boolean).join(", ")
+    || (typeof receipt?.lat === "number" && typeof receipt?.lng === "number"
+      ? `${receipt.lat.toFixed(2)}, ${receipt.lng.toFixed(2)}`
+      : "Zona aproximada del teléfono");
 }
 
 export function TapPrecisionTelemetry({
@@ -152,325 +77,231 @@ export function TapPrecisionTelemetry({
   readCounter,
   contextStatus,
   enabled = true,
+  onLocationConfirmed,
 }: TapPrecisionTelemetryProps) {
-  const router = useRouter();
   const [state, setState] = useState<TelemetryState>("idle");
-  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [receipt, setReceipt] = useState<LocationReceipt | null>(null);
+  const successRef = useRef<HTMLDivElement | null>(null);
+  const focusSuccessRef = useRef(false);
+  const requestInFlightRef = useRef(false);
   const storageKey = useMemo(
-    () => `nexid:tap-context:${bid}:${eventId || uid || "unknown"}:${readCounter ?? "latest"}`,
-    [bid, eventId, readCounter, uid],
+    () => `nexid:tap-context:${bid}:${eventId || "unknown"}:${readCounter ?? "latest"}`,
+    [bid, eventId, readCounter],
   );
-  const capabilityStorageKey = useMemo(
-    () => `nexid:tap-context-capability:${bid}:${eventId || uid || "unknown"}:${readCounter ?? "latest"}`,
-    [bid, eventId, readCounter, uid],
-  );
-  const promptStorageKey = useMemo(
-    () => `nexid:tap-location-prompt:${AUTO_LOCATION_PROMPT_VERSION}:${eventId || "unknown"}`,
-    [eventId],
-  );
-  const [capabilityToken, setCapabilityToken] = useState(() => String(freshToken || "").trim());
-  const [consentOpen, setConsentOpen] = useState(false);
-  const autoPromptAttemptedRef = useRef(false);
+  const hasBoundTap = enabled
+    && Boolean(endpoint && bid && eventId && freshToken)
+    && typeof readCounter === "number"
+    && Number.isSafeInteger(readCounter)
+    && readCounter >= 0;
 
   useEffect(() => {
+    setState("idle");
+    setReceipt(null);
     if (typeof window === "undefined") return;
-    const incomingToken = String(freshToken || "").trim();
-    let candidate = incomingToken;
-    if (!candidate) {
-      try {
-        candidate = window.sessionStorage.getItem(capabilityStorageKey) || "";
-      } catch {
-        // Restricted browser modes still retain the token in component memory.
-      }
-    }
-    const expiresAt = candidate ? freshTokenExpiryMs(candidate) : null;
-    if (!candidate || !expiresAt || expiresAt <= Date.now()) {
-      if (candidate) {
-        try {
-          window.sessionStorage.removeItem(capabilityStorageKey);
-        } catch {
-          // Session storage is optional.
-        }
-      }
-      if (!incomingToken) setCapabilityToken("");
+    let saved: string | null = null;
+    try {
+      saved = window.sessionStorage.getItem(storageKey);
+    } catch {
       return;
     }
-    setCapabilityToken(candidate);
+    if (!saved) return;
     try {
-      // The signed token is event-bound and expires in minutes. Keeping it in
-      // this tab allows safe retries after the URL is scrubbed.
-      window.sessionStorage.setItem(capabilityStorageKey, candidate);
+      const parsed = JSON.parse(saved) as { status?: string; receipt?: unknown };
+      if (parsed.status !== "sent" || !validReceipt(parsed.receipt)) return;
+      setReceipt(parsed.receipt);
+      setState("updated");
+      onLocationConfirmed?.(parsed.receipt);
     } catch {
-      // A retry in the current render still works from component memory.
-    }
-    const expiryTimer = window.setTimeout(() => {
-      setCapabilityToken("");
       try {
-        window.sessionStorage.removeItem(capabilityStorageKey);
+        window.sessionStorage.removeItem(storageKey);
       } catch {
-        // Session storage is optional.
+        // Storage is an optional UX receipt; location persistence happens server-side.
       }
-    }, Math.max(1, expiresAt - Date.now()));
-    return () => window.clearTimeout(expiryTimer);
-  }, [capabilityStorageKey, freshToken]);
+    }
+  }, [onLocationConfirmed, storageKey]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.sessionStorage.getItem(storageKey);
-      if (!stored) return;
-      if (stored === "sent") {
-        setState("updated");
-        return;
-      }
-      const parsed = JSON.parse(stored) as { accuracyM?: unknown };
-      const storedAccuracy = Number(parsed.accuracyM);
-      if (Number.isFinite(storedAccuracy) && storedAccuracy > 0) setAccuracy(storedAccuracy);
-      setState("updated");
-    } catch {
-      // Session storage can be unavailable in restricted browser modes.
-    }
-  }, [storageKey]);
+    if (state !== "updated" || !focusSuccessRef.current) return;
+    focusSuccessRef.current = false;
+    successRef.current?.focus();
+  }, [state]);
 
-  const send = useCallback(async (payload: Record<string, unknown>) => {
-    const activeFreshToken = capabilityToken || String(freshToken || "").trim();
+  async function send(payload: Record<string, unknown>) {
     try {
       const request = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...payload, fresh_token: activeFreshToken || undefined }),
+        body: JSON.stringify(payload),
         cache: "no-store",
       });
-      const response = await request.json().catch(() => null) as { accuracyM?: unknown; fresh_token_status?: unknown } | null;
       if (!request.ok) {
-        const tokenStatus = String(response?.fresh_token_status || "");
-        if (request.status === 403 && /fresh_token_(?:missing|expired|invalid|mismatch|already_used)/.test(tokenStatus)) {
-          setCapabilityToken("");
-          try {
-            window.sessionStorage.removeItem(capabilityStorageKey);
-          } catch {
-            // Session storage is optional.
-          }
-          setState("fresh_required");
-        } else {
-          setState("error");
-        }
+        setState("error");
         return;
       }
-      const responseAccuracy = Number(response?.accuracyM);
-      const payloadGeo = payload.geo && typeof payload.geo === "object" && !Array.isArray(payload.geo)
-        ? payload.geo as Record<string, unknown>
-        : {};
-      const payloadAccuracy = Number(payloadGeo.accuracy);
-      const storedAccuracy = Number.isFinite(responseAccuracy) && responseAccuracy > 0
-        ? responseAccuracy
-        : Number.isFinite(payloadAccuracy) && payloadAccuracy > 0
-          ? payloadAccuracy
-          : null;
+      const response = await request.json().catch(() => null) as { ok?: boolean; location?: LocationReceipt } | null;
+      const nextReceipt = response?.location;
+      const rejectedLegacySource = nextReceipt?.source !== "browser_gps_approximate_consent";
+      if (
+        !response?.ok
+        || !validReceipt(nextReceipt)
+        || (rejectedLegacySource && nextReceipt?.source !== "browser_geolocation_approximate_consent")
+      ) {
+        setState("error");
+        return;
+      }
+      setReceipt(nextReceipt);
+      onLocationConfirmed?.(nextReceipt);
       try {
-        window.sessionStorage.setItem(storageKey, JSON.stringify({ accuracyM: storedAccuracy }));
+        window.sessionStorage.setItem(storageKey, JSON.stringify({ status: "sent", receipt: nextReceipt }));
       } catch {
-        // A successful API update must not depend on local browser storage.
+        // A blocked/full sessionStorage must not turn a successful update into an error.
       }
+      focusSuccessRef.current = true;
       setState("updated");
-      // Re-open the same signed snapshot once so the server-rendered map reads
-      // the updated event. replace() avoids a history entry and the URL cleaner
-      // immediately removes the short-lived capability again.
-      if (activeFreshToken) {
-        const refreshUrl = new URL(window.location.href);
-        refreshUrl.searchParams.delete("fresh_token");
-        refreshUrl.searchParams.set("fresh", activeFreshToken);
-        refreshUrl.searchParams.set("handoff", "fresh-retry");
-        window.location.replace(`${refreshUrl.pathname}${refreshUrl.search}${refreshUrl.hash}`);
-      } else {
-        router.refresh();
-      }
+      // Keep the original fresh handoff in memory. Refreshing this Server
+      // Component after FreshHandoffUrlCleaner removes the one-time token would
+      // reload the snapshot as historical and incorrectly disable claim,
+      // warranty and other actions from the still-active physical tap. The
+      // parent updates the map immediately from this receipt instead.
     } catch {
       setState("error");
     }
-  }, [capabilityStorageKey, capabilityToken, endpoint, freshToken, router, storageKey]);
+  }
 
-  const shareApproximateLocation = useCallback(() => {
-    if (state === "pending" || !enabled || !bid || (!uid && !eventId) || !endpoint) return;
-    const activeFreshToken = capabilityToken || String(freshToken || "").trim();
-    const expiresAt = activeFreshToken ? freshTokenExpiryMs(activeFreshToken) : null;
-    if (!activeFreshToken || !expiresAt || expiresAt <= Date.now()) {
-      setState("fresh_required");
+  async function shareApproximateLocation() {
+    if (state === "pending" || requestInFlightRef.current || !hasBoundTap) return;
+    if (typeof window === "undefined" || !window.isSecureContext || !("geolocation" in navigator)) {
+      setState("unsupported");
       return;
     }
+
+    requestInFlightRef.current = true;
     setState("pending");
+    const locationRequestedAt = new Date().toISOString();
+    const locationRequestedAtMs = Date.parse(locationRequestedAt);
     const basePayload = {
       bid,
       uid: uid || undefined,
-      eventId: eventId || undefined,
-      ctr: typeof readCounter === "number" ? readCounter : undefined,
+      eventId,
+      fresh_token: freshToken,
+      ctr: readCounter,
       contextStatus: contextStatus || "viewed",
-      scannedAt: new Date().toISOString(),
+      locationRequestedAt,
       geoConsent: true,
-      extendedContextConsent: true,
       geoPrecision: "approximate",
+      client: clientContext(),
     };
 
-    if (!("geolocation" in navigator)) {
-      setState("unavailable");
-      return;
-    }
-
-    // The person has already accepted the explicit nexID consent sheet. Start
-    // browser context collection while the native location request is in
-    // flight. Nothing is sent if the person denies that native permission.
-    const clientContextPromise = clientContext();
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const nextAccuracy = Math.max(
-          APPROXIMATE_ACCURACY_FLOOR_M,
-          Number.isFinite(position.coords.accuracy) ? Math.round(position.coords.accuracy) : APPROXIMATE_ACCURACY_FLOOR_M,
-        );
-        setAccuracy(nextAccuracy);
-        void clientContextPromise.then((client) => send({
-            ...basePayload,
-            client,
-            geo: {
-              lat: roundApproximateCoordinate(position.coords.latitude),
-              lng: roundApproximateCoordinate(position.coords.longitude),
-              accuracy: nextAccuracy,
-            },
-          }))
-          .catch(() => setState("error"));
-      },
-      (error) => {
-        // A denial is local-only: no device or network profile is transmitted.
-        setState(error.code === error.PERMISSION_DENIED ? "denied" : "unavailable");
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
-  }, [bid, capabilityToken, enabled, endpoint, eventId, freshToken, readCounter, send, state, uid]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || autoPromptAttemptedRef.current) return;
-    if (state !== "idle" || !enabled || !eventId || !capabilityToken) return;
-    const expiresAt = freshTokenExpiryMs(capabilityToken);
-    if (!expiresAt || expiresAt <= Date.now()) return;
-
     try {
-      if (window.sessionStorage.getItem(storageKey) || window.sessionStorage.getItem(promptStorageKey)) return;
-      window.sessionStorage.setItem(promptStorageKey, JSON.stringify({
-        eventId,
-        requestedAt: new Date().toISOString(),
-        version: AUTO_LOCATION_PROMPT_VERSION,
-      }));
-    } catch {
-      // The in-memory guard still prevents duplicate prompts in this mount.
+      const result = await requestApproximateBrowserLocation(navigator.geolocation, locationRequestedAtMs);
+      if (!result.ok) {
+        setState(result.reason);
+        return;
+      }
+      await send({
+        ...basePayload,
+        geo: {
+          lat: result.location.lat,
+          lng: result.location.lng,
+          accuracy: result.location.accuracyM,
+          measuredAt: result.location.measuredAt,
+        },
+      });
+    } finally {
+      requestInFlightRef.current = false;
     }
-
-    autoPromptAttemptedRef.current = true;
-    setConsentOpen(true);
-  }, [capabilityToken, enabled, eventId, promptStorageKey, state, storageKey]);
-
-  const acceptContextConsent = useCallback(() => {
-    setConsentOpen(false);
-    shareApproximateLocation();
-  }, [shareApproximateLocation]);
-
-  const declineContextConsent = useCallback(() => {
-    setConsentOpen(false);
-    setState("denied");
-  }, []);
-
-  if (!enabled || !bid || (!uid && !eventId) || !endpoint) return null;
-  if (state === "fresh_required") {
-    return (
-      <div className="sun-location-consent sun-location-consent--fresh-required rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100" role="status">
-        <span className="block font-black">Hace falta un toque nuevo para actualizar la zona</span>
-        <span className="mt-1 block font-normal leading-5 text-amber-100/80">
-          Acercá nuevamente el teléfono a la etiqueta física y abrí la nueva notificación. La ubicación anterior queda intacta.
-        </span>
-      </div>
-    );
   }
+
+  if (!hasBoundTap) return null;
   if (state === "updated") {
+    const accuracyLabel = typeof receipt?.accuracyM === "number"
+      ? `±${Math.round(receipt.accuracyM)} m o más`
+      : "aproximada";
+    const mapHref = typeof receipt?.lat === "number" && typeof receipt?.lng === "number"
+      ? `https://www.openstreetmap.org/?mlat=${encodeURIComponent(String(receipt.lat))}&mlon=${encodeURIComponent(String(receipt.lng))}#map=11/${encodeURIComponent(String(receipt.lat))}/${encodeURIComponent(String(receipt.lng))}`
+      : "";
+    const formatTime = (value: string | null | undefined) => {
+      if (!value) return "No informado";
+      const date = new Date(value);
+      return Number.isFinite(date.getTime()) ? date.toLocaleString("es-AR") : "No informado";
+    };
     return (
-      <div className="sun-location-consent sun-location-consent--updated rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-100" aria-live="polite">
-        <span className="block font-black">Zona aproximada agregada</span>
-        <span className="mt-1 block font-normal leading-5 text-emerald-100/80">
-          Guardamos una posición redondeada{accuracy ? `, con un radio de al menos ±${accuracy} m` : ""}. El contexto técnico se usa sólo en estadísticas agregadas. No seguimos tu ubicación ni inferimos el recorrido del producto.
-        </span>
-        <button
-          type="button"
-          onClick={shareApproximateLocation}
-          className="mt-3 min-h-11 rounded-xl border border-emerald-200/35 bg-emerald-300/10 px-4 text-xs font-black transition hover:bg-emerald-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
-        >
-          Actualizar mi zona
-        </button>
+      <div
+        ref={successRef}
+        tabIndex={-1}
+        className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-emerald-50 shadow-inner focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-400/10 text-emerald-200" aria-hidden="true">
+            <ShieldCheck className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-200">Ubicación opcional guardada</p>
+            <strong className="mt-1 block break-words text-sm text-white">{receiptLocationLabel(receipt)}</strong>
+            <p className="mt-1 text-xs leading-5 text-emerald-100/80">El mapa ya usa la zona aproximada que compartiste después del tap.</p>
+          </div>
+        </div>
+        <details className="mt-3 border-t border-emerald-200/10 pt-2 text-xs leading-5 text-emerald-100/75">
+          <summary className="min-h-11 cursor-pointer py-2 font-bold text-emerald-100">Ver comprobante de ubicación</summary>
+          <dl className="grid gap-1 leading-4 sm:grid-cols-2">
+            <div><dt className="inline font-bold">Fuente: </dt><dd className="inline">geolocalización aproximada del navegador con permiso</dd></div>
+            <div><dt className="inline font-bold">Precisión publicada: </dt><dd className="inline">{accuracyLabel}</dd></div>
+            <div><dt className="inline font-bold">Tap recibido: </dt><dd className="inline">{formatTime(receipt?.tapReceivedAt)}</dd></div>
+            <div><dt className="inline font-bold">Ubicación medida: </dt><dd className="inline">{formatTime(receipt?.measuredAt)}</dd></div>
+          </dl>
+          <p className="mt-2 leading-4">
+            El teléfono reportó esta zona y se actualizó el evento sin repetir el tap. La medición ocurre después de abrir la página: no es una coordenada emitida por el NFC ni prueba el instante RF exacto, recorrido, custodia o autenticidad física. Como contexto agregado, nexID sólo guarda la zona horaria del navegador.
+          </p>
+        </details>
+        {mapHref ? (
+          <a href={mapHref} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200/15 bg-emerald-400/10 px-3 text-xs font-black text-emerald-50 transition hover:bg-emerald-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200">
+            <MapPinned className="h-4 w-4" aria-hidden="true" />
+            Abrir zona aproximada en OpenStreetMap (sitio externo)
+          </a>
+        ) : null}
       </div>
     );
   }
 
   return (
-    <>
-      {consentOpen ? (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:items-center" role="presentation">
-          <div
-            className="sun-location-permission-sheet w-full max-w-md rounded-[1.65rem] border border-cyan-200/30 bg-white p-5 text-left shadow-2xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="sun-location-permission-title"
-            aria-describedby="sun-location-permission-description"
-          >
-            <span className="sun-location-permission-sheet__eyebrow">Lectura NFC real</span>
-            <h2 id="sun-location-permission-title" className="mt-3 text-xl font-black tracking-tight text-slate-950">
-              Mejorá la ubicación de este toque
-            </h2>
-            <p id="sun-location-permission-description" className="mt-2 text-sm leading-6 text-slate-600">
-              Si aceptás, el navegador solicitará tu ubicación. nexID guardará una zona aproximada y redondeada junto con datos técnicos del dispositivo y la conexión para mejorar la experiencia y crear estadísticas agregadas.
-            </p>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
-              No seguimos tu recorrido, no mostramos el contexto individual a la marca y el pasaporte funciona aunque elijas ahora no.
-            </p>
-            <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto]">
-              <button
-                type="button"
-                onClick={acceptContextConsent}
-                className="min-h-12 rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-500 px-5 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500"
-              >
-                Permitir zona y contexto
-              </button>
-              <button
-                type="button"
-                onClick={declineContextConsent}
-                className="min-h-12 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
-              >
-                Ahora no
-              </button>
-            </div>
+    <div className="rounded-2xl border border-cyan-300/20 bg-[linear-gradient(145deg,rgba(8,145,178,0.13),rgba(15,23,42,0.78))] p-4 text-cyan-50 shadow-inner" aria-live="polite">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200" aria-hidden="true">
+          <LocateFixed className="h-5 w-5" strokeWidth={2} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-cyan-200">Ubicación de este teléfono</p>
+          <p className="mt-1 text-sm font-black text-white">Agregá la zona del teléfono a esta lectura</p>
+          <p id="tap-location-help" className="mt-1 text-xs leading-5 text-cyan-100/80">La ciudad estimada por la red puede ser incorrecta. Sólo pediremos ubicación al tocar el botón. El origen reportado del producto no se modifica.</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={shareApproximateLocation}
+        disabled={state === "pending"}
+        aria-describedby="tap-location-help tap-location-privacy"
+        className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/25 bg-cyan-300/15 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
+      >
+        <LocateFixed className="h-4 w-4" aria-hidden="true" />
+        {state === "pending" ? "Solicitando permiso..." : state === "idle" ? "Agregar zona al pasaporte" : "Volver a intentar"}
+      </button>
+      <p id="tap-location-privacy" className="mt-2 text-center text-xs font-semibold leading-4 text-cyan-100/65">Opcional · ubicación aproximada · zona redondeada · sin cambiar la validación</p>
+      {state === "error" ? (
+        <div role="alert" className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">
+          <div className="flex items-start gap-2">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>No pudimos asociar la ubicación a este evento. La validación SUN no cambió; hacé un nuevo tap físico para volver a intentarlo.</p>
           </div>
         </div>
+      ) : state === "denied" || state === "timeout" || state === "unsupported" || state === "unavailable" ? (
+        <p role="status" className="mt-3 rounded-xl border border-amber-300/15 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">{failureCopy(state)}</p>
       ) : null}
-
-      <div className="sun-location-consent sun-location-consent--request rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-4 text-cyan-50" aria-live="polite" aria-busy={state === "pending"}>
-        <p className="text-xs font-black">Ubicación de esta lectura</p>
-        <p className="mt-1 text-[11px] leading-5 text-cyan-100/75">
-          Con tu aceptación, guardamos una zona aproximada y datos técnicos del dispositivo y la conexión para mejorar la experiencia y generar estadísticas agregadas. No seguimos tu recorrido.
-        </p>
-        <button
-          type="button"
-          onClick={shareApproximateLocation}
-          disabled={state === "pending"}
-          className="mt-3 min-h-11 w-full rounded-xl border border-cyan-200/35 bg-cyan-300/10 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-        >
-          {state === "pending" ? "Buscando la mejor señal…" : "Compartir zona y contexto"}
-        </button>
-        {state === "denied" || state === "unavailable" || state === "error" ? (
-          <p className="mt-2 text-[11px] leading-5 text-amber-200">
-            {state === "denied"
-              ? "No autorizaste la ubicación. El pasaporte sigue funcionando normalmente."
-              : state === "error"
-                ? "No pudimos actualizarla ahora. Podés reintentar; el pasaporte sigue disponible."
-                : "Este dispositivo no pudo obtener ubicación. El pasaporte sigue disponible."}
-          </p>
-        ) : null}
-      </div>
-    </>
+      <details className="mt-2 border-t border-cyan-200/10 pt-1 text-xs leading-5 text-cyan-100/70">
+        <summary className="min-h-11 cursor-pointer py-2 font-bold text-cyan-100/85">Cómo funciona</summary>
+        <p>El NFC pasivo no aporta ubicación. La geolocalización del navegador toma una medición nueva después de tocar el botón; puede usar señales del dispositivo como Wi-Fi, red móvil o GPS. nexID redondea la zona y guarda fuente, precisión y horarios separados del tap. Como contexto agrega sólo la zona horaria: no agrega idioma, user-agent, plataforma ni tamaño de pantalla.</p>
+      </details>
+    </div>
   );
 }

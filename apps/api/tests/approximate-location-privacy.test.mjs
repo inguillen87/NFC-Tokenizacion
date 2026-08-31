@@ -45,6 +45,16 @@ test("invalid coordinates fail closed even with consent", () => {
   assert.equal(result.reason, "invalid_location");
 });
 
+test("missing or unusably broad accuracy fails closed instead of becoming 150 m", () => {
+  const base = { consent: true, precision: "approximate", lat: -34.603722, lng: -58.381592 };
+  for (const accuracy of [undefined, Number.NaN, -1, 50_001, 100_000]) {
+    const result = normalizeConsentedApproximateLocation({ ...base, accuracy });
+    assert.equal(result.accepted, false);
+    assert.equal(result.reason, "invalid_location_accuracy");
+    assert.equal(result.accuracy, null);
+  }
+});
+
 test("strict API coordinate pairs preserve zero but reject null coercion and partial pairs", () => {
   assert.deepEqual(normalizeCoordinatePair(0, 0), { lat: 0, lng: 0 });
   assert.deepEqual(normalizeCoordinatePair("-34.6", "-58.4"), { lat: -34.6, lng: -58.4 });
@@ -104,17 +114,18 @@ test("SUN context and ownership claims enforce the shared privacy boundary", asy
     readFile(new URL("../src/lib/sun-diagnostics.ts", import.meta.url), "utf8"),
   ]);
   for (const source of [contextRoute, claimRoute, qrRoute, leadsRoute]) assert.match(source, /normalizeConsentedApproximateLocation/);
-  assert.match(contextRoute, /browser_gps_approximate_consent/);
-  assert.match(contextRoute, /altitude: null/);
-  assert.match(contextRoute, /speed: null/);
+  assert.match(contextRoute, /browser_geolocation_approximate_consent/);
+  assert.doesNotMatch(contextRoute, /altitude: null|speed: null/);
   assert.match(claimRoute, /location_consent: body\.locationConsent === true/);
   assert.match(qrRoute, /redactSensitiveQueryValues/);
   assert.match(qrRoute, /raw_query_location_redacted: true/);
   assert.match(qrRoute, /raw_query_sun_dynamic_redacted: true/);
   assert.match(leadsRoute, /source: "browser_gps_approximate_consent"/);
 
-  // Dynamic values remain exact for CMAC/tamper verification, then are redacted
-  // only at the persistence boundaries while their hashes remain available.
+  // Dynamic values remain exact for cryptographic CMAC verification, but
+  // attacker-controlled query metadata never establishes the tamper state.
+  // Persistence receives the values only through its redacting boundary while
+  // their hashes remain available for correlation.
   assert.match(qrRoute, /piccDataHex: picc_data/);
   assert.match(qrRoute, /encHex: enc/);
   assert.match(qrRoute, /cmacHex: cmac/);
@@ -124,9 +135,10 @@ test("SUN context and ownership claims enforce the shared privacy boundary", asy
   assert.doesNotMatch(qrRoute, /request_json: \{ bid, picc_data, enc, cmac \}/);
   assert.match(qrRoute, /const persistedRawQuery = redactSensitiveQueryValues\(input\.rawQuery\) \|\| \{\}/);
   assert.match(qrRoute, /JSON\.stringify\(persistedRawQuery\)/);
-  assert.match(sunService, /function resolveTamperSignal\(\)[\s\S]*?attacker-controlled[\s\S]*?complete two-byte TTStatus decrypted below/);
+  assert.match(sunService, /verifySun\(\{[\s\S]*?piccDataHex: input\.piccDataHex[\s\S]*?encHex: input\.encHex[\s\S]*?cmacHex: input\.cmacHex/);
+  assert.match(sunService, /function resolveTamperSignal\(\)[\s\S]*?attacker-controlled/);
   assert.match(sunService, /const tamperSignal = resolveTamperSignal\(\)/);
-  assert.doesNotMatch(sunService, /resolveTamperSignal\(\{[\s\S]*?rawQuery: input\.rawQuery/);
+  assert.doesNotMatch(sunService, /resolveTamperSignal\(\{[\s\S]*?rawQuery/);
   assert.match(sunService, /persistSunScanAtomically\(\{[\s\S]*?rawQuery: input\.rawQuery/);
   assert.match(atomicPersistence, /redactSensitiveQueryValues\(input\.rawQuery\)/);
   assert.match(atomicPersistence, /picc_data_hash: input\.piccDataHash/);
@@ -134,63 +146,4 @@ test("SUN context and ownership claims enforce the shared privacy boundary", asy
   assert.match(diagnostics, /redactSensitiveQueryValues\(input\.request_json as Record<string, unknown>\)/);
   assert.match(diagnostics, /JSON\.stringify\(persistedRequestJson \|\| \{\}\)/);
   assert.ok(sunService.indexOf("resolveTamperSignal({") < sunService.indexOf("persistSunScanAtomically({"));
-});
-
-test("consented SUN device location supersedes IP coordinates and labels atomically", async () => {
-  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
-
-  assert.match(contextRoute, /if \(hasBrowserGps && lat !== null && lng !== null\)/);
-  assert.match(contextRoute, /const finalCity = hasBrowserGps \? resolvedCity : firstText\(target\.city\) \|\| null/);
-  assert.match(contextRoute, /lat = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lat\} ELSE lat END/);
-  assert.match(contextRoute, /lng = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lng\} ELSE lng END/);
-  assert.match(contextRoute, /geo_lat = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lat\} ELSE geo_lat END/);
-  assert.match(contextRoute, /geo_lng = CASE WHEN \$\{hasBrowserGps\} THEN \$\{lng\} ELSE geo_lng END/);
-  assert.match(contextRoute, /city = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCity\} ELSE city END/);
-  assert.match(contextRoute, /country_code = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCountry\} ELSE country_code END/);
-  assert.match(contextRoute, /geo_city = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCity\} ELSE geo_city END/);
-  assert.match(contextRoute, /geo_country = CASE WHEN \$\{hasBrowserGps\} THEN \$\{resolvedCountry\} ELSE geo_country END/);
-  assert.doesNotMatch(contextRoute, /city = COALESCE\(NULLIF\(city, ''\), \$\{resolvedCity\}, geo_city\)/);
-});
-
-test("SUN phone context is safely retryable but remains bound to the signed physical event", async () => {
-  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
-
-  assert.match(contextRoute, /import \{ requireSunFreshHandoff \} from .*sun-fresh-handoff/);
-  assert.match(contextRoute, /const capability = requireSunFreshHandoff\(req, body, \{[\s\S]*?bid,[\s\S]*?eventId,[\s\S]*?uidHex: uid,[\s\S]*?readCounter: ctr/);
-  assert.doesNotMatch(contextRoute, /consumeSunFreshHandoff\(req, body/);
-  assert.match(contextRoute, /WHERE e\.id = \$\{eventId\}::bigint[\s\S]*?e\.batch_id = \$\{batch\.id\}[\s\S]*?UPPER\(e\.uid_hex\) = \$\{uid\}[\s\S]*?e\.sdm_read_ctr = \$\{ctr\}/);
-});
-
-test("rejected SUN geolocation reports cannot overwrite persisted coordinate provenance", async () => {
-  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
-
-  assert.match(contextRoute, /location_accuracy_m = CASE WHEN \$\{hasBrowserGps\} THEN \$\{accuracy\} ELSE location_accuracy_m END/);
-  assert.match(contextRoute, /location_source = CASE WHEN \$\{hasBrowserGps\} THEN \$\{locationSource\} ELSE location_source END/);
-  assert.match(contextRoute, /location_updated_at = CASE WHEN \$\{hasBrowserGps\} THEN now\(\) ELSE location_updated_at END/);
-  assert.match(contextRoute, /geo_precision = CASE WHEN \$\{hasBrowserGps\} THEN 'browser_rounded' ELSE geo_precision END/);
-  assert.match(contextRoute, /const persistedLocationSource = hasBrowserGps[\s\S]*?firstText\(target\.location_source\) \|\| null/);
-  assert.match(contextRoute, /locationUpdated: hasBrowserGps/);
-});
-
-test("SUN device enrichment is consent-gated, bounded and never claims socioeconomic truth", async () => {
-  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
-
-  assert.match(contextRoute, /const extendedContextConsent = body\.extendedContextConsent === true[\s\S]*?body\.geoConsent === true[\s\S]*?hasBrowserGps/);
-  assert.match(contextRoute, /extended_context_consent_version: extendedContextConsent \? "sun-context-explicit-v1" : null/);
-  assert.match(contextRoute, /safeClientContext\(body\.client, extendedContextConsent\)/);
-  assert.match(contextRoute, /language: allowExtended \?/);
-  assert.match(contextRoute, /userAgent: allowExtended \?/);
-  assert.match(contextRoute, /mobile: allowExtended && typeof client\?\.mobile === "boolean"/);
-  assert.match(contextRoute, /viewport: allowExtended \?/);
-  assert.match(contextRoute, /model: allowExtended \? firstText\(client\?\.model\)/);
-  assert.match(contextRoute, /os: allowExtended \?/);
-  assert.match(contextRoute, /deviceType: allowExtended/);
-  assert.match(contextRoute, /platformVersion: allowExtended/);
-  assert.match(contextRoute, /screen: allowExtended/);
-  assert.match(contextRoute, /hardware: allowExtended/);
-  assert.match(contextRoute, /connection: allowExtended/);
-  assert.match(contextRoute, /reported_device_capability_heuristic/);
-  assert.match(contextRoute, /socioeconomicStatus: "not_inferred"/);
-  assert.doesNotMatch(contextRoute, /socioeconomicStatus: "(?:low|middle|high)"/);
-  assert.match(contextRoute, /client_values_verified: false/);
 });

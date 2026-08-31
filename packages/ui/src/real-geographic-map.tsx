@@ -29,6 +29,7 @@ type RealGeographicMapProps = {
   ledgerItems?: VectorMapLedgerItem[];
   mapSource?: TrustMapSourceOverrides;
   ariaLabel?: string;
+  externalTiles?: boolean;
 };
 
 type PointFeature = {
@@ -68,7 +69,10 @@ type MapTheme = "light" | "dark";
 const EMPTY_POINTS: PointCollection = { type: "FeatureCollection", features: [] };
 const EMPTY_ROUTES: RouteCollection = { type: "FeatureCollection", features: [] };
 const EMPTY_CONSUMER_ACCURACY: ConsumerAccuracyCollection = { type: "FeatureCollection", features: [] };
-const CONSENTED_CONSUMER_LOCATION_SOURCE = "browser_gps_approximate_consent";
+const CONSENTED_CONSUMER_LOCATION_SOURCES = new Set([
+  "browser_geolocation_approximate_consent",
+  "browser_gps_approximate_consent",
+]);
 
 function resolveDocumentMapTheme(root: HTMLElement): MapTheme {
   const explicitTheme = root.getAttribute("data-theme") || root.getAttribute("data-nexid-theme");
@@ -94,7 +98,7 @@ function pointTone(point: VectorMapPoint) {
 }
 
 function isConsentedConsumerPoint(point: VectorMapPoint) {
-  return point.locationSource === CONSENTED_CONSUMER_LOCATION_SOURCE && isCoordinate(point);
+  return CONSENTED_CONSUMER_LOCATION_SOURCES.has(String(point.locationSource || "").toLowerCase()) && isCoordinate(point);
 }
 
 function consumerAccuracyM(point?: VectorMapPoint | null) {
@@ -218,6 +222,16 @@ function mapStyle(tileTemplate: string, attribution: string, light: boolean) {
               "raster-contrast": 0.16,
             },
       },
+    ],
+  };
+}
+
+function localCoordinateStyle(light: boolean) {
+  return {
+    version: 8,
+    sources: {},
+    layers: [
+      { id: "nexid-map-background", type: "background", paint: { "background-color": light ? "#eef8fb" : "#061322" } },
     ],
   };
 }
@@ -431,6 +445,7 @@ export function RealGeographicMap({
   ledgerItems = [],
   mapSource,
   ariaLabel,
+  externalTiles = true,
 }: RealGeographicMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -494,11 +509,13 @@ export function RealGeographicMap({
       const maplibre = await import("maplibre-gl");
       if (cancelled || !containerRef.current) return;
       maplibreRef.current = maplibre;
-      const baseStyle = trustMapSource.rasterTileTemplate
-        ? mapStyle(trustMapSource.rasterTileTemplate, trustMapSource.attribution, isLightTheme)
-        : isLightTheme
-          ? trustMapSource.styleUrl
-          : trustMapSource.darkStyleUrl;
+      const baseStyle = !externalTiles
+        ? localCoordinateStyle(isLightTheme)
+        : trustMapSource.rasterTileTemplate
+          ? mapStyle(trustMapSource.rasterTileTemplate, trustMapSource.attribution, isLightTheme)
+          : isLightTheme
+            ? trustMapSource.styleUrl
+            : trustMapSource.darkStyleUrl;
       const map = new maplibre.Map({
         container: containerRef.current,
         style: baseStyle as never,
@@ -588,7 +605,7 @@ export function RealGeographicMap({
     };
     // Density changes cluster/source semantics, so rebuild the engine as well.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consumerChrome, effectiveDensity, mapTheme, trustMapSource.attribution, trustMapSource.darkStyleUrl, trustMapSource.rasterTileTemplate, trustMapSource.styleUrl]);
+  }, [consumerChrome, effectiveDensity, externalTiles, mapTheme, trustMapSource.attribution, trustMapSource.darkStyleUrl, trustMapSource.rasterTileTemplate, trustMapSource.styleUrl]);
 
   useEffect(() => {
     const canvas = mapRef.current?.getCanvas();
@@ -620,7 +637,8 @@ export function RealGeographicMap({
       className={["nexid-real-map relative isolate overflow-hidden rounded-xl border border-cyan-300/20 bg-slate-950 shadow-[0_20px_58px_rgba(15,23,42,.18)]", heightClassName, className].join(" ")}
       data-nexid-map="maplibre-gl"
       data-nexid-map-engine="maplibre-gl"
-      data-nexid-map-source={trustMapSource.id}
+      data-nexid-map-source={externalTiles ? trustMapSource.id : "nexid-local-coordinate-grid"}
+      data-nexid-external-tiles={externalTiles ? "enabled" : "disabled"}
       data-nexid-map-theme={mapTheme || "light"}
       data-map-density={effectiveDensity}
       data-consumer-location={consumerChrome ? "consented-approximate" : undefined}
@@ -630,11 +648,21 @@ export function RealGeographicMap({
       aria-describedby={summaryId}
     >
       <div ref={containerRef} className="absolute inset-0" />
+      {!externalTiles ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-[1] opacity-35"
+          style={{
+            backgroundImage: "linear-gradient(rgba(8,145,178,.25) 1px, transparent 1px), linear-gradient(90deg, rgba(8,145,178,.25) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+          aria-hidden="true"
+        />
+      ) : null}
 
       <div className={`pointer-events-none absolute left-3 top-3 z-10 max-w-[min(31rem,calc(100%-6.5rem))] rounded-xl border px-3 py-2 shadow-lg backdrop-blur-md ${isLightTheme ? "border-slate-200 bg-white/90 text-slate-900" : "border-white/10 bg-slate-950/82 text-white"}`}>
         <h3 id={titleId} className="text-xs font-black uppercase tracking-[0.12em] sm:text-sm">{title}</h3>
         {consumerChrome ? <p className={`mt-1 text-[10px] leading-4 sm:text-xs ${isLightTheme ? "text-slate-600" : "text-slate-300"}`}>{consumerLocationSummary}</p> : !compactChrome ? <p className={`mt-1 text-[10px] leading-4 sm:text-xs ${isLightTheme ? "text-slate-600" : "text-slate-300"}`}>{subtitle}</p> : null}
-        {!consumerChrome ? <span className={`mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${isLightTheme ? "border-cyan-700/20 bg-cyan-50 text-cyan-800" : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"}`}>MapLibre GL · {trustMapSource.attribution}</span> : null}
+        {!consumerChrome ? <span className={`mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${isLightTheme ? "border-cyan-700/20 bg-cyan-50 text-cyan-800" : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"}`}>{externalTiles ? `MapLibre GL · ${trustMapSource.attribution}` : "MapLibre GL · cuadrícula local sin tiles externos"}</span> : null}
       </div>
 
       {loaded && !mapError && !consumerChrome ? (
@@ -648,7 +676,7 @@ export function RealGeographicMap({
 
       {!loaded && !mapError ? (
         <div className={`absolute inset-0 z-20 grid place-items-center text-center text-sm ${isLightTheme ? "bg-slate-50/92 text-slate-600" : "bg-slate-950/88 text-slate-300"}`} role="status" aria-busy="true">
-          <span><i className="mx-auto mb-3 block h-7 w-7 animate-spin rounded-full border-2 border-cyan-300/25 border-t-cyan-400 motion-reduce:animate-none" />{consumerChrome ? "Cargando ubicación aproximada…" : "Cargando mapa geográfico real…"}</span>
+          <span><i className="mx-auto mb-3 block h-7 w-7 animate-spin rounded-full border-2 border-cyan-300/25 border-t-cyan-400 motion-reduce:animate-none" />{!externalTiles ? "Preparando cuadrícula local…" : consumerChrome ? "Cargando ubicación aproximada…" : "Cargando mapa geográfico real…"}</span>
         </div>
       ) : null}
       {mapError ? (

@@ -40,11 +40,12 @@ test("SUN demo uses one canonical Bodega Balmec to Buenos Aires distance", () =>
   assert.deepEqual(selectCanonicalSunMapRoutes(canonicalRoute, intermediateRoutes), [canonicalRoute]);
 });
 
-test("SUN page feeds the map the same canonical origin-to-current-tap route as its metrics", async () => {
+test("SUN page feeds the map the same origin-to-current-tap distance as its summary", async () => {
   const page = await readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8");
 
   assert.match(page, /const originToTapDistance = wineryPoint\.length && currentTapPoint\.length/);
-  assert.match(page, /const canonicalMapRoutes = selectCanonicalSunMapRoutes\(originToCurrentTapRoute, mapRoutes\)/);
-  assert.match(page, /const opsMapRoutes: GlobalOpsRoute\[\] = canonicalMapRoutes\.map/);
-  assert.doesNotMatch(page, /const opsMapRoutes: GlobalOpsRoute\[\] = mapRoutes\.map/);
+  assert.match(page, /const distanceDisplay = fmtDistance\(originToTapDistance\)/);
+  assert.match(page, /distanceLabel=\{distanceDisplay\}/);
+  assert.match(page, /showRoute=\{isDemoPreview\}/);
+  assert.doesNotMatch(page, /const opsMapRoutes/);
 });

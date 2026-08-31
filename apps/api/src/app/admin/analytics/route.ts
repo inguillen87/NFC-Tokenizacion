@@ -6,9 +6,10 @@ import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
 import { SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE } from "../../../lib/sun-automated-fetch";
-import { aggregateTenantMetrics } from "@product/core";
+import { aggregateTenantMetrics, EVENT_TAXONOMY_VERSION } from "@product/core";
+import { classifyPhysicalTapSealState, isAuthenticatedNfcMessage, listAdminPhysicalTaps } from "../../../lib/admin-physical-taps";
 
-type TrendRow = { day: string; scans: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
+type TrendRow = { day: string; scans: number; valid: number; closed: number; opened: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
 
 type GeoRow = {
   city: string | null;
@@ -62,16 +63,7 @@ type CityRow = {
   accuracy_m: number | null;
 };
 type DeviceBucketRow = { label: string | null; count: number };
-type CommercialSignalCoverageRow = {
-  total_count: number;
-  context_count: number;
-  extended_consent_count: number;
-  model_count: number;
-  device_capability_count: number;
-  connection_count: number;
-  location_count: number;
-};
-type FeedRow = { id: number; uid_hex: string | null; bid: string | null; result: string; city: string | null; country_code: string | null; device: string | null; created_at: string };
+type FeedRow = { id: number; uid_hex: string | null; bid: string | null; result: string; verdict: string | null; reason: string | null; source: string | null; city: string | null; country_code: string | null; device: string | null; created_at: string };
 type ProductRow = {
   uid_hex: string;
   bid: string;
@@ -129,19 +121,6 @@ function validCoordinatePair(latValue: unknown, lngValue: unknown) {
   const lng = typeof lngValue === "number" ? lngValue : typeof lngValue === "string" && lngValue.trim() ? Number(lngValue) : Number.NaN;
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
   return { lat, lng };
-}
-
-function coverageShare(count: number, total: number) {
-  if (!total) return 0;
-  return Number((Math.max(0, count) / total).toFixed(4));
-}
-
-function coverageConfidence(count: number, total: number): "none" | "low" | "medium" | "high" {
-  const coverage = coverageShare(count, total);
-  if (!count || !total) return "none";
-  if (coverage >= 0.7 && count >= 20) return "high";
-  if (coverage >= 0.35 && count >= 5) return "medium";
-  return "low";
 }
 
 let analyticsEventsSchemaReady: Promise<void> | null = null;
@@ -204,7 +183,6 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const { tenant: requestedTenant, source: requestedSource, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
   const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
-  const aggregateTenant = tenant || "";
   // Real operational analytics fail closed. Demo/simulated events remain
   // queryable only through an explicit `source=demo` filter.
   const source = requestedSource || "real";
@@ -215,7 +193,9 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
@@ -235,7 +215,9 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
@@ -255,6 +237,9 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
@@ -275,6 +260,9 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
@@ -375,7 +363,7 @@ export async function GET(req: Request) {
           COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
           COUNT(*)::int AS scans,
           COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
-          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
@@ -393,7 +381,7 @@ export async function GET(req: Request) {
           COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
           COUNT(*)::int AS scans,
           COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
-          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
@@ -527,21 +515,7 @@ export async function GET(req: Request) {
       `,
   ]);
 
-  const [
-    countryRows,
-    cityRows,
-    deviceOsRows,
-    deviceBrowserRows,
-    timezoneRows,
-    mobileShareRows,
-    commercialCoverageRows,
-    reportedModelRows,
-    deviceCapabilityRows,
-    connectionTypeRows,
-    locationSourceRows,
-    feedRows,
-    productRows,
-  ] = await Promise.all([
+  const [countryRows, cityRows, deviceOsRows, deviceBrowserRows, timezoneRows, mobileShareRows, feedRows, productRows] = await Promise.all([
     tenant
       ? sql/*sql*/`
         SELECT
@@ -732,84 +706,6 @@ export async function GET(req: Request) {
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       `,
-    sql/*sql*/`
-      SELECT
-        COUNT(*)::int AS total_count,
-        COUNT(*) FILTER (WHERE e.meta ? 'sun_context')::int AS context_count,
-        COUNT(*) FILTER (WHERE lower(COALESCE(e.meta->'sun_context'->>'extended_context_consent', 'false')) = 'true')::int AS extended_consent_count,
-        COUNT(*) FILTER (WHERE COALESCE(NULLIF(e.meta->'sun_context'->'client'->>'model', ''), NULLIF(e.device_label, '')) IS NOT NULL)::int AS model_count,
-        COUNT(*) FILTER (WHERE NULLIF(e.meta->'sun_context'->'device'->'capabilitySegment'->>'band', '') IS NOT NULL
-          AND e.meta->'sun_context'->'device'->'capabilitySegment'->>'band' <> 'unclassified')::int AS device_capability_count,
-        COUNT(*) FILTER (WHERE NULLIF(e.meta->'sun_context'->'client'->'connection'->>'effectiveType', '') IS NOT NULL)::int AS connection_count,
-        COUNT(*) FILTER (WHERE COALESCE(NULLIF(e.location_source, ''), NULLIF(e.meta->'sun_context'->'geo'->>'source', '')) IS NOT NULL)::int AS location_count
-      FROM events e
-      LEFT JOIN tenants tn ON tn.id = e.tenant_id
-      WHERE (${aggregateTenant} = '' OR tn.slug = ${aggregateTenant})
-        AND e.created_at >= now() - ${rangeSql}::interval
-        AND (${source} = '' OR e.source::text = ${source})
-        AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-        AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
-    `,
-    sql/*sql*/`
-      SELECT
-        COALESCE(NULLIF(e.meta->'sun_context'->'client'->>'model', ''), NULLIF(e.device_label, ''), 'Unknown') AS label,
-        COUNT(*)::int AS count
-      FROM events e
-      LEFT JOIN tenants tn ON tn.id = e.tenant_id
-      WHERE (${aggregateTenant} = '' OR tn.slug = ${aggregateTenant})
-        AND e.created_at >= now() - ${rangeSql}::interval
-        AND (${source} = '' OR e.source::text = ${source})
-        AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-        AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
-      GROUP BY 1
-      ORDER BY count DESC
-      LIMIT 12
-    `,
-    sql/*sql*/`
-      SELECT
-        COALESCE(NULLIF(e.meta->'sun_context'->'device'->'capabilitySegment'->>'band', ''), 'unclassified') AS label,
-        COUNT(*)::int AS count
-      FROM events e
-      LEFT JOIN tenants tn ON tn.id = e.tenant_id
-      WHERE (${aggregateTenant} = '' OR tn.slug = ${aggregateTenant})
-        AND e.created_at >= now() - ${rangeSql}::interval
-        AND (${source} = '' OR e.source::text = ${source})
-        AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-        AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
-      GROUP BY 1
-      ORDER BY count DESC
-      LIMIT 8
-    `,
-    sql/*sql*/`
-      SELECT
-        COALESCE(NULLIF(e.meta->'sun_context'->'client'->'connection'->>'effectiveType', ''), 'unknown') AS label,
-        COUNT(*)::int AS count
-      FROM events e
-      LEFT JOIN tenants tn ON tn.id = e.tenant_id
-      WHERE (${aggregateTenant} = '' OR tn.slug = ${aggregateTenant})
-        AND e.created_at >= now() - ${rangeSql}::interval
-        AND (${source} = '' OR e.source::text = ${source})
-        AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-        AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
-      GROUP BY 1
-      ORDER BY count DESC
-      LIMIT 8
-    `,
-    sql/*sql*/`
-      SELECT
-        COALESCE(NULLIF(e.location_source, ''), NULLIF(e.meta->'sun_context'->'geo'->>'source', ''), 'unknown') AS label,
-        COUNT(*)::int AS count
-      FROM events e
-      LEFT JOIN tenants tn ON tn.id = e.tenant_id
-      WHERE (${aggregateTenant} = '' OR tn.slug = ${aggregateTenant})
-        AND e.created_at >= now() - ${rangeSql}::interval
-        AND (${source} = '' OR e.source::text = ${source})
-        AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-        AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
-      GROUP BY 1
-      ORDER BY count DESC
-      LIMIT 8
-    `,
     tenant
       ? sql/*sql*/`
         SELECT
@@ -817,6 +713,9 @@ export async function GET(req: Request) {
           e.uid_hex,
           b.bid,
           e.result,
+          e.verdict,
+          e.reason,
+          e.source,
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
@@ -838,6 +737,9 @@ export async function GET(req: Request) {
           e.uid_hex,
           b.bid,
           e.result,
+          e.verdict,
+          e.reason,
+          e.source,
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
@@ -976,6 +878,8 @@ export async function GET(req: Request) {
     scans: 0,
     valid: 0,
     invalid: 0,
+    closed: 0,
+    opened: 0,
     duplicates: 0,
     tamper: 0,
     unregistered: 0,
@@ -991,6 +895,8 @@ export async function GET(req: Request) {
   const unregistered = Number(overview.unregistered || 0);
   const inactive = Number(overview.inactive || 0);
   const revoked = Number((overview as Record<string, number>).revoked || 0);
+  const closed = Number(overview.closed || 0);
+  const opened = Number(overview.opened || 0);
   const metrics = aggregateTenantMetrics({
     counts: { scans: scansTotal, valid: Number(overview.valid || 0), invalid, duplicates, tamper, revoked },
   });
@@ -998,6 +904,9 @@ export async function GET(req: Request) {
   const trend = (trendRows as TrendRow[]).map((row) => ({
     day: row.day,
     scans: Number(row.scans || 0),
+    valid: Number(row.valid || 0),
+    closed: Number(row.closed || 0),
+    opened: Number(row.opened || 0),
     duplicates: Number(row.duplicates || 0),
     tamper: Number(row.tamper || 0),
     invalid: Number(row.invalid || 0),
@@ -1092,36 +1001,30 @@ export async function GET(req: Request) {
   if (mobileCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: true }), mobileCount);
   if (desktopCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: false }), desktopCount);
 
-  const commercialCoverageBase = (commercialCoverageRows?.[0] || {
-    total_count: 0,
-    context_count: 0,
-    extended_consent_count: 0,
-    model_count: 0,
-    device_capability_count: 0,
-    connection_count: 0,
-    location_count: 0,
-  }) as CommercialSignalCoverageRow;
-  const commercialSampleSize = Number(commercialCoverageBase.total_count || 0);
-  const contextCount = Number(commercialCoverageBase.context_count || 0);
-  const extendedConsentCount = Number(commercialCoverageBase.extended_consent_count || 0);
-  const modelCount = Number(commercialCoverageBase.model_count || 0);
-  const deviceCapabilityCount = Number(commercialCoverageBase.device_capability_count || 0);
-  const connectionCount = Number(commercialCoverageBase.connection_count || 0);
-  const locationCount = Number(commercialCoverageBase.location_count || 0);
-  const aggregateBuckets = (rows: DeviceBucketRow[]) => rows.map((row) => ({
-    label: row.label || "unknown",
-    count: Number(row.count || 0),
-  }));
+  const recentPhysicalTaps = tenant && source === "real"
+    ? await listAdminPhysicalTaps({ tenantSlug: tenant, limit: 12, rangeSql }).catch(() => ({
+        availability: "unavailable" as const,
+        summary: null,
+        rows: [],
+      }))
+    : {
+        availability: tenant ? "not_in_selected_source" as const : "tenant_required" as const,
+        summary: null,
+        rows: [],
+      };
 
   return json({
     kpis: {
       scans: scansTotal,
+      messageValid: Number(overview.valid || 0),
       validRate: metrics.validRate,
       invalidRate: metrics.invalidRate,
       duplicates,
       tamper,
       unregistered,
       inactive,
+      closedTaps: closed,
+      openedTaps: opened,
       activeBatches: Number(overview.active_batches || 0),
       activeTenants: Number(overview.active_tenants || 0),
       geoRegions: geoPoints.length,
@@ -1137,9 +1040,11 @@ export async function GET(req: Request) {
     },
     riskBreakdown: metrics.riskBreakdown,
     eventTaxonomy: {
-      version: "2026-07-26.v1",
+      version: EVENT_TAXONOMY_VERSION,
       definitions: {
-        valid: "cryptographic_or_policy_validation_passed",
+        valid: "authenticated_message_or_policy_validation_passed_independent_of_seal_state",
+        closed: "authenticated_message_with_reported_closed_tt_state",
+        opened: "authenticated_message_with_reported_opened_tt_state",
         invalid: "validation_failed",
         duplicate: "replay_or_duplicate_signal",
         tamper: "explicit_tamper_signal_only",
@@ -1151,6 +1056,8 @@ export async function GET(req: Request) {
       lifecycleClassesExcludedFromRisk: ["unregistered", "inactive"],
       counts: {
         valid: Number(overview.valid || 0),
+        closed,
+        opened,
         invalid,
         duplicate: duplicates,
         tamper,
@@ -1186,57 +1093,14 @@ export async function GET(req: Request) {
       timezones: toSortedBuckets(timezoneBuckets),
       mobileShare: totalDevices ? Number((mobileCount / totalDevices).toFixed(4)) : 0,
     },
-    commercialSignals: {
-      schemaVersion: "sun-commercial-signals/v1",
-      sampleSize: commercialSampleSize,
-      basis: "tenant_scoped_persisted_event_aggregates",
-      confidence: coverageConfidence(contextCount, commercialSampleSize),
-      coverage: {
-        context: { count: contextCount, share: coverageShare(contextCount, commercialSampleSize) },
-        extendedConsent: { count: extendedConsentCount, share: coverageShare(extendedConsentCount, commercialSampleSize) },
-        reportedModelOrDeviceLabel: { count: modelCount, share: coverageShare(modelCount, commercialSampleSize) },
-        deviceCapability: { count: deviceCapabilityCount, share: coverageShare(deviceCapabilityCount, commercialSampleSize) },
-        connection: { count: connectionCount, share: coverageShare(connectionCount, commercialSampleSize) },
-        locationSource: { count: locationCount, share: coverageShare(locationCount, commercialSampleSize) },
-      },
-      reportedModel: {
-        basis: "browser_reported_model_with_stored_device_label_fallback",
-        confidence: coverageConfidence(modelCount, commercialSampleSize),
-        coverage: coverageShare(modelCount, commercialSampleSize),
-        buckets: aggregateBuckets(reportedModelRows as DeviceBucketRow[]),
-      },
-      deviceCapability: {
-        basis: "reported_device_capability_heuristic",
-        confidence: coverageConfidence(deviceCapabilityCount, commercialSampleSize),
-        coverage: coverageShare(deviceCapabilityCount, commercialSampleSize),
-        socioeconomicStatus: "not_inferred",
-        bands: aggregateBuckets(deviceCapabilityRows as DeviceBucketRow[]),
-      },
-      connection: {
-        basis: "browser_reported_network_information",
-        confidence: coverageConfidence(connectionCount, commercialSampleSize),
-        coverage: coverageShare(connectionCount, commercialSampleSize),
-        effectiveTypes: aggregateBuckets(connectionTypeRows as DeviceBucketRow[]),
-      },
-      location: {
-        basis: "persisted_location_source_provenance",
-        confidence: coverageConfidence(locationCount, commercialSampleSize),
-        coverage: coverageShare(locationCount, commercialSampleSize),
-        sources: aggregateBuckets(locationSourceRows as DeviceBucketRow[]),
-      },
-      dataHandling: {
-        aggregateOnly: true,
-        rawCoordinatesIncluded: false,
-        individualDeviceContextIncluded: false,
-        socioeconomicStatusInferred: false,
-        browserReportedValuesVerified: false,
-      },
-    },
     feed: (feedRows as FeedRow[]).map((row) => ({
       id: Number(row.id),
       uidHex: row.uid_hex || "",
       bid: row.bid || "",
       result: row.result,
+      messageValid: isAuthenticatedNfcMessage({ result: row.result, verdict: row.verdict, reason: row.reason }),
+      sealState: classifyPhysicalTapSealState(row.result),
+      source: row.source || "unknown",
       city: row.city || "Unknown",
       country: row.country_code || "--",
       device: row.device || "Unknown",
@@ -1275,5 +1139,6 @@ export async function GET(req: Request) {
     geoPoints,
     deviceSignals,
     tagJourney,
+    recentPhysicalTaps,
   });
 }

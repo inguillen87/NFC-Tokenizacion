@@ -7,6 +7,7 @@ import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { resolveEventLocalTime } from "@product/core";
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
+import { classifyPhysicalTapSealState, isAuthenticatedNfcMessage } from "../../../lib/admin-physical-taps";
 
 let eventLocationContextSchemaReady: Promise<void> | null = null;
 
@@ -46,7 +47,7 @@ export async function GET(req: Request) {
     rows = tenant
       ? await sql/*sql*/`
         SELECT
-          e.id, e.result, e.reason, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng,
+          e.id, e.result, e.reason, e.verdict, e.event_type::text AS event_type, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng,
           e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
           COALESCE(
             NULLIF(e.product_name, ''),
@@ -71,7 +72,7 @@ export async function GET(req: Request) {
       `
       : await sql/*sql*/`
         SELECT
-          e.id, e.result, e.reason, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng,
+          e.id, e.result, e.reason, e.verdict, e.event_type::text AS event_type, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng,
           e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
           COALESCE(
             NULLIF(e.product_name, ''),
@@ -97,7 +98,7 @@ export async function GET(req: Request) {
   } catch {
     rows = tenant
       ? await sql/*sql*/`
-        SELECT e.id, e.result, e.reason, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
+        SELECT e.id, e.result, e.reason, e.verdict, e.event_type::text AS event_type, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
           COALESCE(NULLIF(e.product_name, ''), NULLIF(b.sdm_config->>'product_name', ''), NULLIF(b.sdm_config #>> '{sun,product,name}', ''), NULLIF(b.sdm_config->>'sku', ''), NULLIF(b.sdm_config #>> '{sun,product,sku}', '')) AS product_name,
           b.bid, tn.slug AS tenant_slug
         FROM events e
@@ -114,7 +115,7 @@ export async function GET(req: Request) {
         LIMIT ${safeLimit}
       `
       : await sql/*sql*/`
-        SELECT e.id, e.result, e.reason, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
+        SELECT e.id, e.result, e.reason, e.verdict, e.event_type::text AS event_type, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
           COALESCE(NULLIF(e.product_name, ''), NULLIF(b.sdm_config->>'product_name', ''), NULLIF(b.sdm_config #>> '{sun,product,name}', ''), NULLIF(b.sdm_config->>'sku', ''), NULLIF(b.sdm_config #>> '{sun,product,sku}', '')) AS product_name,
           b.bid, tn.slug AS tenant_slug
         FROM events e
@@ -136,7 +137,7 @@ export async function GET(req: Request) {
     try {
       attemptRows = await sql/*sql*/`
         SELECT
-          a.id, a.result, a.reason, NULL::text AS uid_hex, a.created_at, a.geo_city AS city, a.geo_country AS country_code, a.geo_lat AS lat, a.geo_lng AS lng,
+          a.id, a.result, a.reason, NULL::text AS verdict, NULL::text AS event_type, NULL::text AS uid_hex, a.created_at, a.geo_city AS city, a.geo_country AS country_code, a.geo_lat AS lat, a.geo_lng AS lng,
           NULL::integer AS read_counter, a.source, NULL::text AS device_label, a.user_agent, a.meta, NULL::text AS location_source, NULL::double precision AS location_accuracy_m,
           NULL::text AS product_name,
           a.bid,
@@ -173,6 +174,10 @@ export async function GET(req: Request) {
     const browser = sunClient.browser ?? null;
     const timezone = sunClient.timezone ?? null;
     const mobile = sunClient.mobile ?? null;
+    const rowSource = String(row.source || "real");
+    const eventType = String(row.event_type || "");
+    const isPhysicalTap = rowSource === "real" && ["TAP_VALID", "TAP_INVALID", "REPLAY_SUSPECT"].includes(eventType);
+    const messageValid = isAuthenticatedNfcMessage({ result: row.result, verdict: row.verdict, reason: row.reason });
     return {
       id: Number(row.id),
       tenantSlug: String(row.tenant_slug || ""),
@@ -181,7 +186,12 @@ export async function GET(req: Request) {
       result: String(row.result || ""),
       reason: String(row.reason || ""),
       productName: row.product_name ? String(row.product_name) : null,
-      source: String(row.source || "real"),
+      source: rowSource,
+      eventType: eventType || null,
+      isPhysicalTap,
+      dataMode: isPhysicalTap ? "physical_real" : rowSource === "real" ? "production_real" : rowSource === "demo" ? "demo" : "other",
+      messageValid,
+      sealState: classifyPhysicalTapSealState(row.result),
       readCounter: Number(row.read_counter || 0),
       createdAt: time.occurredAtUtc,
       createdAtUtc: time.occurredAtUtc,

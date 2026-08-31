@@ -13,6 +13,7 @@ import {
 } from "../src/lib/sun-map-source.ts";
 
 const route = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
+const webMap = await readFile(new URL("../../web/src/app/sun/sun-passport-map.tsx", import.meta.url), "utf8");
 
 test("public SUN map defaults to real OpenFreeMap vector styles without an API key", () => {
   assert.equal(DEFAULT_PUBLIC_MAP_STYLE_URL, "https://tiles.openfreemap.org/styles/positron");
@@ -34,14 +35,18 @@ test("SUN map rejects key-gated providers, keyed URLs and stale production overr
   assert.equal(normalizePublicMapStyleUrl("https://api.mapbox.com/styles/v1/demo?access_token=secret"), DEFAULT_PUBLIC_MAP_STYLE_URL);
 });
 
-test("inline SUN passport keeps MapLibre, visible attribution and vector default with optional safe raster override", () => {
-  assert.match(route, /data-nexid-map="maplibre-gl"/);
-  assert.match(route, /new window\.maplibregl\.Map/);
-  assert.match(route, /AttributionControl/);
-  assert.match(route, /normalizePublicRasterTileTemplate\(requestedRasterTileTemplate\)/);
-  assert.match(route, /normalizePublicMapStyleUrl\(requestedMapStyleUrl\)/);
-  assert.match(route, /styleUrl: mapStyleUrl/);
-  assert.match(route, /baseMapStyle = sunMapData\.tileTemplate/);
-  assert.match(route, /tiles: \[sunMapData\.tileTemplate\]/);
-  assert.doesNotMatch(route, /lightTileTemplate|dark_all|voyager_nolabels|basemaps\.cartocdn\.com|tile\.openstreetmap\.org/);
+test("web SUN passport owns the MapLibre runtime while the API hands HTML traffic to the clean web surface", () => {
+  assert.match(route, /const webTarget = wantsInlineApiHtml\(url\)/);
+  assert.match(route, /buildWebSunSnapshotUrl\(url, diagnosticId, traceId, locale, freshHandoffToken, snapshotAccessToken\)/);
+  assert.match(route, /return Response\.redirect\(webTarget, 303\)/);
+
+  assert.match(webMap, /resolveTrustMapSource\(\)/);
+  assert.match(webMap, /await import\("maplibre-gl"\)/);
+  assert.match(webMap, /new maplibre\.Map\(/);
+  assert.match(webMap, /new maplibre\.AttributionControl\(\{ compact: true \}\)/);
+  assert.match(webMap, /tiles: \[tileTemplate\]/);
+  assert.match(webMap, /attribution,/);
+  assert.match(webMap, /TRUST_MAP_SOURCE\.rasterTileTemplate !== LEGACY_CARTO_TEMPLATE/);
+  assert.match(webMap, /no-referrer/);
+  assert.doesNotMatch(webMap, /access_token=|api_key=|key=secret/);
 });

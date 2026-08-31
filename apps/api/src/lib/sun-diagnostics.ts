@@ -1,7 +1,9 @@
 import { sql } from './db';
 import { verifySunFreshHandoffToken } from './sun-fresh-handoff';
 import { createPublicCertificateShareToken } from './public-certificate-share';
-import { normalizeCoordinatePair, redactSensitiveQueryValues } from './approximate-location';
+import { normalizeCoordinatePair, redactSensitiveQueryValues, sanitizePublicLocationProjection } from './approximate-location';
+import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from './sun-sensor-evidence';
+import { resolvePublicLotLabel } from './public-lot-label';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -67,6 +69,7 @@ type CurrentSnapshotIdentity = {
   tenant_vertical?: string | null;
   product_label?: string | null;
   club_name?: string | null;
+  public_lot_label?: string | null;
   product_name?: string | null;
   sku?: string | null;
   winery?: string | null;
@@ -95,6 +98,21 @@ function textOrNull(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    const normalized = textOrNull(value);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+function numberOrNull(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function maskUid(value: unknown) {
   const raw = String(value || "").trim();
   if (!raw) return null;
@@ -116,48 +134,6 @@ function mediaFromLocaleData(localeData: unknown, imageUrl?: string | null) {
     imageUrl: image,
     hero: textOrNull(media.hero) || image,
     packshot: textOrNull(media.packshot) || image,
-  };
-}
-
-function firstText(...values: unknown[]) {
-  return textOrNull(values.find((value) => textOrNull(value)) || null);
-}
-
-function numberOrNull(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value.replace(",", "."));
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function iotFromLocaleData(localeData: unknown) {
-  const data = asRecord(localeData);
-  const manifest = asRecord(data.manifest);
-  const manifestIot = asRecord(manifest.iot);
-  const iot = { ...manifestIot, ...asRecord(data.iot) };
-  if (!Object.keys(iot).length) return null;
-
-  const temperatureC = numberOrNull(iot.temperatureC ?? iot.temperature_c ?? iot.cellarTemperatureC ?? iot.storageTemperatureC);
-  const humidityPct = numberOrNull(iot.humidityPct ?? iot.humidity_pct ?? iot.humidity ?? iot.relativeHumidityPct);
-  const measuredAt = firstText(iot.measuredAt, iot.measured_at, iot.capturedAt, iot.sensor_at);
-  const lightExposure = firstText(iot.lightExposure, iot.light_exposure, iot.light, iot.lux);
-  const transitShock = firstText(iot.transitShock, iot.transit_shock, iot.shock, iot.impact_g);
-  const deviceId = firstText(iot.deviceId, iot.device_id, iot.sensor_id, iot.logger_id);
-
-  return {
-    raw: iot,
-    measuredAt,
-    deviceId,
-    temperatureC,
-    humidityPct,
-    snapshot: {
-      cellarTemperature: temperatureC != null ? `${temperatureC.toFixed(1)}C` : null,
-      humidity: humidityPct != null ? `${humidityPct.toFixed(0)}%` : null,
-      lightExposure,
-      transitShock,
-    },
   };
 }
 
@@ -228,6 +204,12 @@ async function resolveCurrentSnapshotIdentity(meta: { bid?: string | null; uidHe
         tenant_vertical,
         product_label,
         club_name,
+        COALESCE(
+          NULLIF(btrim(batch_config->>'public_lot_label'), ''),
+          NULLIF(btrim(batch_config->>'lot'), ''),
+          NULLIF(btrim(batch_config->>'batch_lot'), ''),
+          NULLIF(btrim(batch_config->>'lot_number'), '')
+        ) AS public_lot_label,
         COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_product_name, '') END, NULLIF(batch_config->>'product_name', ''), NULLIF(batch_config #>> '{sun,product,name}', '')) AS product_name,
         COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_sku, '') END, NULLIF(batch_config->>'sku', ''), NULLIF(batch_config #>> '{sun,product,sku}', '')) AS sku,
         COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_winery, '') END, NULLIF(batch_config->>'winery', ''), NULLIF(batch_config #>> '{sun,product,producer}', ''), tenant_name) AS winery,
@@ -280,11 +262,22 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
   const provenance = asRecord(contract.provenance);
   const iot = asRecord(contract.iot);
   const identity = asRecord(contract.identity);
+  const product = asRecord(contract.product);
+  const publicLotLabel = resolvePublicLotLabel({ public_lot_label: currentIdentity.public_lot_label });
   const productName = textOrNull(currentIdentity.product_name);
   const winery = textOrNull(currentIdentity.winery || currentIdentity.tenant_name);
   const region = textOrNull(currentIdentity.region || currentIdentity.origin_label);
   const productMedia = mediaFromLocaleData(currentIdentity.locale_data, currentIdentity.image_url);
-  const unitIot = iotFromLocaleData(currentIdentity.locale_data);
+  const declaredStaticSensor = declaredStaticSensorFromLocaleData(currentIdentity.locale_data);
+  const declaredStaticEvidence = buildSunSensorEvidence({
+    timeline: [],
+    declaredStatic: declaredStaticSensor,
+    barrelMonths: currentIdentity.barrel_months ?? null,
+    allowSimulation: false,
+  });
+  const existingSensorEvidenceKind = String(iot.sensorEvidenceKind || "none");
+  const applyDeclaredStatic = declaredStaticEvidence.kind === "declared_static"
+    && existingSensorEvidenceKind !== "reported";
 
   contract.identity = {
     ...identity,
@@ -292,6 +285,7 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
     tenantSlug: currentIdentity.tenant_slug || identity.tenantSlug || null,
     tenantId: currentIdentity.tenant_id || identity.tenantId || null,
     uidMasked: identity.uidMasked || currentIdentity.uid_masked || contract.uidMasked || null,
+    displayLot: publicLotLabel || textOrNull(identity.displayLot) || null,
   };
   contract.tenant = {
     ...tenant,
@@ -303,7 +297,9 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
     clubName: currentIdentity.club_name || tenant.clubName || null,
   };
   contract.product = {
+    ...product,
     name: productName || currentIdentity.sku || "Producto asociado",
+    lotLabel: publicLotLabel || textOrNull(product.lotLabel) || null,
     sku: currentIdentity.sku || null,
     winery: winery || null,
     region: region || null,
@@ -336,25 +332,13 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
         : iot.wineryCoordinates || null,
     originLabel: currentIdentity.origin_label || region || iot.originLabel || null,
     originType: currentIdentity.tenant_vertical || iot.originType || null,
-    sensorSnapshot: unitIot
-      ? {
-          ...asRecord(iot.sensorSnapshot),
-          ...unitIot.snapshot,
-        }
-      : iot.sensorSnapshot || null,
-    sensorHistory: unitIot?.measuredAt
-      ? [
-          {
-            at: unitIot.measuredAt,
-            stage: "manifest_iot",
-            temperatureC: unitIot.temperatureC,
-            humidityPct: unitIot.humidityPct,
-            deviceId: unitIot.deviceId,
-          },
-          ...(Array.isArray(iot.sensorHistory) ? iot.sensorHistory : []),
-        ]
-      : iot.sensorHistory || null,
-    manifestTelemetry: unitIot?.raw || null,
+    sensorEvidenceKind: applyDeclaredStatic ? "declared_static" : iot.sensorEvidenceKind || "none",
+    sensorSnapshot: applyDeclaredStatic ? declaredStaticEvidence.snapshot : iot.sensorSnapshot || null,
+    sensorHistory: applyDeclaredStatic ? declaredStaticEvidence.history : iot.sensorHistory || null,
+    declaredStatic: declaredStaticEvidence.declaredStatic || iot.declaredStatic || null,
+    // Only the allow-listed public projection is exposed. The arbitrary raw
+    // sensor_json object remains private in the imported manifest.
+    manifestTelemetry: declaredStaticEvidence.declaredStatic || null,
   };
   contract.productName = productName || currentIdentity.sku || null;
   contract.tenantSlug = currentIdentity.tenant_slug || contract.tenantSlug || null;
@@ -374,6 +358,49 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
   return contract;
 }
 
+function sanitizeSnapshotPublicCoordinates(input: unknown) {
+  const contract = cloneRecord(input);
+  const provenance = asRecord(contract.provenance);
+  const timeline = Array.isArray(provenance.timelineSummary)
+    ? provenance.timelineSummary.map((value) => {
+        const event = asRecord(value);
+        const location = sanitizePublicLocationProjection({
+          lat: event.lat,
+          lng: event.lng,
+          locationSource: event.locationSource ?? event.location_source,
+          geoPrecision: event.geoPrecision ?? event.geo_precision,
+          locationAccuracyM: event.locationAccuracyM ?? event.location_accuracy_m,
+          metadata: event.locationEvidence ?? event.meta,
+        });
+        return {
+          ...event,
+          lat: location.lat,
+          lng: location.lng,
+        };
+      })
+    : provenance.timelineSummary;
+  contract.provenance = {
+    ...provenance,
+    timelineSummary: timeline,
+  };
+
+  const tapContext = asRecord(contract.tapContext);
+  const tapLocation = sanitizePublicLocationProjection({
+    lat: tapContext.lat,
+    lng: tapContext.lng,
+    locationSource: tapContext.locationSource ?? tapContext.location_source,
+    geoPrecision: tapContext.geoPrecision ?? tapContext.geo_precision,
+    locationAccuracyM: tapContext.accuracyM ?? tapContext.location_accuracy_m,
+    metadata: tapContext.locationEvidence ?? tapContext.meta,
+  });
+  contract.tapContext = {
+    ...tapContext,
+    lat: tapLocation.lat,
+    lng: tapLocation.lng,
+  };
+  return contract;
+}
+
 export type CurrentSnapshotTapLocation = {
   eventId: string;
   at: string | null;
@@ -383,26 +410,149 @@ export type CurrentSnapshotTapLocation = {
   lat: number | null;
   lng: number | null;
   source: string | null;
+  precision: string | null;
   accuracyM: number | null;
+  consent: boolean | null;
+  metadata?: unknown;
 };
 
-async function resolveCurrentSnapshotTapLocation(eventId: string) {
-  if (!/^\d+$/.test(eventId)) return null;
+const HISTORICAL_TAP_CONTEXT_KEYS = new Set([
+  "accuracym",
+  "browserlocationobservation",
+  "city",
+  "coordinates",
+  "country",
+  "countrycode",
+  "ctr",
+  "device",
+  "deviceid",
+  "eventid",
+  "geo",
+  "geolat",
+  "geolng",
+  "geoprecision",
+  "geo_precision",
+  "lat",
+  "latitude",
+  "lng",
+  "location",
+  "location_accuracy_m",
+  "location_source",
+  "locationaccuracym",
+  "locationevidence",
+  "locationsource",
+  "longitude",
+  "meta",
+  "readcounter",
+  "uid",
+  "uidhex",
+  "uidmasked",
+  "utctime",
+]);
+
+function withoutHistoricalTapContext(value: unknown) {
+  return Object.fromEntries(
+    Object.entries(asRecord(value)).filter(([key]) => !HISTORICAL_TAP_CONTEXT_KEYS.has(key.toLowerCase())),
+  );
+}
+
+async function resolveCurrentSnapshotTapLocation(input: {
+  eventId: string;
+  bid?: string | null;
+  uidHex?: string | null;
+}): Promise<CurrentSnapshotTapLocation | null> {
+  const eventId = String(input.eventId || "").trim();
+  const bid = textOrNull(input.bid);
+  const uidHex = textOrNull(input.uidHex)?.toUpperCase();
+  if (!/^\d+$/.test(eventId) || !bid || !uidHex) return null;
+
   try {
     const rows = await sql/*sql*/`
-      SELECT id::text AS event_id, created_at::text AS at, result, city, country_code AS country, lat, lng, meta
-      FROM events
-      WHERE id = ${eventId}::bigint
+      SELECT
+        event.id::text AS event_id,
+        event.created_at::text AS at,
+        event.result,
+        event.city,
+        event.country_code AS country,
+        event.lat,
+        event.lng,
+        event.meta,
+        to_jsonb(event)->>'location_source' AS location_source,
+        to_jsonb(event)->>'geo_precision' AS geo_precision,
+        to_jsonb(event)->>'location_accuracy_m' AS location_accuracy_m,
+        to_jsonb(event)->'post_tap_location_observation' AS post_tap_location_observation
+      FROM events event
+      WHERE event.id = ${eventId}::bigint
+        AND UPPER(COALESCE(event.bid, '')) = UPPER(${bid})
+        AND UPPER(COALESCE(event.uid_hex, '')) = ${uidHex}
       LIMIT 1
     `;
     const row = rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
+
     const meta = asRecord(row.meta);
     const sunContext = asRecord(meta.sun_context);
+    const tapRequestLocation = asRecord(sunContext.tap_request_location);
     const sunGeo = asRecord(sunContext.geo);
     const geoEvidence = asRecord(meta.geo_evidence);
+    const observation = asRecord(row.post_tap_location_observation);
+    const observationSource = firstText(observation.source);
+    const observationPrecision = firstText(observation.precision);
+    const hasConsentedBrowserObservation = [
+      "browser_geolocation_approximate_consent",
+      "browser_gps_approximate_consent",
+    ].includes(String(observationSource || "").toLowerCase())
+      && observation.consent === true
+      && observationPrecision?.toLowerCase() === "approximate";
+
+    if (hasConsentedBrowserObservation) {
+      const coordinate = normalizeCoordinatePair(observation.lat, observation.lng);
+      const accuracy = numberOrNull(observation.accuracyM ?? observation.accuracy_m ?? observation.accuracy);
+      const evidence = {
+        source: observationSource,
+        consent: true,
+        precision: observationPrecision,
+        accuracyM: accuracy,
+      };
+      return {
+        eventId: String(row.event_id || eventId),
+        at: textOrNull(row.at),
+        result: textOrNull(row.result),
+        city: firstText(observation.city),
+        country: firstText(observation.countryCode, observation.country_code, observation.country),
+        lat: coordinate?.lat ?? null,
+        lng: coordinate?.lng ?? null,
+        source: observationSource,
+        precision: observationPrecision,
+        accuracyM: accuracy !== null && accuracy > 0 ? accuracy : null,
+        consent: true,
+        metadata: { sun_context: { geo: evidence } },
+      };
+    }
+
     const coordinate = normalizeCoordinatePair(row.lat, row.lng);
-    const accuracy = numberOrNull(sunGeo.accuracy ?? sunGeo.accuracy_m ?? geoEvidence.accuracy_m);
+    const source = firstText(
+      row.location_source,
+      tapRequestLocation.source,
+      sunGeo.source,
+      geoEvidence.source,
+    );
+    const precision = firstText(
+      row.geo_precision,
+      tapRequestLocation.precision,
+      sunGeo.precision,
+      geoEvidence.precision,
+    );
+    const accuracy = numberOrNull(
+      row.location_accuracy_m
+        ?? tapRequestLocation.accuracyM
+        ?? tapRequestLocation.accuracy_m
+        ?? sunGeo.accuracyM
+        ?? sunGeo.accuracy_m
+        ?? sunGeo.accuracy
+        ?? geoEvidence.accuracyM
+        ?? geoEvidence.accuracy_m,
+    );
     return {
       eventId: String(row.event_id || eventId),
       at: textOrNull(row.at),
@@ -411,12 +561,17 @@ async function resolveCurrentSnapshotTapLocation(eventId: string) {
       country: textOrNull(row.country),
       lat: coordinate?.lat ?? null,
       lng: coordinate?.lng ?? null,
-      source: firstText(sunGeo.source, geoEvidence.source),
+      source,
+      precision,
       accuracyM: accuracy !== null && accuracy > 0 ? accuracy : null,
-    } satisfies CurrentSnapshotTapLocation;
+      consent: null,
+      metadata: meta,
+    };
   } catch (error) {
     console.warn("[snapshot_tap_location_lookup_failed]", JSON.stringify({
       eventId,
+      bid,
+      uidMasked: maskUid(uidHex),
       reason: error instanceof Error ? error.message : "tap_location_lookup_failed",
     }));
     return null;
@@ -425,59 +580,114 @@ async function resolveCurrentSnapshotTapLocation(eventId: string) {
 
 export function normalizeSnapshotContractFromCurrentTap(input: unknown, tap: CurrentSnapshotTapLocation | null) {
   const contract = cloneRecord(input);
-  if (!tap) return contract;
-  const tapContext = asRecord(contract.tapContext);
-  const storedCoordinate = normalizeCoordinatePair(tapContext.lat, tapContext.lng);
-  const isConsentedBrowserGps = String(tap.source || "").trim().toLowerCase() === "browser_gps_approximate_consent";
-  const resolvedLat = isConsentedBrowserGps ? tap.lat : tap.lat ?? storedCoordinate?.lat ?? null;
-  const resolvedLng = isConsentedBrowserGps ? tap.lng : tap.lng ?? storedCoordinate?.lng ?? null;
-  const storedAccuracy = numberOrNull(tapContext.accuracyM);
-  const resolvedAccuracy = isConsentedBrowserGps
-    ? tap.accuracyM
-    : tap.accuracyM ?? (storedAccuracy !== null && storedAccuracy > 0 ? storedAccuracy : null);
+  const cleanTapContext = withoutHistoricalTapContext(contract.tapContext);
   const provenance = asRecord(contract.provenance);
-  const timeline = Array.isArray(provenance.timelineSummary)
-    ? provenance.timelineSummary.map((item) => cloneRecord(item))
-    : [];
-  const existingIndex = timeline.findIndex((item) => String(item.eventId || "") === tap.eventId);
-  const existingTimelineEvent = existingIndex >= 0 ? timeline[existingIndex] : {};
-  const currentCity = isConsentedBrowserGps ? tap.city : tap.city || textOrNull(existingTimelineEvent.city);
-  const currentCountry = isConsentedBrowserGps ? tap.country : tap.country || textOrNull(existingTimelineEvent.country);
-  const timelineEvent = {
-    ...existingTimelineEvent,
+
+  if (!tap) {
+    contract.tapContext = {
+      ...cleanTapContext,
+      city: null,
+      country: null,
+      lat: null,
+      lng: null,
+      locationSource: "none",
+      geoPrecision: null,
+      accuracyM: null,
+      utcTime: null,
+      browserLocationObservation: null,
+    };
+    contract.provenance = {
+      ...provenance,
+      lastVerifiedLocation: {
+        at: null,
+        city: null,
+        country: null,
+        result: null,
+      },
+      timelineSummary: [],
+    };
+    return contract;
+  }
+
+  const source = textOrNull(tap.source);
+  const precision = textOrNull(tap.precision);
+  const accuracy = numberOrNull(tap.accuracyM);
+  const locationMetadata = tap.metadata ?? {
+    sun_context: {
+      geo: {
+        source,
+        consent: tap.consent === true,
+        precision,
+        accuracyM: accuracy,
+      },
+    },
+  };
+  const publicLocation = sanitizePublicLocationProjection({
+    lat: tap.lat,
+    lng: tap.lng,
+    locationSource: source,
+    geoPrecision: precision,
+    locationAccuracyM: accuracy,
+    metadata: locationMetadata,
+  });
+  const isBrowserSource = [
+    "browser_geolocation_approximate_consent",
+    "browser_gps_approximate_consent",
+  ].includes(String(source || "").toLowerCase());
+  const hasPublicCoordinate = publicLocation.lat !== null && publicLocation.lng !== null;
+  const city = isBrowserSource && !hasPublicCoordinate ? null : textOrNull(tap.city);
+  const country = isBrowserSource && !hasPublicCoordinate ? null : textOrNull(tap.country);
+  const publicAccuracy = hasPublicCoordinate && accuracy !== null && accuracy > 0 ? accuracy : null;
+  const browserLocationObservation = isBrowserSource
+    ? {
+        source,
+        consent: tap.consent === true,
+        precision,
+        normalization: "rounded_2_decimals_public_min_150m",
+        city,
+        countryCode: country,
+        lat: publicLocation.lat,
+        lng: publicLocation.lng,
+        accuracyM: publicAccuracy,
+        eventOccurredAt: tap.at,
+      }
+    : null;
+  const currentTimelineEvent = {
     eventId: tap.eventId,
     at: tap.at,
     result: tap.result,
-    city: currentCity,
-    country: currentCountry,
-    lat: resolvedLat,
-    lng: resolvedLng,
-    locationSource: tap.source || textOrNull(existingTimelineEvent.locationSource),
-    accuracyM: resolvedAccuracy,
+    city,
+    country,
+    lat: publicLocation.lat,
+    lng: publicLocation.lng,
+    locationSource: source || "none",
+    geoPrecision: precision,
+    accuracyM: publicAccuracy,
   };
-  if (existingIndex >= 0) timeline[existingIndex] = timelineEvent;
-  else timeline.unshift(timelineEvent);
 
   contract.tapContext = {
-    ...tapContext,
-    city: isConsentedBrowserGps ? tap.city : tap.city || textOrNull(tapContext.city),
-    country: isConsentedBrowserGps ? tap.country : tap.country || textOrNull(tapContext.country),
-    lat: resolvedLat,
-    lng: resolvedLng,
-    locationSource: tap.source || tapContext.locationSource || (resolvedLat !== null && resolvedLng !== null ? "reported_without_source" : "none"),
-    accuracyM: resolvedAccuracy,
-    utcTime: tap.at || tapContext.utcTime || null,
+    ...cleanTapContext,
+    city,
+    country,
+    lat: publicLocation.lat,
+    lng: publicLocation.lng,
+    locationSource: source || "none",
+    geoPrecision: precision,
+    accuracyM: publicAccuracy,
+    utcTime: tap.at,
+    browserLocationObservation,
   };
   contract.provenance = {
     ...provenance,
     lastVerifiedLocation: {
-      ...asRecord(provenance.lastVerifiedLocation),
-      at: tap.at || asRecord(provenance.lastVerifiedLocation).at || null,
-      city: isConsentedBrowserGps ? tap.city : tap.city || textOrNull(asRecord(provenance.lastVerifiedLocation).city),
-      country: isConsentedBrowserGps ? tap.country : tap.country || textOrNull(asRecord(provenance.lastVerifiedLocation).country),
-      result: tap.result || asRecord(provenance.lastVerifiedLocation).result || null,
+      at: tap.at,
+      city,
+      country,
+      result: tap.result,
     },
-    timelineSummary: timeline.slice(0, 8),
+    // A snapshot may describe the event bound to its diagnostic, but it must
+    // never replay another consumer tap's identity, device, or coordinates.
+    timelineSummary: [currentTimelineEvent],
   };
   return contract;
 }
@@ -717,10 +927,15 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const currentTapEventId = String(asRecord(result.contract).eventId || snapshotIdentity.eventId || "").trim();
   const [currentIdentity, currentTap] = await Promise.all([
     resolveCurrentSnapshotIdentity({ bid: row.bid, uidHex: row.uid_hex, uidMasked: row.uid_masked }),
-    currentTapEventId ? resolveCurrentSnapshotTapLocation(currentTapEventId) : Promise.resolve(null),
+    currentTapEventId
+      ? resolveCurrentSnapshotTapLocation({ eventId: currentTapEventId, bid: row.bid, uidHex: row.uid_hex })
+      : Promise.resolve(null),
   ]);
-  const storedContract = normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity);
-  const contract = normalizeSunProfileMismatchContract(normalizeSnapshotContractFromCurrentTap(storedContract, currentTap));
+  const identityNormalizedContract = normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity);
+  const sanitizedStoredContract = sanitizeSnapshotPublicCoordinates(identityNormalizedContract);
+  const contract = normalizeSunProfileMismatchContract(
+    normalizeSnapshotContractFromCurrentTap(sanitizedStoredContract, currentTap),
+  );
   const identity = asRecord(contract.identity);
   const tokenizationEventId = String(contract.eventId || identity.eventId || "").trim();
   const bid = String(identity.bid || contract.bid || "").trim();

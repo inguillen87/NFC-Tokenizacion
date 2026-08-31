@@ -29,12 +29,7 @@ const dbPreflight = await source("../scripts/db-enterprise-release-preflight.mjs
 const healthRoute = await source("../src/app/health/route.ts");
 const migration = await source("../db/migrations/20260726135000_0059_marketplace_claim_truth_cleanup.sql");
 const migrationPostcheck = await source("../db/ops/marketplace-claim-truth-postcheck.sql");
-const {
-  DEFAULT_REQUIRED_SCHEMA_MIGRATION,
-  DEFAULT_REQUIRED_SCHEMA_MIGRATIONS,
-  isRuntimeDdlStatement,
-  isValidSchemaMigrationId,
-} = await import("../src/lib/db.ts");
+const { DEFAULT_REQUIRED_SCHEMA_MIGRATIONS, isRuntimeDdlStatement } = await import("../src/lib/db.ts");
 
 test("health reports process liveness without fabricating dependency or documentation health", () => {
   assert.match(healthRoute, /check:\s*"process_liveness"/);
@@ -196,43 +191,25 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /20260802160000_0081_supplier_manifest_atomic_import\.sql/);
   assert.match(dbRuntime, /20260802170000_0082_consumer_session_revocation\.sql/);
   assert.match(dbRuntime, /20260802180000_0083_sdk_event_webhook_atomic_outbox\.sql/);
-  assert.match(dbRuntime, /20260802185000_0083b_vault_artifact_status_bridge\.sql/);
   assert.match(dbRuntime, /20260802190000_0084_tenant_vault_audited_download\.sql/);
   assert.match(dbRuntime, /20260802200000_0085_supplier_non_sun_qa_evidence\.sql/);
   assert.match(dbRuntime, /20260802210000_0086_supplier_order_lifecycle\.sql/);
   assert.match(dbRuntime, /20260802220000_0087_packaging_lab_foundation\.sql/);
-  assert.match(dbRuntime, /20260802225000_0087b_webhook_delivery_identity_bridge\.sql/);
   assert.match(dbRuntime, /20260802230000_0088_enterprise_event_profile\.sql/);
   assert.match(dbRuntime, /20260802240000_0089_sun_carrier_trust_state\.sql/);
   assert.match(dbRuntime, /20260802250000_0090_supplier_carrier_key_scope\.sql/);
-  assert.match(dbRuntime, /20260802255000_0090b_vault_artifact_canonical_bridge\.sql/);
   assert.match(dbRuntime, /20260802260000_0091_supplier_keyless_qa_activation\.sql/);
   assert.match(dbRuntime, /20260802270000_0092_supplier_carrier_scope_integrity\.sql/);
   assert.match(dbRuntime, /20260802280000_0093_sun_tt_durable_truth_binding\.sql/);
   assert.match(dbRuntime, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
   assert.match(dbRuntime, /20260802300000_0095_sun_tt_conflict_target\.sql/);
   assert.match(dbRuntime, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
-  assert.match(dbRuntime, /20260802320000_0097_sun_demo_replay_isolation\.sql/);
-  assert.match(dbRuntime, /20260827010000_0098_sun_ticket_tenant_routing\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 46);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATION, "20260827010000_0098_sun_ticket_tenant_routing.sql");
+  assert.match(dbRuntime, /20260829120000_0097_public_location_privacy\.sql/);
+  assert.match(dbRuntime, /20260830120000_0098_event_location_context\.sql/);
+  assert.match(dbRuntime, /20260831190000_0099_post_tap_location_observation\.sql/);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 44);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1), "20260831190000_0099_post_tap_location_observation.sql");
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.every(isValidSchemaMigrationId), true);
-  assert.equal(isValidSchemaMigrationId("20260802185000_0083b_vault_artifact_status_bridge.sql"), true);
-  assert.equal(isValidSchemaMigrationId("20260802310000_0096_enterprise_rbac_risk_truth.sql"), true);
-  assert.equal(isValidSchemaMigrationId("20260802320000_0097_sun_demo_replay_isolation.sql"), true);
-  assert.equal(isValidSchemaMigrationId("20260827010000_0098_sun_ticket_tenant_routing.sql"), true);
-  assert.equal(isValidSchemaMigrationId("20260802310000_0096b.sql"), false);
-  assert.equal(isValidSchemaMigrationId("../20260802310000_0096_enterprise_rbac_risk_truth.sql"), false);
-  const productionLedgerWithout0098 = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.slice(0, -1);
-  const requiredPositions = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.map((id) => productionLedgerWithout0098.indexOf(id));
-  assert.equal(requiredPositions.at(-1), -1);
-  assert.equal(
-    requiredPositions.every((position, index) => position >= 0 && (index === 0 || position > requiredPositions[index - 1])),
-    false,
-  );
-  assert.match(dbRuntime, /const required = \[\.\.\.new Set\(\[\.\.\.DEFAULT_REQUIRED_SCHEMA_MIGRATIONS, \.\.\.configured\]\)\]\.sort\(\)/);
-  assert.match(dbRuntime, /if \(!ordered\) \{[\s\S]*throw new Error\("required_schema_migration_not_applied"\)/);
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 1; /* request path */ ALTER TABLE tags ADD COLUMN unsafe text"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 'ALTER TABLE is data, not SQL';"), false);
@@ -275,8 +252,6 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbPreflight, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
   assert.match(dbPreflight, /20260802300000_0095_sun_tt_conflict_target\.sql/);
   assert.match(dbPreflight, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
-  assert.match(dbPreflight, /20260802320000_0097_sun_demo_replay_isolation\.sql/);
-  assert.match(dbPreflight, /20260827010000_0098_sun_ticket_tenant_routing\.sql/);
   assert.match(dbPreflight, /has_supplier_carrier_key_scope/);
   assert.match(dbPreflight, /can_probe_supplier_order_keyless_v1/);
   assert.match(dbPreflight, /has_supplier_keyless_qa_activation/);

@@ -6,6 +6,7 @@ import { Button, Card } from "@product/ui";
 type BatchConfigFormClientProps = {
   bid: string;
   initialData: {
+    public_lot_label?: string | null;
     product_name?: string | null;
     sku?: string | null;
     winery?: string | null;
@@ -34,6 +35,7 @@ type BatchConfigFormClientProps = {
 
 export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClientProps) {
   const [formData, setFormData] = useState({
+    public_lot_label: initialData.public_lot_label || "",
     product_name: initialData.product_name || "",
     sku: initialData.sku || "",
     winery: initialData.winery || "",
@@ -120,6 +122,23 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 border-b border-white/5 pb-1">1. Identidad Comercial</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="sm:col-span-2 lg:col-span-3 rounded-2xl border border-cyan-300/15 bg-cyan-500/[0.06] p-4">
+              <label htmlFor="public-lot-label" className="block text-[10px] font-bold uppercase text-cyan-200 mb-1.5">Lote comercial visible</label>
+              <input
+                id="public-lot-label"
+                type="text"
+                name="public_lot_label"
+                value={formData.public_lot_label}
+                onChange={handleChange}
+                maxLength={160}
+                aria-describedby="public-lot-label-help"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                placeholder="Balmec TT · Cosecha 2022"
+              />
+              <p id="public-lot-label-help" className="mt-2 text-xs leading-5 text-slate-400">
+                Se muestra al consumidor en el pasaporte. No modifica el BID técnico <b className="text-slate-200">{bid}</b>, las llaves ni las URLs del lote.
+              </p>
+            </div>
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Nombre del Producto</label>
               <input

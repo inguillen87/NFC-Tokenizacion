@@ -29,6 +29,7 @@ const READONLY_DEMO_ALLOWED = [
   "analytics",
   "events",
   "events/stream",
+  "sun/physical-taps",
   "notifications",
   "consumer-network",
   "consumer-network/",

@@ -10,8 +10,10 @@ const [globalMap, premiumMap, realMap] = await Promise.all([
 
 test("consumer map fails closed unless the phone shared an approximate location with consent", () => {
   assert.match(globalMap, /chrome\?: "full" \| "compact" \| "consumer"/);
-  assert.match(globalMap, /CONSENTED_CONSUMER_LOCATION_SOURCE = "browser_gps_approximate_consent"/);
-  assert.match(globalMap, /point\.locationSource === CONSENTED_CONSUMER_LOCATION_SOURCE/);
+  assert.match(globalMap, /CONSENTED_CONSUMER_LOCATION_SOURCES = new Set/);
+  assert.match(globalMap, /"browser_geolocation_approximate_consent"/);
+  assert.match(globalMap, /"browser_gps_approximate_consent"/);
+  assert.match(globalMap, /CONSENTED_CONSUMER_LOCATION_SOURCES\.has\(String\(point\.locationSource/);
   assert.match(globalMap, /\.filter\(isConsentedConsumerLocation\)[\s\S]*?\.slice\(0, 1\)/);
   assert.match(realMap, /if \(consumerChrome\) return points\.filter\(isConsentedConsumerPoint\)\.slice\(0, 1\)/);
   assert.match(realMap, /No mostramos un punto por red o IP/);

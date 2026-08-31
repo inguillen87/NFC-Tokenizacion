@@ -18,8 +18,10 @@ test("SUN hero fails closed when a complete observed coordinate pair is unavaila
 test("SUN hero never renders invented pins or distance when coordinates are absent", () => {
   assert.match(
     heroStage,
-    /\{hasTraceCoordinates \? \([\s\S]*?sun-stage-pin--origin[\s\S]*?sun-stage-pin--tap[\s\S]*?sun-stage-route-label[\s\S]*?\) : null\}/,
+    /\{hasTraceCoordinates \|\| isDemoPreview \? \([\s\S]*?sun-stage-pin--origin[\s\S]*?sun-stage-pin--tap[\s\S]*?\) : null\}/,
   );
-  assert.doesNotMatch(heroStage, /className="sun-stage-map"|sun-stage-map__/);
-  assert.doesNotMatch(globalCss, /\.sun-stage-map(?:__|\s*\{)/);
+  assert.match(heroStage, /\) : isDemoPreview \? \([\s\S]*?className="sun-stage-map"[\s\S]*?data-location-evidence="demo"/);
+  assert.match(heroStage, /isDemoPreview \? <span className="sun-stage-map__route" \/> : null/);
+  assert.match(heroStage, /isDemoPreview && hasTraceCoordinates \? <span className="sun-stage-route-label"/);
+  assert.match(globalCss, /\.sun-stage-map(?:__|\s*\{)/);
 });

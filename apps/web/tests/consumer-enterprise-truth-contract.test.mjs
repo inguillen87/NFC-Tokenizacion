@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [cork, mePage, mePortal, wallet, voting, model, brands, rewards, marketplace, sun, telemetry, publicReward, staffReward, demoReadme, demoSummary, globe] = await Promise.all([
+const [cork, mePage, mePortal, wallet, voting, model, brands, rewards, marketplace, sun, telemetry, tapLocationModel, publicReward, staffReward, demoReadme, demoSummary, globe] = await Promise.all([
   read("../src/app/me/cork-analyzer/cork-client.tsx"),
   read("../src/app/me/page.tsx"),
   read("../src/app/me/_components/me-portal-interactive-client.tsx"),
@@ -16,6 +16,7 @@ const [cork, mePage, mePortal, wallet, voting, model, brands, rewards, marketpla
   read("../src/app/me/marketplace/marketplace-grid-client.tsx"),
   read("../src/app/sun/page.tsx"),
   read("../src/app/sun/tap-precision-telemetry.tsx"),
+  read("../src/app/sun/tap-location-model.ts"),
   read("../src/app/r/[token]/page.tsx"),
   read("../src/app/s/[token]/page.tsx"),
   read("../public/demo/README.md"),
@@ -79,28 +80,27 @@ test("marketplace is request-to-buy and does not claim payment or reservation", 
   assert.doesNotMatch(marketplace, /Carrito verificado|Marketplace vivo|Compr., reserv. o ped./);
 });
 
-test("SUN map preserves missing counts and timestamps", () => {
-  assert.match(sun, /const reportedScanCount = hasReportedScanCount \? rawReportedScanCount : 0/);
-  assert.match(sun, /lastSeen: point\.lastSeen/);
-  assert.match(sun, /lastSeen: result\.tapContext\?\.utcTime \|\| result\.tapContext\?\.localTime \|\| result\.provenance\?\.lastVerifiedLocation\?\.at \|\| null/);
-  assert.match(sun, /taps: observedEventCount/);
-  assert.match(sun, /scans: point\.count/);
-  assert.doesNotMatch(sun, /new Date\(index \+ 1\)|lastMapSeenAt \|\| new Date\(\)\.toISOString|Math\.max\(1, Number\(result\.identity\?\.scanCount|taps: routeTapCount/);
+test("SUN map uses only explicit origin and current-tap coordinates", () => {
+  assert.match(sun, /origin=\{wineryPoint\[0\] \?/);
+  assert.match(sun, /tap=\{currentTapPoint\[0\] \?/);
+  assert.match(sun, /tapTimeLabel=\{localTapTimeLabel\}/);
+  assert.doesNotMatch(sun, /lastSeen: point\.lastSeen \|\| ""/);
+  assert.doesNotMatch(sun, /new Date\(index \+ 1\)|lastMapSeenAt \|\| new Date\(\)\.toISOString|Math\.max\(1, Number\(result\.identity\?\.scanCount/);
 });
 
 test("SUN precision telemetry preserves the fresh handoff proof", () => {
   assert.match(sun, /freshToken=\{freshToken\}/);
-  assert.match(telemetry, /fresh_token: activeFreshToken \|\| undefined/);
-  assert.match(telemetry, /nexid:tap-context-capability:/);
-  assert.match(telemetry, /window\.location\.replace\(`\$\{refreshUrl\.pathname\}\$\{refreshUrl\.search\}\$\{refreshUrl\.hash\}`\)/);
+  assert.match(telemetry, /fresh_token: freshToken/);
+  assert.match(telemetry, /Boolean\(endpoint && bid && eventId && freshToken\)/);
+  assert.match(telemetry, /Number\.isSafeInteger\(readCounter\)/);
   assert.match(telemetry, /geoConsent: true/);
   assert.match(telemetry, /geoPrecision: "approximate"/);
   assert.match(telemetry, /onClick=\{shareApproximateLocation\}/);
-  assert.match(telemetry, /nexid:tap-location-prompt:/);
-  assert.match(telemetry, /getHighEntropyValues/);
-  assert.match(telemetry, /enableHighAccuracy: true/);
-  assert.match(telemetry, /roundApproximateCoordinate\(position\.coords\.latitude\)/);
-  assert.match(telemetry, /El pasaporte sigue (?:funcionando normalmente|disponible)/);
+  assert.match(telemetry, /requestApproximateBrowserLocation\(navigator\.geolocation, locationRequestedAtMs\)/);
+  assert.match(tapLocationModel, /enableHighAccuracy: false/);
+  assert.match(tapLocationModel, /lat: roundApproximateCoordinate\(lat\)/);
+  assert.match(telemetry, /El pasaporte sigue funcionando sin/);
+  assert.doesNotMatch(telemetry, /consentOpen|autoPromptAttemptedRef|getHighEntropyValues|userAgent|deviceMemory/);
 });
 
 test("public rewards require explicit status and contact-verification evidence", () => {

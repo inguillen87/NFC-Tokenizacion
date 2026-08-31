@@ -73,11 +73,11 @@ export type PremiumVectorMapProps = {
   ledgerItems?: VectorMapLedgerItem[];
   mapSource?: TrustMapSourceOverrides;
   ariaLabel?: string;
+  /** Disable all third-party basemap/style requests while keeping a local coordinate surface. */
+  externalTiles?: boolean;
 };
 
-/**
- * Stable public entry point for the shared MapLibre geographic renderer.
- */
+/** Stable public entry point for the shared MapLibre geographic renderer. */
 export function PremiumVectorMap(props: PremiumVectorMapProps) {
   return <RealGeographicMap {...props} />;
 }

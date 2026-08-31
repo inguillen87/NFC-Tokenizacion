@@ -29,24 +29,22 @@ const RELEASE_MIGRATIONS = Object.freeze([
   "20260802160000_0081_supplier_manifest_atomic_import.sql",
   "20260802170000_0082_consumer_session_revocation.sql",
   "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
-  "20260802185000_0083b_vault_artifact_status_bridge.sql",
   "20260802190000_0084_tenant_vault_audited_download.sql",
   "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
   "20260802210000_0086_supplier_order_lifecycle.sql",
   "20260802220000_0087_packaging_lab_foundation.sql",
-  "20260802225000_0087b_webhook_delivery_identity_bridge.sql",
   "20260802230000_0088_enterprise_event_profile.sql",
   "20260802240000_0089_sun_carrier_trust_state.sql",
   "20260802250000_0090_supplier_carrier_key_scope.sql",
-  "20260802255000_0090b_vault_artifact_canonical_bridge.sql",
   "20260802260000_0091_supplier_keyless_qa_activation.sql",
   "20260802270000_0092_supplier_carrier_scope_integrity.sql",
   "20260802280000_0093_sun_tt_durable_truth_binding.sql",
   "20260802290000_0094_sun_runtime_acl_boundary.sql",
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
-  "20260802320000_0097_sun_demo_replay_isolation.sql",
-  "20260827010000_0098_sun_ticket_tenant_routing.sql",
+  "20260829120000_0097_public_location_privacy.sql",
+  "20260830120000_0098_event_location_context.sql",
+  "20260831190000_0099_post_tap_location_observation.sql",
 ]);
 const REQUIRED_APPLIED = Object.freeze([
   "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
@@ -92,13 +90,9 @@ try {
   const missingPrerequisites = REQUIRED_APPLIED.filter((id) => !applied.has(id));
   if (missingPrerequisites.length) throw new Error(`release_prerequisites_missing:${missingPrerequisites.join(",")}`);
   const firstPendingIndex = RELEASE_MIGRATIONS.findIndex((id) => !applied.has(id));
-  if (firstPendingIndex < 0) throw new Error("release_migrations_already_complete");
-  const appliedAfterGap = RELEASE_MIGRATIONS
-    .slice(firstPendingIndex)
-    .filter((id) => applied.has(id));
-  if (appliedAfterGap.length) {
-    throw new Error(`release_migration_history_gap:${appliedAfterGap.join(",")}`);
-  }
+  if (firstPendingIndex === -1) throw new Error("release_migrations_already_complete");
+  const historyGap = RELEASE_MIGRATIONS.slice(firstPendingIndex + 1).filter((id) => applied.has(id));
+  if (historyGap.length) throw new Error(`release_migration_history_gap:${historyGap.join(",")}`);
   const pendingMigrationBodies = migrationBodies.slice(firstPendingIndex);
   const baseline = (await client.query(`SELECT
     EXISTS (
@@ -123,6 +117,33 @@ try {
 
   const postcheck = (await client.query(`SELECT
     to_regclass('public.sdk_idempotency_operations') IS NOT NULL AS sdk_idempotency_operations,
+    EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'events'
+        AND column_name = 'location_accuracy_m'
+        AND data_type = 'double precision'
+    ) AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'events'
+        AND column_name = 'location_source'
+        AND data_type = 'text'
+    ) AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'events'
+        AND column_name = 'location_updated_at'
+        AND data_type = 'timestamp with time zone'
+    ) AS event_location_context_columns,
+    EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'events'
+        AND column_name = 'post_tap_location_observation'
+        AND data_type = 'jsonb'
+    ) AND EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'public.events'::regclass
+        AND conname = 'events_post_tap_location_observation_check'
+        AND convalidated
+    ) AS post_tap_location_observation,
     to_regclass('public.tenant_api_key_lifecycle_receipts') IS NOT NULL AS tenant_api_key_lifecycle_receipts,
     to_regprocedure('public.nexid_tenant_api_key_lifecycle_v1_capability()') IS NOT NULL AS tenant_api_key_lifecycle_capability,
     to_regprocedure('public.nexid_create_tenant_api_key_v1(jsonb)') IS NOT NULL AS tenant_api_key_create_writer,
@@ -372,62 +393,6 @@ try {
           AND acl.grantee = 0
           AND acl.privilege_type = 'EXECUTE'
       ), false) AS sun_tt_conflict_target,
-    to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()') IS NOT NULL
-      AND to_regclass('public.sun_replay_watermark_repairs') IS NOT NULL
-      AND EXISTS (
-        SELECT 1
-        FROM pg_trigger trigger_row
-        WHERE NOT trigger_row.tgisinternal
-          AND trigger_row.tgenabled <> 'D'
-          AND trigger_row.tgname = 'trg_sun_replay_watermark_repairs_append_only'
-          AND trigger_row.tgrelid = to_regclass('public.sun_replay_watermark_repairs')
-      )
-      AND COALESCE((
-        SELECT NOT historical_routine.prosecdef
-          AND historical_routine.proconfig = ARRAY['search_path=pg_catalog, public, pg_temp']::text[]
-          AND position(
-            'v_execution_class := CASE WHEN v_source = ''demo'' THEN ''demo'' ELSE ''operational'' END'
-            IN pg_get_functiondef(historical_routine.oid)
-          ) > 0
-          AND position(
-            'IF v_execution_class = ''operational'''
-            IN pg_get_functiondef(historical_routine.oid)
-          ) > 0
-          AND position(
-            'IF v_tag_id IS NOT NULL AND v_execution_class = ''operational'''
-            IN pg_get_functiondef(historical_routine.oid)
-          ) > 0
-          AND position(
-            '''replay_execution_class'', v_execution_class'
-            IN pg_get_functiondef(historical_routine.oid)
-          ) > 0
-        FROM pg_proc historical_routine
-        WHERE historical_routine.oid = to_regprocedure(
-          'public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb)'
-        )
-      ), false)
-      AND NOT COALESCE(EXISTS (
-        SELECT 1
-        FROM pg_proc routine
-        CROSS JOIN LATERAL aclexplode(
-          COALESCE(routine.proacl, acldefault('f', routine.proowner))
-        ) acl
-        WHERE routine.oid IN (
-          to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()'),
-          to_regprocedure('public.nexid_sun_replay_watermark_repair_immutable_v1()')
-        )
-          AND acl.grantee = 0
-          AND acl.privilege_type = 'EXECUTE'
-      ), false)
-      AND NOT COALESCE(EXISTS (
-        SELECT 1
-        FROM pg_class relation_row
-        CROSS JOIN LATERAL aclexplode(
-          COALESCE(relation_row.relacl, acldefault('r', relation_row.relowner))
-        ) acl
-        WHERE relation_row.oid = to_regclass('public.sun_replay_watermark_repairs')
-          AND acl.grantee = 0
-      ), false) AS sun_demo_replay_isolation,
     to_regprocedure('public.nexid_enterprise_rbac_risk_truth_v1_capability()') IS NOT NULL
       AND to_regprocedure('public.nexid_compute_event_risk_v1(uuid,uuid,text,text,text,text,jsonb)') IS NOT NULL
       AND to_regprocedure('public.nexid_backfill_event_risk_v1(integer)') IS NOT NULL
@@ -632,10 +597,10 @@ try {
             pg_get_indexdef(index_row.indexrelid, 3, false),
             pg_get_indexdef(index_row.indexrelid, 4, false)
           ] = ARRAY['tenant_id', 'risk_profile_version', 'event_created_at', 'event_id']::text[]
-          AND pg_index_column_has_property(index_row.indexrelid, 1, 'asc') IS TRUE
-          AND pg_index_column_has_property(index_row.indexrelid, 2, 'asc') IS TRUE
-          AND pg_index_column_has_property(index_row.indexrelid, 3, 'desc') IS TRUE
-          AND pg_index_column_has_property(index_row.indexrelid, 4, 'desc') IS TRUE
+          AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 1, 'asc') IS TRUE
+          AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 2, 'asc') IS TRUE
+          AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 3, 'desc') IS TRUE
+          AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 4, 'desc') IS TRUE
       )
       AND COALESCE(position(
         'NEW.risk_profile_version := v_projection.risk_profile_version'
@@ -922,40 +887,12 @@ try {
         )
           AND acl.grantee = 0
       ), false) AS enterprise_rbac_risk_truth,
-    to_regclass('public.tag_manual_tamper_overrides') IS NOT NULL
-      AND to_regclass('public.idx_tag_manual_tamper_identity') IS NOT NULL
-      AND NOT COALESCE(EXISTS (
-        SELECT 1
-        FROM pg_class relation_row
-        CROSS JOIN LATERAL aclexplode(
-          COALESCE(relation_row.relacl, acldefault(
-            CASE WHEN relation_row.relkind = 'S' THEN 'S'::"char" ELSE 'r'::"char" END,
-            relation_row.relowner
-          ))
-        ) acl
-        WHERE relation_row.oid IN (
-          to_regclass('public.tag_manual_tamper_overrides'),
-          to_regclass('public.tag_manual_tamper_overrides_id_seq')
-        )
-          AND acl.grantee = 0
-      ), false)
-      AND NOT EXISTS (
-        SELECT required.column_name
-        FROM (VALUES
-          ('tenant_id'), ('tap_event_id'), ('bid'), ('uid_hex'), ('category')
-        ) AS required(column_name)
-        WHERE NOT EXISTS (
-          SELECT 1
-          FROM information_schema.columns column_row
-          WHERE column_row.table_schema = 'public'
-            AND column_row.table_name = 'tickets'
-            AND column_row.column_name = required.column_name
-        )
-      ) AS sun_ticket_tenant_routing,
     (SELECT count(*)::int FROM schema_migrations WHERE id = ANY($1::text[])) AS release_ledger_count`,
     [RELEASE_MIGRATIONS])).rows[0];
   if (
     !postcheck.sdk_idempotency_operations
+    || !postcheck.event_location_context_columns
+    || !postcheck.post_tap_location_observation
     || !postcheck.tenant_api_key_lifecycle_receipts
     || !postcheck.tenant_api_key_lifecycle_capability
     || !postcheck.tenant_api_key_create_writer
@@ -1017,9 +954,7 @@ try {
     || !postcheck.consumer_session_revocation
     || !postcheck.sun_runtime_acl_boundary
     || !postcheck.sun_tt_conflict_target
-    || !postcheck.sun_demo_replay_isolation
     || !postcheck.enterprise_rbac_risk_truth
-    || !postcheck.sun_ticket_tenant_routing
     || postcheck.release_ledger_count !== RELEASE_MIGRATIONS.length
   ) throw new Error("release_dry_run_postcheck_failed");
 
@@ -1028,9 +963,7 @@ try {
     ok: true,
     gate: "enterprise_release_dry_run",
     target_fingerprint: actualFingerprint,
-    already_applied_count: firstPendingIndex,
-    pending_count: pendingMigrationBodies.length,
-    migrations: migrationBodies.map(({ id, sha256 }) => ({ id, sha256: `sha256:${sha256}` })),
+    migrations: pendingMigrationBodies.map(({ id, sha256 }) => ({ id, sha256: `sha256:${sha256}` })),
     postcheck,
     committed: false,
   }));

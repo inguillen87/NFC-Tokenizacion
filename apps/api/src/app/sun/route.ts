@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 import { json } from '../../lib/http';
 import { processSunScan } from '../../lib/sun-service';
 import { createDemoShareToken } from '../../lib/demo-share';
-import { listDemoCta } from '../../lib/demo-cta';
 import { seedDemoPack } from '../../lib/demo-seed';
 import { sql } from '../../lib/db';
 import { anchorTokenizationRequest, resolveTokenizationRuntimeMode } from '../../lib/tokenization-engine';
@@ -14,6 +13,7 @@ import {
   isTokenizationCommercialScopeSchemaError,
   TOKENIZATION_COMMERCIAL_SCOPE_MIGRATION_REQUIRED,
 } from '../../lib/tokenization-schema';
+import { listDemoCta } from '../../lib/demo-cta';
 import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 import { mapVerdictAndRisk, resolveActionMatrix, resolveRightsPolicy } from '../../lib/sun-passport-policy';
 import { resolveSunTenantProfile } from '../../lib/sun-tenant-profile';
@@ -30,25 +30,22 @@ import {
 import { createPublicCertificateShareToken } from '../../lib/public-certificate-share';
 import { eventShareUid, resolveExplicitSunAutoTokenizationAuthorization } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
-import { normalizeConsentedApproximateLocation, normalizeCoordinatePair, redactSensitiveQueryValues } from '../../lib/approximate-location';
 import {
-  buildSunSensorEvidence,
-  isPublicSunSensorObservation,
-  normalizeSunSensorPrivacyScope,
-  publicSunSensorResponsible,
-} from '../../lib/sun-sensor-evidence';
+  normalizeConsentedApproximateLocation,
+  normalizeCoordinatePair,
+  redactSensitiveQueryValues,
+  sanitizePublicLocationProjection,
+} from '../../lib/approximate-location';
+import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from '../../lib/sun-sensor-evidence';
+import { listSdkSensorTimeline } from '../../lib/sdk-sensor-sun-source';
+import { publishedPromotionsFromLocaleData } from '../../lib/sun-engagement';
+import { persistSunRequestLocation } from '../../lib/sun-tap-location';
 import { escapeHtmlText, escapeHtmlTreeForMarkup, serializeForInlineScript } from '../../lib/public-html-security';
 import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from '../../lib/agro-product-profile';
 import { Gs1RegistryError } from '../../lib/gs1-digital-link-registry';
 import { resolvePublicGs1PassportBinding } from '../../lib/public-gs1-passport';
 import { resolveTagTamperPresentationEvidence } from '../../lib/sun-carrier-trust-state';
-import {
-  DEFAULT_PUBLIC_DARK_MAP_STYLE_URL,
-  DEFAULT_PUBLIC_MAP_ATTRIBUTION,
-  DEFAULT_PUBLIC_MAP_STYLE_URL,
-  normalizePublicMapStyleUrl,
-  normalizePublicRasterTileTemplate,
-} from '../../lib/sun-map-source';
+import { resolvePublicLotLabel } from '../../lib/public-lot-label';
 import { resolveEventLocalTime } from '@product/core';
 import crypto from "node:crypto";
 
@@ -85,14 +82,6 @@ function sanitizePublicErrorReason(raw: string) {
     return "tokenization_temporarily_unavailable";
   }
   return "sun_processing_error";
-}
-
-function classifySunHandoffFailure(error: unknown) {
-  const message = String(error instanceof Error ? error.message : error || "").toLowerCase();
-  if (message.includes("sun_handoff_secret is required")) return "sun_handoff_secret_missing";
-  if (message.includes("sun_handoff_secret must be at least")) return "sun_handoff_secret_too_short";
-  if (message.includes("snapshot access")) return "sun_snapshot_access_invalid";
-  return "sun_handoff_unavailable";
 }
 
 type SunResult = Awaited<ReturnType<typeof processSunScan>>;
@@ -166,7 +155,6 @@ type PassportSnapshot = {
 } | null;
 
 type TimelineEvent = {
-  eventId?: string | null;
   at: string | null;
   result: string | null;
   city: string | null;
@@ -174,13 +162,13 @@ type TimelineEvent = {
   device: string | null;
   lat?: number | null;
   lng?: number | null;
-  locationSource?: string | null;
-  accuracyM?: number | null;
   sensorTempC?: number | null;
   sensorHumidity?: number | null;
-  sensorSource?: "tenant_manual" | "csv_import" | "json_import" | "live_sensor" | null;
-  sensorPrivacyScope?: string | null;
-  sensorResponsible?: string | null;
+  sensorLightExposure?: string | null;
+  sensorTransitShock?: string | null;
+  sensorMeasuredAt?: string | null;
+  sensorDeviceId?: string | null;
+  sensorSource?: string | null;
   stage?: string | null;
 };
 
@@ -451,14 +439,14 @@ function getSunCopy(locale: SunLocale) {
     lang: "es",
     title: "Pasaporte Digital del Producto",
     actionsPanel: "Acciones",
-    authPanel: "Resultado de la lectura",
+    authPanel: "Estado de autenticación",
     identityPanel: "Identidad del producto",
     provenancePanel: "Proveniencia",
     timelinePanel: "Resumen de eventos",
     tokenPanel: "Tokenización",
-    technicalPanel: "Información técnica",
+    technicalPanel: "Detalles técnicos",
     iotPanel: "IoT y bodega",
-    tapPanel: "Datos de esta lectura",
+    tapPanel: "Inteligencia del dispositivo",
     firstVerified: "Primera verificación",
     lastVerified: "Última verificación",
     processing: "Procesando...",
@@ -469,11 +457,11 @@ function getSunCopy(locale: SunLocale) {
     ctaProvenance: "Ver proveniencia",
     ctaTokenize: "Tokenización opcional",
     quality: "Heurística de política",
-    authReplay: "Este enlace ya había sido usado. Acercá nuevamente el teléfono a la etiqueta para obtener una lectura nueva.",
-    authOk: "La etiqueta digital respondió correctamente. La garantía y los beneficios dependen de las opciones habilitadas por la marca.",
-    statusReady: "Lectura lista. Podés conocer el producto y ver las opciones disponibles.",
-    statusReplay: "Necesitamos un nuevo toque para habilitar acciones protegidas.",
-    timelineEmpty: "Todavía no hay actividad para mostrar.",
+    authReplay: "Replay detectado: pedí un nuevo tap físico antes de titularidad/garantía/tokenización.",
+    authOk: "Mensaje NFC validado. Titularidad, garantía, procedencia y tokenización siguen sujetas a política y evidencia requerida.",
+    statusReady: "Listo para ejecutar CTAs seguras.",
+    statusReplay: "Replay activo: acciones comerciales bloqueadas hasta nuevo tap.",
+    timelineEmpty: "Sin eventos todavía. Hacé un nuevo tap para generar historial.",
     achievementTitle: "Logros",
     achievementFirst: "Primera autenticación",
     achievementProv: "Proveniencia revisada",
@@ -577,12 +565,12 @@ function resolveTrustState(status: string, reason: string, productState?: string
     if (isTamperOpened) {
       return {
         code: 'REPLAY_SUSPECT',
-        label: 'Necesitamos un nuevo toque',
-        summary: 'La etiqueta respondió y reporta el sello abierto, pero este enlace ya había sido usado. Acercá nuevamente el teléfono para continuar.',
+        label: 'Lectura repetida (TT reporta apertura)',
+        summary: 'El mensaje NFC fue validado, el TT reporta apertura y esta lectura ya fue procesada. Esto no certifica el contenido ni el origen físico.',
         tone: 'warn' as const,
       };
     }
-    return { code: 'REPLAY_SUSPECT', label: 'Necesitamos un nuevo toque', summary: 'Este enlace ya había sido usado. Acercá nuevamente el teléfono a la etiqueta para obtener una lectura nueva.', tone: 'warn' as const };
+    return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'VALID_OPENED' || normalizedStatus === 'OPENED') {
     return { code: 'VALID_OPENED', label: 'Etiqueta digital verificada · sello abierto', summary: 'La etiqueta respondió correctamente y reporta que el sello fue abierto. El contenido físico y su custodia requieren controles propios de la marca.', tone: 'warn' as const };
@@ -639,34 +627,6 @@ function summarizeUserAgent(ua: string) {
       ?"Tablet"
       : "Desktop";
   return { os, browser, device };
-}
-
-function roundCoord(value: number | null, decimals = 2) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  const factor = 10 ** decimals;
-  return Math.round(value * factor) / factor;
-}
-
-function coarsePublicDate(value: string | null | undefined) {
-  const parsed = Date.parse(String(value || ""));
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : null;
-}
-
-function buildPublicTimelineCheckpoint(input: {
-  at?: string | null;
-  result?: string | null;
-  city?: string | null;
-  country?: string | null;
-  stage?: string | null;
-}): TimelineEvent {
-  return {
-    at: coarsePublicDate(input.at),
-    result: input.result || null,
-    city: input.city || null,
-    country: input.country || null,
-    device: null,
-    stage: input.stage || null,
-  };
 }
 
 function safeDecode(value: string | null) {
@@ -917,6 +877,14 @@ async function handleQrScan(input: {
     },
     sun_context: { client: deviceMeta },
   };
+  const publicLocation = sanitizePublicLocationProjection({
+    lat: resolvedLat,
+    lng: resolvedLng,
+    locationSource,
+    geoPrecision,
+    locationAccuracyM: clientLocation.accuracy,
+    metadata: baseMeta,
+  });
 
   const failQrContext = async (status: 404 | 422, detail: string) => {
     await logQrAttempt({
@@ -989,6 +957,7 @@ async function handleQrScan(input: {
   const bid = tenantBatch.bid;
   const tenantName = String(tenantBatch.tenant_name || tenantSlug);
   const sdmConfig = jsonObject(tenantBatch.sdm_config);
+  const publicLotLabel = resolvePublicLotLabel(sdmConfig);
   const configuredProduct = jsonObject(sdmConfig.product);
   const configuredProductName = String(gs1Registry?.displayName || configuredProduct.name || sdmConfig.product_name || `Batch ${bid}`);
   const configuredBrand = String(configuredProduct.winery || configuredProduct.brand || sdmConfig.winery || sdmConfig.brand || tenantName);
@@ -1103,6 +1072,7 @@ async function handleQrScan(input: {
     },
     identity: {
       bid,
+      displayLot: publicLotLabel,
       uid: null,
       uidMasked: null,
       eventId: eventId ? String(eventId) : null,
@@ -1127,6 +1097,7 @@ async function handleQrScan(input: {
     },
     product: {
       name: configuredProductName,
+      lotLabel: publicLotLabel,
       winery: configuredBrand,
       region: configuredOrigin,
       varietal: configuredProduct.varietal || sdmConfig.varietal || null,
@@ -1140,25 +1111,22 @@ async function handleQrScan(input: {
     provenance: {
       origin: configuredOrigin,
       firstVerified: { at: null, city: null, country: null },
-      lastVerifiedLocation: {
-        at: coarsePublicDate(qrNow),
-        city: input.geoCity,
-        country: input.geoCountry,
-        result: publicStatusCode,
-      },
-      timelineSummary: [buildPublicTimelineCheckpoint({
+      lastVerifiedLocation: { at: qrNow, city: input.geoCity, country: input.geoCountry, result: publicStatusCode },
+      timelineSummary: [{
         at: qrNow,
         result: publicStatusCode,
-        city: input.geoCity,
-        country: input.geoCountry,
-        stage: "current_tap",
-      })],
+        city: input.geoCity || "Unknown",
+        country: input.geoCountry || "--",
+        device: `${deviceMeta.platform} - ${deviceMeta.browser}`,
+        lat: publicLocation.lat,
+        lng: publicLocation.lng,
+      }],
     },
     tapContext: {
       city: input.geoCity,
       country: input.geoCountry,
-      lat: resolvedLat,
-      lng: resolvedLng,
+      lat: publicLocation.lat,
+      lng: publicLocation.lng,
       locationSource,
       accuracyM: null,
       ...qrTapTime,
@@ -1244,7 +1212,7 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       t.status AS tag_status,
       t.claim_pin_required AS tag_claim_pin_required,
       t.active_for_claim AS tag_active_for_claim,
-       operational_scans.scan_count,
+      operational_scans.scan_count,
       first_evt.created_at::text AS first_verified_at,
       first_evt.city AS first_city,
       first_evt.country_code AS first_country,
@@ -1275,9 +1243,6 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       FROM events e
       WHERE e.batch_id = t.batch_id AND UPPER(e.uid_hex) = UPPER(t.uid_hex)
         AND LOWER(COALESCE(e.source::text, 'real')) <> 'demo'
-        -- Keep the public runtime on the events ACL it already owns. The
-        -- append-only quarantine table stays private and auditable; this exact
-        -- versioned pattern is parity-tested against its SQL classifier.
         AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       ORDER BY created_at ASC
       LIMIT 1
@@ -1393,36 +1358,10 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
     const publicCheckpoint = (meta.public_checkpoint && typeof meta.public_checkpoint === "object")
       ? meta.public_checkpoint as Record<string, unknown>
       : {};
-    const sensors = (meta.sensors && typeof meta.sensors === "object") ?meta.sensors as Record<string, unknown> : {};
-    const sensorProvenance = (sensors.provenance && typeof sensors.provenance === "object")
-      ? sensors.provenance as Record<string, unknown>
-      : {};
-    const rawSensorSource = sensorProvenance.origin
-      ?? sensorProvenance.source
-      ?? sensors.source
-      ?? sensors.origin
-      ?? sensors.sensorSource
-      ?? sensors.sensor_source;
-    const sensorSource = typeof rawSensorSource === "string"
-      && ["tenant_manual", "csv_import", "json_import", "live_sensor"].includes(rawSensorSource)
-      ? rawSensorSource as TimelineEvent["sensorSource"]
-      : null;
-    const rawSensorPrivacy = sensorProvenance.privacyScope
-      ?? sensorProvenance.privacy_scope
-      ?? sensors.privacyScope
-      ?? sensors.privacy_scope;
-    const rawSensorResponsible = sensorProvenance.responsible
-      ?? sensors.responsible
-      ?? sensors.sensorResponsible
-      ?? sensors.sensor_responsible;
-    const sensorPrivacyScope = normalizeSunSensorPrivacyScope(
-      typeof rawSensorPrivacy === "string" ? rawSensorPrivacy : null,
-    );
-    const sensorIsPublic = isPublicSunSensorObservation(sensorPrivacyScope);
     return {
-      // Public traceability is opt-in and deliberately coarse. Consumer tap
-      // identifiers, exact times, devices and GPS never become product history.
-      eventId: null,
+      // Product history is tenant-published and deliberately coarse. The
+      // current tap remains a separate observation in tapContext; consumer
+      // event IDs, exact timestamps, device data and GPS never become history.
       at: row.at ?String(row.at) : null,
       result: typeof publicCheckpoint.label === "string"
         ? String(publicCheckpoint.label)
@@ -1434,20 +1373,47 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
       device: null,
       lat: null,
       lng: null,
-      locationSource: "tenant_published_checkpoint",
-      accuracyM: null,
-      sensorTempC: sensorIsPublic && typeof sensors.temperatureC === "number" ?Number(sensors.temperatureC) : null,
-      sensorHumidity: sensorIsPublic && typeof sensors.humidityPct === "number" ?Number(sensors.humidityPct) : null,
-      sensorSource: sensorIsPublic ? sensorSource : null,
-      sensorPrivacyScope: sensorIsPublic ? sensorPrivacyScope : null,
-      sensorResponsible: publicSunSensorResponsible(rawSensorResponsible, sensorPrivacyScope),
-      stage: typeof publicCheckpoint.stage === "string"
-        ? String(publicCheckpoint.stage)
-        : sensorIsPublic && typeof sensors.stage === "string"
-          ? String(sensors.stage)
-          : null,
+      sensorTempC: null,
+      sensorHumidity: null,
+      sensorLightExposure: null,
+      sensorTransitShock: null,
+      sensorMeasuredAt: null,
+      sensorDeviceId: null,
+      sensorSource: null,
+      stage: typeof publicCheckpoint.stage === "string" ? String(publicCheckpoint.stage) : null,
     } satisfies TimelineEvent;
   });
+}
+
+async function getSdkSensorTimelineSummary(input: {
+  tenantId: string | null | undefined;
+  bid: string;
+  uid: string | null | undefined;
+}): Promise<TimelineEvent[]> {
+  if (!input.tenantId || !input.uid) return [];
+  const readings = await listSdkSensorTimeline({
+    tenantId: input.tenantId,
+    bid: input.bid,
+    uidHex: input.uid,
+    limit: 6,
+  });
+  return readings.map((reading) => ({
+    at: reading.measuredAt,
+    result: "SENSOR_REPORTED",
+    city: null,
+    country: null,
+    device: reading.deviceId,
+    lat: null,
+    lng: null,
+    sensorTempC: reading.temperatureC,
+    sensorHumidity: reading.humidityPct,
+    sensorLightExposure: reading.lightExposure,
+    sensorTransitShock: reading.transitShock,
+    sensorMeasuredAt: reading.measuredAt,
+    sensorDeviceId: reading.deviceId,
+    sensorSource: reading.source,
+    stage: reading.stage,
+  }));
 }
 
 function recordValue(value: unknown): Record<string, unknown> {
@@ -1519,7 +1485,18 @@ function buildPublicContract(params: {
   result: SunResult['body'];
   passport: PassportSnapshot;
   timeline: TimelineEvent[];
-  tap: { userAgent: string; city: string | null; country: string | null; lat: number | null; lng: number | null };
+  sensorTimeline?: TimelineEvent[];
+  tap: {
+    userAgent: string;
+    city: string | null;
+    country: string | null;
+    lat: number | null;
+    lng: number | null;
+    locationSource: string;
+    geoPrecision: string;
+    locationAccuracyM: number | null;
+    metadata: Record<string, unknown>;
+  };
 }) {
   const status = params.result.result || (params.result.ok ?'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
@@ -1530,10 +1507,27 @@ function buildPublicContract(params: {
     : params.result.product_state || null;
   const verdictRisk = mapVerdictAndRisk({ statusCode: trust.code, productState: effectiveProductState, reason });
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
+  const publicLotLabel = resolvePublicLotLabel(params.passport?.batch_sdm_config);
+  const declaredStaticSensor = declaredStaticSensorFromLocaleData(params.passport?.locale_data);
+  const publishedPromotions = publishedPromotionsFromLocaleData(params.passport?.locale_data);
+  const sensorEvidenceTimeline = [...params.timeline, ...(params.sensorTimeline || [])];
+  const factualSensorEvidence = buildSunSensorEvidence({
+    timeline: sensorEvidenceTimeline,
+    declaredStatic: declaredStaticSensor,
+    barrelMonths: params.passport?.barrel_months ?? null,
+    allowSimulation: false,
+  });
   const setupDashboardBase = dashboardBaseUrl();
   const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const setupUa = summarizeUserAgent(params.tap.userAgent);
-  const publicTapAt = new Date().toISOString();
+  const publicTapLocation = sanitizePublicLocationProjection({
+    lat: params.tap.lat,
+    lng: params.tap.lng,
+    locationSource: params.tap.locationSource,
+    geoPrecision: params.tap.geoPrecision,
+    locationAccuracyM: params.tap.locationAccuracyM,
+    metadata: params.tap.metadata,
+  });
   const troubleshooting = buildTroubleshooting(reason, params.bid, resultMeta);
   const resultCarrierProfileCode = String(resultMeta.carrier_profile_code || "").trim().toLowerCase();
   const carrierProfileCode = params.passport?.carrier_profile_code
@@ -1596,10 +1590,12 @@ function buildPublicContract(params: {
       : setupHasValidTagEvidence
         ?"medium"
         : verdictRisk.riskLevel;
+    const setupTimelineLatest = params.timeline[0] || null;
+    const setupTimelineOldest = params.timeline[params.timeline.length - 1] || null;
     const setupTapTime = tapTimeContext({
-      at: publicTapAt,
-      city: params.tap.city,
-      country: params.tap.country,
+      at: params.passport?.last_verified_at || params.timeline[0]?.at || new Date().toISOString(),
+      city: params.passport?.last_city || params.timeline[0]?.city || params.tap.city,
+      country: params.passport?.last_country || params.timeline[0]?.country || params.tap.country,
       tenantSlug,
     });
     return {
@@ -1624,6 +1620,7 @@ function buildPublicContract(params: {
       },
       identity: {
         bid: params.bid,
+        displayLot: publicLotLabel,
         uid: null,
         uidMasked: maskIdentityValue(params.uid || ""),
         readCounter: params.ctr,
@@ -1679,6 +1676,7 @@ function buildPublicContract(params: {
       },
       product: {
         name: setupProductName,
+        lotLabel: publicLotLabel,
         winery: params.passport?.winery || null,
         region: params.passport?.region || null,
         varietal: params.passport?.grape_varietal || null,
@@ -1691,23 +1689,12 @@ function buildPublicContract(params: {
         serving: null,
         category: null,
         vertical: null,
-        imageUrl: params.passport?.image_url || null,
-        image_url: params.passport?.image_url || null,
         agro: hasPublicAgroProfile ? publicAgroProfile : null,
       },
       provenance: {
         origin: params.passport?.region || null,
-        firstVerified: {
-          at: params.timeline.at(-1)?.at || null,
-          city: params.timeline.at(-1)?.city || null,
-          country: params.timeline.at(-1)?.country || null,
-        },
-        lastVerifiedLocation: {
-          at: publicTapAt,
-          city: params.tap.city,
-          country: params.tap.country,
-          result: trust.code,
-        },
+        firstVerified: { at: setupTimelineOldest?.at || null, city: setupTimelineOldest?.city || null, country: setupTimelineOldest?.country || null },
+        lastVerifiedLocation: { at: setupTimelineLatest?.at || null, city: setupTimelineLatest?.city || null, country: setupTimelineLatest?.country || null, result: setupTimelineLatest?.result || null },
         timelineSummary: params.timeline,
       },
       tokenization: {
@@ -1742,16 +1729,10 @@ function buildPublicContract(params: {
         oakType: null,
         originLabel: null,
         originType: null,
-        sensorEvidenceKind: "none" as const,
-        sensorProvenance: {
-          origin: "none" as const,
-          capturedAt: null,
-          privacyScope: "not_applicable",
-          responsible: null,
-          supportedOrigins: ["tenant_manual", "csv_import", "json_import", "live_sensor"] as const,
-        },
-        sensorSnapshot: { cellarTemperature: null, humidity: null, lightExposure: null, transitShock: null },
-        sensorHistory: [],
+        sensorEvidenceKind: factualSensorEvidence.kind,
+        sensorSnapshot: factualSensorEvidence.snapshot,
+        sensorHistory: factualSensorEvidence.history,
+        declaredStatic: factualSensorEvidence.declaredStatic,
       },
       tapContext: {
         os: setupUa.os,
@@ -1759,10 +1740,10 @@ function buildPublicContract(params: {
         deviceType: setupUa.device,
         city: params.tap.city,
         country: params.tap.country,
-        lat: roundCoord(params.tap.lat, 2),
-        lng: roundCoord(params.tap.lng, 2),
-        locationSource: params.tap.lat != null && params.tap.lng != null ? "ip_geo" : "none",
-        accuracyM: null,
+        lat: publicTapLocation.lat,
+        lng: publicTapLocation.lng,
+        locationSource: publicTapLocation.lat != null ? params.tap.locationSource : "none",
+        accuracyM: publicTapLocation.lat != null ? params.tap.locationAccuracyM : null,
         ...setupTapTime,
       },
       quality: { score: null, tier: null, basis: "unavailable" },
@@ -1830,7 +1811,8 @@ function buildPublicContract(params: {
     tenantProfile.product.simulatedShock,
   ].some((value) => value != null && String(value).trim() !== "");
   const sensorEvidence = buildSunSensorEvidence({
-    timeline: params.timeline,
+    timeline: sensorEvidenceTimeline,
+    declaredStatic: declaredStaticSensor,
     fallbackStorage,
     barrelMonths: params.passport?.barrel_months || fallbackBarrelMonths,
     simulatedTempC: tenantProfile.product.simulatedTempC,
@@ -1840,12 +1822,13 @@ function buildPublicContract(params: {
     allowSimulation: (params.bid.toUpperCase().startsWith("DEMO-") && tenantSlug === "demobodega") || hasConfiguredSimulation,
   });
   const sensorHistory = sensorEvidence.history;
+  const timelineLatest = params.timeline[0] || null;
   const timelineOldest = params.timeline[params.timeline.length - 1] || null;
   const ua = summarizeUserAgent(params.tap.userAgent);
   const currentTapTime = tapTimeContext({
-    at: publicTapAt,
-    city: params.tap.city,
-    country: params.tap.country,
+    at: params.passport?.last_verified_at || timelineLatest?.at || new Date().toISOString(),
+    city: params.passport?.last_city || timelineLatest?.city || params.tap.city,
+    country: params.passport?.last_country || timelineLatest?.country || params.tap.country,
     tenantSlug,
   });
   const isVerifiedOpenedTap = verdictRisk.verdict === "valid_opened"
@@ -1934,6 +1917,7 @@ function buildPublicContract(params: {
     },
     identity: {
       bid: params.bid,
+      displayLot: publicLotLabel,
       uid: null,
       uidMasked: maskIdentityValue(params.uid || ""),
       readCounter: params.ctr,
@@ -1989,6 +1973,7 @@ function buildPublicContract(params: {
     },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,
+      lotLabel: publicLotLabel,
       winery: params.passport?.winery || fallbackWinery,
       region: params.passport?.region || fallbackRegion,
       varietal: params.passport?.grape_varietal || fallbackVarietal,
@@ -2020,10 +2005,10 @@ function buildPublicContract(params: {
         country: timelineOldest?.country || null,
       },
       lastVerifiedLocation: {
-        at: publicTapAt,
-        city: params.tap.city,
-        country: params.tap.country,
-        result: trust.code,
+        at: timelineLatest?.at || null,
+        city: timelineLatest?.city || null,
+        country: timelineLatest?.country || null,
+        result: timelineLatest?.result || null,
       },
       timelineSummary: params.timeline,
     },
@@ -2060,20 +2045,21 @@ function buildPublicContract(params: {
       originLabel: tenantProfile.origin.label,
       originType: tenantProfile.vertical,
       sensorEvidenceKind: sensorEvidence.kind,
-      sensorProvenance: sensorEvidence.provenance,
       sensorSnapshot: sensorEvidence.snapshot,
       sensorHistory,
+      declaredStatic: sensorEvidence.declaredStatic,
     },
+    engagement: { promotions: publishedPromotions },
     tapContext: {
       os: ua.os,
       browser: ua.browser,
       deviceType: ua.device,
       city: params.tap.city,
       country: params.tap.country,
-      lat: roundCoord(params.tap.lat, 2),
-      lng: roundCoord(params.tap.lng, 2),
-      locationSource: params.tap.lat != null && params.tap.lng != null ? "ip_geo" : "none",
-      accuracyM: null,
+      lat: publicTapLocation.lat,
+      lng: publicTapLocation.lng,
+      locationSource: publicTapLocation.lat != null ? params.tap.locationSource : "none",
+      accuracyM: publicTapLocation.lat != null ? params.tap.locationAccuracyM : null,
       ...currentTapTime,
     },
     quality: { score: null, tier: null, basis: "unavailable" },
@@ -2146,9 +2132,9 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
       geoContext: "Contexto geográfico",
       consumerJourney: "Jornada do consumidor",
       mapLocalTitle: "Contexto local · origem declarada e toque informado",
-      mapUnavailable: "Mapa indisponível: o toque não possui um par válido de coordenadas WGS84.",
+      mapUnavailable: "Mapa e distância indisponíveis: faltam coordenadas da origem ou do toque.",
       mapGlobalTitle: "Contexto global · posição informada do toque",
-      mapLegend: "Origem declarada ↔ toque informado (referência linear; não é um percurso)",
+      mapLegend: "Origem declarada → toque informado (linha ilustrativa)",
       routeSummary: "Comparação geográfica",
       routeDistance: "Distância geodésica estimada",
       routeRegion: "Região de leitura",
@@ -2200,7 +2186,7 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
       journey2Desc: "Conectamos este toque ao produto no seu portal.",
       journey3Desc: "Marketplace, garantia e recompensas ficam ativas.",
       mapStoryTitle: "Contexto geográfico informado",
-      mapStorySubtitle: "A posição informada conserva sua fonte e precisão. Quando há origem declarada, a linha é apenas uma referência linear; não prova percurso nem custódia.",
+      mapStorySubtitle: "Origem declarada e localização informada do toque; a linha visual não prova rota física nem custódia.",
       mapOriginStep: "Origem declarada",
       mapTapStep: "Local do toque informado",
       mapTokenStep: "Token / NFT",
@@ -2231,9 +2217,9 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         geoContext: "Geo context",
         consumerJourney: "Consumer journey",
         mapLocalTitle: "Local context · declared origin and reported tap",
-        mapUnavailable: "Map unavailable: the tap has no valid WGS84 coordinate pair.",
+        mapUnavailable: "Map and distance unavailable: origin or tap coordinates are missing.",
         mapGlobalTitle: "Global context · reported tap position",
-        mapLegend: "Declared origin ↔ reported tap (linear reference, not a traveled route)",
+        mapLegend: "Declared origin → reported tap (illustrative line)",
         routeSummary: "Geographic comparison",
         routeDistance: "Estimated geodesic distance",
         routeRegion: "Read region",
@@ -2285,7 +2271,7 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         journey2Desc: "We connect this tap to your product portal.",
         journey3Desc: "Marketplace, warranty and rewards become active.",
         mapStoryTitle: "Reported geographic context",
-        mapStorySubtitle: "The reported position keeps its source and accuracy. When a declared origin is available, the line is only a linear reference; it does not prove travel or custody.",
+        mapStorySubtitle: "Declared origin and reported tap location; the visual line does not prove a physical route or custody.",
         mapOriginStep: "Declared origin",
         mapTapStep: "Reported tap location",
         mapTokenStep: "Token / NFT",
@@ -2315,9 +2301,9 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         geoContext: "Contexto geo",
         consumerJourney: "Recorrido del consumidor",
         mapLocalTitle: "Contexto local · origen declarado y tap reportado",
-        mapUnavailable: "Mapa no disponible: el tap no tiene un par válido de coordenadas WGS84.",
+        mapUnavailable: "Mapa y distancia no disponibles: faltan coordenadas del origen o del tap.",
         mapGlobalTitle: "Contexto global · posición reportada del tap",
-        mapLegend: "Origen declarado ↔ tap reportado (referencia lineal; no es un recorrido)",
+        mapLegend: "Origen declarado → tap reportado (línea ilustrativa)",
         routeSummary: "Comparación geográfica",
         routeDistance: "Distancia geodésica estimada",
         routeRegion: "Región de lectura",
@@ -2369,7 +2355,7 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         journey2Desc: "Conectamos este tap a tu producto en el portal.",
         journey3Desc: "Se activan marketplace, garantía y recompensas.",
         mapStoryTitle: "Contexto geográfico reportado",
-        mapStorySubtitle: "La ubicación reportada conserva su fuente y precisión. Cuando hay un origen declarado, la línea es sólo una referencia lineal. La línea visual no prueba ruta física ni custodia.",
+        mapStorySubtitle: "Origen declarado y ubicación reportada del tap; la línea visual no prueba ruta física ni custodia.",
         mapOriginStep: "Origen declarado",
         mapTapStep: "Ubicación del tap reportada",
         mapTokenStep: "Token / NFT",
@@ -2402,19 +2388,12 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
   const statusCode = String(contract.status.code || "").toUpperCase();
   const verdictName = String(contract.verdict || "").toLowerCase();
   const conditionState = String(contract.condition.state || "").toLowerCase();
-  const reportedTtRaw = /^[0-9A-F]{4}$/i.test(String(contract.technical.tt.raw || ""))
-    ? String(contract.technical.tt.raw).toUpperCase()
-    : "";
-  const ttReportsClosed = reportedTtRaw === "4343";
-  const ttReportsOpened = reportedTtRaw === "4F4F" || reportedTtRaw === "4F43";
-  const ttRequiresReview = reportedTtRaw === "434F" || reportedTtRaw.includes("49") || Boolean(reportedTtRaw && !ttReportsClosed && !ttReportsOpened);
-  const isRepeatedRead = statusCode === "REPLAY_SUSPECT" || verdictName === "replay_suspect";
   const isSunProfileMismatchState =
     statusCode === "SUN_PROFILE_MISMATCH" ||
     verdictName === "sun_profile_mismatch" ||
     conditionState === "sun_profile_mismatch" ||
     conditionState === "blocked_sun_profile_mismatch";
-  const isClosedState = productState === "VALID_CLOSED" || statusCode === "VALID_CLOSED" || ttReportsClosed;
+  const isClosedState = productState === "VALID_CLOSED" || statusCode === "VALID_CLOSED";
   const isManualOpenedState = productState === "VALID_MANUAL_OPENED" || statusCode === "MANUAL_OPENED";
   const isOpenedState =
     productState === "VALID_OPENED" ||
@@ -2422,34 +2401,7 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     statusCode === "VALID_OPENED" ||
     statusCode === "VALID_OPENED_PREVIOUSLY" ||
     statusCode === "OPENED" ||
-    statusCode === "OPENED_PREVIOUSLY" ||
-    ttReportsOpened;
-  const sealTone = ttRequiresReview ? "#dc2626" : isManualOpenedState || isOpenedState ? "#d97706" : isClosedState ? "#16a34a" : "#0284c7";
-  const sealLabel = ttRequiresReview
-    ? (copy.lang === "en" ? "Seal signal needs review" : copy.lang === "pt-BR" ? "Sinal do selo requer revisão" : "Señal del sello por revisar")
-    : isManualOpenedState
-      ? (copy.lang === "en" ? "Opening declared" : copy.lang === "pt-BR" ? "Abertura declarada" : "Apertura declarada")
-    : isOpenedState
-      ? (copy.lang === "en" ? "Seal opened" : copy.lang === "pt-BR" ? "Selo aberto" : "Sello abierto")
-      : isClosedState
-        ? (copy.lang === "en" ? "Seal closed" : copy.lang === "pt-BR" ? "Selo fechado" : "Sello cerrado")
-        : (copy.lang === "en" ? "No electronic seal state" : copy.lang === "pt-BR" ? "Sem estado eletrônico do selo" : "Sin estado electrónico del sello");
-  const sealSummary = ttRequiresReview
-    ? (copy.lang === "en" ? "The TT bytes are invalid or contradictory." : copy.lang === "pt-BR" ? "Os bytes TT são inválidos ou contraditórios." : "Los bytes TT son inválidos o contradictorios.")
-    : isManualOpenedState
-      ? (copy.lang === "en" ? "An operator declared an opening; the digital tag did not detect it automatically." : copy.lang === "pt-BR" ? "Um operador declarou uma abertura; a etiqueta digital não a detectou automaticamente." : "Un operador declaró una apertura; la etiqueta digital no la detectó automáticamente.")
-    : isOpenedState
-      ? (copy.lang === "en" ? "The TT tag records opening evidence." : copy.lang === "pt-BR" ? "A etiqueta TT registra evidência de abertura." : "La etiqueta TT registra evidencia de apertura.")
-      : isClosedState
-        ? (copy.lang === "en" ? "The TT tag reports its electronic seal as closed." : copy.lang === "pt-BR" ? "A etiqueta TT informa seu selo eletrônico como fechado." : "La etiqueta TT reporta su sello electrónico cerrado.")
-        : (copy.lang === "en" ? "This carrier does not report an electronic seal state." : copy.lang === "pt-BR" ? "Este suporte não informa estado eletrônico do selo." : "Este soporte no informa estado electrónico del sello.");
-  const freshnessTone = isRepeatedRead ? "#d97706" : "#0284c7";
-  const freshnessLabel = isRepeatedRead
-    ? (copy.lang === "en" ? "Link already used" : copy.lang === "pt-BR" ? "Link já utilizado" : "Enlace ya utilizado")
-    : (copy.lang === "en" ? "Fresh NFC read" : copy.lang === "pt-BR" ? "Leitura NFC nova" : "Lectura NFC nueva");
-  const freshnessSummary = isRepeatedRead
-    ? (copy.lang === "en" ? "Tap the physical tag again to continue with protected actions." : copy.lang === "pt-BR" ? "Toque novamente a etiqueta física para continuar com ações protegidas." : "Volvé a tocar la etiqueta física para continuar con acciones protegidas.")
-    : (copy.lang === "en" ? "This SUN message was processed as a new read." : copy.lang === "pt-BR" ? "Esta mensagem SUN foi processada como uma nova leitura." : "Este mensaje SUN se procesó como una lectura nueva.");
+    statusCode === "OPENED_PREVIOUSLY";
   const authPanelMessage = isRiskBlocked || isSunProfileMismatchState
     ?copy.authReplay
     : isManualOpenedState
@@ -2487,89 +2439,84 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
     : `<li>${copy.timelineEmpty}</li>`;
-  const finiteCoordinate = (value: unknown, min: number, max: number) => (
-    typeof value === "number" && Number.isFinite(value) && value >= min && value <= max ? value : null
-  );
-  const wineryLat = finiteCoordinate(contract.iot.wineryCoordinates?.lat, -90, 90);
-  const wineryLng = finiteCoordinate(contract.iot.wineryCoordinates?.lng, -180, 180);
-  const tapLat = finiteCoordinate(contract.tapContext.lat, -90, 90);
-  const tapLng = finiteCoordinate(contract.tapContext.lng, -180, 180);
-  const declaredOriginAvailable = wineryLat !== null && wineryLng !== null;
-  const tapLocationAvailable = tapLat !== null && tapLng !== null;
-  const linearReferenceAvailable = declaredOriginAvailable && tapLocationAvailable;
+  const finiteCoordinate = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
+  const wineryLat = finiteCoordinate(contract.iot.wineryCoordinates?.lat);
+  const wineryLng = finiteCoordinate(contract.iot.wineryCoordinates?.lng);
+  const tapLat = finiteCoordinate(contract.tapContext.lat);
+  const tapLng = finiteCoordinate(contract.tapContext.lng);
+  const mapAvailable = wineryLat !== null && wineryLng !== null && tapLat !== null && tapLng !== null;
+  const safeWineryLat = wineryLat ?? 0;
+  const safeWineryLng = wineryLng ?? 0;
   const safeTapLat = tapLat ?? 0;
   const safeTapLng = tapLng ?? 0;
-  const safeWineryLat = wineryLat ?? safeTapLat;
-  const safeWineryLng = wineryLng ?? safeTapLng;
-  const rawTapLocationSource = String(contract.tapContext.locationSource || "").trim().toLowerCase();
-  const rawTapAccuracyM = contract.tapContext.accuracyM;
-  const tapAccuracyM = typeof rawTapAccuracyM === "number" && Number.isFinite(rawTapAccuracyM) && rawTapAccuracyM > 0
-    ? Math.round(rawTapAccuracyM)
-    : null;
-  const measuredLocationSources = new Set(["device_gnss_measured", "device_gps_measured", "gnss_measured", "gps_measured", "surveyed"]);
-  const browserLocationSources = new Set(["browser", "browser_geo", "browser_geolocation", "browser_geolocation_rounded", "browser_gps_approximate_consent"]);
-  const networkLocationSources = new Set(["ip", "ip_geo", "edge", "edge_geo", "edge_ip_approx", "network"]);
-  const tapLocationSourceLabel = !tapLocationAvailable
-    ? (copy.lang === "en" ? "No coordinates reported" : copy.lang === "pt-BR" ? "Sem coordenadas informadas" : "Sin coordenadas reportadas")
-    : measuredLocationSources.has(rawTapLocationSource)
-      ? (copy.lang === "en" ? "Measured by a reader or device" : copy.lang === "pt-BR" ? "Medida por leitor ou dispositivo" : "Medida por lector o dispositivo")
-      : browserLocationSources.has(rawTapLocationSource)
-        ? (copy.lang === "en" ? "Approximate, rounded device location" : copy.lang === "pt-BR" ? "Localização aproximada e arredondada do dispositivo" : "Ubicación aproximada y redondeada del dispositivo")
-        : networkLocationSources.has(rawTapLocationSource)
-          ? (copy.lang === "en" ? "Approximate network location" : copy.lang === "pt-BR" ? "Localização aproximada por rede" : "Ubicación aproximada por red")
-          : (copy.lang === "en" ? "Reported location; source not specified" : copy.lang === "pt-BR" ? "Localização informada; fonte não especificada" : "Ubicación reportada; fuente no especificada");
-  const tapLocationAccuracyLabel = tapAccuracyM === null
-    ? (copy.lang === "en" ? "Accuracy not reported" : copy.lang === "pt-BR" ? "Precisão não informada" : "Precisión no informada")
-    : (copy.lang === "en" ? `Reported accuracy radius: about ${tapAccuracyM} m` : copy.lang === "pt-BR" ? `Raio de precisão informado: cerca de ${tapAccuracyM} m` : `Radio de precisión reportado: aprox. ${tapAccuracyM} m`);
-  const tapLocationEvidenceLabel = `${tapLocationSourceLabel} · ${tapLocationAccuracyLabel}`;
-  const declaredOriginReferenceNote = copy.lang === "en"
-    ? "Declared reference; it is not an observed reading and does not add intensity."
-    : copy.lang === "pt-BR"
-      ? "Referência declarada; não é uma leitura observada e não soma intensidade."
-      : "Referencia declarada; no es una lectura observada ni suma intensidad.";
-  const locationEvidenceTitle = copy.lang === "en"
-    ? "Location evidence"
-    : copy.lang === "pt-BR"
-      ? "Evidência de localização"
-      : "Evidencia de ubicación";
+  const mapWidth = 1000;
+  const mapHeight = 460;
+  const projectWorld = (lat: number, lng: number) => {
+    const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
+    const sin = Math.sin((clippedLat * Math.PI) / 180);
+    return {
+      x: ((lng + 180) / 360) * mapWidth,
+      y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * mapHeight,
+    };
+  };
+  const clampMap = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const wineryPoint = projectWorld(safeWineryLat, safeWineryLng);
+  const tapPoint = projectWorld(safeTapLat, safeTapLng);
   const toRad = (v: number) => v * (Math.PI / 180);
   const earthKm = 6371;
   const dLat = toRad(safeTapLat - safeWineryLat);
   const dLng = toRad(safeTapLng - safeWineryLng);
   const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(safeWineryLat)) * Math.cos(toRad(safeTapLat)) * Math.sin(dLng / 2) ** 2;
-  const routeDistanceKm = linearReferenceAvailable
+  const routeDistanceKm = mapAvailable
     ? Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)))
     : null;
   const routeDistanceLabel = routeDistanceKm === null ? "N/D" : `${routeDistanceKm} km`;
-  const requestedRasterTileTemplate = process.env.NEXID_RASTER_TILE_TEMPLATE
+  const rawRasterTileTemplate = process.env.NEXID_RASTER_TILE_TEMPLATE
     || process.env.NEXT_PUBLIC_NEXID_RASTER_TILE_TEMPLATE
-    || "";
-  const rasterTileTemplate = normalizePublicRasterTileTemplate(requestedRasterTileTemplate);
-  const requestedMapStyleUrl = process.env.NEXID_MAP_STYLE_URL
-    || process.env.NEXT_PUBLIC_NEXID_MAP_STYLE_URL
-    || DEFAULT_PUBLIC_MAP_STYLE_URL;
-  const requestedDarkMapStyleUrl = process.env.NEXID_DARK_MAP_STYLE_URL
-    || process.env.NEXT_PUBLIC_NEXID_DARK_MAP_STYLE_URL
-    || DEFAULT_PUBLIC_DARK_MAP_STYLE_URL;
-  const mapStyleUrl = normalizePublicMapStyleUrl(requestedMapStyleUrl);
-  const darkMapStyleUrl = normalizePublicMapStyleUrl(requestedDarkMapStyleUrl, DEFAULT_PUBLIC_DARK_MAP_STYLE_URL);
-  const mapSourceFallbackApplied = mapStyleUrl !== String(requestedMapStyleUrl).trim()
-    || darkMapStyleUrl !== String(requestedDarkMapStyleUrl).trim()
-    || (Boolean(requestedRasterTileTemplate) && !rasterTileTemplate);
+    || "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
+  const rasterTileTemplate = rawRasterTileTemplate.includes("voyager_nolabels")
+    ?"https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+    : rawRasterTileTemplate;
+  const lightRasterTileTemplate = rasterTileTemplate.includes("/dark_all/")
+    ?rasterTileTemplate.replace("/dark_all/", "/light_all/")
+    : rasterTileTemplate;
   const pmtilesUrl = process.env.NEXID_PMTILES_URL || process.env.NEXT_PUBLIC_NEXID_PMTILES_URL || "";
   const mapSourceLabel = pmtilesUrl
     ?"PMTiles ready"
-    : rasterTileTemplate
-      ? rasterTileTemplate.startsWith("/") || rasterTileTemplate.includes("nexid.lat")
-        ?"Self-hosted tiles"
-        : "No-key raster map"
-      : mapStyleUrl.includes("tiles.openfreemap.org")
-        ? "OpenFreeMap · OpenStreetMap"
-        : "No-key vector map";
-  const requestedMapAttribution = process.env.NEXID_MAP_ATTRIBUTION || process.env.NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION || "";
-  const mapAttribution = mapSourceFallbackApplied || !requestedMapAttribution.trim()
-    ? DEFAULT_PUBLIC_MAP_ATTRIBUTION
-    : requestedMapAttribution.trim();
+    : rasterTileTemplate.startsWith("/") || rasterTileTemplate.includes("nexid.lat")
+      ?"Self-hosted tiles"
+      : "Free raster fallback";
+  const mapAttribution = process.env.NEXID_MAP_ATTRIBUTION || process.env.NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION || "CARTO / OpenStreetMap";
+  const routeSpanX = Math.abs(wineryPoint.x - tapPoint.x);
+  const routeSpanY = Math.abs(wineryPoint.y - tapPoint.y);
+  const atlasViewWidth = clampMap(Math.max(210, routeSpanX * 3.8), 210, mapWidth);
+  const atlasViewHeight = clampMap(Math.max(132, routeSpanY * 4.7), 132, mapHeight);
+  const atlasCenterX = (wineryPoint.x + tapPoint.x) / 2;
+  const atlasCenterY = (wineryPoint.y + tapPoint.y) / 2;
+  const atlasViewX = clampMap(atlasCenterX - atlasViewWidth / 2, 0, mapWidth - atlasViewWidth);
+  const atlasViewY = clampMap(atlasCenterY - atlasViewHeight / 2, 0, mapHeight - atlasViewHeight);
+  const atlasViewBox = `${atlasViewX.toFixed(1)} ${atlasViewY.toFixed(1)} ${atlasViewWidth.toFixed(1)} ${atlasViewHeight.toFixed(1)}`;
+  const atlasTileZoom = atlasViewWidth < 260 ?5 : atlasViewWidth < 520 ?4 : 3;
+  const atlasTilesPerAxis = 2 ** atlasTileZoom;
+  const atlasTileWidth = mapWidth / atlasTilesPerAxis;
+  const atlasTileHeight = mapHeight / atlasTilesPerAxis;
+  const atlasTileMinX = Math.floor(atlasViewX / atlasTileWidth) - 1;
+  const atlasTileMaxX = Math.ceil((atlasViewX + atlasViewWidth) / atlasTileWidth) + 1;
+  const atlasTileMinY = Math.max(0, Math.floor(atlasViewY / atlasTileHeight) - 1);
+  const atlasTileMaxY = Math.min(atlasTilesPerAxis - 1, Math.ceil((atlasViewY + atlasViewHeight) / atlasTileHeight) + 1);
+  const buildAtlasTileImages = (tileTemplate: string) => mapAvailable ? Array.from({ length: Math.max(0, atlasTileMaxY - atlasTileMinY + 1) }, (_, rowIndex) => atlasTileMinY + rowIndex)
+    .flatMap((tileY) => Array.from({ length: Math.max(0, atlasTileMaxX - atlasTileMinX + 1) }, (_, colIndex) => atlasTileMinX + colIndex)
+      .map((tileX) => {
+        const wrappedX = ((tileX % atlasTilesPerAxis) + atlasTilesPerAxis) % atlasTilesPerAxis;
+        const href = tileTemplate
+          .replaceAll("{z}", String(atlasTileZoom))
+          .replaceAll("{x}", String(wrappedX))
+          .replaceAll("{y}", String(tileY));
+        return `<image href="${htmlText(href)}" x="${(tileX * atlasTileWidth).toFixed(2)}" y="${(tileY * atlasTileHeight).toFixed(2)}" width="${atlasTileWidth.toFixed(2)}" height="${atlasTileHeight.toFixed(2)}" preserveAspectRatio="none"/>`;
+      })).join("") : "";
+  const atlasTileImages = buildAtlasTileImages(rasterTileTemplate);
+  const atlasLightTileImages = buildAtlasTileImages(lightRasterTileTemplate);
+  const oldestTraceEvent = timeline[timeline.length - 1] || null;
   const newestTraceEvent = timeline[0] || null;
   const tokenProof = contract.tokenization.tokenId
     ?`Token #${contract.tokenization.tokenId}`
@@ -2582,19 +2529,18 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     if (kind === "token") return "border-color:rgba(167,139,250,.32);background:rgba(76,29,149,.2)";
     return "border-color:rgba(45,212,191,.3);background:rgba(19,78,74,.22)";
   };
-  const declaredOriginLabel = contract.provenance.origin || contract.iot.wineryLocation || null;
   const traceStoryHtml = [
-    ...(declaredOriginLabel ? [{
+    {
       cls: "origin",
       label: labels.mapOriginStep,
-      value: declaredOriginLabel,
-      detail: `${contract.product.name || "Producto"} · ${declaredOriginReferenceNote}`,
-    }] : []),
+      value: contract.provenance.origin || contract.iot.wineryLocation || labels.origin,
+      detail: `${contract.product.name || "Producto"} · ${oldestTraceEvent?.at || contract.product.region || contract.product.winery || labels.winery}`,
+    },
     {
       cls: "tap",
       label: labels.mapTapStep,
       value: `${contract.tapContext.city || newestTraceEvent?.city || "-"}, ${contract.tapContext.country || newestTraceEvent?.country || "-"}`,
-      detail: `${tapLocationEvidenceLabel} · ${newestTraceEvent?.at || contract.identity.eventId || "tap actual"}`,
+      detail: `${contract.status.label} · ${newestTraceEvent?.at || contract.identity.eventId || "tap actual"}`,
     },
     {
       cls: "token",
@@ -2615,50 +2561,47 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     [labels.statusLabel, contract.status.label],
     [labels.tokenIdLabel, contract.tokenization.tokenId || tokenizationStatusLabel],
   ].map(([label, value]) => `<div class="ledger-item" style="border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px;background:rgba(15,23,42,.36)"><span style="display:block;color:#9fb5d9;font-size:10px;text-transform:uppercase;letter-spacing:.08em">${htmlText(label)}</span><b style="display:block;margin-top:3px;font-size:12px;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${htmlText(value)}</b></div>`).join("");
-  const ttTechnical = contract.technical.tt;
-  const ttRaw = reportedTtRaw;
-  const ttByteLabel = (hex: string) => hex === "43" ? "Cerrado" : hex === "4F" ? "Abierto" : hex === "49" ? "Inválido" : "No reconocido";
-  const ttState = ttRaw === "4343"
-    ? { label: "TT reporta cerrado", tone: "#a7f3d0", summary: "Ambos bytes reportan estado cerrado." }
-    : ttRaw === "4F4F"
-      ? { label: "TT reporta abierto", tone: "#fdba74", summary: "Ambos bytes reportan apertura." }
-      : ttRaw === "4F43"
-        ? { label: "TT registra apertura previa", tone: "#fdba74", summary: "La memoria permanente registra apertura anterior y el estado actual reporta cerrado." }
-        : ttRaw.includes("49")
-          ? { label: "TT inválido", tone: "#fca5a5", summary: "El valor 49 requiere revisión técnica; las acciones sensibles permanecen bloqueadas." }
-          : ttRaw === "434F"
-            ? { label: "TT contradictorio", tone: "#fca5a5", summary: "El estado actual reporta apertura mientras la memoria permanente sigue cerrada." }
-            : { label: "Estado TT no disponible", tone: "#cbd5e1", summary: "No hay dos bytes TT reconocibles en esta lectura." };
-  const ttTechnicalHtml = contract.status.tamperSupported || ttRaw
-    ? `<div style="margin-top:10px;padding:10px;border:1px solid rgba(125,211,252,.2);border-radius:12px;background:rgba(2,6,23,.42)"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div><b style="color:${ttState.tone}">${htmlText(ttState.label)}</b><p style="margin:3px 0 0;color:#94a3b8;font-size:11px">${htmlText(ttState.summary)}</p></div><code style="padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.06);color:#bae6fd">TT ${htmlText(ttRaw || "N/D")}</code></div>${ttRaw ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px"><div style="padding:8px;border:1px solid rgba(148,163,184,.18);border-radius:9px"><small style="display:block;color:#64748b">BYTE 1 · MEMORIA PERMANENTE</small><b style="color:#e2e8f0">0x${htmlText(ttRaw.slice(0, 2))} · ${ttByteLabel(ttRaw.slice(0, 2))}</b></div><div style="padding:8px;border:1px solid rgba(148,163,184,.18);border-radius:9px"><small style="display:block;color:#64748b">BYTE 2 · ESTADO ACTUAL</small><b style="color:#e2e8f0">0x${htmlText(ttRaw.slice(2, 4))} · ${ttByteLabel(ttRaw.slice(2, 4))}</b></div></div>` : ""}<p style="margin:8px 0 0;color:#64748b;font-size:10px">Describe la señal electrónica TT; por sí sola no prueba el contenido, la custodia ni la integridad física del producto.</p></div>`
+  const routeControlX = mapAvailable ? (wineryPoint.x + tapPoint.x) / 2 : 0;
+  const routeControlY = mapAvailable && routeDistanceKm !== null
+    ? Math.max(52, Math.min(wineryPoint.y, tapPoint.y) - Math.min(118, Math.max(58, routeDistanceKm / 62)))
+    : 0;
+  const atlasRoutePath = mapAvailable
+    ? `M ${wineryPoint.x.toFixed(2)} ${wineryPoint.y.toFixed(2)} Q ${routeControlX.toFixed(2)} ${routeControlY.toFixed(2)} ${tapPoint.x.toFixed(2)} ${tapPoint.y.toFixed(2)}`
     : "";
-  const sunMapPayload = {
-    styleUrl: mapStyleUrl,
-    darkStyleUrl: darkMapStyleUrl,
-    tileTemplate: rasterTileTemplate || null,
-    attribution: mapAttribution,
-    tap: tapLocationAvailable ? {
-      id: "tap",
-      lat: safeTapLat,
-      lng: safeTapLng,
-      tone: "tap",
-      label: `${contract.tapContext.city || labels.tapLocation}, ${contract.tapContext.country || "-"}`,
-      detail: tapLocationEvidenceLabel,
-    } : null,
-    // The declared origin is a reference marker only: it never contributes to
-    // heat intensity and no line is drawn as if it were a physical route.
-    origin: linearReferenceAvailable ? {
-      id: "declared-origin",
-      lat: safeWineryLat,
-      lng: safeWineryLng,
-      tone: "origin",
-      label: contract.iot.wineryLocation || contract.provenance.origin || labels.origin,
-      detail: declaredOriginReferenceNote,
-    } : null,
-    unavailable: labels.mapUnavailable,
+  const atlasLights = [
+    [-34.6, -58.4, 0.74],
+    [-33.0, -68.8, 0.86],
+    [-23.5, -46.6, 0.58],
+    [19.4, -99.1, 0.58],
+    [25.7, -80.2, 0.62],
+    [40.7, -74.0, 0.62],
+    [51.5, -0.1, 0.66],
+    [48.8, 2.3, 0.58],
+    [47.3, 8.5, 0.74],
+    [35.6, 139.6, 0.54],
+  ].map(([lat, lng, opacity], index) => {
+    const p = projectWorld(Number(lat), Number(lng));
+    return `<circle key="${index}" cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2.8" fill="#e0f2fe" opacity="${opacity}"/>`;
+  }).join('');
+  const compactMapLabel = (value: unknown, max = 24) => {
+    const text = String(value ?? "-").trim() || "-";
+    return text.length > max ?`${text.slice(0, Math.max(1, max - 3))}...` : text;
   };
-  const responsiveAtlasMap = tapLocationAvailable
-    ? `<div id="nexid-sun-map" class="world-evidence-map" role="region" aria-label="${htmlText(tapLocationEvidenceLabel)}" data-nexid-map="maplibre-gl" data-map-source="${htmlText(mapSourceLabel)}" style="position:absolute;inset:0;width:100%;height:100%;min-height:220px"><div class="world-map-loading" role="status" style="position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:18px;text-align:center;background:rgba(2,6,23,.78);color:#cbd5e1">Cargando mapa geográfico real...</div></div>`
+  const atlasPanelWidth = clampMap(atlasViewWidth - 24, 142, 190);
+  const atlasOriginPanelX = atlasViewX + 12;
+  const atlasOriginPanelY = atlasViewY + atlasViewHeight - 54;
+  const atlasTapPanelX = atlasViewX + atlasViewWidth - atlasPanelWidth - 12;
+  const atlasTapPanelY = atlasViewY + 52;
+  const atlasOriginSafeLabel = htmlText(compactMapLabel(contract.iot.wineryLocation || contract.provenance.origin || labels.origin));
+  const atlasTapSafeLabel = htmlText(compactMapLabel([contract.tapContext.city, contract.tapContext.country].filter(Boolean).join(", ") || labels.tapLocation));
+  const atlasSvg = mapAvailable
+    ? `<svg class="world-route-overlay" viewBox="${atlasViewBox}" aria-hidden="true" data-map-source="${htmlText(mapSourceLabel)}"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--sun-ocean-1,#06243c)"/><stop offset="52%" stop-color="var(--sun-ocean-2,#071827)"/><stop offset="100%" stop-color="var(--sun-ocean-3,#111136)"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="${mapWidth}" height="${mapHeight}" fill="url(#sun-ocean)"/><g class="atlas-tiles atlas-tiles-dark">${atlasTileImages}</g><g class="atlas-tiles atlas-tiles-light">${atlasLightTileImages}</g><rect width="${mapWidth}" height="${mapHeight}" fill="var(--sun-tile-overlay,rgba(2,6,23,.16))"/><path d="M0 86 H1000 M0 158 H1000 M0 230 H1000 M0 302 H1000 M0 374 H1000 M116 0 V460 M248 0 V460 M500 0 V460 M752 0 V460 M884 0 V460" fill="none" stroke="var(--sun-grid-stroke,rgba(226,232,240,.055))" stroke-width="1" stroke-dasharray="8 14"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.16)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.16)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.82)" stroke-width="12" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5.5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="9" fill="#22d3ee" stroke="#ecfeff" stroke-width="2.4"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="10" fill="#f97316" stroke="#fff7ed" stroke-width="2.4"/><g transform="translate(${(atlasViewX + 12).toFixed(2)} ${(atlasViewY + 16).toFixed(2)})"><rect x="0" y="0" width="178" height="28" rx="14" fill="rgba(2,6,23,.74)" stroke="rgba(125,211,252,.32)"/><text x="14" y="18" fill="#cffafe" font-size="11" font-weight="800" letter-spacing="1.4">${htmlText(mapSourceLabel)}</text></g><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text><text x="${(atlasViewX + atlasViewWidth - 12).toFixed(2)}" y="${(atlasViewY + atlasViewHeight - 10).toFixed(2)}" text-anchor="end" fill="#cbd5e1" font-size="9" font-weight="700" opacity=".72" paint-order="stroke" stroke="rgba(2,6,23,.8)" stroke-width="3">${htmlText(mapAttribution)}</text></svg>`
+    : "";
+  const atlasSafePanels = mapAvailable
+    ? `<g transform="translate(${atlasOriginPanelX.toFixed(2)} ${atlasOriginPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(34,211,238,.34)"/><text x="12" y="16" fill="#67e8f9" font-size="9" font-weight="900" letter-spacing="1.4">${htmlText(labels.origin)}</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasOriginSafeLabel}</text></g><g transform="translate(${atlasTapPanelX.toFixed(2)} ${atlasTapPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(249,115,22,.38)"/><text x="12" y="16" fill="#fed7aa" font-size="9" font-weight="900" letter-spacing="1.4">TAP</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasTapSafeLabel}</text></g>`
+    : "";
+  const responsiveAtlasSvg = mapAvailable
+    ? atlasSvg.replace("</svg>", `${atlasSafePanels}</svg>`)
     : `<div style="display:grid;place-items:center;min-height:180px;padding:24px;text-align:center;color:#cbd5e1">${htmlText(labels.mapUnavailable)}</div>`;
   const reportedQualityScore = typeof contract.quality.score === "number" ? contract.quality.score : null;
   const reportedQualityTier = typeof contract.quality.tier === "string" ? contract.quality.tier : null;
@@ -2672,123 +2615,64 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
   let qualityMeterHtml = hasReportedQuality
     ? `<div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${reportedQualityScore}%"></div></div></div>`
     : "";
-  const mapOriginLegendHtml = linearReferenceAvailable
-    ? `<div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || contract.provenance.origin || "N/A"}<br/><small>${htmlText(declaredOriginReferenceNote)}</small></div>`
+  const mapLegendHtml = mapAvailable
+    ? `<div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div>`
     : "";
-  const mapLegendHtml = tapLocationAvailable
-    ? `<div class="world-map-legend">${mapOriginLegendHtml}<div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}<br/><small>${htmlText(tapLocationEvidenceLabel)}</small></div></div>`
-    : "";
-  const routeSummaryText = linearReferenceAvailable
-    ? `${contract.iot.wineryLocation || contract.provenance.origin || labels.origin} ↔ ${contract.tapContext.city || "-"}, ${contract.tapContext.country || "-"} · ${labels.mapLegend}. ${tapLocationEvidenceLabel}.`
-    : tapLocationAvailable
-      ? `${contract.tapContext.city || "-"}, ${contract.tapContext.country || "-"} · ${tapLocationEvidenceLabel}.`
-      : labels.mapUnavailable;
+  const routeSummaryText = mapAvailable
+    ? `${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || "-"}, ${contract.tapContext.country || "-"} · ${labels.mapLegend}.`
+    : labels.mapUnavailable;
   const maskedBid = maskIdentityValue(contract.identity.bid);
   const maskedUid = contract.uidMasked;
   const sensorEvidenceLabel = contract.iot.sensorEvidenceKind === "simulated"
     ? copy.lang === "en" ? "SIMULATED - NOT MEASURED" : copy.lang === "pt-BR" ? "SIMULADO - NAO MEDIDO" : "SIMULADO - NO MEDIDO"
     : contract.iot.sensorEvidenceKind === "reported"
       ? copy.lang === "en" ? "REPORTED - NOT INDEPENDENTLY VERIFIED" : copy.lang === "pt-BR" ? "REPORTADO - NAO VERIFICADO INDEPENDENTEMENTE" : "REPORTADO - NO VERIFICADO INDEPENDIENTEMENTE"
-      : copy.lang === "en" ? "NO SENSOR TELEMETRY" : copy.lang === "pt-BR" ? "SEM TELEMETRIA DE SENSOR" : "SIN TELEMETRIA DE SENSOR";
-  const sensorEvidenceTone = contract.iot.sensorEvidenceKind === "reported" ? "#7dd3fc" : "#fbbf24";
+      : contract.iot.sensorEvidenceKind === "declared_static"
+        ? copy.lang === "en" ? "STATIC DECLARATION - MANIFEST" : copy.lang === "pt-BR" ? "DECLARADO ESTATICO - MANIFESTO" : "DECLARADO ESTATICO - MANIFIESTO"
+        : copy.lang === "en" ? "NO SENSOR TELEMETRY" : copy.lang === "pt-BR" ? "SEM TELEMETRIA DE SENSOR" : "SIN TELEMETRIA DE SENSOR";
+  const sensorEvidenceTone = contract.iot.sensorEvidenceKind === "reported"
+    ? "#7dd3fc"
+    : contract.iot.sensorEvidenceKind === "declared_static"
+      ? "#c4b5fd"
+      : "#fbbf24";
   const sensorEvidenceExplanation = contract.iot.sensorEvidenceKind === "simulated"
     ? copy.lang === "en" ? "Illustrative demo values; no sensor measured them." : copy.lang === "pt-BR" ? "Valores ilustrativos de demo; nenhum sensor os mediu." : "Valores ilustrativos de demo; ningun sensor los midio."
     : contract.iot.sensorEvidenceKind === "reported"
       ? copy.lang === "en" ? "Values reported in event records; not independently verified by NexID." : copy.lang === "pt-BR" ? "Valores informados nos eventos; nao verificados independentemente pela NexID." : "Valores informados en eventos; no verificados independientemente por NexID."
-      : copy.lang === "en" ? "No measured or reported sensor values are available." : copy.lang === "pt-BR" ? "Nao ha valores de sensores medidos ou reportados." : "No hay valores de sensores medidos ni reportados.";
-  const sensorProvenance = contract.iot.sensorProvenance || {
-    origin: "none",
-    capturedAt: null,
-    privacyScope: "not_reported",
-    responsible: null,
-  };
-  const sensorOrigin = String(sensorProvenance.origin || "none");
-  const latestSensorObservationAt = sensorProvenance.capturedAt || null;
-  const sensorOriginLabels: Record<string, string> = {
-    tenant_manual: "Configurado manualmente por el tenant",
-    csv_import: "Importado desde CSV",
-    json_import: "Importado desde JSON",
-    live_sensor: "Sensor conectado en vivo",
-    event_reported_unknown: "Evento reportado; canal de adquisición no informado",
-    illustrative_scenario: "Escenario ilustrativo; no es un sensor",
-    none: "Sin fuente de sensor reportada",
-  };
-  const sensorSourceLabel = contract.iot.sensorEvidenceKind === "reported"
-    ? `Fuente: ${sensorOriginLabels[sensorOrigin] || sensorOriginLabels.event_reported_unknown}`
-    : contract.iot.sensorEvidenceKind === "simulated"
-      ? (copy.lang === "en" ? "Source: illustrative scenario, not a sensor" : copy.lang === "pt-BR" ? "Fonte: cenário ilustrativo, não é um sensor" : "Fuente: escenario ilustrativo, no es un sensor")
-      : (copy.lang === "en" ? "No sensor source reported" : copy.lang === "pt-BR" ? "Nenhuma fonte de sensor informada" : "Sin fuente de sensor reportada");
-  const sensorEvidenceHtml = `<div class="sensor-evidence" style="border:1px solid ${sensorEvidenceTone};background:rgba(2,6,23,.35);border-radius:12px;padding:10px;margin:12px 0 0"><b style="display:block;color:${sensorEvidenceTone};font-size:12px;letter-spacing:.04em">${sensorEvidenceLabel}</b><span style="display:block;font-size:11px;color:#cbd5e1">${sensorEvidenceExplanation}</span><small style="display:block;margin-top:5px;color:#64748b">${sensorSourceLabel}${latestSensorObservationAt ? ` · ${htmlText(latestSensorObservationAt)}` : ""} · responsable: ${htmlText(sensorProvenance.responsible || "no informado")} · privacidad: ${htmlText(sensorProvenance.privacyScope)}</small></div>`;
-  const productName = contract.product.name || "Producto conectado";
-  const productBrand = contract.product.winery || contract.tenant.name || "nexID";
-  const productImageUrl = String(contract.product.imageUrl || contract.product.image_url || "").trim();
-  const productFacts = [contract.product.varietal, contract.product.vintage, contract.product.region].filter(Boolean).join(" · ");
-  const digitalTagValidated = contract.technical.cryptographicVerification === true;
-  const digitalTagLabel = digitalTagValidated
-    ? (copy.lang === "en" ? "Digital NFC tag verified" : copy.lang === "pt-BR" ? "Etiqueta NFC digital verificada" : "Etiqueta NFC digital verificada")
-    : contract.status.label;
-  const technicalProofLabel = copy.lang === "en"
-    ? "View technical evidence"
-    : copy.lang === "pt-BR"
-      ? "Ver evidência técnica"
-      : "Ver evidencia técnica de la lectura";
-  const primaryActionHref = isRepeatedRead ? "#new-nfc-read" : contract.cta.registerUrl;
-  const primaryActionLabel = isRepeatedRead
-    ? (copy.lang === "en" ? "How to make a new tap" : copy.lang === "pt-BR" ? "Como fazer um novo toque" : "Cómo hacer un nuevo tap")
-    : (copy.lang === "en" ? "Continue with my product" : copy.lang === "pt-BR" ? "Continuar com meu produto" : "Continuar con mi producto");
-  const enabledActionButtons = [
-    contract.cta.claimOwnership ? { action: "claim-ownership", label: `✓ ${copy.ctaClaim}` } : null,
-    contract.cta.registerWarranty ? { action: "register-warranty", label: `🛡 ${copy.ctaWarranty}` } : null,
-    contract.cta.provenance ? { action: "provenance", label: `📍 ${copy.ctaProvenance}` } : null,
-    contract.cta.tokenize ? { action: "tokenize-request", label: `⛓ ${copy.ctaTokenize}` } : null,
-  ].filter((item): item is { action: string; label: string } => Boolean(item));
-  const enabledActionButtonsHtml = enabledActionButtons
-    .map((item) => `<button type="button" data-cta="${item.action}">${htmlText(item.label)}</button>`)
-    .join("");
-  const unavailableActionCount = 4 - enabledActionButtons.length;
-  const allowedActionSet = new Set(contract.allowedActions);
-  const secondaryConsumerLinks = isRiskBlocked ? [] : [
-    allowedActionSet.has("rewards") ? { href: contract.cta.rewardsUrl, gate: "rewards", label: `🎁 ${labels.linkRewards}` } : null,
-    allowedActionSet.has("save") || allowedActionSet.has("join") ? { href: contract.cta.marketplaceUrl, gate: "marketplace", label: `🛍 ${labels.linkMarketplace}` } : null,
-    { href: contract.cta.portalUrl, gate: "portal", label: `👤 ${labels.linkPortal}` },
-  ].filter((item): item is { href: string; gate: string; label: string } => Boolean(item));
-  const secondaryConsumerLinksHtml = secondaryConsumerLinks
-    .map((item) => `<a href="${htmlText(item.href)}" data-gated-link="${item.gate}" class="link-btn">${htmlText(item.label)}</a>`)
-    .join("");
+      : contract.iot.sensorEvidenceKind === "declared_static"
+        ? copy.lang === "en" ? "Values configured in the product manifest; they are not real-time telemetry and were not independently verified by NexID." : copy.lang === "pt-BR" ? "Valores configurados no manifesto do produto; nao sao telemetria em tempo real nem foram verificados independentemente pela NexID." : "Valores configurados en el manifiesto del producto; no son telemetria en tiempo real ni fueron verificados independientemente por NexID."
+        : copy.lang === "en" ? "No measured or reported sensor values are available." : copy.lang === "pt-BR" ? "Nao ha valores de sensores medidos ou reportados." : "No hay valores de sensores medidos ni reportados.";
+  qualityMeterHtml += `<div style="border:1px solid ${sensorEvidenceTone};background:rgba(2,6,23,.35);border-radius:12px;padding:10px;margin:12px 0 0"><b style="display:block;color:${sensorEvidenceTone};font-size:12px;letter-spacing:.04em">${sensorEvidenceLabel}</b><span style="font-size:11px;color:#cbd5e1">${sensorEvidenceExplanation}</span></div>`;
 
   return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
-  <script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.wrap{max-width:760px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%);border:1px solid rgba(34,211,238,.22)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.trust-label{display:flex;align-items:center;gap:8px}.trust-dot{width:8px;height:8px;border-radius:999px;display:inline-block}.auth-card{border-color:rgba(34,211,238,.28);box-shadow:0 8px 28px rgba(34,211,238,.08)}.auth-topline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:clamp(1.7rem,6vw,2.1rem);line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.chip-soft{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:10px;background:rgba(2,6,23,.45);min-height:72px;display:flex;flex-direction:column;justify-content:center}.kpi b{display:block;font-size:14px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.2)}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-evidence-overlay{position:absolute;inset:0;width:100%;height:100%;--sun-ocean-1:#06243c;--sun-ocean-2:#071827;--sun-ocean-3:#111136;--sun-tile-overlay:rgba(2,6,23,.16);--sun-grid-stroke:rgba(226,232,240,.055)}.atlas-tiles-light{display:none}.world-map-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-item small{display:block;margin-top:5px;color:#9fb5d9;line-height:1.35}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (hover:hover){.card{transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(2,6,23,.44)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}.trust-sticky{padding:9px 10px}.trust-label{line-height:1.25}.kpi{min-height:64px}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.world-evidence-overlay{--sun-ocean-1:#effaff;--sun-ocean-2:#e0f7ff;--sun-ocean-3:#eef4ff;--sun-tile-overlay:rgba(255,255,255,.28);--sun-grid-stroke:rgba(14,116,144,.1)}.atlas-tiles-dark{display:none}.atlas-tiles-light{display:block}.world-map-image{filter:saturate(.9) contrast(.92) brightness(1.08)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}.legend-item small{color:#475569}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
-  <style id="nexid-white-first">body{background:linear-gradient(180deg,#f8fbfd 0%,#eef5f7 100%);color:#0f172a}.card{background:#fff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#fbfeff 0%,#f1f8fa 100%);border-color:#bae6ef}.trust-sticky{background:rgba(255,255,255,.94);border-color:#a5ddea;box-shadow:0 8px 28px rgba(15,23,42,.09)}.trust-sticky .chip{background:#fff!important}.brand-mark{background:linear-gradient(160deg,#dff6fb,#c8ebf3);border-color:#8fd3e2;color:#0f172a}.brand-text,.auth-topline,.section-tag{color:#076e82}.subtitle,.hero-meta{color:#475569}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi,.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.kpi span,.journey-step span{color:#475569}.detail-item .k{color:#08768b}.detail-item .v{color:#0f172a}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}.legend-item small{color:#475569}.sensor-evidence{background:#f8fafc!important}.sensor-evidence span{color:#475569!important}.trace-story{background:linear-gradient(180deg,#f0fdff,#f8fafc)!important;border-color:#a5e5ef!important}.trace-story-head p{color:#475569!important}.trace-story>p{color:#08768b!important}.story-grid>*,.ledger-grid>*{background:#fff!important;color:#0f172a!important;border-color:#cbd5e1!important}.story-grid span,.ledger-grid span{color:#475569!important}.story-grid b,.ledger-grid b{color:#0f172a!important}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}</style>
-  <style id="nexid-mobile-passport">.trust-sticky{align-items:center}.trust-sticky__state{display:flex;align-items:center;gap:7px;min-width:0}.trust-sticky__state span:last-child{font-weight:800;white-space:nowrap}.trust-sticky__freshness{font-size:10px;font-weight:800;border:1px solid currentColor;border-radius:999px;padding:4px 8px;white-space:nowrap}.product-hero{padding:14px}.product-hero__grid{display:grid;grid-template-columns:minmax(116px,34%) 1fr;gap:15px;align-items:center}.product-hero__media{position:relative;min-height:176px;border-radius:15px;overflow:hidden;background:linear-gradient(145deg,#ecfeff,#f8fafc 52%,#eef2ff);border:1px solid #bae6ef;display:grid;place-items:center}.product-hero__media img{display:block;width:100%;height:100%;min-height:176px;object-fit:cover}.product-hero__fallback{width:76px;height:76px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(145deg,#cffafe,#bfdbfe);color:#075985;font-size:30px;font-weight:900}.product-hero__profile{position:absolute;left:8px;bottom:8px;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 4px 14px rgba(15,23,42,.12);color:#0e7490;font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.product-hero__eyebrow{margin:0;color:#08768b;font-size:10px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}.product-hero h1{margin:5px 0 4px;font-size:clamp(1.55rem,7vw,2.15rem);line-height:1.02;color:#0f172a}.product-hero__brand{margin:0;color:#334155;font-size:13px;font-weight:800}.product-hero__facts{margin:4px 0 0;color:#64748b;font-size:11px;line-height:1.4}.signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.signal-card{border:1px solid currentColor;border-radius:13px;padding:10px;background:#fff}.signal-card small{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.76}.signal-card b{display:block;margin-top:2px;font-size:14px}.signal-card p{margin:3px 0 0;color:#475569;font-size:10px;line-height:1.35}.product-primary{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;margin-top:10px;border-radius:12px;padding:12px 14px;background:linear-gradient(100deg,#0891b2,#0d9488);color:#fff;text-decoration:none;font-size:13px;font-weight:900;box-shadow:0 9px 22px rgba(8,145,178,.22)}.product-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}.read-details{margin-top:9px;border-top:1px solid #dbe7ec;padding-top:8px}.read-details summary{color:#0e7490;font-size:11px;font-weight:900}.read-details .chips{margin-top:8px}.measurement-note{margin:9px 0 0;color:#64748b;font-size:10px;line-height:1.45}.actions-grid:empty{display:none}.compact-unavailable{margin-top:9px;color:#64748b;font-size:10px}.new-nfc-read{border-color:#fcd34d!important;background:#fffbeb!important}.new-nfc-read h4{color:#92400e}.new-nfc-read p{color:#78350f!important}@media(max-width:480px){.wrap{padding:10px}.trust-sticky{top:5px}.trust-sticky__state{font-size:11px}.trust-sticky__freshness{max-width:42%;overflow:hidden;text-overflow:ellipsis}.product-hero__grid{grid-template-columns:108px 1fr;gap:11px}.product-hero__media,.product-hero__media img{min-height:154px}.signal-grid{grid-template-columns:1fr}.product-hero h1{font-size:1.5rem}.card{border-radius:16px}}</style>
-  <div class="trust-sticky"><span class="trust-sticky__state"><span class="trust-dot" style="background:${sealTone}"></span><span style="color:${sealTone}">${htmlText(sealLabel)}</span></span><span class="trust-sticky__freshness" style="color:${freshnessTone}">${htmlText(freshnessLabel)}</span></div>
-  <section class="card hero product-hero" aria-labelledby="pilot-product-title"><div class="product-hero__grid"><div class="product-hero__media">${productImageUrl ? `<img src="${htmlText(productImageUrl)}" alt="${htmlText(productName)}" loading="eager" decoding="async"/>` : `<div class="product-hero__fallback" aria-hidden="true">Ni</div>`}<span class="product-hero__profile">Perfil oficial del piloto</span></div><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">Pasaporte digital nexID</span></div><p class="product-hero__eyebrow">${htmlText(productBrand)}</p><h1 id="pilot-product-title">${htmlText(productName)}</h1><p class="product-hero__brand">${htmlText(digitalTagLabel)}</p>${productFacts ? `<p class="product-hero__facts">${htmlText(productFacts)}</p>` : ""}<div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ?'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ?'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ?'active' : ''}">EN</a></div></div></div><div class="signal-grid"><div class="signal-card" style="color:${sealTone};background:${isOpenedState || ttRequiresReview ? '#fff7ed' : '#f0fdf4'}"><small>Estado electrónico del sello</small><b>${htmlText(sealLabel)}</b><p>${htmlText(sealSummary)}</p></div><div class="signal-card" style="color:${freshnessTone};background:${isRepeatedRead ? '#fffbeb' : '#f0f9ff'}"><small>Frescura del enlace SUN</small><b>${htmlText(freshnessLabel)}</b><p>${htmlText(freshnessSummary)}</p></div></div><a class="product-primary" href="${htmlText(primaryActionHref)}">${htmlText(primaryActionLabel)} →</a><p class="measurement-note">La validación NFC, el contador y el estado TT pertenecen a esta lectura. El perfil de producto es el configurado oficialmente para el piloto. No se infiere el contenido ni la custodia física.</p><details class="read-details"><summary>Ver identificadores y política de esta lectura</summary><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip">TT ${reportedTtRaw || 'N/D'}</span><span class="chip">${qualitySummary}</span></div><p class="subtitle" style="margin-top:8px">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span></div></details></section>
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.wrap{max-width:760px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%);border:1px solid rgba(34,211,238,.22)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.trust-label{display:flex;align-items:center;gap:8px}.trust-dot{width:8px;height:8px;border-radius:999px;display:inline-block}.auth-card{border-color:rgba(34,211,238,.28);box-shadow:0 8px 28px rgba(34,211,238,.08)}.auth-topline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:clamp(1.7rem,6vw,2.1rem);line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.chip-soft{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:10px;background:rgba(2,6,23,.45);min-height:72px;display:flex;flex-direction:column;justify-content:center}.kpi b{display:block;font-size:14px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.2)}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%;--sun-ocean-1:#06243c;--sun-ocean-2:#071827;--sun-ocean-3:#111136;--sun-tile-overlay:rgba(2,6,23,.16);--sun-grid-stroke:rgba(226,232,240,.055)}.atlas-tiles-light{display:none}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (hover:hover){.card{transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(2,6,23,.44)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}.trust-sticky{padding:9px 10px}.trust-label{line-height:1.25}.kpi{min-height:64px}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.world-route-overlay{--sun-ocean-1:#effaff;--sun-ocean-2:#e0f7ff;--sun-ocean-3:#eef4ff;--sun-tile-overlay:rgba(255,255,255,.28);--sun-grid-stroke:rgba(14,116,144,.1)}.atlas-tiles-dark{display:none}.atlas-tiles-light{display:block}.world-map-image{filter:saturate(.9) contrast(.92) brightness(1.08)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <div class="trust-sticky"><span class="trust-label"><span class="trust-dot" style="background:${authRibbonTone}"></span><b>${copy.authPanel}:</b> <span style="color:${authRibbonTone};font-weight:700">${contract.status.label}</span></span><span class="chip" style="margin-top:0;border-color:${riskTone};color:${riskTone};background:rgba(2,6,23,.36)">${riskLevelLabel}</span></div>
+  <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p><div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ?'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ?'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ?'active' : ''}">EN</a></div></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ?"pulse-ok" : ""}">${qualitySummary}</span></div>${qualityMeterHtml}<div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${tokenizationStatusLabel}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
+  <section class="card auth-card"><div class="auth-topline">Trust signal</div><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">${labels.dashboardSync}</span></div></section>
   <section class="card"><div class="section-head"><h3>${copy.identityPanel}</h3><span class="section-tag">${labels.wineProfile}</span></div><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.varietal}</span><span class="v">${contract.product.varietal || '-'}</span></div><div class="detail-item"><span class="k">${labels.vintage}</span><span class="v">${contract.product.vintage || '-'}</span></div><div class="detail-item"><span class="k">${labels.harvest}</span><span class="v">${contract.product.harvestYear || '-'}</span></div><div class="detail-item"><span class="k">${labels.barrel}</span><span class="v">${contract.product.barrelMonths || '-'} ${labels.months}</span></div><div class="detail-item"><span class="k">${labels.alcohol}</span><span class="v">${contract.product.alcohol || '-'}</span></div><div class="detail-item"><span class="k">${labels.serving}</span><span class="v">${contract.product.serving || '-'}</span></div></div><p style="margin-top:10px">${labels.bottleFormat}: <b>${contract.product.bottle || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.provenancePanel}</h3><span class="section-tag">${labels.traceability}</span></div><p>${labels.origin}: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
-  <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p>${sensorEvidenceHtml}<details><summary style="font-weight:700;color:#08768b">Cómo se identifica la procedencia</summary><p class="subtitle" style="margin-top:7px">La plataforma admite datos configurados manualmente por el tenant, importados por CSV/JSON o recibidos desde un sensor en vivo. Cada valor debe conservar fuente, fecha y alcance de privacidad; si esa procedencia no llega en el evento, se muestra como no informada.</p></details></section>
-  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${tapLocationAvailable ?` · (${tapLat}, ${tapLng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceLabel}</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div><div class="detail-item"><span class="k">${locationEvidenceTitle}</span><span class="v">${htmlText(tapLocationEvidenceLabel)}</span></div></div>
-  <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasMap}</div>${mapLegendHtml}</div>
+  <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
+  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ?` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceLabel}</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
+  <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasSvg}</div>${mapLegendHtml}</div>
   <div class="trace-story" style="margin-top:10px;border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(8,47,73,.44),rgba(15,23,42,.28))"><div class="trace-story-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><h4 style="margin:0;font-size:14px">${labels.mapStoryTitle}</h4><p style="margin:2px 0 0;color:#9fb5d9;font-size:11px">${labels.mapStorySubtitle}</p></div><span class="section-tag">${labels.mapLedgerTitle}</span></div><div class="story-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">${traceStoryHtml}</div><div class="ledger-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:8px">${traceLedgerHtml}</div><p style="margin:9px 0 0;font-size:11px;color:#a7f3d0">${labels.mapInvestorSignal}: ${contract.provenance.timelineSummary.length} ${labels.events}, ${routeDistanceLabel}, ${htmlText(tokenProof)}. ${labels.mapConsumerSignal}: ${labels.linkPortal} + ${labels.linkRewards}.</p></div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${routeSummaryText}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>${labels.statusLabel}: <b>${contract.tokenization.status}</b> · ${labels.networkLabel}: <b>${contract.tokenization.network || '-'}</b></p><p>${labels.tokenIdLabel}: ${contract.tokenization.tokenId || '-'} · ${labels.txLabel}: ${contract.tokenization.txHash || '-'}</p></section>
   <section class="card">
     <details>
-      <summary style="font-weight:700;cursor:pointer;color:#08768b;outline:none">${technicalProofLabel}</summary>
+      <summary style="font-weight:700;cursor:pointer;color:#7dd3fc;outline:none">Ver Digital Proofs (Trust Layer)</summary>
       <div style="margin-top:10px;font-size:12px;color:#cbd5e1">
-        <p style="margin:4px 0"><b>Evidencia digital del tag:</b> ${digitalTagValidated ? '<span style="color:#22c55e">Mensaje NXP SUN validado; no certifica el producto físico</span>' : '<span style="color:#ef4444">No validada</span>'}</p>
+        <p style="margin:4px 0"><b>Evidencia digital del tag:</b> ${contract.status.code === 'VALID' || contract.status.code === 'OPENED' ? '<span style="color:#22c55e">Mensaje NXP SUN validado; no certifica el producto físico</span>' : '<span style="color:#ef4444">No validada</span>'}</p>
         <p style="margin:4px 0"><b>Capa de tokenización:</b> ${contract.tokenization.status === 'minted' && contract.tokenization.txHash ? '<span style="color:#22c55e">Transacción Polygon reportada; ownership sujeto a policy y aprobación</span>' : 'Sin transacción confirmada en esta vista'}</p>
         <p style="margin:4px 0"><b>Evidencia IOTA:</b> No expuesta por este pasaporte; validar hash, tx y explorer en Chain Lab.</p>
         <p style="margin:4px 0"><b>Ref:</b> ${contract.identity.eventId || '-'}</p>
-        ${ttTechnicalHtml}
       </div>
     </details>
   </section>
-  <section id="consumer-actions" class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${isRepeatedRead ? freshnessSummary : "Elegí una acción disponible para este producto y esta política."}</p>${isRepeatedRead ? `<div id="new-nfc-read" class="journey-step new-nfc-read"><h4 style="margin:0 0 4px">Generá una lectura nueva</h4><p style="margin:0;font-size:12px;line-height:1.5">Desbloqueá el teléfono, acercalo nuevamente a la etiqueta física y abrí la nueva notificación. No recargues ni reutilices este enlace.</p></div>` : ""}${secondaryConsumerLinksHtml ? `<div class="actions-grid" style="margin-bottom:8px">${secondaryConsumerLinksHtml}</div>` : ""}${enabledActionButtonsHtml ? `<div class="actions-grid">${enabledActionButtonsHtml}</div>` : ""}${unavailableActionCount > 0 ? `<details class="compact-unavailable"><summary>${unavailableActionCount} ${unavailableActionCount === 1 ? "acción requiere" : "acciones requieren"} otra validación</summary><p>Las opciones no habilitadas no se muestran como botones. Pueden requerir un tap nuevo, identidad, comprobante o aprobación de la marca.</p></details>` : ""}<button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#475569">${isRiskBlocked ?copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#64748b">${labels.tapHelp}</p></section>
+  <section class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${labels.actionSubtitle}</p><div class="journey-steps"><div class="journey-step"><b>${labels.journey1}</b><span>${labels.journey1Desc}</span></div><div class="journey-step"><b>${labels.journey2}</b><span>${labels.journey2Desc}</span></div><div class="journey-step"><b>${labels.journey3}</b><span>${labels.journey3Desc}</span></div></div><div class="actions-grid" style="margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" class="link-btn" style="color:#a5f3fc;background:rgba(6,182,212,.12)">🛍 ${labels.linkMarketplace} ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" class="link-btn" style="color:#ddd6fe;background:rgba(139,92,246,.12)">🎁 ${labels.linkRewards}</a><a href="${contract.cta.registerUrl}" data-gated-link="register" class="link-btn" style="color:#d1fae5;background:rgba(16,185,129,.12)">🧾 ${labels.linkRegister}</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" class="link-btn" style="color:#dbeafe;background:rgba(59,130,246,.12)">👤 ${labels.linkPortal}</a></div><div class="actions-grid"><button type="button" data-cta="claim-ownership" ${contract.cta.claimOwnership ?"" : "disabled"}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${contract.cta.registerWarranty ?"" : "disabled"}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance" ${contract.cta.provenance ?"" : "disabled"}>📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${contract.cta.tokenize ?"" : "disabled"}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isRiskBlocked ?copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">${labels.tapHelp}</p>${shareToken ?"" : `<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">${labels.demoMode}</p>`}</section>
 <script>
 (() => {
   const share = ${serializeForInlineScript(shareToken)};
@@ -2796,124 +2680,6 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
   const uid = '';
   const copy = ${serializeForInlineScript(copy)};
   const labels = ${serializeForInlineScript(labels)};
-  const sunMapData = ${serializeForInlineScript(sunMapPayload)};
-  const initSunMap = () => {
-    const container = document.getElementById('nexid-sun-map');
-    if (!container) return;
-    if (!window.maplibregl) {
-      const status = container.querySelector('.world-map-loading');
-      if (status) status.textContent = 'No se pudo iniciar MapLibre. La evidencia textual sigue disponible.';
-      container.setAttribute('data-map-state', 'error');
-      return;
-    }
-      // The public post-tap passport is white-first on every device. It must not
-      // inherit a dark OS preference and surprise a user after the physical tap.
-      const prefersLight = true;
-    const baseMapStyle = sunMapData.tileTemplate
-      ? {
-          version: 8,
-          sources: {
-            basemap: {
-              type: 'raster',
-              tiles: [sunMapData.tileTemplate],
-              tileSize: 256,
-              attribution: sunMapData.attribution,
-            },
-          },
-          layers: [
-            { id: 'sun-map-background', type: 'background', paint: { 'background-color': prefersLight ? '#eaf7fb' : '#061322' } },
-            { id: 'sun-map-basemap', type: 'raster', source: 'basemap' },
-          ],
-        }
-      : (prefersLight ? sunMapData.styleUrl : sunMapData.darkStyleUrl);
-    const map = new window.maplibregl.Map({
-      container,
-      style: baseMapStyle,
-      center: [sunMapData.tap.lng, sunMapData.tap.lat],
-      zoom: 8,
-      attributionControl: false,
-      cooperativeGestures: true,
-      fadeDuration: 0,
-    });
-    map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-    map.addControl(new window.maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
-    map.addControl(new window.maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-    map.on('error', (event) => {
-      if (!event || !event.error) return;
-      let status = container.querySelector('.world-map-loading');
-      if (!status) {
-        status = document.createElement('div');
-        status.className = 'world-map-loading';
-        status.setAttribute('role', 'status');
-        status.style.cssText = 'position:absolute;left:12px;right:12px;top:58px;z-index:5;padding:10px 12px;border:1px solid rgba(251,191,36,.45);border-radius:10px;background:rgba(69,26,3,.92);color:#fef3c7;font:600 12px/1.45 system-ui,sans-serif;text-align:center';
-        container.appendChild(status);
-      }
-      status.textContent = 'Algunas teselas no se pudieron cargar. La evidencia textual sigue disponible.';
-      container.setAttribute('data-map-state', 'degraded');
-    });
-    map.on('load', () => {
-      const mapPoints = [sunMapData.origin, sunMapData.tap].filter(Boolean);
-      map.addSource('sun-location-evidence', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: mapPoints.map((point) => ({
-            type: 'Feature',
-            properties: { id: point.id, label: point.label, detail: point.detail, tone: point.tone },
-            geometry: { type: 'Point', coordinates: [point.lng, point.lat] },
-          })),
-        },
-      });
-      map.addLayer({
-        id: 'sun-location-halo',
-        type: 'circle',
-        source: 'sun-location-evidence',
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 12, 11, 28],
-          'circle-color': ['match', ['get', 'tone'], 'origin', 'rgba(52,211,153,.2)', 'rgba(249,115,22,.2)'],
-          'circle-stroke-color': ['match', ['get', 'tone'], 'origin', '#34d399', '#f97316'],
-          'circle-stroke-width': 1,
-        },
-      });
-      map.addLayer({
-        id: 'sun-location-points',
-        type: 'circle',
-        source: 'sun-location-evidence',
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 5, 11, 8],
-          'circle-color': ['match', ['get', 'tone'], 'origin', '#34d399', '#f97316'],
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 2,
-        },
-      });
-      if (mapPoints.length > 1) {
-        const bounds = new window.maplibregl.LngLatBounds();
-        mapPoints.forEach((point) => bounds.extend([point.lng, point.lat]));
-        map.fitBounds(bounds, { padding: 56, maxZoom: 9, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550 });
-      }
-      const status = container.querySelector('.world-map-loading');
-      if (status && container.getAttribute('data-map-state') !== 'degraded') status.remove();
-      if (container.getAttribute('data-map-state') !== 'degraded') container.setAttribute('data-map-state', 'ready');
-    });
-    map.on('click', 'sun-location-points', (event) => {
-      const feature = event.features && event.features[0];
-      const coordinates = feature && feature.geometry && feature.geometry.coordinates;
-      if (!feature || !Array.isArray(coordinates)) return;
-      const popup = document.createElement('div');
-      const title = document.createElement('strong');
-      const detail = document.createElement('span');
-      title.textContent = String(feature.properties.label || 'Ubicación reportada');
-      detail.textContent = String(feature.properties.detail || '');
-      detail.style.display = 'block';
-      detail.style.marginTop = '4px';
-      popup.append(title, detail);
-      new window.maplibregl.Popup({ closeButton: false }).setLngLat(coordinates).setDOMContent(popup).addTo(map);
-    });
-    map.on('mouseenter', 'sun-location-points', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'sun-location-points', () => { map.getCanvas().style.cursor = ''; });
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSunMap, { once: true });
-  else initSunMap();
   const ui = copy.lang === 'pt-BR'
     ?{
       askContact: 'Informe seu e-mail ou telefone para registrar/associar ao tenant:',
@@ -3307,6 +3073,15 @@ export async function GET(req: Request): Promise<Response> {
   if (!HEX_RE.test(enc) || enc.length !== 32) return malformed('invalid enc hex (expected 32 hex chars)');
   if (!HEX_RE.test(cmac) || cmac.length !== 16) return malformed('invalid cmac hex (expected 16 hex chars)');
 
+  const locationSource = edgeCoordinate ? "edge_ip_approx" : "none";
+  const geoPrecision = edgeCoordinate ? "ip" : "none";
+  const publicLocationMetadata = {
+    geo_evidence: {
+      source: locationSource,
+      precision: edgeCoordinate ? "ip_approximate" : "none",
+      consent: false,
+    },
+  };
   const sunScanInput = {
     bid,
     piccDataHex: picc_data,
@@ -3324,6 +3099,7 @@ export async function GET(req: Request): Promise<Response> {
       meta: {
         trace_id: traceId,
         request_id: req.headers.get('x-request-id') || null,
+        ...publicLocationMetadata,
       },
     },
   };
@@ -3367,6 +3143,15 @@ export async function GET(req: Request): Promise<Response> {
   let uid = result.body.uid || null;
   let eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   let ctr = typeof result.body.ctr === 'number' ?result.body.ctr : null;
+  if (eventId && edgeCoordinate) {
+    await persistSunRequestLocation({
+      eventId,
+      lat: edgeCoordinate.lat,
+      lng: edgeCoordinate.lng,
+      city: geoCity,
+      country: geoCountry,
+    }).catch(() => false);
+  }
   if (uid && ctr != null) {
     const uidCtrRate = await safeHitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
     if (uidCtrRate.unavailable && shouldFailClosedSunRateLimit()) {
@@ -3389,12 +3174,16 @@ export async function GET(req: Request): Promise<Response> {
     ? null
     : await withTimeout(getBatchSunContext(bid), 2500, "sun_batch_context").catch(() => null);
   const passport = tagPassport || batchContext;
-  const timeline = await withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]);
-  const hasTokenizeRequest = uid
-    ? await withTimeout(listDemoCta(bid, uid), 2500, "sun_cta_status")
-      .then((actions) => actions.some((item) => String(item.action || "") === "tokenize_request"))
-      .catch(() => false)
-    : false;
+  const [timeline, sdkSensorTimeline, hasTokenizeRequest] = await Promise.all([
+    withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]),
+    withTimeout(getSdkSensorTimelineSummary({ tenantId: passport?.tenant_id, bid, uid }), 2500, "sun_sdk_sensor_timeline")
+      .catch(() => [] as TimelineEvent[]),
+    uid
+      ? withTimeout(listDemoCta(bid, uid), 2500, "sun_cta_status")
+        .then((actions) => actions.some((item) => String(item.action || "") === "tokenize_request"))
+        .catch(() => false)
+      : Promise.resolve(false),
+  ]);
   const contract = buildPublicContract({
     bid,
     uid,
@@ -3402,12 +3191,17 @@ export async function GET(req: Request): Promise<Response> {
     result: result.body,
     passport,
     timeline,
+    sensorTimeline: sdkSensorTimeline,
     tap: {
       userAgent: ua,
       city: geoCity,
       country: geoCountry,
       lat: geoLat,
       lng: geoLng,
+      locationSource,
+      geoPrecision,
+      locationAccuracyM: null,
+      metadata: publicLocationMetadata,
     },
   });
   (contract as Record<string, unknown>).trace_id = traceId;
@@ -3586,7 +3380,6 @@ export async function GET(req: Request): Promise<Response> {
             console.warn("[sun_snapshot_access_unavailable]", JSON.stringify({
               traceId,
               diagnosticId,
-              reasonCode: classifySunHandoffFailure(error),
               reason: sanitizePublicErrorReason(error instanceof Error ?error.message : "snapshot_access_error"),
             }));
             return null;
@@ -3610,7 +3403,6 @@ export async function GET(req: Request): Promise<Response> {
             console.warn("[sun_fresh_handoff_unavailable]", JSON.stringify({
               traceId,
               diagnosticId,
-              reasonCode: classifySunHandoffFailure(error),
               reason: sanitizePublicErrorReason(error instanceof Error ?error.message : "fresh_handoff_error"),
             }));
             return null;

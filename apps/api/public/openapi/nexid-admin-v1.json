@@ -8,6 +8,27 @@
   "servers": [{ "url": "https://api.nexid.lat" }],
   "security": [{ "AdminBearer": [] }],
   "paths": {
+    "/admin/sun/physical-taps": {
+      "get": {
+        "operationId": "listTenantPhysicalTaps",
+        "summary": "List recent tenant-scoped real TAP events with separate message and seal state",
+        "description": "Returns source=real canonical TAP events. UID values are masked. A closed/opened comparison describes independent physical TAP events and never implies that two different UIDs are one product journey. Physical TT evidence is asserted only when an append-only SUN TT truth receipt is BOUND.",
+        "x-nexid-permissions": ["analytics:read", "events.read_sensitive"],
+        "parameters": [
+          { "name": "tenant", "in": "query", "description": "Required for super-admin; tenant sessions remain bound to their own tenant.", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "bid", "in": "query", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "range", "in": "query", "schema": { "type": "string", "enum": ["24h", "7d", "30d", "90d"], "default": "30d" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Recent real TAP projection", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PhysicalTapListResponse" } } } },
+          "400": { "$ref": "#/components/responses/AdminError" },
+          "401": { "$ref": "#/components/responses/AdminError" },
+          "403": { "$ref": "#/components/responses/AdminError" },
+          "503": { "$ref": "#/components/responses/AdminError" }
+        }
+      }
+    },
     "/admin/risk-analytics": {
       "get": {
         "operationId": "readExplainableRiskAnalytics",
@@ -77,6 +98,74 @@
     "securitySchemes": { "AdminBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "opaque revocable admin session" } },
     "responses": { "AdminError": { "description": "No-store administration error" } },
     "schemas": {
+      "PhysicalTapListResponse": {
+        "type": "object",
+        "required": ["ok", "scope", "availability", "summary", "rows"],
+        "properties": {
+          "ok": { "const": true },
+          "scope": {
+            "type": "object",
+            "required": ["tenant", "bid", "source", "range", "limit"],
+            "properties": {
+              "tenant": { "type": "string" },
+              "bid": { "type": "string" },
+              "source": { "const": "real" },
+              "range": { "type": "string", "enum": ["24h", "7d", "30d", "90d"] },
+              "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+            },
+            "additionalProperties": false
+          },
+          "availability": { "const": "available" },
+          "summary": {
+            "type": "object",
+            "required": ["total", "closed", "opened", "other", "distinctUnits", "latestAt", "comparisonAvailable", "comparisonMeaning"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0 },
+              "closed": { "type": "integer", "minimum": 0 },
+              "opened": { "type": "integer", "minimum": 0 },
+              "other": { "type": "integer", "minimum": 0 },
+              "distinctUnits": { "type": "integer", "minimum": 0 },
+              "latestAt": { "type": ["string", "null"], "format": "date-time" },
+              "comparisonAvailable": { "type": "boolean" },
+              "comparisonMeaning": { "const": "independent_physical_taps_not_a_product_journey" }
+            },
+            "additionalProperties": false
+          },
+          "rows": { "type": "array", "maxItems": 100, "items": { "$ref": "#/components/schemas/PhysicalTapEvent" } }
+        },
+        "additionalProperties": false
+      },
+      "PhysicalTapEvent": {
+        "type": "object",
+        "required": ["eventId", "tenantSlug", "bid", "uidMasked", "messageValid", "sealState", "reportedState", "result", "verdict", "source", "dataMode", "readCounter", "occurredAt", "location", "evidence"],
+        "properties": {
+          "eventId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "tenantSlug": { "type": "string" },
+          "bid": { "type": "string" },
+          "productName": { "type": ["string", "null"] },
+          "uidMasked": { "type": "string", "description": "Display-only masked UID; raw UID is not returned." },
+          "messageValid": { "type": "boolean", "description": "Authentication/policy validity independent of the reported seal state." },
+          "sealState": { "type": "string", "enum": ["closed", "opened", "other"] },
+          "reportedState": { "type": "string" },
+          "result": { "type": "string" },
+          "verdict": { "type": "string" },
+          "source": { "const": "real" },
+          "dataMode": { "const": "physical_real" },
+          "readCounter": { "type": ["number", "null"] },
+          "occurredAt": { "type": "object", "additionalProperties": true },
+          "location": { "type": "object", "description": "Persisted approximate location evidence. No raw IP is returned.", "additionalProperties": true },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["physical_nfc_tt_evidenced", "real_tap_event_carrier_unconfirmed"] },
+              "ttEvidenceAuthority": { "type": "string", "enum": ["nexid_tt_durable_receipt", "not_reported"] },
+              "physicalPackagingMeaning": { "const": "integration_dependent" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RiskAnalyticsResponse": {
         "type": "object",
         "required": ["ok", "tenantScoped", "scopes", "kpis", "triggered_rules", "events"],

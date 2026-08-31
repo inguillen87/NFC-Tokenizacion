@@ -12,6 +12,8 @@ import { ExecutiveRealtimeCrm } from "./executive-realtime-crm";
 import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
 import { CustomerGrowthCommandCenter } from "./customer-growth-command-center";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
+import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
+import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
 import type { RealtimeAvailability, RealtimeDataSource, RealtimeStreamSource } from "../lib/realtime-feed";
 import {
   LayoutDashboard,
@@ -61,6 +63,7 @@ interface DashboardHomeClientProps {
   activeTags: number;
   plannedTags: number;
   mintedTokens: number;
+  physicalTapsResult: PhysicalTapsResult;
   clerkEnabled?: boolean;
 }
 
@@ -106,6 +109,7 @@ export default function DashboardHomeClient({
   importedTags,
   activeTags,
   plannedTags,
+  physicalTapsResult,
   mintedTokens,
   clerkEnabled
 }: DashboardHomeClientProps) {
@@ -188,6 +192,7 @@ export default function DashboardHomeClient({
               initialAvailabilityDetail={realtimeAvailabilityDetail}
               onSectionChange={(section) => setActiveTab(section)}
             />
+            <PhysicalTapsCommandCenter compact result={physicalTapsResult} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} />
           </div>
         )}
 

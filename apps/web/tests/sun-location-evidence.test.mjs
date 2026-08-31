@@ -10,10 +10,12 @@ import {
   resolveSunCurrentTapPlace,
 } from "../src/app/sun/sun-location-evidence.ts";
 
-const [sunPage, sunApi, diagnostics] = await Promise.all([
+const [sunPage, sunApi, diagnostics, locationExperience, passportMap] = await Promise.all([
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../../../apps/api/src/app/sun/route.ts", import.meta.url), "utf8"),
   readFile(new URL("../../../apps/api/src/lib/sun-diagnostics.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/sun/sun-location-experience.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/sun/sun-passport-map.tsx", import.meta.url), "utf8"),
 ]);
 
 test("SUN location evidence accepts only complete WGS84 coordinate pairs", () => {
@@ -76,35 +78,43 @@ test("SUN heat density counts observed events, groups repeated coordinates and n
   assert.match(clusters[0].sourceLabel, /aproximada/i);
 });
 
-test("SUN mobile map keeps declared origin in demos and uses one consented point for consumers", () => {
-  assert.match(sunPage, /scans: point\.count/);
-  assert.match(sunPage, /const opsMapPoints = isDemoPreview \? \[\.\.\.demoOriginMapPoints, \.\.\.observedMapPoints\] : observedMapPoints/);
-  assert.match(sunPage, /const consumerCurrentTapMapPoints: GlobalOpsPoint\[\] = hasConsentedDeviceLocation/);
-  assert.match(sunPage, /points=\{isDemoPreview \? opsMapPoints : consumerCurrentTapMapPoints\}/);
-  assert.match(sunPage, /routes=\{isDemoPreview \? opsMapRoutes : \[\]\}/);
-  assert.match(sunPage, /allowViewToggle=\{false\}/);
-  assert.doesNotMatch(sunPage, /scans: reportedScanCount/);
-  assert.match(sunPage, /no dibujamos una estimación por IP como si fuera tu ubicación/i);
+test("SUN mobile map renders only declared origin and the current consented tap", () => {
+  assert.match(sunPage, /const resolvedOriginCoords = isUsableCoordinate\(wineryCoordinates\?\.lat, wineryCoordinates\?\.lng\)/);
+  assert.match(sunPage, /const hasCurrentTapCoords = isUsableCoordinate\(result\.tapContext\?\.lat, result\.tapContext\?\.lng\)/);
+  assert.match(sunPage, /<SunLocationExperience[\s\S]*?origin=\{wineryPoint\[0\] \?[\s\S]*?tap=\{currentTapPoint\[0\] \?/);
+  assert.match(sunPage, /showRoute=\{isDemoPreview\}/);
+  assert.match(sunPage, /isConsentedBrowserLocationSource\(rawLocationSource\)/);
+  assert.match(sunPage, /No es tu posición:[\s\S]*?puede ubicarte en otra ciudad/);
+  assert.match(locationExperience, /const effectiveTap = confirmedTap \|\| tap/);
+  assert.match(locationExperience, /externalTiles=\{showRoute\}/);
+  assert.match(passportMap, /data-route-mode=\{showRoute \? "demo" : "no-route"\}/);
+  assert.match(passportMap, /externalTiles \? mapStyleForTheme\(isLightTheme\(\)\) : localCoordinateStyle\(isLightTheme\(\)\)/);
+  assert.match(passportMap, /Vista local sin solicitudes automáticas a proveedores de mapas externos/);
+  assert.doesNotMatch(sunPage, /GlobalOpsMap|opsMapPoints|consumerCurrentTapMapPoints/);
 });
 
 test("SUN API and snapshots preserve location source, accuracy and event identity", () => {
-  assert.match(sunApi, /eventId\?: string \| null/);
-  assert.match(sunApi, /locationSource\?: string \| null/);
-  assert.match(sunApi, /accuracyM\?: number \| null/);
-  assert.match(sunApi, /eventId: null/);
+  assert.match(sunApi, /locationSource: params\.tap\.locationSource/);
+  assert.match(sunApi, /accuracyM: publicTapLocation\.lat != null \? params\.tap\.locationAccuracyM : null/);
   assert.doesNotMatch(sunApi, /e\.id::text AS event_id/);
   assert.match(diagnostics, /resolveCurrentSnapshotTapLocation/);
+  assert.match(diagnostics, /WHERE event\.id = \$\{eventId\}::bigint[\s\S]*?event\.bid[\s\S]*?event\.uid_hex/);
+  assert.match(diagnostics, /post_tap_location_observation/);
+  assert.match(diagnostics, /browser_geolocation_approximate_consent/);
+  assert.match(diagnostics, /browser_gps_approximate_consent/);
   assert.match(diagnostics, /normalizeSnapshotContractFromCurrentTap/);
-  assert.match(diagnostics, /locationSource: tap\.source/);
+  assert.match(diagnostics, /sanitizePublicLocationProjection/);
+  assert.match(diagnostics, /locationSource: source \|\| "none"/);
+  assert.match(diagnostics, /timelineSummary: \[currentTimelineEvent\]/);
 });
 
-test("SUN legacy HTML shows only reported map evidence and never fabricates a route or global activity", () => {
-  assert.match(sunApi, /const tapLocationAvailable = tapLat !== null && tapLng !== null/);
-  assert.match(sunApi, /const linearReferenceAvailable = declaredOriginAvailable && tapLocationAvailable/);
-  assert.match(sunApi, /Reported location; source not specified/);
-  assert.match(sunApi, /Referencia declarada; no es una lectura observada ni suma intensidad/);
-  assert.match(sunApi, /world-evidence-overlay/);
-  assert.doesNotMatch(sunApi, /const atlasLights/);
-  assert.doesNotMatch(sunApi, /animateMotion/);
-  assert.doesNotMatch(sunApi, /stroke-dashoffset/);
+test("browser SUN requests redirect to the clean web passport while legacy HTML stays explicit and noindex", () => {
+  assert.match(sunApi, /function wantsInlineApiHtml\(url: URL\)/);
+  assert.match(sunApi, /view === "api-html" \|\| view === "legacy-html"/);
+  assert.match(sunApi, /const webTarget = wantsInlineApiHtml\(url\)[\s\S]*?: buildWebSunSnapshotUrl/);
+  assert.match(sunApi, /return Response\.redirect\(webTarget, 303\)/);
+  assert.match(sunApi, /'x-robots-tag': 'noindex, nofollow'/);
+  assert.match(sunApi, /public_checkpoint[\s\S]*?visibility[\s\S]*?public/);
+  assert.match(sunApi, /Product history is tenant-published and deliberately coarse/);
+  assert.doesNotMatch(sunApi, /e\.id::text AS event_id/);
 });
