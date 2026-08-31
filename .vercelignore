@@ -12,12 +12,13 @@ coverage
 test-results
 
 # Local Codex/dev artifacts that should never be uploaded to Vercel.
-artifacts
-tmp
-.codex
-.codex-logs
-.codex-run-logs
-.codex-*.log
+/artifacts
+/tmp
+/.codex
+/.codex-logs
+/.codex-run-logs
+/.codex-tmp
+/.codex-*.log
 *.log
 
 # Local one-off NFC/debug helpers.
