@@ -83,3 +83,14 @@ test("SUN light product media and map chrome use readable light containers", () 
   assert.match(mapCss, /:global\(html\[data-theme="light"\]\) \.locationIndex,[\s\S]*?color: #0f766e;/);
   assert.match(mapCss, /:global\(html\[data-theme="light"\]\) \.locationIndexTap,[\s\S]*?color: #1d4ed8;/);
 });
+
+test("SUN services and engagement use explicit white-first semantic surfaces", () => {
+  assert.match(sunSource, /sun-services-card/);
+  assert.match(sunSource, /sun-services-action/);
+  assert.match(sunSource, /sun-engagement-suite/);
+  assert.match(sunSource, /sun-engagement-tabs/);
+  assert.match(lightContract, /\.sun-services-card,[\s\S]*?background: rgba\(255, 255, 255, 0\.97\) !important;/);
+  assert.match(lightContract, /\.sun-engagement-suite,[\s\S]*?background: rgba\(255, 255, 255, 0\.97\) !important;/);
+  assert.match(lightContract, /\.sun-services-action,[\s\S]*?background: rgba\(248, 250, 252, 0\.98\) !important;/);
+  assert.match(lightContract, /\.sun-engagement-tabs,[\s\S]*?background: rgba\(241, 245, 249, 0\.96\) !important;/);
+});

@@ -84,7 +84,7 @@ export function SunLocationExperience({
   return (
     <>
       {telemetry.enabled ? (
-        <div id="tap-location-consent" className="scroll-mt-24">
+        <div id="tap-location-consent" className="scroll-mt-24" data-sun-dock-avoid>
           <TapPrecisionTelemetry {...telemetry} onLocationConfirmed={onLocationConfirmed} />
         </div>
       ) : null}

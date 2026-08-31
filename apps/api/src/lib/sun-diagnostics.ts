@@ -3,6 +3,7 @@ import { verifySunFreshHandoffToken } from './sun-fresh-handoff';
 import { createPublicCertificateShareToken } from './public-certificate-share';
 import { redactSensitiveQueryValues, sanitizePublicLocationProjection } from './approximate-location';
 import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from './sun-sensor-evidence';
+import { resolvePublicLotLabel } from './public-lot-label';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -68,6 +69,7 @@ type CurrentSnapshotIdentity = {
   tenant_vertical?: string | null;
   product_label?: string | null;
   club_name?: string | null;
+  public_lot_label?: string | null;
   product_name?: string | null;
   sku?: string | null;
   winery?: string | null;
@@ -187,6 +189,12 @@ async function resolveCurrentSnapshotIdentity(meta: { bid?: string | null; uidHe
         tenant_vertical,
         product_label,
         club_name,
+        COALESCE(
+          NULLIF(btrim(batch_config->>'public_lot_label'), ''),
+          NULLIF(btrim(batch_config->>'lot'), ''),
+          NULLIF(btrim(batch_config->>'batch_lot'), ''),
+          NULLIF(btrim(batch_config->>'lot_number'), '')
+        ) AS public_lot_label,
         COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_product_name, '') END, NULLIF(batch_config->>'product_name', ''), NULLIF(batch_config #>> '{sun,product,name}', '')) AS product_name,
         COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_sku, '') END, NULLIF(batch_config->>'sku', ''), NULLIF(batch_config #>> '{sun,product,sku}', '')) AS sku,
         COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_winery, '') END, NULLIF(batch_config->>'winery', ''), NULLIF(batch_config #>> '{sun,product,producer}', ''), tenant_name) AS winery,
@@ -239,6 +247,8 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
   const provenance = asRecord(contract.provenance);
   const iot = asRecord(contract.iot);
   const identity = asRecord(contract.identity);
+  const product = asRecord(contract.product);
+  const publicLotLabel = resolvePublicLotLabel({ public_lot_label: currentIdentity.public_lot_label });
   const productName = textOrNull(currentIdentity.product_name);
   const winery = textOrNull(currentIdentity.winery || currentIdentity.tenant_name);
   const region = textOrNull(currentIdentity.region || currentIdentity.origin_label);
@@ -260,6 +270,7 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
     tenantSlug: currentIdentity.tenant_slug || identity.tenantSlug || null,
     tenantId: currentIdentity.tenant_id || identity.tenantId || null,
     uidMasked: identity.uidMasked || currentIdentity.uid_masked || contract.uidMasked || null,
+    displayLot: publicLotLabel || textOrNull(identity.displayLot) || null,
   };
   contract.tenant = {
     ...tenant,
@@ -271,7 +282,9 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
     clubName: currentIdentity.club_name || tenant.clubName || null,
   };
   contract.product = {
+    ...product,
     name: productName || currentIdentity.sku || "Producto asociado",
+    lotLabel: publicLotLabel || textOrNull(product.lotLabel) || null,
     sku: currentIdentity.sku || null,
     winery: winery || null,
     region: region || null,

@@ -83,6 +83,10 @@ test("map markers are semantic and a single origin cannot look like an event cou
   assert.doesNotMatch(map, /String\(index \+ 1\)/);
   assert.doesNotMatch(map, /renderLocation\("origin", origin, 1\)/);
   assert.match(css, /\.missingTapBadge/);
+  assert.match(map, /points\.length > 1[\s\S]*?Ver ambos puntos<\/button> : null/);
+  assert.doesNotMatch(map, />Reencuadrar</);
+  assert.match(map, /origin && tap[\s\S]*?origen declarado y la zona informada[\s\S]*?origen declarado; esta lectura no informó coordenadas/);
+  assert.match(map, /aria-label=\{mapAriaLabel\}/);
 });
 
 test("origin label comes from the same declared profile as its coordinates", () => {

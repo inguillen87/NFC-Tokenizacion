@@ -5,8 +5,10 @@ import { checkAdminWithPermission, getAdminTenantAccess } from "../../../../../l
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from "../../../../../lib/agro-product-profile";
+import { MAX_PUBLIC_LOT_LABEL_LENGTH, normalizePublicLotLabelInput } from "../../../../../lib/public-lot-label";
 
 type ProductConfigBody = {
+  public_lot_label?: unknown;
   product_name?: string | null;
   sku?: string | null;
   winery?: string | null;
@@ -72,6 +74,18 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
     : {};
 
   const nextConfig = { ...existingConfig };
+
+  if (body.public_lot_label !== undefined) {
+    const publicLotLabel = normalizePublicLotLabelInput(body.public_lot_label);
+    if (!publicLotLabel.ok) {
+      return json({
+        ok: false,
+        reason: publicLotLabel.reason,
+        max_length: MAX_PUBLIC_LOT_LABEL_LENGTH,
+      }, 422);
+    }
+    nextConfig.public_lot_label = publicLotLabel.value;
+  }
 
   if (body.product_name !== undefined) nextConfig.product_name = body.product_name ? String(body.product_name).trim() : null;
   if (body.sku !== undefined) nextConfig.sku = body.sku ? String(body.sku).trim() : null;

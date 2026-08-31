@@ -1,4 +1,6 @@
-const CACHE_NAME = "nexid-v5";
+// Bump when consumer-facing SUN bundles change so an intermittent/offline
+// phone cannot keep mixing an older passport shell with current API evidence.
+const CACHE_NAME = "nexid-v6";
 const APP_SHELL = [
   "/",
   "/offline",

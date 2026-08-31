@@ -251,8 +251,8 @@ export function TapPrecisionTelemetry({
           <LocateFixed className="h-5 w-5" strokeWidth={2} />
         </span>
         <div className="min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-cyan-200">Ubicación de este teléfono</p>
-          <p className="mt-1 text-sm font-black text-white">Mostrá la zona donde hiciste esta lectura</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-cyan-200">Zona opcional del pasaporte</p>
+          <p className="mt-1 text-sm font-black text-white">Agregá la zona del teléfono a esta lectura</p>
           <p className="mt-1 text-[10px] leading-4 text-cyan-100/75">La ciudad estimada por la red puede ser incorrecta. Sólo pediremos ubicación al tocar el botón.</p>
         </div>
       </div>
@@ -263,7 +263,7 @@ export function TapPrecisionTelemetry({
         className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/25 bg-cyan-300/15 px-3 text-[10px] font-black transition hover:bg-cyan-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
       >
         <LocateFixed className="h-4 w-4" aria-hidden="true" />
-        {state === "pending" ? "Solicitando permiso..." : "Compartir ubicación aproximada"}
+        {state === "pending" ? "Solicitando permiso..." : "Agregar zona al pasaporte"}
       </button>
       <p className="mt-1.5 text-center text-[9px] font-bold text-cyan-100/60">Opcional · se guarda una zona redondeada, no tu coordenada exacta</p>
       {state === "denied" || state === "unavailable" || state === "error" ? (

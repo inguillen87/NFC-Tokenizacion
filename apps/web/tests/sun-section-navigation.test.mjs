@@ -29,7 +29,7 @@ test("SUN section navigation is touch-safe and responsive without motion runtime
 
   assert.match(source, /min-h-11/);
   assert.match(source, /sticky top-4[^"]*lg:block/);
-  assert.match(source, /fixed inset-x-3 bottom-\[calc\(env\(safe-area-inset-bottom\)\+0\.75rem\)\]/);
+  assert.match(source, /sun-mobile-dock fixed inset-x-3 bottom-\[calc\(env\(safe-area-inset-bottom\)\+0\.5rem\)\]/);
   assert.match(source, /max-w-\[430px\]/);
   assert.match(source, /focus-visible:ring-2 focus-visible:ring-cyan-300/);
   assert.doesNotMatch(source, /framer-motion/);
@@ -48,11 +48,27 @@ test("SUN section navigation keeps active state synchronized with document scrol
 test("SUN mobile dock waits until the first summary clears its reserved space", async () => {
   const source = await readNavigation();
 
-  assert.match(source, /const MOBILE_DOCK_CLEARANCE_PX = 92/);
+  assert.match(source, /const MOBILE_DOCK_CLEARANCE_PX = 72/);
   assert.match(source, /const \[showMobileNav, setShowMobileNav\] = useState\(false\)/);
   assert.match(source, /const summaryBottom = sectionNodes\[0\]\.getBoundingClientRect\(\)\.bottom/);
   assert.match(source, /const hasLeftFirstView = window\.scrollY > 24/);
   assert.match(source, /const hasClearedIntro = variant === "agro"[\s\S]*?window\.scrollY > 280/);
   assert.match(source, /setShowMobileNav\(hasLeftFirstView && hasClearedIntro\)/);
-  assert.match(source, /\{showMobileNav \? \([\s\S]*?className="fixed inset-x-3[\s\S]*?\) : null\}/);
+  assert.match(source, /const isMobileDockVisible = showMobileNav && !isScrollingDown && !isDockAvoided/);
+  assert.match(source, /aria-hidden=\{!isMobileDockVisible\}/);
+  assert.match(source, /inert=\{!isMobileDockVisible\}/);
+  assert.match(source, /tabIndex=\{disabled \? -1 : undefined\}/);
+});
+
+test("SUN mobile dock yields to downward scrolling and nearby controls", async () => {
+  const source = await readNavigation();
+
+  assert.match(source, /const dockHeight = mobileDock\?\.offsetHeight \|\| 0/);
+  assert.match(source, /Number\.parseFloat\(window\.getComputedStyle\(mobileDock\)\.bottom\)/);
+  assert.match(source, /const dockTop = window\.innerHeight - dockBottom - dockHeight/);
+  assert.doesNotMatch(source, /MOBILE_DOCK_OCCLUSION_PX/);
+  assert.match(source, /document\.querySelectorAll<HTMLElement>\("\[data-sun-dock-avoid\]"\)/);
+  assert.match(source, /delta > 5\) setIsScrollingDown\(true\)/);
+  assert.match(source, /setTimeout\(\(\) => setIsScrollingDown\(false\), 650\)/);
+  assert.match(source, /setIsDockAvoided\(nextAvoided\)/);
 });

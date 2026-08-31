@@ -1,7 +1,7 @@
 "use client";
 
 import { Activity, LayoutGrid, MapPin, Sparkles, type LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type SunSectionId = "sun-summary" | "agro-dpp" | "sun-origin" | "sun-condition" | "sun-services";
 
@@ -25,17 +25,19 @@ export const sunAgroSectionNavItems: readonly SunSectionNavItem[] = [
   { id: "sun-services", label: "Servicios", icon: Sparkles },
 ] as const;
 
-const MOBILE_DOCK_CLEARANCE_PX = 92;
+const MOBILE_DOCK_CLEARANCE_PX = 72;
 
 function SunSectionLinks({
   activeSection,
   items,
   mobile = false,
+  disabled = false,
   onNavigate,
 }: {
   activeSection: SunSectionId;
   items: readonly SunSectionNavItem[];
   mobile?: boolean;
+  disabled?: boolean;
   onNavigate: (sectionId: SunSectionId) => void;
 }) {
   return (
@@ -48,6 +50,7 @@ function SunSectionLinks({
             key={id}
             href={`#${id}`}
             aria-current={isActive ? "location" : undefined}
+            tabIndex={disabled ? -1 : undefined}
             onClick={() => onNavigate(id)}
             className={`group flex min-h-11 min-w-0 items-center justify-center rounded-xl border font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
               mobile ? "flex-col gap-1 px-1.5 py-1.5 text-[11px] leading-none" : "gap-1 px-1.5 py-2 text-[11px]"
@@ -74,6 +77,9 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
   const items = variant === "agro" ? sunAgroSectionNavItems : sunSectionNavItems;
   const [activeSection, setActiveSection] = useState<SunSectionId>(items[0].id);
   const [showMobileNav, setShowMobileNav] = useState(false);
+  const [isScrollingDown, setIsScrollingDown] = useState(false);
+  const [isDockAvoided, setIsDockAvoided] = useState(false);
+  const mobileDockRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setActiveSection(items[0].id);
@@ -124,7 +130,58 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
     };
   }, [items]);
 
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let frameId = 0;
+    let idleTimer = 0;
+
+    const syncDockVisibility = () => {
+      const nextScrollY = window.scrollY;
+      const delta = nextScrollY - lastScrollY;
+      if (delta > 5) setIsScrollingDown(true);
+      if (delta < -5) setIsScrollingDown(false);
+      lastScrollY = nextScrollY;
+
+      const mobileDock = mobileDockRef.current;
+      const dockHeight = mobileDock?.offsetHeight || 0;
+      const dockBottom = mobileDock
+        ? Number.parseFloat(window.getComputedStyle(mobileDock).bottom) || 0
+        : 0;
+      const dockTop = window.innerHeight - dockBottom - dockHeight;
+      const avoidNodes = Array.from(document.querySelectorAll<HTMLElement>("[data-sun-dock-avoid]"));
+      const nextAvoided = avoidNodes.some((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.top < window.innerHeight && rect.bottom > dockTop;
+      });
+      setIsDockAvoided(nextAvoided);
+
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => setIsScrollingDown(false), 650);
+    };
+
+    const scheduleDockSync = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(syncDockVisibility);
+    };
+
+    syncDockVisibility();
+    window.addEventListener("scroll", scheduleDockSync, { passive: true });
+    window.addEventListener("resize", scheduleDockSync);
+    window.addEventListener("focusin", scheduleDockSync);
+    window.addEventListener("focusout", scheduleDockSync);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(idleTimer);
+      window.removeEventListener("scroll", scheduleDockSync);
+      window.removeEventListener("resize", scheduleDockSync);
+      window.removeEventListener("focusin", scheduleDockSync);
+      window.removeEventListener("focusout", scheduleDockSync);
+    };
+  }, []);
+
   const onNavigate = (sectionId: SunSectionId) => setActiveSection(sectionId);
+  const isMobileDockVisible = showMobileNav && !isScrollingDown && !isDockAvoided;
 
   return (
     <>
@@ -135,14 +192,17 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
         <SunSectionLinks activeSection={activeSection} items={items} onNavigate={onNavigate} />
       </nav>
 
-      {showMobileNav ? (
-        <nav
-          aria-label="Secciones del producto"
-          className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 mx-auto max-w-[430px] rounded-2xl border border-white/10 bg-slate-950/90 p-2 shadow-[0_18px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl lg:hidden"
-        >
-          <SunSectionLinks activeSection={activeSection} items={items} mobile onNavigate={onNavigate} />
-        </nav>
-      ) : null}
+      <nav
+        ref={mobileDockRef}
+        aria-label="Secciones del producto"
+        aria-hidden={!isMobileDockVisible}
+        inert={!isMobileDockVisible}
+        className={`sun-mobile-dock fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-40 mx-auto max-w-[430px] rounded-2xl border border-white/10 bg-slate-950/90 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-[opacity,transform] duration-200 lg:hidden ${
+          isMobileDockVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0"
+        }`}
+      >
+        <SunSectionLinks activeSection={activeSection} items={items} mobile disabled={!isMobileDockVisible} onNavigate={onNavigate} />
+      </nav>
     </>
   );
 }

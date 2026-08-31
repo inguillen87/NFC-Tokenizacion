@@ -34,7 +34,7 @@ test("GPS confirmation is opt-in, rounded and labelled as occurring after the ta
   assert.match(telemetry, /locationMeasuredAtMs < locationRequestedAtMs/);
   assert.match(telemetry, /measuredAt: new Date\(locationMeasuredAtMs\)/);
   assert.match(telemetry, /Ubicación opcional guardada/);
-  assert.match(telemetry, /Compartir ubicación aproximada/);
+  assert.match(telemetry, /Agregar zona al pasaporte/);
   assert.match(telemetry, /La ciudad estimada por la red puede ser incorrecta/);
   assert.match(telemetry, /nextReceipt\?\.source !== "browser_gps_approximate_consent"/);
   assert.match(telemetry, /position\.coords\.accuracy > 50_000/);
@@ -136,7 +136,7 @@ test("SUN headings and distance claims follow the current location evidence", ()
   assert.match(page, /const locationSectionTitle = isDemoPreview[\s\S]*?"Origen declarado"[\s\S]*?"Origen y zona estimada por red"[\s\S]*?"Origen y zona compartida"/);
   assert.match(page, /const locationSectionDescription = isDemoPreview[\s\S]*?Esta lectura no informó coordenadas[\s\S]*?no es GPS, no ubica el producto y no prueba dónde ocurrió el tap/);
   assert.match(page, /\.\.\.\(hasConsumerComparableDistance \? \[\{ label: "Separación lineal", value: distanceDisplay \}\] : \[\]\)/);
-  assert.match(page, /detail: hasConsumerComparableDistance \? distanceDisplay : "Sin distancia comparable"/);
+  assert.match(page, /detail: wineryPoint\.length \? "Disponible" : "Pendiente"/);
   assert.match(page, /\{locationSectionTitle\}/);
   assert.match(page, /\{locationSectionDescription\}/);
 });

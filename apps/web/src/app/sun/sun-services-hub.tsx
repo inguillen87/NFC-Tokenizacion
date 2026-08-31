@@ -60,7 +60,7 @@ const FRESHNESS_LABEL: Record<SunServicesFreshnessState, string> = {
   unknown: "Frescura no informada",
 };
 
-const ACTION_CLASS_NAME = "group flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white transition hover:border-cyan-300/30 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+const ACTION_CLASS_NAME = "sun-services-action group flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white transition hover:border-cyan-300/30 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
 
 export function SunServicesHub({
   promotion,
@@ -127,7 +127,7 @@ export function SunServicesHub({
   ];
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-[#0a1020]/95 p-5 shadow-2xl shadow-black/20" aria-labelledby="sun-services-title">
+    <section className="sun-services-card rounded-3xl border border-white/10 bg-[#0a1020]/95 p-5 shadow-2xl shadow-black/20" aria-labelledby="sun-services-title" data-sun-dock-avoid>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Servicios de la marca</span>

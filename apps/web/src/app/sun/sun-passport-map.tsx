@@ -547,17 +547,24 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
 
   const tapPresentation = tapSourcePresentation(tap);
   const isNetworkEstimate = tap?.source === "edge_ip_approx" || tap?.source === "ip_geo";
+  const mapAriaLabel = origin && tap
+    ? "Mapa interactivo del origen declarado y la zona informada para esta lectura"
+    : origin
+      ? "Mapa interactivo del origen declarado; esta lectura no informó coordenadas"
+      : tap
+        ? "Mapa interactivo de la zona informada para esta lectura; no hay origen geolocalizado"
+        : "Mapa interactivo sin ubicaciones informadas";
 
   return (
     <div className={styles.shell} data-sun-passport-map="maplibre" data-route-mode={showRoute ? "demo" : "no-route"}>
-      <div className={styles.mapFrame} role="region" aria-label="Mapa interactivo del origen declarado y la zona de esta lectura">
+      <div className={styles.mapFrame} role="region" aria-label={mapAriaLabel}>
         <div ref={mapContainerRef} className={styles.map} />
         {loadState === "waiting" || loadState === "loading" ? (
           <div className={styles.loading} aria-live="polite">
             <div>
               <span className={styles.loadingDot} />
               <strong>Cargando cartografía</strong>
-              <p className="mt-1 text-xs">Origen y tap siguen disponibles en la lista.</p>
+              <p className="mt-1 text-xs">Las ubicaciones informadas siguen disponibles en la lista.</p>
             </div>
           </div>
         ) : null}
@@ -584,15 +591,15 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
               {showRoute && origin && tap ? <span className={styles.demoBadge}>Demo · conexión ilustrativa</span> : null}
               {isDegraded ? <span className={styles.degradedBadge}>Cartografía parcial</span> : null}
             </div>
-            <button type="button" className={styles.fitButton} onClick={() => fitAllRef.current()}>Reencuadrar</button>
+            {points.length > 1 ? <button type="button" className={styles.fitButton} onClick={() => fitAllRef.current()}>Ver ambos puntos</button> : null}
           </>
         ) : null}
       </div>
-      <div className={styles.details}>
+      <div className={styles.details} data-sun-dock-avoid>
         {renderLocation("origin", origin)}
         {renderLocation("tap", tap)}
       </div>
-      <div className={styles.locationSourceSummary}>
+      <div className={styles.locationSourceSummary} data-sun-dock-avoid>
         <span className={styles.sourceBadge}>{tapPresentation.badge}</span>
         <p>{tapPresentation.explanation}</p>
       </div>

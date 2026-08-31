@@ -174,8 +174,16 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
   const sunProduct = sdmConfig.sun?.product || {};
   const sunOrigin = sdmConfig.sun?.origin || {};
   const sunTelemetry = sdmConfig.sun?.telemetry || {};
+  const publicLotLabel = String(
+    sdmConfig.public_lot_label
+      ?? sdmConfig.lot
+      ?? sdmConfig.batch_lot
+      ?? sdmConfig.lot_number
+      ?? "",
+  ).trim();
 
   const initialFormData = {
+    public_lot_label: publicLotLabel,
     product_name: product.product_name || sdmConfig.product_name || sunProduct.name || "",
     sku: product.sku || sdmConfig.sku || sunProduct.sku || "",
     winery: product.winery || sdmConfig.winery || sunProduct.producer || "",
@@ -249,6 +257,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
                 <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-100">source: batch</span>
               </div>
               <dl className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <Fact label="Lote comercial visible" value={publicLotLabel || "No configurado"} />
                 <Fact label="SKU" value={product.sku || batchData.sku} />
                 <Fact label="Bodega / marca" value={product.winery} />
                 <Fact label="Region" value={product.region} />

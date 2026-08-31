@@ -40,6 +40,7 @@ import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from '../../lib
 import { Gs1RegistryError } from '../../lib/gs1-digital-link-registry';
 import { resolvePublicGs1PassportBinding } from '../../lib/public-gs1-passport';
 import { resolveTagTamperPresentationEvidence } from '../../lib/sun-carrier-trust-state';
+import { resolvePublicLotLabel } from '../../lib/public-lot-label';
 import { resolveEventLocalTime } from '@product/core';
 import crypto from "node:crypto";
 
@@ -943,6 +944,7 @@ async function handleQrScan(input: {
   const bid = tenantBatch.bid;
   const tenantName = String(tenantBatch.tenant_name || tenantSlug);
   const sdmConfig = jsonObject(tenantBatch.sdm_config);
+  const publicLotLabel = resolvePublicLotLabel(sdmConfig);
   const configuredProduct = jsonObject(sdmConfig.product);
   const configuredProductName = String(gs1Registry?.displayName || configuredProduct.name || sdmConfig.product_name || `Batch ${bid}`);
   const configuredBrand = String(configuredProduct.winery || configuredProduct.brand || sdmConfig.winery || sdmConfig.brand || tenantName);
@@ -1057,6 +1059,7 @@ async function handleQrScan(input: {
     },
     identity: {
       bid,
+      displayLot: publicLotLabel,
       uid: null,
       uidMasked: null,
       eventId: eventId ? String(eventId) : null,
@@ -1081,6 +1084,7 @@ async function handleQrScan(input: {
     },
     product: {
       name: configuredProductName,
+      lotLabel: publicLotLabel,
       winery: configuredBrand,
       region: configuredOrigin,
       varietal: configuredProduct.varietal || sdmConfig.varietal || null,
@@ -1461,6 +1465,7 @@ function buildPublicContract(params: {
     : params.result.product_state || null;
   const verdictRisk = mapVerdictAndRisk({ statusCode: trust.code, productState: effectiveProductState, reason });
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
+  const publicLotLabel = resolvePublicLotLabel(params.passport?.batch_sdm_config);
   const declaredStaticSensor = declaredStaticSensorFromLocaleData(params.passport?.locale_data);
   const publishedPromotions = publishedPromotionsFromLocaleData(params.passport?.locale_data);
   const sensorEvidenceTimeline = [...params.timeline, ...(params.sensorTimeline || [])];
@@ -1566,6 +1571,7 @@ function buildPublicContract(params: {
       },
       identity: {
         bid: params.bid,
+        displayLot: publicLotLabel,
         uid: null,
         uidMasked: maskIdentityValue(params.uid || ""),
         readCounter: params.ctr,
@@ -1621,6 +1627,7 @@ function buildPublicContract(params: {
       },
       product: {
         name: setupProductName,
+        lotLabel: publicLotLabel,
         winery: params.passport?.winery || null,
         region: params.passport?.region || null,
         varietal: params.passport?.grape_varietal || null,
@@ -1860,6 +1867,7 @@ function buildPublicContract(params: {
     },
     identity: {
       bid: params.bid,
+      displayLot: publicLotLabel,
       uid: null,
       uidMasked: maskIdentityValue(params.uid || ""),
       readCounter: params.ctr,
@@ -1915,6 +1923,7 @@ function buildPublicContract(params: {
     },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,
+      lotLabel: publicLotLabel,
       winery: params.passport?.winery || fallbackWinery,
       region: params.passport?.region || fallbackRegion,
       varietal: params.passport?.grape_varietal || fallbackVarietal,

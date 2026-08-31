@@ -89,8 +89,9 @@ test("SUN identity and state never wait for location permission and clear the bo
   assert.ok(identity < status && status < location);
   assert.doesNotMatch(summary, /<TapPrecisionTelemetry/);
   assert.match(page, /pb-\[calc\(env\(safe-area-inset-bottom\)\+8\.5rem\)\]/);
-  assert.match(sectionNav, /bottom-\[calc\(env\(safe-area-inset-bottom\)\+0\.75rem\)\]/);
-  assert.match(sectionNav, /\{showMobileNav \? \(/);
+  assert.match(sectionNav, /bottom-\[calc\(env\(safe-area-inset-bottom\)\+0\.5rem\)\]/);
+  assert.match(sectionNav, /const isMobileDockVisible = showMobileNav && !isScrollingDown && !isDockAvoided/);
+  assert.match(sectionNav, /aria-hidden=\{!isMobileDockVisible\}/);
 });
 
 test("SUN stacks product media and copy only in narrow containers", () => {

@@ -102,12 +102,13 @@ type SunContract = {
     tamperReason?: string | null;
     encPlainStatusByte?: string | null;
   };
-  identity?: SunCarrierFields & { bid?: string | null; uid?: string | null; uidMasked?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null; tenantSlug?: string | null; tenantId?: string | null };
+  identity?: SunCarrierFields & { bid?: string | null; displayLot?: string | null; uid?: string | null; uidMasked?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null; tenantSlug?: string | null; tenantId?: string | null };
   tenant?: { id?: string | null; slug?: string | null; name?: string | null; vertical?: string | null; productLabel?: string | null; clubName?: string | null; tokenizationMode?: string | null };
   condition?: SunCarrierFields & { state?: string | null; label?: string | null; summary?: string | null; claimMode?: string | null; tokenizationPolicy?: string | null; marketplaceMode?: string | null; recommendedNextStep?: string | null; requirements?: string[] };
   rightsPolicy?: SunRightsPolicy;
   product?: { 
     name?: string | null; 
+    lotLabel?: string | null;
     winery?: string | null; 
     region?: string | null; 
     varietal?: string | null; 
@@ -843,7 +844,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isSunProfileMismatch
       ? { label: "Avisar a soporte", href: reportProblemHref, helper: "El producto y el lote quedan visibles. Garantia, club o tokenizacion esperan el perfil SUN correcto o el payload del proveedor." }
     : !isRiskBlocked && isTechnicallyAuthentic
-      ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
+      ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá origen, fuente y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   const tenantSlug = String(result.identity?.tenantSlug || "").trim();
   // Browser geolocation is posted through the same-origin BFF. Calling the API
@@ -1139,7 +1140,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           : normalizedTokenStatus.includes("sandbox") || normalizedTokenStatus.includes("simulated")
             ? "Sandbox, sin promesa on-chain"
             : "Sin anclaje on-chain";
-  const sealLabel = sealClosed ? "TT cerrado reportado" : sealOpened ? "TT abierto reportado" : "TT no informado";
+  const sealLabel = sealClosed ? "Sello cerrado" : sealOpened ? "Sello abierto" : "Estado del sello no informado";
   const chainLabel = tokenEvidenceLabel;
   const productName = result.product?.name || "Producto conectado";
   const productImageUrl = result.product?.imageUrl || result.product?.image_url || result.product?.photoUrl || result.product?.photo_url || null;
@@ -1258,7 +1259,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : 0;
 
   const tenantDisplayName = requestedBrandDisplay || result.tenant?.name || result.product?.winery || result.tenant?.slug || result.identity?.tenantSlug || "Bodega Premium";
-  const batchDisplay = bid || result.identity?.bid || "Batch activo";
+  const publicLotDisplay = String(result.product?.lotLabel || result.identity?.displayLot || "").trim() || null;
+  const batchDisplay = publicLotDisplay || (isDemoPreview ? bid || result.identity?.bid || "Batch de muestra" : null);
+  const technicalBid = bid || result.identity?.bid || "N/A";
   const productLine = [result.product?.region, result.product?.varietal || result.product?.category || verticalLabel]
     .map((item) => String(item || "").trim())
     .filter(Boolean)
@@ -1298,7 +1301,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const productFirstSpecs = [
     { label: "Tenant", value: tenantDisplayName },
     { label: "Producto", value: productDisplayName },
-    { label: "Lote", value: batchDisplay },
+    { label: "Lote comercial", value: batchDisplay },
     { label: isQrScan ? "Canal" : "Chip", value: carrierLabel },
     { label: "UID", value: visibleUid },
     { label: "Origen declarado", value: originDisplay },
@@ -1323,7 +1326,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isSnapshotView
       ? "Consulta segura del producto"
       : isVerifiedOpenedState
-        ? "SUN válido · TT abierto"
+        ? "Lectura válida · sello abierto"
         : "Identidad NFC validada";
   const friendlyStageBody = isDemoPreview
     ? SUN_DEMO_COPY.stageBody
@@ -1334,9 +1337,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isRiskBlocked
     ? "Vemos la prueba, pero no habilitamos garantia, club ni NFT con una lectura sospechosa o repetida."
     : isSnapshotView
-      ? "La evidencia digital y la ruta declarada se pueden revisar. Para activar beneficios sensibles, tocá de nuevo la etiqueta."
+      ? "La evidencia digital y los datos declarados se pueden revisar. Para activar beneficios sensibles, tocá de nuevo la etiqueta."
       : isVerifiedOpenedState
-        ? "El mensaje SUN es válido y el tag reporta TT abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
+        ? "La lectura digital es válida y el tag informa sello abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
         : "La lectura es fresca. Primero lees la ficha; si queres, despues dejas contacto o acreditas compra.";
   const primaryPostTapAction = isQrScan && isAgroDpp
     ? { label: "Ver pasaporte agro", href: "#agro-dpp", tone: "trace" }
@@ -1359,8 +1362,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     },
     {
       label: "Origen declarado",
-      detail: hasConsumerComparableDistance ? distanceDisplay : "Sin distancia comparable",
-      state: hasConsumerComparableDistance ? "done" : "warn",
+      detail: wineryPoint.length ? "Disponible" : "Pendiente",
+      state: wineryPoint.length ? "done" : "warn",
     },
     {
       label: "Contacto opcional",
@@ -1386,7 +1389,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? [
       { label: "Ficha abierta", ok: true },
       { label: "Tenant identificado", ok: Boolean(tenantSlug) },
-      { label: "Lote informado", ok: Boolean(batchDisplay) },
+      { label: "Lote comercial informado", ok: Boolean(publicLotDisplay) },
       { label: "Lead opt-in", ok: true },
       { label: "Propiedad protegida", ok: true },
       { label: "NFC premium pendiente", ok: false },
@@ -1527,9 +1530,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <p className="mt-1 break-words text-[10px] leading-4 text-slate-400">
                   {productLine || verticalLabel}
                 </p>
-                <span className="mt-2 inline-flex max-w-full rounded-lg border border-white/10 bg-slate-950/45 px-2 py-1 text-[9px] font-bold text-slate-300">
-                  Lote {batchDisplay}
-                </span>
+                {batchDisplay ? (
+                  <span className="mt-2 inline-flex max-w-full rounded-lg border border-white/10 bg-slate-950/45 px-2 py-1 text-[9px] font-bold text-slate-300">
+                    {isDemoPreview ? "Batch de muestra" : "Lote"} {batchDisplay}
+                  </span>
+                ) : null}
               </div>
             </div>
 
@@ -1718,8 +1723,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             {/* Spec grid for fast reading */}
             <div className="w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left">
               <div>
-                <span className="text-[9px] uppercase text-slate-500 block">Lote / Batch</span>
-                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay}</span>
+                <span className="text-[9px] uppercase text-slate-500 block">Lote comercial</span>
+                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay || "No informado"}</span>
               </div>
               <div>
                 <span className="text-[9px] uppercase text-slate-500 block">UID del Tag</span>
@@ -2100,7 +2105,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Lote (Batch ID)</span>
-                  <span className="font-mono text-slate-200">{bid || "N/A"}</span>
+                  <span className="font-mono text-slate-200">{technicalBid}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Contador de Lecturas</span>

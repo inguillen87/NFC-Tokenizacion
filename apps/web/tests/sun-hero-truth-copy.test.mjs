@@ -35,3 +35,13 @@ test("SUN hero real branch keeps registered NFC evidence separate from physical 
   assert.equal(getSunHeroTraceCopy(false, "idle").tapEvidence, "Mensaje NFC del chip validado");
   assert.equal(getSunHeroTraceCopy(false, "blocked").tapEvidence, "Mensaje NFC del chip validado");
 });
+
+test("live SUN stages never invent a fallback tap point or route", async () => {
+  const hero = await readFile(new URL("../src/app/sun/sun-product-hero-stage.tsx", import.meta.url), "utf8");
+
+  assert.match(hero, /const traceRoutes: VectorMapRoute\[\] = hasTraceCoordinates && isDemoPreview/);
+  assert.match(hero, /isDemoPreview \? <span className="sun-stage-map__route" \/> : null/);
+  assert.match(hero, /isDemoPreview \? <span className="sun-stage-map__point sun-stage-map__point--tap" \/> : null/);
+  assert.match(hero, /\{hasTraceCoordinates \|\| isDemoPreview \? \(/);
+  assert.match(hero, /isDemoPreview && hasTraceCoordinates \? <span className="sun-stage-route-label"/);
+});

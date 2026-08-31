@@ -6879,6 +6879,10 @@ html.theme-light .sun-priority-panel a {
   opacity: 0.44;
 }
 
+.sun-stage-map--origin-only::after {
+  background: radial-gradient(circle at 24% 63%, rgba(52, 211, 153, 0.16), transparent 12%);
+}
+
 .sun-stage-map__land {
   position: absolute;
   display: block;
@@ -53892,6 +53896,43 @@ html[data-theme="light"] .sun-tap-experience .sun-summary-product__visual > span
 html.theme-light .sun-tap-experience .sun-summary-actions a:first-child,
 html[data-theme="light"] .sun-tap-experience .sun-summary-actions a:first-child {
   color: #ffffff !important;
+}
+
+.sun-tap-experience {
+  --sun-mobile-dock-height: 3.75rem;
+  scroll-padding-bottom: calc(var(--sun-mobile-dock-height) + env(safe-area-inset-bottom) + 1rem);
+}
+
+/* Semantic SUN surfaces avoid relying on escaped arbitrary Tailwind class
+   selectors. These cards must never become dark islands with dark copy when
+   the saved consumer preference is light. */
+html.theme-light .sun-tap-experience .sun-services-card,
+html[data-theme="light"] .sun-tap-experience .sun-services-card,
+html.theme-light .sun-tap-experience .sun-engagement-suite,
+html[data-theme="light"] .sun-tap-experience .sun-engagement-suite {
+  border-color: rgba(14, 116, 144, 0.17) !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  color: #0f172a !important;
+  box-shadow: 0 1.25rem 3rem rgba(14, 116, 144, 0.1) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-services-action,
+html[data-theme="light"] .sun-tap-experience .sun-services-action {
+  border-color: rgba(14, 116, 144, 0.14) !important;
+  background: rgba(248, 250, 252, 0.98) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .sun-tap-experience .sun-services-action:hover,
+html[data-theme="light"] .sun-tap-experience .sun-services-action:hover {
+  border-color: rgba(8, 145, 178, 0.28) !important;
+  background: rgba(236, 254, 255, 0.96) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-engagement-tabs,
+html[data-theme="light"] .sun-tap-experience .sun-engagement-tabs {
+  border-color: rgba(14, 116, 144, 0.13) !important;
+  background: rgba(241, 245, 249, 0.96) !important;
 }
 
 /* On the consumer passport, keep real cartography readable. The generic light

@@ -189,7 +189,7 @@ export function SunProductHeroStage({
         },
       ]
     : [];
-  const traceRoutes: VectorMapRoute[] = hasTraceCoordinates
+  const traceRoutes: VectorMapRoute[] = hasTraceCoordinates && isDemoPreview
     ? [
         {
           id: "sun-origin-current-tap",
@@ -236,24 +236,26 @@ export function SunProductHeroStage({
           />
         </div>
       ) : (
-        <div className="sun-stage-map" aria-hidden="true">
+        <div className={`sun-stage-map${isDemoPreview ? "" : " sun-stage-map--origin-only"}`} aria-hidden="true">
           <span className="sun-stage-map__land sun-stage-map__land--origin" />
-          <span className="sun-stage-map__land sun-stage-map__land--tap" />
-          <span className="sun-stage-map__route" />
-          <span className="sun-stage-map__route sun-stage-map__route--glow" />
+          {isDemoPreview ? <span className="sun-stage-map__land sun-stage-map__land--tap" /> : null}
+          {isDemoPreview ? <span className="sun-stage-map__route" /> : null}
+          {isDemoPreview ? <span className="sun-stage-map__route sun-stage-map__route--glow" /> : null}
           <span className="sun-stage-map__point sun-stage-map__point--origin" />
-          <span className="sun-stage-map__point sun-stage-map__point--tap" />
+          {isDemoPreview ? <span className="sun-stage-map__point sun-stage-map__point--tap" /> : null}
         </div>
       )}
       <span className="sun-stage-pin sun-stage-pin--origin">
         <b>{traceCopy.originPinLabel}</b>
         <em>{shortLocation(originDisplay)}</em>
       </span>
-      <span className="sun-stage-pin sun-stage-pin--tap">
-        <b>{traceCopy.tapPinLabel}</b>
-        <em>{shortLocation(tapDisplay)}</em>
-      </span>
-      <span className="sun-stage-route-label">{distanceDisplay}</span>
+      {hasTraceCoordinates || isDemoPreview ? (
+        <span className="sun-stage-pin sun-stage-pin--tap">
+          <b>{traceCopy.tapPinLabel}</b>
+          <em>{shortLocation(tapDisplay)}</em>
+        </span>
+      ) : null}
+      {isDemoPreview && hasTraceCoordinates ? <span className="sun-stage-route-label">{distanceDisplay}</span> : null}
       <div className={`sun-three-product-shell${ready ? " sun-three-product-shell--ready" : ""}`}>
         {imageUrl ? (
           <div className={`sun-product-photo-shell sun-product-photo-shell--${state}`}>
