@@ -38,3 +38,20 @@ test("unified release keeps depth in the clean mega navigation", async () => {
   assert.match(nav, /className=\{styles\.mobileDialog\}/);
   assert.match(nav, /aria-expanded=\{mobileOpen\}/);
 });
+
+test("clean home keeps its CTA group semantic and readable light footer copy", async () => {
+  const [sections, styles] = await Promise.all([
+    readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(sections, /className="hero-post-video-actions" role="group" aria-label=/);
+  assert.match(
+    styles,
+    /html\.theme-light \.site-footer-meta,[\s\S]*?html\[data-theme="light"\] \.site-footer-meta \{[\s\S]*?color: #5b6d82;/,
+  );
+  assert.doesNotMatch(
+    styles,
+    /html\.theme-light \.site-footer-meta,[\s\S]*?html\[data-theme="light"\] \.site-footer-meta \{[\s\S]*?color: #718096;/,
+  );
+});

@@ -41,7 +41,7 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
 
         <div className="hero-demo-shell mx-auto mt-10 max-w-5xl text-left relative z-20 md:mt-12">
           <InstitutionalVideoPanel locale={locale} variant="landing" initialTheme={initialTheme} />
-          <div className="hero-post-video-actions" aria-label={isEn ? "Next actions" : isBr ? "Próximas ações" : "Próximas acciones"}>
+          <div className="hero-post-video-actions" role="group" aria-label={isEn ? "Next actions" : isBr ? "Próximas ações" : "Próximas acciones"}>
             <div className="landing-mobile-hero-actions mt-4 grid grid-cols-2 gap-2 sm:hidden">
               <Link href="/?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary">
                 <span>{primaryCta}</span>
