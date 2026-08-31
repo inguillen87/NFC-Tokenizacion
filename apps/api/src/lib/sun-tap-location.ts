@@ -3,6 +3,44 @@ import { normalizeCoordinatePair } from "./approximate-location";
 
 export const SUN_EDGE_LOCATION_SOURCE = "edge_ip_approx";
 export const SUN_EDGE_LOCATION_PRECISION = "ip";
+export const SUN_POST_TAP_LOCATION_CLOCK_SKEW_MS = 60_000;
+
+function timestampMs(value: unknown) {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return Number.isFinite(value) ? value : Number.NaN;
+  const parsed = Date.parse(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+/**
+ * Binds a browser measurement to the fresh SUN event that authorized it.
+ * Client clocks may differ slightly, but a location from before the event or
+ * materially in the future must never be attached to that event.
+ */
+export function isPostTapLocationTimingValid(input: {
+  eventCreatedAt: unknown;
+  locationRequestedAt: unknown;
+  locationMeasuredAt: unknown;
+  requestReceivedAtMs: number;
+  allowedClockSkewMs?: number;
+}) {
+  const eventCreatedAtMs = timestampMs(input.eventCreatedAt);
+  const locationRequestedAtMs = timestampMs(input.locationRequestedAt);
+  const locationMeasuredAtMs = timestampMs(input.locationMeasuredAt);
+  const requestReceivedAtMs = timestampMs(input.requestReceivedAtMs);
+  const allowedClockSkewMs = Number.isFinite(input.allowedClockSkewMs)
+    ? Math.max(0, Number(input.allowedClockSkewMs))
+    : SUN_POST_TAP_LOCATION_CLOCK_SKEW_MS;
+
+  return Number.isFinite(eventCreatedAtMs)
+    && Number.isFinite(locationRequestedAtMs)
+    && Number.isFinite(locationMeasuredAtMs)
+    && Number.isFinite(requestReceivedAtMs)
+    && locationMeasuredAtMs >= locationRequestedAtMs
+    && locationRequestedAtMs >= eventCreatedAtMs - allowedClockSkewMs
+    && locationMeasuredAtMs >= eventCreatedAtMs - allowedClockSkewMs
+    && locationMeasuredAtMs <= requestReceivedAtMs + allowedClockSkewMs;
+}
 
 export function buildSunRequestLocationEvidence(input: {
   lat?: unknown;

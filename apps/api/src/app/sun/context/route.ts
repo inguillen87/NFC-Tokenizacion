@@ -9,6 +9,7 @@ import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/boun
 import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
 import { consumeSunFreshHandoff, requireSunFreshHandoff } from "../../../lib/sun-fresh-handoff";
 import { normalizeConsentedApproximateLocation, sanitizePublicLocationProjection } from "../../../lib/approximate-location";
+import { isPostTapLocationTimingValid } from "../../../lib/sun-tap-location";
 
 const MAX_CONTEXT_BODY_BYTES = 32 * 1024;
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
@@ -132,6 +133,7 @@ export function OPTIONS(): Response {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const requestReceivedAtMs = Date.now();
   if (!String(req.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
     return json({ ok: false, reason: "unsupported_media_type" }, 415, { "cache-control": "no-store" });
   }
@@ -153,12 +155,12 @@ export async function POST(req: Request): Promise<Response> {
   if (ctr === null || !Number.isSafeInteger(ctr) || ctr < 0) {
     return json({ ok: false, reason: "valid ctr required" }, 400, { "cache-control": "no-store" });
   }
-  const limited = await enforceCriticalRateLimit(req, {
+  const preAuthLimited = await enforceCriticalRateLimit(req, {
     rateClass: "public_write",
-    tenantId: `sun-bid:${bid}`,
-    subjectId: `sun-event:${eventId}`,
+    tenantId: "platform",
+    subjectId: "sun-context:unauthenticated",
   });
-  if (limited) return limited;
+  if (preAuthLimited) return preAuthLimited;
   // The public passport intentionally does not expose the raw UID. Verify the
   // signed event scope first, then bind the one-time consumption to the UID
   // loaded from the canonical event below.
@@ -170,6 +172,12 @@ export async function POST(req: Request): Promise<Response> {
   if (!capabilityPreflight.ok) {
     return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capabilityPreflight.reason }, 403, { "cache-control": "no-store" });
   }
+  const capabilityScopedLimit = await enforceCriticalRateLimit(req, {
+    rateClass: "public_write",
+    tenantId: `sun-bid:${bid}`,
+    subjectId: `sun-event:${eventId}`,
+  });
+  if (capabilityScopedLimit) return capabilityScopedLimit;
 
   const batchRows = await sql/*sql*/`SELECT id, tenant_id, bid FROM batches WHERE bid = ${bid} LIMIT 1`;
   const batch = batchRows[0];
@@ -243,6 +251,14 @@ export async function POST(req: Request): Promise<Response> {
   `;
   const target = targetRows[0];
   if (!target) return json({ ok: false, reason: "capability_bound_event_not_found" }, 404, { "cache-control": "no-store" });
+  if (!isPostTapLocationTimingValid({
+    eventCreatedAt: target.created_at,
+    locationRequestedAt,
+    locationMeasuredAt,
+    requestReceivedAtMs,
+  })) {
+    return json({ ok: false, reason: "post_tap_location_timing_invalid", locationAccepted: false }, 422, { "cache-control": "no-store" });
+  }
   const targetUid = String(target.uid_hex || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
   if (!UID_RE.test(targetUid)) {
     return json({ ok: false, reason: "capability_bound_event_uid_invalid" }, 409, { "cache-control": "no-store" });
