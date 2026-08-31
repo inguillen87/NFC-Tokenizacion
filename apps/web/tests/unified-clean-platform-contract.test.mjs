@@ -6,7 +6,7 @@ test("unified release preserves the approved clean home composition", async () =
   const [home, layout, sections] = await Promise.all([
     readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(layout, /nexID \| Productos conectados, garantía y postventa/);
@@ -15,7 +15,7 @@ test("unified release preserves the approved clean home composition", async () =
   assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialContactModal initialLocale=\{locale\} \/>/);
-  assert.match(sections, /Más valor, sin sumar complejidad\./);
+  assert.match(sections, /Una relación que sigue generando valor\./);
 
   assert.doesNotMatch(home, /mobile-optimized-header/);
   assert.doesNotMatch(home, /landing-brand-synergy-band/);
@@ -41,11 +41,11 @@ test("unified release keeps depth in the clean mega navigation", async () => {
 
 test("clean home keeps its CTA group semantic and readable light footer copy", async () => {
   const [sections, styles] = await Promise.all([
-    readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(sections, /className="hero-post-video-actions" role="group" aria-label=/);
+  assert.match(sections, /className="hero-post-video-actions[^\"]*" role="group" aria-label=/);
   assert.match(
     styles,
     /html\.theme-light \.site-footer-meta,[\s\S]*?html\[data-theme="light"\] \.site-footer-meta \{[\s\S]*?color: #5b6d82;/,

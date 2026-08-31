@@ -50,11 +50,11 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   "es-AR": {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Ingresar", requestDemo: "Solicitar demo" },
     hero: {
-      badge: "Protección y crecimiento corporativo",
-      title: "Transformá cada producto en un canal directo de protección, lealtad y nuevas ventas.",
-      body: "Con NFC o QR, tus clientes conocen el producto y acceden a garantía, beneficios o postventa en una sola experiencia. Vos decidís qué mostrar y medís qué funciona en cada piloto.",
-      primary: "Agendar demo",
-      secondary: "Ver cómo funciona",
+      badge: "Productos conectados · Relaciones que continúan",
+      title: "Que la relación con tu cliente no termine en la venta.",
+      body: "Con nexID, cada producto abre un canal directo para contar su historia, activar garantía y beneficios, y medir qué funciona mejor en cada piloto. Con NFC o QR, sin app.",
+      primary: "Ver la experiencia",
+      secondary: "Agendar un piloto",
       tertiary: "Quiero ser reseller",
     },
     trustBar: ["Evidencia NFC/SUN", "Origen y lote declarados", "Garantía por política", "Club y beneficios", "Marketplace white-label"],
@@ -203,7 +203,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   "pt-BR": {
     nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Arquitetura", cta: "Entrar", requestDemo: "Solicitar demo" },
-    hero: { badge: "Produtos conectados para marcas", title: "Transforme cada produto em um canal direto de proteção, fidelização e novas vendas.", body: "Com NFC ou QR, seus clientes conhecem o produto e acessam garantia, benefícios ou pós-venda em uma só experiência. Você decide o que mostrar e mede o que funciona em cada piloto.", primary: "Agendar demo", secondary: "Ver como funciona", tertiary: "Quero ser revendedor" },
+    hero: { badge: "Produtos conectados · Relações que continuam", title: "Que a relação com seu cliente não termine na venda.", body: "Com a nexID, cada produto abre um canal direto para contar sua história, ativar garantia e benefícios e medir o que funciona melhor em cada piloto. Com NFC ou QR, sem app.", primary: "Ver a experiência", secondary: "Agendar um piloto", tertiary: "Quero ser revendedor" },
     trustBar: ["Evidência NFC/SUN", "Origem e lote declarados", "Garantia por política", "Clube e benefícios", "Canal white-label"],
     howItWorks: { eyebrow: "Como funciona", title: "Encoste, valide a mensagem e ative a pós-venda", description: "Cada toque mostra o resultado NFC/SUN, os dados declarados e a próxima ação permitida.", steps: [{ title: "1. Você ativa o lote", body: "Configura carrier, lote, dados declarados e política." }, { title: "2. O cliente encosta o celular", body: "A tela mostra mensagem válida, sinalizada ou bloqueada; não um veredito físico." }, { title: "3. O sistema registra evidência", body: "Ficam registrados horário, local aproximado informado e TT reportado." }, { title: "4. A marca ativa a pós-venda", body: "Garantia, benefícios ou ownership exigem sua própria evidência e aprovação." }] },
     what: { eyebrow: "Plataforma", title: "Uma infraestrutura para validar mensagens e ativar negócios", description: "Associe uma identidade digital declarada por unidade e opere com dashboard, API e webhooks.", cards: [{ title: "Verify", body: "Valida mensagem NFC/SUN, TT reportado e política; não o conteúdo físico." }, { title: "Passport", body: "Organiza lote, origem e eventos declarados, canal e garantia." }, { title: "Rights", body: "Ativa ownership, acesso, vouchers, transferências e garantias somente por política." }] },
@@ -240,7 +240,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   en: {
     nav: { product: "Product", pricing: "Pricing", reseller: "Resellers", docs: "Docs", cta: "Login", requestDemo: "Request demo" },
-    hero: { badge: "Connected products for brands", title: "Turn every product into a direct channel for protection, loyalty and new sales.", body: "With NFC or QR, customers discover the product and access warranties, benefits or after-sales support in one experience. You decide what to share and measure what works in each pilot.", primary: "Book a demo", secondary: "See how it works", tertiary: "Become a reseller" },
+    hero: { badge: "Connected products · Relationships that continue", title: "Do not let the customer relationship end at checkout.", body: "With nexID, every product opens a direct channel to tell its story, activate warranty and benefits, and measure what works best in each pilot. NFC or QR, no app required.", primary: "See the experience", secondary: "Plan a pilot", tertiary: "Become a reseller" },
     trustBar: ["NFC/SUN evidence", "Declared origin and batch", "Policy-based warranty", "Multi-tenant SaaS", "White-label distribution"],
     howItWorks: { eyebrow: "How it works", title: "Tap, validate the message, and activate after-sales", description: "Each tap shows the NFC/SUN result, declared data and the next permitted action.", steps: [{ title: "1. Activate your batch", body: "Configure carrier, batch, declared data and policy." }, { title: "2. Customer taps", body: "The phone shows a valid, flagged or blocked tag message—not a physical-product verdict." }, { title: "3. Evidence is recorded", body: "Time, reported approximate location and reported TT state can be stored." }, { title: "4. Teams take action", body: "Warranty, benefits or ownership require their own evidence and approval." }] },
     what: { eyebrow: "Platform value", title: "One infrastructure to validate messages and activate business flows", description: "Associate a declared digital identity with each unit and operate it through dashboard, API and webhooks.", cards: [{ title: "Verify", body: "Validate the NFC/SUN message, reported TT and policy—not physical contents." }, { title: "Passport", body: "Organize declared batch, origin, events, channel and warranty." }, { title: "Rights", body: "Activate ownership, access, perks, transfers and warranties only under policy." }] },

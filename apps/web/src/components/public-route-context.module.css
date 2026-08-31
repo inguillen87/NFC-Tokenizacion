@@ -1,0 +1,100 @@
+.context {
+  border-bottom: 1px solid rgba(15, 35, 63, 0.09);
+  background: rgba(248, 251, 252, 0.96);
+  color: #10233f;
+}
+
+:global(#main-content) {
+  scroll-margin-top: 4.75rem;
+}
+
+.inner {
+  display: flex;
+  width: min(100%, 80rem);
+  min-height: 2.85rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  margin-inline: auto;
+  padding: 0.4rem 2rem;
+}
+
+.breadcrumb {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.48rem;
+  overflow: hidden;
+  color: #627188;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.home {
+  display: inline-flex;
+  min-height: 2.1rem;
+  align-items: center;
+  border-radius: 0.7rem;
+  color: #087f8c;
+  font-weight: 820;
+  text-decoration: none;
+}
+
+.separator {
+  color: #a0adbb;
+}
+
+.section {
+  color: #41536b;
+  font-weight: 760;
+}
+
+.current {
+  overflow: hidden;
+  color: #10233f;
+  font-weight: 820;
+  text-overflow: ellipsis;
+}
+
+.home:hover {
+  color: #075f69;
+}
+
+:global(html[data-theme="dark"]) .context {
+  border-color: rgba(148, 163, 184, 0.13);
+  background: rgba(7, 17, 31, 0.97);
+  color: #f8fafc;
+}
+
+:global(html[data-theme="dark"]) .breadcrumb {
+  color: #9fb0c4;
+}
+
+:global(html[data-theme="dark"]) .section,
+:global(html[data-theme="dark"]) .current {
+  color: #e2e8f0;
+}
+
+@media (max-width: 720px) {
+  .inner {
+    padding: 0.45rem 1rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .current,
+  .currentSeparator {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}

@@ -229,7 +229,7 @@ export default async function PricingPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main data-nav-inert className="nexid-pricing-page min-h-screen overflow-x-hidden bg-slate-50 text-slate-950">
+      <main id="main-content" tabIndex={-1} data-nav-inert className="nexid-pricing-page min-h-screen overflow-x-hidden bg-slate-50 text-slate-950">
       {pricingSchema.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}

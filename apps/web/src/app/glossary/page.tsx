@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, SectionHeading } from "@product/ui";
+import { Card } from "@product/ui";
 import { PublicLinkChip } from "../../components/public-link-chip";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
+import { MarketingPageIntro } from "../../components/marketing-page-intro";
 import { PublicSiteHeader } from "../../components/public-site-header";
 import {
   ArrowRight,
@@ -626,8 +627,13 @@ export default async function GlossaryPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main data-nav-inert className="knowledge-page-surface container-shell space-y-8 py-16">
-      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} level={1} titleClassName="brand-editorial-gradient" />
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface container-shell space-y-8 pb-16 pt-8 md:py-16">
+      <MarketingPageIntro
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        cta={{ label: copy.ctaDemo, href: "/demo-lab" }}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <Card className="p-6 md:p-7">

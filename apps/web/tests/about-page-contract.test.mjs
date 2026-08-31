@@ -78,11 +78,9 @@ test("about page keeps claims bounded and the home only adds navigation access",
   assert.match(about, /<section id="respaldo"/);
   assert.doesNotMatch(home, /<AboutPage|<AboutInmovarSection/);
   assert.match(about, /className="landing-root about-page"/);
-  assert.match(about, /<BrandHomeLink/);
-  assert.match(about, /<MarketingMegaNav/);
-  assert.match(about, /resolveThemePreference\(/);
-  assert.match(about, /THEME_PREFERENCE_VERSION_COOKIE/);
-  assert.match(about, /<main id="about-content" data-nav-inert/);
+  assert.match(about, /<PublicSiteHeader \/>/);
+  assert.match(about, /<main id="main-content" tabIndex=\{-1\} data-nav-inert/);
+  assert.doesNotMatch(about, /<BrandHomeLink|<MarketingMegaNav|resolveThemePreference\(|THEME_PREFERENCE_VERSION_COOKIE/);
   assert.doesNotMatch(about, /<BackLink|copy\.back/);
   assert.match(sitemap, /path: "\/about"/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);

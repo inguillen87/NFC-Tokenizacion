@@ -65,10 +65,11 @@ test("landing trust layer cards open related proof experiences", async () => {
 });
 
 test("landing hero uses one commercial CTA and one in-page discovery CTA", async () => {
-  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+  const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const hero = await readFile(new URL("../src/components/hero-scene.tsx", import.meta.url), "utf8");
 
-  assert.match(sections, /href="#como-funciona"[^>]*>[\s\S]*\{secondaryCta\}/);
+  assert.match(sections, /href="#como-funciona"[^>]*>[\s\S]*\{hero\.primary\}/);
+  assert.match(sections, /href="\/\?contact=demo#contact-modal"[^>]*>[\s\S]*\{hero\.secondary\}/);
   assert.doesNotMatch(sections, /href="\/docs"[^>]*>[\s\S]{0,100}\{secondaryCta\}/);
   assert.match(hero, /routeTitle: "RUTA DECLARADA · DEMO"/);
   assert.match(hero, /routeSubtitle: "Recorrido ilustrativo; no prueba custodia"/);
@@ -108,24 +109,22 @@ test("home mega navigation exposes product depth without duplicating a technical
 });
 
 test("landing hero exposes two business actions and one institutional video", async () => {
-  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+  const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
-  const mobileActionsIndex = sections.indexOf("landing-mobile-hero-actions");
+  const mobileActionsIndex = sections.indexOf("hero-post-video-actions");
   const videoIndex = sections.indexOf("<InstitutionalVideoPanel");
 
-  assert.ok(mobileActionsIndex > -1, "expected mobile hero actions");
+  assert.ok(mobileActionsIndex > -1, "expected accessible hero actions");
   assert.ok(videoIndex > -1, "expected institutional video");
-  assert.ok(mobileActionsIndex > videoIndex, "mobile actions should appear after the institutional video");
-  assert.match(sections, /<InstitutionalVideoPanel[\s\S]*hero-post-video-actions/);
+  assert.ok(mobileActionsIndex < videoIndex, "hero actions should appear before the institutional video");
+  assert.match(sections, /hero-post-video-actions[\s\S]*<InstitutionalVideoPanel/);
   assert.doesNotMatch(sections, /<HeroScene|const heroStats = \[/);
-  assert.match(sections, /href="\/\?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary"/);
-  assert.match(sections, /href="#como-funciona" className="landing-mobile-hero-actions__secondary"/);
-  assert.doesNotMatch(sections, /landing-mobile-hero-actions[\s\S]{0,800}href="\/(?:proof\/verify|pricing|docs)"/);
+  assert.match(sections, /href="\/\?contact=demo#contact-modal" className="inline-flex min-h-12/);
+  assert.match(sections, /href="#como-funciona" className="inline-flex min-h-12/);
+  assert.doesNotMatch(sections, /hero-post-video-actions[\s\S]{0,1200}href="\/(?:proof\/verify|pricing|docs)"/);
   assert.doesNotMatch(sections, /mobileDocsCta|landing-mobile-hero-actions__muted/);
-  assert.match(css, /\.landing-mobile-hero-actions a\s*\{[\s\S]*min-height:\s*44px/);
-  assert.match(css, /\.landing-mobile-hero-actions__primary\s*\{[\s\S]*background:\s*linear-gradient\(135deg,\s*#22d3ee,\s*#14b8a6\)/);
-  assert.match(css, /html\.theme-light \.landing-mobile-hero-actions__secondary,[\s\S]*color:\s*#0f172a !important/);
+  assert.match(sections, /className="hero-post-video-actions[^\"]*" role="group" aria-label=/);
 });
 
 test("docs code console wraps long environment and hash lines on mobile", async () => {

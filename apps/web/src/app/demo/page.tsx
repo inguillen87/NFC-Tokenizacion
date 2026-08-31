@@ -198,7 +198,7 @@ export default async function PublicDemoPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main data-nav-inert className="knowledge-page-surface py-10">
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface py-10">
       <section className="container-shell space-y-6">
         <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} level={1} titleClassName="brand-editorial-gradient" />
 

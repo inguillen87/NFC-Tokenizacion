@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, SectionHeading } from "@product/ui";
+import { Card } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
+import { MarketingPageIntro } from "../../components/marketing-page-intro";
 import { PublicSiteHeader } from "../../components/public-site-header";
 import { ArrowRight, Briefcase, Building2, Landmark, Rocket, ShieldCheck, UserRound } from "lucide-react";
 
@@ -181,8 +182,16 @@ export default async function AudiencesPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main data-nav-inert className="knowledge-page-surface container-shell space-y-8 py-16">
-      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} level={1} titleClassName="brand-editorial-gradient" />
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface container-shell space-y-8 pb-16 pt-8 md:py-16">
+      <MarketingPageIntro
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        cta={{
+          label: copy.demoCta,
+          href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal",
+        }}
+      />
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.intentTitle}</h3>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import {
   ArrowRight,
   BookOpen,
@@ -13,10 +12,8 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { BrandHomeLink } from "../../components/brand-home-link";
-import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
-import { productUrls, schedulingUrls, type AppLocale } from "@product/config";
-import { MarketingMegaNav } from "../../components/marketing-mega-nav";
+import { schedulingUrls, type AppLocale } from "@product/config";
+import { PublicSiteHeader } from "../../components/public-site-header";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
 import styles from "./about.module.css";
@@ -249,15 +246,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AboutPage() {
-  const { locale, locales } = await getWebI18n();
-  const cookieStore = await cookies();
-  const initialTheme = resolveThemePreference(
-    cookieStore.get("theme")?.value,
-    cookieStore.get(THEME_PREFERENCE_VERSION_COOKIE)?.value,
-  );
+  const { locale } = await getWebI18n();
   const copy = copyByLocale[locale];
   const portfolioHref = portfolioHrefByLocale[locale];
-  const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
   const meetingHref = schedulingUrls.meeting;
   const sourceLinks = [
     { href: inmovarHref, external: true, download: false, icon: Building2 },
@@ -267,29 +258,9 @@ export default async function AboutPage() {
 
   return (
     <div className="landing-root about-page">
-      <a href="#about-content" className="landing-skip-link">{copy.skip}</a>
-      <header className="site-header landing-mega-header sticky top-0 z-50 border-b">
-        <div className="container-shell header-main-row flex items-center justify-between gap-4">
-          <BrandHomeLink
-            ariaLabel={copy.home}
-            locale={locale}
-            size={40}
-            variant="static"
-            theme="light"
-            brandClassName="site-brand-lockup"
-            className="landing-brand-link"
-          />
-          <MarketingMegaNav
-            locale={locale}
-            locales={locales}
-            initialTheme={initialTheme}
-            loginHref={loginHref}
-            meetingHref={meetingHref}
-          />
-        </div>
-      </header>
+      <PublicSiteHeader />
 
-      <main id="about-content" data-nav-inert className={styles.page}>
+      <main id="main-content" tabIndex={-1} data-nav-inert className={styles.page}>
         <div className={styles.shell}>
 
         <section className={styles.hero} aria-labelledby="about-title">

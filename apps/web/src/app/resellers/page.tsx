@@ -4,6 +4,7 @@ import { Card, SectionHeading } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
+import { MarketingPageIntro } from "../../components/marketing-page-intro";
 import { PublicSiteHeader } from "../../components/public-site-header";
 import { ArrowRight, BadgeDollarSign, Briefcase, ClipboardCheck, Globe2, Layers3, ShieldCheck, Sparkles } from "lucide-react";
 
@@ -136,8 +137,13 @@ export default async function ResellersPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main data-nav-inert className="knowledge-page-surface public-page-shell reseller-page container-shell space-y-8 py-16">
-      <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} level={1} titleClassName="brand-editorial-gradient" />
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface public-page-shell reseller-page container-shell space-y-8 pb-16 pt-8 md:py-16">
+      <MarketingPageIntro
+        eyebrow={content.reseller.eyebrow}
+        title={content.reseller.title}
+        description={content.reseller.description}
+        cta={{ label: t.schedule, href: "/?contact=demo#contact-modal" }}
+      />
 
       <Card className="public-clarity-card p-6">
         <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">

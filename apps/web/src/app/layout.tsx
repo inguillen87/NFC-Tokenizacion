@@ -21,21 +21,21 @@ const socialCopyByLocale = {
   "es-AR": {
     title: "nexID | Productos conectados, garantía y postventa",
     description:
-      "Conectá cada producto con su historia y sus servicios. Con NFC o QR, tus clientes acceden a información, garantía, beneficios y atención en una experiencia simple.",
+      "Que la relación con tu cliente no termine en la venta. Cada producto abre un canal directo para contar su historia, activar garantía y beneficios, y medir qué funciona mejor en cada piloto.",
     imageAlt: "nexID conecta productos con información, garantía y postventa",
     keywords: ["Validación NFC SUN", "NFC", "Pasaporte Digital", "Cadena de Suministro Empresarial", "Trazabilidad Declarada", "Derechos Digitales", "nexID"]
   },
   "pt-BR": {
     title: "nexID | Produtos conectados, garantia e pós-venda",
     description:
-      "Conecte cada produto à sua história e aos seus serviços. Com NFC ou QR, seus clientes acessam informações, garantia, benefícios e atendimento em uma experiência simples.",
+      "Que a relação com seu cliente não termine na venda. Cada produto abre um canal direto para contar sua história, ativar garantia e benefícios e medir o que funciona melhor em cada piloto.",
     imageAlt: "nexID conecta produtos com informações, garantia e pós-venda",
     keywords: ["Validação NFC SUN", "NFC", "Passaporte Digital", "Cadeia de Suprimentos Corporativa", "Rastreabilidade Declarada", "Direitos Digitais", "nexID"]
   },
   en: {
     title: "nexID | Connected products, warranty and after-sales",
     description:
-      "Connect every product to its story and services. With NFC or QR, customers reach information, warranties, benefits and support in one simple experience.",
+      "Do not let the customer relationship end at checkout. Every product opens a direct channel to tell its story, activate warranty and benefits, and measure what works best in each pilot.",
     imageAlt: "nexID connects products with information, warranties and after-sales support",
     keywords: ["NFC SUN Validation", "NFC", "Digital Product Passport", "Enterprise Supply Chain", "Declared Traceability", "Digital Rights", "nexID"]
   }

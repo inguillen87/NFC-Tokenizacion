@@ -39,7 +39,10 @@ test("mega navigation groups commercial and technical depth on existing routes",
   assert.match(navigation, /Planos e pilotos/);
   assert.doesNotMatch(navigation, /Investor snapshot/);
   assert.doesNotMatch(navigation, /className=\{styles\.navDirectLink\}/);
-  assert.match(navigation, /group\.id === "solutions" && pathname === "\/pricing"/);
+  assert.match(navigation, /function isNavigationGroupCurrent/);
+  assert.match(navigation, /solutions: \["\/pricing"\]/);
+  assert.match(navigation, /platform: \["\/demo", "\/demo-lab", "\/proof", "\/sun", "\/offline", "\/login", "\/sdk"\]/);
+  assert.match(navigation, /resources: \["\/about", "\/docs", "\/stack", "\/glossary", "\/audiences", "\/resellers"\]/);
   assert.match(navigation, /aria-current=\{groupCurrent \? "page" : undefined\}/);
 });
 

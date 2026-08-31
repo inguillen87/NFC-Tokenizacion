@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, SectionHeading } from "@product/ui";
+import { Card } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
+import { MarketingPageIntro } from "../../components/marketing-page-intro";
 import { PublicSiteHeader } from "../../components/public-site-header";
 import { ArrowRight, BadgeCheck, Database, Fingerprint, Link2, ShieldCheck, Sparkles } from "lucide-react";
 
@@ -133,8 +134,13 @@ export default async function StackPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main data-nav-inert className="knowledge-page-surface container-shell space-y-8 py-16">
-      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} level={1} titleClassName="brand-editorial-gradient" />
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface container-shell space-y-8 pb-16 pt-8 md:py-16">
+      <MarketingPageIntro
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        cta={{ label: copy.ctaDocs, href: "/docs" }}
+      />
 
       <div className="space-y-3">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -174,7 +180,7 @@ export default async function StackPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card className="p-6">
+        <Card className="min-w-0 p-6">
           <h3 className="text-lg font-semibold text-white">{copy.compareTitle}</h3>
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -200,7 +206,7 @@ export default async function StackPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="min-w-0 p-6">
           <h3 className="text-lg font-semibold text-white">{copy.explainTitle}</h3>
           <div className="mt-4 grid gap-3">
             {copy.explainBullets.map((item) => (

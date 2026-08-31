@@ -2121,7 +2121,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Bitácora de Eventos</span>
             <div className="relative pl-4 space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-[2px] before:bg-slate-800">
               {passportStorySteps.map((step, idx) => (
-                <div key={step.label} className="relative text-xs">
+                <div key={`${step.label}-${step.title}`} className="relative text-xs">
                   <div className={`absolute -left-[14px] top-1 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${idx === 3 ? pulseClass : "bg-slate-700"}`} />
                   <span className="block text-[9px] font-mono text-slate-500">{step.label}</span>
                   <span className="block font-bold text-slate-200 mt-0.5">{step.title}</span>

@@ -256,6 +256,19 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   };
 }
 
+const navigationGroupPathPrefixes: Record<string, readonly string[]> = {
+  solutions: ["/pricing"],
+  industries: [],
+  platform: ["/demo", "/demo-lab", "/proof", "/sun", "/offline", "/login", "/sdk"],
+  resources: ["/about", "/docs", "/stack", "/glossary", "/audiences", "/resellers"],
+};
+
+function isNavigationGroupCurrent(groupId: string, pathname: string) {
+  return (navigationGroupPathPrefixes[groupId] ?? []).some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function MenuLink({ item, currentPath, featured = false, onNavigate }: { item: NavItem; currentPath: string; featured?: boolean; onNavigate?: () => void }) {
   const itemPath = item.href.split(/[?#]/)[0];
   const isCurrent = !item.external && !/[?#]/.test(item.href) && itemPath !== "/" && currentPath === itemPath;
@@ -446,7 +459,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
         {copy.groups.map((group) => {
           const expanded = openMenu === group.id;
-          const groupCurrent = group.id === "solutions" && pathname === "/pricing";
+          const groupCurrent = isNavigationGroupCurrent(group.id, pathname);
           return (
             <div
               key={group.id}

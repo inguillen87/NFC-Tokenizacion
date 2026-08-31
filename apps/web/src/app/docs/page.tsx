@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { DocsIntegrationConsole, DocsSectionNavigation } from "./docs-integration-console";
 import { JsonLd } from "../../components/json-ld";
+import { MarketingPageIntro } from "../../components/marketing-page-intro";
 import { productExitHref } from "../../components/product-exit-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
 import { PublicSiteHeader } from "../../components/public-site-header";
@@ -838,21 +839,16 @@ export default async function DocsPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main data-nav-inert className="knowledge-page-surface docs-page container-shell max-w-[100vw] space-y-8 overflow-x-hidden px-3 py-16 sm:px-4 md:px-8">
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface docs-page container-shell max-w-[100vw] space-y-8 overflow-x-hidden px-3 pb-16 pt-8 sm:px-4 md:px-8 md:py-16">
       {docsSchema.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}
-      <header className="max-w-3xl">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">
-          {copy.eyebrow}
-        </p>
-        <h1 className="brand-editorial-gradient mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">
-          {copy.title}
-        </h1>
-        <p className="mt-4 text-base leading-7 text-slate-400">
-          {copy.description}
-        </p>
-      </header>
+      <MarketingPageIntro
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        cta={{ label: copy.openLab, href: "/demo-lab" }}
+      />
 
       <nav className="docs-mobile-trust-rail md:hidden" aria-label={locale === "en" ? "Trust layer quick actions" : "Accesos rapidos de confianza"}>
         {mobileTrustRail.map((item) => {

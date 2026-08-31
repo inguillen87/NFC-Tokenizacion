@@ -38,14 +38,14 @@ export function BrandDot({ size = 12, variant = "pulse", theme = "dark", classNa
         }
         transition={shouldAnimate ? { duration: 3.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" } : undefined}
       />
-      {variant === "ripple" && shouldAnimate
+      {variant === "ripple"
         ? ringOffsets.map((delay, index) => (
             <motion.span
               key={index}
               className="brand-dot__ring"
               initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: [0.85, 2.2], opacity: [0, 0.35, 0] }}
-              transition={{ duration: 1.8, ease: "easeOut", repeat: Number.POSITIVE_INFINITY, delay }}
+              animate={shouldAnimate ? { scale: [0.85, 2.2], opacity: [0, 0.35, 0] } : undefined}
+              transition={shouldAnimate ? { duration: 1.8, ease: "easeOut", repeat: Number.POSITIVE_INFINITY, delay } : undefined}
             />
           ))
         : null}

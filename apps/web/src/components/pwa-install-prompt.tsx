@@ -175,7 +175,7 @@ export function PwaInstallPrompt({ locale = "es-AR" }: { locale?: string }) {
             suppressHydrationWarning
             type="button"
             onClick={onInstall}
-            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-700 bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white transition hover:border-cyan-800 hover:bg-cyan-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-500/30"
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-700 bg-cyan-700 px-4 py-2.5 text-sm font-bold text-[#fff] transition hover:border-cyan-800 hover:bg-cyan-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-500/30"
           >
             <Download className="h-5 w-5" aria-hidden /> {copy.install}
           </button>

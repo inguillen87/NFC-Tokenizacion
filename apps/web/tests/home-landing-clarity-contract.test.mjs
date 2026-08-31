@@ -12,7 +12,7 @@ function sliceBetween(source, startMarker, endMarker) {
 
 test("home hero is large, friendly and truthful without becoming a technical dashboard", async () => {
   const [sections, content, css] = await Promise.all([
-    readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/landing-content.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
   ]);
@@ -35,13 +35,13 @@ test("home hero is large, friendly and truthful without becoming a technical das
     assert.doesNotMatch(body, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
     assert.doesNotMatch(body, /physical product|producto físico|produto físico/i);
   }
-  assert.match(heroBodies[0], /medís qué funciona en cada piloto/i);
-  assert.match(heroBodies[1], /mede o que funciona em cada piloto/i);
-  assert.match(heroBodies[2], /measure what works in each pilot/i);
+  assert.match(heroBodies[0], /medir qué funciona mejor en cada piloto/i);
+  assert.match(heroBodies[1], /medir o que funciona melhor em cada piloto/i);
+  assert.match(heroBodies[2], /measure what works best in each pilot/i);
 });
 
 test("SimpleTrustFlow is three plain-language steps, one action and one physical-limit note", async () => {
-  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+  const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const flow = sliceBetween(sections, "export function SimpleTrustFlowSection", "export function CommercialValueSection");
 
   assert.equal((flow.match(/\{\s*label:/g) ?? []).length, 9, "each of the three locales must expose exactly three steps");
@@ -55,19 +55,19 @@ test("SimpleTrustFlow is three plain-language steps, one action and one physical
   assert.match(flow, /<HorizontalRailControls[\s\S]*railId="simple-trust-rail"/);
   assert.match(flow, /<SimpleTrustStepVisual kind=\{visualKinds\[index\] \?\? "discover"\} locale=\{locale\} \/>/);
 
-  assert.match(flow, /validar también el producto físico[^.]{0,80}controles específicos/i);
-  assert.match(flow, /validar também o produto físico[^.]{0,80}controles específicos/i);
-  assert.match(flow, /validate the physical product[^.]{0,80}specific controls/i);
+  assert.match(flow, /controles separados[^.]{0,100}evaluar el producto físico/i);
+  assert.match(flow, /controles separados[^.]{0,100}avaliar o produto físico/i);
+  assert.match(flow, /separate controls[^.]{0,100}physical product/i);
   assert.match(flow, /id="como-funciona"/);
 });
 
 test("CommercialValue restores concise business substance without technical density", async () => {
-  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
-  const value = sliceBetween(sections, "export function CommercialValueSection", "function TrustLayerMiniSimulation");
+  const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
+  const value = sections.slice(sections.indexOf("export function CommercialValueSection"));
 
-  assert.match(value, /Más valor, sin sumar complejidad/);
-  assert.match(value, /Mais valor, sem mais complexidade/);
-  assert.match(value, /More value, without more complexity/);
+  assert.match(value, /Una relación que sigue generando valor/);
+  assert.match(value, /Uma relação que continua gerando valor/);
+  assert.match(value, /A relationship that keeps creating value/);
   assert.equal((value.match(/icon: (?:PackageCheck|BadgeCheck|RadioTower)/g) ?? []).length, 9);
   assert.match(value, /id="commercial-value-rail"/);
   assert.match(value, /<HorizontalRailControls[\s\S]*railId="commercial-value-rail"/);

@@ -4,7 +4,7 @@ import {
   HeroSection,
   SimpleTrustFlowSection,
   CommercialValueSection,
-} from "../components/landing-sections";
+} from "../components/home-sections";
 import { BrandHomeLink } from "../components/brand-home-link";
 import { MarketingMegaNav } from "../components/marketing-mega-nav";
 import { landingContent } from "../lib/landing-content";
