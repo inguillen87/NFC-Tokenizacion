@@ -28,7 +28,7 @@ test("enterprise release preflight pins the expected non-secret runtime database
   );
 });
 
-test("enterprise release gate requires the reviewed ordered set through 0096", () => {
+test("enterprise release gate requires the reviewed ordered set through 0098", () => {
   assert.deepEqual(expectedMigrations, [
     "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
     "20260726103000_0058_webhook_signature_v2.sql",
@@ -71,10 +71,12 @@ test("enterprise release gate requires the reviewed ordered set through 0096", (
     "20260802290000_0094_sun_runtime_acl_boundary.sql",
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+    "20260829120000_0097_public_location_privacy.sql",
+    "20260830120000_0098_event_location_context.sql",
   ]);
 });
 
-test("migration safety gate covers 0061-0096 and the historical clean-order boundaries", () => {
+test("migration safety gate covers 0061-0098 and the historical clean-order boundaries", () => {
   const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const script = fileURLToPath(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script], {
@@ -84,7 +86,7 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-36).map(({ id }) => id), [
+  assert.deepEqual(report.migrations.slice(-38).map(({ id }) => id), [
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
     "20260728120000_0062_sun_atomic_persistence.sql",
     "20260728143000_0063_supplier_packaging_governance.sql",
@@ -121,6 +123,8 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
     "20260802290000_0094_sun_runtime_acl_boundary.sql",
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+    "20260829120000_0097_public_location_privacy.sql",
+    "20260830120000_0098_event_location_context.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
   assert.equal(report.assertions.sdk_idempotency_schema_is_durable, true);
@@ -154,6 +158,8 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
   assert.equal(report.assertions.sun_runtime_acl_boundary_is_durable, true);
   assert.equal(report.assertions.sun_tt_conflict_target_is_durable, true);
   assert.equal(report.assertions.enterprise_rbac_risk_truth_is_durable, true);
+  assert.equal(report.assertions.public_location_privacy_is_additive, true);
+  assert.equal(report.assertions.event_location_context_columns_are_additive, true);
   assert.equal(report.assertions.unauthorized_clean_bootstrap_fails_closed, true);
 });
 
@@ -213,6 +219,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           runtime_role_no_public_create: true,
           runtime_role_isolated_from_sensitive_roles: true,
           has_migration_ledger: true,
+          has_event_location_context_columns: true,
           has_webhook_endpoints: true,
           has_marketplace_products: true,
           has_marketplace_brand_profiles: true,
@@ -328,7 +335,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_migrations_missing"
-      && error.details.missing_migrations.includes("20260802310000_0096_enterprise_rbac_risk_truth.sql"),
+      && error.details.missing_migrations.includes("20260830120000_0098_event_location_context.sql"),
   );
   assert.equal(ended, true);
 
@@ -469,6 +476,25 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_schema_missing"
       && error.details.missing_schema.includes("enterprise RBAC and deterministic risk truth"),
+  );
+
+  class MissingEventLocationContextClient extends MissingMigrationClient {
+    async query(statement) {
+      const result = await super.query(statement);
+      if (String(statement).includes("current_database()")) {
+        result.rows[0].has_event_location_context_columns = false;
+      }
+      return result;
+    }
+  }
+  await assert.rejects(
+    runEnterpriseReleasePreflight({
+      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
+      Client: MissingEventLocationContextClient,
+    }),
+    (error) => error instanceof EnterpriseReleasePreflightError
+      && error.reason === "required_schema_missing"
+      && error.details.missing_schema.includes("events location context columns"),
   );
 });
 

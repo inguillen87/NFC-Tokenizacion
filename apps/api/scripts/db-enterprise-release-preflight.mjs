@@ -49,6 +49,8 @@ export const expectedMigrations = Object.freeze([
   '20260802290000_0094_sun_runtime_acl_boundary.sql',
   '20260802300000_0095_sun_tt_conflict_target.sql',
   '20260802310000_0096_enterprise_rbac_risk_truth.sql',
+  '20260829120000_0097_public_location_privacy.sql',
+  '20260830120000_0098_event_location_context.sql',
 ]);
 
 export class EnterpriseReleasePreflightError extends Error {
@@ -186,6 +188,22 @@ export async function runEnterpriseReleasePreflight(options = {}) {
              END
          ) AS runtime_role_isolated_from_sensitive_roles,
          to_regclass('public.schema_migrations') IS NOT NULL AS has_migration_ledger,
+         EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'events'
+             AND column_name = 'location_accuracy_m'
+             AND data_type = 'double precision'
+         ) AND EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'events'
+             AND column_name = 'location_source'
+             AND data_type = 'text'
+         ) AND EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'events'
+             AND column_name = 'location_updated_at'
+             AND data_type = 'timestamp with time zone'
+         ) AS has_event_location_context_columns,
          to_regclass('public.webhook_endpoints') IS NOT NULL AS has_webhook_endpoints,
          to_regclass('public.marketplace_products') IS NOT NULL AS has_marketplace_products,
          to_regclass('public.marketplace_brand_profiles') IS NOT NULL AS has_marketplace_brand_profiles,
@@ -1235,6 +1253,7 @@ export async function runEnterpriseReleasePreflight(options = {}) {
       ['runtime role has no superuser, BYPASSRLS, CREATEROLE, CREATEDB or REPLICATION', state.runtime_role_restricted],
       ['runtime role cannot CREATE in schema public', state.runtime_role_no_public_create],
       ['runtime role cannot SET ROLE into dangerous or private-owner roles', state.runtime_role_isolated_from_sensitive_roles],
+      ['events location context columns', state.has_event_location_context_columns],
       ['webhook_endpoints', state.has_webhook_endpoints],
       ['marketplace_products', state.has_marketplace_products],
       ['marketplace_brand_profiles', state.has_marketplace_brand_profiles],

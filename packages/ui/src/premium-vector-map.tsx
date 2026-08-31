@@ -53,8 +53,6 @@ type MapChrome = "full" | "compact" | "minimal" | "enterprise-atlas";
 
 const WIDTH = 1200;
 const HEIGHT = 620;
-const LIGHT_PUBLIC_RASTER_TEMPLATE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
-
 type AtlasRegionTone = "americas" | "europe" | "africa" | "asia" | "oceania" | "south";
 
 type AtlasRegion = {
@@ -258,15 +256,21 @@ function parseViewBox(value: string) {
 function mapTilesForViewBox(viewBox: string, density: MapDensity, rasterTileTemplate: string) {
   const box = parseViewBox(viewBox);
   const zoom = density === "route"
-    ? box.width < 190 ? 6 : box.width < 360 ? 5 : box.width < 680 ? 4 : 3
+    ? box.width < 90 ? 5 : box.width < 320 ? 4 : box.width < 700 ? 3 : 2
     : density === "heat" ? 3 : 3;
   const tilesPerAxis = 2 ** zoom;
   const tileWidth = WIDTH / tilesPerAxis;
   const tileHeight = HEIGHT / tilesPerAxis;
-  const minX = Math.floor(box.x / tileWidth) - 1;
-  const maxX = Math.ceil((box.x + box.width) / tileWidth) + 1;
-  const minY = Math.max(0, Math.floor(box.y / tileHeight) - 1);
-  const maxY = Math.min(tilesPerAxis - 1, Math.ceil((box.y + box.height) / tileHeight) + 1);
+  // The map is a fitted, non-pannable SVG. Loading a one-tile buffer around
+  // every edge used to turn the SUN route view into 224 tiny requests at z6.
+  // Fetch only the tiles intersecting the visible viewBox: labels stay legible
+  // at the rendered mobile size and the map remains fast on the first tap.
+  const endX = Math.max(box.x, box.x + box.width - 0.001);
+  const endY = Math.max(box.y, box.y + box.height - 0.001);
+  const minX = Math.floor(box.x / tileWidth);
+  const maxX = Math.floor(endX / tileWidth);
+  const minY = Math.max(0, Math.floor(box.y / tileHeight));
+  const maxY = Math.min(tilesPerAxis - 1, Math.floor(endY / tileHeight));
   const tiles: Array<{ key: string; href: string; x: number; y: number; width: number; height: number }> = [];
   for (let y = minY; y <= maxY; y += 1) {
     for (let x = minX; x <= maxX; x += 1) {
@@ -374,14 +378,14 @@ function EnterpriseTrustAtlasScene({
   riskCount: number;
   routeCount: number;
 }) {
-  const originPoint = points.find((point) => toneFor(point) === "origin") || points[0] || null;
-  const tapPoint = selectedPoint || points.find((point) => toneFor(point) === "tap") || points[1] || originPoint;
+  const originPoint = points.find((point) => toneFor(point) === "origin") || null;
+  const tapPoint = points.find((point) => toneFor(point) === "tap") || null;
   const activeRoute = routes[0] || null;
   const originLabel = originPoint?.label || "Referencia";
   const tapLabel = tapPoint?.label || "Tap";
   const originSub = originPoint?.sublabel || "referencia reportada";
   const tapSub = tapPoint?.sublabel || "ubicación reportada";
-  const distanceLabel = activeRoute?.distanceLabel || activeRoute?.label || "relación configurada";
+  const distanceLabel = activeRoute?.distanceLabel || activeRoute?.label || "Sin relación configurada";
   const routeD = "M 132 456 C 205 340 296 334 350 238 S 414 152 392 202";
   const returnD = "M 102 494 C 198 446 288 464 370 420 C 432 386 468 392 500 428";
   const glow = isLightTheme ? "rgba(14, 165, 233, 0.24)" : "rgba(34, 211, 238, 0.42)";
@@ -466,30 +470,36 @@ function EnterpriseTrustAtlasScene({
         ))}
       </g>
 
-      <g filter={`url(#${idPrefix}-enterprise-glow)`}>
-        <path d={returnD} fill="none" stroke="rgba(14,165,233,.22)" strokeWidth="23" strokeLinecap="round" opacity="0.18" />
-        <path d={routeD} fill="none" stroke={glow} strokeWidth="34" strokeLinecap="round" opacity="0.28" />
-        <path d={routeD} fill="none" stroke={`url(#${idPrefix}-enterprise-route)`} strokeWidth="4.2" strokeLinecap="round" strokeDasharray="14 18" opacity="0.98">
-          <animate attributeName="stroke-dashoffset" values="0;-96" dur="3.6s" repeatCount="indefinite" />
-        </path>
-        <path d={returnD} fill="none" stroke="rgba(52,211,153,.5)" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="3 14" opacity="0.68">
-          <animate attributeName="stroke-dashoffset" values="0;74" dur="5.8s" repeatCount="indefinite" />
-        </path>
-        <circle r="7" fill={`url(#${idPrefix}-enterprise-heat)`} opacity="0.95">
-          <animateMotion dur="5.2s" repeatCount="indefinite" path={routeD} />
-        </circle>
-      </g>
+      {activeRoute ? (
+        <g filter={`url(#${idPrefix}-enterprise-glow)`} data-nexid-atlas-route="reported">
+          <path d={returnD} fill="none" stroke="rgba(14,165,233,.22)" strokeWidth="23" strokeLinecap="round" opacity="0.18" />
+          <path d={routeD} fill="none" stroke={glow} strokeWidth="34" strokeLinecap="round" opacity="0.28" />
+          <path d={routeD} fill="none" stroke={`url(#${idPrefix}-enterprise-route)`} strokeWidth="4.2" strokeLinecap="round" strokeDasharray="14 18" opacity="0.98">
+            <animate attributeName="stroke-dashoffset" values="0;-96" dur="3.6s" repeatCount="indefinite" />
+          </path>
+          <path d={returnD} fill="none" stroke="rgba(52,211,153,.5)" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="3 14" opacity="0.68">
+            <animate attributeName="stroke-dashoffset" values="0;74" dur="5.8s" repeatCount="indefinite" />
+          </path>
+          <circle r="7" fill={`url(#${idPrefix}-enterprise-heat)`} opacity="0.95">
+            <animateMotion dur="5.2s" repeatCount="indefinite" path={routeD} />
+          </circle>
+        </g>
+      ) : null}
 
-      <g className="nexid-enterprise-node" transform="translate(132 456)">
-        <circle r="50" fill="none" stroke="#34d399" strokeWidth="1" strokeDasharray="4 10" opacity="0.5" />
-        <circle r="22" fill="rgba(52,211,153,.22)" stroke="#34d399" strokeWidth="1.7" />
-        <circle r="8" fill="#34d399" stroke="#f8fafc" strokeWidth="2" />
-      </g>
-      <g className="nexid-enterprise-node nexid-enterprise-node--tap" transform="translate(392 202)">
-        <circle r="68" fill="none" stroke="#22d3ee" strokeWidth="1" strokeDasharray="3 11" opacity="0.58" />
-        <circle r="32" fill="rgba(34,211,238,.24)" stroke="#67e8f9" strokeWidth="1.8" />
-        <circle r="11" fill="#22d3ee" stroke="#f8fafc" strokeWidth="2.4" />
-      </g>
+      {originPoint ? (
+        <g className="nexid-enterprise-node" transform="translate(132 456)" data-nexid-atlas-origin="reported">
+          <circle r="50" fill="none" stroke="#34d399" strokeWidth="1" strokeDasharray="4 10" opacity="0.5" />
+          <circle r="22" fill="rgba(52,211,153,.22)" stroke="#34d399" strokeWidth="1.7" />
+          <circle r="8" fill="#34d399" stroke="#f8fafc" strokeWidth="2" />
+        </g>
+      ) : null}
+      {tapPoint ? (
+        <g className="nexid-enterprise-node nexid-enterprise-node--tap" transform="translate(392 202)" data-nexid-atlas-tap="reported">
+          <circle r="68" fill="none" stroke="#22d3ee" strokeWidth="1" strokeDasharray="3 11" opacity="0.58" />
+          <circle r="32" fill="rgba(34,211,238,.24)" stroke="#67e8f9" strokeWidth="1.8" />
+          <circle r="11" fill="#22d3ee" stroke="#f8fafc" strokeWidth="2.4" />
+        </g>
+      ) : null}
 
       <g transform="translate(304 24)">
         <rect width="188" height="56" rx="16" fill={panelFill} stroke="rgba(125,211,252,.26)" />
@@ -497,19 +507,23 @@ function EnterpriseTrustAtlasScene({
         <text x="16" y="42" fill={text} fontSize="15" fontWeight="950">{title}</text>
       </g>
 
-      <g transform="translate(30 502)">
-        <rect width="218" height="76" rx="17" fill={panelFill} stroke="rgba(52,211,153,.28)" />
-        <text x="16" y="24" fill="#86efac" fontSize="9" fontWeight="950" letterSpacing="2.2">REFERENCIA</text>
-        <text x="16" y="47" fill={text} fontSize="18" fontWeight="950">{originLabel}</text>
-        <text x="16" y="64" fill={muted} fontSize="10" fontWeight="700">{originSub}</text>
-      </g>
+      {originPoint ? (
+        <g transform="translate(30 502)">
+          <rect width="218" height="76" rx="17" fill={panelFill} stroke="rgba(52,211,153,.28)" />
+          <text x="16" y="24" fill="#86efac" fontSize="9" fontWeight="950" letterSpacing="2.2">REFERENCIA</text>
+          <text x="16" y="47" fill={text} fontSize="18" fontWeight="950">{originLabel}</text>
+          <text x="16" y="64" fill={muted} fontSize="10" fontWeight="700">{originSub}</text>
+        </g>
+      ) : null}
 
-      <g transform="translate(286 106)">
-        <rect width="206" height="86" rx="17" fill={panelFill} stroke="rgba(34,211,238,.3)" />
-        <text x="16" y="25" fill="#67e8f9" fontSize="9" fontWeight="950" letterSpacing="2.2">EVENTO REPORTADO</text>
-        <text x="16" y="49" fill={text} fontSize="18" fontWeight="950">{tapLabel}</text>
-        <text x="16" y="66" fill={muted} fontSize="10" fontWeight="750">{tapSub}</text>
-      </g>
+      {tapPoint ? (
+        <g transform="translate(286 106)">
+          <rect width="206" height="86" rx="17" fill={panelFill} stroke="rgba(34,211,238,.3)" />
+          <text x="16" y="25" fill="#67e8f9" fontSize="9" fontWeight="950" letterSpacing="2.2">EVENTO REPORTADO</text>
+          <text x="16" y="49" fill={text} fontSize="18" fontWeight="950">{tapLabel}</text>
+          <text x="16" y="66" fill={muted} fontSize="10" fontWeight="750">{tapSub}</text>
+        </g>
+      ) : null}
 
       <g transform="translate(278 498)">
         <rect width="214" height="80" rx="17" fill={panelFill} stroke="rgba(251,191,36,.24)" />
@@ -547,6 +561,7 @@ export function PremiumVectorMap({
   evidenceSteps = [],
   ledgerItems = [],
   mapSource,
+  alwaysLabelEndpoints = false,
 }: {
   points: VectorMapPoint[];
   routes?: VectorMapRoute[];
@@ -564,6 +579,7 @@ export function PremiumVectorMap({
   evidenceSteps?: VectorMapEvidenceStep[];
   ledgerItems?: VectorMapLedgerItem[];
   mapSource?: TrustMapSourceOverrides;
+  alwaysLabelEndpoints?: boolean;
 }) {
   const rawId = useId();
   const idPrefix = useMemo(() => rawId.replace(/[^a-zA-Z0-9_-]/g, ""), [rawId]);
@@ -596,17 +612,7 @@ export function PremiumVectorMap({
     observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme", "data-nexid-theme"] });
     return () => observer.disconnect();
   }, []);
-  const trustMapSource = useMemo(() => {
-    const resolved = resolveTrustMapSource(mapSource);
-    if (isLightTheme && resolved.mode === "public-raster" && resolved.rasterTileTemplate.includes("/dark_all/")) {
-      return {
-        ...resolved,
-        rasterTileTemplate: LIGHT_PUBLIC_RASTER_TEMPLATE,
-        detail: "Fallback publico claro sin API key; reemplazable por PMTiles o tiles propios.",
-      };
-    }
-    return resolved;
-  }, [isLightTheme, mapSource]);
+  const trustMapSource = useMemo(() => resolveTrustMapSource(mapSource), [mapSource]);
   const mapTiles = isEnterpriseAtlas ? [] : mapTilesForViewBox(viewBox, density, trustMapSource.rasterTileTemplate);
   const maxScan = Math.max(1, ...visiblePoints.map((point) => point.scans || 1));
   const selectedPoint = visiblePoints.find((point) => point.id === selectedPointId) || visiblePoints[0] || null;
@@ -1103,7 +1109,19 @@ export function PremiumVectorMap({
             const color = pointColor(tone);
             const selected = selectedPoint?.id === point.id;
             const radius = selected ? 10 : tone === "origin" || tone === "tap" ? 8 : 6.2;
-            const shouldLabel = !isMinimalChrome && !isTightRouteView && (selected || tone === "origin" || tone === "tap" || tone === "risk");
+            const isEndpoint = tone === "origin" || tone === "tap";
+            const compactEndpointLabel = point.stageLabel || (tone === "origin" ? "Origen" : "Tap");
+            const visibleLabel = alwaysLabelEndpoints && isEndpoint ? compactEndpointLabel : point.label;
+            const labelWidth = Math.max(58, Math.min(alwaysLabelEndpoints && isEndpoint ? 92 : 155, visibleLabel.length * 8 + 24));
+            const desiredEndpointLabelX = tone === "origin" ? dot.x - labelWidth - 18 : dot.x + 18;
+            const endpointLabelX = clamp(
+              desiredEndpointLabelX,
+              viewBoxMetrics.x + 4,
+              viewBoxMetrics.x + viewBoxMetrics.width - labelWidth - 4,
+            );
+            const shouldLabel = alwaysLabelEndpoints && isEndpoint
+              ? true
+              : !isMinimalChrome && !isTightRouteView && (selected || tone === "origin" || tone === "tap" || tone === "risk");
             const isFresh = point.lastSeen ? Math.abs(Date.now() - Date.parse(point.lastSeen)) < 20000 : false;
 
             return (
@@ -1204,10 +1222,12 @@ export function PremiumVectorMap({
                 )}
 
                 {shouldLabel ? (
-                  <g transform={`translate(${dot.x + 16} ${dot.y - 18})`}>
-                    <rect x="0" y="-18" width={Math.max(70, Math.min(155, point.label.length * 8 + 24))} height="28" rx="14" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
+                  <g transform={alwaysLabelEndpoints && isEndpoint
+                    ? `translate(${endpointLabelX} ${dot.y + 4})`
+                    : `translate(${dot.x + 16} ${dot.y - 18})`}>
+                    <rect x="0" y="-18" width={labelWidth} height="28" rx="14" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
                     <text x="12" y="1" fill={labelTextFill} fontSize={selected ? "13" : "12"} fontWeight={isLightTheme ? "650" : "850"} paintOrder="stroke" stroke={labelHaloColor} strokeWidth={isLightTheme ? "0.8" : "2"}>
-                      {point.label}
+                      {visibleLabel}
                     </text>
                   </g>
                 ) : null}

@@ -8,10 +8,10 @@ on:
       migration_phase:
         description: "Current enterprise preflight or explicitly legacy 0050-0056 recovery gate; no option applies migrations"
         required: true
-        default: current_0057_0096_preflight
+        default: current_0057_0098_preflight
         type: choice
         options:
-          - current_0057_0096_preflight
+          - current_0057_0098_preflight
           - legacy_0050_0056_preflight
           - legacy_0050_0056_after_0050_dry_run
           - legacy_0050_0056_postcheck
@@ -43,9 +43,9 @@ jobs:
 
       # This is the authoritative current release gate. It is read-only at the
       # application level and fails closed when the real staging custody
-      # keyring or any reviewed 0057-0096 schema capability is absent.
-      - name: Current enterprise schema and custody preflight (0057-0096)
-        if: inputs.migration_phase == 'current_0057_0096_preflight'
+      # keyring or any reviewed 0057-0098 schema capability is absent.
+      - name: Current enterprise schema and custody preflight (0057-0098)
+        if: inputs.migration_phase == 'current_0057_0098_preflight'
         env:
           DATABASE_URL: ${{ secrets.STAGING_RUNTIME_DATABASE_URL }}
           NEXID_RUNTIME_DB_ROLE: ${{ vars.STAGING_RUNTIME_DB_ROLE }}
@@ -56,7 +56,7 @@ jobs:
 
       # The following three options exist only for the historical 0050-0056
       # migration recovery runbook. They are not current enterprise release
-      # authorization and cannot substitute for the 0057-0096 preflight above.
+      # authorization and cannot substitute for the 0057-0098 preflight above.
       - name: Legacy migration baseline preflight (before 0050-0056)
         if: inputs.migration_phase == 'legacy_0050_0056_preflight'
         env:

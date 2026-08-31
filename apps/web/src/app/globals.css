@@ -4080,9 +4080,9 @@ html.theme-light .animate-card-shift:hover {
 
 .sun-topbar {
   gap: 0.75rem;
-  position: sticky;
-  top: max(0.5rem, env(safe-area-inset-top));
-  z-index: 40;
+  position: relative;
+  top: auto;
+  z-index: 20;
   border: 1px solid rgba(125, 211, 252, 0.12);
   border-radius: 1.35rem;
   background: rgba(2, 6, 23, 0.78);
@@ -5259,15 +5259,34 @@ html.theme-light .animate-card-shift:hover {
   }
 
   .sun-topbar-actions {
-    display: grid;
-    justify-items: end;
-    gap: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
-.sun-topbar .theme-toggle {
-  padding: 0.38rem 0.55rem;
-  font-size: 0.66rem;
-}
+  .sun-topbar .theme-toggle {
+    min-height: 2.75rem;
+    padding: 0.38rem 0.55rem;
+    font-size: 0.66rem;
+  }
+
+  .sun-passport-header .locale-switcher select {
+    min-width: 0;
+    max-width: 100%;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 359px) {
+    .sun-passport-header .theme-toggle {
+      width: 2.75rem;
+      justify-content: center;
+      padding-inline: 0;
+    }
+
+    .sun-passport-header .theme-toggle span:not(.theme-toggle__glyph) {
+      display: none;
+    }
+  }
 
 }
 
@@ -6526,7 +6545,7 @@ html.theme-light .sun-priority-panel a {
   }
 
   .sun-topbar {
-    top: 1rem;
+    top: auto;
     padding: 0.72rem 0.82rem;
   }
 
@@ -6629,6 +6648,118 @@ html.theme-light .sun-priority-panel a {
 
 /* Premium post-tap visual pass: the mobile/API passport must sell the same
    physical-product story as Demo Lab, but in a compact consumer view. */
+.sun-tap-shell {
+  container-type: inline-size;
+}
+
+@container (max-width: 320px) {
+  .sun-passport-brand__caption {
+    display: none;
+  }
+
+  .sun-summary-product {
+    grid-template-columns: 76px minmax(0, 1fr) !important;
+    gap: 0.65rem !important;
+  }
+
+  .sun-summary-product__visual {
+    height: 6.5rem !important;
+  }
+
+  .sun-summary-product__title {
+    font-size: 1.08rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .sun-summary-status {
+    padding: 0.75rem !important;
+  }
+
+  .sun-summary-status > div {
+    gap: 0.65rem !important;
+  }
+
+  .sun-summary-status__icon {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    border-radius: 0.7rem !important;
+  }
+
+  .sun-summary-status__headline {
+    font-size: 1rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .sun-summary-status__copy {
+    margin-top: 0.55rem !important;
+    font-size: 0.65rem !important;
+    line-height: 1.45 !important;
+  }
+}
+
+@container (max-width: 220px) {
+  .sun-summary-product {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    gap: 0.7rem !important;
+  }
+
+  .sun-summary-product__visual {
+    height: clamp(8.5rem, 54cqw, 10rem) !important;
+  }
+
+  .sun-summary-product__copy {
+    width: 100%;
+  }
+
+  .sun-summary-product__title {
+    max-width: 100%;
+    font-size: clamp(1.2rem, 8.4cqw, 1.45rem) !important;
+    line-height: 1.06 !important;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+}
+
+@container (max-width: 220px) {
+  .sun-summary-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+.sun-summary-product-stage > .sun-product-stage {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.sun-summary-product-stage .sun-stage-real-map,
+.sun-summary-product-stage .sun-stage-map,
+.sun-summary-product-stage .sun-stage-pin,
+.sun-summary-product-stage .sun-stage-route-label,
+.sun-summary-product-stage .sun-tap-wave {
+  display: none;
+}
+
+.sun-summary-product-stage .sun-three-product-shell {
+  inset: -14% -12%;
+  transform: scale(0.72);
+}
+
+.sun-summary-product-stage .sun-three-stage.hero-three-stage {
+  inset: -16%;
+}
+
+.sun-summary-product-stage .sun-product-photo-shell {
+  width: 84%;
+  height: 92%;
+  animation: none;
+}
+
 .sun-product-stage {
   isolation: isolate;
   perspective: 900px;
@@ -53571,6 +53702,209 @@ html[data-theme="light"] .demo-lab-fullscreen-root--light .demo-lab-shell--crm .
 html.theme-light .demo-lab-fullscreen-root--light .demo-lab-shell--crm .demo-lab-crm-security-note span,
 html[data-theme="light"] .demo-lab-fullscreen-root--light .demo-lab-shell--crm .demo-lab-crm-security-note span {
   color: #475569 !important;
+}
+
+/* SUN is white-first in the saved light preference. The passport markup uses
+   dark utility surfaces by default, so translate those surfaces together with
+   the global light text palette instead of leaving dark cards with dark copy. */
+html.theme-light .sun-tap-experience,
+html[data-theme="light"] .sun-tap-experience {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.16), transparent 28rem),
+    radial-gradient(circle at 90% 12%, rgba(16, 185, 129, 0.12), transparent 26rem),
+    linear-gradient(180deg, #f8fcff 0%, #eef7ff 52%, #f8fbff 100%) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-panel,
+html[data-theme="light"] .sun-tap-experience .sun-summary-panel {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(45, 212, 191, 0.13), transparent 13rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 255, 0.92)) !important;
+  box-shadow: 0 1.25rem 3rem rgba(14, 116, 144, 0.12) !important;
+}
+
+/* Keep every SUN information surface white-first. This inventory intentionally
+   includes arbitrary Tailwind gradients used by services, telemetry and agro;
+   without it those panels become isolated dark bands in the light passport. */
+html.theme-light .sun-tap-experience [class*="bg-slate-950"],
+html.theme-light .sun-tap-experience [class*="bg-slate-900"],
+html.theme-light .sun-tap-experience [class*="bg-slate-800"],
+html.theme-light .sun-tap-experience [class*="bg-black"],
+html.theme-light .sun-tap-experience [class*="from-slate-950"],
+html.theme-light .sun-tap-experience [class*="from-slate-900"],
+html.theme-light .sun-tap-experience [class*="via-slate-950"],
+html.theme-light .sun-tap-experience [class*="to-slate-950"],
+html.theme-light .sun-tap-experience [class*="to-slate-900"],
+html.theme-light .sun-tap-experience [class*="from-emerald-950"],
+html.theme-light .sun-tap-experience [class*="to-cyan-950"],
+html.theme-light .sun-tap-experience [class*="bg-[#0a1020]"],
+html.theme-light .sun-tap-experience [class*="bg-[linear-gradient"],
+html.theme-light .sun-tap-experience [class*="bg-[radial-gradient"],
+html[data-theme="light"] .sun-tap-experience [class*="bg-slate-950"],
+html[data-theme="light"] .sun-tap-experience [class*="bg-slate-900"],
+html[data-theme="light"] .sun-tap-experience [class*="bg-slate-800"],
+html[data-theme="light"] .sun-tap-experience [class*="bg-black"],
+html[data-theme="light"] .sun-tap-experience [class*="from-slate-950"],
+html[data-theme="light"] .sun-tap-experience [class*="from-slate-900"],
+html[data-theme="light"] .sun-tap-experience [class*="via-slate-950"],
+html[data-theme="light"] .sun-tap-experience [class*="to-slate-950"],
+html[data-theme="light"] .sun-tap-experience [class*="to-slate-900"],
+html[data-theme="light"] .sun-tap-experience [class*="from-emerald-950"],
+html[data-theme="light"] .sun-tap-experience [class*="to-cyan-950"],
+html[data-theme="light"] .sun-tap-experience [class*="bg-[#0a1020]"],
+html[data-theme="light"] .sun-tap-experience [class*="bg-[linear-gradient"],
+html[data-theme="light"] .sun-tap-experience [class*="bg-[radial-gradient"] {
+  border-color: rgba(14, 116, 144, 0.15) !important;
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  background-image: none !important;
+  box-shadow: 0 0.75rem 2rem rgba(14, 116, 144, 0.07) !important;
+}
+
+html.theme-light .sun-tap-experience [class*="border-white"],
+html[data-theme="light"] .sun-tap-experience [class*="border-white"] {
+  border-color: rgba(14, 116, 144, 0.15) !important;
+}
+
+html.theme-light .sun-tap-experience [class*="divide-white"] > :not([hidden]) ~ :not([hidden]),
+html[data-theme="light"] .sun-tap-experience [class*="divide-white"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(14, 116, 144, 0.12) !important;
+}
+
+html.theme-light .sun-tap-experience .text-white,
+html.theme-light .sun-tap-experience .text-slate-50,
+html.theme-light .sun-tap-experience .text-slate-100,
+html.theme-light .sun-tap-experience .text-slate-200,
+html[data-theme="light"] .sun-tap-experience .text-white,
+html[data-theme="light"] .sun-tap-experience .text-slate-50,
+html[data-theme="light"] .sun-tap-experience .text-slate-100,
+html[data-theme="light"] .sun-tap-experience .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.theme-light .sun-tap-experience .text-slate-300,
+html.theme-light .sun-tap-experience .text-slate-400,
+html.theme-light .sun-tap-experience .text-slate-500,
+html[data-theme="light"] .sun-tap-experience .text-slate-300,
+html[data-theme="light"] .sun-tap-experience .text-slate-400,
+html[data-theme="light"] .sun-tap-experience .text-slate-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .sun-tap-experience input::placeholder,
+html.theme-light .sun-tap-experience textarea::placeholder,
+html[data-theme="light"] .sun-tap-experience input::placeholder,
+html[data-theme="light"] .sun-tap-experience textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-product__visual,
+html[data-theme="light"] .sun-tap-experience .sun-summary-product__visual {
+  background:
+    radial-gradient(circle at 50% 34%, rgba(34, 211, 238, 0.2), transparent 54%),
+    linear-gradient(145deg, #ffffff, #eaf8fc) !important;
+  border-color: rgba(14, 116, 144, 0.2) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-product__visual > span,
+html[data-theme="light"] .sun-tap-experience .sun-summary-product__visual > span {
+  background: rgba(236, 254, 255, 0.94) !important;
+  color: #0e7490 !important;
+}
+
+/* VALID_CLOSED and VALID_OPENED remain semantically distinct without turning
+   either result into a dark or alarming full-width band. */
+html.theme-light .sun-tap-experience .sun-summary-status[class*="bg-emerald-"],
+html[data-theme="light"] .sun-tap-experience .sun-summary-status[class*="bg-emerald-"] {
+  border-color: rgba(5, 150, 105, 0.24) !important;
+  border-left-color: #059669 !important;
+  background: rgba(236, 253, 245, 0.96) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-status[class*="bg-amber-"],
+html[data-theme="light"] .sun-tap-experience .sun-summary-status[class*="bg-amber-"] {
+  border-color: rgba(217, 119, 6, 0.24) !important;
+  border-left-color: #d97706 !important;
+  background: rgba(255, 251, 235, 0.97) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-status[class*="bg-cyan-"],
+html[data-theme="light"] .sun-tap-experience .sun-summary-status[class*="bg-cyan-"] {
+  border-color: rgba(8, 145, 178, 0.22) !important;
+  border-left-color: #0891b2 !important;
+  background: rgba(236, 254, 255, 0.96) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-status[class*="bg-rose-"],
+html[data-theme="light"] .sun-tap-experience .sun-summary-status[class*="bg-rose-"] {
+  border-color: rgba(225, 29, 72, 0.22) !important;
+  border-left-color: #e11d48 !important;
+  background: rgba(255, 241, 242, 0.97) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-actions a:first-child,
+html[data-theme="light"] .sun-tap-experience .sun-summary-actions a:first-child {
+  border: 1px solid rgba(15, 118, 110, 0.22) !important;
+  background: #0f766e !important;
+  color: #ffffff !important;
+  box-shadow: 0 0.7rem 1.6rem rgba(15, 118, 110, 0.2) !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-actions a:nth-child(2),
+html[data-theme="light"] .sun-tap-experience .sun-summary-actions a:nth-child(2) {
+  border-color: rgba(8, 145, 178, 0.24) !important;
+  background: rgba(236, 254, 255, 0.94) !important;
+  color: #0e7490 !important;
+}
+
+html.theme-light .sun-tap-experience [class*="text-cyan-"],
+html[data-theme="light"] .sun-tap-experience [class*="text-cyan-"] {
+  color: #0e7490 !important;
+}
+
+html.theme-light .sun-tap-experience [class*="text-emerald-"],
+html[data-theme="light"] .sun-tap-experience [class*="text-emerald-"] {
+  color: #047857 !important;
+}
+
+html.theme-light .sun-tap-experience [class*="text-amber-"],
+html[data-theme="light"] .sun-tap-experience [class*="text-amber-"] {
+  color: #92400e !important;
+}
+
+html.theme-light .sun-tap-experience [class*="text-rose-"],
+html[data-theme="light"] .sun-tap-experience [class*="text-rose-"] {
+  color: #be123c !important;
+}
+
+html.theme-light .sun-tap-experience [class*="text-violet-"],
+html[data-theme="light"] .sun-tap-experience [class*="text-violet-"] {
+  color: #6d28d9 !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-product__visual > span,
+html[data-theme="light"] .sun-tap-experience .sun-summary-product__visual > span {
+  color: #0e7490 !important;
+}
+
+html.theme-light .sun-tap-experience .sun-summary-actions a:first-child,
+html[data-theme="light"] .sun-tap-experience .sun-summary-actions a:first-child {
+  color: #ffffff !important;
+}
+
+/* On the consumer passport, keep real cartography readable. The generic light
+   map treatment intentionally softens operational maps, but it washed out
+   roads and boundaries on the narrow SUN route view. */
+html.theme-light .sun-tap-experience .global-ops-map-stage [data-nexid-map="premium-vector-map"],
+html[data-theme="light"] .sun-tap-experience .global-ops-map-stage [data-nexid-map="premium-vector-map"] {
+  filter: saturate(0.96) brightness(1.01) contrast(1.12) !important;
+  --nexid-vector-tile-overlay-route: rgba(255, 255, 255, 0.06);
+  --nexid-vector-trace-opacity-route: 0.08;
+  --nexid-vector-grid-opacity-tiles: 0.012;
+  --nexid-vector-scan-opacity-tiles: 0.004;
+  --nexid-vector-noise-opacity-tiles: 0.002;
 }
 
 /* Demo Lab keeps one sticky navigation on narrow screens. */

@@ -45,6 +45,16 @@ test("invalid coordinates fail closed even with consent", () => {
   assert.equal(result.reason, "invalid_location");
 });
 
+test("missing or unusably broad accuracy fails closed instead of becoming 150 m", () => {
+  const base = { consent: true, precision: "approximate", lat: -34.603722, lng: -58.381592 };
+  for (const accuracy of [undefined, Number.NaN, -1, 50_001, 100_000]) {
+    const result = normalizeConsentedApproximateLocation({ ...base, accuracy });
+    assert.equal(result.accepted, false);
+    assert.equal(result.reason, "invalid_location_accuracy");
+    assert.equal(result.accuracy, null);
+  }
+});
+
 test("strict API coordinate pairs preserve zero but reject null coercion and partial pairs", () => {
   assert.deepEqual(normalizeCoordinatePair(0, 0), { lat: 0, lng: 0 });
   assert.deepEqual(normalizeCoordinatePair("-34.6", "-58.4"), { lat: -34.6, lng: -58.4 });
@@ -113,8 +123,10 @@ test("SUN context and ownership claims enforce the shared privacy boundary", asy
   assert.match(qrRoute, /raw_query_sun_dynamic_redacted: true/);
   assert.match(leadsRoute, /source: "browser_gps_approximate_consent"/);
 
-  // Dynamic values remain exact for CMAC/tamper verification, then are redacted
-  // only at the persistence boundaries while their hashes remain available.
+  // Dynamic values remain exact for cryptographic CMAC verification, but
+  // attacker-controlled query metadata never establishes the tamper state.
+  // Persistence receives the values only through its redacting boundary while
+  // their hashes remain available for correlation.
   assert.match(qrRoute, /piccDataHex: picc_data/);
   assert.match(qrRoute, /encHex: enc/);
   assert.match(qrRoute, /cmacHex: cmac/);
@@ -124,7 +136,10 @@ test("SUN context and ownership claims enforce the shared privacy boundary", asy
   assert.doesNotMatch(qrRoute, /request_json: \{ bid, picc_data, enc, cmac \}/);
   assert.match(qrRoute, /const persistedRawQuery = redactSensitiveQueryValues\(input\.rawQuery\) \|\| \{\}/);
   assert.match(qrRoute, /JSON\.stringify\(persistedRawQuery\)/);
-  assert.match(sunService, /resolveTamperSignal\(\{[\s\S]*?rawQuery: input\.rawQuery/);
+  assert.match(sunService, /verifySun\(\{[\s\S]*?piccDataHex: input\.piccDataHex[\s\S]*?encHex: input\.encHex[\s\S]*?cmacHex: input\.cmacHex/);
+  assert.match(sunService, /function resolveTamperSignal\(\)[\s\S]*?attacker-controlled/);
+  assert.match(sunService, /const tamperSignal = resolveTamperSignal\(\)/);
+  assert.doesNotMatch(sunService, /resolveTamperSignal\(\{[\s\S]*?rawQuery/);
   assert.match(sunService, /persistSunScanAtomically\(\{[\s\S]*?rawQuery: input\.rawQuery/);
   assert.match(atomicPersistence, /redactSensitiveQueryValues\(input\.rawQuery\)/);
   assert.match(atomicPersistence, /picc_data_hash: input\.piccDataHash/);

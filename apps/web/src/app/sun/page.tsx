@@ -1,28 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ExternalLink, AlertTriangle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { AlertTriangle, ChevronRight, MapPin, PackageCheck, PackageOpen, ShieldAlert, ShieldCheck } from "lucide-react";
 import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
-import { TapPrecisionTelemetry } from "./tap-precision-telemetry";
+import { SunPassportHeader } from "./sun-passport-header";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { PostTapNextStep } from "./post-tap-next-step";
+import { SunSectionNav } from "./sun-section-nav";
+import { SunServicesHub, type SunPublishedPromotion } from "./sun-services-hub";
+import { SunLocationExperience } from "./sun-location-experience";
+import { SunUpdatesOptIn } from "./sun-updates-opt-in";
+import { resolveSunConsumerStatus } from "./sun-consumer-status";
 import { OfflinePublicProductCache } from "./offline-public-product-cache";
 import { AgroDppExperience } from "./agro-dpp-experience";
 import { normalizeAgroDppProfile } from "./agro-dpp-model";
 import { resolveCommercialTapFreshness, resolvePostTapQuickActionAvailability } from "./post-tap-policy";
-import { fmtDistance, haversineKm, selectCanonicalSunMapRoutes } from "./sun-route-distance";
-import { qualifySunStatusForPreview, selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
+import { fmtDistance, haversineKm } from "./sun-route-distance";
+import { selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
 import { productUrls } from "@product/config";
-import { BrandLockup, DeviceSignatureBadge, EmptyState, KeyValueSpec, LocaleSwitcher, ThemeToggle, TimelineRail } from "@product/ui";
-import { GlobalOpsMap, type GlobalOpsPoint, type GlobalOpsRoute } from "@product/ui/global-ops-map";
+import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { resolveProductAssetProfile, summarizeAssetReadiness } from "../../lib/product-asset-bank";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
-  if (override) {
+  // Query-driven loopback routing is a local development aid only. Never let
+  // a public SUN URL turn the server or the user's browser into a loopback
+  // probe in Preview/Production.
+  const localOverrideEnabled = process.env.NODE_ENV === "development" && !process.env.VERCEL_ENV;
+  if (override && localOverrideEnabled) {
     try {
       const parsed = new URL(override);
       if ((parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") && parsed.protocol === "http:") {
@@ -133,13 +142,35 @@ type SunContract = {
   iot?: { 
     wineryLocation?: string | null; 
     wineryCoordinates?: { lat?: number | null; lng?: number | null } | null;
-    sensorEvidenceKind?: "reported" | "simulated" | "none" | string;
+    sensorEvidenceKind?: "reported" | "declared_static" | "simulated" | "none" | string;
     sensorSnapshot?: {
       cellarTemperature?: string | null;
       humidity?: string | null;
       lightExposure?: string | null;
       transitShock?: string | null;
+      observedAt?: string | null;
+      source?: string | null;
+      deviceId?: string | null;
     } | null;
+    sensorHistory?: Array<{
+      at?: string | null;
+      evidenceKind?: "reported" | "declared_static" | "simulated" | string;
+      source?: string | null;
+      deviceId?: string | null;
+      temperatureC?: number | null;
+      humidityPct?: number | null;
+      lightExposure?: string | null;
+      transitShock?: string | null;
+    }>;
+  };
+  engagement?: {
+    promotions?: Array<{
+      title?: string | null;
+      description?: string | null;
+      points?: number | null;
+      state?: string | null;
+      sourceLabel?: string | null;
+    }>;
   };
   tapContext?: {
     city?: string | null;
@@ -191,9 +222,17 @@ function policyLabel(value?: string | null) {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-function mapHref(lat?: number | null, lng?: number | null) {
+function mapHref(lat?: number | null, lng?: number | null, uncertaintyM?: number | null) {
   if (!isUsableCoordinate(lat, lng)) return "";
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  const radiusM = Number(uncertaintyM);
+  const zoom = Number.isFinite(radiusM) && radiusM >= 25_000 ? 8
+    : Number.isFinite(radiusM) && radiusM >= 10_000 ? 9
+      : Number.isFinite(radiusM) && radiusM >= 5_000 ? 10
+        : Number.isFinite(radiusM) && radiusM >= 2_000 ? 11
+          : Number.isFinite(radiusM) && radiusM >= 1_000 ? 12
+            : Number.isFinite(radiusM) && radiusM >= 500 ? 13
+              : 14;
+  return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(String(lat))}&mlon=${encodeURIComponent(String(lng))}#map=${zoom}/${encodeURIComponent(String(lat))}/${encodeURIComponent(String(lng))}`;
 }
 
 function isUsableCoordinate(lat?: number | null, lng?: number | null) {
@@ -206,6 +245,13 @@ function isUsableCoordinate(lat?: number | null, lng?: number | null) {
     && parsedLat <= 90
     && parsedLng >= -180
     && parsedLng <= 180;
+}
+
+function publicCoordinateUncertaintyM(lat?: number | null) {
+  if (lat == null || !Number.isFinite(Number(lat))) return null;
+  const latitudeHalfCellM = 111_320 * 0.005;
+  const longitudeHalfCellM = latitudeHalfCellM * Math.max(0.05, Math.abs(Math.cos(Number(lat) * Math.PI / 180)));
+  return Math.ceil(Math.hypot(latitudeHalfCellM, longitudeHalfCellM) / 50) * 50;
 }
 
 function resolveSunVisualKind(result: SunContract): SunVisualKind {
@@ -463,20 +509,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         .catch(() => null) as SunContract | null
       : null;
     isDemoPreview = query.toString().length === 0 && !snapshotId;
+    const hasCompleteDynamicSunPayload = ["bid", "picc_data", "enc", "cmac"]
+      .every((key) => Boolean(query.get(key)?.trim()));
+    if (!snapshotResult && hasCompleteDynamicSunPayload) {
+      // Keep the browser as the first caller of the SUN API. A server-side BFF
+      // fetch would attribute Vercel's server region/IP to the tap instead of
+      // the phone. The API validates and persists the dynamic payload, then
+      // redirects the browser back to the signed snapshot URL.
+      redirect(`${resolvedApiBase}/sun?${query.toString()}`);
+    }
     const response = snapshotResult ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
     const parsedResult = response?.ok
       ? await response.json().catch(() => null) as SunContract | null
       : null;
     result = snapshotResult || parsedResult || sunFallbackResult(params, isDemoPreview);
-  }
-
-  // Proactively fetch loyalty overview if we know the tenant
-  let loyaltyData = null;
-  if (result.ok && result.identity?.tenantSlug) {
-    const memKey = "anonymous"; // using anonymous mode for the public passport
-    loyaltyData = await fetch(`${resolvedApiBase}/mobile/loyalty/overview?tenantSlug=${result.identity.tenantSlug}&memberKey=${memKey}`, { cache: "no-store" })
-      .then((res) => res.json())
-      .catch(() => null);
   }
 
   const bid = String(result.identity?.bid || params.bid || "");
@@ -485,7 +531,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusCode = String(result.status?.code || "").toUpperCase();
   const statusReason = String(result.status?.reason || "").toLowerCase();
   const productState = String(result.status?.productState || "").toUpperCase();
-  const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
+  const ttStatus = String(
+    result.tag_tamper?.status
+      || result.status?.tamperStatus
+      || result.trustSignals?.tamperStatus
+      || "",
+  ).toLowerCase();
   const blockedActions = result.blockedActions || [];
   const allowedActions = result.allowedActions || [];
   const postTapQuickActions = resolvePostTapQuickActionAvailability({ allowedActions, blockedActions });
@@ -516,6 +567,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || statusReason.includes("copied url")
     || (!isQrScan && trustSignals.antiReplay === false);
   const isVerifiedOpenedState = ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(statusCode)
+    || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "VALID_MANUAL_OPENED"].includes(statusCode)
     || productState === "VALID_OPENED"
     || productState === "VALID_OPENED_PREVIOUSLY"
     || productState === "VALID_MANUAL_OPENED"
@@ -540,7 +592,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const hasAuthenticTone = result.status?.tone === "good" || (result.status?.tone === "warn" && isVerifiedOpenedState);
   const isTechnicallyAuthentic = result.ok !== false
     && !isReplay
-    && !isTamperRisk
     && !isSunProfileMismatch
     && (hasAuthenticTone || ["VALID", "AUTH_OK"].includes(statusCode) || isVerifiedOpenedState || verdictName === "valid" || verdictName === "valid_opened");
   // Freshness and authenticity are properties of the tap, not a requirement
@@ -550,39 +601,25 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     isFreshHandoff,
     isSnapshotView,
   });
-  const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState && ["VALID", "AUTH_OK"].includes(statusCode);
-  const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || (!isTechnicallyAuthentic && !isQrScan);
+  const isVerifiedClosedState = isTechnicallyAuthentic
+    && (ttStatus === "closed" || statusCode === "VALID_CLOSED" || productState === "VALID_CLOSED");
+  const isInvalidSealState = ttStatus === "invalid";
+  // A technically authentic read must never become a red security alert only
+  // because the API used a more specific status code such as VALID_CLOSED.
+  const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState;
+  const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || isInvalidSealState || (!isTechnicallyAuthentic && !isQrScan);
   const agroProfile = normalizeAgroDppProfile(result.product?.agro);
   const isAgroDpp = Boolean(agroProfile);
   const engagementBaseEligible = (isQrScan || isFreshCommercialTap || isVerifiedOpenedState) && !isRiskBlocked && !isSnapshotView;
   const troubleshooting = result.troubleshooting || [];
-  const timelinePoints = (result.provenance?.timelineSummary || [])
-    .map((item) => {
-      const city = item.city || "Unknown city";
-      const country = item.country || "--";
-      const hasEventCoords = isUsableCoordinate(item.lat, item.lng);
-      if (!hasEventCoords) return null;
-      return {
-        city,
-        country,
-        lat: Number(item.lat),
-        lng: Number(item.lng),
-        scans: 1,
-        risk: String(item.result || "").toLowerCase().includes("replay") || String(item.result || "").toLowerCase().includes("tamper") ? 1 : 0,
-        status: item.result || "REVIEW",
-        lastSeen: item.at || undefined,
-        source: "tap_timeline",
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const wineryCoordinates = result.iot?.wineryCoordinates;
   const resolvedOriginCoords = isUsableCoordinate(wineryCoordinates?.lat, wineryCoordinates?.lng)
     ? { lat: Number(wineryCoordinates?.lat), lng: Number(wineryCoordinates?.lng) }
     : null;
   const wineryPoint = resolvedOriginCoords
     ? [{
-      city: result.product?.winery || "Bodega",
-      country: result.provenance?.firstVerified?.country || "AR",
+      city: result.iot?.wineryLocation || result.provenance?.origin || result.product?.region || result.product?.winery || "Origen declarado",
+      country: "",
       lat: Number(resolvedOriginCoords.lat),
       lng: Number(resolvedOriginCoords.lng),
       scans: 1,
@@ -594,8 +631,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const hasCurrentTapCoords = isUsableCoordinate(result.tapContext?.lat, result.tapContext?.lng);
   const currentTapLat = hasCurrentTapCoords ? Number(result.tapContext?.lat) : null;
   const currentTapLng = hasCurrentTapCoords ? Number(result.tapContext?.lng) : null;
-  const currentTapCity = result.tapContext?.city || result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city || "Tap";
-  const currentTapCountry = result.tapContext?.country || result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country || "--";
+  // A browser GPS confirmation is a separate observation from the edge/IP
+  // estimate captured when the tap URL opened. If reverse locality lookup has
+  // no match, keep the GPS point explicitly generic instead of attaching the
+  // older IP city/country to these coordinates.
+  const currentTapCity = result.tapContext?.city
+    || (hasCurrentTapCoords ? "Zona aproximada" : result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city || "Tap");
+  const currentTapCountry = result.tapContext?.country
+    || (hasCurrentTapCoords ? "--" : result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country || "--");
   const currentTapPoint = currentTapLat != null && currentTapLng != null
     ? [{
       city: currentTapCity,
@@ -608,63 +651,66 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       source: "current_mobile_tap",
     }]
     : [];
-  const orderedTimelinePoints = [...timelinePoints].reverse();
-  const rawMapRoutes: Array<{
-    fromLat: number;
-    fromLng: number;
-    toLat: number;
-    toLng: number;
-    label?: string;
-    tone: "warn" | "info";
-  }> = [
-    ...(wineryPoint.length && orderedTimelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: orderedTimelinePoints[0].lat, toLng: orderedTimelinePoints[0].lng, label: "Origen declarado por la bodega → primer evento registrado", tone: "info" as const }] : []),
-    ...(wineryPoint.length && !orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Origen declarado → tap registrado", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
-    ...(orderedTimelinePoints.length > 1 ? orderedTimelinePoints.slice(1).map((point, idx) => ({ fromLat: orderedTimelinePoints[idx].lat, fromLng: orderedTimelinePoints[idx].lng, toLat: point.lat, toLng: point.lng, tone: point.risk > 0 ? "warn" as const : "info" as const })) : []),
-    ...(orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: orderedTimelinePoints[orderedTimelinePoints.length - 1].lat, fromLng: orderedTimelinePoints[orderedTimelinePoints.length - 1].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Último evento → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
-  ];
-  const filteredMapRoutes = rawMapRoutes.filter((route) => (haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng) || 0) >= 1);
-  const originToCurrentTapRoute = wineryPoint.length && currentTapPoint.length
-    ? {
-      fromLat: wineryPoint[0].lat,
-      fromLng: wineryPoint[0].lng,
-      toLat: currentTapPoint[0].lat,
-      toLng: currentTapPoint[0].lng,
-      label: "Origen declarado -> tap registrado",
-      tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const,
-    }
-    : null;
-  const mapRoutes = filteredMapRoutes.length
-    ? filteredMapRoutes
-    : originToCurrentTapRoute && (haversineKm(originToCurrentTapRoute.fromLat, originToCurrentTapRoute.fromLng, originToCurrentTapRoute.toLat, originToCurrentTapRoute.toLng) || 0) >= 1
-      ? [originToCurrentTapRoute]
-      : [];
   const originToTapDistance = wineryPoint.length && currentTapPoint.length
     ? haversineKm(wineryPoint[0].lat, wineryPoint[0].lng, currentTapPoint[0].lat, currentTapPoint[0].lng)
     : null;
   const originMapHref = wineryPoint.length ? mapHref(wineryPoint[0].lat, wineryPoint[0].lng) : "";
-  const tapMapHref = currentTapPoint.length ? mapHref(currentTapPoint[0].lat, currentTapPoint[0].lng) : "";
   const originDisplay = wineryPoint.length
-    ? `${wineryPoint[0].city}, ${wineryPoint[0].country}`
+    ? [wineryPoint[0].city, wineryPoint[0].country].filter(Boolean).join(", ")
     : result.provenance?.origin || result.product?.region || "Origen no informado";
   const tapDisplay = currentTapPoint.length
-    ? `${currentTapPoint[0].city}, ${currentTapPoint[0].country}`
-    : result.provenance?.lastVerifiedLocation?.city
-      ? `${result.provenance.lastVerifiedLocation.city}, ${result.provenance.lastVerifiedLocation.country || "--"}`
-      : "Tap actual no geolocalizado";
+    ? currentTapPoint[0].country && currentTapPoint[0].country !== "--"
+      ? `${currentTapPoint[0].city}, ${currentTapPoint[0].country}`
+      : currentTapPoint[0].city
+    : "Tap actual no geolocalizado";
   const rawLocationSource = String(result.tapContext?.locationSource || "").toLowerCase();
+  const hasConfirmedBrowserLocation = rawLocationSource === "browser_gps_approximate_consent"
+    || rawLocationSource === "browser_gps"
+    || rawLocationSource === "browser_gps_reported";
   const accuracyM = Number(result.tapContext?.accuracyM);
   const hasAccuracy = Number.isFinite(accuracyM) && accuracyM > 0;
-  const tapLocationPrecisionLabel = rawLocationSource === "browser_gps_approximate_consent"
-    ? `Ubicacion aproximada con consentimiento${hasAccuracy ? ` (+/-${Math.round(accuracyM)} m)` : ""}`
+  const publicLocationUncertaintyM = hasCurrentTapCoords ? publicCoordinateUncertaintyM(currentTapLat) : null;
+  const effectivePublicUncertaintyM = publicLocationUncertaintyM
+    ? publicLocationUncertaintyM + (hasAccuracy ? accuracyM : 0)
+    : null;
+  const publicLocationUncertaintyLabel = effectivePublicUncertaintyM
+    ? `punto público redondeado (incertidumbre mínima ~${Math.ceil(effectivePublicUncertaintyM / 50) * 50} m)`
+    : "precisión pública no informada";
+  const tapLocationPrecisionLabel = isDemoPreview
+    ? "Ubicacion simulada del Demo Lab"
+    : rawLocationSource === "browser_gps_approximate_consent"
+      ? `Ubicación aproximada confirmada después del tap · ${publicLocationUncertaintyLabel}${hasAccuracy ? ` · precisión original del dispositivo ±${Math.round(accuracyM)} m o más` : ""}`
     : rawLocationSource === "browser_gps" || rawLocationSource === "browser_gps_reported"
-      ? `GPS reportado por cliente${hasAccuracy ? ` (+/-${Math.round(accuracyM)} m)` : ""}`
-    : rawLocationSource === "ip_geo"
-      ? "IP aproximada"
+      ? `GPS reportado por cliente · ${publicLocationUncertaintyLabel}${hasAccuracy ? ` · precisión original del dispositivo ±${Math.round(accuracyM)} m o más` : ""}`
+      : rawLocationSource === "ip_geo" || rawLocationSource === "edge_ip_approx"
+        ? `Zona aproximada por red/IP, sin precisión GPS · ${publicLocationUncertaintyLabel}`
       : rawLocationSource.includes("error") || rawLocationSource.includes("denied")
         ? "GPS no autorizado"
         : hasCurrentTapCoords
           ? "Coordenada reportada"
           : "Sin ubicacion";
+  const isNetworkEstimatedLocation = rawLocationSource === "ip_geo" || rawLocationSource === "edge_ip_approx";
+  const summaryLocationSourceBadge = isDemoPreview
+    ? "Dato simulado"
+    : hasConfirmedBrowserLocation
+      ? "GPS con permiso"
+      : isNetworkEstimatedLocation
+        ? "Estimación de red"
+        : hasCurrentTapCoords
+          ? "Fuente reportada"
+          : "Sin ubicación";
+  const summaryLocationFriendlyCopy = isDemoPreview
+    ? "Esta ubicación pertenece a la simulación y no a un teléfono real."
+    : hasConfirmedBrowserLocation
+      ? "El teléfono compartió una zona aproximada después del tap y con tu permiso."
+      : isNetworkEstimatedLocation
+        ? "No es tu posición: la red estima una zona amplia y puede ubicarte en otra ciudad. Compartí la ubicación del teléfono si querés mejorarla."
+        : hasCurrentTapCoords
+          ? "Se muestra la zona informada por la fuente, sin agregar precisión que no fue reportada."
+          : "El tap no compartió ubicación. El pasaporte funciona igual y podés agregar una zona si querés.";
+  const tapMapHref = currentTapPoint.length
+    ? mapHref(currentTapPoint[0].lat, currentTapPoint[0].lng, effectivePublicUncertaintyM)
+    : "";
   const distanceDisplay = fmtDistance(originToTapDistance);
   const sensorSnapshot = result.iot?.sensorSnapshot;
   const sensorEvidenceKind = String(result.iot?.sensorEvidenceKind || "none").toLowerCase();
@@ -672,12 +718,43 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     sensorEvidenceKind === "reported"
     && (sensorSnapshot?.cellarTemperature || sensorSnapshot?.humidity || sensorSnapshot?.lightExposure || sensorSnapshot?.transitShock),
   );
-  const usesDemoSensorEvidence = isDemoPreview && !hasReportedSensorEvidence;
-  const hasSensorEvidence = hasReportedSensorEvidence || usesDemoSensorEvidence;
-  const sensorEvidenceLabel = hasReportedSensorEvidence ? "Telemetria reportada" : "Datos simulados del Demo Lab";
+  const hasDeclaredSensorEvidence = Boolean(
+    sensorEvidenceKind === "declared_static"
+    && (sensorSnapshot?.cellarTemperature || sensorSnapshot?.humidity || sensorSnapshot?.lightExposure || sensorSnapshot?.transitShock),
+  );
+  const usesDemoSensorEvidence = isDemoPreview && !hasReportedSensorEvidence && !hasDeclaredSensorEvidence;
+  const hasSensorEvidence = hasReportedSensorEvidence || hasDeclaredSensorEvidence || usesDemoSensorEvidence;
+  const sensorEvidenceLabel = hasReportedSensorEvidence
+    ? "Evento recibido por API o integración"
+    : hasDeclaredSensorEvidence
+      ? "Ficha estatica declarada por la empresa"
+      : "JSON simulado del Demo Lab";
+  const sensorEvidenceBadge = hasReportedSensorEvidence ? "EVENTO RECIBIDO" : hasDeclaredSensorEvidence ? "DECLARADO" : "DEMO / JSON";
+  const sensorHistory = Array.isArray(result.iot?.sensorHistory) ? result.iot.sensorHistory.slice(0, 4) : [];
+  const sensorSource = sensorSnapshot?.source || sensorHistory[0]?.source || (usesDemoSensorEvidence ? "demo_static_json" : null);
+  const sensorObservedAt = sensorSnapshot?.observedAt || sensorHistory[0]?.at || null;
+  const sensorMode = hasReportedSensorEvidence
+    ? "Integración recibida · no asumida en vivo"
+    : hasDeclaredSensorEvidence
+      ? "Archivo o manifiesto estático"
+      : "Simulación local · sin hardware";
   const dynamicTemp = sensorSnapshot?.cellarTemperature || (usesDemoSensorEvidence ? "15.2°C" : "N/A");
   const dynamicHumidity = sensorSnapshot?.humidity || (usesDemoSensorEvidence ? "62%" : "N/A");
+  const dynamicLight = sensorSnapshot?.lightExposure || (usesDemoSensorEvidence ? "Exposicion baja (simulada)" : "N/A");
   const dynamicShock = sensorSnapshot?.transitShock || (usesDemoSensorEvidence ? "Sin golpes críticos en la simulación" : "N/A");
+  const sensorJsonPreview = {
+    evidenceKind: hasReportedSensorEvidence ? "reported" : hasDeclaredSensorEvidence ? "declared_static" : "simulated",
+    source: sensorSource,
+    realtime: false,
+    observedAt: sensorObservedAt,
+    deviceId: sensorSnapshot?.deviceId || sensorHistory[0]?.deviceId || null,
+    metrics: {
+      temperature: dynamicTemp,
+      humidity: dynamicHumidity,
+      light: dynamicLight,
+      shock: dynamicShock,
+    },
+  };
   const hasDeclaredTastingProfile = Boolean(result.product?.notes || result.product?.tasting_notes || result.product?.maridaje);
   const usesDemoTastingProfile = isDemoPreview && !hasDeclaredTastingProfile;
   const dynamicTastingNotes = result.product?.notes
@@ -685,117 +762,32 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || (usesDemoTastingProfile ? "Entrada dulce y carnosa, taninos maduros y final persistente." : null);
   const dynamicMaridaje = result.product?.maridaje
     || (usesDemoTastingProfile ? "Carnes asadas, pastas intensas o quesos curados." : null);
-  const mapUid = uid || uidMasked || bid || "sun-public-tap";
-  const mapTenant = String(result.identity?.tenantSlug || "public");
-  const mapProductName = result.product?.name || result.identity?.bid || "Producto conectado";
-  const mapTimelineSummary = result.provenance?.timelineSummary || [];
-  const firstMapSeenAt = result.provenance?.firstVerified?.at || mapTimelineSummary[mapTimelineSummary.length - 1]?.at || "";
-  const lastMapSeenAt = result.provenance?.lastVerifiedLocation?.at || mapTimelineSummary[0]?.at || "";
-  const rawReportedScanCount = Number(result.identity?.scanCount);
-  const hasReportedScanCount = Number.isFinite(rawReportedScanCount) && rawReportedScanCount >= 0;
-  const reportedScanCount = hasReportedScanCount ? rawReportedScanCount : 0;
-  const currentTapReportedAt = result.tapContext?.utcTime || result.tapContext?.localTime || "";
-  const routeTapCount = hasReportedScanCount ? reportedScanCount : orderedTimelinePoints.length;
-  const opsMapPoints: GlobalOpsPoint[] = [
-    ...wineryPoint.map((point, index) => ({
-      id: `origin-${mapUid}-${index}`,
-      city: point.city,
-      country: point.country,
-      lat: point.lat,
-      lng: point.lng,
-      scans: reportedScanCount,
-      risk: 0,
-      verdict: "ORIGIN",
-      tenantSlug: mapTenant,
-      lastSeen: firstMapSeenAt,
-      uid: mapUid,
-      device: "producer",
-      role: "origin" as const,
-      productName: mapProductName,
-    })),
-    ...orderedTimelinePoints.map((point, index) => ({
-      id: `timeline-${mapUid}-${index}`,
-      city: point.city,
-      country: point.country,
-      lat: point.lat,
-      lng: point.lng,
-      scans: Math.max(0, Number(point.scans) || 0),
-      risk: point.risk,
-      verdict: point.status,
-      tenantSlug: mapTenant,
-      lastSeen: point.lastSeen || "",
-      uid: mapUid,
-      device: "mobile",
-      role: "hub" as const,
-      productName: mapProductName,
-    })),
-    ...currentTapPoint.map((point, index) => ({
-      id: `current-tap-${mapUid}-${index}`,
-      city: point.city,
-      country: point.country,
-      lat: point.lat,
-      lng: point.lng,
-      scans: reportedScanCount,
-      risk: point.risk,
-      verdict: point.status,
-      tenantSlug: mapTenant,
-      lastSeen: currentTapReportedAt,
-      uid: mapUid,
-      device: "mobile",
-      role: "tap" as const,
-      productName: mapProductName,
-    })),
-  ];
-  const canonicalMapRoutes = selectCanonicalSunMapRoutes(originToCurrentTapRoute, mapRoutes);
-  const opsMapRoutes: GlobalOpsRoute[] = canonicalMapRoutes.map((route, index) => ({
-    id: `sun-route-${mapUid}-${index}`,
-    fromLat: route.fromLat,
-    fromLng: route.fromLng,
-    toLat: route.toLat,
-    toLng: route.toLng,
-    uid: mapUid,
-    risk: route.tone === "warn" ? 1 : 0,
-    taps: routeTapCount,
-    firstSeenAt: firstMapSeenAt,
-    lastSeenAt: lastMapSeenAt,
-    fromLabel: index === 0 ? originDisplay : undefined,
-    toLabel: index === canonicalMapRoutes.length - 1 ? tapDisplay : undefined,
-    productName: route.label || mapProductName,
-  }));
-  const livePillLabel = isDemoPreview ? "Muestra demo" : isQrScan ? "QR / SDK" : isFreshHandoff ? "Tap fisico activo" : isSnapshotView ? "Consulta segura" : "Tap SUN";
-  const rawPrimaryStatusLabel = isQrScan
-    ? "QR / Ficha Informativa"
-    : isValid
-      ? "SUN VÁLIDO · TT CERRADO"
-      : isVerifiedOpenedState && isTechnicallyAuthentic
-        ? "SUN VÁLIDO · TT ABIERTO"
-        : isReplay
-          ? "REPLAY / ENLACE REUTILIZADO"
-          : isSunProfileMismatch
-            ? "PERFIL DESALINEADO"
-            : "ALERTA DE SEGURIDAD";
-  const primaryStatusLabel = qualifySunStatusForPreview(isDemoPreview, rawPrimaryStatusLabel);
-
-  const securityTone = isValid
-    ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
-    : isVerifiedOpenedState && isTechnicallyAuthentic
-      ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
-      : isSunProfileMismatch
-        ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
-      : "border-rose-300/20 bg-rose-500/10 text-rose-100";
+  const livePillLabel = isDemoPreview ? "Muestra demo" : isQrScan ? "QR / SDK" : isFreshHandoff ? "Tap físico activo" : isSnapshotView ? "Consulta segura" : "Tap SUN";
+  const consumerStatus = resolveSunConsumerStatus({
+    isDemoPreview,
+    isQrScan,
+    isTechnicallyAuthentic,
+    isVerifiedClosedState,
+    isVerifiedOpenedState,
+    isInvalidSealState,
+    isTamperRisk,
+    isReplay,
+    isSunProfileMismatch,
+    isSnapshotView,
+  });
+  const consumerServicesLabel = isRiskBlocked
+    ? "Protegidos"
+    : isDemoPreview
+      ? "Modo demo"
+      : isQrScan
+        ? "Informativos"
+        : isFreshCommercialTap
+          ? "Disponibles"
+          : "Requieren tap";
   const apiQualityScore = typeof result.quality?.score === "number" ? result.quality.score : Number.NaN;
   const trustScore = Number.isFinite(apiQualityScore)
     ? Math.max(0, Math.min(100, apiQualityScore))
     : null;
-  const trustTone = trustScore == null
-    ? "text-slate-300"
-    : trustScore >= 85
-      ? "text-emerald-200"
-      : trustScore >= 65
-        ? "text-amber-200"
-        : "text-rose-200";
-  const timelineCount = result.provenance?.timelineSummary?.length || 0;
-  const timelineCities = new Set((result.provenance?.timelineSummary || []).map((item) => `${item.city || "Unknown"}|${item.country || "--"}`)).size;
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
   const localTapTimeLabel = result.tapContext?.localTime || (lastEventAt ? fmtDate(lastEventAt, result.tapContext?.timezone) : "");
   const statusDotClass = isSnapshotView
@@ -818,27 +810,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isVerifiedOpenedState
       ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
       : "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]";
-  const statusHeadline = isSunProfileMismatch
-    ? "No pudimos validar esta lectura."
-    : ttStatus === "closed" || productState === "VALID_CLOSED"
-    ? "Mensaje SUN válido. Estado TT cerrado reportado."
-    : ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY"
-      ? "Mensaje SUN válido. Estado TT abierto reportado."
-    : ttStatus === "invalid"
-      ? "TagTamper no inicializado o configuración inválida."
-    : productState === "VALID_MANUAL_OPENED"
-      ? "Mensaje SUN válido. Estado TT marcado como abierto por un operador."
-    : productState === "VALID_OPENED"
-      ? "Mensaje SUN válido. Estado TT abierto reportado."
-    : productState === "VALID_UNKNOWN_TAMPER" || ttStatus === "not_available"
-        ? "Mensaje SUN válido. Estado TT no disponible."
-        : result.status?.code === "REPLAY_SUSPECT"
-          ? "Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura."
-          : result.status?.tone === "good"
-            ? "Mensaje NFC validado"
-            : result.status?.tone === "risk"
-              ? "Se detectaron señales de riesgo"
-              : "Validación en revisión";
   const displayRiskLevelLabel = isQrScan
     ? "Engagement QR"
     : isFreshHandoff
@@ -846,7 +817,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isSnapshotView
     ? "Consulta segura"
     : isSunProfileMismatch
-    ? "Batch tecnico bloqueado"
+    ? "Batch técnico bloqueado"
     : isRiskBlocked
     ? "Riesgo alto"
     : isVerifiedOpenedState
@@ -858,13 +829,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           : trustScore != null
             ? "Score bajo reportado"
             : "Sin score reportado";
-  const displayStatusHeadline = isDemoPreview
-    ? "Simulación guiada: mensaje SUN válido y estado TT abierto."
-    : isQrScan
-      ? "Ficha publica QR / SDK"
-      : rightsTitle || (isVerifiedOpenedState && isTechnicallyAuthentic
-        ? "Mensaje SUN válido. El tag reporta estado TT abierto."
-        : statusHeadline);
   const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
   const productSectionHref = isAgroDpp ? "#agro-dpp" : "#product-info";
   const consumerActionHref = isAgroDpp ? "#agro-dpp" : "#consumer-choice";
@@ -878,9 +842,32 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   const tenantSlug = String(result.identity?.tenantSlug || "").trim();
-  const telemetryEndpoint = `${resolvedApiBase.replace(/\/$/, "")}/sun/context`;
+  // Browser geolocation is posted through the same-origin BFF. Calling the API
+  // origin directly would trigger a JSON CORS preflight and fail closed.
+  const telemetryEndpoint = "/api/sun-context";
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
   const eventId = String(result.identity?.eventId || result.eventId || "").trim();
+  const canRequestBrowserLocation = !isQrScan
+    && !isDemoPreview
+    && isFreshHandoff
+    && !isSnapshotView
+    && Boolean(eventId && freshToken);
+  const summaryLocationLabel = isDemoPreview
+    ? "Ubicación demo simulada"
+    : hasConfirmedBrowserLocation
+      ? "Zona aproximada confirmada"
+      : rawLocationSource === "ip_geo" || rawLocationSource === "edge_ip_approx"
+        ? "Zona de red · no es GPS"
+        : "Ubicación de esta lectura";
+  const summaryLocationDisplay = hasCurrentTapCoords ? tapDisplay : "Sin ubicación registrada";
+  const summaryLocationEvidence = hasCurrentTapCoords
+    ? tapLocationPrecisionLabel
+    : isDemoPreview
+      ? "Sin coordenadas en esta simulación"
+      : "Sin fuente ni precisión registradas";
+  const summaryLocationTime = result.tapContext?.localTime || result.tapContext?.utcTime || "Hora no registrada";
+  const hasConsumerComparableDistance = originToTapDistance != null
+    && (isDemoPreview || hasConfirmedBrowserLocation);
   const localizeHref = (href?: string | null) => {
     const raw = String(href || "").trim();
     if (!raw) return "";
@@ -912,6 +899,37 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const certificateHref = !isQrScan && /^\d+$/.test(eventId)
     ? `/certificado/${encodeURIComponent(eventId)}${certificateShareToken ? `?share=${encodeURIComponent(certificateShareToken)}` : ""}`
     : "";
+  const declaredPromotion = result.engagement?.promotions?.find((promotion) => String(promotion?.title || "").trim());
+  const publishedPromotion: SunPublishedPromotion | null = declaredPromotion
+    ? {
+        title: String(declaredPromotion.title || "").trim(),
+        description: declaredPromotion.description ? String(declaredPromotion.description) : null,
+        points: typeof declaredPromotion.points === "number" ? declaredPromotion.points : null,
+        state: declaredPromotion.state ? String(declaredPromotion.state) : null,
+        sourceLabel: declaredPromotion.sourceLabel ? String(declaredPromotion.sourceLabel) : "DECLARADO POR LA MARCA",
+      }
+    : isDemoPreview
+      ? {
+          title: "10% de descuento en la proxima compra",
+          description: "Ejemplo de promocion configurada para mostrar el formato. La marca debe publicar condiciones, vigencia y disponibilidad reales antes de activarla.",
+          points: 40,
+          state: "NO CANJEABLE",
+          sourceLabel: "DEMO · JSON ESTATICO",
+        }
+      : null;
+  const servicesRiskState = isRiskBlocked
+    ? "blocked" as const
+    : "clear" as const;
+  const servicesFreshnessState = isDemoPreview
+    ? "demo" as const
+    : isSnapshotView || isQrScan
+    ? "snapshot" as const
+    : isFreshCommercialTap
+      ? "fresh" as const
+      : result.tapSecurity?.freshTap === false
+        ? "stale" as const
+        : "unknown" as const;
+  const protectedServiceHref = isFreshCommercialTap ? "#protected-actions" : "#fresh-tap-required";
   const blockedTapReason = isQrScan
     ? "QR informativo: podes leer, consultar al sommelier o dejar contacto. Garantia, wallet, NFT y propiedad requieren compra validada o NFC seguro."
     : isFreshCommercialTap
@@ -943,8 +961,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     { id: "ficha", label: "Ficha", done: true },
     { id: "optin", label: "Opt-in", done: false },
   ];
-  const sealOpened = ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY" || productState === "VALID_MANUAL_OPENED";
-  const sealClosed = ttStatus === "closed" || productState === "VALID_CLOSED";
+  const sealOpened = ttStatus === "opened"
+    || ttStatus === "opened_previously"
+    || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "VALID_MANUAL_OPENED"].includes(statusCode)
+    || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "VALID_MANUAL_OPENED"].includes(productState);
+  const sealClosed = ttStatus === "closed" || statusCode === "VALID_CLOSED" || productState === "VALID_CLOSED";
   const rawCarrierProfileCode = String(
     result.status?.carrierProfileCode ||
       result.status?.carrier_profile_code ||
@@ -1056,20 +1077,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : tokenBlocked
         ? "Mostramos la evidencia digital disponible, pero el mint queda bloqueado hasta tener un tap fresco y apto."
         : "Si la marca lo habilita y el comprador valida la compra, el producto puede sumar certificado NFT/sandbox, wallet, club o marketplace.";
-  const realReplayDecisionText = isSunProfileMismatch
-    ? "Producto y lote declarados en plataforma. La activacion comercial queda pendiente porque el perfil SUN del batch no coincide con la lectura fisica registrada."
-    : isReplay
-    ? "Replay detectado: esta URL/SUN ya fue usada. Garantia, rewards y tokenizacion quedan bloqueados hasta un nuevo tap fisico."
-    : isSnapshotView
-      ? "Consulta segura: la prueba queda disponible para revisar y compartir. Para sumar puntos, activar garantia o mintear, toca otra vez la etiqueta."
-    : isValid
-      ? rightsSummary || (isCryptoCarrier
-        ? "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
-        : "Lectura fresca: identidad registrada y trazabilidad declarada por plataforma.")
-      : isVerifiedOpenedState && isTechnicallyAuthentic
-        ? rightsSummary || "Mensaje SUN válido y estado TT abierto reportado. Podés iniciar una validación de compra separada para cuenta, puntos o club."
-        : rightsSummary || "Lectura de control: la evidencia técnica del mensaje NFC sigue disponible, pero algunas acciones comerciales quedan restringidas.";
-  const replayDecisionText = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.decision, realReplayDecisionText);
   const tokenEvidenceLabel = hasOnChainProof
     ? `On-chain ${tokenNetwork}`
     : tokenPending
@@ -1111,7 +1118,21 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const isWineProduct = [result.product?.vertical, result.tenant?.vertical, productDisplayName]
     .some((value) => /\b(wine|vino|malbec|reserva|bodega)\b/i.test(String(value || "")));
   const showEngagementSuite = engagementBaseEligible && isWineProduct;
-  const engagementWineryName = requestedBrandDisplay || result.product?.winery || "Bodega Premium";
+  const normalizedEngagementAllowed = allowedActions.map((action) => String(action).trim().toLowerCase());
+  const normalizedEngagementBlocked = blockedActions.map((action) => String(action).trim().toLowerCase());
+  const hasEngagementAllowList = normalizedEngagementAllowed.some((action) => ["lead", "feedback", "sommelier"].includes(action));
+  const canSubscribeToBrand = engagementBaseEligible
+    && !normalizedEngagementBlocked.includes("lead")
+    && (!hasEngagementAllowList || normalizedEngagementAllowed.includes("lead"));
+  const servicePolicyAvailability = {
+    promotion: !isRiskBlocked,
+    purchase: postTapQuickActions.marketplace && !isRiskBlocked,
+    subscribe: canSubscribeToBrand && !isRiskBlocked,
+    claimOrManage: postTapQuickActions.primary && !isRiskBlocked,
+    warranty: postTapQuickActions.warranty && !isRiskBlocked,
+  };
+  const consumerBrandName = requestedBrandDisplay || result.product?.winery || result.tenant?.name || result.tenant?.slug || "la marca";
+  const engagementWineryName = consumerBrandName === "la marca" ? "Bodega Premium" : consumerBrandName;
   const engagementTenantSlug = readParam(params, "tenant") || tenantSlug || "demobodega";
   const productHeroImageUrl = assetProfile.primaryImageUrl || productImageUrl;
   const productVisualState = (isReplay || isRiskBlocked)
@@ -1352,7 +1373,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
   return (
-    <main className="min-h-screen bg-[#060813] text-slate-100 flex flex-col items-center py-4 sm:py-8 px-4 font-sans relative overflow-hidden pb-32">
+    <main className="sun-tap-experience relative flex min-h-screen flex-col items-center overflow-x-clip bg-[#060813] px-4 pb-[calc(env(safe-area-inset-bottom)+8.5rem)] pt-4 font-sans text-slate-100 sm:pt-8">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
       <OfflinePublicProductCache
         enabled={!isDemoPreview && result.ok === true && Boolean(bid)}
@@ -1371,37 +1392,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Telemetry data collection component */}
-      <TapPrecisionTelemetry
-        endpoint={telemetryEndpoint}
-        enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
-        bid={bid}
-        uid={uid || null}
-        eventId={eventId || null}
-        freshToken={freshToken}
-        readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
-        contextStatus={result.status?.code || null}
-      />
-
-      <div className="w-full max-w-[430px] z-10 space-y-5 mx-auto">
+      <div className="sun-tap-shell w-full max-w-[430px] z-10 space-y-5 mx-auto">
         
-        {/* Modern minimal top bar */}
-        <header className="flex items-center justify-between px-1 mb-2">
-          <div className="flex items-center gap-2">
-            <BrandLockup size={36} variant="ripple" theme="dark" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-              {isQrScan ? "qr passport" : "nfc passport"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <LocaleSwitcher value={locale} options={locales as any} />
-            <ThemeToggle />
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md">
-              <span className={`w-2 h-2 rounded-full ${pulseClass} animate-pulse`} />
-              <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">{livePillLabel}</span>
-            </div>
-          </div>
-        </header>
+        <SunPassportHeader
+          isQrScan={isQrScan}
+          livePillLabel={livePillLabel}
+          locale={locale}
+          locales={locales}
+          pulseClass={pulseClass}
+        />
+
+        <SunSectionNav variant={isAgroDpp ? "agro" : "default"} />
 
         {isAgroDpp && agroProfile ? (
           <AgroDppExperience
@@ -1423,92 +1424,204 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ) : null}
 
         {!isAgroDpp ? <>
-        {/* 1. Main Authenticity Banner (Glassmorphism & Glowing border) */}
-        <section 
-          className={`relative rounded-3xl border border-white/10 p-6 backdrop-blur-2xl shadow-2xl overflow-hidden bg-gradient-to-br ${
-            isValid 
-              ? "from-emerald-950/40 via-slate-900/60 to-emerald-950/20 shadow-emerald-950/20" 
-              : isVerifiedOpenedState && isTechnicallyAuthentic
-                ? "from-amber-950/40 via-slate-900/60 to-amber-950/20 shadow-amber-950/20"
-                : isSunProfileMismatch
-                  ? "from-amber-950/40 via-slate-900/60 to-amber-950/20 shadow-amber-950/20"
-                  : "from-rose-950/40 via-slate-900/60 to-rose-950/20 shadow-rose-950/20"
-          }`}
+        {/* 1. First-tap summary: product first, then a compact truthful result. */}
+        <section
+          id="sun-summary"
+          className="sun-summary-panel scroll-mt-24 relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-3 shadow-2xl backdrop-blur-2xl sm:p-4"
         >
-          {/* Status color glow */}
-          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-25 pointer-events-none ${
-            isValid 
-              ? "bg-emerald-500" 
-              : isVerifiedOpenedState && isTechnicallyAuthentic
-                ? "bg-amber-500"
-                : isSunProfileMismatch
-                  ? "bg-amber-500"
-                  : "bg-rose-500"
-          }`} />
+          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-500 opacity-10 blur-[60px]" />
 
-          <div className="relative z-10 flex flex-col items-center text-center">
-            {isDemoPreview && (
-              <span className="mb-4 rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-100">
-                {SUN_DEMO_BADGE}
-              </span>
-            )}
-            {/* Massive status icon */}
-            <div className="relative mb-4">
-              <div className={`w-20 h-20 rounded-full border-4 border-slate-900 flex items-center justify-center text-3xl shadow-inner relative z-10 ${
-                isValid 
-                  ? "bg-emerald-500/10 text-emerald-400" 
-                  : isVerifiedOpenedState && isTechnicallyAuthentic
-                    ? "bg-amber-500/10 text-amber-400"
-                    : isSunProfileMismatch
-                      ? "bg-amber-500/10 text-amber-400"
-                      : "bg-rose-500/10 text-rose-400"
-              }`}>
-                {isValid ? "✓" : isVerifiedOpenedState && isTechnicallyAuthentic ? "⚠️" : isSunProfileMismatch ? "⚠️" : "❌"}
+          <div className="relative z-10 space-y-2.5">
+            <div
+              data-testid="sun-summary-product"
+              className="sun-summary-product grid grid-cols-[92px_minmax(0,1fr)] items-center gap-3"
+            >
+              <div className="sun-summary-product__visual relative h-28 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_34%,rgba(34,211,238,0.18),transparent_54%),rgba(2,6,23,0.62)] shadow-inner">
+                {productHeroImageUrl ? (
+                  <img
+                    src={productHeroImageUrl}
+                    alt={productDisplayName}
+                    className="h-full w-full object-contain p-1.5 drop-shadow-[0_12px_18px_rgba(0,0,0,0.42)]"
+                    loading="eager"
+                    fetchPriority="high"
+                  />
+                ) : (
+                  <div className="sun-summary-product-stage h-full w-full" aria-label={`Vista del producto ${productDisplayName}`}>
+                    <SunProductHeroStage
+                      kind={productVisualKind}
+                      productName={productDisplayName}
+                      imageUrl={productHeroImageUrl}
+                      originDisplay={originDisplay}
+                      tapDisplay={tapDisplay}
+                      distanceDisplay={distanceDisplay}
+                      state={productVisualState}
+                      originLat={wineryPoint[0]?.lat}
+                      originLng={wineryPoint[0]?.lng}
+                      tapLat={currentTapPoint[0]?.lat}
+                      tapLng={currentTapPoint[0]?.lng}
+                      isDemoPreview={isDemoPreview}
+                    />
+                  </div>
+                )}
               </div>
-              <div className={`absolute -inset-1 rounded-full blur-md opacity-30 ${
-                isValid 
-                  ? "bg-emerald-500 animate-pulse" 
-                  : isVerifiedOpenedState && isTechnicallyAuthentic
-                    ? "bg-amber-500"
-                    : isSunProfileMismatch
-                      ? "bg-amber-500"
-                      : "bg-rose-500"
-              }`} />
+
+              <div className="sun-summary-product__copy min-w-0 text-left">
+                {isDemoPreview && (
+                  <span className="inline-flex w-fit max-w-full whitespace-normal break-words rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-[8px] font-black uppercase leading-3 tracking-[0.12em] text-amber-100">
+                    {SUN_DEMO_BADGE}
+                  </span>
+                )}
+                <p className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                  {tenantDisplayName}
+                </p>
+                <h1 className="sun-summary-product__title mt-1 break-words text-[21px] font-black leading-[1.02] tracking-tight text-white">
+                  {productDisplayName}
+                </h1>
+                <p className="mt-1 break-words text-[10px] leading-4 text-slate-400">
+                  {productLine || verticalLabel}
+                </p>
+                <span className="mt-2 inline-flex max-w-full rounded-lg border border-white/10 bg-slate-950/45 px-2 py-1 text-[9px] font-bold text-slate-300">
+                  Lote {batchDisplay}
+                </span>
+              </div>
             </div>
 
-            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-              isValid
-                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                : isVerifiedOpenedState && isTechnicallyAuthentic
-                  ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
-                  : isSunProfileMismatch
-                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
-                    : "bg-rose-500/10 border border-rose-500/20 text-rose-400"
-            }`}>
-              {primaryStatusLabel}
-            </span>
+            <div
+              data-testid="sun-summary-status"
+              className={`sun-summary-status rounded-2xl border border-l-4 p-3.5 ${
+                consumerStatus.tone === "closed"
+                  ? "border-emerald-300/25 border-l-emerald-400 bg-emerald-500/[0.07]"
+                  : consumerStatus.tone === "opened" || consumerStatus.tone === "review"
+                    ? "border-amber-300/25 border-l-amber-400 bg-amber-500/[0.07]"
+                    : consumerStatus.tone === "verified" || consumerStatus.tone === "info"
+                      ? "border-cyan-300/20 border-l-cyan-400 bg-cyan-500/[0.06]"
+                      : "border-rose-300/25 border-l-rose-400 bg-rose-500/[0.07]"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <span className={`sun-summary-status__icon grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${
+                  consumerStatus.tone === "closed"
+                    ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-300"
+                    : consumerStatus.tone === "opened" || consumerStatus.tone === "review"
+                      ? "border-amber-300/25 bg-amber-400/10 text-amber-200"
+                      : consumerStatus.tone === "verified" || consumerStatus.tone === "info"
+                        ? "border-cyan-300/25 bg-cyan-400/10 text-cyan-200"
+                        : "border-rose-300/25 bg-rose-400/10 text-rose-200"
+                }`} aria-hidden="true">
+                  {consumerStatus.tone === "closed"
+                    ? <PackageCheck className="h-5 w-5" strokeWidth={2} />
+                    : consumerStatus.tone === "opened"
+                      ? <PackageOpen className="h-5 w-5" strokeWidth={2} />
+                      : consumerStatus.tone === "verified" || consumerStatus.tone === "info"
+                        ? <ShieldCheck className="h-5 w-5" strokeWidth={2} />
+                        : <ShieldAlert className="h-5 w-5" strokeWidth={2} />}
+                </span>
+                <div className="min-w-0">
+                  <span className={`block text-[10px] font-black uppercase tracking-[0.13em] ${
+                    consumerStatus.tone === "closed"
+                      ? "text-emerald-300"
+                      : consumerStatus.tone === "opened" || consumerStatus.tone === "review"
+                        ? "text-amber-200"
+                        : consumerStatus.tone === "verified" || consumerStatus.tone === "info"
+                          ? "text-cyan-200"
+                          : "text-rose-200"
+                  }`}>
+                    {consumerStatus.label}
+                  </span>
+                  <h2 className="sun-summary-status__headline mt-1 break-words text-[19px] font-black leading-tight text-white">
+                    {consumerStatus.headline}
+                  </h2>
+                </div>
+              </div>
+              <p className="sun-summary-status__copy mt-2.5 text-[11px] leading-[1.55] text-slate-300">
+                {consumerStatus.copy}
+              </p>
+            </div>
 
-            <h2 className="text-lg font-black text-white leading-snug tracking-tight mb-2">
-              {displayStatusHeadline}
-            </h2>
-            <p className="text-xs text-slate-300 max-w-[340px] leading-relaxed">
-              {replayDecisionText}
-            </p>
+            <dl
+              data-testid="sun-summary-facts"
+              className="grid grid-cols-3 divide-x divide-white/[0.06] rounded-2xl border border-white/[0.07] bg-slate-950/35 px-1 py-2 text-center"
+            >
+              <div className="min-w-0 px-1.5">
+                <dt className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Identidad</dt>
+                <dd className={`mt-0.5 break-words text-[10px] font-bold leading-4 ${consumerStatus.tone === "risk" ? "text-rose-200" : "text-emerald-300"}`}>{consumerStatus.identityLabel}</dd>
+              </div>
+              <div className="min-w-0 px-1.5">
+                <dt className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Sello</dt>
+                <dd className={`mt-0.5 break-words text-[10px] font-bold leading-4 ${consumerStatus.tone === "closed" ? "text-emerald-300" : consumerStatus.tone === "opened" || consumerStatus.tone === "review" ? "text-amber-200" : "text-slate-300"}`}>{consumerStatus.sealLabel}</dd>
+              </div>
+              <div className="min-w-0 px-1.5">
+                <dt className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Servicios</dt>
+                <dd className={`mt-0.5 break-words text-[10px] font-bold leading-4 ${isRiskBlocked || !isFreshCommercialTap ? "text-amber-200" : "text-cyan-200"}`}>{consumerServicesLabel}</dd>
+              </div>
+            </dl>
 
-            {/* Quick status dots for mobile */}
-            <div className="mt-4 w-full border-t border-white/5 pt-4 grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Chip NFC</span>
-                <span className="text-[11px] font-bold text-slate-300 mt-0.5 block">{carrierLabel}</span>
+            <div
+              data-testid="sun-summary-location"
+              className="sun-summary-location rounded-2xl border border-cyan-300/15 bg-slate-950/45 p-3 text-left shadow-inner"
+            >
+              <div className="flex items-start gap-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 text-cyan-200" aria-hidden="true">
+                  <MapPin className="h-[18px] w-[18px]" strokeWidth={2} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="block text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                      {summaryLocationLabel}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] text-slate-300">
+                      {summaryLocationSourceBadge}
+                    </span>
+                  </div>
+                  <strong className="mt-1 block whitespace-normal break-words text-sm leading-5 text-white">
+                    {summaryLocationDisplay}
+                  </strong>
+                  <p className="mt-1 text-[10px] leading-4 text-slate-400">
+                    {summaryLocationFriendlyCopy}
+                  </p>
+                </div>
               </div>
-              <div className="text-center border-x border-white/5">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Estado TT</span>
-                <span className={`text-[11px] font-bold mt-0.5 block ${sealClosed ? "text-emerald-400" : "text-amber-400"}`}>{sealLabel}</span>
-              </div>
-              <div className="text-center">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">{trustScore == null ? "Score" : isDemoPreview ? "Score demo reportado" : "Score técnico reportado"}</span>
-                <span className={`text-[11px] font-bold mt-0.5 block ${trustTone}`}>{trustScore == null ? "No reportado" : `${trustScore}/100`}</span>
-              </div>
+              {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? (
+                <a
+                  data-testid="sun-location-consent-cta"
+                  href="#tap-location-consent"
+                  className="mt-2.5 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 text-[10px] font-black text-cyan-100 transition hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                >
+                  <span>Compartir ubicación aproximada del teléfono</span>
+                  <span className="rounded-full bg-slate-950/40 px-2 py-1 text-[8px] uppercase tracking-[0.1em] text-cyan-200">Opcional · con permiso</span>
+                </a>
+              ) : null}
+              <details className="sun-summary-location-details mt-2 border-t border-white/5 pt-2 text-[9px] text-slate-400">
+                <summary className="min-h-8 cursor-pointer list-none py-1.5 font-bold text-slate-300 marker:hidden">
+                  Ver fuente y horario
+                </summary>
+                <div className="space-y-1 pb-1 leading-4">
+                  <p className="break-words"><span className="font-bold text-slate-500">Fuente / precisión:</span> {summaryLocationEvidence}</p>
+                  <p className="break-words"><span className="font-bold text-slate-500">Hora del tap:</span> {summaryLocationTime}</p>
+                  <p>Este resultado corresponde únicamente a este tag y esta lectura.</p>
+                </div>
+              </details>
+            </div>
+
+            <div data-testid="sun-summary-actions" className="sun-summary-actions grid grid-cols-2 gap-2">
+              <a
+                href="#product-info"
+                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl bg-white px-2.5 text-center text-[11px] font-black leading-tight text-slate-950 shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                Ver producto
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+              </a>
+              <a
+                href={!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
+                  ? "#sun-condition"
+                  : "#sun-origin"}
+                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-2 text-center text-[10px] font-black leading-tight text-cyan-100 transition hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                {!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
+                  ? "Entender apertura"
+                  : "Ver origen y mapa"}
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+              </a>
             </div>
           </div>
         </section>
@@ -1547,9 +1660,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
                 {tenantDisplayName}
               </span>
-              <h1 className="text-2xl font-black text-white leading-tight mt-1 tracking-tight">
+              <h2 className="text-2xl font-black text-white leading-tight mt-1 tracking-tight">
                 {productDisplayName}
-              </h1>
+              </h2>
               <p className="text-xs text-slate-400 mt-1 leading-normal">
                 {productLine || verticalLabel}
               </p>
@@ -1578,133 +1691,116 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         </section>
         </> : null}
 
-        {/* 3. Contextual, policy-aware post-tap journey */}
-        {!isAgroDpp ? <section id="consumer-choice" className="space-y-3">
-          <PostTapNextStep
-            vertical={`${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`}
-            productName={productDisplayName}
-            isFreshTap={isFreshCommercialTap}
-            isSnapshotView={isSnapshotView || isQrScan}
-            protectedTitle={protectedBannerTitle}
-            protectedCopy={protectedBannerCopy}
-            primaryActionHref={bid && (uid || eventId) ? "#protected-actions" : registerHref}
-            rewardsHref={rewardsHref}
-            marketplaceHref={tapMarketplaceHref}
-            certificateHref={certificateHref}
-            walletHref={walletHref}
-            reportProblemHref={reportProblemHref}
-            allowedActions={allowedActions}
-            blockedActions={blockedActions}
+        {/* 3. A real geographic map: declared origin and this tap, without inferred routes. */}
+        <section
+          id="sun-origin"
+          className="scroll-mt-24 space-y-4 rounded-3xl border border-white/5 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md sm:p-5 md:relative md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2 md:p-6"
+          aria-labelledby="sun-origin-title"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="max-w-2xl">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">Mapa del pasaporte</span>
+              <h3 id="sun-origin-title" className="mt-1 text-lg font-black text-white sm:text-xl">Origen y zona de este tap</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Primero ves los dos puntos disponibles. La fuente y la precisión quedan explicadas sin inventar una ruta.</p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-[0.08em]">
+              <span className="rounded-full border border-emerald-300/15 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">Origen informado</span>
+              <span className="rounded-full border border-cyan-300/15 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">{summaryLocationSourceBadge}</span>
+              {hasConsumerComparableDistance
+                ? <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1.5 text-slate-300">{distanceDisplay} lineales</span>
+                : null}
+            </div>
+          </div>
+
+          <SunLocationExperience
+            origin={wineryPoint[0] ? {
+                id: `origin-${uid || eventId || bid || "public"}`,
+                lat: wineryPoint[0].lat,
+                lng: wineryPoint[0].lng,
+                label: originDisplay,
+                evidence: "Coordenada declarada por la empresa; no medida por el NFC.",
+                mapHref: originMapHref,
+                source: "declared_origin",
+              } : null}
+              tap={currentTapPoint[0] ? {
+                id: `tap-${uid || eventId || bid || "public"}`,
+                lat: currentTapPoint[0].lat,
+                lng: currentTapPoint[0].lng,
+                label: tapDisplay,
+                evidence: tapLocationPrecisionLabel,
+                mapHref: tapMapHref,
+                accuracyM: hasAccuracy ? accuracyM : null,
+                source: isDemoPreview
+                  ? "demo"
+                  : rawLocationSource === "browser_gps_approximate_consent"
+                    || rawLocationSource === "browser_gps"
+                    || rawLocationSource === "browser_gps_reported"
+                    || rawLocationSource === "ip_geo"
+                    || rawLocationSource === "edge_ip_approx"
+                      ? rawLocationSource
+                      : null,
+              } : null}
+            showRoute={isDemoPreview}
+            distanceLabel={distanceDisplay}
+            tapTimeLabel={localTapTimeLabel}
+            telemetry={{
+              endpoint: telemetryEndpoint,
+              enabled: canRequestBrowserLocation,
+              bid,
+              uid: uid || null,
+              eventId: eventId || null,
+              freshToken,
+              readCounter: typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null,
+              contextStatus: result.status?.code || null,
+            }}
           />
+        </section>
 
-          {isSnapshotView || isQrScan ? (
-            <section id="fresh-tap-required" className="scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4" aria-labelledby="fresh-tap-required-title">
-              <h2 id="fresh-tap-required-title" className="text-sm font-black text-amber-100">{isQrScan ? "Toca el chip NFC para acciones protegidas" : "Hace un nuevo tap desde la etiqueta fisica"}</h2>
-              <p className="mt-1 text-xs leading-5 text-amber-50/80">
-                {isQrScan
-                  ? "El QR abre contenido y CRM, pero no prueba posesion ni autenticidad criptografica. Acerca el telefono al chip NFC para reclamar, registrar garantia o solicitar tokenizacion."
-                  : "Desbloquea el telefono, acerca la zona NFC a la etiqueta y abri el enlace que aparezca. Esta vista historica conserva la evidencia, pero no puede fabricar la frescura criptografica de otro tap."}
-              </p>
-            </section>
-          ) : null}
-
-          {/* Secure CTAs actions integration */}
-          {bid && (uid || eventId) && (
-            <div id="protected-actions" className="scroll-mt-24 pt-1">
-              <CtaActions
-                bid={bid}
-                uid={uid}
-                eventId={eventId}
-                freshToken={freshToken}
-                canExecute={isFreshCommercialTap}
-                tapState={isQrScan || isSnapshotView || isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"}
-                rightsPolicy={result.rightsPolicy || result.condition}
-                allowedActions={allowedActions}
-                blockedActions={blockedActions}
-                isDemoPreview={isDemoPreview}
-              />
-            </div>
-          )}
-
-          {/* Sommelier and trivia for QR or verified NFC taps */}
-          {showEngagementSuite && (
-            <div id="qr-engagement">
-              <QREngagementSuite
-                wineryName={engagementWineryName}
-                productName={productDisplayName}
-                tenantSlug={engagementTenantSlug}
-                eventId={eventId || null}
-                bid={bid || null}
-                allowedActions={allowedActions}
-                blockedActions={blockedActions}
-              />
-            </div>
-          )}
-
-        </section> : null}
-
-        {/* 4. Traceability, Map & Cold Chain history */}
-        <section className="rounded-3xl border border-white/5 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg space-y-4">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">
-              Trazabilidad e Inteligencia
-            </span>
-            <h3 className="text-base font-black text-white mt-1">Mapa de eventos & origen declarado</h3>
-          </div>
-
-          {/* Interactive OpsMap */}
-          <div id="geo-trace" className="rounded-2xl overflow-hidden border border-white/5 bg-slate-950 p-2 shadow-inner">
-            {opsMapPoints.length ? (
-              <GlobalOpsMap
-                title={isDemoPreview ? "Ruta del producto (demo)" : "Evidencia geografica"}
-                subtitle={isDemoPreview ? "Origen, tap y recorrido simulado" : "Puntos reportados; nexID no infiere un recorrido fisico"}
-                points={opsMapPoints}
-                routes={isDemoPreview ? opsMapRoutes : []}
-                mode={isDemoPreview ? "demo" : "tenant"}
-                selectedPointId={opsMapPoints.find((point) => point.role === "tap")?.id || opsMapPoints[0]?.id}
-                playbackEnabled={isDemoPreview}
-                chrome={isDemoPreview ? "full" : "compact"}
-              />
-            ) : (
-              <div className="py-6 text-center text-xs text-slate-500">
-                Sin coordenadas de geolocalización para este tap.
+          <section id="sun-condition" className="scroll-mt-24 space-y-3 rounded-2xl border border-white/5 bg-slate-950/35 p-4" aria-labelledby="sun-condition-title">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">Estado y sensores</span>
+                <h3 id="sun-condition-title" className="mt-1 text-sm font-black text-white">Condicion informada del producto</h3>
               </div>
-            )}
-          </div>
+              <span className={`rounded-full border px-2.5 py-1 text-[9px] font-black ${sealClosed ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : sealOpened ? "border-amber-300/25 bg-amber-500/10 text-amber-100" : "border-white/10 bg-slate-900 text-slate-300"}`}>
+                {sealLabel}
+              </span>
+            </div>
 
-          {/* Quick Trace Metrics */}
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
-              <span className="text-[8px] uppercase text-slate-500 block">Eventos</span>
-              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{timelineCount}</span>
-            </div>
-            <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
-              <span className="text-[8px] uppercase text-slate-500 block">Distancia</span>
-              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{fmtDistance(originToTapDistance)}</span>
-            </div>
-            <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
-              <span className="text-[8px] uppercase text-slate-500 block">Último Tap</span>
-              <span className="text-[10px] font-bold text-slate-200 mt-0.5 block truncate">{localTapTimeLabel || "N/A"}</span>
-            </div>
-          </div>
-
-          {/* IoT evidence: a snapshot is never presented as a fabricated time series. */}
-          {hasSensorEvidence ? (
+            {/* IoT evidence: static declarations, measured events and demo JSON remain separate. */}
+            {hasSensorEvidence ? (
             <div className="bg-gradient-to-br from-slate-950 to-slate-900/90 rounded-2xl border border-white/5 p-4 space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Monitoreo IoT en tránsito</span>
-                  <span className="text-xs font-bold text-slate-200 mt-0.5 block">{hasReportedSensorEvidence ? "Ultima lectura reportada por metrica" : "Muestra simulada del Demo Lab"}</span>
+                  <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Datos ambientales del producto</span>
+                  <span className="text-xs font-bold text-slate-200 mt-0.5 block">
+                    {hasReportedSensorEvidence ? "Ultima lectura reportada" : hasDeclaredSensorEvidence ? "Ficha del lote · no es lectura en vivo" : "Muestra demo · no es lectura en vivo"}
+                  </span>
                   <span className="mt-1 block text-[9px] text-slate-500">{sensorEvidenceLabel}</span>
                 </div>
-                <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${usesDemoSensorEvidence ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"}`}>
-                  {usesDemoSensorEvidence ? "SIMULADO" : "REPORTADO"}
+                <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${usesDemoSensorEvidence ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : hasDeclaredSensorEvidence ? "border-violet-500/30 bg-violet-500/10 text-violet-200" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"}`}>
+                  {sensorEvidenceBadge}
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <dl className="grid gap-2 rounded-xl border border-white/5 bg-slate-950/45 p-3 text-[9px] sm:grid-cols-3">
+                <div className="min-w-0">
+                  <dt className="font-bold uppercase tracking-wider text-slate-500">Fuente</dt>
+                  <dd className="mt-1 break-words font-semibold text-slate-200">{sensorSource || "No informada"}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="font-bold uppercase tracking-wider text-slate-500">Observada</dt>
+                  <dd className="mt-1 break-words font-semibold text-slate-200">{sensorObservedAt ? fmtDate(sensorObservedAt, result.tapContext?.timezone) : "No informada"}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="font-bold uppercase tracking-wider text-slate-500">Modo</dt>
+                  <dd className="mt-1 break-words font-semibold text-slate-200">{sensorMode}</dd>
+                </div>
+              </dl>
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: "Temperatura", value: dynamicTemp },
                   { label: "Humedad", value: dynamicHumidity },
+                  { label: "Luz", value: dynamicLight },
                   { label: "Impacto", value: dynamicShock },
                 ].map((metric) => (
                   <div key={metric.label} className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
@@ -1714,8 +1810,44 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 ))}
               </div>
               <p className="text-[9px] leading-relaxed text-slate-500">
-                Esta tarjeta muestra una muestra puntual. Un historial sólo se publica cuando el lote aporta una serie temporal verificable.
+                {hasReportedSensorEvidence
+                  ? "Un evento recibido identifica fuente y fecha cuando la integración las aporta. No asumimos conexión directa con hardware, tiempo real ni medición del chip NFC pasivo."
+                  : "Este bloque proviene de datos configurados, no de un sensor en vivo. Un historial solo aparece cuando llegan eventos con fuente y fecha."}
               </p>
+              <details className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                <summary className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-violet-100">Ver JSON normalizado</summary>
+                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-[9px] leading-4 text-slate-400">{JSON.stringify(sensorJsonPreview, null, 2)}</pre>
+              </details>
+              {sensorHistory.length ? (
+                <details className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                  <summary className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-cyan-100">
+                    {hasReportedSensorEvidence
+                      ? `Ver lecturas recibidas (${sensorHistory.length})`
+                      : hasDeclaredSensorEvidence
+                        ? `Ver datos declarados del manifiesto (${sensorHistory.length})`
+                        : `Ver eventos de muestra (${sensorHistory.length})`}
+                  </summary>
+                  <ol className="mt-3 space-y-2">
+                    {sensorHistory.map((reading, index) => (
+                      <li key={`${reading.at || "sensor"}-${index}`} className="rounded-lg border border-white/5 bg-slate-900/70 p-2 text-[10px] text-slate-300">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <strong className="text-white">{reading.source || "Fuente no informada"}</strong>
+                          <span className="text-slate-500">{reading.at ? fmtDate(reading.at, result.tapContext?.timezone) : "Fecha no informada"}</span>
+                        </div>
+                        <p className="mt-1 text-slate-400">
+                          {[
+                            typeof reading.temperatureC === "number" ? `${reading.temperatureC.toFixed(1)}°C` : null,
+                            typeof reading.humidityPct === "number" ? `${reading.humidityPct.toFixed(0)}% HR` : null,
+                            reading.lightExposure || null,
+                            reading.transitShock || null,
+                          ].filter(Boolean).join(" · ") || (hasDeclaredSensorEvidence ? "Ficha sin metricas publicas" : "Evento sin metricas publicas")}
+                        </p>
+                        {reading.deviceId ? <span className="mt-1 block font-mono text-[9px] text-slate-500">device: {reading.deviceId}</span> : null}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              ) : null}
             </div>
           ) : (
             <div role="status" className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4">
@@ -1726,6 +1858,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </p>
             </div>
           )}
+          </section>
 
           {/* Wine content uses producer data, or explicitly labelled Demo Lab fixtures. */}
           {isWineProduct && (
@@ -1799,6 +1932,108 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               ))}
             </div>
           </div>
+
+        {/* 4. Services: one clear menu, with protected flows disclosed on demand. */}
+        <section id="sun-services" className="scroll-mt-24 space-y-3" aria-label="Servicios y beneficios del producto">
+            <div id="consumer-choice" className="scroll-mt-24">
+              <SunServicesHub
+                promotion={publishedPromotion}
+                purchaseHref={tapMarketplaceHref}
+                subscribeHref={canSubscribeToBrand ? (showEngagementSuite ? "#qr-engagement" : "#sun-updates-opt-in") : null}
+                claimOrManageHref={bid && (uid || eventId) ? protectedServiceHref : registerHref}
+                warrantyHref={protectedServiceHref}
+                riskState={servicesRiskState}
+                freshnessState={servicesFreshnessState}
+                policyAvailability={servicePolicyAvailability}
+              />
+            </div>
+
+            {canSubscribeToBrand && !showEngagementSuite ? (
+              <SunUpdatesOptIn
+                brandName={consumerBrandName}
+                productName={productDisplayName}
+                tenantSlug={tenantSlug || null}
+                eventId={eventId || null}
+                bid={bid || null}
+              />
+            ) : null}
+
+            {isRiskBlocked ? (
+              <Link href={reportProblemHref} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 text-sm font-black text-rose-100 transition hover:bg-rose-500/15">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                Reportar esta lectura a la marca
+              </Link>
+            ) : null}
+
+            <details className="group rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+              <summary className="cursor-pointer list-none text-xs font-black text-slate-200 marker:hidden">
+                <span className="flex min-h-11 items-center justify-between gap-3">
+                  Como se protege cada accion
+                  <span className="text-cyan-300 transition group-open:rotate-180" aria-hidden="true">⌄</span>
+                </span>
+              </summary>
+              <div className="pt-2">
+                <PostTapNextStep
+                  vertical={`${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`}
+                  productName={productDisplayName}
+                  isFreshTap={isFreshCommercialTap}
+                  isSnapshotView={isSnapshotView || isQrScan}
+                  protectedTitle={protectedBannerTitle}
+                  protectedCopy={protectedBannerCopy}
+                  primaryActionHref={bid && (uid || eventId) ? "#protected-actions" : registerHref}
+                  rewardsHref={rewardsHref}
+                  marketplaceHref={tapMarketplaceHref}
+                  certificateHref={certificateHref}
+                  walletHref={walletHref}
+                  reportProblemHref={reportProblemHref}
+                  allowedActions={allowedActions}
+                  blockedActions={blockedActions}
+                />
+              </div>
+            </details>
+
+            {isSnapshotView || isQrScan ? (
+              <section id="fresh-tap-required" className="scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4" aria-labelledby="fresh-tap-required-title">
+                <h2 id="fresh-tap-required-title" className="text-sm font-black text-amber-100">{isQrScan ? "Toca el chip NFC para acciones protegidas" : "Hace un nuevo tap desde la etiqueta fisica"}</h2>
+                <p className="mt-1 text-xs leading-5 text-amber-50/80">
+                  {isQrScan
+                    ? "El QR abre contenido y CRM, pero no prueba posesion ni autenticidad criptografica. Acerca el telefono al chip NFC para reclamar, registrar garantia o solicitar tokenizacion."
+                    : "Desbloquea el telefono, acerca la zona NFC a la etiqueta y abri el enlace que aparezca. Esta vista historica conserva la evidencia, pero no puede fabricar la frescura criptografica de otro tap."}
+                </p>
+              </section>
+            ) : null}
+
+            {bid && (uid || eventId) ? (
+              <div id="protected-actions" className="scroll-mt-24 pt-1">
+                <CtaActions
+                  bid={bid}
+                  uid={uid}
+                  eventId={eventId}
+                  freshToken={freshToken}
+                  canExecute={isFreshCommercialTap}
+                  tapState={isQrScan || isSnapshotView || isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"}
+                  rightsPolicy={result.rightsPolicy || result.condition}
+                  allowedActions={allowedActions}
+                  blockedActions={blockedActions}
+                  isDemoPreview={isDemoPreview}
+                />
+              </div>
+            ) : null}
+
+            {showEngagementSuite ? (
+              <div id="qr-engagement" className="scroll-mt-24">
+                <QREngagementSuite
+                  wineryName={engagementWineryName}
+                  productName={productDisplayName}
+                  tenantSlug={engagementTenantSlug}
+                  eventId={eventId || null}
+                  bid={bid || null}
+                  allowedActions={allowedActions}
+                  blockedActions={blockedActions}
+                  initialTab="contact"
+                />
+              </div>
+            ) : null}
         </section>
 
         {/* 5. Technical Specifications (Accordion) */}
@@ -1857,45 +2092,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         </section>
 
       </div>
-
-      {/* Floating sommelier trigger for mobile */}
-      {showEngagementSuite && (
-        <a 
-          href="#qr-engagement" 
-          className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white shadow-lg hover:bg-violet-500 active:scale-95 transition-all lg:hidden"
-        >
-          <span>💬</span> Sommelier IA
-        </a>
-      )}
-
-      {/* Fixed Bottom Quick Nav Bar */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[390px] px-3 z-30 lg:hidden">
-        <div className="grid grid-cols-4 gap-1.5 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-xl shadow-xl">
-          <a href={productSectionHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <span className="text-xs">🍷</span>
-            <span className="text-[8px] font-bold mt-0.5">Ficha</span>
-          </a>
-          <a href={showEngagementSuite ? "#qr-engagement" : "#geo-trace"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <span className="text-xs">📍</span>
-            <span className="text-[8px] font-bold mt-0.5">Ruta</span>
-          </a>
-          {postTapQuickActions.marketplace ? (
-            <Link href={tapMarketplaceHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-              <span className="text-xs">🛒</span>
-              <span className="text-[8px] font-bold mt-0.5">Comprar</span>
-            </Link>
-          ) : (
-            <a href="#geo-trace" className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-              <span className="text-xs">🔎</span>
-              <span className="text-[8px] font-bold mt-0.5">Evidencia</span>
-            </a>
-          )}
-          <a href={isAgroDpp ? "#agro-dpp" : showEngagementSuite ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <span className="text-xs">🔒</span>
-            <span className="text-[8px] font-bold mt-0.5">Acciones</span>
-          </a>
-        </div>
-      </nav>
     </main>
   );
 }

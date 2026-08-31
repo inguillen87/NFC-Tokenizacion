@@ -47,6 +47,7 @@ type QREngagementSuiteProps = {
   bid?: string | null;
   allowedActions?: string[];
   blockedActions?: string[];
+  initialTab?: EngagementTab;
 };
 
 function localTrivia(productName: string, wineryName: string): ClientTriviaQuestion[] {
@@ -103,8 +104,9 @@ export function QREngagementSuite({
   bid = null,
   allowedActions = [],
   blockedActions = [],
+  initialTab = "sommelier",
 }: QREngagementSuiteProps) {
-  const [activeTab, setActiveTab] = useState<EngagementTab>("sommelier");
+  const [activeTab, setActiveTab] = useState<EngagementTab>(initialTab);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");

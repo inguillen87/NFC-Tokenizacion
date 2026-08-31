@@ -25,8 +25,16 @@ import { createSunFreshHandoffToken, createSunSnapshotAccessToken } from '../../
 import { createPublicCertificateShareToken } from '../../lib/public-certificate-share';
 import { eventShareUid, resolveExplicitSunAutoTokenizationAuthorization } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
-import { normalizeConsentedApproximateLocation, normalizeCoordinatePair, redactSensitiveQueryValues } from '../../lib/approximate-location';
-import { buildSunSensorEvidence } from '../../lib/sun-sensor-evidence';
+import {
+  normalizeConsentedApproximateLocation,
+  normalizeCoordinatePair,
+  redactSensitiveQueryValues,
+  sanitizePublicLocationProjection,
+} from '../../lib/approximate-location';
+import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from '../../lib/sun-sensor-evidence';
+import { listSdkSensorTimeline } from '../../lib/sdk-sensor-sun-source';
+import { publishedPromotionsFromLocaleData } from '../../lib/sun-engagement';
+import { persistSunRequestLocation } from '../../lib/sun-tap-location';
 import { escapeHtmlText, escapeHtmlTreeForMarkup, serializeForInlineScript } from '../../lib/public-html-security';
 import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from '../../lib/agro-product-profile';
 import { Gs1RegistryError } from '../../lib/gs1-digital-link-registry';
@@ -150,6 +158,11 @@ type TimelineEvent = {
   lng?: number | null;
   sensorTempC?: number | null;
   sensorHumidity?: number | null;
+  sensorLightExposure?: string | null;
+  sensorTransitShock?: string | null;
+  sensorMeasuredAt?: string | null;
+  sensorDeviceId?: string | null;
+  sensorSource?: string | null;
   stage?: string | null;
 };
 
@@ -602,12 +615,6 @@ function summarizeUserAgent(ua: string) {
   return { os, browser, device };
 }
 
-function roundCoord(value: number | null, decimals = 2) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  const factor = 10 ** decimals;
-  return Math.round(value * factor) / factor;
-}
-
 function safeDecode(value: string | null) {
   if (!value) return null;
   try {
@@ -856,6 +863,14 @@ async function handleQrScan(input: {
     },
     sun_context: { client: deviceMeta },
   };
+  const publicLocation = sanitizePublicLocationProjection({
+    lat: resolvedLat,
+    lng: resolvedLng,
+    locationSource,
+    geoPrecision,
+    locationAccuracyM: clientLocation.accuracy,
+    metadata: baseMeta,
+  });
 
   const failQrContext = async (status: 404 | 422, detail: string) => {
     await logQrAttempt({
@@ -1086,15 +1101,15 @@ async function handleQrScan(input: {
         city: input.geoCity || "Unknown",
         country: input.geoCountry || "--",
         device: `${deviceMeta.platform} - ${deviceMeta.browser}`,
-        lat: resolvedLat,
-        lng: resolvedLng,
+        lat: publicLocation.lat,
+        lng: publicLocation.lng,
       }],
     },
     tapContext: {
       city: input.geoCity,
       country: input.geoCountry,
-      lat: resolvedLat,
-      lng: resolvedLng,
+      lat: publicLocation.lat,
+      lng: publicLocation.lng,
       locationSource,
       accuracyM: null,
       ...qrTapTime,
@@ -1298,30 +1313,102 @@ async function getBatchSunContext(bid: string): Promise<PassportSnapshot> {
 
 async function getTimelineSummary(bid: string, uid: string | undefined): Promise<TimelineEvent[]> {
   if (!uid) return [];
-  const rows = await sql/*sql*/`
-    SELECT e.created_at::text AS at, e.result, e.city, e.country_code AS country, e.device_label AS device, e.lat, e.lng, e.meta
-    FROM events e
-    JOIN batches b ON b.id = e.batch_id
-    WHERE b.bid = ${bid} AND UPPER(e.uid_hex) = UPPER(${uid})
-    ORDER BY e.created_at DESC
-    LIMIT 6
-  `;
+  let rows: Array<Record<string, unknown>>;
+  try {
+    rows = await sql/*sql*/`
+      SELECT e.created_at::text AS at, e.result, e.city, e.country_code AS country,
+        e.device_label AS device, e.lat, e.lng, e.location_source,
+        e.geo_precision::text AS geo_precision, e.location_accuracy_m, e.meta
+      FROM events e
+      JOIN batches b ON b.id = e.batch_id
+      WHERE b.bid = ${bid} AND UPPER(e.uid_hex) = UPPER(${uid})
+      ORDER BY e.created_at DESC
+      LIMIT 6
+    ` as Array<Record<string, unknown>>;
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+    if (code !== "42703") throw error;
+    rows = await sql/*sql*/`
+      SELECT e.created_at::text AS at, e.result, e.city, e.country_code AS country,
+        e.device_label AS device, e.lat, e.lng,
+        NULL::text AS location_source, NULL::text AS geo_precision,
+        NULL::double precision AS location_accuracy_m, e.meta
+      FROM events e
+      JOIN batches b ON b.id = e.batch_id
+      WHERE b.bid = ${bid} AND UPPER(e.uid_hex) = UPPER(${uid})
+      ORDER BY e.created_at DESC
+      LIMIT 6
+    ` as Array<Record<string, unknown>>;
+  }
   return (rows as Array<Record<string, unknown>>).map((row) => {
     const meta = (row.meta && typeof row.meta === "object") ?row.meta as Record<string, unknown> : {};
     const sensors = (meta.sensors && typeof meta.sensors === "object") ?meta.sensors as Record<string, unknown> : {};
+    const sensorText = (...keys: string[]) => {
+      for (const key of keys) {
+        const value = sensors[key];
+        if (typeof value === "string" && value.trim()) return value.trim();
+      }
+      return null;
+    };
+    const publicLocation = sanitizePublicLocationProjection({
+      lat: row.lat,
+      lng: row.lng,
+      locationSource: row.location_source,
+      geoPrecision: row.geo_precision,
+      locationAccuracyM: row.location_accuracy_m,
+      metadata: meta,
+    });
     return {
       at: row.at ?String(row.at) : null,
       result: row.result ?String(row.result) : null,
       city: row.city ?String(row.city) : null,
       country: row.country ?String(row.country) : null,
       device: row.device ?String(row.device) : null,
-      lat: typeof row.lat === "number" ?Number(row.lat) : null,
-      lng: typeof row.lng === "number" ?Number(row.lng) : null,
+      lat: publicLocation.lat,
+      lng: publicLocation.lng,
       sensorTempC: typeof sensors.temperatureC === "number" ?Number(sensors.temperatureC) : null,
       sensorHumidity: typeof sensors.humidityPct === "number" ?Number(sensors.humidityPct) : null,
+      sensorLightExposure: sensorText("lightExposure", "light_exposure", "light", "lux"),
+      sensorTransitShock: sensorText("transitShock", "transit_shock", "shock", "impact_g"),
+      sensorMeasuredAt: sensorText("measuredAt", "measured_at", "capturedAt", "captured_at"),
+      sensorDeviceId: sensorText("deviceId", "device_id", "sensorId", "sensor_id", "loggerId", "logger_id"),
+      sensorSource: sensorText("source", "provider", "connector"),
       stage: typeof sensors.stage === "string" ?String(sensors.stage) : null,
     } satisfies TimelineEvent;
   });
+}
+
+async function getSdkSensorTimelineSummary(input: {
+  tenantId: string | null | undefined;
+  bid: string;
+  uid: string | null | undefined;
+}): Promise<TimelineEvent[]> {
+  if (!input.tenantId || !input.uid) return [];
+  const readings = await listSdkSensorTimeline({
+    tenantId: input.tenantId,
+    bid: input.bid,
+    uidHex: input.uid,
+    limit: 6,
+  });
+  return readings.map((reading) => ({
+    at: reading.measuredAt,
+    result: "SENSOR_REPORTED",
+    city: null,
+    country: null,
+    device: reading.deviceId,
+    lat: null,
+    lng: null,
+    sensorTempC: reading.temperatureC,
+    sensorHumidity: reading.humidityPct,
+    sensorLightExposure: reading.lightExposure,
+    sensorTransitShock: reading.transitShock,
+    sensorMeasuredAt: reading.measuredAt,
+    sensorDeviceId: reading.deviceId,
+    sensorSource: reading.source,
+    stage: reading.stage,
+  }));
 }
 
 async function getCtaTimelineSummary(bid: string, uid: string | undefined): Promise<TimelineEvent[]> {
@@ -1352,7 +1439,18 @@ function buildPublicContract(params: {
   result: SunResult['body'];
   passport: PassportSnapshot;
   timeline: TimelineEvent[];
-  tap: { userAgent: string; city: string | null; country: string | null; lat: number | null; lng: number | null };
+  sensorTimeline?: TimelineEvent[];
+  tap: {
+    userAgent: string;
+    city: string | null;
+    country: string | null;
+    lat: number | null;
+    lng: number | null;
+    locationSource: string;
+    geoPrecision: string;
+    locationAccuracyM: number | null;
+    metadata: Record<string, unknown>;
+  };
 }) {
   const status = params.result.result || (params.result.ok ?'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
@@ -1363,9 +1461,26 @@ function buildPublicContract(params: {
     : params.result.product_state || null;
   const verdictRisk = mapVerdictAndRisk({ statusCode: trust.code, productState: effectiveProductState, reason });
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
+  const declaredStaticSensor = declaredStaticSensorFromLocaleData(params.passport?.locale_data);
+  const publishedPromotions = publishedPromotionsFromLocaleData(params.passport?.locale_data);
+  const sensorEvidenceTimeline = [...params.timeline, ...(params.sensorTimeline || [])];
+  const factualSensorEvidence = buildSunSensorEvidence({
+    timeline: sensorEvidenceTimeline,
+    declaredStatic: declaredStaticSensor,
+    barrelMonths: params.passport?.barrel_months ?? null,
+    allowSimulation: false,
+  });
   const setupDashboardBase = dashboardBaseUrl();
   const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const setupUa = summarizeUserAgent(params.tap.userAgent);
+  const publicTapLocation = sanitizePublicLocationProjection({
+    lat: params.tap.lat,
+    lng: params.tap.lng,
+    locationSource: params.tap.locationSource,
+    geoPrecision: params.tap.geoPrecision,
+    locationAccuracyM: params.tap.locationAccuracyM,
+    metadata: params.tap.metadata,
+  });
   const troubleshooting = buildTroubleshooting(reason, params.bid, resultMeta);
   const resultCarrierProfileCode = String(resultMeta.carrier_profile_code || "").trim().toLowerCase();
   const carrierProfileCode = params.passport?.carrier_profile_code
@@ -1558,8 +1673,10 @@ function buildPublicContract(params: {
         oakType: null,
         originLabel: null,
         originType: null,
-        sensorSnapshot: { cellarTemperature: null, humidity: null, lightExposure: null, transitShock: null },
-        sensorHistory: [],
+        sensorEvidenceKind: factualSensorEvidence.kind,
+        sensorSnapshot: factualSensorEvidence.snapshot,
+        sensorHistory: factualSensorEvidence.history,
+        declaredStatic: factualSensorEvidence.declaredStatic,
       },
       tapContext: {
         os: setupUa.os,
@@ -1567,10 +1684,10 @@ function buildPublicContract(params: {
         deviceType: setupUa.device,
         city: params.tap.city,
         country: params.tap.country,
-        lat: roundCoord(params.tap.lat, 2),
-        lng: roundCoord(params.tap.lng, 2),
-        locationSource: params.tap.lat != null && params.tap.lng != null ? "ip_geo" : "none",
-        accuracyM: null,
+        lat: publicTapLocation.lat,
+        lng: publicTapLocation.lng,
+        locationSource: publicTapLocation.lat != null ? params.tap.locationSource : "none",
+        accuracyM: publicTapLocation.lat != null ? params.tap.locationAccuracyM : null,
         ...setupTapTime,
       },
       quality: { score: null, tier: null, basis: "unavailable" },
@@ -1637,7 +1754,8 @@ function buildPublicContract(params: {
     tenantProfile.product.simulatedShock,
   ].some((value) => value != null && String(value).trim() !== "");
   const sensorEvidence = buildSunSensorEvidence({
-    timeline: params.timeline,
+    timeline: sensorEvidenceTimeline,
+    declaredStatic: declaredStaticSensor,
     fallbackStorage,
     barrelMonths: params.passport?.barrel_months || fallbackBarrelMonths,
     simulatedTempC: tenantProfile.product.simulatedTempC,
@@ -1870,17 +1988,19 @@ function buildPublicContract(params: {
       sensorEvidenceKind: sensorEvidence.kind,
       sensorSnapshot: sensorEvidence.snapshot,
       sensorHistory,
+      declaredStatic: sensorEvidence.declaredStatic,
     },
+    engagement: { promotions: publishedPromotions },
     tapContext: {
       os: ua.os,
       browser: ua.browser,
       deviceType: ua.device,
       city: params.tap.city,
       country: params.tap.country,
-      lat: roundCoord(params.tap.lat, 2),
-      lng: roundCoord(params.tap.lng, 2),
-      locationSource: params.tap.lat != null && params.tap.lng != null ? "ip_geo" : "none",
-      accuracyM: null,
+      lat: publicTapLocation.lat,
+      lng: publicTapLocation.lng,
+      locationSource: publicTapLocation.lat != null ? params.tap.locationSource : "none",
+      accuracyM: publicTapLocation.lat != null ? params.tap.locationAccuracyM : null,
       ...currentTapTime,
     },
     quality: { score: null, tier: null, basis: "unavailable" },
@@ -2448,13 +2568,21 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     ? copy.lang === "en" ? "SIMULATED - NOT MEASURED" : copy.lang === "pt-BR" ? "SIMULADO - NAO MEDIDO" : "SIMULADO - NO MEDIDO"
     : contract.iot.sensorEvidenceKind === "reported"
       ? copy.lang === "en" ? "REPORTED - NOT INDEPENDENTLY VERIFIED" : copy.lang === "pt-BR" ? "REPORTADO - NAO VERIFICADO INDEPENDENTEMENTE" : "REPORTADO - NO VERIFICADO INDEPENDIENTEMENTE"
-      : copy.lang === "en" ? "NO SENSOR TELEMETRY" : copy.lang === "pt-BR" ? "SEM TELEMETRIA DE SENSOR" : "SIN TELEMETRIA DE SENSOR";
-  const sensorEvidenceTone = contract.iot.sensorEvidenceKind === "reported" ? "#7dd3fc" : "#fbbf24";
+      : contract.iot.sensorEvidenceKind === "declared_static"
+        ? copy.lang === "en" ? "STATIC DECLARATION - MANIFEST" : copy.lang === "pt-BR" ? "DECLARADO ESTATICO - MANIFESTO" : "DECLARADO ESTATICO - MANIFIESTO"
+        : copy.lang === "en" ? "NO SENSOR TELEMETRY" : copy.lang === "pt-BR" ? "SEM TELEMETRIA DE SENSOR" : "SIN TELEMETRIA DE SENSOR";
+  const sensorEvidenceTone = contract.iot.sensorEvidenceKind === "reported"
+    ? "#7dd3fc"
+    : contract.iot.sensorEvidenceKind === "declared_static"
+      ? "#c4b5fd"
+      : "#fbbf24";
   const sensorEvidenceExplanation = contract.iot.sensorEvidenceKind === "simulated"
     ? copy.lang === "en" ? "Illustrative demo values; no sensor measured them." : copy.lang === "pt-BR" ? "Valores ilustrativos de demo; nenhum sensor os mediu." : "Valores ilustrativos de demo; ningun sensor los midio."
     : contract.iot.sensorEvidenceKind === "reported"
       ? copy.lang === "en" ? "Values reported in event records; not independently verified by NexID." : copy.lang === "pt-BR" ? "Valores informados nos eventos; nao verificados independentemente pela NexID." : "Valores informados en eventos; no verificados independientemente por NexID."
-      : copy.lang === "en" ? "No measured or reported sensor values are available." : copy.lang === "pt-BR" ? "Nao ha valores de sensores medidos ou reportados." : "No hay valores de sensores medidos ni reportados.";
+      : contract.iot.sensorEvidenceKind === "declared_static"
+        ? copy.lang === "en" ? "Values configured in the product manifest; they are not real-time telemetry and were not independently verified by NexID." : copy.lang === "pt-BR" ? "Valores configurados no manifesto do produto; nao sao telemetria em tempo real nem foram verificados independentemente pela NexID." : "Valores configurados en el manifiesto del producto; no son telemetria en tiempo real ni fueron verificados independientemente por NexID."
+        : copy.lang === "en" ? "No measured or reported sensor values are available." : copy.lang === "pt-BR" ? "Nao ha valores de sensores medidos ou reportados." : "No hay valores de sensores medidos ni reportados.";
   qualityMeterHtml += `<div style="border:1px solid ${sensorEvidenceTone};background:rgba(2,6,23,.35);border-radius:12px;padding:10px;margin:12px 0 0"><b style="display:block;color:${sensorEvidenceTone};font-size:12px;letter-spacing:.04em">${sensorEvidenceLabel}</b><span style="font-size:11px;color:#cbd5e1">${sensorEvidenceExplanation}</span></div>`;
 
   return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
@@ -2873,6 +3001,15 @@ export async function GET(req: Request): Promise<Response> {
   if (!HEX_RE.test(enc) || enc.length !== 32) return malformed('invalid enc hex (expected 32 hex chars)');
   if (!HEX_RE.test(cmac) || cmac.length !== 16) return malformed('invalid cmac hex (expected 16 hex chars)');
 
+  const locationSource = edgeCoordinate ? "edge_ip_approx" : "none";
+  const geoPrecision = edgeCoordinate ? "ip" : "none";
+  const publicLocationMetadata = {
+    geo_evidence: {
+      source: locationSource,
+      precision: edgeCoordinate ? "ip_approximate" : "none",
+      consent: false,
+    },
+  };
   const sunScanInput = {
     bid,
     piccDataHex: picc_data,
@@ -2890,6 +3027,7 @@ export async function GET(req: Request): Promise<Response> {
       meta: {
         trace_id: traceId,
         request_id: req.headers.get('x-request-id') || null,
+        ...publicLocationMetadata,
       },
     },
   };
@@ -2933,6 +3071,15 @@ export async function GET(req: Request): Promise<Response> {
   let uid = result.body.uid || null;
   let eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   let ctr = typeof result.body.ctr === 'number' ?result.body.ctr : null;
+  if (eventId && edgeCoordinate) {
+    await persistSunRequestLocation({
+      eventId,
+      lat: edgeCoordinate.lat,
+      lng: edgeCoordinate.lng,
+      city: geoCity,
+      country: geoCountry,
+    }).catch(() => false);
+  }
   if (uid && ctr != null) {
     const uidCtrRate = await safeHitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
     if (uidCtrRate.unavailable && shouldFailClosedSunRateLimit()) {
@@ -2955,8 +3102,12 @@ export async function GET(req: Request): Promise<Response> {
     ? null
     : await withTimeout(getBatchSunContext(bid), 2500, "sun_batch_context").catch(() => null);
   const passport = tagPassport || batchContext;
-  const timeline = await withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]);
-  const ctaTimeline = await withTimeout(getCtaTimelineSummary(bid, uid || undefined), 2500, "sun_cta_timeline").catch(() => [] as TimelineEvent[]);
+  const [timeline, ctaTimeline, sdkSensorTimeline] = await Promise.all([
+    withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]),
+    withTimeout(getCtaTimelineSummary(bid, uid || undefined), 2500, "sun_cta_timeline").catch(() => [] as TimelineEvent[]),
+    withTimeout(getSdkSensorTimelineSummary({ tenantId: passport?.tenant_id, bid, uid }), 2500, "sun_sdk_sensor_timeline")
+      .catch(() => [] as TimelineEvent[]),
+  ]);
   const mergedTimeline = [...timeline, ...ctaTimeline]
     .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
     .slice(0, 8);
@@ -2967,12 +3118,17 @@ export async function GET(req: Request): Promise<Response> {
     result: result.body,
     passport,
     timeline: mergedTimeline,
+    sensorTimeline: sdkSensorTimeline,
     tap: {
       userAgent: ua,
       city: geoCity,
       country: geoCountry,
       lat: geoLat,
       lng: geoLng,
+      locationSource,
+      geoPrecision,
+      locationAccuracyM: null,
+      metadata: publicLocationMetadata,
     },
   });
   (contract as Record<string, unknown>).trace_id = traceId;
@@ -2985,8 +3141,8 @@ export async function GET(req: Request): Promise<Response> {
         city: geoCity || "Unknown",
         country: geoCountry || "--",
         device: `${contract.tapContext.os} · ${contract.tapContext.browser}`,
-        lat: geoLat,
-        lng: geoLng,
+        lat: contract.tapContext.lat,
+        lng: contract.tapContext.lng,
         stage: "current_tap",
       },
     ];

@@ -204,7 +204,10 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
   assert.match(dbRuntime, /20260802300000_0095_sun_tt_conflict_target\.sql/);
   assert.match(dbRuntime, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 41);
+  assert.match(dbRuntime, /20260829120000_0097_public_location_privacy\.sql/);
+  assert.match(dbRuntime, /20260830120000_0098_event_location_context\.sql/);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 43);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1), "20260830120000_0098_event_location_context.sql");
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 1; /* request path */ ALTER TABLE tags ADD COLUMN unsafe text"), true);

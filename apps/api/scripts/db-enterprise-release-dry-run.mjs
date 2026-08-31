@@ -42,6 +42,8 @@ const RELEASE_MIGRATIONS = Object.freeze([
   "20260802290000_0094_sun_runtime_acl_boundary.sql",
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+  "20260829120000_0097_public_location_privacy.sql",
+  "20260830120000_0098_event_location_context.sql",
 ]);
 const REQUIRED_APPLIED = Object.freeze([
   "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
@@ -111,6 +113,22 @@ try {
 
   const postcheck = (await client.query(`SELECT
     to_regclass('public.sdk_idempotency_operations') IS NOT NULL AS sdk_idempotency_operations,
+    EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'events'
+        AND column_name = 'location_accuracy_m'
+        AND data_type = 'double precision'
+    ) AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'events'
+        AND column_name = 'location_source'
+        AND data_type = 'text'
+    ) AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'events'
+        AND column_name = 'location_updated_at'
+        AND data_type = 'timestamp with time zone'
+    ) AS event_location_context_columns,
     to_regclass('public.tenant_api_key_lifecycle_receipts') IS NOT NULL AS tenant_api_key_lifecycle_receipts,
     to_regprocedure('public.nexid_tenant_api_key_lifecycle_v1_capability()') IS NOT NULL AS tenant_api_key_lifecycle_capability,
     to_regprocedure('public.nexid_create_tenant_api_key_v1(jsonb)') IS NOT NULL AS tenant_api_key_create_writer,
@@ -856,6 +874,7 @@ try {
     [RELEASE_MIGRATIONS])).rows[0];
   if (
     !postcheck.sdk_idempotency_operations
+    || !postcheck.event_location_context_columns
     || !postcheck.tenant_api_key_lifecycle_receipts
     || !postcheck.tenant_api_key_lifecycle_capability
     || !postcheck.tenant_api_key_create_writer

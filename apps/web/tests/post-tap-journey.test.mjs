@@ -110,7 +110,15 @@ test("real taps never fabricate sensor history, tasting awards or chain-of-custo
   assert.match(page, /usesDemoSensorEvidence \? "15\.2°C" : "N\/A"/);
   assert.match(page, /Sin telemetr[ií]a IoT asociada a este lote/i);
   assert.match(page, /no inferimos temperatura, humedad ni golpes sin evidencia/i);
-  assert.match(page, /Esta tarjeta muestra una muestra puntual/i);
+  assert.match(page, /const hasDeclaredSensorEvidence/);
+  assert.match(page, /sensorEvidenceKind === "declared_static"/);
+  assert.match(page, /DEMO \/ JSON/);
+  assert.match(page, /Ver JSON normalizado/);
+  assert.match(page, /Ver lecturas recibidas/);
+  assert.match(page, /Ver datos declarados del manifiesto/);
+  assert.match(page, /no es lectura en vivo/i);
+  assert.match(page, /realtime: false/);
+  assert.doesNotMatch(page, /live: hasReportedSensorEvidence/);
   assert.match(page, /Datos simulados del Demo Lab/);
   assert.match(page, /no son certificaciones reales/i);
   assert.doesNotMatch(page, /James Suckling|Decanter Awards|ESTABLE \(/);
@@ -121,15 +129,17 @@ test("real taps never fabricate sensor history, tasting awards or chain-of-custo
 test("QR engagement is wine-only, policy-aware and never confirms local rewards or failed opt-ins", async () => {
   const page = await readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8");
   const engagement = await readFile(new URL("../src/app/sun/qr-engagement-suite.tsx", import.meta.url), "utf8");
+  const locationExperience = await readFile(new URL("../src/app/sun/sun-location-experience.tsx", import.meta.url), "utf8");
 
   assert.match(page, /!isQrScan && trustSignals\.antiReplay === false/);
   assert.match(page, /\(!isTechnicallyAuthentic && !isQrScan\)/);
   assert.match(page, /const showEngagementSuite = engagementBaseEligible && isWineProduct/);
   assert.match(page, /<QREngagementSuite[\s\S]*allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
-  assert.match(page, /postTapQuickActions\.marketplace \? \(/);
-  assert.match(page, /routes=\{isDemoPreview \? opsMapRoutes : \[\]\}/);
-  assert.match(page, /mode=\{isDemoPreview \? "demo" : "tenant"\}/);
-  assert.match(page, /nexID no infiere un recorrido fisico/);
+  assert.match(page, /purchase: postTapQuickActions\.marketplace && !isRiskBlocked/);
+  assert.match(page, /<SunLocationExperience/);
+  assert.match(locationExperience, /<SunPassportMap/);
+  assert.match(page, /showRoute=\{isDemoPreview\}/);
+  assert.match(page, /La fuente y la precisión quedan explicadas sin inventar una ruta/);
 
   assert.match(engagement, /const canUseRewards = isPostTapPolicyActionAllowed\("rewards", allowedActions, blockedActions\)/);
   assert.match(engagement, /pointsAwarded: 0/);

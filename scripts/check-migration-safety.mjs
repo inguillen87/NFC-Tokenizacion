@@ -51,6 +51,8 @@ const ids = [
   "20260802290000_0094_sun_runtime_acl_boundary.sql",
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+  "20260829120000_0097_public_location_privacy.sql",
+  "20260830120000_0098_event_location_context.sql",
 ];
 const checks = [];
 for (const id of ids) {
@@ -102,6 +104,8 @@ const sql93 = await fs.readFile(path.join(root, "20260802280000_0093_sun_tt_dura
 const sql94 = await fs.readFile(path.join(root, "20260802290000_0094_sun_runtime_acl_boundary.sql"), "utf8");
 const sql95 = await fs.readFile(path.join(root, "20260802300000_0095_sun_tt_conflict_target.sql"), "utf8");
 const sql96 = await fs.readFile(path.join(root, "20260802310000_0096_enterprise_rbac_risk_truth.sql"), "utf8");
+const sql97 = await fs.readFile(path.join(root, "20260829120000_0097_public_location_privacy.sql"), "utf8");
+const sql98 = await fs.readFile(path.join(root, "20260830120000_0098_event_location_context.sql"), "utf8");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const runnerSafety = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/lib/db-apply-safety.mjs"), "utf8");
@@ -640,6 +644,20 @@ const enterpriseRbacRiskTruthIsDurable = sql96.includes("ADD COLUMN IF NOT EXIST
   && !/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?memberships\b/i.test(sql96)
   && !/hsm[_ -]?backed\s*[:=]\s*true|managed[_ -]?kms\s*[:=]\s*true/i.test(sql96);
 
+const publicLocationPrivacyIsAdditive = sql97.includes("ALTER TYPE public.geo_precision ADD VALUE IF NOT EXISTS 'approximate'")
+  && sql97.includes("t.typtype = 'e'")
+  && sql97.includes("n.nspname = 'public'")
+  && !/ALTER\s+TABLE|DROP\s+(?:TABLE|COLUMN|TYPE)|DELETE\s+FROM|UPDATE\s+/i.test(sql97);
+const eventLocationContextColumnsAreAdditive = sql98.includes("ALTER TABLE public.events")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS location_accuracy_m double precision")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS location_source text")
+  && sql98.includes("ADD COLUMN IF NOT EXISTS location_updated_at timestamptz")
+  && sql98.includes("event_location_context_schema_postcondition_failed")
+  && sql98.includes("data_type = 'double precision'")
+  && sql98.includes("data_type = 'text'")
+  && sql98.includes("data_type = 'timestamp with time zone'")
+  && (sql98.match(/ADD COLUMN IF NOT EXISTS/g) || []).length === 3
+  && !/\b(?:DROP|DELETE|UPDATE|INSERT|TRUNCATE)\b|\bDEFAULT\b|\bNOT\s+NULL\b/i.test(sql98);
 const allMigrationFiles = (await fs.readdir(root)).filter((file) => file.endsWith(".sql")).sort();
 let tenantApiKeysMaterialized = false;
 let tenantApiKeysCanonicalCreateFound = false;
@@ -716,6 +734,8 @@ const ok = checks.every((item) => item.bytes > 0)
   && sunRuntimeAclBoundaryIsDurable
   && sunTtConflictTargetIsDurable
   && enterpriseRbacRiskTruthIsDurable
+  && publicLocationPrivacyIsAdditive
+  && eventLocationContextColumnsAreAdditive
   && tenantApiKeysCleanOrderSafe && partitionedEventReferencesAreCompositeSafe
   && postgresTextNullDelimiterFree
   && runnerIsAtomic && unauthorizedCleanBootstrapFailsClosed && legacyBypassBlocked
@@ -769,6 +789,8 @@ console.log(JSON.stringify({
     sun_runtime_acl_boundary_is_durable: sunRuntimeAclBoundaryIsDurable,
     sun_tt_conflict_target_is_durable: sunTtConflictTargetIsDurable,
     enterprise_rbac_risk_truth_is_durable: enterpriseRbacRiskTruthIsDurable,
+    public_location_privacy_is_additive: publicLocationPrivacyIsAdditive,
+    event_location_context_columns_are_additive: eventLocationContextColumnsAreAdditive,
     tenant_api_keys_clean_order_safe: tenantApiKeysCleanOrderSafe,
     partitioned_event_references_are_composite_safe: partitionedEventReferencesAreCompositeSafe,
     postgres_text_null_delimiter_free: postgresTextNullDelimiterFree,

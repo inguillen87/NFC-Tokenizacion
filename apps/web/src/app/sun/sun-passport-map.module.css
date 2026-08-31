@@ -1,0 +1,587 @@
+.shell {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1.25rem;
+  background: rgba(2, 6, 23, 0.76);
+  box-shadow: 0 20px 55px rgba(2, 6, 23, 0.24);
+}
+
+.mapFrame {
+  position: relative;
+  min-height: 15.5rem;
+  overflow: hidden;
+  background: #dce8ed;
+}
+
+.map {
+  width: 100%;
+  height: 15.5rem;
+}
+
+.loading,
+.fallback,
+.empty {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: #334155;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(226, 232, 240, 0.88)),
+    repeating-linear-gradient(45deg, transparent 0 14px, rgba(14, 116, 144, 0.06) 14px 15px);
+}
+
+.loading {
+  pointer-events: none;
+}
+
+.retryButton {
+  min-height: 2.75rem;
+  margin-top: 0.9rem;
+  border: 1px solid rgba(8, 145, 178, 0.35);
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.85rem;
+  color: #0e7490;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.75rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.retryButton:focus-visible {
+  outline: 2px solid #0891b2;
+  outline-offset: 2px;
+}
+
+.loadingDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 999px;
+  background: #0891b2;
+  box-shadow: 0 0 0 0.4rem rgba(8, 145, 178, 0.14);
+  animation: sunMapPulse 1.4s ease-in-out infinite;
+}
+
+.mapLegend {
+  position: absolute;
+  z-index: 2;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  max-width: calc(100% - 4.75rem);
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.legendItem,
+.demoBadge,
+.degradedBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  gap: 0.4rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.12);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.demoBadge {
+  color: #854d0e;
+  border-color: rgba(217, 119, 6, 0.22);
+  background: rgba(255, 251, 235, 0.95);
+}
+
+.degradedBadge {
+  color: #155e75;
+  border-color: rgba(8, 145, 178, 0.22);
+  background: rgba(236, 254, 255, 0.95);
+}
+
+.legendDot {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: #0f766e;
+}
+
+.legendDotTap {
+  background: #2563eb;
+}
+
+.fitButton {
+  position: absolute;
+  z-index: 2;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.65rem;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 7px 20px rgba(15, 23, 42, 0.15);
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.fitButton:hover,
+.fitButton:focus-visible {
+  background: #fff;
+  outline: 2px solid #0891b2;
+  outline-offset: 2px;
+}
+
+.markerAnchor {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+}
+
+.marker {
+  position: relative;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 999px 999px 999px 0.35rem;
+  color: #fff;
+  background: #0f766e;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.34);
+  font: 850 0.68rem/1 system-ui, sans-serif;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  cursor: pointer;
+}
+
+.marker > span {
+  transform: rotate(45deg);
+}
+
+.markerTap {
+  background: #2563eb;
+}
+
+.marker:hover,
+.marker:focus-visible {
+  z-index: 3;
+  outline: 3px solid rgba(255, 255, 255, 0.72);
+  outline-offset: 2px;
+  transform: rotate(-45deg) scale(1.08);
+}
+
+.details {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.locationRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.locationButton,
+.locationStatic {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  min-height: 4.5rem;
+  border: 0;
+  padding: 0.8rem 1rem;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.locationButton {
+  cursor: pointer;
+}
+
+.locationButton:hover,
+.locationButton:focus-visible {
+  background: rgba(34, 211, 238, 0.06);
+  outline: 2px solid rgba(34, 211, 238, 0.75);
+  outline-offset: -3px;
+}
+
+.locationIndex {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border: 1px solid rgba(45, 212, 191, 0.36);
+  border-radius: 999px;
+  color: #99f6e4;
+  background: rgba(15, 118, 110, 0.2);
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.locationIndexTap {
+  border-color: rgba(96, 165, 250, 0.4);
+  color: #bfdbfe;
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.locationCopy {
+  min-width: 0;
+}
+
+.locationEyebrow {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.locationTitle {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.18rem;
+  color: #f8fafc;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locationMeta {
+  display: block;
+  margin-top: 0.18rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.locationSourceSummary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.46);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.locationSourceSummary p {
+  min-width: 0;
+  margin: 0;
+}
+
+.sourceBadge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 1.6rem;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  color: #cffafe;
+  background: rgba(8, 145, 178, 0.12);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.technicalDetails {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  color: #94a3b8;
+  background: rgba(2, 6, 23, 0.5);
+  font-size: 0.7rem;
+}
+
+.technicalDetails summary {
+  min-height: 2.75rem;
+  padding: 0.8rem 1rem;
+  color: #cbd5e1;
+  font-weight: 800;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.technicalDetails summary:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.75);
+  outline-offset: -3px;
+}
+
+.technicalBody {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0 1rem 0.95rem;
+  line-height: 1.55;
+}
+
+.technicalBody p {
+  margin: 0;
+}
+
+.technicalBody strong {
+  color: #cbd5e1;
+}
+
+.externalLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border-radius: 0.6rem;
+  padding: 0 0.5rem;
+  margin-right: 0.5rem;
+  color: #a5f3fc;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.externalLink:hover,
+.externalLink:focus-visible {
+  color: #fff;
+  outline: 2px solid rgba(34, 211, 238, 0.65);
+  outline-offset: 1px;
+}
+
+.truthNote {
+  margin: 0;
+  padding: 0.75rem 1rem 0.85rem;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.5);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.attribution {
+  display: block;
+  margin-top: 0.35rem;
+  white-space: normal;
+}
+
+.attribution a {
+  color: #a5f3fc;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.popup {
+  min-width: 12rem;
+  color: #0f172a;
+  font-family: system-ui, sans-serif;
+}
+
+.popupEyebrow {
+  display: block;
+  color: #64748b;
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.popupTitle {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+}
+
+.popupMeta {
+  margin: 0.3rem 0 0;
+  color: #475569;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.map :global(.maplibregl-ctrl-group) {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 0.65rem;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+}
+
+.map :global(.maplibregl-ctrl-group button) {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.map :global(.maplibregl-popup-content) {
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.22);
+}
+
+.map :global(.maplibregl-popup-close-button) {
+  width: 2.75rem;
+  height: 2.75rem;
+  color: #475569;
+  font-size: 1rem;
+}
+
+.map :global(.maplibregl-ctrl-attrib) {
+  color: #334155;
+  background: rgba(255, 255, 255, 0.88);
+  max-width: calc(100% - 0.5rem);
+  white-space: normal;
+  font-size: 0.65rem;
+}
+
+@keyframes sunMapPulse {
+  0%, 100% { transform: scale(0.9); opacity: 0.65; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+@media (min-width: 768px) {
+  .mapFrame,
+  .map {
+    height: 23rem;
+  }
+
+  .details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .locationRow,
+  .locationStatic {
+    border-bottom: 0;
+  }
+
+  .locationRow + .locationRow,
+  .locationRow + .locationStatic,
+  .locationStatic + .locationRow,
+  .locationStatic + .locationStatic {
+    border-left: 1px solid rgba(148, 163, 184, 0.14);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingDot {
+    animation: none;
+  }
+
+  .marker {
+    transition: none;
+  }
+}
+
+:global(html[data-theme="light"]) .shell,
+:global(html.theme-light) .shell {
+  border-color: rgba(100, 116, 139, 0.22);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.1);
+}
+
+:global(html[data-theme="light"]) .details,
+:global(html.theme-light) .details {
+  border-color: rgba(100, 116, 139, 0.18);
+}
+
+:global(html[data-theme="light"]) .locationButton,
+:global(html[data-theme="light"]) .locationRow,
+:global(html[data-theme="light"]) .locationStatic,
+:global(html.theme-light) .locationButton,
+:global(html.theme-light) .locationRow,
+:global(html.theme-light) .locationStatic {
+  border-color: rgba(100, 116, 139, 0.16);
+}
+
+:global(html[data-theme="light"]) .locationButton:hover,
+:global(html[data-theme="light"]) .locationButton:focus-visible,
+:global(html.theme-light) .locationButton:hover,
+:global(html.theme-light) .locationButton:focus-visible {
+  background: rgba(8, 145, 178, 0.06);
+}
+
+:global(html[data-theme="light"]) .locationTitle,
+:global(html.theme-light) .locationTitle {
+  color: #0f172a;
+}
+
+:global(html[data-theme="light"]) .locationEyebrow,
+:global(html[data-theme="light"]) .locationMeta,
+:global(html.theme-light) .locationEyebrow,
+:global(html.theme-light) .locationMeta {
+  color: #64748b;
+}
+
+:global(html[data-theme="light"]) .locationIndex,
+:global(html.theme-light) .locationIndex {
+  border-color: rgba(15, 118, 110, 0.24);
+  color: #0f766e;
+  background: rgba(204, 251, 241, 0.88);
+}
+
+:global(html[data-theme="light"]) .locationIndexTap,
+:global(html.theme-light) .locationIndexTap {
+  border-color: rgba(37, 99, 235, 0.24);
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.9);
+}
+
+:global(html[data-theme="light"]) .externalLink,
+:global(html.theme-light) .externalLink {
+  color: #0e7490;
+}
+
+:global(html[data-theme="light"]) .truthNote,
+:global(html.theme-light) .truthNote {
+  color: #475569;
+  background: rgba(241, 245, 249, 0.78);
+}
+
+:global(html[data-theme="light"]) .locationSourceSummary,
+:global(html.theme-light) .locationSourceSummary {
+  color: #475569;
+  background: rgba(248, 250, 252, 0.96);
+}
+
+:global(html[data-theme="light"]) .sourceBadge,
+:global(html.theme-light) .sourceBadge {
+  border-color: rgba(8, 145, 178, 0.2);
+  color: #0e7490;
+  background: rgba(236, 254, 255, 0.9);
+}
+
+:global(html[data-theme="light"]) .technicalDetails,
+:global(html.theme-light) .technicalDetails {
+  border-color: rgba(100, 116, 139, 0.16);
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.95);
+}
+
+:global(html[data-theme="light"]) .technicalDetails summary,
+:global(html.theme-light) .technicalDetails summary,
+:global(html[data-theme="light"]) .technicalBody strong,
+:global(html.theme-light) .technicalBody strong {
+  color: #334155;
+}
+
+:global(html[data-theme="light"]) .attribution a,
+:global(html.theme-light) .attribution a {
+  color: #0e7490;
+}

@@ -1,7 +1,8 @@
 import { sql } from './db';
 import { verifySunFreshHandoffToken } from './sun-fresh-handoff';
 import { createPublicCertificateShareToken } from './public-certificate-share';
-import { redactSensitiveQueryValues } from './approximate-location';
+import { redactSensitiveQueryValues, sanitizePublicLocationProjection } from './approximate-location';
+import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from './sun-sensor-evidence';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -116,48 +117,6 @@ function mediaFromLocaleData(localeData: unknown, imageUrl?: string | null) {
     imageUrl: image,
     hero: textOrNull(media.hero) || image,
     packshot: textOrNull(media.packshot) || image,
-  };
-}
-
-function firstText(...values: unknown[]) {
-  return textOrNull(values.find((value) => textOrNull(value)) || null);
-}
-
-function numberOrNull(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value.replace(",", "."));
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function iotFromLocaleData(localeData: unknown) {
-  const data = asRecord(localeData);
-  const manifest = asRecord(data.manifest);
-  const manifestIot = asRecord(manifest.iot);
-  const iot = { ...manifestIot, ...asRecord(data.iot) };
-  if (!Object.keys(iot).length) return null;
-
-  const temperatureC = numberOrNull(iot.temperatureC ?? iot.temperature_c ?? iot.cellarTemperatureC ?? iot.storageTemperatureC);
-  const humidityPct = numberOrNull(iot.humidityPct ?? iot.humidity_pct ?? iot.humidity ?? iot.relativeHumidityPct);
-  const measuredAt = firstText(iot.measuredAt, iot.measured_at, iot.capturedAt, iot.sensor_at);
-  const lightExposure = firstText(iot.lightExposure, iot.light_exposure, iot.light, iot.lux);
-  const transitShock = firstText(iot.transitShock, iot.transit_shock, iot.shock, iot.impact_g);
-  const deviceId = firstText(iot.deviceId, iot.device_id, iot.sensor_id, iot.logger_id);
-
-  return {
-    raw: iot,
-    measuredAt,
-    deviceId,
-    temperatureC,
-    humidityPct,
-    snapshot: {
-      cellarTemperature: temperatureC != null ? `${temperatureC.toFixed(1)}C` : null,
-      humidity: humidityPct != null ? `${humidityPct.toFixed(0)}%` : null,
-      lightExposure,
-      transitShock,
-    },
   };
 }
 
@@ -284,7 +243,16 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
   const winery = textOrNull(currentIdentity.winery || currentIdentity.tenant_name);
   const region = textOrNull(currentIdentity.region || currentIdentity.origin_label);
   const productMedia = mediaFromLocaleData(currentIdentity.locale_data, currentIdentity.image_url);
-  const unitIot = iotFromLocaleData(currentIdentity.locale_data);
+  const declaredStaticSensor = declaredStaticSensorFromLocaleData(currentIdentity.locale_data);
+  const declaredStaticEvidence = buildSunSensorEvidence({
+    timeline: [],
+    declaredStatic: declaredStaticSensor,
+    barrelMonths: currentIdentity.barrel_months ?? null,
+    allowSimulation: false,
+  });
+  const existingSensorEvidenceKind = String(iot.sensorEvidenceKind || "none");
+  const applyDeclaredStatic = declaredStaticEvidence.kind === "declared_static"
+    && existingSensorEvidenceKind !== "reported";
 
   contract.identity = {
     ...identity,
@@ -336,25 +304,13 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
         : iot.wineryCoordinates || null,
     originLabel: currentIdentity.origin_label || region || iot.originLabel || null,
     originType: currentIdentity.tenant_vertical || iot.originType || null,
-    sensorSnapshot: unitIot
-      ? {
-          ...asRecord(iot.sensorSnapshot),
-          ...unitIot.snapshot,
-        }
-      : iot.sensorSnapshot || null,
-    sensorHistory: unitIot?.measuredAt
-      ? [
-          {
-            at: unitIot.measuredAt,
-            stage: "manifest_iot",
-            temperatureC: unitIot.temperatureC,
-            humidityPct: unitIot.humidityPct,
-            deviceId: unitIot.deviceId,
-          },
-          ...(Array.isArray(iot.sensorHistory) ? iot.sensorHistory : []),
-        ]
-      : iot.sensorHistory || null,
-    manifestTelemetry: unitIot?.raw || null,
+    sensorEvidenceKind: applyDeclaredStatic ? "declared_static" : iot.sensorEvidenceKind || "none",
+    sensorSnapshot: applyDeclaredStatic ? declaredStaticEvidence.snapshot : iot.sensorSnapshot || null,
+    sensorHistory: applyDeclaredStatic ? declaredStaticEvidence.history : iot.sensorHistory || null,
+    declaredStatic: declaredStaticEvidence.declaredStatic || iot.declaredStatic || null,
+    // Only the allow-listed public projection is exposed. The arbitrary raw
+    // sensor_json object remains private in the imported manifest.
+    manifestTelemetry: declaredStaticEvidence.declaredStatic || null,
   };
   contract.productName = productName || currentIdentity.sku || null;
   contract.tenantSlug = currentIdentity.tenant_slug || contract.tenantSlug || null;
@@ -371,6 +327,49 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
     tagProfileConflict: Boolean(currentIdentity.tag_profile_conflict),
   };
 
+  return contract;
+}
+
+function sanitizeSnapshotPublicCoordinates(input: unknown) {
+  const contract = cloneRecord(input);
+  const provenance = asRecord(contract.provenance);
+  const timeline = Array.isArray(provenance.timelineSummary)
+    ? provenance.timelineSummary.map((value) => {
+        const event = asRecord(value);
+        const location = sanitizePublicLocationProjection({
+          lat: event.lat,
+          lng: event.lng,
+          locationSource: event.locationSource ?? event.location_source,
+          geoPrecision: event.geoPrecision ?? event.geo_precision,
+          locationAccuracyM: event.locationAccuracyM ?? event.location_accuracy_m,
+          metadata: event.locationEvidence ?? event.meta,
+        });
+        return {
+          ...event,
+          lat: location.lat,
+          lng: location.lng,
+        };
+      })
+    : provenance.timelineSummary;
+  contract.provenance = {
+    ...provenance,
+    timelineSummary: timeline,
+  };
+
+  const tapContext = asRecord(contract.tapContext);
+  const tapLocation = sanitizePublicLocationProjection({
+    lat: tapContext.lat,
+    lng: tapContext.lng,
+    locationSource: tapContext.locationSource ?? tapContext.location_source,
+    geoPrecision: tapContext.geoPrecision ?? tapContext.geo_precision,
+    locationAccuracyM: tapContext.accuracyM ?? tapContext.location_accuracy_m,
+    metadata: tapContext.locationEvidence ?? tapContext.meta,
+  });
+  contract.tapContext = {
+    ...tapContext,
+    lat: tapLocation.lat,
+    lng: tapLocation.lng,
+  };
   return contract;
 }
 
@@ -607,7 +606,9 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const createdAt = row.created_at || null;
   const currentIdentity = await resolveCurrentSnapshotIdentity({ bid: row.bid, uidHex: row.uid_hex, uidMasked: row.uid_masked });
   const contract = normalizeSunProfileMismatchContract(
-    normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity),
+    sanitizeSnapshotPublicCoordinates(
+      normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity),
+    ),
   );
   const identity = asRecord(contract.identity);
   const tokenizationEventId = String(contract.eventId || identity.eventId || "").trim();

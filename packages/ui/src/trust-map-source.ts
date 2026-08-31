@@ -12,9 +12,11 @@ export type TrustMapSourceConfig = {
 
 export type TrustMapSourceOverrides = Partial<Pick<TrustMapSourceConfig, "rasterTileTemplate" | "pmtilesUrl" | "attribution" | "badge" | "detail">>;
 
-const DEFAULT_PUBLIC_RASTER_TEMPLATE = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
+export const DEFAULT_PUBLIC_RASTER_TEMPLATE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
+export const DEFAULT_PUBLIC_RASTER_ATTRIBUTION = "Esri, HERE, Garmin, USGS, OpenStreetMap contributors, GIS User Community";
 const LEGACY_LOW_FIDELITY_RASTER_TEMPLATE = "voyager_nolabels";
-const DEFAULT_ATTRIBUTION = "CARTO / OpenStreetMap";
+const LEGACY_CARTO_RASTER_HOST = "basemaps.cartocdn.com";
+const LEGACY_CARTO_ATTRIBUTION = /(?:^|\s|\/)carto(?:\s|\/|$)/i;
 
 function publicEnv(name: string) {
   if (typeof process === "undefined") return "";
@@ -26,7 +28,11 @@ function isSelfHostedUrl(value: string) {
 }
 
 function normalizeRasterTileTemplate(value: string) {
-  return value.includes(LEGACY_LOW_FIDELITY_RASTER_TEMPLATE) ? DEFAULT_PUBLIC_RASTER_TEMPLATE : value;
+  const isLegacyAnonymousCarto = value.includes(LEGACY_CARTO_RASTER_HOST)
+    && /\/(?:dark_all|light_all)\//i.test(value);
+  return value.includes(LEGACY_LOW_FIDELITY_RASTER_TEMPLATE) || isLegacyAnonymousCarto
+    ? DEFAULT_PUBLIC_RASTER_TEMPLATE
+    : value;
 }
 
 export function resolveTrustMapSource(overrides: TrustMapSourceOverrides = {}): TrustMapSourceConfig {
@@ -37,6 +43,10 @@ export function resolveTrustMapSource(overrides: TrustMapSourceOverrides = {}): 
     || publicEnv("NEXT_PUBLIC_NEXID_RASTER_TILE_TEMPLATE")
     || publicEnv("NEXID_RASTER_TILE_TEMPLATE")
     || DEFAULT_PUBLIC_RASTER_TEMPLATE);
+  const configuredAttribution = overrides.attribution
+    || publicEnv("NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION")
+    || publicEnv("NEXID_MAP_ATTRIBUTION");
+  const usesDefaultPublicRaster = rasterTileTemplate === DEFAULT_PUBLIC_RASTER_TEMPLATE;
 
   const mode: TrustMapSourceMode = pmtilesUrl
     ? "pmtiles-ready"
@@ -45,20 +55,33 @@ export function resolveTrustMapSource(overrides: TrustMapSourceOverrides = {}): 
       : "public-raster";
 
   const badge = overrides.badge
-    || (mode === "pmtiles-ready" ? "PMTiles ready" : mode === "self-hosted-raster" ? "Self-hosted tiles" : "Free raster fallback");
+    || (mode === "pmtiles-ready"
+      ? "PMTiles ready"
+      : mode === "self-hosted-raster"
+        ? "Self-hosted tiles"
+        : usesDefaultPublicRaster
+          ? "Esri public raster"
+          : "Public raster source");
   const detail = overrides.detail
     || (mode === "pmtiles-ready"
       ? "Contrato preparado para tiles propios por tenant; raster fallback activo hasta montar el renderer vectorial."
       : mode === "self-hosted-raster"
         ? "Tiles propios servidos desde nexID o infraestructura del tenant."
-        : "Fallback publico sin API key con calles y etiquetas reales; reemplazable por PMTiles o tiles propios.");
+        : usesDefaultPublicRaster
+          ? "Endpoint raster publico de Esri sin token de aplicacion configurado, con atribucion visible; reemplazable por PMTiles o tiles propios."
+          : "Fuente raster publica configurada por entorno; disponibilidad, licencia y atribucion dependen del proveedor configurado.");
+
+  const attribution = usesDefaultPublicRaster && (!configuredAttribution || LEGACY_CARTO_ATTRIBUTION.test(configuredAttribution))
+    ? DEFAULT_PUBLIC_RASTER_ATTRIBUTION
+    : configuredAttribution
+      || (isSelfHostedUrl(rasterTileTemplate) ? "nexID / tenant tiles" : "External raster provider (configure attribution)");
 
   return {
     id: mode,
     mode,
     rasterTileTemplate,
     pmtilesUrl: pmtilesUrl || undefined,
-    attribution: overrides.attribution || publicEnv("NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION") || publicEnv("NEXID_MAP_ATTRIBUTION") || DEFAULT_ATTRIBUTION,
+    attribution,
     badge,
     detail,
   };

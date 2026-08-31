@@ -1030,7 +1030,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
 async function forward(req: Request, path: string[]) {
   const normalizedPath = path.join("/");
-  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests" || normalizedPath === "polygon/wallet");
+  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "sun/physical-taps" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests" || normalizedPath === "polygon/wallet");
   const reqUrl = new URL(req.url);
   const forceSandbox = ["1", "true", "sandbox"].includes(String(reqUrl.searchParams.get("sandbox") || reqUrl.searchParams.get("demoFallback") || "").toLowerCase());
   reqUrl.searchParams.delete("sandbox");

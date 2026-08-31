@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const [qrEngagement, sunPage] = await Promise.all([
+const [qrEngagement, sunPage, tapTelemetry] = await Promise.all([
   readFile(new URL("../src/app/sun/qr-engagement-suite.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/sun/tap-precision-telemetry.tsx", import.meta.url), "utf8"),
 ]);
 
 test("QR engagement geolocation is explicit opt-in and approximate before network transfer", () => {
@@ -26,4 +27,12 @@ test("public SUN maps only plot measured WGS84 pairs and never synthesize city c
   assert.match(sunPage, /parsedLng >= -180/);
   assert.match(sunPage, /parsedLng <= 180/);
   assert.doesNotMatch(sunPage, /Number\(lat\) === 0 && Number\(lng\) === 0/);
+});
+
+test("tap location confirmation reports the event update without claiming a CRM or map refresh", () => {
+  assert.match(tapTelemetry, /actualizó el evento sin repetir el tap/);
+  assert.match(tapTelemetry, /Ubicación opcional guardada/);
+  assert.match(tapTelemetry, /El mapa ya usa la zona aproximada que compartiste después del tap/);
+  assert.doesNotMatch(tapTelemetry, /recalcula el mapa|mapa actualizado/i);
+  assert.doesNotMatch(tapTelemetry, /El CRM recibio la actualizacion/);
 });

@@ -15,6 +15,7 @@ import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from ".
 import { readDemoDataMetaFromResponse } from "../../lib/demo-data-mode";
 import { resolveCanonicalTenantRisk } from "../../lib/tenant-risk";
 import { dashboardHighImpactPermissionMatches } from "../../lib/permission-policy";
+import { readPhysicalTaps } from "../../lib/physical-taps-read";
 
 const FALLBACK_KPIS = {
   scans: "Scans",
@@ -226,13 +227,19 @@ export default async function DashboardHome() {
     session.deniedPermissions,
   );
 
-  const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult] = await Promise.all([
+  const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult, physicalTapsResult] = await Promise.all([
     getOverviewRows(adminContext, allowDemoFallback),
     canReadSensitiveEvents
       ? getLiveEvents(adminContext, realtimeStreamSource, allowDemoFallback)
       : Promise.resolve(fallbackLiveEvents("upstream_error", "events.read_sensitive permission required", false)),
     getTokenizationRows(adminContext, allowDemoFallback),
     getBatchRows(adminContext, allowDemoFallback),
+    readPhysicalTaps({
+      context: adminContext,
+      bid: "DEMO-2026-02",
+      range: "24h",
+      isDemoSession: Boolean(session.isDemo),
+    }),
   ]);
 
   const overviewRaw = overviewRawResult.rows;
@@ -417,6 +424,7 @@ export default async function DashboardHome() {
       plannedTags={plannedTags}
       mintedTokens={mintedTokens}
       clerkEnabled={isClerkConfiguredForRuntime()}
+      physicalTapsResult={physicalTapsResult}
     />
   );
 }

@@ -197,6 +197,9 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (normalizedMethod === "GET" && (normalizedPath === "events" || normalizedPath === "events/stream")) {
     return "events.read_sensitive";
   }
+  if (normalizedMethod === "GET" && normalizedPath === "sun/physical-taps") {
+    return "events.read_sensitive";
+  }
   if (normalizedMethod === "GET" && (normalizedPath === "alerts" || normalizedPath === "security-alerts")) {
     return "audit.read";
   }

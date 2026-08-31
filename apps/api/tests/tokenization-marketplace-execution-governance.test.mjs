@@ -135,7 +135,7 @@ test("marketplace attribution stays optional but complete tuples and active P2P 
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.nexid_marketplace_batch_offer_invalidation_v1\(\) FROM PUBLIC/);
 });
 
-test("release tooling advances through 0096 and unauthorized empty bootstrap fails before DDL", () => {
+test("release tooling advances through 0098 and unauthorized empty bootstrap fails before DDL", () => {
   for (const surface of [dbRuntime, preflight, dryRun]) {
     assert.match(surface, /20260730110000_0073_supplier_qa_verification_context_v2\.sql/);
   }
@@ -167,8 +167,10 @@ test("release tooling advances through 0096 and unauthorized empty bootstrap fai
     assert.match(surface, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
     assert.match(surface, /20260802300000_0095_sun_tt_conflict_target\.sql/);
     assert.match(surface, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
+    assert.match(surface, /20260829120000_0097_public_location_privacy\.sql/);
+    assert.match(surface, /20260830120000_0098_event_location_context\.sql/);
   }
-  assert.match(target, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
+  assert.match(target, /20260830120000_0098_event_location_context\.sql/);
   assert.match(preflight, /has_function_privilege[\s\S]*nexid_prepare_tokenization_execution_v1/);
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_tokenization_execution_scope_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.tokenization_requests'\)/);
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_marketplace_request_asset_scope_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.marketplace_order_requests'\)/);

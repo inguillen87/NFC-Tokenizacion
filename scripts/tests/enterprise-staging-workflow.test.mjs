@@ -15,9 +15,9 @@ const apiPackage = JSON.parse(await readFile(
   "utf8",
 ));
 
-test("enterprise staging workflow defaults to the authoritative 0057-0096 preflight", () => {
-  assert.match(workflow, /default: current_0057_0096_preflight/);
-  assert.match(workflow, /Current enterprise schema and custody preflight \(0057-0096\)/);
+test("enterprise staging workflow defaults to the authoritative 0057-0098 preflight", () => {
+  assert.match(workflow, /default: current_0057_0098_preflight/);
+  assert.match(workflow, /Current enterprise schema and custody preflight \(0057-0098\)/);
   assert.match(workflow, /npm run check:migrations:safety/);
   assert.match(workflow, /npm run test:migration-gates/);
   assert.match(workflow, /npm run db:enterprise-release:preflight --workspace=api/);
@@ -64,7 +64,7 @@ test("migration-owner URL is scoped only to the four legacy database steps", () 
     .slice(1)
     .map((block) => {
       const [name, ...body] = block.split("\n");
-      return [name, body.join("\n")];
+      return [name.trim(), body.join("\n")];
     }));
 
   for (const stepName of [

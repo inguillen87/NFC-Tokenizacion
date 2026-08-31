@@ -5,9 +5,10 @@ import { checkAdminPermission, checkAdminWithPermission, getAdminTenantAccess } 
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
-import { aggregateTenantMetrics } from "@product/core";
+import { aggregateTenantMetrics, EVENT_TAXONOMY_VERSION } from "@product/core";
+import { classifyPhysicalTapSealState, isAuthenticatedNfcMessage, listAdminPhysicalTaps } from "../../../lib/admin-physical-taps";
 
-type TrendRow = { day: string; scans: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
+type TrendRow = { day: string; scans: number; valid: number; closed: number; opened: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
 
 type GeoRow = {
   city: string | null;
@@ -61,7 +62,7 @@ type CityRow = {
   accuracy_m: number | null;
 };
 type DeviceBucketRow = { label: string | null; count: number };
-type FeedRow = { id: number; uid_hex: string | null; bid: string | null; result: string; city: string | null; country_code: string | null; device: string | null; created_at: string };
+type FeedRow = { id: number; uid_hex: string | null; bid: string | null; result: string; verdict: string | null; reason: string | null; source: string | null; city: string | null; country_code: string | null; device: string | null; created_at: string };
 type ProductRow = {
   uid_hex: string;
   bid: string;
@@ -191,7 +192,9 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
@@ -210,7 +213,9 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
@@ -229,6 +234,9 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
@@ -248,6 +256,9 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
+          COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
@@ -345,7 +356,7 @@ export async function GET(req: Request) {
           COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
           COUNT(*)::int AS scans,
           COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
-          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
@@ -362,7 +373,7 @@ export async function GET(req: Request) {
           COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
           COUNT(*)::int AS scans,
           COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
-          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
@@ -679,6 +690,9 @@ export async function GET(req: Request) {
           e.uid_hex,
           b.bid,
           e.result,
+          e.verdict,
+          e.reason,
+          e.source,
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
@@ -699,6 +713,9 @@ export async function GET(req: Request) {
           e.uid_hex,
           b.bid,
           e.result,
+          e.verdict,
+          e.reason,
+          e.source,
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
@@ -810,6 +827,8 @@ export async function GET(req: Request) {
     scans: 0,
     valid: 0,
     invalid: 0,
+    closed: 0,
+    opened: 0,
     duplicates: 0,
     tamper: 0,
     unregistered: 0,
@@ -825,6 +844,8 @@ export async function GET(req: Request) {
   const unregistered = Number(overview.unregistered || 0);
   const inactive = Number(overview.inactive || 0);
   const revoked = Number((overview as Record<string, number>).revoked || 0);
+  const closed = Number(overview.closed || 0);
+  const opened = Number(overview.opened || 0);
   const metrics = aggregateTenantMetrics({
     counts: { scans: scansTotal, valid: Number(overview.valid || 0), invalid, duplicates, tamper, revoked },
   });
@@ -832,6 +853,9 @@ export async function GET(req: Request) {
   const trend = (trendRows as TrendRow[]).map((row) => ({
     day: row.day,
     scans: Number(row.scans || 0),
+    valid: Number(row.valid || 0),
+    closed: Number(row.closed || 0),
+    opened: Number(row.opened || 0),
     duplicates: Number(row.duplicates || 0),
     tamper: Number(row.tamper || 0),
     invalid: Number(row.invalid || 0),
@@ -926,15 +950,30 @@ export async function GET(req: Request) {
   if (mobileCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: true }), mobileCount);
   if (desktopCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: false }), desktopCount);
 
+  const recentPhysicalTaps = tenant && source === "real"
+    ? await listAdminPhysicalTaps({ tenantSlug: tenant, limit: 12, rangeSql }).catch(() => ({
+        availability: "unavailable" as const,
+        summary: null,
+        rows: [],
+      }))
+    : {
+        availability: tenant ? "not_in_selected_source" as const : "tenant_required" as const,
+        summary: null,
+        rows: [],
+      };
+
   return json({
     kpis: {
       scans: scansTotal,
+      messageValid: Number(overview.valid || 0),
       validRate: metrics.validRate,
       invalidRate: metrics.invalidRate,
       duplicates,
       tamper,
       unregistered,
       inactive,
+      closedTaps: closed,
+      openedTaps: opened,
       activeBatches: Number(overview.active_batches || 0),
       activeTenants: Number(overview.active_tenants || 0),
       geoRegions: geoPoints.length,
@@ -950,9 +989,11 @@ export async function GET(req: Request) {
     },
     riskBreakdown: metrics.riskBreakdown,
     eventTaxonomy: {
-      version: "2026-07-26.v1",
+      version: EVENT_TAXONOMY_VERSION,
       definitions: {
-        valid: "cryptographic_or_policy_validation_passed",
+        valid: "authenticated_message_or_policy_validation_passed_independent_of_seal_state",
+        closed: "authenticated_message_with_reported_closed_tt_state",
+        opened: "authenticated_message_with_reported_opened_tt_state",
         invalid: "validation_failed",
         duplicate: "replay_or_duplicate_signal",
         tamper: "explicit_tamper_signal_only",
@@ -964,6 +1005,8 @@ export async function GET(req: Request) {
       lifecycleClassesExcludedFromRisk: ["unregistered", "inactive"],
       counts: {
         valid: Number(overview.valid || 0),
+        closed,
+        opened,
         invalid,
         duplicate: duplicates,
         tamper,
@@ -1004,6 +1047,9 @@ export async function GET(req: Request) {
       uidHex: row.uid_hex || "",
       bid: row.bid || "",
       result: row.result,
+      messageValid: isAuthenticatedNfcMessage({ result: row.result, verdict: row.verdict, reason: row.reason }),
+      sealState: classifyPhysicalTapSealState(row.result),
+      source: row.source || "unknown",
       city: row.city || "Unknown",
       country: row.country_code || "--",
       device: row.device || "Unknown",
@@ -1042,5 +1088,6 @@ export async function GET(req: Request) {
     geoPoints,
     deviceSignals,
     tagJourney,
+    recentPhysicalTaps,
   });
 }
