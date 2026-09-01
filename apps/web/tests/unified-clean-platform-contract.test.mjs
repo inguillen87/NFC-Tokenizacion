@@ -15,7 +15,7 @@ test("unified release preserves the approved clean home composition", async () =
   assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialContactModal initialLocale=\{locale\} \/>/);
-  assert.match(sections, /De producto vendido a canal propio\./);
+  assert.match(sections, /Tu equipo decide qué muestra y qué habilita cada producto\./);
 
   assert.doesNotMatch(home, /mobile-optimized-header/);
   assert.doesNotMatch(home, /landing-brand-synergy-band/);
@@ -24,6 +24,29 @@ test("unified release preserves the approved clean home composition", async () =
     home,
     /EnterpriseTrustLayers|OfflineCapabilities|BrandSynergy|DemoRequest|SalesChat|QuickHub/,
   );
+});
+
+test("clean footer exposes the verified Inmovar and Inguillen ecosystem links", async () => {
+  const [home, styles] = await Promise.all([
+    readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  for (const href of [
+    "https://www.inmov.ar/",
+    "https://www.instagram.com/inmov.ar/",
+    "https://www.linkedin.com/company/inmovar/",
+    "https://www.facebook.com/inmovar.oficial/",
+    "https://inguillen.ar/",
+    "https://www.instagram.com/inguillen/",
+    "https://www.linkedin.com/in/marcelo-guill%C3%A9n-54876527/",
+  ]) {
+    assert.match(home, new RegExp(href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(home, /Ecosistema y equipo/);
+  assert.match(home, /Inguillen · Marcelo Guillén/);
+  assert.doesNotMatch(home, /facebook\.com\/(?:inguillen|marcelo-guillen)/i);
+  assert.match(styles, /\.site-footer-ecosystem-grid a \{[\s\S]{0,180}min-height:\s*2\.75rem/);
 });
 
 test("unified release keeps depth in the clean mega navigation", async () => {

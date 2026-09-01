@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, PackageCheck, RadioTower } from "lucide-react";
-import { HorizontalRailControls } from "./horizontal-rail-controls";
+import { ArrowRight } from "lucide-react";
+import { BrandControlCenterPreview } from "./brand-control-center-preview";
 import { HeroImmersiveSignal } from "./hero-immersive-signal";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { SimpleTrustFlowIntroMotion } from "./simple-trust-flow-motion";
@@ -104,7 +104,6 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
         eyebrow: "How it works",
         title: "One journey. Different products.",
         body: "Choose an industry and see the phone approach, read the tag and unlock the next action. No app required.",
-        note: "The answer comes from the digital tag. If a brand also needs to assess the physical product, it can add separate checks for that purpose.",
         primary: "Try the journey",
       }
     : isBr
@@ -112,14 +111,12 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           eyebrow: "Como funciona",
           title: "Uma jornada. Produtos diferentes.",
           body: "Escolha um setor e veja o celular se aproximar, ler a etiqueta e liberar a próxima ação. Sem precisar de app.",
-          note: "A resposta vem da etiqueta digital. Caso a marca também precise avaliar o produto físico, pode adicionar controles específicos em separado.",
           primary: "Testar a jornada",
         }
       : {
           eyebrow: "Cómo funciona",
           title: "Un mismo recorrido. Distintos productos.",
           body: "Elegí un rubro y mirá cómo el celular se acerca, lee la etiqueta y habilita la próxima acción. Sin app.",
-          note: "La respuesta viene de la etiqueta digital. Si una marca también necesita evaluar el producto físico, puede sumar controles específicos por separado.",
           primary: "Probar el recorrido",
         };
 
@@ -130,7 +127,6 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
         <SimpleTrustIndustryJourney locale={locale} />
 
         <div className="simple-trust-flow-footer">
-          <p>{copy.note}</p>
           <Link href="/demo-lab?scenario=qr-gs1" className="simple-trust-flow-cta">
             {copy.primary}
             <ArrowRight aria-hidden="true" />
@@ -146,53 +142,23 @@ export function CommercialValueSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-        eyebrow: "The change for your brand",
-        title: "From sold product to owned channel.",
-        body: "After the sale, the same product can inform, assist and generate useful signals for your business.",
-        transformFrom: "Product delivered",
-        transformTo: "Active relationship",
-        transformLabel: "The product moves from an endpoint to a direct brand channel",
-        railLabel: "Business value highlights",
-        previous: "Previous benefit",
-        next: "Next benefit",
-        items: [
-          { title: "A direct channel", body: "Inform or activate customers from the product, without asking them to install an app.", icon: PackageCheck },
-          { title: "Organized after-sales", body: "Bring warranty, benefits and enquiries into one configurable journey.", icon: BadgeCheck },
-          { title: "Signals for decisions", body: "See reads and chosen actions to improve content, service and future campaigns.", icon: RadioTower },
-        ],
+        eyebrow: "Now, on your team's side",
+        title: "Your team decides what each product shows and enables.",
+        body: "From the platform, update information, organize after-sales support, and review recorded reads and actions.",
+        cta: "Book a demo for my product",
       }
     : isBr
       ? {
-          eyebrow: "A mudança para sua marca",
-          title: "De produto vendido a canal próprio.",
-          body: "Depois da venda, o mesmo produto pode informar, atender e gerar sinais úteis para o seu negócio.",
-          transformFrom: "Produto entregue",
-          transformTo: "Relação ativa",
-          transformLabel: "O produto passa de um ponto final a um canal direto da marca",
-          railLabel: "Benefícios para o negócio",
-          previous: "Benefício anterior",
-          next: "Próximo benefício",
-          items: [
-            { title: "Um canal direto", body: "Volte a informar ou ativar pelo produto, sem pedir que o cliente instale um app.", icon: PackageCheck },
-            { title: "Pós-venda organizada", body: "Reúna garantia, benefícios e consultas em uma jornada configurável.", icon: BadgeCheck },
-            { title: "Sinais para decidir", body: "Observe leituras e ações escolhidas para melhorar conteúdo, serviço e próximas campanhas.", icon: RadioTower },
-          ],
+          eyebrow: "Agora, do lado da sua equipe",
+          title: "Sua equipe decide o que cada produto mostra e habilita.",
+          body: "Na plataforma, atualize informações, organize o pós-venda e consulte as leituras e ações registradas.",
+          cta: "Agendar uma demo para meu produto",
         }
       : {
-          eyebrow: "El cambio para tu marca",
-          title: "De producto vendido a canal propio.",
-          body: "Después de la venta, el mismo producto puede informar, atender y generar señales útiles para tu negocio.",
-          transformFrom: "Producto entregado",
-          transformTo: "Relación activa",
-          transformLabel: "El producto pasa de ser un punto final a un canal directo de la marca",
-          railLabel: "Beneficios para el negocio",
-          previous: "Beneficio anterior",
-          next: "Beneficio siguiente",
-          items: [
-            { title: "Un canal directo", body: "Volvé a informar o activar desde el producto, sin pedirle al cliente que instale una app.", icon: PackageCheck },
-            { title: "Postventa ordenada", body: "Reuní garantía, beneficios y consultas en un recorrido configurable.", icon: BadgeCheck },
-            { title: "Señales para decidir", body: "Observá lecturas y acciones elegidas para mejorar contenido, servicio y próximas campañas.", icon: RadioTower },
-          ],
+          eyebrow: "Ahora, del lado de tu equipo",
+          title: "Tu equipo decide qué muestra y qué habilita cada producto.",
+          body: "Desde la plataforma, actualizás información, organizás la postventa y consultás las lecturas y acciones registradas.",
+          cta: "Agendar una demo para mi producto",
         };
 
   return (
@@ -202,28 +168,12 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           <p>{copy.eyebrow}</p>
           <h2 id="commercial-value-title">{copy.title}</h2>
           <span>{copy.body}</span>
-          <div className="commercial-value-transform" aria-label={copy.transformLabel}>
-            <span>{copy.transformFrom}</span>
+          <Link href="/?contact=demo#contact-modal" className="commercial-value-cta">
+            {copy.cta}
             <ArrowRight aria-hidden="true" />
-            <strong>{copy.transformTo}</strong>
-          </div>
+          </Link>
         </div>
-        <div className="commercial-value-rail-shell">
-          <ul id="commercial-value-rail" className="commercial-value-grid" aria-label={copy.railLabel} tabIndex={0}>
-            {copy.items.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <li key={item.title}>
-                  <span className="commercial-value-index" aria-hidden="true">0{index + 1}</span>
-                  <span className="commercial-value-icon"><Icon aria-hidden="true" /></span>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </li>
-              );
-            })}
-          </ul>
-          <HorizontalRailControls railId="commercial-value-rail" itemCount={copy.items.length} previousLabel={copy.previous} nextLabel={copy.next} />
-        </div>
+        <BrandControlCenterPreview locale={locale} />
       </div>
     </section>
   );

@@ -26,6 +26,7 @@ test("the immersive hero motion is short, decorative and reduced-motion safe", (
 
   assert.ok(start > -1 && end > start, "immersive hero styles must be present");
   assert.match(heroStyles, /animation:\s*hero-immersive-enter 1\.15s/);
+  assert.match(heroStyles, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.hero-immersive-image \{[\s\S]{0,220}opacity:\s*0\.72[\s\S]{0,160}contrast\(1\.4\)/);
   assert.match(heroStyles, /animation:\s*hero-immersive-pulse 1\.35s ease-out 2 both/);
   assert.doesNotMatch(heroStyles, /infinite/);
   assert.match(heroStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.hero-immersive-ring[\s\S]*animation:\s*none !important/);

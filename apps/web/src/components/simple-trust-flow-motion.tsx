@@ -164,7 +164,7 @@ export function SimpleTrustFlowMotion({
         entries.forEach((entry) => {
           const index = items.indexOf(entry.target as HTMLElement);
           if (index < 0) return;
-          const visible = entry.isIntersecting && entry.intersectionRatio >= 0.55;
+          const visible = entry.isIntersecting && entry.intersectionRatio >= 0.18;
           if (visible === next.has(index)) return;
           if (visible) next.add(index);
           else next.delete(index);
@@ -173,7 +173,7 @@ export function SimpleTrustFlowMotion({
 
         return changed ? next : current;
       });
-    }, { rootMargin: "32px 0px", threshold: [0, 0.55, 0.8] });
+    }, { rootMargin: "32px 0px", threshold: [0, 0.18, 0.55] });
 
     items.forEach((item) => intersectionObserver.observe(item));
 

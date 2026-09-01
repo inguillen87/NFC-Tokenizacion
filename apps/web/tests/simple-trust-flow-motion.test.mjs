@@ -13,7 +13,7 @@ test("each trust step is observed and runs only while visible and allowed", () =
   assert.match(motion, /Array\.from\(list\.children\)/);
   assert.match(motion, /setVisibleItems\(\(current\) =>/);
   assert.match(motion, /entries\.forEach/);
-  assert.match(motion, /entry\.intersectionRatio >= 0\.55/);
+  assert.match(motion, /entry\.intersectionRatio >= 0\.18/);
   assert.match(motion, /items\.forEach\(\(item\) => intersectionObserver\.observe\(item\)\)/);
   assert.match(motion, /Children\.map\(children/);
   assert.match(motion, /cloneElement/);
@@ -90,9 +90,21 @@ test("three phases keep the default Reserva Andina story with deterministic phot
   assert.match(visuals, /trust-photo__actions/);
   assert.match(visuals, /trust-photo__phone-ui--result/);
   assert.match(visuals, /trust-photo__phone-ui--actions/);
+  assert.equal((visuals.match(/trust-photo__callout--(?:discover|signal|aftercare)/g) ?? []).length, 3);
+  assert.match(visuals, /trust-photo__action-grid/);
+  assert.doesNotMatch(visuals, /trust-photo__product-note|connectedProduct|experienceActive/);
   assert.match(visuals, /trust-photo__phone-product/);
   assert.match(visuals, /trust-photo__actions-product/);
   assert.match(visuals, /data-trust-scene-summary=\{kind\}/);
+  assert.match(visuals, /simple-trust-step-visual-shell/);
+  assert.match(visuals, /<TrustCallout kind=\{kind\} copy=\{copy\} product=\{product\} meta=\{visualMeta\} \/>/);
+  assert.ok(
+    visuals.indexOf("<TrustCallout") < visuals.indexOf("<div className={`simple-trust-flow-visual"),
+    "readable information must precede the unobstructed photographic scene",
+  );
+  assert.match(visuals, /product\.actions\.map/);
+  assert.match(visuals, /<span>\{action\}<\/span>/);
+  assert.doesNotMatch(visuals, /actionHints/);
   assert.match(visuals, /trust-visual__device[^"\n]*trust-visual__animated/);
   assert.match(visuals, /trust-visual__tag-group trust-visual__animated/);
   assert.match(visuals, /trust-visual__nfc-ring trust-visual__animated/);
@@ -125,7 +137,16 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.match(css, /@keyframes trust-photo-packet-return/);
   assert.match(css, /@keyframes trust-visual-travel-reverse/);
   assert.match(css, /\.trust-photo__phone-ui--actions \{[\s\S]{0,320}background:\s*var\(--trust-photo-panel\)/);
+  assert.match(css, /\.trust-photo__callout::after \{[\s\S]{0,520}background:\s*var\(--trust-photo-panel\)/);
+  assert.match(css, /\.trust-photo__info-card--discover \{[\s\S]{0,180}top:\s*4\.5%[\s\S]{0,180}bottom:\s*auto/);
+  assert.match(css, /\.trust-photo__action-grid \{[\s\S]{0,180}grid-template-columns:\s*repeat\(3/);
+  assert.match(css, /\.trust-photo-frame \{[\s\S]{0,700}padding-top:\s*0/);
+  assert.match(css, /\.trust-photo-frame > \.trust-photo__callout \{[\s\S]{0,420}position:\s*relative[\s\S]{0,420}margin:\s*0 0\.18rem 0\.62rem/);
+  assert.match(css, /\.trust-photo-frame \.trust-photo__callout--aftercare > \.trust-photo__action-grid \{[\s\S]{0,180}grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /\.trust-photo-frame \.trust-photo__callout--aftercare \.trust-photo__action \{[\s\S]{0,320}font-size:\s*clamp\(0\.75rem/);
   assert.match(css, /@media \(max-width: 360px\)[\s\S]{0,800}grid-auto-columns:\s*calc\(100% - 0\.25rem\)/);
+  assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame > \.trust-photo__callout--signal \{[\s\S]{0,260}grid-template-areas:[\s\S]{0,180}"product"/);
+  assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame \.trust-photo__callout--aftercare > \.trust-photo__action-grid \{[\s\S]{0,120}grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(css, /\.trust-visual__phone-approach[\s\S]{0,260}1 both paused/);
   assert.match(css, /\.trust-visual__response-packet[\s\S]{0,260}trust-photo-packet-return/);
   assert.doesNotMatch(css, /simple-trust-flow-continuity|trust-continuity-travel/);

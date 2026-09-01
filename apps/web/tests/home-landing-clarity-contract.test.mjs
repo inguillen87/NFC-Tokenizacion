@@ -41,7 +41,7 @@ test("home hero is large, friendly and truthful without becoming a technical das
   for (const body of heroBodies) assert.doesNotMatch(body, /piloto|pilot/i);
 });
 
-test("SimpleTrustFlow keeps one progressive industry journey, one action and one physical-limit note", async () => {
+test("SimpleTrustFlow keeps one progressive industry journey and one clear action", async () => {
   const [sections, journey] = await Promise.all([
     readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/simple-trust-industry-journey.tsx", import.meta.url), "utf8"),
@@ -62,25 +62,35 @@ test("SimpleTrustFlow keeps one progressive industry journey, one action and one
   assert.doesNotMatch(flow, /Botella, paquete o bolsa|Garrafa, pacote ou bolsa|Bottle, parcel or pouch/);
   assert.doesNotMatch(flow, /simple-trust-flow-continuity|continuityStages/);
 
-  assert.match(flow, /evaluar el producto físico[^.]{0,100}controles específicos/i);
-  assert.match(flow, /avaliar o produto físico[^.]{0,100}controles específicos/i);
-  assert.match(flow, /assess the physical product[^.]{0,100}separate checks/i);
+  assert.doesNotMatch(flow, /respuesta viene de la etiqueta|produto físico|physical product|controles específicos|separate checks/i);
+  assert.doesNotMatch(flow, /copy\.note|<p>\{copy\.note\}<\/p>/);
   assert.match(flow, /id="como-funciona"/);
 });
 
-test("CommercialValue restores concise business substance without technical density", async () => {
-  const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
+test("CommercialValue explains the brand-side before and after without hiding meaning in dashboard tabs", async () => {
+  const [sections, preview] = await Promise.all([
+    readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/brand-control-center-preview.tsx", import.meta.url), "utf8"),
+  ]);
   const value = sections.slice(sections.indexOf("export function CommercialValueSection"));
 
-  assert.match(value, /De producto vendido a canal propio/);
-  assert.match(value, /De produto vendido a canal próprio/);
-  assert.match(value, /From sold product to owned channel/);
-  assert.match(value, /commercial-value-transform/);
-  assert.match(value, /Producto entregado/);
-  assert.match(value, /Relación activa/);
+  assert.match(value, /Tu equipo decide qué muestra y qué habilita cada producto/);
+  assert.match(value, /Sua equipe decide o que cada produto mostra e habilita/);
+  assert.match(value, /Your team decides what each product shows and enables/);
+  assert.match(value, /<BrandControlCenterPreview locale=\{locale\} \/>/);
+  assert.match(preview, /Ejemplo ilustrativo · Producto, lote y estados de muestra/);
+  assert.match(preview, /Producto entregado/);
+  assert.match(preview, /Producto conectado/);
+  assert.match(preview, /Tu equipo configura/);
+  assert.match(preview, /nexID registra/);
+  assert.match(preview, /Qué información ve el cliente/);
+  assert.match(preview, /Las lecturas de la etiqueta/);
+  assert.doesNotMatch(preview, /role="tablist"|role="tabpanel"|<button/);
+  assert.match(value, /Agendar una demo para mi producto/);
+  assert.doesNotMatch(value, /Ver la plataforma en acción/);
+  assert.doesNotMatch(preview, /ChevronRight|ArrowDown|ArrowUp|Capa digital activa/);
   assert.doesNotMatch(value, /Una relación que sigue generando valor|Uma relação que continua gerando valor|A relationship that keeps creating value/);
-  assert.equal((value.match(/icon: (?:PackageCheck|BadgeCheck|RadioTower)/g) ?? []).length, 9);
-  assert.match(value, /id="commercial-value-rail"/);
-  assert.match(value, /<HorizontalRailControls[\s\S]*railId="commercial-value-rail"/);
+  assert.doesNotMatch(value, /commercial-value-grid|commercial-value-rail|HorizontalRailControls|0\{index \+ 1\}/);
+  assert.doesNotMatch(preview, /\b(?:%|KPI|ROI|conversi[oó]n)\b/i);
   assert.doesNotMatch(value, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
 });

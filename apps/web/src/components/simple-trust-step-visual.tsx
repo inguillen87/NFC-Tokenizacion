@@ -9,13 +9,12 @@ export const SIMPLE_TRUST_DEFAULT_INDUSTRY: SimpleTrustIndustry = "bottles";
 type ProductVisualCopy = {
   product: string;
   lot: string;
-  experienceActive: string;
   actions: readonly [string, string, string];
 };
 
 type VisualCopy = {
   sample: string;
-  connectedProduct: string;
+  detectedProduct: string;
   validReading: string;
   labelRead: string;
   phoneScreen: string;
@@ -26,7 +25,7 @@ type VisualCopy = {
 const VISUAL_COPY: Record<"es-AR" | "en" | "pt-BR", VisualCopy> = {
   "es-AR": {
     sample: "DEMO ILUSTRATIVA",
-    connectedProduct: "PRODUCTO CONECTADO",
+    detectedProduct: "PRODUCTO DETECTADO",
     validReading: "LECTURA RECIBIDA",
     labelRead: "ETIQUETA LEÍDA",
     phoneScreen: "EN EL CELULAR",
@@ -35,26 +34,23 @@ const VISUAL_COPY: Record<"es-AR" | "en" | "pt-BR", VisualCopy> = {
       bottles: {
         product: "Reserva Andina",
         lot: "LOTE RA-2407",
-        experienceActive: "Experiencia activa",
         actions: ["Ver ficha del lote", "Acceder a beneficios", "Hablar con la marca"],
       },
       perfume: {
         product: "Esencia Aurora",
         lot: "SERIE EA-2047",
-        experienceActive: "Experiencia activa",
         actions: ["Activar garantía", "Ver beneficios", "Hablar con la marca"],
       },
       agro: {
         product: "Insumo Horizonte",
         lot: "LOTE IH-2407",
-        experienceActive: "Experiencia activa",
         actions: ["Consultar el lote", "Ver documentación", "Contactar soporte"],
       },
     },
   },
   en: {
     sample: "ILLUSTRATIVE DEMO",
-    connectedProduct: "CONNECTED PRODUCT",
+    detectedProduct: "PRODUCT DETECTED",
     validReading: "READ RECEIVED",
     labelRead: "TAG READ",
     phoneScreen: "ON THE PHONE",
@@ -63,26 +59,23 @@ const VISUAL_COPY: Record<"es-AR" | "en" | "pt-BR", VisualCopy> = {
       bottles: {
         product: "Andean Reserve",
         lot: "BATCH RA-2407",
-        experienceActive: "Active experience",
         actions: ["View batch details", "Access benefits", "Contact the brand"],
       },
       perfume: {
         product: "Aurora Essence",
         lot: "SERIES EA-2047",
-        experienceActive: "Active experience",
         actions: ["Activate warranty", "View benefits", "Contact the brand"],
       },
       agro: {
         product: "Horizon Input",
         lot: "BATCH IH-2407",
-        experienceActive: "Active experience",
         actions: ["Check the batch", "View documentation", "Contact support"],
       },
     },
   },
   "pt-BR": {
     sample: "DEMO ILUSTRATIVA",
-    connectedProduct: "PRODUTO CONECTADO",
+    detectedProduct: "PRODUTO DETECTADO",
     validReading: "LEITURA RECEBIDA",
     labelRead: "ETIQUETA LIDA",
     phoneScreen: "NO CELULAR",
@@ -91,19 +84,16 @@ const VISUAL_COPY: Record<"es-AR" | "en" | "pt-BR", VisualCopy> = {
       bottles: {
         product: "Reserva Andina",
         lot: "LOTE RA-2407",
-        experienceActive: "Experiência ativa",
         actions: ["Ver dados do lote", "Acessar benefícios", "Falar com a marca"],
       },
       perfume: {
         product: "Essência Aurora",
         lot: "SÉRIE EA-2047",
-        experienceActive: "Experiência ativa",
         actions: ["Ativar garantia", "Ver benefícios", "Falar com a marca"],
       },
       agro: {
         product: "Insumo Horizonte",
         lot: "LOTE IH-2407",
-        experienceActive: "Experiência ativa",
         actions: ["Consultar o lote", "Ver documentação", "Falar com o suporte"],
       },
     },
@@ -245,7 +235,7 @@ export function SimpleTrustStepVisual({
   return (
     <>
       <div
-        className={`simple-trust-flow-visual simple-trust-flow-visual--${kind} trust-photo`}
+        className={`simple-trust-step-visual-shell simple-trust-step-visual-shell--${kind} trust-photo-frame`}
         data-trust-scene={kind}
         data-trust-phase={kind}
         data-trust-industry={normalizedIndustry}
@@ -253,26 +243,90 @@ export function SimpleTrustStepVisual({
         style={sceneStyle(visualMeta)}
         aria-hidden="true"
       >
-        <Image
-          src={photoByKind[kind]}
-          alt=""
-          fill
-          quality={75}
-          sizes="(max-width: 760px) calc(100vw - 4.5rem), (max-width: 1100px) calc(50vw - 3.5rem), 29vw"
-          className={`trust-photo__image trust-visual__device trust-visual__scene-base trust-visual__scene-base--${kind} trust-visual__animated`}
-          data-trust-photo-base={visualMeta.photoBase}
-        />
-        <span className="trust-photo__scrim" />
-        {kind === "discover" ? (
-          <DiscoverOverlay copy={copy} product={product} meta={visualMeta} />
-        ) : kind === "signal" ? (
-          <SignalOverlay copy={copy} product={product} meta={visualMeta} />
-        ) : (
-          <AftercareOverlay copy={copy} product={product} meta={visualMeta} />
-        )}
+        <TrustCallout kind={kind} copy={copy} product={product} meta={visualMeta} />
+        <div className={`simple-trust-flow-visual simple-trust-flow-visual--${kind} trust-photo`}>
+          <Image
+            src={photoByKind[kind]}
+            alt=""
+            fill
+            quality={75}
+            sizes="(max-width: 760px) calc(100vw - 4.5rem), (max-width: 1100px) calc(50vw - 3.5rem), 29vw"
+            className={`trust-photo__image trust-visual__device trust-visual__scene-base trust-visual__scene-base--${kind} trust-visual__animated`}
+            data-trust-photo-base={visualMeta.photoBase}
+          />
+          <span className="trust-photo__scrim" />
+          {kind === "discover" ? (
+            <DiscoverOverlay meta={visualMeta} />
+          ) : kind === "signal" ? (
+            <SignalOverlay meta={visualMeta} />
+          ) : (
+            <AftercareOverlay meta={visualMeta} />
+          )}
+        </div>
       </div>
       <span className="sr-only" data-trust-scene-summary={kind}>{accessibleSummary}</span>
     </>
+  );
+}
+
+function TrustCallout({
+  kind,
+  copy,
+  product,
+  meta,
+}: {
+  kind: SimpleTrustVisualKind;
+  copy: VisualCopy;
+  product: ProductVisualCopy;
+  meta: IndustryVisualMeta;
+}) {
+  if (kind === "discover") {
+    return (
+      <div
+        className="trust-photo__info-card trust-photo__info-card--discover trust-photo__callout trust-photo__callout--discover trust-visual__card trust-visual__animated"
+        data-trust-state="product-discovered"
+      >
+        <span className="trust-photo__callout-heading">{copy.detectedProduct}</span>
+        <em className="trust-photo__demo-label">{copy.sample}</em>
+        <strong>{product.product}</strong>
+        <small>{product.lot}</small>
+        <CheckMark />
+      </div>
+    );
+  }
+
+  if (kind === "signal") {
+    return (
+      <div
+        className="trust-photo__info-card trust-photo__info-card--result trust-photo__phone-ui trust-photo__phone-ui--result trust-photo__callout trust-photo__callout--signal trust-visual__result trust-visual__response-state trust-visual__animated"
+        data-trust-state="response-ready"
+      >
+        <span className="trust-photo__phone-kicker"><i className="trust-visual__phone-live trust-visual__animated" />{copy.phoneScreen}</span>
+        <strong><CheckMark />{copy.validReading}</strong>
+        <small className="trust-photo__phone-product"><b>{product.product}</b><span>{product.lot}</span></small>
+        <span className="trust-photo__meter"><i className="trust-visual__progress trust-visual__animated" /></span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="trust-photo__actions trust-photo__phone-ui trust-photo__phone-ui--actions trust-photo__callout trust-photo__callout--aftercare trust-visual__actions-state trust-visual__card trust-visual__animated" data-trust-state="actions-ready">
+      <span className="trust-photo__phone-kicker"><i className="trust-visual__phone-live trust-visual__animated" />{copy.phoneScreen}</span>
+      <strong className="trust-photo__actions-product">{product.product}</strong>
+      <span className="trust-photo__actions-label">{copy.programOptions}</span>
+      <div className="trust-photo__action-grid">
+        {product.actions.map((action, index) => (
+          <span
+            key={action}
+            className={`trust-photo__action trust-visual__action trust-visual__action--${["one", "two", "three"][index]} trust-visual__animated`}
+            data-trust-action={meta.actionKinds[index] ?? "support"}
+          >
+            <i aria-hidden="true">{index === 0 ? "✓" : index === 1 ? "+" : "↗"}</i>
+            <span>{action}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -302,7 +356,7 @@ function CheckMark() {
   );
 }
 
-function DiscoverOverlay({ copy, product, meta }: { copy: VisualCopy; product: ProductVisualCopy; meta: IndustryVisualMeta }) {
+function DiscoverOverlay({ meta }: { meta: IndustryVisualMeta }) {
   const traveller = {
     x: (meta.phone.x + meta.tag.x) / 2,
     y: (meta.phone.y + meta.tag.y) / 2,
@@ -327,20 +381,11 @@ function DiscoverOverlay({ copy, product, meta }: { copy: VisualCopy; product: P
         <path className="trust-visual__route trust-visual__route--approach trust-visual__animated" pathLength="1" d={signalRoute(meta, "to-tag")} />
         <circle className="trust-visual__traveller trust-visual__traveller--reverse trust-visual__animated" cx={traveller.x} cy={traveller.y} r="1.25" />
       </svg>
-      <div
-        className="trust-photo__info-card trust-photo__info-card--discover trust-visual__card trust-visual__animated"
-        data-trust-state="product-discovered"
-      >
-        <span>{copy.sample}</span>
-        <strong>{product.product}</strong>
-        <small>{product.lot}</small>
-        <CheckMark />
-      </div>
     </>
   );
 }
 
-function SignalOverlay({ copy, product, meta }: { copy: VisualCopy; product: ProductVisualCopy; meta: IndustryVisualMeta }) {
+function SignalOverlay({ meta }: { meta: IndustryVisualMeta }) {
   const requestPacket = {
     x: meta.tag.x + (meta.phone.x - meta.tag.x) * 0.48,
     y: meta.tag.y + (meta.phone.y - meta.tag.y) * 0.48,
@@ -367,21 +412,11 @@ function SignalOverlay({ copy, product, meta }: { copy: VisualCopy; product: Pro
         <circle className="trust-visual__traveller trust-visual__read-packet trust-visual__animated" cx={requestPacket.x} cy={requestPacket.y - 1.1} r="1.2" />
         <circle className="trust-visual__traveller trust-visual__response-packet trust-visual__animated" cx={requestPacket.x + 1.8} cy={requestPacket.y + 1.7} r="1.2" />
       </svg>
-      <div
-        className="trust-photo__info-card trust-photo__info-card--result trust-photo__phone-ui trust-photo__phone-ui--result trust-visual__result trust-visual__response-state trust-visual__animated"
-        data-trust-state="response-ready"
-      >
-        <span className="trust-photo__phone-kicker"><i className="trust-visual__phone-live trust-visual__animated" />{copy.phoneScreen}</span>
-        <strong><CheckMark />{copy.validReading}</strong>
-        <small className="trust-photo__phone-product"><b>{product.product}</b><span>{product.lot}</span></small>
-        <span className="trust-photo__meter"><i className="trust-visual__progress trust-visual__animated" /></span>
-        <em>{copy.labelRead}</em>
-      </div>
     </>
   );
 }
 
-function AftercareOverlay({ copy, product, meta }: { copy: VisualCopy; product: ProductVisualCopy; meta: IndustryVisualMeta }) {
+function AftercareOverlay({ meta }: { meta: IndustryVisualMeta }) {
   const actionPacket = {
     x: meta.tag.x + (meta.phone.x - meta.tag.x) * 0.5,
     y: meta.tag.y + (meta.phone.y - meta.tag.y) * 0.5,
@@ -401,29 +436,6 @@ function AftercareOverlay({ copy, product, meta }: { copy: VisualCopy; product: 
         <path className="trust-visual__route trust-visual__route--actions trust-visual__animated" pathLength="1" d={signalRoute(meta, "to-phone")} />
         <circle className="trust-visual__traveller trust-visual__action-packet trust-visual__animated" cx={actionPacket.x} cy={actionPacket.y} r="1.2" />
       </svg>
-      <div className="trust-photo__actions trust-photo__phone-ui trust-photo__phone-ui--actions trust-visual__actions-state trust-visual__card trust-visual__animated" data-trust-state="actions-ready">
-        <span className="trust-photo__phone-kicker"><i className="trust-visual__phone-live trust-visual__animated" />{copy.phoneScreen}</span>
-        <strong className="trust-photo__actions-product">{product.product}</strong>
-        <span className="trust-photo__actions-label">{copy.programOptions}</span>
-        {product.actions.map((action, index) => (
-          <span
-            key={action}
-            className={`trust-photo__action trust-visual__action trust-visual__action--${["one", "two", "three"][index]} trust-visual__animated`}
-            data-trust-action={meta.actionKinds[index] ?? "support"}
-          >
-            <i aria-hidden="true">{index === 0 ? "✓" : index === 1 ? "+" : "↗"}</i>
-            {action}
-          </span>
-        ))}
-      </div>
-      <span
-        className="trust-photo__product-note trust-visual__card trust-visual__animated"
-        data-trust-state="connected-product-active"
-      >
-        <small>{copy.connectedProduct}</small>
-        <strong>{product.product}</strong>
-        <em className="trust-photo__product-status">{product.experienceActive}</em>
-      </span>
     </>
   );
 }
