@@ -100,15 +100,20 @@ export function SimpleTrustStepVisual({ kind, locale }: { kind: SimpleTrustVisua
 function DiscoverVisual({ copy }: { copy: VisualCopy }) {
   return (
     <svg viewBox="0 0 320 150" fill="none" focusable="false">
-      <path
-        className="trust-visual__surface trust-visual__product"
-        d="M54 20h20v16c9 4 15 12 15 22v47c0 11-8 19-19 19H58c-11 0-19-8-19-19V58c0-10 6-18 15-22V20Z"
-      />
-      <path className="trust-visual__line" d="M54 31h20M45 53h38" />
-      <rect className="trust-visual__tag" x="47" y="66" width="34" height="31" rx="9" />
-      <text className="trust-visual__tag-text" x="64" y="85" textAnchor="middle">NFC</text>
+      <g className="trust-visual__device trust-visual__animated">
+        <path
+          className="trust-visual__surface trust-visual__product"
+          d="M54 20h20v16c9 4 15 12 15 22v47c0 11-8 19-19 19H58c-11 0-19-8-19-19V58c0-10 6-18 15-22V20Z"
+        />
+        <path className="trust-visual__line" d="M54 31h20M45 53h38" />
+        <circle className="trust-visual__nfc-ring trust-visual__animated" cx="64" cy="81.5" r="24" />
+        <g className="trust-visual__tag-group trust-visual__animated">
+          <rect className="trust-visual__tag" x="47" y="66" width="34" height="31" rx="9" />
+          <text className="trust-visual__tag-text" x="64" y="85" textAnchor="middle">NFC</text>
+        </g>
+      </g>
 
-      <path className="trust-visual__route trust-visual__animated" d="M90 76h67" />
+      <path className="trust-visual__route trust-visual__animated" d="M90 76h67" pathLength="1" />
       <circle className="trust-visual__traveller trust-visual__animated" cx="112" cy="76" r="4" />
 
       <g className="trust-visual__card trust-visual__animated">
@@ -120,7 +125,7 @@ function DiscoverVisual({ copy }: { copy: VisualCopy }) {
         <text className="trust-visual__value" x="174" y="96">{copy.lot}</text>
         <text className="trust-visual__value trust-visual__value--small" x="174" y="114">{copy.origin}</text>
         <circle className="trust-visual__positive-fill" cx="280" cy="54" r="9" />
-        <path className="trust-visual__positive-mark" d="m276 54 3 3 5-6" />
+        <path className="trust-visual__positive-mark trust-visual__check trust-visual__animated" d="m276 54 3 3 5-6" pathLength="1" />
       </g>
     </svg>
   );
@@ -129,20 +134,25 @@ function DiscoverVisual({ copy }: { copy: VisualCopy }) {
 function SignalVisual({ copy }: { copy: VisualCopy }) {
   return (
     <svg viewBox="0 0 320 150" fill="none" focusable="false">
-      <rect className="trust-visual__surface" x="24" y="17" width="70" height="116" rx="20" />
-      <path className="trust-visual__line" d="M47 29h24M52 121h14" />
-      <rect className="trust-visual__tag" x="42" y="49" width="34" height="34" rx="8" />
-      <path className="trust-visual__accent" d="M49 57h7v7h-7zM62 57h7v7h-7zM49 70h7v7h-7zM63 69h3v3h3v5h-7v-4" />
-      <text className="trust-visual__phone-label" x="59" y="101" textAnchor="middle">RA-2407</text>
+      <g className="trust-visual__device trust-visual__animated">
+        <rect className="trust-visual__surface" x="24" y="17" width="70" height="116" rx="20" />
+        <path className="trust-visual__line" d="M47 29h24M52 121h14" />
+        <circle className="trust-visual__nfc-ring trust-visual__animated" cx="59" cy="66" r="24" />
+        <g className="trust-visual__tag-group trust-visual__animated">
+          <rect className="trust-visual__tag" x="42" y="49" width="34" height="34" rx="8" />
+          <path className="trust-visual__accent" d="M49 57h7v7h-7zM62 57h7v7h-7zM49 70h7v7h-7zM63 69h3v3h3v5h-7v-4" />
+        </g>
+        <text className="trust-visual__phone-label" x="59" y="101" textAnchor="middle">RA-2407</text>
+      </g>
 
-      <path className="trust-visual__route trust-visual__animated" d="M95 75h57" />
+      <path className="trust-visual__route trust-visual__animated" d="M95 75h57" pathLength="1" />
       <path className="trust-visual__wave trust-visual__animated" d="M107 65a14 14 0 0 1 0 20M116 58a24 24 0 0 1 0 34" />
 
       <g className="trust-visual__result trust-visual__animated">
         <rect className="trust-visual__surface" x="154" y="22" width="144" height="106" rx="19" />
         <text className="trust-visual__eyebrow" x="169" y="40">{copy.digitalResult}</text>
         <circle className="trust-visual__positive-fill" cx="174" cy="59" r="9" />
-        <path className="trust-visual__positive-mark trust-visual__check" d="m170 59 3 3 6-7" />
+        <path className="trust-visual__positive-mark trust-visual__check trust-visual__animated" d="m170 59 3 3 6-7" pathLength="1" />
         <text className="trust-visual__status" x="190" y="62">{copy.validReading}</text>
         <rect className="trust-visual__status-pill" x="168" y="74" width="72" height="17" rx="8.5" />
         <text className="trust-visual__status-pill-text" x="204" y="85" textAnchor="middle">{copy.controls}</text>
@@ -159,15 +169,20 @@ function AftercareVisual({ copy }: { copy: VisualCopy }) {
   return (
     <svg viewBox="0 0 320 150" fill="none" focusable="false">
       <text className="trust-visual__eyebrow" x="25" y="21">{copy.sample}</text>
-      <path
-        className="trust-visual__surface trust-visual__product"
-        d="M48 31h20v12c8 4 13 11 13 19v42c0 10-7 17-17 17h-12c-10 0-17-7-17-17V62c0-8 5-15 13-19V31Z"
-      />
-      <path className="trust-visual__line" d="M48 39h20M41 59h34" />
-      <rect className="trust-visual__tag" x="44" y="70" width="28" height="27" rx="8" />
-      <path className="trust-visual__positive-mark" d="m51 83 4 4 9-10" />
+      <g className="trust-visual__device trust-visual__animated">
+        <path
+          className="trust-visual__surface trust-visual__product"
+          d="M48 31h20v12c8 4 13 11 13 19v42c0 10-7 17-17 17h-12c-10 0-17-7-17-17V62c0-8 5-15 13-19V31Z"
+        />
+        <path className="trust-visual__line" d="M48 39h20M41 59h34" />
+        <circle className="trust-visual__nfc-ring trust-visual__animated" cx="58" cy="83.5" r="21" />
+        <g className="trust-visual__tag-group trust-visual__animated">
+          <rect className="trust-visual__tag" x="44" y="70" width="28" height="27" rx="8" />
+          <path className="trust-visual__positive-mark trust-visual__check trust-visual__animated" d="m51 83 4 4 9-10" pathLength="1" />
+        </g>
+      </g>
 
-      <path className="trust-visual__route trust-visual__animated" d="M82 77h43c18 0 14-38 34-38h25M125 77h59M125 77c18 0 14 38 34 38h25" />
+      <path className="trust-visual__route trust-visual__animated" d="M82 77h43c18 0 14-38 34-38h25M125 77h59M125 77c18 0 14 38 34 38h25" pathLength="1" />
 
       <text className="trust-visual__eyebrow" x="192" y="12">{copy.programOptions}</text>
       <g className="trust-visual__action trust-visual__action--one trust-visual__animated">

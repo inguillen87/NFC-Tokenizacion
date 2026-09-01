@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, PackageCheck, RadioTower } from "lucide-react";
 import { HorizontalRailControls } from "./horizontal-rail-controls";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
-import { SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
+import { SimpleTrustFlowIntroMotion, SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustStepVisual, type SimpleTrustVisualKind } from "./simple-trust-step-visual";
 
 type Content = {
@@ -152,19 +152,15 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   return (
     <section id="como-funciona" className="simple-trust-flow-section container-shell py-12 md:py-20">
       <div className="simple-trust-flow-shell">
-        <div className="simple-trust-flow-intro">
-          <p className="simple-trust-flow-eyebrow">{copy.eyebrow}</p>
-          <h2>{copy.title}</h2>
-          <p className="simple-trust-flow-body">{copy.body}</p>
-        </div>
+        <SimpleTrustFlowIntroMotion eyebrow={copy.eyebrow} title={copy.title} body={copy.body} />
 
         <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
           {copy.steps.map((step, index) => (
             <li key={step.label}>
               <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />
-              <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-              <h3>{step.label}</h3>
-              <p>{step.body}</p>
+              <span className="simple-trust-flow-step-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+              <h3 className="simple-trust-flow-step-title">{step.label}</h3>
+              <p className="simple-trust-flow-step-copy">{step.body}</p>
             </li>
           ))}
         </SimpleTrustFlowMotion>
