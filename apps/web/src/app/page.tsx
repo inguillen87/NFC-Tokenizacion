@@ -12,7 +12,7 @@ import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { productUrls, schedulingUrls } from "@product/config";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
-import { Facebook, Globe2, Instagram, Linkedin } from "lucide-react";
+import { Building2, Facebook, Globe2, Instagram, Linkedin } from "lucide-react";
 
 export default async function HomePage() {
   const { locale, locales } = await getWebI18n();
@@ -45,9 +45,9 @@ export default async function HomePage() {
         contact: "Contact",
         schedule: "Book a demo",
         ecosystem: "A platform within the Inmovar Latam ecosystem.",
-        ecosystemTitle: "Ecosystem and team",
+        ecosystemTitle: "nexID ecosystem",
         inmovarBody: "The technology ecosystem where nexID is built.",
-        inguillenBody: "Marcelo Guillén's work, profile and product portfolio.",
+        aboutBody: "Meet the people, purpose and institutional background behind nexID.",
         website: "Website",
       }
     : locale === "pt-BR"
@@ -69,9 +69,9 @@ export default async function HomePage() {
         contact: "Contato",
         schedule: "Agendar demo",
         ecosystem: "Uma plataforma do ecossistema Inmovar Latam.",
-        ecosystemTitle: "Ecossistema e equipe",
+        ecosystemTitle: "Ecossistema nexID",
         inmovarBody: "O ecossistema tecnológico onde a nexID é desenvolvida.",
-        inguillenBody: "Trabalho, perfil e portfólio de produtos de Marcelo Guillén.",
+        aboutBody: "Conheça as pessoas, o propósito e o respaldo institucional por trás da nexID.",
         website: "Site",
       }
     : {
@@ -92,9 +92,9 @@ export default async function HomePage() {
         contact: "Contacto",
         schedule: "Agendar demo",
         ecosystem: "Una plataforma del ecosistema Inmovar Latam.",
-        ecosystemTitle: "Ecosistema y equipo",
+        ecosystemTitle: "Ecosistema nexID",
         inmovarBody: "El ecosistema tecnológico donde se desarrolla nexID.",
-        inguillenBody: "Trabajo, perfil y portfolio de productos de Marcelo Guillén.",
+        aboutBody: "Conocé a quienes impulsan la plataforma, su propósito y el respaldo institucional de nexID.",
         website: "Sitio web",
       };
 
@@ -188,15 +188,13 @@ export default async function HomePage() {
                 <a href="https://www.facebook.com/inmovar.oficial/" target="_blank" rel="noreferrer"><Facebook aria-hidden="true" />Facebook</a>
               </nav>
             </article>
-            <article>
+            <article className="site-footer-about-card">
               <div>
-                <strong>Inguillen · Marcelo Guillén</strong>
-                <p>{footerCopy.inguillenBody}</p>
+                <strong>nexID</strong>
+                <p>{footerCopy.aboutBody}</p>
               </div>
-              <nav aria-label="Inguillen y Marcelo Guillén">
-                <a href="https://inguillen.ar/" target="_blank" rel="noreferrer"><Globe2 aria-hidden="true" />{footerCopy.website}</a>
-                <a href="https://www.instagram.com/inguillen/" target="_blank" rel="noreferrer"><Instagram aria-hidden="true" />Instagram</a>
-                <a href="https://www.linkedin.com/in/marcelo-guill%C3%A9n-54876527/" target="_blank" rel="noreferrer"><Linkedin aria-hidden="true" />LinkedIn</a>
+              <nav aria-label={footerCopy.about}>
+                <Link href="/about"><Building2 aria-hidden="true" />{footerCopy.about}</Link>
               </nav>
             </article>
           </div>

@@ -5,8 +5,13 @@ import type { ComponentType } from "react";
 import type { AppLocale } from "@product/config";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { getWebI18n } from "../../../lib/locale";
+import {
+  isDemoProductProfileKey,
+  type DemoProductProfileKey,
+} from "../../../lib/demo-product-profiles";
 import { JsonLd } from "../../../components/json-ld";
 import { DemoLabClient } from "./demo-lab-client";
+import { DemoLabFeaturedJourney } from "./demo-lab-featured-journey";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
 import {
   Box,
@@ -68,8 +73,69 @@ type DemoLabPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+type DemoLabHubShellCopy = {
+  eyebrow: string;
+  lede: string;
+  optional: string;
+  advancedDisclosure: string;
+  proof: string;
+  scheduleDemo: string;
+  backHome: string;
+  technicalDocs: string;
+};
+
+const DEMO_LAB_HUB_SHELL_COPY: Readonly<Record<AppLocale, DemoLabHubShellCopy>> = {
+  "es-AR": {
+    eyebrow: "nexID · experiencia interactiva",
+    lede: "Elegí un producto, simulá el toque y mirá la experiencia que se abre en el celular. Te explicamos cada paso mientras avanzás.",
+    optional: "Opcional",
+    advancedDisclosure: "Explorar otros escenarios y capas técnicas",
+    proof: "Verificador de evidencia",
+    scheduleDemo: "Agendar demo",
+    backHome: "Volver a nexID",
+    technicalDocs: "Documentación técnica",
+  },
+  en: {
+    eyebrow: "nexID · interactive experience",
+    lede: "Choose a product, simulate the tap and see the experience that opens on the phone. We explain every step as you go.",
+    optional: "Optional",
+    advancedDisclosure: "Explore more scenarios and technical layers",
+    proof: "Evidence verifier",
+    scheduleDemo: "Book a demo",
+    backHome: "Back to nexID",
+    technicalDocs: "Technical documentation",
+  },
+  "pt-BR": {
+    eyebrow: "nexID · experiência interativa",
+    lede: "Escolha um produto, simule o toque e veja a experiência que se abre no celular. Explicamos cada etapa enquanto você avança.",
+    optional: "Opcional",
+    advancedDisclosure: "Explorar outros cenários e camadas técnicas",
+    proof: "Verificador de evidências",
+    scheduleDemo: "Agendar demo",
+    backHome: "Voltar à nexID",
+    technicalDocs: "Documentação técnica",
+  },
+};
+
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+const DEMO_LAB_VERTICAL_PROFILE_MAP: Readonly<Record<string, DemoProductProfileKey>> = {
+  wine: "wine",
+  perfume: "perfume",
+  seeds: "agro",
+};
+
+function resolveFeaturedProfile(
+  profileValue: string | string[] | undefined,
+  verticalValue: string | string[] | undefined,
+): DemoProductProfileKey {
+  const requestedProfile = String(firstParam(profileValue) || "").trim().toLowerCase();
+  if (isDemoProductProfileKey(requestedProfile)) return requestedProfile;
+
+  const requestedVertical = String(firstParam(verticalValue) || "").trim().toLowerCase();
+  return DEMO_LAB_VERTICAL_PROFILE_MAP[requestedVertical] ?? "wine";
 }
 
 const PROOF_VERIFY_HANDOFF_SCENARIOS: ReadonlySet<string> = new Set([
@@ -744,10 +810,15 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
     resolveDemoLabLocale(params.locale || params.lang) ??
     resolveDemoLabLocale(cookieStore.get("locale")?.value) ??
     "es-AR";
+  const hubShellCopy = DEMO_LAB_HUB_SHELL_COPY[locale];
   const structuredData = demoLabStructuredData(locale);
-  const initialVertical = firstParam(
+  const requestedVertical = firstParam(
     params.vertical || params.rubro || params.industry || params.useCase
   );
+  const initialProfile = resolveFeaturedProfile(params.profile, requestedVertical);
+  const initialVertical = requestedVertical && DEMO_LAB_VERTICAL_PROFILE_MAP[requestedVertical.trim().toLowerCase()]
+    ? undefined
+    : requestedVertical;
   const initialScenario = firstParam(
     params.scenario || params.proof || params.layer
   );
@@ -923,14 +994,14 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             className="inline-flex min-h-10 items-center justify-self-end rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 text-xs font-black text-cyan-100 transition-colors hover:border-cyan-200/50 hover:bg-cyan-300/16 md:gap-2"
           >
             <ShieldCheck className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Proof Verify & Decoder</span>
+            <span className="hidden sm:inline">{hubShellCopy.proof}</span>
             <span className="sm:hidden">Proof</span>
           </Link>
           <Link
             href="/?contact=demo#contact-modal"
             className="col-span-2 inline-flex min-h-10 items-center justify-self-end gap-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-4 text-xs font-black tracking-wide text-slate-950 transition-all hover:brightness-110 md:col-span-1"
           >
-            Agendar demo
+            {hubShellCopy.scheduleDemo}
             <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
@@ -938,24 +1009,35 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 md:py-16">
         {/* Header */}
-        <div className="mx-auto mb-10 max-w-3xl text-center md:mb-12">
-          <div className="relative mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-200/18 bg-slate-950/70">
-            <Fingerprint className="relative z-10 h-8 w-8 text-cyan-300" />
-          </div>
+        <div className="mx-auto mb-8 max-w-3xl text-center md:mb-10">
           <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-cyan-200">
-            nexID Platform
+            {hubShellCopy.eyebrow}
           </p>
-          <h1 className="mb-5 text-4xl font-extrabold tracking-tight md:text-6xl">
+          <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
             <span className="demo-lab-hub-title-gradient text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-violet-400">
               Demo Lab
             </span>
           </h1>
           <p className="mx-auto max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
-            Seleccioná una capa de confianza o tu industria para simular la
-            experiencia completa end-to-end.
+            {hubShellCopy.lede}
           </p>
         </div>
 
+        <DemoLabFeaturedJourney
+          key={`${locale}-${initialProfile}`}
+          locale={locale}
+          initialProfile={initialProfile}
+        />
+
+        <details className="demo-lab-hub-advanced mt-8 rounded-3xl border border-cyan-200/15 bg-slate-950/55 p-3 backdrop-blur-md">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-3 py-2 text-left text-sm font-black text-cyan-100 marker:hidden">
+            <span>
+              <small className="block text-[10px] uppercase tracking-[0.16em] text-cyan-300">{hubShellCopy.optional}</small>
+              {hubShellCopy.advancedDisclosure}
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0" />
+          </summary>
+          <div className="px-1 pb-1 pt-5 sm:px-3">
         <section className="demo-lab-hub-quick-launch mb-8" aria-label="Abrir un escenario de Demo Lab">
           <div className="demo-lab-hub-quick-launch__head">
             <span>Accesos rápidos</span>
@@ -1161,6 +1243,8 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             })}
           </div>
         </div>
+          </div>
+        </details>
 
         {/* Footer nav */}
         <div className="demo-lab-hub-footer-links mt-14 flex flex-wrap items-center justify-center gap-6 text-sm font-bold text-slate-400">
@@ -1168,19 +1252,19 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             href="/"
             className="demo-lab-hub-footer-link inline-flex items-center gap-2 transition-colors hover:text-cyan-200"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Volver a nexID
+            <ArrowLeft className="w-3.5 h-3.5" /> {hubShellCopy.backHome}
           </Link>
           <Link
             href="/docs"
             className="demo-lab-hub-footer-link transition-colors hover:text-cyan-200"
           >
-            Documentación técnica
+            {hubShellCopy.technicalDocs}
           </Link>
           <Link
             href="/?contact=demo#contact-modal"
             className="demo-lab-hub-footer-link transition-colors hover:text-cyan-200"
           >
-            Agendar demo
+            {hubShellCopy.scheduleDemo}
           </Link>
         </div>
       </div>

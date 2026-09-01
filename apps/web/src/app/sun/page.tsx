@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { AlertTriangle, ArrowDown, ChevronRight, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowLeft, ChevronRight, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
@@ -26,6 +26,10 @@ import { productUrls } from "@product/config";
 import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { resolveProductAssetProfile } from "../../lib/product-asset-bank";
+import {
+  resolveDemoExperienceAction,
+  resolveDemoProductProfile,
+} from "../../lib/demo-product-profiles";
 import { BrandHomeLink } from "../../components/brand-home-link";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
@@ -357,7 +361,21 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     };
   }
 
-  const demoProduct = demoProductFromParams(params);
+  const isDemoLabHandoff = readParam(params, "demo") === "1"
+    && readParam(params, "source") === "demo-lab";
+  const handoffProfile = resolveDemoProductProfile(readParam(params, "profile"));
+  const demoProduct = isDemoLabHandoff
+    ? { name: handoffProfile.name, vertical: handoffProfile.vertical, category: handoffProfile.category }
+    : demoProductFromParams(params);
+  const demoBrand = isDemoLabHandoff ? handoffProfile.brand : "Bodega Balmec";
+  const demoRegion = isDemoLabHandoff ? handoffProfile.region : "Valle de Uco, Mendoza";
+  const demoLot = isDemoLabHandoff ? handoffProfile.lot : "BALMEC-2026-02";
+  const demoOrigin = isDemoLabHandoff
+    ? handoffProfile.origin
+    : { city: "Tunuyan", country: "AR", lat: -33.2095, lng: -69.1211 };
+  const demoTap = isDemoLabHandoff
+    ? handoffProfile.sampleTap
+    : { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 };
 
   return {
     ok: true,
@@ -372,39 +390,39 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
       tamperStatus: "OPENED",
     },
     identity: {
-      bid: "BALMEC-2026-02",
+      bid: demoLot,
       uid: "04A7****1090",
       readCounter: 7,
       tagStatus: "active",
       scanCount: 7,
       eventId: "demo-sun-preview",
-      tenantSlug: "demobodega",
+      tenantSlug: isDemoLabHandoff ? `demo-${handoffProfile.key}` : "demobodega",
     },
     product: {
       name: demoProduct.name,
-      winery: "Bodega Balmec",
-      region: "Valle de Uco, Mendoza",
+      winery: demoBrand,
+      region: demoRegion,
       varietal: demoProduct.vertical === "vino" ? "Malbec" : demoProduct.category,
-      vintage: "2021",
-      barrelMonths: 12,
-      storage: "Cava 16C",
+      vintage: demoProduct.vertical === "vino" ? "2021" : null,
+      barrelMonths: demoProduct.vertical === "vino" ? 12 : null,
+      storage: demoProduct.vertical === "vino" ? "Cava 16C" : "Condición declarada por la marca",
       category: demoProduct.category,
       vertical: demoProduct.vertical,
     },
     provenance: {
-      origin: "Valle de Uco, Mendoza",
-      firstVerified: { at: "2026-04-24T14:00:00.000Z", city: "Tunuyan", country: "AR" },
-      lastVerifiedLocation: { at: "2026-05-01T18:30:00.000Z", city: "Buenos Aires", country: "AR", result: "VALID_OPENED" },
+      origin: demoRegion,
+      firstVerified: { at: "2026-04-24T14:00:00.000Z", city: demoOrigin.city, country: demoOrigin.country },
+      lastVerifiedLocation: { at: "2026-05-01T18:30:00.000Z", city: demoTap.city, country: demoTap.country, result: "VALID_OPENED" },
       timelineSummary: [
-        { at: "2026-05-01T18:30:00.000Z", result: "VALID_OPENED", city: "Buenos Aires", country: "AR", device: "mobile", lat: -34.6037, lng: -58.3816 },
-        { at: "2026-04-30T22:20:00.000Z", result: "VALID_CLOSED", city: "Santiago", country: "CL", device: "mobile", lat: -33.4489, lng: -70.6693 },
+        { at: "2026-05-01T18:30:00.000Z", result: "VALID_OPENED", city: demoTap.city, country: demoTap.country, device: "mobile", lat: demoTap.lat, lng: demoTap.lng },
+        { at: "2026-04-30T22:20:00.000Z", result: "VALID_CLOSED", city: demoOrigin.city, country: demoOrigin.country, device: "mobile", lat: demoOrigin.lat, lng: demoOrigin.lng },
       ],
     },
     iot: {
-      wineryLocation: "Valle de Uco, Mendoza",
-      wineryCoordinates: { lat: -33.2095, lng: -69.1211 },
+      wineryLocation: demoRegion,
+      wineryCoordinates: { lat: demoOrigin.lat, lng: demoOrigin.lng },
     },
-    tapContext: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
+    tapContext: { city: demoTap.city, country: demoTap.country, lat: demoTap.lat, lng: demoTap.lng },
     tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: null, tokenId: null },
     tag_tamper: { available: true, status: "opened", raw: "4F4F" },
     cta: { claimOwnership: true, registerWarranty: true, provenance: true, tokenize: true },
@@ -431,7 +449,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SunPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const { locale, locales } = await getWebI18n();
+  const webI18n = await getWebI18n();
   const isQrScan = params.qr === "1" || params.channel === "qr";
   const query = new URLSearchParams();
   ["v", "bid", "picc_data", "enc", "cmac"].forEach((key) => {
@@ -453,6 +471,28 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : "";
   const resolvedApiBase = apiBase(params);
   const isDemoPreview = !isQrScan && query.toString().length === 0 && !snapshotId;
+  const isDemoLabHandoff = isDemoPreview
+    && readParam(params, "demo") === "1"
+    && readParam(params, "source") === "demo-lab";
+  const requestedDemoLocale = readParam(params, "locale");
+  const locale = isDemoLabHandoff && (requestedDemoLocale === "en" || requestedDemoLocale === "pt-BR" || requestedDemoLocale === "es-AR")
+    ? requestedDemoLocale
+    : webI18n.locale;
+  const locales = webI18n.locales;
+  const demoLabProfile = isDemoLabHandoff
+    ? resolveDemoProductProfile(readParam(params, "profile"))
+    : null;
+  const demoLabAction = isDemoLabHandoff
+    ? resolveDemoExperienceAction(readParam(params, "action"))
+    : null;
+  const demoLabReturnHref = demoLabProfile
+    ? `/demo-lab?profile=${encodeURIComponent(demoLabProfile.key)}&locale=${encodeURIComponent(locale)}`
+    : null;
+  const demoLabReturnLabel = locale === "en"
+    ? "Back to Demo Lab"
+    : locale === "pt-BR"
+      ? "Voltar ao Demo Lab"
+      : "Volver al Demo Lab";
 
   let result: SunContract;
   let snapshotResult: SunContract | null = null;
@@ -642,7 +682,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || isInvalidSealState || (!isTechnicallyAuthentic && !isQrScan);
   const agroProfile = normalizeAgroDppProfile(result.product?.agro);
   const isAgroDpp = Boolean(agroProfile);
-  const engagementBaseEligible = (isQrScan || isFreshCommercialTap || isVerifiedOpenedState) && !isManualOpenedState && !isRiskBlocked && !isSnapshotView;
+  const engagementBaseEligible = !isDemoPreview
+    && (isQrScan || isFreshCommercialTap || isVerifiedOpenedState)
+    && !isManualOpenedState
+    && !isRiskBlocked
+    && !isSnapshotView;
   const troubleshooting = result.troubleshooting || [];
   const wineryCoordinates = result.iot?.wineryCoordinates;
   const resolvedOriginCoords = isUsableCoordinate(wineryCoordinates?.lat, wineryCoordinates?.lng)
@@ -1211,7 +1255,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : Array.isArray(productMedia.gallery_urls)
       ? productMedia.gallery_urls.map((item) => String(item || "").trim()).filter(Boolean)
       : [];
-  const requestedBrandDisplay = readParam(params, "winery") || readParam(params, "brand") || "";
+  // Demo previews resolve their product and brand only from the allowlisted
+  // server-side fixture. Free URL fields must never override that contract.
+  const requestedBrandDisplay = isDemoPreview
+    ? ""
+    : readParam(params, "winery") || readParam(params, "brand") || "";
   const assetProfile = resolveProductAssetProfile({
     tenantSlug: result.tenant?.slug || result.identity?.tenantSlug,
     brandName: requestedBrandDisplay || result.product?.winery || result.tenant?.name || result.tenant?.slug,
@@ -1407,7 +1455,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : isVerifiedOpenedState
         ? "La lectura digital es válida y el tag informa sello abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
         : "La lectura es fresca. Primero lees la ficha; si queres, despues dejas contacto o acreditas compra.";
-  const primaryPostTapAction = isQrScan && isAgroDpp
+  const primaryPostTapAction = isDemoPreview
+    ? { label: "Ver opciones de muestra", href: "#sun-services", tone: "trace" }
+    : isQrScan && isAgroDpp
     ? { label: "Ver pasaporte agro", href: "#agro-dpp", tone: "trace" }
     : isQrScan
     ? { label: "Conocer el producto", href: consumerActionHref, tone: "trace" }
@@ -1548,6 +1598,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           locales={locales}
           pulseClass={pulseClass}
         />
+
+        {demoLabReturnHref ? (
+          <Link
+            href={demoLabReturnHref}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {demoLabReturnLabel}
+          </Link>
+        ) : null}
 
         <SunSectionNav variant={isAgroDpp ? "agro" : "default"} />
 
@@ -2143,6 +2203,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 riskState={servicesRiskState}
                 freshnessState={servicesFreshnessState}
                 policyAvailability={servicePolicyAvailability}
+                locale={locale}
+                demoIntent={demoLabAction}
               />
             </div>
 
@@ -2163,7 +2225,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </Link>
             ) : null}
 
-            <details className="group rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+            {!isDemoPreview ? <details className="group rounded-2xl border border-white/10 bg-slate-950/45 p-3">
               <summary className="cursor-pointer list-none text-xs font-black text-slate-200 marker:hidden">
                 <span className="flex min-h-11 items-center justify-between gap-3">
                   Como se protege cada accion
@@ -2188,7 +2250,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   blockedActions={blockedActions}
                 />
               </div>
-            </details>
+            </details> : null}
 
             {isSnapshotView || isQrScan ? (
               <section id="fresh-tap-required" className="scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4" aria-labelledby="fresh-tap-required-title">
@@ -2201,7 +2263,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </section>
             ) : null}
 
-            {bid && (uid || eventId) ? (
+            {!isDemoPreview && bid && (uid || eventId) ? (
               <div id="protected-actions" className="scroll-mt-24 pt-1">
                 <CtaActions
                   bid={bid}

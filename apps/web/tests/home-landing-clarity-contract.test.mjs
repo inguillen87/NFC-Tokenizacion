@@ -67,28 +67,30 @@ test("SimpleTrustFlow keeps one progressive industry journey and one clear actio
   assert.match(flow, /id="como-funciona"/);
 });
 
-test("CommercialValue explains the brand-side before and after without hiding meaning in dashboard tabs", async () => {
+test("CommercialValue explains one concrete brand-side lifecycle without repeating the consumer journey", async () => {
   const [sections, preview] = await Promise.all([
     readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/brand-control-center-preview.tsx", import.meta.url), "utf8"),
   ]);
   const value = sections.slice(sections.indexOf("export function CommercialValueSection"));
 
-  assert.match(value, /Tu equipo decide qué muestra y qué habilita cada producto/);
-  assert.match(value, /Sua equipe decide o que cada produto mostra e habilita/);
-  assert.match(value, /Your team decides what each product shows and enables/);
+  assert.match(value, /Preparás la experiencia una vez\. Cada producto la pone en marcha/);
+  assert.match(value, /Prepare a experiência uma vez\. Cada produto a coloca em ação/);
+  assert.match(value, /Prepare the experience once\. Every product puts it to work/);
   assert.match(value, /<BrandControlCenterPreview locale=\{locale\} \/>/);
-  assert.match(preview, /Ejemplo ilustrativo · Producto, lote y estados de muestra/);
-  assert.match(preview, /Producto entregado/);
-  assert.match(preview, /Producto conectado/);
-  assert.match(preview, /Tu equipo configura/);
-  assert.match(preview, /nexID registra/);
-  assert.match(preview, /Qué información ve el cliente/);
-  assert.match(preview, /Las lecturas de la etiqueta/);
-  assert.doesNotMatch(preview, /role="tablist"|role="tabpanel"|<button/);
-  assert.match(value, /Agendar una demo para mi producto/);
+  assert.match(preview, /Ejemplo ilustrativo · Probá cada opción/);
+  assert.match(preview, /Elegí qué querés activar/);
+  assert.match(preview, /Historia y lote/);
+  assert.match(preview, /Activá la garantía/);
+  assert.match(preview, /Hablá con la bodega/);
+  assert.match(preview, /Lectura recibida/);
+  assert.match(preview, /aria-pressed=\{selected === key\}/);
+  assert.match(preview, /onClick=\{\(\) => setSelected\(key\)\}/);
+  assert.doesNotMatch(preview, /role="tablist"|role="tabpanel"/);
+  assert.match(value, /Probarlo con una botella/);
+  assert.match(value, /href="\/demo-lab\?profile=wine"/);
   assert.doesNotMatch(value, /Ver la plataforma en acción/);
-  assert.doesNotMatch(preview, /ChevronRight|ArrowDown|ArrowUp|Capa digital activa/);
+  assert.doesNotMatch(preview, /ChevronRight|ArrowDown|ArrowUp|Capa digital activa|Producto entregado|Producto conectado/);
   assert.doesNotMatch(value, /Una relación que sigue generando valor|Uma relação que continua gerando valor|A relationship that keeps creating value/);
   assert.doesNotMatch(value, /commercial-value-grid|commercial-value-rail|HorizontalRailControls|0\{index \+ 1\}/);
   assert.doesNotMatch(preview, /\b(?:%|KPI|ROI|conversi[oó]n)\b/i);

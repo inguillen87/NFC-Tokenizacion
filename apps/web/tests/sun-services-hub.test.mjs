@@ -90,6 +90,7 @@ test("SUN services reject backslash paths, protocol-relative links and credentia
 
 test("SUN services copy describes requests without promising purchase, prize or ownership", async () => {
   const component = await readFile(new URL("../src/app/sun/sun-services-hub.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8");
 
   assert.match(component, /La marca no publicó una promoción para este producto/);
   assert.match(component, /Solicitar compra/);
@@ -98,6 +99,18 @@ test("SUN services copy describes requests without promising purchase, prize or 
   assert.match(component, /El tap no transfiere propiedad/);
   assert.match(component, /Enviar la solicitud no confirma su aceptación/);
   assert.match(component, /Muestra sin tap físico/);
+  assert.match(component, /const isDemo = freshnessState === "demo"/);
+  assert.match(component, /data-demo-selected-intent/);
+  assert.match(component, /Opciones ilustrativas para este producto/);
+  assert.match(component, /Esta vista no envía solicitudes ni activa servicios reales/);
+  assert.match(component, /Illustrative options for this product/);
+  assert.match(component, /This preview does not send requests or activate real services/);
+  assert.match(component, /Opções ilustrativas para este produto/);
+  assert.match(component, /Esta demonstração não envia solicitações nem ativa serviços reais/);
+  assert.match(component, /locale: AppLocale/);
+  assert.match(page, /locale=\{locale\}/);
+  const demoBranch = component.match(/\{isDemo \? \([\s\S]*?\) : liveActions\.length/)?.[0] ?? "";
+  assert.doesNotMatch(demoBranch, /<a\b|href=/, "demo choices must stay read-only");
   assert.match(component, /role="status"/);
   assert.match(component, /aria-label="Servicios disponibles para este producto"/);
   assert.doesNotMatch(component, /Comprar ahora|Premio confirmado|Propiedad confirmada|Garantía activada/);

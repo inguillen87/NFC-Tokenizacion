@@ -127,7 +127,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
         <SimpleTrustIndustryJourney locale={locale} />
 
         <div className="simple-trust-flow-footer">
-          <Link href="/demo-lab?scenario=qr-gs1" className="simple-trust-flow-cta">
+          <Link href="/demo-lab?profile=wine" className="simple-trust-flow-cta">
             {copy.primary}
             <ArrowRight aria-hidden="true" />
           </Link>
@@ -142,23 +142,23 @@ export function CommercialValueSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-        eyebrow: "Now, on your team's side",
-        title: "Your team decides what each product shows and enables.",
-        body: "From the platform, update information, organize after-sales support, and review recorded reads and actions.",
-        cta: "Book a demo for my product",
+        eyebrow: "On your brand's side",
+        title: "Prepare the experience once. Every product puts it to work.",
+        body: "Choose the information and services customers will find. The label opens them on the phone, while your team receives the signals needed to continue.",
+        cta: "Try it with a bottle",
       }
     : isBr
       ? {
-          eyebrow: "Agora, do lado da sua equipe",
-          title: "Sua equipe decide o que cada produto mostra e habilita.",
-          body: "Na plataforma, atualize informações, organize o pós-venda e consulte as leituras e ações registradas.",
-          cta: "Agendar uma demo para meu produto",
+          eyebrow: "Do lado da sua marca",
+          title: "Prepare a experiência uma vez. Cada produto a coloca em ação.",
+          body: "Escolha as informações e os serviços que o cliente encontrará. A etiqueta abre tudo no celular e sua equipe recebe os sinais para continuar.",
+          cta: "Testar com uma garrafa",
         }
       : {
-          eyebrow: "Ahora, del lado de tu equipo",
-          title: "Tu equipo decide qué muestra y qué habilita cada producto.",
-          body: "Desde la plataforma, actualizás información, organizás la postventa y consultás las lecturas y acciones registradas.",
-          cta: "Agendar una demo para mi producto",
+          eyebrow: "Del lado de tu marca",
+          title: "Preparás la experiencia una vez. Cada producto la pone en marcha.",
+          body: "Elegís la información y los servicios que encontrará el cliente. La etiqueta los abre en el celular y tu equipo recibe las señales para continuar.",
+          cta: "Probarlo con una botella",
         };
 
   return (
@@ -168,7 +168,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           <p>{copy.eyebrow}</p>
           <h2 id="commercial-value-title">{copy.title}</h2>
           <span>{copy.body}</span>
-          <Link href="/?contact=demo#contact-modal" className="commercial-value-cta">
+          <Link href="/demo-lab?profile=wine" className="commercial-value-cta">
             {copy.cta}
             <ArrowRight aria-hidden="true" />
           </Link>

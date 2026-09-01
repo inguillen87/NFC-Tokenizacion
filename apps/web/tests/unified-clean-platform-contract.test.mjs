@@ -15,7 +15,7 @@ test("unified release preserves the approved clean home composition", async () =
   assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialContactModal initialLocale=\{locale\} \/>/);
-  assert.match(sections, /Tu equipo decide qué muestra y qué habilita cada producto\./);
+  assert.match(sections, /Preparás la experiencia una vez\. Cada producto la pone en marcha\./);
 
   assert.doesNotMatch(home, /mobile-optimized-header/);
   assert.doesNotMatch(home, /landing-brand-synergy-band/);
@@ -26,7 +26,7 @@ test("unified release preserves the approved clean home composition", async () =
   );
 });
 
-test("clean footer exposes the verified Inmovar and Inguillen ecosystem links", async () => {
+test("clean footer keeps verified Inmovar links and routes nexID context through About", async () => {
   const [home, styles] = await Promise.all([
     readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
@@ -37,15 +37,14 @@ test("clean footer exposes the verified Inmovar and Inguillen ecosystem links", 
     "https://www.instagram.com/inmov.ar/",
     "https://www.linkedin.com/company/inmovar/",
     "https://www.facebook.com/inmovar.oficial/",
-    "https://inguillen.ar/",
-    "https://www.instagram.com/inguillen/",
-    "https://www.linkedin.com/in/marcelo-guill%C3%A9n-54876527/",
   ]) {
     assert.match(home, new RegExp(href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  assert.match(home, /Ecosistema y equipo/);
-  assert.match(home, /Inguillen · Marcelo Guillén/);
-  assert.doesNotMatch(home, /facebook\.com\/(?:inguillen|marcelo-guillen)/i);
+  assert.match(home, /Ecosistema nexID/);
+  assert.match(home, /<strong>nexID<\/strong>/);
+  assert.match(home, /<Link href="\/about"><Building2 aria-hidden="true" \/>\{footerCopy\.about\}<\/Link>/);
+  assert.doesNotMatch(home, /Inguillen · Marcelo Guillén/);
+  assert.doesNotMatch(home, /inguillen\.ar|instagram\.com\/inguillen|linkedin\.com\/in\/marcelo-guill/i);
   assert.match(styles, /\.site-footer-ecosystem-grid a \{[\s\S]{0,180}min-height:\s*2\.75rem/);
 });
 
