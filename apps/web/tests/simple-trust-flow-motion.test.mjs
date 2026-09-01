@@ -77,8 +77,9 @@ test("three photographic scenes keep localized deterministic overlays and no int
 });
 
 test("trust visuals reserve layout, pause offscreen and become static with reduced motion", () => {
-  assert.match(css, /\.simple-trust-flow-visual \{[\s\S]{0,1200}min-height:\s*8\.5rem/);
+  assert.match(css, /\.simple-trust-flow-visual \{[\s\S]{0,1200}min-height:\s*0/);
   assert.match(css, /\.simple-trust-flow-visual \{[\s\S]{0,1200}aspect-ratio:\s*2\.19 \/ 1/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.simple-trust-flow-visual \{[\s\S]{0,180}min-height:\s*0/);
   assert.match(css, /contain:\s*paint/);
   assert.match(css, /\.trust-photo \{[\s\S]{0,700}container-type:\s*inline-size/);
   assert.match(css, /\.trust-photo__image \{[\s\S]{0,700}object-fit:\s*cover/);
@@ -90,6 +91,10 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.match(css, /1 both paused/);
   assert.doesNotMatch(css, /(?:trust-flow-step|trust-visual)[^;\n]*infinite/);
   assert.match(css, /@keyframes trust-flow-title-enter/);
+  assert.match(css, /@keyframes trust-continuity-travel/);
+  assert.match(css, /\.simple-trust-flow-continuity__rail/);
+  assert.match(css, /simple-trust-flow-continuity__traveller[\s\S]{0,900}both paused/);
+  assert.match(css, /simple-trust-flow-intro\[data-motion-active="true"\] \+ \.simple-trust-flow-continuity/);
   assert.match(css, /@keyframes trust-flow-visual-sheen/);
   assert.match(css, /@keyframes trust-visual-device/);
   assert.match(css, /@keyframes trust-visual-check/);
@@ -97,6 +102,6 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.simple-trust-flow-visual \*/);
   assert.match(css, /\.simple-trust-flow-visual \.trust-visual__animated[\s\S]{0,220}opacity:\s*1 !important/);
   assert.match(css, /\.simple-trust-flow-intro :is\([\s\S]{0,420}opacity:\s*1 !important/);
-  assert.match(css, /\.simple-trust-flow-ambient,[\s\S]{0,120}display:\s*none !important/);
-  assert.match(css, /\.simple-trust-flow-steps li:hover \.simple-trust-flow-visual \{\s*transform:\s*none !important/);
+  assert.match(css, /\.simple-trust-flow-ambient,[\s\S]{0,320}display:\s*none !important/);
+  assert.match(css, /\.simple-trust-flow-steps li:hover,[\s\S]{0,180}transform:\s*none !important/);
 });

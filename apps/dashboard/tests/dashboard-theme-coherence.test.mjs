@@ -63,6 +63,8 @@ test("auth tokens define complete dark and light surfaces instead of recoloring 
   assert.match(globals, /\.dashboard-auth-feature-card \{[\s\S]*background: var\(--auth-feature-bg\) !important/);
   assert.match(globals, /\.dashboard-auth-profile-card \{[\s\S]*background: var\(--auth-profile-bg\) !important/);
   assert.match(globals, /\.dashboard-auth-status-card\[data-state="ready"\]/);
+  assert.match(globals, /\.dashboard-auth-input:-webkit-autofill[\s\S]*-webkit-text-fill-color: var\(--auth-text\) !important/);
+  assert.match(globals, /box-shadow: 0 0 0 1000px var\(--auth-input-bg\) inset !important/);
   assert.match(globals, /@media \(max-width: 640px\) \{[\s\S]*\.dashboard-auth-theme-control/);
 });
 

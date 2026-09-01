@@ -55,6 +55,9 @@ test("SimpleTrustFlow is three plain-language steps, one action and one physical
   assert.match(flow, /<SimpleTrustFlowMotion[\s\S]*id="simple-trust-rail"[\s\S]*ariaLabel=\{copy\.railLabel\}/);
   assert.match(flow, /<HorizontalRailControls[\s\S]*railId="simple-trust-rail"/);
   assert.match(flow, /<SimpleTrustStepVisual kind=\{visualKinds\[index\] \?\? "discover"\} locale=\{locale\} \/>/);
+  assert.match(flow, /Una misma experiencia, en distintos productos/);
+  assert.match(flow, /simple-trust-flow-continuity__rail/);
+  assert.match(flow, /continuityStages: \["Conectar", "Entender", "Activar"\]/);
 
   assert.match(flow, /evaluar el producto físico[^.]{0,100}controles específicos/i);
   assert.match(flow, /avaliar o produto físico[^.]{0,100}controles específicos/i);

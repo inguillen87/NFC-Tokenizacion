@@ -1096,6 +1096,20 @@ html.theme-light textarea::placeholder {
   color: var(--auth-soft) !important;
 }
 
+/* Chrome paints saved credentials with its own pale surface unless every
+   autofill state is explicitly tied back to the active nexID theme. */
+.dashboard-auth-input:-webkit-autofill,
+.dashboard-auth-input:-webkit-autofill:hover,
+.dashboard-auth-input:-webkit-autofill:focus,
+.dashboard-auth-surface input:-webkit-autofill,
+.dashboard-auth-surface input:-webkit-autofill:hover,
+.dashboard-auth-surface input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--auth-text) !important;
+  caret-color: var(--auth-text) !important;
+  box-shadow: 0 0 0 1000px var(--auth-input-bg) inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
 .dashboard-auth-oauth-button {
   background: color-mix(in srgb, var(--auth-accent) 10%, var(--auth-panel-bg)) !important;
   border-color: var(--auth-border-strong) !important;

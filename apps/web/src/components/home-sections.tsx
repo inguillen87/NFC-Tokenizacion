@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, PackageCheck, RadioTower } from "lucide-react";
 import { HorizontalRailControls } from "./horizontal-rail-controls";
+import { HeroImmersiveSignal } from "./hero-immersive-signal";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { SimpleTrustFlowIntroMotion, SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustStepVisual, type SimpleTrustVisualKind } from "./simple-trust-step-visual";
@@ -32,7 +33,7 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
       : "Mirá el recorrido completo del cliente";
 
   return (
-    <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-8 pt-8 lg:pb-12 lg:pt-12">
+    <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-6 pt-8 lg:pb-8 lg:pt-12">
       <div className="hero-immersive-media pointer-events-none absolute inset-x-0 top-0 z-0" aria-hidden="true">
         <Image
           src="/landing/nexid-nfc-immersive.webp"
@@ -43,9 +44,7 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
           className="hero-immersive-image"
         />
         <div className="hero-immersive-veil" />
-        <span className="hero-immersive-ring hero-immersive-ring--one" />
-        <span className="hero-immersive-ring hero-immersive-ring--two" />
-        <span className="hero-immersive-ring hero-immersive-ring--three" />
+        <HeroImmersiveSignal locale={locale} />
       </div>
       <div className="hero-signal-field pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
 
@@ -111,6 +110,8 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
         railLabel: "Product journey steps",
         previous: "Previous step",
         next: "Next step",
+        continuity: "One connected experience, across different products.",
+        continuityStages: ["Connect", "Understand", "Activate"],
         steps: [
           { label: "Tap or scan", body: "NFC or QR opens the product story and the information chosen by the brand." },
           { label: "Get a clear answer", body: "nexID reads the digital tag and shows the result on the phone." },
@@ -127,6 +128,8 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           railLabel: "Etapas da jornada do produto",
           previous: "Etapa anterior",
           next: "Próxima etapa",
+          continuity: "Uma experiência conectada, em diferentes produtos.",
+          continuityStages: ["Conectar", "Entender", "Ativar"],
           steps: [
             { label: "Aproxime ou escaneie", body: "NFC ou QR abre a história do produto e as informações escolhidas pela marca." },
             { label: "Receba uma resposta clara", body: "A nexID lê a etiqueta digital e mostra o resultado no celular." },
@@ -142,6 +145,8 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           railLabel: "Pasos del recorrido del producto",
           previous: "Paso anterior",
           next: "Paso siguiente",
+          continuity: "Una misma experiencia, en distintos productos.",
+          continuityStages: ["Conectar", "Entender", "Activar"],
           steps: [
             { label: "Acercá o escaneá", body: "NFC o QR abre la historia del producto y la información elegida por la marca." },
             { label: "Recibí una respuesta clara", body: "nexID lee la etiqueta digital y muestra el resultado en el celular." },
@@ -150,9 +155,22 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
         };
 
   return (
-    <section id="como-funciona" className="simple-trust-flow-section container-shell py-12 md:py-20">
+    <section id="como-funciona" className="simple-trust-flow-section container-shell py-8 md:py-12">
       <div className="simple-trust-flow-shell">
         <SimpleTrustFlowIntroMotion eyebrow={copy.eyebrow} title={copy.title} body={copy.body} />
+
+        <div className="simple-trust-flow-continuity" aria-hidden="true">
+          <span className="simple-trust-flow-continuity__label">{copy.continuity}</span>
+          <div className="simple-trust-flow-continuity__rail">
+            {copy.continuityStages.map((stage, index) => (
+              <span key={stage} className="simple-trust-flow-continuity__stage">
+                <i>{index + 1}</i>
+                <small>{stage}</small>
+              </span>
+            ))}
+            <b className="simple-trust-flow-continuity__traveller" />
+          </div>
+        </div>
 
         <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
           {copy.steps.map((step, index) => (
