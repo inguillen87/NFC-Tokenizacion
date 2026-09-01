@@ -41,23 +41,26 @@ test("home hero is large, friendly and truthful without becoming a technical das
   for (const body of heroBodies) assert.doesNotMatch(body, /piloto|pilot/i);
 });
 
-test("SimpleTrustFlow is three plain-language steps, one action and one physical-limit note", async () => {
-  const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
+test("SimpleTrustFlow keeps one progressive industry journey, one action and one physical-limit note", async () => {
+  const [sections, journey] = await Promise.all([
+    readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/simple-trust-industry-journey.tsx", import.meta.url), "utf8"),
+  ]);
   const flow = sliceBetween(sections, "export function SimpleTrustFlowSection", "export function CommercialValueSection");
 
-  assert.equal((flow.match(/\{\s*label:/g) ?? []).length, 9, "each of the three locales must expose exactly three steps");
-  assert.match(flow, /copy\.steps\.map/);
   assert.equal((flow.match(/<Link href=/g) ?? []).length, 1, "the compact flow must have one primary action");
   assert.match(flow, /<Link href="\/demo-lab(?:\?[^\"]*)?"/);
   assert.doesNotMatch(flow, /href="\/sun"|audiences:|rubros:|claimTitle:|claimBody:|NFT|tenant|replay|SUN|\bTT\b|custod/i);
   assert.doesNotMatch(flow, /md:grid-cols-4/);
-  assert.match(flow, /\["discover", "signal", "aftercare"\]/);
-  assert.match(flow, /<SimpleTrustFlowMotion[\s\S]*id="simple-trust-rail"[\s\S]*ariaLabel=\{copy\.railLabel\}/);
-  assert.match(flow, /<HorizontalRailControls[\s\S]*railId="simple-trust-rail"/);
-  assert.match(flow, /<SimpleTrustStepVisual kind=\{visualKinds\[index\] \?\? "discover"\} locale=\{locale\} \/>/);
-  assert.match(flow, /Una misma experiencia, en distintos productos/);
-  assert.match(flow, /simple-trust-flow-continuity__rail/);
-  assert.match(flow, /continuityStages: \["Conectar", "Entender", "Activar"\]/);
+  assert.match(flow, /<SimpleTrustIndustryJourney locale=\{locale\} \/>/);
+  assert.match(journey, /\["discover", "signal", "aftercare"\]/);
+  assert.match(journey, /<SimpleTrustFlowMotion/);
+  assert.match(journey, /<HorizontalRailControls/);
+  assert.match(flow, /Un mismo recorrido\. Distintos productos/);
+  assert.match(flow, /Uma jornada\. Produtos diferentes/);
+  assert.match(flow, /One journey\. Different products/);
+  assert.doesNotMatch(flow, /Botella, paquete o bolsa|Garrafa, pacote ou bolsa|Bottle, parcel or pouch/);
+  assert.doesNotMatch(flow, /simple-trust-flow-continuity|continuityStages/);
 
   assert.match(flow, /evaluar el producto físico[^.]{0,100}controles específicos/i);
   assert.match(flow, /avaliar o produto físico[^.]{0,100}controles específicos/i);
@@ -69,9 +72,13 @@ test("CommercialValue restores concise business substance without technical dens
   const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const value = sections.slice(sections.indexOf("export function CommercialValueSection"));
 
-  assert.match(value, /Una relación que sigue generando valor/);
-  assert.match(value, /Uma relação que continua gerando valor/);
-  assert.match(value, /A relationship that keeps creating value/);
+  assert.match(value, /De producto vendido a canal propio/);
+  assert.match(value, /De produto vendido a canal próprio/);
+  assert.match(value, /From sold product to owned channel/);
+  assert.match(value, /commercial-value-transform/);
+  assert.match(value, /Producto entregado/);
+  assert.match(value, /Relación activa/);
+  assert.doesNotMatch(value, /Una relación que sigue generando valor|Uma relação que continua gerando valor|A relationship that keeps creating value/);
   assert.equal((value.match(/icon: (?:PackageCheck|BadgeCheck|RadioTower)/g) ?? []).length, 9);
   assert.match(value, /id="commercial-value-rail"/);
   assert.match(value, /<HorizontalRailControls[\s\S]*railId="commercial-value-rail"/);

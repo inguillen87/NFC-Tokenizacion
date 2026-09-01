@@ -4,8 +4,8 @@ import { ArrowRight, BadgeCheck, PackageCheck, RadioTower } from "lucide-react";
 import { HorizontalRailControls } from "./horizontal-rail-controls";
 import { HeroImmersiveSignal } from "./hero-immersive-signal";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
-import { SimpleTrustFlowIntroMotion, SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
-import { SimpleTrustStepVisual, type SimpleTrustVisualKind } from "./simple-trust-step-visual";
+import { SimpleTrustFlowIntroMotion } from "./simple-trust-flow-motion";
+import { SimpleTrustIndustryJourney } from "./simple-trust-industry-journey";
 
 type Content = {
   hero: {
@@ -99,93 +99,38 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
 export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
-  const visualKinds: SimpleTrustVisualKind[] = ["discover", "signal", "aftercare"];
   const copy = isEn
     ? {
         eyebrow: "How it works",
-        title: "Tap or scan. Three simple steps.",
-        body: "Bottle, parcel or pouch: customers tap or scan, get a clear answer and choose what comes next. Everything happens in the browser, with no app to download.",
+        title: "One journey. Different products.",
+        body: "Choose an industry and see the phone approach, read the tag and unlock the next action. No app required.",
         note: "The answer comes from the digital tag. If a brand also needs to assess the physical product, it can add separate checks for that purpose.",
         primary: "Try the journey",
-        railLabel: "Product journey steps",
-        previous: "Previous step",
-        next: "Next step",
-        continuity: "One connected experience, across different products.",
-        continuityStages: ["Connect", "Understand", "Activate"],
-        steps: [
-          { label: "Tap or scan", body: "NFC or QR opens the product story and the information chosen by the brand." },
-          { label: "Get a clear answer", body: "nexID reads the digital tag and shows the result on the phone." },
-          { label: "Choose what comes next", body: "The brand decides whether the journey offers warranty, benefits or support." },
-        ],
       }
     : isBr
       ? {
           eyebrow: "Como funciona",
-          title: "Aproxime ou escaneie. Três passos simples.",
-          body: "Garrafa, pacote ou bolsa: o cliente aproxima ou escaneia, recebe uma resposta clara e escolhe o próximo passo. Tudo acontece no navegador, sem baixar um app.",
+          title: "Uma jornada. Produtos diferentes.",
+          body: "Escolha um setor e veja o celular se aproximar, ler a etiqueta e liberar a próxima ação. Sem precisar de app.",
           note: "A resposta vem da etiqueta digital. Caso a marca também precise avaliar o produto físico, pode adicionar controles específicos em separado.",
           primary: "Testar a jornada",
-          railLabel: "Etapas da jornada do produto",
-          previous: "Etapa anterior",
-          next: "Próxima etapa",
-          continuity: "Uma experiência conectada, em diferentes produtos.",
-          continuityStages: ["Conectar", "Entender", "Ativar"],
-          steps: [
-            { label: "Aproxime ou escaneie", body: "NFC ou QR abre a história do produto e as informações escolhidas pela marca." },
-            { label: "Receba uma resposta clara", body: "A nexID lê a etiqueta digital e mostra o resultado no celular." },
-            { label: "Escolha o próximo passo", body: "A marca define se a jornada oferece garantia, benefícios ou atendimento." },
-          ],
         }
       : {
           eyebrow: "Cómo funciona",
-          title: "Acercá o escaneá. Tres pasos simples.",
-          body: "Botella, paquete o bolsa: el cliente acerca o escanea, recibe una respuesta clara y elige cómo seguir. Todo sucede en el navegador, sin descargar una app.",
+          title: "Un mismo recorrido. Distintos productos.",
+          body: "Elegí un rubro y mirá cómo el celular se acerca, lee la etiqueta y habilita la próxima acción. Sin app.",
           note: "La respuesta viene de la etiqueta digital. Si una marca también necesita evaluar el producto físico, puede sumar controles específicos por separado.",
           primary: "Probar el recorrido",
-          railLabel: "Pasos del recorrido del producto",
-          previous: "Paso anterior",
-          next: "Paso siguiente",
-          continuity: "Una misma experiencia, en distintos productos.",
-          continuityStages: ["Conectar", "Entender", "Activar"],
-          steps: [
-            { label: "Acercá o escaneá", body: "NFC o QR abre la historia del producto y la información elegida por la marca." },
-            { label: "Recibí una respuesta clara", body: "nexID lee la etiqueta digital y muestra el resultado en el celular." },
-            { label: "Elegí cómo seguir", body: "La marca define si el recorrido ofrece garantía, beneficios o atención." },
-          ],
         };
 
   return (
     <section id="como-funciona" className="simple-trust-flow-section container-shell py-8 md:py-12">
       <div className="simple-trust-flow-shell">
         <SimpleTrustFlowIntroMotion eyebrow={copy.eyebrow} title={copy.title} body={copy.body} />
-
-        <div className="simple-trust-flow-continuity" aria-hidden="true">
-          <span className="simple-trust-flow-continuity__label">{copy.continuity}</span>
-          <div className="simple-trust-flow-continuity__rail">
-            {copy.continuityStages.map((stage, index) => (
-              <span key={stage} className="simple-trust-flow-continuity__stage">
-                <i>{index + 1}</i>
-                <small>{stage}</small>
-              </span>
-            ))}
-            <b className="simple-trust-flow-continuity__traveller" />
-          </div>
-        </div>
-
-        <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
-          {copy.steps.map((step, index) => (
-            <li key={step.label}>
-              <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />
-              <span className="simple-trust-flow-step-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-              <h3 className="simple-trust-flow-step-title">{step.label}</h3>
-              <p className="simple-trust-flow-step-copy">{step.body}</p>
-            </li>
-          ))}
-        </SimpleTrustFlowMotion>
+        <SimpleTrustIndustryJourney locale={locale} />
 
         <div className="simple-trust-flow-footer">
           <p>{copy.note}</p>
-          <HorizontalRailControls railId="simple-trust-rail" itemCount={copy.steps.length} previousLabel={copy.previous} nextLabel={copy.next} />
           <Link href="/demo-lab?scenario=qr-gs1" className="simple-trust-flow-cta">
             {copy.primary}
             <ArrowRight aria-hidden="true" />
@@ -201,43 +146,52 @@ export function CommercialValueSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-        eyebrow: "What changes after the sale",
-        title: "A relationship that keeps creating value.",
-        body: "The product stops being an endpoint and becomes a useful, measurable point of contact.",
+        eyebrow: "The change for your brand",
+        title: "From sold product to owned channel.",
+        body: "After the sale, the same product can inform, assist and generate useful signals for your business.",
+        transformFrom: "Product delivered",
+        transformTo: "Active relationship",
+        transformLabel: "The product moves from an endpoint to a direct brand channel",
         railLabel: "Business value highlights",
         previous: "Previous benefit",
         next: "Next benefit",
         items: [
-          { title: "The right story, at the right moment", body: "Show the batch and the information your brand chooses to publish.", icon: PackageCheck },
-          { title: "After-sales without friction", body: "Bring warranty, benefits and support into one simple experience.", icon: BadgeCheck },
-          { title: "Learning for the next sale", body: "Review readings and actions to improve each experience.", icon: RadioTower },
+          { title: "A direct channel", body: "Inform or activate customers from the product, without asking them to install an app.", icon: PackageCheck },
+          { title: "Organized after-sales", body: "Bring warranty, benefits and enquiries into one configurable journey.", icon: BadgeCheck },
+          { title: "Signals for decisions", body: "See reads and chosen actions to improve content, service and future campaigns.", icon: RadioTower },
         ],
       }
     : isBr
       ? {
-          eyebrow: "O que muda depois da venda",
-          title: "Uma relação que continua gerando valor.",
-          body: "O produto deixa de ser um ponto final e vira um ponto de contato útil e mensurável.",
+          eyebrow: "A mudança para sua marca",
+          title: "De produto vendido a canal próprio.",
+          body: "Depois da venda, o mesmo produto pode informar, atender e gerar sinais úteis para o seu negócio.",
+          transformFrom: "Produto entregue",
+          transformTo: "Relação ativa",
+          transformLabel: "O produto passa de um ponto final a um canal direto da marca",
           railLabel: "Benefícios para o negócio",
           previous: "Benefício anterior",
           next: "Próximo benefício",
           items: [
-            { title: "A história certa, na hora certa", body: "Mostre o lote e as informações que sua marca decide publicar.", icon: PackageCheck },
-            { title: "Pós-venda sem atrito", body: "Reúna garantia, benefícios e atendimento em uma experiência simples.", icon: BadgeCheck },
-            { title: "Aprendizado para a próxima venda", body: "Acompanhe leituras e ações para melhorar cada experiência.", icon: RadioTower },
+            { title: "Um canal direto", body: "Volte a informar ou ativar pelo produto, sem pedir que o cliente instale um app.", icon: PackageCheck },
+            { title: "Pós-venda organizada", body: "Reúna garantia, benefícios e consultas em uma jornada configurável.", icon: BadgeCheck },
+            { title: "Sinais para decidir", body: "Observe leituras e ações escolhidas para melhorar conteúdo, serviço e próximas campanhas.", icon: RadioTower },
           ],
         }
       : {
-          eyebrow: "Lo que cambia después de la venta",
-          title: "Una relación que sigue generando valor.",
-          body: "El producto deja de ser un punto final y se convierte en un punto de contacto útil y medible.",
+          eyebrow: "El cambio para tu marca",
+          title: "De producto vendido a canal propio.",
+          body: "Después de la venta, el mismo producto puede informar, atender y generar señales útiles para tu negocio.",
+          transformFrom: "Producto entregado",
+          transformTo: "Relación activa",
+          transformLabel: "El producto pasa de ser un punto final a un canal directo de la marca",
           railLabel: "Beneficios para el negocio",
           previous: "Beneficio anterior",
           next: "Beneficio siguiente",
           items: [
-            { title: "La historia correcta, en el momento justo", body: "Mostrá el lote y la información que tu marca decide publicar.", icon: PackageCheck },
-            { title: "Postventa sin fricción", body: "Reuní garantía, beneficios y atención en una experiencia simple.", icon: BadgeCheck },
-            { title: "Aprendizaje para la próxima venta", body: "Observá lecturas y acciones para mejorar cada experiencia.", icon: RadioTower },
+            { title: "Un canal directo", body: "Volvé a informar o activar desde el producto, sin pedirle al cliente que instale una app.", icon: PackageCheck },
+            { title: "Postventa ordenada", body: "Reuní garantía, beneficios y consultas en un recorrido configurable.", icon: BadgeCheck },
+            { title: "Señales para decidir", body: "Observá lecturas y acciones elegidas para mejorar contenido, servicio y próximas campañas.", icon: RadioTower },
           ],
         };
 
@@ -248,13 +202,19 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           <p>{copy.eyebrow}</p>
           <h2 id="commercial-value-title">{copy.title}</h2>
           <span>{copy.body}</span>
+          <div className="commercial-value-transform" aria-label={copy.transformLabel}>
+            <span>{copy.transformFrom}</span>
+            <ArrowRight aria-hidden="true" />
+            <strong>{copy.transformTo}</strong>
+          </div>
         </div>
         <div className="commercial-value-rail-shell">
           <ul id="commercial-value-rail" className="commercial-value-grid" aria-label={copy.railLabel} tabIndex={0}>
-            {copy.items.map((item) => {
+            {copy.items.map((item, index) => {
               const Icon = item.icon;
               return (
                 <li key={item.title}>
+                  <span className="commercial-value-index" aria-hidden="true">0{index + 1}</span>
                   <span className="commercial-value-icon"><Icon aria-hidden="true" /></span>
                   <h3>{item.title}</h3>
                   <p>{item.body}</p>

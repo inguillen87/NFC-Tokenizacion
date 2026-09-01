@@ -38,16 +38,20 @@ test("the one-shot journey motion stays passive and exposes no stale playback co
   assert.doesNotMatch(motion, /dangerouslySetInnerHTML|aria-live|split\(""\)/);
 });
 
-test("three photographic scenes keep localized deterministic overlays and no interactive control", async () => {
+test("three phases keep the default Reserva Andina story with deterministic photographic frames", async () => {
   for (const kind of ["discover", "signal", "aftercare"]) {
     assert.match(visuals, new RegExp(`kind === "${kind}"|SimpleTrustVisualKind = [^\\n]*"${kind}"`));
   }
   assert.match(visuals, /import Image from "next\/image"/);
-  for (const asset of ["nfc-wine-scan.png", "nfc-parcel-result.png", "nfc-pouch-actions.png"]) {
+  assert.match(visuals, /const PHOTO_BY_KIND: Record<SimpleTrustVisualKind, string>/);
+  assert.match(visuals, /const PHOTO_BY_INDUSTRY: Record<SimpleTrustIndustry, Record<SimpleTrustVisualKind, string>>/);
+  assert.match(visuals, /src=\{photoByKind\[kind\]\}/);
+  assert.doesNotMatch(visuals, /nfc-parcel-result|nfc-pouch-actions/);
+  for (const asset of ["wine-journey-01.webp", "wine-journey-02.webp", "wine-journey-03.webp"]) {
     assert.match(visuals, new RegExp(asset.replace(".", "\\.")));
     const details = await stat(new URL(`../public/landing/connected-journey/${asset}`, import.meta.url));
-    assert.ok(details.size > 100_000, `${asset} must contain a real photographic scene`);
-    assert.ok(details.size < 2_000_000, `${asset} must remain below the source-asset budget`);
+    assert.ok(details.size > 20_000, `${asset} must contain a photographic scene`);
+    assert.ok(details.size < 100_000, `${asset} must remain lightweight`);
   }
   assert.match(visuals, /aria-hidden="true"/);
   assert.match(visuals, /alt=""/);
@@ -58,20 +62,45 @@ test("three photographic scenes keep localized deterministic overlays and no int
   assert.match(visuals, /DEMO ILUSTRATIVA/);
   assert.match(visuals, /Reserva Andina/);
   assert.match(visuals, /RA-2407/);
-  assert.match(visuals, /RESULTADO DIGITAL/);
+  assert.match(visuals, /EN EL CELULAR/);
   assert.match(visuals, /LECTURA RECIBIDA/);
   assert.match(visuals, /ETIQUETA LEÍDA/);
   assert.match(visuals, /Activar garantía/);
   assert.match(visuals, /Ver beneficios/);
   assert.match(visuals, /Hablar con la marca/);
+  assert.doesNotMatch(visuals, /Paquete identificado|Pacote identificado|Identified parcel|parcel:|pouch:/i);
+  assert.match(visuals, /bottles: \{[\s\S]{0,220}productId: "reserva-andina",[\s\S]{0,120}photoBase: "reserva-andina-wine"/);
+  assert.match(visuals, /tag: \{ x: 31\.2, y: 22\.7 \}/);
+  assert.match(visuals, /style=\{sceneStyle\(visualMeta\)\}/);
+  assert.match(visuals, /signalRoute\(meta, "to-tag"\)/);
+  assert.match(visuals, /signalRoute\(meta, "to-phone"/);
+  assert.match(visuals, /data-trust-product=\{visualMeta\.productId\}/);
+  assert.match(visuals, /data-trust-photo-base=\{visualMeta\.photoBase\}/);
+  assert.match(visuals, /data-trust-anchor=\{`\$\{productId\}-nfc-label`\}/);
+  assert.match(visuals, /data-trust-motion="phone-approach"/);
+  assert.match(visuals, /data-trust-exchange="read-and-response"/);
+  assert.match(visuals, /data-trust-state="response-ready"/);
+  assert.match(visuals, /data-trust-state="actions-ready"/);
+  for (const action of ["warranty", "benefits", "support"]) {
+    assert.match(visuals, new RegExp(`"${action}"`));
+  }
   assert.match(visuals, /trust-photo__image/);
   assert.match(visuals, /trust-photo__info-card--discover/);
   assert.match(visuals, /trust-photo__info-card--result/);
   assert.match(visuals, /trust-photo__actions/);
-  assert.match(visuals, /trust-visual__device trust-visual__animated/);
+  assert.match(visuals, /trust-photo__phone-ui--result/);
+  assert.match(visuals, /trust-photo__phone-ui--actions/);
+  assert.match(visuals, /trust-photo__phone-product/);
+  assert.match(visuals, /trust-photo__actions-product/);
+  assert.match(visuals, /data-trust-scene-summary=\{kind\}/);
+  assert.match(visuals, /trust-visual__device[^"\n]*trust-visual__animated/);
   assert.match(visuals, /trust-visual__tag-group trust-visual__animated/);
   assert.match(visuals, /trust-visual__nfc-ring trust-visual__animated/);
   assert.match(visuals, /trust-visual__check trust-visual__animated/);
+  assert.match(visuals, /trust-visual__phone-approach trust-visual__animated/);
+  assert.match(visuals, /trust-visual__read-request trust-visual__animated/);
+  assert.match(visuals, /trust-visual__response-return trust-visual__animated/);
+  assert.match(visuals, /trust-visual__action-packet trust-visual__animated/);
   assert.match(visuals, /pathLength="1"/);
   assert.doesNotMatch(visuals, /<video|\.gif|https?:\/\/|onClick|tabIndex/i);
 });
@@ -91,10 +120,15 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.match(css, /1 both paused/);
   assert.doesNotMatch(css, /(?:trust-flow-step|trust-visual)[^;\n]*infinite/);
   assert.match(css, /@keyframes trust-flow-title-enter/);
-  assert.match(css, /@keyframes trust-continuity-travel/);
-  assert.match(css, /\.simple-trust-flow-continuity__rail/);
-  assert.match(css, /simple-trust-flow-continuity__traveller[\s\S]{0,900}both paused/);
-  assert.match(css, /simple-trust-flow-intro\[data-motion-active="true"\] \+ \.simple-trust-flow-continuity/);
+  assert.match(css, /@keyframes trust-photo-phone-approach/);
+  assert.match(css, /@keyframes trust-photo-packet-out/);
+  assert.match(css, /@keyframes trust-photo-packet-return/);
+  assert.match(css, /@keyframes trust-visual-travel-reverse/);
+  assert.match(css, /\.trust-photo__phone-ui--actions \{[\s\S]{0,320}background:\s*var\(--trust-photo-panel\)/);
+  assert.match(css, /@media \(max-width: 360px\)[\s\S]{0,800}grid-auto-columns:\s*calc\(100% - 0\.25rem\)/);
+  assert.match(css, /\.trust-visual__phone-approach[\s\S]{0,260}1 both paused/);
+  assert.match(css, /\.trust-visual__response-packet[\s\S]{0,260}trust-photo-packet-return/);
+  assert.doesNotMatch(css, /simple-trust-flow-continuity|trust-continuity-travel/);
   assert.match(css, /@keyframes trust-flow-visual-sheen/);
   assert.match(css, /@keyframes trust-visual-device/);
   assert.match(css, /@keyframes trust-visual-check/);
