@@ -132,14 +132,32 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   );
 });
 
-test("dashboard auth keeps the actionable login first on mobile", () => {
+test("dashboard auth presents identity, access, and secondary status in that mobile hierarchy", () => {
   const loginPage = readFileSync(new URL("../src/app/login/page.tsx", import.meta.url), "utf8");
+  const loginPanel = readFileSync(new URL("../src/components/login-form-panel.tsx", import.meta.url), "utf8");
   const globalStyles = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
   assert.match(loginPage, /min-h-dvh items-start/);
-  assert.match(loginPage, /dashboard-auth-intro order-2/);
-  assert.match(loginPage, /md:order-1/);
-  assert.match(loginPage, /className="order-1 md:order-2"/);
+  assert.match(loginPage, /dashboard-auth-intro-primary order-1/);
+  assert.match(loginPage, /dashboard-auth-panel-column order-2/);
+  assert.match(loginPage, /dashboard-auth-intro-secondary order-3/);
+  assert.ok(
+    loginPage.indexOf("dashboard-auth-intro-primary") < loginPage.indexOf("dashboard-auth-panel-column") &&
+      loginPage.indexOf("dashboard-auth-panel-column") < loginPage.indexOf("dashboard-auth-intro-secondary"),
+    "mobile DOM order must keep identity before access and secondary context",
+  );
+
+  assert.match(loginPanel, /dashboard-auth-access-flow/);
+  assert.match(loginPanel, /dashboard-auth-primary-actions/);
+  assert.match(loginPanel, /dashboard-auth-access-status/);
+  assert.match(
+    globalStyles,
+    /@media \(max-width: 767px\) \{[\s\S]*\.dashboard-auth-access-flow \{[\s\S]*flex-direction:\s*column[\s\S]*\.dashboard-auth-access-status \{[\s\S]*order:\s*10/,
+  );
+  assert.match(
+    globalStyles,
+    /@media \(min-width: 768px\) \{[\s\S]*"intro-primary access-panel"[\s\S]*"intro-secondary access-panel"/,
+  );
 
   assert.match(globalStyles, /body:has\(\.dashboard-auth-surface\) \.helpbot-trigger/);
   assert.match(globalStyles, /body:has\(\.dashboard-auth-surface\) \.helpbot-panel/);

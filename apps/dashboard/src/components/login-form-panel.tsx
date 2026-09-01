@@ -125,8 +125,8 @@ export function LoginFormPanel({
   }
 
   return (
-    <div data-testid="login-enterprise-access-panel">
-      <div data-testid="login-access-status" className="mb-3 grid gap-2 sm:grid-cols-3">
+    <div data-testid="login-enterprise-access-panel" className="dashboard-auth-access-flow">
+      <div data-testid="login-access-status" className="dashboard-auth-access-status mb-3 grid gap-2 sm:grid-cols-3">
         {accessPaths.map((item) => (
           <div
             key={item.label}
@@ -150,7 +150,7 @@ export function LoginFormPanel({
           </div>
         ))}
       </div>
-      <div className="grid gap-3">
+      <div className="dashboard-auth-primary-actions grid gap-3">
         <div data-testid="login-bodega-demo-card" className="dashboard-auth-feature-card rounded-2xl border border-cyan-300/25 p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
@@ -253,20 +253,28 @@ export function LoginFormPanel({
               key={profile.key}
               type="button"
               disabled={!profile.available}
+              data-availability={profile.available ? "available" : "unavailable"}
               onClick={() => useProfile(profile)}
-              title={`Entrar como ${profile.label}`}
-              className="dashboard-auth-profile-card group rounded-xl border border-white/10 p-3 text-left transition hover:border-cyan-300/30 disabled:cursor-not-allowed disabled:opacity-50"
+              title={profile.available ? `Entrar como ${profile.label}` : `${profile.label}: requiere configuración server-side`}
+              className="dashboard-auth-profile-card group rounded-xl border border-white/10 p-3 text-left transition hover:border-cyan-300/30 disabled:cursor-not-allowed"
             >
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-cyan-200 group-disabled:text-slate-500">
                   {profile.role === "super-admin" ? <LockKeyhole className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                 </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-white">{profile.label}</span>
-                  <span className="mt-1 block text-xs text-cyan-200">{profile.email || "Configurar en variables de entorno del server"}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center justify-between gap-2">
+                    <span data-profile-title className="text-sm font-semibold">{profile.label}</span>
+                    <span className="dashboard-auth-profile-availability">
+                      {profile.available ? "Disponible" : "No configurado"}
+                    </span>
+                  </span>
+                  <span data-profile-credential className="mt-1 block text-xs">
+                    {profile.email || "Configurar en variables de entorno del server"}
+                  </span>
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">{profile.note}</p>
+              <p data-profile-note className="mt-2 text-xs">{profile.note}</p>
             </button>
           ))}
         </div>
@@ -278,7 +286,13 @@ export function LoginFormPanel({
         </p>
       ) : null}
 
-      <div className="mt-4 grid gap-3">
+      <form
+        className="dashboard-auth-manual-access mt-4 grid gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
         <div className="dashboard-auth-field-note flex items-start gap-3 rounded-xl border border-white/10 px-3 py-3 text-xs text-slate-300">
           <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
           <span>
@@ -286,6 +300,10 @@ export function LoginFormPanel({
           </span>
         </div>
         <input suppressHydrationWarning
+          type="email"
+          name="email"
+          inputMode="email"
+          autoComplete="username"
           className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
           placeholder={emailPlaceholder}
           value={email}
@@ -293,6 +311,8 @@ export function LoginFormPanel({
         />
         <input suppressHydrationWarning
           type="password"
+          name="password"
+          autoComplete="current-password"
           className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
           placeholder={passwordPlaceholder}
           value={password}
@@ -305,12 +325,12 @@ export function LoginFormPanel({
           Perfil activo: <span className="text-cyan-200">{profileLabel}</span>
           <span className="ml-2 text-slate-500">({role})</span>
         </div>
-        <Button className="w-full" onClick={() => void submit()} disabled={pending}>
+        <Button type="submit" className="w-full" disabled={pending}>
           {loginAction}
         </Button>
         {status ? <p aria-live="polite" className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{status}</p> : null}
         {opsStatus ? <p aria-live="polite" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{opsStatus}</p> : null}
-      </div>
+      </form>
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
         <Link href="/register" className="dashboard-auth-secondary-link rounded-lg border border-white/10 px-2 py-2 text-cyan-300">

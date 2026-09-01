@@ -81,8 +81,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
       <div className="container-shell relative z-10 grid min-h-dvh items-start pb-4 pt-20 sm:pb-6 sm:pt-24 md:place-items-center md:py-10">
         <Card className="dashboard-auth-card w-full max-w-6xl p-3 sm:p-4 md:p-10">
-          <div className="grid gap-5 md:grid-cols-[1.08fr_1fr] md:gap-10">
-            <div className="dashboard-auth-intro order-2 rounded-2xl border border-white/10 bg-slate-950/40 p-4 md:order-1 md:p-6">
+          <div className="dashboard-auth-layout grid gap-5 md:grid-cols-[1.08fr_1fr]">
+            <section
+              aria-labelledby="dashboard-login-title"
+              className="dashboard-auth-intro-primary order-1 rounded-2xl border border-white/10 p-4 md:rounded-none md:border-0 md:p-0"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Link href="/" aria-label="nexID home" className="inline-flex items-center">
                   <BrandLockup size={64} variant="ripple" theme="dark" className="brand-surface-auth" />
@@ -97,7 +100,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </div>
 
               <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Centro de control enterprise</p>
-              <h1 className="mt-3 text-3xl font-bold text-white md:text-4xl">{t.common.login}</h1>
+              <h1 id="dashboard-login-title" className="mt-3 text-3xl font-bold text-white md:text-4xl">{t.common.login}</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
                 Ingreso exclusivo para operaciones nexID: tenants, tags, eventos NFC reportados, CRM, marketplace, señales de riesgo y analytics.
                 El portal de consumidores vive separado para mantener clara la experiencia del comprador final.
@@ -107,25 +110,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 Consola comercial con ingreso controlado, métricas con fuente declarada, exportación de reportes y flujos para operar
                 tenants, tags y clientes sin mezclar el portal consumidor. La disponibilidad productiva se valida por módulo y entorno.
               </div>
+            </section>
 
-              <div className="mt-5 grid gap-2 text-xs">
-                <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-3 py-2 text-violet-100">
-                  ¿Buscás el portal de consumidor con wallet, rewards y marketplace? Entrá en{" "}
-                  <a className="font-semibold text-cyan-200 underline-offset-2 hover:underline" href="https://nexid.lat/login">
-                    nexid.lat/login
-                  </a>
-                  .
-                </div>
-                {visibleRoleCards.map((item) => (
-                  <div key={item.label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-300">
-                    <span className="font-semibold text-cyan-300">{item.label}</span>
-                    <span className="ml-2">{item.description}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="order-1 md:order-2">
+            <div className="dashboard-auth-panel-column order-2 md:order-2">
               <div className="dashboard-auth-panel rounded-2xl border border-white/10 p-3 sm:p-4">
                 <LoginFormPanel
                   emailPlaceholder={t.web.auth.emailPlaceholder}
@@ -141,6 +128,24 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 />
               </div>
             </div>
+
+            <section aria-label="Contexto de acceso" className="dashboard-auth-intro-secondary order-3 rounded-2xl border border-white/10 p-4 md:rounded-none md:border-0 md:p-0">
+              <div className="grid gap-2 text-xs">
+                <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-3 py-2 text-violet-100">
+                  ¿Buscás el portal de consumidor con wallet, rewards y marketplace? Entrá en{" "}
+                  <a className="font-semibold text-cyan-200 underline-offset-2 hover:underline" href="https://nexid.lat/login">
+                    nexid.lat/login
+                  </a>
+                  .
+                </div>
+                {visibleRoleCards.map((item) => (
+                  <div key={item.label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-300">
+                    <span className="font-semibold text-cyan-300">{item.label}</span>
+                    <span className="ml-2">{item.description}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </Card>
       </div>

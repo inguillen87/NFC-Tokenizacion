@@ -59,13 +59,42 @@ test("Clerk surfaces inherit live dashboard theme variables", () => {
 
 test("auth tokens define complete dark and light surfaces instead of recoloring text over dark panels", () => {
   assert.match(globals, /\.dashboard-auth-surface \{[\s\S]*--auth-feature-bg:/);
+  assert.match(globals, /\.dashboard-auth-surface \{[\s\S]*color-scheme: dark/);
   assert.match(globals, /:where\(html\.theme-light, html\[data-theme="light"\]\) \.dashboard-auth-surface \{[\s\S]*--auth-clerk-bg: #ffffff/);
+  assert.match(globals, /:where\(html\.theme-light, html\[data-theme="light"\]\) \.dashboard-auth-surface \{[\s\S]*color-scheme: light/);
   assert.match(globals, /\.dashboard-auth-feature-card \{[\s\S]*background: var\(--auth-feature-bg\) !important/);
   assert.match(globals, /\.dashboard-auth-profile-card \{[\s\S]*background: var\(--auth-profile-bg\) !important/);
   assert.match(globals, /\.dashboard-auth-status-card\[data-state="ready"\]/);
-  assert.match(globals, /\.dashboard-auth-input:-webkit-autofill[\s\S]*-webkit-text-fill-color: var\(--auth-text\) !important/);
+  assert.match(globals, /\.dashboard-auth-surface \.dashboard-auth-input,[\s\S]*color-scheme: dark/);
+  assert.match(globals, /data-theme="light"\]\) \.dashboard-auth-surface \.dashboard-auth-input,[\s\S]*color-scheme: light/);
+  assert.match(globals, /input\.dashboard-auth-input:-webkit-autofill[\s\S]*-webkit-text-fill-color: var\(--auth-text\) !important/);
+  assert.match(globals, /-webkit-box-shadow: 0 0 0 1000px var\(--auth-input-bg\) inset !important/);
   assert.match(globals, /box-shadow: 0 0 0 1000px var\(--auth-input-bg\) inset !important/);
+  assert.match(globals, /input:-moz-autofill/);
   assert.match(globals, /@media \(max-width: 640px\) \{[\s\S]*\.dashboard-auth-theme-control/);
+});
+
+test("manual login is password-manager friendly in both themes", () => {
+  assert.match(loginPanel, /<form[\s\S]*onSubmit=/);
+  assert.match(loginPanel, /type="email"[\s\S]*name="email"[\s\S]*autoComplete="username"/);
+  assert.match(loginPanel, /type="password"[\s\S]*name="password"[\s\S]*autoComplete="current-password"/);
+  assert.match(loginPanel, /<Button type="submit"/);
+});
+
+test("auth brand lockup remains fully visible on 294px-class viewports", () => {
+  assert.match(
+    globals,
+    /@media \(max-width: 319px\) \{[\s\S]*\.dashboard-auth-surface \.brand-surface-auth \{[\s\S]*width:\s*100%[\s\S]*\.brand-mark \{[\s\S]*width:\s*2\.5rem !important[\s\S]*\.brand-wordmark-svg \{[\s\S]*width:\s*calc\(100% - 3rem\) !important/,
+  );
+});
+
+test("unavailable profiles stay legible while communicating that they cannot be selected", () => {
+  assert.match(loginPanel, /data-availability=\{profile\.available \? "available" : "unavailable"\}/);
+  assert.match(loginPanel, /profile\.available \? "Disponible" : "No configurado"/);
+  assert.match(loginPanel, /dashboard-auth-profile-availability/);
+  assert.doesNotMatch(loginPanel, /disabled:opacity-50/);
+  assert.match(globals, /\.dashboard-auth-profile-card:disabled \{[\s\S]*opacity:\s*1[\s\S]*border-style:\s*dashed/);
+  assert.match(globals, /data-availability="unavailable"[\s\S]*\.dashboard-auth-profile-availability/);
 });
 
 test("dashboard navigation avoids dark-only gradients and locale options", () => {
