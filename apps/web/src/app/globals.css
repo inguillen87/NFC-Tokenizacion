@@ -58632,6 +58632,19 @@ html[data-theme="light"] .simple-trust-flow-footer {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .trust-photo-frame > .trust-photo__callout--aftercare {
+    grid-template-areas:
+      "kicker"
+      "product"
+      "label"
+      "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .trust-photo-frame .trust-photo__callout--aftercare > :is(.trust-photo__phone-kicker, .trust-photo__actions-product) {
+    justify-self: start;
+  }
+
   .trust-photo-frame .trust-photo__callout--aftercare .trust-photo__action {
     min-height: 2.35rem;
   }

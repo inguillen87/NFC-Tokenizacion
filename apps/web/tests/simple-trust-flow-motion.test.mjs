@@ -147,6 +147,7 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.match(css, /@media \(max-width: 360px\)[\s\S]{0,800}grid-auto-columns:\s*calc\(100% - 0\.25rem\)/);
   assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame > \.trust-photo__callout--signal \{[\s\S]{0,260}grid-template-areas:[\s\S]{0,180}"product"/);
   assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame \.trust-photo__callout--aftercare > \.trust-photo__action-grid \{[\s\S]{0,120}grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame > \.trust-photo__callout--aftercare \{[\s\S]{0,260}grid-template-areas:[\s\S]{0,180}"kicker"[\s\S]{0,180}"actions"/);
   assert.match(css, /\.trust-visual__phone-approach[\s\S]{0,260}1 both paused/);
   assert.match(css, /\.trust-visual__response-packet[\s\S]{0,260}trust-photo-packet-return/);
   assert.doesNotMatch(css, /simple-trust-flow-continuity|trust-continuity-travel/);
