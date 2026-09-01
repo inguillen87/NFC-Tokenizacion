@@ -81,9 +81,6 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       railLabel: "Product journey steps",
       previous: "Previous step",
       next: "Next step",
-      pauseMotion: "Pause animations",
-      resumeMotion: "Resume animations",
-      motionOff: "Reduced motion is active",
       steps: [
         { label: "Discover the product", body: "Story, batch and brand information, gathered in one place." },
         { label: "Understand the reading", body: "A clear answer about the digital label and its configured checks." },
@@ -100,9 +97,6 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       railLabel: "Etapas da jornada do produto",
       previous: "Etapa anterior",
       next: "Próxima etapa",
-      pauseMotion: "Pausar animações",
-      resumeMotion: "Retomar animações",
-      motionOff: "Movimento reduzido ativo",
       steps: [
         { label: "Conheça o produto", body: "História, lote e informações da marca, reunidos em um só lugar." },
         { label: "Entenda a leitura", body: "Uma resposta clara sobre a etiqueta digital e os controles configurados." },
@@ -118,9 +112,6 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       railLabel: "Pasos del recorrido del producto",
       previous: "Paso anterior",
       next: "Paso siguiente",
-      pauseMotion: "Pausar animaciones",
-      resumeMotion: "Reanudar animaciones",
-      motionOff: "Movimiento reducido activo",
       steps: [
         { label: "Conocé el producto", body: "Historia, lote e información de la marca, reunidos en un solo lugar." },
         { label: "Entendé la lectura", body: "Una respuesta clara sobre la etiqueta digital y los controles configurados." },
@@ -137,13 +128,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           <p className="simple-trust-flow-body">{copy.body}</p>
         </div>
 
-        <SimpleTrustFlowMotion
-          id="simple-trust-rail"
-          ariaLabel={copy.railLabel}
-          pauseLabel={copy.pauseMotion}
-          resumeLabel={copy.resumeMotion}
-          motionOffLabel={copy.motionOff}
-        >
+        <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
           {copy.steps.map((step, index) => (
             <li key={step.label}>
               <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />

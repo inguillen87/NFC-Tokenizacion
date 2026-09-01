@@ -55726,53 +55726,6 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-ring {
   line-height: 1.75;
 }
 
-.simple-trust-flow-motion-controls {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 clamp(1.1rem, 2.6vw, 2.2rem) 0.8rem;
-}
-
-.simple-trust-flow-motion-toggle {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid rgba(103, 232, 249, 0.2);
-  border-radius: 999px;
-  background: rgba(15, 118, 128, 0.1);
-  color: #c8f5f7;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 760;
-  line-height: 1.2;
-  cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
-}
-
-.simple-trust-flow-motion-toggle:hover:not(:disabled) {
-  border-color: rgba(103, 232, 249, 0.42);
-  background: rgba(15, 118, 128, 0.2);
-  color: #ffffff;
-}
-
-.simple-trust-flow-motion-toggle:focus-visible {
-  outline: 3px solid #67e8f9;
-  outline-offset: 3px;
-}
-
-.simple-trust-flow-motion-toggle:disabled {
-  cursor: default;
-  opacity: 0.68;
-}
-
-.simple-trust-flow-motion-toggle svg {
-  width: 0.9rem;
-  height: 0.9rem;
-  flex: 0 0 auto;
-}
-
 .simple-trust-flow-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -56309,20 +56262,6 @@ html[data-theme="light"] .simple-trust-flow-steps p {
   color: #53657a;
 }
 
-html.theme-light .simple-trust-flow-motion-toggle,
-html[data-theme="light"] .simple-trust-flow-motion-toggle {
-  border-color: rgba(15, 118, 128, 0.2);
-  background: rgba(15, 118, 128, 0.07);
-  color: #176a73;
-}
-
-html.theme-light .simple-trust-flow-motion-toggle:hover:not(:disabled),
-html[data-theme="light"] .simple-trust-flow-motion-toggle:hover:not(:disabled) {
-  border-color: rgba(15, 118, 128, 0.38);
-  background: rgba(15, 118, 128, 0.13);
-  color: #0f4f57;
-}
-
 html.theme-light .simple-trust-flow-steps,
 html[data-theme="light"] .simple-trust-flow-steps {
   border-color: rgba(15, 35, 63, 0.1);
@@ -56416,10 +56355,6 @@ html[data-theme="light"] .simple-trust-flow-footer > p {
 
   .simple-trust-flow-intro h2 {
     font-size: clamp(2rem, 9.5vw, 2.65rem);
-  }
-
-  .simple-trust-flow-motion-controls {
-    padding-inline: 1.1rem;
   }
 
   .simple-trust-flow-steps {
@@ -56691,7 +56626,6 @@ html[data-theme="light"] .landing-root .commercial-value-intro h2 {
   html[data-theme="light"] body .landing-root .institutional-video-panel--landing .institutional-video-media--light,
   .institutional-video-light-preview,
   .institutional-video-media--light,
-  .simple-trust-flow-motion-toggle,
   .simple-trust-flow-cta,
   .commercial-value-grid li,
   .simple-trust-flow-visual * {

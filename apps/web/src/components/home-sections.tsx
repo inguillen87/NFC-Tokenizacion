@@ -104,57 +104,48 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
         eyebrow: "How it works",
-        title: "One tap. Three simple steps.",
+        title: "Tap or scan. Three simple steps.",
         body: "Customers tap or scan, understand and choose what to do next. Everything happens in the browser, with no app to download.",
         note: "The answer comes from the digital tag. If a brand also needs to assess the physical product, it can add separate checks for that purpose.",
         primary: "Try the journey",
         railLabel: "Product journey steps",
         previous: "Previous step",
         next: "Next step",
-        pauseMotion: "Pause animations",
-        resumeMotion: "Resume animations",
-        motionOff: "Reduced motion is active",
         steps: [
           { label: "Tap or scan", body: "NFC or QR opens the product story and the information chosen by the brand." },
           { label: "Get a clear answer", body: "nexID reads the digital tag and shows the result on the phone." },
-          { label: "Choose what comes next", body: "Warranty, benefits or support appear in the same journey." },
+          { label: "Choose what comes next", body: "The brand decides whether the journey offers warranty, benefits or support." },
         ],
       }
     : isBr
       ? {
           eyebrow: "Como funciona",
-          title: "Um toque. Três passos simples.",
+          title: "Aproxime ou escaneie. Três passos simples.",
           body: "O cliente aproxima ou escaneia, entende e escolhe o que fazer. Tudo acontece no navegador, sem baixar um app.",
-          note: "A resposta vem da etiqueta digital. Se a marca também precisa avaliar o produto físico, pode adicionar controles específicos em separado.",
+          note: "A resposta vem da etiqueta digital. Caso a marca também precise avaliar o produto físico, pode adicionar controles específicos em separado.",
           primary: "Testar a jornada",
           railLabel: "Etapas da jornada do produto",
           previous: "Etapa anterior",
           next: "Próxima etapa",
-          pauseMotion: "Pausar animações",
-          resumeMotion: "Retomar animações",
-          motionOff: "Movimento reduzido ativo",
           steps: [
             { label: "Aproxime ou escaneie", body: "NFC ou QR abre a história do produto e as informações escolhidas pela marca." },
             { label: "Receba uma resposta clara", body: "A nexID lê a etiqueta digital e mostra o resultado no celular." },
-            { label: "Escolha o próximo passo", body: "Garantia, benefícios ou atendimento aparecem na mesma jornada." },
+            { label: "Escolha o próximo passo", body: "A marca define se a jornada oferece garantia, benefícios ou atendimento." },
           ],
         }
       : {
           eyebrow: "Cómo funciona",
-          title: "Un toque. Tres pasos simples.",
+          title: "Acercá o escaneá. Tres pasos simples.",
           body: "El cliente acerca o escanea, entiende y elige qué hacer. Todo sucede en el navegador, sin descargar una app.",
           note: "La respuesta viene de la etiqueta digital. Si una marca también necesita evaluar el producto físico, puede sumar controles específicos por separado.",
           primary: "Probar el recorrido",
           railLabel: "Pasos del recorrido del producto",
           previous: "Paso anterior",
           next: "Paso siguiente",
-          pauseMotion: "Pausar animaciones",
-          resumeMotion: "Reanudar animaciones",
-          motionOff: "Movimiento reducido activo",
           steps: [
             { label: "Acercá o escaneá", body: "NFC o QR abre la historia del producto y la información elegida por la marca." },
             { label: "Recibí una respuesta clara", body: "nexID lee la etiqueta digital y muestra el resultado en el celular." },
-            { label: "Elegí cómo seguir", body: "Garantía, beneficios o atención aparecen en el mismo recorrido." },
+            { label: "Elegí cómo seguir", body: "La marca define si el recorrido ofrece garantía, beneficios o atención." },
           ],
         };
 
@@ -167,13 +158,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           <p className="simple-trust-flow-body">{copy.body}</p>
         </div>
 
-        <SimpleTrustFlowMotion
-          id="simple-trust-rail"
-          ariaLabel={copy.railLabel}
-          pauseLabel={copy.pauseMotion}
-          resumeLabel={copy.resumeMotion}
-          motionOffLabel={copy.motionOff}
-        >
+        <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
           {copy.steps.map((step, index) => (
             <li key={step.label}>
               <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />

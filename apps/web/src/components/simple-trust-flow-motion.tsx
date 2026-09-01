@@ -1,30 +1,22 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
 import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode, useEffect, useRef, useState } from "react";
 
 export type SimpleTrustFlowMotionProps = {
   children: ReactNode;
   id: string;
   ariaLabel: string;
-  pauseLabel?: string;
-  resumeLabel?: string;
-  motionOffLabel?: string;
 };
 
 export function SimpleTrustFlowMotion({
   children,
   id,
   ariaLabel,
-  pauseLabel = "Pausar animaciones",
-  resumeLabel = "Reanudar animaciones",
-  motionOffLabel = "Movimiento reducido activo",
 }: SimpleTrustFlowMotionProps) {
   const listRef = useRef<HTMLOListElement>(null);
   const [mounted, setMounted] = useState(false);
   const [pageVisible, setPageVisible] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(true);
-  const [userPaused, setUserPaused] = useState(false);
   const [visibleItems, setVisibleItems] = useState<ReadonlySet<number>>(() => new Set());
 
   useEffect(() => {
@@ -85,7 +77,7 @@ export function SimpleTrustFlowMotion({
     };
   }, [id]);
 
-  const motionAllowed = mounted && pageVisible && !reducedMotion && !userPaused;
+  const motionAllowed = mounted && pageVisible && !reducedMotion;
   const motionChildren = Children.map(children, (child, index) => {
     if (!isValidElement(child)) return child;
     return cloneElement(child as ReactElement<{ "data-motion-active"?: string }>, {
@@ -93,37 +85,16 @@ export function SimpleTrustFlowMotion({
     });
   });
 
-  const playbackLabel = !mounted || reducedMotion
-    ? motionOffLabel
-    : userPaused
-      ? resumeLabel
-      : pauseLabel;
-
   return (
-    <>
-      <div className="simple-trust-flow-motion-controls">
-        <button
-          type="button"
-          className="simple-trust-flow-motion-toggle"
-          aria-controls={id}
-          aria-pressed={userPaused}
-          disabled={!mounted || reducedMotion}
-          onClick={() => setUserPaused((paused) => !paused)}
-        >
-          {userPaused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
-          <span>{playbackLabel}</span>
-        </button>
-      </div>
-      <ol
-        id={id}
-        ref={listRef}
-        className="simple-trust-flow-steps"
-        data-motion-ready={mounted && !reducedMotion ? "true" : "false"}
-        aria-label={ariaLabel}
-        tabIndex={0}
-      >
-        {motionChildren}
-      </ol>
-    </>
+    <ol
+      id={id}
+      ref={listRef}
+      className="simple-trust-flow-steps"
+      data-motion-ready={mounted && !reducedMotion ? "true" : "false"}
+      aria-label={ariaLabel}
+      tabIndex={0}
+    >
+      {motionChildren}
+    </ol>
   );
 }

@@ -27,16 +27,10 @@ test("each trust step is observed and runs only while visible and allowed", () =
   assert.doesNotMatch(motion, /setInterval|requestAnimationFrame|framer-motion|lottie/i);
 });
 
-test("the journey exposes one localized and accessible playback control", () => {
+test("the one-shot journey motion stays passive and exposes no stale playback control", () => {
   assert.match(motion, /export type SimpleTrustFlowMotionProps/);
-  assert.match(motion, /pauseLabel\?: string/);
-  assert.match(motion, /resumeLabel\?: string/);
-  assert.match(motion, /motionOffLabel\?: string/);
-  assert.equal((motion.match(/<button/g) ?? []).length, 1);
-  assert.match(motion, /aria-controls=\{id\}/);
-  assert.match(motion, /aria-pressed=\{userPaused\}/);
-  assert.match(motion, /disabled=\{!mounted \|\| reducedMotion\}/);
-  assert.match(motion, /setUserPaused\(\(paused\) => !paused\)/);
+  assert.doesNotMatch(motion, /<button|aria-pressed|userPaused|pauseLabel|resumeLabel|motionOffLabel/);
+  assert.match(motion, /const motionAllowed = mounted && pageVisible && !reducedMotion/);
 });
 
 test("three decorative vector scenes add no media request or interactive control", () => {
@@ -46,12 +40,14 @@ test("three decorative vector scenes add no media request or interactive control
   assert.match(visuals, /aria-hidden="true"/);
   assert.match(visuals, /focusable="false"/);
   assert.match(visuals, /<svg/g);
-  assert.match(visuals, /ACERCÁ O ESCANEÁ/);
+  assert.match(visuals, /DEMO ILUSTRATIVA/);
   assert.match(visuals, /Reserva Andina/);
   assert.match(visuals, /RA-2407/);
   assert.match(visuals, /MENDOZA, AR/);
-  assert.match(visuals, /RESPUESTA CLARA/);
-  assert.match(visuals, /LECTURA COMPLETA/);
+  assert.match(visuals, /RESULTADO DIGITAL/);
+  assert.match(visuals, /RESULTADO DE LA ETIQUETA DIGITAL/);
+  assert.match(visuals, /LECTURA DIGITAL/);
+  assert.match(visuals, /MENSAJE LEÍDO/);
   assert.doesNotMatch(visuals, /<img|<video|\.gif|https?:\/\/|onClick|tabIndex/i);
 });
 
