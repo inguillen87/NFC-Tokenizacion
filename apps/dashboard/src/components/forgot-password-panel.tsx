@@ -56,7 +56,7 @@ export function ForgotPasswordPanel({
         disabled={!deliveryEnabled || pending}
         type="email"
         autoComplete="email"
-        className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+        className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
         placeholder={emailPlaceholder}
         value={email}
         onChange={(event) => setEmail(event.target.value)}

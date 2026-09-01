@@ -5,16 +5,21 @@ import { CheckCircle2, CircleAlert } from "lucide-react";
 import { ClerkGoogleSuperAdminButton } from "../../../components/clerk-google-super-admin-button";
 import { dashboardDemoAccessAllowedForRole } from "../../../lib/dashboard-access-flags";
 import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
+import { getDashboardI18n } from "../../../lib/locale";
+import { AuthThemeControl } from "../../../components/auth-theme-control";
 
-export default function SignInPage() {
+export default async function SignInPage() {
   const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
   const clerkEnabled = isClerkConfiguredForRuntime();
+  const { locale } = await getDashboardI18n();
 
   return (
-    <main data-testid="sign-in-superadmin-page" className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px),radial-gradient(circle_at_74%_18%,rgba(6,182,212,.22),transparent_34%)] [background-size:32px_32px,32px_32px,auto]" />
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_440px]">
-        <section>
+    <main data-testid="sign-in-superadmin-page" className="dashboard-auth-surface relative min-h-screen overflow-hidden bg-slate-950 text-white">
+      <div className="dashboard-auth-backdrop pointer-events-none absolute inset-0" />
+      <div className="dashboard-auth-glow pointer-events-none absolute inset-x-0 top-0 h-72" />
+      <AuthThemeControl locale={locale} />
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 pb-10 pt-24 lg:grid-cols-[1fr_440px] lg:py-10">
+        <section className="dashboard-auth-story">
           <Link href="/login" aria-label="Volver a nexID CRM" className="inline-flex items-center">
             <BrandLockup size={72} variant="ripple" theme="dark" />
           </Link>
@@ -27,14 +32,14 @@ export default function SignInPage() {
             demos comerciales siguen separados para no mezclar operaciones enterprise con el portal consumidor.
           </p>
           <div data-testid="sign-in-auth-status" className="mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
-            <div className={`rounded-2xl border p-4 ${clerkEnabled ? "border-emerald-300/20 bg-emerald-400/10" : "border-amber-300/25 bg-amber-400/10"}`}>
+            <div data-state={clerkEnabled ? "ready" : "attention"} className={`dashboard-auth-status-card rounded-2xl border p-4 ${clerkEnabled ? "border-emerald-300/20 bg-emerald-400/10" : "border-amber-300/25 bg-amber-400/10"}`}>
               <div className="flex items-center gap-2">
                 {clerkEnabled ? <CheckCircle2 className="h-4 w-4 text-emerald-200" /> : <CircleAlert className="h-4 w-4 text-amber-200" />}
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-300">Google/Clerk</p>
               </div>
               <p className="mt-2 text-sm font-black text-white">{clerkEnabled ? "OAuth live en este deploy" : "OAuth pendiente de env live"}</p>
             </div>
-            <div className={`rounded-2xl border p-4 ${bodegaDemoAllowed ? "border-cyan-300/20 bg-cyan-400/10" : "border-amber-300/25 bg-amber-400/10"}`}>
+            <div data-state={bodegaDemoAllowed ? "ready" : "attention"} className={`dashboard-auth-status-card rounded-2xl border p-4 ${bodegaDemoAllowed ? "border-cyan-300/20 bg-cyan-400/10" : "border-amber-300/25 bg-amber-400/10"}`}>
               <div className="flex items-center gap-2">
                 {bodegaDemoAllowed ? <CheckCircle2 className="h-4 w-4 text-cyan-200" /> : <CircleAlert className="h-4 w-4 text-amber-200" />}
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-300">Demo Bodega</p>
@@ -43,7 +48,7 @@ export default function SignInPage() {
             </div>
           </div>
           <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left">
+            <div className="dashboard-auth-panel dashboard-auth-panel--soft rounded-2xl border border-white/10 p-4 text-left">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Fundador allowlisted</p>
               <h2 className="mt-2 text-lg font-black text-white">Super Admin nexID</h2>
               <p className="mt-2 text-sm leading-5 text-slate-300">
@@ -56,7 +61,7 @@ export default function SignInPage() {
                 prefetch={false}
                 data-testid="sign-in-bodega-demo-link"
                 title="Entrar como Bodega Balmec"
-                className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 text-left transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
+                className="dashboard-auth-profile-card rounded-2xl border border-cyan-300/25 p-4 text-left transition hover:border-cyan-200/70"
               >
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Demo comercial 12h</p>
                 <h2 className="mt-2 text-lg font-black text-white">Bodega Balmec</h2>
@@ -65,7 +70,7 @@ export default function SignInPage() {
                 </p>
               </Link>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left opacity-80">
+              <div className="dashboard-auth-panel dashboard-auth-panel--soft rounded-2xl border border-white/10 p-4 text-left opacity-80">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Demo deshabilitada</p>
                 <h2 className="mt-2 text-lg font-black text-white">Bodega Balmec</h2>
                 <p className="mt-2 text-sm leading-5 text-slate-400">Este entorno requiere credenciales de tenant.</p>
@@ -79,8 +84,8 @@ export default function SignInPage() {
             Ver todos los perfiles del CRM
           </Link>
         </section>
-        <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(6,182,212,0.16)] backdrop-blur">
-          <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <section className="dashboard-auth-card rounded-3xl border border-white/10 p-4 shadow-[0_30px_100px_rgba(6,182,212,0.16)] backdrop-blur">
+          <div className="dashboard-auth-panel dashboard-auth-panel--soft mb-4 rounded-2xl border border-white/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Ingreso Google allowlisted</p>
             <p className="mt-2 text-sm leading-5 text-slate-300">
               Google prueba que sos el titular del correo. nexID solo crea sesión Super Admin si ese correo está aprobado.
@@ -90,9 +95,9 @@ export default function SignInPage() {
             <div data-testid="sign-in-clerk-live-panel" className="grid gap-4">
               <ClerkGoogleSuperAdminButton
                 label="Continuar con Google allowlisted"
-                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-cyan-300/45 bg-cyan-400 px-5 py-4 text-sm font-black text-slate-950 shadow-[0_22px_55px_rgba(34,211,238,0.22)] transition hover:bg-cyan-300 disabled:cursor-wait disabled:opacity-70"
+                className="dashboard-auth-oauth-button dashboard-auth-oauth-button--solid flex w-full items-center justify-center gap-3 rounded-2xl border border-cyan-300/45 px-5 py-4 text-sm font-black shadow-[0_22px_55px_rgba(34,211,238,0.22)] transition disabled:cursor-wait disabled:opacity-70"
               />
-              <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-3">
+              <div className="dashboard-auth-panel dashboard-auth-panel--inset rounded-2xl border border-white/10 p-3">
                 <p className="px-2 pb-3 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
                   Fallback Clerk
                 </p>
@@ -103,7 +108,17 @@ export default function SignInPage() {
                   forceRedirectUrl="/auth/clerk/super-admin"
                   fallbackRedirectUrl="/auth/clerk/super-admin"
                   appearance={{
-                    variables: { colorPrimary: "#22d3ee", colorBackground: "#020617" },
+                    variables: {
+                      colorPrimary: "var(--auth-accent)",
+                      colorPrimaryForeground: "var(--auth-primary-foreground)",
+                      colorBackground: "var(--auth-clerk-bg)",
+                      colorForeground: "var(--auth-text)",
+                      colorMutedForeground: "var(--auth-muted)",
+                      colorInput: "var(--auth-input-bg)",
+                      colorInputForeground: "var(--auth-text)",
+                      colorBorder: "var(--auth-border-solid)",
+                      borderRadius: "0.875rem",
+                    },
                   }}
                 />
               </div>

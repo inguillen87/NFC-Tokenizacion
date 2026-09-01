@@ -3,6 +3,7 @@ import { BrandLockup, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { ForgotPasswordPanel } from "../../components/forgot-password-panel";
+import { AuthThemeControl } from "../../components/auth-theme-control";
 
 export default async function ForgotPasswordPage() {
   const { t, locale } = await getDashboardI18n();
@@ -10,9 +11,11 @@ export default async function ForgotPasswordPage() {
   const deliveryEnabled = process.env.AUTH_PASSWORD_RESET_DELIVERY_ENABLED === "true";
 
   return (
-    <main className="container-shell grid min-h-screen place-items-center py-10">
-      <Card className="w-full max-w-md p-8">
-        <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={30} variant="pulse" theme="dark" /></Link>
+    <main className="dashboard-auth-surface relative grid min-h-screen place-items-center overflow-hidden px-4 pb-10 pt-24 md:py-10">
+      <div className="dashboard-auth-backdrop pointer-events-none absolute inset-0" />
+      <AuthThemeControl locale={locale} />
+      <Card className="dashboard-auth-card relative z-10 w-full max-w-md p-8">
+        <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={30} variant="pulse" theme="dark" className="brand-surface-auth" /></Link>
         <h1 className="mt-4 text-2xl font-bold text-white">{t.dashboard.forgotPassword}</h1>
         <p className="mt-2 text-sm text-slate-400">{deliveryEnabled ? t.dashboard.auth.forgotBody : "La recuperacion automatica requiere un proveedor de email o SMS configurado y confirmado."}</p>
         <ForgotPasswordPanel emailPlaceholder={t.web.auth.emailPlaceholder} actionLabel={copy.auth.forgotAction} deliveryEnabled={deliveryEnabled} />

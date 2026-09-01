@@ -4,6 +4,9 @@
 
 :root {
   color-scheme: dark light;
+  --dashboard-chart-tooltip-bg: #020617;
+  --dashboard-chart-tooltip-border: rgba(255, 255, 255, 0.12);
+  --dashboard-chart-tooltip-text: #e2e8f0;
   --dash-bg: #020617;
   --dash-bg-soft: #07111f;
   --dash-panel: rgba(15, 23, 42, 0.78);
@@ -67,6 +70,22 @@ select {
 .dashboard-header,
 .dashboard-sidebar {
   border-color: rgba(255, 255, 255, 0.06);
+}
+
+.dashboard-role-card {
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.9));
+}
+
+.dashboard-ops-tools-card {
+  background: linear-gradient(180deg, rgba(8, 47, 73, 0.44), rgba(2, 6, 23, 0.12));
+}
+
+.dashboard-ops-tool-link {
+  background: rgba(2, 6, 23, 0.82);
+}
+
+.dashboard-ops-tool-link:hover {
+  background: rgba(8, 47, 73, 0.74);
 }
 
 .admin-notification-bell__icon {
@@ -264,8 +283,12 @@ select {
 }
 
 
-html.theme-light {
+html.theme-light,
+html[data-theme="light"] {
   color-scheme: light;
+  --dashboard-chart-tooltip-bg: #ffffff;
+  --dashboard-chart-tooltip-border: rgba(100, 116, 139, 0.28);
+  --dashboard-chart-tooltip-text: #0f172a;
   --dash-bg: #f7fbff;
   --dash-bg-soft: #eef6ff;
   --dash-panel: rgba(255, 255, 255, 0.9);
@@ -352,12 +375,15 @@ html.theme-light .brand-surface-auth .brand-wordmark-svg {
 }
 
 
-.locale-switcher select {
-  border: 0;
+.locale-switcher {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(2, 6, 23, 0.48);
+  color: #e2e8f0;
   outline: 0;
 }
 
-html.theme-light .locale-switcher {
+html.theme-light .locale-switcher,
+html[data-theme="light"] .locale-switcher {
   border-color: rgba(15,23,42,0.2);
   background: rgba(255,255,255,0.88);
   color: #0f172a;
@@ -857,6 +883,27 @@ html.theme-light .dashboard-sidebar {
   border-color: rgba(148, 163, 184, 0.32) !important;
 }
 
+:where(html.theme-light, html[data-theme="light"]) .dashboard-role-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(239, 247, 255, 0.96)) !important;
+  border-color: rgba(100, 116, 139, 0.24) !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-ops-tools-card {
+  background: linear-gradient(180deg, rgba(236, 254, 255, 0.96), rgba(248, 252, 255, 0.96)) !important;
+  border-color: rgba(8, 145, 178, 0.22) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-ops-tool-link {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(8, 145, 178, 0.24) !important;
+  color: #075985 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-ops-tool-link:hover {
+  background: rgba(224, 242, 254, 0.96) !important;
+}
+
 html.theme-light aside nav a {
   color: #334155 !important;
   border-color: transparent !important;
@@ -887,50 +934,313 @@ html.theme-light textarea::placeholder {
   color: #64748b !important;
 }
 
-html.theme-light .dashboard-auth-surface {
+.dashboard-auth-surface {
+  --auth-page-bg: #020617;
+  --auth-page-glow: rgba(34, 211, 238, 0.2);
+  --auth-card-bg:
+    radial-gradient(circle at 16% 8%, rgba(34, 211, 238, 0.09), transparent 34%),
+    linear-gradient(150deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.96));
+  --auth-intro-bg:
+    radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.09), transparent 36%),
+    rgba(2, 10, 24, 0.82);
+  --auth-panel-bg: rgba(7, 17, 31, 0.86);
+  --auth-panel-soft-bg: rgba(15, 23, 42, 0.62);
+  --auth-panel-inset-bg: rgba(2, 6, 23, 0.82);
+  --auth-feature-bg:
+    radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.2), transparent 34%),
+    linear-gradient(145deg, rgba(8, 47, 73, 0.82), rgba(15, 23, 42, 0.94));
+  --auth-profile-bg: rgba(2, 6, 23, 0.72);
+  --auth-profile-hover: rgba(8, 47, 73, 0.76);
+  --auth-input-bg: rgba(2, 6, 23, 0.9);
+  --auth-clerk-bg: #07111f;
+  --auth-text: #f8fafc;
+  --auth-muted: #cbd5e1;
+  --auth-soft: #94a3b8;
+  --auth-accent: #22d3ee;
+  --auth-accent-strong: #67e8f9;
+  --auth-primary-foreground: #083344;
+  --auth-border: rgba(148, 163, 184, 0.2);
+  --auth-border-solid: #334155;
+  --auth-border-strong: rgba(103, 232, 249, 0.28);
+  --auth-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+  isolation: isolate;
+  background: var(--auth-page-bg) !important;
+  color: var(--auth-text);
+}
+
+.dashboard-auth-backdrop {
+  z-index: -2;
   background:
-    radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.16), transparent 34%),
-    radial-gradient(circle at 86% 8%, rgba(139, 92, 246, 0.13), transparent 36%),
-    linear-gradient(180deg, #f8fbff, #eef4ff 68%, #f5f8ff) !important;
+    linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    radial-gradient(circle at 78% 15%, rgba(6, 182, 212, 0.2), transparent 34%),
+    radial-gradient(circle at 14% 0%, rgba(99, 102, 241, 0.11), transparent 32%);
+  background-size: 32px 32px, 32px 32px, auto, auto;
 }
 
-html.theme-light .dashboard-auth-card,
-html.theme-light .dashboard-auth-intro {
+.dashboard-auth-glow {
+  z-index: -1;
   background:
-    radial-gradient(circle at 16% 8%, rgba(34, 211, 238, 0.1), transparent 32%),
-    linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(239, 246, 255, 0.92)) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
+    radial-gradient(circle at 22% 18%, rgba(45, 212, 191, 0.18), transparent 34%),
+    radial-gradient(circle at 70% 12%, rgba(129, 140, 248, 0.17), transparent 38%);
 }
 
-html.theme-light .dashboard-auth-surface [class*="bg-white/"],
-html.theme-light .dashboard-auth-surface [class*="bg-cyan-500/"],
-html.theme-light .dashboard-auth-surface [class*="bg-violet-500/"],
-html.theme-light .dashboard-auth-surface [class*="bg-emerald-500/"],
-html.theme-light .dashboard-auth-surface [class*="bg-amber-500/"] {
-  background: rgba(255, 255, 255, 0.72) !important;
-  border-color: rgba(148, 163, 184, 0.34) !important;
+.dashboard-auth-theme-control {
+  position: absolute;
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  top: clamp(0.75rem, 2vw, 1.5rem);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.38rem 0.42rem 0.38rem 0.8rem;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-panel-bg);
+  color: var(--auth-muted);
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.2);
+  backdrop-filter: blur(18px);
 }
 
-html.theme-light .dashboard-auth-surface input {
+.dashboard-auth-theme-label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dashboard-auth-card {
+  background: var(--auth-card-bg) !important;
+  border-color: var(--auth-border) !important;
+  color: var(--auth-text) !important;
+  box-shadow: var(--auth-shadow) !important;
+}
+
+.dashboard-auth-intro {
+  background: var(--auth-intro-bg) !important;
+  border-color: var(--auth-border) !important;
+}
+
+.dashboard-auth-panel {
+  background: var(--auth-panel-bg) !important;
+  border-color: var(--auth-border) !important;
+  color: var(--auth-text) !important;
+}
+
+.dashboard-auth-panel--soft {
+  background: var(--auth-panel-soft-bg) !important;
+}
+
+.dashboard-auth-panel--inset {
+  background: var(--auth-panel-inset-bg) !important;
+}
+
+.dashboard-auth-feature-card {
+  background: var(--auth-feature-bg) !important;
+  border-color: var(--auth-border-strong) !important;
+  color: var(--auth-text) !important;
+}
+
+.dashboard-auth-feature-chip,
+.dashboard-auth-field-note,
+.dashboard-auth-secondary-link {
+  background: var(--auth-panel-soft-bg) !important;
+  border-color: var(--auth-border) !important;
+}
+
+.dashboard-auth-feature-chip {
+  color: var(--auth-accent-strong) !important;
+}
+
+.dashboard-auth-profile-card {
+  background: var(--auth-profile-bg) !important;
+  border-color: var(--auth-border) !important;
+}
+
+.dashboard-auth-profile-card:hover {
+  background: var(--auth-profile-hover) !important;
+  border-color: var(--auth-border-strong) !important;
+}
+
+.dashboard-auth-status-card[data-state="ready"] {
+  background: rgba(16, 185, 129, 0.09) !important;
+  border-color: rgba(110, 231, 183, 0.24) !important;
+}
+
+.dashboard-auth-status-card[data-state="attention"] {
+  background: rgba(245, 158, 11, 0.09) !important;
+  border-color: rgba(252, 211, 77, 0.26) !important;
+}
+
+.dashboard-auth-input,
+.dashboard-auth-surface input,
+.dashboard-auth-surface select,
+.dashboard-auth-surface textarea {
   min-height: 2.75rem;
-  background: rgba(255, 255, 255, 0.94) !important;
-  border-color: rgba(148, 163, 184, 0.46) !important;
-  color: #0f172a !important;
+  background: var(--auth-input-bg) !important;
+  border-color: var(--auth-border) !important;
+  color: var(--auth-text) !important;
+  color-scheme: inherit;
 }
 
-html.theme-light .dashboard-auth-surface input::placeholder {
-  color: #64748b !important;
+.dashboard-auth-input:focus,
+.dashboard-auth-surface input:focus,
+.dashboard-auth-surface select:focus,
+.dashboard-auth-surface textarea:focus {
+  border-color: var(--auth-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--auth-accent) 18%, transparent);
 }
 
-html.theme-light .dashboard-auth-surface a,
-html.theme-light .dashboard-auth-surface button {
+.dashboard-auth-surface input::placeholder,
+.dashboard-auth-surface textarea::placeholder {
+  color: var(--auth-soft) !important;
+}
+
+.dashboard-auth-oauth-button {
+  background: color-mix(in srgb, var(--auth-accent) 10%, var(--auth-panel-bg)) !important;
+  border-color: var(--auth-border-strong) !important;
+  color: var(--auth-accent-strong) !important;
+}
+
+.dashboard-auth-oauth-button:hover {
+  background: color-mix(in srgb, var(--auth-accent) 18%, var(--auth-panel-bg)) !important;
+}
+
+.dashboard-auth-oauth-button--solid,
+.dashboard-auth-surface .ui-btn--primary {
+  background: linear-gradient(120deg, #67e8f9, #22d3ee, #38bdf8) !important;
+  border-color: rgba(103, 232, 249, 0.48) !important;
+  color: #083344 !important;
+}
+
+.dashboard-auth-surface a,
+.dashboard-auth-surface button {
   font-weight: 700;
 }
 
-html.theme-light .dashboard-auth-surface .ui-btn--primary {
-  background: linear-gradient(120deg, #67e8f9, #22d3ee, #38bdf8) !important;
-  color: #083344 !important;
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface {
+  --auth-page-bg: #f5f8ff;
+  --auth-page-glow: rgba(14, 165, 233, 0.12);
+  --auth-card-bg:
+    radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.07), transparent 35%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.99), rgba(246, 250, 255, 0.98));
+  --auth-intro-bg:
+    radial-gradient(circle at 16% 8%, rgba(34, 211, 238, 0.08), transparent 34%),
+    linear-gradient(150deg, #ffffff, #f3f9ff);
+  --auth-panel-bg: rgba(255, 255, 255, 0.97);
+  --auth-panel-soft-bg: rgba(241, 247, 253, 0.96);
+  --auth-panel-inset-bg: rgba(248, 251, 255, 0.98);
+  --auth-feature-bg:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.11), transparent 38%),
+    linear-gradient(145deg, #f7fdff, #edf8ff 54%, #f8fbff);
+  --auth-profile-bg: rgba(248, 251, 255, 0.98);
+  --auth-profile-hover: rgba(236, 248, 255, 0.98);
+  --auth-input-bg: #ffffff;
+  --auth-clerk-bg: #ffffff;
+  --auth-text: #10213b;
+  --auth-muted: #43546c;
+  --auth-soft: #64748b;
+  --auth-accent: #0e7490;
+  --auth-accent-strong: #075985;
+  --auth-primary-foreground: #ffffff;
+  --auth-border: rgba(100, 116, 139, 0.28);
+  --auth-border-solid: #cbd5e1;
+  --auth-border-strong: rgba(8, 145, 178, 0.32);
+  --auth-shadow: 0 28px 78px rgba(15, 23, 42, 0.12);
+  color-scheme: light;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-backdrop {
+  background:
+    linear-gradient(rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+    radial-gradient(circle at 84% 10%, rgba(59, 130, 246, 0.12), transparent 35%),
+    radial-gradient(circle at 8% 0%, rgba(45, 212, 191, 0.13), transparent 32%),
+    linear-gradient(180deg, #f8fbff, #edf5ff 70%, #f7fbff);
+  background-size: 32px 32px, 32px 32px, auto, auto, auto;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-glow {
+  background:
+    radial-gradient(circle at 22% 18%, rgba(45, 212, 191, 0.12), transparent 34%),
+    radial-gradient(circle at 70% 12%, rgba(129, 140, 248, 0.1), transparent 38%);
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-status-card[data-state="ready"] {
+  background: linear-gradient(145deg, rgba(236, 253, 245, 0.98), rgba(247, 254, 251, 0.98)) !important;
+  border-color: rgba(5, 150, 105, 0.25) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-status-card[data-state="attention"] {
+  background: linear-gradient(145deg, rgba(255, 251, 235, 0.98), rgba(255, 253, 245, 0.98)) !important;
+  border-color: rgba(180, 83, 9, 0.24) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface [class*="bg-white/"] {
+  background: rgba(248, 251, 255, 0.96) !important;
+  border-color: var(--auth-border) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface [class*="bg-cyan-500/"],
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface [class*="bg-cyan-400/"] {
+  background: rgba(8, 145, 178, 0.08) !important;
+  border-color: rgba(8, 145, 178, 0.24) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface [class*="bg-violet-500/"] {
+  background: rgba(109, 40, 217, 0.07) !important;
+  border-color: rgba(109, 40, 217, 0.2) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface [class*="bg-emerald-"],
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface [class*="bg-amber-"] {
+  border-color: var(--auth-border) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-white,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-slate-100 {
+  color: var(--auth-text) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-slate-200,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-slate-300,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-slate-400 {
+  color: var(--auth-muted) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-slate-500 {
+  color: var(--auth-soft) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-cyan-50,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-cyan-100,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-cyan-200,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-cyan-300 {
+  color: var(--auth-accent-strong) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-emerald-100,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-emerald-200 {
+  color: #047857 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-amber-50,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-amber-100,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-amber-200 {
+  color: #92400e !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-rose-100,
+:where(html.theme-light, html[data-theme="light"]) .dashboard-auth-surface .text-rose-200 {
+  color: #be123c !important;
+}
+
+@media (max-width: 640px) {
+  .dashboard-auth-theme-control {
+    left: 0.75rem;
+    right: 0.75rem;
+    justify-content: space-between;
+  }
 }
 
 body:has(.dashboard-auth-surface) .helpbot-hint,
@@ -1123,6 +1433,22 @@ html.theme-light .maplibregl-ctrl-attrib a {
   color: #0369a1 !important;
 }
 
+:where(html.theme-light, html[data-theme="light"]) .maplibregl-ctrl-group {
+  border-color: rgba(100, 116, 139, 0.28) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.13) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .maplibregl-ctrl-group button + button {
+  border-top-color: rgba(100, 116, 139, 0.22) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+:where(html.theme-light, html[data-theme="light"]) .maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
+:where(html.theme-light, html[data-theme="light"]) .maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon {
+  filter: none;
+}
+
 body.nexid-crm-overlay-active {
   overflow-x: hidden;
 }
@@ -1224,6 +1550,22 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
 
 .nexid-account-dialog:not([open]) {
   display: none !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-dialog {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(14, 165, 233, 0.11), transparent 34%),
+    rgba(247, 251, 255, 0.99) !important;
+  color: #0f172a !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-dialog::backdrop,
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-scrim,
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-backdrop {
+  background:
+    radial-gradient(circle at 78% 8%, rgba(14, 165, 233, 0.1), transparent 34%),
+    rgba(226, 235, 247, 0.92) !important;
+  backdrop-filter: blur(8px) saturate(0.88) !important;
 }
 
 #nexid-account-menu-root {
@@ -1329,13 +1671,20 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   -webkit-overflow-scrolling: touch;
 }
 
-.nexid-account-layer .tenant-account-panel,
-html.theme-light .nexid-account-layer .tenant-account-panel,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
+.nexid-account-layer .tenant-account-panel {
   background:
     radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.16), transparent 35%),
     linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: #f8fafc !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer,
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel {
+  background:
+    radial-gradient(circle at 88% 6%, rgba(14, 165, 233, 0.1), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #f4f9ff 48%, #f8fbff 100%) !important;
+  color: #0f172a !important;
+  box-shadow: -34px 0 100px rgba(15, 23, 42, 0.16) !important;
 }
 
 html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
@@ -1344,9 +1693,9 @@ html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-white/"]
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-900"],
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-white/"] {
-  background: rgba(15, 23, 42, 0.62) !important;
-  border-color: rgba(148, 163, 184, 0.2) !important;
-  color: #f8fafc !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(100, 116, 139, 0.24) !important;
+  color: #0f172a !important;
 }
 
 html.theme-light .nexid-account-layer .tenant-account-panel .text-white,
@@ -1355,7 +1704,7 @@ html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-200,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-white,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-100,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-200 {
-  color: #f8fafc !important;
+  color: #0f172a !important;
 }
 
 html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-300,
@@ -1364,40 +1713,50 @@ html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-500,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-300,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-400,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-500 {
-  color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
-.nexid-account-layer .tenant-account-panel__header,
-html.theme-light .nexid-account-layer .tenant-account-panel__header,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header {
+.nexid-account-layer .tenant-account-panel__header {
   background:
     radial-gradient(circle at 85% 12%, rgba(34, 211, 238, 0.22), transparent 40%),
     linear-gradient(135deg, #0f172a, #07111f) !important;
   color: #f8fafc !important;
 }
 
-.nexid-account-layer .tenant-account-panel__header .text-white,
-html.theme-light .nexid-account-layer .tenant-account-panel__header .text-white,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .text-white {
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel__header,
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel__footer,
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer [data-testid="tenant-account-workspace-command-center"] {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(236, 248, 255, 0.96)) !important;
+  border-color: rgba(8, 145, 178, 0.2) !important;
+  color: #0f172a !important;
+}
+
+.nexid-account-layer .tenant-account-panel__header .text-white {
   color: #f8fafc !important;
 }
 
 .nexid-account-layer .tenant-account-panel__header .text-slate-300,
-.nexid-account-layer .tenant-account-panel__header .text-slate-400,
-html.theme-light .nexid-account-layer .tenant-account-panel__header .text-slate-300,
-html.theme-light .nexid-account-layer .tenant-account-panel__header .text-slate-400,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .text-slate-300,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .text-slate-400 {
+.nexid-account-layer .tenant-account-panel__header .text-slate-400 {
   color: #cbd5e1 !important;
 }
 
 .nexid-account-layer .tenant-account-panel__header .text-cyan-100,
-.nexid-account-layer .tenant-account-panel__header .text-cyan-200,
-html.theme-light .nexid-account-layer .tenant-account-panel__header .text-cyan-100,
-html.theme-light .nexid-account-layer .tenant-account-panel__header .text-cyan-200,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .text-cyan-100,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .text-cyan-200 {
+.nexid-account-layer .tenant-account-panel__header .text-cyan-200 {
   color: #a5f3fc !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel__header .text-white {
+  color: #0f172a !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel__header .text-slate-300,
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel__header .text-slate-400 {
+  color: #475569 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel__header .text-cyan-100,
+:where(html.theme-light, html[data-theme="light"]) .nexid-account-layer .tenant-account-panel__header .text-cyan-200 {
+  color: #075985 !important;
 }
 
 html.nexid-account-menu-open .nexid-crm-shell,

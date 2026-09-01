@@ -105,7 +105,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
     ? {
         eyebrow: "How it works",
         title: "Tap or scan. Three simple steps.",
-        body: "Customers tap or scan, understand and choose what to do next. Everything happens in the browser, with no app to download.",
+        body: "Bottle, parcel or pouch: customers tap or scan, get a clear answer and choose what comes next. Everything happens in the browser, with no app to download.",
         note: "The answer comes from the digital tag. If a brand also needs to assess the physical product, it can add separate checks for that purpose.",
         primary: "Try the journey",
         railLabel: "Product journey steps",
@@ -121,7 +121,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       ? {
           eyebrow: "Como funciona",
           title: "Aproxime ou escaneie. Três passos simples.",
-          body: "O cliente aproxima ou escaneia, entende e escolhe o que fazer. Tudo acontece no navegador, sem baixar um app.",
+          body: "Garrafa, pacote ou bolsa: o cliente aproxima ou escaneia, recebe uma resposta clara e escolhe o próximo passo. Tudo acontece no navegador, sem baixar um app.",
           note: "A resposta vem da etiqueta digital. Caso a marca também precise avaliar o produto físico, pode adicionar controles específicos em separado.",
           primary: "Testar a jornada",
           railLabel: "Etapas da jornada do produto",
@@ -136,7 +136,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       : {
           eyebrow: "Cómo funciona",
           title: "Acercá o escaneá. Tres pasos simples.",
-          body: "El cliente acerca o escanea, entiende y elige qué hacer. Todo sucede en el navegador, sin descargar una app.",
+          body: "Botella, paquete o bolsa: el cliente acerca o escanea, recibe una respuesta clara y elige cómo seguir. Todo sucede en el navegador, sin descargar una app.",
           note: "La respuesta viene de la etiqueta digital. Si una marca también necesita evaluar el producto físico, puede sumar controles específicos por separado.",
           primary: "Probar el recorrido",
           railLabel: "Pasos del recorrido del producto",

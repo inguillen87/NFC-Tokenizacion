@@ -2,14 +2,19 @@ import { SignUp } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandLockup } from "@product/ui";
 import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
+import { getDashboardI18n } from "../../../lib/locale";
+import { AuthThemeControl } from "../../../components/auth-theme-control";
 
-export default function SignUpPage() {
+export default async function SignUpPage() {
   const clerkEnabled = isClerkConfiguredForRuntime();
+  const { locale } = await getDashboardI18n();
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px),radial-gradient(circle_at_74%_18%,rgba(129,140,248,.2),transparent_34%)] [background-size:32px_32px,32px_32px,auto]" />
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_440px]">
-        <section>
+    <main className="dashboard-auth-surface relative min-h-screen overflow-hidden bg-slate-950 text-white">
+      <div className="dashboard-auth-backdrop pointer-events-none absolute inset-0" />
+      <div className="dashboard-auth-glow pointer-events-none absolute inset-x-0 top-0 h-72" />
+      <AuthThemeControl locale={locale} />
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 pb-10 pt-24 lg:grid-cols-[1fr_440px] lg:py-10">
+        <section className="dashboard-auth-story">
           <Link href="/register" aria-label="Volver a nexID CRM" className="inline-flex items-center">
             <BrandLockup size={72} variant="ripple" theme="dark" />
           </Link>
@@ -28,7 +33,7 @@ export default function SignUpPage() {
             Volver al registro CRM
           </Link>
         </section>
-        <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(129,140,248,0.16)] backdrop-blur">
+        <section className="dashboard-auth-card rounded-3xl border border-white/10 p-4 shadow-[0_30px_100px_rgba(129,140,248,0.16)] backdrop-blur">
           {clerkEnabled ? (
             <SignUp
               routing="path"
@@ -36,7 +41,17 @@ export default function SignUpPage() {
               signInUrl="/sign-in"
               fallbackRedirectUrl="/"
               appearance={{
-                variables: { colorPrimary: "#22d3ee", colorBackground: "#020617" },
+                variables: {
+                  colorPrimary: "var(--auth-accent)",
+                  colorPrimaryForeground: "var(--auth-primary-foreground)",
+                  colorBackground: "var(--auth-clerk-bg)",
+                  colorForeground: "var(--auth-text)",
+                  colorMutedForeground: "var(--auth-muted)",
+                  colorInput: "var(--auth-input-bg)",
+                  colorInputForeground: "var(--auth-text)",
+                  colorBorder: "var(--auth-border-solid)",
+                  borderRadius: "0.875rem",
+                },
               }}
             />
           ) : (

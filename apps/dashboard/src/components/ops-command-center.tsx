@@ -416,7 +416,7 @@ export function OpsCommandCenter({
                     <CartesianGrid stroke="rgba(148,163,184,0.12)" vertical={false} />
                     <XAxis dataKey="stage" stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} />
                     <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} width={34} />
-                    <Tooltip contentStyle={{ background: "#020617", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#e2e8f0" }} />
+                    <Tooltip contentStyle={{ background: "var(--dashboard-chart-tooltip-bg)", border: "1px solid var(--dashboard-chart-tooltip-border)", borderRadius: 12, color: "var(--dashboard-chart-tooltip-text)" }} />
                     <Area type="monotone" dataKey="value" stroke="#22d3ee" fill="url(#opsTrustGradient)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -431,7 +431,7 @@ export function OpsCommandCenter({
                     <CartesianGrid stroke="rgba(148,163,184,0.12)" vertical={false} />
                     <XAxis dataKey="label" stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} />
                     <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} width={34} />
-                    <Tooltip contentStyle={{ background: "#020617", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#e2e8f0" }} />
+                    <Tooltip contentStyle={{ background: "var(--dashboard-chart-tooltip-bg)", border: "1px solid var(--dashboard-chart-tooltip-border)", borderRadius: 12, color: "var(--dashboard-chart-tooltip-text)" }} />
                     <Bar dataKey="ready" stackId="a" fill="#34d399" radius={[8, 8, 0, 0]} />
                     <Bar dataKey="pending" stackId="a" fill="#f59e0b" radius={[8, 8, 0, 0]} />
                   </BarChart>

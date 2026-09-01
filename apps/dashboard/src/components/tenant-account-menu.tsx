@@ -190,13 +190,39 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch;
 }
-.nexid-account-layer .tenant-account-panel,
-html.theme-light .nexid-account-layer .tenant-account-panel,
-html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
+.nexid-account-layer .tenant-account-panel {
   background:
     radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.16), transparent 35%),
     linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: #f8fafc !important;
+}
+html.theme-light .nexid-account-dialog,
+html[data-theme="light"] .nexid-account-dialog {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(14, 165, 233, 0.11), transparent 34%),
+    rgba(247, 251, 255, 0.99) !important;
+  color: #0f172a !important;
+}
+html.theme-light .nexid-account-dialog::backdrop,
+html[data-theme="light"] .nexid-account-dialog::backdrop,
+html.theme-light .nexid-account-scrim,
+html.theme-light .nexid-account-backdrop,
+html[data-theme="light"] .nexid-account-scrim,
+html[data-theme="light"] .nexid-account-backdrop {
+  background:
+    radial-gradient(circle at 78% 8%, rgba(14, 165, 233, 0.1), transparent 34%),
+    rgba(226, 235, 247, 0.92) !important;
+  backdrop-filter: blur(8px) saturate(0.88) !important;
+}
+html.theme-light .nexid-account-layer,
+html[data-theme="light"] .nexid-account-layer,
+html.theme-light .nexid-account-layer .tenant-account-panel,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
+  background:
+    radial-gradient(circle at 88% 6%, rgba(14, 165, 233, 0.1), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #f4f9ff 48%, #f8fbff 100%) !important;
+  color: #0f172a !important;
+  box-shadow: -34px 0 100px rgba(15, 23, 42, 0.16) !important;
 }
 html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
 html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-slate-900"],
@@ -204,9 +230,9 @@ html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-white/"]
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-900"],
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-white/"] {
-  background: rgba(15, 23, 42, 0.62) !important;
-  border-color: rgba(148, 163, 184, 0.2) !important;
-  color: #f8fafc !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(100, 116, 139, 0.24) !important;
+  color: #0f172a !important;
 }
 html.theme-light .nexid-account-layer .tenant-account-panel .text-white,
 html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-100,
@@ -214,7 +240,7 @@ html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-200,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-white,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-100,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-200 {
-  color: #f8fafc !important;
+  color: #0f172a !important;
 }
 html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-300,
 html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-400,
@@ -222,7 +248,16 @@ html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-500,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-300,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-400,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-500 {
-  color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+html.theme-light .nexid-account-layer .tenant-account-panel__header,
+html.theme-light .nexid-account-layer .tenant-account-panel__footer,
+html.theme-light .nexid-account-layer [data-testid="tenant-account-workspace-command-center"],
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel__footer,
+html[data-theme="light"] .nexid-account-layer [data-testid="tenant-account-workspace-command-center"] {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(236, 248, 255, 0.96)) !important;
+  border-color: rgba(8, 145, 178, 0.2) !important;
 }
 body.nexid-account-menu-open .nexid-crm-shell,
 html.nexid-account-menu-open .nexid-crm-shell {

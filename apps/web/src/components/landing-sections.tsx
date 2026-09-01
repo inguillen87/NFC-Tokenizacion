@@ -75,7 +75,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "How it works",
       title: "Three steps. No complications.",
-      body: "Tap with your phone or scan the QR. nexID organizes what matters and shows what you can do next.",
+      body: "Bottle, parcel or pouch: tap with your phone or scan the QR, get a clear answer and choose what comes next. No app required.",
       note: "nexID checks the digital label and shows a clear result. To validate the physical product as well, each brand can add specific controls.",
       primary: "Try the journey",
       railLabel: "Product journey steps",
@@ -91,7 +91,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "Como funciona",
       title: "Três etapas. Sem complicações.",
-      body: "Aproxime o celular ou escaneie o QR. A nexID organiza o essencial e mostra o que fazer depois.",
+      body: "Garrafa, pacote ou bolsa: aproxime o celular ou escaneie o QR, receba uma resposta clara e escolha o próximo passo. Sem baixar um app.",
       note: "A nexID verifica a etiqueta digital e mostra um resultado claro. Para validar também o produto físico, cada marca pode adicionar controles específicos.",
       primary: "Testar a jornada",
       railLabel: "Etapas da jornada do produto",
@@ -106,7 +106,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
     : {
       eyebrow: "Cómo funciona",
       title: "Tres pasos. Sin complicaciones.",
-      body: "Acercá el celular o escaneá el QR. nexID ordena lo importante y muestra qué hacer después.",
+      body: "Botella, paquete o bolsa: acercá el celular o escaneá el QR, recibí una respuesta clara y elegí cómo seguir. Sin descargar una app.",
       note: "nexID verifica la etiqueta digital y muestra un resultado claro. Para validar también el producto físico, cada marca puede sumar controles específicos.",
       primary: "Probar el recorrido",
       railLabel: "Pasos del recorrido del producto",

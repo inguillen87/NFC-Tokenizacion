@@ -52,25 +52,7 @@ import {
 type DashboardText = typeof dashboardContent["es-AR"];
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    const isLight = document.documentElement.classList.contains("theme-light");
-    setTheme(isLight ? "light" : "dark");
-  }, []);
-
-  const toggle = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    if (newTheme === "light") document.documentElement.classList.add("theme-light");
-    else document.documentElement.classList.remove("theme-light");
-    setTheme(newTheme);
-  };
-
-  return (
-    <button suppressHydrationWarning onClick={toggle} className="rounded-lg border border-white/10 px-3 py-2 text-xs" title="Toggle theme">
-      {theme === "dark" ? "☀️" : "🌙"}
-    </button>
-  );
+  return <SharedThemeToggle />;
 }
 
 export function LocaleSwitcher({ value, options }: { value: string; options: readonly string[] }) {
@@ -78,9 +60,11 @@ export function LocaleSwitcher({ value, options }: { value: string; options: rea
     <select suppressHydrationWarning
       value={value}
       onChange={(e) => { document.cookie = `locale=${e.target.value}; path=/; max-age=31536000`; window.location.reload(); }}
-      className="rounded-lg border border-white/10 bg-transparent px-2 py-2 text-xs text-inherit outline-none"
+      aria-label="Idioma del dashboard"
+      title="Cambiar idioma"
+      className="locale-switcher min-h-11 rounded-lg border border-white/10 bg-transparent px-2 py-2 text-xs text-inherit outline-none"
     >
-      {options.map((opt) => <option key={opt} value={opt} className="bg-slate-900 text-slate-100">{opt}</option>)}
+      {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
     </select>
   );
 }
@@ -409,7 +393,7 @@ export function DashboardShellInner({
 
         <div className="space-y-4">
           {/* Grape / Winery Role Card */}
-          <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-4 shadow-xl backdrop-blur-md">
+          <div className="dashboard-role-card relative overflow-hidden rounded-2xl border border-white/5 p-4 shadow-xl backdrop-blur-md">
             <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-violet-500/5 blur-2xl" />
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 text-xl border border-violet-500/20">
@@ -527,15 +511,15 @@ export function DashboardShellInner({
         </Link>
 
         {canShowSandboxTools ? (
-          <div className="mt-4 rounded-xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/40 to-transparent p-4 shadow-lg relative overflow-hidden shrink-0">
+          <div className="dashboard-ops-tools-card mt-4 rounded-xl border border-cyan-500/20 p-4 shadow-lg relative overflow-hidden shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/20 blur-xl rounded-full pointer-events-none" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-3 flex items-center gap-2">
                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                Ops Tools
             </p>
             <div className="grid gap-2">
-              <Link href="/demo-lab/encode" className="rounded-lg border border-cyan-500/30 bg-slate-950/80 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-950/50 transition-colors text-center">URL Encoder</Link>
-              <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-500/30 bg-slate-950/80 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-950/50 transition-colors flex justify-between">
+              <Link href="/demo-lab/encode" className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors text-center">URL Encoder</Link>
+              <a href={publicMobile} target="_blank" rel="noreferrer" className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors flex justify-between">
                  Mobile Scan <span>↗</span>
               </a>
             </div>

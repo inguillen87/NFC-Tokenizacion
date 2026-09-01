@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 const [motion, visuals, css] = await Promise.all([
@@ -38,32 +38,51 @@ test("the one-shot journey motion stays passive and exposes no stale playback co
   assert.doesNotMatch(motion, /dangerouslySetInnerHTML|aria-live|split\(""\)/);
 });
 
-test("three decorative vector scenes add no media request or interactive control", () => {
+test("three photographic scenes keep localized deterministic overlays and no interactive control", async () => {
   for (const kind of ["discover", "signal", "aftercare"]) {
     assert.match(visuals, new RegExp(`kind === "${kind}"|SimpleTrustVisualKind = [^\\n]*"${kind}"`));
   }
+  assert.match(visuals, /import Image from "next\/image"/);
+  for (const asset of ["nfc-wine-scan.png", "nfc-parcel-result.png", "nfc-pouch-actions.png"]) {
+    assert.match(visuals, new RegExp(asset.replace(".", "\\.")));
+    const details = await stat(new URL(`../public/landing/connected-journey/${asset}`, import.meta.url));
+    assert.ok(details.size > 100_000, `${asset} must contain a real photographic scene`);
+    assert.ok(details.size < 2_000_000, `${asset} must remain below the source-asset budget`);
+  }
   assert.match(visuals, /aria-hidden="true"/);
+  assert.match(visuals, /alt=""/);
+  assert.match(visuals, /quality=\{75\}/);
+  assert.match(visuals, /sizes="\(max-width:/);
   assert.match(visuals, /focusable="false"/);
   assert.match(visuals, /<svg/g);
   assert.match(visuals, /DEMO ILUSTRATIVA/);
   assert.match(visuals, /Reserva Andina/);
   assert.match(visuals, /RA-2407/);
-  assert.match(visuals, /MENDOZA, AR/);
   assert.match(visuals, /RESULTADO DIGITAL/);
-  assert.match(visuals, /RESULTADO DE LA ETIQUETA DIGITAL/);
-  assert.match(visuals, /LECTURA DIGITAL/);
-  assert.match(visuals, /MENSAJE LEÍDO/);
+  assert.match(visuals, /LECTURA RECIBIDA/);
+  assert.match(visuals, /ETIQUETA LEÍDA/);
+  assert.match(visuals, /Activar garantía/);
+  assert.match(visuals, /Ver beneficios/);
+  assert.match(visuals, /Hablar con la marca/);
+  assert.match(visuals, /trust-photo__image/);
+  assert.match(visuals, /trust-photo__info-card--discover/);
+  assert.match(visuals, /trust-photo__info-card--result/);
+  assert.match(visuals, /trust-photo__actions/);
   assert.match(visuals, /trust-visual__device trust-visual__animated/);
   assert.match(visuals, /trust-visual__tag-group trust-visual__animated/);
   assert.match(visuals, /trust-visual__nfc-ring trust-visual__animated/);
   assert.match(visuals, /trust-visual__check trust-visual__animated/);
   assert.match(visuals, /pathLength="1"/);
-  assert.doesNotMatch(visuals, /<img|<video|\.gif|https?:\/\/|onClick|tabIndex/i);
+  assert.doesNotMatch(visuals, /<video|\.gif|https?:\/\/|onClick|tabIndex/i);
 });
 
 test("trust visuals reserve layout, pause offscreen and become static with reduced motion", () => {
-  assert.match(css, /\.simple-trust-flow-visual \{[\s\S]{0,1200}height:\s*clamp\(/);
+  assert.match(css, /\.simple-trust-flow-visual \{[\s\S]{0,1200}min-height:\s*8\.5rem/);
+  assert.match(css, /\.simple-trust-flow-visual \{[\s\S]{0,1200}aspect-ratio:\s*2\.19 \/ 1/);
   assert.match(css, /contain:\s*paint/);
+  assert.match(css, /\.trust-photo \{[\s\S]{0,700}container-type:\s*inline-size/);
+  assert.match(css, /\.trust-photo__image \{[\s\S]{0,700}object-fit:\s*cover/);
+  assert.match(css, /html:is\(\.theme-light, \[data-theme="light"\]\) \.trust-photo__image/);
   assert.match(css, /\.simple-trust-flow-steps\[data-motion-ready="true"\] > li \{[\s\S]{0,240}1 both paused/);
   assert.match(css, /li\[data-motion-active="true"\][\s\S]{0,220}animation-play-state:\s*running/);
   assert.match(css, /\.simple-trust-flow-steps\[data-motion-ready="true"\] \.trust-visual__route/);

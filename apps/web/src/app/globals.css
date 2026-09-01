@@ -48885,6 +48885,11 @@ html[data-theme="light"] .site-footer {
   border-color: rgba(15, 35, 63, 0.1) !important;
 }
 
+.locale-switcher option {
+  background: #070b14;
+  color: #cbd5e1;
+}
+
 html.theme-light .locale-switcher option,
 html[data-theme="light"] .locale-switcher option {
   background: #ffffff !important;
@@ -55851,10 +55856,13 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-ring {
   --trust-visual-positive: #3dd5a5;
   position: relative;
   width: 100%;
-  height: clamp(7.4rem, 9.5vw, 8.5rem);
+  height: auto;
+  min-height: 8.5rem;
+  aspect-ratio: 2.19 / 1;
   margin-bottom: 1.35rem;
   overflow: hidden;
   contain: paint;
+  isolation: isolate;
   pointer-events: none;
   border: 1px solid rgba(103, 232, 249, 0.14);
   border-radius: 1.15rem;
@@ -55874,6 +55882,7 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-ring {
   width: 42%;
   content: "";
   opacity: 0;
+  z-index: 8;
   background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.28), rgba(103, 232, 249, 0.16), transparent);
   pointer-events: none;
   transform: translateX(0) skewX(-12deg);
@@ -56124,6 +56133,272 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-ring {
 
 .trust-visual__action--three {
   --trust-local-delay: 690ms;
+}
+
+/* Photographic product journey: the generated scene provides real-world
+   context while localized HTML/SVG overlays remain sharp, themeable and
+   deterministic. */
+.trust-photo {
+  --trust-photo-panel: rgba(4, 18, 32, 0.86);
+  --trust-photo-panel-border: rgba(125, 231, 237, 0.34);
+  --trust-photo-ink: #f3fbff;
+  --trust-photo-muted: #b7c8d8;
+  --trust-photo-accent: #68e0e7;
+  --trust-photo-positive: #54dda9;
+  container-type: inline-size;
+  background: #071421;
+}
+
+.trust-photo__image {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  filter: brightness(0.68) saturate(0.78) contrast(1.04);
+  transform-origin: center;
+}
+
+.trust-photo__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(2, 12, 23, 0.22), transparent 42%, rgba(2, 12, 23, 0.16)),
+    linear-gradient(180deg, rgba(4, 18, 32, 0.08), rgba(4, 18, 32, 0.36));
+}
+
+.trust-photo__signal-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.trust-photo .trust-visual__route,
+.trust-photo .trust-visual__wave,
+.trust-photo .trust-visual__nfc-ring {
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 3px rgba(104, 224, 231, 0.52));
+}
+
+.trust-photo .trust-visual__route {
+  stroke-width: 1.35;
+}
+
+.trust-photo .trust-visual__wave,
+.trust-photo .trust-visual__nfc-ring {
+  stroke-width: 1.15;
+}
+
+.trust-photo .trust-visual__nfc-ring--outer {
+  --trust-local-delay: 410ms;
+  opacity: 0.72;
+}
+
+.trust-photo__tag-label {
+  position: absolute;
+  left: 27.2%;
+  top: 44%;
+  z-index: 4;
+  display: grid;
+  min-width: 2.15rem;
+  min-height: 1.45rem;
+  place-items: center;
+  border: 1px solid rgba(104, 224, 231, 0.7);
+  border-radius: 0.55rem;
+  background: rgba(4, 18, 32, 0.78);
+  color: #e8fdff;
+  box-shadow: 0 0 0 0.25rem rgba(104, 224, 231, 0.1), 0 0.6rem 1.5rem rgba(2, 12, 23, 0.28);
+  font-size: clamp(0.48rem, 1.8cqw, 0.62rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(9px);
+}
+
+.trust-photo__info-card,
+.trust-photo__product-note,
+.trust-photo__action {
+  border: 1px solid var(--trust-photo-panel-border);
+  background: var(--trust-photo-panel);
+  color: var(--trust-photo-ink);
+  box-shadow: 0 0.8rem 2rem rgba(2, 12, 23, 0.28);
+  backdrop-filter: blur(12px) saturate(1.15);
+}
+
+.trust-photo__info-card {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  gap: 0.18rem;
+  border-radius: 0.72rem;
+  padding: clamp(0.42rem, 1.7cqw, 0.65rem);
+}
+
+.trust-photo__info-card--discover {
+  right: 3.5%;
+  bottom: 7%;
+  width: min(46%, 10.5rem);
+  padding-right: 2rem;
+}
+
+.trust-photo__info-card--result {
+  right: 17%;
+  top: 8%;
+  width: min(35%, 8.8rem);
+}
+
+.trust-photo__info-card > span,
+.trust-photo__product-note small,
+.trust-photo__actions-label {
+  color: var(--trust-photo-accent);
+  font-size: clamp(0.43rem, 1.55cqw, 0.58rem);
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.trust-photo__info-card strong,
+.trust-photo__product-note strong {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: clamp(0.58rem, 2.25cqw, 0.82rem);
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.trust-photo__info-card small {
+  color: var(--trust-photo-muted);
+  font-size: clamp(0.45rem, 1.65cqw, 0.61rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.trust-photo__info-card em {
+  color: var(--trust-photo-positive);
+  font-size: clamp(0.4rem, 1.45cqw, 0.54rem);
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+}
+
+.trust-photo__check {
+  display: block;
+  width: 1rem !important;
+  height: 1rem !important;
+  flex: 0 0 auto;
+  overflow: visible;
+  stroke: var(--trust-photo-positive);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.trust-photo__meter {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 0.22rem;
+  margin-top: 0.18rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--trust-photo-positive) 18%, transparent);
+}
+
+.trust-photo__meter i {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: inherit;
+  background: var(--trust-photo-positive);
+  transform-origin: left center;
+}
+
+.trust-photo__actions {
+  position: absolute;
+  right: 3.5%;
+  top: 7%;
+  z-index: 4;
+  display: grid;
+  width: min(43%, 10.25rem);
+  gap: clamp(0.22rem, 0.8cqw, 0.36rem);
+}
+
+.trust-photo__actions-label {
+  padding-left: 0.15rem;
+  color: #063f48;
+  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.92);
+}
+
+.trust-photo__action {
+  display: flex;
+  min-height: clamp(1.35rem, 5.1cqw, 1.85rem);
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.58rem;
+  padding: 0.25rem 0.42rem;
+  font-size: clamp(0.46rem, 1.8cqw, 0.66rem);
+  font-weight: 780;
+  line-height: 1.1;
+}
+
+.trust-photo__action i {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.34rem;
+  background: color-mix(in srgb, var(--trust-photo-accent) 18%, transparent);
+  color: var(--trust-photo-accent);
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.trust-photo__product-note {
+  position: absolute;
+  left: 3.5%;
+  bottom: 7%;
+  z-index: 4;
+  display: grid;
+  gap: 0.12rem;
+  max-width: 42%;
+  border-radius: 0.68rem;
+  padding: 0.45rem 0.6rem;
+}
+
+html:is(.theme-light, [data-theme="light"]) .trust-photo {
+  --trust-photo-panel: rgba(255, 255, 255, 0.88);
+  --trust-photo-panel-border: rgba(15, 118, 128, 0.22);
+  --trust-photo-ink: #10233f;
+  --trust-photo-muted: #52657a;
+  --trust-photo-accent: #087f8c;
+  --trust-photo-positive: #08775a;
+  background: #eaf7f8 !important;
+}
+
+html:is(.theme-light, [data-theme="light"]) .trust-photo__image {
+  filter: saturate(0.92) contrast(1.02) brightness(1);
+}
+
+html:is(.theme-light, [data-theme="light"]) .trust-photo__scrim {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 44%, rgba(255, 255, 255, 0.06)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(237, 250, 251, 0.12));
+}
+
+html:is(.theme-light, [data-theme="light"]) .trust-photo__tag-label {
+  border-color: rgba(8, 127, 140, 0.42);
+  background: rgba(255, 255, 255, 0.86);
+  color: #075f69;
+  box-shadow: 0 0 0 0.25rem rgba(8, 127, 140, 0.08), 0 0.6rem 1.5rem rgba(15, 35, 63, 0.14);
 }
 
 .simple-trust-flow-intro[data-motion-ready="true"] .simple-trust-flow-eyebrow,
@@ -56682,7 +56957,8 @@ html[data-theme="light"] .simple-trust-flow-footer > p {
   }
 
   .simple-trust-flow-visual {
-    height: 7.35rem;
+    height: auto;
+    min-height: 8.5rem;
     margin-bottom: 1.15rem;
   }
 

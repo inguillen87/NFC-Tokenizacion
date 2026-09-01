@@ -3,17 +3,20 @@ import { BrandLockup, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { RegisterAccessPanel } from "../../components/register-access-panel";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
+import { AuthThemeControl } from "../../components/auth-theme-control";
 
 export default async function RegisterPage() {
-  const { t } = await getDashboardI18n();
+  const { t, locale } = await getDashboardI18n();
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.09)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.09)_1px,transparent_1px),radial-gradient(circle_at_20%_8%,rgba(6,182,212,.2),transparent_34%)] [background-size:32px_32px,32px_32px,auto]" />
-      <div className="container-shell relative z-10 grid min-h-screen place-items-center py-10">
-        <Card className="w-full max-w-6xl p-3 md:p-10">
+    <main className="dashboard-auth-surface relative min-h-screen overflow-hidden bg-slate-950">
+      <div className="dashboard-auth-backdrop pointer-events-none absolute inset-0" />
+      <div className="dashboard-auth-glow pointer-events-none absolute inset-x-0 top-0 h-72" />
+      <AuthThemeControl locale={locale} />
+      <div className="container-shell relative z-10 grid min-h-screen place-items-center pb-10 pt-24 md:py-10">
+        <Card className="dashboard-auth-card w-full max-w-6xl p-3 md:p-10">
           <div className="grid gap-8 md:grid-cols-[1.05fr_1fr]">
-            <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-6">
+            <section className="dashboard-auth-intro rounded-2xl border border-white/10 p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Link href="/" aria-label="nexID home" className="inline-flex items-center">
                   <BrandLockup size={56} variant="pulse" theme="dark" className="brand-surface-auth" />
@@ -34,7 +37,7 @@ export default async function RegisterPage() {
                 <p><strong className="text-cyan-300">Viewer/Cliente</strong>: solo lectura y seguimiento.</p>
               </div>
             </section>
-            <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-6">
+            <section className="dashboard-auth-panel rounded-2xl border border-white/10 p-6">
               <RegisterAccessPanel submitLabel={t.common.register} clerkEnabled={isClerkConfiguredForRuntime()} />
               <p className="mt-4 text-xs text-slate-400">
                 ¿Ya tenés cuenta? <Link href="/login" className="text-cyan-300">{t.common.login}</Link>

@@ -130,11 +130,12 @@ export function LoginFormPanel({
         {accessPaths.map((item) => (
           <div
             key={item.label}
+            data-state={item.ok ? "ready" : "attention"}
             className={`rounded-2xl border px-3 py-3 ${
               item.ok
                 ? "border-emerald-300/20 bg-emerald-400/10"
                 : "border-amber-300/24 bg-amber-400/10"
-            }`}
+            } dashboard-auth-status-card`}
           >
             <div className="flex items-center gap-2">
               {item.ok ? (
@@ -150,7 +151,7 @@ export function LoginFormPanel({
         ))}
       </div>
       <div className="grid gap-3">
-        <div data-testid="login-bodega-demo-card" className="rounded-2xl border border-cyan-300/25 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,.18),transparent_34%),linear-gradient(145deg,rgba(8,47,73,.74),rgba(15,23,42,.84))] p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
+        <div data-testid="login-bodega-demo-card" className="dashboard-auth-feature-card rounded-2xl border border-cyan-300/25 p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-200/30 bg-cyan-300/10 text-cyan-100">
@@ -186,14 +187,14 @@ export function LoginFormPanel({
               </div>
             )}
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-cyan-100/80">
-              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">Tenant</span>
-              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">Eventos demo</span>
-              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">CRM</span>
+              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">Tenant</span>
+              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">Eventos demo</span>
+              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">CRM</span>
             </div>
           </div>
         </div>
 
-        <div data-testid="login-superadmin-google-card" className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
+        <div data-testid="login-superadmin-google-card" className="dashboard-auth-panel dashboard-auth-panel--elevated grid gap-3 rounded-2xl border border-cyan-300/20 p-4">
           <div className="flex items-start gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
               <ShieldCheck className="h-5 w-5" />
@@ -230,7 +231,7 @@ export function LoginFormPanel({
         </div>
       </div>
 
-      <div data-testid="login-credentials-panel" className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div data-testid="login-credentials-panel" className="dashboard-auth-panel dashboard-auth-panel--soft mt-4 rounded-2xl border border-white/10 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Credenciales de tenant y equipo</p>
@@ -254,7 +255,7 @@ export function LoginFormPanel({
               disabled={!profile.available}
               onClick={() => useProfile(profile)}
               title={`Entrar como ${profile.label}`}
-              className="group rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+              className="dashboard-auth-profile-card group rounded-xl border border-white/10 p-3 text-left transition hover:border-cyan-300/30 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-cyan-200 group-disabled:text-slate-500">
@@ -278,21 +279,21 @@ export function LoginFormPanel({
       ) : null}
 
       <div className="mt-4 grid gap-3">
-        <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-xs text-slate-300">
+        <div className="dashboard-auth-field-note flex items-start gap-3 rounded-xl border border-white/10 px-3 py-3 text-xs text-slate-300">
           <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
           <span>
             Ingresa con cuenta de <span className="text-cyan-200">dashboard admin</span>. Este login no corresponde al portal de consumidores.
           </span>
         </div>
         <input suppressHydrationWarning
-          className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
           placeholder={emailPlaceholder}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
         <input suppressHydrationWarning
           type="password"
-          className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
           placeholder={passwordPlaceholder}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
@@ -300,7 +301,7 @@ export function LoginFormPanel({
         <p className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
           TOTP nexID está temporalmente bloqueado. Super Admin usa Google/Clerk allowlisted; las cuentas tenant usan sesión y permisos nexID.
         </p>
-        <div className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+        <div className="dashboard-auth-field-note rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
           Perfil activo: <span className="text-cyan-200">{profileLabel}</span>
           <span className="ml-2 text-slate-500">({role})</span>
         </div>
@@ -312,13 +313,13 @@ export function LoginFormPanel({
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-        <Link href="/register" className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-cyan-300">
+        <Link href="/register" className="dashboard-auth-secondary-link rounded-lg border border-white/10 px-2 py-2 text-cyan-300">
           {registerLabel}
         </Link>
-        <Link href="/forgot-password" className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-cyan-300">
+        <Link href="/forgot-password" className="dashboard-auth-secondary-link rounded-lg border border-white/10 px-2 py-2 text-cyan-300">
           {forgotLabel}
         </Link>
-        <Link href="/invite-user" className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-cyan-300">
+        <Link href="/invite-user" className="dashboard-auth-secondary-link rounded-lg border border-white/10 px-2 py-2 text-cyan-300">
           {inviteLabel}
         </Link>
       </div>

@@ -24,7 +24,7 @@ test("theme preference resolver executes the one-time white-first migration", as
 });
 
 test("white-first theme migration ignores legacy dark cookies exactly once", async () => {
-  const [preference, toggle, layout, home, sdk, demoLab, demoLabTheme, route, uiPackage] = await Promise.all([
+  const [preference, toggle, layout, home, sdk, demoLab, demoLabTheme, route, uiPackage, localeSwitcher, webTailwind, dashboardTailwind] = await Promise.all([
     read("../../../packages/ui/src/theme-preference.ts"),
     read("../../../packages/ui/src/theme-toggle.tsx"),
     read("../src/app/layout.tsx"),
@@ -34,6 +34,9 @@ test("white-first theme migration ignores legacy dark cookies exactly once", asy
     read("../src/app/(public)/demo-lab/demo-lab-hub-theme.tsx"),
     read("../src/app/api/theme/route.ts"),
     read("../../../packages/ui/package.json"),
+    read("../../../packages/ui/src/locale-switcher.tsx"),
+    read("../tailwind.config.ts"),
+    read("../../dashboard/tailwind.config.ts"),
   ]);
 
   assert.match(preference, /THEME_PREFERENCE_VERSION = "white-first-v2"/);
@@ -65,4 +68,13 @@ test("white-first theme migration ignores legacy dark cookies exactly once", asy
   assert.match(demoLabTheme, /THEME_PREFERENCE_VERSION_STORAGE/);
   assert.match(demoLabTheme, /initialTheme = "light"/);
   assert.doesNotMatch(demoLabTheme, /domain=\.nexid\.lat/);
+
+  for (const config of [webTailwind, dashboardTailwind]) {
+    assert.match(config, /darkMode: \["selector", '\[data-theme="dark"\]'\]/);
+    assert.doesNotMatch(config, /darkMode:\s*"media"/);
+  }
+
+  assert.match(localeSwitcher, /className="locale-switcher__option"/);
+  assert.doesNotMatch(localeSwitcher, /style=\{\{\s*backgroundColor/);
+  assert.doesNotMatch(localeSwitcher, /className="bg-slate-950/);
 });

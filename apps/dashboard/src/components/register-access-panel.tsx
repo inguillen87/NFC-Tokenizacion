@@ -32,7 +32,7 @@ export function RegisterAccessPanel({ submitLabel, clerkEnabled }: { submitLabel
       {clerkEnabled && (
         <div className="md:col-span-2 grid gap-3 mb-2">
           <SignUpButton mode="modal">
-            <button type="button" onClick={() => {}} className="flex items-center justify-center gap-3 w-full rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 font-semibold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] hover:border-cyan-200 hover:bg-cyan-400/20 transition">
+            <button type="button" onClick={() => {}} className="dashboard-auth-oauth-button flex items-center justify-center gap-3 w-full rounded-xl border border-cyan-400/35 px-4 py-3 font-semibold shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition">
               <span>🔐 Registrarse con Google o Facebook</span>
             </button>
           </SignUpButton>
@@ -44,11 +44,11 @@ export function RegisterAccessPanel({ submitLabel, clerkEnabled }: { submitLabel
         </div>
       )}
 
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Empresa" value={form.company} onChange={(e) => setForm((s) => ({ ...s, company: e.target.value }))} />
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Tenant slug" value={form.tenantSlug} onChange={(e) => setForm((s) => ({ ...s, tenantSlug: e.target.value }))} />
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} />
-      <select suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}>
+      <input suppressHydrationWarning className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm" placeholder="Empresa" value={form.company} onChange={(e) => setForm((s) => ({ ...s, company: e.target.value }))} />
+      <input suppressHydrationWarning className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
+      <input suppressHydrationWarning className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm" placeholder="Tenant slug" value={form.tenantSlug} onChange={(e) => setForm((s) => ({ ...s, tenantSlug: e.target.value }))} />
+      <input suppressHydrationWarning className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} />
+      <select suppressHydrationWarning className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm" value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}>
         <option value="tenant-admin">Tenant Admin</option>
         <option value="reseller">Reseller</option>
         <option value="viewer">Viewer / Cliente</option>

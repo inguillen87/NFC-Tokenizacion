@@ -60,8 +60,8 @@ export function InviteUserPanel() {
   return (
     <div className="mt-4 grid gap-3">
       <EnterpriseRoleCatalogGate status={catalog.status} error={catalog.error} onRetry={catalog.reload} />
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} />
+      <input suppressHydrationWarning className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
+      <input suppressHydrationWarning className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} />
       <EnterpriseRoleSelect
         roles={catalog.roles}
         value={form.role}
@@ -72,7 +72,7 @@ export function InviteUserPanel() {
         Tenant slug
         <input
           suppressHydrationWarning
-          className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          className="dashboard-auth-input min-h-11 rounded-xl border border-white/10 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
           placeholder={selectedRole?.tenantBound ? "tenant slug" : "Rol global"}
           value={form.tenantSlug}
           disabled={!selectedRole?.tenantBound}

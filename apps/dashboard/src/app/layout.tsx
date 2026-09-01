@@ -6,6 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";
+import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { PwaSetup } from "../components/pwa-setup";
 import { getClerkProxyUrl, getClerkPublishableKey } from "../lib/clerk-env";
@@ -146,7 +147,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cookieStore = await cookies();
   const locale = resolveLocale(cookieStore.get("locale")?.value);
   const themeCookie = cookieStore.get("theme")?.value;
-  const theme = themeCookie === "light" ? "light" : "dark";
+  const themeVersionCookie = cookieStore.get(THEME_PREFERENCE_VERSION_COOKIE)?.value;
+  const theme = resolveThemePreference(themeCookie, themeVersionCookie);
   const clerkKey = getClerkPublishableKey();
   const clerkProxyUrl = getClerkProxyUrl();
 

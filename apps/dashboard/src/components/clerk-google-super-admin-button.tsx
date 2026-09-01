@@ -63,7 +63,7 @@ export function ClerkGoogleSuperAdminButton({
         disabled={!isLoaded || pending}
         className={
           className ||
-          "flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition hover:border-cyan-200 hover:bg-cyan-400/20 disabled:cursor-wait disabled:opacity-70"
+          "dashboard-auth-oauth-button flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 px-4 py-3 text-sm font-bold shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition disabled:cursor-wait disabled:opacity-70"
         }
       >
         <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-black text-slate-950">
