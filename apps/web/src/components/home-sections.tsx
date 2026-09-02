@@ -141,23 +141,23 @@ export function CommercialValueSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const copy = isEn
-    ? {
+      ? {
         eyebrow: "For your brand",
-        title: "From one label to a connected operation.",
-        body: "From one console, define what every product publishes, which service it offers and what information your team receives.",
+        title: "Configure the experience. Understand every interaction.",
+        body: "Try how one label connects the product profile, customer services and your team's activity.",
         cta: "Book a demo for my product",
       }
     : isBr
-      ? {
+        ? {
           eyebrow: "Para a sua marca",
-          title: "De uma etiqueta a uma operação conectada.",
-          body: "Em um único console, defina o que cada produto publica, qual serviço oferece e quais informações sua equipe recebe.",
+          title: "Configure a experiência. Entenda cada interação.",
+          body: "Teste como uma etiqueta conecta a ficha do produto, os serviços para o cliente e a atividade da sua equipe.",
           cta: "Agendar uma demo para meu produto",
         }
       : {
           eyebrow: "Del lado de tu marca",
-          title: "De una etiqueta a una operación conectada.",
-          body: "En una sola consola definís qué publica cada producto, qué servicio ofrece y qué información recibe tu equipo.",
+          title: "Configurá la experiencia. Entendé cada interacción.",
+          body: "Probá cómo una etiqueta conecta la ficha del producto, los servicios para el cliente y la actividad de tu equipo.",
           cta: "Agendar una demo para mi producto",
         };
 

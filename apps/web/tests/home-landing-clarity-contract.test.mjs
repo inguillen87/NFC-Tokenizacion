@@ -67,7 +67,7 @@ test("SimpleTrustFlow keeps one progressive industry journey and one clear actio
   assert.match(flow, /id="como-funciona"/);
 });
 
-test("CommercialValue reveals the brand-side orchestrator without repeating the consumer tap journey", async () => {
+test("CommercialValue is a white-first interactive workbench with four distinct brand tasks", async () => {
   const [sections, preview, styles] = await Promise.all([
     readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/brand-control-center-preview.tsx", import.meta.url), "utf8"),
@@ -75,43 +75,59 @@ test("CommercialValue reveals the brand-side orchestrator without repeating the 
   ]);
   const value = sections.slice(sections.indexOf("export function CommercialValueSection"));
 
-  assert.match(value, /De una etiqueta a una operación conectada/);
-  assert.match(value, /De uma etiqueta a uma operação conectada/);
-  assert.match(value, /From one label to a connected operation/);
+  assert.match(value, /Configurá la experiencia\. Entendé cada interacción/);
+  assert.match(value, /Configure a experiência\. Entenda cada interação/);
+  assert.match(value, /Configure the experience\. Understand every interaction/);
   assert.match(value, /<BrandControlCenterPreview locale=\{locale\} \/>/);
   assert.match(preview, /DEMO_PRODUCT_PROFILES\.wine/);
-  assert.match(preview, /Simulación ilustrativa · Sin datos reales/);
-  assert.match(preview, /qué información recibe su equipo después de cada interacción/);
-  assert.match(preview, /pathLength=\{1\}/);
+  assert.match(preview, /Demo interactiva · Datos ilustrativos/);
   assert.match(preview, /const DEMO_PRODUCT = DEMO_PRODUCT_PROFILES\.wine/);
   assert.match(preview, /Identidad/);
   assert.match(preview, /Contenido/);
   assert.match(preview, /Servicios/);
-  assert.match(preview, /Señales/);
-  assert.match(preview, /type="radio"/);
-  assert.match(preview, /checked=\{selected === key\}/);
-  assert.match(preview, /onChange=\{\(\) => setSelected\(key\)\}/);
-  assert.match(preview, /nexid-product-orchestration-wine\.webp/);
-  assert.match(preview, /sizes="\(max-width: 900px\) 100vw, 58vw"/);
-  assert.match(preview, /Qué ocurrió/);
-  assert.match(preview, /Con qué contexto/);
-  assert.match(preview, /Qué puede hacer tu equipo/);
-  assert.match(preview, /cada evento conserva su fuente y momento/);
-  assert.match(preview, /Lo que recibe tu equipo/);
-  assert.match(preview, /Botella premium y celular conectándose mediante una etiqueta NFC/);
-  assert.doesNotMatch(preview, /<Wine|<Smartphone|styles\.bottle|styles\.phone/);
-  assert.doesNotMatch(preview, /stageLabel|nfcBadge/);
-  assert.match(styles, /@container \(max-width: 51rem\)/);
+  assert.match(preview, /Actividad/);
+  assert.match(preview, /role="tablist"/);
+  assert.match(preview, /role="tabpanel"/);
+  assert.match(preview, /aria-selected=\{selected === key\}/);
+  assert.match(preview, /aria-controls=\{modePanelId\}/);
+  assert.match(preview, /ArrowRight/);
+  assert.match(preview, /ArrowLeft/);
+  assert.match(preview, /type="checkbox" checked=\{content\[key\]\}/);
+  assert.match(preview, /type="checkbox" checked=\{services\[key\]\}/);
+  assert.match(preview, /setContent/);
+  assert.match(preview, /setServices/);
+  assert.match(preview, /setFilter/);
+  assert.match(preview, /draftIdentity/);
+  assert.match(preview, /linkedIdentity/);
+  assert.match(preview, /eventCounts/);
+  assert.match(preview, /recordEvent\("content"/);
+  assert.match(preview, /recordEvent\("service"/);
+  assert.match(preview, /aria-live="polite" aria-atomic="true"/);
+  assert.match(preview, /nexid-product-orchestration-wine-light-v2\.webp/);
+  assert.match(preview, /sizes="\(max-width: 900px\) 100vw, 78vw"/);
+  assert.match(preview, /Vincular etiqueta demo/);
+  assert.match(preview, /Activar garantía/);
+  assert.match(preview, /Eventos recientes · últimos 8/);
+  assert.match(preview, /Simulación sin datos reales ni escritura en producción/);
+  assert.match(preview, /Simulation with no real data or production writes/);
+  assert.match(preview, /Simulação sem dados reais nem gravação em produção/);
+  assert.doesNotMatch(preview, /layer\.facts\.map|facts:\s*\[/);
+  assert.doesNotMatch(styles, /\.theatre\s*\{|brightness\(0\.64\)|cinematicVeil|twinCard/);
+  assert.match(styles, /\.contextScene\s*\{[\s\S]{0,260}background:\s*#f8fcfd/);
+  assert.match(styles, /@container \(max-width: 50rem\)/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(styles, /@media \(forced-colors: active\)/);
   assert.match(styles, /@keyframes rfWave/);
-  assert.match(styles, /@keyframes signalCurrent/);
-  assert.match(styles, /@keyframes mediaDrift/);
+  assert.match(styles, /@keyframes linkParticle/);
+  assert.match(styles, /@keyframes metricPop/);
+  assert.match(styles, /@keyframes linkParticleVertical/);
+  assert.match(styles, /:focus-visible/);
+  assert.doesNotMatch(styles, /min-height:\s*(?:48|50)rem/);
   assert.match(value, /Agendar una demo para mi producto/);
   assert.match(value, /href="\/\?contact=demo#contact-modal"/);
   assert.doesNotMatch(value, /habilita la próxima acción/i);
   assert.doesNotMatch(value, /Ver la plataforma en acción/);
-  assert.doesNotMatch(preview, /ChevronRight|ArrowDown|ArrowUp|Producto entregado/);
+  assert.doesNotMatch(preview, /Producto entregado/);
   assert.doesNotMatch(value, /Una relación que sigue generando valor|Uma relação que continua gerando valor|A relationship that keeps creating value/);
   assert.doesNotMatch(value, /commercial-value-grid|commercial-value-rail|HorizontalRailControls|0\{index \+ 1\}/);
   assert.doesNotMatch(preview, /\b(?:%|KPI|ROI|conversi[oó]n)\b/i);
