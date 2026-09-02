@@ -142,36 +142,40 @@ export function CommercialValueSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-        eyebrow: "On your brand's side",
-        title: "Prepare the experience once. Every product puts it to work.",
-        body: "Choose the information and services customers will find. The label opens them on the phone, while your team receives the signals needed to continue.",
-        cta: "Try it with a bottle",
+        eyebrow: "For your brand",
+        title: "From one label to a connected operation.",
+        body: "From one console, define what every product publishes, which service it offers and what information your team receives.",
+        cta: "Book a demo for my product",
       }
     : isBr
       ? {
-          eyebrow: "Do lado da sua marca",
-          title: "Prepare a experiência uma vez. Cada produto a coloca em ação.",
-          body: "Escolha as informações e os serviços que o cliente encontrará. A etiqueta abre tudo no celular e sua equipe recebe os sinais para continuar.",
-          cta: "Testar com uma garrafa",
+          eyebrow: "Para a sua marca",
+          title: "De uma etiqueta a uma operação conectada.",
+          body: "Em um único console, defina o que cada produto publica, qual serviço oferece e quais informações sua equipe recebe.",
+          cta: "Agendar uma demo para meu produto",
         }
       : {
           eyebrow: "Del lado de tu marca",
-          title: "Preparás la experiencia una vez. Cada producto la pone en marcha.",
-          body: "Elegís la información y los servicios que encontrará el cliente. La etiqueta los abre en el celular y tu equipo recibe las señales para continuar.",
-          cta: "Probarlo con una botella",
+          title: "De una etiqueta a una operación conectada.",
+          body: "En una sola consola definís qué publica cada producto, qué servicio ofrece y qué información recibe tu equipo.",
+          cta: "Agendar una demo para mi producto",
         };
 
   return (
     <section className="commercial-value-section container-shell" aria-labelledby="commercial-value-title">
       <div className="commercial-value-shell">
         <div className="commercial-value-intro">
-          <p>{copy.eyebrow}</p>
-          <h2 id="commercial-value-title">{copy.title}</h2>
-          <span>{copy.body}</span>
-          <Link href="/demo-lab?profile=wine" className="commercial-value-cta">
-            {copy.cta}
-            <ArrowRight aria-hidden="true" />
-          </Link>
+          <div className="commercial-value-heading">
+            <p>{copy.eyebrow}</p>
+            <h2 id="commercial-value-title">{copy.title}</h2>
+          </div>
+          <div className="commercial-value-support">
+            <span>{copy.body}</span>
+            <Link href="/?contact=demo#contact-modal" className="commercial-value-cta">
+              {copy.cta}
+              <ArrowRight aria-hidden="true" />
+            </Link>
+          </div>
         </div>
         <BrandControlCenterPreview locale={locale} />
       </div>
