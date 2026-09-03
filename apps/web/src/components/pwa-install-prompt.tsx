@@ -63,7 +63,9 @@ export function PwaInstallPrompt({ locale = "es-AR" }: { locale?: string }) {
   const [ready, setReady] = useState(false);
   const [engaged, setEngaged] = useState(false);
   const copy = useMemo(() => promptCopy[normalizeLocale(locale)], [locale]);
-  const criticalJourney = pathname === "/sun"
+  const criticalJourney = pathname === "/"
+    || pathname.startsWith("/demo-lab")
+    || pathname === "/sun"
     || pathname.startsWith("/s/")
     || pathname.startsWith("/r/")
     || pathname.startsWith("/offline")

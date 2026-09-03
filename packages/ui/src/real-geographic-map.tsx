@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Popup } from "maplibre-gl";
 import type {
   MapDensity,
+  PremiumVectorMapLabels,
   VectorMapEvidenceStep,
   VectorMapLedgerItem,
   VectorMapPoint,
@@ -29,6 +30,7 @@ type RealGeographicMapProps = {
   ledgerItems?: VectorMapLedgerItem[];
   mapSource?: TrustMapSourceOverrides;
   ariaLabel?: string;
+  labels?: Partial<PremiumVectorMapLabels>;
   externalTiles?: boolean;
 };
 
@@ -73,6 +75,52 @@ const CONSENTED_CONSUMER_LOCATION_SOURCES = new Set([
   "browser_geolocation_approximate_consent",
   "browser_gps_approximate_consent",
 ]);
+
+const DEFAULT_MAP_LABELS: PremiumVectorMapLabels = {
+  defaultTitle: "Mapa de eventos reportados",
+  defaultSubtitle: "Puntos geográficos observados; no infiere autenticaciones ni recorridos físicos.",
+  routeFallbackLabel: "Relación reportada",
+  consumerAccuracyUnknown: "Zona aproximada autorizada; precisión no informada",
+  consumerAccuracyKnown: "Zona aproximada autorizada · margen cercano a {meters} m",
+  tileLoadError: "No se pudieron cargar las teselas del mapa.",
+  tileLoadWarning: "Algunas teselas no se pudieron cargar. El resumen textual conserva la evidencia disponible.",
+  mapInitError: "No se pudo iniciar MapLibre en este dispositivo.",
+  localGridSource: "MapLibre GL · cuadrícula local sin tiles externos",
+  legendAriaLabel: "Leyenda del mapa",
+  legendEvent: "Evento",
+  legendDeclaredOrigin: "Origen declarado",
+  legendSeparateRisk: "Riesgo separado",
+  heatLegend: "Calor = volumen observado · escala 1 / 10 / 100 / 1000+",
+  loadingLocalGrid: "Preparando cuadrícula local…",
+  loadingApproximateLocation: "Cargando ubicación aproximada…",
+  loadingGeographicMap: "Cargando mapa geográfico real…",
+  mapUnavailableTitle: "Mapa no disponible",
+  mapUnavailableSummary: "Conservamos el resumen textual; no mostramos geografía inventada.",
+  emptyConsumerTitle: "Ubicación del teléfono no autorizada",
+  emptyConsumerBody: "No mostramos un punto por red o IP. El mapa aparece sólo después de compartir una ubicación aproximada desde este dispositivo.",
+  emptyMapTitle: "Sin ubicaciones observadas para mostrar",
+  emptyMapBody: "Cuando exista un evento con coordenadas válidas aparecerá aquí. No generamos puntos artificiales.",
+  consumerPointSummary: "Un punto aproximado compartido por este dispositivo.",
+  consumerEmptySummary: "Sin ubicación del dispositivo autorizada.",
+  mapSummary: "{subtitle} {points} puntos geográficos, {routes} relaciones reportadas, {events} eventos observados y {risks} señales de riesgo separadas.",
+  detailsSummary: "Evidencia y resumen del mapa",
+  popupObservedEvents: "{count} eventos observados",
+  popupReportedPoint: "Punto geográfico reportado",
+  detailsEventCount: "{count} eventos",
+  attributionToggle: "Mostrar atribución",
+  navigationZoomIn: "Acercar",
+  navigationZoomOut: "Alejar",
+  popupClose: "Cerrar ventana",
+  cooperativeWindows: "Usá Ctrl + desplazamiento para acercar el mapa",
+  cooperativeMac: "Usá ⌘ + desplazamiento para acercar el mapa",
+  cooperativeMobile: "Usá dos dedos para mover el mapa",
+};
+
+function formatMapLabel(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{([a-zA-Z]+)\}/g, (match, key: string) => (
+    Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : match
+  ));
+}
 
 function resolveDocumentMapTheme(root: HTMLElement): MapTheme {
   const explicitTheme = root.getAttribute("data-theme") || root.getAttribute("data-nexid-theme");
@@ -176,7 +224,10 @@ export function buildTrustMapPointGeoJson(points: VectorMapPoint[], density: Map
   };
 }
 
-export function buildTrustMapRouteGeoJson(routes: VectorMapRoute[]): RouteCollection {
+export function buildTrustMapRouteGeoJson(
+  routes: VectorMapRoute[],
+  routeFallbackLabel = DEFAULT_MAP_LABELS.routeFallbackLabel,
+): RouteCollection {
   return {
     type: "FeatureCollection",
     features: routes.filter((route) => isCoordinate({ lat: route.fromLat, lng: route.fromLng })
@@ -184,7 +235,7 @@ export function buildTrustMapRouteGeoJson(routes: VectorMapRoute[]): RouteCollec
       type: "Feature",
       properties: {
         id: route.id,
-        label: route.label || "Relación reportada",
+        label: route.label || routeFallbackLabel,
         evidence: route.evidence || "",
         tone: route.tone || "info",
       },
@@ -432,8 +483,8 @@ export function RealGeographicMap({
   routes = [],
   selectedPointId,
   onPointSelect,
-  title = "Mapa de eventos reportados",
-  subtitle = "Puntos geográficos observados; no infiere autenticaciones ni recorridos físicos.",
+  title,
+  subtitle,
   caption,
   className = "",
   heightClassName = "h-[24rem]",
@@ -445,6 +496,7 @@ export function RealGeographicMap({
   ledgerItems = [],
   mapSource,
   ariaLabel,
+  labels,
   externalTiles = true,
 }: RealGeographicMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -459,6 +511,10 @@ export function RealGeographicMap({
   const [loaded, setLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapWarning, setMapWarning] = useState<string | null>(null);
+  const mapLabels = useMemo(() => ({ ...DEFAULT_MAP_LABELS, ...labels }), [labels]);
+  const labelsSignature = useMemo(() => JSON.stringify(mapLabels), [mapLabels]);
+  const resolvedTitle = title ?? mapLabels.defaultTitle;
+  const resolvedSubtitle = subtitle ?? mapLabels.defaultSubtitle;
 
   pointsRef.current = points;
   onPointSelectRef.current = onPointSelect;
@@ -473,20 +529,49 @@ export function RealGeographicMap({
   }, [consumerChrome, density, maxPoints, points]);
   const visibleRoutes = useMemo(() => consumerChrome ? [] : routes.slice(0, maxRoutes), [consumerChrome, maxRoutes, routes]);
   const pointGeoJson = useMemo(() => buildTrustMapPointGeoJson(visiblePoints, effectiveDensity), [effectiveDensity, visiblePoints]);
-  const routeGeoJson = useMemo(() => buildTrustMapRouteGeoJson(visibleRoutes), [visibleRoutes]);
+  const routeGeoJson = useMemo(
+    () => buildTrustMapRouteGeoJson(visibleRoutes, mapLabels.routeFallbackLabel),
+    [mapLabels.routeFallbackLabel, visibleRoutes],
+  );
   const consumerAccuracyGeoJson = useMemo(() => consumerChrome ? buildConsumerAccuracyGeoJson(visiblePoints) : EMPTY_CONSUMER_ACCURACY, [consumerChrome, visiblePoints]);
-  const coordinateSignature = useMemo(() => `${pointGeoJson.features.map((feature) => `${feature.properties.id}:${feature.geometry.coordinates.join(",")}:${feature.properties.scans}`).join("|")}::${routeGeoJson.features.map((feature) => `${feature.properties.id}:${feature.geometry.coordinates.flat().join(",")}`).join("|")}::${consumerAccuracyGeoJson.features.map((feature) => `${feature.properties.id}:${feature.properties.accuracyM}`).join("|")}`, [consumerAccuracyGeoJson, pointGeoJson, routeGeoJson]);
+  const coordinateSignature = useMemo(() => JSON.stringify({
+    points: pointGeoJson.features.map((feature) => ({
+      id: feature.properties.id,
+      coordinates: feature.geometry.coordinates,
+      label: feature.properties.label,
+      sublabel: feature.properties.sublabel,
+      evidence: feature.properties.evidence,
+      scans: feature.properties.scans,
+      tone: feature.properties.tone,
+      risk: feature.properties.risk,
+      lastSeen: feature.properties.lastSeen,
+      locationSource: feature.properties.locationSource,
+      locationAccuracyM: feature.properties.locationAccuracyM,
+    })),
+    routes: routeGeoJson.features.map((feature) => ({
+      id: feature.properties.id,
+      coordinates: feature.geometry.coordinates,
+      label: feature.properties.label,
+      evidence: feature.properties.evidence,
+      tone: feature.properties.tone,
+    })),
+    consumerAccuracy: consumerAccuracyGeoJson.features.map((feature) => ({
+      id: feature.properties.id,
+      accuracyM: feature.properties.accuracyM,
+      coordinates: feature.geometry.coordinates,
+    })),
+  }), [consumerAccuracyGeoJson, pointGeoJson, routeGeoJson]);
   const trustMapSource = useMemo(() => resolveTrustMapSource(mapSource), [mapSource]);
   const selectedPoint = visiblePoints.find((point) => point.id === selectedPointId) || null;
   const totalEvents = visiblePoints.reduce((sum, point) => sum + Math.max(0, Number(point.scans || 0)), 0);
   const riskCount = visiblePoints.filter((point) => pointTone(point) === "risk" || Number(point.risk || 0) > 0).length;
   const compactChrome = chrome === "minimal" || chrome === "enterprise-atlas";
   const isLightTheme = mapTheme !== "dark";
-  const mapCanvasLabel = ariaLabel || title;
+  const mapCanvasLabel = ariaLabel || resolvedTitle;
   const displayedConsumerAccuracyM = consumerAccuracyM(visiblePoints[0]);
   const consumerLocationSummary = displayedConsumerAccuracyM === null
-    ? "Zona aproximada autorizada; precisión no informada"
-    : `Zona aproximada autorizada · margen cercano a ${Math.round(displayedConsumerAccuracyM)} m`;
+    ? mapLabels.consumerAccuracyUnknown
+    : formatMapLabel(mapLabels.consumerAccuracyKnown, { meters: Math.round(displayedConsumerAccuracyM) });
 
   useEffect(() => {
     const root = document.documentElement;
@@ -524,6 +609,16 @@ export function RealGeographicMap({
         attributionControl: false,
         cooperativeGestures: true,
         fadeDuration: 0,
+        locale: {
+          "Map.Title": mapCanvasLabel,
+          "AttributionControl.ToggleAttribution": mapLabels.attributionToggle,
+          "NavigationControl.ZoomIn": mapLabels.navigationZoomIn,
+          "NavigationControl.ZoomOut": mapLabels.navigationZoomOut,
+          "Popup.Close": mapLabels.popupClose,
+          "CooperativeGesturesHandler.WindowsHelpText": mapLabels.cooperativeWindows,
+          "CooperativeGesturesHandler.MacHelpText": mapLabels.cooperativeMac,
+          "CooperativeGesturesHandler.MobileHelpText": mapLabels.cooperativeMobile,
+        },
       });
       mapRef.current = map;
       const canvas = map.getCanvas();
@@ -542,10 +637,10 @@ export function RealGeographicMap({
       map.on("error", (event) => {
         if (cancelled || !event?.error) return;
         if (!map.loaded()) {
-          setMapError("No se pudieron cargar las teselas del mapa.");
+          setMapError(mapLabels.tileLoadError);
           return;
         }
-        setMapWarning("Algunas teselas no se pudieron cargar. El resumen textual conserva la evidencia disponible.");
+        setMapWarning(mapLabels.tileLoadWarning);
       });
       if (!consumerChrome) {
         map.on("click", "nexid-evidence-clusters", async (event: MapLayerMouseEvent) => {
@@ -573,7 +668,9 @@ export function RealGeographicMap({
         appendPopupLine(card, point.evidence || "");
         appendPopupLine(card, consumerChrome
           ? consumerLocationSummary
-          : point.scans ? `${point.scans} eventos observados` : "Punto geográfico reportado");
+          : point.scans
+            ? formatMapLabel(mapLabels.popupObservedEvents, { count: point.scans })
+            : mapLabels.popupReportedPoint);
         popupRef.current = new maplibre.Popup({ closeButton: false, closeOnClick: true, className: "nexid-map-popup" })
           .setLngLat(coordinate)
           .setDOMContent(card)
@@ -593,7 +690,7 @@ export function RealGeographicMap({
       }
     };
     void boot().catch(() => {
-      if (!cancelled) setMapError("No se pudo iniciar MapLibre en este dispositivo.");
+      if (!cancelled) setMapError(mapLabels.mapInitError);
     });
     return () => {
       cancelled = true;
@@ -605,7 +702,7 @@ export function RealGeographicMap({
     };
     // Density changes cluster/source semantics, so rebuild the engine as well.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consumerChrome, effectiveDensity, externalTiles, mapTheme, trustMapSource.attribution, trustMapSource.darkStyleUrl, trustMapSource.rasterTileTemplate, trustMapSource.styleUrl]);
+  }, [consumerChrome, effectiveDensity, externalTiles, labelsSignature, mapTheme, trustMapSource.attribution, trustMapSource.darkStyleUrl, trustMapSource.rasterTileTemplate, trustMapSource.styleUrl]);
 
   useEffect(() => {
     const canvas = mapRef.current?.getCanvas();
@@ -617,6 +714,7 @@ export function RealGeographicMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loaded) return;
+    popupRef.current?.remove();
     (map.getSource("nexid-evidence-points") as GeoJSONSource | undefined)?.setData(pointGeoJson as never);
     (map.getSource("nexid-evidence-heat") as GeoJSONSource | undefined)?.setData(pointGeoJson as never);
     (map.getSource("nexid-evidence-routes") as GeoJSONSource | undefined)?.setData(routeGeoJson as never);
@@ -659,29 +757,31 @@ export function RealGeographicMap({
         />
       ) : null}
 
-      <div className={`pointer-events-none absolute left-3 top-3 z-10 max-w-[min(31rem,calc(100%-6.5rem))] rounded-xl border px-3 py-2 shadow-lg backdrop-blur-md ${isLightTheme ? "border-slate-200 bg-white/90 text-slate-900" : "border-white/10 bg-slate-950/82 text-white"}`}>
-        <h3 id={titleId} className="text-xs font-black uppercase tracking-[0.12em] sm:text-sm">{title}</h3>
-        {consumerChrome ? <p className={`mt-1 text-[10px] leading-4 sm:text-xs ${isLightTheme ? "text-slate-600" : "text-slate-300"}`}>{consumerLocationSummary}</p> : !compactChrome ? <p className={`mt-1 text-[10px] leading-4 sm:text-xs ${isLightTheme ? "text-slate-600" : "text-slate-300"}`}>{subtitle}</p> : null}
-        {!consumerChrome ? <span className={`mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${isLightTheme ? "border-cyan-700/20 bg-cyan-50 text-cyan-800" : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"}`}>{externalTiles ? `MapLibre GL · ${trustMapSource.attribution}` : "MapLibre GL · cuadrícula local sin tiles externos"}</span> : null}
-      </div>
+      {!compactChrome ? (
+        <div className={`pointer-events-none absolute left-3 top-3 z-10 max-w-[min(31rem,calc(100%-6.5rem))] rounded-xl border px-3 py-2 shadow-lg backdrop-blur-md ${isLightTheme ? "border-slate-200 bg-white/90 text-slate-900" : "border-white/10 bg-slate-950/82 text-white"}`}>
+          <h3 id={titleId} className="text-xs font-black uppercase tracking-[0.12em] sm:text-sm">{resolvedTitle}</h3>
+          {consumerChrome ? <p className={`mt-1 text-[10px] leading-4 sm:text-xs ${isLightTheme ? "text-slate-600" : "text-slate-300"}`}>{consumerLocationSummary}</p> : <p className={`mt-1 text-[10px] leading-4 sm:text-xs ${isLightTheme ? "text-slate-600" : "text-slate-300"}`}>{resolvedSubtitle}</p>}
+          {!consumerChrome ? <span className={`mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${isLightTheme ? "border-cyan-700/20 bg-cyan-50 text-cyan-800" : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"}`}>{externalTiles ? `MapLibre GL · ${trustMapSource.attribution}` : mapLabels.localGridSource}</span> : null}
+        </div>
+      ) : <h3 id={titleId} className="sr-only">{resolvedTitle}</h3>}
 
       {loaded && !mapError && !consumerChrome ? (
-        <div className={`pointer-events-none absolute bottom-8 left-3 z-10 flex flex-wrap gap-1.5 rounded-lg border p-2 text-[9px] font-bold shadow-lg backdrop-blur ${isLightTheme ? "border-slate-200 bg-white/88 text-slate-700" : "border-white/10 bg-slate-950/82 text-slate-200"}`} aria-label="Leyenda del mapa">
-          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-cyan-400" />Evento</span>
-          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" />Origen declarado</span>
-          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-400" />Riesgo separado</span>
-          {density === "heat" ? <span className="basis-full">Calor = volumen observado · escala 1 / 10 / 100 / 1000+</span> : null}
+        <div className={`pointer-events-none absolute bottom-8 left-3 z-10 flex flex-wrap gap-1.5 rounded-lg border p-2 text-[9px] font-bold shadow-lg backdrop-blur ${isLightTheme ? "border-slate-200 bg-white/88 text-slate-700" : "border-white/10 bg-slate-950/82 text-slate-200"}`} aria-label={mapLabels.legendAriaLabel}>
+          <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-cyan-400" />{mapLabels.legendEvent}</span>
+          {!compactChrome ? <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" />{mapLabels.legendDeclaredOrigin}</span> : null}
+          {!compactChrome ? <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-400" />{mapLabels.legendSeparateRisk}</span> : null}
+          {density === "heat" ? <span className="basis-full">{mapLabels.heatLegend}</span> : null}
         </div>
       ) : null}
 
       {!loaded && !mapError ? (
         <div className={`absolute inset-0 z-20 grid place-items-center text-center text-sm ${isLightTheme ? "bg-slate-50/92 text-slate-600" : "bg-slate-950/88 text-slate-300"}`} role="status" aria-busy="true">
-          <span><i className="mx-auto mb-3 block h-7 w-7 animate-spin rounded-full border-2 border-cyan-300/25 border-t-cyan-400 motion-reduce:animate-none" />{!externalTiles ? "Preparando cuadrícula local…" : consumerChrome ? "Cargando ubicación aproximada…" : "Cargando mapa geográfico real…"}</span>
+          <span><i className="mx-auto mb-3 block h-7 w-7 animate-spin rounded-full border-2 border-cyan-300/25 border-t-cyan-400 motion-reduce:animate-none" />{!externalTiles ? mapLabels.loadingLocalGrid : consumerChrome ? mapLabels.loadingApproximateLocation : mapLabels.loadingGeographicMap}</span>
         </div>
       ) : null}
       {mapError ? (
         <div className={`absolute inset-0 z-20 grid place-items-center p-6 text-center text-sm ${isLightTheme ? "bg-white text-slate-700" : "bg-slate-950 text-slate-300"}`} role="alert">
-          <div><b className="block text-rose-500">Mapa no disponible</b><span className="mt-1 block">{mapError} Conservamos el resumen textual; no mostramos geografía inventada.</span></div>
+          <div><b className="block text-rose-500">{mapLabels.mapUnavailableTitle}</b><span className="mt-1 block">{mapError} {mapLabels.mapUnavailableSummary}</span></div>
         </div>
       ) : null}
       {loaded && !mapError && mapWarning ? (
@@ -691,14 +791,20 @@ export function RealGeographicMap({
       ) : null}
       {loaded && !mapError && pointGeoJson.features.length === 0 ? (
         <div className={`pointer-events-none absolute inset-x-3 top-1/2 z-10 -translate-y-1/2 rounded-xl border p-4 text-center text-sm shadow-xl backdrop-blur ${isLightTheme ? "border-slate-200 bg-white/92 text-slate-700" : "border-white/10 bg-slate-950/88 text-slate-300"}`}>
-          <b className={isLightTheme ? "text-slate-950" : "text-white"}>{consumerChrome ? "Ubicación del teléfono no autorizada" : "Sin ubicaciones observadas para mostrar"}</b>
-          <span className="mt-1 block">{consumerChrome ? "No mostramos un punto por red o IP. El mapa aparece sólo después de compartir una ubicación aproximada desde este dispositivo." : "Cuando exista un evento con coordenadas válidas aparecerá aquí. No generamos puntos artificiales."}</span>
+          <b className={isLightTheme ? "text-slate-950" : "text-white"}>{consumerChrome ? mapLabels.emptyConsumerTitle : mapLabels.emptyMapTitle}</b>
+          <span className="mt-1 block">{consumerChrome ? mapLabels.emptyConsumerBody : mapLabels.emptyMapBody}</span>
         </div>
       ) : null}
 
       <p id={summaryId} className="sr-only">{ariaLabel || (consumerChrome
-        ? `${consumerLocationSummary}. ${pointGeoJson.features.length ? "Un punto aproximado compartido por este dispositivo." : "Sin ubicación del dispositivo autorizada."}`
-        : `${subtitle} ${pointGeoJson.features.length} puntos geográficos, ${routeGeoJson.features.length} relaciones reportadas, ${totalEvents} eventos observados y ${riskCount} señales de riesgo separadas.`)}</p>
+        ? `${consumerLocationSummary}. ${pointGeoJson.features.length ? mapLabels.consumerPointSummary : mapLabels.consumerEmptySummary}`
+        : formatMapLabel(mapLabels.mapSummary, {
+            subtitle: resolvedSubtitle,
+            points: pointGeoJson.features.length,
+            routes: routeGeoJson.features.length,
+            events: totalEvents,
+            risks: riskCount,
+          }))}</p>
 
       {selectedPoint && !consumerChrome ? (
         <div className={`pointer-events-none absolute bottom-8 right-3 z-10 hidden max-w-[18rem] rounded-lg border p-2 text-xs shadow-xl backdrop-blur sm:block ${isLightTheme ? "border-slate-200 bg-white/90 text-slate-700" : "border-white/10 bg-slate-950/84 text-slate-300"}`}>
@@ -709,7 +815,7 @@ export function RealGeographicMap({
 
       {!consumerChrome && (caption || evidenceSteps.length || ledgerItems.length) ? (
         <details className={`absolute bottom-2 right-3 z-20 max-w-[min(23rem,calc(100%-1.5rem))] rounded-lg border text-xs shadow-xl backdrop-blur ${isLightTheme ? "border-slate-200 bg-white/92 text-slate-700" : "border-white/10 bg-slate-950/90 text-slate-300"}`}>
-          <summary className="min-h-11 cursor-pointer px-3 py-2 font-bold">Evidencia y resumen del mapa</summary>
+          <summary className="min-h-11 cursor-pointer px-3 py-2 font-bold">{mapLabels.detailsSummary}</summary>
           <div className="max-h-56 overflow-auto border-t border-current/10 px-3 py-2">
             {caption ? <p>{caption}</p> : null}
             {[...evidenceSteps, ...ledgerItems].slice(0, 6).map((item) => <p key={item.id} className="mt-2"><b>{item.label}:</b> {item.value}{item.detail ? ` · ${item.detail}` : ""}</p>)}
@@ -717,7 +823,7 @@ export function RealGeographicMap({
               <div className="mt-3 grid gap-1.5">
                 {visiblePoints.slice(0, 8).map((point) => (
                   <button key={point.id} type="button" className={`min-h-11 rounded-lg border px-2 py-1 text-left ${isLightTheme ? "border-slate-200 bg-slate-50" : "border-white/10 bg-white/5"}`} onClick={() => onPointSelect?.(point)}>
-                    <b className="block">{point.label}</b><span>{point.sublabel || `${point.scans || 0} eventos`}</span>
+                    <b className="block">{point.label}</b><span>{point.sublabel || formatMapLabel(mapLabels.detailsEventCount, { count: point.scans || 0 })}</span>
                   </button>
                 ))}
               </div>

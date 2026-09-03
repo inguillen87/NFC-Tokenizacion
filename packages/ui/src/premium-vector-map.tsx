@@ -55,6 +55,53 @@ export type VectorMapLedgerItem = {
 export type MapDensity = "balanced" | "heat" | "route";
 export type MapChrome = "full" | "compact" | "minimal" | "enterprise-atlas" | "consumer";
 
+/**
+ * Serializable UI copy for the shared geographic map.
+ *
+ * Dynamic values use named placeholders so localized labels can cross the
+ * server/client boundary without passing formatter functions. Supported
+ * placeholders are documented by the defaults in RealGeographicMap.
+ */
+export type PremiumVectorMapLabels = {
+  defaultTitle: string;
+  defaultSubtitle: string;
+  routeFallbackLabel: string;
+  consumerAccuracyUnknown: string;
+  consumerAccuracyKnown: string;
+  tileLoadError: string;
+  tileLoadWarning: string;
+  mapInitError: string;
+  localGridSource: string;
+  legendAriaLabel: string;
+  legendEvent: string;
+  legendDeclaredOrigin: string;
+  legendSeparateRisk: string;
+  heatLegend: string;
+  loadingLocalGrid: string;
+  loadingApproximateLocation: string;
+  loadingGeographicMap: string;
+  mapUnavailableTitle: string;
+  mapUnavailableSummary: string;
+  emptyConsumerTitle: string;
+  emptyConsumerBody: string;
+  emptyMapTitle: string;
+  emptyMapBody: string;
+  consumerPointSummary: string;
+  consumerEmptySummary: string;
+  mapSummary: string;
+  detailsSummary: string;
+  popupObservedEvents: string;
+  popupReportedPoint: string;
+  detailsEventCount: string;
+  attributionToggle: string;
+  navigationZoomIn: string;
+  navigationZoomOut: string;
+  popupClose: string;
+  cooperativeWindows: string;
+  cooperativeMac: string;
+  cooperativeMobile: string;
+};
+
 export type PremiumVectorMapProps = {
   points: VectorMapPoint[];
   routes?: VectorMapRoute[];
@@ -73,6 +120,8 @@ export type PremiumVectorMapProps = {
   ledgerItems?: VectorMapLedgerItem[];
   mapSource?: TrustMapSourceOverrides;
   ariaLabel?: string;
+  /** Optional localized UI copy. Omitted keys retain the current Spanish defaults. */
+  labels?: Partial<PremiumVectorMapLabels>;
   /** Disable all third-party basemap/style requests while keeping a local coordinate surface. */
   externalTiles?: boolean;
 };

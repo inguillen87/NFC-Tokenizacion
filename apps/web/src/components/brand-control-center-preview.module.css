@@ -322,7 +322,7 @@
 
 .modeTabs button > span {
   grid-row: 1 / span 2;
-  color: #7a98aa;
+  color: #4d6b7c;
   font-size: 0.66rem;
   font-weight: 950;
   letter-spacing: 0.08em;
@@ -764,7 +764,7 @@
 
 .tagNode small,
 .productNode small {
-  color: #638092;
+  color: #4d6b7c;
   font-size: 0.68rem;
   font-weight: 850;
   letter-spacing: 0.08em;
@@ -1021,8 +1021,14 @@
 }
 
 .eventFeed li {
-  display: grid;
   min-width: 0;
+}
+
+.eventFeed li > button {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 3.65rem;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.65rem;
@@ -1030,9 +1036,31 @@
   border: 1px solid #d5e5e9;
   border-radius: 0.85rem;
   background: rgba(255, 255, 255, 0.9);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
-.eventFeed li > i {
+.eventFeed li > button:hover {
+  border-color: color-mix(in srgb, var(--accent) 42%, #d5e5e9);
+  box-shadow: 0 0.55rem 1.35rem rgba(29, 76, 91, 0.08);
+  transform: translateY(-0.08rem);
+}
+
+.eventFeed li[data-selected="true"] > button {
+  border-color: color-mix(in srgb, var(--accent) 58%, #d5e5e9);
+  background: color-mix(in srgb, var(--accent-soft) 44%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.eventFeed li > button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 44%, transparent);
+  outline-offset: 3px;
+}
+
+.eventFeed li > button > i {
   width: 0.62rem;
   height: 0.62rem;
   border-radius: 50%;
@@ -1040,10 +1068,10 @@
   box-shadow: 0 0 0 0.25rem rgba(19, 184, 200, 0.12);
 }
 
-.eventFeed li[data-kind="content"] > i { background: #2fb89f; }
-.eventFeed li[data-kind="service"] > i { background: #8b6ee8; }
+.eventFeed li[data-kind="content"] > button > i { background: #2fb89f; }
+.eventFeed li[data-kind="service"] > button > i { background: #8b6ee8; }
 
-.eventFeed li > span {
+.eventFeed li > button > span {
   display: grid;
   min-width: 0;
   gap: 0.14rem;
@@ -1066,90 +1094,539 @@
   white-space: nowrap;
 }
 
-.returnBar {
+.impactConsole {
+  --impact-line: color-mix(in srgb, var(--line) 76%, var(--accent) 24%);
+  --impact-panel: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
+  --impact-card: color-mix(in srgb, var(--surface) 97%, var(--accent) 3%);
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(13rem, 0.72fr) minmax(0, 1.28fr);
-  gap: 0.85rem 1.3rem;
-  align-items: center;
-  padding: 1rem clamp(1rem, 2.4vw, 1.5rem);
-  border-top: 1px solid var(--line);
-  background: rgba(226, 247, 248, 0.78);
-  backdrop-filter: blur(16px);
+  overflow: hidden;
+  border-top: 1px solid var(--impact-line);
+  background:
+    radial-gradient(circle at 8% 4%, color-mix(in srgb, var(--accent) 11%, transparent) 0, transparent 25rem),
+    linear-gradient(145deg, var(--impact-panel), var(--surface-muted));
+  isolation: isolate;
 }
 
-.returnBar > div {
+.impactConsole::before {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 8%;
+  left: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 58%, transparent), transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.impactHeader {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: clamp(1rem, 2.2vw, 1.35rem) clamp(1rem, 2.4vw, 1.5rem);
+  border-bottom: 1px solid var(--impact-line);
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.impactEvent {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.82rem;
+}
+
+.impactEventIcon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  border-radius: 1rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-soft) 88%, var(--surface)), var(--surface));
+  box-shadow: 0 0.8rem 1.8rem color-mix(in srgb, var(--accent-glow) 34%, transparent);
+  color: var(--accent-strong);
+}
+
+.impactEventIcon svg {
+  width: 1.24rem;
+  height: 1.24rem;
+}
+
+.impactEvent > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.14rem;
+}
+
+.impactEvent small,
+.impactLead > span,
+.impactCards small,
+.mapSelected small,
+.mapUse small {
+  color: var(--accent-strong);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.105em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.impactEvent strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: clamp(1rem, 1.5vw, 1.16rem);
+  font-weight: 900;
+  letter-spacing: -0.018em;
+  line-height: 1.24;
+}
+
+.impactEvent em {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 690;
+  line-height: 1.4;
+}
+
+.impactViewSwitch,
+.mapToolbar > div:last-child {
+  display: inline-grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 0.24rem;
+  padding: 0.24rem;
+  border: 1px solid var(--impact-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-muted) 82%, var(--surface));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent);
+}
+
+.impactViewSwitch button,
+.mapToolbar button,
+.mapRegionList button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.impactViewSwitch button,
+.mapToolbar button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  padding: 0.55rem 0.82rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.impactViewSwitch button svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+}
+
+.impactViewSwitch button:hover,
+.mapToolbar button:hover,
+.mapRegionList button:hover {
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 50%, var(--surface));
+  color: var(--ink);
+  transform: translateY(-0.08rem);
+}
+
+.impactViewSwitch button[aria-pressed="true"],
+.mapToolbar button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: var(--surface);
+  box-shadow: 0 0.45rem 1rem color-mix(in srgb, var(--accent-glow) 25%, transparent);
+  color: var(--accent-strong);
+}
+
+.impactViewSwitch button:focus-visible,
+.mapToolbar button:focus-visible,
+.mapRegionList button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 44%, transparent);
+  outline-offset: 3px;
+}
+
+.impactNarrative {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.74fr) minmax(0, 1.26fr);
+  gap: 0.86rem 1rem;
+  padding: clamp(1rem, 2.4vw, 1.5rem);
+}
+
+.impactLead {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-row: auto;
+  align-content: center;
+  gap: 0.72rem;
+  overflow: hidden;
+  padding: clamp(1rem, 2vw, 1.3rem);
+  border: 1px solid var(--impact-line);
+  border-radius: 1.15rem;
+  background: linear-gradient(145deg, var(--impact-card), color-mix(in srgb, var(--surface) 90%, var(--accent-soft)));
+  box-shadow: 0 1rem 2.4rem rgba(37, 91, 104, 0.07);
+}
+
+.impactLead::before {
+  position: absolute;
+  top: 0.85rem;
+  bottom: 0.85rem;
+  left: 0;
+  width: 0.22rem;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(var(--accent), var(--accent-strong));
+  content: "";
+}
+
+.impactLead h3 {
+  max-width: 28ch;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.28rem, 2.25vw, 1.72rem);
+  font-weight: 920;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.impactTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.impactTags small {
+  display: inline-flex;
+  min-height: 1.7rem;
+  align-items: center;
+  padding: 0.3rem 0.52rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface));
+  color: var(--accent-strong);
+  font-size: 0.66rem;
+  font-weight: 840;
+  line-height: 1.2;
+}
+
+.impactCards {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.impactCards article {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 7.4rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  gap: 0.65rem;
+  overflow: hidden;
+  padding: 0.85rem;
+  border: 1px solid var(--impact-line);
+  border-radius: 1rem;
+  background: var(--impact-card);
+  box-shadow: 0 0.7rem 1.8rem rgba(37, 91, 104, 0.055);
+}
+
+.impactCards article::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 0.16rem;
+  background: linear-gradient(90deg, var(--accent), transparent 82%);
+  content: "";
+  opacity: 0.68;
+}
+
+.impactCards article > svg {
+  width: 2rem;
+  height: 2rem;
+  padding: 0.48rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 23%, var(--line));
+  border-radius: 0.7rem;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.impactCards article > span {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 0.34rem;
+}
+
+.impactCards article strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 790;
+  line-height: 1.42;
+}
+
+.mapPanel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2.4vw, 1.5rem);
+}
+
+.mapToolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mapToolbar > div:first-child {
+  display: grid;
+  max-width: 48rem;
+  gap: 0.22rem;
+}
+
+.mapToolbar > div:first-child > span {
+  color: var(--ink);
+  font-size: clamp(1.06rem, 1.8vw, 1.3rem);
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.mapToolbar p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.48;
+}
+
+.mapGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.52fr) minmax(15rem, 0.58fr);
+  align-items: stretch;
+  gap: 0.9rem;
+}
+
+.impactMapHeight,
+.mapLoading {
+  width: 100%;
+  min-height: clamp(20rem, 35vw, 25rem);
+  height: 100%;
+}
+
+.impactMap {
+  border-color: var(--impact-line);
+  border-radius: 1.25rem;
+  background: var(--surface-muted);
+  box-shadow: 0 1rem 2.8rem rgba(20, 69, 85, 0.13);
+}
+
+.mapLoading {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--impact-line);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(color-mix(in srgb, var(--accent) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent) 1px, transparent 1px),
+    var(--surface-muted);
+  background-size: 2rem 2rem;
+}
+
+.mapLoading::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 28%, color-mix(in srgb, var(--accent) 15%, transparent) 48%, transparent 68%);
+  content: "";
+  transform: translateX(-100%);
+  animation: mapLoadingSweep 1.5s ease-in-out infinite;
+}
+
+.mapSummary {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 0.65rem;
+  padding: 0.72rem;
+  border: 1px solid var(--impact-line);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: 0 1rem 2.6rem rgba(32, 78, 91, 0.08);
+}
+
+.mapTotal,
+.mapSelected,
+.mapUse {
+  min-width: 0;
+  padding: 0.78rem;
+  border: 1px solid color-mix(in srgb, var(--impact-line) 82%, transparent);
+  border-radius: 0.92rem;
+  background: var(--impact-card);
+}
+
+.mapTotal {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.7rem;
 }
 
-.returnBar > div > svg {
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0.65rem;
-  border: 1px solid #a8dae1;
-  border-radius: 0.82rem;
+.mapTotal > svg {
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0.53rem;
+  border-radius: 0.75rem;
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
-.returnBar > div span {
+.mapTotal > span,
+.mapSelected,
+.mapUse {
   display: grid;
-  min-width: 0;
-  gap: 0.15rem;
+  gap: 0.22rem;
 }
 
-.returnBar small,
-.returnBar dt {
-  color: var(--accent-strong);
-  font-size: 0.75rem;
-  font-weight: 900;
-  letter-spacing: 0.09em;
-  line-height: 1.35;
-  text-transform: uppercase;
+.mapTotal strong {
+  color: var(--ink);
+  font-size: 1.7rem;
+  font-weight: 930;
+  letter-spacing: -0.055em;
+  line-height: 1;
 }
 
-.returnBar strong {
+.mapTotal small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 740;
+  line-height: 1.32;
+}
+
+.mapSelected strong {
   overflow-wrap: anywhere;
   color: var(--ink);
-  font-size: 0.9375rem;
-  line-height: 1.35;
+  font-size: 1rem;
+  font-weight: 880;
+  line-height: 1.25;
 }
 
-.returnBar dl {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
-  margin: 0;
-}
-
-.returnBar dl > div {
-  min-width: 0;
-  padding: 0.62rem 0.72rem;
-  border: 1px solid rgba(35, 130, 146, 0.13);
-  border-radius: 0.82rem;
-  background: rgba(255, 255, 255, 0.68);
-}
-
-.returnBar dd {
+.mapSelected > span {
   overflow-wrap: anywhere;
-  margin: 0.25rem 0 0;
-  color: #315267;
-  font-size: 0.8125rem;
-  font-weight: 780;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 690;
   line-height: 1.4;
 }
 
-.returnBar > p {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding-top: 0.72rem;
-  border-top: 1px solid rgba(35, 130, 146, 0.1);
-  color: #60788a;
+.mapUse p {
+  margin: 0.1rem 0 0;
+  color: var(--muted);
+  font-size: 0.735rem;
+  line-height: 1.48;
+}
+
+.mapRegionList {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.mapRegionList button {
+  display: grid;
+  min-width: 0;
+  min-height: 2.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.52rem 0.62rem;
+  border-color: color-mix(in srgb, var(--impact-line) 72%, transparent);
+  border-radius: 0.72rem;
+  background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+  text-align: left;
+}
+
+.mapRegionList button > span {
+  overflow: hidden;
+  color: var(--muted);
   font-size: 0.72rem;
-  line-height: 1.45;
-  text-align: right;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mapRegionList button > strong {
+  display: grid;
+  min-width: 1.8rem;
+  height: 1.55rem;
+  place-items: center;
+  padding: 0 0.36rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-soft) 68%, var(--surface));
+  color: var(--accent-strong);
+  font-size: 0.69rem;
+  font-weight: 900;
+}
+
+.mapRegionList button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface));
+  box-shadow: 0 0.5rem 1.2rem color-mix(in srgb, var(--accent-glow) 20%, transparent);
+  color: var(--ink);
+}
+
+.mapRegionList button[aria-pressed="true"] > span {
+  color: var(--ink);
+}
+
+.impactTruth {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.78rem clamp(1rem, 2.4vw, 1.5rem);
+  border-top: 1px solid var(--impact-line);
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 660;
+  line-height: 1.48;
+}
+
+.impactTruth svg {
+  width: 0.98rem;
+  height: 0.98rem;
+  flex: 0 0 auto;
+  margin-top: 0.02rem;
+  color: var(--accent-strong);
 }
 
 .preview[data-motion-active="true"] .editor,
@@ -1177,7 +1654,9 @@
 .preview[data-motion-active="true"] .optionList label[data-enabled="true"] .optionIcon { animation: configConfirm 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .preview[data-motion-active="true"] .metrics strong { animation: metricPop 460ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .preview[data-motion-active="true"] .metricBar b { animation: metricGrow 680ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-.preview[data-motion-active="true"] .returnEvent { animation: eventReturn 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.preview[data-motion-active="true"] .impactEvent { animation: eventReturn 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.preview[data-motion-active="true"] .impactNarrative,
+.preview[data-motion-active="true"] .mapPanel { animation: panelEnter 380ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 @keyframes panelEnter {
   from { opacity: 0.45; transform: translateY(0.55rem); }
@@ -1242,6 +1721,11 @@
 @keyframes rowEnter {
   from { opacity: 0; transform: translateY(0.35rem); }
   to { opacity: 1; transform: none; }
+}
+
+@keyframes mapLoadingSweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 
 :global(html[data-theme="dark"]) .preview,
@@ -1323,12 +1807,16 @@
 :global(html.theme-dark) .signalControls button,
 :global(html[data-theme="dark"]) .metrics > div,
 :global(html.theme-dark) .metrics > div,
-:global(html[data-theme="dark"]) .eventFeed li,
-:global(html.theme-dark) .eventFeed li,
-:global(html[data-theme="dark"]) .returnBar dl > div,
-:global(html.theme-dark) .returnBar dl > div {
+:global(html[data-theme="dark"]) .eventFeed li > button,
+:global(html.theme-dark) .eventFeed li > button {
   background: rgba(9, 31, 48, 0.9);
   color: var(--ink);
+}
+
+:global(html[data-theme="dark"]) .eventFeed li[data-selected="true"] > button,
+:global(html.theme-dark) .eventFeed li[data-selected="true"] > button {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 62%, #0a2031);
 }
 
 :global(html[data-theme="dark"]) .identityDiagram,
@@ -1408,16 +1896,29 @@
   background: rgba(190, 216, 225, 0.15);
 }
 
-:global(html[data-theme="dark"]) .returnBar,
-:global(html.theme-dark) .returnBar {
-  background: rgba(7, 26, 41, 0.92);
+:global(html[data-theme="dark"]) .impactConsole,
+:global(html.theme-dark) .impactConsole {
+  background:
+    radial-gradient(circle at 8% 4%, color-mix(in srgb, var(--accent) 10%, transparent) 0, transparent 25rem),
+    linear-gradient(145deg, #071827, #0b2131);
 }
 
-:global(html[data-theme="dark"]) .returnBar dd,
-:global(html.theme-dark) .returnBar dd,
-:global(html[data-theme="dark"]) .returnBar > p,
-:global(html.theme-dark) .returnBar > p {
-  color: #a8c0cd;
+:global(html[data-theme="dark"]) .impactHeader,
+:global(html.theme-dark) .impactHeader,
+:global(html[data-theme="dark"]) .impactTruth,
+:global(html.theme-dark) .impactTruth {
+  background: rgba(7, 26, 41, 0.82);
+}
+
+:global(html[data-theme="dark"]) .impactLead,
+:global(html.theme-dark) .impactLead,
+:global(html[data-theme="dark"]) .impactCards article,
+:global(html.theme-dark) .impactCards article,
+:global(html[data-theme="dark"]) .mapSummary,
+:global(html.theme-dark) .mapSummary,
+:global(html[data-theme="dark"]) .impactMap,
+:global(html.theme-dark) .impactMap {
+  box-shadow: 0 1rem 2.8rem rgba(0, 0, 0, 0.22);
 }
 
 :global(html[data-theme="dark"]) .identityForm label,
@@ -1499,12 +2000,43 @@
     min-height: 0;
   }
 
-  .returnBar {
+  .impactHeader {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .impactViewSwitch {
+    justify-self: start;
+  }
+
+  .impactNarrative {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .returnBar > p {
-    text-align: left;
+  .impactLead {
+    grid-row: auto;
+  }
+
+  .impactCards {
+    grid-column: auto;
+  }
+
+  .mapGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .impactMapHeight,
+  .mapLoading {
+    min-height: 22rem;
+  }
+
+  .mapSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mapUse,
+  .mapRegionList {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1532,7 +2064,6 @@
   }
 
   .identityForm,
-  .returnBar dl,
   .metrics {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1566,12 +2097,93 @@
     width: min(100%, 20rem);
   }
 
-  .eventFeed li {
+  .eventFeed li > button {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
   .eventFeed time {
     grid-column: 2;
+  }
+
+  .impactHeader,
+  .impactNarrative,
+  .mapPanel {
+    padding-right: 0.85rem;
+    padding-left: 0.85rem;
+  }
+
+  .impactEvent {
+    align-items: start;
+  }
+
+  .impactEventIcon {
+    width: 2.65rem;
+    height: 2.65rem;
+    border-radius: 0.85rem;
+  }
+
+  .impactViewSwitch {
+    width: 100%;
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr);
+    border-radius: 1rem;
+  }
+
+  .impactViewSwitch button {
+    min-width: 0;
+    padding-right: 0.48rem;
+    padding-left: 0.48rem;
+    font-size: 0.7rem;
+    white-space: normal;
+  }
+
+  .impactLead h3 {
+    max-width: none;
+  }
+
+  .impactCards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .impactCards article {
+    min-height: 0;
+  }
+
+  .mapToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mapToolbar > div:last-child {
+    width: 100%;
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr);
+    border-radius: 1rem;
+  }
+
+  .mapToolbar button {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .impactMapHeight,
+  .mapLoading {
+    min-height: 18.5rem;
+  }
+
+  .mapSummary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mapUse,
+  .mapRegionList {
+    grid-column: auto;
+  }
+
+  .impactTruth {
+    padding-right: 0.85rem;
+    padding-left: 0.85rem;
   }
 }
 
@@ -1591,8 +2203,26 @@
   .phone,
   .phoneOptions button,
   .metrics > div,
-  .eventFeed li,
-  .returnBar dl > div {
+  .eventFeed li > button,
+  .impactConsole,
+  .impactHeader,
+  .impactEventIcon,
+  .impactViewSwitch,
+  .impactViewSwitch button,
+  .impactLead,
+  .impactTags small,
+  .impactCards article,
+  .impactCards article > svg,
+  .mapToolbar > div:last-child,
+  .mapToolbar button,
+  .impactMap,
+  .mapLoading,
+  .mapSummary,
+  .mapTotal,
+  .mapSelected,
+  .mapUse,
+  .mapRegionList button,
+  .impactTruth {
     border: 1px solid CanvasText;
   }
 
@@ -1608,8 +2238,18 @@
   }
 
   .modeTabs button[aria-selected="true"],
-  .signalControls button[aria-pressed="true"] {
+  .signalControls button[aria-pressed="true"],
+  .impactViewSwitch button[aria-pressed="true"],
+  .mapToolbar button[aria-pressed="true"],
+  .mapRegionList button[aria-pressed="true"] {
     outline: 3px solid Highlight;
+  }
+
+  .impactConsole::before,
+  .impactLead::before,
+  .impactCards article::after,
+  .mapLoading::after {
+    display: none;
   }
 }
 
