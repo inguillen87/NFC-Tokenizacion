@@ -13,6 +13,7 @@ import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
 import { CustomerGrowthCommandCenter } from "./customer-growth-command-center";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
+import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
 import type { RealtimeAvailability, RealtimeDataSource, RealtimeStreamSource } from "../lib/realtime-feed";
 import {
@@ -144,9 +145,13 @@ export default function DashboardHomeClient({
             <p className="text-sm font-black">Estás viendo una simulación, no el tenant productivo.</p>
             <p className="mt-1 text-xs leading-5 text-amber-100/80">Los TAP físicos no aparecen en esta sesión. Ingresá con la cuenta real de Bodega Balmec para ver lecturas y mapa de producción.</p>
           </div>
-          <Link href="/logout" className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/35 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 transition hover:bg-amber-100">
-            Ir al acceso real
-          </Link>
+          <SecureDashboardLogoutButton
+            clerkEnabled={clerkEnabled}
+            label="Ir al acceso real"
+            pendingLabel="Cerrando demo…"
+            testId="dashboard-demo-exit"
+            className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/35 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-70 sm:w-auto"
+          />
         </div>
       ) : null}
       {/* Dynamic Tab Navigation */}
@@ -204,7 +209,7 @@ export default function DashboardHomeClient({
               initialAvailabilityDetail={realtimeAvailabilityDetail}
               onSectionChange={(section) => setActiveTab(section)}
             />
-            <PhysicalTapsCommandCenter compact result={physicalTapsResult} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} />
+            <PhysicalTapsCommandCenter compact result={physicalTapsResult} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} clerkEnabled={clerkEnabled} />
           </div>
         )}
 

@@ -78,3 +78,14 @@ test("production shell and account menu consume the same registry without label 
   assert.doesNotMatch(accountMenu, /permissions\.includes\("employees:\*"\)/);
   assert.match(accountMenu, /destination: "subscriptions"/);
 });
+
+test("tenant account CTA stays on a real tenant surface while global super admin keeps the directory", async () => {
+  const accountMenu = await readFile(
+    new URL("../src/components/tenant-account-menu.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(accountMenu, /: isTenantMode\s*\? \{\s*href: DASHBOARD_DESTINATIONS\.settings\.href,\s*label: "Administrar mi workspace"/s);
+  assert.doesNotMatch(accountMenu, /: isTenantMode\s*\? \{\s*href: tenantHref/s);
+  assert.match(accountMenu, /!isTenantMode && canOpenDestination\("tenants"\)[\s\S]*destination: "tenants",[\s\S]*href: tenantHref/);
+});

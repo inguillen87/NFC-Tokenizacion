@@ -637,8 +637,22 @@ export function TenantAccountMenu({
   const nextAction = setupCompleted === false && role === "tenant-admin"
     ? { href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Completar setup del tenant", meta: "Datos, equipo e integraciones base" }
     : isTenantMode
-      ? { href: tenantHref, label: "Abrir perfil del tenant", meta: "Contexto, navegación y playbook del workspace" }
-      : { href: DASHBOARD_DESTINATIONS.settings.href, label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
+      ? {
+          href: DASHBOARD_DESTINATIONS.settings.href,
+          label: "Administrar mi workspace",
+          meta: "Configuración, seguridad e integraciones del tenant",
+        }
+      : canOpenDestination("tenants")
+        ? {
+            href: tenantHref,
+            label: scopedTenant ? `Abrir perfil de ${tenantName}` : "Abrir directorio de tenants",
+            meta: "Cuenta, plan, estado operativo y alcance global",
+          }
+        : {
+            href: DASHBOARD_DESTINATIONS.settings.href,
+            label: "Abrir configuración del workspace",
+            meta: "Seguridad, integraciones y soporte",
+          };
 
   const updatePanelPosition = useCallback(() => {
     if (typeof window === "undefined") {
@@ -831,6 +845,15 @@ export function TenantAccountMenu({
     };
   }, [open, updatePanelPosition]);
 
+  const globalTenantProfileItem: AccountMenuItem | null = !isTenantMode && canOpenDestination("tenants")
+    ? {
+        destination: "tenants",
+        href: tenantHref,
+        icon: <Building2 className="h-4 w-4" />,
+        label: scopedTenant ? `Perfil ${tenantName}` : "Directorio de tenants",
+        meta: "Cuentas, planes, regiones y estado operativo global",
+      }
+    : null;
   const primaryItemCandidates: AccountMenuItem[] = [
     {
       destination: "settings",
@@ -839,12 +862,7 @@ export function TenantAccountMenu({
       label: "Configuracion del workspace",
       meta: "Tenant, seguridad, datos, integraciones y soporte",
     },
-    {
-      href: tenantHref,
-      icon: <Building2 className="h-4 w-4" />,
-      label: isTenantMode ? `Perfil ${tenantName}` : "Directorio de tenants",
-      meta: isTenantMode ? "Plan, vertical, health y playbook del tenant" : "Cuentas, planes, regiones y health global",
-    },
+    ...(globalTenantProfileItem ? [globalTenantProfileItem] : []),
     {
       destination: canManageUsers ? "users" : "settings",
       href: canManageUsers ? DASHBOARD_DESTINATIONS.users.href : DASHBOARD_DESTINATIONS.settings.href,

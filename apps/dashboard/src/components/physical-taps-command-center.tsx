@@ -22,6 +22,7 @@ import {
   type PhysicalTapRow,
   type PhysicalTapsResult,
 } from "../lib/physical-taps-contract";
+import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 
 type StateFilter = "all" | "closed" | "opened" | "other";
 type LocationFilter = "all" | "approximate" | "none";
@@ -194,7 +195,15 @@ function groupMapPoints(rows: PhysicalTapRow[]): VectorMapPoint[] {
   });
 }
 
-function UnavailablePhysicalTaps({ result, tenantDisplayName }: { result: PhysicalTapsResult; tenantDisplayName: string }) {
+function UnavailablePhysicalTaps({
+  result,
+  tenantDisplayName,
+  clerkEnabled = false,
+}: {
+  result: PhysicalTapsResult;
+  tenantDisplayName: string;
+  clerkEnabled?: boolean;
+}) {
   const needsSession = result.availability === "requires_tenant_session";
   return (
     <section data-testid="physical-taps-unavailable" className="overflow-hidden rounded-3xl border border-amber-300/20 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,.12),transparent_36%),rgba(15,23,42,.78)]">
@@ -213,7 +222,13 @@ function UnavailablePhysicalTaps({ result, tenantDisplayName }: { result: Physic
           </div>
         </div>
         {needsSession ? (
-          <Link href="/logout" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-200/35 bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 hover:bg-cyan-200">Cambiar a cuenta tenant <ArrowRight className="h-4 w-4" /></Link>
+          <SecureDashboardLogoutButton
+            clerkEnabled={clerkEnabled}
+            label="Cambiar a cuenta tenant"
+            pendingLabel="Cerrando sesión…"
+            testId="physical-taps-change-account"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/35 bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-70 lg:w-auto"
+          />
         ) : (
           <Link href="/analytics" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/5 px-4 py-2 text-sm font-bold text-slate-100 hover:border-cyan-300/30">Reintentar <ArrowRight className="h-4 w-4" /></Link>
         )}
@@ -226,10 +241,12 @@ export function PhysicalTapsCommandCenter({
   result,
   compact = false,
   tenantDisplayName = "este tenant",
+  clerkEnabled = false,
 }: {
   result: PhysicalTapsResult;
   compact?: boolean;
   tenantDisplayName?: string;
+  clerkEnabled?: boolean;
 }) {
   const [state, setState] = useState<StateFilter>("all");
   const [location, setLocation] = useState<LocationFilter>("all");
@@ -245,7 +262,9 @@ export function PhysicalTapsCommandCenter({
   const points = useMemo(() => groupMapPoints(filteredRows), [filteredRows]);
   const [selectedPointId, setSelectedPointId] = useState<string | undefined>();
 
-  if (result.availability !== "ready" || !payload) return <UnavailablePhysicalTaps result={result} tenantDisplayName={tenantDisplayName} />;
+  if (result.availability !== "ready" || !payload) {
+    return <UnavailablePhysicalTaps result={result} tenantDisplayName={tenantDisplayName} clerkEnabled={clerkEnabled} />;
+  }
 
   const latestClosed = latestPhysicalTapByState(rows, "closed");
   const latestOpened = latestPhysicalTapByState(rows, "opened");

@@ -5,7 +5,7 @@ import { getDashboardI18n } from "../../lib/locale";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { getPublicAccessProfiles } from "../../lib/access-profiles";
 import { LoginFormPanel } from "../../components/login-form-panel";
-import { getDashboardSession } from "../../lib/session";
+import { getDashboardSession, isDashboardSessionUpstreamUnavailable } from "../../lib/session";
 import { dashboardDemoAccessAllowedForRole } from "../../lib/dashboard-access-flags";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 import { AuthThemeControl } from "../../components/auth-theme-control";
@@ -72,7 +72,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = searchParams ? await searchParams : {};
   const loggedOut = firstParam(params.logged_out) === "1";
   const authNotice = authNoticeForCode(firstParam(params.auth_error)) || (loggedOut ? "Sesión cerrada. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted." : "");
-  const session = loggedOut ? null : await getDashboardSession();
+  let session = null;
+  if (!loggedOut) {
+    try {
+      session = await getDashboardSession();
+    } catch (error) {
+      if (isDashboardSessionUpstreamUnavailable(error)) redirect("/session-recovery");
+      throw error;
+    }
+  }
   if (session) redirect("/");
 
   return (

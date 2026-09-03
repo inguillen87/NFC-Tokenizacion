@@ -33,6 +33,20 @@ export type DashboardSessionCredential = {
   rotatedSessionToken: string | null;
 };
 
+export class DashboardSessionUpstreamUnavailableError extends Error {
+  readonly status: number | null;
+
+  constructor(status: number | null = null) {
+    super("dashboard_session_upstream_unavailable");
+    this.name = "DashboardSessionUpstreamUnavailableError";
+    this.status = status;
+  }
+}
+
+export function isDashboardSessionUpstreamUnavailable(error: unknown) {
+  return error instanceof DashboardSessionUpstreamUnavailableError;
+}
+
 function demoFallbackSession(): DashboardSession {
   return {
     id: "demo-tenant-admin-demobodega",
@@ -104,7 +118,7 @@ export async function getDashboardSessionCredential(
       cache: "no-store",
     }).catch(() => null);
 
-    if (res && res.ok) {
+    if (res?.ok) {
       const data = await res.json().catch(() => null) as {
         ok?: boolean;
         session?: DashboardSession;
@@ -141,7 +155,15 @@ export async function getDashboardSessionCredential(
           rotatedSessionToken,
         };
       }
+      throw new DashboardSessionUpstreamUnavailableError(res.status);
     }
+
+    // Only an explicit authorization denial invalidates the local session.
+    // A network/deploy/5xx failure keeps the opaque credential intact and
+    // sends the UI to a fail-closed recovery surface instead of logging the
+    // operator out or trusting the unsigned display snapshot.
+    if (res && (res.status === 401 || res.status === 403)) return null;
+    throw new DashboardSessionUpstreamUnavailableError(res?.status ?? null);
   }
 
   if (dashboardFallbackSessionAllowed()) {
@@ -155,7 +177,13 @@ export async function getDashboardSession() {
 }
 
 export async function requireDashboardSession(permission?: string) {
-  const session = await getDashboardSession();
+  let session: DashboardSession | null = null;
+  try {
+    session = await getDashboardSession();
+  } catch (error) {
+    if (isDashboardSessionUpstreamUnavailable(error)) redirect("/session-recovery");
+    throw error;
+  }
   if (!session) redirect("/login");
   if (permission && session.role !== "super-admin" && !dashboardPermissionMatches(
     session.permissions,

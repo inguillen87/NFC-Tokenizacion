@@ -4,6 +4,7 @@ import { AnalyticsPanels } from "../../../components/analytics-panels";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import { PhysicalTapsCommandCenter } from "../../../components/physical-taps-command-center";
 import { dashboardContent } from "../../../lib/dashboard-content";
+import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
 import { getDashboardI18n } from "../../../lib/locale";
 import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
 import { requireDashboardSession } from "../../../lib/session";
@@ -262,7 +263,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <button suppressHydrationWarning type="submit" className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Aplicar filtros</button>
         </form>
       </div>
-      <PhysicalTapsCommandCenter result={physicalTapsResult} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} />
+      <PhysicalTapsCommandCenter
+        result={physicalTapsResult}
+        tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"}
+        clerkEnabled={isClerkConfiguredForRuntime()}
+      />
       {analyticsData.availability === "ready" && analyticsData.data ? (
         <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData.data} mapMode={mapMode} dataSource={analyticsData.source} sourceDetail={analyticsData.detail} />
       ) : (

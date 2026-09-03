@@ -136,7 +136,7 @@ test("Balmec physical TAP UX is wired into home and analytics without hardcoded 
     readFile(new URL("../src/lib/physical-taps-read.ts", import.meta.url), "utf8"),
   ]);
   assert.match(home, /PhysicalTapsCommandCenter compact/);
-  assert.match(analytics, /<PhysicalTapsCommandCenter result=/);
+  assert.match(analytics, /<PhysicalTapsCommandCenter\s+result=/);
   assert.match(reader, /sun\/physical-taps/);
   assert.match(reader, /real_data_requires_tenant_session/);
   assert.match(reader, /bid = ""/);
