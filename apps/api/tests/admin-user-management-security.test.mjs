@@ -368,7 +368,7 @@ test("explicit override updates mutate grants and denies only in scope, revoke s
   assert.match(permissionRoute, /resolveAdminUserPermissionOverrides/);
   assert.equal((usersRoute.match(/rp\.effect = 'deny'/g) || []).length, 2);
   assert.equal((usersRoute.match(/AS denied_permissions/g) || []).length, 2);
-  assert.ok(permissionRoute.indexOf("await ensureAuditLogsSchema()") < permissionRoute.indexOf("await replaceManagedAdminUserPermissionOverrides"));
+  assert.doesNotMatch(permissionRoute, /ensureAuditLogsSchema/);
   assert.match(update, /DELETE FROM resource_permissions permission/);
   assert.match(update, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action, effect\)/);
   assert.match(update, /permission\.tenant_id IS NOT DISTINCT FROM \$\{input\.tenantId\}::uuid/);

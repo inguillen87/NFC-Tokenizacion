@@ -11,7 +11,6 @@ import {
   replaceManagedAdminUserPermissionOverrides,
   replaceManagedAdminUserRole,
 } from '../../../../../lib/admin-user-management';
-import { ensureAuditLogsSchema } from '../../../../../lib/commercial-runtime-schema';
 
 type PermissionUpdateBody = {
   allowPermissions?: unknown;
@@ -70,7 +69,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ userId:
       return json({ ok: false, reason: overrides.reason }, overrides.status);
     }
 
-    await ensureAuditLogsSchema();
     const managedUserId = await replaceManagedAdminUserPermissionOverrides(sql as any, {
       targetUserId: userId,
       actorUserId: session.userId,

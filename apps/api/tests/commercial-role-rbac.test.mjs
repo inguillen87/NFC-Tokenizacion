@@ -88,6 +88,14 @@ function roleDefaultsFromDisposableValidator(source, role) {
   return JSON.parse(match[1]);
 }
 
+function roleDefaultsFromEnterpriseGate(source, role) {
+  const match = new RegExp(
+    `\\('${role}', true, true, '(\\[[^']*\\])'::jsonb\\)`,
+  ).exec(source);
+  assert.ok(match, `missing enterprise gate defaults for ${role}`);
+  return JSON.parse(match[1]);
+}
+
 test("commercial capabilities use an explicit role allowlist", () => {
   const expectedRoles = {
     "crm:read": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
@@ -300,7 +308,7 @@ test("explicit override mode writes allow and deny rows, remains tenant-scoped, 
   assert.match(permissionRoute, /explicit_override_contract_required/);
   assert.match(permissionRoute, /resolveAdminUserPermissionOverrides/);
   assert.match(permissionRoute, /replaceManagedAdminUserPermissionOverrides/);
-  assert.match(permissionRoute, /ensureAuditLogsSchema/);
+  assert.doesNotMatch(permissionRoute, /ensureAuditLogsSchema/);
 });
 
 test("forward-only migration reconciles commercial defaults before 0100 without rewriting users or sessions", async () => {
@@ -338,11 +346,12 @@ test("forward-only migration reconciles commercial defaults before 0100 without 
   assert.match(liveSession, /deniedPermissions: parsePermissions\(session\.current_denied_permissions\)/);
 });
 
-test("disposable PostgreSQL postcheck expects the complete current role catalog", async () => {
-  const validator = await readFile(
-    new URL("../scripts/db-validate-disposable-neon-branch.mjs", import.meta.url),
-    "utf8",
-  );
+test("all PostgreSQL release gates expect the complete current role catalog", async () => {
+  const [validator, preflight, dryRun] = await Promise.all([
+    "../scripts/db-validate-disposable-neon-branch.mjs",
+    "../scripts/db-enterprise-release-preflight.mjs",
+    "../scripts/db-enterprise-release-dry-run.mjs",
+  ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
   const expected = {
     tenant_owner: [
       "users:manage", "supplier_order.create", "batch.keys.generate", "supplier_pack.export",
@@ -378,5 +387,7 @@ test("disposable PostgreSQL postcheck expects the complete current role catalog"
 
   for (const [role, defaults] of Object.entries(expected)) {
     assert.deepEqual(roleDefaultsFromDisposableValidator(validator, role), defaults, role);
+    assert.deepEqual(roleDefaultsFromEnterpriseGate(preflight, role), defaults, `preflight:${role}`);
+    assert.deepEqual(roleDefaultsFromEnterpriseGate(dryRun, role), defaults, `dry-run:${role}`);
   }
 });
