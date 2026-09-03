@@ -13,7 +13,9 @@ const map = await readFile(new URL("../src/components/realtime-maplibre-map.tsx"
 test("CRM keeps SSE as the primary channel and reconciles persisted events every ten seconds", () => {
   assert.match(crm, /new EventSource\(streamUrl\.toString\(\)\)/);
   assert.match(crm, /new URL\("\/api\/admin\/events", window\.location\.origin\)/);
-  assert.match(crm, /streamSource === "production" \? "real" : streamSource/);
+  assert.match(crm, /pollUrl\.searchParams\.set\("source", streamSource\)/);
+  assert.match(crm, /pollUrl\.searchParams\.set\("range", timeRange\)/);
+  assert.doesNotMatch(crm, /streamSource === "production" \? "real" : streamSource/);
   assert.match(crm, /setInterval\(\(\) => void pollPersistedEvents\(\), 10_000\)/);
   assert.match(crm, /normalizeTenantTapRealtimeEvent/);
   assert.match(crm, /row\.source !== "production"/);
@@ -31,6 +33,7 @@ test("demo access is unmistakably isolated from a real tenant session", () => {
   assert.match(session, /label: "Demo Bodega Balmec"/);
   assert.match(account, /isDemo \? "Demo tenant"/);
   assert.match(account, /Simulación local/);
+  assert.match(crm, /isDemo=\{account\.isDemo\}/);
 });
 
 test("fallback streams rotate before the platform timeout and the map expression uses one zoom operator", () => {

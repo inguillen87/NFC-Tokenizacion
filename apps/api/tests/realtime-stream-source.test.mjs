@@ -46,6 +46,14 @@ test("SSE route applies source to both snapshots and live events before emitting
   assert.match(source, /if \(sourceFilter !== "all"\) return/);
 });
 
+test("persisted event fallback preserves the production aggregate", async () => {
+  const source = await readFile(new URL("../src/app/admin/events/route.ts", import.meta.url), "utf8");
+  assert.match(source, /requestedEventSource === "production"/);
+  assert.equal((source.match(/e\.source::text IN \('real', 'imported'\)/g) || []).length, 4);
+  assert.match(source, /if \(eventSource === ""\)/);
+  assert.match(source, /scope: \{ tenant: tenant \|\| "global", source: eventSource \|\| "all"/);
+});
+
 test("SSE reader cancellation releases timers, listeners and realtime subscriptions", async () => {
   const source = await readFile(new URL("../src/app/admin/events/stream/route.ts", import.meta.url), "utf8");
   assert.match(source, /cancel\(\)\s*\{[\s\S]*cancelStream\?\.\(false\)/);

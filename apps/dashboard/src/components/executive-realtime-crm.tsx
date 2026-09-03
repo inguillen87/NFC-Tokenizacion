@@ -774,8 +774,8 @@ export function ExecutiveRealtimeCrm({
     if (tenantScope) streamUrl.searchParams.set("tenant", tenantScope);
     const pollUrl = new URL("/api/admin/events", window.location.origin);
     pollUrl.searchParams.set("limit", "50");
-    pollUrl.searchParams.set("window", timeRange);
-    pollUrl.searchParams.set("source", streamSource === "production" ? "real" : streamSource);
+    pollUrl.searchParams.set("range", timeRange);
+    pollUrl.searchParams.set("source", streamSource);
     if (tenantScope) pollUrl.searchParams.set("tenant", tenantScope);
 
     let disposed = false;
@@ -1245,6 +1245,7 @@ export function ExecutiveRealtimeCrm({
             surface="crm"
             tenantSlug={account.tenantSlug || tenantScope}
             clerkEnabled={account.clerkEnabled}
+            isDemo={account.isDemo}
           />
         </div>
       </header>

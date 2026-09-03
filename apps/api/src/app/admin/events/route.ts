@@ -34,7 +34,10 @@ export async function GET(req: Request) {
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { tenant: rawTenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
   const tenant = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: rawTenant });
-  const eventSource = source === "real" || source === "demo" || source === "imported" ? source : "";
+  const requestedEventSource = String(searchParams.get("source") || "").trim().toLowerCase();
+  const eventSource = requestedEventSource === "production"
+    ? "production"
+    : source === "real" || source === "demo" || source === "imported" ? source : "";
   const bid = searchParams.get("bid") || "";
   const uid = (searchParams.get("uid") || "").toUpperCase();
   const result = (searchParams.get("result") || "").toUpperCase();
@@ -64,7 +67,11 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source::text = ${eventSource})
+          AND (
+            ${eventSource} = ''
+            OR (${eventSource} = 'production' AND e.source::text IN ('real', 'imported'))
+            OR e.source::text = ${eventSource}
+          )
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -89,7 +96,11 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source::text = ${eventSource})
+          AND (
+            ${eventSource} = ''
+            OR (${eventSource} = 'production' AND e.source::text IN ('real', 'imported'))
+            OR e.source::text = ${eventSource}
+          )
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -108,7 +119,11 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source::text = ${eventSource})
+          AND (
+            ${eventSource} = ''
+            OR (${eventSource} = 'production' AND e.source::text IN ('real', 'imported'))
+            OR e.source::text = ${eventSource}
+          )
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -125,7 +140,11 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source::text = ${eventSource})
+          AND (
+            ${eventSource} = ''
+            OR (${eventSource} = 'production' AND e.source::text IN ('real', 'imported'))
+            OR e.source::text = ${eventSource}
+          )
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -133,7 +152,7 @@ export async function GET(req: Request) {
       `;
   }
 
-  if (source === "" || source === "attempt") {
+  if (eventSource === "") {
     try {
       attemptRows = await sql/*sql*/`
         SELECT
@@ -220,7 +239,7 @@ export async function GET(req: Request) {
   });
 
   return json({
-    scope: { tenant: tenant || "global", source: source || "all", range, country: country || "all", limit: safeLimit },
+    scope: { tenant: tenant || "global", source: eventSource || "all", range, country: country || "all", limit: safeLimit },
     rows: normalized,
   });
 }
