@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
+
 import { sql, sqlSerializable, type SqlExecutor } from "./db";
+import { stableJson } from "./proof-layer";
 
 export const PUBLIC_EXPERIENCE_EVENT_TYPES = [
   "PRODUCT_VIEWED",
@@ -17,6 +20,40 @@ export const PUBLIC_EXPERIENCE_EVENT_TYPES = [
 ] as const;
 
 export type PublicExperienceEventType = (typeof PUBLIC_EXPERIENCE_EVENT_TYPES)[number];
+
+export const POST_TAP_ENGAGEMENT_TAXONOMY_VERSION = "nexid-post-tap-engagement-v1";
+export const POST_TAP_ENGAGEMENT_DOMAINS = [
+  "passport",
+  "content",
+  "warranty",
+  "support",
+  "ownership",
+  "loyalty",
+] as const;
+export const POST_TAP_ENGAGEMENT_STAGES = ["VIEWED", "STARTED", "CONFIRMED"] as const;
+
+export type PostTapEngagementDomain = (typeof POST_TAP_ENGAGEMENT_DOMAINS)[number];
+export type PostTapEngagementStage = (typeof POST_TAP_ENGAGEMENT_STAGES)[number];
+export type PostTapEngagementTaxonomy = {
+  domain: PostTapEngagementDomain;
+  stage: PostTapEngagementStage;
+};
+
+const PUBLIC_EXPERIENCE_TAXONOMY: Record<PublicExperienceEventType, PostTapEngagementTaxonomy> = {
+  PRODUCT_VIEWED: { domain: "passport", stage: "VIEWED" },
+  TECHNICAL_SHEET_VIEWED: { domain: "content", stage: "VIEWED" },
+  SAFETY_SHEET_VIEWED: { domain: "content", stage: "VIEWED" },
+  PPE_CONTENT_VIEWED: { domain: "content", stage: "VIEWED" },
+  STEWARDSHIP_CONFIRMED: { domain: "content", stage: "CONFIRMED" },
+  CROPWISE_CTA_CLICKED: { domain: "content", stage: "STARTED" },
+  ADVISOR_CONTACT_REQUESTED: { domain: "support", stage: "STARTED" },
+  LOYALTY_OFFER_VIEWED: { domain: "loyalty", stage: "VIEWED" },
+  LOYALTY_JOINED: { domain: "loyalty", stage: "CONFIRMED" },
+  TRAINING_STARTED: { domain: "content", stage: "STARTED" },
+  TRAINING_COMPLETED: { domain: "content", stage: "CONFIRMED" },
+  LEAD_CREATED: { domain: "support", stage: "CONFIRMED" },
+  PROBLEM_REPORTED: { domain: "support", stage: "STARTED" },
+};
 
 const EVENT_TYPES = new Set<string>(PUBLIC_EXPERIENCE_EVENT_TYPES);
 const SENSITIVE_EVENT_TYPES = new Set<PublicExperienceEventType>([
@@ -98,6 +135,29 @@ export function normalizePublicExperienceIdempotencyKey(value: unknown) {
   return IDEMPOTENCY_KEY_RE.test(normalized) ? normalized : null;
 }
 
+export function classifyPublicExperienceEvent(eventType: PublicExperienceEventType): PostTapEngagementTaxonomy {
+  return PUBLIC_EXPERIENCE_TAXONOMY[eventType];
+}
+
+export function publicExperienceRequestFingerprint(input: {
+  context: Pick<PublicExperienceContext, "tenantId" | "eventId" | "batchId" | "tagId" | "bid">;
+  eventType: PublicExperienceEventType;
+  idempotencyKey: string;
+  data: Record<string, string | number | boolean>;
+}) {
+  return createHash("sha256").update(stableJson({
+    tenantId: input.context.tenantId,
+    sourceTapEventId: input.context.eventId,
+    batchId: input.context.batchId,
+    tagId: input.context.tagId,
+    bid: input.context.bid,
+    eventType: input.eventType,
+    idempotencyKey: input.idempotencyKey,
+    data: input.data,
+    taxonomy: classifyPublicExperienceEvent(input.eventType),
+  }), "utf8").digest("hex");
+}
+
 export function sanitizePublicExperienceData(value: unknown) {
   const source = value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -177,11 +237,24 @@ export async function recordPublicExperienceEvent(input: {
   data: Record<string, string | number | boolean>;
   traceId: string;
 }, query: SqlExecutor = sqlSerializable) {
+  const taxonomy = classifyPublicExperienceEvent(input.eventType);
+  const requestFingerprint = publicExperienceRequestFingerprint(input);
   const persistedData = {
     ...input.data,
     publicIdempotencyKey: input.idempotencyKey,
+    publicRequestFingerprint: requestFingerprint,
     sourceTapEventId: input.context.eventId,
     traceId: clean(input.traceId, 160),
+    activityDomain: taxonomy.domain,
+    activityStage: taxonomy.stage,
+    taxonomyVersion: POST_TAP_ENGAGEMENT_TAXONOMY_VERSION,
+    provenance: {
+      actor: "public_passport_client",
+      tenantScope: "server_derived_from_tap_event",
+      sourceRecord: "events",
+      sourceTapEventId: input.context.eventId,
+      clientValuesVerified: false,
+    },
   };
   const rows = await query/*sql*/`
     WITH lock_key AS MATERIALIZED (
@@ -190,7 +263,9 @@ export async function recordPublicExperienceEvent(input: {
       )
     ), existing AS MATERIALIZED (
       SELECT external_event.id::text AS id, external_event.created_at::text AS created_at,
-        external_event.event_type, external_event.data->>'sourceTapEventId' AS source_tap_event_id
+        external_event.event_type, external_event.data,
+        external_event.data->>'sourceTapEventId' AS source_tap_event_id,
+        external_event.data->>'publicRequestFingerprint' AS request_fingerprint
       FROM sdk_external_events external_event
       CROSS JOIN lock_key
       WHERE external_event.tenant_id = ${input.context.tenantId}::uuid
@@ -209,11 +284,44 @@ export async function recordPublicExperienceEvent(input: {
       FROM lock_key
       WHERE NOT EXISTS (SELECT 1 FROM existing)
       RETURNING id::text AS id, created_at::text AS created_at
+    ), audited AS (
+      INSERT INTO audit_logs (
+        actor_id, tenant_id, action, resource_type, resource_id,
+        before_hash, after_hash, request_id
+      )
+      SELECT NULL, ${input.context.tenantId}::uuid, 'post_tap.engagement.recorded',
+        'sdk_external_event', inserted.id, NULL, ${requestFingerprint}, ${clean(input.traceId, 160)}
+      FROM inserted
+      RETURNING id::text AS id
     )
-    SELECT inserted.id, inserted.created_at, false AS replayed, false AS conflict FROM inserted
+    SELECT inserted.id, inserted.created_at, false AS replayed, false AS conflict,
+      (SELECT audited.id FROM audited LIMIT 1) AS audit_id
+    FROM inserted
     UNION ALL
     SELECT existing.id, existing.created_at, true AS replayed,
-      (existing.event_type <> ${input.eventType} OR existing.source_tap_event_id <> ${input.context.eventId}) AS conflict
+      (
+        existing.event_type <> ${input.eventType}
+        OR existing.source_tap_event_id IS DISTINCT FROM ${input.context.eventId}
+        OR (
+          existing.request_fingerprint IS NOT NULL
+          AND existing.request_fingerprint <> ${requestFingerprint}
+        )
+        OR (
+          existing.request_fingerprint IS NULL
+          AND (
+            existing.data
+              - 'publicIdempotencyKey'
+              - 'publicRequestFingerprint'
+              - 'sourceTapEventId'
+              - 'traceId'
+              - 'activityDomain'
+              - 'activityStage'
+              - 'taxonomyVersion'
+              - 'provenance'
+          ) <> ${JSON.stringify(input.data)}::jsonb
+        )
+      ) AS conflict,
+      NULL::text AS audit_id
     FROM existing
     LIMIT 1
   ` as Array<Record<string, unknown>>;
@@ -224,5 +332,8 @@ export async function recordPublicExperienceEvent(input: {
     id: String(row.id),
     createdAt: String(row.created_at),
     replayed: row.replayed === true,
+    auditId: row.audit_id ? String(row.audit_id) : null,
+    taxonomy,
+    requestFingerprint,
   };
 }

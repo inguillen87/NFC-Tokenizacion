@@ -7,6 +7,7 @@ import { json } from "../../../../lib/http";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import {
+  POST_TAP_ENGAGEMENT_TAXONOMY_VERSION,
   isPublicExperienceContextBlocked,
   isPublicClientExperienceEvent,
   isSensitivePublicExperienceEvent,
@@ -89,13 +90,23 @@ export async function POST(req: Request) {
       ok: true,
       event_type: eventType,
       event: { id: saved.id, recorded_at: saved.createdAt },
+      activity: {
+        domain: saved.taxonomy.domain,
+        stage: saved.taxonomy.stage,
+        taxonomy_version: POST_TAP_ENGAGEMENT_TAXONOMY_VERSION,
+      },
+      audit: {
+        id: saved.auditId,
+        request_fingerprint: saved.requestFingerprint,
+        tenant_scope: "server_derived_from_tap_event",
+      },
       replayed: saved.replayed,
       trace_id: trace,
     }, saved.replayed ? 200 : 201, { "cache-control": "no-store" });
   } catch (error) {
     const code = String((error as { code?: unknown })?.code || "");
     const message = error instanceof Error ? error.message : "";
-    if (message === "public_experience_event_idempotency_conflict") {
+    if (message === "public_experience_event_idempotency_conflict" || code === "23505") {
       return json({ ok: false, reason: "idempotency_key_conflict", trace_id: trace }, 409, { "cache-control": "no-store" });
     }
     if (code === "40001") {

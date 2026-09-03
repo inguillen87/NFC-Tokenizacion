@@ -8,6 +8,30 @@
   "servers": [{ "url": "https://api.nexid.lat" }],
   "security": [{ "AdminBearer": [] }],
   "paths": {
+    "/admin/engagement": {
+      "get": {
+        "operationId": "listTenantPostTapEngagement",
+        "summary": "List tenant-scoped post-tap engagement from durable source records",
+        "description": "Projects existing public experience events, canonical warranty events, support tickets, ownership records and loyalty memberships into the nexid-post-tap-engagement-v1 taxonomy. CONFIRMED means the source system durably recorded that workflow step; it does not mean warranty approval, support resolution, physical authenticity, custody or marketing consent. UID and tag identifiers are never treated as consumer identity.",
+        "x-nexid-permission": "crm:read",
+        "parameters": [
+          { "name": "tenant", "in": "query", "description": "Required for super-admin. Tenant-bound sessions always remain scoped to their persisted tenant.", "schema": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,79}$" } },
+          { "name": "range", "in": "query", "schema": { "type": "string", "enum": ["24h", "7d", "30d"], "default": "24h" } },
+          { "name": "domain", "in": "query", "schema": { "type": "string", "enum": ["passport", "content", "warranty", "support", "ownership", "loyalty"] } },
+          { "name": "stage", "in": "query", "schema": { "type": "string", "enum": ["VIEWED", "STARTED", "CONFIRMED"] } },
+          { "name": "source", "in": "query", "schema": { "type": "string", "enum": ["all", "real", "demo", "imported", "unknown"], "default": "all" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "Tenant engagement projection with explicit evidence and consent boundaries", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantEngagementResponse" } } } },
+          "400": { "$ref": "#/components/responses/AdminError" },
+          "401": { "$ref": "#/components/responses/AdminError" },
+          "403": { "$ref": "#/components/responses/AdminError" },
+          "404": { "$ref": "#/components/responses/AdminError" },
+          "503": { "$ref": "#/components/responses/AdminError" }
+        }
+      }
+    },
     "/admin/sun/physical-taps": {
       "get": {
         "operationId": "listTenantPhysicalTaps",
@@ -98,6 +122,99 @@
     "securitySchemes": { "AdminBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "opaque revocable admin session" } },
     "responses": { "AdminError": { "description": "No-store administration error" } },
     "schemas": {
+      "TenantEngagementResponse": {
+        "type": "object",
+        "required": ["ok", "scope", "taxonomy", "totals", "summary", "items", "boundaries"],
+        "properties": {
+          "ok": { "const": true },
+          "scope": {
+            "type": "object",
+            "required": ["tenant", "range", "domain", "stage", "source", "limit"],
+            "properties": {
+              "tenant": {
+                "type": "object",
+                "required": ["id", "slug", "name"],
+                "properties": {
+                  "id": { "type": "string", "format": "uuid" },
+                  "slug": { "type": "string" },
+                  "name": { "type": "string" }
+                },
+                "additionalProperties": false
+              },
+              "range": { "type": "string", "enum": ["24h", "7d", "30d"] },
+              "domain": { "type": "string", "enum": ["all", "passport", "content", "warranty", "support", "ownership", "loyalty"] },
+              "stage": { "type": "string", "enum": ["all", "VIEWED", "STARTED", "CONFIRMED"] },
+              "source": { "type": "string", "enum": ["all", "real", "demo", "imported", "unknown"] },
+              "limit": { "type": "integer", "minimum": 1, "maximum": 500 }
+            },
+            "additionalProperties": false
+          },
+          "taxonomy": {
+            "type": "object",
+            "required": ["version", "domains", "stages", "confirmedMeaning"],
+            "properties": {
+              "version": { "const": "nexid-post-tap-engagement-v1" },
+              "domains": { "type": "array", "items": { "type": "string", "enum": ["passport", "content", "warranty", "support", "ownership", "loyalty"] } },
+              "stages": { "type": "array", "items": { "type": "string", "enum": ["VIEWED", "STARTED", "CONFIRMED"] } },
+              "confirmedMeaning": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "totals": {
+            "type": "object",
+            "required": ["matched", "returned", "truncated"],
+            "properties": {
+              "matched": { "type": "integer", "minimum": 0 },
+              "returned": { "type": "integer", "minimum": 0 },
+              "truncated": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          },
+          "summary": { "type": "object", "description": "Counts only the returned items and declares scope=returned_items.", "additionalProperties": true },
+          "items": { "type": "array", "maxItems": 500, "items": { "$ref": "#/components/schemas/TenantEngagementItem" } },
+          "boundaries": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "additionalProperties": false
+      },
+      "TenantEngagementItem": {
+        "type": "object",
+        "required": ["id", "domain", "stage", "occurredAt", "dataMode", "sourceEventType", "actor", "unit", "provenance"],
+        "properties": {
+          "id": { "type": "string" },
+          "domain": { "type": "string", "enum": ["passport", "content", "warranty", "support", "ownership", "loyalty"] },
+          "stage": { "type": "string", "enum": ["VIEWED", "STARTED", "CONFIRMED"] },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "dataMode": { "type": "string", "enum": ["real", "demo", "imported", "unknown"] },
+          "sourceEventType": { "type": "string" },
+          "actor": {
+            "type": "object",
+            "description": "consumerId is non-null only for one durable consumer link plus at least one current explicitly granted contact consent.",
+            "required": ["state", "consumerId", "contactable", "consentChannels"],
+            "properties": {
+              "state": { "type": "string", "enum": ["contactable_consumer", "linked_without_contact_consent", "ambiguous_link", "anonymous"] },
+              "consumerId": { "type": ["string", "null"], "format": "uuid" },
+              "contactable": { "type": "boolean" },
+              "consentChannels": { "type": "array", "items": { "type": "string", "enum": ["email", "phone", "whatsapp"] } }
+            },
+            "additionalProperties": false
+          },
+          "unit": {
+            "type": "object",
+            "description": "Product-unit references are operational evidence and never consumer identity.",
+            "required": ["batchId", "tagId", "bid", "sourceTapEventId", "isActorIdentity"],
+            "properties": {
+              "batchId": { "type": ["string", "null"] },
+              "tagId": { "type": ["string", "null"] },
+              "bid": { "type": ["string", "null"] },
+              "sourceTapEventId": { "type": ["string", "null"] },
+              "isActorIdentity": { "const": false }
+            },
+            "additionalProperties": false
+          },
+          "provenance": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": false
+      },
       "PhysicalTapListResponse": {
         "type": "object",
         "required": ["ok", "scope", "availability", "summary", "rows"],
