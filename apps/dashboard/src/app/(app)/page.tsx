@@ -131,6 +131,7 @@ async function getLiveEvents(
   try {
     const query = new URLSearchParams({
       limit: "18",
+      range: "24h",
       source: requestedSource === "production" ? "real" : "demo",
     });
     if (tenantScope) {

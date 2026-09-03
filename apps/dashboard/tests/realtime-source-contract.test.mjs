@@ -23,6 +23,7 @@ test("Home returns explicit source and availability when upstream data falls bac
   assert.match(homeSource, /availability: includeSeedRows \? "fallback" : availability/);
   assert.match(homeSource, /classifyRealtimeEventSource\(row\.source\)/);
   assert.match(homeSource, /realtimeStreamSource = session\.isDemo \? "demo" : "production"/);
+  assert.match(homeSource, /limit: "18",\s*range: "24h",\s*source:/);
 });
 
 test("CRM requests one source, replaces fallback snapshots and labels it explicitly", () => {
