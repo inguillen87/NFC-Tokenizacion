@@ -30,6 +30,7 @@ import {
   Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { normalizeTenantTapRealtimeEvent } from "@product/core";
 import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map";
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
@@ -643,6 +644,7 @@ export function ExecutiveRealtimeCrm({
     setupCompleted?: boolean | null;
     tenantSlug?: string | null;
     clerkEnabled?: boolean;
+    isDemo?: boolean;
   };
   initialEvents: TenantTapRealtimeEvent[];
   tenantScope: string;
@@ -662,6 +664,7 @@ export function ExecutiveRealtimeCrm({
   const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, 50) : []);
   const [connected, setConnected] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
+  const [pollingFallbackActive, setPollingFallbackActive] = useState(false);
   const [streamConfirmed, setStreamConfirmed] = useState(initialAvailability === "ready" && initialEvents.length > 0);
   const [streamWarning, setStreamWarning] = useState<string | null>(null);
   const [lastUpdateAt, setLastUpdateAt] = useState<string | null>(initialEvents[0]?.occurredAt || null);
@@ -757,6 +760,7 @@ export function ExecutiveRealtimeCrm({
       setEvents([]);
       setConnected(false);
       setConnectionAttempted(true);
+      setPollingFallbackActive(false);
       setStreamConfirmed(false);
       setActiveDataSource("unavailable");
       setDataAvailability("upstream_error");
@@ -768,9 +772,61 @@ export function ExecutiveRealtimeCrm({
     streamUrl.searchParams.set("window", timeRange);
     streamUrl.searchParams.set("source", streamSource);
     if (tenantScope) streamUrl.searchParams.set("tenant", tenantScope);
+    const pollUrl = new URL("/api/admin/events", window.location.origin);
+    pollUrl.searchParams.set("limit", "50");
+    pollUrl.searchParams.set("window", timeRange);
+    pollUrl.searchParams.set("source", streamSource === "production" ? "real" : streamSource);
+    if (tenantScope) pollUrl.searchParams.set("tenant", tenantScope);
+
+    let disposed = false;
+    let pollInFlight = false;
+    let pollTimer: number | null = null;
+    const stopPollingFallback = () => {
+      if (pollTimer !== null) window.clearInterval(pollTimer);
+      pollTimer = null;
+      if (!disposed) setPollingFallbackActive(false);
+    };
+    const pollPersistedEvents = async () => {
+      if (disposed || pollInFlight) return;
+      pollInFlight = true;
+      try {
+        const response = await fetch(pollUrl, { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json().catch(() => null) as { rows?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null;
+        const rawRows = Array.isArray(payload) ? payload : Array.isArray(payload?.rows) ? payload.rows : null;
+        if (!rawRows) return;
+        const normalizedRows = rawRows.flatMap((row) => {
+          try {
+            return [normalizeTenantTapRealtimeEvent(row) as TenantTapRealtimeEvent];
+          } catch {
+            return [];
+          }
+        });
+        if (streamSource === "production" && normalizedRows.some((row) => row.source !== "production")) return;
+        setEvents((previous) => normalizedRows.reduce(
+          (current, incoming) => mergeRealtimeEvents(current, incoming, 50),
+          previous,
+        ));
+        setActiveDataSource(streamSource === "all" ? "mixed" : streamSource === "demo" ? "demo" : "production");
+        setDataAvailability("ready");
+        setAvailabilityDetail("Eventos persistidos confirmados; el canal inmediato está reconectando.");
+        setStreamWarning(null);
+        setStreamConfirmed(true);
+        setLastUpdateAt(new Date().toISOString());
+      } finally {
+        pollInFlight = false;
+      }
+    };
+    const startPollingFallback = () => {
+      if (disposed || pollTimer !== null) return;
+      setPollingFallbackActive(true);
+      void pollPersistedEvents();
+      pollTimer = window.setInterval(() => void pollPersistedEvents(), 10_000);
+    };
 
     setConnected(false);
     setConnectionAttempted(false);
+    setPollingFallbackActive(false);
     setStreamConfirmed(false);
     setStreamWarning(null);
     setActiveDataSource(initialDataSource);
@@ -780,24 +836,35 @@ export function ExecutiveRealtimeCrm({
     source.onopen = () => {
       setConnectionAttempted(true);
       setConnected(true);
+      stopPollingFallback();
     };
     source.onerror = () => {
       setConnectionAttempted(true);
       setConnected(false);
+      startPollingFallback();
     };
 
     const onSnapshot = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data) as { rows?: TenantTapRealtimeEvent[]; source?: string; availability?: string };
         if (!Array.isArray(payload.rows)) return;
+        const snapshotAvailability = String(payload.availability || "ready").toLowerCase();
+        if (snapshotAvailability !== "ready" && snapshotAvailability !== "fallback") {
+          setConnectionAttempted(true);
+          setConnected(false);
+          setStreamWarning("El canal inmediato no confirmó un snapshot; se consultan los eventos persistidos.");
+          startPollingFallback();
+          return;
+        }
         setEvents(sortRealtimeEvents(payload.rows || [], 50));
         const confirmedSource = String(payload.source || streamSource).toLowerCase();
         setActiveDataSource(confirmedSource === "all" ? "mixed" : confirmedSource === "demo" ? "demo" : "production");
-        setDataAvailability(payload.availability === "fallback" ? "fallback" : "ready");
-        setAvailabilityDetail(payload.availability === "fallback" ? "Stream operando con datos de respaldo declarados." : "Fuente confirmada por nexID Core.");
-        if (payload.availability !== "fallback") setStreamWarning(null);
+        setDataAvailability(snapshotAvailability === "fallback" ? "fallback" : "ready");
+        setAvailabilityDetail(snapshotAvailability === "fallback" ? "Stream operando con datos de respaldo declarados." : "Fuente confirmada por nexID Core.");
+        if (snapshotAvailability !== "fallback") setStreamWarning(null);
         setStreamConfirmed(true);
         setLastUpdateAt(new Date().toISOString());
+        stopPollingFallback();
       } catch {
         // keep previous state
       }
@@ -833,6 +900,7 @@ export function ExecutiveRealtimeCrm({
         setLastUpdateAt(heartbeatAt ? new Date(heartbeatAt).toISOString() : new Date().toISOString());
         setConnectionAttempted(true);
         setConnected(true);
+        stopPollingFallback();
       } catch {
         setLastUpdateAt(new Date().toISOString());
       }
@@ -850,6 +918,7 @@ export function ExecutiveRealtimeCrm({
         setStreamWarning(hasReason
           ? "La fuente en tiempo real informó una degradación; se conserva el último snapshot confirmado."
           : "El stream opera en modo degradado.");
+        if (payload.availability !== "fallback") startPollingFallback();
       } catch {
         setStreamWarning("El stream opera en modo degradado.");
       }
@@ -860,6 +929,8 @@ export function ExecutiveRealtimeCrm({
     source.addEventListener("heartbeat", onHeartbeat as EventListener);
     source.addEventListener("warning", onWarning as EventListener);
     return () => {
+      disposed = true;
+      if (pollTimer !== null) window.clearInterval(pollTimer);
       source.removeEventListener("snapshot", onSnapshot as EventListener);
       source.removeEventListener("event", onEvent as EventListener);
       source.removeEventListener("heartbeat", onHeartbeat as EventListener);
@@ -967,7 +1038,9 @@ export function ExecutiveRealtimeCrm({
   const lastUpdateMs = safeDate(lastUpdateAt);
   const streamIsStale = Boolean(connected && streamConfirmed && lastUpdateMs && freshnessNow - lastUpdateMs > 20_000);
   const sourcePresentation = realtimeSourcePresentation(activeDataSource, dataAvailability, availabilityDetail);
-  const streamHealth = streamWarning || dataAvailability !== "ready"
+  const streamHealth = pollingFallbackActive && dataAvailability === "ready" && streamConfirmed
+    ? { label: "Actualizando por respaldo", detail: "El canal inmediato se está reconectando; los eventos persistidos se consultan cada 10 segundos.", dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
+    : streamWarning || dataAvailability !== "ready"
     ? { label: "Degradado", detail: streamWarning || sourcePresentation.detail, dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
     : !connected
       ? connectionAttempted
@@ -978,7 +1051,7 @@ export function ExecutiveRealtimeCrm({
         : streamIsStale
           ? { label: "Desactualizado", detail: "No se recibió heartbeat ni snapshot en los últimos 20 segundos.", dot: "bg-rose-300", badge: "border-rose-300/30 bg-rose-400/10 text-rose-100" }
           : { label: activeDataSource === "demo" ? "En vivo - demo" : activeDataSource === "mixed" ? "En vivo - fuente mixta" : "En vivo - produccion", detail: `Stream confirmado. ${sourcePresentation.detail}`, dot: "bg-emerald-400", badge: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" };
-  const streamDataUnconfirmed = Boolean(streamWarning || dataAvailability !== "ready" || !streamConfirmed || streamIsStale);
+  const streamDataUnconfirmed = Boolean(dataAvailability !== "ready" || !streamConfirmed || streamIsStale);
 
   const alerts = useMemo(() => {
     const rows: Array<{ id: string; tone: "red" | "amber" | "blue"; title: string; detail: string; time: string }> = [];

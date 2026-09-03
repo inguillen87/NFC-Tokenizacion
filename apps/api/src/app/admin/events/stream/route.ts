@@ -67,6 +67,41 @@ function resolveWindowMs(raw: string): number | null {
   return map[raw] ?? null;
 }
 
+const DEFAULT_RECONCILIATION_INTERVAL_MS = 10_000;
+const MIN_RECONCILIATION_INTERVAL_MS = 5_000;
+const MAX_RECONCILIATION_INTERVAL_MS = 60_000;
+const RECONCILIATION_BATCH_SIZE = 200;
+const MAX_SEEN_EVENT_IDS = 10_000;
+
+function resolveReconciliationIntervalMs() {
+  const configured = Number(process.env.REALTIME_RECONCILIATION_INTERVAL_MS || DEFAULT_RECONCILIATION_INTERVAL_MS);
+  if (!Number.isFinite(configured)) return DEFAULT_RECONCILIATION_INTERVAL_MS;
+  return Math.max(MIN_RECONCILIATION_INTERVAL_MS, Math.min(MAX_RECONCILIATION_INTERVAL_MS, Math.trunc(configured)));
+}
+
+function safeOperationalErrorCode(error: unknown, fallback: string) {
+  const candidate = typeof (error as { code?: unknown })?.code === "string"
+    ? String((error as { code: string }).code).trim()
+    : "";
+  return /^[a-z0-9_]{1,32}$/i.test(candidate) ? candidate : fallback;
+}
+
+function persistedEventId(value: unknown) {
+  const candidate = String(value ?? "").trim();
+  return /^\d+$/.test(candidate) ? candidate : null;
+}
+
+function greatestPersistedEventId(rows: EventRow[], current = "0") {
+  let greatest = /^\d+$/.test(current) ? BigInt(current) : 0n;
+  for (const row of rows) {
+    const id = persistedEventId(row.id);
+    if (!id) continue;
+    const parsed = BigInt(id);
+    if (parsed > greatest) greatest = parsed;
+  }
+  return greatest.toString();
+}
+
 function isIncidentPayload(payload: Record<string, unknown>): payload is RealtimeIncidentPayload {
   const type = String(payload.event_type || "");
   return (type === "incident.created" || type === "incident.updated")
@@ -95,9 +130,14 @@ async function fetchRows(
   search: URLSearchParams,
   forcedTenantSlug = "",
   sourceFilter: RealtimeEventSourceFilter = "all",
+  options: { afterEventId?: string; limit?: number } = {},
 ): Promise<EventRow[]> {
   await ensureEventLocationContextSchema().catch(() => null);
-  const limit = Math.max(1, Math.min(200, Number(search.get("limit") || 40)));
+  const requestedLimit = options.limit ?? Number(search.get("limit") || 40);
+  const limit = Math.max(1, Math.min(RECONCILIATION_BATCH_SIZE, Number(requestedLimit) || 40));
+  const afterEventId = /^\d+$/.test(String(options.afterEventId || ""))
+    ? String(options.afterEventId)
+    : "";
   const tenant = (forcedTenantSlug || String(search.get("tenant") || "")).trim().toLowerCase();
   const verdict = String(search.get("verdict") || "").trim().toUpperCase();
   const risk = String(search.get("risk") || "").trim().toUpperCase();
@@ -143,6 +183,7 @@ async function fetchRows(
             OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source::text, '')) IN ('real', 'imported'))
             OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source::text, '')) = ${sourceFilter})
           )
+          AND (${afterEventId} = '' OR e.id > NULLIF(${afterEventId}, '')::bigint)
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
@@ -157,7 +198,10 @@ async function fetchRows(
             ) = ${risk}
           )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
-        ORDER BY e.created_at DESC
+        ORDER BY
+          CASE WHEN ${afterEventId} <> '' THEN e.id END ASC,
+          CASE WHEN ${afterEventId} = '' THEN e.created_at END DESC,
+          e.id DESC
         LIMIT ${limit}
       `
     : await sql/*sql*/`
@@ -199,6 +243,7 @@ async function fetchRows(
             OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source::text, '')) IN ('real', 'imported'))
             OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source::text, '')) = ${sourceFilter})
           )
+          AND (${afterEventId} = '' OR e.id > NULLIF(${afterEventId}, '')::bigint)
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
@@ -213,7 +258,10 @@ async function fetchRows(
             ) = ${risk}
           )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
-        ORDER BY e.created_at DESC
+        ORDER BY
+          CASE WHEN ${afterEventId} <> '' THEN e.id END ASC,
+          CASE WHEN ${afterEventId} = '' THEN e.created_at END DESC,
+          e.id DESC
         LIMIT ${limit}
       `;
   return Array.isArray(rows) ? rows : [];
@@ -268,23 +316,62 @@ export async function GET(req: Request): Promise<Response> {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
       };
 
+      const seenEventIds = new Set<string>();
+      let reconciliationCursor: string | null = null;
+      let reconciliationInFlight = false;
+      let reconciliation: ReturnType<typeof setInterval> | null = null;
+      const rememberEvent = (eventId: unknown) => {
+        const key = String(eventId || "").trim();
+        if (!key || seenEventIds.has(key)) return false;
+        seenEventIds.add(key);
+        if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
+          const oldest = seenEventIds.values().next().value as string | undefined;
+          if (oldest) seenEventIds.delete(oldest);
+        }
+        return true;
+      };
+      const emitTapEvent = (rawPayload: Record<string, unknown>) => {
+        if (!allowRealtimeEventForSource(sourceFilter, rawPayload.source)) return;
+        const normalized = normalizeTenantTapRealtimeEvent(rawPayload);
+        if (!allowRealtimeEventForScope({
+          scope,
+          forcedTenantSlug,
+          requestedTenant: tenant,
+          eventTenantSlug: normalized.tenantSlug,
+        })) return;
+        if (verdict && String(normalized.verdict || "").toUpperCase() !== verdict) return;
+        if (risk && String(normalized.riskLevel || "").toUpperCase() !== risk) return;
+        if (windowMs) {
+          const createdAt = new Date(String(normalized.occurredAt || Date.now()));
+          if (Number.isNaN(createdAt.getTime())) return;
+          if (createdAt.getTime() < Date.now() - windowMs) return;
+        }
+        if (!rememberEvent(normalized.eventId)) return;
+        const emittedAt = new Date();
+        const createdAtMs = normalized.occurredAt ? new Date(String(normalized.occurredAt)).getTime() : NaN;
+        const streamLatencyMs = Number.isFinite(createdAtMs) ? Math.max(0, emittedAt.getTime() - createdAtMs) : null;
+        send("event", {
+          ...normalized,
+          stream_sent_at: emittedAt.toISOString(),
+          stream_latency_ms: streamLatencyMs,
+          stream_request_id: requestId,
+          origin_trace_id: typeof rawPayload.trace_id === "string" && rawPayload.trace_id ? rawPayload.trace_id : null,
+          request_id: requestId,
+        });
+      };
+
       try {
         send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", ts: new Date().toISOString() });
         const snapshotRows = await fetchRows(searchParams, forcedTenantSlug, sourceFilter);
-        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", rows: snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row)) });
+        const normalizedSnapshot = snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row));
+        normalizedSnapshot.forEach((row) => rememberEvent(row.eventId));
+        reconciliationCursor = greatestPersistedEventId(snapshotRows);
+        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", rows: normalizedSnapshot });
       } catch (error) {
-        const errorCode = typeof (error as { code?: unknown })?.code === "string"
-          ? String((error as { code: string }).code).slice(0, 32)
-          : "snapshot_query_failed";
-        const diagnostic = process.env.NODE_ENV === "test" && process.env.VERCEL_ENV === "test"
-          ? String(error instanceof Error ? error.message : "snapshot_query_failed")
-            .replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "[redacted_database_url]")
-            .slice(0, 240)
-          : null;
+        const errorCode = safeOperationalErrorCode(error, "snapshot_query_failed");
         console.warn("[admin_sse_snapshot_unavailable]", JSON.stringify({
           requestId,
           errorCode,
-          ...(diagnostic ? { diagnostic } : {}),
         }));
         send("warning", { id: `warning-${Date.now()}`, stream_request_id: requestId, reason: "snapshot_unavailable" });
       }
@@ -346,34 +433,40 @@ export async function GET(req: Request): Promise<Response> {
           return;
         }
 
-        if (!allowRealtimeEventForSource(sourceFilter, rawPayload.source)) return;
-        const normalized = normalizeTenantTapRealtimeEvent(rawPayload);
-        if (!allowRealtimeEventForScope({
-          scope,
-          forcedTenantSlug,
-          requestedTenant: tenant,
-          eventTenantSlug: normalized.tenantSlug,
-        })) return;
-        if (verdict && String(normalized.verdict || "").toUpperCase() !== verdict.toUpperCase()) return;
-        if (risk && String(normalized.riskLevel || "").toUpperCase() !== risk.toUpperCase()) return;
-        if (windowMs) {
-          const createdAt = new Date(String(normalized.occurredAt || Date.now()));
-          if (Number.isNaN(createdAt.getTime())) return;
-          const lowerBound = new Date(Date.now() - windowMs);
-          if (createdAt < lowerBound) return;
-        }
-        const emittedAt = new Date();
-        const createdAtMs = normalized.occurredAt ? new Date(String(normalized.occurredAt)).getTime() : NaN;
-        const streamLatencyMs = Number.isFinite(createdAtMs) ? Math.max(0, emittedAt.getTime() - createdAtMs) : null;
-        send("event", {
-          ...normalized,
-          stream_sent_at: emittedAt.toISOString(),
-          stream_latency_ms: streamLatencyMs,
-          stream_request_id: requestId,
-          origin_trace_id: typeof rawPayload.trace_id === "string" && rawPayload.trace_id ? rawPayload.trace_id : null,
-          request_id: requestId,
-        });
+        emitTapEvent(rawPayload);
       });
+
+      const reconcilePersistedEvents = async () => {
+        if (closed || cancelled || reconciliationInFlight) return;
+        reconciliationInFlight = true;
+        const startingCursor = reconciliationCursor;
+        try {
+          const rows = await fetchRows(
+            searchParams,
+            forcedTenantSlug,
+            sourceFilter,
+            startingCursor === null
+              ? { limit: RECONCILIATION_BATCH_SIZE }
+              : { afterEventId: startingCursor, limit: RECONCILIATION_BATCH_SIZE },
+          );
+          if (closed || cancelled) return;
+          reconciliationCursor = greatestPersistedEventId(rows, startingCursor || "0");
+          const orderedRows = startingCursor === null ? [...rows].reverse() : rows;
+          for (const row of orderedRows) emitTapEvent(row);
+        } catch (error) {
+          console.warn("[admin_sse_reconciliation_unavailable]", JSON.stringify({
+            requestId,
+            errorCode: safeOperationalErrorCode(error, "reconciliation_query_failed"),
+          }));
+        } finally {
+          reconciliationInFlight = false;
+        }
+      };
+
+      void reconcilePersistedEvents();
+      reconciliation = setInterval(() => {
+        void reconcilePersistedEvents();
+      }, resolveReconciliationIntervalMs());
 
       const heartbeat = setInterval(() => {
         const now = Date.now();
@@ -387,6 +480,7 @@ export async function GET(req: Request): Promise<Response> {
         if (closed) return;
         closed = true;
         clearInterval(heartbeat);
+        if (reconciliation) clearInterval(reconciliation);
         if (lifetime) clearTimeout(lifetime);
         unsubscribe();
         req.signal.removeEventListener("abort", onAbort);

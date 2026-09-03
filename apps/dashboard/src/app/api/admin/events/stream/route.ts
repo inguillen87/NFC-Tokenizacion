@@ -26,11 +26,14 @@ function fallbackStream(
 ) {
   const encoder = new TextEncoder();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let lifetime: ReturnType<typeof setTimeout> | null = null;
   let closed = false;
   const cleanup = () => {
     closed = true;
     if (heartbeat) clearInterval(heartbeat);
+    if (lifetime) clearTimeout(lifetime);
     heartbeat = null;
+    lifetime = null;
   };
   const stream = new ReadableStream({
     start(controller) {
@@ -42,6 +45,15 @@ function fallbackStream(
           cleanup();
         }
       };
+      const close = () => {
+        if (closed) return;
+        cleanup();
+        try {
+          controller.close();
+        } catch {
+          // The browser may already have disconnected.
+        }
+      };
       const pushSnapshot = () => {
         const tenant = String(options.tenant || "").toLowerCase();
         const rows = options.includeDemoRows
@@ -51,6 +63,7 @@ function fallbackStream(
           : [];
         enqueue(`event: snapshot\ndata: ${JSON.stringify({ rows, source: options.source || "production", availability: options.availability || "upstream_error" })}\n\n`);
       };
+      enqueue("retry: 3000\n\n");
       pushSnapshot();
       enqueue(`event: warning\ndata: ${JSON.stringify({ reason: message, requestId, source: options.source || "production", availability: options.availability || "upstream_error" })}\n\n`);
       heartbeat = setInterval(() => {
@@ -59,6 +72,10 @@ function fallbackStream(
         pushSnapshot();
         enqueue(`event: heartbeat\ndata: ${JSON.stringify({ id: `hb-${now}`, ts: now, requestId, source: options.source || "production", availability: options.availability || "upstream_error" })}\n\n`);
       }, 5000);
+      // Vercel terminates long-lived route handlers at the platform limit. Rotate
+      // the demo stream cleanly so EventSource reconnects instead of generating a
+      // runtime timeout. Production streams are rotated by the upstream API.
+      lifetime = setTimeout(close, 55_000);
     },
     cancel() {
       cleanup();

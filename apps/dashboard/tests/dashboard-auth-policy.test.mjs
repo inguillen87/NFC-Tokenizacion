@@ -82,7 +82,7 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(loginPanel, /Super Admin entra por Google\/Clerk/);
   assert.match(loginPanel, /Continuar con Google allowlisted/);
   assert.match(loginPage, /firstParam\(params\.logged_out\) === "1"/);
-  assert.match(loginPage, /Sesion cerrada\. Podes entrar con Bodega Balmec o con Google allowlisted\./);
+  assert.match(loginPage, /Sesión cerrada\. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted\./);
 
   assert.match(googleButton, /already signed in/);
   assert.match(googleButton, /window\.location\.href = "\/auth\/clerk\/super-admin"/);

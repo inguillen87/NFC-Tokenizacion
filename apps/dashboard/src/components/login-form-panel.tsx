@@ -44,9 +44,9 @@ export function LoginFormPanel({
   const [pending, setPending] = useState(false);
   const accessPaths = [
     {
-      label: "Demo tenant",
-      value: bodegaDemoAllowed ? "Lista para mostrar" : "Pendiente",
-      detail: "Bodega Balmec abre CRM, mapa de eventos reportados, proof, marketplace y campañas sin permisos globales.",
+      label: "Recorrido simulado",
+      value: bodegaDemoAllowed ? "Disponible" : "Pendiente",
+      detail: "Sandbox comercial con datos ilustrativos y mapa de eventos reportados. No muestra lecturas NFC físicas ni información productiva de Bodega Balmec.",
       ok: bodegaDemoAllowed,
     },
     {
@@ -151,6 +151,16 @@ export function LoginFormPanel({
         ))}
       </div>
       <div className="dashboard-auth-primary-actions grid gap-3">
+        <a href="#tenant-credentials" data-testid="login-real-tenant-entry" className="dashboard-auth-panel dashboard-auth-panel--elevated flex flex-col gap-3 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 shadow-[0_20px_70px_rgba(16,185,129,.1)] sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            <span className="block text-xs font-black uppercase tracking-[0.16em] text-emerald-200">Operación real</span>
+            <span className="mt-1 block text-base font-black text-white">Consultar TAP físicos y actividad reportada</span>
+            <span className="mt-1 block text-xs leading-5 text-emerald-100/75">Requiere una cuenta tenant real; conserva aislamiento, permisos y trazabilidad.</span>
+          </span>
+          <span className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-200/35 bg-emerald-200 px-4 py-2 text-xs font-black text-slate-950">
+            Ingresar al tenant <ArrowRight className="h-4 w-4" />
+          </span>
+        </a>
         <div data-testid="login-bodega-demo-card" className="dashboard-auth-feature-card rounded-2xl border border-cyan-300/25 p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
@@ -158,10 +168,10 @@ export function LoginFormPanel({
                 <Building2 className="h-5 w-5" />
               </span>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo comercial autorizada</p>
-                <h2 className="mt-1 text-xl font-black text-white">Bodega Balmec</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Recorrido simulado</p>
+                <h2 className="mt-1 text-xl font-black text-white">Demo Bodega Balmec</h2>
                 <p className="mt-1 text-sm leading-5 text-slate-300">
-                  Entrada directa para mostrar el tenant completo: CRM, mapa de eventos reportados, tags, campañas, proof y marketplace sin tocar Super Admin.
+                  Muestra el recorrido de CRM, mapa, tags y campañas con datos ilustrativos. No consulta TAP físicos ni datos del tenant productivo.
                 </p>
               </div>
             </div>
@@ -175,10 +185,10 @@ export function LoginFormPanel({
                 href="/api/session/demo?role=tenant-admin"
                 prefetch={false}
                 data-testid="login-bodega-demo-button"
-                title="Entrar como Bodega Balmec"
+                title="Abrir la simulación de Bodega Balmec"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
               >
-                <span>Entrar como Bodega Balmec</span>
+                <span>Abrir demo simulada</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
             ) : (
@@ -187,7 +197,7 @@ export function LoginFormPanel({
               </div>
             )}
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-cyan-100/80">
-              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">Tenant</span>
+              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">Sin datos reales</span>
               <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">Eventos demo</span>
               <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">CRM</span>
             </div>
@@ -231,7 +241,7 @@ export function LoginFormPanel({
         </div>
       </div>
 
-      <div data-testid="login-credentials-panel" className="dashboard-auth-panel dashboard-auth-panel--soft mt-4 rounded-2xl border border-white/10 p-4">
+      <div id="tenant-credentials" data-testid="login-credentials-panel" className="dashboard-auth-panel dashboard-auth-panel--soft mt-4 scroll-mt-6 rounded-2xl border border-white/10 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Credenciales de tenant y equipo</p>

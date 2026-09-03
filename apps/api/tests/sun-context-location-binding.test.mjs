@@ -79,7 +79,7 @@ test("context uses the canonical event UID and returns only a coarse nested rece
   const preflight = source.indexOf("requireSunFreshHandoff(req, body");
   const canonicalUid = source.indexOf("const targetUid = String(target.uid_hex");
   const consume = source.indexOf("consumeSunFreshHandoff(req, body");
-  const receiptStart = source.indexOf("return json({\n    ok: true");
+  const receiptStart = source.search(/return json\(\{\r?\n    ok: true/);
   const receipt = source.slice(receiptStart);
 
   assert.notEqual(optionalUidValidation, -1);

@@ -22,7 +22,7 @@ function demoAccountForRole(role: DemoRole) {
       permissions: profile.permissions,
     };
   }
-  return { email: "demobodega@nexid.lat", label: "Admin tenant Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
+  return { email: "demobodega@nexid.lat", label: "Demo Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
 }
 
 function demoTenantScope(role: DemoRole) {

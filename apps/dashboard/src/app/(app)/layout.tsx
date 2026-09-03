@@ -29,6 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       currentTenantSlug={session.tenantSlug}
       currentMfaVerified={session.mfaVerified}
       currentSetupCompleted={session.setupCompleted}
+      currentIsDemo={Boolean(session.isDemo)}
       clerkEnabled={isClerkConfiguredForRuntime()}
     >
       <>

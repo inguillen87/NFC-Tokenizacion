@@ -108,9 +108,9 @@ test("shared map defaults expose reported events and never synthesize journeys",
 
   assert.match(premiumMap, /return <RealGeographicMap \{\.\.\.props\} \/>/);
   assert.doesNotMatch(premiumMap, /LegacyPremiumVectorMap|<svg/);
-  assert.match(realMap, /title = "Mapa de eventos reportados"/);
-  assert.match(realMap, /no infiere autenticaciones ni recorridos físicos/);
-  assert.match(realMap, /relaciones reportadas/);
+  assert.match(realMap, /defaultTitle: "Mapa de eventos reportados"/);
+  assert.match(realMap, /defaultSubtitle: "Puntos geográficos observados; no infiere autenticaciones ni recorridos físicos\."/);
+  assert.match(realMap, /mapSummary: "\{subtitle\} \{points\} puntos geográficos, \{routes\} relaciones reportadas/);
   assert.doesNotMatch(realMap, /title = "Mapa vivo"|Movimiento trazado sobre motor vectorial propio|rutas activas/);
 });
 

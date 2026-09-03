@@ -60,11 +60,11 @@ export default async function SignInPage() {
                 href="/api/session/demo?role=tenant-admin"
                 prefetch={false}
                 data-testid="sign-in-bodega-demo-link"
-                title="Entrar como Bodega Balmec"
+                title="Abrir la demo simulada de Bodega Balmec"
                 className="dashboard-auth-profile-card rounded-2xl border border-cyan-300/25 p-4 text-left transition hover:border-cyan-200/70"
               >
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Demo comercial 12h</p>
-                <h2 className="mt-2 text-lg font-black text-white">Bodega Balmec</h2>
+                <h2 className="mt-2 text-lg font-black text-white">Demo Bodega Balmec</h2>
                 <p className="mt-2 text-sm leading-5 text-slate-300">
                   Tenant completo para mostrar CRM, mapa de eventos reportados, proof y marketplace sin permisos globales.
                 </p>
@@ -72,7 +72,7 @@ export default async function SignInPage() {
             ) : (
               <div className="dashboard-auth-panel dashboard-auth-panel--soft rounded-2xl border border-white/10 p-4 text-left opacity-80">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Demo deshabilitada</p>
-                <h2 className="mt-2 text-lg font-black text-white">Bodega Balmec</h2>
+                <h2 className="mt-2 text-lg font-black text-white">Demo Bodega Balmec</h2>
                 <p className="mt-2 text-sm leading-5 text-slate-400">Este entorno requiere credenciales de tenant.</p>
               </div>
             )}
@@ -125,7 +125,7 @@ export default async function SignInPage() {
             </div>
           ) : (
             <div data-testid="sign-in-clerk-disabled-panel" className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-5 text-sm leading-6 text-amber-100">
-              Clerk no está habilitado con claves live en este entorno. Usa Bodega Balmec demo o credenciales enterprise desde la pantalla principal.
+              Clerk no está habilitado con claves live en este entorno. Usá la demo simulada o credenciales enterprise reales desde la pantalla principal.
               <Link href="/login" className="mt-4 inline-flex w-full justify-center rounded-xl border border-amber-200/30 bg-amber-200/10 px-4 py-3 font-bold text-amber-50">
                 Volver a login enterprise
               </Link>

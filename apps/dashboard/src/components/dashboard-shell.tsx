@@ -101,6 +101,7 @@ export function DashboardShellInner({
   currentTenantSlug,
   currentMfaVerified,
   currentSetupCompleted,
+  currentIsDemo = false,
   clerkEnabled,
 }: {
   children: React.ReactNode;
@@ -119,6 +120,7 @@ export function DashboardShellInner({
   currentTenantSlug?: string | null;
   currentMfaVerified?: boolean | null;
   currentSetupCompleted?: boolean | null;
+  currentIsDemo?: boolean;
   clerkEnabled?: boolean;
 }) {
   const pathname = usePathname();
@@ -567,6 +569,7 @@ export function DashboardShellInner({
                 setupCompleted={currentSetupCompleted}
                 surface="dashboard"
                 tenantSlug={currentTenantSlug}
+                isDemo={currentIsDemo}
                 clerkEnabled={clerkEnabled}
               />
             </div>

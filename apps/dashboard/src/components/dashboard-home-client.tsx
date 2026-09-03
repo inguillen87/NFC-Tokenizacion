@@ -138,6 +138,17 @@ export default function DashboardHomeClient({
 
   return (
     <div className="space-y-6">
+      {session.isDemo ? (
+        <div data-testid="dashboard-demo-session-warning" className="flex flex-col gap-3 rounded-2xl border border-amber-300/35 bg-amber-400/10 px-4 py-3 text-amber-50 shadow-[0_14px_40px_rgba(245,158,11,.08)] sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black">Estás viendo una simulación, no el tenant productivo.</p>
+            <p className="mt-1 text-xs leading-5 text-amber-100/80">Los TAP físicos no aparecen en esta sesión. Ingresá con la cuenta real de Bodega Balmec para ver lecturas y mapa de producción.</p>
+          </div>
+          <Link href="/logout" className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/35 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 transition hover:bg-amber-100">
+            Ir al acceso real
+          </Link>
+        </div>
+      ) : null}
       {/* Dynamic Tab Navigation */}
       <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
         <button type="button" title="CRM en vivo: lecturas, riesgo, mapa por zona y próxima acción comercial" aria-label="Abrir CRM en vivo" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
@@ -181,6 +192,7 @@ export default function DashboardHomeClient({
                 role: session.role,
                 setupCompleted: session.setupCompleted,
                 tenantSlug: session.tenantSlug,
+                isDemo: Boolean(session.isDemo),
                 clerkEnabled,
               }}
               initialEvents={initialRealtimeEvents}

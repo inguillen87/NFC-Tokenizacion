@@ -41,7 +41,9 @@ test("CRM tracks connection, snapshots, heartbeat freshness and degraded stream 
   assert.match(crmSource, /source\.addEventListener\("heartbeat", onHeartbeat/);
   assert.match(crmSource, /source\.addEventListener\("warning", onWarning/);
   assert.match(crmSource, /freshnessNow - lastUpdateMs > 20_000/);
-  assert.match(crmSource, /streamWarning \|\| dataAvailability !== "ready" \|\| !streamConfirmed \|\| streamIsStale/);
+  assert.match(crmSource, /const \[pollingFallbackActive, setPollingFallbackActive\]/);
+  assert.match(crmSource, /pollingFallbackActive && dataAvailability === "ready" && streamConfirmed/);
+  assert.match(crmSource, /dataAvailability !== "ready" \|\| !streamConfirmed \|\| streamIsStale/);
   assert.match(crmSource, /no representan un cero operativo/);
   assert.match(crmSource, /data-testid="crm-stream-live-region"/);
   assert.match(crmSource, /aria-label="Filtrar lecturas por tenant"/);

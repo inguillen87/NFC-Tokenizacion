@@ -79,9 +79,68 @@ function getStore(): BusStore {
   return scope[BUS_KEY]!;
 }
 
-function distributedEnabled() {
+function postgresRealtimeEnabled() {
   const mode = String(process.env.REALTIME_MODE || "postgres").trim().toLowerCase();
-  return mode !== "memory" && Boolean(process.env.DATABASE_URL);
+  return mode !== "memory";
+}
+
+function validPostgresConnectionString(value: unknown) {
+  const candidate = String(value || "").trim();
+  if (!candidate) return null;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") return null;
+    return { candidate, parsed };
+  } catch {
+    return null;
+  }
+}
+
+function isPooledPostgresConnection(value: string) {
+  const connection = validPostgresConnectionString(value);
+  if (!connection) return true;
+  const host = connection.parsed.hostname.toLowerCase();
+  const poolMode = String(connection.parsed.searchParams.get("pool_mode") || "").toLowerCase();
+  const pgbouncer = String(connection.parsed.searchParams.get("pgbouncer") || "").toLowerCase();
+  return /(^|[.-])(pooler|pgbouncer)([.-]|$)/.test(host)
+    || Boolean(poolMode)
+    || pgbouncer === "true"
+    || pgbouncer === "1";
+}
+
+/**
+ * LISTEN needs a session-affine PostgreSQL connection. Prefer the explicit
+ * Neon/Vercel unpooled variables and only accept DATABASE_URL as a fallback
+ * when its host and options are recognisably direct.
+ */
+export function resolveRealtimeListenerDatabaseUrl(env: NodeJS.ProcessEnv = process.env) {
+  const candidates = [
+    env.DATABASE_URL_UNPOOLED,
+    env.POSTGRES_URL_NON_POOLING,
+    env.DATABASE_URL,
+  ];
+  for (const candidate of candidates) {
+    const connection = validPostgresConnectionString(candidate);
+    if (connection && !isPooledPostgresConnection(connection.candidate)) return connection.candidate;
+  }
+  return null;
+}
+
+/** pg_notify is a single statement, so the regular pooled runtime URL is safe. */
+export function resolveRealtimePublisherDatabaseUrl(env: NodeJS.ProcessEnv = process.env) {
+  for (const candidate of [env.DATABASE_URL, env.DATABASE_URL_UNPOOLED, env.POSTGRES_URL_NON_POOLING]) {
+    const connection = validPostgresConnectionString(candidate);
+    if (connection) return connection.candidate;
+  }
+  return null;
+}
+
+function listenerEnabled() {
+  return postgresRealtimeEnabled() && Boolean(resolveRealtimeListenerDatabaseUrl());
+}
+
+function publisherEnabled() {
+  return postgresRealtimeEnabled() && Boolean(resolveRealtimePublisherDatabaseUrl());
 }
 
 function safeParse(data: string): { source?: string; payload?: RealtimeEventPayload } | null {
@@ -97,7 +156,7 @@ function schedulePgListenerReconnect() {
   const store = getStore();
   if (
     store.reconnectTimer
-    || !distributedEnabled()
+    || !listenerEnabled()
     || store.emitter.listenerCount("event") === 0
   ) return;
 
@@ -146,10 +205,10 @@ function stopPgListener() {
 
 async function startPgListener() {
   const store = getStore();
-  if (store.started || store.startPromise || !distributedEnabled()) return;
+  if (store.started || store.startPromise || !listenerEnabled()) return;
 
   store.startPromise = (async () => {
-    const url = process.env.DATABASE_URL;
+    const url = resolveRealtimeListenerDatabaseUrl();
     if (!url) return;
     const pool = new Pool({ connectionString: url, max: 1 });
     store.pool = pool;
@@ -190,12 +249,14 @@ async function startPgListener() {
 }
 
 function publishDistributed(payload: RealtimeEventPayload) {
-  if (!distributedEnabled()) return;
+  if (!publisherEnabled()) return;
   const envelope = JSON.stringify({ source: INSTANCE_ID, payload });
   // notify through postgres to reach all running instances without polling
   const store = getStore();
   if (!store.publishPool) {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL!, max: 1 });
+    const connectionString = resolveRealtimePublisherDatabaseUrl();
+    if (!connectionString) return;
+    const pool = new Pool({ connectionString, max: 1 });
     pool.on("error", () => {
       if (store.publishPool !== pool) return;
       store.publishPool = null;

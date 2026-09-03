@@ -69,7 +69,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
   const params = searchParams ? await searchParams : {};
   const loggedOut = firstParam(params.logged_out) === "1";
-  const authNotice = authNoticeForCode(firstParam(params.auth_error)) || (loggedOut ? "Sesion cerrada. Podes entrar con Bodega Balmec o con Google allowlisted." : "");
+  const authNotice = authNoticeForCode(firstParam(params.auth_error)) || (loggedOut ? "Sesión cerrada. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted." : "");
   const session = loggedOut ? null : await getDashboardSession();
   if (session) redirect("/");
 

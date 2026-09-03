@@ -47,6 +47,7 @@ type TenantAccountMenuProps = {
   surface?: "dashboard" | "crm";
   tenantSlug?: string | null;
   clerkEnabled?: boolean;
+  isDemo?: boolean;
 };
 
 const ACCOUNT_MENU_Z_INDEX = 2147483647;
@@ -559,6 +560,7 @@ export function TenantAccountMenu({
   setupCompleted,
   surface = "dashboard",
   tenantSlug,
+  isDemo = false,
 }: TenantAccountMenuProps) {
   const [open, setOpen] = useState(false);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
@@ -576,7 +578,7 @@ export function TenantAccountMenu({
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
   const tenantQuery = scopedTenant ? `?tenant=${encodeURIComponent(scopedTenant)}` : "";
   const tenantHref = scopedTenant ? `/tenants/${encodeURIComponent(scopedTenant)}` : "/tenants";
-  const accountLabel = label || tenantName;
+  const accountLabel = isDemo ? `Demo · ${label || tenantName}` : label || tenantName;
   const isTenantMode = mode === "tenant";
   const accountRoleDescription = dashboardRoleDescription(role, mode);
   const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
@@ -594,10 +596,14 @@ export function TenantAccountMenu({
   );
   const isClerkSsoSession = role === "super-admin" && Boolean(clerkEnabled);
   const hasWildcardAccess = permissions.includes("*");
-  const normalizedPermissions = hasWildcardAccess
+  const normalizedPermissions = isDemo
+    ? ["Simulación local"]
+    : hasWildcardAccess
     ? [role === "super-admin" || mode === "global" ? "Acceso global" : "Tenant completo"]
     : permissions.length ? permissions.slice(0, 3) : ["Scope operativo"];
-  const workspaceStatus = setupCompleted === false
+  const workspaceStatus = isDemo
+    ? "Sandbox aislado"
+    : setupCompleted === false
     ? "Setup pendiente"
     : "Sesión activa";
   const workspacePlan = "No informado";
@@ -611,8 +617,10 @@ export function TenantAccountMenu({
     },
     {
       label: "Seguridad",
-      value: isClerkSsoSession ? "Google SSO" : mfaVerified ? "Factor legacy reportado" : "TOTP no disponible",
-      detail: isClerkSsoSession
+      value: isDemo ? "Sin acceso real" : isClerkSsoSession ? "Google SSO" : mfaVerified ? "Factor legacy reportado" : "TOTP no disponible",
+      detail: isDemo
+        ? "Sesión demo aislada: no consulta eventos físicos ni datos del tenant productivo."
+        : isClerkSsoSession
         ? "Identidad Google verificada; TOTP nexID permanece deshabilitado."
         : mfaVerified
           ? "Estado heredado reportado por la sesión; no habilita un nuevo enrollment."
@@ -1196,7 +1204,7 @@ export function TenantAccountMenu({
           {dashboardRoleInitials(role)}
         </span>
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-sm leading-4 text-white">{dashboardRoleLabel(role)}</b>
+          <b className="block truncate text-sm leading-4 text-white">{isDemo ? "Demo tenant" : dashboardRoleLabel(role)}</b>
           <span className="mt-0.5 block truncate text-xs leading-4 text-slate-300">{tenantName}</span>
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition ${open ? "rotate-180 text-cyan-200" : ""}`} />

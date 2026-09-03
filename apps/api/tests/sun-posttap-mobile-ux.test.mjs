@@ -41,6 +41,7 @@ test("seal state and SUN freshness remain independent above the fold", () => {
 });
 
 test("manual opening remains an operator declaration and never becomes TT evidence", () => {
+  const normalizedRoute = route.replace(/\r\n/g, "\n");
   assert.match(route, /const isManualOpenedState = productState === "VALID_MANUAL_OPENED" \|\| statusCode === "MANUAL_OPENED"/);
   const openedStateStart = route.indexOf("const isOpenedState =");
   const openedStateEnd = route.indexOf("const authPanelMessage =", openedStateStart);
@@ -48,7 +49,11 @@ test("manual opening remains an operator declaration and never becomes TT eviden
   assert.doesNotMatch(openedStateSource, /VALID_MANUAL_OPENED|MANUAL_OPENED/);
   assert.match(route, /Apertura declarada/);
   assert.match(route, /Un operador declaró el estado abierto\. No es una medición criptográfica del contenido/);
-  assert.ok(route.indexOf(": isManualOpenedState\n      ?labels.manualOpened") < route.indexOf(': isOpenedState\n        ?(copy.lang === "en" ?"NFC message validated; TT reports open.'));
+  const manualCopyStart = normalizedRoute.indexOf(": isManualOpenedState\n      ?labels.manualOpened");
+  const verifiedOpenedCopyStart = normalizedRoute.indexOf(': isOpenedState\n        ?(copy.lang === "en" ?"NFC message validated; TT reports open.');
+  assert.notEqual(manualCopyStart, -1);
+  assert.notEqual(verifiedOpenedCopyStart, -1);
+  assert.ok(manualCopyStart < verifiedOpenedCopyStart);
 
   const verifiedTapStart = route.indexOf("const isVerifiedOpenedTap =");
   const verifiedTapEnd = route.indexOf("const hasValidatedTagMessage =", verifiedTapStart);
