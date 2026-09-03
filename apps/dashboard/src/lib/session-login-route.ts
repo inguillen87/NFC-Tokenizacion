@@ -32,9 +32,9 @@ function useSecureCookie(req: Request) {
 }
 
 function demoTenantScope(role: string) {
-  return role === "tenant-admin"
-    ? { tenantId: "demo-tenant-demobodega", tenantSlug: "demobodega" }
-    : { tenantId: null, tenantSlug: null };
+  return role === "super-admin"
+    ? { tenantId: null, tenantSlug: null }
+    : { tenantId: "demo-tenant-demobodega", tenantSlug: "demobodega" };
 }
 
 function demoAccountForRole(role: string) {

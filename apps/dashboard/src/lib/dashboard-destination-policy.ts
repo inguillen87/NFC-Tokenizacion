@@ -42,7 +42,7 @@ export const DASHBOARD_DESTINATIONS = Object.freeze({
   superadminNetwork: { href: "/superadmin-network", roles: ["super-admin"] },
   resellers: { href: "/resellers", roles: ["super-admin"] },
   subscriptions: { href: "/subscriptions", roles: ["super-admin"] },
-  loyaltyOverview: { href: "/loyalty/overview", requiredPermissions: ["crm:read"] },
+  loyaltyOverview: { href: "/loyalty/overview", requiredPermissions: ["rewards:read"] },
   consumerOverview: { href: "/consumer-network/overview", highImpactCapability: "consumers.read_pii" },
   rewards: { href: "/loyalty/rewards", requiredPermissions: ["rewards:read"] },
   experiences: { href: "/loyalty/experiences", highImpactCapability: "consumer_experiences.read_pii" },

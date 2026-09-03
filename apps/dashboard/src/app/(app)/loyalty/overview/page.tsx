@@ -28,7 +28,7 @@ function rateWidth(value: unknown, available: boolean) {
 
 export default async function LoyaltyOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
-  const session = await requireDashboardSession("crm:read");
+  const session = await requireDashboardSession("rewards:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
 

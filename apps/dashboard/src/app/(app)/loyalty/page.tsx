@@ -36,7 +36,7 @@ export default async function LoyaltyPage({ searchParams }: { searchParams?: Pro
   const query = searchParams ? await searchParams : {};
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const session = await requireDashboardSession("crm:read");
+  const session = await requireDashboardSession("rewards:read");
   const isSuperadmin = session.role === "super-admin";
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;

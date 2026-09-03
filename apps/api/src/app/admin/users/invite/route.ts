@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   const delegation = await resolveManagedAdminDelegationRequest(sql as any, session, {
     role: body.role || 'viewer',
-    permissions: body.permissions || [],
+    permissions: body.permissions,
     permissionMode: body.permissionMode,
   });
   if (!delegation.ok) {

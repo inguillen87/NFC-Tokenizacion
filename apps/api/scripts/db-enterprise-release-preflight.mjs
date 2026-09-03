@@ -52,6 +52,7 @@ export const expectedMigrations = Object.freeze([
   '20260829120000_0097_public_location_privacy.sql',
   '20260830120000_0098_event_location_context.sql',
   '20260831190000_0099_post_tap_location_observation.sql',
+  '20260903110000_0099_commercial_role_defaults.sql',
   '20260903120000_0100_event_incident_optimistic_concurrency.sql',
 ]);
 

@@ -16,7 +16,7 @@ const [rewardsPage, rewardsClient, loyaltyPage, overviewPage, campaignsPage, off
 ]);
 
 test("admin BFF maps commercial reads and writes to their existing capabilities", () => {
-  assert.equal(requiredPermissionForAdminResource("GET", "loyalty/overview"), "crm:read");
+  assert.equal(requiredPermissionForAdminResource("GET", "loyalty/overview"), "rewards:read");
   assert.equal(requiredPermissionForAdminResource("GET", "loyalty/rewards"), "rewards:read");
   assert.equal(requiredPermissionForAdminResource("POST", "loyalty/rewards"), "rewards:write");
   assert.equal(requiredPermissionForAdminResource("GET", "loyalty/trivia/overview"), "campaigns:read");
@@ -38,7 +38,7 @@ test("demo policy permits declared commercial reads but rejects reward mutations
 test("commercial pages enforce the same read permissions exposed by navigation", () => {
   assert.match(rewardsPage, /requireDashboardSession\("rewards:read"\)/);
   assert.match(campaignsPage, /requireDashboardSession\("campaigns:read"\)/);
-  assert.match(overviewPage, /requireDashboardSession\("crm:read"\)/);
+  assert.match(overviewPage, /requireDashboardSession\("rewards:read"\)/);
   assert.match(offersPage, /requireDashboardSession\("marketplace:read"\)/);
 });
 

@@ -1,4 +1,5 @@
-import { permissionMatches } from "./permission-matcher.js";
+import { permissionDenied, permissionMatches } from "./permission-matcher.js";
+import { roleMayUseEnterpriseCapability } from "./enterprise-capability-policy";
 
 export type ManagedAdminRole =
   | "tenant_owner" | "tenant_admin" | "security_analyst" | "operations_manager"
@@ -16,6 +17,15 @@ export type AdminUserDelegationDecision =
   | { ok: true; role: ManagedAdminRole; permissions: string[] }
   | { ok: false; status: 400 | 403; reason: string };
 
+export type AdminUserPermissionOverridesDecision =
+  | {
+      ok: true;
+      role: ManagedAdminRole;
+      allowPermissions: string[];
+      deniedPermissions: string[];
+    }
+  | { ok: false; status: 400 | 403; reason: string };
+
 const MANAGED_ROLES = new Set<ManagedAdminRole>([
   "tenant_owner", "tenant_admin", "security_analyst", "operations_manager",
   "packaging_operator", "marketing_manager", "viewer", "reseller_admin",
@@ -26,6 +36,7 @@ const TENANT_DELEGABLE_ROLES = new Set<ManagedAdminRole>([
   "marketing_manager", "viewer", "reseller_admin", "security_operator", "reseller",
 ]);
 const PERMISSION_RE = /^[a-z0-9][a-z0-9_.-]*(?::[a-z0-9][a-z0-9_.-]*)*(?::(?:[a-z0-9][a-z0-9_.-]*|\*))$/;
+const ENTERPRISE_CAPABILITY_RE = /^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9][a-z0-9_-]*)+$/;
 const MAX_PERMISSION_COUNT = 128;
 const MAX_PERMISSION_LENGTH = 128;
 
@@ -114,6 +125,85 @@ export function resolveAdminUserDelegation(
   }
 
   return { ok: true, role: role as ManagedAdminRole, permissions };
+}
+
+function normalizeRoleDefaultPermissions(rawPermissions: unknown): string[] | null {
+  let candidate = rawPermissions;
+  if (typeof candidate === "string") {
+    try {
+      candidate = JSON.parse(candidate);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(candidate) || candidate.length > MAX_PERMISSION_COUNT) return null;
+
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  for (const rawPermission of candidate) {
+    const value = String(rawPermission || "").trim().toLowerCase();
+    if (!value || value.length > MAX_PERMISSION_LENGTH) return null;
+    const parsed = parsePermissionGrant(value);
+    if (!parsed && !ENTERPRISE_CAPABILITY_RE.test(value)) return null;
+    const permission = parsed?.permission || value;
+    if (!seen.has(permission)) {
+      seen.add(permission);
+      normalized.push(permission);
+    }
+  }
+  return normalized;
+}
+
+/**
+ * Validates an intentional override replacement independently from role
+ * assignment. Both arrays must be supplied by the caller so an omitted field
+ * can never be interpreted as an instruction to erase existing overrides.
+ */
+export function resolveAdminUserPermissionOverrides(
+  session: AdminUserManagementSession,
+  targetRole: unknown,
+  rawAllowPermissions: unknown,
+  rawDeniedPermissions: unknown,
+  rawRoleDefaultPermissions: unknown,
+): AdminUserPermissionOverridesDecision {
+  const delegation = resolveAdminUserDelegation(session, targetRole, rawAllowPermissions);
+  if (!delegation.ok) return delegation;
+
+  const deniedPermissions = normalizePermissions(rawDeniedPermissions);
+  if (!deniedPermissions) {
+    return { ok: false, status: 400, reason: "invalid_denied_permissions" };
+  }
+
+  const allowSet = new Set(delegation.permissions);
+  if (deniedPermissions.some((permission) => allowSet.has(permission))) {
+    return { ok: false, status: 400, reason: "permission_override_conflict" };
+  }
+
+  const roleDefaultPermissions = normalizeRoleDefaultPermissions(rawRoleDefaultPermissions);
+  if (!roleDefaultPermissions) {
+    return { ok: false, status: 400, reason: "enterprise_role_profile_invalid" };
+  }
+
+  if ([...roleDefaultPermissions, ...delegation.permissions, ...deniedPermissions].some(
+    (permission) => !roleMayUseEnterpriseCapability(delegation.role, permission),
+  )) {
+    return { ok: false, status: 403, reason: "permission_outside_role_boundary" };
+  }
+
+  if (normalizeRole(session.role) !== "super_admin"
+    && roleDefaultPermissions.some((permission) => (
+      !permissionDenied(deniedPermissions, permission)
+      && !permissionMatches(session.permissions, permission, session.deniedPermissions)
+    ))) {
+    return { ok: false, status: 403, reason: "permission_escalation_forbidden" };
+  }
+
+  return {
+    ok: true,
+    role: delegation.role,
+    allowPermissions: [...delegation.permissions].sort(),
+    deniedPermissions: [...deniedPermissions].sort(),
+  };
 }
 
 export function isProductionRuntime(nodeEnv: string | undefined, deploymentEnv?: string | undefined) {

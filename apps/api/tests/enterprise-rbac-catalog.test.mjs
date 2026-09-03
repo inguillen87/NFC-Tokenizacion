@@ -54,6 +54,11 @@ test("role-default delegation ignores no server preset and rejects client-invent
   }), { ok: false, status: 400, reason: "role_default_client_permissions_forbidden" });
   assert.deepEqual(await resolveManagedAdminDelegationRequest(queryReturning([viewer]), session, {
     role: "viewer",
+    permissions: null,
+    permissionMode: "role_default",
+  }), { ok: false, status: 400, reason: "role_default_client_permissions_forbidden" });
+  assert.deepEqual(await resolveManagedAdminDelegationRequest(queryReturning([viewer]), session, {
+    role: "viewer",
     permissions: [],
   }), { ok: false, status: 400, reason: "role_default_permission_mode_required" });
   assert.deepEqual(await resolveManagedAdminDelegationRequest(queryReturning([viewer]), session, {
@@ -101,9 +106,12 @@ test("admin routes share the authoritative resolver and role endpoint is permiss
 
   assert.match(roleRoute, /checkAdminWithPermission\(req,\s*"users:manage"\)/);
   assert.match(roleRoute, /listDelegableEnterpriseRoleProfiles/);
-  for (const route of [createRoute, inviteRoute, updateRoute]) {
+  for (const route of [createRoute, inviteRoute]) {
     assert.match(route, /resolveManagedAdminDelegationRequest/);
     assert.match(route, /permissionMode:\s*body\.permissionMode/);
   }
+  assert.match(updateRoute, /resolveManagedAdminDelegationRequest/);
+  assert.match(updateRoute, /permissionMode === 'explicit_overrides'/);
+  assert.match(updateRoute, /resolveAdminUserPermissionOverrides/);
   assert.doesNotMatch(inviteRoute, /events:read[\s\S]*analytics:read/);
 });

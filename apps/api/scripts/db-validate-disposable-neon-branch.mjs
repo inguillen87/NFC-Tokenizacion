@@ -189,7 +189,7 @@ try {
           AND profile.active IS TRUE
           AND profile.human_session_allowed IS TRUE
           AND profile.default_permissions =
-            '["users:manage","manifest.import","packaging_lab.manage","qa.approve","batch.activate","risk_rules.write","webhooks.manage","proofs.anchor","audit.read","reports.export"]'::jsonb
+            '["users:manage","supplier_order.create","batch.keys.generate","supplier_pack.export","manifest.import","packaging_lab.manage","qa.approve","qa.plan.approve","batch.activate","batch.lifecycle","batch.revoke","batch.tamper.configure","tag.tamper.override","batch.product.configure","ownership.claim_policy.manage","risk_rules.write","alerts.ack","webhooks.manage","api_keys.read","api_keys.manage","proofs.read","proofs.anchor","audit.read","events.read_sensitive","consumer_experiences.read_pii","consumer_experiences.moderate","consumers.read_pii","leads.manage","reports.export","crm:read","campaigns:read","campaigns:write","rewards:read","rewards:write","rewards:validate","marketplace:read","marketplace:write"]'::jsonb
       )
       AND EXISTS (
         SELECT 1 FROM public.enterprise_role_profiles profile
@@ -197,7 +197,7 @@ try {
           AND profile.active IS TRUE
           AND profile.human_session_allowed IS TRUE
           AND profile.default_permissions =
-            '["users:manage","manifest.import","packaging_lab.manage","qa.approve","batch.activate","webhooks.manage","audit.read","reports.export"]'::jsonb
+            '["users:manage","supplier_order.create","manifest.import","packaging_lab.manage","qa.approve","qa.plan.approve","batch.activate","batch.lifecycle","batch.revoke","batch.tamper.configure","tag.tamper.override","batch.product.configure","ownership.claim_policy.manage","alerts.ack","webhooks.manage","api_keys.read","api_keys.manage","proofs.read","audit.read","events.read_sensitive","consumer_experiences.read_pii","consumer_experiences.moderate","consumers.read_pii","leads.manage","reports.export","crm:read","campaigns:read","campaigns:write","rewards:read","rewards:write","rewards:validate","marketplace:read","marketplace:write"]'::jsonb
       )
       AND EXISTS (
         SELECT 1 FROM public.enterprise_role_profiles profile
@@ -205,14 +205,22 @@ try {
           AND profile.active IS TRUE
           AND profile.human_session_allowed IS TRUE
           AND profile.default_permissions =
-            '["manifest.import","packaging_lab.manage","qa.approve","batch.activate","reports.export"]'::jsonb
+            '["supplier_order.create","manifest.import","packaging_lab.manage","qa.approve","batch.activate","batch.lifecycle","alerts.ack","events.read_sensitive","reports.export","rewards:validate"]'::jsonb
+      )
+      AND EXISTS (
+        SELECT 1 FROM public.enterprise_role_profiles profile
+        WHERE profile.code = 'marketing_manager'
+          AND profile.active IS TRUE
+          AND profile.human_session_allowed IS TRUE
+          AND profile.default_permissions =
+            '["batch.product.configure","consumer_experiences.read_pii","consumer_experiences.moderate","consumers.read_pii","leads.manage","reports.export","crm:read","campaigns:read","campaigns:write","rewards:read","marketplace:read"]'::jsonb
       )
       AND EXISTS (
         SELECT 1 FROM public.enterprise_role_profiles profile
         WHERE profile.code = 'reseller_admin'
           AND profile.active IS TRUE
           AND profile.human_session_allowed IS TRUE
-          AND profile.default_permissions = '["manifest.import","reports.export"]'::jsonb
+          AND profile.default_permissions = '["supplier_order.create","manifest.import","leads.manage","reports.export"]'::jsonb
       )
       AND NOT COALESCE(EXISTS (
         SELECT 1

@@ -7,6 +7,7 @@ const {
   isProductionRuntime,
   parsePermissionGrant,
   resolveAdminUserDelegation,
+  resolveAdminUserPermissionOverrides,
 } = await import("../src/lib/admin-user-management-policy.ts");
 const { isSessionPrincipalCurrent } = await import("../src/lib/iam.ts");
 
@@ -231,12 +232,12 @@ test("email-based create and invite are atomic create-only operations", async ()
   assert.match(mutations, /new_credential AS/);
   assert.match(mutations, /new_invite AS/);
   assert.match(mutations, /new_reset_token AS/);
-  assert.equal((mutations.match(/INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)/g) || []).length, 3);
-  assert.ok((mutations.match(/\$\{input\.tenantId\}::uuid/g) || []).length >= 6);
-  assert.match(mutations, /permission\.tenant_id IS NOT DISTINCT FROM \$\{input\.tenantId\}::uuid/);
-  assert.doesNotMatch(mutations, /ON CONFLICT \(user_id, resource, action, effect\)/);
-  assert.equal((mutations.match(/substr\(value, strpos\(value, ':'\) \+ 1\)/g) || []).length, 3);
-  assert.doesNotMatch(mutations, /split_part\(value, ':', 2\)/);
+  const createMutations = mutations.slice(0, mutations.indexOf("export async function replaceManagedAdminUserRole"));
+  assert.equal((createMutations.match(/INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)/g) || []).length, 2);
+  assert.ok((createMutations.match(/\$\{input\.tenantId\}::uuid/g) || []).length >= 4);
+  assert.doesNotMatch(createMutations, /ON CONFLICT \(user_id, resource, action, effect\)/);
+  assert.equal((createMutations.match(/substr\(value, strpos\(value, ':'\) \+ 1\)/g) || []).length, 2);
+  assert.doesNotMatch(createMutations, /split_part\(value, ':', 2\)/);
 });
 
 test("preset provisioning uses the shared hierarchical parser without auto-granting production QA approval", async () => {
@@ -259,9 +260,124 @@ test("userId mutations authorize and write in one statement, deny foreign or pri
   assert.ok((mutations.match(/forbidden_membership\.role::text IN \('super_admin', 'tenant_owner'\)/g) || []).length >= 3);
   assert.ok((mutations.match(/forbidden_membership\.tenant_id IS NULL/g) || []).length >= 3);
   assert.ok((mutations.match(/revoked_sessions AS/g) || []).length >= 3);
-  assert.match(permissionRoute, /replaceManagedAdminUserAccess\(/);
+  assert.match(permissionRoute, /replaceManagedAdminUserRole\(/);
+  assert.match(permissionRoute, /replaceManagedAdminUserPermissionOverrides\(/);
   assert.match(mfaRoute, /resetManagedAdminUserMfa\(/);
   assert.match(resetRoute, /createManagedAdminPasswordReset\(/);
+});
+
+test("explicit permission overrides require bounded grants and denies without overlap", () => {
+  const commercialManager = {
+    ...tenantSession,
+    permissions: [
+      ...tenantSession.permissions,
+      "crm:read",
+      "campaigns:read",
+      "marketplace:read",
+    ],
+  };
+  assert.deepEqual(resolveAdminUserPermissionOverrides(
+    commercialManager,
+    "marketing_manager",
+    ["marketplace:read", "crm:read", "marketplace:read"],
+    ["campaigns:read"],
+    ["crm:read", "campaigns:read"],
+  ), {
+    ok: true,
+    role: "marketing_manager",
+    allowPermissions: ["crm:read", "marketplace:read"],
+    deniedPermissions: ["campaigns:read"],
+  });
+  assert.deepEqual(resolveAdminUserPermissionOverrides(
+    commercialManager,
+    "marketing_manager",
+    ["crm:read"],
+    ["crm:read"],
+    [],
+  ), { ok: false, status: 400, reason: "permission_override_conflict" });
+  assert.deepEqual(resolveAdminUserPermissionOverrides(
+    commercialManager,
+    "marketing_manager",
+    [],
+    ["rewards:write"],
+    [],
+  ), { ok: false, status: 403, reason: "permission_outside_role_boundary" });
+  assert.deepEqual(resolveAdminUserPermissionOverrides(
+    commercialManager,
+    "marketing_manager",
+    [],
+    "campaigns:read",
+    [],
+  ), { ok: false, status: 400, reason: "invalid_denied_permissions" });
+
+  const narrowedManager = {
+    ...commercialManager,
+    permissions: commercialManager.permissions.filter((permission) => permission !== "campaigns:read"),
+    deniedPermissions: ["campaigns:read"],
+  };
+  assert.deepEqual(resolveAdminUserPermissionOverrides(
+    narrowedManager,
+    "marketing_manager",
+    [],
+    [],
+    ["campaigns:read"],
+  ), { ok: false, status: 403, reason: "permission_escalation_forbidden" });
+  assert.deepEqual(resolveAdminUserPermissionOverrides(
+    narrowedManager,
+    "marketing_manager",
+    [],
+    ["campaigns:read"],
+    ["campaigns:read"],
+  ), {
+    ok: true,
+    role: "marketing_manager",
+    allowPermissions: [],
+    deniedPermissions: ["campaigns:read"],
+  });
+});
+
+test("role-default updates preserve explicit allows and denies and block cross-tenant override moves", async () => {
+  const mutations = await source("lib/admin-user-management.ts");
+  const permissionRoute = await source("app/admin/users/[userId]/permissions/route.ts");
+  const updateStart = mutations.indexOf("export async function replaceManagedAdminUserRole");
+  const updateEnd = mutations.indexOf("export async function getManagedAdminUserAccess", updateStart);
+  const update = mutations.slice(updateStart, updateEnd);
+
+  assert.match(update, /FROM resource_permissions scoped_permission/);
+  assert.match(update, /FROM memberships existing_membership[\s\S]*\) <= 1/);
+  assert.match(update, /scoped_permission\.tenant_id IS DISTINCT FROM \$\{input\.tenantId\}::uuid/);
+  assert.match(update, /FROM resource_permissions role_change_permission[\s\S]*role_change_permission\.effect = 'allow'/);
+  assert.match(update, /FROM memberships unchanged_membership[\s\S]*unchanged_membership\.role = \$\{input\.role\}::membership_role/);
+  assert.doesNotMatch(update, /(?:INSERT INTO|DELETE FROM) resource_permissions/);
+  assert.doesNotMatch(update, /desired_permissions|old_permissions_delete/);
+  assert.doesNotMatch(permissionRoute, /permissions:\s*delegation\.permissions/);
+  assert.match(permissionRoute, /permissionMode:\s*'role_default'/);
+});
+
+test("explicit override updates mutate grants and denies only in scope, revoke sessions, and audit atomically", async () => {
+  const mutations = await source("lib/admin-user-management.ts");
+  const permissionRoute = await source("app/admin/users/[userId]/permissions/route.ts");
+  const usersRoute = await source("app/admin/users/route.ts");
+  const updateStart = mutations.indexOf("export async function replaceManagedAdminUserPermissionOverrides");
+  const updateEnd = mutations.indexOf("export async function resetManagedAdminUserMfa", updateStart);
+  const update = mutations.slice(updateStart, updateEnd);
+
+  assert.match(permissionRoute, /permissionMode === 'explicit_overrides'/);
+  assert.match(permissionRoute, /body\.allowPermissions === undefined \|\| body\.deniedPermissions === undefined/);
+  assert.match(permissionRoute, /getManagedAdminUserAccess/);
+  assert.match(permissionRoute, /resolveAdminUserPermissionOverrides/);
+  assert.equal((usersRoute.match(/rp\.effect = 'deny'/g) || []).length, 2);
+  assert.equal((usersRoute.match(/AS denied_permissions/g) || []).length, 2);
+  assert.ok(permissionRoute.indexOf("await ensureAuditLogsSchema()") < permissionRoute.indexOf("await replaceManagedAdminUserPermissionOverrides"));
+  assert.match(update, /DELETE FROM resource_permissions permission/);
+  assert.match(update, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action, effect\)/);
+  assert.match(update, /permission\.tenant_id IS NOT DISTINCT FROM \$\{input\.tenantId\}::uuid/);
+  assert.match(update, /desired\.effect = permission\.effect/);
+  assert.match(update, /UPDATE auth_sessions session[\s\S]*SET revoked_at = now\(\)/);
+  assert.match(update, /INSERT INTO audit_logs/);
+  assert.match(update, /admin_user_permission_overrides_replaced/);
+  assert.match(update, /FROM target[\s\S]*RETURNING id/);
+  assert.doesNotMatch(update, /(?:INSERT INTO|DELETE FROM) memberships/);
 });
 
 test("login loads account status and session resolution uses current membership and permissions", async () => {

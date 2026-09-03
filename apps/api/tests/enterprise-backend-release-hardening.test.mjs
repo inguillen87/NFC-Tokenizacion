@@ -207,8 +207,9 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /20260829120000_0097_public_location_privacy\.sql/);
   assert.match(dbRuntime, /20260830120000_0098_event_location_context\.sql/);
   assert.match(dbRuntime, /20260831190000_0099_post_tap_location_observation\.sql/);
+  assert.match(dbRuntime, /20260903110000_0099_commercial_role_defaults\.sql/);
   assert.match(dbRuntime, /20260903120000_0100_event_incident_optimistic_concurrency\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 45);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 46);
   assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1), "20260903120000_0100_event_incident_optimistic_concurrency.sql");
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);

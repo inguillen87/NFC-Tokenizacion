@@ -22,6 +22,7 @@ type UserRow = {
   tenant_slug?: string | null;
   mfa_enabled: boolean;
   permissions: string[];
+  denied_permissions?: string[];
 };
 
 type UserEditorState = Record<string, { role: string; tenantSlug: string }>;
@@ -104,7 +105,6 @@ export function UserManagementPanel() {
       body: JSON.stringify({
         role: selectedRole.code,
         tenantSlug: selectedRole.tenantBound ? (editor.tenantSlug || null) : null,
-        permissions: [],
         permissionMode: ENTERPRISE_ROLE_PERMISSION_MODE,
       }),
     }).catch(() => null);
@@ -181,8 +181,9 @@ export function UserManagementPanel() {
                   <Button disabled={catalog.status !== "ready" || !selectedRole} className="px-3 py-2 text-sm" onClick={() => saveUser(user.id)}>Guardar cambios</Button>
                 </div>
                 <div className="mt-3"><EnterpriseRolePresetSummary role={selectedRole} /></div>
-                {Array.isArray(user.permissions) && user.permissions.length > 0
-                  ? <p className="mt-3 text-xs text-slate-500">Este usuario conserva {user.permissions.length} permiso(s) explícito(s) hasta que guardes el preset seleccionado.</p>
+                {(Array.isArray(user.permissions) && user.permissions.length > 0)
+                  || (Array.isArray(user.denied_permissions) && user.denied_permissions.length > 0)
+                  ? <p className="mt-3 text-xs text-slate-500">Este usuario conserva {user.permissions.length} permiso(s) directo(s) y {user.denied_permissions?.length || 0} denegación(es). Guardar el rol no elimina esas excepciones.</p>
                   : null}
               </div>
             );

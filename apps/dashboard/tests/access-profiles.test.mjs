@@ -68,3 +68,37 @@ test("access profiles ignoran passwords publicas y exponen payload publico sin s
     else process.env[key] = value;
   }
 });
+
+test("perfiles operativos y growth usan roles especializados y conservan scope tenant", async () => {
+  const backup = new Map(PROFILE_ENV_KEYS.map((key) => [key, process.env[key]]));
+  for (const key of PROFILE_ENV_KEYS) delete process.env[key];
+  process.env.TENANT_OPS_EMAIL = "ops@tenant.example";
+  process.env.TENANT_OPS_PASSWORD = "ops-secret";
+  process.env.TENANT_GROWTH_EMAIL = "growth@tenant.example";
+  process.env.TENANT_GROWTH_PASSWORD = "growth-secret";
+
+  const { getAccessProfiles } = await import(`../src/lib/access-profiles.ts?ts=${Date.now()}-specialized`);
+  const profiles = Object.fromEntries(getAccessProfiles().map((profile) => [profile.key, profile]));
+
+  assert.equal(profiles["tenant-ops"].role, "operations-manager");
+  assert.deepEqual(
+    profiles["tenant-ops"].permissions.filter((permission) => permission.startsWith("rewards:")),
+    ["rewards:validate"],
+  );
+  assert.equal(profiles["tenant-growth"].role, "marketing-manager");
+  for (const permission of ["crm:read", "campaigns:read", "campaigns:write", "rewards:read", "marketplace:read"]) {
+    assert.equal(profiles["tenant-growth"].permissions.includes(permission), true, permission);
+  }
+  assert.equal(profiles["tenant-growth"].permissions.includes("campaigns:test_whatsapp"), false);
+
+  const loginRoute = await import("node:fs/promises").then(({ readFile }) => readFile(
+    new URL("../src/lib/session-login-route.ts", import.meta.url),
+    "utf8",
+  ));
+  assert.match(loginRoute, /return role === "super-admin"[\s\S]*tenantId: "demo-tenant-demobodega"/);
+
+  for (const [key, value] of backup.entries()) {
+    if (typeof value === "undefined") delete process.env[key];
+    else process.env[key] = value;
+  }
+});

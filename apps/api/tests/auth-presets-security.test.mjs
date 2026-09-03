@@ -27,8 +27,11 @@ test("auth presets enforce tenant binding and never auto-promote malformed super
 
   assert.match(content, /preset\.role === "super_admin" \? null : await resolveDemoTenantId\(sql\)/);
   assert.match(content, /preset\.role !== "super_admin" && !tenantIdForMembership/);
-  assert.match(content, /preset\.role === "super_admin" && membershipRows\[0\]\.tenant_id/);
+  assert.match(content, /preset\.role === "super_admin" && membershipRows\[0\]\?\.tenant_id/);
   assert.match(content, /Never turn a historical tenant-bound super-admin into global authority/);
+  assert.match(content, /membershipRows\.length > 1/);
+  assert.match(content, /String\(membershipRows\[0\]\.role\) !== preset\.role/);
+  assert.doesNotMatch(content, /FROM memberships WHERE user_id[^\n]*AND role = \$\{preset\.role\}/);
   assert.match(content, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)[^\n]*\$\{tenantIdForMembership\}::uuid/);
   assert.doesNotMatch(content, /preset\.role === "tenant_admin" \? await resolveDemoTenantId/);
 });

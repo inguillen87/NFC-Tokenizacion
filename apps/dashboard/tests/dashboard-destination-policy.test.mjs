@@ -21,10 +21,10 @@ function can(profileKey, destination, overrides = {}) {
 }
 
 test("tenant operations sees only its exact operational destinations", () => {
-  for (const destination of ["overview", "onboarding", "batches", "tags", "proof", "tokenization", "analytics", "serviceLevels", "demoLab"]) {
+  for (const destination of ["overview", "onboarding", "batches", "tags", "tokenization", "analytics", "serviceLevels", "demoLab"]) {
     assert.equal(can("tenant-ops", destination), true, destination);
   }
-  for (const destination of ["logistics", "events", "riskAnalytics", "leadsTickets", "loyaltyOverview", "rewards", "users", "subscriptions", "orderRequests"]) {
+  for (const destination of ["logistics", "events", "proof", "riskAnalytics", "leadsTickets", "loyaltyOverview", "rewards", "users", "subscriptions", "orderRequests"]) {
     assert.equal(can("tenant-ops", destination), false, destination);
   }
 });
@@ -39,10 +39,10 @@ test("tenant growth sees CRM destinations but not operational or PII destination
 });
 
 test("tenant admin no longer inherits IAM or consumer PII access from unrelated wildcards", () => {
-  for (const destination of ["batches", "tags", "proof", "tokenization", "analytics", "loyaltyOverview", "rewards", "marketplace"]) {
+  for (const destination of ["batches", "tags", "proof", "tokenization", "analytics", "loyaltyOverview", "rewards", "campaigns", "marketplace"]) {
     assert.equal(can("tenant-admin", destination), true, destination);
   }
-  for (const destination of ["events", "riskAnalytics", "campaigns", "users", "subscriptions", "consumerOverview", "experiences", "orderRequests"]) {
+  for (const destination of ["events", "riskAnalytics", "users", "subscriptions", "consumerOverview", "experiences", "orderRequests"]) {
     assert.equal(can("tenant-admin", destination), false, destination);
   }
 });

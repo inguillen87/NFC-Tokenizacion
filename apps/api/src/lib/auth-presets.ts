@@ -4,10 +4,31 @@ import { parsePermissionGrant } from "./admin-user-management-policy";
 type Preset = {
   email: string;
   password: string;
-  role: "super_admin" | "tenant_admin" | "reseller" | "viewer";
+  role: "super_admin" | "tenant_admin" | "operations_manager" | "marketing_manager" | "reseller" | "viewer";
   fullName: string;
   permissions: string[];
 };
+
+export const COMMERCIAL_AUTH_PRESET_PERMISSIONS = Object.freeze({
+  tenant_admin: [
+    "crm:read",
+    "campaigns:read",
+    "campaigns:write",
+    "rewards:read",
+    "rewards:write",
+    "rewards:validate",
+    "marketplace:read",
+    "marketplace:write",
+  ],
+  operations_manager: ["rewards:validate"],
+  marketing_manager: [
+    "crm:read",
+    "campaigns:read",
+    "campaigns:write",
+    "rewards:read",
+    "marketplace:read",
+  ],
+} as const);
 
 function read(value: string | undefined, fallback = "") {
   const normalized = (value || "").trim();
@@ -28,7 +49,34 @@ export function getAuthPresets(): Preset[] {
       password: read(process.env.TENANT_ADMIN_PASSWORD || process.env.BODEGA_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD),
       role: "tenant_admin",
       fullName: "Tenant Admin",
-      permissions: ["users:manage", "batches:write", "supplier:qa", "tags:read", "tags:write", "analytics:read", "events:read", "incidents:read", "incidents:write", "tokenization:read", "tokenization:write"],
+      permissions: [
+        "users:manage", "batches:write", "supplier:qa", "tags:read", "tags:write",
+        "analytics:read", "events:read", "incidents:read", "incidents:write",
+        "tokenization:read", "tokenization:write",
+        ...COMMERCIAL_AUTH_PRESET_PERMISSIONS.tenant_admin,
+      ],
+    },
+    {
+      email: read(process.env.TENANT_OPS_EMAIL || process.env.NEXT_PUBLIC_TENANT_OPS_EMAIL, "tenant-ops@example.com"),
+      password: read(process.env.TENANT_OPS_PASSWORD),
+      role: "operations_manager",
+      fullName: "Operations Manager",
+      permissions: [
+        "batches:read", "batches:write", "tags:read", "tags:write", "events:read",
+        "incidents:read", "incidents:write", "proof:read", "tokenization:read",
+        "tokenization:write", "analytics:read", "demo:read", "demo:run",
+        ...COMMERCIAL_AUTH_PRESET_PERMISSIONS.operations_manager,
+      ],
+    },
+    {
+      email: read(process.env.TENANT_GROWTH_EMAIL || process.env.NEXT_PUBLIC_TENANT_GROWTH_EMAIL, "tenant-growth@example.com"),
+      password: read(process.env.TENANT_GROWTH_PASSWORD),
+      role: "marketing_manager",
+      fullName: "Marketing Manager",
+      permissions: [
+        "events:read", "analytics:read", "demo:read",
+        ...COMMERCIAL_AUTH_PRESET_PERMISSIONS.marketing_manager,
+      ],
     },
     {
       email: read(process.env.RESELLER_EMAIL || process.env.NEXT_PUBLIC_RESELLER_EMAIL, "reseller@example.com"),
@@ -87,23 +135,37 @@ export async function ensurePresetUser(
   const userId = existing[0]?.id || (await sql`INSERT INTO users (email, full_name) VALUES (${preset.email}, ${preset.fullName}) RETURNING id`)[0]?.id;
   if (!userId) return null;
 
+  const membershipRows = await sql`
+    SELECT id, tenant_id, role::text AS role
+    FROM memberships
+    WHERE user_id = ${userId}::uuid
+    ORDER BY created_at ASC, id ASC
+    LIMIT 2
+  `;
+  // Preset provisioning must never manufacture a second authority path or
+  // silently re-role an existing identity. Reconcile legacy demo memberships
+  // through the audited admin flow before enabling the corresponding preset.
+  if (membershipRows.length > 1
+    || (membershipRows[0] && String(membershipRows[0].role) !== preset.role)) {
+    return null;
+  }
+  if (preset.role === "super_admin" && membershipRows[0]?.tenant_id) {
+    // Never turn a historical tenant-bound super-admin into global authority
+    // implicitly. Runtime rejects it until an audited reconciliation occurs.
+    return null;
+  } else if (preset.role !== "super_admin"
+    && membershipRows[0]
+    && String(membershipRows[0].tenant_id) !== String(tenantIdForMembership)) {
+    return null;
+  }
+
   const pwdRows = await sql`SELECT user_id FROM password_credentials WHERE user_id = ${userId}::uuid LIMIT 1`;
   if (!pwdRows[0]) {
     await sql`INSERT INTO password_credentials (user_id, password_hash) VALUES (${userId}::uuid, ${hashPassword(preset.password)})`;
   }
 
-  const membershipRows = await sql`SELECT id, tenant_id FROM memberships WHERE user_id = ${userId}::uuid AND role = ${preset.role}::membership_role ORDER BY created_at ASC LIMIT 1`;
   if (!membershipRows[0]) {
     await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, ${tenantIdForMembership}::uuid, ${preset.role}::membership_role)`;
-  } else if (preset.role === "super_admin" && membershipRows[0].tenant_id) {
-    // Never turn a historical tenant-bound super-admin into global authority
-    // implicitly. Runtime rejects it until an audited reconciliation occurs.
-    return null;
-  } else if (preset.role !== "super_admin" && tenantIdForMembership && !membershipRows[0].tenant_id) {
-    await sql`UPDATE memberships SET tenant_id = ${tenantIdForMembership}::uuid, updated_at = now() WHERE id = ${membershipRows[0].id}::uuid`;
-  } else if (preset.role !== "super_admin"
-    && String(membershipRows[0].tenant_id) !== String(tenantIdForMembership)) {
-    return null;
   }
 
   for (const entry of preset.permissions) {

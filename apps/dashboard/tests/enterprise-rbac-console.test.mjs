@@ -69,6 +69,13 @@ test("user and invitation consoles consume role defaults and expose no free-form
     assert.doesNotMatch(panel, /<textarea/);
     assert.doesNotMatch(panel, /permissions\.split/);
   }
+  const saveUser = userPanel.slice(
+    userPanel.indexOf("async function saveUser"),
+    userPanel.indexOf("async function issueReset"),
+  );
+  assert.doesNotMatch(saveUser, /permissions\s*:/);
+  assert.match(userPanel, /Guardar el rol no elimina esas excepciones/);
+  assert.match(userPanel, /user\.denied_permissions\?\.length/);
   assert.match(catalogControl, /fetch\("\/api\/iam\/rbac\/roles"/);
   assert.match(catalogControl, /cache:\s*"no-store"/);
   assert.match(catalogControl, /status:\s*"failed",\s*roles:\s*\[\]/);

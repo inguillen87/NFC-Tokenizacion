@@ -18,7 +18,8 @@ export async function GET(req: Request) {
         COALESCE(m.role::text, 'viewer') AS role, t.slug AS tenant_slug,
         u.admin_status::text AS admin_status,
         EXISTS (SELECT 1 FROM user_mfa_factors umf WHERE umf.user_id = u.id) AS mfa_enabled,
-        COALESCE(json_agg(DISTINCT CASE WHEN rp.resource = '*' AND rp.action = '*' THEN '*' ELSE rp.resource || ':' || rp.action END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'allow'), '[]'::json) AS permissions
+        COALESCE(json_agg(DISTINCT CASE WHEN rp.resource = '*' AND rp.action = '*' THEN '*' ELSE rp.resource || ':' || rp.action END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'allow'), '[]'::json) AS permissions,
+        COALESCE(json_agg(DISTINCT CASE WHEN rp.resource = '*' AND rp.action = '*' THEN '*' ELSE rp.resource || ':' || rp.action END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'deny'), '[]'::json) AS denied_permissions
       FROM users u
       LEFT JOIN memberships m ON m.user_id = u.id
       LEFT JOIN tenants t ON t.id = m.tenant_id
@@ -35,7 +36,8 @@ export async function GET(req: Request) {
         COALESCE(m.role::text, 'viewer') AS role, t.slug AS tenant_slug,
         u.admin_status::text AS admin_status,
         EXISTS (SELECT 1 FROM user_mfa_factors umf WHERE umf.user_id = u.id) AS mfa_enabled,
-        COALESCE(json_agg(DISTINCT CASE WHEN rp.resource = '*' AND rp.action = '*' THEN '*' ELSE rp.resource || ':' || rp.action END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'allow'), '[]'::json) AS permissions
+        COALESCE(json_agg(DISTINCT CASE WHEN rp.resource = '*' AND rp.action = '*' THEN '*' ELSE rp.resource || ':' || rp.action END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'allow'), '[]'::json) AS permissions,
+        COALESCE(json_agg(DISTINCT CASE WHEN rp.resource = '*' AND rp.action = '*' THEN '*' ELSE rp.resource || ':' || rp.action END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'deny'), '[]'::json) AS denied_permissions
       FROM users u
       JOIN memberships m ON m.user_id = u.id
       LEFT JOIN tenants t ON t.id = m.tenant_id
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
 
   const delegation = await resolveManagedAdminDelegationRequest(sql as any, session, {
     role: body.role || 'viewer',
-    permissions: body.permissions || [],
+    permissions: body.permissions,
     permissionMode: body.permissionMode,
   });
   if (!delegation.ok) {

@@ -1,14 +1,14 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 import { resolveConsumerNetworkTenant } from "../../../../lib/consumer-network-metrics";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "marketplace:read");
   if (auth) return auth;
 
   await ensureConsumerPortalSchema();

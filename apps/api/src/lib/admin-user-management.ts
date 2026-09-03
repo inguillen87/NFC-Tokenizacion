@@ -8,10 +8,19 @@ type ManagedTarget = {
   actorTenantId: string | null;
 };
 
-type ManagedAccess = ManagedTarget & {
+type ManagedRoleChange = ManagedTarget & {
   tenantId: string | null;
   role: ManagedAdminRole;
-  permissions: string[];
+};
+
+type ManagedPermissionOverrides = ManagedRoleChange & {
+  actorUserId: string;
+  allowPermissions: string[];
+  deniedPermissions: string[];
+  roleDefaultPermissions: unknown;
+  ipAddress: string | null;
+  requestId: string | null;
+  userAgent: string | null;
 };
 
 export async function createManagedAdminUser(sql: Sql, input: {
@@ -142,12 +151,46 @@ export async function createManagedAdminInvite(sql: Sql, input: {
   return rows[0]?.id ? String(rows[0].id) : null;
 }
 
-export async function replaceManagedAdminUserAccess(sql: Sql, input: ManagedAccess) {
+/**
+ * Changes only the authoritative membership and keeps every explicit override.
+ * A tenant actor may re-save the current role, but must clear direct allows via
+ * the explicit audited path before changing roles; otherwise a dormant grant
+ * could become active under the new role boundary.
+ */
+export async function replaceManagedAdminUserRole(sql: Sql, input: ManagedRoleChange) {
   const rows = await sql/*sql*/`
     WITH target AS MATERIALIZED (
       SELECT u.id
       FROM users u
       WHERE u.id = ${input.targetUserId}::uuid
+        AND (
+          SELECT count(*)
+          FROM memberships existing_membership
+          WHERE existing_membership.user_id = u.id
+        ) <= 1
+        AND NOT EXISTS (
+          SELECT 1
+          FROM resource_permissions scoped_permission
+          WHERE scoped_permission.user_id = u.id
+            AND scoped_permission.tenant_id IS DISTINCT FROM ${input.tenantId}::uuid
+        )
+        AND (
+          ${input.actorIsSuperAdmin}
+          OR NOT EXISTS (
+            SELECT 1
+            FROM resource_permissions role_change_permission
+            WHERE role_change_permission.user_id = u.id
+              AND role_change_permission.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
+              AND role_change_permission.effect = 'allow'
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM memberships unchanged_membership
+            WHERE unchanged_membership.user_id = u.id
+              AND unchanged_membership.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
+              AND unchanged_membership.role = ${input.role}::membership_role
+          )
+        )
         AND (
           ${input.actorIsSuperAdmin}
           OR (
@@ -188,34 +231,6 @@ export async function replaceManagedAdminUserAccess(sql: Sql, input: ManagedAcce
         AND membership.id <> desired_membership.id
       RETURNING membership.id
     ),
-    desired_permissions AS MATERIALIZED (
-      SELECT DISTINCT
-        CASE WHEN value = '*' THEN '*' ELSE split_part(value, ':', 1) END AS resource,
-        CASE WHEN value = '*' THEN '*' ELSE substr(value, strpos(value, ':') + 1) END AS action
-      FROM jsonb_array_elements_text(${JSON.stringify(input.permissions)}::jsonb)
-    ),
-    permissions_write AS (
-      INSERT INTO resource_permissions (user_id, tenant_id, resource, action)
-      SELECT target.id, ${input.tenantId}::uuid, desired.resource, desired.action
-      FROM target
-      CROSS JOIN desired_permissions desired
-      ON CONFLICT DO NOTHING
-      RETURNING id
-    ),
-    old_permissions_delete AS (
-      DELETE FROM resource_permissions permission
-      USING target
-      WHERE permission.user_id = target.id
-        AND NOT EXISTS (
-          SELECT 1
-          FROM desired_permissions desired
-          WHERE desired.resource = permission.resource
-            AND desired.action = permission.action
-            AND permission.effect = 'allow'
-            AND permission.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
-        )
-      RETURNING permission.id
-    ),
     revoked_sessions AS (
       UPDATE auth_sessions session
       SET revoked_at = now(), last_seen_at = now()
@@ -227,9 +242,205 @@ export async function replaceManagedAdminUserAccess(sql: Sql, input: ManagedAcce
     SELECT target.id,
       (SELECT count(*) FROM membership_write) AS membership_count,
       (SELECT count(*) FROM old_memberships_delete) AS removed_memberships,
-      (SELECT count(*) FROM permissions_write) AS added_permissions,
-      (SELECT count(*) FROM old_permissions_delete) AS removed_permissions,
       (SELECT count(*) FROM revoked_sessions) AS revoked_session_count
+    FROM target
+  `;
+  return rows[0]?.id ? String(rows[0].id) : null;
+}
+
+export async function getManagedAdminUserAccess(sql: Sql, input: ManagedTarget & {
+  tenantId: string | null;
+}) {
+  const rows = await sql/*sql*/`
+    SELECT u.id, target_membership.tenant_id, target_membership.role::text AS role,
+      role_profile.default_permissions
+    FROM users u
+    JOIN memberships target_membership ON target_membership.user_id = u.id
+    JOIN enterprise_role_profiles role_profile
+      ON role_profile.code = target_membership.role::text
+     AND role_profile.active = true
+     AND role_profile.human_session_allowed = true
+    WHERE u.id = ${input.targetUserId}::uuid
+      AND target_membership.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
+      AND (
+        ${input.actorIsSuperAdmin}
+        OR (
+          ${input.actorTenantId}::uuid IS NOT NULL
+          AND target_membership.tenant_id = ${input.actorTenantId}::uuid
+          AND target_membership.role::text NOT IN ('super_admin', 'tenant_owner')
+          AND NOT EXISTS (
+            SELECT 1
+            FROM memberships forbidden_membership
+            WHERE forbidden_membership.user_id = u.id
+              AND forbidden_membership.id <> target_membership.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM resource_permissions forbidden_permission
+            WHERE forbidden_permission.user_id = u.id
+              AND forbidden_permission.tenant_id IS DISTINCT FROM ${input.actorTenantId}::uuid
+          )
+        )
+      )
+    ORDER BY target_membership.updated_at DESC, target_membership.id DESC
+    LIMIT 2
+  `;
+  if (rows.length !== 1 || !rows[0]?.id || !rows[0]?.role) return null;
+  return {
+    userId: String(rows[0].id),
+    tenantId: rows[0].tenant_id ? String(rows[0].tenant_id) : null,
+    role: String(rows[0].role) as ManagedAdminRole,
+    roleDefaultPermissions: rows[0].default_permissions,
+  };
+}
+
+/**
+ * Replaces explicit grants and denies for one already-resolved membership.
+ * The role is an optimistic scope guard, not a requested role change. The
+ * permission writes, session revocation and audit record share one statement,
+ * so an audit failure rolls the entire privileged mutation back.
+ */
+export async function replaceManagedAdminUserPermissionOverrides(
+  sql: Sql,
+  input: ManagedPermissionOverrides,
+) {
+  const rows = await sql/*sql*/`
+    WITH target AS MATERIALIZED (
+      SELECT u.id, target_membership.role::text AS role
+      FROM users u
+      JOIN memberships target_membership
+        ON target_membership.user_id = u.id
+       AND target_membership.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
+       AND target_membership.role = ${input.role}::membership_role
+      JOIN enterprise_role_profiles role_profile
+        ON role_profile.code = target_membership.role::text
+       AND role_profile.active = true
+       AND role_profile.human_session_allowed = true
+       AND role_profile.default_permissions = ${JSON.stringify(input.roleDefaultPermissions)}::jsonb
+      WHERE u.id = ${input.targetUserId}::uuid
+        AND (
+          ${input.actorIsSuperAdmin}
+          OR (
+            ${input.actorTenantId}::uuid IS NOT NULL
+            AND target_membership.tenant_id = ${input.actorTenantId}::uuid
+            AND target_membership.role::text NOT IN ('super_admin', 'tenant_owner')
+            AND NOT EXISTS (
+              SELECT 1
+              FROM memberships forbidden_membership
+              WHERE forbidden_membership.user_id = u.id
+                AND forbidden_membership.id <> target_membership.id
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM resource_permissions forbidden_permission
+              WHERE forbidden_permission.user_id = u.id
+                AND forbidden_permission.tenant_id IS DISTINCT FROM ${input.actorTenantId}::uuid
+            )
+          )
+        )
+      FOR UPDATE OF u, target_membership
+    ),
+    previous_permissions AS MATERIALIZED (
+      SELECT permission.resource, permission.action, permission.effect
+      FROM resource_permissions permission
+      JOIN target ON target.id = permission.user_id
+      WHERE permission.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
+    ),
+    desired_permissions AS MATERIALIZED (
+      SELECT DISTINCT
+        requested.effect,
+        CASE WHEN requested.value = '*' THEN '*' ELSE split_part(requested.value, ':', 1) END AS resource,
+        CASE WHEN requested.value = '*' THEN '*' ELSE substr(requested.value, strpos(requested.value, ':') + 1) END AS action
+      FROM (
+        SELECT 'allow'::text AS effect, value
+        FROM jsonb_array_elements_text(${JSON.stringify(input.allowPermissions)}::jsonb)
+        UNION ALL
+        SELECT 'deny'::text AS effect, value
+        FROM jsonb_array_elements_text(${JSON.stringify(input.deniedPermissions)}::jsonb)
+      ) requested
+    ),
+    deleted_permissions AS (
+      DELETE FROM resource_permissions permission
+      USING target
+      WHERE permission.user_id = target.id
+        AND permission.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
+        AND NOT EXISTS (
+          SELECT 1
+          FROM desired_permissions desired
+          WHERE desired.resource = permission.resource
+            AND desired.action = permission.action
+            AND desired.effect = permission.effect
+        )
+      RETURNING permission.id
+    ),
+    inserted_permissions AS (
+      INSERT INTO resource_permissions (user_id, tenant_id, resource, action, effect)
+      SELECT target.id, ${input.tenantId}::uuid,
+        desired.resource, desired.action, desired.effect
+      FROM target
+      CROSS JOIN desired_permissions desired
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM resource_permissions existing_permission
+        WHERE existing_permission.user_id = target.id
+          AND existing_permission.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
+          AND existing_permission.resource = desired.resource
+          AND existing_permission.action = desired.action
+          AND existing_permission.effect = desired.effect
+      )
+      ON CONFLICT DO NOTHING
+      RETURNING id
+    ),
+    revoked_sessions AS (
+      UPDATE auth_sessions session
+      SET revoked_at = now(), last_seen_at = now()
+      FROM target
+      WHERE session.user_id = target.id
+        AND session.revoked_at IS NULL
+      RETURNING session.id
+    ),
+    audit_write AS (
+      INSERT INTO audit_logs (
+        actor_id, tenant_id, action, resource_type, resource_id,
+        before_hash, after_hash, ip_address, user_agent, request_id
+      )
+      SELECT
+        ${input.actorUserId}::uuid,
+        ${input.tenantId}::uuid,
+        'admin_user_permission_overrides_replaced',
+        'admin_user',
+        target.id::text,
+        encode(digest(jsonb_build_object(
+          'role', target.role,
+          'overrides', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'effect', previous.effect,
+                'permission', CASE
+                  WHEN previous.resource = '*' AND previous.action = '*' THEN '*'
+                  ELSE previous.resource || ':' || previous.action
+                END
+              ) ORDER BY previous.effect, previous.resource, previous.action
+            )
+            FROM previous_permissions previous
+          ), '[]'::jsonb)
+        )::text, 'sha256'), 'hex'),
+        encode(digest(jsonb_build_object(
+          'role', target.role,
+          'allow', ${JSON.stringify(input.allowPermissions)}::jsonb,
+          'deny', ${JSON.stringify(input.deniedPermissions)}::jsonb
+        )::text, 'sha256'), 'hex'),
+        ${input.ipAddress}::inet,
+        NULLIF(left(${input.userAgent}, 512), ''),
+        NULLIF(left(${input.requestId}, 160), '')
+      FROM target
+      RETURNING id
+    )
+    SELECT target.id,
+      (SELECT count(*) FROM deleted_permissions) AS deleted_permission_count,
+      (SELECT count(*) FROM inserted_permissions) AS inserted_permission_count,
+      (SELECT count(*) FROM revoked_sessions) AS revoked_session_count,
+      (SELECT count(*) FROM audit_write) AS audit_count
     FROM target
   `;
   return rows[0]?.id ? String(rows[0].id) : null;

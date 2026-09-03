@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../../../lib/auth";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 import { ensureLoyaltySchema } from "../../../../../lib/loyalty-schema";
@@ -30,7 +30,7 @@ function parseJson<T>(value: unknown, fallback: T): T {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "campaigns:read");
   if (auth) return auth;
 
   await ensureLoyaltySchema();

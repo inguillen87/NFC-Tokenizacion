@@ -139,8 +139,8 @@ test("login, live sessions, listings, and permission writers isolate grants by t
   assert.ok((iam.match(/FROM memberships active_membership/g) || []).length >= 4);
   assert.match(iam, /session\.membership_scope_unambiguous === true/);
 
-  assert.equal((managedUsers.match(/INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)/g) || []).length, 3);
-  assert.match(managedUsers, /permission\.tenant_id IS NOT DISTINCT FROM \$\{input\.tenantId\}::uuid/);
+  assert.equal((managedUsers.match(/INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)/g) || []).length, 2);
+  assert.match(managedUsers, /scoped_permission\.tenant_id IS DISTINCT FROM \$\{input\.tenantId\}::uuid/);
   assert.match(presets, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)[\s\S]*\$\{tenantIdForMembership\}::uuid/);
   assert.match(bootstrap, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\) VALUES \(\$\{userId\}::uuid, NULL/);
   assert.match(clerkSync, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)[\s\S]*VALUES \(\$\{userId\}::uuid, NULL/);

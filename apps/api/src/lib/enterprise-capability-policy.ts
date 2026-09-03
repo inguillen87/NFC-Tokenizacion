@@ -1,5 +1,6 @@
 /**
- * Authoritative human-role boundary for canonical enterprise capabilities.
+ * Authoritative human-role boundary for canonical enterprise and commercial
+ * capabilities.
  *
  * A permission grant is necessary but is not sufficient for the high-impact
  * capabilities listed here. This prevents a stale/custom legacy
@@ -74,7 +75,23 @@ const ENTERPRISE_CAPABILITY_ROLES = Object.freeze<Record<string, readonly string
     "operations-manager", "packaging-operator", "marketing-manager",
     "reseller-admin", "security-operator",
   ],
+  "crm:read": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
+  "campaigns:read": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
+  "campaigns:write": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
+  "campaigns:test_whatsapp": ["super-admin", "tenant-owner", "tenant-admin"],
+  "rewards:read": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
+  "rewards:write": ["super-admin", "tenant-owner", "tenant-admin"],
+  "rewards:validate": ["super-admin", "tenant-owner", "tenant-admin", "operations-manager"],
+  "marketplace:read": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
+  "marketplace:write": ["super-admin", "tenant-owner", "tenant-admin"],
 });
+
+const COMMERCIAL_PERMISSION_NAMESPACES = new Set([
+  "crm",
+  "campaigns",
+  "rewards",
+  "marketplace",
+]);
 
 function normalizeRole(value: unknown) {
   return String(value || "").trim().toLowerCase().replaceAll("_", "-");
@@ -88,7 +105,12 @@ export function canonicalEnterpriseCapability(value: unknown) {
 export function roleMayUseEnterpriseCapability(role: unknown, requestedPermission: unknown) {
   const canonical = canonicalEnterpriseCapability(requestedPermission);
   const allowlist = ENTERPRISE_CAPABILITY_ROLES[canonical];
-  if (!allowlist) return true;
+  if (!allowlist) {
+    const namespace = canonical.split(":", 1)[0];
+    // Commercial capabilities are allowlist-only: a namespace wildcard or a
+    // newly introduced action remains unavailable until explicitly reviewed.
+    return !COMMERCIAL_PERMISSION_NAMESPACES.has(namespace);
+  }
   return allowlist.includes(normalizeRole(role));
 }
 

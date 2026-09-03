@@ -1,13 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantAccess } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { ensureLoyaltySchema } from "../../../../lib/loyalty-schema";
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "rewards:read");
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);

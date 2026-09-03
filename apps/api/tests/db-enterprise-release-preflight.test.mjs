@@ -74,6 +74,7 @@ test("enterprise release gate requires the reviewed ordered set through 0100", (
     "20260829120000_0097_public_location_privacy.sql",
     "20260830120000_0098_event_location_context.sql",
     "20260831190000_0099_post_tap_location_observation.sql",
+    "20260903110000_0099_commercial_role_defaults.sql",
     "20260903120000_0100_event_incident_optimistic_concurrency.sql",
   ]);
 });
@@ -88,7 +89,9 @@ test("migration safety gate covers 0061-0100 and the historical clean-order boun
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-40).map(({ id }) => id), [
+  const reviewedStart = report.migrations.findIndex(({ id }) => id === "20260726190000_0061_supplier_export_artifact_delivery.sql");
+  assert.notEqual(reviewedStart, -1);
+  assert.deepEqual(report.migrations.slice(reviewedStart).map(({ id }) => id), [
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
     "20260728120000_0062_sun_atomic_persistence.sql",
     "20260728143000_0063_supplier_packaging_governance.sql",
@@ -128,6 +131,7 @@ test("migration safety gate covers 0061-0100 and the historical clean-order boun
     "20260829120000_0097_public_location_privacy.sql",
     "20260830120000_0098_event_location_context.sql",
     "20260831190000_0099_post_tap_location_observation.sql",
+    "20260903110000_0099_commercial_role_defaults.sql",
     "20260903120000_0100_event_incident_optimistic_concurrency.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
@@ -165,6 +169,7 @@ test("migration safety gate covers 0061-0100 and the historical clean-order boun
   assert.equal(report.assertions.public_location_privacy_is_additive, true);
   assert.equal(report.assertions.event_location_context_columns_are_additive, true);
   assert.equal(report.assertions.post_tap_location_observation_is_additive, true);
+  assert.equal(report.assertions.commercial_role_defaults_are_forward_only, true);
   assert.equal(report.assertions.unauthorized_clean_bootstrap_fails_closed, true);
 });
 

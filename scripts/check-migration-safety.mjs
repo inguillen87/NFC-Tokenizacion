@@ -54,6 +54,7 @@ const ids = [
   "20260829120000_0097_public_location_privacy.sql",
   "20260830120000_0098_event_location_context.sql",
   "20260831190000_0099_post_tap_location_observation.sql",
+  "20260903110000_0099_commercial_role_defaults.sql",
   "20260903120000_0100_event_incident_optimistic_concurrency.sql",
 ];
 const checks = [];
@@ -109,6 +110,7 @@ const sql96 = await fs.readFile(path.join(root, "20260802310000_0096_enterprise_
 const sql97 = await fs.readFile(path.join(root, "20260829120000_0097_public_location_privacy.sql"), "utf8");
 const sql98 = await fs.readFile(path.join(root, "20260830120000_0098_event_location_context.sql"), "utf8");
 const sql99 = await fs.readFile(path.join(root, "20260831190000_0099_post_tap_location_observation.sql"), "utf8");
+const sqlCommercialRoleDefaults = await fs.readFile(path.join(root, "20260903110000_0099_commercial_role_defaults.sql"), "utf8");
 const sql100 = await fs.readFile(path.join(root, "20260903120000_0100_event_incident_optimistic_concurrency.sql"), "utf8");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
@@ -680,6 +682,15 @@ const postTapLocationObservationIsAdditive = sql99.includes("ALTER TABLE public.
   && sql99.includes("post_tap_location_observation_schema_postcondition_failed")
   && (sql99.match(/ADD COLUMN IF NOT EXISTS/g) || []).length === 1
   && !/\b(?:DROP|DELETE|UPDATE|INSERT|TRUNCATE)\b|\bDEFAULT\b|\bNOT\s+NULL\b/i.test(sql99);
+const commercialRoleDefaultsAreForwardOnly = sqlCommercialRoleDefaults.includes("UPDATE public.enterprise_role_profiles profile")
+  && sqlCommercialRoleDefaults.includes("commercial_role_defaults_preflight")
+  && sqlCommercialRoleDefaults.includes("commercial_role_defaults_postcondition")
+  && sqlCommercialRoleDefaults.includes("'tenant_owner'")
+  && sqlCommercialRoleDefaults.includes("'tenant_admin'")
+  && sqlCommercialRoleDefaults.includes("'marketing_manager'")
+  && sqlCommercialRoleDefaults.includes("'operations_manager'")
+  && sqlCommercialRoleDefaults.includes("'campaigns:test_whatsapp'")
+  && !/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:resource_permissions|memberships|auth_sessions)\b/i.test(sqlCommercialRoleDefaults);
 const allMigrationFiles = (await fs.readdir(root)).filter((file) => file.endsWith(".sql")).sort();
 let tenantApiKeysMaterialized = false;
 let tenantApiKeysCanonicalCreateFound = false;
@@ -758,6 +769,7 @@ const ok = checks.every((item) => item.bytes > 0)
   && enterpriseRbacRiskTruthIsDurable
   && publicLocationPrivacyIsAdditive
   && eventLocationContextColumnsAreAdditive
+  && commercialRoleDefaultsAreForwardOnly
   && tenantApiKeysCleanOrderSafe && partitionedEventReferencesAreCompositeSafe
   && postgresTextNullDelimiterFree
   && runnerIsAtomic && unauthorizedCleanBootstrapFailsClosed && legacyBypassBlocked
@@ -814,6 +826,7 @@ console.log(JSON.stringify({
     public_location_privacy_is_additive: publicLocationPrivacyIsAdditive,
     event_location_context_columns_are_additive: eventLocationContextColumnsAreAdditive,
     post_tap_location_observation_is_additive: postTapLocationObservationIsAdditive,
+    commercial_role_defaults_are_forward_only: commercialRoleDefaultsAreForwardOnly,
     tenant_api_keys_clean_order_safe: tenantApiKeysCleanOrderSafe,
     partitioned_event_references_are_composite_safe: partitionedEventReferencesAreCompositeSafe,
     postgres_text_null_delimiter_free: postgresTextNullDelimiterFree,

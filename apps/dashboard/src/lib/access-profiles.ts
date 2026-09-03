@@ -59,11 +59,16 @@ export function getAccessProfiles(): AccessProfile[] {
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
       passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD"],
       note: "Administrador operativo del tenant: lotes, tags, taps, marketplace, rewards y empleados.",
-      permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "incidents:*", "proof:*", "tokenization:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*", "demo:*"],
+      permissions: [
+        "tenant:*", "batches:*", "tags:*", "events:*", "incidents:*", "proof:*",
+        "tokenization:*", "analytics:*", "employees:*", "demo:*",
+        "crm:read", "campaigns:read", "campaigns:write", "rewards:read",
+        "rewards:write", "rewards:validate", "marketplace:read", "marketplace:write",
+      ],
     }),
     profile({
       key: "tenant-ops",
-      role: "tenant-admin",
+      role: "operations-manager",
       label: "Empleado Operaciones NFC",
       emailEnv: ["TENANT_OPS_EMAIL", "NEXT_PUBLIC_TENANT_OPS_EMAIL"],
       passwordEnv: ["TENANT_OPS_PASSWORD"],
@@ -72,7 +77,7 @@ export function getAccessProfiles(): AccessProfile[] {
     }),
     profile({
       key: "tenant-growth",
-      role: "tenant-admin",
+      role: "marketing-manager",
       label: "Empleado CRM & Growth",
       emailEnv: ["TENANT_GROWTH_EMAIL", "NEXT_PUBLIC_TENANT_GROWTH_EMAIL"],
       passwordEnv: ["TENANT_GROWTH_PASSWORD"],
