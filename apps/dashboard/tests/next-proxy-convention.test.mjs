@@ -27,7 +27,9 @@ test("Next apps use the Next 16 proxy convention instead of middleware", async (
   assert.match(webProxySource, /export function proxy\(req: NextRequest, event:/);
 
   assert.match(dashboardProxySource, /const clerkGuard = isClerkConfiguredForRuntime\(\)/);
-  assert.match(dashboardProxySource, /return clerkGuard \? clerkGuard\(req, event\) : NextResponse\.next\(\)/);
+  assert.match(dashboardProxySource, /function continueWithReturnPath\(req: NextRequest\)/);
+  assert.match(dashboardProxySource, /NextResponse\.next\(\{ request: \{ headers: requestHeaders \} \}\)/);
+  assert.match(dashboardProxySource, /return clerkGuard \? clerkGuard\(req, event\) : continueWithReturnPath\(req\)/);
 
   assert.match(webProxySource, /function landingMiddleware\(req: NextRequest\)/);
   assert.match(webProxySource, /host\.toLowerCase\(\) === "www\.nexid\.lat"/);

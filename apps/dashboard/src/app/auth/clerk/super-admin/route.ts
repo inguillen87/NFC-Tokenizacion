@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isClerkConfiguredForRuntime } from "../../../../lib/clerk-env";
 import { DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE, type DashboardSession } from "../../../../lib/session";
+import { normalizeDashboardReturnPath } from "../../../../lib/dashboard-return-path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,9 +15,10 @@ function useSecureCookie(req: Request) {
   return process.env.NODE_ENV === "production";
 }
 
-function redirectToLogin(req: Request, authError: string) {
+function redirectToLogin(req: Request, authError: string, nextPath: string) {
   const url = new URL("/login", req.url);
   url.searchParams.set("auth_error", authError);
+  url.searchParams.set("next", nextPath);
   return NextResponse.redirect(url, 303);
 }
 
@@ -42,24 +44,28 @@ function resolveVerifiedEmail(user: Awaited<ReturnType<typeof currentUser>>) {
 }
 
 export async function GET(req: Request) {
+  const requestUrl = new URL(req.url);
+  const nextPath = normalizeDashboardReturnPath(requestUrl.searchParams.get("next"));
   if (!isClerkConfiguredForRuntime()) {
-    return redirectToLogin(req, "clerk_not_configured");
+    return redirectToLogin(req, "clerk_not_configured", nextPath);
   }
 
   const clerkAuth = await auth().catch(() => null);
   if (!clerkAuth?.userId) {
     const signInUrl = new URL("/sign-in", req.url);
-    signInUrl.searchParams.set("fallback_redirect_url", "/auth/clerk/super-admin");
-    signInUrl.searchParams.set("force_redirect_url", "/auth/clerk/super-admin");
+    const completePath = `/auth/clerk/super-admin?next=${encodeURIComponent(nextPath)}`;
+    signInUrl.searchParams.set("next", nextPath);
+    signInUrl.searchParams.set("fallback_redirect_url", completePath);
+    signInUrl.searchParams.set("force_redirect_url", completePath);
     return NextResponse.redirect(signInUrl, 303);
   }
 
   const clerkUser = await currentUser().catch(() => null);
   const email = resolveVerifiedEmail(clerkUser);
-  if (!email) return redirectToLogin(req, "clerk_email_unverified");
+  if (!email) return redirectToLogin(req, "clerk_email_unverified", nextPath);
 
   const clerkSessionToken = await clerkAuth.getToken().catch(() => null);
-  if (!clerkSessionToken) return redirectToLogin(req, "clerk_session_token_missing");
+  if (!clerkSessionToken) return redirectToLogin(req, "clerk_session_token_missing", nextPath);
 
   const syncRes = await fetch(`${API_BASE}/auth/clerk-sync`, {
     method: "POST",
@@ -76,7 +82,7 @@ export async function GET(req: Request) {
     cache: "no-store",
   }).catch(() => null);
 
-  if (!syncRes) return redirectToLogin(req, "auth_upstream_unavailable");
+  if (!syncRes) return redirectToLogin(req, "auth_upstream_unavailable", nextPath);
 
   const data = await syncRes.json().catch(() => null) as {
     ok?: boolean;
@@ -99,10 +105,10 @@ export async function GET(req: Request) {
       : syncRes.status === 401
       ? "clerk_session_invalid"
       : "clerk_sync_failed";
-    return redirectToLogin(req, error);
+    return redirectToLogin(req, error, nextPath);
   }
 
-  if (data.role !== "super-admin") return redirectToLogin(req, "clerk_sync_failed");
+  if (data.role !== "super-admin") return redirectToLogin(req, "clerk_sync_failed", nextPath);
 
   const sessionPayload: DashboardSession = {
     id: data.sessionToken.split(".")[0] || `clerk-super-admin-${email}`,
@@ -117,7 +123,7 @@ export async function GET(req: Request) {
     expiresAt: data.expiresAt,
   };
 
-  const response = NextResponse.redirect(new URL("/", req.url), 303);
+  const response = NextResponse.redirect(new URL(nextPath, req.url), 303);
   response.cookies.set(DASHBOARD_SESSION_COOKIE, data.sessionToken, {
     httpOnly: true,
     sameSite: "lax",

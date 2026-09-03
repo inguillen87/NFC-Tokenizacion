@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { dashboardAuthPath, normalizeDashboardReturnPath } from "../lib/dashboard-return-path";
 
 export function SessionHeartbeat() {
   useEffect(() => {
@@ -38,9 +39,10 @@ export function SessionHeartbeat() {
         if (!active) return;
         if (response && (response.status === 401 || response.status === 403)) {
           stopHeartbeat = true;
-          const loginUrl = new URL("/login", window.location.origin);
-          loginUrl.searchParams.set("auth_error", "session_expired");
-          window.location.replace(`${loginUrl.pathname}${loginUrl.search}`);
+          const returnPath = normalizeDashboardReturnPath(
+            `${window.location.pathname}${window.location.search}${window.location.hash}`,
+          );
+          window.location.replace(dashboardAuthPath("/login", returnPath, { auth_error: "session_expired" }));
           return;
         }
         if (!response || response.status >= 500) failures = Math.min(4, failures + 1);

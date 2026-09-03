@@ -1,9 +1,10 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
 import { dashboardDemoAccessAllowedForRole, dashboardFallbackSessionAllowed } from "./dashboard-access-flags";
 import { normalizeDashboardHumanSessionRole } from "./enterprise-runtime-rbac";
 import { dashboardPermissionMatches } from "./permission-policy";
+import { DASHBOARD_RETURN_PATH_HEADER, dashboardAuthPath, normalizeDashboardReturnPath } from "./dashboard-return-path";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
@@ -176,15 +177,21 @@ export async function getDashboardSession() {
   return (await getDashboardSessionCredential())?.session || null;
 }
 
+async function getDashboardRequestReturnPath() {
+  const requestHeaders = await headers();
+  return normalizeDashboardReturnPath(requestHeaders.get(DASHBOARD_RETURN_PATH_HEADER));
+}
+
 export async function requireDashboardSession(permission?: string) {
+  const returnPath = await getDashboardRequestReturnPath();
   let session: DashboardSession | null = null;
   try {
     session = await getDashboardSession();
   } catch (error) {
-    if (isDashboardSessionUpstreamUnavailable(error)) redirect("/session-recovery");
+    if (isDashboardSessionUpstreamUnavailable(error)) redirect(dashboardAuthPath("/session-recovery", returnPath));
     throw error;
   }
-  if (!session) redirect("/login");
+  if (!session) redirect(dashboardAuthPath("/login", returnPath));
   if (permission && session.role !== "super-admin" && !dashboardPermissionMatches(
     session.permissions,
     permission,

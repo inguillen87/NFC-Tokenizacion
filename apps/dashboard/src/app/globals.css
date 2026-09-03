@@ -1042,6 +1042,44 @@ html.theme-light textarea::placeholder {
   background: var(--auth-panel-inset-bg) !important;
 }
 
+.dashboard-auth-disclosure {
+  overflow: hidden;
+  background: var(--auth-panel-soft-bg);
+  border-color: var(--auth-border) !important;
+  color: var(--auth-text);
+}
+
+.dashboard-auth-disclosure > summary {
+  position: relative;
+  padding-right: 3rem;
+}
+
+.dashboard-auth-disclosure > summary::after {
+  content: "+";
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  translate: 0 -50%;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  color: var(--auth-accent-strong);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.dashboard-auth-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.dashboard-auth-disclosure > summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--auth-accent) 28%, transparent);
+  outline-offset: -3px;
+}
+
 .dashboard-auth-feature-card {
   background: var(--auth-feature-bg) !important;
   border-color: var(--auth-border-strong) !important;

@@ -3,9 +3,17 @@ import { AuthThemeControl } from "../../components/auth-theme-control";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 import { getDashboardI18n } from "../../lib/locale";
 import { SessionRecoveryClient } from "./session-recovery-client";
+import { normalizeDashboardReturnPath } from "../../lib/dashboard-return-path";
 
-export default async function SessionRecoveryPage() {
+type SessionRecoveryPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function SessionRecoveryPage({ searchParams }: SessionRecoveryPageProps) {
   const { locale } = await getDashboardI18n();
+  const params = searchParams ? await searchParams : {};
+  const rawNextPath = Array.isArray(params.next) ? params.next[0] : params.next;
+  const nextPath = normalizeDashboardReturnPath(rawNextPath);
 
   return (
     <main className="dashboard-auth-surface relative min-h-screen overflow-hidden bg-slate-950">
@@ -25,7 +33,7 @@ export default async function SessionRecoveryPage() {
             </span>
           </div>
 
-          <SessionRecoveryClient clerkEnabled={isClerkConfiguredForRuntime()} />
+          <SessionRecoveryClient clerkEnabled={isClerkConfiguredForRuntime()} nextPath={nextPath} />
         </section>
       </div>
     </main>

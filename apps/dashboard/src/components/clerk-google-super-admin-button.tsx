@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useSignIn } from "@clerk/nextjs/legacy";
+import { normalizeDashboardReturnPath } from "../lib/dashboard-return-path";
 
 type Props = {
   className?: string;
   label?: string;
   compact?: boolean;
+  nextPath?: string;
 };
 
 function getErrorMessage(error: unknown) {
@@ -25,10 +27,12 @@ export function ClerkGoogleSuperAdminButton({
   className,
   label = "Entrar con Google como Super Admin",
   compact,
+  nextPath = "/",
 }: Props) {
   const { isLoaded, signIn } = useSignIn();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const safeNextPath = normalizeDashboardReturnPath(nextPath);
 
   async function startGoogleOauth() {
     if (!isLoaded || !signIn || pending) return;
@@ -37,15 +41,17 @@ export function ClerkGoogleSuperAdminButton({
 
     try {
       const origin = window.location.origin;
+      const completeUrl = new URL("/auth/clerk/super-admin", origin);
+      completeUrl.searchParams.set("next", safeNextPath);
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: `${origin}/sso-callback`,
-        redirectUrlComplete: `${origin}/auth/clerk/super-admin`,
+        redirectUrlComplete: completeUrl.toString(),
         continueSignIn: true,
       });
     } catch (err) {
       if (isAlreadySignedIn(err)) {
-        window.location.href = "/auth/clerk/super-admin";
+        window.location.assign(`/auth/clerk/super-admin?next=${encodeURIComponent(safeNextPath)}`);
         return;
       }
       setPending(false);

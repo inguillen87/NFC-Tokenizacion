@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
 import {
   ConsumerContactInput,
   consumerContactDraftFromValue,
@@ -33,6 +34,7 @@ async function logoutConsumerSession() {
 }
 
 export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
+  const safeNextPath = normalizeSafeReturnPath(nextPath, "/me");
   const [contactDraft, setContactDraft] = useState(() => createEmptyConsumerContactDraft());
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"start" | "verify">("start");
@@ -41,7 +43,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const searchParams = useSearchParams();
   const forceOtp = searchParams.get("forceOtp") === "1" || searchParams.get("fresh") === "1";
 
-  const isTapReturn = nextPath.includes("fromTap=1") || nextPath.includes("eventId=");
+  const isTapReturn = safeNextPath.includes("fromTap=1") || safeNextPath.includes("eventId=");
   const tapReturnCopy = isTapReturn
     ? "Validá email o teléfono para volver al producto. Garantía, ownership, wallet/NFT y puntos sensibles requieren compra validada, POS/PIN o política de la marca."
     : "Ingresá con email o teléfono para abrir tu Pasaporte, marketplace contextual y beneficios opt-in.";
@@ -99,13 +101,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           setStatus("Verificación exitosa, pero la sesión no quedó activa. Revisá cookies o intentá de nuevo.");
           return;
         }
-        window.location.href = nextPath || "/me";
+        window.location.assign(safeNextPath);
       })
       .catch(() => {
         setStatus("Error en la conexión de verificación automática.");
       })
       .finally(() => setPending(false));
-  }, [forceOtp, nextPath, searchParams]);
+  }, [forceOtp, safeNextPath, searchParams]);
 
   async function confirmSession() {
     const session = await fetch("/api/consumer/session", {
@@ -173,13 +175,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       setStatus("La identidad fue validada, pero el navegador no guardó la sesión. Probá de nuevo o revisá cookies.");
       return;
     }
-    window.location.href = nextPath || "/me";
+    window.location.assign(safeNextPath);
   }
 
   const contactIsValid = consumerContactDraftIsValid(contactDraft);
 
   return (
-    <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
+    <div className="consumer-login-panel mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
       <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Pasaporte nexID</p>
       <p className="mt-1 text-sm text-cyan-50/90">{tapReturnCopy}</p>
 

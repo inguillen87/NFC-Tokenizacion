@@ -3,12 +3,14 @@
 import { RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SecureDashboardLogoutButton } from "../../components/secure-dashboard-logout-button";
+import { dashboardAuthPath, normalizeDashboardReturnPath } from "../../lib/dashboard-return-path";
 
 type RecoveryState = "checking" | "waiting";
 
 const RETRY_INTERVAL_MS = 5_000;
 
-export function SessionRecoveryClient({ clerkEnabled = false }: { clerkEnabled?: boolean }) {
+export function SessionRecoveryClient({ clerkEnabled = false, nextPath = "/" }: { clerkEnabled?: boolean; nextPath?: string }) {
+  const safeNextPath = normalizeDashboardReturnPath(nextPath);
   const [state, setState] = useState<RecoveryState>("checking");
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
   const requestInFlight = useRef(false);
@@ -27,14 +29,14 @@ export function SessionRecoveryClient({ clerkEnabled = false }: { clerkEnabled?:
 
       if (response.status === 401 || response.status === 403) {
         stopped.current = true;
-        window.location.replace("/login?auth_error=session_expired");
+        window.location.replace(dashboardAuthPath("/login", safeNextPath, { auth_error: "session_expired" }));
         return;
       }
 
       const payload = await response.json().catch(() => null);
       if (response.ok && payload?.ok === true && payload?.session) {
         stopped.current = true;
-        window.location.replace("/");
+        window.location.replace(safeNextPath);
         return;
       }
 
@@ -46,7 +48,7 @@ export function SessionRecoveryClient({ clerkEnabled = false }: { clerkEnabled?:
     } finally {
       requestInFlight.current = false;
     }
-  }, []);
+  }, [safeNextPath]);
 
   useEffect(() => {
     stopped.current = false;

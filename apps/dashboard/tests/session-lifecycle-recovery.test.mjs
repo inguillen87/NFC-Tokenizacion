@@ -23,7 +23,8 @@ test("a hidden tab resumes session validation on visibility and focus", () => {
 test("expired sessions fail closed and redirect once with actionable copy", () => {
   assert.match(heartbeat, /response\.status === 401 \|\| response\.status === 403/);
   assert.match(heartbeat, /stopHeartbeat = true/);
-  assert.match(heartbeat, /loginUrl\.searchParams\.set\("auth_error", "session_expired"\)/);
+  assert.match(heartbeat, /normalizeDashboardReturnPath/);
+  assert.match(heartbeat, /dashboardAuthPath\("\/login", returnPath, \{ auth_error: "session_expired" \}\)/);
   assert.match(heartbeat, /window\.location\.replace/);
   assert.match(login, /case "session_expired"/);
   assert.match(login, /Tu sesión venció o dejó de ser válida/);
@@ -50,8 +51,8 @@ test("transient auth outages preserve the opaque credential and use a real recov
   assert.match(sessionBoundary, /class DashboardSessionUpstreamUnavailableError extends Error/);
   assert.match(sessionBoundary, /res && \(res\.status === 401 \|\| res\.status === 403\)\) return null/);
   assert.match(sessionBoundary, /throw new DashboardSessionUpstreamUnavailableError/);
-  assert.match(sessionBoundary, /redirect\("\/session-recovery"\)/);
-  assert.match(login, /redirect\("\/session-recovery"\)/);
+  assert.match(sessionBoundary, /redirect\(dashboardAuthPath\("\/session-recovery", returnPath\)\)/);
+  assert.match(login, /redirect\(dashboardAuthPath\("\/session-recovery", nextPath\)\)/);
   assert.match(recoveryPage, /SessionRecoveryClient/);
   assert.match(recoveryPage, /session-recovery-title/);
   assert.doesNotMatch(sessionBoundary, /cookieStore\.get\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)\?\.value/);
@@ -62,9 +63,9 @@ test("recovery retries without overlapping and only leaves on confirmed outcomes
   assert.match(recoveryClient, /requestInFlight\.current/);
   assert.match(recoveryClient, /window\.setInterval\(\(\) => void validateSession\(\), RETRY_INTERVAL_MS\)/);
   assert.match(recoveryClient, /response\.status === 401 \|\| response\.status === 403/);
-  assert.match(recoveryClient, /window\.location\.replace\("\/login\?auth_error=session_expired"\)/);
+  assert.match(recoveryClient, /dashboardAuthPath\("\/login", safeNextPath, \{ auth_error: "session_expired" \}\)/);
   assert.match(recoveryClient, /response\.ok && payload\?\.ok === true && payload\?\.session/);
-  assert.match(recoveryClient, /window\.location\.replace\("\/"\)/);
+  assert.match(recoveryClient, /window\.location\.replace\(safeNextPath\)/);
   assert.match(recoveryClient, /window\.addEventListener\("focus", resume\)/);
   assert.match(recoveryClient, /document\.addEventListener\("visibilitychange", resume\)/);
   assert.doesNotMatch(recoveryClient, /document\.cookie/);

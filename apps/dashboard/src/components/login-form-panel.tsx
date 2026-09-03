@@ -6,6 +6,7 @@ import { Button } from "@product/ui";
 import { ArrowRight, Building2, CheckCircle2, CircleAlert, KeyRound, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
 import type { PublicAccessProfile } from "../lib/access-profiles";
 import { ClerkGoogleSuperAdminButton } from "./clerk-google-super-admin-button";
+import { normalizeDashboardReturnPath } from "../lib/dashboard-return-path";
 
 type Props = {
   emailPlaceholder: string;
@@ -18,6 +19,7 @@ type Props = {
   bodegaDemoAllowed: boolean;
   clerkEnabled?: boolean;
   authNotice?: string;
+  nextPath?: string;
 };
 
 export function LoginFormPanel({
@@ -31,6 +33,7 @@ export function LoginFormPanel({
   bodegaDemoAllowed,
   clerkEnabled,
   authNotice,
+  nextPath = "/",
 }: Props) {
   const LOGIN_TIMEOUT_MS = 10_000;
   const firstAvailable = profiles.find((profile) => profile.available) || profiles[0];
@@ -42,6 +45,7 @@ export function LoginFormPanel({
   const [status, setStatus] = useState("");
   const [opsStatus, setOpsStatus] = useState("");
   const [pending, setPending] = useState(false);
+  const safeNextPath = normalizeDashboardReturnPath(nextPath);
   const accessPaths = [
     {
       label: "Recorrido simulado",
@@ -121,41 +125,47 @@ export function LoginFormPanel({
       setPending(false);
       return;
     }
-    window.location.href = "/";
+    window.location.assign(safeNextPath);
   }
 
   return (
     <div data-testid="login-enterprise-access-panel" className="dashboard-auth-access-flow">
-      <div data-testid="login-access-status" className="dashboard-auth-access-status mb-3 grid gap-2 sm:grid-cols-3">
-        {accessPaths.map((item) => (
-          <div
-            key={item.label}
-            data-state={item.ok ? "ready" : "attention"}
-            className={`rounded-2xl border px-3 py-3 ${
-              item.ok
-                ? "border-emerald-300/20 bg-emerald-400/10"
-                : "border-amber-300/24 bg-amber-400/10"
-            } dashboard-auth-status-card`}
-          >
-            <div className="flex items-center gap-2">
-              {item.ok ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-200" />
-              ) : (
-                <CircleAlert className="h-4 w-4 shrink-0 text-amber-200" />
-              )}
-              <p className="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">{item.label}</p>
+      <details data-testid="login-access-status" className="dashboard-auth-access-status dashboard-auth-disclosure mb-3 rounded-2xl border border-white/10">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-white">
+          <span>Estado del entorno</span>
+          <span className="text-xs font-semibold text-slate-400">Ver disponibilidad y alcance</span>
+        </summary>
+        <div className="grid gap-2 border-t border-white/10 p-3 sm:grid-cols-3">
+          {accessPaths.map((item) => (
+            <div
+              key={item.label}
+              data-state={item.ok ? "ready" : "attention"}
+              className={`rounded-2xl border px-3 py-3 ${
+                item.ok
+                  ? "border-emerald-300/20 bg-emerald-400/10"
+                  : "border-amber-300/24 bg-amber-400/10"
+              } dashboard-auth-status-card`}
+            >
+              <div className="flex items-center gap-2">
+                {item.ok ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-200" />
+                ) : (
+                  <CircleAlert className="h-4 w-4 shrink-0 text-amber-200" />
+                )}
+                <p className="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">{item.label}</p>
+              </div>
+              <p className="mt-2 text-sm font-black text-white">{item.value}</p>
+              <p className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</p>
             </div>
-            <p className="mt-2 text-sm font-black text-white">{item.value}</p>
-            <p className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </details>
       <div className="dashboard-auth-primary-actions grid gap-3">
         <a href="#tenant-credentials" data-testid="login-real-tenant-entry" className="dashboard-auth-panel dashboard-auth-panel--elevated flex flex-col gap-3 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 shadow-[0_20px_70px_rgba(16,185,129,.1)] sm:flex-row sm:items-center sm:justify-between">
           <span>
             <span className="block text-xs font-black uppercase tracking-[0.16em] text-emerald-200">Operación real</span>
             <span className="mt-1 block text-base font-black text-white">Consultar TAP físicos y actividad reportada</span>
-            <span className="mt-1 block text-xs leading-5 text-emerald-100/75">Requiere una cuenta tenant real; conserva aislamiento, permisos y trazabilidad.</span>
+            <span className="mt-1 block text-xs leading-5 text-slate-300">Requiere una cuenta tenant real; conserva aislamiento, permisos y trazabilidad.</span>
           </span>
           <span className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-200/35 bg-emerald-200 px-4 py-2 text-xs font-black text-slate-950">
             Ingresar al tenant <ArrowRight className="h-4 w-4" />
@@ -182,7 +192,7 @@ export function LoginFormPanel({
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
             {bodegaDemoAllowed ? (
               <Link
-                href="/api/session/demo?role=tenant-admin"
+                href={`/api/session/demo?role=tenant-admin&next=${encodeURIComponent(safeNextPath)}`}
                 prefetch={false}
                 data-testid="login-bodega-demo-button"
                 title="Abrir la simulación de Bodega Balmec"
@@ -204,7 +214,12 @@ export function LoginFormPanel({
           </div>
         </div>
 
-        <div data-testid="login-superadmin-google-card" className="dashboard-auth-panel dashboard-auth-panel--elevated grid gap-3 rounded-2xl border border-cyan-300/20 p-4">
+        <details className="dashboard-auth-disclosure rounded-2xl border border-white/10">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-white">
+            <span>Acceso avanzado · Super Admin</span>
+            <span className="text-xs font-semibold text-slate-400">Google + allowlist</span>
+          </summary>
+          <div data-testid="login-superadmin-google-card" className="dashboard-auth-panel dashboard-auth-panel--elevated grid gap-3 rounded-b-2xl border-0 border-t border-cyan-300/20 p-4">
           <div className="flex items-start gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
               <ShieldCheck className="h-5 w-5" />
@@ -224,9 +239,9 @@ export function LoginFormPanel({
           ) : null}
           {clerkEnabled ? (
             <>
-              <ClerkGoogleSuperAdminButton label="Continuar con Google allowlisted" />
+              <ClerkGoogleSuperAdminButton label="Continuar con Google allowlisted" nextPath={safeNextPath} />
               <Link
-                href="/sign-in"
+                href={`/sign-in?next=${encodeURIComponent(safeNextPath)}`}
                 title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."
                 className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
               >
@@ -238,65 +253,58 @@ export function LoginFormPanel({
               Google/Clerk todavía no está activo en este entorno: faltan claves Clerk live o no están asociadas a este deploy.
             </p>
           )}
-        </div>
+          </div>
+        </details>
       </div>
 
-      <div id="tenant-credentials" data-testid="login-credentials-panel" className="dashboard-auth-panel dashboard-auth-panel--soft mt-4 scroll-mt-6 rounded-2xl border border-white/10 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Credenciales de tenant y equipo</p>
-            <p className="mt-1 text-xs text-slate-400">Para empleados, operadores y admins de empresa. Super Admin entra por Google/Clerk.</p>
-          </div>
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-              hasAvailableProfiles
-                ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
-                : "border-amber-300/30 bg-amber-400/10 text-amber-100"
-            }`}
-          >
-            {hasAvailableProfiles ? "presets activos" : "sin presets locales"}
-          </span>
-        </div>
-        <div className="mt-4 grid gap-3">
-          {profiles.map((profile) => (
-            <button suppressHydrationWarning
-              key={profile.key}
-              type="button"
-              disabled={!profile.available}
-              data-availability={profile.available ? "available" : "unavailable"}
-              onClick={() => useProfile(profile)}
-              title={profile.available ? `Entrar como ${profile.label}` : `${profile.label}: requiere configuración server-side`}
-              className="dashboard-auth-profile-card group rounded-xl border border-white/10 p-3 text-left transition hover:border-cyan-300/30 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-cyan-200 group-disabled:text-slate-500">
-                  {profile.role === "super-admin" ? <LockKeyhole className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center justify-between gap-2">
-                    <span data-profile-title className="text-sm font-semibold">{profile.label}</span>
-                    <span className="dashboard-auth-profile-availability">
-                      {profile.available ? "Disponible" : "No configurado"}
+      <details data-testid="login-credentials-panel" className="dashboard-auth-disclosure mt-4 rounded-2xl border border-white/10">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-white">
+          <span>Atajos de perfiles configurados</span>
+          <span className="text-xs font-semibold text-slate-400">{hasAvailableProfiles ? "Disponibles" : "Sin presets"}</span>
+        </summary>
+        <div className="border-t border-white/10 p-4">
+          <p className="text-xs text-slate-400">Opcional: elegí un perfil habilitado para completar el email. Super Admin entra por Google/Clerk.</p>
+          <div className="mt-4 grid gap-3">
+            {profiles.map((profile) => (
+              <button suppressHydrationWarning
+                key={profile.key}
+                type="button"
+                disabled={!profile.available}
+                data-availability={profile.available ? "available" : "unavailable"}
+                onClick={() => useProfile(profile)}
+                title={profile.available ? `Entrar como ${profile.label}` : `${profile.label}: requiere configuración server-side`}
+                className="dashboard-auth-profile-card group rounded-xl border border-white/10 p-3 text-left transition hover:border-cyan-300/30 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-cyan-200 group-disabled:text-slate-500">
+                    {profile.role === "super-admin" ? <LockKeyhole className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center justify-between gap-2">
+                      <span data-profile-title className="text-sm font-semibold">{profile.label}</span>
+                      <span className="dashboard-auth-profile-availability">
+                        {profile.available ? "Disponible" : "No configurado"}
+                      </span>
+                    </span>
+                    <span data-profile-credential className="mt-1 block text-xs">
+                      {profile.email || "Configurar en variables de entorno del server"}
                     </span>
                   </span>
-                  <span data-profile-credential className="mt-1 block text-xs">
-                    {profile.email || "Configurar en variables de entorno del server"}
-                  </span>
-                </span>
-              </div>
-              <p data-profile-note className="mt-2 text-xs">{profile.note}</p>
-            </button>
-          ))}
+                </div>
+                <p data-profile-note className="mt-2 text-xs">{profile.note}</p>
+              </button>
+            ))}
+          </div>
+          {!hasAvailableProfiles ? (
+            <p className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+              Los presets solo muestran perfiles habilitados. La contraseña queda server-side y se ingresa manualmente o por Google/Clerk.
+            </p>
+          ) : null}
         </div>
-      </div>
-
-      {!hasAvailableProfiles ? (
-        <p className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-          Los presets solo muestran perfiles habilitados. La contraseña queda server-side y se ingresa manualmente o por Google/Clerk.
-        </p>
-      ) : null}
+      </details>
 
       <form
+        id="tenant-credentials"
         className="dashboard-auth-manual-access mt-4 grid gap-3"
         onSubmit={(event) => {
           event.preventDefault();

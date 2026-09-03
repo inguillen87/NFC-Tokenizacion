@@ -9,6 +9,7 @@ import { getDashboardSession, isDashboardSessionUpstreamUnavailable } from "../.
 import { dashboardDemoAccessAllowedForRole } from "../../lib/dashboard-access-flags";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 import { AuthThemeControl } from "../../components/auth-theme-control";
+import { dashboardAuthPath, normalizeDashboardReturnPath } from "../../lib/dashboard-return-path";
 
 type LoginPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -70,6 +71,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const credentialProfiles = profiles.filter((profile) => profile.role !== "super-admin");
   const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
   const params = searchParams ? await searchParams : {};
+  const nextPath = normalizeDashboardReturnPath(firstParam(params.next));
   const loggedOut = firstParam(params.logged_out) === "1";
   const authNotice = authNoticeForCode(firstParam(params.auth_error)) || (loggedOut ? "Sesión cerrada. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted." : "");
   let session = null;
@@ -77,11 +79,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     try {
       session = await getDashboardSession();
     } catch (error) {
-      if (isDashboardSessionUpstreamUnavailable(error)) redirect("/session-recovery");
+      if (isDashboardSessionUpstreamUnavailable(error)) redirect(dashboardAuthPath("/session-recovery", nextPath));
       throw error;
     }
   }
-  if (session) redirect("/");
+  if (session) redirect(nextPath);
 
   return (
     <main className="dashboard-auth-surface relative min-h-screen overflow-hidden bg-slate-950">
@@ -135,6 +137,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                   bodegaDemoAllowed={bodegaDemoAllowed}
                   clerkEnabled={isClerkConfiguredForRuntime()}
                   authNotice={authNotice}
+                  nextPath={nextPath}
                 />
               </div>
             </div>

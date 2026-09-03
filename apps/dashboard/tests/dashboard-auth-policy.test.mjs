@@ -74,7 +74,7 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.doesNotMatch(loginPanel, /api\/session\/demo\?role=\$\{encodeURIComponent/);
   assert.doesNotMatch(loginPanel, /demoLogin:\s*true/);
   assert.doesNotMatch(loginPanel, /startBodegaDemo/);
-  assert.match(loginPanel, /href="\/api\/session\/demo\?role=tenant-admin"/);
+  assert.match(loginPanel, /href=\{`\/api\/session\/demo\?role=tenant-admin&next=\$\{encodeURIComponent\(safeNextPath\)\}`\}/);
   assert.match(loginPanel, /data-testid="login-access-status"/);
   assert.match(loginPanel, /data-testid="login-bodega-demo-button"/);
   assert.match(loginPanel, /data-testid="login-superadmin-google-card"/);
@@ -85,14 +85,15 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(loginPage, /Sesión cerrada\. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted\./);
 
   assert.match(googleButton, /already signed in/);
-  assert.match(googleButton, /window\.location\.href = "\/auth\/clerk\/super-admin"/);
+  assert.match(googleButton, /completeUrl\.searchParams\.set\("next", safeNextPath\)/);
+  assert.match(googleButton, /window\.location\.assign\(`\/auth\/clerk\/super-admin\?next=\$\{encodeURIComponent\(safeNextPath\)\}`\)/);
 
   assert.doesNotMatch(signInPage, /getAccessProfiles/);
   assert.doesNotMatch(signInPage, /profile\.role/);
   assert.match(signInPage, /data-testid="sign-in-superadmin-page"/);
   assert.match(signInPage, /data-testid="sign-in-auth-status"/);
   assert.match(signInPage, /data-testid="sign-in-bodega-demo-link"/);
-  assert.match(signInPage, /\/api\/session\/demo\?role=tenant-admin/);
+  assert.match(signInPage, /\/api\/session\/demo\?role=tenant-admin&next=\$\{encodeURIComponent\(nextPath\)\}/);
 
   assert.match(demoRoute, /superadmin_requires_clerk/);
   assert.doesNotMatch(demoRoute, /permissions:\s*\["\*"\]/);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../../../lib/session";
 import { getAccessProfiles } from "../../../../lib/access-profiles";
 import { dashboardDemoAccessAllowedForRole } from "../../../../lib/dashboard-access-flags";
+import { normalizeDashboardReturnPath } from "../../../../lib/dashboard-return-path";
 
 export const runtime = "nodejs";
 
@@ -75,6 +76,7 @@ export async function GET(req: Request) {
     return new NextResponse(null, { status: 204 });
   }
   const role = normalizeRole(url.searchParams.get("role"));
+  const nextPath = normalizeDashboardReturnPath(url.searchParams.get("next"));
   if (role === "super-admin") {
     console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_denied", reason: "superadmin_requires_clerk", role }));
     return NextResponse.json(
@@ -88,7 +90,7 @@ export async function GET(req: Request) {
   }
   const account = demoAccountForRole(role);
   const scope = demoTenantScope(role);
-  const redirectTo = new URL("/", url.origin);
+  const redirectTo = new URL(nextPath, url.origin);
   const response = NextResponse.redirect(redirectTo, 303);
 
   response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(account.email, role), {

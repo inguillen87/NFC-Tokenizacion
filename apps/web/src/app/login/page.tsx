@@ -1,74 +1,140 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { productUrls } from "@product/config";
+import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
+import { Card, ThemeToggle } from "@product/ui";
+import { THEME_PREFERENCE_VERSION_COOKIE, resolveThemePreference } from "@product/ui/theme-preference";
+import { ArrowRight, Building2, Fingerprint, ShieldCheck } from "lucide-react";
 import { BackLink } from "../../components/back-link";
-import { Button, Card } from "@product/ui";
 import { BrandHomeLink } from "../../components/brand-home-link";
-import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 import { ConsumerLoginPanel } from "./consumer-login-panel";
 
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default async function WebLoginPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  const { locale, t } = await getWebI18n();
+  const { locale } = await getWebI18n();
   const params = (await searchParams) || {};
-  const nextPath = typeof params.next === "string" ? params.next : "/me";
-  const hasMagicToken = typeof params.t === "string" || typeof params.token === "string";
+  const requestedNext = firstParam(params.next);
+  const nextPath = normalizeSafeReturnPath(requestedNext, "/me");
+  const hasMagicToken = Boolean(firstParam(params.t) || firstParam(params.token));
   const isTapReturn = nextPath.includes("fromTap=1") || nextPath.includes("eventId=");
-  const isConsumerAccess = isTapReturn || hasMagicToken || params.consumer === "1";
-  const content = landingContent[locale];
+  const hasConsumerDestination = typeof requestedNext === "string" && (nextPath === "/me" || nextPath.startsWith("/me/") || nextPath.startsWith("/me?"));
+  const isConsumerAccess = isTapReturn || hasMagicToken || hasConsumerDestination || firstParam(params.consumer) === "1";
+  const consumerLoginHref = `/login?consumer=1&next=${encodeURIComponent(nextPath)}`;
+  const cookieStore = await cookies();
+  const initialTheme = resolveThemePreference(
+    cookieStore.get("theme")?.value,
+    cookieStore.get(THEME_PREFERENCE_VERSION_COOKIE)?.value,
+  );
 
   return (
-    <main className="auth-surface relative min-h-screen overflow-hidden bg-slate-950">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(6,182,212,.2),transparent_30%),radial-gradient(circle_at_88%_82%,rgba(99,102,241,.16),transparent_34%)]" />
-      <div className="relative z-10 w-full max-w-[430px] mx-auto min-h-screen flex flex-col justify-center py-8 px-3 gap-4">
-        <section className="w-full">
-          <div className="w-full py-2"><BackLink /></div>
-          <Card className="auth-card w-full border border-white/10 bg-slate-900/70 p-6">
+    <main className="auth-surface web-auth-surface relative min-h-screen overflow-hidden bg-slate-950">
+      <div className="web-auth-backdrop pointer-events-none absolute inset-0" />
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[980px] flex-col justify-center gap-4 px-3 py-8 sm:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <BackLink />
+          <div className="web-auth-theme-control flex items-center gap-2">
+            <span className="hidden text-xs font-semibold text-slate-400 sm:inline">Apariencia</span>
+            <ThemeToggle initialTheme={initialTheme} locale={locale} />
+          </div>
+        </div>
+
+        <Card className="auth-card web-auth-card w-full border border-white/10 bg-slate-900/70 p-4 sm:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2">
-              <BrandHomeLink locale={locale} markOnly size={32} />
-              <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{isConsumerAccess ? "Pasaporte nexID" : "Panel empresa"}</p>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">OTP por canal</span>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">{isConsumerAccess ? "Usuario verificado" : "Tenant + reseller"}</span>
-              <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-100">Login seguro</span>
-            </div>
-            <h1 className="brand-editorial-gradient mt-5 text-3xl font-bold text-white">{isConsumerAccess ? "Entrar a mi Pasaporte nexID" : t.web.auth.loginTitle}</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              {isConsumerAccess
-                ? "Validá el link o código recibido por WhatsApp/email. Desde ahí accedés a tus beneficios, productos guardados y marketplace."
-                : content.hero.body}
-            </p>
-            {!isConsumerAccess ? (
-              <div className="mt-6 grid gap-3">
-                <input suppressHydrationWarning className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.emailPlaceholder} />
-                <input suppressHydrationWarning type="password" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.passwordPlaceholder} />
-                <a href="https://app.nexid.lat/login"><Button className="w-full">Entrar al panel empresa</Button></a>
+              <BrandHomeLink locale={locale} markOnly size={34} />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Acceso nexID</p>
+                <p className="text-sm font-black text-white">{isConsumerAccess ? "Pasaporte digital" : "Elegí tu espacio"}</p>
               </div>
-            ) : null}
-
-            <ConsumerLoginPanel nextPath={nextPath} />
-            {!isConsumerAccess ? <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <Link href="/register" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Crear cuenta</Link>
-              <Link href="/docs" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Ver docs</Link>
-              <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">Solicitar demo</Link>
-            </div> : null}
-          </Card>
-        </section>
-
-        <section className="auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,.45)]">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{isTapReturn ? "Continuar desde el tap" : "Portal premium + marketplace"}</p>
-          <h2 className="mt-2 text-xl font-semibold text-white">
-            {isConsumerAccess ? "Primero identidad. Después beneficios, productos y marketplace." : "Una sola plataforma para autenticación, trazabilidad y fidelización."}
-          </h2>
-          <div className="mt-4 grid gap-2.5 text-xs text-slate-200">
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Lectura pública para ficha, bodega, ruta y sommelier sin reclamar ownership.</div>
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Garantía, ownership, wallet/NFT o beneficios sensibles requieren compra validada, POS/PIN o política de marca.</div>
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Marketplace por tenant con catálogo editable para beneficios, experiencias y productos.</div>
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Panel enterprise para eventos, pharma, agro y cosmética con monitoreo geográfico y antifraude.</div>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              Sesión protegida
+            </span>
           </div>
-          <div className="mt-4 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-[11px] text-cyan-100">
-            Security stack: QR + NTAG215 + NTAG424 DNA TT, con modo blockchain-ready cuando hay ROI de negocio.
-          </div>
-        </section>
+
+          {isConsumerAccess ? (
+            <div className="mt-7 grid gap-6 lg:grid-cols-[1fr_0.78fr] lg:items-start">
+              <section aria-labelledby="consumer-login-title">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+                  {isTapReturn ? "Continuar desde el producto" : "Portal del consumidor"}
+                </p>
+                <h1 id="consumer-login-title" className="brand-editorial-gradient mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
+                  {isTapReturn ? "Volvé a tu producto sin perder el recorrido." : "Entrá a tu Pasaporte nexID."}
+                </h1>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+                  Recibí un código real por tu canal configurado. Después de validarlo volvés exactamente al producto, beneficio o servicio que estabas consultando.
+                </p>
+                <ConsumerLoginPanel nextPath={nextPath} />
+              </section>
+
+              <aside className="auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 p-5">
+                <Fingerprint className="h-7 w-7 text-cyan-200" aria-hidden="true" />
+                <h2 className="mt-4 text-xl font-black text-white">Un acceso para tus productos conectados.</h2>
+                <ul className="mt-4 grid gap-3 text-sm leading-5 text-slate-300">
+                  <li>Consultá la historia y el pasaporte digital de cada producto.</li>
+                  <li>Accedé a garantías, beneficios o contacto cuando la marca los habilita.</li>
+                  <li>Las acciones sensibles respetan las políticas de validación de compra.</li>
+                </ul>
+                <Link href="/login" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-cyan-200 hover:text-cyan-100">
+                  Cambiar tipo de acceso <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </aside>
+            </div>
+          ) : (
+            <section className="mt-7" aria-labelledby="access-choice-title">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Dos portales, una identidad clara</p>
+              <h1 id="access-choice-title" className="brand-editorial-gradient mt-3 max-w-3xl text-3xl font-black leading-tight text-white sm:text-4xl">
+                ¿Dónde querés entrar?
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                Separamos la operación de las empresas de la experiencia del consumidor para evitar permisos confusos y mantener cada sesión en su contexto.
+              </p>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <a
+                  href={`${productUrls.app}/login`}
+                  className="web-auth-choice group rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-5 transition hover:-translate-y-0.5 hover:border-cyan-200/60"
+                >
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-cyan-200">
+                    <Building2 className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Empresas y equipos</p>
+                  <h2 className="mt-2 text-2xl font-black text-white">Centro de control</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">Administrá productos, etiquetas, eventos y permisos con una cuenta tenant real.</p>
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-cyan-100">
+                    Entrar al panel empresa <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
+                  </span>
+                </a>
+
+                <Link
+                  href={consumerLoginHref}
+                  className="web-auth-choice group rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-5 transition hover:-translate-y-0.5 hover:border-emerald-200/60"
+                >
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl border border-emerald-300/25 bg-emerald-400/10 text-emerald-200">
+                    <Fingerprint className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-emerald-100">Personas y consumidores</p>
+                  <h2 className="mt-2 text-2xl font-black text-white">Mi Pasaporte nexID</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">Abrí productos guardados, garantías y beneficios con código por email o teléfono.</p>
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-emerald-100">
+                    Entrar a mi pasaporte <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
+                  </span>
+                </Link>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2 text-xs">
+                <Link href="/register" className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-slate-200">Crear cuenta</Link>
+                <Link href="/docs" className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-slate-200">Ver documentación</Link>
+                <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Solicitar demo</Link>
+              </div>
+            </section>
+          )}
+        </Card>
       </div>
     </main>
   );
