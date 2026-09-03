@@ -25,7 +25,9 @@ test("home hero is large, friendly and truthful without becoming a technical das
   assert.ok(Math.max(...remSizes) >= 4, "desktop hero H1 must reach at least 4rem");
   assert.match(css, /\.landing-hero-section h1 \{[\s\S]{0,260}font-size:\s*clamp\(2\.85rem, 4\.5vw, 4\.25rem\) !important/);
   assert.match(css, /\.landing-hero-section \.hero-subtitle \{[\s\S]{0,260}font-size:\s*clamp\(1rem, 1\.25vw, 1\.15rem\) !important/);
-  assert.match(hero, /<InstitutionalVideoPanel locale=\{locale\} variant="landing" initialTheme=\{initialTheme\} \/>/);
+  assert.match(sections, /import nexIdDppHero from "\.\.\/\.\.\/public\/landing\/nexid-dpp-hero-v3\.webp"/);
+  assert.match(hero, /src=\{nexIdDppHero\}/);
+  assert.doesNotMatch(hero, /InstitutionalVideoPanel/);
   assert.doesNotMatch(hero, /HeroScene|heroStats|nexid-hero-atlas|nexid-hero-board/);
 
   const heroBodies = [...content.matchAll(/hero:\s*\{[\s\S]*?\bbody:\s*"([^"]+)"/g)].map((match) => match[1]);
@@ -35,9 +37,13 @@ test("home hero is large, friendly and truthful without becoming a technical das
     assert.doesNotMatch(body, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
     assert.doesNotMatch(body, /physical product|producto físico|produto físico/i);
   }
-  assert.match(heroBodies[0], /registra lecturas y acciones/i);
-  assert.match(heroBodies[1], /registra leituras e ações/i);
-  assert.match(heroBodies[2], /records reads and actions/i);
+  assert.match(content, /title: "El futuro de la trazabilidad para tu producto\."/);
+  assert.match(content, /title: "O futuro da rastreabilidade para o seu produto\."/);
+  assert.match(content, /title: "The future of traceability for your product\."/);
+  assert.match(heroBodies[0], /pasaporte digital:[^."]*información, historia y trazabilidad/i);
+  assert.match(heroBodies[1], /passaporte digital:[^."]*informação, história e rastreabilidade/i);
+  assert.match(heroBodies[2], /digital passport experience:[^."]*information, history and traceability/i);
+  for (const body of heroBodies) assert.doesNotMatch(body, /cumple|compliant|certified|certificado/i);
   for (const body of heroBodies) assert.doesNotMatch(body, /piloto|pilot/i);
 });
 
@@ -48,104 +54,57 @@ test("SimpleTrustFlow keeps one progressive industry journey and one clear actio
   ]);
   const flow = sliceBetween(sections, "export function SimpleTrustFlowSection", "export function CommercialValueSection");
 
-  assert.equal((flow.match(/<Link href=/g) ?? []).length, 1, "the compact flow must have one primary action");
-  assert.match(flow, /<Link href="\/demo-lab(?:\?[^\"]*)?"/);
+  assert.equal((journey.match(/className="simple-trust-flow-cta"/g) ?? []).length, 1, "the compact flow must have one primary action");
+  assert.match(journey, /href=\{`\/demo-lab\?profile=\$\{DEMO_PROFILE_BY_INDUSTRY\[activeIndustry\]\}`\}/);
   assert.doesNotMatch(flow, /href="\/sun"|audiences:|rubros:|claimTitle:|claimBody:|NFT|tenant|replay|SUN|\bTT\b|custod/i);
   assert.doesNotMatch(flow, /md:grid-cols-4/);
-  assert.match(flow, /<SimpleTrustIndustryJourney locale=\{locale\} \/>/);
+  assert.match(flow, /<SimpleTrustIndustryJourney locale=\{locale\} ctaLabel=\{copy\.primary\} \/>/);
   assert.match(journey, /\["discover", "signal", "aftercare"\]/);
   assert.match(journey, /<SimpleTrustFlowMotion/);
   assert.match(journey, /<HorizontalRailControls/);
-  assert.match(flow, /Un mismo recorrido\. Distintos productos/);
-  assert.match(flow, /Uma jornada\. Produtos diferentes/);
-  assert.match(flow, /One journey\. Different products/);
+  assert.match(flow, /Un toque\. Un pasaporte útil para cada producto/);
+  assert.match(flow, /Um toque\. Um passaporte útil para cada produto/);
+  assert.match(flow, /One tap\. A useful passport for every product/);
   assert.doesNotMatch(flow, /Botella, paquete o bolsa|Garrafa, pacote ou bolsa|Bottle, parcel or pouch/);
   assert.doesNotMatch(flow, /simple-trust-flow-continuity|continuityStages/);
 
-  assert.doesNotMatch(flow, /respuesta viene de la etiqueta|produto físico|physical product|controles específicos|separate checks/i);
+  assert.doesNotMatch(flow, /respuesta viene de la etiqueta|controles específicos|separate checks/i);
   assert.doesNotMatch(flow, /copy\.note|<p>\{copy\.note\}<\/p>/);
   assert.match(flow, /id="como-funciona"/);
 });
 
-test("CommercialValue is a white-first interactive workbench with four distinct brand tasks", async () => {
-  const [sections, preview, styles] = await Promise.all([
+test("CommercialValue adds a white-first role-based DPP view instead of repeating the three-step journey", async () => {
+  const [sections, explorer, styles] = await Promise.all([
     readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/brand-control-center-preview.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/brand-control-center-preview.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/dpp-role-explorer.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/dpp-role-explorer.module.css", import.meta.url), "utf8"),
   ]);
   const value = sections.slice(sections.indexOf("export function CommercialValueSection"));
 
-  assert.match(value, /Configurá la experiencia\. Entendé cada interacción/);
-  assert.match(value, /Configure a experiência\. Entenda cada interação/);
-  assert.match(value, /Configure the experience\. Understand every interaction/);
-  assert.match(value, /<BrandControlCenterPreview locale=\{locale\} \/>/);
-  assert.match(preview, /DEMO_PRODUCT_PROFILES\.wine/);
-  assert.match(preview, /Demo interactiva · Datos ilustrativos/);
-  assert.match(preview, /const DEMO_PRODUCT = DEMO_PRODUCT_PROFILES\.wine/);
-  assert.match(preview, /Identidad/);
-  assert.match(preview, /Contenido/);
-  assert.match(preview, /Servicios/);
-  assert.match(preview, /Actividad/);
-  assert.match(preview, /role="tablist"/);
-  assert.match(preview, /role="tabpanel"/);
-  assert.match(preview, /aria-selected=\{selected === key\}/);
-  assert.match(preview, /aria-controls=\{modePanelId\}/);
-  assert.match(preview, /ArrowRight/);
-  assert.match(preview, /ArrowLeft/);
-  assert.match(preview, /type="checkbox" checked=\{content\[key\]\}/);
-  assert.match(preview, /type="checkbox" checked=\{services\[key\]\}/);
-  assert.match(preview, /setContent/);
-  assert.match(preview, /setServices/);
-  assert.match(preview, /setFilter/);
-  assert.match(preview, /draftIdentity/);
-  assert.match(preview, /linkedIdentity/);
-  assert.match(preview, /eventCounts/);
-  assert.match(preview, /recordEvent\("content"/);
-  assert.match(preview, /recordEvent\("service"/);
-  assert.match(preview, /className=\{styles\.impactEvent\}[\s\S]{0,140}aria-live="polite" aria-atomic="true"/);
-  assert.match(preview, /nexid-product-orchestration-wine-light-v2\.webp/);
-  assert.match(preview, /sizes="\(max-width: 900px\) 100vw, 78vw"/);
-  assert.match(preview, /Vincular etiqueta demo/);
-  assert.match(preview, /Solicitar garantía/);
-  assert.match(preview, /Puntos, desafíos y beneficios/);
-  assert.match(preview, /Registrar mi producto/);
-  assert.match(preview, /Eventos recientes · últimos 8/);
-  assert.match(preview, /Qué pasó y qué puede hacer tu marca/);
-  assert.match(preview, /Señal observada/);
-  assert.match(preview, /Valor para tu marca/);
-  assert.match(preview, /Próxima acción posible/);
-  assert.doesNotMatch(preview, /styles\.impactFlow/);
-  assert.match(preview, /Mapa de actividad simulada/);
-  assert.match(preview, /Mapa de calor/);
-  assert.match(preview, /Las zonas son parte del escenario de demostración/);
-  assert.match(preview, /setFocusedEventId/);
-  assert.match(preview, /aria-pressed=\{activeEvent\?\.id === event\.id\}/);
-  assert.match(preview, /dynamic<PremiumVectorMapProps>/);
-  assert.match(preview, /import\("@product\/ui\/premium-vector-map"\)/);
-  assert.doesNotMatch(preview, /import \{ PremiumVectorMap/);
-  assert.doesNotMatch(preview, /scans:\s*(?:128|94|61|47|33)/);
-  assert.match(preview, /Simulación sin datos reales ni escritura en producción/);
-  assert.match(preview, /Simulation with no real data or production writes/);
-  assert.match(preview, /Simulação sem dados reais nem gravação em produção/);
-  assert.doesNotMatch(preview, /layer\.facts\.map|facts:\s*\[/);
-  assert.doesNotMatch(styles, /\.theatre\s*\{|brightness\(0\.64\)|cinematicVeil|twinCard/);
-  assert.match(styles, /\.contextScene\s*\{[\s\S]{0,260}background:\s*#f8fcfd/);
-  assert.match(styles, /@container \(max-width: 50rem\)/);
+  assert.match(value, /<DppRoleExplorer locale=\{locale\} \/>/);
+  assert.doesNotMatch(value, /BrandControlCenterPreview|Configurá la experiencia/);
+  assert.match(explorer, /Un pasaporte\. La información justa para cada rol/);
+  assert.match(explorer, /Persona/);
+  assert.match(explorer, /Marca/);
+  assert.match(explorer, /Servicio \/ canal/);
+  assert.match(explorer, /Circularidad \/ autoridad/);
+  assert.match(explorer, /role="tablist"/);
+  assert.match(explorer, /role="tabpanel"/);
+  assert.match(explorer, /source: string/);
+  assert.match(explorer, /responsible: string/);
+  assert.match(explorer, /granularity: string/);
+  assert.match(explorer, /updated: string/);
+  assert.match(explorer, /visibility: string/);
+  assert.match(explorer, /Escenario ilustrativo · Sin datos productivos/);
+  assert.match(explorer, /no implica cumplimiento normativo automático/);
+  assert.match(explorer, /no certifica por sí sola la autenticidad física/);
+  assert.match(styles, /linear-gradient\(145deg, #ffffff 0%, #f7fcfd 54%, #eff9fb 100%\)/);
+  assert.match(styles, /@container \(max-width: 48rem\)/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(styles, /@media \(forced-colors: active\)/);
-  assert.match(styles, /@keyframes rfWave/);
-  assert.match(styles, /@keyframes linkParticle/);
-  assert.match(styles, /@keyframes metricPop/);
-  assert.match(styles, /@keyframes linkParticleVertical/);
+  assert.match(styles, /@keyframes dataFlow/);
+  assert.match(styles, /@keyframes panelEnter/);
   assert.match(styles, /:focus-visible/);
-  assert.doesNotMatch(styles, /min-height:\s*(?:48|50)rem/);
-  assert.match(value, /Agendar una demo para mi producto/);
-  assert.match(value, /href="\/\?contact=demo#contact-modal"/);
-  assert.doesNotMatch(value, /habilita la próxima acción/i);
-  assert.doesNotMatch(value, /Ver la plataforma en acción/);
-  assert.doesNotMatch(preview, /Producto entregado/);
-  assert.doesNotMatch(value, /Una relación que sigue generando valor|Uma relação que continua gerando valor|A relationship that keeps creating value/);
-  assert.doesNotMatch(value, /commercial-value-grid|commercial-value-rail|HorizontalRailControls|0\{index \+ 1\}/);
-  assert.doesNotMatch(preview, /\b(?:%|KPI|ROI|conversi[oó]n)\b/i);
+  assert.doesNotMatch(explorer, /\b(?:%|KPI|ROI|conversi[oó]n)\b/i);
   assert.doesNotMatch(value, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
 });

@@ -78,7 +78,7 @@ const COPY: Record<"es" | "en" | "pt", JourneyCopy> = {
     truthDetail: "Producto, lote, origen y resultados son datos de muestra. Esta experiencia no escribe registros reales.",
     productPrompt: "Elegí un producto",
     productHint: "Elegí un ejemplo. Al final vas a ver la experiencia exacta que se abre en el celular.",
-    productLabels: { wine: "Botella premium", perfume: "Perfumería premium", agro: "Agro y semillas" },
+    productLabels: { wine: "Botella premium", perfume: "Packaging premium", agro: "Agro y semillas" },
     progressLabel: "Progreso del recorrido",
     steps: [
       {
@@ -155,7 +155,7 @@ const COPY: Record<"es" | "en" | "pt", JourneyCopy> = {
     truthDetail: "Product, batch, origin and outcomes are sample data. This experience writes no real records.",
     productPrompt: "Choose a product",
     productHint: "Choose an example. At the end, you will see the exact experience that opens on the phone.",
-    productLabels: { wine: "Premium bottle", perfume: "Premium fragrance", agro: "Agriculture and seeds" },
+    productLabels: { wine: "Premium bottle", perfume: "Premium packaging", agro: "Agriculture and seeds" },
     progressLabel: "Journey progress",
     steps: [
       { short: "Tap", eyebrow: "01 · Discover", title: "Bring the phone close to the label.", body: "No app is required: the customer taps the NFC label or scans the product QR.", concept: "What does the label do?", conceptBody: "It opens the browser journey configured by the brand for that product.", primary: "Simulate tap" },
@@ -202,7 +202,7 @@ const COPY: Record<"es" | "en" | "pt", JourneyCopy> = {
     truthDetail: "Produto, lote, origem e resultados são dados de exemplo. Esta experiência não grava registros reais.",
     productPrompt: "Escolha um produto",
     productHint: "Escolha um exemplo. No final, você verá a experiência exata que abre no celular.",
-    productLabels: { wine: "Garrafa premium", perfume: "Perfumaria premium", agro: "Agro e sementes" },
+    productLabels: { wine: "Garrafa premium", perfume: "Packaging premium", agro: "Agro e sementes" },
     progressLabel: "Progresso da jornada",
     steps: [
       { short: "Aproxime", eyebrow: "01 · Descobrir", title: "Aproxime o celular da etiqueta.", body: "Sem baixar app: o cliente aproxima o celular do NFC ou lê o QR do produto.", concept: "O que a etiqueta faz?", conceptBody: "Abre no navegador a jornada configurada pela marca para esse produto.", primary: "Simular aproximação" },

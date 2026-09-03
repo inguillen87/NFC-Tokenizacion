@@ -56,10 +56,10 @@ test("public metadata and global SEO describe digital evidence instead of physic
   assert.match(metadata, /conecta validaci.n de mensajes NFC\/SUN, datos declarados/);
   assert.doesNotMatch(metadata, /physical product authentication|autenticaci.n de productos f.sicos|autentica..o de produtos f.sicos/i);
 
-  assert.match(layout, /Productos conectados, garantía y postventa/);
-  assert.match(layout, /Connected products, warranty and after-sales/);
-  assert.match(layout, /Con NFC o QR, cada producto conecta/i);
-  assert.match(layout, /registra lecturas y acciones/i);
+  assert.match(layout, /Pasaporte digital de producto y trazabilidad/);
+  assert.match(layout, /Digital product passports and traceability/);
+  assert.match(layout, /Con NFC o QR, nexID conecta cada producto/i);
+  assert.match(layout, /información, historia y trazabilidad/i);
   assert.doesNotMatch(layout, /cada piloto|each pilot/i);
   assert.doesNotMatch(layout, /Product Authentication|Autenticaci.n de Productos|Autentica..o de Produtos/);
 });

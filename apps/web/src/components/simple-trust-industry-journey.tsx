@@ -1,7 +1,10 @@
 "use client";
 
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { HorizontalRailControls } from "./horizontal-rail-controls";
+import { useConnectedProductIndustry } from "./connected-product-industry-context";
 import { SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
 import {
   SIMPLE_TRUST_DEFAULT_INDUSTRY,
@@ -15,6 +18,7 @@ type JourneyLocale = "es-AR" | "en" | "pt-BR";
 type IndustryCopy = {
   label: string;
   descriptor: string;
+  steps: readonly [StepCopy, StepCopy, StepCopy];
 };
 
 type StepCopy = {
@@ -28,11 +32,15 @@ type JourneyCopy = {
   previous: string;
   next: string;
   industries: Record<SimpleTrustIndustry, IndustryCopy>;
-  steps: readonly [StepCopy, StepCopy, StepCopy];
 };
 
 const INDUSTRIES: readonly SimpleTrustIndustry[] = ["bottles", "perfume", "agro"];
 const STEP_KINDS: readonly SimpleTrustVisualKind[] = ["discover", "signal", "aftercare"];
+const DEMO_PROFILE_BY_INDUSTRY: Readonly<Record<SimpleTrustIndustry, "wine" | "packaging" | "agro">> = {
+  bottles: "wine",
+  perfume: "packaging",
+  agro: "agro",
+};
 
 const JOURNEY_COPY: Record<JourneyLocale, JourneyCopy> = {
   "es-AR": {
@@ -43,22 +51,32 @@ const JOURNEY_COPY: Record<JourneyLocale, JourneyCopy> = {
     industries: {
       bottles: {
         label: "Botellas",
-        descriptor: "Vinos, bebidas y aceites: mirá cómo una botella abre información y acciones configuradas por la marca.",
+        descriptor: "Vinos, bebidas y aceites: una identidad por lote abre el pasaporte que acompaña al producto.",
+        steps: [
+          { label: "Identificá botella y lote", body: "El NFC o QR vincula esta botella con Reserva Andina y el lote RA-2407." },
+          { label: "Abrí su pasaporte digital", body: "El celular muestra origen declarado, cosecha y recomendaciones vigentes publicadas por la bodega." },
+          { label: "Continuá con el producto", body: "Desde el pasaporte, la persona consulta el lote, descubre cómo disfrutarlo o contacta a la bodega." },
+        ],
       },
       perfume: {
-        label: "Perfumería premium",
-        descriptor: "Frascos y estuches premium: el empaque inicia una experiencia de producto y postventa definida por la marca.",
+        label: "Packaging",
+        descriptor: "Cajas, estuches y envases: el packaging conecta materiales, cuidados y responsable en una sola vista.",
+        steps: [
+          { label: "Conectá el packaging", body: "La etiqueta vincula el Estuche Aurora con su referencia y partida de producción." },
+          { label: "Mostrá materiales y cuidados", body: "El pasaporte reúne composición declarada, instrucciones y datos del responsable del producto." },
+          { label: "Habilitá circularidad y servicio", body: "La persona encuentra cómo reciclar, consultar la garantía o contactar al fabricante, sin app." },
+        ],
       },
       agro: {
         label: "Agro",
-        descriptor: "Bidones, bolsas e insumos: la etiqueta muestra información y próximos pasos elegidos por la marca.",
+        descriptor: "Bidones, bolsas e insumos: la identificación correcta acerca documentación y soporte según el producto.",
+        steps: [
+          { label: "Reconocé bidón y lote", body: "El NFC o QR identifica el Insumo Horizonte y lo relaciona con el lote IH-2407." },
+          { label: "Consultá información vigente", body: "El pasaporte presenta fabricante, lote, instrucciones y documentación publicada para ese insumo." },
+          { label: "Derivá la consulta correcta", body: "Según el acceso disponible, el usuario abre la ficha, consulta documentación o contacta a soporte." },
+        ],
       },
     },
-    steps: [
-      { label: "Acercá el celular", body: "El cliente acerca el teléfono a la etiqueta NFC del producto o escanea su QR." },
-      { label: "Recibí una respuesta clara", body: "nexID lee la etiqueta digital y muestra la información elegida por la marca." },
-      { label: "Elegí la próxima acción", body: "Desde el mismo recorrido, el cliente accede a las acciones configuradas para ese producto." },
-    ],
   },
   en: {
     selectorLabel: "Choose an industry",
@@ -68,22 +86,32 @@ const JOURNEY_COPY: Record<JourneyLocale, JourneyCopy> = {
     industries: {
       bottles: {
         label: "Bottles",
-        descriptor: "Wine, drinks and oils: see how a bottle opens information and actions configured by the brand.",
+        descriptor: "Wine, drinks and oils: a batch identity opens the passport that travels with the product.",
+        steps: [
+          { label: "Identify bottle and batch", body: "NFC or QR links this bottle to Andean Reserve and batch RA-2407." },
+          { label: "Open its digital passport", body: "The phone shows declared origin, harvest and current guidance published by the winery." },
+          { label: "Continue with the product", body: "From the passport, people can check the batch, explore serving guidance or contact the winery." },
+        ],
       },
       perfume: {
-        label: "Premium perfume",
-        descriptor: "Premium bottles and boxes: the package starts a product and after-sales experience defined by the brand.",
+        label: "Packaging",
+        descriptor: "Boxes, cases and containers: packaging connects materials, care and responsible party in one view.",
+        steps: [
+          { label: "Connect the package", body: "The tag links the Aurora Case to its reference and production run." },
+          { label: "Show materials and care", body: "The passport brings together declared composition, instructions and responsible-party details." },
+          { label: "Enable circularity and service", body: "People find recycling guidance, warranty information or manufacturer contact without an app." },
+        ],
       },
       agro: {
         label: "Agriculture",
-        descriptor: "Containers, bags and inputs: the tag shows information and next steps selected by the brand.",
+        descriptor: "Containers, bags and inputs: the right identity brings product documentation and support closer.",
+        steps: [
+          { label: "Recognize container and batch", body: "NFC or QR identifies the Horizon Input and links it to batch IH-2407." },
+          { label: "Review current information", body: "The passport presents manufacturer, batch, instructions and documentation published for that input." },
+          { label: "Route the right request", body: "Based on available access, the user opens the record, reviews documentation or contacts support." },
+        ],
       },
     },
-    steps: [
-      { label: "Bring the phone close", body: "The customer taps the product's NFC tag or scans its QR code." },
-      { label: "Get a clear response", body: "nexID reads the digital tag and shows the information selected by the brand." },
-      { label: "Choose the next action", body: "From the same journey, customers access the actions configured for that product." },
-    ],
   },
   "pt-BR": {
     selectorLabel: "Escolha um setor",
@@ -93,22 +121,32 @@ const JOURNEY_COPY: Record<JourneyLocale, JourneyCopy> = {
     industries: {
       bottles: {
         label: "Garrafas",
-        descriptor: "Vinhos, bebidas e óleos: veja como uma garrafa abre informações e ações configuradas pela marca.",
+        descriptor: "Vinhos, bebidas e óleos: uma identidade por lote abre o passaporte que acompanha o produto.",
+        steps: [
+          { label: "Identifique garrafa e lote", body: "NFC ou QR vincula esta garrafa à Reserva Andina e ao lote RA-2407." },
+          { label: "Abra o passaporte digital", body: "O celular mostra origem declarada, safra e orientações atuais publicadas pela vinícola." },
+          { label: "Continue com o produto", body: "No passaporte, a pessoa consulta o lote, descobre como aproveitar ou fala com a vinícola." },
+        ],
       },
       perfume: {
-        label: "Perfumaria premium",
-        descriptor: "Frascos e estojos premium: a embalagem inicia uma experiência de produto e pós-venda definida pela marca.",
+        label: "Packaging",
+        descriptor: "Caixas, estojos e recipientes: a embalagem conecta materiais, cuidados e responsável em uma única tela.",
+        steps: [
+          { label: "Conecte a embalagem", body: "A etiqueta vincula o Estojo Aurora à sua referência e partida de produção." },
+          { label: "Mostre materiais e cuidados", body: "O passaporte reúne composição declarada, instruções e dados do responsável pelo produto." },
+          { label: "Ative circularidade e serviço", body: "A pessoa encontra reciclagem, garantia ou contato com o fabricante sem baixar um app." },
+        ],
       },
       agro: {
         label: "Agro",
-        descriptor: "Bombonas, sacos e insumos: a etiqueta mostra informações e próximos passos escolhidos pela marca.",
+        descriptor: "Bombonas, sacos e insumos: a identificação correta aproxima documentação e suporte do produto.",
+        steps: [
+          { label: "Reconheça recipiente e lote", body: "NFC ou QR identifica o Insumo Horizonte e o relaciona ao lote IH-2407." },
+          { label: "Consulte informação atual", body: "O passaporte apresenta fabricante, lote, instruções e documentação publicada para o insumo." },
+          { label: "Direcione a solicitação", body: "Conforme o acesso disponível, o usuário abre a ficha, consulta documentos ou fala com o suporte." },
+        ],
       },
     },
-    steps: [
-      { label: "Aproxime o celular", body: "O cliente aproxima o celular da etiqueta NFC do produto ou escaneia seu QR." },
-      { label: "Receba uma resposta clara", body: "A nexID lê a etiqueta digital e mostra as informações escolhidas pela marca." },
-      { label: "Escolha a próxima ação", body: "Na mesma jornada, o cliente acessa as ações configuradas para esse produto." },
-    ],
   },
 };
 
@@ -116,10 +154,14 @@ export function resolveSimpleTrustJourneyLocale(locale: string | null | undefine
   return locale === "en" || locale === "pt-BR" ? locale : "es-AR";
 }
 
-export function SimpleTrustIndustryJourney({ locale }: { locale: string }) {
+export function SimpleTrustIndustryJourney({ locale, ctaLabel }: { locale: string; ctaLabel: string }) {
   const normalizedLocale = resolveSimpleTrustJourneyLocale(locale);
   const copy = JOURNEY_COPY[normalizedLocale];
-  const [activeIndustry, setActiveIndustry] = useState<SimpleTrustIndustry>(SIMPLE_TRUST_DEFAULT_INDUSTRY);
+  const sharedIndustry = useConnectedProductIndustry();
+  const [localIndustry, setLocalIndustry] = useState<SimpleTrustIndustry>(SIMPLE_TRUST_DEFAULT_INDUSTRY);
+  const activeIndustry = sharedIndustry?.activeIndustry ?? localIndustry;
+  const setActiveIndustry = sharedIndustry?.setActiveIndustry ?? setLocalIndustry;
+  const [tabOrientation, setTabOrientation] = useState<"vertical" | "horizontal">("vertical");
   const tabRefs = useRef<Record<SimpleTrustIndustry, HTMLButtonElement | null>>({
     bottles: null,
     perfume: null,
@@ -130,6 +172,14 @@ export function SimpleTrustIndustryJourney({ locale }: { locale: string }) {
   const descriptorId = `${instanceId}-${activeIndustry}-industry-descriptor`;
   const railId = `${instanceId}-${activeIndustry}-industry-rail`;
   const activeCopy = copy.industries[activeIndustry];
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1100px)");
+    const syncOrientation = () => setTabOrientation(query.matches ? "horizontal" : "vertical");
+    syncOrientation();
+    query.addEventListener("change", syncOrientation);
+    return () => query.removeEventListener("change", syncOrientation);
+  }, []);
 
   function selectAndFocus(index: number) {
     const wrappedIndex = (index + INDUSTRIES.length) % INDUSTRIES.length;
@@ -142,12 +192,10 @@ export function SimpleTrustIndustryJourney({ locale }: { locale: string }) {
     let nextIndex: number | null = null;
 
     switch (event.key) {
-      case "ArrowRight":
-      case "ArrowDown":
+      case tabOrientation === "horizontal" ? "ArrowRight" : "ArrowDown":
         nextIndex = index + 1;
         break;
-      case "ArrowLeft":
-      case "ArrowUp":
+      case tabOrientation === "horizontal" ? "ArrowLeft" : "ArrowUp":
         nextIndex = index - 1;
         break;
       case "Home":
@@ -173,6 +221,7 @@ export function SimpleTrustIndustryJourney({ locale }: { locale: string }) {
             className="simple-trust-industry-tabs simple-trust-industry-tabs--desktop-lateral simple-trust-industry-tabs--mobile-horizontal"
             role="tablist"
             aria-label={copy.selectorLabel}
+            aria-orientation={tabOrientation}
           >
             {INDUSTRIES.map((industry, index) => {
               const isActive = industry === activeIndustry;
@@ -219,7 +268,7 @@ export function SimpleTrustIndustryJourney({ locale }: { locale: string }) {
             id={railId}
             ariaLabel={`${copy.railLabel}: ${activeCopy.label}`}
           >
-            {copy.steps.map((step, index) => {
+            {activeCopy.steps.map((step, index) => {
               const kind = STEP_KINDS[index] ?? "discover";
 
               return (
@@ -238,12 +287,18 @@ export function SimpleTrustIndustryJourney({ locale }: { locale: string }) {
           <div className="simple-trust-industry-panel__controls">
             <HorizontalRailControls
               railId={railId}
-              itemCount={copy.steps.length}
+              itemCount={activeCopy.steps.length}
               previousLabel={copy.previous}
               nextLabel={copy.next}
             />
           </div>
         </div>
+      </div>
+      <div className="simple-trust-flow-footer">
+        <Link href={`/demo-lab?profile=${DEMO_PROFILE_BY_INDUSTRY[activeIndustry]}`} className="simple-trust-flow-cta">
+          {ctaLabel}
+          <ArrowRight aria-hidden="true" />
+        </Link>
       </div>
     </div>
   );

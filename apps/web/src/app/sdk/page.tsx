@@ -32,6 +32,7 @@ import { BrandLockup, buttonClassName, Card, ThemeToggle, type VectorMapPoint, t
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { HeroTrustNetworkDiagram } from "../../components/hero-scene";
 import {
+  demoLabHrefForVertical,
   platformTrustedBy,
   platformVerticals,
   type PlatformDemoVertical,
@@ -482,7 +483,7 @@ function SdkGlobalHeroScene({ activeVertical, theme }: { activeVertical: Platfor
             <span><em>{activeVertical.tags[1]}</em><strong>Activo</strong></span>
             <span><em>Webhook</em><strong>Firmado</strong></span>
           </div>
-          <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`}>
+          <Link href={demoLabHrefForVertical(activeVertical.demoVertical)}>
             Ver salida mobile <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -572,7 +573,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               <a href={NEXID_SDK_ASYNCAPI_URL} target="_blank" rel="noreferrer" className={buttonClassName("secondary")}>
                 <Webhook className="mr-2 h-4 w-4" />AsyncAPI webhooks v1
               </a>
-              <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`} className={buttonClassName("secondary")}>
+              <Link href={demoLabHrefForVertical(activeVertical.demoVertical)} className={buttonClassName("secondary")}>
                 <PlayCircle className="mr-2 h-4 w-4" />Ver demo interactiva
               </Link>
               <Link href="/proof/verify" className={buttonClassName("secondary")}>

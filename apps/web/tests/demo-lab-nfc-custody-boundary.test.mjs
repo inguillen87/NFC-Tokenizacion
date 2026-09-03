@@ -13,9 +13,9 @@ test("Demo Lab describes NFC custody as nexID-managed without inventing tenant K
   assert.doesNotMatch(client, /tenant KMS|KMS del tenant|material KMS|chaves KMS cruas|claves KMS crudas/);
 });
 
-test("perfume and refill copy limits NFC evidence to chip, seal and recorded-operation state", () => {
-  assert.match(page, /estado reportado por el chip o circuito de sello/);
-  assert.match(page, /no verifica la composición ni demuestra por sí sola/);
+test("packaging and refill copy limits NFC evidence to the digital record and recorded-operation state", () => {
+  assert.match(page, /La etiqueta identifica el registro digital/);
+  assert.match(page, /no verifica por sí sola la composición ni el estado físico del packaging/);
   assert.match(page, /el tap aislado no demuestra limpieza, composición ni que la recarga física ocurrió/);
   assert.match(page, /métricas describen eventos persistidos/);
   assert.doesNotMatch(page, /verifica que el envase no fue rellenado|garantizando la integridad del contenido|refill verificado|Conocé exactamente cuántas veces se reutilizó/);

@@ -36,7 +36,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { HeroTrustNetworkDiagram } from "../../components/hero-scene";
-import { platformVerticals } from "../../lib/platform-verticals";
+import { demoLabHrefForVertical, platformVerticals } from "../../lib/platform-verticals";
 import {
   classifyInvestorAiResponse,
   describeInvestorAiProvenance,
@@ -317,7 +317,7 @@ function InvestorVerticalMoat() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {platformVerticals.map((item) => (
-            <a key={item.id} href={`/demo-lab?vertical=${item.demoVertical}`} className="investor-vertical-card group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
+            <a key={item.id} href={demoLabHrefForVertical(item.demoVertical)} className="investor-vertical-card group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
               <div className="investor-vertical-card__media h-24 overflow-hidden bg-slate-950">
                 <img src={item.image} alt={`${item.title} nexID`} className="investor-vertical-card__image investor-vertical-card__image--dark h-full w-full object-cover opacity-82 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
                 <img src={item.imageLight} alt="" aria-hidden="true" className="investor-vertical-card__image investor-vertical-card__image--light h-full w-full object-cover opacity-0 transition duration-500 group-hover:scale-105" />

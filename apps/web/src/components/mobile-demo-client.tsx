@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Card } from "@product/ui";
 import type { VectorMapEvidenceStep, VectorMapLedgerItem, VectorMapPoint, VectorMapRoute } from "@product/ui/premium-vector-map";
+import { DEMO_PRODUCT_PROFILES } from "../lib/demo-product-profiles";
 
 const Globe3dMap = dynamic(
   () => import("@product/ui/globe-3d-map").then((module) => module.Globe3dMap),
@@ -80,11 +81,16 @@ const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const MOBILE_DEMO_STORAGE_PREFIX = "nexid:mobile:";
 const MOBILE_DEMO_STORAGE_VERSION = "v2";
 const STORED_EVENT_NOTE = "Evento de simulación restaurado sin datos personales.";
+const PACKAGING_DEMO_PROFILE = DEMO_PRODUCT_PROFILES.perfume;
 
 const ILLUSTRATIVE_ORIGINS: Record<VerticalTemplate["key"], { name: string; lat: number; lng: number }> = {
   wine: { name: "Origen demo · Mendoza", lat: -33.0086, lng: -68.7794 },
   agro: { name: "Origen demo · Córdoba", lat: -31.4201, lng: -64.1888 },
-  perfume: { name: "Origen demo · São Paulo", lat: -23.5505, lng: -46.6333 },
+  perfume: {
+    name: `Origen demo · ${PACKAGING_DEMO_PROFILE.origin.city}`,
+    lat: PACKAGING_DEMO_PROFILE.origin.lat,
+    lng: PACKAGING_DEMO_PROFILE.origin.lng,
+  },
   pharma: { name: "Origen demo · Bogotá", lat: 4.711, lng: -74.0721 },
 };
 
@@ -213,15 +219,15 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
   },
   perfume: {
     key: "perfume",
-    title: "Perfume passport",
-    subtitle: "Evidencia del mensaje y anti-replay + narrativa de marca y coleccionables.",
+    title: "Packaging passport",
+    subtitle: "Materiales, lote y servicios del Estuche Aurora, con evidencia del mensaje y control anti-replay.",
     fields: [
-      { label: "Fragrance family", value: (item) => optionalText(item.notes) },
-      { label: "Launch", value: (item) => optionalText(item.vintage) },
-      { label: "Region", value: (item) => optionalText(item.region) },
-      { label: "Storage", value: (item) => optionalMetric(item.temperatureStorage ?? item.temperature_storage) },
+      { label: "Categoría", value: () => PACKAGING_DEMO_PROFILE.category },
+      { label: "Lote", value: () => PACKAGING_DEMO_PROFILE.lot },
+      { label: "Región declarada", value: () => PACKAGING_DEMO_PROFILE.region },
+      { label: "Conservación", value: (item) => optionalMetric(item.temperatureStorage ?? item.temperature_storage) },
       { label: "SKU", value: (item) => seedItemSku(item) || "N/D" },
-      { label: "Notes", value: (item) => optionalText(item.notes) },
+      { label: "Ficha", value: () => "Materiales y circularidad · demo" },
     ],
   },
   pharma: {
@@ -293,6 +299,12 @@ export function MobileDemoClient({
   const activeSku = seedItemSku(activeItem);
   const activeVertical = detectVertical(pack, activeItem);
   const template = VERTICAL_TEMPLATES[activeVertical];
+  const displayedProductName = activeVertical === "perfume"
+    ? PACKAGING_DEMO_PROFILE.name
+    : seedItemName(activeItem);
+  const displayedProductDetail = activeVertical === "perfume"
+    ? `Lote ${PACKAGING_DEMO_PROFILE.lot} · pasaporte de packaging`
+    : "Ventana ideal de consumo · 2026-2030";
   const illustrativeOrigin = ILLUSTRATIVE_ORIGINS[activeVertical];
   const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "DELIVERED_CLOSED", "DELIVERED_OPENED", "OFFLINE_PENDING", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
   const firstScan = events.length ? events[events.length - 1] : null;
@@ -714,11 +726,13 @@ export function MobileDemoClient({
             <h2 className="text-sm font-semibold text-white">{template.title}</h2>
             <p className="mt-1 text-[11px] text-cyan-200">{template.subtitle}</p>
             <div className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-fuchsia-500/20 via-violet-500/10 to-cyan-500/20 p-3">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-violet-100">Premium product view</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-violet-100">
+                {activeVertical === "perfume" ? "Vista del packaging conectado" : "Premium product view"}
+              </p>
               <div className="mt-2 flex items-end justify-between">
                 <div>
-                  <p className="text-lg font-semibold text-white">{seedItemName(activeItem)}</p>
-                  <p className="text-[11px] text-slate-200">Ventana ideal de consumo · 2026-2030</p>
+                  <p className="text-lg font-semibold text-white">{displayedProductName}</p>
+                  <p className="text-[11px] text-slate-200">{displayedProductDetail}</p>
                 </div>
                 <div className="h-16 w-8 rounded-full border border-white/20 bg-white/10 shadow-[inset_0_0_22px_rgba(34,211,238,.35)]" />
               </div>

@@ -101,24 +101,22 @@ test("home mega navigation exposes product depth without duplicating a technical
   assert.doesNotMatch(page, /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy/);
   assert.ok((navigation.match(/copy\.groups\.map\(\(group/g) ?? []).length >= 2, "desktop and mobile must share the same groups");
   assert.match(navigation, /label: "Plans and pilots"[\s\S]*href: "\/pricing"/);
-  assert.doesNotMatch(navigation, /className=\{styles\.navDirectLink\}/);
+  assert.match(navigation, /className=\{styles\.navDirectLink\}/);
+  assert.match(navigation, /href="\/about"/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
   assert.match(css, /\.navGroupButton,[\s\S]*min-height: 2\.65rem/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(`${page}\n${navigation}`, /landing-mobile-action-dock|nexid-quick-hub-card/);
 });
 
-test("landing hero exposes two business actions and one institutional video", async () => {
+test("landing hero exposes two clear actions without repeating an institutional video", async () => {
   const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
   const mobileActionsIndex = sections.indexOf("hero-post-video-actions");
-  const videoIndex = sections.indexOf("<InstitutionalVideoPanel");
-
   assert.ok(mobileActionsIndex > -1, "expected accessible hero actions");
-  assert.ok(videoIndex > -1, "expected institutional video");
-  assert.ok(mobileActionsIndex < videoIndex, "hero actions should appear before the institutional video");
-  assert.match(sections, /hero-post-video-actions[\s\S]*<InstitutionalVideoPanel/);
+  assert.doesNotMatch(sections, /InstitutionalVideoPanel/);
+  assert.match(sections, /Identidad por modelo, lote o unidad/);
   assert.doesNotMatch(sections, /<HeroScene|const heroStats = \[/);
   assert.match(sections, /href="\/\?contact=demo#contact-modal" className="inline-flex min-h-12/);
   assert.match(sections, /href="#como-funciona" className="inline-flex min-h-12/);

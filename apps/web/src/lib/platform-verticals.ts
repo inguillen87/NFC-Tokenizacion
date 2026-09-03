@@ -67,6 +67,12 @@ export type PlatformVertical = {
   tone: PlatformVerticalTone;
 };
 
+export function demoLabHrefForVertical(vertical: PlatformDemoVertical) {
+  return vertical === "perfume"
+    ? "/demo-lab?profile=packaging"
+    : `/demo-lab?vertical=${vertical}`;
+}
+
 export const platformVerticals: PlatformVertical[] = [
   {
     id: "agro",
@@ -122,17 +128,17 @@ export const platformVerticals: PlatformVertical[] = [
   {
     id: "cosmetics",
     demoVertical: "perfume",
-    title: "Belleza & Cosmetica",
-    titleEn: "Beauty & Cosmetics",
-    titlePt: "Beleza & Cosmetica",
-    shortTitle: "Belleza",
-    body: "Perfumes, skincare, recargas, sello NFC/QR y tamper contra refill o mercado gris.",
-    bodyEn: "Perfume, skincare, refills, NFC/QR seals and tamper protection against refill fraud.",
-    bodyPt: "Perfumes, skincare, recargas, selo NFC/QR e tamper contra refill e mercado cinza.",
+    title: "Packaging conectado",
+    titleEn: "Connected Packaging",
+    titlePt: "Packaging conectado",
+    shortTitle: "Packaging",
+    body: "Cajas, estuches y envases —como Estuche Aurora— con pasaporte digital de materiales, lote, cuidados y circularidad.",
+    bodyEn: "Boxes, cases and containers—such as Estuche Aurora—with a digital passport for materials, batch, care and circularity.",
+    bodyPt: "Caixas, estojos e recipientes —como Estuche Aurora— com passaporte digital de materiais, lote, cuidados e circularidade.",
     image: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
     imageLight: "/sdk/verticals/light/premium-beauty-light.webp",
     tags: ["NFC", "QR", "Tamper"],
-    metric: "Tamper + refill",
+    metric: "DPP + circularidad",
     icon: "sparkles",
     tone: "rose",
   },

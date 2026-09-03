@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { demoLabHrefForVertical, platformVerticals } from "../src/lib/platform-verticals.ts";
 
 const journeyUrl = new URL("../src/app/(public)/demo-lab/demo-lab-featured-journey.tsx", import.meta.url);
 const journeyCssUrl = new URL("../src/app/(public)/demo-lab/demo-lab-featured-journey.module.css", import.meta.url);
 const hubUrl = new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url);
+const advancedJourneyUrl = new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url);
+const motionPackUrl = new URL("../src/app/(public)/demo-lab/motion-pack/page.tsx", import.meta.url);
+const mobileJourneyUrl = new URL("../src/components/mobile-demo-client.tsx", import.meta.url);
+const landingSectionsUrl = new URL("../src/components/landing-sections.tsx", import.meta.url);
+const investorSnapshotUrl = new URL("../src/app/investor-snapshot/investor-snapshot-client.tsx", import.meta.url);
+const sdkUrl = new URL("../src/app/sdk/page.tsx", import.meta.url);
 const sunUrl = new URL("../src/app/sun/page.tsx", import.meta.url);
 const profilesUrl = new URL("../src/lib/demo-product-profiles.ts", import.meta.url);
 
@@ -49,10 +56,53 @@ test("Demo Lab leads with one guided product journey and progressively discloses
   assert.match(hub, /Voltar à nexID/);
   assert.match(hub, /const DEMO_LAB_VERTICAL_PROFILE_MAP/);
   assert.match(hub, /wine: "wine"/);
+  assert.match(hub, /packaging: "perfume"/);
   assert.match(hub, /perfume: "perfume"/);
   assert.match(hub, /seeds: "agro"/);
+  assert.match(hub, /const DEMO_LAB_PROFILE_ALIAS_MAP/);
+  assert.match(hub, /const aliasedProfile = DEMO_LAB_PROFILE_ALIAS_MAP\[requestedProfile\]/);
+  assert.match(hub, /if \(aliasedProfile\) return aliasedProfile/);
+  assert.match(hub, /if \(isDemoProductProfileKey\(requestedProfile\)\) return requestedProfile/);
   assert.match(hub, /resolveFeaturedProfile\(params\.profile, requestedVertical\)/);
   assert.match(hub, /initialProfile=\{initialProfile\}/);
+});
+
+test("Packaging is the public Demo Lab taxonomy while the legacy perfume key remains compatible", async () => {
+  const [journey, hub, advancedJourney, motionPack, mobileJourney, landingSections, investorSnapshot, sdk] = await Promise.all([
+    readFile(journeyUrl, "utf8"),
+    readFile(hubUrl, "utf8"),
+    readFile(advancedJourneyUrl, "utf8"),
+    readFile(motionPackUrl, "utf8"),
+    readFile(mobileJourneyUrl, "utf8"),
+    readFile(landingSectionsUrl, "utf8"),
+    readFile(investorSnapshotUrl, "utf8"),
+    readFile(sdkUrl, "utf8"),
+  ]);
+
+  assert.match(journey, /perfume: "Packaging premium"/);
+  assert.match(journey, /perfume: "Premium packaging"/);
+  assert.match(hub, /title: "Packaging conectado"/);
+  assert.match(hub, /label: "Packaging"/);
+  assert.match(hub, /vertical: "packaging"/);
+  assert.equal(advancedJourney.match(/perfume: \{ label: "Packaging", profile: "NTAG 424 DNA", product: "Estuche Aurora"/g)?.length, 3);
+  assert.doesNotMatch(advancedJourney, /perfume: \{ label: "Perfume"/);
+  assert.equal(motionPack.match(/perfume: "Packaging"/g)?.length, 3);
+  assert.equal(motionPack.match(/perfume: \{ title: "Estuche Aurora"/g)?.length, 3);
+  assert.match(mobileJourney, /title: "Packaging passport"/);
+  assert.match(mobileJourney, /Estuche Aurora/);
+  assert.match(mobileJourney, /PACKAGING_DEMO_PROFILE = DEMO_PRODUCT_PROFILES\.perfume/);
+  assert.match(mobileJourney, /Vista del packaging conectado/);
+  assert.doesNotMatch(mobileJourney, /Fragrance family|label: "Launch"/);
+  assert.equal(demoLabHrefForVertical("perfume"), "/demo-lab?profile=packaging");
+  assert.equal(demoLabHrefForVertical("wine"), "/demo-lab?vertical=wine");
+  const packagingVertical = platformVerticals.find((vertical) => vertical.id === "cosmetics");
+  assert.equal(packagingVertical?.demoVertical, "perfume");
+  assert.equal(packagingVertical?.shortTitle, "Packaging");
+  assert.match(packagingVertical?.body ?? "", /Estuche Aurora/);
+  for (const surface of [landingSections, investorSnapshot, sdk]) {
+    assert.match(surface, /demoLabHrefForVertical\(/);
+    assert.doesNotMatch(surface, /`\/demo-lab\?vertical=\$\{(?:item|activeVertical)\.demoVertical\}`/);
+  }
 });
 
 test("the guided journey is keyboard-visible, responsive and motion-safe", async () => {
@@ -96,6 +146,8 @@ test("SUN reuses its existing demo preview for Demo Lab product handoffs", async
   assert.match(profiles, /type DemoExperienceAction = "warranty" \| "benefit" \| "support"/);
   assert.match(profiles, /resolveDemoExperienceAction/);
   assert.match(profiles, /Reserva Andina/);
-  assert.match(profiles, /Esencia Aurora/);
+  assert.match(profiles, /Packaging premium/);
+  assert.match(profiles, /Estuche Aurora/);
+  assert.doesNotMatch(profiles, /Perfumería premium/);
   assert.match(profiles, /Semilla Norte/);
 });

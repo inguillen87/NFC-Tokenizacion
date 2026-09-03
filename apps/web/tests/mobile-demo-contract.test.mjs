@@ -111,9 +111,12 @@ test("mobile Demo Lab lazy-loads one illustrative vertical map", async () => {
   assert.match(client, /import\("@product\/ui\/globe-3d-map"\)\.then\(\(module\) => module\.Globe3dMap\)/);
   assert.match(client, /ssr: false/);
   assert.match(client, /const ILLUSTRATIVE_ORIGINS: Record<VerticalTemplate\["key"\]/);
-  for (const vertical of ["wine", "agro", "perfume", "pharma"]) {
+  for (const vertical of ["wine", "agro", "pharma"]) {
     assert.match(client, new RegExp(`\\b${vertical}: \\{ name: "Origen demo`));
   }
+  assert.match(client, /perfume:\s*\{[\s\S]{0,180}name: `Origen demo · \$\{PACKAGING_DEMO_PROFILE\.origin\.city\}`/);
+  assert.match(client, /lat: PACKAGING_DEMO_PROFILE\.origin\.lat/);
+  assert.match(client, /lng: PACKAGING_DEMO_PROFILE\.origin\.lng/);
   assert.match(client, /const illustrativeOrigin = ILLUSTRATIVE_ORIGINS\[activeVertical\]/);
   assert.match(client, /data-mobile-demo-map-truth=/);
   assert.match(client, /Mapa ilustrativo del preview/);

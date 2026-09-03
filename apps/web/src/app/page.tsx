@@ -10,6 +10,7 @@ import { MarketingMegaNav } from "../components/marketing-mega-nav";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
+import { ConnectedProductIndustryProvider } from "../components/connected-product-industry-context";
 import { productUrls, schedulingUrls } from "@product/config";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { Building2, Facebook, Globe2, Instagram, Linkedin } from "lucide-react";
@@ -106,7 +107,7 @@ export default async function HomePage() {
           <BrandHomeLink
             ariaLabel={footerCopy.home}
             locale={locale}
-            size={40}
+            size={50}
             variant="static"
             theme="light"
             brandClassName="site-brand-lockup"
@@ -123,10 +124,12 @@ export default async function HomePage() {
       </header>
 
       <main id="main-content" data-nav-inert>
-        <HeroSection content={content} locale={locale} initialTheme={initialTheme} />
+        <HeroSection content={content} locale={locale} />
 
-        <SimpleTrustFlowSection locale={locale} />
-        <CommercialValueSection locale={locale} />
+        <ConnectedProductIndustryProvider>
+          <SimpleTrustFlowSection locale={locale} />
+          <CommercialValueSection locale={locale} />
+        </ConnectedProductIndustryProvider>
         <CommercialContactModal initialLocale={locale} />
       </main>
 

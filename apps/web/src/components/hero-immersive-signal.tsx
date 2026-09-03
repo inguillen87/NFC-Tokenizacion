@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 type SupportedLocale = "es-AR" | "en" | "pt-BR";
 
 const SIGNAL_COPY: Record<SupportedLocale, { detected: string; ready: string }> = {
-  "es-AR": { detected: "Etiqueta detectada", ready: "Respuesta lista" },
-  en: { detected: "Tag detected", ready: "Response ready" },
-  "pt-BR": { detected: "Etiqueta detectada", ready: "Resposta pronta" },
+  "es-AR": { detected: "Etiqueta vinculada", ready: "Pasaporte disponible" },
+  en: { detected: "Tag linked", ready: "Passport available" },
+  "pt-BR": { detected: "Etiqueta vinculada", ready: "Passaporte disponível" },
 };
 
 function normalizeLocale(locale: string): SupportedLocale {

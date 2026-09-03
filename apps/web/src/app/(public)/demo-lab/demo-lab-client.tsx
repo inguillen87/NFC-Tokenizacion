@@ -750,7 +750,7 @@ const copy: Record<AppLocale, {
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre de semillas · demo", visual: "seed-packet-demo", proof: ["Identificador del sobre", "Lote y variedad declarados", "Custodia agro", "Uso rural"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caja y lote auditables", "Prospecto digital", "Cadena de frio", "Recall por unidad"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmético premium", visual: "cream-jar-demo", proof: ["Referencia tapa-envase", "TT reportado (demo)", "Garantía por política", "Señales de riesgo"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Referencia tapa-cuello", "Lote y serie declarados", "Garantía por política", "Evidencia SUN + anti-replay"] },
+      perfume: { label: "Packaging", profile: "NTAG 424 DNA", product: "Estuche Aurora", visual: "perfume-demo", proof: ["Referencia de estuche", "Materiales y lote declarados", "Circularidad por política", "Evidencia SUN + anti-replay"] },
       creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmética", visual: "cream-tube-demo", proof: ["Referencia visual de tapa", "Lote declarado", "Garantía por política", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
@@ -801,7 +801,7 @@ const copy: Record<AppLocale, {
       seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de sementes · demo", visual: "seed-packet-demo", proof: ["Identificador do envelope", "Lote e variedade declarados", "Custodia agro", "Uso rural"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caixa e lote auditaveis", "Bula digital", "Cadeia fria", "Recall por unidade"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Referencia tampa-envase", "TT reportado (demo)", "Garantia por politica", "Sinais de risco"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Referencia tampa-gargalo", "Lote e serie declarados", "Garantia por politica", "Evidencia SUN + anti-replay"] },
+      perfume: { label: "Packaging", profile: "NTAG 424 DNA", product: "Estuche Aurora", visual: "perfume-demo", proof: ["Referência da embalagem", "Materiais e lote declarados", "Circularidade por política", "Evidência SUN + anti-replay"] },
       creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Referencia visual da tampa", "Lote declarado", "Garantia por politica", "Recompra"] },
       bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
@@ -851,7 +851,7 @@ const copy: Record<AppLocale, {
       seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Seed packet · demo", visual: "seed-packet-demo", proof: ["Packet identifier", "Declared lot and variety", "Agro custody", "Rural use"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Serialized medicine pack", visual: "pharma-pack-demo", proof: ["Auditable pack and lot", "Digital leaflet", "Cold chain", "Unit recall"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium dermocosmetic set", visual: "cream-jar-demo", proof: ["Lid-package reference", "Reported TT (demo)", "Policy-based warranty", "Risk signals"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Premium perfume", visual: "perfume-demo", proof: ["Cap-neck reference", "Declared lot and serial", "Policy-based warranty", "SUN evidence + replay controls"] },
+      perfume: { label: "Packaging", profile: "NTAG 424 DNA", product: "Estuche Aurora", visual: "perfume-demo", proof: ["Package reference", "Declared materials and batch", "Policy-based circularity", "SUN evidence + replay controls"] },
       creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Visual cap reference", "Declared batch", "Policy-based warranty", "Repurchase"] },
       bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Phone taps wristband", "Serialized UID", "VIP zones", "Duplicate block"] },
       ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
@@ -3327,9 +3327,9 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "perfume") {
     return {
       ...base,
-      family: "Referencia visual de fragancia",
-      evidence: "Serie y lote declarados con evidencia del mensaje NFC/SUN",
-      proofTitle: "Mensaje + serie + lote declarado",
+      family: "Referencia visual de packaging conectado",
+      evidence: "Materiales, serie y lote declarados con evidencia del mensaje NFC/SUN",
+      proofTitle: "Mensaje + materiales + lote declarado",
       tagTitle: "NTAG 424 DNA",
       crop: "portrait",
     };
@@ -3719,8 +3719,8 @@ function DemoPremiumCosmeticProduct({
   const isPerfume = vertical === "perfume";
   const status = blocked ? "RIESGO BLOQUEADO" : opened ? "TT ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "LECTURA NFC VALIDA";
   const action = blocked ? "Sin reclamo" : opened ? "Garantía sujeta a política" : "Ver siguiente paso";
-  const referenceLabel = isPerfume ? "Referencia visual · perfume" : vertical === "creamJar" ? "Referencia visual · skincare" : "Referencia visual · dermo";
-  const proofLabel = isPerfume ? "Tapa NFC + lote" : "Envase sellado + lote";
+  const referenceLabel = isPerfume ? "Referencia visual · packaging" : vertical === "creamJar" ? "Referencia visual · skincare" : "Referencia visual · dermo";
+  const proofLabel = isPerfume ? "Estuche NFC + lote" : "Envase sellado + lote";
 
   return (
     <div
@@ -3747,7 +3747,7 @@ function DemoPremiumCosmeticProduct({
       </div>
       <div className="demo-lab-cosmetic-proof-card" aria-hidden="true">
         <span>NTAG 424 DNA</span>
-        <strong>{isPerfume ? "Tapa + serie + lote" : "Envase + sello + lote"}</strong>
+        <strong>{isPerfume ? "Estuche + serie + lote" : "Envase + sello + lote"}</strong>
         <small>{blocked ? "Replay no abre garantía" : "SUN dinámico validado"}</small>
       </div>
     </div>
@@ -4032,7 +4032,7 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
           <path d="M126 139c0-20 17-37 37-37h34c21 0 38 17 38 37v160c0 15-12 27-27 27h-56c-15 0-26-12-26-27V139Z" fill="#312e81" opacity="0.32" />
           <rect x="131" y="193" width="98" height="76" rx="12" fill="transparent" stroke="#e0e7ff" strokeWidth="2" opacity="0.45" />
           <rect x="144" y="206" width="72" height="9" rx="5" fill={`url(#${uid}-holo)`} opacity="0.56" />
-          <text x="180" y="238" textAnchor="middle" fill="#f8fafc" fontSize="14" fontWeight="900" letterSpacing="2">PERFUME</text>
+          <text x="180" y="238" textAnchor="middle" fill="#f8fafc" fontSize="14" fontWeight="900" letterSpacing="2">AURORA</text>
           <text x="180" y="255" textAnchor="middle" fill="#e0e7ff" fontSize="8" fontWeight="900" letterSpacing="1.2">ORIGEN VALIDADO</text>
           <path d="M122 126c20-22 80-26 110 4" stroke="#f8fafc" strokeWidth="8" strokeLinecap="round" opacity="0.16" />
           <path d="M136 126c-12 61-9 135 8 194" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" opacity="0.18" />

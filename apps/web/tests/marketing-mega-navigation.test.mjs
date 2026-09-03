@@ -16,6 +16,7 @@ test("mega navigation groups commercial and technical depth on existing routes",
     "/demo-lab?scenario=nfc-424",
     "/demo-lab?scenario=dual-proof",
     "/demo-lab?vertical=wine",
+    "/demo-lab?profile=packaging",
     "/proof/verify",
     "/sun",
     "/offline",
@@ -32,17 +33,24 @@ test("mega navigation groups commercial and technical depth on existing routes",
   }
 
   assert.doesNotMatch(navigation, /href:\s*"\/(?:solutions|industries)(?:\/|"|\?)/);
+  assert.equal(navigation.match(/href: "\/demo-lab\?profile=packaging"/g)?.length, 3);
+  assert.doesNotMatch(navigation, /href: "\/demo-lab\?vertical=perfume"/);
   assert.match(navigation, /without treating it as proof of the physical object/);
   assert.match(navigation, /sin tratarla como prueba del objeto físico/);
   assert.match(navigation, /Plans and pilots/);
   assert.match(navigation, /Planes y pilotos/);
   assert.match(navigation, /Planos e pilotos/);
   assert.doesNotMatch(navigation, /Investor snapshot/);
-  assert.doesNotMatch(navigation, /className=\{styles\.navDirectLink\}/);
+  assert.match(navigation, /className=\{styles\.navDirectLink\}/);
+  assert.match(navigation, /about: "Quiénes somos"/);
+  assert.match(navigation, /about: "Quem somos"/);
+  assert.match(navigation, /about: "About us"/);
+  assert.match(navigation, /className=\{styles\.mobileAboutLink\}/);
+  assert.equal(navigation.match(/group\.items\.filter\(\(item\) => item\.href !== "\/about"\)/g)?.length, 2);
   assert.match(navigation, /function isNavigationGroupCurrent/);
   assert.match(navigation, /solutions: \["\/pricing"\]/);
   assert.match(navigation, /platform: \["\/demo", "\/demo-lab", "\/proof", "\/sun", "\/offline", "\/login", "\/sdk"\]/);
-  assert.match(navigation, /resources: \["\/about", "\/docs", "\/stack", "\/glossary", "\/audiences", "\/resellers"\]/);
+  assert.match(navigation, /resources: \["\/docs", "\/stack", "\/glossary", "\/audiences", "\/resellers"\]/);
   assert.match(navigation, /aria-current=\{groupCurrent \? "page" : undefined\}/);
 });
 
@@ -61,6 +69,8 @@ test("mega navigation shares one accessible keyboard and mobile interaction mode
   assert.match(navigation, /document\.body\.style\.overflow = "hidden"/);
   assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\)/);
   assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*min-height: 2\.75rem/);
+  assert.match(css, /\.mobileAboutLink\s*\{[\s\S]*min-height: 3\.65rem/);
+  assert.match(css, /@media \(max-width: 1279px\)[\s\S]*\.desktopNav,[\s\S]*\.desktopUtility/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
@@ -82,6 +92,19 @@ test("mega navigation keeps hover intent stable instead of closing on pointer ga
   assert.match(navigation, /groupElement\.contains\(document\.activeElement\)/);
   assert.doesNotMatch(navigation, /onMouseLeave=\{\(\) => setOpenMenu\(null\)\}/);
   assert.doesNotMatch(navigation, /onPointerLeave=\{\(\) => setOpenMenu\(null\)\}/);
+});
+
+test("public headers use a larger logo and a legible translucent aqua surface in both themes", async () => {
+  const [home, publicHeader, css] = await Promise.all([
+    read("../src/app/page.tsx"),
+    read("../src/components/public-site-header.tsx"),
+    read("../src/app/globals.css"),
+  ]);
+
+  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{50\}/);
+  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{50\}/);
+  assert.match(css, /\.landing-mega-header\s*\{[\s\S]{0,360}linear-gradient\(108deg[\s\S]{0,260}backdrop-filter: blur\(20px\) saturate\(145%\)/);
+  assert.match(css, /html\.theme-dark \.landing-mega-header,[\s\S]{0,100}html\[data-theme="dark"\] \.landing-mega-header\s*\{[\s\S]{0,260}linear-gradient\(108deg/);
 });
 
 test("focused home keeps the commercial journey while the mega menu carries depth", async () => {

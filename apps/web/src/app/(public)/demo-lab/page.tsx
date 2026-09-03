@@ -123,8 +123,13 @@ function firstParam(value: string | string[] | undefined) {
 
 const DEMO_LAB_VERTICAL_PROFILE_MAP: Readonly<Record<string, DemoProductProfileKey>> = {
   wine: "wine",
+  packaging: "perfume",
   perfume: "perfume",
   seeds: "agro",
+};
+
+const DEMO_LAB_PROFILE_ALIAS_MAP: Readonly<Record<string, DemoProductProfileKey>> = {
+  packaging: "perfume",
 };
 
 function resolveFeaturedProfile(
@@ -132,6 +137,8 @@ function resolveFeaturedProfile(
   verticalValue: string | string[] | undefined,
 ): DemoProductProfileKey {
   const requestedProfile = String(firstParam(profileValue) || "").trim().toLowerCase();
+  const aliasedProfile = DEMO_LAB_PROFILE_ALIAS_MAP[requestedProfile];
+  if (aliasedProfile) return aliasedProfile;
   if (isDemoProductProfileKey(requestedProfile)) return requestedProfile;
 
   const requestedVertical = String(firstParam(verticalValue) || "").trim().toLowerCase();
@@ -483,13 +490,13 @@ const PANEL_CONTENT: Record<
     icon: Sparkles,
     color: "text-rose-400",
     gradientFrom: "from-rose-500/20",
-    title: "Belleza y Cosméticos",
-    subtitle: "Sello NFC + señal anti-refill + fidelización",
+    title: "Packaging conectado",
+    subtitle: "Pasaporte digital + materiales + circularidad",
     context:
-      "El cliente escanea el perfume o producto de skincare y consulta el estado reportado por el chip o circuito de sello: cerrado, abierto o alterado. Esa señal no verifica la composición ni demuestra por sí sola que el envase nunca fue rellenado.",
+      "El cliente acerca el celular al Estuche Aurora y abre su pasaporte digital: referencia, lote, materiales declarados, cuidados e información del responsable. La etiqueta identifica el registro digital; no verifica por sí sola la composición ni el estado físico del packaging.",
     value:
-      "Sumá una señal operativa frente al refill fraudulento y el mercado gris, combinada con controles físicos, lote y canal. Conectá con tu cliente post-compra para ofrecer recarga, kit complementario y fidelización.",
-    doc: { label: "Ver vertical Belleza", href: "/docs" },
+      "Actualizá información sin reimprimir el estuche, conectá instrucciones de reciclaje y habilitá garantía o contacto desde el mismo packaging. Los datos publicados y los eventos recibidos quedan gobernados por la marca.",
+    doc: { label: "Ver vertical Packaging", href: "/docs" },
   },
   sneaker: {
     icon: Cpu,
@@ -693,10 +700,10 @@ const HUB_VERTICALS = [
     label: "Electrónica",
   },
   {
-    vertical: "perfume",
+    vertical: "packaging",
     icon: Sparkles,
     color: "bg-rose-500/15 text-rose-400 border-rose-400/20",
-    label: "Belleza",
+    label: "Packaging",
   },
   {
     vertical: "sneaker",

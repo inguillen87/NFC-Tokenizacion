@@ -1,0 +1,1125 @@
+.explorer {
+  --role-accent: #0891b2;
+  --role-accent-strong: #0e7490;
+  --role-soft: #ecfeff;
+  --role-glow: rgba(6, 182, 212, 0.2);
+  --industry-wash: rgba(34, 211, 238, 0.09);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #c9e5eb;
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 88% 4%, var(--role-glow), transparent 23rem),
+    radial-gradient(circle at 8% 58%, var(--industry-wash), transparent 28rem),
+    linear-gradient(145deg, #ffffff 0%, #f7fcfd 54%, #eff9fb 100%);
+  box-shadow: 0 30px 80px rgba(15, 49, 73, 0.11);
+  color: #10233f;
+  container-type: inline-size;
+  isolation: isolate;
+}
+
+.explorer[data-industry="perfume"] {
+  --industry-wash: rgba(167, 139, 250, 0.12);
+}
+
+.explorer[data-industry="agro"] {
+  --industry-wash: rgba(52, 211, 153, 0.12);
+}
+
+.explorer[data-role="brand"] {
+  --role-accent: #0f9f83;
+  --role-accent-strong: #087968;
+  --role-soft: #ecfdf8;
+  --role-glow: rgba(16, 185, 129, 0.18);
+}
+
+.explorer[data-role="service"] {
+  --role-accent: #7c5ce5;
+  --role-accent-strong: #6842d8;
+  --role-soft: #f4f1ff;
+  --role-glow: rgba(124, 92, 229, 0.18);
+}
+
+.explorer[data-role="circularity"] {
+  --role-accent: #c56b13;
+  --role-accent-strong: #9a4d09;
+  --role-soft: #fff8e8;
+  --role-glow: rgba(245, 158, 11, 0.2);
+}
+
+.explorer::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(14, 116, 144, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, 0.035) 1px, transparent 1px);
+  background-size: 2.2rem 2.2rem;
+  content: "";
+  mask-image: linear-gradient(to bottom, black, transparent 58%);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4.2rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid #d8e9ed;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.sampleBadge,
+.modeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #d2e5e9;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #48617d;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.sampleBadge svg,
+.modeBadge svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--role-accent-strong);
+}
+
+.modeBadge::after {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.12);
+  content: "";
+}
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  align-items: center;
+  gap: 2rem;
+  padding: clamp(1.8rem, 4vw, 3.6rem) clamp(1.5rem, 4vw, 3.5rem) 2.2rem;
+}
+
+.introCopy {
+  max-width: 49rem;
+}
+
+.introCopy > p {
+  margin: 0 0 0.75rem;
+  color: var(--role-accent-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.introCopy h2 {
+  max-width: 42rem;
+  margin: 0;
+  background: linear-gradient(112deg, #10233f 0%, #17405d 54%, var(--role-accent-strong) 100%);
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(2rem, 4.1vw, 3.6rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.introCopy > span {
+  display: block;
+  max-width: 45rem;
+  margin-top: 1rem;
+  color: #526982;
+  font-size: clamp(0.98rem, 1.45vw, 1.12rem);
+  line-height: 1.65;
+}
+
+.accessMap {
+  position: relative;
+  width: 16rem;
+  height: 10rem;
+  justify-self: end;
+}
+
+.orbit,
+.orbitPulse {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 9.6rem;
+  height: 6rem;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 28%, transparent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+}
+
+.orbitPulse {
+  border-color: var(--role-accent);
+  opacity: 0;
+  animation: orbitPulse 3.4s ease-out infinite;
+}
+
+.dataPath {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5.5rem;
+  height: 1px;
+  overflow: hidden;
+  background: linear-gradient(90deg, var(--role-accent), transparent);
+  transform: translateY(-50%);
+  transform-origin: left center;
+}
+
+.dataPath::after {
+  position: absolute;
+  top: -0.2rem;
+  left: 0;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0.8rem 0.25rem var(--role-accent);
+  content: "";
+  animation: dataFlow 2.2s ease-in-out infinite;
+}
+
+.passportCore {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 46%, white);
+  border-radius: 1.3rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1rem 2.6rem var(--role-glow);
+  color: var(--role-accent-strong);
+  transform: translate(-50%, -50%);
+}
+
+.passportCore::before {
+  position: absolute;
+  inset: -0.45rem;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 24%, transparent);
+  border-radius: 1.6rem;
+  content: "";
+  animation: coreBreath 2.8s ease-in-out infinite;
+}
+
+.passportCore svg {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.accessNode {
+  --node-x: 0;
+  --node-y: 0;
+  position: absolute;
+  top: calc(50% + var(--node-y));
+  left: calc(50% + var(--node-x));
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid #d3e5e9;
+  border-radius: 0.8rem;
+  background: #ffffff;
+  box-shadow: 0 0.6rem 1.5rem rgba(28, 62, 82, 0.1);
+  color: #6d8196;
+  transform: translate(-50%, -50%);
+  transition: color 260ms ease, border-color 260ms ease, background 260ms ease, box-shadow 260ms ease, transform 260ms ease;
+}
+
+.accessNode[data-node="person"] { --node-x: -6.4rem; --node-y: -2.3rem; }
+.accessNode[data-node="brand"] { --node-x: 6.4rem; --node-y: -2.3rem; }
+.accessNode[data-node="service"] { --node-x: -6.4rem; --node-y: 2.3rem; }
+.accessNode[data-node="circularity"] { --node-x: 6.4rem; --node-y: 2.3rem; }
+
+.accessNode[data-active="true"] {
+  border-color: var(--role-accent);
+  background: var(--role-soft);
+  box-shadow: 0 0 0 0.3rem var(--role-glow), 0 0.8rem 2rem var(--role-glow);
+  color: var(--role-accent-strong);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.accessNode svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(13rem, 18rem) minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0 clamp(1rem, 3vw, 2rem) 2rem;
+}
+
+.roleRail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid #d8e8eb;
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 1rem 2.5rem rgba(30, 64, 85, 0.06);
+  backdrop-filter: blur(16px);
+}
+
+.roleTab {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr) 1rem;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  min-height: 4.8rem;
+  padding: 0.72rem;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  background: transparent;
+  color: #425b75;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 220ms ease, background 220ms ease, color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+}
+
+.roleTab:hover {
+  border-color: #c6dfe5;
+  background: #f7fbfc;
+  transform: translateX(0.12rem);
+}
+
+.roleTab[aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--role-accent) 46%, white);
+  background: linear-gradient(118deg, var(--role-soft), #ffffff);
+  box-shadow: inset 0.24rem 0 0 var(--role-accent), 0 0.8rem 1.8rem var(--role-glow);
+  color: #10233f;
+}
+
+.roleTab:focus-visible,
+.passportPanel:focus-visible,
+.footerAction a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--role-accent) 52%, white);
+  outline-offset: 3px;
+}
+
+.roleIcon,
+.roleSummaryIcon,
+.recordIcon {
+  display: grid;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: #eff7f9;
+  color: #4e6d82;
+}
+
+.roleIcon {
+  width: 2.6rem;
+  height: 2.6rem;
+}
+
+.roleTab[aria-selected="true"] .roleIcon {
+  background: color-mix(in srgb, var(--role-soft) 78%, white);
+  color: var(--role-accent-strong);
+}
+
+.roleIcon svg,
+.roleSummaryIcon svg,
+.recordIcon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.roleText {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.roleText strong {
+  color: inherit;
+  font-size: 0.88rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.roleText small {
+  overflow: hidden;
+  color: #71859a;
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roleArrow {
+  width: 0.95rem;
+  color: #8aa0b4;
+  transition: transform 220ms ease, color 220ms ease;
+}
+
+.roleTab[aria-selected="true"] .roleArrow {
+  color: var(--role-accent-strong);
+  transform: translateX(0.12rem);
+}
+
+.passportPanel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #cfe3e8;
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1.5rem 3.5rem rgba(26, 62, 83, 0.08);
+  animation: panelEnter 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.recordHeader {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 6.5rem;
+  padding: 1.05rem 1.2rem;
+  border-bottom: 1px solid #dbe9ec;
+  background:
+    linear-gradient(112deg, var(--role-soft), rgba(255, 255, 255, 0.92) 62%),
+    #ffffff;
+}
+
+.recordHeader::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--role-accent), transparent);
+  content: "";
+  transform: translateX(-70%);
+  animation: headerScan 3.8s ease-in-out infinite;
+}
+
+.recordIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.recordIcon {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 34%, white);
+  background: #ffffff;
+  color: var(--role-accent-strong);
+  box-shadow: 0 0.75rem 1.8rem var(--role-glow);
+}
+
+.recordIdentity > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.recordIdentity small,
+.recordMeta small {
+  color: #6b8197;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recordIdentity strong {
+  color: #10233f;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.recordIdentity em {
+  color: var(--role-accent-strong);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.recordMeta {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.recordMeta > span {
+  display: flex;
+  min-width: 9.5rem;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #d7e7ea;
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.recordMeta strong {
+  color: #213b56;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.roleSummary {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr);
+  gap: 0.85rem;
+  margin: 1rem 1rem 0;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 24%, #d7e7ea);
+  border-radius: 1rem;
+  background: linear-gradient(120deg, var(--role-soft), #ffffff 78%);
+}
+
+.roleSummaryIcon {
+  width: 2.8rem;
+  height: 2.8rem;
+  color: var(--role-accent-strong);
+}
+
+.roleSummary > div > strong {
+  display: block;
+  color: #132c48;
+  font-size: 0.94rem;
+  font-weight: 900;
+}
+
+.roleSummary p {
+  margin: 0.3rem 0 0;
+  color: #536b84;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.roleSummary > div > span {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  color: #536b84;
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.roleSummary > div > span svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: 0 0 auto;
+  margin-top: 0.08rem;
+  color: var(--role-accent-strong);
+}
+
+.tableHeader,
+.fieldRow {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.3fr) minmax(11rem, 1fr) minmax(10rem, 0.9fr) minmax(8.5rem, 0.7fr);
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.tableHeader {
+  padding: 1.1rem 1.1rem 0.5rem;
+  color: #72869b;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fieldList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0 1rem 1rem;
+  list-style: none;
+}
+
+.fieldRow {
+  padding: 0.85rem 0.9rem;
+  border: 1px solid #dce9ec;
+  border-radius: 0.9rem;
+  background: #fbfdfe;
+  animation: rowEnter 360ms calc(var(--row-index) * 75ms) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.fieldRow:hover {
+  border-color: color-mix(in srgb, var(--role-accent) 28%, #dce9ec);
+  background: #ffffff;
+  box-shadow: 0 0.8rem 1.8rem rgba(24, 61, 83, 0.07);
+}
+
+.fieldPrimary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.fieldPrimary small,
+.fieldDetails dt {
+  color: #71859a;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.fieldPrimary strong {
+  color: #17314d;
+  font-size: 0.79rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.fieldDetails {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.34rem;
+  margin: 0;
+}
+
+.fieldDetails div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.fieldDetails dt {
+  flex: 0 0 auto;
+}
+
+.fieldDetails dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #4a637d;
+  font-size: 0.67rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evidenceStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.38rem;
+  min-height: 1.8rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid #bfe3d8;
+  border-radius: 999px;
+  background: #edfbf6;
+  color: #087968;
+  font-size: 0.64rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.fieldRow[data-evidence="verified"] .evidenceStatus,
+.legendItem[data-evidence="verified"] > svg {
+  border-color: #b9dfe8;
+  background: #ecfaff;
+  color: #0e7490;
+}
+
+.fieldRow[data-evidence="unavailable"] .evidenceStatus,
+.legendItem[data-evidence="unavailable"] > svg {
+  border-color: #d9e0e8;
+  background: #f4f7f9;
+  color: #64748b;
+}
+
+.evidenceStatus svg {
+  width: 0.86rem;
+  height: 0.86rem;
+  flex: 0 0 auto;
+}
+
+.footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 0.7fr);
+  gap: 1rem;
+  padding: 1.2rem clamp(1rem, 3vw, 2rem) 1.5rem;
+  border-top: 1px solid #d5e8ec;
+  background: rgba(239, 249, 251, 0.78);
+}
+
+.legend > strong {
+  color: #18324e;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.legend > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+}
+
+.legendItem {
+  display: grid;
+  grid-template-columns: 1.9rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  padding: 0.65rem;
+  border: 1px solid #d8e8eb;
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.legendItem > svg {
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0.43rem;
+  border: 1px solid #bfe3d8;
+  border-radius: 0.58rem;
+  background: #edfbf6;
+  color: #087968;
+}
+
+.legendItem > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.legendItem strong {
+  color: #24405b;
+  font-size: 0.67rem;
+  font-weight: 850;
+}
+
+.legendItem small {
+  color: #687e94;
+  font-size: 0.61rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.footerAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.1rem 0;
+}
+
+.footerAction p {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0;
+  color: #5c7288;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.footerAction p svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+  margin-top: 0.12rem;
+  color: var(--role-accent-strong);
+}
+
+.footerAction a {
+  display: inline-flex;
+  min-height: 2.85rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.82rem;
+  background: #10233f;
+  box-shadow: 0 0.8rem 1.8rem rgba(16, 35, 63, 0.16);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-decoration: none;
+  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.footerAction a:hover {
+  background: var(--role-accent-strong);
+  box-shadow: 0 1rem 2.1rem var(--role-glow);
+  transform: translateY(-0.12rem);
+}
+
+.footerAction a svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+@keyframes panelEnter {
+  from { opacity: 0; transform: translateY(0.45rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rowEnter {
+  from { opacity: 0; transform: translateX(0.6rem); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes orbitPulse {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(0.78); }
+  22% { opacity: 0.55; }
+  72%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(1.25); }
+}
+
+@keyframes coreBreath {
+  0%, 100% { opacity: 0.4; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes dataFlow {
+  0% { opacity: 0; transform: translateX(-0.2rem) scale(0.72); }
+  18% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(5.25rem) scale(1); }
+}
+
+@keyframes headerScan {
+  0%, 12% { opacity: 0; transform: translateX(-70%); }
+  35%, 70% { opacity: 0.85; }
+  88%, 100% { opacity: 0; transform: translateX(70%); }
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .explorer {
+  border-color: #214058;
+  background:
+    radial-gradient(circle at 88% 4%, var(--role-glow), transparent 25rem),
+    radial-gradient(circle at 8% 58%, var(--industry-wash), transparent 28rem),
+    linear-gradient(145deg, #071524 0%, #0a1d2e 58%, #0d2433 100%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+  color: #eaf8fb;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .explorer::before {
+  background-image:
+    linear-gradient(rgba(103, 232, 249, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.055) 1px, transparent 1px);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .topbar,
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleRail {
+  border-color: #223d52;
+  background: rgba(6, 20, 34, 0.76);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .sampleBadge,
+:global(html:is(.theme-dark, [data-theme="dark"])) .modeBadge {
+  border-color: #28475d;
+  background: rgba(9, 29, 46, 0.86);
+  color: #b7c9d8;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .introCopy h2 {
+  background: linear-gradient(112deg, #f0fbff 0%, #c8edf4 58%, #67e8f9 100%);
+  background-clip: text;
+  color: transparent;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .introCopy > span,
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleSummary p,
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleSummary > div > span,
+:global(html:is(.theme-dark, [data-theme="dark"])) .footerAction p {
+  color: #a8bdce;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .passportCore,
+:global(html:is(.theme-dark, [data-theme="dark"])) .accessNode {
+  border-color: #2a4a60;
+  background: #0d2638;
+  color: #b5c9d8;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .accessNode[data-active="true"] {
+  border-color: var(--role-accent);
+  background: #123046;
+  color: #a5f3fc;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleTab {
+  color: #b8cad8;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleTab:hover {
+  border-color: #31546a;
+  background: #0c2639;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleTab[aria-selected="true"] {
+  border-color: var(--role-accent);
+  background: linear-gradient(118deg, #103148, #0b2234);
+  color: #f0fbff;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleIcon,
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleSummaryIcon {
+  background: #102d41;
+  color: #8bdfee;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleText small,
+:global(html:is(.theme-dark, [data-theme="dark"])) .recordIdentity small,
+:global(html:is(.theme-dark, [data-theme="dark"])) .recordMeta small,
+:global(html:is(.theme-dark, [data-theme="dark"])) .fieldPrimary small,
+:global(html:is(.theme-dark, [data-theme="dark"])) .fieldDetails dt,
+:global(html:is(.theme-dark, [data-theme="dark"])) .tableHeader {
+  color: #8fa6b8;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .passportPanel {
+  border-color: #24465b;
+  background: rgba(8, 25, 40, 0.96);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .recordHeader {
+  border-color: #29475a;
+  background: linear-gradient(112deg, #0d2c40, #091e30 68%);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .recordIcon,
+:global(html:is(.theme-dark, [data-theme="dark"])) .recordMeta > span {
+  border-color: #2b4d62;
+  background: #0d293d;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .recordIdentity strong,
+:global(html:is(.theme-dark, [data-theme="dark"])) .recordMeta strong,
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleSummary > div > strong,
+:global(html:is(.theme-dark, [data-theme="dark"])) .fieldPrimary strong,
+:global(html:is(.theme-dark, [data-theme="dark"])) .legend > strong,
+:global(html:is(.theme-dark, [data-theme="dark"])) .legendItem strong {
+  color: #e9f7fb;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .roleSummary {
+  border-color: #294c60;
+  background: linear-gradient(120deg, #102d41, #0b2132 78%);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .fieldRow {
+  border-color: #253f52;
+  background: #0c2335;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .fieldRow:hover {
+  border-color: #386279;
+  background: #0f2a3f;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .fieldDetails dd,
+:global(html:is(.theme-dark, [data-theme="dark"])) .legendItem small {
+  color: #a7bbc9;
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .footer {
+  border-color: #244155;
+  background: rgba(5, 18, 31, 0.72);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .legendItem {
+  border-color: #29475a;
+  background: rgba(12, 36, 53, 0.82);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .footerAction a {
+  background: #19b9cc;
+  color: #03131f;
+}
+
+@container (max-width: 62rem) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .roleRail {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(10.5rem, 1fr));
+    overflow-x: auto;
+    scroll-snap-type: inline mandatory;
+  }
+
+  .roleTab {
+    scroll-snap-align: start;
+  }
+
+  .roleArrow {
+    display: none;
+  }
+
+  .footer {
+    grid-template-columns: 1fr;
+  }
+
+  .footerAction {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+@container (max-width: 48rem) {
+  .intro {
+    grid-template-columns: 1fr;
+  }
+
+  .accessMap {
+    width: min(100%, 20rem);
+    justify-self: center;
+  }
+
+  .recordHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recordMeta {
+    width: 100%;
+  }
+
+  .recordMeta > span {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .fieldList {
+    padding-top: 1rem;
+  }
+
+  .fieldRow {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .fieldPrimary,
+  .evidenceStatus {
+    grid-column: 1 / -1;
+  }
+
+  .legend > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container (max-width: 34rem) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .intro {
+    padding-right: 1.1rem;
+    padding-left: 1.1rem;
+  }
+
+  .introCopy h2 {
+    font-size: clamp(1.9rem, 11vw, 2.7rem);
+  }
+
+  .roleRail {
+    grid-template-columns: repeat(4, minmax(12rem, 76vw));
+  }
+
+  .recordMeta,
+  .footerAction {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fieldRow {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldPrimary,
+  .evidenceStatus {
+    grid-column: auto;
+  }
+
+  .fieldDetails div {
+    justify-content: space-between;
+  }
+
+  .fieldDetails dd {
+    max-width: 58%;
+    text-align: right;
+  }
+
+  .footerAction a {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbitPulse,
+  .passportCore::before,
+  .dataPath::after,
+  .recordHeader::after,
+  .passportPanel,
+  .fieldRow {
+    animation: none !important;
+  }
+
+  .roleTab,
+  .accessNode,
+  .footerAction a {
+    scroll-behavior: auto;
+    transition: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .explorer,
+  .passportPanel,
+  .roleRail,
+  .fieldRow,
+  .legendItem {
+    border: 1px solid CanvasText;
+  }
+
+  .roleTab[aria-selected="true"],
+  .evidenceStatus,
+  .footerAction a {
+    outline: 2px solid Highlight;
+  }
+
+  .introCopy h2 {
+    background: none;
+    color: CanvasText;
+  }
+}

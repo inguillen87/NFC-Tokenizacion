@@ -7,7 +7,7 @@ import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
 import { SimpleTrustFlowIntroMotion, SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustStepVisual, type SimpleTrustVisualKind } from "./simple-trust-step-visual";
 import { HorizontalRailControls } from "./horizontal-rail-controls";
-import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../lib/platform-verticals";
+import { demoLabHrefForVertical, platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../lib/platform-verticals";
 
 type Content = any;
 
@@ -730,7 +730,7 @@ export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
       </div>
       <div className="landing-premium-verticals__grid">
         {verticals.map((item) => (
-          <Link key={item.title} href={`/demo-lab?vertical=${item.demoVertical}`} className="landing-premium-vertical-card">
+          <Link key={item.title} href={demoLabHrefForVertical(item.demoVertical)} className="landing-premium-vertical-card">
             <img src={item.image} alt={`${item.title} nexID`} loading="lazy" />
             <div className="landing-premium-vertical-card__body">
               <h3>{item.title}</h3>

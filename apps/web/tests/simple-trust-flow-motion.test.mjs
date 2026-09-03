@@ -59,15 +59,15 @@ test("three phases keep the default Reserva Andina story with deterministic phot
   assert.match(visuals, /sizes="\(max-width:/);
   assert.match(visuals, /focusable="false"/);
   assert.match(visuals, /<svg/g);
-  assert.match(visuals, /DEMO ILUSTRATIVA/);
+  assert.match(visuals, /EJEMPLO ILUSTRATIVO/);
   assert.match(visuals, /Reserva Andina/);
   assert.match(visuals, /RA-2407/);
   assert.match(visuals, /EN EL CELULAR/);
-  assert.match(visuals, /LECTURA RECIBIDA/);
-  assert.match(visuals, /ETIQUETA LEÍDA/);
-  assert.match(visuals, /Activar garantía/);
-  assert.match(visuals, /Ver beneficios/);
-  assert.match(visuals, /Hablar con la marca/);
+  assert.match(visuals, /PASAPORTE ABIERTO/);
+  assert.match(visuals, /REGISTRO VINCULADO/);
+  assert.match(visuals, /Ver origen y lote/);
+  assert.match(visuals, /Cómo disfrutarlo/);
+  assert.match(visuals, /Contactar a la bodega/);
   assert.doesNotMatch(visuals, /Paquete identificado|Pacote identificado|Identified parcel|parcel:|pouch:/i);
   assert.match(visuals, /bottles: \{[\s\S]{0,220}productId: "reserva-andina",[\s\S]{0,120}photoBase: "reserva-andina-wine"/);
   assert.match(visuals, /tag: \{ x: 31\.2, y: 22\.7 \}/);
@@ -81,7 +81,7 @@ test("three phases keep the default Reserva Andina story with deterministic phot
   assert.match(visuals, /data-trust-exchange="read-and-response"/);
   assert.match(visuals, /data-trust-state="response-ready"/);
   assert.match(visuals, /data-trust-state="actions-ready"/);
-  for (const action of ["warranty", "benefits", "support"]) {
+  for (const action of ["origin-and-batch", "serving-guidance", "winery-contact"]) {
     assert.match(visuals, new RegExp(`"${action}"`));
   }
   assert.match(visuals, /trust-photo__image/);

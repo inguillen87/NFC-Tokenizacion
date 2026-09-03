@@ -19,24 +19,24 @@ const DEFAULT_SITE_URL = "https://nexid.lat";
 
 const socialCopyByLocale = {
   "es-AR": {
-    title: "nexID | Productos conectados, garantía y postventa",
+    title: "nexID | Pasaporte digital de producto y trazabilidad",
     description:
-      "Con NFC o QR, cada producto conecta a tus clientes con su historia y las opciones que configures: garantía, beneficios o postventa. nexID registra lecturas y acciones, sin exigir una app.",
-    imageAlt: "nexID conecta productos con información, garantía y postventa",
+      "Con NFC o QR, nexID conecta cada producto con información, historia y trazabilidad mediante una experiencia de pasaporte digital adaptable y sin exigir una app.",
+    imageAlt: "nexID conecta productos con su pasaporte digital e información trazable",
     keywords: ["Validación NFC SUN", "NFC", "Pasaporte Digital", "Cadena de Suministro Empresarial", "Trazabilidad Declarada", "Derechos Digitales", "nexID"]
   },
   "pt-BR": {
-    title: "nexID | Produtos conectados, garantia e pós-venda",
+    title: "nexID | Passaporte digital de produto e rastreabilidade",
     description:
-      "Com NFC ou QR, cada produto conecta seus clientes à sua história e às opções configuradas: garantia, benefícios ou pós-venda. A nexID registra leituras e ações, sem exigir um app.",
-    imageAlt: "nexID conecta produtos com informações, garantia e pós-venda",
+      "Com NFC ou QR, a nexID conecta cada produto a informações, história e rastreabilidade por meio de um passaporte digital adaptável e sem exigir um app.",
+    imageAlt: "nexID conecta produtos ao passaporte digital e a informações rastreáveis",
     keywords: ["Validação NFC SUN", "NFC", "Passaporte Digital", "Cadeia de Suprimentos Corporativa", "Rastreabilidade Declarada", "Direitos Digitais", "nexID"]
   },
   en: {
-    title: "nexID | Connected products, warranty and after-sales",
+    title: "nexID | Digital product passports and traceability",
     description:
-      "With NFC or QR, every product connects customers to its story and the options you configure: warranty, benefits, or after-sales support. nexID records reads and actions without requiring an app.",
-    imageAlt: "nexID connects products with information, warranties and after-sales support",
+      "With NFC or QR, nexID connects each product to information, history and traceability through an adaptable digital passport experience without requiring an app.",
+    imageAlt: "nexID connects products to digital passports and traceable information",
     keywords: ["NFC SUN Validation", "NFC", "Digital Product Passport", "Enterprise Supply Chain", "Declared Traceability", "Digital Rights", "nexID"]
   }
 };

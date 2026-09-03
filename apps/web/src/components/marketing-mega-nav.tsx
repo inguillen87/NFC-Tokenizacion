@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, ChevronDown, ExternalLink, Menu, X } from "lucide-react";
@@ -28,6 +28,7 @@ type NavGroup = {
 
 type NavigationCopy = {
   ariaLabel: string;
+  about: string;
   login: string;
   demo: string;
   menu: string;
@@ -47,6 +48,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "en") {
     return {
       ariaLabel: "Main navigation",
+      about: "About us",
       login: "Sign in",
       demo: "Book a demo",
       menu: "Open navigation",
@@ -57,11 +59,11 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           label: "Solutions",
           eyebrow: "By business need",
           description: "Start with the outcome you need. The technical depth stays available when you want it.",
-          featured: { label: "Design your pilot", description: "Scope, carriers and rollout economics in one place.", href: "/pricing" },
+          featured: { label: "Build your product passport", description: "Define information, granularity, carrier and access by role.", href: "/demo-lab" },
           items: [
             { label: "Product identity and protection", description: "Validate tag evidence without treating it as proof of the physical object.", href: "/demo-lab?scenario=nfc-424" },
             { label: "Traceability and evidence", description: "Connect declared events, controls and public proofs.", href: "/demo-lab?scenario=dual-proof" },
-            { label: "Digital passport", description: "Open provenance, warranty and ownership experiences.", href: "/demo-lab?scenario=polygon-ownership" },
+            { label: "Digital product passport", description: "Structure product information and history by model, batch or individual item.", href: "/demo-lab?scenario=polygon-ownership" },
             { label: "Loyalty and engagement", description: "Turn a tap into service, benefits and repeat purchase.", href: "/demo-lab?scenario=qr-gs1" },
             { label: "Plans and pilots", description: "Compare a controlled pilot, scalable rollout and enterprise scope.", href: "/pricing" },
           ],
@@ -74,7 +76,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           featured: { label: "Explore every industry", description: "Compare all guided product journeys in Demo Lab.", href: "/demo-lab" },
           items: [
             { label: "Wine and beverages", description: "Origin, opening evidence and direct-to-consumer service.", href: "/demo-lab?vertical=wine" },
-            { label: "Luxury and beauty", description: "Tag evidence, ownership and premium after-sales.", href: "/demo-lab?vertical=perfume" },
+            { label: "Packaging", description: "Materials, product information and connected packaging experiences.", href: "/demo-lab?profile=packaging" },
             { label: "Pharma and health", description: "Controlled evidence and guided safety information.", href: "/demo-lab?vertical=pharma" },
             { label: "Agro and seeds", description: "Batch context, channel controls and field verification.", href: "/demo-lab?vertical=seeds" },
             { label: "Logistics", description: "Declared milestones, exceptions and operational handoffs.", href: "/demo-lab?vertical=logistics" },
@@ -118,6 +120,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "pt-BR") {
     return {
       ariaLabel: "Navegação principal",
+      about: "Quem somos",
       login: "Entrar",
       demo: "Agendar demo",
       menu: "Abrir navegação",
@@ -128,11 +131,11 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           label: "Soluções",
           eyebrow: "Por necessidade de negócio",
           description: "Comece pelo resultado que você busca. A profundidade técnica continua disponível quando precisar.",
-          featured: { label: "Desenhe seu piloto", description: "Escopo, carriers e economia do rollout em um só lugar.", href: "/pricing" },
+          featured: { label: "Crie o passaporte do produto", description: "Defina informação, granularidade, suporte e acesso por função.", href: "/demo-lab" },
           items: [
             { label: "Identidade e proteção do produto", description: "Valide a evidência do tag sem tratá-la como prova do objeto físico.", href: "/demo-lab?scenario=nfc-424" },
             { label: "Rastreabilidade e evidência", description: "Conecte eventos declarados, controles e provas públicas.", href: "/demo-lab?scenario=dual-proof" },
-            { label: "Passaporte digital", description: "Abra experiências de origem, garantia e ownership.", href: "/demo-lab?scenario=polygon-ownership" },
+            { label: "Passaporte digital de produto", description: "Estruture informação e histórico por modelo, lote ou item individual.", href: "/demo-lab?scenario=polygon-ownership" },
             { label: "Fidelização e experiência", description: "Transforme um tap em serviço, benefícios e recompra.", href: "/demo-lab?scenario=qr-gs1" },
             { label: "Planos e pilotos", description: "Compare piloto controlado, rollout escalável e escopo enterprise.", href: "/pricing" },
           ],
@@ -145,7 +148,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           featured: { label: "Explorar todos os setores", description: "Compare todas as jornadas guiadas no Demo Lab.", href: "/demo-lab" },
           items: [
             { label: "Vinhos e bebidas", description: "Origem, evidência de abertura e serviço direto.", href: "/demo-lab?vertical=wine" },
-            { label: "Luxo e beleza", description: "Evidência da etiqueta, ownership e pós-venda premium.", href: "/demo-lab?vertical=perfume" },
+            { label: "Packaging", description: "Materiais, informação do produto e experiências com embalagens conectadas.", href: "/demo-lab?profile=packaging" },
             { label: "Farma e saúde", description: "Evidência controlada e informação de segurança guiada.", href: "/demo-lab?vertical=pharma" },
             { label: "Agro e sementes", description: "Contexto de lote, controle de canal e verificação em campo.", href: "/demo-lab?vertical=seeds" },
             { label: "Logística", description: "Marcos declarados, exceções e passagens operacionais.", href: "/demo-lab?vertical=logistics" },
@@ -188,6 +191,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
 
   return {
     ariaLabel: "Navegación principal",
+    about: "Quiénes somos",
     login: "Ingresar",
     demo: "Agendar demo",
     menu: "Abrir navegación",
@@ -198,11 +202,11 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         label: "Soluciones",
         eyebrow: "Por necesidad de negocio",
         description: "Empezá por el resultado que buscás. La profundidad técnica sigue disponible cuando la necesitás.",
-        featured: { label: "Diseñá tu piloto", description: "Alcance, soportes y economía del despliegue en un solo lugar.", href: "/pricing" },
+        featured: { label: "Creá el pasaporte de tu producto", description: "Definí información, granularidad, soporte y acceso según cada rol.", href: "/demo-lab" },
         items: [
           { label: "Identidad y protección de producto", description: "Validá la evidencia del tag sin tratarla como prueba del objeto físico.", href: "/demo-lab?scenario=nfc-424" },
           { label: "Trazabilidad y evidencia", description: "Conectá eventos declarados, controles y pruebas públicas.", href: "/demo-lab?scenario=dual-proof" },
-          { label: "Pasaporte digital", description: "Abrí experiencias de origen, garantía y propiedad.", href: "/demo-lab?scenario=polygon-ownership" },
+          { label: "Pasaporte digital de producto", description: "Estructurá información e historia por modelo, lote o unidad.", href: "/demo-lab?scenario=polygon-ownership" },
           { label: "Fidelización y experiencia", description: "Convertí un toque en servicio, beneficios y recompra.", href: "/demo-lab?scenario=qr-gs1" },
           { label: "Planes y pilotos", description: "Compará un piloto controlado, un despliegue escalable y el alcance enterprise.", href: "/pricing" },
         ],
@@ -215,7 +219,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         featured: { label: "Explorar todas las industrias", description: "Compará todos los recorridos guiados en Demo Lab.", href: "/demo-lab" },
         items: [
           { label: "Vinos y bebidas", description: "Origen, evidencia de apertura y servicio directo al cliente.", href: "/demo-lab?vertical=wine" },
-          { label: "Lujo y belleza", description: "Evidencia de etiqueta, propiedad y posventa premium.", href: "/demo-lab?vertical=perfume" },
+          { label: "Packaging", description: "Materiales, información del producto y experiencias de envases conectados.", href: "/demo-lab?profile=packaging" },
           { label: "Farma y salud", description: "Evidencia controlada e información de seguridad guiada.", href: "/demo-lab?vertical=pharma" },
           { label: "Agro y semillas", description: "Contexto de lote, control de canal y verificación en campo.", href: "/demo-lab?vertical=seeds" },
           { label: "Logística", description: "Hitos declarados, excepciones y traspasos operativos.", href: "/demo-lab?vertical=logistics" },
@@ -260,7 +264,7 @@ const navigationGroupPathPrefixes: Record<string, readonly string[]> = {
   solutions: ["/pricing"],
   industries: [],
   platform: ["/demo", "/demo-lab", "/proof", "/sun", "/offline", "/login", "/sdk"],
-  resources: ["/about", "/docs", "/stack", "/glossary", "/audiences", "/resellers"],
+  resources: ["/docs", "/stack", "/glossary", "/audiences", "/resellers"],
 };
 
 function isNavigationGroupCurrent(groupId: string, pathname: string) {
@@ -461,57 +465,68 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
           const expanded = openMenu === group.id;
           const groupCurrent = isNavigationGroupCurrent(group.id, pathname);
           return (
-            <div
-              key={group.id}
-              className={styles.navGroup}
-              data-mega-nav-group={group.id}
-              onPointerEnter={(event) => handleDesktopMenuEnter(event, group.id)}
-              onPointerLeave={scheduleDesktopMenuClose}
-              onFocus={cancelScheduledClose}
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) closeDesktopMenu();
-              }}
-            >
-              <button
-                ref={(element) => {
-                  groupButtonRefs.current[group.id] = element;
-                }}
-                type="button"
-                className={styles.navGroupButton}
-                aria-expanded={expanded}
-                aria-current={groupCurrent ? "page" : undefined}
-                aria-haspopup="true"
-                aria-controls={`mega-menu-${group.id}`}
-                onClick={() => {
-                  if (expanded && openMenuSourceRef.current === "click") closeDesktopMenu();
-                  else openDesktopMenu(group.id, "click");
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown") {
-                    event.preventDefault();
-                    openAndFocus(group.id);
-                  }
+            <Fragment key={group.id}>
+              {group.id === "resources" ? (
+                <Link
+                  href="/about"
+                  className={styles.navDirectLink}
+                  aria-current={pathname === "/about" ? "page" : undefined}
+                  onClick={closeDesktopMenu}
+                >
+                  {copy.about}
+                </Link>
+              ) : null}
+              <div
+                className={styles.navGroup}
+                data-mega-nav-group={group.id}
+                onPointerEnter={(event) => handleDesktopMenuEnter(event, group.id)}
+                onPointerLeave={scheduleDesktopMenuClose}
+                onFocus={cancelScheduledClose}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) closeDesktopMenu();
                 }}
               >
-                {group.label}
-                <ChevronDown aria-hidden="true" />
-              </button>
+                <button
+                  ref={(element) => {
+                    groupButtonRefs.current[group.id] = element;
+                  }}
+                  type="button"
+                  className={styles.navGroupButton}
+                  aria-expanded={expanded}
+                  aria-current={groupCurrent ? "page" : undefined}
+                  aria-haspopup="true"
+                  aria-controls={`mega-menu-${group.id}`}
+                  onClick={() => {
+                    if (expanded && openMenuSourceRef.current === "click") closeDesktopMenu();
+                    else openDesktopMenu(group.id, "click");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      openAndFocus(group.id);
+                    }
+                  }}
+                >
+                  {group.label}
+                  <ChevronDown aria-hidden="true" />
+                </button>
 
-              {expanded ? (
-                <div id={`mega-menu-${group.id}`} className={styles.megaMenu}>
-                  <div className={styles.megaMenuIntro}>
-                    <span>{group.eyebrow}</span>
-                    <p>{group.description}</p>
-                    <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={closeDesktopMenu} />
+                {expanded ? (
+                  <div id={`mega-menu-${group.id}`} className={styles.megaMenu}>
+                    <div className={styles.megaMenuIntro}>
+                      <span>{group.eyebrow}</span>
+                      <p>{group.description}</p>
+                      <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={closeDesktopMenu} />
+                    </div>
+                    <div className={styles.megaMenuGrid}>
+                      {group.items.filter((item) => item.href !== "/about").map((item) => (
+                        <MenuLink key={`${group.id}-${item.href}`} item={item} currentPath={pathname} onNavigate={closeDesktopMenu} />
+                      ))}
+                    </div>
                   </div>
-                  <div className={styles.megaMenuGrid}>
-                    {group.items.map((item) => (
-                      <MenuLink key={`${group.id}-${item.href}`} item={item} currentPath={pathname} onNavigate={closeDesktopMenu} />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            </Fragment>
           );
         })}
       </nav>
@@ -540,7 +555,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             <div className={styles.mobileDialogHead}>
               <BrandHomeLink
                 locale={locale}
-                size={40}
+                size={46}
                 brandClassName="mobile-menu-brand"
                 className={styles.mobileDialogBrand}
                 onNavigate={() => setMobileOpen(false)}
@@ -549,6 +564,15 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
 
             <div className={styles.mobileGroups}>
+              <Link
+                href="/about"
+                className={styles.mobileAboutLink}
+                aria-current={pathname === "/about" ? "page" : undefined}
+                onClick={() => setMobileOpen(false)}
+              >
+                <span>{copy.about}</span>
+                <ArrowRight aria-hidden="true" />
+              </Link>
               {copy.groups.map((group, index) => (
                 <details key={group.id} open={index === 0} className={styles.mobileGroup}>
                   <summary>
@@ -556,7 +580,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                     <ChevronDown aria-hidden="true" />
                   </summary>
                   <div className={styles.mobileGroupItems}>
-                    {group.items.map((item) => (
+                    {group.items.filter((item) => item.href !== "/about").map((item) => (
                       <MenuLink key={`${group.id}-mobile-${item.href}`} item={item} currentPath={pathname} onNavigate={() => setMobileOpen(false)} />
                     ))}
                     <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={() => setMobileOpen(false)} />

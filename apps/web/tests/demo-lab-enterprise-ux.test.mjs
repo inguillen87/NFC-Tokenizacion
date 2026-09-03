@@ -61,7 +61,7 @@ test("landing mega navigation stays compact, keyboard-safe and overflow-free", a
   assert.match(navigation, /mobileCloseRef\.current\?\.focus\(\)/);
   assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\)/);
   assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*width: 2\.75rem/);
-  assert.match(css, /@media \(max-width: 1319px\)[\s\S]*\.mobileMenuButton[\s\S]*display: inline-flex/);
+  assert.match(css, /@media \(max-width: 1279px\)[\s\S]*\.mobileMenuButton[\s\S]*display: inline-flex/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.mobileDialog[\s\S]*width: 100%/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });

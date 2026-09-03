@@ -9,13 +9,14 @@ test("unified release preserves the approved clean home composition", async () =
     readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(layout, /nexID \| Productos conectados, garantía y postventa/);
+  assert.match(layout, /nexID \| Pasaporte digital de producto y trazabilidad/);
   assert.match(home, /className="site-header landing-mega-header/);
-  assert.match(home, /<HeroSection content=\{content\} locale=\{locale\} initialTheme=\{initialTheme\} \/>/);
+  assert.match(home, /<HeroSection content=\{content\} locale=\{locale\} \/>/);
   assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialContactModal initialLocale=\{locale\} \/>/);
-  assert.match(sections, /Configurá la experiencia\. Entendé cada interacción\./);
+  assert.match(sections, /<DppRoleExplorer locale=\{locale\} \/>/);
+  assert.match(sections, /Un toque\. Un pasaporte útil para cada producto\./);
 
   assert.doesNotMatch(home, /mobile-optimized-header/);
   assert.doesNotMatch(home, /landing-brand-synergy-band/);
