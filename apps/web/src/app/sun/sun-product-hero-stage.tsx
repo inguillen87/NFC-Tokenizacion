@@ -6,6 +6,7 @@ import { Globe3dMap } from "@product/ui/globe-3d-map";
 import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui/premium-vector-map";
 import type { ProductInteractionState, ProductKind } from "../../components/hero-three-stage";
 import { getSunHeroTraceCopy } from "./sun-hero-truth-copy";
+import { useSunLocale } from "./sun-locale-provider";
 
 const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), {
   ssr: false,
@@ -156,11 +157,12 @@ export function SunProductHeroStage({
   tapLng,
   isDemoPreview,
 }: SunProductHeroStageProps) {
+  const { locale } = useSunLocale();
   const [ready, setReady] = useState(false);
   const threeKind = toThreeKind(kind);
   const hasTraceCoordinates = originLat != null && originLng != null && tapLat != null && tapLng != null;
   const traceTone = state === "blocked" ? "warn" : state === "opened" ? "success" : "info";
-  const traceCopy = getSunHeroTraceCopy(isDemoPreview, state);
+  const traceCopy = getSunHeroTraceCopy(isDemoPreview, state, locale);
   const tracePoints: VectorMapPoint[] = hasTraceCoordinates
     ? [
         {

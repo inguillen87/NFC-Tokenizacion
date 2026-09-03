@@ -21,9 +21,9 @@ export function haversineKm(
   return 2 * radiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function fmtDistance(value: number | null) {
+export function fmtDistance(value: number | null, locale: Intl.LocalesArgument = "es-AR") {
   if (value == null || !Number.isFinite(value)) return "N/A";
-  return `${new Intl.NumberFormat("es-AR", { maximumFractionDigits: value >= 100 ? 0 : 1 }).format(value)} km`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: value >= 100 ? 0 : 1 }).format(value)} km`;
 }
 
 /**

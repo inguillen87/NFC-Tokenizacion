@@ -84,6 +84,7 @@ test("SUN map uses only explicit origin and current-tap coordinates", () => {
   assert.match(sun, /origin=\{wineryPoint\[0\] \?/);
   assert.match(sun, /tap=\{currentTapPoint\[0\] \?/);
   assert.match(sun, /tapTimeLabel=\{localTapTimeLabel\}/);
+  assert.match(sun, /tapTimeIso=\{localTapTimeIso\}/);
   assert.doesNotMatch(sun, /lastSeen: point\.lastSeen \|\| ""/);
   assert.doesNotMatch(sun, /new Date\(index \+ 1\)|lastMapSeenAt \|\| new Date\(\)\.toISOString|Math\.max\(1, Number\(result\.identity\?\.scanCount/);
 });

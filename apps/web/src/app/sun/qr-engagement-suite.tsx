@@ -10,6 +10,7 @@ import {
   sommelierProvenanceLabel,
   type SommelierProvenance,
 } from "../../lib/sommelier-guidance";
+import { useSunLocale } from "./sun-locale-provider";
 
 type EngagementTab = "sommelier" | "trivia" | "feedback" | "contact";
 
@@ -106,13 +107,14 @@ export function QREngagementSuite({
   blockedActions = [],
   initialTab = "sommelier",
 }: QREngagementSuiteProps) {
+  const { locale } = useSunLocale();
   const [activeTab, setActiveTab] = useState<EngagementTab>(initialTab);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const fallbackTrivia = useMemo(() => localTrivia(productName, wineryName), [productName, wineryName]);
+  const fallbackTrivia = useMemo(() => localTrivia(productName, wineryName), [locale, productName, wineryName]);
   const [triviaQuestions, setTriviaQuestions] = useState<ClientTriviaQuestion[]>(fallbackTrivia);
   const [triviaStep, setTriviaStep] = useState(0);
   const [triviaAnswers, setTriviaAnswers] = useState<Record<string, number>>({});
@@ -203,7 +205,7 @@ export function QREngagementSuite({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          locale: "es-AR",
+          locale,
           contact: payload.contact,
           name: payload.name || "",
           company: wineryName,
@@ -268,7 +270,7 @@ export function QREngagementSuite({
       setTriviaError(null);
       try {
         const triviaParams = new URLSearchParams({
-          locale: "es-AR",
+          locale,
           tenant: tenantSlug || "",
           product: productName,
           winery: wineryName,
@@ -303,7 +305,7 @@ export function QREngagementSuite({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, eventId, fallbackTrivia]);
+  }, [activeTab, eventId, fallbackTrivia, locale, productName, tenantSlug, wineryName]);
 
   const handleSendChat = async (textToSend: string) => {
     if (!textToSend.trim()) return;
@@ -391,7 +393,7 @@ export function QREngagementSuite({
       const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: "es-AR", tenantSlug, productName, brandName: wineryName, answers }),
+        body: JSON.stringify({ locale, tenantSlug, productName, brandName: wineryName, answers }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload?.ok === false) {

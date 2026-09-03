@@ -3,6 +3,7 @@
 import { LocateFixed, MapPinned, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { requestApproximateBrowserLocation } from "./tap-location-model";
+import { useSunLocale } from "./sun-locale-provider";
 
 type TelemetryState = "idle" | "pending" | "updated" | "denied" | "timeout" | "unsupported" | "invalid" | "stale" | "unavailable" | "error";
 
@@ -79,6 +80,7 @@ export function TapPrecisionTelemetry({
   enabled = true,
   onLocationConfirmed,
 }: TapPrecisionTelemetryProps) {
+  const { locale } = useSunLocale();
   const [state, setState] = useState<TelemetryState>("idle");
   const [receipt, setReceipt] = useState<LocationReceipt | null>(null);
   const successRef = useRef<HTMLDivElement | null>(null);
@@ -223,7 +225,7 @@ export function TapPrecisionTelemetry({
     const formatTime = (value: string | null | undefined) => {
       if (!value) return "No informado";
       const date = new Date(value);
-      return Number.isFinite(date.getTime()) ? date.toLocaleString("es-AR") : "No informado";
+      return Number.isFinite(date.getTime()) ? date.toLocaleString(locale) : "No informado";
     };
     return (
       <div

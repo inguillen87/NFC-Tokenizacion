@@ -18,7 +18,8 @@ test("SUN section navigation exposes the four product journey anchors", async ()
   }
 
   assert.match(source, /href=\{`#\$\{id\}`\}/);
-  assert.match(source, /aria-label="Secciones del producto"/);
+  assert.match(source, /aria-label=\{text\("Secciones del producto"\)\}/);
+  assert.match(source, /useSunLocale\(\)/);
   assert.match(source, /aria-current=\{isActive \? "location" : undefined\}/);
   assert.match(source, /sunAgroSectionNavItems/);
   assert.match(source, /id: "agro-dpp", label: "Producto"/);

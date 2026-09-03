@@ -32,11 +32,12 @@ test("SUN passport header keeps its descriptor below the lockup and exposes cont
     readFile(pageUrl, "utf8"),
   ]);
 
-  assert.match(header, /const passportLabel = isQrScan \? "Pasaporte QR" : "Pasaporte NFC"/);
+  assert.match(header, /const passportLabel = text\(isQrScan \? "Pasaporte QR" : "Pasaporte NFC"\)/);
   assert.match(header, /sun-passport-brand__caption mt-1 block truncate whitespace-nowrap/);
-  assert.match(header, /aria-label="Controles del pasaporte"/);
+  assert.match(header, /aria-label=\{text\("Controles del pasaporte"\)\}/);
   assert.match(header, /role="status"/);
-  assert.match(header, /<LocaleSwitcher value=\{locale\} options=\{\[\.\.\.locales\]\} \/>/);
-  assert.match(header, /<ThemeToggle \/>/);
-  assert.match(page, /<SunPassportHeader[\s\S]*?pulseClass=\{pulseClass\}[\s\S]*?\/>/);
+  assert.match(header, /<SunLocaleSwitcher \/>/);
+  assert.doesNotMatch(header, /<LocaleSwitcher|router\.refresh|router\.push/);
+  assert.match(header, /<ThemeToggle locale=\{locale\} \/>/);
+  assert.match(page, /<SunLocaleProvider initialLocale=\{locale\}>[\s\S]*?<SunPassportHeader[\s\S]*?pulseClass=\{pulseClass\}[\s\S]*?\/>/);
 });

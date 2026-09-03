@@ -2,6 +2,7 @@
 
 import { BellRing, CheckCircle2, ChevronDown, Send } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { useSunLocale } from "./sun-locale-provider";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
 
@@ -20,6 +21,7 @@ export function SunUpdatesOptIn({
   eventId = null,
   bid = null,
 }: SunUpdatesOptInProps) {
+  const { locale } = useSunLocale();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -36,7 +38,7 @@ export function SunUpdatesOptIn({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          locale: "es-AR",
+          locale,
           contact: contact.trim(),
           name: name.trim(),
           company: brandName,

@@ -1,5 +1,10 @@
 import { cookies, headers } from "next/headers";
-import { messages, resolveLocale, locales, type AppLocale } from "@product/config";
+import { messages, locales, type AppLocale } from "@product/config";
+
+function requestedLocale(value?: string | null): AppLocale | null {
+  const normalized = String(value || "").trim();
+  return locales.includes(normalized as AppLocale) ? normalized as AppLocale : null;
+}
 
 function inferLocaleFromHeaders(country: string, acceptLanguage: string): AppLocale {
   const c = country.toUpperCase();
@@ -14,12 +19,18 @@ function inferLocaleFromHeaders(country: string, acceptLanguage: string): AppLoc
   return "en";
 }
 
-export async function getWebI18n() {
+export async function getWebI18n(queryLocale?: string | null) {
   const cookieStore = await cookies();
-  const saved = resolveLocale(cookieStore.get("locale")?.value);
+  const query = requestedLocale(queryLocale);
+  const cookieValue = cookieStore.get("locale")?.value;
+  const saved = requestedLocale(cookieValue);
 
-  let locale: AppLocale = saved;
-  if (!cookieStore.get("locale")?.value) {
+  let locale: AppLocale;
+  if (query) {
+    locale = query;
+  } else if (saved) {
+    locale = saved;
+  } else {
     const h = await headers();
     const country = h.get("x-vercel-ip-country") || h.get("x-country") || "";
     const acceptLanguage = h.get("accept-language") || "";

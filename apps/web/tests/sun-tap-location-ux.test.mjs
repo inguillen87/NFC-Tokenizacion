@@ -75,7 +75,7 @@ test("successful confirmation updates the map locally without consuming the fres
   assert.match(telemetry, /onLocationConfirmed\?\.\(nextReceipt\)/);
   assert.doesNotMatch(telemetry, /router\.refresh\(\)|useRouter/);
   assert.match(locationExperience, /const effectiveTap = confirmedTap \|\| tap/);
-  assert.match(locationExperience, /distanceLabelFor\(distanceKm\(origin, confirmedTap\)\)/);
+  assert.match(locationExperience, /distanceLabelFor\(distanceKm\(origin, confirmedTap\), locale\)/);
   assert.match(locationExperience, /source: "browser_geolocation_approximate_consent"/);
   assert.match(telemetry, /Abrir zona aproximada/);
   assert.match(telemetry, /actualizó el evento sin repetir el tap/);

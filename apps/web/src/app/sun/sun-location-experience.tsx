@@ -7,6 +7,7 @@ import {
   type LocationReceipt,
   type TapPrecisionTelemetryProps,
 } from "./tap-precision-telemetry";
+import { useSunLocale } from "./sun-locale-provider";
 
 type SunLocationExperienceProps = {
   origin: SunPassportMapLocation | null;
@@ -14,6 +15,8 @@ type SunLocationExperienceProps = {
   showRoute: boolean;
   distanceLabel: string;
   tapTimeLabel?: string | null;
+  tapTimeIso?: string | null;
+  tapTimeZone?: string | null;
   telemetry: Omit<TapPrecisionTelemetryProps, "onLocationConfirmed">;
 };
 
@@ -33,10 +36,10 @@ function distanceKm(origin: SunPassportMapLocation, tap: SunPassportMapLocation)
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
-function distanceLabelFor(kilometers: number) {
+function distanceLabelFor(kilometers: number, locale: Intl.LocalesArgument) {
   if (!Number.isFinite(kilometers)) return "N/D";
   if (kilometers < 1) return `${Math.max(1, Math.round(kilometers * 1_000))} m`;
-  return `${new Intl.NumberFormat("es-AR", { maximumFractionDigits: kilometers < 10 ? 1 : 0 }).format(kilometers)} km`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: kilometers < 10 ? 1 : 0 }).format(kilometers)} km`;
 }
 
 export function SunLocationExperience({
@@ -45,8 +48,11 @@ export function SunLocationExperience({
   showRoute,
   distanceLabel,
   tapTimeLabel,
+  tapTimeIso,
+  tapTimeZone,
   telemetry,
 }: SunLocationExperienceProps) {
+  const { locale } = useSunLocale();
   const [confirmedTap, setConfirmedTap] = useState<SunPassportMapLocation | null>(null);
   const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
 
@@ -74,11 +80,14 @@ export function SunLocationExperience({
 
   const effectiveTap = confirmedTap || tap;
   const effectiveDistanceLabel = confirmedTap && origin
-    ? distanceLabelFor(distanceKm(origin, confirmedTap))
+    ? distanceLabelFor(distanceKm(origin, confirmedTap), locale)
     : distanceLabel;
   const confirmedDate = confirmedAt ? new Date(confirmedAt) : null;
+  const sourceTapDate = tapTimeIso ? new Date(tapTimeIso) : null;
   const effectiveTapTime = confirmedDate && Number.isFinite(confirmedDate.getTime())
-    ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(confirmedDate)
+    ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(confirmedDate)
+    : sourceTapDate && Number.isFinite(sourceTapDate.getTime())
+      ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: tapTimeZone || undefined }).format(sourceTapDate)
     : tapTimeLabel;
 
   return (

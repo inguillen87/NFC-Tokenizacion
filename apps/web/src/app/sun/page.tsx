@@ -7,6 +7,8 @@ import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
+import { SunLocaleProvider } from "./sun-locale-provider";
+import type { SunLocale } from "./sun-locale";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { PostTapNextStep } from "./post-tap-next-step";
 import { SunSectionNav } from "./sun-section-nav";
@@ -221,10 +223,10 @@ type SunContract = {
   };
 };
 
-function fmtDate(value?: string | null, timezone?: string | null) {
+function fmtDate(value?: string | null, timezone?: string | null, locale: SunLocale = "es-AR") {
   if (!value) return "N/A";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: timezone || undefined });
+  return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: timezone || undefined });
 }
 
 function policyLabel(value?: string | null) {
@@ -431,8 +433,13 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
   };
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  const { locale } = await getWebI18n();
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const { locale } = await getWebI18n(readParam(params, "lang"));
   return {
     title: "SUN Passport · nexID",
     openGraph: {
@@ -449,7 +456,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SunPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const webI18n = await getWebI18n();
   const isQrScan = params.qr === "1" || params.channel === "qr";
   const query = new URLSearchParams();
   ["v", "bid", "picc_data", "enc", "cmac"].forEach((key) => {
@@ -475,10 +481,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     && readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
   const requestedDemoLocale = readParam(params, "locale");
-  const locale = isDemoLabHandoff && (requestedDemoLocale === "en" || requestedDemoLocale === "pt-BR" || requestedDemoLocale === "es-AR")
-    ? requestedDemoLocale
-    : webI18n.locale;
-  const locales = webI18n.locales;
+  const requestedLanguage = readParam(params, "lang");
+  const webI18n = await getWebI18n(requestedLanguage || (isDemoLabHandoff ? requestedDemoLocale : null));
+  const locale = webI18n.locale;
+  query.set("lang", locale);
   const demoLabProfile = isDemoLabHandoff
     ? resolveDemoProductProfile(readParam(params, "profile"))
     : null;
@@ -600,7 +606,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ?? result.status?.tamperStatus
       ?? result.tag_tamper?.status
       ?? productState,
-  });
+  }, locale);
   const showTtTechnicalEvidence = ttEvidence.available
     || Boolean(result.status?.tamperSupported)
     || Boolean(result.tag_tamper?.available);
@@ -795,7 +801,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const tapMapHref = currentTapPoint.length
     ? mapHref(currentTapPoint[0].lat, currentTapPoint[0].lng, effectivePublicUncertaintyM)
     : "";
-  const distanceDisplay = fmtDistance(originToTapDistance);
+  const distanceDisplay = fmtDistance(originToTapDistance, locale);
   const sensorSnapshot = result.iot?.sensorSnapshot;
   const sensorEvidenceKind = String(result.iot?.sensorEvidenceKind || "none").toLowerCase();
   const hasReportedSensorEvidence = Boolean(
@@ -858,7 +864,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     isReplay,
     isSunProfileMismatch,
     isSnapshotView,
-  });
+  }, locale);
   const consumerServicesLabel = isRiskBlocked
     ? "Protegidos"
     : isDemoPreview
@@ -873,7 +879,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? Math.max(0, Math.min(100, apiQualityScore))
     : null;
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
-  const localTapTimeLabel = result.tapContext?.localTime || (lastEventAt ? fmtDate(lastEventAt, result.tapContext?.timezone) : "");
+  const tapTimeIsoCandidate = result.tapContext?.utcTime || lastEventAt || "";
+  const localTapTimeIso = Number.isFinite(new Date(tapTimeIsoCandidate).getTime()) ? tapTimeIsoCandidate : "";
+  const localTapTimeLabel = localTapTimeIso
+    ? fmtDate(localTapTimeIso, result.tapContext?.timezone, locale)
+    : result.tapContext?.localTime || "";
   const statusDotClass = isSnapshotView
     ? "sun-status-dot--warn"
     : isValid
@@ -950,7 +960,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isDemoPreview
       ? "Sin coordenadas en esta simulación"
       : "Sin fuente ni precisión registradas";
-  const summaryLocationTime = result.tapContext?.localTime || result.tapContext?.utcTime || "Hora no registrada";
+  const summaryLocationTime = localTapTimeLabel || "Hora no registrada";
   const hasConsumerComparableDistance = originToTapDistance != null
     && (isDemoPreview || hasConfirmedBrowserLocation);
   const locationSectionTitle = isDemoPreview
@@ -1570,6 +1580,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
   return (
+    <SunLocaleProvider initialLocale={locale}>
     <main className="sun-tap-experience relative flex min-h-screen flex-col items-center overflow-x-clip bg-[#060813] px-4 pb-[calc(env(safe-area-inset-bottom)+8.5rem)] pt-4 font-sans text-slate-100 sm:pt-8">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
       <OfflinePublicProductCache
@@ -1594,8 +1605,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         <SunPassportHeader
           isQrScan={isQrScan}
           livePillLabel={livePillLabel}
-          locale={locale}
-          locales={locales}
           pulseClass={pulseClass}
         />
 
@@ -1678,18 +1687,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     {SUN_DEMO_BADGE}
                   </span>
                 )}
-                <p className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                <p data-sun-server-evidence="true" className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
                   {tenantDisplayName}
                 </p>
-                <h1 className="sun-summary-product__title mt-1 break-words text-[21px] font-black leading-[1.02] tracking-tight text-white">
+                <h1 data-sun-server-evidence="true" className="sun-summary-product__title mt-1 break-words text-[21px] font-black leading-[1.02] tracking-tight text-white">
                   {productDisplayName}
                 </h1>
-                <p className="mt-1 break-words text-[10px] leading-4 text-slate-400">
+                <p data-sun-server-evidence="true" className="mt-1 break-words text-[10px] leading-4 text-slate-400">
                   {productLine || verticalLabel}
                 </p>
                 {batchDisplay ? (
-                  <span className="mt-2 inline-flex max-w-full rounded-lg border border-white/10 bg-slate-950/45 px-2 py-1 text-[9px] font-bold text-slate-300">
-                    {isDemoPreview ? "Batch de muestra" : "Lote"} {batchDisplay}
+                  <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/45 px-2 py-1 text-[9px] font-bold text-slate-300">
+                    <span>{isDemoPreview ? "Batch de muestra" : "Lote"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span data-sun-server-evidence="true">{batchDisplay}</span>
                   </span>
                 ) : null}
               </div>
@@ -1782,7 +1793,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       {summaryLocationSourceBadge}
                     </span>
                   </div>
-                  <strong className="mt-1 block whitespace-normal break-words text-sm leading-5 text-white">
+                  <strong data-sun-server-evidence="true" className="mt-1 block whitespace-normal break-words text-sm leading-5 text-white">
                     {summaryLocationDisplay}
                   </strong>
                   <p className="mt-1 text-[10px] leading-4 text-slate-400">
@@ -1805,8 +1816,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   Ver fuente y horario
                 </summary>
                 <div className="space-y-1 pb-1 leading-4">
-                  <p className="break-words"><span className="font-bold text-slate-500">Fuente / precisión:</span> {summaryLocationEvidence}</p>
-                  <p className="break-words"><span className="font-bold text-slate-500">Hora del tap:</span> {summaryLocationTime}</p>
+                  <p className="break-words"><span className="font-bold text-slate-500">Fuente / precisión:</span> <span data-sun-server-evidence="true">{summaryLocationEvidence}</span></p>
+                  <p className="break-words"><span className="font-bold text-slate-500">Hora del tap:</span> <span data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={(!localTapTimeIso).toString()}>{summaryLocationTime}</span></p>
                   <p>Este resultado corresponde únicamente a este tag y esta lectura.</p>
                 </div>
               </details>
@@ -1855,13 +1866,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
 
             <div className="text-center w-full">
-              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
+              <span data-sun-server-evidence="true" className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
                 {tenantDisplayName}
               </span>
-              <h2 className="text-2xl font-black text-white leading-tight mt-1 tracking-tight">
+              <h2 data-sun-server-evidence="true" className="text-2xl font-black text-white leading-tight mt-1 tracking-tight">
                 {productDisplayName}
               </h2>
-              <p className="text-xs text-slate-400 mt-1 leading-normal">
+              <p data-sun-server-evidence="true" className="text-xs text-slate-400 mt-1 leading-normal">
                 {productLine || verticalLabel}
               </p>
             </div>
@@ -1870,19 +1881,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left">
               <div>
                 <span className="text-[9px] uppercase text-slate-500 block">Lote comercial</span>
-                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay || "No informado"}</span>
+                <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay || "No informado"}</span>
               </div>
               <div>
                 <span className="text-[9px] uppercase text-slate-500 block">UID del Tag</span>
-                <span className="text-xs font-mono text-slate-200 mt-0.5 block">{visibleUid}</span>
+                <span data-sun-server-evidence="true" className="text-xs font-mono text-slate-200 mt-0.5 block">{visibleUid}</span>
               </div>
               <div className="border-t border-white/5 pt-2.5">
                 <span className="text-[9px] uppercase text-slate-500 block">Origen declarado</span>
-                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{originDisplay}</span>
+                <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{originDisplay}</span>
               </div>
               <div className="border-t border-white/5 pt-2.5">
                 <span className="text-[9px] uppercase text-slate-500 block">Lectura</span>
-                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{tapDisplay}</span>
+                <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{tapDisplay}</span>
               </div>
             </div>
           </div>
@@ -1904,15 +1915,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <ol className="sun-result-journey" aria-label="Datos principales de esta lectura">
             <li>
               <span>01</span>
-              <div><small>Lote</small><strong>{batchDisplay}</strong></div>
+              <div><small>Lote</small><strong data-sun-server-evidence="true">{batchDisplay}</strong></div>
             </li>
             <li>
               <span>02</span>
-              <div><small>Origen informado</small><strong>{originDisplay}</strong></div>
+              <div><small>Origen informado</small><strong data-sun-server-evidence="true">{originDisplay}</strong></div>
             </li>
             <li>
               <span>03</span>
-              <div><small>Lectura</small><strong>{localTapTimeLabel || "Registrada ahora"}</strong></div>
+              <div><small>Lectura</small><strong data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={(!localTapTimeIso).toString()}>{localTapTimeLabel || "Registrada ahora"}</strong></div>
             </li>
           </ol>
 
@@ -1928,12 +1939,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="sun-result-card__controls">
               <div><span>Etiqueta</span><strong>{consumerSignalLabel}</strong></div>
               <div><span>Sello</span><strong>{consumerSealLabel}</strong></div>
-              <div><span>Tecnología</span><strong>{carrierLabel}</strong></div>
+              <div><span>Tecnología</span><strong data-sun-server-evidence="true">{carrierLabel}</strong></div>
               <div><span>Indicador técnico</span><strong>{trustScore == null ? "No reportado" : `${trustScore}/100`}</strong></div>
-              <div><span>Lote / batch</span><strong>{batchDisplay}</strong></div>
-              <div><span>UID del tag</span><strong>{visibleUid}</strong></div>
-              <div><span>Origen declarado</span><strong>{originDisplay}</strong></div>
-              <div><span>Lectura registrada</span><strong>{tapDisplay}</strong></div>
+              <div><span>Lote / batch</span><strong data-sun-server-evidence="true">{batchDisplay}</strong></div>
+              <div><span>UID del tag</span><strong data-sun-server-evidence="true">{visibleUid}</strong></div>
+              <div><span>Origen declarado</span><strong data-sun-server-evidence="true">{originDisplay}</strong></div>
+              <div><span>Lectura registrada</span><strong data-sun-server-evidence="true">{tapDisplay}</strong></div>
             </div>
             <p className="sun-result-card__boundary">
               {isManualOpenedState
@@ -2001,6 +2012,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             showRoute={isDemoPreview}
             distanceLabel={distanceDisplay}
             tapTimeLabel={localTapTimeLabel}
+            tapTimeIso={localTapTimeIso}
+            tapTimeZone={result.tapContext?.timezone || null}
             telemetry={{
               endpoint: telemetryEndpoint,
               enabled: canRequestBrowserLocation,
@@ -2043,15 +2056,21 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <dl className="grid gap-2 rounded-xl border border-white/5 bg-slate-950/45 p-3 text-[9px] sm:grid-cols-3">
                 <div className="min-w-0">
                   <dt className="font-bold uppercase tracking-wider text-slate-500">Fuente</dt>
-                  <dd className="mt-1 break-words font-semibold text-slate-200">{sensorSource || "No informada"}</dd>
+                  <dd data-sun-server-evidence="true" className="mt-1 break-words font-semibold text-slate-200">{sensorSource || "No informada"}</dd>
                 </div>
                 <div className="min-w-0">
                   <dt className="font-bold uppercase tracking-wider text-slate-500">Observada</dt>
-                  <dd className="mt-1 break-words font-semibold text-slate-200">{sensorObservedAt ? fmtDate(sensorObservedAt, result.tapContext?.timezone) : "No informada"}</dd>
+                  <dd
+                    data-sun-datetime={sensorObservedAt || undefined}
+                    data-sun-time-zone={result.tapContext?.timezone || undefined}
+                    className="mt-1 break-words font-semibold text-slate-200"
+                  >
+                    {sensorObservedAt ? fmtDate(sensorObservedAt, result.tapContext?.timezone, locale) : "No informada"}
+                  </dd>
                 </div>
                 <div className="min-w-0">
                   <dt className="font-bold uppercase tracking-wider text-slate-500">Modo</dt>
-                  <dd className="mt-1 break-words font-semibold text-slate-200">{sensorMode}</dd>
+                  <dd data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 break-words font-semibold text-slate-200">{sensorMode}</dd>
                 </div>
               </dl>
               <div className="grid grid-cols-2 gap-2">
@@ -2063,7 +2082,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 ].map((metric) => (
                   <div key={metric.label} className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
                     <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-500">{metric.label}</span>
-                    <span className="mt-1 block text-[11px] font-semibold text-slate-200">{metric.value}</span>
+                    <span data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 block text-[11px] font-semibold text-slate-200">{metric.value}</span>
                   </div>
                 ))}
               </div>
@@ -2089,8 +2108,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     {sensorHistory.map((reading, index) => (
                       <li key={`${reading.at || "sensor"}-${index}`} className="rounded-lg border border-white/5 bg-slate-900/70 p-2 text-[10px] text-slate-300">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <strong className="text-white">{reading.source || "Fuente no informada"}</strong>
-                          <span className="text-slate-500">{reading.at ? fmtDate(reading.at, result.tapContext?.timezone) : "Fecha no informada"}</span>
+                          <strong data-sun-server-evidence="true" className="text-white">{reading.source || "Fuente no informada"}</strong>
+                          <span
+                            data-sun-datetime={reading.at || undefined}
+                            data-sun-time-zone={result.tapContext?.timezone || undefined}
+                            className="text-slate-500"
+                          >
+                            {reading.at ? fmtDate(reading.at, result.tapContext?.timezone, locale) : "Fecha no informada"}
+                          </span>
                         </div>
                         <p className="mt-1 text-slate-400">
                           {[
@@ -2124,12 +2149,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div className="space-y-1">
                 <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
                 {dynamicTastingNotes ? (
-                  <p className="text-slate-300 italic">“{dynamicTastingNotes}”</p>
+                  <p data-sun-server-evidence="true" className="text-slate-300 italic">“{dynamicTastingNotes}”</p>
                 ) : (
                   <p className="text-[11px] leading-relaxed text-slate-500">La marca todavía no cargó una ficha sensorial para este producto.</p>
                 )}
                 {dynamicMaridaje && (
-                  <p className="pt-1 text-[10px] font-medium text-amber-300">Maridaje sugerido: {dynamicMaridaje}</p>
+                  <p className="pt-1 text-[10px] font-medium text-amber-300">Maridaje sugerido: <span data-sun-server-evidence="true">{dynamicMaridaje}</span></p>
                 )}
               </div>
 
@@ -2309,11 +2334,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div className="space-y-3 mt-4">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Identificador del chip</span>
-                  <span className="font-mono text-slate-200">{result.identity?.uid || "Oculto / No disponible"}</span>
+                  <span data-sun-server-evidence="true" className="font-mono text-slate-200">{result.identity?.uid || "Oculto / No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Lote (Batch ID)</span>
-                  <span className="font-mono text-slate-200">{technicalBid}</span>
+                  <span data-sun-server-evidence="true" className="font-mono text-slate-200">{technicalBid}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Número de lectura</span>
@@ -2321,7 +2346,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Evidencia CMAC</span>
-                  <span className="font-mono text-slate-200">{result.technical?.raw?.cmacPrefix || "No disponible"}</span>
+                  <span data-sun-server-evidence="true" className="font-mono text-slate-200">{result.technical?.raw?.cmacPrefix || "No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Registro público opcional</span>
@@ -2405,7 +2430,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               )}
 
               {carrierConsumerCopy && (
-                <div className="rounded-xl border border-cyan-500/10 bg-cyan-500/5 p-3 leading-normal text-cyan-200/90 text-[11px]">
+                <div data-sun-server-evidence="true" className="rounded-xl border border-cyan-500/10 bg-cyan-500/5 p-3 leading-normal text-cyan-200/90 text-[11px]">
                   {carrierConsumerCopy}
                 </div>
               )}
@@ -2415,5 +2440,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       </div>
     </main>
+    </SunLocaleProvider>
   );
 }

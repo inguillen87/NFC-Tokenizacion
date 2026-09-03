@@ -22,7 +22,7 @@ type ResolveSunConsumerStatusInput = {
   isSnapshotView: boolean;
 };
 
-export function resolveSunConsumerStatus(input: ResolveSunConsumerStatusInput): SunConsumerStatus {
+function resolveSunConsumerStatusEs(input: ResolveSunConsumerStatusInput): SunConsumerStatus {
   if (input.isDemoPreview) {
     return {
       tone: "opened",
@@ -150,3 +150,20 @@ export function resolveSunConsumerStatus(input: ResolveSunConsumerStatusInput): 
     sealLabel: "No informado",
   };
 }
+
+export function resolveSunConsumerStatus(
+  input: ResolveSunConsumerStatusInput,
+  locale: SunLocale = "es-AR",
+): SunConsumerStatus {
+  const status = resolveSunConsumerStatusEs(input);
+  return {
+    ...status,
+    label: translateSunUiText(status.label, locale),
+    headline: translateSunUiText(status.headline, locale),
+    copy: translateSunUiText(status.copy, locale),
+    identityLabel: translateSunUiText(status.identityLabel, locale),
+    sealLabel: translateSunUiText(status.sealLabel, locale),
+  };
+}
+import type { SunLocale } from "./sun-locale.ts";
+import { translateSunUiText } from "./sun-locale.ts";

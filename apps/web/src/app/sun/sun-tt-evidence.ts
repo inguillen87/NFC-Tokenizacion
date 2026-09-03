@@ -72,7 +72,7 @@ function reportedStateMatches(reported: SunTtEvidenceState, decoded: SunTtEviden
  * Decodes the complete two-byte NXP TagTamper status for technical display.
  * It describes the electronic TT signal only; it never asserts physical-product authenticity.
  */
-export function resolveSunTtEvidence(input: SunTtTechnicalInput): SunTtEvidence {
+function resolveSunTtEvidenceEs(input: SunTtTechnicalInput): SunTtEvidence {
   const rawHex = normalizeFullRaw(input);
   const source = String(input.source || "").trim() || null;
   const offsetNumber = input.offset === null || input.offset === undefined || input.offset === "" ? Number.NaN : Number(input.offset);
@@ -155,3 +155,22 @@ export function resolveSunTtEvidence(input: SunTtTechnicalInput): SunTtEvidence 
     ],
   };
 }
+
+export function resolveSunTtEvidence(
+  input: SunTtTechnicalInput,
+  locale: SunLocale = "es-AR",
+): SunTtEvidence {
+  const evidence = resolveSunTtEvidenceEs(input);
+  return {
+    ...evidence,
+    label: translateSunUiText(evidence.label, locale),
+    summary: translateSunUiText(evidence.summary, locale),
+    bytes: evidence.bytes.map((byte) => ({
+      ...byte,
+      title: translateSunUiText(byte.title, locale),
+      label: translateSunUiText(byte.label, locale),
+    })),
+  };
+}
+import type { SunLocale } from "./sun-locale.ts";
+import { translateSunUiText } from "./sun-locale.ts";

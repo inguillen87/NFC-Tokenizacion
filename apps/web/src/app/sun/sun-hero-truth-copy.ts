@@ -13,7 +13,7 @@ export type SunHeroTraceCopy = {
   routeEvidence: string;
 };
 
-export function getSunHeroTraceCopy(isDemoPreview: boolean, state: SunHeroTraceState): SunHeroTraceCopy {
+function getSunHeroTraceCopyEs(isDemoPreview: boolean, state: SunHeroTraceState): SunHeroTraceCopy {
   if (isDemoPreview) {
     return {
       originSublabel: "Origen de muestra",
@@ -44,3 +44,16 @@ export function getSunHeroTraceCopy(isDemoPreview: boolean, state: SunHeroTraceS
     routeEvidence: "Segmento calculado entre registros; no prueba el recorrido físico",
   };
 }
+
+export function getSunHeroTraceCopy(
+  isDemoPreview: boolean,
+  state: SunHeroTraceState,
+  locale: SunLocale = "es-AR",
+): SunHeroTraceCopy {
+  const copy = getSunHeroTraceCopyEs(isDemoPreview, state);
+  return Object.fromEntries(
+    Object.entries(copy).map(([key, value]) => [key, translateSunUiText(value, locale)]),
+  ) as SunHeroTraceCopy;
+}
+import type { SunLocale } from "./sun-locale.ts";
+import { translateSunUiText } from "./sun-locale.ts";

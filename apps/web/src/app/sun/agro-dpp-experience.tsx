@@ -21,6 +21,8 @@ import {
   resolveAgroSensitiveActionGate,
   resolveAgroTrustCopy,
 } from "./agro-dpp-model";
+import { useSunLocale } from "./sun-locale-provider";
+import type { SunLocale } from "./sun-locale";
 
 type TimelineItem = {
   at?: string | null;
@@ -52,11 +54,11 @@ function visible(value: string | null | undefined, fallback = "No informado") {
   return value?.trim() || fallback;
 }
 
-function localDate(value: string | null | undefined) {
+function localDate(value: string | null | undefined, locale: SunLocale) {
   if (!value) return "No informada";
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
   return Number.isFinite(parsed)
-    ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(parsed))
+    ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(parsed))
     : value;
 }
 
@@ -90,12 +92,13 @@ function Spec({ label, value }: { label: string; value: string | null | undefine
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-3">
       <dt className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm font-bold leading-5 text-slate-100">{visible(value)}</dd>
+      <dd data-sun-server-evidence="true" className="mt-1 text-sm font-bold leading-5 text-slate-100">{visible(value)}</dd>
     </div>
   );
 }
 
 export function AgroDppExperience(props: AgroDppExperienceProps) {
+  const { locale } = useSunLocale();
   const [online, setOnline] = useState(true);
   const [action, setAction] = useState<ActionState>({ kind: "idle" });
   const [ppeOpen, setPpeOpen] = useState(false);
@@ -206,8 +209,8 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
           <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-300/10 text-emerald-200"><Sprout aria-hidden="true" size={24} /></span>
           <div className="min-w-0">
             <span className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Pasaporte digital agro</span>
-            <h1 className="mt-1 text-2xl font-black leading-tight text-white">{profile.productName || props.productName}</h1>
-            <p className="mt-1 text-sm text-slate-300">{profile.brand || props.brand}</p>
+            <h1 data-sun-server-evidence="true" className="mt-1 text-2xl font-black leading-tight text-white">{profile.productName || props.productName}</h1>
+            <p data-sun-server-evidence="true" className="mt-1 text-sm text-slate-300">{profile.brand || props.brand}</p>
           </div>
         </div>
         <dl className="mt-5 grid grid-cols-2 gap-2">
@@ -225,8 +228,8 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
             : <ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0 text-cyan-200" size={22} />}
           <div>
             <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Confianza</span>
-            <h2 className="mt-1 text-lg font-black text-white">{trust.title}</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-300">{trust.summary}</p>
+            <h2 data-sun-server-evidence={(!props.isQr && online).toString()} className="mt-1 text-lg font-black text-white">{trust.title}</h2>
+            <p data-sun-server-evidence={(!props.isQr && online).toString()} className="mt-1 text-sm leading-6 text-slate-300">{trust.summary}</p>
             <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-[0.12em]">
               <code className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-slate-200">{trust.code}</code>
               <code className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-slate-300">{trust.authenticationLevel}</code>
@@ -240,8 +243,8 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
         <dl className="mt-4 grid grid-cols-2 gap-2">
           <Spec label="Lote" value={profile.batchLot || props.bid} />
           <Spec label="Registro" value={profile.registrationNumber} />
-          <Spec label="Producción" value={localDate(profile.productionDate)} />
-          <Spec label="Vencimiento" value={localDate(profile.expirationDate)} />
+          <Spec label="Producción" value={localDate(profile.productionDate, locale)} />
+          <Spec label="Vencimiento" value={localDate(profile.expirationDate, locale)} />
           <Spec label="Distribuidor" value={profile.distributor} />
           <Spec label="Canal autorizado" value={profile.authorizedChannel} />
         </dl>
@@ -278,7 +281,7 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
 
       <section className="rounded-3xl border border-white/10 bg-slate-950/80 p-5">
         <div className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="text-cyan-300" size={20} /><h2 className="font-black text-white">Procedencia y eventos</h2></div>
-        {props.timeline.length ? <ol className="mt-4 space-y-3">{props.timeline.slice(0, 6).map((item, index) => <li key={`${item.at || "event"}-${index}`} className="border-l border-cyan-300/30 pl-4"><strong className="block text-sm text-slate-100">{visible(item.result, "Evento registrado")}</strong><span className="text-xs text-slate-500">{item.at ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.at)) : "Fecha no disponible"}{item.city || item.country ? ` · ${[item.city, item.country].filter(Boolean).join(", ")}` : ""}</span></li>)}</ol> : <p className="mt-3 text-sm text-slate-500">No hay eventos públicos adicionales para mostrar.</p>}
+        {props.timeline.length ? <ol className="mt-4 space-y-3">{props.timeline.slice(0, 6).map((item, index) => <li key={`${item.at || "event"}-${index}`} className="border-l border-cyan-300/30 pl-4"><strong className="block text-sm text-slate-100">{visible(item.result, "Evento registrado")}</strong><span className="text-xs text-slate-500">{item.at ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.at)) : "Fecha no disponible"}{item.city || item.country ? ` · ${[item.city, item.country].filter(Boolean).join(", ")}` : ""}</span></li>)}</ol> : <p className="mt-3 text-sm text-slate-500">No hay eventos públicos adicionales para mostrar.</p>}
         <button type="button" onClick={() => void runRecordedAction({ eventType: "PROBLEM_REPORTED", placement: "problem_report", doneMessage: "Se registró el pedido de revisión." })} className="mt-4 min-h-11 w-full rounded-2xl border border-rose-300/20 bg-rose-300/[0.07] px-4 text-sm font-black text-rose-100">Reportar un problema</button>
       </section>
 

@@ -2,6 +2,7 @@
 
 import { Activity, LayoutGrid, MapPin, Sparkles, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useSunLocale } from "./sun-locale-provider";
 
 type SunSectionId = "sun-summary" | "agro-dpp" | "sun-origin" | "sun-condition" | "sun-services";
 
@@ -40,6 +41,7 @@ function SunSectionLinks({
   disabled?: boolean;
   onNavigate: (sectionId: SunSectionId) => void;
 }) {
+  const { text } = useSunLocale();
   return (
     <div className="grid grid-cols-4 gap-1.5">
       {items.map(({ id, label, icon: Icon }) => {
@@ -65,7 +67,7 @@ function SunSectionLinks({
               strokeWidth={1.8}
               aria-hidden="true"
             />
-            <span className="whitespace-nowrap">{label}</span>
+            <span className="whitespace-nowrap">{text(label)}</span>
           </a>
         );
       })}
@@ -74,6 +76,7 @@ function SunSectionLinks({
 }
 
 export function SunSectionNav({ variant = "default" }: { variant?: "default" | "agro" }) {
+  const { text } = useSunLocale();
   const items = variant === "agro" ? sunAgroSectionNavItems : sunSectionNavItems;
   const [activeSection, setActiveSection] = useState<SunSectionId>(items[0].id);
   const [showMobileNav, setShowMobileNav] = useState(false);
@@ -186,7 +189,7 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
   return (
     <>
       <nav
-        aria-label="Secciones del producto"
+        aria-label={text("Secciones del producto")}
         className="sticky top-4 z-20 hidden w-full rounded-2xl border border-white/10 bg-slate-950/80 p-2 shadow-[0_16px_50px_rgba(0,0,0,0.32)] backdrop-blur-xl lg:block"
       >
         <SunSectionLinks activeSection={activeSection} items={items} onNavigate={onNavigate} />
@@ -194,7 +197,7 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
 
       <nav
         ref={mobileDockRef}
-        aria-label="Secciones del producto"
+        aria-label={text("Secciones del producto")}
         aria-hidden={!isMobileDockVisible}
         inert={!isMobileDockVisible}
         className={`sun-mobile-dock fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-40 mx-auto max-w-[430px] rounded-2xl border border-white/10 bg-slate-950/90 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-[opacity,transform] duration-200 lg:hidden ${

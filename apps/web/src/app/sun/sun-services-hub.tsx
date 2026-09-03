@@ -1,3 +1,5 @@
+"use client";
+
 import {
   AlertTriangle,
   BellRing,
@@ -17,6 +19,7 @@ import {
   type SunServicesPolicyAvailability,
   type SunServicesRiskState,
 } from "./sun-services-hub-model";
+import { useSunLocale } from "./sun-locale-provider";
 
 export type SunPublishedPromotion = {
   title: string;
@@ -180,8 +183,9 @@ export function SunServicesHub({
   locale,
   demoIntent,
 }: SunServicesHubProps) {
+  const { locale: activeLocale, text } = useSunLocale();
   const isDemo = freshnessState === "demo";
-  const demoCopy = DEMO_COPY[locale];
+  const demoCopy = DEMO_COPY[activeLocale || locale];
   const promotionPublished = typeof promotion?.title === "string" && Boolean(promotion.title.trim());
   const available = resolveSunServicesHubAvailability({
     riskState,
@@ -279,19 +283,19 @@ export function SunServicesHub({
           </span>
           <div className="min-w-0">
             <span className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-200">
-              {promotion?.sourceLabel || "Beneficios publicados por la marca"}
+              {promotion?.sourceLabel ? <span data-sun-server-evidence={(!isDemo).toString()}>{promotion.sourceLabel}</span> : "Beneficios publicados por la marca"}
             </span>
             {!promotionPublished ? (
               <p className="mt-1 text-sm font-semibold leading-5 text-slate-300">La marca no publicó una promoción para este producto</p>
             ) : available.promotionVisible ? (
               <>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <h3 className="text-sm font-black text-white">{promotion?.title}</h3>
-                  {promotion?.state ? <span className="rounded-full border border-white/10 bg-slate-950/55 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-300">{promotion.state}</span> : null}
+                  <h3 data-sun-server-evidence={(!isDemo).toString()} className="text-sm font-black text-white">{promotion?.title}</h3>
+                  {promotion?.state ? <span data-sun-server-evidence={(!isDemo).toString()} className="rounded-full border border-white/10 bg-slate-950/55 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-300">{promotion.state}</span> : null}
                   {available.promotionDegraded ? <span className="rounded-full border border-amber-300/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-100">Revisar lectura</span> : null}
                 </div>
-                {promotion?.description ? <p className="mt-1 text-xs leading-5 text-slate-300">{promotion.description}</p> : null}
-                {publishedPoints ? <p className="mt-2 text-[10px] font-bold text-violet-200">{publishedPoints.toLocaleString("es-AR")} puntos informados por la marca · sujetos a sus condiciones</p> : null}
+                {promotion?.description ? <p data-sun-server-evidence={(!isDemo).toString()} className="mt-1 text-xs leading-5 text-slate-300">{promotion.description}</p> : null}
+                {publishedPoints ? <p className="mt-2 text-[10px] font-bold text-violet-200">{text(`${publishedPoints.toLocaleString(activeLocale || locale)} puntos informados por la marca · sujetos a sus condiciones`)}</p> : null}
               </>
             ) : (
               <p className="mt-1 text-sm font-semibold leading-5 text-slate-300">
