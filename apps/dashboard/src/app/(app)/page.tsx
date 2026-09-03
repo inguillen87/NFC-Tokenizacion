@@ -1,4 +1,4 @@
-import { classifyRealtimeEventSource, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../../lib/realtime-feed";
+import { classifyRealtimeEventSource, isRealtimeRisk, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../../lib/realtime-feed";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
@@ -306,8 +306,9 @@ export default async function DashboardHome() {
     };
   });
 
-  const successfulTaps = scopedLiveEvents.filter((event) => String(event.result || "").toUpperCase() === "VALID").length;
-  const failedTaps = scopedLiveEvents.length - successfulTaps;
+  const authenticatedInteractions = initialRealtimeEvents.filter((event) => event.authenticationVerified === true).length;
+  const riskInteractions = initialRealtimeEvents.filter((event) => isRealtimeRisk(event.verdict, event.reason)).length;
+  const activityTotal = initialRealtimeEvents.length;
   const tokenizationByStatus: Record<string, number> = {};
   for (const row of scopedTokenizationRows) {
     const status = String(row.status || "unknown").toLowerCase();
@@ -409,8 +410,9 @@ export default async function DashboardHome() {
       tokenizationDataSource={tokenizationRowsResult.source}
       tokenizationAvailability={tokenizationRowsResult.availability}
       tokenizationAvailabilityDetail={tokenizationRowsResult.detail}
-      successfulTaps={successfulTaps}
-      failedTaps={failedTaps}
+      activityTotal={activityTotal}
+      authenticatedInteractions={authenticatedInteractions}
+      riskInteractions={riskInteractions}
       tokenizationByStatus={tokenizationByStatus}
       scopedTokenizationRows={scopedTokenizationRows}
       demoPacks={demoPacks}

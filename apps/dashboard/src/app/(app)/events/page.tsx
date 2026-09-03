@@ -7,13 +7,23 @@ import { getDashboardI18n } from "../../../lib/locale";
 import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { isRealtimeRisk } from "../../../lib/realtime-feed";
+import { normalizeTenantTapRealtimeEvent } from "@product/core";
 
 type EventRow = {
   id: number;
   tenantSlug: string;
   bid: string;
   uidHex: string;
+  tenantId?: string | null;
+  batchId?: string | null;
+  tagId?: string | null;
   result: string;
+  verdict?: string | null;
+  riskLevel?: string | null;
+  eventType?: string | null;
+  cmacOk?: boolean | null;
+  allowlisted?: boolean | null;
   reason: string;
   source: string;
   readCounter: number;
@@ -86,15 +96,26 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
 
   const eventsResult = await getLiveEvents(adminContext, params);
   const liveRows = eventsResult.rows;
-  const validCount = liveRows.filter((item) => item.result === "VALID").length;
-  const riskCount = liveRows.filter((item) => item.result !== "VALID").length;
+  const classifiedRows = liveRows.map((row) => ({
+    raw: row,
+    event: normalizeTenantTapRealtimeEvent(row as unknown as Record<string, unknown>),
+  }));
+  const productRecognizedCount = classifiedRows.filter(({ event }) => event.productIdentityRecognized).length;
+  const authenticationVerifiedCount = classifiedRows.filter(({ event }) => event.authenticationVerified).length;
+  const riskCount = classifiedRows.filter(({ event }) => isRealtimeRisk(event.verdict, event.reason)).length;
 
-  const rows = liveRows.map((row) => ({
+  const rows = classifiedRows.map(({ raw: row, event }) => ({
     tenant: row.tenantSlug || "-",
     uid: row.uidHex,
     bid: row.bid,
     result: row.result,
-    status: row.result === "VALID" ? "active" : "risk",
+    status: event.authenticationVerified
+      ? "Autenticación verificada"
+      : isRealtimeRisk(event.verdict, event.reason)
+        ? "Riesgo explícito"
+        : event.productIdentityRecognized
+          ? "Producto reconocido"
+          : "Actividad",
     geo: `${row.location.city}, ${row.location.country}`,
     device: `${row.device.os} · ${row.device.browser}`,
     deviceType: row.device.deviceType,
@@ -138,8 +159,9 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         </form>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
           <StatusChip label={eventsResult.availability === "ready" ? `Events ${liveRows.length}` : "Events no disponibles"} tone="neutral" />
-          {eventsResult.availability === "ready" ? <StatusChip label={`Valid ${validCount}`} tone="good" /> : null}
-          {eventsResult.availability === "ready" ? <StatusChip label={`Con alerta ${riskCount}`} tone="risk" /> : null}
+          {eventsResult.availability === "ready" ? <StatusChip label={`Producto reconocido ${productRecognizedCount}`} tone="neutral" /> : null}
+          {eventsResult.availability === "ready" ? <StatusChip label={`Autenticación verificada ${authenticationVerifiedCount}`} tone="good" /> : null}
+          {eventsResult.availability === "ready" ? <StatusChip label={`Riesgo explícito ${riskCount}`} tone="risk" /> : null}
           <StatusChip label={`Scope ${tenantScope || "global"}`} tone="neutral" />
         </div>
       </Card>
@@ -148,7 +170,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         title={copy.tables.events.title}
         columns={[
           ...(!isTenantAdmin ? [{ key: "tenant", label: copy.tables.events.tenant }] : []),
-          { key: "uid", label: "UID" },
+          { key: "uid", label: "UID producto" },
           { key: "bid", label: "BID" },
           { key: "result", label: copy.tables.events.result },
           { key: "status", label: copy.tables.events.status },

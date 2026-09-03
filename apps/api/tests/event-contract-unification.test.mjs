@@ -111,10 +111,12 @@ test("overview, tenant stats and SSE apply the same adverse-first taxonomy", asy
   for (const source of [overview, tenants]) {
     assert.match(source, /EVENT_TAXONOMY_VERSION/);
     assert.match(source, /WITH (?:scoped_batches AS MATERIALIZED|classified AS) \(/);
-    assert.ok(source.indexOf("REPLAY_SUSPECT") < source.indexOf("LOWER(COALESCE(e.verdict"));
-    assert.ok(source.indexOf("TAMPER_RISK") < source.indexOf("LOWER(COALESCE(e.verdict"));
-    assert.ok(source.indexOf("REVOKED") < source.indexOf("LOWER(COALESCE(e.verdict"));
-    assert.ok(source.indexOf("'INVALID','TAP_INVALID'") < source.indexOf("LOWER(COALESCE(e.verdict"));
+    const canonicalFallback = source.indexOf("IN ('valid','invalid'");
+    assert.ok(source.indexOf("REPLAY_SUSPECT") < canonicalFallback);
+    assert.ok(source.indexOf("TAMPER_RISK") < canonicalFallback);
+    assert.ok(source.indexOf("REVOKED") < canonicalFallback);
+    assert.ok(source.indexOf("'INVALID','TAP_INVALID'") < canonicalFallback);
+    assert.ok(source.indexOf("identified_unverified") < source.indexOf("NOT_REGISTERED"));
     assert.match(source, /VALID_%/);
   }
 

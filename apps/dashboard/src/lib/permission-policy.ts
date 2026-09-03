@@ -189,12 +189,17 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     normalizedMethod === "GET"
     && [
       "consumer-network/overview",
-      "consumer-network/members",
       "consumer-network/products",
       "consumer-network/taps",
     ].includes(normalizedPath)
   ) {
     return "crm:read";
+  }
+  if (normalizedMethod === "GET" && normalizedPath === "consumer-network/members") {
+    return "consumers.read_pii";
+  }
+  if (normalizedMethod === "GET" && normalizedPath === "campaigns/audience") {
+    return "campaigns:read";
   }
   if (normalizedPath === "consumer-network/offers") {
     return normalizedMethod === "GET" ? "marketplace:read" : "marketplace:write";

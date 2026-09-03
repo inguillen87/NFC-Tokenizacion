@@ -10,7 +10,6 @@ import {
   Crosshair,
   Download,
   Expand,
-  Filter,
   Gift,
   Globe,
   Layers,
@@ -37,6 +36,7 @@ import { IncidentEventDrawer } from "./incident-event-drawer";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { exportToCsv } from "../lib/export-utils";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
+import { classifyLocationProvenance } from "../lib/location-provenance";
 import {
   classifyRealtimeVerdict,
   isRealtimeRisk,
@@ -79,11 +79,10 @@ type MarketOpportunity = {
   city: string;
   country: string;
   taps: number;
-  validRate: number;
+  authenticationRate: number;
   gpsRate: number;
   riskRate: number;
-  crmReady: number;
-  audience: number;
+  geoCommercialSignals: number;
   score: number;
   channel: string;
   offer: string;
@@ -147,9 +146,7 @@ type CommercialContext = {
 };
 
 function isClientReportedGps(value?: string | null) {
-  const source = String(value || "").trim().toLowerCase();
-  const approximate = source.includes("approximate") || source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
-  return !approximate && source.includes("gps");
+  return classifyLocationProvenance(value) === "consented_gps";
 }
 
 const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> = {
@@ -158,17 +155,17 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
     panelTitle: "IA de cercanía comercial",
     panelSubtitle: "reglas sobre lecturas visibles para priorizar ciudad, club, stock y canje",
     headline: "Próxima acción comercial",
-    noData: "Cuando entren lecturas válidas, la consola prioriza ciudad, club, voucher, stock y punto de canje.",
+    noData: "Cuando entren productos reconocidos, actores conocidos y consentimientos por canal, la consola prioriza ciudad, club, voucher, stock y punto de canje.",
     playbooks: [
       {
         eyebrow: "Señal",
         title: "Mensaje NFC validado",
-        body: "nexID validó el mensaje NFC/QR y lo relacionó con lote y producto. La ciudad, coordenada y hora son datos reportados por el evento; no prueban la ubicación física de la unidad.",
+        body: "nexID separa el producto QR/NFC estático reconocido de la autenticación SUN verificada. La ciudad, coordenada y hora son datos reportados por el evento; no prueban la ubicación física de la unidad.",
       },
       {
         eyebrow: "Zona",
         title: "Actividad por ciudad",
-        body: "El CRM muestra dónde hay lecturas válidas, audiencia accionable y actividad suficiente para reponer o pautar.",
+        body: "El CRM muestra actividad, producto reconocido, autenticación verificada, actor conocido y consentimiento por canal como métricas independientes.",
       },
       {
         eyebrow: "Acción",
@@ -182,17 +179,17 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
     panelTitle: "IA de cercanía comercial",
     panelSubtitle: "reglas sobre lecturas visibles para priorizar canal, territorio, stock y soporte",
     headline: "Zona agro accionable",
-    noData: "Cuando entren lecturas válidas, la consola prioriza lote, canal, región, uso responsable y soporte técnico.",
+    noData: "Cuando entren productos reconocidos, actores conocidos y consentimientos por canal, la consola prioriza lote, canal, región, uso responsable y soporte técnico.",
     playbooks: [
       {
         eyebrow: "Señal",
-        title: "Identidad NFC validada",
-        body: "nexID validó la identidad o el mensaje NFC/QR asociado al lote y canal. La ubicación mostrada fue reportada por el evento y no certifica el recorrido físico de la unidad.",
+        title: "Producto NFC reconocido",
+        body: "nexID distingue producto registrado de autenticación criptográfica SUN. La ubicación mostrada fue reportada por el evento y no certifica el recorrido físico de la unidad.",
       },
       {
         eyebrow: "Zona",
         title: "Canal y territorio",
-        body: "El CRM muestra actividad por zona, GPS bajo, riesgo, canal gris y audiencia lista para soporte o campaña.",
+        body: "El CRM muestra actividad por zona, GPS bajo, riesgo e interacciones elegibles por canal para soporte o campaña.",
       },
       {
         eyebrow: "Acción",
@@ -206,7 +203,7 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
     panelTitle: "IA de cercanía comercial",
     panelSubtitle: "reglas sobre lecturas visibles para priorizar zona, segmento, canal y acción",
     headline: "Dónde actuar ahora",
-    noData: "Cuando entren lecturas válidas, la consola prioriza ciudad, segmento, canal y acción comercial.",
+    noData: "Cuando entren productos reconocidos, actores conocidos y consentimientos por canal, la consola prioriza ciudad, segmento, canal y acción comercial.",
     playbooks: [
       {
         eyebrow: "Señal",
@@ -216,7 +213,7 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
       {
         eyebrow: "Zona",
         title: "Actividad por zona",
-        body: "El CRM muestra ciudades con actividad, riesgo, lectura válida y audiencia accionable.",
+        body: "El CRM muestra ciudades con actividad, riesgo, producto reconocido e interacciones consentidas accionables.",
       },
       {
         eyebrow: "Acción",
@@ -389,7 +386,7 @@ function locationSourceLabel(row: TenantTapRealtimeEvent) {
   const source = String(row.locationSource || "").toLowerCase();
   const coordinate = strictCoordinatePair(row.lat, row.lng);
   if (isClientReportedGps(source)) return coordinate
-    ? (row.locationAccuracyM ? `GPS reportado por cliente (+/-${Math.round(row.locationAccuracyM)}m); no verificacion independiente` : "GPS reportado por cliente; no verificacion independiente")
+    ? (row.locationAccuracyM ? `GPS reportado por dispositivo (+/-${Math.round(row.locationAccuracyM)}m); no verificacion independiente` : "GPS reportado por dispositivo; no verificacion independiente")
     : "GPS reportado sin coordenada valida; no verificacion independiente";
   if (source === "ip_geo") return coordinate ? "IP aproximada" : "IP sin coordenada válida; ciudad estimada";
   if (source.includes("error") || source.includes("denied")) return coordinate ? "Coordenada reportada; GPS no autorizado" : "GPS no autorizado; ciudad estimada";
@@ -398,6 +395,23 @@ function locationSourceLabel(row: TenantTapRealtimeEvent) {
 
 function deviceSummary(row: TenantTapRealtimeEvent) {
   return [row.deviceLabel, row.deviceOs, row.deviceType].map((item) => String(item || "").trim()).filter(Boolean).join(" · ") || "Dispositivo sin clasificar";
+}
+
+const CRM_ACTIONABLE_INTERACTION_TYPES = new Set(["TAP_VALID", "PROVENANCE_VIEWED"]);
+
+function isCommercialActivitySignal(row: TenantTapRealtimeEvent) {
+  return row.productIdentityRecognized === true
+    && row.interactionClass !== "security_signal"
+    && row.knownActor === true
+    && row.commercialConsentGranted === true
+    && row.commercialConsentChannels.length > 0
+    && CRM_ACTIONABLE_INTERACTION_TYPES.has(String(row.eventType || "").toUpperCase());
+}
+
+function isGeoOpportunitySignal(row: TenantTapRealtimeEvent) {
+  return isCommercialActivitySignal(row)
+    && isClientReportedGps(row.locationSource)
+    && strictCoordinatePair(row.lat, row.lng) != null;
 }
 
 function buildHotspots(rows: TenantTapRealtimeEvent[]) {
@@ -420,7 +434,7 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
     const country = String(row.country || "--");
     const key = `${city.toLowerCase()}|${country}`;
     const verdictBucket = classifyRealtimeVerdict(row.verdict, row.reason);
-    const valid = verdictBucket === "valid";
+    const valid = row.authenticationVerified === true;
     const gps = isClientReportedGps(row.locationSource);
     const lastSeenMs = safeDate(row.occurredAt);
     const current = buckets.get(key) || {
@@ -462,39 +476,34 @@ function buildMarketOpportunities(
       const country = String(row.country || "--");
       return city === hotspot.city && country === hotspot.country;
     });
-    const validRate = hotspot.taps ? (hotspot.valid / hotspot.taps) * 100 : 0;
+    const authenticationRate = hotspot.taps ? (hotspot.valid / hotspot.taps) * 100 : 0;
     const gpsRate = hotspot.taps ? (hotspot.gps / hotspot.taps) * 100 : 0;
     const riskRate = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
-    const crmReady = new Set(
-      cityRows
-        .filter((row) => classifyRealtimeVerdict(row.verdict, row.reason) === "valid")
-        .map((row) => String(row.uidMasked || "").trim())
-        .filter((uid) => uid && uid !== "N/A"),
-    ).size;
-    const audience = crmReady;
+    const geoCommercialSignals = cityRows.filter(isGeoOpportunitySignal).length;
+    const consentChannels = [...new Set(cityRows
+      .filter(isGeoOpportunitySignal)
+      .flatMap((row) => row.commercialConsentChannels))];
+    const channel = consentChannels
+      .map((value) => value === "whatsapp" ? "WhatsApp" : value === "phone" ? "Teléfono" : value === "email" ? "Email" : value)
+      .join(" + ") || "Sin canal consentido";
 
-    let channel = "WhatsApp + voucher";
     let offer = "15% club post-tap";
-    let playbook = "Enviar beneficio a UIDs válidos y medir canje por ciudad.";
-    let reason = "Señal válida suficiente para probar fidelización.";
+    let playbook = "Enviar beneficio sólo por canales con consentimiento vigente y medir canje por ciudad.";
+    let reason = "Hay interacciones asociadas a producto, actor conocido y canal consentido para evaluar fidelización.";
 
     if (riskRate > 12) {
-      channel = "Riesgo + retención";
       offer = "Beneficio con validación";
-      playbook = "Separar lecturas sospechosas, auditar dispositivo y mandar beneficio solo a válidos.";
+      playbook = "Separar lecturas sospechosas y resolver cualquier destinatario mediante el endpoint server-side de audiencia, alcance y permisos.";
       reason = "La zona tiene actividad, pero necesita control antifraude antes de escalar.";
     } else if (gpsRate < 60) {
-      channel = "Portal + WhatsApp";
       offer = "Bono por activar GPS";
       playbook = "Pedir opt-in de portal y mejorar precision antes de pauta paga.";
       reason = "Hay actividad, pero falta ubicación fina para cercanía comercial.";
     } else if (hotspot.taps >= 10) {
-      channel = "Instagram + WhatsApp";
       offer = "Drop local 2x1";
       playbook = "Activar pauta local, historias con QR/NFC y cupo limitado por barrio.";
       reason = "Volumen suficiente para campaña geolocalizada.";
-    } else if (validRate >= 90) {
-      channel = "Voucher premium";
+    } else if (authenticationRate >= 90) {
       offer = "Early access club";
       playbook = "Premiar primeros compradores y pedir referido en portal de usuario.";
       reason = "Pocas lecturas, pero de alta calidad comercial.";
@@ -502,7 +511,7 @@ function buildMarketOpportunities(
 
     const score = Math.max(
       0,
-      Math.min(99, Math.round(validRate * 0.42 + gpsRate * 0.22 + Math.min(hotspot.taps * 7, 28) + crmReady * 2 - riskRate * 0.45)),
+      Math.min(99, Math.round(authenticationRate * 0.42 + gpsRate * 0.22 + Math.min(hotspot.taps * 7, 28) + geoCommercialSignals * 2 - riskRate * 0.45)),
     );
 
     return {
@@ -510,11 +519,10 @@ function buildMarketOpportunities(
       city: hotspot.city,
       country: hotspot.country,
       taps: hotspot.taps,
-      validRate,
+      authenticationRate,
       gpsRate,
       riskRate,
-      crmReady,
-      audience,
+      geoCommercialSignals,
       score,
       channel,
       offer,
@@ -522,7 +530,10 @@ function buildMarketOpportunities(
       reason,
       campaignName: `Campaña CRM ${index + 1}: ${hotspot.city}`,
     };
-  }).sort((a, b) => b.score - a.score || b.taps - a.taps).slice(0, 5);
+  })
+    .filter((opportunity) => opportunity.geoCommercialSignals > 0)
+    .sort((a, b) => b.score - a.score || b.taps - a.taps)
+    .slice(0, 5);
 }
 
 function resolveCommercialContext(
@@ -547,7 +558,7 @@ function resolveCommercialContext(
 
 function commercialRecommendation(context: CommercialContext, opportunity: MarketOpportunity) {
   if (context.key === "wine") {
-    return `Activar ${opportunity.offer} en ${opportunity.city}: cata, visita o beneficio para UIDs válidos. Reponer producto, habilitar QR/NFC de canje y pauta local donde ya hay ${opportunity.taps} lecturas.`;
+    return `Activar ${opportunity.offer} en ${opportunity.city}: cata, visita o beneficio sólo por canales con consentimiento vigente. Reponer producto, habilitar QR/NFC de canje y pauta local donde ya hay ${opportunity.taps} interacciones.`;
   }
   if (context.key === "agro") {
     return `Priorizar ${opportunity.city}: revisar canal, disponibilidad de lote, soporte técnico y uso responsable. Activar comunicación por ${opportunity.channel} donde ya hay ${opportunity.taps} lecturas.`;
@@ -706,7 +717,6 @@ export function ExecutiveRealtimeCrm({
   const canWriteIncidents = account.role === "super-admin"
     ? !dashboardPermissionDenied(account.deniedPermissions, "incidents:write")
     : dashboardPermissionMatches(account.permissions, "incidents:write", account.deniedPermissions);
-  const lastEventIdRef = useRef("");
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -859,11 +869,15 @@ export function ExecutiveRealtimeCrm({
     setActiveDataSource(initialDataSource);
     setDataAvailability(initialAvailability);
     setAvailabilityDetail(initialAvailabilityDetail);
+    // Start with the durable path as a safety net. Only a tenant-scoped SSE
+    // snapshot or tap event may retire it; open/heartbeat are transport-only.
+    startPollingFallback();
     const source = new EventSource(streamUrl.toString());
     source.onopen = () => {
       setConnectionAttempted(true);
       setConnected(true);
-      stopPollingFallback();
+      // An open TCP/SSE channel is not proof that the scoped dataset arrived.
+      // Keep persisted polling alive until a snapshot or event confirms data.
     };
     source.onerror = () => {
       setConnectionAttempted(true);
@@ -905,9 +919,8 @@ export function ExecutiveRealtimeCrm({
           return;
         }
         const tapPayload = payload as TenantTapRealtimeEvent;
-        const incomingId = String(tapPayload.eventId || "");
-        if (incomingId && incomingId === lastEventIdRef.current) return;
-        lastEventIdRef.current = incomingId;
+        // A durable event can be re-projected when actor association or consent
+        // changes. mergeRealtimeEvents replaces that id without adding activity.
         setEvents((prev) => mergeRealtimeEvents(prev, tapPayload, 50));
         setActiveDataSource(streamSource === "all" ? "mixed" : streamSource);
         setDataAvailability("ready");
@@ -915,6 +928,7 @@ export function ExecutiveRealtimeCrm({
         setStreamWarning(null);
         setStreamConfirmed(true);
         setLastUpdateAt(new Date().toISOString());
+        stopPollingFallback();
       } catch {
         // keep previous state
       }
@@ -927,7 +941,8 @@ export function ExecutiveRealtimeCrm({
         setLastUpdateAt(heartbeatAt ? new Date(heartbeatAt).toISOString() : new Date().toISOString());
         setConnectionAttempted(true);
         setConnected(true);
-        stopPollingFallback();
+        // Heartbeats prove transport liveness only. They cannot replace a
+        // tenant-scoped snapshot or persisted event confirmation.
       } catch {
         setLastUpdateAt(new Date().toISOString());
       }
@@ -982,6 +997,14 @@ export function ExecutiveRealtimeCrm({
     },
     [effectiveSelectedTenant, events, timeRange],
   );
+  const commercialActivityEvents = useMemo(
+    () => visibleEvents.filter(isCommercialActivitySignal),
+    [visibleEvents],
+  );
+  const geoOpportunityEvents = useMemo(
+    () => visibleEvents.filter(isGeoOpportunitySignal),
+    [visibleEvents],
+  );
 
   const consoleTimezone = useMemo(
     () => resolveConsoleTimezone(visibleEvents, effectiveSelectedTenant, tenantScope),
@@ -1002,29 +1025,39 @@ export function ExecutiveRealtimeCrm({
 
   const metrics = useMemo(() => {
     const total = visibleEvents.length;
-    const valid = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict, event.reason) === "valid").length;
+    const productRecognized = visibleEvents.filter((event) => event.productIdentityRecognized === true).length;
+    const authenticated = visibleEvents.filter((event) => event.authenticationVerified === true).length;
+    const knownActors = visibleEvents.filter((event) => event.knownActor === true).length;
+    const channelConsented = visibleEvents.filter((event) => event.knownActor === true
+      && event.commercialConsentGranted === true
+      && event.commercialConsentChannels.length > 0).length;
     const risk = visibleEvents.filter((event) => isRealtimeRisk(event.verdict, event.reason)).length;
-    const unknown = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict, event.reason) === "unknown").length;
+    const unknown = visibleEvents.filter((event) => event.interactionClass === "unclassified_activity").length;
     const gps = visibleEvents.filter((event) => isClientReportedGps(event.locationSource) && strictCoordinatePair(event.lat, event.lng) != null).length;
-    const actionable = visibleEvents.filter((event) => {
-      const hasLocation = strictCoordinatePair(event.lat, event.lng) != null;
-      return classifyRealtimeVerdict(event.verdict, event.reason) === "valid" && hasLocation && Boolean(event.uidMasked);
-    }).length;
-    const offerReady = buildHotspots(visibleEvents).filter((item) => item.valid > 0).length;
+    const commercialSignals = commercialActivityEvents.length;
+    const geoCommercialSignals = geoOpportunityEvents.length;
+    const offerReady = buildMarketOpportunities(buildHotspots(visibleEvents), visibleEvents).filter((item) => item.geoCommercialSignals > 0).length;
     return {
       total,
-      valid,
+      productRecognized,
+      authenticated,
+      knownActors,
+      channelConsented,
       risk,
       unknown,
       gps,
-      actionable,
+      commercialSignals,
+      geoCommercialSignals,
       offerReady,
-      validRate: total ? (valid / total) * 100 : 0,
+      productRecognizedRate: total ? (productRecognized / total) * 100 : 0,
+      authenticationRate: total ? (authenticated / total) * 100 : 0,
+      knownActorRate: total ? (knownActors / total) * 100 : 0,
+      channelConsentRate: total ? (channelConsented / total) * 100 : 0,
       explicitRiskRate: total ? (risk / total) * 100 : 0,
       gpsCoverage: total ? (gps / total) * 100 : 0,
-      leadConversion: total ? (actionable / total) * 100 : 0,
+      commercialSignalRate: total ? (commercialSignals / total) * 100 : 0,
     };
-  }, [visibleEvents]);
+  }, [commercialActivityEvents, geoOpportunityEvents, visibleEvents]);
 
   const velocitySeries = useMemo(() => {
     const now = Date.now();
@@ -1034,7 +1067,10 @@ export function ExecutiveRealtimeCrm({
         label: formatShortTimeInZone(start, consoleTimezone),
         taps: 0,
         risk: 0,
-        valid: 0,
+        productRecognized: 0,
+        authenticated: 0,
+        knownActors: 0,
+        consented: 0,
         unknown: 0,
       };
     });
@@ -1045,10 +1081,12 @@ export function ExecutiveRealtimeCrm({
       const bucket = 11 - diff;
       if (bucket < 0 || bucket > 11) return;
       buckets[bucket].taps += 1;
-      const verdictBucket = classifyRealtimeVerdict(event.verdict, event.reason);
-      if (verdictBucket === "valid") buckets[bucket].valid += 1;
-      else if (isRealtimeRisk(event.verdict, event.reason)) buckets[bucket].risk += 1;
-      else buckets[bucket].unknown += 1;
+      if (event.authenticationVerified) buckets[bucket].authenticated += 1;
+      if (event.productIdentityRecognized) buckets[bucket].productRecognized += 1;
+      if (event.knownActor) buckets[bucket].knownActors += 1;
+      if (event.commercialConsentGranted && event.commercialConsentChannels.length > 0) buckets[bucket].consented += 1;
+      if (isRealtimeRisk(event.verdict, event.reason)) buckets[bucket].risk += 1;
+      else if (!event.productIdentityRecognized && !event.authenticationVerified) buckets[bucket].unknown += 1;
     });
     return buckets;
   }, [consoleTimezone, visibleEvents]);
@@ -1094,17 +1132,17 @@ export function ExecutiveRealtimeCrm({
     if (metrics.unknown > 0) {
       rows.push({ id: `unknown-${metrics.unknown}`, tone: "blue", title: "Eventos sin clasificar", detail: `${metrics.unknown} eventos UNKNOWN, NOT_REGISTERED, NOT_ACTIVE o no reconocidos; no se cuentan como riesgo.`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
-    if (metrics.actionable > 0) {
-      rows.push({ id: `actionable-${String(latestEvent?.eventId || metrics.actionable)}`, tone: "blue", title: "Pico de actividad listo para CRM", detail: `${metrics.actionable} lecturas válidas tienen ubicación accionable`, time: timeAgo(latestEvent?.occurredAt) });
+    if (metrics.commercialSignals > 0) {
+      rows.push({ id: `commercial-${String(latestEvent?.eventId || metrics.commercialSignals)}`, tone: "blue", title: "Actividad con señal comercial", detail: `${metrics.commercialSignals} interacciones tienen producto reconocido, actor asociado, tipo elegible y canal consentido; ${metrics.geoCommercialSignals} además tienen ubicación útil. No son destinatarios ni audiencia.`, time: timeAgo(latestEvent?.occurredAt) });
     }
     return rows.slice(0, 4);
   }, [consoleTimezone, hotspots, latestEvent, metrics, visibleEvents]);
 
   const handleExport = () => {
-    if (visibleEvents.length === 0) return;
+    if (commercialActivityEvents.length === 0) return;
     exportToCsv(
-      `nexid-crm-realtime-${effectiveSelectedTenant || "tenant-sin-scope"}-${new Date().toISOString().slice(0, 10)}`,
-      visibleEvents.map((event) => ({
+      `nexid-activity-signals-${effectiveSelectedTenant || "tenant-sin-scope"}-${new Date().toISOString().slice(0, 10)}`,
+      commercialActivityEvents.map((event) => ({
         eventId: event.eventId,
         tenant: event.tenantSlug || "",
         uid: event.uidMasked,
@@ -1112,6 +1150,12 @@ export function ExecutiveRealtimeCrm({
         occurredAtTenant: formatDateTimeInZone(event.occurredAt, consoleTimezone),
         timezone: consoleTimezone,
         verdict: event.verdict,
+        eventType: event.eventType,
+        interactionClass: event.interactionClass,
+        productRecognized: event.productIdentityRecognized,
+        authenticationVerified: event.authenticationVerified,
+        knownActor: event.knownActor,
+        commercialConsent: event.commercialConsentGranted,
         city: event.city || "",
         country: event.country || "",
         location: locationSourceLabel(event),
@@ -1120,11 +1164,17 @@ export function ExecutiveRealtimeCrm({
       [
         { key: "eventId", label: "Evento" },
         { key: "tenant", label: "Tenant" },
-        { key: "uid", label: "UID" },
+        { key: "uid", label: "UID producto" },
         { key: "occurredAtTenant", label: "Fecha tenant" },
         { key: "timezone", label: "Zona horaria" },
         { key: "occurredAt", label: "Fecha UTC/origen" },
         { key: "verdict", label: "Veredicto" },
+        { key: "eventType", label: "Tipo de evento" },
+        { key: "interactionClass", label: "Clase de interacción" },
+        { key: "productRecognized", label: "Producto reconocido" },
+        { key: "authenticationVerified", label: "Autenticación verificada" },
+        { key: "knownActor", label: "Actor conocido" },
+        { key: "commercialConsent", label: "Consentimiento comercial asociado" },
         { key: "city", label: "Ciudad" },
         { key: "country", label: "País" },
         { key: "location", label: "Ubicación" },
@@ -1133,7 +1183,7 @@ export function ExecutiveRealtimeCrm({
     );
   };
 
-  const exportDisabledReason = "No hay filas en el tenant, filtros y ventana actuales para exportar.";
+  const exportDisabledReason = "No hay actividad con producto reconocido, actor asociado, tipo elegible y consentimiento por canal para exportar.";
   const streetViewTarget = useMemo(
     () => visibleEvents
       .map((event) => strictCoordinatePair(event.lat, event.lng))
@@ -1146,14 +1196,14 @@ export function ExecutiveRealtimeCrm({
     return visibleEvents.filter((event) => {
       const city = String(event.city || "Unknown");
       const country = String(event.country || "--");
-      return city === opportunity.city && country === opportunity.country;
+      return city === opportunity.city && country === opportunity.country && isGeoOpportunitySignal(event);
     });
   };
 
   const handleCampaignExport = (opportunity: MarketOpportunity) => {
     const rows = rowsForOpportunity(opportunity);
     exportToCsv(
-      `nexid-growth-segment-${opportunity.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${new Date().toISOString().slice(0, 10)}`,
+      `nexid-geo-opportunity-activity-${opportunity.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${new Date().toISOString().slice(0, 10)}`,
       rows.map((event) => ({
         campaign: opportunity.campaignName,
         city: opportunity.city,
@@ -1163,6 +1213,12 @@ export function ExecutiveRealtimeCrm({
         tenant: event.tenantSlug || "",
         uid: event.uidMasked,
         verdict: event.verdict,
+        eventType: event.eventType,
+        interactionClass: event.interactionClass,
+        productRecognized: event.productIdentityRecognized,
+        authenticationVerified: event.authenticationVerified,
+        knownActor: event.knownActor,
+        commercialConsent: event.commercialConsentGranted,
         occurredAt: event.occurredAt,
         occurredAtTenant: formatDateTimeInZone(event.occurredAt, consoleTimezone),
         timezone: consoleTimezone,
@@ -1177,8 +1233,14 @@ export function ExecutiveRealtimeCrm({
         { key: "channel", label: "Canal sugerido" },
         { key: "offer", label: "Promo sugerida" },
         { key: "tenant", label: "Tenant" },
-        { key: "uid", label: "UID" },
+        { key: "uid", label: "UID producto" },
         { key: "verdict", label: "Veredicto" },
+        { key: "eventType", label: "Tipo de evento" },
+        { key: "interactionClass", label: "Clase de interacción" },
+        { key: "productRecognized", label: "Producto reconocido" },
+        { key: "authenticationVerified", label: "Autenticación verificada" },
+        { key: "knownActor", label: "Actor conocido" },
+        { key: "commercialConsent", label: "Consentimiento comercial asociado" },
         { key: "occurredAtTenant", label: "Fecha tenant" },
         { key: "timezone", label: "Zona horaria" },
         { key: "occurredAt", label: "Fecha UTC/origen" },
@@ -1187,7 +1249,7 @@ export function ExecutiveRealtimeCrm({
         { key: "location", label: "Ubicacion" },
       ],
     );
-    setCampaignDraft(`${opportunity.campaignName}: segmento ${opportunity.channel} exportado (${rows.length} lecturas).`);
+    setCampaignDraft(`${opportunity.campaignName}: actividad geográfica ${opportunity.channel} exportada (${rows.length} interacciones; no destinatarios).`);
   };
 
   const openCampaignStudio = (opportunity: MarketOpportunity) => {
@@ -1196,8 +1258,9 @@ export function ExecutiveRealtimeCrm({
       country: opportunity.country,
       channel: opportunity.channel,
       offer: opportunity.offer,
-      signal_count: String(opportunity.audience),
-      signal_source: "unique_valid_uid",
+      activity_count: String(opportunity.geoCommercialSignals),
+      audience_ready: "false",
+      audience_source: "server_actor_scope_required",
     });
     window.location.href = `/loyalty/campaigns?${params.toString()}`;
   };
@@ -1231,7 +1294,7 @@ export function ExecutiveRealtimeCrm({
     { icon: <Megaphone className="h-5 w-5" />, active: false, label: "IA de cercanía", short: "IA", title: "Ver priorización comercial por zona basada en eventos visibles.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
     ...(canReadSensitiveEvents ? [{ icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } }] : []),
-    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar ventana", short: "CSV", title: "Exportar eventos visibles con horario del tenant.", action: handleExport, disabled: visibleEvents.length === 0, disabledReason: exportDisabledReason },
+    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar actividad", short: "CSV", title: "Exportar sólo interacciones con señal comercial; no exporta audiencia ni destinatarios.", action: handleExport, disabled: commercialActivityEvents.length === 0, disabledReason: exportDisabledReason },
     { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { setSelectedTenant(tenantSession ? lockedTenantScope : "all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
   ];
 
@@ -1327,12 +1390,12 @@ export function ExecutiveRealtimeCrm({
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <MetricCard icon={<Radio className="h-5 w-5" />} label="Lecturas" value={formatNumber(metrics.total)} delta="stream" help="Eventos NFC/QR recibidos para tenant y ventana activos." tone="cyan" data={velocitySeries} />
-            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Lecturas válidas" value={formatPercent(metrics.validRate)} delta="VALID" help="Porcentaje de eventos con verdict válido sobre el total visible." tone="green" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo explícito" value={formatPercent(metrics.explicitRiskRate)} delta={metrics.risk ? `${metrics.risk} alertas` : "0 alertas"} help={`Solo replay, tamper e INVALID. ${metrics.unknown} eventos sin clasificar se muestran aparte y no se cuentan como riesgo.`} tone="red" data={velocitySeries} dataKey="risk" />
-            <MetricCard icon={<MapPin className="h-5 w-5" />} label="Ubicación útil" value={formatPercent(metrics.gpsCoverage)} delta="GPS" help="Eventos con coordenada de teléfono, no solo ciudad o IP aproximada." tone="green" data={velocitySeries} />
-            <MetricCard icon={<Users className="h-5 w-5" />} label="Audiencia accionable" value={formatNumber(metrics.actionable)} delta="UID + zona" help="Lecturas válidas con UID y ubicación para segmentar sin asumir identidad." tone="blue" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<Filter className="h-5 w-5" />} label="Señales listas" value={formatPercent(metrics.leadConversion)} delta="post-tap" help="Share de lecturas que pueden alimentar segmento, beneficio o campaña." tone="green" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<Radio className="h-5 w-5" />} label="Actividad total" value={formatNumber(metrics.total)} delta="stream" help="Todas las interacciones persistidas para el tenant y la ventana activos." tone="cyan" data={velocitySeries} />
+            <MetricCard icon={<BadgeCheck className="h-5 w-5" />} label="Producto reconocido" value={formatPercent(metrics.productRecognizedRate)} delta={`${metrics.productRecognized} interacciones`} help="Producto, lote o unidad resuelto contra registros NexID. No identifica a una persona ni equivale a autenticación física." tone="blue" data={velocitySeries} dataKey="productRecognized" />
+            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Autenticación verificada" value={formatPercent(metrics.authenticationRate)} delta={`${metrics.authenticated} eventos`} help="Sólo mensajes SUN con verdict válido, CMAC correcto y UID allowlisted." tone="green" data={velocitySeries} dataKey="authenticated" />
+            <MetricCard icon={<Users className="h-5 w-5" />} label="Actor conocido" value={formatPercent(metrics.knownActorRate)} delta={`${metrics.knownActors} interacciones`} help="Interacciones vinculadas a un consumer/member pseudónimo persistido. No cuenta UIDs como personas ni expone el identificador del actor." tone="blue" data={velocitySeries} dataKey="knownActors" />
+            <MetricCard icon={<Megaphone className="h-5 w-5" />} label="Consentimiento por canal" value={formatPercent(metrics.channelConsentRate)} delta={`${metrics.channelConsented} interacciones`} help="Actor conocido con consentimiento vigente para WhatsApp, teléfono o email. Consentimientos genéricos no habilitan contacto." tone="green" data={velocitySeries} dataKey="consented" />
+            <MetricCard icon={<Target className="h-5 w-5" />} label="Señales comerciales" value={formatNumber(metrics.commercialSignals)} delta={`${metrics.geoCommercialSignals} con zona útil`} help="Actividad event-level: producto reconocido, actor asociado, tipo elegible y canal consentido. No representa audiencia, contactos ni destinatarios; éstos se resuelven server-side con permisos." tone="blue" data={velocitySeries} dataKey="consented" />
           </div>
 
           <div className="rounded-lg border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
@@ -1363,18 +1426,18 @@ export function ExecutiveRealtimeCrm({
             <div className="flex items-center justify-between">
               <span>
                 <p className="text-sm font-bold text-white">Funnel post-tap</p>
-                <p className="text-[11px] text-slate-500">De lectura física a acción comercial.</p>
+                <p className="text-[11px] text-slate-500">De actividad registrada a acción comercial consentida.</p>
               </span>
-              <span className="text-xs text-slate-500">{metrics.actionable ? `${metrics.actionable} señales accionables` : "sin señales listas aún"}</span>
+              <span className="text-xs text-slate-500">{metrics.commercialSignals ? `${metrics.commercialSignals} señales de actividad` : "sin señales listas aún"}</span>
             </div>
             <div className="mt-3 flex items-start gap-1 overflow-x-auto pb-1">
-              <FunnelNode icon={<MousePointerClick className="h-5 w-5" />} label="Lecturas" value={metrics.total} pct={100} tone="#22d3ee" detail="entrada del stream" pctLabel="base" />
+              <FunnelNode icon={<MousePointerClick className="h-5 w-5" />} label="Actividad" value={metrics.total} pct={100} tone="#22d3ee" detail="eventos persistidos" pctLabel="base" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<ShieldCheck className="h-5 w-5" />} label="Válidas" value={metrics.valid} pct={metrics.validRate} tone="#22c55e" detail="aptas para acción" />
+              <FunnelNode icon={<BadgeCheck className="h-5 w-5" />} label="Producto" value={metrics.productRecognized} pct={metrics.productRecognizedRate} tone="#38bdf8" detail="lote o unidad resuelto" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<BadgeCheck className="h-5 w-5" />} label="Ubicación" value={metrics.gps} pct={metrics.gpsCoverage} tone="#facc15" detail="GPS del teléfono" />
+              <FunnelNode icon={<Users className="h-5 w-5" />} label="Actor" value={metrics.knownActors} pct={metrics.knownActorRate} tone="#22c55e" detail="pseudónimo persistido" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Users className="h-5 w-5" />} label="UID + zona" value={metrics.actionable} pct={metrics.leadConversion} tone="#a855f7" detail="segmento usable" />
+              <FunnelNode icon={<Megaphone className="h-5 w-5" />} label="Señal comercial" value={metrics.commercialSignals} pct={metrics.commercialSignalRate} tone="#a855f7" detail="actividad, no audiencia" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
               <FunnelNode icon={<Tags className="h-5 w-5" />} label="Campaña" value={metrics.offerReady} pct={metrics.offerReady ? 100 : 0} tone="#38bdf8" detail="zonas con señal" pctLabel={metrics.offerReady ? "zonas listas" : "sin zona"} />
             </div>
@@ -1405,7 +1468,7 @@ export function ExecutiveRealtimeCrm({
                 <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
                   {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <button type="button" title={visibleEvents.length === 0 ? exportDisabledReason : "Exportar eventos visibles a CSV"} onClick={handleExport} disabled={visibleEvents.length === 0} className="flex h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {visibleEvents.length === 0 ? "Sin filas" : "Exportar"}</button>
+                <button type="button" title={commercialActivityEvents.length === 0 ? exportDisabledReason : "Exportar actividad con señal comercial a CSV"} onClick={handleExport} disabled={commercialActivityEvents.length === 0} className="flex h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {commercialActivityEvents.length === 0 ? "Sin señales" : "Exportar"}</button>
               </div>
             </div>
 
@@ -1483,15 +1546,15 @@ export function ExecutiveRealtimeCrm({
                 <p className="text-sm font-semibold text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {visibleEvents.slice(0, 4).map((event) => {
-                    const verdictBucket = classifyRealtimeVerdict(event.verdict, event.reason);
-                    const valid = verdictBucket === "valid";
+                    const authenticated = event.authenticationVerified === true;
+                    const recognized = event.productIdentityRecognized === true;
                     const risk = isRealtimeRisk(event.verdict, event.reason);
                     const linkedIncident = incidentsByEventId[String(event.eventId)] || null;
                     return (
                       <button type="button" onClick={() => setSelectedEvent(event)} key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="w-full rounded-lg border border-white/8 bg-slate-900/70 p-3 text-left transition hover:border-cyan-300/35 hover:bg-slate-900" data-testid="open-event-incident-drawer">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[11px] text-slate-500">{formatTimeInZone(event.occurredAt || Date.now(), consoleTimezone)}</p>
-                          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : valid ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${linkedIncident.status}` : valid ? "Válido" : risk ? "Riesgo" : "Sin clasificar"}</span>
+                          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : authenticated ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${linkedIncident.status}` : authenticated ? "Autenticación verificada" : recognized ? "Producto reconocido" : risk ? "Riesgo" : "Actividad"}</span>
                         </div>
                         <p className="mt-1 text-sm font-black text-white">UID: {event.uidMasked}</p>
                         <p className="text-xs text-slate-400">{deviceSummary(event)}</p>
@@ -1525,9 +1588,9 @@ export function ExecutiveRealtimeCrm({
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="Prioridad heurística calculada con lecturas válidas, GPS, volumen y riesgo."><b className="block text-base text-white">{topOpportunity.score}</b> prioridad</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="UIDs válidos únicos reportados; no equivale a contactos con consentimiento."><b className="block text-base text-white">{topOpportunity.audience}</b> UIDs válidos</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.validRate)}</b> válido</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="Prioridad heurística calculada con autenticación, consentimiento, GPS, volumen y riesgo."><b className="block text-base text-white">{topOpportunity.score}</b> prioridad</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="Actividad geográfica agregada; no es audiencia ni lista de destinatarios."><b className="block text-base text-white">{topOpportunity.geoCommercialSignals}</b> señales geográficas</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.authenticationRate)}</b> autenticado</span>
                   </div>
                 </div>
               ) : null}
@@ -1559,12 +1622,12 @@ export function ExecutiveRealtimeCrm({
                       <span className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-bold text-cyan-200" title="Prioridad heurística">P{opportunity.score}</span>
                     </div>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-slate-400">
-                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1" title="No equivale a una audiencia contactable ni implica opt-in."><b className="block text-sm text-white">{opportunity.audience}</b> UIDs válidos únicos</span>
+                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1" title="Actividad agregada; la audiencia debe resolverse server-side con permisos."><b className="block text-sm text-white">{opportunity.geoCommercialSignals}</b> señales geográficas</span>
                       <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-white">{opportunity.channel}</b> canal</span>
                       <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-emerald-200">{opportunity.offer}</b> beneficio</span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button type="button" title={`Exportar señales de ${opportunity.city} con UIDs, canal y beneficio sugerido`} onClick={() => handleCampaignExport(opportunity)} className="rounded-md border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:border-cyan-300/50">
+                      <button type="button" title={`Exportar actividad geográfica de ${opportunity.city} con canal consentido y beneficio sugerido`} onClick={() => handleCampaignExport(opportunity)} className="rounded-md border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:border-cyan-300/50">
                         <Download className="mr-1 inline h-3.5 w-3.5" /> CSV
                       </button>
                       <button type="button" title={`Abrir campaña para ${opportunity.city}: ${opportunity.playbook}`} onClick={() => openCampaignStudio(opportunity)} className="rounded-md border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 hover:border-emerald-200/60">

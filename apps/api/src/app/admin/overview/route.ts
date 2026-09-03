@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const rows = tenant
     ? await sql/*sql*/`
       WITH scoped_batches AS MATERIALIZED (
-        SELECT b.id
+        SELECT b.id, b.tenant_id
         FROM batches b
         JOIN tenants tn ON tn.id = b.tenant_id
         WHERE tn.slug = ${tenant}
@@ -29,17 +29,30 @@ export async function GET(req: Request) {
           WHEN UPPER(COALESCE(e.result, '')) IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED') THEN 'tampered'
           WHEN UPPER(COALESCE(e.result, '')) = 'REVOKED' THEN 'revoked'
           WHEN UPPER(COALESCE(e.result, '')) = 'BROKEN' THEN 'broken'
+          WHEN LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (
+              UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED'
+              AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'
+            ) THEN 'identified_unverified'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_REGISTERED' THEN 'not_registered'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_ACTIVE' THEN 'not_active'
           WHEN UPPER(COALESCE(e.result, '')) = 'UNKNOWN_BATCH' THEN 'unknown_batch'
           WHEN UPPER(COALESCE(e.result, '')) IN ('INVALID','TAP_INVALID') OR UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' THEN 'invalid'
           WHEN UPPER(COALESCE(e.result, '')) IN ('CLAIMED','REDEEMED','CHECK_IN','OWNERSHIP_ACTIVATED','WARRANTY_REGISTERED','PROVENANCE_VIEWED','TOKENIZATION_REQUESTED','TOKENIZATION_SIMULATED','TOKENIZATION_ANCHORED','EXPORT_GENERATED') THEN 'lifecycle'
-          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','unknown') THEN LOWER(e.verdict)
+          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','identified_unverified','unknown') THEN LOWER(e.verdict)
           WHEN UPPER(COALESCE(e.result, '')) IN ('VALID','TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'valid'
           ELSE 'unknown'
-        END AS event_class
+        END AS event_class,
+        (e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL) AS product_identity_recognized,
+        (
+          LOWER(COALESCE(e.verdict, '')) = 'valid'
+          AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID'
+          AND e.cmac_ok IS TRUE
+          AND e.allowlisted IS TRUE
+        ) AS authentication_verified
         FROM events e
-        JOIN scoped_batches b ON b.id = e.batch_id
+        JOIN scoped_batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
         WHERE COALESCE(e.source::text, 'real') <> 'demo'
       ),
       asset_counts AS (
@@ -50,6 +63,9 @@ export async function GET(req: Request) {
       event_counts AS (
         SELECT
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE product_identity_recognized)::int AS product_recognized,
+          COUNT(*) FILTER (WHERE authentication_verified)::int AS authentication_verified,
+          COUNT(*) FILTER (WHERE event_class = 'identified_unverified')::int AS identified_unverified,
           COUNT(*) FILTER (WHERE event_class IN ('replay_suspect','blocked_replay'))::int AS duplicates,
           COUNT(*) FILTER (WHERE event_class = 'tampered')::int AS tamper,
           COUNT(*) FILTER (WHERE event_class = 'valid')::int AS valid,
@@ -67,7 +83,7 @@ export async function GET(req: Request) {
     `
     : await sql/*sql*/`
       WITH scoped_batches AS MATERIALIZED (
-        SELECT b.id FROM batches b
+        SELECT b.id, b.tenant_id FROM batches b
       ),
       classified_events AS MATERIALIZED (
         SELECT CASE
@@ -76,17 +92,30 @@ export async function GET(req: Request) {
           WHEN UPPER(COALESCE(e.result, '')) IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED') THEN 'tampered'
           WHEN UPPER(COALESCE(e.result, '')) = 'REVOKED' THEN 'revoked'
           WHEN UPPER(COALESCE(e.result, '')) = 'BROKEN' THEN 'broken'
+          WHEN LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (
+              UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED'
+              AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'
+            ) THEN 'identified_unverified'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_REGISTERED' THEN 'not_registered'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_ACTIVE' THEN 'not_active'
           WHEN UPPER(COALESCE(e.result, '')) = 'UNKNOWN_BATCH' THEN 'unknown_batch'
           WHEN UPPER(COALESCE(e.result, '')) IN ('INVALID','TAP_INVALID') OR UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' THEN 'invalid'
           WHEN UPPER(COALESCE(e.result, '')) IN ('CLAIMED','REDEEMED','CHECK_IN','OWNERSHIP_ACTIVATED','WARRANTY_REGISTERED','PROVENANCE_VIEWED','TOKENIZATION_REQUESTED','TOKENIZATION_SIMULATED','TOKENIZATION_ANCHORED','EXPORT_GENERATED') THEN 'lifecycle'
-          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','unknown') THEN LOWER(e.verdict)
+          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','identified_unverified','unknown') THEN LOWER(e.verdict)
           WHEN UPPER(COALESCE(e.result, '')) IN ('VALID','TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'valid'
           ELSE 'unknown'
-        END AS event_class
+        END AS event_class,
+        (e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL) AS product_identity_recognized,
+        (
+          LOWER(COALESCE(e.verdict, '')) = 'valid'
+          AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID'
+          AND e.cmac_ok IS TRUE
+          AND e.allowlisted IS TRUE
+        ) AS authentication_verified
         FROM events e
-        JOIN scoped_batches b ON b.id = e.batch_id
+        JOIN scoped_batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
         WHERE COALESCE(e.source::text, 'real') <> 'demo'
       ),
       asset_counts AS (
@@ -97,6 +126,9 @@ export async function GET(req: Request) {
       event_counts AS (
         SELECT
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE product_identity_recognized)::int AS product_recognized,
+          COUNT(*) FILTER (WHERE authentication_verified)::int AS authentication_verified,
+          COUNT(*) FILTER (WHERE event_class = 'identified_unverified')::int AS identified_unverified,
           COUNT(*) FILTER (WHERE event_class IN ('replay_suspect','blocked_replay'))::int AS duplicates,
           COUNT(*) FILTER (WHERE event_class = 'tampered')::int AS tamper,
           COUNT(*) FILTER (WHERE event_class = 'valid')::int AS valid,
@@ -118,6 +150,9 @@ export async function GET(req: Request) {
     batches: Number(raw.batches || 0),
     tags: Number(raw.tags || 0),
     scans: Number(raw.scans || 0),
+    productRecognized: Number(raw.product_recognized || 0),
+    authenticationVerified: Number(raw.authentication_verified || 0),
+    identifiedUnverified: Number(raw.identified_unverified || 0),
     duplicates: Number(raw.duplicates || 0),
     tamper: Number(raw.tamper || 0),
     valid: Number(raw.valid || 0),
@@ -133,6 +168,9 @@ export async function GET(req: Request) {
   const metrics = aggregateTenantMetrics({
     counts: {
       scans: stats.scans,
+      activityTotal: stats.scans,
+      recognizedProductIdentity: stats.productRecognized,
+      verifiedAuthentication: stats.authenticationVerified,
       valid: stats.valid,
       invalid: stats.invalid,
       duplicates: stats.duplicates,
@@ -148,6 +186,8 @@ export async function GET(req: Request) {
     eventTaxonomy: {
       version: EVENT_TAXONOMY_VERSION,
       securityRiskClasses: ["invalid", "duplicate_replay", "tamper", "revoked", "broken"],
+      neutralIdentityClass: "identified_unverified",
+      neutralIdentityClassesExcludedFromRisk: ["identified_unverified"],
       lifecycleClassesExcludedFromRisk: ["unregistered", "inactive", "unknown_batch", "lifecycle"],
       unknownClassExcludedFromRisk: "unclassified",
     },

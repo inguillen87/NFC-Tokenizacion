@@ -9,7 +9,7 @@ import { SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE } from "../../../lib/sun-
 import { aggregateTenantMetrics, EVENT_TAXONOMY_VERSION } from "@product/core";
 import { classifyPhysicalTapSealState, isAuthenticatedNfcMessage, listAdminPhysicalTaps } from "../../../lib/admin-physical-taps";
 
-type TrendRow = { day: string; scans: number; valid: number; closed: number; opened: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
+type TrendRow = { day: string; scans: number; product_recognized: number; identified_unverified: number; authentication_verified: number; valid: number; closed: number; opened: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
 
 type GeoRow = {
   city: string | null;
@@ -63,7 +63,7 @@ type CityRow = {
   accuracy_m: number | null;
 };
 type DeviceBucketRow = { label: string | null; count: number };
-type FeedRow = { id: number; uid_hex: string | null; bid: string | null; result: string; verdict: string | null; reason: string | null; source: string | null; city: string | null; country_code: string | null; device: string | null; created_at: string };
+type FeedRow = { id: number; uid_hex: string | null; bid: string | null; event_type: string | null; result: string; verdict: string | null; reason: string | null; cmac_ok: boolean | null; allowlisted: boolean | null; source: string | null; city: string | null; country_code: string | null; device: string | null; created_at: string };
 type ProductRow = {
   uid_hex: string;
   bid: string;
@@ -123,54 +123,6 @@ function validCoordinatePair(latValue: unknown, lngValue: unknown) {
   return { lat, lng };
 }
 
-let analyticsEventsSchemaReady: Promise<void> | null = null;
-
-async function ensureAnalyticsEventsSchema() {
-  if (!analyticsEventsSchemaReady) {
-    analyticsEventsSchemaReady = (async () => {
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_lat double precision`;
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_lng double precision`;
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lat double precision`;
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lng double precision`;
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_accuracy_m double precision`;
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_source text`;
-      await sql/*sql*/`
-        CREATE TABLE IF NOT EXISTS product_passports (
-          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-          tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE,
-          batch_id uuid REFERENCES batches(id) ON DELETE SET NULL,
-          tag_id uuid REFERENCES tags(id) ON DELETE SET NULL,
-          product_name text,
-          winery_name text,
-          region text,
-          vintage text,
-          winery_lat double precision,
-          winery_lng double precision,
-          winery_address text,
-          provenance_text text,
-          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
-          created_at timestamptz NOT NULL DEFAULT now(),
-          updated_at timestamptz NOT NULL DEFAULT now()
-        )
-      `;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS product_name text`;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_name text`;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS region text`;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS vintage text`;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_lat double precision`;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_lng double precision`;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_address text`;
-      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS provenance_text text`;
-      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_product_passports_tag ON product_passports(tag_id)`;
-      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_product_passports_tenant ON product_passports(tenant_id)`;
-    })().catch((error) => {
-      analyticsEventsSchemaReady = null;
-      throw error;
-    });
-  }
-  return analyticsEventsSchemaReady;
-}
-
 export async function GET(req: Request) {
   const auth = await checkAdminWithPermission(req, "analytics:read");
   if (auth) return auth;
@@ -186,27 +138,34 @@ export async function GET(req: Request) {
   // Real operational analytics fail closed. Demo/simulated events remain
   // queryable only through an explicit `source=demo` filter.
   const source = requestedSource || "real";
-  await ensureAnalyticsEventsSchema();
-
   const [overviewRows, trendRows, batchRows, geoRows, deviceRows, journeyRows] = await Promise.all([
     tenant
       ? sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
+          COUNT(*) FILTER (WHERE e.id IS NOT NULL AND (e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL))::int AS product_recognized,
+          COUNT(*) FILTER (WHERE e.id IS NOT NULL AND (
+            LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true')
+          ))::int AS identified_unverified,
+          COUNT(*) FILTER (WHERE e.id IS NOT NULL AND LOWER(COALESCE(e.verdict, '')) = 'valid' AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID' AND e.cmac_ok IS TRUE AND e.allowlisted IS TRUE)::int AS authentication_verified,
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
           COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
-          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE (e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED') AND NOT (
+            UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'
+          ))::int AS unregistered,
           COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked,
           COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'active')::int AS active_batches,
           COUNT(DISTINCT tn.id) FILTER (WHERE b.status = 'active')::int AS active_tenants
         FROM tenants tn
         LEFT JOIN batches b ON b.tenant_id = tn.id
-        LEFT JOIN events e ON e.batch_id = b.id
+        LEFT JOIN events e ON e.batch_id = b.id AND e.tenant_id = tn.id
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -215,20 +174,29 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
+          COUNT(*) FILTER (WHERE e.id IS NOT NULL AND (e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL))::int AS product_recognized,
+          COUNT(*) FILTER (WHERE e.id IS NOT NULL AND (
+            LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true')
+          ))::int AS identified_unverified,
+          COUNT(*) FILTER (WHERE e.id IS NOT NULL AND LOWER(COALESCE(e.verdict, '')) = 'valid' AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID' AND e.cmac_ok IS TRUE AND e.allowlisted IS TRUE)::int AS authentication_verified,
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
           COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
-          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE (e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED') AND NOT (
+            UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'
+          ))::int AS unregistered,
           COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked,
           COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'active')::int AS active_batches,
           COUNT(DISTINCT tn.id) FILTER (WHERE b.status = 'active')::int AS active_tenants
         FROM batches b
         JOIN tenants tn ON tn.id = b.tenant_id
-        LEFT JOIN events e ON e.batch_id = b.id
+        LEFT JOIN events e ON e.batch_id = b.id AND e.tenant_id = tn.id
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -237,18 +205,25 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL)::int AS product_recognized,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'))::int AS identified_unverified,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(e.verdict, '')) = 'valid' AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID' AND e.cmac_ok IS TRUE AND e.allowlisted IS TRUE)::int AS authentication_verified,
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
           COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
-          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE (e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED') AND NOT (
+            UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'
+          ))::int AS unregistered,
           COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
-        JOIN batches b ON b.id = e.batch_id
-        JOIN tenants tn ON tn.id = b.tenant_id
+        JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
+        JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
@@ -260,16 +235,25 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
+          COUNT(*) FILTER (WHERE e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL)::int AS product_recognized,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'))::int AS identified_unverified,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(e.verdict, '')) = 'valid' AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID' AND e.cmac_ok IS TRUE AND e.allowlisted IS TRUE)::int AS authentication_verified,
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result = 'VALID_CLOSED')::int AS closed,
           COUNT(*) FILTER (WHERE e.result IN ('OPENED','OPENED_PREVIOUSLY','MANUAL_OPENED','VALID_OPENED','VALID_OPENED_PREVIOUSLY','VALID_MANUAL_OPENED'))::int AS opened,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
           COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
-          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE (e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED') AND NOT (
+            UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true'
+          ))::int AS unregistered,
           COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
+        JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
+        JOIN tenants tn ON tn.id = e.tenant_id
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -712,17 +696,20 @@ export async function GET(req: Request) {
           e.id,
           e.uid_hex,
           b.bid,
+          e.event_type::text AS event_type,
           e.result,
           e.verdict,
           e.reason,
+          e.cmac_ok,
+          e.allowlisted,
           e.source,
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
           e.created_at::text AS created_at
         FROM events e
-        JOIN batches b ON b.id = e.batch_id
-        JOIN tenants tn ON tn.id = b.tenant_id
+        JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
+        JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
@@ -736,16 +723,19 @@ export async function GET(req: Request) {
           e.id,
           e.uid_hex,
           b.bid,
+          e.event_type::text AS event_type,
           e.result,
           e.verdict,
           e.reason,
+          e.cmac_ok,
+          e.allowlisted,
           e.source,
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
           e.created_at::text AS created_at
         FROM events e
-        JOIN batches b ON b.id = e.batch_id
+        JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -787,6 +777,7 @@ export async function GET(req: Request) {
             MAX(e.created_at) AS last_seen_at
           FROM events e
           WHERE e.batch_id = t.batch_id
+            AND e.tenant_id = b.tenant_id
             AND e.uid_hex = t.uid_hex
             AND (${source} = '' OR e.source::text = ${source})
             AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -796,6 +787,7 @@ export async function GET(req: Request) {
           SELECT e.city, e.country_code, e.created_at
           FROM events e
           WHERE e.batch_id = t.batch_id
+            AND e.tenant_id = b.tenant_id
             AND e.uid_hex = t.uid_hex
             AND (${source} = '' OR e.source::text = ${source})
             AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -846,6 +838,7 @@ export async function GET(req: Request) {
             MAX(e.created_at) AS last_seen_at
           FROM events e
           WHERE e.batch_id = t.batch_id
+            AND e.tenant_id = b.tenant_id
             AND e.uid_hex = t.uid_hex
             AND (${source} = '' OR e.source::text = ${source})
             AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -855,6 +848,7 @@ export async function GET(req: Request) {
           SELECT e.city, e.country_code, e.created_at
           FROM events e
           WHERE e.batch_id = t.batch_id
+            AND e.tenant_id = b.tenant_id
             AND e.uid_hex = t.uid_hex
             AND (${source} = '' OR e.source::text = ${source})
             AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -876,6 +870,9 @@ export async function GET(req: Request) {
 
   const overview = (overviewRows[0] || {
     scans: 0,
+    product_recognized: 0,
+    identified_unverified: 0,
+    authentication_verified: 0,
     valid: 0,
     invalid: 0,
     closed: 0,
@@ -889,6 +886,9 @@ export async function GET(req: Request) {
   }) as Record<string, number>;
 
   const scansTotal = Number(overview.scans || 0);
+  const productRecognized = Number(overview.product_recognized || 0);
+  const identifiedUnverified = Number(overview.identified_unverified || 0);
+  const authenticationVerified = Number(overview.authentication_verified || 0);
   const duplicates = Number(overview.duplicates || 0);
   const tamper = Number(overview.tamper || 0);
   const invalid = Number(overview.invalid || 0);
@@ -898,12 +898,25 @@ export async function GET(req: Request) {
   const closed = Number(overview.closed || 0);
   const opened = Number(overview.opened || 0);
   const metrics = aggregateTenantMetrics({
-    counts: { scans: scansTotal, valid: Number(overview.valid || 0), invalid, duplicates, tamper, revoked },
+    counts: {
+      scans: scansTotal,
+      activityTotal: scansTotal,
+      recognizedProductIdentity: productRecognized,
+      verifiedAuthentication: authenticationVerified,
+      valid: Number(overview.valid || 0),
+      invalid,
+      duplicates,
+      tamper,
+      revoked,
+    },
   });
 
   const trend = (trendRows as TrendRow[]).map((row) => ({
     day: row.day,
     scans: Number(row.scans || 0),
+    productRecognized: Number(row.product_recognized || 0),
+    identifiedUnverified: Number(row.identified_unverified || 0),
+    authenticationVerified: Number(row.authentication_verified || 0),
     valid: Number(row.valid || 0),
     closed: Number(row.closed || 0),
     opened: Number(row.opened || 0),
@@ -1016,6 +1029,10 @@ export async function GET(req: Request) {
   return json({
     kpis: {
       scans: scansTotal,
+      activityTotal: scansTotal,
+      productRecognized,
+      identifiedUnverified,
+      authenticationVerified,
       messageValid: Number(overview.valid || 0),
       validRate: metrics.validRate,
       invalidRate: metrics.invalidRate,
@@ -1043,6 +1060,9 @@ export async function GET(req: Request) {
       version: EVENT_TAXONOMY_VERSION,
       definitions: {
         valid: "authenticated_message_or_policy_validation_passed_independent_of_seal_state",
+        identifiedUnverified: "authoritative_product_identity_without_physical_or_cryptographic_authentication",
+        productRecognized: "authoritative_batch_or_unit_binding_independent_of_security_verdict",
+        authenticationVerified: "tap_valid_with_cmac_and_allowlist",
         closed: "authenticated_message_with_reported_closed_tt_state",
         opened: "authenticated_message_with_reported_opened_tt_state",
         invalid: "validation_failed",
@@ -1053,8 +1073,13 @@ export async function GET(req: Request) {
         revoked: "tag_or_credential_revoked",
       },
       securityRiskClasses: ["invalid", "duplicate", "tamper", "revoked"],
+      neutralIdentityClassesExcludedFromRisk: ["identified_unverified"],
       lifecycleClassesExcludedFromRisk: ["unregistered", "inactive"],
       counts: {
+        activityTotal: scansTotal,
+        productRecognized,
+        identifiedUnverified,
+        authenticationVerified,
         valid: Number(overview.valid || 0),
         closed,
         opened,
@@ -1098,7 +1123,14 @@ export async function GET(req: Request) {
       uidHex: row.uid_hex || "",
       bid: row.bid || "",
       result: row.result,
-      messageValid: isAuthenticatedNfcMessage({ result: row.result, verdict: row.verdict, reason: row.reason }),
+      messageValid: isAuthenticatedNfcMessage({
+        eventType: row.event_type,
+        result: row.result,
+        verdict: row.verdict,
+        reason: row.reason,
+        cmacOk: row.cmac_ok,
+        allowlisted: row.allowlisted,
+      }),
       sealState: classifyPhysicalTapSealState(row.result),
       source: row.source || "unknown",
       city: row.city || "Unknown",

@@ -19,6 +19,7 @@ import type {
   CustomerSignalSource,
   CustomerTicketRecord,
 } from "../../../lib/customer-signal-timeline";
+import { authoritativeLeadTenant, leadBelongsToTenant } from "../../../lib/customer-signal-timeline";
 import LeadsTicketsClient from "./leads-tickets-client";
 
 type AdminCollectionResult<T extends CustomerSignalRecord = CustomerSignalRecord> = {
@@ -98,10 +99,6 @@ function parseMeta(raw: unknown, key: string) {
   return match?.[1] || "";
 }
 
-function leadTenant(lead: Record<string, unknown>) {
-  return (parseMeta(lead.message, "tenant") || parseMeta(lead.notes, "tenant") || String(lead.tenant_slug || "")).toLowerCase();
-}
-
 export default async function LeadsTicketsPage({
   searchParams,
 }: {
@@ -174,7 +171,7 @@ export default async function LeadsTicketsPage({
     { label: "pedidos", availability: ordersResult.availability },
   ].filter((source) => source.availability !== "ready" && source.availability !== "access_denied");
   
-  const scopedLeads = tenantScope ? leadsArray.filter((lead) => leadTenant(lead) === tenantScope) : leadsArray;
+  const scopedLeads = tenantScope ? leadsArray.filter((lead) => leadBelongsToTenant(lead, tenantScope)) : leadsArray;
   const scopedTickets = tenantScope ? ticketsArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ticketsArray;
   const scopedOrders = tenantScope ? ordersArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ordersArray;
 
@@ -226,7 +223,7 @@ export default async function LeadsTicketsPage({
 
   const ctaOpportunities = leadsArray
     .map((lead) => {
-      const tenant = parseMeta(lead.message, "tenant") || parseMeta(lead.notes, "tenant");
+      const tenant = authoritativeLeadTenant(lead);
       const sessionVal = parseMeta(lead.message, "session") || parseMeta(lead.notes, "session");
       const interest = parseMeta(lead.message, "interest") || String(lead.role_interest || "-");
       return { lead, tenant, session: sessionVal, interest, source: String(lead.source || "unknown") };

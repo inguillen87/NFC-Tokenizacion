@@ -113,6 +113,7 @@ export const DEFAULT_REQUIRED_SCHEMA_MIGRATIONS = [
   "20260831190000_0099_post_tap_location_observation.sql",
   "20260903110000_0099_commercial_role_defaults.sql",
   "20260903120000_0100_event_incident_optimistic_concurrency.sql",
+  "20260903130000_0101_identified_unverified_event_taxonomy.sql",
 ] as const;
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATION = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1)!;
 

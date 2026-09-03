@@ -1,11 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
-import { maskConsumerEmail, resolveConsumerNetworkTenant } from "../../../../lib/consumer-network-metrics";
+import { maskConsumerEmail, resolveConsumerNetworkTenant, segmentConsumerNetworkMember } from "../../../../lib/consumer-network-metrics";
+
+const NO_STORE = { "cache-control": "private, no-store, max-age=0" };
 
 function maskConsumerPhone(phone: string | null | undefined) {
   const raw = String(phone || "").trim();
@@ -15,20 +17,8 @@ function maskConsumerPhone(phone: string | null | undefined) {
   return `+${digits.slice(0, 3)}***${digits.slice(-4)}`;
 }
 
-function segmentFor(row: Record<string, unknown>) {
-  const taps = Number(row.tap_count || 0);
-  const points = Number(row.lifetime_points || 0);
-  const risk = Number(row.risk_taps || 0);
-  const whatsapp = Boolean(row.whatsapp_opt_in);
-  if (risk > 0) return "needs_trust_recovery";
-  if (points >= 500 || taps >= 10) return "vip_loyalist";
-  if (whatsapp && taps >= 2) return "promo_ready";
-  if (taps > 0) return "post_tap_warm";
-  return "new_contact";
-}
-
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "consumers.read_pii");
   if (auth) return auth;
   await ensureConsumerPortalSchema();
   const { forcedTenantSlug } = getAdminTenantScope(req);
@@ -59,8 +49,12 @@ export async function GET(req: Request) {
         COUNT(*)::int AS tap_count,
         COUNT(*) FILTER (WHERE upper(COALESCE(h.verdict, '')) IN ('VALID', 'OK', 'TAP_VALID'))::int AS valid_taps,
         COUNT(*) FILTER (
-          WHERE upper(COALESCE(h.verdict, '')) NOT IN ('', 'VALID', 'OK', 'TAP_VALID')
-             OR lower(COALESCE(h.risk_level, '')) NOT IN ('', '0', 'none', 'low', 'valid')
+          WHERE upper(COALESCE(h.verdict, '')) IN (
+            'REPLAY_SUSPECT', 'BLOCKED_REPLAY', 'DUPLICATE',
+            'TAMPER', 'TAMPERED', 'TAMPER_RISK',
+            'INVALID', 'TAP_INVALID', 'REVOKED', 'BROKEN'
+          )
+             OR lower(COALESCE(h.risk_level, '')) IN ('medium', 'high', 'critical')
         )::int AS risk_taps,
         MAX(h.created_at) AS last_tap_at,
         (array_agg(NULLIF(h.city, '') ORDER BY h.created_at DESC) FILTER (WHERE NULLIF(h.city, '') IS NOT NULL))[1] AS city,
@@ -122,7 +116,7 @@ export async function GET(req: Request) {
     email_masked: maskConsumerEmail(row.email as string | null | undefined),
     phone: undefined,
     phone_masked: maskConsumerPhone(row.phone as string | null | undefined),
-    segment: segmentFor(row as Record<string, unknown>),
+    segment: segmentConsumerNetworkMember(row as Record<string, unknown>),
   }));
-  return json({ ok: true, tenant: tenant || null, items });
+  return json({ ok: true, tenant: tenant || null, items }, 200, NO_STORE);
 }

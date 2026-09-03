@@ -11,6 +11,7 @@ import type {
   CustomerMemberTimelineState,
 } from "../../../lib/customer-member-timeline";
 import {
+  authoritativeLeadTenant,
   buildCustomerSignalTimeline,
   type CustomerLeadRecord,
   type CustomerOrderRecord,
@@ -214,19 +215,12 @@ export default function LeadsTicketsClient({
     collections: signalCollections,
   }), [initialLeads, initialOrders, initialTickets, signalCollections]);
 
-  const leadTenant = (message: string, notes: string, tenant_slug: string) => {
-    const text = `${message || ""} ${notes || ""}`;
-    const pattern = /(?:\[|\b|\|\s*)tenant=([^\]\|\s]+)/i;
-    const match = text.match(pattern);
-    return (match?.[1] || tenant_slug || "").toLowerCase();
-  };
-
   const parsedDbQueries = useMemo<AiQuery[]>(() => initialLeads
     .filter(l => {
       const isAiSource = l.source === "sales_chat_widget" || l.source === "assistant" || String(l.notes).toLowerCase().includes("assistant");
       if (!isAiSource) return false;
       if (tenantScope) {
-        const slug = leadTenant(l.message || "", l.notes || "", l.vertical || "");
+        const slug = authoritativeLeadTenant(l);
         return slug === tenantScope;
       }
       return true;

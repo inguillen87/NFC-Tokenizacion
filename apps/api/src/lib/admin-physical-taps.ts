@@ -1,4 +1,4 @@
-import { maskUid, normalizeEventVerdict, normalizeWgs84CoordinatePair, resolveEventLocalTime } from "@product/core";
+import { isVerifiedAuthenticationEvent, maskUid, normalizeEventVerdict, normalizeWgs84CoordinatePair, resolveEventLocalTime } from "@product/core";
 import { sql } from "./db";
 
 export type PhysicalTapSealState = "closed" | "opened" | "other";
@@ -75,8 +75,17 @@ export function classifyPhysicalTapSealState(value: unknown): PhysicalTapSealSta
   return "other";
 }
 
-export function isAuthenticatedNfcMessage(input: { result?: unknown; verdict?: unknown; reason?: unknown }) {
-  return normalizeEventVerdict(input) === "valid";
+export function isAuthenticatedNfcMessage(input: {
+  eventType?: unknown;
+  event_type?: unknown;
+  result?: unknown;
+  verdict?: unknown;
+  reason?: unknown;
+  cmacOk?: unknown;
+  cmac_ok?: unknown;
+  allowlisted?: unknown;
+}) {
+  return isVerifiedAuthenticationEvent(input);
 }
 
 function locationProjection(row: PhysicalTapRow) {
@@ -125,9 +134,12 @@ export function normalizeAdminPhysicalTap(row: PhysicalTapRow) {
   const reportedState = canonicalReportedState(row);
   const sealState = classifyPhysicalTapSealState(reportedState);
   const messageValid = isAuthenticatedNfcMessage({
+    eventType: row.event_type,
     result: row.result,
     verdict: row.verdict,
     reason: row.reason,
+    cmacOk: row.cmac_ok,
+    allowlisted: row.allowlisted,
   });
   const time = resolveEventLocalTime(row);
   const ttBindingStatus = text(row.tt_binding_status).toUpperCase();
@@ -215,6 +227,8 @@ export async function listAdminPhysicalTaps(input: {
       e.reason,
       e.verdict,
       e.event_type,
+      e.cmac_ok,
+      e.allowlisted,
       e.read_counter,
       e.source,
       e.created_at,
@@ -249,9 +263,15 @@ export async function listAdminPhysicalTaps(input: {
       tt.status_offset AS tt_status_offset,
       tt.status_length AS tt_status_length
     FROM events e
-    JOIN batches b ON b.id = e.batch_id
-    JOIN tenants tn ON tn.id = b.tenant_id
-    LEFT JOIN tag_profiles tp ON tp.tag_id = e.tag_id
+    JOIN batches b
+      ON b.id = e.batch_id
+     AND b.tenant_id = e.tenant_id
+    JOIN tenants tn ON tn.id = e.tenant_id
+    JOIN tags event_tag
+      ON event_tag.id::text = e.tag_id
+     AND event_tag.batch_id = e.batch_id
+     AND UPPER(event_tag.uid_hex) = UPPER(e.uid_hex)
+    LEFT JOIN tag_profiles tp ON tp.tag_id = event_tag.id
     LEFT JOIN sun_tt_truth_receipts tt
       ON tt.event_id = e.id
       AND tt.event_created_at = e.created_at

@@ -17,6 +17,9 @@ const physicalEvents = [
     uid_hex: "0474856A0B1090",
     result: "VALID_CLOSED",
     verdict: "valid",
+    event_type: "TAP_VALID",
+    cmac_ok: true,
+    allowlisted: true,
     reason: "sun_ok",
     read_counter: 115,
     source: "real",
@@ -42,6 +45,9 @@ const physicalEvents = [
     uid_hex: "0483826A0B1090",
     result: "VALID_OPENED",
     verdict: "valid",
+    event_type: "TAP_VALID",
+    cmac_ok: true,
+    allowlisted: true,
     reason: "sun_ok",
     read_counter: 98,
     source: "real",
@@ -183,10 +189,12 @@ test("classification never turns an authenticated opened seal into a security fa
   assert.equal(classifyPhysicalTapSealState("VALID_OPENED"), "opened");
   assert.equal(classifyPhysicalTapSealState("VALID_OPENED_PREVIOUSLY"), "opened");
   assert.equal(classifyPhysicalTapSealState("REPLAY_SUSPECT"), "other");
-  assert.equal(isAuthenticatedNfcMessage({ result: "VALID_OPENED", verdict: "valid" }), true);
+  assert.equal(isAuthenticatedNfcMessage({ eventType: "TAP_VALID", result: "VALID_OPENED", verdict: "valid", cmacOk: true, allowlisted: true }), true);
   assert.equal(isAuthenticatedNfcMessage({ result: "OPENED" }), false);
-  assert.equal(isAuthenticatedNfcMessage({ result: "OPENED", verdict: "valid" }), true);
+  assert.equal(isAuthenticatedNfcMessage({ eventType: "TAP_VALID", result: "OPENED", verdict: "valid", cmacOk: true, allowlisted: true }), true);
   assert.equal(isAuthenticatedNfcMessage({ result: "TAMPER_RISK", verdict: "valid" }), false);
+  assert.equal(isAuthenticatedNfcMessage({ eventType: "TAP_VALID", result: "VALID", verdict: "valid", cmacOk: false, allowlisted: true }), false);
+  assert.equal(isAuthenticatedNfcMessage({ eventType: "TAP_VALID", result: "VALID", verdict: "valid", cmacOk: null, allowlisted: null }), false);
 });
 
 test("real TAP rows without a durable TT receipt do not certify the physical carrier", () => {
@@ -214,8 +222,14 @@ test("physical tap route is dual-permission, tenant-bound, real-only and backed 
   assert.match(route, /physical_taps_tenant_required/);
   assert.match(helper, /LOWER\(COALESCE\(e\.source::text, ''\)\) = 'real'/);
   assert.match(helper, /WHERE tn\.slug = \$\{tenantSlug\}/);
+  assert.match(helper, /b\.id = e\.batch_id\s+AND b\.tenant_id = e\.tenant_id/);
+  assert.match(helper, /JOIN tenants tn ON tn\.id = e\.tenant_id/);
+  assert.match(helper, /event_tag\.id::text = e\.tag_id\s+AND event_tag\.batch_id = e\.batch_id\s+AND UPPER\(event_tag\.uid_hex\) = UPPER\(e\.uid_hex\)/);
+  assert.match(helper, /LEFT JOIN tag_profiles tp ON tp\.tag_id = event_tag\.id/);
+  assert.doesNotMatch(helper, /JOIN batches b ON b\.id = e\.batch_id\s+JOIN tenants tn ON tn\.id = b\.tenant_id/);
   assert.match(helper, /AND \(\$\{bid\} = '' OR b\.bid = \$\{bid\}\)/);
   assert.match(helper, /sun_tt_truth_receipts/);
+  assert.match(helper, /e\.event_type,[\s\S]*e\.cmac_ok,[\s\S]*e\.allowlisted/);
   assert.match(helper, /to_jsonb\(e\)->'post_tap_location_observation' AS post_tap_location_observation/);
   assert.match(helper, /maskUid/);
   assert.doesNotMatch(route, /0474856A0B1090|0483826A0B1090/);
@@ -229,6 +243,8 @@ test("admin analytics and event feeds separate authenticated message validity fr
   assert.match(analytics, /e\.result LIKE 'VALID_%'/);
   assert.doesNotMatch(analytics, /LIKE 'VALID_%' OR e\.result IN \('OPENED'/);
   assert.match(analytics, /messageValid: isAuthenticatedNfcMessage/);
+  assert.match(analytics, /eventType: row\.event_type,[\s\S]*cmacOk: row\.cmac_ok,[\s\S]*allowlisted: row\.allowlisted/);
+  assert.match(events, /eventType: row\.event_type,[\s\S]*cmacOk: row\.cmac_ok,[\s\S]*allowlisted: row\.allowlisted/);
   assert.match(analytics, /sealState: classifyPhysicalTapSealState/);
   assert.match(analytics, /recentPhysicalTaps/);
   assert.match(analytics, /closedTaps: closed/);

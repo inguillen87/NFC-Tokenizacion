@@ -28,7 +28,8 @@ export type CanonicalEventVerdict =
   | "tampered"
   | "unknown_batch"
   | "not_registered"
-  | "not_active";
+  | "not_active"
+  | "identified_unverified";
 export type CanonicalEventRisk = "none" | "low" | "medium" | "high" | "critical";
 
 export type CanonicalEventReceipt = {
@@ -287,6 +288,8 @@ export async function writeCanonicalEvent(input: CanonicalEventInput): Promise<C
       result: validated.result,
       verdict: input.verdict,
       risk_level: input.riskLevel,
+      cmac_ok: input.cmacOk ?? null,
+      allowlisted: input.allowlisted ?? null,
       source: input.mode === "live" ? (input.family === "tap" ? "real" : "imported") : "demo",
       event_type: validated.eventType,
       created_at: receipt.eventCreatedAt,

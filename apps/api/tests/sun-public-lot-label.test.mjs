@@ -60,7 +60,7 @@ test("tenant-scoped product config persists the public label without changing BI
 test("SUN contract adds the public label without replacing the operational BID", () => {
   assert.match(route, /identity:\s*\{[\s\S]*?bid:\s*params\.bid,[\s\S]*?displayLot:\s*publicLotLabel/);
   assert.match(route, /product:\s*\{[\s\S]*?lotLabel:\s*publicLotLabel/);
-  assert.match(route, /const bid = tenantBatch\.bid/);
+  assert.match(route, /const bid = carrierIdentity\.bid/);
   assert.doesNotMatch(route, /bid:\s*publicLotLabel/);
 });
 

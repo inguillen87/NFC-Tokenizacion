@@ -81,7 +81,9 @@ test("runtime rates and visual scores withhold values without a denominator", ()
 
   assert.match(loyaltyOverview, /const consumerReady = Boolean/);
   assert.match(loyaltyOverview, /no se convierten en actividad cero ni en tasas estimadas/);
-  assert.match(loyaltyOverview, /consumerReady \? "Base" : "—"/);
+  assert.match(loyaltyOverview, /metricText\(consumer\.totalActivity, consumerReady\)/);
+  assert.match(loyaltyOverview, /rateText\(consumer\.actorLinkedActivityRate, consumerReady\)/);
+  assert.doesNotMatch(loyaltyOverview, /tapToRegistrationRate|registrationToMembershipRate/);
   assert.doesNotMatch(loyaltyOverview, />100%<\/span>/);
 
   assert.match(assetBank, /"Sin score"/);
@@ -163,9 +165,11 @@ test("realtime, growth and onboarding copy require source-backed NFC events", ()
   assert.match(realtime, /ACTIVIDAD RECIENTE/);
   assert.doesNotMatch(realtime, /Lecturas reales|Esperando lecturas reales|ACTIVIDAD EN VIVO|CRM en vivo/);
 
-  assert.match(customerGrowth, /UIDs con eventos reportados/);
-  assert.match(customerGrowth, /segmento para evaluar club, puntos o garantía según policy/);
-  assert.doesNotMatch(customerGrowth, /UIDs con evidencia real|tap físico listos/);
+  assert.match(customerGrowth, /Producto reconocido/);
+  assert.match(customerGrowth, /Un UID identifica producto; nunca una persona/);
+  assert.match(customerGrowth, /membresía activa y consentimiento vigente para el canal/);
+  assert.match(customerGrowth, /Indicadores independientes/);
+  assert.doesNotMatch(customerGrowth, /UIDs con eventos reportados|segmento para evaluar club|UIDs con evidencia real|tap físico listos/);
 
   assert.match(loyaltyExperiences, /Mensaje NFC fresco con veredicto válido/);
   assert.match(onboardingPage, /recorrido operativo con fuente visible/);

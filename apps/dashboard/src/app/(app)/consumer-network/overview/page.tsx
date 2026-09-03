@@ -27,15 +27,21 @@ async function adminGet(context: AdminPageContext, path: string, allowDemoData: 
 
 type OverviewPayload = {
   overview?: {
-    anonymousTappers?: number;
-    registeredConsumers?: number;
-    tenantMembers?: number;
-    tapToRegistrationRate?: number;
-    registrationToMembershipRate?: number;
+    totalActivity?: number;
+    totalTaps?: number;
+    customerActions?: number;
+    activityWithKnownActor?: number;
+    activityWithoutActor?: number;
+    actorLinkedActivityRate?: number;
+    recognizedUnits?: number;
+    knownActors?: number;
+    verifiedIdentityActors?: number;
+    activeTenantMembers?: number;
+    consentedActorsByChannel?: { email?: number; whatsapp?: number; phone?: number };
     savedProducts?: number;
     riskBlockedClaims?: number;
   };
-  latestMemberActivity?: Array<{ display_name?: string; tenant_slug?: string; last_activity_at?: string }>;
+  identityBoundary?: string;
   topProductsByClaims?: Array<{ product_name?: string; bid?: string; claims?: number }>;
 };
 
@@ -72,7 +78,6 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   ].filter(([, availability]) => availability !== "ready");
   const overviewPayload = (overviewResult.data || {}) as OverviewPayload;
   const overview = overviewPayload.overview || {};
-  const latestMemberActivity = Array.isArray(overviewPayload.latestMemberActivity) ? overviewPayload.latestMemberActivity : [];
   const topProductsByClaims = Array.isArray(overviewPayload.topProductsByClaims) ? overviewPayload.topProductsByClaims : [];
   const members = Array.isArray((membersResult.data as { items?: unknown[] } | null)?.items) ? ((membersResult.data as { items: Record<string, unknown>[] }).items) : [];
   const products = Array.isArray((productsResult.data as { items?: unknown[] } | null)?.items) ? ((productsResult.data as { items: Record<string, unknown>[] }).items) : [];
@@ -95,8 +100,8 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         eyebrow="Clientes CRM"
         title="Clientes & campañas"
         description={dataSource === "demo"
-          ? "Escenario demo aislado de actividad productiva; permite recorrer el funnel, tablas y heatmap sin afirmar consumidores reales."
-          : "Conversión de lecturas post-tap confirmadas por las APIs operativas, con scope por tenant."}
+          ? "Escenario demo aislado: separa lecturas, acciones, unidades y actores sin afirmar personas ni conversiones reales."
+          : "Actividad post-tap persistida, actores vinculados y consentimientos vigentes, siempre dentro del tenant."}
       />
 
       <div data-testid="consumer-network-source" data-data-source={dataSource} className="rounded-xl border border-white/10 bg-slate-900/50 px-4 py-3 text-xs text-slate-300">
@@ -117,22 +122,24 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Anonymous tappers</p>
-          <p className="mt-2 text-3xl font-bold text-white">{overviewReady ? Number(overview.anonymousTappers || 0) : "—"}</p>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Lecturas NFC / QR</p>
+          <p className="mt-2 text-3xl font-bold text-white">{overviewReady ? Number(overview.totalTaps || 0) : "—"}</p>
+          <p className="mt-1 text-xs text-slate-400">Interacciones físicas registradas.</p>
         </article>
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Registered consumers</p>
-          <p className="mt-2 text-3xl font-bold text-white">{overviewReady ? Number(overview.registeredConsumers || 0) : "—"}</p>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Acciones post-tap</p>
+          <p className="mt-2 text-3xl font-bold text-white">{overviewReady ? Number(overview.customerActions || 0) : "—"}</p>
+          <p className="mt-1 text-xs text-slate-400">Contenido, servicios y CTAs registrados.</p>
         </article>
         <article className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4">
-          <p className="text-xs uppercase tracking-widest text-cyan-300">Tap → registration</p>
-          <p className="mt-2 text-3xl font-bold text-cyan-100">{pct(overview.tapToRegistrationRate, overviewReady)}</p>
-          <p className="mt-1 text-xs text-cyan-200">{overviewReady ? "Derivado de eventos persistidos." : "Fuente no disponible."}</p>
+          <p className="text-xs uppercase tracking-widest text-cyan-300">Unidades reconocidas</p>
+          <p className="mt-2 text-3xl font-bold text-cyan-100">{overviewReady ? Number(overview.recognizedUnits || 0) : "—"}</p>
+          <p className="mt-1 text-xs text-cyan-200">Tags registrados distintos; no son personas.</p>
         </article>
         <article className="rounded-xl border border-violet-500/20 bg-violet-950/20 p-4">
-          <p className="text-xs uppercase tracking-widest text-violet-300">Registration → membership</p>
-          <p className="mt-2 text-3xl font-bold text-violet-100">{pct(overview.registrationToMembershipRate, overviewReady)}</p>
-          <p className="mt-1 text-xs text-violet-200">{overviewReady ? "Sin revenue/GMV inventado." : "Fuente no disponible."}</p>
+          <p className="text-xs uppercase tracking-widest text-violet-300">Actividad sin actor</p>
+          <p className="mt-2 text-3xl font-bold text-violet-100">{overviewReady ? Number(overview.activityWithoutActor || 0) : "—"}</p>
+          <p className="mt-1 text-xs text-violet-200">Eventos aún no vinculados a una identidad conocida.</p>
         </article>
       </div>
 
@@ -140,14 +147,16 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Analytics command center</p>
-            <h2 className="mt-1 text-lg font-semibold text-white">{overviewReady ? "Funnel post-tap confirmado" : "Funnel sin fuente disponible"}</h2>
-            <p className="mt-1 text-sm text-slate-400">{overviewReady ? "Mide conversión de anónimo a registrado, miembro y producto guardado usando eventos persistidos." : "No mostramos conversiones en cero cuando la fuente overview no respondió."}</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">{overviewReady ? "Cobertura de actividad e identidad" : "Métricas sin fuente disponible"}</h2>
+            <p className="mt-1 max-w-3xl text-sm text-slate-400">{overviewReady ? (overviewPayload.identityBoundary || "Separamos actividad, unidades, actores y permisos de contacto; un UID nunca se interpreta como una persona.") : "No mostramos métricas en cero cuando la fuente overview no respondió."}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Tap a registro <b className="text-cyan-100">{pct(overview.tapToRegistrationRate, overviewReady)}</b></span>
-            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Registro a member <b className="text-violet-100">{pct(overview.registrationToMembershipRate, overviewReady)}</b></span>
-            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Guardados <b className="text-emerald-100">{overviewReady ? Number(overview.savedProducts || 0) : "—"}</b></span>
-            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Bloqueados <b className="text-rose-100">{overviewReady ? Number(overview.riskBlockedClaims || 0) : "—"}</b></span>
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-6">
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Actividad vinculada <b className="text-cyan-100">{pct(overview.actorLinkedActivityRate, overviewReady)}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Actores conocidos <b className="text-violet-100">{overviewReady ? Number(overview.knownActors || 0) : "—"}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Identidad verificada <b className="text-sky-100">{overviewReady ? Number(overview.verifiedIdentityActors || 0) : "—"}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Email opt-in <b className="text-emerald-100">{overviewReady ? Number(overview.consentedActorsByChannel?.email || 0) : "—"}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">WhatsApp opt-in <b className="text-emerald-100">{overviewReady ? Number(overview.consentedActorsByChannel?.whatsapp || 0) : "—"}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Teléfono opt-in <b className="text-emerald-100">{overviewReady ? Number(overview.consentedActorsByChannel?.phone || 0) : "—"}</b></span>
           </div>
         </div>
         <div className="mt-5">
@@ -176,8 +185,8 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
 
       <div className="grid gap-4 md:grid-cols-3">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Tenant members</p>
-          <p className="mt-2 text-2xl font-bold text-white">{overviewReady ? Number(overview.tenantMembers || 0) : "—"}</p>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Miembros activos del tenant</p>
+          <p className="mt-2 text-2xl font-bold text-white">{overviewReady ? Number(overview.activeTenantMembers || 0) : "—"}</p>
         </article>
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <p className="text-xs uppercase tracking-widest text-slate-400">Saved products</p>
@@ -191,13 +200,11 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <h3 className="text-sm font-semibold text-white">Latest member activity</h3>
-          <div className="mt-3 space-y-2">
-            {latestMemberActivity.length ? latestMemberActivity.map((item, index) => (
-              <div key={`${item.display_name || "member"}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200">
-                {(item.display_name || "consumer")} · tenant {item.tenant_slug || "n/a"} · {item.last_activity_at ? new Date(item.last_activity_at).toLocaleString() : "n/a"}
-              </div>
-            )) : <p className="text-xs text-slate-400">{overviewReady ? "Sin actividad reciente." : "La fuente overview no está disponible."}</p>}
+          <h3 className="text-sm font-semibold text-white">Límites de uso de los datos</h3>
+          <div className="mt-3 space-y-2 text-xs text-slate-300">
+            <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2"><b className="text-cyan-100">Analítica:</b> usa actividad agregada, incluso cuando no existe un actor conocido.</p>
+            <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2"><b className="text-violet-100">Relación:</b> sólo usa actividad vinculada a un actor conocido.</p>
+            <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2"><b className="text-emerald-100">Campañas:</b> requieren miembro activo y consentimiento vigente para el canal y propósito exactos.</p>
           </div>
         </section>
         <section className="rounded-xl border border-white/10 bg-slate-900/50 p-4">

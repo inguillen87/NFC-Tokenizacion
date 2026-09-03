@@ -14,6 +14,12 @@ test("realtime operations centralize verdict classes and exclude lifecycle unkno
   assert.equal(classifyRealtimeVerdict("VALID_OPENED"), "valid");
   assert.equal(classifyRealtimeVerdict("CLAIMED"), "unknown");
   assert.equal(classifyRealtimeVerdict("NOT_REGISTERED"), "unknown");
+  assert.equal(classifyRealtimeVerdict({
+    verdict: "identified_unverified",
+    eventType: "PROVENANCE_VIEWED",
+    result: "QR_SCAN",
+  }), "identified_unverified");
+  assert.equal(isRealtimeRisk({ verdict: "identified_unverified", eventType: "PROVENANCE_VIEWED" }), false);
   assert.equal(isRealtimeRisk("CLAIMED"), false);
   assert.equal(isRealtimeRisk("NOT_REGISTERED"), false);
   assert.equal(isRealtimeRisk("REPLAY_SUSPECT"), true);
@@ -43,12 +49,12 @@ test("all realtime risk derivatives use the centralized classification", () => {
   assert.match(multirubroSource, /isRealtimeRisk\(payload, payload\.reason\)/);
 });
 
-test("browser_gps_reported is recognized as client-reported, non-independent GPS evidence", () => {
-  assert.match(source, /source\.includes\("gps"\)/);
+test("only the explicit consented GPS provenance class is campaign-eligible", () => {
+  assert.match(source, /classifyLocationProvenance\(value\) === "consented_gps"/);
   assert.match(source, /GPS reportado por cliente/);
   assert.match(source, /no verificacion independiente/);
   assert.match(source, /isClientReportedGps\(item\.locationSource\)/);
-  assert.doesNotMatch(source, /source === "browser_gps"/);
+  assert.doesNotMatch(source, /source === "browser_gps"|source\.includes\("gps"\)/);
 });
 
 test("executive CRM keeps lifecycle unknowns out of risk and recognizes reported GPS variants", () => {
@@ -58,6 +64,11 @@ test("executive CRM keeps lifecycle unknowns out of risk and recognizes reported
   assert.match(executiveSource, /const unknown = visibleEvents\.filter/);
   assert.match(executiveSource, /explicitRiskRate/);
   assert.match(executiveSource, /no se cuentan como riesgo/);
-  assert.match(executiveSource, /source\.includes\("gps"\)/);
-  assert.doesNotMatch(executiveSource, /length - valid|fraudRate|source === "browser_gps"|toLowerCase\(\) !== "valid"/);
+  assert.match(executiveSource, /classifyLocationProvenance\(value\) === "consented_gps"/);
+  assert.match(executiveSource, /productIdentityRecognized/);
+  assert.match(executiveSource, /knownActor/);
+  assert.match(executiveSource, /commercialConsentChannels/);
+  assert.match(executiveSource, /isCommercialActivitySignal/);
+  assert.match(executiveSource, /isGeoOpportunitySignal/);
+  assert.doesNotMatch(executiveSource, /length - valid|fraudRate|source === "browser_gps"|source\.includes\("gps"\)|toLowerCase\(\) !== "valid"/);
 });

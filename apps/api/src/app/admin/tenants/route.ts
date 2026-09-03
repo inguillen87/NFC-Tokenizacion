@@ -16,6 +16,9 @@ function withCanonicalRisk(row: Record<string, unknown>) {
   const metrics = aggregateTenantMetrics({
     counts: {
       scans,
+      activityTotal: scans,
+      recognizedProductIdentity: Number(row.product_recognized || 0),
+      verifiedAuthentication: Number(row.authentication_verified || 0),
       valid: Number(row.valid || 0),
       invalid: Number(row.invalid || 0),
       duplicates: Number(row.duplicates || 0),
@@ -45,29 +48,42 @@ export async function GET(req: Request) {
     const rows = tenantSlug
       ? await sql/*sql*/`
       WITH classified AS (
-        SELECT tn.id, tn.slug, tn.name, tn.created_at, e.id AS event_id, CASE
+        SELECT tn.id, tn.slug, tn.name, tn.created_at, e.id AS event_id, e.batch_id, e.tag_id, CASE
           WHEN UPPER(COALESCE(e.result, '')) IN ('DUPLICATE','REPLAY_SUSPECT') THEN 'replay_suspect'
           WHEN UPPER(COALESCE(e.result, '')) = 'BLOCKED_REPLAY' THEN 'blocked_replay'
           WHEN UPPER(COALESCE(e.result, '')) IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED') THEN 'tampered'
           WHEN UPPER(COALESCE(e.result, '')) = 'REVOKED' THEN 'revoked'
           WHEN UPPER(COALESCE(e.result, '')) = 'BROKEN' THEN 'broken'
+          WHEN LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true')
+            THEN 'identified_unverified'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_REGISTERED' THEN 'not_registered'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_ACTIVE' THEN 'not_active'
           WHEN UPPER(COALESCE(e.result, '')) = 'UNKNOWN_BATCH' THEN 'unknown_batch'
           WHEN UPPER(COALESCE(e.result, '')) IN ('INVALID','TAP_INVALID') OR UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' THEN 'invalid'
           WHEN UPPER(COALESCE(e.result, '')) IN ('CLAIMED','REDEEMED','CHECK_IN','OWNERSHIP_ACTIVATED','WARRANTY_REGISTERED','PROVENANCE_VIEWED','TOKENIZATION_REQUESTED','TOKENIZATION_SIMULATED','TOKENIZATION_ANCHORED','EXPORT_GENERATED') THEN 'lifecycle'
-          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','unknown') THEN LOWER(e.verdict)
+          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','identified_unverified','unknown') THEN LOWER(e.verdict)
           WHEN UPPER(COALESCE(e.result, '')) IN ('VALID','TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'valid'
           ELSE 'unknown'
-        END AS event_class
+        END AS event_class,
+        (
+          LOWER(COALESCE(e.verdict, '')) = 'valid'
+          AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID'
+          AND e.cmac_ok IS TRUE
+          AND e.allowlisted IS TRUE
+        ) AS authentication_verified
         FROM tenants tn
         LEFT JOIN batches b ON b.tenant_id = tn.id
-        LEFT JOIN events e ON e.batch_id = b.id
+        LEFT JOIN events e ON e.batch_id = b.id AND e.tenant_id = tn.id
         WHERE tn.slug = ${tenantSlug}
       )
       SELECT
         id, slug, name, created_at,
         COUNT(event_id)::int AS scans,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'identified_unverified')::int AS identified_unverified,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND (batch_id IS NOT NULL OR tag_id IS NOT NULL))::int AS product_recognized,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND authentication_verified)::int AS authentication_verified,
         COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'valid')::int AS valid,
         COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'invalid')::int AS invalid,
         COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class IN ('replay_suspect','blocked_replay'))::int AS duplicates,
@@ -81,28 +97,41 @@ export async function GET(req: Request) {
     `
       : await sql/*sql*/`
       WITH classified AS (
-        SELECT tn.id, tn.slug, tn.name, tn.created_at, e.id AS event_id, CASE
+        SELECT tn.id, tn.slug, tn.name, tn.created_at, e.id AS event_id, e.batch_id, e.tag_id, CASE
           WHEN UPPER(COALESCE(e.result, '')) IN ('DUPLICATE','REPLAY_SUSPECT') THEN 'replay_suspect'
           WHEN UPPER(COALESCE(e.result, '')) = 'BLOCKED_REPLAY' THEN 'blocked_replay'
           WHEN UPPER(COALESCE(e.result, '')) IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED') THEN 'tampered'
           WHEN UPPER(COALESCE(e.result, '')) = 'REVOKED' THEN 'revoked'
           WHEN UPPER(COALESCE(e.result, '')) = 'BROKEN' THEN 'broken'
+          WHEN LOWER(COALESCE(e.verdict, '')) = 'identified_unverified'
+            OR UPPER(COALESCE(e.result, '')) = 'IDENTIFIED_UNVERIFIED'
+            OR (UPPER(COALESCE(e.event_type::text, '')) = 'PROVENANCE_VIEWED' AND COALESCE(e.meta #>> '{assurance,identity_registered}', 'false') = 'true')
+            THEN 'identified_unverified'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_REGISTERED' THEN 'not_registered'
           WHEN UPPER(COALESCE(e.result, '')) = 'NOT_ACTIVE' THEN 'not_active'
           WHEN UPPER(COALESCE(e.result, '')) = 'UNKNOWN_BATCH' THEN 'unknown_batch'
           WHEN UPPER(COALESCE(e.result, '')) IN ('INVALID','TAP_INVALID') OR UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' THEN 'invalid'
           WHEN UPPER(COALESCE(e.result, '')) IN ('CLAIMED','REDEEMED','CHECK_IN','OWNERSHIP_ACTIVATED','WARRANTY_REGISTERED','PROVENANCE_VIEWED','TOKENIZATION_REQUESTED','TOKENIZATION_SIMULATED','TOKENIZATION_ANCHORED','EXPORT_GENERATED') THEN 'lifecycle'
-          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','unknown') THEN LOWER(e.verdict)
+          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','identified_unverified','unknown') THEN LOWER(e.verdict)
           WHEN UPPER(COALESCE(e.result, '')) IN ('VALID','TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'valid'
           ELSE 'unknown'
-        END AS event_class
+        END AS event_class,
+        (
+          LOWER(COALESCE(e.verdict, '')) = 'valid'
+          AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID'
+          AND e.cmac_ok IS TRUE
+          AND e.allowlisted IS TRUE
+        ) AS authentication_verified
         FROM tenants tn
         LEFT JOIN batches b ON b.tenant_id = tn.id
-        LEFT JOIN events e ON e.batch_id = b.id
+        LEFT JOIN events e ON e.batch_id = b.id AND e.tenant_id = tn.id
       )
       SELECT
         id, slug, name, created_at,
         COUNT(event_id)::int AS scans,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'identified_unverified')::int AS identified_unverified,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND (batch_id IS NOT NULL OR tag_id IS NOT NULL))::int AS product_recognized,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND authentication_verified)::int AS authentication_verified,
         COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'valid')::int AS valid,
         COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'invalid')::int AS invalid,
         COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class IN ('replay_suspect','blocked_replay'))::int AS duplicates,

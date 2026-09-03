@@ -51,8 +51,9 @@ interface DashboardHomeClientProps {
   tokenizationDataSource: RealtimeDataSource;
   tokenizationAvailability: RealtimeAvailability;
   tokenizationAvailabilityDetail: string;
-  successfulTaps: number;
-  failedTaps: number;
+  activityTotal: number;
+  authenticatedInteractions: number;
+  riskInteractions: number;
   tokenizationByStatus: Record<string, number>;
   scopedTokenizationRows: any[];
   demoPacks: any[];
@@ -98,8 +99,9 @@ export default function DashboardHomeClient({
   tokenizationDataSource,
   tokenizationAvailability,
   tokenizationAvailabilityDetail,
-  successfulTaps,
-  failedTaps,
+  activityTotal,
+  authenticatedInteractions,
+  riskInteractions,
   tokenizationByStatus,
   scopedTokenizationRows,
   demoPacks,
@@ -164,9 +166,9 @@ export default function DashboardHomeClient({
           <Cpu className="h-4 w-4" />
           {tabText("Operación NFC", "lotes, QA, anclaje")}
         </button>
-        <button type="button" title="Clientes & campañas: convertir mensajes NFC válidos en segmentos, beneficios y recompra" aria-label="Abrir clientes y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
+        <button type="button" title="Actividad & campañas: separar producto, autenticación, actor y consentimiento" aria-label="Abrir actividad y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
           <Trophy className="h-4 w-4" />
-          {tabText("Clientes & campañas", isTenantAdmin ? "segmentos, beneficios" : "portfolio, campañas")}
+          {tabText("Actividad & campañas", isTenantAdmin ? "señales, consentimiento" : "portfolio, campañas")}
         </button>
         {!isTenantAdmin && (
           <button type="button" title="Abrir showroom: escenarios guiados de validación, replay y tamper" aria-label="Abrir showroom" onClick={() => setActiveTab("demo")} className={tabClass("demo")}>
@@ -233,7 +235,7 @@ export default function DashboardHomeClient({
                 { label: "Tenants", value: String(opsTenantRows.length), detail: tenantScope ? "Scope tenant activo" : "Marcas registradas", tone: opsTenantRows.length ? "good" : "warn" },
                 { label: "Batches", value: String(scopedBatchRows.length), detail: `${importedTags.toLocaleString("es-AR")} importados`, tone: scopedBatchRows.length ? "good" : "warn" },
                 { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${plannedTags.toLocaleString("es-AR")} planeados`, tone: activeTags > 0 ? "good" : "warn" },
-                { label: "Riesgo", value: `${(failedTaps).toLocaleString("es-AR")}`, detail: "Alertas / Fallidos", tone: failedTaps > 5 ? "risk" : failedTaps > 0 ? "warn" : "good" },
+                { label: "Riesgo explícito", value: riskInteractions.toLocaleString("es-AR"), detail: "Replay / tamper / invalid", tone: riskInteractions > 5 ? "risk" : riskInteractions > 0 ? "warn" : "good" },
               ]}
               steps={opsSteps}
               tenants={opsTenantRows}
@@ -241,13 +243,13 @@ export default function DashboardHomeClient({
                 { stage: "Tenants", value: opsTenantRows.length },
                 { stage: "Batches", value: scopedBatchRows.length },
                 { stage: "Tags", value: activeTags },
-                { stage: "Taps", value: successfulTaps + failedTaps },
+                { stage: "Actividad", value: activityTotal },
                 { stage: "NFT", value: mintedTokens },
               ]}
               readiness={[
                 { label: "Manifest", ready: importedTags, pending: Math.max(plannedTags - importedTags, 0) },
                 { label: "Activación", ready: activeTags, pending: Math.max(importedTags - activeTags, 0) },
-                { label: "Riesgo", ready: successfulTaps, pending: failedTaps },
+                { label: "Autenticación", ready: authenticatedInteractions, pending: Math.max(activityTotal - authenticatedInteractions, 0) },
                 { label: "Token", ready: mintedTokens, pending: Math.max(scopedTokenizationRows.length - mintedTokens, 0) },
               ]}
             /> : (
@@ -273,10 +275,10 @@ export default function DashboardHomeClient({
               
               <div className="mt-4 grid gap-3 grid-cols-2 md:grid-cols-4">
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
-                  Taps exitosos<br /><b className="text-sm font-black text-emerald-300">{realtimeAvailable ? successfulTaps : "no disponible"}</b>
+                  Autenticación verificada<br /><b className="text-sm font-black text-emerald-300">{realtimeAvailable ? authenticatedInteractions : "no disponible"}</b>
                 </div>
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
-                  Taps fallidos<br /><b className="text-sm font-black text-rose-300">{realtimeAvailable ? failedTaps : "no disponible"}</b>
+                  Riesgo explícito<br /><b className="text-sm font-black text-rose-300">{realtimeAvailable ? riskInteractions : "no disponible"}</b>
                 </div>
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
                   Anclados / emitidos<br /><b className="text-sm font-black text-cyan-200">{tokenizationAvailable ? Number(tokenizationByStatus.anchored || 0) + Number(tokenizationByStatus.minted || 0) : "no disponible"}</b>
@@ -328,11 +330,12 @@ export default function DashboardHomeClient({
               <CustomerGrowthCommandCenter
                 events={initialRealtimeEvents}
                 tenantScope={tenantScope}
-                successfulTaps={successfulTaps}
-                failedTaps={failedTaps}
+                activityTotal={activityTotal}
+                authenticatedInteractions={authenticatedInteractions}
+                riskInteractions={riskInteractions}
               />
             ) : (
-              <EnterpriseOpsState variant="warning" title="Señales CRM no disponibles" description="La fuente de eventos no respondió; no se calculan audiencias, conversión ni riesgo como si fueran cero." checklist={[realtimeAvailabilityDetail]} testId="home-growth-unavailable" />
+              <EnterpriseOpsState variant="warning" title="Señales CRM no disponibles" description="La fuente de eventos no respondió; no se calculan actividad, producto reconocido, autenticación ni riesgo como si fueran cero." checklist={[realtimeAvailabilityDetail]} testId="home-growth-unavailable" />
             )}
             <VerifiedExperiencesPanel mode="loyalty" />
             

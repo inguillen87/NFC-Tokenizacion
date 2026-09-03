@@ -17,6 +17,12 @@ type RealtimeEventPayload = {
   uid_hex?: string;
   verdict?: string;
   risk_level?: string;
+  cmac_ok?: boolean | null;
+  allowlisted?: boolean | null;
+  known_actor_count?: number;
+  known_actor?: boolean;
+  commercial_consent_granted?: boolean;
+  commercial_consent_channels?: string[];
   result?: string;
   reason?: string | null;
   city?: string | null;
@@ -39,6 +45,7 @@ type RealtimeEventPayload = {
   incident_status?: string;
   incident_severity?: string;
   incident_title?: string;
+  event_id?: string;
   sdk_event_id?: string;
   contact?: string;
   company?: string;

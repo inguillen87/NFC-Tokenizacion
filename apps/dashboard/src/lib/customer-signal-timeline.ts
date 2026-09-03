@@ -24,6 +24,7 @@ export type CustomerSignalRecord = Record<string, unknown>;
 export type CustomerLeadRecord = CustomerSignalRecord & {
   id: string;
   created_at: string;
+  tenant_slug?: string;
   name?: string;
   contact?: string;
   company?: string;
@@ -38,6 +39,19 @@ export type CustomerLeadRecord = CustomerSignalRecord & {
   phone?: string;
   role_interest?: string;
 };
+
+/**
+ * Tenant assignment is an authoritative server projection. Free-form lead
+ * content may repeat locator text, but it must never move a row across tenants.
+ */
+export function authoritativeLeadTenant(lead: CustomerSignalRecord) {
+  return String(lead.tenant_slug || "").trim().toLowerCase();
+}
+
+export function leadBelongsToTenant(lead: CustomerSignalRecord, tenantSlug: unknown) {
+  const scope = String(tenantSlug || "").trim().toLowerCase();
+  return Boolean(scope) && authoritativeLeadTenant(lead) === scope;
+}
 
 export type CustomerTicketRecord = CustomerSignalRecord & {
   id: string;

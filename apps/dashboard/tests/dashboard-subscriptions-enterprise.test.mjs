@@ -9,7 +9,7 @@ const tenantDetailSource = readFileSync(new URL("../src/app/(app)/tenants/[slug]
 
 test("subscriptions page is tenant-aware and labels its fixture source", () => {
   assert.match(pageSource, /import Link from "next\/link"/);
-  assert.match(pageSource, /requireDashboardSession/);
+  assert.match(pageSource, /requireDashboardDestination\("subscriptions"\)/);
   assert.match(pageSource, /TENANT_DIRECTORY/);
   assert.match(pageSource, /demobodega/);
   assert.match(tenantDirectorySource, /Demo Bodega Balmec/);

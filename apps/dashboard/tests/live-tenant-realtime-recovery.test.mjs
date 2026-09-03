@@ -17,10 +17,17 @@ test("CRM keeps SSE as the primary channel and reconciles persisted events every
   assert.match(crm, /pollUrl\.searchParams\.set\("range", timeRange\)/);
   assert.doesNotMatch(crm, /streamSource === "production" \? "real" : streamSource/);
   assert.match(crm, /setInterval\(\(\) => void pollPersistedEvents\(\), 10_000\)/);
+  assert.match(crm, /startPollingFallback\(\);\s*const source = new EventSource/);
   assert.match(crm, /normalizeTenantTapRealtimeEvent/);
   assert.match(crm, /row\.source !== "production"/);
   assert.match(crm, /Actualizando por respaldo/);
   assert.match(crm, /eventos persistidos se consultan cada 10 segundos/);
+  const onOpen = crm.match(/source\.onopen = \(\) => \{[\s\S]*?\n    \};/)?.[0] || "";
+  const onHeartbeat = crm.match(/const onHeartbeat = \(event: MessageEvent<string>\) => \{[\s\S]*?\n    \};/)?.[0] || "";
+  assert.doesNotMatch(onOpen, /stopPollingFallback\(\)/);
+  assert.doesNotMatch(onHeartbeat, /stopPollingFallback\(\)/);
+  assert.doesNotMatch(crm, /incomingId === lastEventIdRef\.current/);
+  assert.match(crm, /mergeRealtimeEvents\(prev, tapPayload, 50\)/);
 });
 
 test("demo access is unmistakably isolated from a real tenant session", () => {

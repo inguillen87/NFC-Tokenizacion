@@ -13,7 +13,7 @@ export type TapEventPayload = {
   bid?: string | null;
   source: "real" | "demo" | "imported" | "sun" | "demo_simulation" | "admin_manual" | "mobile_action" | "tokenization" | "warranty" | "ownership";
   eventType: "TAP_VALID" | "TAP_INVALID" | "REPLAY_SUSPECT" | "UNKNOWN_BATCH" | "NOT_REGISTERED" | "NOT_ACTIVE" | "REVOKED" | "BROKEN" | "TAMPERED" | "OWNERSHIP_ACTIVATED" | "WARRANTY_REGISTERED" | "PROVENANCE_VIEWED" | "TOKENIZATION_REQUESTED" | "TOKENIZATION_SIMULATED" | "TOKENIZATION_ANCHORED" | "EXPORT_GENERATED";
-  verdict: "valid" | "invalid" | "replay_suspect" | "blocked_replay" | "revoked" | "broken" | "tampered" | "unknown_batch" | "not_registered" | "not_active";
+  verdict: "valid" | "invalid" | "replay_suspect" | "blocked_replay" | "revoked" | "broken" | "tampered" | "unknown_batch" | "not_registered" | "not_active" | "identified_unverified";
   riskLevel: "none" | "low" | "medium" | "high" | "critical";
   readCounter?: number | null;
   sdmReadCtr?: number | null;

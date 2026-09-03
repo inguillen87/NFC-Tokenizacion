@@ -23,7 +23,9 @@ test("home presents unavailable and demo sources explicitly", () => {
   assert.match(homeClient, /testId="home-overview-unavailable"/);
   assert.match(homeClient, /testId="home-explicit-demo-source"/);
   assert.match(homeClient, /no convierte la indisponibilidad en métricas cero/);
-  assert.match(homeClient, /realtimeAvailable \? successfulTaps : "no disponible"/);
+  assert.match(homeClient, /realtimeAvailable \? authenticatedInteractions : "no disponible"/);
+  assert.match(homeClient, /realtimeAvailable \? riskInteractions : "no disponible"/);
+  assert.doesNotMatch(homeClient, /successfulTaps|failedTaps|Taps fallidos/);
   assert.match(homeClient, /tokenizationAvailable \? Number\(tokenizationByStatus\.pending \|\| 0\) : "no disponible"/);
 });
 

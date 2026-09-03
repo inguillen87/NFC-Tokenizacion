@@ -3,7 +3,7 @@ import { classifyEventRiskBucket, isEventSecurityRisk } from "@product/core";
 export type RealtimeStreamSource = "production" | "demo" | "all";
 export type RealtimeDataSource = "production" | "demo" | "seed" | "mixed" | "unavailable";
 export type RealtimeAvailability = "ready" | "fallback" | "upstream_error" | "invalid_payload" | "unreachable";
-export type RealtimeVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
+export type RealtimeVerdictBucket = "valid" | "identified_unverified" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
 
 export type TenantTapRealtimeEvent = {
   eventId: string;
@@ -18,7 +18,16 @@ export type TenantTapRealtimeEvent = {
   timezone: string;
   timezoneLabel: string;
   timezoneOffset: string | null;
+  eventType: string;
+  result: string;
   verdict: string;
+  interactionClass: "authentication_verified" | "product_identity_recognized" | "security_signal" | "lifecycle_activity" | "unclassified_activity";
+  productIdentityRecognized: boolean;
+  authenticationVerified: boolean;
+  knownActorCount: number;
+  knownActor: boolean;
+  commercialConsentGranted: boolean;
+  commercialConsentChannels: string[];
   riskLevel: string;
   reason?: string | null;
   city?: string | null;
@@ -38,12 +47,35 @@ export type TenantTapRealtimeEvent = {
 /** Wire contract emitted by the API SSE endpoint before dashboard normalization. */
 export type TenantTapRealtimeWireEvent = {
   id?: string | number;
+  eventId?: string | number;
+  tenant_id?: string | null;
+  tenantId?: string | null;
+  tenant_slug?: string | null;
+  tenantSlug?: string | null;
+  batch_id?: string | null;
+  batchId?: string | null;
+  tag_id?: string | null;
+  tagId?: string | null;
+  product_name?: string | null;
+  productName?: string | null;
   result?: string;
+  event_type?: string;
+  eventType?: string;
   verdict?: string;
+  cmac_ok?: boolean | null;
+  cmacOk?: boolean | null;
+  allowlisted?: boolean | null;
+  known_actor_count?: number | string;
+  knownActorCount?: number | string;
+  known_actor?: boolean;
+  knownActor?: boolean;
+  commercial_consent_granted?: boolean;
+  commercialConsentGranted?: boolean;
+  commercial_consent_channels?: string[];
+  commercialConsentChannels?: string[];
   reason?: string;
   uid_hex?: string;
   bid?: string;
-  tenant_slug?: string;
   city?: string;
   country_code?: string;
   lat?: number | string | null;

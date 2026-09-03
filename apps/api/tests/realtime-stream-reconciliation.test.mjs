@@ -17,13 +17,21 @@ test("SSE reconciliation queries persisted events with the original scope and a 
   assert.match(routeSource, /reconciliationCursor = greatestPersistedEventId\(rows, startingCursor \|\| "0"\)/);
 });
 
-test("snapshot, notifications and reconciliation share one bounded event-id deduper", () => {
-  assert.match(routeSource, /const seenEventIds = new Set<string>\(\)/);
-  assert.match(routeSource, /seenEventIds\.size > MAX_SEEN_EVENT_IDS/);
-  assert.match(routeSource, /normalizedSnapshot\.forEach\(\(row\) => rememberEvent\(row\.eventId\)\)/);
-  assert.match(routeSource, /if \(!rememberEvent\(normalized\.eventId\)\) return/);
+test("snapshot, notifications and reconciliation share one bounded projection deduper", () => {
+  assert.match(routeSource, /const seenEventProjections = new Map<string, string>\(\)/);
+  assert.match(routeSource, /seenEventProjections\.size > MAX_SEEN_EVENT_IDS/);
+  assert.match(routeSource, /eventProjectionFingerprint/);
+  assert.match(routeSource, /commercialConsentChannels: \[\.\.\.event\.commercialConsentChannels\]\.sort\(\)/);
+  assert.match(routeSource, /normalizedSnapshot\.forEach\(\(row\) => rememberEvent\(row\)\)/);
+  assert.match(routeSource, /if \(!rememberEvent\(normalized\)\) return/);
   assert.match(routeSource, /for \(const row of orderedRows\) emitTapEvent\(row\)/);
   assert.equal((routeSource.match(/emitTapEvent\(rawPayload\)/g) || []).length, 1);
+});
+
+test("reconciliation refreshes visible projections so actor and consent updates re-emit without new tap ids", () => {
+  assert.match(routeSource, /const PROJECTION_REFRESH_BATCH_SIZE = 50/);
+  assert.match(routeSource, /if \(startingCursor !== null\) \{[\s\S]*?\{ limit: PROJECTION_REFRESH_BATCH_SIZE \}/);
+  assert.match(routeSource, /for \(const row of \[\.\.\.projectionRows\]\.reverse\(\)\) emitTapEvent\(row\)/);
 });
 
 test("reconciliation is periodic, non-overlapping and releases its guard after errors", () => {

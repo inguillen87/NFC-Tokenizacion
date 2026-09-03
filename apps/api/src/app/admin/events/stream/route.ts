@@ -5,7 +5,7 @@ import { checkAdminPermission, checkAdminWithPermission, getAdminTenantScope } f
 import { sql } from "../../../../lib/db";
 import { onRealtimeEvent } from "../../../../lib/realtime-events";
 import { randomUUID } from "node:crypto";
-import { normalizeTenantTapRealtimeEvent } from "@product/core";
+import { normalizeTenantTapRealtimeEvent, type TenantTapRealtimeEvent } from "@product/core";
 import {
   REALTIME_EVENT_SOURCE_FILTERS,
   allowRealtimeEventForScope,
@@ -71,6 +71,7 @@ const DEFAULT_RECONCILIATION_INTERVAL_MS = 10_000;
 const MIN_RECONCILIATION_INTERVAL_MS = 5_000;
 const MAX_RECONCILIATION_INTERVAL_MS = 60_000;
 const RECONCILIATION_BATCH_SIZE = 200;
+const PROJECTION_REFRESH_BATCH_SIZE = 50;
 const MAX_SEEN_EVENT_IDS = 10_000;
 
 function resolveReconciliationIntervalMs() {
@@ -110,29 +111,12 @@ function isIncidentPayload(payload: Record<string, unknown>): payload is Realtim
     && Boolean(payload.ticket_id);
 }
 
-let eventLocationContextSchemaReady: Promise<void> | null = null;
-
-async function ensureEventLocationContextSchema() {
-  if (!eventLocationContextSchemaReady) {
-    eventLocationContextSchemaReady = (async () => {
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_accuracy_m double precision`;
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_source text`;
-      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_updated_at timestamptz`;
-    })().catch((error) => {
-      eventLocationContextSchemaReady = null;
-      throw error;
-    });
-  }
-  return eventLocationContextSchemaReady;
-}
-
 async function fetchRows(
   search: URLSearchParams,
   forcedTenantSlug = "",
   sourceFilter: RealtimeEventSourceFilter = "all",
   options: { afterEventId?: string; limit?: number } = {},
 ): Promise<EventRow[]> {
-  await ensureEventLocationContextSchema().catch(() => null);
   const requestedLimit = options.limit ?? Number(search.get("limit") || 40);
   const limit = Math.max(1, Math.min(RECONCILIATION_BATCH_SIZE, Number(requestedLimit) || 40));
   const afterEventId = /^\d+$/.test(String(options.afterEventId || ""))
@@ -157,8 +141,61 @@ async function fetchRows(
             NULLIF(b.sdm_config #>> '{sun,product,sku}', '')
           ) AS product_name,
           e.result,
+          e.event_type,
           e.verdict,
           e.risk_level,
+          e.cmac_ok,
+          e.allowlisted,
+          (
+            SELECT COUNT(DISTINCT actor_history.consumer_id)::int
+            FROM consumer_tap_history actor_history
+            WHERE actor_history.tenant_id = e.tenant_id
+              AND actor_history.tap_event_id = e.id
+              AND actor_history.consumer_id IS NOT NULL
+          ) AS known_actor_count,
+          EXISTS (
+            SELECT 1
+            FROM consumer_tap_history actor_history
+            WHERE actor_history.tenant_id = e.tenant_id
+              AND actor_history.tap_event_id = e.id
+              AND actor_history.consumer_id IS NOT NULL
+          ) AS known_actor,
+          COALESCE(ARRAY(
+            SELECT DISTINCT CASE
+              WHEN LOWER(consent.scope) IN ('whatsapp', 'whatsapp_marketing') THEN 'whatsapp'
+              WHEN LOWER(consent.scope) = 'phone_marketing' THEN 'phone'
+              WHEN LOWER(consent.scope) IN ('email', 'email_marketing') THEN 'email'
+            END
+            FROM consumer_tap_history consent_history
+            JOIN consumer_tenant_consents consent
+              ON consent.tenant_id = consent_history.tenant_id
+             AND consent.consumer_id = consent_history.consumer_id
+            WHERE consent_history.tenant_id = e.tenant_id
+              AND consent_history.tap_event_id = e.id
+              AND consent_history.consumer_id IS NOT NULL
+              AND consent.granted = true
+              AND consent.revoked_at IS NULL
+              AND LOWER(consent.scope) IN (
+                'whatsapp', 'whatsapp_marketing', 'phone_marketing',
+                'email', 'email_marketing'
+              )
+          ), ARRAY[]::text[]) AS commercial_consent_channels,
+          EXISTS (
+            SELECT 1
+            FROM consumer_tap_history cth
+            JOIN consumer_tenant_consents consent
+              ON consent.tenant_id = cth.tenant_id
+             AND consent.consumer_id = cth.consumer_id
+            WHERE cth.tenant_id = e.tenant_id
+              AND cth.tap_event_id = e.id
+              AND cth.consumer_id IS NOT NULL
+              AND consent.granted = true
+              AND consent.revoked_at IS NULL
+              AND LOWER(consent.scope) IN (
+                'whatsapp', 'whatsapp_marketing', 'phone_marketing',
+                'email', 'email_marketing'
+              )
+          ) AS commercial_consent_granted,
           e.reason,
           e.uid_hex,
           e.created_at,
@@ -175,8 +212,10 @@ async function fetchRows(
           e.source,
           t.slug AS tenant_slug
         FROM events e
-        LEFT JOIN batches b ON b.id = e.batch_id
-        LEFT JOIN tenants t ON t.id = COALESCE(b.tenant_id, e.tenant_id)
+        JOIN batches b
+          ON b.id = e.batch_id
+         AND b.tenant_id = e.tenant_id
+        JOIN tenants t ON t.id = e.tenant_id
         WHERE t.slug = ${tenant}
           AND (
             ${sourceFilter} = 'all'
@@ -218,8 +257,61 @@ async function fetchRows(
             NULLIF(b.sdm_config #>> '{sun,product,sku}', '')
           ) AS product_name,
           e.result,
+          e.event_type,
           e.verdict,
           e.risk_level,
+          e.cmac_ok,
+          e.allowlisted,
+          (
+            SELECT COUNT(DISTINCT actor_history.consumer_id)::int
+            FROM consumer_tap_history actor_history
+            WHERE actor_history.tenant_id = e.tenant_id
+              AND actor_history.tap_event_id = e.id
+              AND actor_history.consumer_id IS NOT NULL
+          ) AS known_actor_count,
+          EXISTS (
+            SELECT 1
+            FROM consumer_tap_history actor_history
+            WHERE actor_history.tenant_id = e.tenant_id
+              AND actor_history.tap_event_id = e.id
+              AND actor_history.consumer_id IS NOT NULL
+          ) AS known_actor,
+          COALESCE(ARRAY(
+            SELECT DISTINCT CASE
+              WHEN LOWER(consent.scope) IN ('whatsapp', 'whatsapp_marketing') THEN 'whatsapp'
+              WHEN LOWER(consent.scope) = 'phone_marketing' THEN 'phone'
+              WHEN LOWER(consent.scope) IN ('email', 'email_marketing') THEN 'email'
+            END
+            FROM consumer_tap_history consent_history
+            JOIN consumer_tenant_consents consent
+              ON consent.tenant_id = consent_history.tenant_id
+             AND consent.consumer_id = consent_history.consumer_id
+            WHERE consent_history.tenant_id = e.tenant_id
+              AND consent_history.tap_event_id = e.id
+              AND consent_history.consumer_id IS NOT NULL
+              AND consent.granted = true
+              AND consent.revoked_at IS NULL
+              AND LOWER(consent.scope) IN (
+                'whatsapp', 'whatsapp_marketing', 'phone_marketing',
+                'email', 'email_marketing'
+              )
+          ), ARRAY[]::text[]) AS commercial_consent_channels,
+          EXISTS (
+            SELECT 1
+            FROM consumer_tap_history cth
+            JOIN consumer_tenant_consents consent
+              ON consent.tenant_id = cth.tenant_id
+             AND consent.consumer_id = cth.consumer_id
+            WHERE cth.tenant_id = e.tenant_id
+              AND cth.tap_event_id = e.id
+              AND cth.consumer_id IS NOT NULL
+              AND consent.granted = true
+              AND consent.revoked_at IS NULL
+              AND LOWER(consent.scope) IN (
+                'whatsapp', 'whatsapp_marketing', 'phone_marketing',
+                'email', 'email_marketing'
+              )
+          ) AS commercial_consent_granted,
           e.reason,
           e.uid_hex,
           e.created_at,
@@ -236,8 +328,10 @@ async function fetchRows(
           e.source,
           t.slug AS tenant_slug
         FROM events e
-        LEFT JOIN batches b ON b.id = e.batch_id
-        LEFT JOIN tenants t ON t.id = COALESCE(b.tenant_id, e.tenant_id)
+        JOIN batches b
+          ON b.id = e.batch_id
+         AND b.tenant_id = e.tenant_id
+        JOIN tenants t ON t.id = e.tenant_id
         WHERE (
             ${sourceFilter} = 'all'
             OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source::text, '')) IN ('real', 'imported'))
@@ -316,23 +410,35 @@ export async function GET(req: Request): Promise<Response> {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
       };
 
-      const seenEventIds = new Set<string>();
+      const seenEventProjections = new Map<string, string>();
       let reconciliationCursor: string | null = null;
       let reconciliationInFlight = false;
       let reconciliation: ReturnType<typeof setInterval> | null = null;
-      const rememberEvent = (eventId: unknown) => {
-        const key = String(eventId || "").trim();
-        if (!key || seenEventIds.has(key)) return false;
-        seenEventIds.add(key);
-        if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
-          const oldest = seenEventIds.values().next().value as string | undefined;
-          if (oldest) seenEventIds.delete(oldest);
+      const eventProjectionFingerprint = (event: TenantTapRealtimeEvent) => JSON.stringify({
+        ...event,
+        commercialConsentChannels: [...event.commercialConsentChannels].sort(),
+      });
+      const rememberEvent = (event: TenantTapRealtimeEvent) => {
+        const key = String(event.eventId || "").trim();
+        if (!key) return false;
+        const fingerprint = eventProjectionFingerprint(event);
+        if (seenEventProjections.get(key) === fingerprint) return false;
+        seenEventProjections.delete(key);
+        seenEventProjections.set(key, fingerprint);
+        if (seenEventProjections.size > MAX_SEEN_EVENT_IDS) {
+          const oldest = seenEventProjections.keys().next().value as string | undefined;
+          if (oldest) seenEventProjections.delete(oldest);
         }
         return true;
       };
       const emitTapEvent = (rawPayload: Record<string, unknown>) => {
         if (!allowRealtimeEventForSource(sourceFilter, rawPayload.source)) return;
         const normalized = normalizeTenantTapRealtimeEvent(rawPayload);
+        // In-memory publishers can fire before they have the tenant slug and
+        // complete persisted projection. Do not leak or de-duplicate that
+        // incomplete event on the global feed: reconciliation emits the same
+        // durable event only after the exact event/batch/tenant join succeeds.
+        if (!normalized.tenantId || !normalized.tenantSlug || !normalized.batchId) return;
         if (!allowRealtimeEventForScope({
           scope,
           forcedTenantSlug,
@@ -346,7 +452,7 @@ export async function GET(req: Request): Promise<Response> {
           if (Number.isNaN(createdAt.getTime())) return;
           if (createdAt.getTime() < Date.now() - windowMs) return;
         }
-        if (!rememberEvent(normalized.eventId)) return;
+        if (!rememberEvent(normalized)) return;
         const emittedAt = new Date();
         const createdAtMs = normalized.occurredAt ? new Date(String(normalized.occurredAt)).getTime() : NaN;
         const streamLatencyMs = Number.isFinite(createdAtMs) ? Math.max(0, emittedAt.getTime() - createdAtMs) : null;
@@ -364,7 +470,7 @@ export async function GET(req: Request): Promise<Response> {
         send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", ts: new Date().toISOString() });
         const snapshotRows = await fetchRows(searchParams, forcedTenantSlug, sourceFilter);
         const normalizedSnapshot = snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row));
-        normalizedSnapshot.forEach((row) => rememberEvent(row.eventId));
+        normalizedSnapshot.forEach((row) => rememberEvent(row));
         reconciliationCursor = greatestPersistedEventId(snapshotRows);
         send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", rows: normalizedSnapshot });
       } catch (error) {
@@ -453,6 +559,19 @@ export async function GET(req: Request): Promise<Response> {
           reconciliationCursor = greatestPersistedEventId(rows, startingCursor || "0");
           const orderedRows = startingCursor === null ? [...rows].reverse() : rows;
           for (const row of orderedRows) emitTapEvent(row);
+          // Actor/consent projections can change after the immutable tap event is
+          // created. Refresh the visible persisted window so a grant or revoke is
+          // re-emitted for the same event id without counting another activity.
+          if (startingCursor !== null) {
+            const projectionRows = await fetchRows(
+              searchParams,
+              forcedTenantSlug,
+              sourceFilter,
+              { limit: PROJECTION_REFRESH_BATCH_SIZE },
+            );
+            if (closed || cancelled) return;
+            for (const row of [...projectionRows].reverse()) emitTapEvent(row);
+          }
         } catch (error) {
           console.warn("[admin_sse_reconciliation_unavailable]", JSON.stringify({
             requestId,

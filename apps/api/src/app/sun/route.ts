@@ -44,6 +44,12 @@ import { escapeHtmlText, escapeHtmlTreeForMarkup, serializeForInlineScript } fro
 import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from '../../lib/agro-product-profile';
 import { Gs1RegistryError } from '../../lib/gs1-digital-link-registry';
 import { resolvePublicGs1PassportBinding } from '../../lib/public-gs1-passport';
+import {
+  PublicCarrierIdentityError,
+  resolvePublicCarrierIdentity,
+  type PublicCarrierIdentityLookupInput,
+  type PublicCarrierIdentityRow,
+} from '../../lib/public-carrier-identity';
 import { resolveTagTamperPresentationEvidence } from '../../lib/sun-carrier-trust-state';
 import { resolvePublicLotLabel } from '../../lib/public-lot-label';
 import { resolveEventLocalTime } from '@product/core';
@@ -695,32 +701,86 @@ function platformFromUserAgent(ua: string) {
   return "Unknown";
 }
 
-async function resolveQrTenantBatch(input: { tenantSlug: string; requestedBid: string }) {
+async function resolveQrTenantBatch(input: PublicCarrierIdentityLookupInput): Promise<PublicCarrierIdentityRow[]> {
   const rows = await sql/*sql*/`
     SELECT
       tn.id::text AS tenant_id,
       tn.slug AS tenant_slug,
       tn.name AS tenant_name,
+      tn.status::text AS tenant_status,
       b.id::text AS batch_id,
       b.bid,
-      b.sdm_config
+      b.status::text AS batch_status,
+      LOWER(COALESCE(
+        NULLIF(BTRIM(b.carrier_profile_code), ''),
+        NULLIF(BTRIM(b.sdm_config->>'carrier_profile_code'), '')
+      )) AS batch_carrier_profile_code,
+      LOWER(cp.code) AS registered_carrier_profile_code,
+      EXISTS (
+        SELECT 1
+        FROM tenant_carrier_policies tcp
+        WHERE tcp.tenant_id = tn.id
+          AND tcp.enabled = true
+          AND LOWER(tcp.carrier_profile_code) = LOWER(COALESCE(
+            NULLIF(BTRIM(b.carrier_profile_code), ''),
+            NULLIF(BTRIM(b.sdm_config->>'carrier_profile_code'), '')
+          ))
+      ) AS tenant_carrier_policy_enabled,
+      b.sdm_config,
+      tag.id::text AS tag_id,
+      tag.uid_hex AS tag_uid_hex,
+      tag.status::text AS tag_status,
+      tag.lifecycle_state AS tag_lifecycle_state,
+      LOWER(NULLIF(BTRIM(tag.carrier_profile_code), '')) AS tag_carrier_profile_code,
+      LOWER(NULLIF(BTRIM(tp.carrier_profile_code), '')) AS tag_profile_carrier_profile_code,
+      CASE WHEN tp.id IS NULL THEN NULL ELSE to_jsonb(tp) END AS tag_profile
     FROM tenants tn
     INNER JOIN batches b
       ON b.tenant_id = tn.id
-      AND b.bid = ${input.requestedBid}
+      AND b.bid = ${input.bid}
       AND b.status = 'active'
-    WHERE tn.slug = ${input.tenantSlug}
-      AND tn.status = 'active'
-    LIMIT 1
+    LEFT JOIN LATERAL (
+      SELECT candidate.*
+      FROM tags candidate
+      WHERE candidate.batch_id = b.id
+        AND (
+          (${input.uidHex || ""} <> '' AND UPPER(candidate.uid_hex) = ${input.uidHex || ""})
+          OR (${input.tagId || ""} <> '' AND candidate.id::text = ${input.tagId || ""})
+        )
+      ORDER BY candidate.created_at ASC, candidate.id ASC
+      LIMIT 2
+    ) tag ON TRUE
+    LEFT JOIN tag_profiles tp ON tp.tag_id = tag.id
+    LEFT JOIN carrier_profiles cp
+      ON LOWER(cp.code) = LOWER(COALESCE(
+        NULLIF(BTRIM(b.carrier_profile_code), ''),
+        NULLIF(BTRIM(b.sdm_config->>'carrier_profile_code'), '')
+      ))
+    WHERE tn.status = 'active'
+    LIMIT 2
   `;
-  return rows[0] as {
-    tenant_id?: string | null;
-    tenant_slug?: string | null;
-    tenant_name?: string | null;
-    batch_id?: string | null;
-    bid?: string | null;
-    sdm_config?: Record<string, unknown> | null;
-  } | undefined;
+  return rows.map((row) => ({
+    tenantId: String(row.tenant_id || "") || null,
+    tenantSlug: String(row.tenant_slug || "") || null,
+    tenantName: String(row.tenant_name || "") || null,
+    tenantStatus: String(row.tenant_status || "") || null,
+    batchId: String(row.batch_id || "") || null,
+    bid: String(row.bid || "") || null,
+    batchStatus: String(row.batch_status || "") || null,
+    batchCarrierProfileCode: String(row.batch_carrier_profile_code || "") || null,
+    registeredCarrierProfileCode: String(row.registered_carrier_profile_code || "") || null,
+    tenantCarrierPolicyEnabled: row.tenant_carrier_policy_enabled === true,
+    batchConfig: jsonObject(row.sdm_config),
+    tagId: String(row.tag_id || "") || null,
+    tagUidHex: String(row.tag_uid_hex || "") || null,
+    tagStatus: String(row.tag_status || "") || null,
+    tagLifecycleState: String(row.tag_lifecycle_state || "") || null,
+    tagCarrierProfileCode: String(row.tag_carrier_profile_code || "") || null,
+    tagProfileCarrierProfileCode: String(row.tag_profile_carrier_profile_code || "") || null,
+    tagProfile: row.tag_profile && typeof row.tag_profile === "object" && !Array.isArray(row.tag_profile)
+      ? row.tag_profile as Record<string, unknown>
+      : null,
+  }));
 }
 
 async function logQrAttempt(input: {
@@ -737,24 +797,6 @@ async function logQrAttempt(input: {
   meta: Record<string, unknown>;
 }) {
   const persistedRawQuery = redactSensitiveQueryValues(input.rawQuery) || {};
-  await sql/*sql*/`
-    CREATE TABLE IF NOT EXISTS sun_scan_attempts (
-      id bigserial PRIMARY KEY,
-      bid text NOT NULL,
-      result text NOT NULL,
-      reason text,
-      ip inet,
-      user_agent text,
-      geo_city text,
-      geo_country text,
-      geo_lat double precision,
-      geo_lng double precision,
-      source text NOT NULL DEFAULT 'real',
-      raw_query jsonb,
-      meta jsonb NOT NULL DEFAULT '{}'::jsonb,
-      created_at timestamptz NOT NULL DEFAULT now()
-    )
-  `;
   await sql/*sql*/`
     INSERT INTO sun_scan_attempts (
       bid, result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, source, raw_query, meta
@@ -886,11 +928,12 @@ async function handleQrScan(input: {
     metadata: baseMeta,
   });
 
-  const failQrContext = async (status: 404 | 422, detail: string) => {
+  const failQrContext = async (status: 404 | 409 | 422 | 503, detail: string) => {
+    const publicReason = status === 503 ? "qr_context_unavailable" : "qr_context_not_found";
     await logQrAttempt({
       bid: requestedBid,
       result: scanResult,
-      reason: "qr_context_not_found",
+      reason: publicReason,
       ip: input.ip,
       userAgent: input.userAgent,
       city: input.geoCity,
@@ -900,7 +943,7 @@ async function handleQrScan(input: {
       rawQuery,
       meta: { ...baseMeta, context_resolution: detail },
     }).catch(() => null);
-    const response = json({ ok: false, reason: "qr_context_not_found" }, status);
+    const response = json({ ok: false, reason: publicReason }, status);
     response.headers.set("x-nexid-trace-id", input.traceId);
     response.headers.set("x-request-id", input.traceId);
     return response;
@@ -940,33 +983,56 @@ async function handleQrScan(input: {
     return failQrContext(422, "missing_or_invalid_tenant_or_batch");
   }
 
-  const tenantBatch = await resolveQrTenantBatch({ tenantSlug, requestedBid }).catch(() => undefined);
-  if (!tenantBatch?.tenant_id || !tenantBatch.batch_id || !tenantBatch.bid) {
-    return failQrContext(404, "active_tenant_batch_not_found");
+  let carrierIdentity: Awaited<ReturnType<typeof resolvePublicCarrierIdentity>>;
+  try {
+    carrierIdentity = await resolvePublicCarrierIdentity({
+      tenantSlug,
+      bid: requestedBid,
+      carrierProfileCode,
+      channel: gs1Scan ? "gs1_qr" : staticNfcScan ? "static_nfc" : "qr",
+      uidHex: gs1Scan ? null : firstParam(input.url, ["uid", "uidHex", "uid_hex"]),
+      registryBinding: gs1Registry ? {
+        tenantId: gs1Registry.tenantId,
+        tenantSlug: gs1Registry.tenantSlug,
+        batchId: gs1Registry.batchId,
+        bid: gs1Registry.bid,
+        tagId: gs1Registry.tagId,
+      } : null,
+    }, resolveQrTenantBatch);
+  } catch (error) {
+    if (error instanceof PublicCarrierIdentityError) {
+      return failQrContext(error.status, error.code);
+    }
+    return failQrContext(503, "public_carrier_identity_lookup_unavailable");
   }
   if (gs1Registry && (
-    String(tenantBatch.tenant_id).toLowerCase() !== gs1Registry.tenantId.toLowerCase()
-    || String(tenantBatch.batch_id).toLowerCase() !== gs1Registry.batchId.toLowerCase()
-    || String(tenantBatch.bid).toUpperCase() !== gs1Registry.bid.toUpperCase()
+    carrierIdentity.tenantId.toLowerCase() !== gs1Registry.tenantId.toLowerCase()
+    || carrierIdentity.batchId.toLowerCase() !== gs1Registry.batchId.toLowerCase()
+    || carrierIdentity.bid.toUpperCase() !== gs1Registry.bid.toUpperCase()
   )) {
     return failQrContext(422, "gs1_registry_batch_binding_mismatch");
   }
 
-  const tenantId = tenantBatch.tenant_id;
-  const batchId = tenantBatch.batch_id;
-  const bid = tenantBatch.bid;
-  const tenantName = String(tenantBatch.tenant_name || tenantSlug);
-  const sdmConfig = jsonObject(tenantBatch.sdm_config);
+  // Everything below uses the persisted binding. Browser tenant, carrier,
+  // product and role-like fields are never authority for the canonical event.
+  const tenantId = carrierIdentity.tenantId;
+  tenantSlug = carrierIdentity.tenantSlug;
+  const batchId = carrierIdentity.batchId;
+  const bid = carrierIdentity.bid;
+  const tenantName = carrierIdentity.tenantName;
+  const sdmConfig = carrierIdentity.batchConfig;
+  const tagProfile = jsonObject(carrierIdentity.tagProfile);
   const publicLotLabel = resolvePublicLotLabel(sdmConfig);
   const configuredProduct = jsonObject(sdmConfig.product);
-  const configuredProductName = String(gs1Registry?.displayName || configuredProduct.name || sdmConfig.product_name || `Batch ${bid}`);
-  const configuredBrand = String(configuredProduct.winery || configuredProduct.brand || sdmConfig.winery || sdmConfig.brand || tenantName);
-  const configuredOrigin = String(configuredProduct.region || configuredProduct.origin || sdmConfig.region || sdmConfig.origin || "").trim() || null;
+  const configuredProductName = String(tagProfile.product_name || gs1Registry?.displayName || configuredProduct.name || sdmConfig.product_name || `Batch ${bid}`);
+  const configuredBrand = String(tagProfile.winery || configuredProduct.winery || configuredProduct.brand || sdmConfig.winery || sdmConfig.brand || tenantName);
+  const configuredOrigin = String(tagProfile.region || configuredProduct.region || configuredProduct.origin || sdmConfig.region || sdmConfig.origin || "").trim() || null;
   const configuredVertical = String(configuredProduct.vertical || sdmConfig.vertical || "generic");
   const configuredProductLabel = String(configuredProduct.category || sdmConfig.product_label || "producto");
   const configuredClubName = String(sdmConfig.club_name || "").trim() || null;
   const configuredAgroProfile = normalizeAgroProductProfile({
     batchConfig: sdmConfig,
+    tagLocaleData: jsonObject(tagProfile.locale_data),
     registryMetadata: gs1Registry?.metadata,
     identity: {
       gtin: gs1Registry?.gtin || firstParam(input.url, ["gtin"]),
@@ -976,7 +1042,21 @@ async function handleQrScan(input: {
   });
   const meta = {
     ...baseMeta,
+    assurance: {
+      ...baseMeta.assurance,
+      identity_registered: true,
+      physical_presence_verified: carrierIdentity.physicalPresenceVerified,
+    },
     configured_context: { tenant: tenantSlug, bid },
+    carrier_identity: {
+      source: "authoritative_registry",
+      identity_scope: carrierIdentity.identityScope,
+      provisioning_status: carrierIdentity.provisioningStatus,
+      provenance: carrierIdentity.provenance,
+      physical_presence_verified: carrierIdentity.physicalPresenceVerified,
+      carrier_profile_code: carrierIdentity.carrierProfileCode,
+      tag_id: carrierIdentity.tagId,
+    },
     ...(gs1Registry ? {
       gs1_registry: {
         id: gs1Registry.id,
@@ -995,14 +1075,14 @@ async function handleQrScan(input: {
       tenantSlug,
       batchId: batchId,
       bid,
-      uidHex: firstParam(input.url, ["uid", "uidHex", "uid_hex"]) || null,
+      uidHex: carrierIdentity.uidHex,
       source: "real",
       eventType: "PROVENANCE_VIEWED",
-      verdict: "not_registered",
-      riskLevel: "medium",
+      verdict: "identified_unverified",
+      riskLevel: "low",
       cmacOk: null,
       allowlisted: null,
-      tagStatus: null,
+      tagStatus: carrierIdentity.tagStatus,
       userAgent: input.userAgent,
       city: input.geoCity,
       countryCode: input.geoCountry,
@@ -1035,6 +1115,11 @@ async function handleQrScan(input: {
       rawQuery,
       meta,
     }).catch(() => null);
+    const response = json({ ok: false, reason: "qr_event_persistence_unavailable" }, 503);
+    response.headers.set("cache-control", "no-store");
+    response.headers.set("x-nexid-trace-id", input.traceId);
+    response.headers.set("x-request-id", input.traceId);
+    return response;
   }
 
   const qrNow = new Date().toISOString();
@@ -1057,10 +1142,10 @@ async function handleQrScan(input: {
           : "QR / SDK engagement",
       tone: "warn",
       summary: staticNfcScan
-        ? "Lectura de un NFC estatico vinculado al manifiesto. El UID y la URL pueden copiarse: no hay SUN, CMAC, anti-replay ni prueba de presencia fisica."
+        ? "Acceso HTTP declarado como NFC estatico con identidad NexID registrada. El UID y la URL pueden copiarse: no prueba presencia fisica ni aporta SUN, CMAC o anti-replay."
         : gs1Scan
           ? "El GTIN, lote y serie coinciden con el registro GS1 activo y muestran el mismo pasaporte del batch. El QR identifica; no autentica criptograficamente el objeto fisico."
-          : "Canal de bajo costo para ficha, CRM, analitica, leads y fidelizacion. No reemplaza la autenticacion criptografica NFC ni activa propiedad automaticamente.",
+          : "Identidad QR NexID registrada para ficha, CRM, analitica, leads y fidelizacion. Es evidencia declarada: no reemplaza la autenticacion criptografica NFC ni activa propiedad automaticamente.",
       reason: staticNfcScan ? "static_nfc_scan" : gs1Scan ? "gs1_identity_resolved" : "qr_scan",
       productState: staticNfcScan
         ? "STATIC_NFC_UNVERIFIED"
@@ -1074,10 +1159,13 @@ async function handleQrScan(input: {
       bid,
       displayLot: publicLotLabel,
       uid: null,
-      uidMasked: null,
+      uidMasked: maskIdentityValue(carrierIdentity.uidHex),
       eventId: eventId ? String(eventId) : null,
       tenantSlug,
       tenantId: tenantId,
+      tagStatus: carrierIdentity.tagStatus,
+      identityScope: carrierIdentity.identityScope,
+      provisioningStatus: carrierIdentity.provisioningStatus,
       scanCount: 1,
       gs1: gs1Registry ? {
         registryId: gs1Registry.id,
@@ -1100,8 +1188,8 @@ async function handleQrScan(input: {
       lotLabel: publicLotLabel,
       winery: configuredBrand,
       region: configuredOrigin,
-      varietal: configuredProduct.varietal || sdmConfig.varietal || null,
-      vintage: configuredProduct.vintage || sdmConfig.vintage || null,
+      varietal: tagProfile.grape_varietal || configuredProduct.varietal || sdmConfig.varietal || null,
+      vintage: tagProfile.vintage || configuredProduct.vintage || sdmConfig.vintage || null,
       category: configuredProductLabel,
       vertical: configuredVertical,
       agro: configuredVertical.toLowerCase() === "agro" || hasConfiguredAgroProfile(configuredAgroProfile)
@@ -1110,6 +1198,12 @@ async function handleQrScan(input: {
     },
     provenance: {
       origin: configuredOrigin,
+      identityEvidence: {
+        provenance: carrierIdentity.provenance,
+        registered: true,
+        physicalPresenceVerified: carrierIdentity.physicalPresenceVerified,
+        cryptographicAuthenticationVerified: false,
+      },
       firstVerified: { at: null, city: null, country: null },
       lastVerifiedLocation: { at: qrNow, city: input.geoCity, country: input.geoCountry, result: publicStatusCode },
       timelineSummary: [{
@@ -1135,7 +1229,7 @@ async function handleQrScan(input: {
     cta: { claimOwnership: false, registerWarranty: false, provenance: true, tokenize: false },
     allowedActions: ["lead", "feedback", "sommelier"],
     blockedActions: ["ownership", "tokenization", "warranty"],
-    trustSignals: { antiReplay: false, tamperRisk: false, tamperStatus: "not_available", tamperSupported: false, lastEventResult: publicStatusCode },
+    trustSignals: { identityRegistered: true, physicalPresenceVerified: false, antiReplay: false, tamperRisk: false, tamperStatus: "not_available", tamperSupported: false, lastEventResult: publicStatusCode },
     tapSecurity: { replayDetected: false, freshTap: false, tokenizationEligible: false, policy: staticNfcScan ? "static_nfc_unverified" : gs1Scan ? "gs1_identity_registered_not_authenticated" : "qr_unverified", actionability: "content_and_crm_only", requiresFreshTapForCommercialActions: true },
     troubleshooting: [staticNfcScan
       ? "Este carrier NFC es estatico y copiable. Para titularidad, garantia o NFT se requiere un chip NFC criptografico y una lectura SUN valida."
@@ -1144,6 +1238,14 @@ async function handleQrScan(input: {
       carrierProfileCode,
       carrierLabel,
       declaredInput,
+      authoritativeBinding: {
+        tenantId,
+        batchId,
+        identityScope: carrierIdentity.identityScope,
+        provisioningStatus: carrierIdentity.provisioningStatus,
+        provenance: carrierIdentity.provenance,
+        physicalPresenceVerified: carrierIdentity.physicalPresenceVerified,
+      },
       gs1RegistryId: gs1Registry?.id || null,
       gs1IdentityBound: Boolean(gs1Registry),
       cryptographicNfcAuthentication: false,
@@ -1234,6 +1336,7 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       SELECT COUNT(*)::integer AS scan_count
       FROM events e
       WHERE e.batch_id = t.batch_id
+        AND e.tenant_id = b.tenant_id
         AND UPPER(e.uid_hex) = UPPER(t.uid_hex)
         AND LOWER(COALESCE(e.source::text, 'real')) <> 'demo'
         AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -1242,6 +1345,7 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       SELECT created_at, city, country_code
       FROM events e
       WHERE e.batch_id = t.batch_id AND UPPER(e.uid_hex) = UPPER(t.uid_hex)
+        AND e.tenant_id = b.tenant_id
         AND LOWER(COALESCE(e.source::text, 'real')) <> 'demo'
         AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       ORDER BY created_at ASC
@@ -1251,6 +1355,7 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       SELECT created_at, city, country_code, result
       FROM events e
       WHERE e.batch_id = t.batch_id AND UPPER(e.uid_hex) = UPPER(t.uid_hex)
+        AND e.tenant_id = b.tenant_id
         AND LOWER(COALESCE(e.source::text, 'real')) <> 'demo'
         AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       ORDER BY created_at DESC
@@ -1345,7 +1450,7 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
   const rows = await sql/*sql*/`
     SELECT date_trunc('day', e.created_at)::date::text AS at, e.meta
     FROM events e
-    JOIN batches b ON b.id = e.batch_id
+    JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
     WHERE b.bid = ${bid} AND UPPER(e.uid_hex) = UPPER(${uid})
       AND LOWER(COALESCE(e.source::text, 'real')) <> 'demo'
       AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}

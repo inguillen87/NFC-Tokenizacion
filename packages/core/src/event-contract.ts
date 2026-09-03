@@ -9,6 +9,7 @@ export type NexidEventVerdict =
   | "unknown_batch"
   | "not_registered"
   | "not_active"
+  | "identified_unverified"
   | "unknown";
 
 export type CanonicalEventRiskBucket =
@@ -18,9 +19,17 @@ export type CanonicalEventRiskBucket =
   | "invalid"
   | "revoked"
   | "lifecycle"
+  | "identified_unverified"
   | "unknown";
 
-export const EVENT_TAXONOMY_VERSION = "2026-07-28.v2";
+export const EVENT_TAXONOMY_VERSION = "2026-09-03.v3";
+
+export type NexidInteractionClass =
+  | "authentication_verified"
+  | "product_identity_recognized"
+  | "security_signal"
+  | "lifecycle_activity"
+  | "unclassified_activity";
 
 export type RiskScoreInput = {
   replayRate: number;
@@ -42,6 +51,7 @@ export type NexidTapEvent = {
   bid?: string | null;
   tenantSlug?: string | null;
   result?: string | null;
+  eventType?: string | null;
   verdict: NexidEventVerdict;
   riskLevel: "none" | "low" | "medium" | "high" | "critical";
   city?: string | null;
@@ -66,7 +76,16 @@ export type TenantTapRealtimeEvent = {
   timezone: string;
   timezoneLabel: string;
   timezoneOffset: string | null;
+  eventType: string;
+  result: string;
   verdict: string;
+  interactionClass: NexidInteractionClass;
+  productIdentityRecognized: boolean;
+  authenticationVerified: boolean;
+  knownActorCount: number;
+  knownActor: boolean;
+  commercialConsentGranted: boolean;
+  commercialConsentChannels: string[];
   riskLevel: string;
   reason?: string | null;
   city?: string | null;
@@ -128,6 +147,7 @@ const CANONICAL_VERDICTS = new Set<NexidEventVerdict>([
   "unknown_batch",
   "not_registered",
   "not_active",
+  "identified_unverified",
   "unknown",
 ]);
 
@@ -148,6 +168,17 @@ type EventVerdictInput = {
   verdict?: unknown;
   result?: unknown;
   reason?: unknown;
+  eventType?: unknown;
+  event_type?: unknown;
+  cmacOk?: unknown;
+  cmac_ok?: unknown;
+  allowlisted?: unknown;
+  batchId?: unknown;
+  batch_id?: unknown;
+  tagId?: unknown;
+  tag_id?: unknown;
+  identityRegistered?: unknown;
+  identity_registered?: unknown;
 };
 
 function verdictInput(value: EventVerdictInput | unknown, reason?: unknown): EventVerdictInput {
@@ -159,6 +190,7 @@ export function normalizeEventVerdict(value: EventVerdictInput | unknown, reason
   const input = verdictInput(value, reason);
   const declared = String(input.verdict || "").trim().toLowerCase() as NexidEventVerdict;
   const result = String(input.result ?? input.verdict ?? "").trim().toUpperCase();
+  const eventType = String(input.eventType ?? input.event_type ?? "").trim().toUpperCase();
   const normalizedReason = String(input.reason || "").trim().toUpperCase();
   const signal = `${result} ${normalizedReason}`.trim();
 
@@ -170,6 +202,14 @@ export function normalizeEventVerdict(value: EventVerdictInput | unknown, reason
   if (signal.includes("REVOKED")) return "revoked";
   if (signal.includes("BROKEN")) return "broken";
   if (result === "UNKNOWN_BATCH" || normalizedReason.includes("UNKNOWN_BATCH")) return "unknown_batch";
+  // A server-resolved public identity is intentionally neither authenticated
+  // nor unregistered. Keep the explicit neutral verdict ahead of legacy
+  // NOT_REGISTERED projections for provenance views created during rollout.
+  if (
+    declared === "identified_unverified"
+    && (eventType === "PROVENANCE_VIEWED" || result === "IDENTIFIED_UNVERIFIED")
+  ) return "identified_unverified";
+  if (result === "IDENTIFIED_UNVERIFIED") return "identified_unverified";
   if (result === "NOT_REGISTERED" || normalizedReason.includes("NOT_REGISTERED")) return "not_registered";
   if (result === "NOT_ACTIVE" || normalizedReason.includes("NOT_ACTIVE")) return "not_active";
   if (LIFECYCLE_RESULTS.has(result)) return "unknown";
@@ -188,6 +228,7 @@ export function classifyEventRiskBucket(value: EventVerdictInput | unknown, reas
   if (verdict === "invalid") return "invalid";
   if (verdict === "revoked" || verdict === "broken") return "revoked";
   if (verdict === "unknown_batch" || verdict === "not_registered" || verdict === "not_active") return "lifecycle";
+  if (verdict === "identified_unverified") return "identified_unverified";
   return "unknown";
 }
 
@@ -204,6 +245,46 @@ export function eventVerdictRiskLevel(value: EventVerdictInput | unknown, reason
   return "low";
 }
 
+export function isVerifiedAuthenticationEvent(value: EventVerdictInput | unknown) {
+  const input = verdictInput(value);
+  const eventType = String(input.eventType ?? input.event_type ?? "").trim().toUpperCase();
+  const result = String(input.result ?? "").trim().toUpperCase();
+  const cmacOk = input.cmacOk ?? input.cmac_ok;
+  return normalizeEventVerdict(input) === "valid"
+    && (eventType === "TAP_VALID" || result === "TAP_VALID" || result === "VALID" || result.startsWith("VALID_"))
+    && cmacOk === true
+    && input.allowlisted === true;
+}
+
+export function isRecognizedProductIdentityEvent(value: EventVerdictInput | unknown) {
+  const input = verdictInput(value);
+  const hasAuthoritativeIdentity = Boolean(
+    String(input.tagId ?? input.tag_id ?? "").trim()
+    || String(input.batchId ?? input.batch_id ?? "").trim()
+    || input.identityRegistered === true
+    || input.identity_registered === true,
+  );
+  // Verdict is an assessment of an interaction, not identity evidence. Even a
+  // neutral public-carrier verdict must carry a persisted batch/tag binding (or
+  // the canonical assurance marker) before CRM can count product recognition.
+  return hasAuthoritativeIdentity;
+}
+
+// Compatibility alias: this always means a product/unit identity, never a
+// person, consumer account or consented audience member.
+export const isRecognizedIdentityEvent = isRecognizedProductIdentityEvent;
+
+export function classifyEventInteraction(value: EventVerdictInput | unknown): NexidInteractionClass {
+  const input = verdictInput(value);
+  if (isVerifiedAuthenticationEvent(input)) return "authentication_verified";
+  if (isEventSecurityRisk(input)) return "security_signal";
+  if (isRecognizedProductIdentityEvent(input)) return "product_identity_recognized";
+  const eventType = String(input.eventType ?? input.event_type ?? "").trim().toUpperCase();
+  const result = String(input.result ?? "").trim().toUpperCase();
+  if (LIFECYCLE_RESULTS.has(eventType) || LIFECYCLE_RESULTS.has(result)) return "lifecycle_activity";
+  return "unclassified_activity";
+}
+
 export function maskUid(uid: string | null | undefined) {
   const value = String(uid || "").trim().toUpperCase();
   if (!value) return "N/A";
@@ -215,6 +296,14 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+function normalizeCommercialConsentChannels(...values: unknown[]) {
+  const allowed = new Set(["whatsapp", "phone", "email"]);
+  const channels = values.flatMap((value) => Array.isArray(value) ? value : []);
+  return [...new Set(channels
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter((value) => allowed.has(value)))];
 }
 
 function firstText(...values: unknown[]) {
@@ -337,10 +426,39 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
   const sunContext = asRecord(meta.sun_context);
   const client = asRecord(sunContext.client);
   const deviceMeta = asRecord(sunContext.device);
-  const tenantId = row.tenant_id == null ? null : String(row.tenant_id);
-  const batchId = row.batch_id == null ? (normalized.bid || null) : String(row.batch_id);
-  const tagId = row.tag_id == null ? null : String(row.tag_id);
-  const productName = row.product_name == null ? null : String(row.product_name);
+  const tenantIdValue = row.tenant_id ?? row.tenantId;
+  const batchIdValue = row.batch_id ?? row.batchId;
+  const tagIdValue = row.tag_id ?? row.tagId;
+  const productNameValue = row.product_name ?? row.productName;
+  const tenantId = tenantIdValue == null ? null : String(tenantIdValue);
+  // BID is a public locator and can also appear on quarantined/unregistered
+  // attempts. Only a persisted batch_id is authoritative product identity.
+  const batchId = batchIdValue == null ? null : String(batchIdValue);
+  const tagId = tagIdValue == null ? null : String(tagIdValue);
+  const productName = productNameValue == null ? null : String(productNameValue);
+  const eventType = firstText(row.event_type, row.eventType).toUpperCase();
+  const result = firstText(row.result).toUpperCase();
+  const assuranceInput = {
+    eventType,
+    result,
+    verdict: row.verdict,
+    reason: row.reason,
+    cmacOk: row.cmac_ok ?? row.cmacOk,
+    allowlisted: row.allowlisted,
+    batchId,
+    tagId,
+    identityRegistered: asRecord(meta.assurance).identity_registered === true,
+  };
+  const productIdentityRecognized = isRecognizedProductIdentityEvent(assuranceInput);
+  const authenticationVerified = isVerifiedAuthenticationEvent(assuranceInput);
+  const rawKnownActorCount = Number(row.known_actor_count ?? row.knownActorCount ?? 0);
+  const knownActorCount = Number.isFinite(rawKnownActorCount) ? Math.max(0, Math.trunc(rawKnownActorCount)) : 0;
+  const knownActor = knownActorCount > 0 || row.known_actor === true || row.knownActor === true;
+  const commercialConsentChannels = normalizeCommercialConsentChannels(
+    row.commercial_consent_channels,
+    row.commercialConsentChannels,
+  );
+  const projectedCommercialConsent = row.commercial_consent_granted === true || row.commercialConsentGranted === true;
   const time = resolveEventLocalTime(row);
   const accuracyValue = row.location_accuracy_m ?? row.accuracy_m ?? row.accuracyM ?? location.accuracyM;
   const accuracy = accuracyValue == null || (typeof accuracyValue === "string" && !accuracyValue.trim())
@@ -364,7 +482,19 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
     timezone: time.timezone,
     timezoneLabel: time.timezoneLabel,
     timezoneOffset: time.timezoneOffset,
+    eventType,
+    result,
     verdict: normalized.verdict,
+    interactionClass: classifyEventInteraction(assuranceInput),
+    productIdentityRecognized,
+    authenticationVerified,
+    knownActorCount,
+    knownActor,
+    // Contact/channel consent is not inferable from a tap, UID, location or
+    // validity. A CRM projection must join an explicit persisted actor and a
+    // current grant for a concrete channel; no consumer identifier is exposed.
+    commercialConsentGranted: knownActor && projectedCommercialConsent && commercialConsentChannels.length > 0,
+    commercialConsentChannels,
     riskLevel: normalized.riskLevel,
     reason: firstText(row.reason) || null,
     city: normalized.city || null,
@@ -398,7 +528,8 @@ export function computeRiskScore(input: RiskScoreInput): RiskScoreBreakdown {
 }
 
 export function normalizeEvent(row: Record<string, unknown>): NexidTapEvent {
-  const verdict = normalizeEventVerdict({ verdict: row.verdict, result: row.result, reason: row.reason });
+  const eventType = firstText(row.event_type, row.eventType).toUpperCase();
+  const verdict = normalizeEventVerdict({ verdict: row.verdict, result: row.result, reason: row.reason, eventType });
   const source = String(row.source || "");
   const location = asRecord(row.location);
   const directCoordinate = normalizeWgs84CoordinatePair(row.lat, row.lng);
@@ -411,6 +542,7 @@ export function normalizeEvent(row: Record<string, unknown>): NexidTapEvent {
     bid: String(row.bid || "") || null,
     tenantSlug: String(row.tenant_slug || row.tenantSlug || "") || null,
     result: String(row.result || "") || null,
+    eventType: eventType || null,
     verdict,
     riskLevel: eventVerdictRiskLevel(verdict),
     city: String(row.city || location.city || row.geo_city || "") || null,
@@ -425,12 +557,18 @@ export function normalizeEvent(row: Record<string, unknown>): NexidTapEvent {
 
 export function aggregateTenantMetrics(input: {
   events?: Array<Record<string, unknown>>;
-  counts?: Partial<Record<"scans" | "valid" | "invalid" | "duplicates" | "tamper" | "revoked", number>>;
+  counts?: Partial<Record<"scans" | "activityTotal" | "recognizedProductIdentity" | "verifiedAuthentication" | "valid" | "invalid" | "duplicates" | "tamper" | "revoked", number>>;
   geoAnomalyRate?: number;
   deviceAnomalyRate?: number;
 }) {
   const events = Array.isArray(input.events) ? input.events.map(normalizeEvent) : [];
-  const scans = input.counts?.scans ?? events.length;
+  const rawEvents = Array.isArray(input.events) ? input.events : [];
+  const scans = input.counts?.scans ?? input.counts?.activityTotal ?? events.length;
+  const activityTotal = input.counts?.activityTotal ?? scans;
+  const recognizedProductIdentity = input.counts?.recognizedProductIdentity
+    ?? rawEvents.filter((event) => isRecognizedProductIdentityEvent(event)).length;
+  const verifiedAuthentication = input.counts?.verifiedAuthentication
+    ?? rawEvents.filter((event) => isVerifiedAuthenticationEvent(event)).length;
   const valid = input.counts?.valid ?? events.filter((event) => event.verdict === "valid").length;
   const duplicates = input.counts?.duplicates ?? events.filter((event) => event.verdict === "replay_suspect" || event.verdict === "blocked_replay").length;
   const tamper = input.counts?.tamper ?? events.filter((event) => event.verdict === "tampered").length;
@@ -449,6 +587,9 @@ export function aggregateTenantMetrics(input: {
 
   return {
     scans: safeScans,
+    activityTotal: Math.max(0, Number(activityTotal || 0)),
+    recognizedProductIdentity: Math.max(0, Number(recognizedProductIdentity || 0)),
+    verifiedAuthentication: Math.max(0, Number(verifiedAuthentication || 0)),
     valid: Number(valid || 0),
     invalid: Number(invalid || 0),
     duplicates: Number(duplicates || 0),

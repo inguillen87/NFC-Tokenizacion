@@ -47,6 +47,7 @@ const RELEASE_MIGRATIONS = Object.freeze([
   "20260831190000_0099_post_tap_location_observation.sql",
   "20260903110000_0099_commercial_role_defaults.sql",
   "20260903120000_0100_event_incident_optimistic_concurrency.sql",
+  "20260903130000_0101_identified_unverified_event_taxonomy.sql",
 ]);
 const REQUIRED_APPLIED = Object.freeze([
   "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
@@ -247,6 +248,25 @@ try {
     to_regprocedure('public.nexid_transition_tag_lifecycle_v1(jsonb)') IS NOT NULL AS tag_lifecycle_writer,
     to_regclass('public.canonical_event_operations') IS NOT NULL AS canonical_event_operations,
     to_regprocedure('public.nexid_write_canonical_event_v1(jsonb)') IS NOT NULL AS canonical_event_writer,
+    COALESCE(
+      pg_get_functiondef(to_regprocedure('public.nexid_write_canonical_event_v1(jsonb)'))
+        LIKE '%identified_unverified%',
+      false
+    ) AS canonical_event_writer_identified_unverified,
+    (
+      SELECT COUNT(*) = 3
+      FROM pg_trigger trigger_row
+      WHERE NOT trigger_row.tgisinternal
+        AND trigger_row.tgenabled <> 'D'
+        AND trigger_row.tgfoid = to_regprocedure('public.nexid_enforce_public_carrier_unit_consistency_v1()')
+        AND trigger_row.tgdeferrable
+        AND trigger_row.tginitdeferred
+        AND (
+          (trigger_row.tgname = 'trg_public_carrier_batch_consistency' AND trigger_row.tgrelid = to_regclass('public.batches'))
+          OR (trigger_row.tgname = 'trg_public_carrier_tag_consistency' AND trigger_row.tgrelid = to_regclass('public.tags'))
+          OR (trigger_row.tgname = 'trg_public_carrier_tag_profile_consistency' AND trigger_row.tgrelid = to_regclass('public.tag_profiles'))
+        )
+    ) AS public_carrier_unit_consistency_guards,
     to_regclass('public.gs1_digital_link_identities') IS NOT NULL AS gs1_digital_link_identities,
     to_regclass('public.epcis_capture_operations') IS NOT NULL AS epcis_capture_operations,
     to_regclass('public.epcis_events') IS NOT NULL AS epcis_events,
@@ -927,6 +947,8 @@ try {
     || !postcheck.tag_lifecycle_writer
     || !postcheck.canonical_event_operations
     || !postcheck.canonical_event_writer
+    || !postcheck.canonical_event_writer_identified_unverified
+    || !postcheck.public_carrier_unit_consistency_guards
     || !postcheck.gs1_digital_link_identities
     || !postcheck.epcis_capture_operations
     || !postcheck.epcis_events

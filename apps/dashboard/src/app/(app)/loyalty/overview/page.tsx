@@ -116,34 +116,31 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
          </div>
 
          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <h3 className="text-sm font-bold text-white mb-4">Funnel de Engagement de Usuarios</h3>
-            <div className="space-y-6">
+            <h3 className="text-sm font-bold text-white mb-2">Cobertura de relación y permisos</h3>
+            <p className="mb-5 text-xs text-slate-400">Actividad, actores conocidos y permisos son métricas independientes. Un UID o dispositivo no se cuenta como persona.</p>
+            <div className="space-y-5">
                <div>
                   <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300">Mensajes NFC válidos (base)</span>
-                     <span className="font-bold text-white">{consumerReady ? "Base" : "—"}</span>
+                     <span className="text-slate-300">Actividad registrada</span>
+                     <span className="font-bold text-white">{metricText(consumer.totalActivity, consumerReady)}</span>
                   </div>
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-cyan-500" style={{ width: consumerReady ? "100%" : "0%" }}></div>
-                  </div>
+                  <p className="text-[11px] text-slate-500">Lecturas físicas más acciones post-tap persistidas.</p>
                </div>
                <div>
                   <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300">Tasa de Registro (Tap → Registro)</span>
-                     <span className="font-bold text-white">{rateText(consumer.tapToRegistrationRate, consumerReady)}</span>
+                     <span className="text-slate-300">Actividad vinculada a un actor conocido</span>
+                     <span className="font-bold text-white">{rateText(consumer.actorLinkedActivityRate, consumerReady)}</span>
                   </div>
                   <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-indigo-500" style={{ width: rateWidth(consumer.tapToRegistrationRate, consumerReady) }}></div>
+                     <div className="h-full bg-cyan-500" style={{ width: rateWidth(consumer.actorLinkedActivityRate, consumerReady) }}></div>
                   </div>
                </div>
-               <div>
-                  <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300">Tasa de Fidelidad (Registro → Member)</span>
-                     <span className="font-bold text-white">{rateText(consumer.registrationToMembershipRate, consumerReady)}</span>
-                  </div>
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-emerald-500" style={{ width: rateWidth(consumer.registrationToMembershipRate, consumerReady) }}></div>
-                  </div>
+               <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                  <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Actores conocidos</p><p className="mt-1 text-lg font-bold text-white">{metricText(consumer.knownActors, consumerReady)}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Identidad verificada</p><p className="mt-1 text-lg font-bold text-sky-300">{metricText(consumer.verifiedIdentityActors, consumerReady)}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Email opt-in</p><p className="mt-1 text-lg font-bold text-emerald-300">{metricText(consumer.consentedActorsByChannel?.email, consumerReady)}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">WhatsApp opt-in</p><p className="mt-1 text-lg font-bold text-emerald-300">{metricText(consumer.consentedActorsByChannel?.whatsapp, consumerReady)}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Teléfono opt-in</p><p className="mt-1 text-lg font-bold text-emerald-300">{metricText(consumer.consentedActorsByChannel?.phone, consumerReady)}</p></div>
                </div>
             </div>
          </div>

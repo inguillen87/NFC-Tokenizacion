@@ -56,6 +56,7 @@ const ids = [
   "20260831190000_0099_post_tap_location_observation.sql",
   "20260903110000_0099_commercial_role_defaults.sql",
   "20260903120000_0100_event_incident_optimistic_concurrency.sql",
+  "20260903130000_0101_identified_unverified_event_taxonomy.sql",
 ];
 const checks = [];
 for (const id of ids) {
@@ -112,6 +113,7 @@ const sql98 = await fs.readFile(path.join(root, "20260830120000_0098_event_locat
 const sql99 = await fs.readFile(path.join(root, "20260831190000_0099_post_tap_location_observation.sql"), "utf8");
 const sqlCommercialRoleDefaults = await fs.readFile(path.join(root, "20260903110000_0099_commercial_role_defaults.sql"), "utf8");
 const sql100 = await fs.readFile(path.join(root, "20260903120000_0100_event_incident_optimistic_concurrency.sql"), "utf8");
+const sql101 = await fs.readFile(path.join(root, "20260903130000_0101_identified_unverified_event_taxonomy.sql"), "utf8");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const runnerSafety = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/lib/db-apply-safety.mjs"), "utf8");
@@ -691,6 +693,15 @@ const commercialRoleDefaultsAreForwardOnly = sqlCommercialRoleDefaults.includes(
   && sqlCommercialRoleDefaults.includes("'operations_manager'")
   && sqlCommercialRoleDefaults.includes("'campaigns:test_whatsapp'")
   && !/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:resource_permissions|memberships|auth_sessions)\b/i.test(sqlCommercialRoleDefaults);
+const identifiedUnverifiedTaxonomyIsDurable = sql101.includes("'identified_unverified'")
+  && sql101.includes("CREATE OR REPLACE FUNCTION nexid_write_canonical_event_v1")
+  && sql101.includes("idx_consumer_tap_history_tenant_event_actor")
+  && sql101.includes("public_carrier_unit_profile_reconciliation_required")
+  && sql101.includes("CREATE CONSTRAINT TRIGGER trg_public_carrier_batch_consistency")
+  && sql101.includes("CREATE CONSTRAINT TRIGGER trg_public_carrier_tag_consistency")
+  && sql101.includes("CREATE CONSTRAINT TRIGGER trg_public_carrier_tag_profile_consistency")
+  && sql101.includes("DEFERRABLE INITIALLY DEFERRED")
+  && !/\b(?:DROP\s+(?:TABLE|COLUMN|TYPE)|DELETE\s+FROM|TRUNCATE)\b/i.test(sql101);
 const allMigrationFiles = (await fs.readdir(root)).filter((file) => file.endsWith(".sql")).sort();
 let tenantApiKeysMaterialized = false;
 let tenantApiKeysCanonicalCreateFound = false;
@@ -770,6 +781,7 @@ const ok = checks.every((item) => item.bytes > 0)
   && publicLocationPrivacyIsAdditive
   && eventLocationContextColumnsAreAdditive
   && commercialRoleDefaultsAreForwardOnly
+  && identifiedUnverifiedTaxonomyIsDurable
   && tenantApiKeysCleanOrderSafe && partitionedEventReferencesAreCompositeSafe
   && postgresTextNullDelimiterFree
   && runnerIsAtomic && unauthorizedCleanBootstrapFailsClosed && legacyBypassBlocked
@@ -827,6 +839,7 @@ console.log(JSON.stringify({
     event_location_context_columns_are_additive: eventLocationContextColumnsAreAdditive,
     post_tap_location_observation_is_additive: postTapLocationObservationIsAdditive,
     commercial_role_defaults_are_forward_only: commercialRoleDefaultsAreForwardOnly,
+    identified_unverified_taxonomy_is_durable: identifiedUnverifiedTaxonomyIsDurable,
     tenant_api_keys_clean_order_safe: tenantApiKeysCleanOrderSafe,
     partitioned_event_references_are_composite_safe: partitionedEventReferencesAreCompositeSafe,
     postgres_text_null_delimiter_free: postgresTextNullDelimiterFree,

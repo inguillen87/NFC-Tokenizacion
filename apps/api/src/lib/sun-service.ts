@@ -310,24 +310,6 @@ export async function processSunScan(input: {
       const persistedRawQuery = redactSensitiveQueryValues(input.rawQuery) || {};
       const coordinate = normalizeCoordinatePair(input.context?.lat, input.context?.lng);
       await sunStateSql/*sql*/`
-        CREATE TABLE IF NOT EXISTS sun_scan_attempts (
-          id bigserial PRIMARY KEY,
-          bid text NOT NULL,
-          result text NOT NULL,
-          reason text,
-          ip inet,
-          user_agent text,
-          geo_city text,
-          geo_country text,
-          geo_lat double precision,
-          geo_lng double precision,
-          source text NOT NULL DEFAULT 'real',
-          raw_query jsonb,
-          meta jsonb NOT NULL DEFAULT '{}'::jsonb,
-          created_at timestamptz NOT NULL DEFAULT now()
-        )
-      `;
-      await sunStateSql/*sql*/`
         INSERT INTO sun_scan_attempts (
           bid, result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, source, raw_query, meta
         ) VALUES (

@@ -27,7 +27,10 @@ test("tag registry never turns a failed source into zero inventory", () => {
 test("consumer CRM reports partial sources and withholds false zero metrics and heatmaps", () => {
   assert.match(consumerOverview, /type SourceAvailability/);
   assert.match(consumerOverview, /consumer-network-partial-sources/);
-  assert.match(consumerOverview, /overviewReady \? Number\(overview\.anonymousTappers/);
+  assert.match(consumerOverview, /overviewReady \? Number\(overview\.activityWithoutActor/);
+  assert.match(consumerOverview, /Unidades reconocidas/);
+  assert.match(consumerOverview, /un UID nunca se interpreta como una persona/);
+  assert.doesNotMatch(consumerOverview, /Anonymous tappers|Tap → registration|Registration → membership/);
   assert.match(consumerOverview, /Heatmap no disponible/);
   assert.match(consumerOverview, /Members source unavailable; this is not a confirmed zero/);
   assert.match(consumerOverview, /Taps source unavailable; this is not a confirmed zero/);

@@ -12,6 +12,7 @@ import {
   type TenantTapRealtimeEvent,
 } from "../lib/realtime-feed";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
+import { classifyLocationProvenance } from "../lib/location-provenance";
 import { exportToCsv } from "../lib/export-utils";
 import { Maximize2, Minimize2, Clock, Terminal, Volume2, VolumeX, Activity, Globe, MapPin, Radio, Target } from "lucide-react";
 
@@ -25,9 +26,7 @@ type Labels = {
 };
 
 function isClientReportedGps(value?: string | null) {
-  const source = String(value || "").trim().toLowerCase();
-  const approximate = source.includes("approximate") || source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
-  return !approximate && source.includes("gps");
+  return classifyLocationProvenance(value) === "consented_gps";
 }
 
 function locationSourceLabel(row: TenantTapRealtimeEvent) {

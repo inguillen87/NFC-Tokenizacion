@@ -28,7 +28,7 @@ test("enterprise release preflight pins the expected non-secret runtime database
   );
 });
 
-test("enterprise release gate requires the reviewed ordered set through 0100", () => {
+test("enterprise release gate requires the reviewed ordered set through 0101", () => {
   assert.deepEqual(expectedMigrations, [
     "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
     "20260726103000_0058_webhook_signature_v2.sql",
@@ -76,10 +76,11 @@ test("enterprise release gate requires the reviewed ordered set through 0100", (
     "20260831190000_0099_post_tap_location_observation.sql",
     "20260903110000_0099_commercial_role_defaults.sql",
     "20260903120000_0100_event_incident_optimistic_concurrency.sql",
+    "20260903130000_0101_identified_unverified_event_taxonomy.sql",
   ]);
 });
 
-test("migration safety gate covers 0061-0100 and the historical clean-order boundaries", () => {
+test("migration safety gate covers 0061-0101 and the historical clean-order boundaries", () => {
   const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const script = fileURLToPath(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script], {
@@ -133,6 +134,7 @@ test("migration safety gate covers 0061-0100 and the historical clean-order boun
     "20260831190000_0099_post_tap_location_observation.sql",
     "20260903110000_0099_commercial_role_defaults.sql",
     "20260903120000_0100_event_incident_optimistic_concurrency.sql",
+    "20260903130000_0101_identified_unverified_event_taxonomy.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
   assert.equal(report.assertions.sdk_idempotency_schema_is_durable, true);
@@ -170,6 +172,7 @@ test("migration safety gate covers 0061-0100 and the historical clean-order boun
   assert.equal(report.assertions.event_location_context_columns_are_additive, true);
   assert.equal(report.assertions.post_tap_location_observation_is_additive, true);
   assert.equal(report.assertions.commercial_role_defaults_are_forward_only, true);
+  assert.equal(report.assertions.identified_unverified_taxonomy_is_durable, true);
   assert.equal(report.assertions.unauthorized_clean_bootstrap_fails_closed, true);
 });
 
@@ -287,6 +290,8 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           has_tag_lifecycle_writer: true,
           has_canonical_event_operations: true,
           has_canonical_event_writer: true,
+          has_identified_unverified_canonical_verdict: true,
+          has_public_carrier_unit_consistency_guards: true,
           has_gs1_digital_link_identities: true,
           has_epcis_capture_operations: true,
           has_epcis_events: true,
@@ -346,7 +351,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_migrations_missing"
-      && error.details.missing_migrations.includes("20260903120000_0100_event_incident_optimistic_concurrency.sql"),
+      && error.details.missing_migrations.includes("20260903130000_0101_identified_unverified_event_taxonomy.sql"),
   );
   assert.equal(ended, true);
 
@@ -487,6 +492,44 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_schema_missing"
       && error.details.missing_schema.includes("enterprise RBAC and deterministic risk truth"),
+  );
+
+  class MissingIdentifiedUnverifiedVerdictClient extends MissingMigrationClient {
+    async query(statement) {
+      const result = await super.query(statement);
+      if (String(statement).includes("current_database()")) {
+        result.rows[0].has_identified_unverified_canonical_verdict = false;
+      }
+      return result;
+    }
+  }
+  await assert.rejects(
+    runEnterpriseReleasePreflight({
+      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
+      Client: MissingIdentifiedUnverifiedVerdictClient,
+    }),
+    (error) => error instanceof EnterpriseReleasePreflightError
+      && error.reason === "required_schema_missing"
+      && error.details.missing_schema.includes("identified_unverified canonical verdict"),
+  );
+
+  class MissingPublicCarrierConsistencyGuardsClient extends MissingMigrationClient {
+    async query(statement) {
+      const result = await super.query(statement);
+      if (String(statement).includes("current_database()")) {
+        result.rows[0].has_public_carrier_unit_consistency_guards = false;
+      }
+      return result;
+    }
+  }
+  await assert.rejects(
+    runEnterpriseReleasePreflight({
+      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
+      Client: MissingPublicCarrierConsistencyGuardsClient,
+    }),
+    (error) => error instanceof EnterpriseReleasePreflightError
+      && error.reason === "required_schema_missing"
+      && error.details.missing_schema.includes("public carrier unit consistency guards"),
   );
 
   class MissingEventLocationContextClient extends MissingMigrationClient {

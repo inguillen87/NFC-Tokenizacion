@@ -22,3 +22,35 @@ test("dashboard dedupes repeated eventId", () => {
   assert.equal(merged.length, 1);
   assert.equal(merged[0].eventId, "evt-1");
 });
+
+test("dashboard replaces a mutable actor and consent projection without adding activity", () => {
+  const consented = {
+    eventId: "evt-41",
+    tenantId: "t1",
+    tenantSlug: "tenant-a",
+    batchId: "b1",
+    tagId: "tag-1",
+    uidMasked: "04A1****D4",
+    occurredAt: "2026-09-03T12:00:00.000Z",
+    verdict: "identified_unverified",
+    knownActorCount: 1,
+    knownActor: true,
+    commercialConsentGranted: true,
+    commercialConsentChannels: ["email"],
+    riskLevel: "none",
+    source: "production",
+  };
+  const revokedProjection = {
+    ...consented,
+    knownActorCount: 0,
+    knownActor: false,
+    commercialConsentGranted: false,
+    commercialConsentChannels: [],
+  };
+
+  const merged = mergeRealtimeEvents([consented], revokedProjection, 40);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].eventId, "evt-41");
+  assert.equal(merged[0].knownActor, false);
+  assert.equal(merged[0].commercialConsentGranted, false);
+});
