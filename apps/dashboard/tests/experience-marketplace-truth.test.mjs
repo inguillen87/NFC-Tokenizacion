@@ -65,6 +65,13 @@ test("marketplace discloses source, withholds false zeroes and marks the in-memo
   assert.match(marketplace, /setCanWrite\(data\.canWrite === true\)/);
   assert.match(marketplace, /Solo lectura · falta marketplace:write/);
   assert.match(marketplace, /isEditorOpen && canWrite/);
+  assert.match(marketplace, /Catálogo conectado · Sandbox/);
+  assert.match(marketplace, /Simulación no persistente/);
+  assert.match(marketplace, /Nada de esta vista publica inventario ni ventas reales/);
+  assert.ok(
+    marketplace.indexOf("Simulación no persistente") < marketplace.indexOf("Productos en este escenario"),
+    "the sandbox disclosure must appear before any demo totals",
+  );
 });
 
 test("tenant marketplace demo mutations are authenticated, permissioned and tenant isolated", () => {
@@ -78,6 +85,19 @@ test("tenant marketplace demo mutations are authenticated, permissioned and tena
   assert.match(marketplaceItemRoute, /authorizeTenantMarketplaceMutation\(req\)/);
   assert.match(marketplaceItemRoute, /tenantMarketplaceSameOrigin\(req\)/);
   assert.doesNotMatch(marketplaceRoute + marketplaceItemRoute, /__tenantMarketplaceStore\?: MarketplaceStore/);
+});
+
+test("tenantless administrators must choose one explicit tenant for every marketplace request", () => {
+  assert.match(marketplace, /tenant_required/);
+  assert.match(marketplace, /new URLSearchParams\(window\.location\.search\)\.get\("tenant"\)/);
+  assert.match(marketplace, /Tenant requerido para aislar el catálogo/);
+  assert.match(marketplace, /href="\/tenants"/);
+  assert.match(marketplace, /\?tenant=\$\{encodeURIComponent\(tenantScope\)\}/);
+  assert.match(marketplace, /fetch\(marketplaceApiUrl\(\), \{ cache: "no-store" \}\)/);
+  assert.match(marketplace, /fetch\(marketplaceApiUrl\(editingId\),/);
+  assert.match(marketplace, /fetch\(marketplaceApiUrl\(item\.id\),/);
+  assert.match(marketplace, /fetch\(marketplaceApiUrl\(id\), \{ method: "DELETE" \}\)/);
+  assert.match(marketplace, /window\.history\.replaceState\(\{\}, "", url\)/);
 });
 
 test("experiences and marketplace surfaces remain UTF-8 without visible mojibake", () => {

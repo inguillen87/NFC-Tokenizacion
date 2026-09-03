@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Visibility = "network" | "private";
 type CheckoutMode = "request" | "external" | "direct";
-type MarketplaceAvailability = "loading" | "ready" | "upstream_error" | "unreachable" | "invalid_payload";
+type MarketplaceAvailability = "loading" | "ready" | "tenant_required" | "upstream_error" | "unreachable" | "invalid_payload";
 type MarketplaceSource = "demo" | "production" | "unconfirmed" | "unavailable";
 
 type Item = {
@@ -54,14 +54,14 @@ function checkoutChip(mode: CheckoutMode) {
     return <span className="inline-flex rounded border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400">Request to Buy</span>;
   }
   if (mode === "direct") {
-    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">Direct Checkout</span>;
+    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">Flujo directo simulado</span>;
   }
   return <span className="inline-flex rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300">External URL</span>;
 }
 
 function visibilityChip(visibility: Visibility) {
   if (visibility === "network") {
-    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">Público (Network)</span>;
+    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">Visible en simulación</span>;
   }
   return <span className="inline-flex rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400">Oculto</span>;
 }
@@ -80,6 +80,14 @@ export default function TenantMarketplacePage() {
   const [query, setQuery] = useState("");
   const [visibilityFilter, setVisibilityFilter] = useState<"all" | Visibility>("all");
   const [importing, setImporting] = useState(false);
+  const [tenantScope, setTenantScope] = useState("");
+  const [tenantDraft, setTenantDraft] = useState("");
+  const [scopeResolved, setScopeResolved] = useState(false);
+
+  const marketplaceApiUrl = (itemId?: string) => {
+    const path = itemId ? `/api/tenant-marketplace/${encodeURIComponent(itemId)}` : "/api/tenant-marketplace";
+    return tenantScope ? `${path}?tenant=${encodeURIComponent(tenantScope)}` : path;
+  };
 
   const totals = useMemo(() => {
     const publicCount = items.filter((item) => item.visibility === "network").length;
@@ -115,6 +123,14 @@ export default function TenantMarketplacePage() {
     : "No se muestran ceros como inventario confirmado mientras la API no esté disponible.";
 
   useEffect(() => {
+    const tenant = new URLSearchParams(window.location.search).get("tenant")?.trim().toLowerCase() || "";
+    setTenantScope(tenant);
+    setTenantDraft(tenant);
+    setScopeResolved(true);
+  }, []);
+
+  useEffect(() => {
+    if (!scopeResolved) return;
     let isMounted = true;
     const load = async () => {
       setLoading(true);
@@ -123,7 +139,7 @@ export default function TenantMarketplacePage() {
       setCanWrite(false);
       let response: Response;
       try {
-        response = await fetch("/api/tenant-marketplace", { cache: "no-store" });
+        response = await fetch(marketplaceApiUrl(), { cache: "no-store" });
       } catch {
         if (isMounted) {
           setItems([]);
@@ -133,9 +149,14 @@ export default function TenantMarketplacePage() {
         return;
       }
       if (!response.ok) {
+        const failure = await response.json().catch(() => null) as { reason?: unknown } | null;
         if (isMounted) {
           setItems([]);
-          setAvailability("upstream_error");
+          if (response.status === 403 && failure?.reason === "tenant_scope_required") {
+            setAvailability("tenant_required");
+          } else {
+            setAvailability("upstream_error");
+          }
           setLoading(false);
         }
         return;
@@ -162,7 +183,7 @@ export default function TenantMarketplacePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [scopeResolved, tenantScope]);
 
   useEffect(() => {
     if (!notice) return;
@@ -200,7 +221,7 @@ export default function TenantMarketplacePage() {
     if (!draft.name.trim() || !draft.vertical.trim()) return;
     setSaving(true);
     if (editingId) {
-      const response = await fetch(`/api/tenant-marketplace/${editingId}`, {
+      const response = await fetch(marketplaceApiUrl(editingId), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
@@ -217,7 +238,7 @@ export default function TenantMarketplacePage() {
       setSaving(false);
       return;
     }
-    const response = await fetch("/api/tenant-marketplace", {
+    const response = await fetch(marketplaceApiUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft),
@@ -236,7 +257,7 @@ export default function TenantMarketplacePage() {
 
   const toggleVisibility = async (item: Item) => {
     const nextVisibility: Visibility = item.visibility === "network" ? "private" : "network";
-    const response = await fetch(`/api/tenant-marketplace/${item.id}`, {
+    const response = await fetch(marketplaceApiUrl(item.id), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visibility: nextVisibility }),
@@ -250,7 +271,7 @@ export default function TenantMarketplacePage() {
   };
 
   const deleteItem = async (id: string) => {
-    const response = await fetch(`/api/tenant-marketplace/${id}`, { method: "DELETE" });
+    const response = await fetch(marketplaceApiUrl(id), { method: "DELETE" });
     if (!response.ok) {
       setNotice("No se pudo eliminar el producto.");
       return;
@@ -265,7 +286,7 @@ export default function TenantMarketplacePage() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text) as Array<Omit<Item, "id">>;
-      const response = await fetch("/api/tenant-marketplace", {
+      const response = await fetch(marketplaceApiUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed),
@@ -288,8 +309,8 @@ export default function TenantMarketplacePage() {
     <div className="space-y-6" data-marketplace-availability={availability} data-marketplace-source={dataSource}>
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Marketplace & Network</h1>
-          <p className="mt-1 text-sm text-slate-400">Publica, edita y administra productos en la red de clientes nexID desde una sola vista.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Catálogo conectado · Sandbox</h1>
+          <p className="mt-1 text-sm text-slate-400">Simulá cómo se configuraría un catálogo por tenant. Nada de esta vista publica inventario ni ventas reales.</p>
         </div>
         {canWrite ? (
           <div className="flex flex-wrap gap-2">
@@ -298,7 +319,7 @@ export default function TenantMarketplacePage() {
               <input suppressHydrationWarning disabled={importing} type="file" accept="application/json" className="hidden" onChange={(event) => importFromJson(event.target.files?.[0])} />
             </label>
             <button suppressHydrationWarning onClick={onCreate} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
-              + Publicar producto demo
+              + Crear producto de prueba
             </button>
           </div>
         ) : (
@@ -308,10 +329,41 @@ export default function TenantMarketplacePage() {
         )}
       </header>
 
+      {availability === "tenant_required" ? (
+        <form
+          className="grid gap-3 rounded-2xl border border-amber-300/25 bg-amber-400/10 p-5 md:grid-cols-[1fr_auto_auto] md:items-end"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const nextTenant = tenantDraft.trim().toLowerCase();
+            if (!/^[a-z0-9](?:[a-z0-9_-]{0,78}[a-z0-9])?$/.test(nextTenant)) {
+              setNotice("Ingresá el slug exacto de un tenant.");
+              return;
+            }
+            const url = new URL(window.location.href);
+            url.searchParams.set("tenant", nextTenant);
+            window.history.replaceState({}, "", url);
+            setTenantScope(nextTenant);
+          }}
+        >
+          <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-amber-100">
+            Tenant requerido para aislar el catálogo
+            <input value={tenantDraft} onChange={(event) => setTenantDraft(event.target.value)} placeholder="Ej.: demobodega" className="rounded-xl border border-amber-200/20 bg-slate-950/70 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-amber-200/50" />
+          </label>
+          <button type="submit" className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-950">Abrir tenant</button>
+          <a href="/tenants" className="rounded-xl border border-amber-200/25 px-4 py-2 text-center text-sm font-bold text-amber-50">Ver directorio</a>
+        </form>
+      ) : null}
+
+      {availability === "ready" && dataSource === "demo" ? (
+        <div className="rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">
+          <strong>Simulación no persistente.</strong> Los productos, estados y totales siguientes sirven para probar el flujo del tenant seleccionado; pueden reiniciarse con un despliegue.
+        </div>
+      ) : null}
+
       <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">Items activos: <b className="text-white">{availability === "ready" ? totals.total : "—"}</b></div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Públicos en network: <b>{availability === "ready" ? totals.publicCount : "—"}</b></div>
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Direct checkout listos: <b>{availability === "ready" ? totals.directCount : "—"}</b></div>
+        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">Productos en este escenario: <b className="text-white">{availability === "ready" ? totals.total : "—"}</b></div>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Visibles en la simulación: <b>{availability === "ready" ? totals.publicCount : "—"}</b></div>
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Flujo directo configurado: <b>{availability === "ready" ? totals.directCount : "—"}</b></div>
       </div>
 
       <section className="rounded-2xl border border-violet-500/20 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.18),transparent_36%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.98))] p-5">
@@ -364,7 +416,7 @@ export default function TenantMarketplacePage() {
         <input suppressHydrationWarning value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />
         <select suppressHydrationWarning value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30">
           <option value="all">Todas las visibilidades</option>
-          <option value="network">Público (Network)</option>
+          <option value="network">Visible en simulación</option>
           <option value="private">Oculto</option>
         </select>
       </div>
@@ -398,7 +450,7 @@ export default function TenantMarketplacePage() {
             ) : null}
             {!loading && availability !== "ready" ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-amber-200">Fuente de marketplace no disponible. Este estado no representa inventario cero.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-amber-200">{availability === "tenant_required" ? "Elegí un tenant para abrir su sandbox aislado." : "Fuente de marketplace no disponible. Este estado no representa inventario cero."}</td>
               </tr>
             ) : null}
             {filteredItems.map((item) => (
@@ -436,7 +488,7 @@ export default function TenantMarketplacePage() {
             ))}
             {!loading && availability === "ready" && filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavía no hay productos. Publicá el primero.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavía no hay productos en este escenario.</td>
               </tr>
             ) : null}
           </tbody>
@@ -457,7 +509,7 @@ export default function TenantMarketplacePage() {
               <option value="external">External URL</option>
             </select>
             <select suppressHydrationWarning value={draft.visibility} onChange={(e) => setDraft((prev) => ({ ...prev, visibility: e.target.value as Visibility }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
-              <option value="network">Público (Network)</option>
+              <option value="network">Visible en simulación</option>
               <option value="private">Oculto</option>
             </select>
           </div>
