@@ -265,6 +265,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       </div>
       <PhysicalTapsCommandCenter
         result={physicalTapsResult}
+        tenantSlug={tenantScope}
         tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"}
         clerkEnabled={isClerkConfiguredForRuntime()}
       />

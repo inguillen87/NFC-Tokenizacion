@@ -136,7 +136,9 @@ test("Balmec physical TAP UX is wired into home and analytics without hardcoded 
     readFile(new URL("../src/lib/physical-taps-read.ts", import.meta.url), "utf8"),
   ]);
   assert.match(home, /PhysicalTapsCommandCenter compact/);
+  assert.match(home, /tenantSlug=\{tenantScope\}/);
   assert.match(analytics, /<PhysicalTapsCommandCenter\s+result=/);
+  assert.match(analytics, /tenantSlug=\{tenantScope\}/);
   assert.match(reader, /sun\/physical-taps/);
   assert.match(reader, /real_data_requires_tenant_session/);
   assert.match(reader, /bid = ""/);
@@ -150,6 +152,10 @@ test("Balmec physical TAP UX is wired into home and analytics without hardcoded 
   assert.match(component, /Ubicación aproximada compartida desde el navegador con consentimiento/);
   assert.match(component, /payload\.scope\.bid !== "all"/);
   assert.match(component, /Contacto bloqueado hasta consentimiento/);
+  assert.match(component, /setInterval\([\s\S]*?5_000/);
+  assert.match(component, /\/api\/admin\/sun\/physical-taps\?/);
+  assert.match(component, /Último snapshot confirmado/);
+  assert.match(component, /refresh failure must never become a false zero/);
   assert.doesNotMatch(component, /\b665\b|\b666\b|0474856A0B1090|0483826A0B1090/);
 });
 

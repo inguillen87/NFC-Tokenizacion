@@ -1,6 +1,7 @@
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
-import { Card, SectionHeading } from "@product/ui";
+import { dashboardPermissionMatches } from "../../../../lib/permission-policy";
+import { TenantEngagementPanel } from "../../../../components/tenant-engagement-panel";
 import Link from "next/link";
 
 async function adminGet(context: AdminPageContext, path: string) {
@@ -31,6 +32,11 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
   const session = await requireDashboardSession("rewards:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
+  const canReadEngagement = dashboardPermissionMatches(
+    session.permissions,
+    "crm:read",
+    session.deniedPermissions,
+  );
 
   const [loyaltyOverview, consumerOverview, rewardsRaw] = await Promise.all([
     adminGet(adminContext, "/admin/loyalty/overview"),
@@ -49,8 +55,8 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">CRM de clientes</h1>
-          <p className="mt-1 text-sm text-slate-400">Rendimiento de beneficios, miembros, canjes y prevención de fraude post-tap.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">CRM de actividad y relación</h1>
+          <p className="mt-1 text-sm text-slate-400">Acciones post-tap, consentimiento, beneficios y seguimiento operativo del tenant.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/loyalty/rewards" className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">
@@ -68,6 +74,8 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
           Fuentes parciales: los módulos no disponibles se muestran con “—”; no se convierten en actividad cero ni en tasas estimadas.
         </div>
       ) : null}
+
+      <TenantEngagementPanel tenantSlug={tenantScope} canRead={canReadEngagement} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">

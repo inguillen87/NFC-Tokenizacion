@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
   LockKeyhole,
   MapPin,
   Radio,
+  RefreshCw,
   ScanLine,
   ShieldCheck,
   Sparkles,
@@ -19,6 +20,7 @@ import {
 import { PremiumVectorMap, type VectorMapPoint } from "@product/ui/premium-vector-map";
 import {
   latestPhysicalTapByState,
+  normalizePhysicalTapsPayload,
   type PhysicalTapRow,
   type PhysicalTapsResult,
 } from "../lib/physical-taps-contract";
@@ -241,17 +243,62 @@ export function PhysicalTapsCommandCenter({
   result,
   compact = false,
   tenantDisplayName = "este tenant",
+  tenantSlug = "",
   clerkEnabled = false,
 }: {
   result: PhysicalTapsResult;
   compact?: boolean;
   tenantDisplayName?: string;
+  tenantSlug?: string;
   clerkEnabled?: boolean;
 }) {
+  const [liveResult, setLiveResult] = useState(result);
+  const [syncState, setSyncState] = useState<"idle" | "syncing" | "live" | "stale">("idle");
   const [state, setState] = useState<StateFilter>("all");
   const [location, setLocation] = useState<LocationFilter>("all");
   const [batch, setBatch] = useState("all");
-  const payload = result.payload;
+  const initialRange = result.payload?.scope.range || "24h";
+  const initialBid = result.payload?.scope.bid || "all";
+  const refreshPhysicalTaps = useCallback(async () => {
+    if (!tenantSlug || result.availability !== "ready") return;
+    setSyncState("syncing");
+    const params = new URLSearchParams({ tenant: tenantSlug, range: initialRange, limit: "100" });
+    if (initialBid && initialBid !== "all") params.set("bid", initialBid);
+    try {
+      const response = await fetch(`/api/admin/sun/physical-taps?${params.toString()}`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`physical_taps_http_${response.status}`);
+      const payload = normalizePhysicalTapsPayload(await response.json().catch(() => null));
+      if (!payload || payload.scope.tenant !== tenantSlug) throw new Error("physical_taps_contract_invalid");
+      setLiveResult({
+        availability: "ready",
+        payload,
+        detail: "tenant_scoped_real_physical_taps",
+        checkedAt: new Date().toISOString(),
+      });
+      setSyncState("live");
+    } catch {
+      // Preserve the last confirmed snapshot. A refresh failure must never become a false zero.
+      setSyncState("stale");
+    }
+  }, [initialBid, initialRange, result.availability, tenantSlug]);
+
+  useEffect(() => {
+    setLiveResult(result);
+  }, [result]);
+
+  useEffect(() => {
+    if (!tenantSlug || result.availability !== "ready") return;
+    void refreshPhysicalTaps();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshPhysicalTaps();
+    }, 5_000);
+    return () => window.clearInterval(interval);
+  }, [refreshPhysicalTaps, result.availability, tenantSlug]);
+
+  const payload = liveResult.payload;
   const rows = payload?.rows ?? EMPTY_ROWS;
   const batches = useMemo(() => Array.from(new Set(rows.map((row) => row.bid).filter(Boolean))).sort(), [rows]);
   const filteredRows = useMemo(() => rows.filter((row) => (
@@ -262,8 +309,8 @@ export function PhysicalTapsCommandCenter({
   const points = useMemo(() => groupMapPoints(filteredRows), [filteredRows]);
   const [selectedPointId, setSelectedPointId] = useState<string | undefined>();
 
-  if (result.availability !== "ready" || !payload) {
-    return <UnavailablePhysicalTaps result={result} tenantDisplayName={tenantDisplayName} clerkEnabled={clerkEnabled} />;
+  if (liveResult.availability !== "ready" || !payload) {
+    return <UnavailablePhysicalTaps result={liveResult} tenantDisplayName={tenantDisplayName} clerkEnabled={clerkEnabled} />;
   }
 
   const latestClosed = latestPhysicalTapByState(rows, "closed");
@@ -292,8 +339,17 @@ export function PhysicalTapsCommandCenter({
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-right">
           <p className="flex items-center justify-end gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Última evidencia</p>
-          <p className="mt-1 text-lg font-black text-white">{relativeDate(payload.summary.latestAt, result.checkedAt)}</p>
+          <p className="mt-1 text-lg font-black text-white">{relativeDate(payload.summary.latestAt, liveResult.checkedAt)}</p>
           <p className="text-xs text-slate-400">{payload.summary.latestAt ? absoluteDate(payload.summary.latestAt) : "Sin fecha"}</p>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${syncState === "stale" ? "text-amber-200" : "text-emerald-200"}`} role="status" aria-live="polite">
+              <span className={`h-2 w-2 rounded-full ${syncState === "stale" ? "bg-amber-300" : "bg-emerald-300"}`} />
+              {syncState === "stale" ? "Último snapshot confirmado" : syncState === "syncing" ? "Sincronizando" : "Actualización cada 5 s"}
+            </span>
+            <button type="button" onClick={() => void refreshPhysicalTaps()} disabled={syncState === "syncing"} className="inline-grid min-h-11 min-w-11 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100 transition hover:bg-cyan-400/15 disabled:cursor-wait disabled:opacity-60" aria-label="Actualizar TAP físicos ahora">
+              <RefreshCw className={`h-4 w-4 ${syncState === "syncing" ? "animate-spin" : ""}`} />
+            </button>
+          </div>
         </div>
       </header>
 

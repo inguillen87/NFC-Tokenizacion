@@ -211,7 +211,7 @@ export default function DashboardHomeClient({
               initialAvailabilityDetail={realtimeAvailabilityDetail}
               onSectionChange={(section) => setActiveTab(section)}
             />
-            <PhysicalTapsCommandCenter compact result={physicalTapsResult} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} clerkEnabled={clerkEnabled} />
+            <PhysicalTapsCommandCenter compact result={physicalTapsResult} tenantSlug={tenantScope} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} clerkEnabled={clerkEnabled} />
           </div>
         )}
 
