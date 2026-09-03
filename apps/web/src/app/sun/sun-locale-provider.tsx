@@ -13,6 +13,7 @@ import {
 import {
   SUN_LOCALES,
   SUN_LOCALE_COOKIE,
+  formatSunDateTime,
   isSunLocale,
   toDocumentLanguage,
   translateSunUiText,
@@ -41,14 +42,8 @@ function localizeTree(root: HTMLElement, locale: SunLocale) {
     if (element.closest("[data-sun-server-evidence='true']")) continue;
     const rawValue = element.dataset.sunDatetime;
     if (!rawValue) continue;
-    const date = new Date(rawValue);
-    if (!Number.isFinite(date.getTime())) continue;
     const timeZone = element.dataset.sunTimeZone || undefined;
-    const formatted = new Intl.DateTimeFormat(locale, {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone,
-    }).format(date);
+    const formatted = formatSunDateTime(rawValue, locale, timeZone);
     if (element.textContent !== formatted) element.textContent = formatted;
   }
 

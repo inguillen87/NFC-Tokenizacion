@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-import { translateSunUiText } from "../src/app/sun/sun-locale.ts";
+import { formatSunDateTime, translateSunUiText } from "../src/app/sun/sun-locale.ts";
 import { resolveSunConsumerStatus } from "../src/app/sun/sun-consumer-status.ts";
 import { resolveSunTtEvidence } from "../src/app/sun/sun-tt-evidence.ts";
 
@@ -37,6 +37,14 @@ test("SUN locale resolution is query lang, then cookie, then request headers", a
   assert.match(source, /export async function getWebI18n\(queryLocale\?: string \| null\)/);
   assert.ok(queryIndex > 0 && cookieIndex > queryIndex && headerIndex > cookieIndex);
   assert.match(source, /cookieStore\.get\("locale"\)/);
+});
+
+test("SUN timestamps stay deterministic between the server and the phone", () => {
+  const observedAt = "2026-05-01T18:30:00.000Z";
+
+  assert.match(formatSunDateTime(observedAt, "es-AR", null), /UTC$/);
+  assert.doesNotMatch(formatSunDateTime(observedAt, "es-AR", "America\/Argentina\/Buenos_Aires"), /UTC$/);
+  assert.match(formatSunDateTime(observedAt, "en", "not-a-time-zone"), /UTC$/);
 });
 
 test("SUN selector changes presentation in place and cannot revalidate or reload the tap", async () => {

@@ -555,3 +555,29 @@ export function formatSunDate(value: string | Date, locale: SunLocale, options: 
   if (!Number.isFinite(date.getTime())) return locale === "pt-BR" ? "Não informado" : locale === "en" ? "Not provided" : "No informado";
   return new Intl.DateTimeFormat(locale, options).format(date);
 }
+
+export function formatSunDateTime(
+  value: string | Date,
+  locale: SunLocale,
+  requestedTimeZone?: string | null,
+) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    return locale === "pt-BR" ? "Não informado" : locale === "en" ? "Not provided" : "No informado";
+  }
+
+  const candidate = typeof requestedTimeZone === "string" ? requestedTimeZone.trim() : "";
+  let timeZone = candidate || "UTC";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(date);
+  } catch {
+    timeZone = "UTC";
+  }
+
+  const formatted = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone,
+  }).format(date);
+  return timeZone === "UTC" && candidate !== "UTC" ? `${formatted} UTC` : formatted;
+}

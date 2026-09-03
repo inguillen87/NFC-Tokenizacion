@@ -8,7 +8,7 @@ import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
 import { SunLocaleProvider } from "./sun-locale-provider";
-import { translateSunUiText, type SunLocale } from "./sun-locale";
+import { formatSunDateTime, translateSunUiText, type SunLocale } from "./sun-locale";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { PostTapNextStep } from "./post-tap-next-step";
 import { SunSectionNav } from "./sun-section-nav";
@@ -225,8 +225,8 @@ type SunContract = {
 
 function fmtDate(value?: string | null, timezone?: string | null, locale: SunLocale = "es-AR") {
   if (!value) return "N/A";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: timezone || undefined });
+  const formatted = formatSunDateTime(value, locale, timezone);
+  return formatted === "No informado" || formatted === "Não informado" || formatted === "Not provided" ? "N/A" : formatted;
 }
 
 function policyLabel(value?: string | null) {

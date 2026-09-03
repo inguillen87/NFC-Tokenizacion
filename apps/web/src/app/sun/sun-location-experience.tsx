@@ -8,6 +8,7 @@ import {
   type TapPrecisionTelemetryProps,
 } from "./tap-precision-telemetry";
 import { useSunLocale } from "./sun-locale-provider";
+import { formatSunDateTime } from "./sun-locale";
 
 type SunLocationExperienceProps = {
   origin: SunPassportMapLocation | null;
@@ -90,7 +91,7 @@ export function SunLocationExperience({
   const effectiveTapTime = confirmedDate && Number.isFinite(confirmedDate.getTime())
     ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(confirmedDate)
     : sourceTapDate && Number.isFinite(sourceTapDate.getTime())
-      ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: tapTimeZone || undefined }).format(sourceTapDate)
+      ? formatSunDateTime(sourceTapDate, locale, tapTimeZone)
     : tapTimeLabel;
 
   return (
