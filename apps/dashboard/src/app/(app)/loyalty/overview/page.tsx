@@ -28,14 +28,14 @@ function rateWidth(value: unknown, available: boolean) {
 
 export default async function LoyaltyOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
-  const session = await requireDashboardSession();
+  const session = await requireDashboardSession("crm:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
 
   const [loyaltyOverview, consumerOverview, rewardsRaw] = await Promise.all([
     adminGet(adminContext, "/admin/loyalty/overview"),
     adminGet(adminContext, "/admin/consumer-network/overview"),
-    adminGet(adminContext, "/admin/loyalty/rewards"),
+    adminGet(adminContext, tenantScope ? "/admin/loyalty/rewards" : "/admin/loyalty/rewards?scope=global"),
   ]);
 
   const loyaltyReady = Boolean(loyaltyOverview && typeof loyaltyOverview === "object" && !Array.isArray(loyaltyOverview));

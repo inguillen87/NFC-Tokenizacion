@@ -36,6 +36,11 @@ interface Reward {
 interface RewardsClientProps {
   initialRewards: Reward[];
   tenantScope: string;
+  isDemo: boolean;
+  canWrite: boolean;
+  dataSource: "production" | "demo" | "unavailable";
+  availability: "ready" | "ready_empty" | "forbidden" | "upstream_error";
+  sourceReason: string;
 }
 
 const PRESET_IMAGES = [
@@ -58,7 +63,15 @@ const REWARD_TYPES = [
   { value: "GIFT", label: "Regalo de la Casa 🎁" }
 ];
 
-export default function RewardsClient({ initialRewards, tenantScope }: RewardsClientProps) {
+export default function RewardsClient({
+  initialRewards,
+  tenantScope,
+  isDemo,
+  canWrite,
+  dataSource,
+  availability,
+  sourceReason,
+}: RewardsClientProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
@@ -80,6 +93,7 @@ export default function RewardsClient({ initialRewards, tenantScope }: RewardsCl
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const openCreateModal = () => {
+    if (!canWrite) return;
     setEditingReward(null);
     setCode("");
     setTitle("");
@@ -96,6 +110,7 @@ export default function RewardsClient({ initialRewards, tenantScope }: RewardsCl
   };
 
   const openEditModal = (reward: Reward) => {
+    if (!canWrite) return;
     setEditingReward(reward);
     setCode(reward.code);
     setTitle(reward.title);
@@ -113,6 +128,10 @@ export default function RewardsClient({ initialRewards, tenantScope }: RewardsCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite) {
+      setMessage({ type: "error", text: "Esta sesión tiene acceso de solo lectura." });
+      return;
+    }
     setLoading(true);
     setMessage(null);
 
@@ -167,7 +186,12 @@ export default function RewardsClient({ initialRewards, tenantScope }: RewardsCl
   };
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      data-rewards-availability={availability}
+      data-rewards-source={dataSource}
+      data-rewards-source-reason={sourceReason || undefined}
+    >
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -175,29 +199,59 @@ export default function RewardsClient({ initialRewards, tenantScope }: RewardsCl
             Catálogo de Beneficios
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Gestioná los premios, experiencias y beneficios exclusivos que los consumidores obtienen al verificar productos reales.
+            {isDemo
+              ? "Vista ilustrativa del catálogo: no escribe beneficios ni inventario real."
+              : "Gestioná los premios, experiencias y beneficios que tu tenant publica para sus consumidores."}
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white text-sm font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(6,182,212,0.15)] hover:shadow-[0_4px_25px_rgba(6,182,212,0.3)] hover:-translate-y-0.5"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Beneficio
-        </button>
+        {canWrite ? (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white text-sm font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(6,182,212,0.15)] hover:shadow-[0_4px_25px_rgba(6,182,212,0.3)] hover:-translate-y-0.5"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo Beneficio
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-300">
+            <Lock className="h-4 w-4 text-amber-300" />
+            {isDemo ? "Demo · solo lectura" : tenantScope ? "Solo lectura" : "Elegí un tenant para editar"}
+          </span>
+        )}
       </header>
 
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-300 flex items-center justify-between">
+      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3">
         <div>
           Scope operativo: <b className="text-cyan-300 font-mono">{tenantScope ? `tenant:${tenantScope}` : "global / multi-tenant"}</b>
         </div>
         <div className="flex items-center gap-2 text-slate-400">
           <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-          <span>Integrado con motor de recompensas PWA</span>
+          <span>
+            {dataSource === "demo"
+              ? "Datos ilustrativos · sin persistencia"
+              : dataSource === "production"
+                ? "Fuente productiva confirmada"
+                : "Fuente no disponible"}
+          </span>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {availability === "forbidden" ? (
+        <div role="alert" className="rounded-2xl border border-amber-300/30 bg-amber-400/[0.07] p-5 text-sm text-amber-100">
+          Tu sesión no tiene permiso para consultar este catálogo. No se muestran fixtures ni ceros como si fueran datos reales.
+        </div>
+      ) : availability === "upstream_error" ? (
+        <div role="alert" className="rounded-2xl border border-rose-300/30 bg-rose-400/[0.07] p-5 text-sm text-rose-100">
+          No se pudo confirmar la fuente de recompensas. El catálogo permanece no disponible hasta recuperar la conexión.
+        </div>
+      ) : availability === "ready_empty" ? (
+        <div role="status" className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-sm text-slate-300">
+          La fuente respondió correctamente y confirmó que todavía no hay beneficios configurados para este scope.
+        </div>
+      ) : null}
+
+      {availability === "ready" ? <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {initialRewards.map((item, idx) => {
           const isPaused = item.status === "paused" || item.status === "draft";
           const displayImage = item.image_url || "/images/wine_tasting.png";
@@ -273,22 +327,27 @@ export default function RewardsClient({ initialRewards, tenantScope }: RewardsCl
                       Stock: {item.stock_remaining ?? item.stock_total ?? "∞"} / {item.stock_total ?? "∞"}
                     </p>
                   </div>
-                  <button
-                    onClick={() => openEditModal(item)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-xs text-slate-300 hover:text-cyan-400 font-semibold transition-all"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                    Editar
-                  </button>
+                  {canWrite ? (
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(item)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-xs text-slate-300 hover:text-cyan-400 font-semibold transition-all"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                      Editar
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Solo lectura</span>
+                  )}
                 </div>
               </div>
             </div>
           );
         })}
-      </div>
+      </div> : null}
 
       {/* MODAL */}
-      {isModalOpen && (
+      {isModalOpen && canWrite && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl animate-in fade-in zoom-in duration-200">
             <header className="flex items-center justify-between border-b border-white/10 bg-slate-900/50 px-6 py-4">

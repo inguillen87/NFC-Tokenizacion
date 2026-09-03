@@ -8,7 +8,7 @@ export default async function LoyaltyCampaignsPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const query = searchParams ? await searchParams : {};
-  const session = await requireDashboardSession();
+  const session = await requireDashboardSession("campaigns:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
 
   return (

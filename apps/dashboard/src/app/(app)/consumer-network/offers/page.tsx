@@ -52,7 +52,7 @@ const PRESETS: MarketplaceOffer[] = [
 
 export default async function TenantOffersPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
-  const session = await requireDashboardSession();
+  const session = await requireDashboardSession("marketplace:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
 

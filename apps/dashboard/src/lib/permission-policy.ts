@@ -170,6 +170,35 @@ export function dashboardCanReadSensitiveAlerts(
 
 export function requiredPermissionForAdminResource(method: string, normalizedPath: string) {
   const normalizedMethod = String(method || "").toUpperCase();
+  if (normalizedMethod === "GET" && normalizedPath === "loyalty/overview") {
+    return "crm:read";
+  }
+  if (normalizedPath === "loyalty/rewards") {
+    return normalizedMethod === "GET" ? "rewards:read" : "rewards:write";
+  }
+  if (normalizedMethod === "GET" && normalizedPath === "loyalty/trivia/overview") {
+    return "campaigns:read";
+  }
+  if (normalizedMethod === "POST" && normalizedPath === "campaigns/test-whatsapp") {
+    return "campaigns:test_whatsapp";
+  }
+  if (normalizedMethod === "POST" && normalizedPath === "rewards/redemptions/validate") {
+    return "rewards:validate";
+  }
+  if (
+    normalizedMethod === "GET"
+    && [
+      "consumer-network/overview",
+      "consumer-network/members",
+      "consumer-network/products",
+      "consumer-network/taps",
+    ].includes(normalizedPath)
+  ) {
+    return "crm:read";
+  }
+  if (normalizedPath === "consumer-network/offers") {
+    return normalizedMethod === "GET" ? "marketplace:read" : "marketplace:write";
+  }
   if (normalizedMethod === "POST" && normalizedPath === "supplier-orders") {
     return "supplier_order.create";
   }

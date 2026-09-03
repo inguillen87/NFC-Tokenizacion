@@ -106,7 +106,9 @@ test("demo presets remain explicit and never fill empty production tenant respon
   const rewards = await readFile(new URL("../src/app/(app)/loyalty/rewards/page.tsx", import.meta.url), "utf8");
 
   assert.match(offers, /session\.isDemo \? PRESETS : \[\]/);
-  assert.match(rewards, /session\.isDemo \? PRESETS : \[\]/);
+  assert.match(rewards, /allowDemoData && meta\.demoMode/);
+  assert.match(rewards, /reason: "illustrative_presets"/);
+  assert.match(rewards, /availability: rewards\.length \? "ready" : "ready_empty"/);
 });
 
 test("offline page reads the tenant-scoped GET history without exposing captured URLs", async () => {

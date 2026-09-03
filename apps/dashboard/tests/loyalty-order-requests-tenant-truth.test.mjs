@@ -29,7 +29,7 @@ test("loyalty admin URLs require an authorized tenant scope", () => {
 });
 
 test("loyalty campaigns derive scope on the server and never hardcode the demo tenant in requests", () => {
-  const sessionIndex = campaignPage.indexOf("await requireDashboardSession()");
+  const sessionIndex = campaignPage.indexOf('await requireDashboardSession("campaigns:read")');
   const contextIndex = campaignPage.indexOf("await createAdminPageContext(session, query.tenant)");
   assert.ok(sessionIndex >= 0 && contextIndex > sessionIndex);
   assert.match(campaignPage, /tenantScope=\{adminContext\.tenantSlug\}/);

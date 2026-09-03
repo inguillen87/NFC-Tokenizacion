@@ -1,17 +1,10 @@
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
+import { readDemoDataMetaFromResponse } from "../../../../lib/demo-data-mode";
+import { dashboardPermissionDenied, dashboardPermissionMatches } from "../../../../lib/permission-policy";
 import RewardsClient from "./rewards-client";
 
-async function getRewards(context: AdminPageContext) {
-  try {
-    const response = await fetchAdminPage(context, "loyalty/rewards");
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.rewards || [];
-  } catch {
-    return [];
-  }
-}
+type RewardsAvailability = "ready" | "ready_empty" | "forbidden" | "upstream_error";
 
 const PRESETS = [
   {
@@ -55,16 +48,89 @@ const PRESETS = [
   }
 ];
 
+type RewardRecord = (typeof PRESETS)[number];
+type RewardsReadResult = {
+  availability: RewardsAvailability;
+  items: RewardRecord[];
+  dataSource: "production" | "demo" | "unavailable";
+  reason: string;
+};
+
+function unavailableRewards(
+  availability: "forbidden" | "upstream_error",
+  reason: string,
+): RewardsReadResult {
+  return { availability, items: [], dataSource: "unavailable", reason };
+}
+
+async function getRewards(
+  context: AdminPageContext,
+  path: string,
+  allowDemoData: boolean,
+): Promise<RewardsReadResult> {
+  try {
+    const response = await fetchAdminPage(context, path);
+    const meta = readDemoDataMetaFromResponse(response);
+    const payload = await response.json().catch(() => null);
+
+    if (response.status === 403) {
+      return unavailableRewards("forbidden", "rewards_read_forbidden");
+    }
+    if (!response.ok || (payload && typeof payload === "object" && (payload as { ok?: boolean }).ok === false)) {
+      const reason = payload && typeof payload === "object"
+        ? String((payload as { reason?: unknown; error?: unknown }).reason || (payload as { error?: unknown }).error || `upstream_${response.status}`)
+        : `upstream_${response.status}`;
+      return unavailableRewards("upstream_error", reason);
+    }
+
+    const rewards = payload && typeof payload === "object"
+      ? (payload as { rewards?: unknown }).rewards
+      : null;
+    if (Array.isArray(rewards)) {
+      return {
+        availability: rewards.length ? "ready" : "ready_empty",
+        items: rewards as RewardRecord[],
+        dataSource: meta.demoMode ? "demo" : "production",
+        reason: "",
+      };
+    }
+
+    if (allowDemoData && meta.demoMode) {
+      return {
+        availability: "ready",
+        items: PRESETS,
+        dataSource: "demo",
+        reason: "illustrative_presets",
+      };
+    }
+    return unavailableRewards("upstream_error", "rewards_payload_invalid");
+  } catch {
+    return unavailableRewards("upstream_error", "admin_bff_unreachable");
+  }
+}
+
 export default async function RewardsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
-  const session = await requireDashboardSession();
+  const session = await requireDashboardSession("rewards:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
-
-  const fetchedRewards = await getRewards(adminContext);
-  const rewards = fetchedRewards.length ? fetchedRewards : session.isDemo ? PRESETS : [];
+  const rewardsPath = tenantScope ? "loyalty/rewards" : "loyalty/rewards?scope=global";
+  const rewardsResult = await getRewards(adminContext, rewardsPath, Boolean(session.isDemo));
+  const canWrite = Boolean(tenantScope) && !session.isDemo && (
+    session.role === "super-admin"
+      ? !dashboardPermissionDenied(session.deniedPermissions, "rewards:write")
+      : dashboardPermissionMatches(session.permissions, "rewards:write", session.deniedPermissions)
+  );
 
   return (
-    <RewardsClient initialRewards={rewards} tenantScope={tenantScope} />
+    <RewardsClient
+      initialRewards={rewardsResult.items}
+      tenantScope={tenantScope}
+      isDemo={Boolean(session.isDemo)}
+      canWrite={canWrite}
+      dataSource={rewardsResult.dataSource}
+      availability={rewardsResult.availability}
+      sourceReason={rewardsResult.reason}
+    />
   );
 }

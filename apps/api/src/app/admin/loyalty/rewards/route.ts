@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { effectiveTenantFilter } from "../../../../lib/admin-tenant-filter";
@@ -28,9 +28,20 @@ const ALLOWED_TYPES = [
 export async function GET(req: Request) {
   const auth = await checkAdmin(req);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "rewards:read");
+  if (permission) return permission;
 
   const { searchParams } = new URL(req.url);
-  const tenant = searchParams.get("tenant") || "";
+  const { scope, forcedTenantSlug } = getAdminTenantScope(req);
+  const tenant = effectiveTenantFilter({
+    forcedTenantSlug,
+    requestedTenantSlug: searchParams.get("tenant"),
+  });
+  const explicitGlobalScope = searchParams.get("scope") === "global";
+
+  if (!tenant && !(scope === "super_admin" && explicitGlobalScope)) {
+    return json({ ok: false, error: "tenant_required" }, 400);
+  }
 
   const rows = tenant
     ? await sql`
@@ -46,12 +57,19 @@ export async function GET(req: Request) {
         ORDER BY r.created_at DESC
       `;
 
-  return json({ ok: true, rewards: rows });
+  return json({
+    ok: true,
+    tenant: tenant || null,
+    scope: tenant ? "tenant" : "global",
+    rewards: rows,
+  });
 }
 
 export async function POST(req: Request) {
   const auth = await checkAdmin(req);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "rewards:write");
+  if (permission) return permission;
 
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = (await req.json().catch(() => ({}))) as Record<string, any>;
