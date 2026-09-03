@@ -4,7 +4,7 @@ import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
-import { requireDashboardSession } from "../../../lib/session";
+import { requireDashboardDestination } from "../../../lib/dashboard-destination-guard";
 import { requireDashboardTenantScope } from "../../../lib/admin-page-access";
 import { TENANT_DIRECTORY, TENANT_DIRECTORY_SOURCE, type TenantDirectoryItem } from "../../../lib/tenant-directory";
 
@@ -144,7 +144,7 @@ export default async function SubscriptionsPage({
 }) {
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const session = await requireDashboardSession();
+  const session = await requireDashboardDestination("subscriptions");
   const query = searchParams ? await searchParams : {};
   const requestedTenant = normalizeTenantParam(query.tenant);
   const scopedTenant = requireDashboardTenantScope(session, requestedTenant).tenantSlug;

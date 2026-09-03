@@ -46,7 +46,7 @@ export async function GET() {
         tenantId: data.session.tenantId || null,
         tenantSlug: data.session.tenantSlug || null,
         label: data.session.label || `${data.session.role} session`,
-        permissions: Array.isArray(data.session.permissions) ? data.session.permissions : ["*"],
+        permissions: Array.isArray(data.session.permissions) ? data.session.permissions : [],
         mfaVerified: Boolean(data.session.mfaVerified),
         expiresAt: new Date(Date.now() + 60 * 60 * 12 * 1000).toISOString(),
       }),

@@ -117,7 +117,7 @@ export async function GET(req: Request) {
     tenantId: data.tenantId || null,
     tenantSlug: data.tenantSlug || null,
     label: data.label || clerkUser?.fullName || "Super Admin",
-    permissions: Array.isArray(data.permissions) ? data.permissions : ["*"],
+    permissions: Array.isArray(data.permissions) ? data.permissions : [],
     mfaVerified: false,
     setupCompleted: true,
     expiresAt: data.expiresAt,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { LogOut } from "lucide-react";
+import { dashboardFetch } from "../lib/dashboard-fetch";
 
 type SecureDashboardLogoutButtonProps = {
   clerkEnabled?: boolean;
@@ -48,7 +49,11 @@ function ClerkDashboardLogoutButton({
     setPending(true);
     onStart?.();
 
-    await fetch("/logout", { method: "POST", cache: "no-store" }).catch(() => null);
+    await dashboardFetch("/logout", {
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+    }).catch(() => null);
 
     try {
       if (isLoaded && isSignedIn) {

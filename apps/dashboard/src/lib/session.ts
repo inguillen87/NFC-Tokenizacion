@@ -5,6 +5,7 @@ import { dashboardDemoAccessAllowedForRole, dashboardFallbackSessionAllowed } fr
 import { normalizeDashboardHumanSessionRole } from "./enterprise-runtime-rbac";
 import { dashboardPermissionMatches } from "./permission-policy";
 import { DASHBOARD_RETURN_PATH_HEADER, dashboardAuthPath, normalizeDashboardReturnPath } from "./dashboard-return-path";
+import { dashboardFetch } from "./dashboard-fetch";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
@@ -111,7 +112,7 @@ export async function getDashboardSessionCredential(
       return { session: demoSession, bearerToken: null, rotatedSessionToken: null };
     }
 
-    const res = await fetch(`${API_BASE}/auth/session`, {
+    const res = await dashboardFetch(`${API_BASE}/auth/session`, {
       headers: {
         authorization: `Bearer ${token}`,
         ...(options.persistRotation ? { "x-nexid-session-rotation": "rotate" } : {}),

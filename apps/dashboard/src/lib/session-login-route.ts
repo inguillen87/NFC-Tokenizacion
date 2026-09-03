@@ -70,7 +70,7 @@ function buildSnapshot(
       tenantId: scope?.tenantId ?? null,
       tenantSlug: scope?.tenantSlug ?? null,
       label: label || `${role} session`,
-      permissions: permissions || ["*"],
+      permissions: permissions || [],
       mfaVerified: true,
       setupCompleted: true,
       expiresAt: new Date(Date.now() + 60 * 60 * 12 * 1000).toISOString(),
@@ -271,7 +271,7 @@ export async function handleSessionLogin(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 12,
   });
-  response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(String(data.email || submittedEmail || ""), String(data.role || "viewer"), String(data.label || ""), Array.isArray(data.permissions) ? data.permissions : ["*"], { tenantId: data.tenantId || null, tenantSlug: data.tenantSlug || null }), {
+  response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(String(data.email || submittedEmail || ""), String(data.role || "viewer"), String(data.label || ""), Array.isArray(data.permissions) ? data.permissions : [], { tenantId: data.tenantId || null, tenantSlug: data.tenantSlug || null }), {
     httpOnly: true,
     sameSite: "lax",
     secure: useSecureCookie(req),

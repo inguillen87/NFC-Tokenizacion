@@ -113,7 +113,7 @@ test("account drawer exposes expected SaaS account actions and secure logout", (
   assert.match(menuSource, /Soporte enterprise/);
   assert.match(menuSource, /<SecureDashboardLogoutButton/);
   assert.match(menuSource, /testId="tenant-account-logout"/);
-  assert.match(secureLogoutSource, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(secureLogoutSource, /await dashboardFetch\("\/logout", \{[\s\S]*method: "POST",[\s\S]*credentials: "same-origin"/);
   assert.match(secureLogoutSource, /const LOGOUT_REDIRECT = "\/login\?logged_out=1"/);
   assert.match(secureLogoutSource, /signOut\(\{ redirectUrl: LOGOUT_REDIRECT \}\)/);
 });

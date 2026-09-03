@@ -59,7 +59,7 @@ test("transient auth outages preserve the opaque credential and use a real recov
 });
 
 test("recovery retries without overlapping and only leaves on confirmed outcomes", () => {
-  assert.match(recoveryClient, /fetch\("\/api\/session\/current"/);
+  assert.match(recoveryClient, /dashboardFetch\("\/api\/session\/current"/);
   assert.match(recoveryClient, /requestInFlight\.current/);
   assert.match(recoveryClient, /window\.setInterval\(\(\) => void validateSession\(\), RETRY_INTERVAL_MS\)/);
   assert.match(recoveryClient, /response\.status === 401 \|\| response\.status === 403/);
@@ -82,5 +82,5 @@ test("recovery and account-switch actions revoke the upstream session with POST"
   assert.match(physicalTaps, /testId="physical-taps-change-account"/);
   assert.doesNotMatch(physicalTaps, /href="\/logout"/);
   assert.match(secureLogout, /method="post" action="\/logout"/);
-  assert.match(secureLogout, /fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(secureLogout, /dashboardFetch\("\/logout", \{[\s\S]*method: "POST",[\s\S]*credentials: "same-origin"/);
 });

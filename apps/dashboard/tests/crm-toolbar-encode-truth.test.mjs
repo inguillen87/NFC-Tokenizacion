@@ -17,9 +17,9 @@ test("tenant CRM sessions stay locked to their server-provided scope", () => {
 test("CRM high-impact and data-dependent actions fail closed", () => {
   assert.match(crmSource, /dashboardHighImpactPermissionMatches\([\s\S]*"events\.read_sensitive"[\s\S]*account\.deniedPermissions/);
   assert.match(crmSource, /\.\.\.\(canReadSensitiveEvents \? \[\{[\s\S]*label: "Riesgos"[\s\S]*\}\] : \[\]\)/);
-  assert.match(crmSource, /if \(visibleEvents\.length === 0\) return/);
-  assert.match(crmSource, /disabled=\{visibleEvents\.length === 0\}/);
-  assert.match(crmSource, /No hay filas en el tenant, filtros y ventana actuales para exportar/);
+  assert.match(crmSource, /if \(commercialActivityEvents\.length === 0\) return/);
+  assert.match(crmSource, /disabled=\{commercialActivityEvents\.length === 0\}/);
+  assert.match(crmSource, /No hay actividad con producto reconocido, actor asociado, tipo elegible y consentimiento por canal para exportar/);
   assert.match(crmSource, /const streetViewTarget = useMemo\([\s\S]*strictCoordinatePair\(event\.lat, event\.lng\)/);
   assert.match(crmSource, /disabled=\{!streetViewTarget\}/);
   assert.match(crmSource, /No hay coordenadas reportadas utilizables en la ventana actual/);

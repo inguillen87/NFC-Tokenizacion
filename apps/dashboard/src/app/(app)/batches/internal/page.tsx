@@ -2,10 +2,12 @@ import { Card, SectionHeading } from "@product/ui";
 import { AdminActionForms } from "../../../../components/admin-action-forms";
 import { dashboardContent } from "../../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../../lib/locale";
+import { requireDashboardSession } from "../../../../lib/session";
 
 export default async function InternalBatchPage() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
+  const session = await requireDashboardSession("batches:write");
 
   return (
     <main className="space-y-8">
@@ -22,8 +24,9 @@ export default async function InternalBatchPage() {
         copy={t.dashboard.forms}
         roles={copy.roles}
         readyLabel={copy.shell.ready}
-        currentRole="super-admin"
-        currentPermissions={["*"]}
+        currentRole={session.role}
+        currentPermissions={session.permissions}
+        currentDeniedPermissions={session.deniedPermissions}
       />
     </main>
   );

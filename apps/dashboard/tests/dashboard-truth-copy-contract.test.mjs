@@ -41,9 +41,9 @@ test("dashboard map labels describe reported events instead of physical live mov
 
 test("VALID remains a message-level NFC result and is not promoted to physical-product authenticity", () => {
   assert.match(executiveCrm, /title: "Mensaje NFC validado"/);
-  assert.match(executiveCrm, /title: "Identidad NFC validada"/);
+  assert.match(executiveCrm, /title: "Producto NFC reconocido"/);
   assert.match(executiveCrm, /datos reportados por el evento; no prueban la ubicación física/);
-  assert.match(executiveCrm, /verdict válido/);
+  assert.match(executiveCrm, /autenticación criptográfica SUN/);
   assert.doesNotMatch(executiveCrm, /title: "Unidad (?:física )?verificada"/);
 
   assert.match(demoMobile, /if \(result === "VALID"\)/);

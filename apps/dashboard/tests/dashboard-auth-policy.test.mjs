@@ -106,6 +106,9 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(logoutRoute, /response\.headers\.set\("Clear-Site-Data", "\\"cookies\\", \\"storage\\""\)/);
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_COOKIE\)/);
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)/);
+  assert.match(logoutRoute, /export async function GET[\s\S]*status: 405/);
+  assert.match(logoutRoute, /response\.headers\.set\("Allow", "POST"\)/);
+  assert.match(logoutRoute, /fetchSite === "cross-site" \|\| !requireSameOrigin\(req\)/);
 
   assert.match(settingsPage, /const isClerkSuperAdminSession = session\.role === "super-admin" && !session\.mfaVerified/);
   assert.match(settingsPage, /Google\/Clerk SSO verificado; TOTP nexID no disponible/);
@@ -115,7 +118,7 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.doesNotMatch(settingsPage, /method="post" action="\/logout"/);
 
   assert.match(secureLogoutButton, /useClerk/);
-  assert.match(secureLogoutButton, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(secureLogoutButton, /await dashboardFetch\("\/logout", \{[\s\S]*method: "POST",[\s\S]*credentials: "same-origin"/);
   assert.match(secureLogoutButton, /const LOGOUT_REDIRECT = "\/login\?logged_out=1"/);
   assert.match(secureLogoutButton, /signOut\(\{ redirectUrl: LOGOUT_REDIRECT \}\)/);
   assert.match(secureLogoutButton, /window\.location\.href = LOGOUT_REDIRECT/);

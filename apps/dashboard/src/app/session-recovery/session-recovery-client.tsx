@@ -4,6 +4,7 @@ import { RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SecureDashboardLogoutButton } from "../../components/secure-dashboard-logout-button";
 import { dashboardAuthPath, normalizeDashboardReturnPath } from "../../lib/dashboard-return-path";
+import { dashboardFetch } from "../../lib/dashboard-fetch";
 
 type RecoveryState = "checking" | "waiting";
 
@@ -22,7 +23,7 @@ export function SessionRecoveryClient({ clerkEnabled = false, nextPath = "/" }: 
     setState("checking");
 
     try {
-      const response = await fetch("/api/session/current", {
+      const response = await dashboardFetch("/api/session/current", {
         cache: "no-store",
         headers: { Accept: "application/json" },
       });

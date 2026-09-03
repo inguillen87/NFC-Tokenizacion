@@ -20,7 +20,7 @@ test("settings page is an enterprise account command center", () => {
   assert.match(settingsSource, /testId="settings-change-account"/);
   assert.match(settingsSource, /testId="settings-logout"/);
   assert.match(secureLogoutSource, /method="post" action="\/logout"/);
-  assert.match(secureLogoutSource, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(secureLogoutSource, /await dashboardFetch\("\/logout", \{[\s\S]*method: "POST",[\s\S]*credentials: "same-origin"/);
   assert.match(secureLogoutSource, /Cerrar sesion segura/);
 });
 

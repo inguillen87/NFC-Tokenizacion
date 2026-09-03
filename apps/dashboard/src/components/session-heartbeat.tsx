@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { dashboardAuthPath, normalizeDashboardReturnPath } from "../lib/dashboard-return-path";
+import { dashboardFetch } from "../lib/dashboard-fetch";
 
 export function SessionHeartbeat() {
   useEffect(() => {
@@ -35,7 +36,7 @@ export function SessionHeartbeat() {
       if (document.visibilityState === "hidden") return;
       pingInFlight = true;
       try {
-        const response = await fetch("/api/session/current", { cache: "no-store" }).catch(() => null);
+        const response = await dashboardFetch("/api/session/current", { cache: "no-store" }).catch(() => null);
         if (!active) return;
         if (response && (response.status === 401 || response.status === 403)) {
           stopHeartbeat = true;
