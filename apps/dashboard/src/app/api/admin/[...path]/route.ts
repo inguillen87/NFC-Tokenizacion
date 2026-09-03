@@ -4,7 +4,11 @@ import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { aggregateTenantMetrics } from "@product/core";
 import { getDashboardSessionCredential } from "../../../../lib/session";
-import { canDemoSandboxAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
+import {
+  canDemoSandboxAccess,
+  isAdminUpstreamAuthorizationOutcome,
+  resolveAdminProxyPolicy,
+} from "../../../../lib/admin-proxy-policy";
 import {
   dashboardCanReadSensitiveAlerts,
   dashboardCanReadSensitiveRiskAnalytics,
@@ -1299,15 +1303,13 @@ async function forward(req: Request, path: string[]) {
     return unavailable("Admin upstream unreachable.");
   }
 
-  if (response.status === 401) {
-    return unavailable("Dashboard session is no longer authorized.");
-  }
+  const upstreamAuthorizationOutcome = isAdminUpstreamAuthorizationOutcome(response.status);
 
   if (response.status >= 500 && criticalGet) {
     return unavailable(`Admin upstream error (${response.status}).`);
   }
 
-  if (!response.ok && allowDemoFallbackForRequest && allowForcedSandbox) {
+  if (!upstreamAuthorizationOutcome && !response.ok && allowDemoFallbackForRequest && allowForcedSandbox) {
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 
@@ -1316,7 +1318,7 @@ async function forward(req: Request, path: string[]) {
     || contentType.includes("application/octet-stream")
     || contentType.includes("text/csv");
   const responseBody = binaryResponse ? await response.arrayBuffer() : await response.text();
-  if (criticalGet && (binaryResponse || !contentType.includes("application/json") || !safeParseJson(responseBody as string))) {
+  if (!upstreamAuthorizationOutcome && criticalGet && (binaryResponse || !contentType.includes("application/json") || !safeParseJson(responseBody as string))) {
     return unavailable("Admin upstream returned invalid payload.");
   }
   const headers = new Headers({ "Content-Type": response.headers.get("content-type") || "application/json" });

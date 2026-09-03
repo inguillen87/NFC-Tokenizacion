@@ -74,6 +74,7 @@ export default function TenantMarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [availability, setAvailability] = useState<MarketplaceAvailability>("loading");
   const [dataSource, setDataSource] = useState<MarketplaceSource>("unavailable");
+  const [canWrite, setCanWrite] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -107,7 +108,7 @@ export default function TenantMarketplacePage() {
           : "Fuente sin confirmar";
   const sourceDetail = availability === "ready"
     ? dataSource === "demo"
-      ? "Los productos y métricas pertenecen al sandbox; no representan catálogo ni ventas reales."
+      ? "Catálogo temporal del sandbox: no representa inventario ni ventas reales y puede reiniciarse con un despliegue."
       : dataSource === "production"
         ? "La API confirmó la procedencia del catálogo."
         : "La API respondió, pero no declaró la procedencia del catálogo."
@@ -119,6 +120,7 @@ export default function TenantMarketplacePage() {
       setLoading(true);
       setAvailability("loading");
       setDataSource("unavailable");
+      setCanWrite(false);
       let response: Response;
       try {
         response = await fetch("/api/tenant-marketplace", { cache: "no-store" });
@@ -139,7 +141,7 @@ export default function TenantMarketplacePage() {
         return;
       }
 
-      const data = await response.json().catch(() => null) as { items?: unknown; demoMode?: boolean; dataSource?: string } | null;
+      const data = await response.json().catch(() => null) as { items?: unknown; canWrite?: boolean; demoMode?: boolean; dataSource?: string } | null;
       if (!data || !Array.isArray(data.items)) {
         if (isMounted) {
           setItems([]);
@@ -150,6 +152,7 @@ export default function TenantMarketplacePage() {
       }
       if (isMounted) {
         setItems(data.items as Item[]);
+        setCanWrite(data.canWrite === true);
         setDataSource(data.demoMode === true || data.dataSource === "demo" ? "demo" : data.dataSource === "production" ? "production" : "unconfirmed");
         setAvailability("ready");
         setLoading(false);
@@ -174,6 +177,7 @@ export default function TenantMarketplacePage() {
   };
 
   const onCreate = () => {
+    if (!canWrite) return;
     setEditingId(null);
     setDraft(emptyDraft);
     setIsEditorOpen(true);
@@ -287,15 +291,21 @@ export default function TenantMarketplacePage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">Marketplace & Network</h1>
           <p className="mt-1 text-sm text-slate-400">Publica, edita y administra productos en la red de clientes nexID desde una sola vista.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <label className="cursor-pointer rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10">
-            {importing ? "Importando..." : "Importar JSON"}
-            <input suppressHydrationWarning disabled={importing} type="file" accept="application/json" className="hidden" onChange={(event) => importFromJson(event.target.files?.[0])} />
-          </label>
-          <button suppressHydrationWarning onClick={onCreate} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
-            + Publicar Producto
-          </button>
-        </div>
+        {canWrite ? (
+          <div className="flex flex-wrap gap-2">
+            <label className="cursor-pointer rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10">
+              {importing ? "Importando..." : "Importar JSON"}
+              <input suppressHydrationWarning disabled={importing} type="file" accept="application/json" className="hidden" onChange={(event) => importFromJson(event.target.files?.[0])} />
+            </label>
+            <button suppressHydrationWarning onClick={onCreate} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
+              + Publicar producto demo
+            </button>
+          </div>
+        ) : (
+          <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-amber-200">
+            Solo lectura · falta marketplace:write
+          </span>
+        )}
       </header>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -406,17 +416,21 @@ export default function TenantMarketplacePage() {
                 <td className="px-4 py-3">{checkoutChip(item.checkout)}</td>
                 <td className="px-4 py-3">{visibilityChip(item.visibility)}</td>
                 <td className="px-4 py-3 text-right">
-                  <div className="inline-flex gap-2">
-                    <button suppressHydrationWarning onClick={() => toggleVisibility(item)} className="rounded-md border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10">
-                      {item.visibility === "network" ? "Ocultar" : "Publicar"}
-                    </button>
-                    <button suppressHydrationWarning onClick={() => onEdit(item)} className="rounded-md border border-cyan-500/20 px-2 py-1 text-xs font-medium text-cyan-400 hover:bg-cyan-500/10">
-                      Editar
-                    </button>
-                    <button suppressHydrationWarning onClick={() => deleteItem(item.id)} className="rounded-md border border-rose-500/20 px-2 py-1 text-xs font-medium text-rose-300 hover:bg-rose-500/10">
-                      Eliminar
-                    </button>
-                  </div>
+                  {canWrite ? (
+                    <div className="inline-flex gap-2">
+                      <button suppressHydrationWarning onClick={() => toggleVisibility(item)} className="rounded-md border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10">
+                        {item.visibility === "network" ? "Ocultar" : "Publicar"}
+                      </button>
+                      <button suppressHydrationWarning onClick={() => onEdit(item)} className="rounded-md border border-cyan-500/20 px-2 py-1 text-xs font-medium text-cyan-400 hover:bg-cyan-500/10">
+                        Editar
+                      </button>
+                      <button suppressHydrationWarning onClick={() => deleteItem(item.id)} className="rounded-md border border-rose-500/20 px-2 py-1 text-xs font-medium text-rose-300 hover:bg-rose-500/10">
+                        Eliminar
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-500">Solo lectura</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -429,7 +443,7 @@ export default function TenantMarketplacePage() {
         </table>
       </div>
 
-      {isEditorOpen ? (
+      {isEditorOpen && canWrite ? (
         <div className="rounded-2xl border border-cyan-500/20 bg-slate-950/90 p-5">
           <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-cyan-300">{editingId ? "Editar producto" : "Nuevo producto"}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">

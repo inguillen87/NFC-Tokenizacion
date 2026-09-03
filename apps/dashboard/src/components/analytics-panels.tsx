@@ -11,6 +11,7 @@ import { TopProductsTable } from "./charts/top-products-table";
 import { TrustFunnelChart } from "./charts/trust-funnel-chart";
 import { classifyEventAlertSeverity, matchesSeverityFilter } from "../lib/alert-severity";
 import { formatAnalyticsPercentage, resolveMobileSharePercent } from "../lib/analytics-percentage";
+import { escapeSpreadsheetCsvCell, escapeSpreadsheetHtmlCell } from "../lib/export-utils";
 import {
   describeCognitiveSummary,
   deterministicCognitiveSummary,
@@ -189,10 +190,6 @@ function mapHref(lat: number | null, lng: number | null) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
 }
 
-function escapeCsv(value: unknown) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
-}
-
 function downloadBlob(filename: string, type: string, content: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -221,17 +218,17 @@ function analyticsCsvRows(data: AnalyticsPanelsProps["data"]) {
 function buildAnalyticsCsv(data: AnalyticsPanelsProps["data"]) {
   const rows = analyticsCsvRows(data);
   const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
-  const header = columns.map(escapeCsv).join(",");
-  const body = rows.map((row) => columns.map((column) => escapeCsv(row[column])).join(",")).join("\n");
+  const header = columns.map(escapeSpreadsheetCsvCell).join(",");
+  const body = rows.map((row) => columns.map((column) => escapeSpreadsheetCsvCell(row[column])).join(",")).join("\n");
   return `${header}\n${body}`;
 }
 
 function buildAnalyticsExcel(data: AnalyticsPanelsProps["data"]) {
   const rows = analyticsCsvRows(data);
   const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
-  const header = columns.map((column) => `<th>${column}</th>`).join("");
+  const header = columns.map((column) => `<th>${escapeSpreadsheetHtmlCell(column)}</th>`).join("");
   const body = rows
-    .map((row) => `<tr>${columns.map((column) => `<td>${String(row[column] ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>`).join("")}</tr>`)
+    .map((row) => `<tr>${columns.map((column) => `<td>${escapeSpreadsheetHtmlCell(row[column])}</td>`).join("")}</tr>`)
     .join("");
   return `<!doctype html><html><head><meta charset="utf-8" /><title>nexID analytics</title></head><body><table border="1"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></body></html>`;
 }

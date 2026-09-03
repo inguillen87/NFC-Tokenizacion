@@ -2,7 +2,21 @@
 
 import React, { useMemo, useState } from "react";
 import { Badge, Card } from "@product/ui";
+import { CustomerMemberTimeline } from "../../../components/customer-member-timeline";
+import { CustomerSignalTimeline } from "../../../components/customer-signal-timeline";
 import { DataTable } from "../../../components/data-table";
+import type {
+  CustomerMember,
+  CustomerMemberDirectoryState,
+  CustomerMemberTimelineState,
+} from "../../../lib/customer-member-timeline";
+import {
+  buildCustomerSignalTimeline,
+  type CustomerLeadRecord,
+  type CustomerOrderRecord,
+  type CustomerSignalCollections,
+  type CustomerTicketRecord,
+} from "../../../lib/customer-signal-timeline";
 import {
   Inbox,
   TrendingUp,
@@ -19,44 +33,9 @@ import {
   Tags
 } from "lucide-react";
 
-interface Lead {
-  id: string;
-  name?: string;
-  contact?: string;
-  company?: string;
-  vertical?: string;
-  status?: string;
-  source?: string;
-  estimated_volume?: string;
-  volume?: number;
-  message?: string;
-  notes?: string;
-  created_at: string;
-  email?: string;
-  phone?: string;
-  role_interest?: string;
-}
-
-interface Ticket {
-  id: string;
-  title: string;
-  detail?: string;
-  status: string;
-  contact: string;
-  source?: string;
-  created_at: string;
-}
-
-interface Order {
-  id: string;
-  contact: string;
-  company?: string;
-  tag_type?: string;
-  volume?: number;
-  notes?: string;
-  status: string;
-  created_at: string;
-}
+type Lead = CustomerLeadRecord;
+type Ticket = CustomerTicketRecord;
+type Order = CustomerOrderRecord;
 
 type AiQuery = {
   id: string;
@@ -200,6 +179,11 @@ interface LeadsTicketsClientProps {
   labels: any;
   demoMode: boolean;
   leadsSource: "production" | "demo" | "unavailable";
+  signalCollections: CustomerSignalCollections;
+  members: CustomerMember[];
+  memberDirectory: CustomerMemberDirectoryState;
+  selectedMemberId: string;
+  memberTimeline: CustomerMemberTimelineState;
 }
 
 export default function LeadsTicketsClient({
@@ -214,9 +198,21 @@ export default function LeadsTicketsClient({
   labels,
   demoMode,
   leadsSource,
+  signalCollections,
+  members,
+  memberDirectory,
+  selectedMemberId,
+  memberTimeline,
 }: LeadsTicketsClientProps) {
-  const [activeTab, setActiveTab] = useState<"opportunities" | "prospects" | "tickets" | "orders" | "ai_queries">("opportunities");
+  const [activeTab, setActiveTab] = useState<"signals" | "opportunities" | "prospects" | "tickets" | "orders" | "ai_queries">("signals");
   const [searchTerm, setSearchTerm] = useState("");
+
+  const customerSignals = useMemo(() => buildCustomerSignalTimeline({
+    leads: initialLeads,
+    tickets: initialTickets,
+    orders: initialOrders,
+    collections: signalCollections,
+  }), [initialLeads, initialOrders, initialTickets, signalCollections]);
 
   const leadTenant = (message: string, notes: string, tenant_slug: string) => {
     const text = `${message || ""} ${notes || ""}`;
@@ -237,17 +233,17 @@ export default function LeadsTicketsClient({
     })
     .map((l, index) => {
       const cleanNotes = String(l.notes || "");
-      const answer = cleanNotes.replace("assistant_mode=web_widget", "").trim() || "Respuesta automática procesada por nexID AI.";
+      const recordedAnswer = cleanNotes.replace("assistant_mode=web_widget", "").trim();
       return {
         id: l.id || `q-db-${index}`,
         contact: l.contact || l.email || l.phone || "-",
         vertical: l.vertical || "other",
         company: l.company || "-",
         query: l.message || "Consulta general",
-        answer: answer,
+        answer: recordedAnswer || "Sin respuesta registrada por la fuente.",
         tag: String(l.role_interest || "General").toUpperCase(),
         created_at: l.created_at.slice(0, 10),
-        status: "RESPONDIDO",
+        status: String(l.status || (recordedAnswer ? "RESPUESTA REGISTRADA" : "SIN RESPUESTA REGISTRADA")).toUpperCase(),
         source: leadsSource === "demo" ? "demo" : "production",
       };
     }), [initialLeads, leadsSource, tenantScope]);
@@ -336,7 +332,7 @@ export default function LeadsTicketsClient({
         {[
           { label: labels.leads, value: initialLeads.length, icon: Inbox, color: "text-blue-400" },
           { label: labels.tickets, value: initialTickets.length, icon: MessageSquare, color: "text-amber-400" },
-          { label: "Reuniones", value: [...initialLeads, ...initialTickets].filter(item => /meeting|reunion|private|call|llamada/.test(('notes' in item ? item.notes : '') || ('message' in item ? item.message : '') || ('detail' in item ? item.detail : '') || "")).length, icon: Calendar, color: "text-purple-400" },
+          { label: "Reuniones", value: [...initialLeads, ...initialTickets].filter(item => /meeting|reunion|private|call|llamada/.test(String(('notes' in item ? item.notes : '') || ('message' in item ? item.message : '') || ('detail' in item ? item.detail : '') || ""))).length, icon: Calendar, color: "text-purple-400" },
           { label: labels.orders, value: initialOrders.length, icon: Package, color: "text-indigo-400" },
           { label: labels.hot, value: filteredOpportunities.length, icon: TrendingUp, color: "text-emerald-400", highlight: true }
         ].map((stat, i) => (
@@ -435,6 +431,9 @@ export default function LeadsTicketsClient({
       {/* Tab Navigation and Search */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-2 rounded-2xl bg-slate-950/70 border border-white/5">
         <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setActiveTab("signals")} className={tabClass("signals")}>
+            Señales de cliente ({customerSignals.length})
+          </button>
           <button onClick={() => setActiveTab("opportunities")} className={tabClass("opportunities")}>
             Oportunidades ({filteredOpportunities.length})
           </button>
@@ -466,6 +465,23 @@ export default function LeadsTicketsClient({
 
       {/* Tab Contents */}
       <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+        {activeTab === "signals" && (
+          <div className="space-y-6">
+            <CustomerMemberTimeline
+              tenantScope={tenantScope}
+              members={members}
+              directory={memberDirectory}
+              selectedMemberId={selectedMemberId}
+              timeline={memberTimeline}
+            />
+            <CustomerSignalTimeline
+              signals={customerSignals}
+              collections={signalCollections}
+              query={searchTerm}
+            />
+          </div>
+        )}
+
         {activeTab === "opportunities" && (
           <DataTable
             title="Oportunidades Comerciales Activas"

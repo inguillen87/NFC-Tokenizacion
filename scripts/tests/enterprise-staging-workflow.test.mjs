@@ -15,9 +15,9 @@ const apiPackage = JSON.parse(await readFile(
   "utf8",
 ));
 
-test("enterprise staging workflow defaults to the authoritative 0057-0099 preflight", () => {
-  assert.match(workflow, /default: current_0057_0099_preflight/);
-  assert.match(workflow, /Current enterprise schema and custody preflight \(0057-0099\)/);
+test("enterprise staging workflow defaults to the authoritative 0057-0100 preflight", () => {
+  assert.match(workflow, /default: current_0057_0100_preflight/);
+  assert.match(workflow, /Current enterprise schema and custody preflight \(0057-0100\)/);
   assert.match(workflow, /npm run check:migrations:safety/);
   assert.match(workflow, /npm run test:migration-gates/);
   assert.match(workflow, /npm run db:enterprise-release:preflight --workspace=api/);

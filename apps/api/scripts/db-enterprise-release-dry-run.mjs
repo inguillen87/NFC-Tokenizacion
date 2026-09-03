@@ -45,6 +45,7 @@ const RELEASE_MIGRATIONS = Object.freeze([
   "20260829120000_0097_public_location_privacy.sql",
   "20260830120000_0098_event_location_context.sql",
   "20260831190000_0099_post_tap_location_observation.sql",
+  "20260903120000_0100_event_incident_optimistic_concurrency.sql",
 ]);
 const REQUIRED_APPLIED = Object.freeze([
   "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
@@ -240,7 +241,7 @@ try {
     to_regclass('public.event_incidents') IS NOT NULL AS event_incidents,
     to_regclass('public.event_incident_history') IS NOT NULL AS event_incident_history,
     to_regprocedure('public.nexid_open_event_incident(bigint,text,text,text,text,uuid,text,text,text)') IS NOT NULL AS event_incident_open_writer,
-    to_regprocedure('public.nexid_transition_event_incident(uuid,text,text,text,uuid,text,text,text,text)') IS NOT NULL AS event_incident_transition_writer,
+    to_regprocedure('public.nexid_transition_event_incident(uuid,text,bigint,text,text,uuid,text,text,text,text)') IS NOT NULL AS event_incident_transition_writer,
     to_regclass('public.tag_lifecycle_events') IS NOT NULL AS tag_lifecycle_events,
     to_regprocedure('public.nexid_transition_tag_lifecycle_v1(jsonb)') IS NOT NULL AS tag_lifecycle_writer,
     to_regclass('public.canonical_event_operations') IS NOT NULL AS canonical_event_operations,

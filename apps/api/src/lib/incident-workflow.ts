@@ -104,6 +104,17 @@ export function validIncidentIdempotencyKey(value: unknown) {
   return /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(text(value).trim());
 }
 
+export function validIncidentExpectedVersion(value: unknown) {
+  if (typeof value === "number" && !Number.isSafeInteger(value)) return false;
+  const normalized = text(value).trim();
+  if (!/^[1-9]\d{0,18}$/.test(normalized)) return false;
+  try {
+    return BigInt(normalized) <= 9_223_372_036_854_775_807n;
+  } catch {
+    return false;
+  }
+}
+
 export function boundedIncidentText(value: unknown, minimum: number, maximum: number) {
   const normalized = text(value).trim();
   if (normalized.length < minimum || normalized.length > maximum) return null;
@@ -325,6 +336,7 @@ export async function openEventIncident(input: {
 export async function transitionEventIncident(input: {
   incidentId: string;
   expectedTenantSlug?: string;
+  expectedVersion: string | number;
   toStatus: IncidentStatus;
   toSeverity?: IncidentSeverity | null;
   actorId: string;
@@ -337,6 +349,7 @@ export async function transitionEventIncident(input: {
     SELECT * FROM nexid_transition_event_incident(
       ${input.incidentId}::uuid,
       ${input.expectedTenantSlug || null}::text,
+      ${String(input.expectedVersion)}::bigint,
       ${input.toStatus}::text,
       ${input.toSeverity || null}::text,
       ${input.actorId}::uuid,
@@ -361,6 +374,7 @@ export function incidentWorkflowError(error: unknown) {
   if (matches("incident_tenant_link_broken")) return { status: 409, reason: "incident_tenant_link_broken" };
   if (matches("incident_event_already_open_conflict")) return { status: 409, reason: "incident_event_already_open_conflict" };
   if (matches("incident_idempotency_key_conflict")) return { status: 409, reason: "incident_idempotency_key_conflict" };
+  if (matches("incident_stale_version")) return { status: 409, reason: "stale_version" };
   if (matches("incident_event_not_found")) return { status: 404, reason: "incident_event_not_found" };
   if (matches("incident_not_found")) return { status: 404, reason: "incident_not_found" };
   if (matches("incident_transition_invalid")) return { status: 409, reason: "incident_transition_invalid" };

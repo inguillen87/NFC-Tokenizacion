@@ -54,6 +54,7 @@ const ids = [
   "20260829120000_0097_public_location_privacy.sql",
   "20260830120000_0098_event_location_context.sql",
   "20260831190000_0099_post_tap_location_observation.sql",
+  "20260903120000_0100_event_incident_optimistic_concurrency.sql",
 ];
 const checks = [];
 for (const id of ids) {
@@ -108,6 +109,7 @@ const sql96 = await fs.readFile(path.join(root, "20260802310000_0096_enterprise_
 const sql97 = await fs.readFile(path.join(root, "20260829120000_0097_public_location_privacy.sql"), "utf8");
 const sql98 = await fs.readFile(path.join(root, "20260830120000_0098_event_location_context.sql"), "utf8");
 const sql99 = await fs.readFile(path.join(root, "20260831190000_0099_post_tap_location_observation.sql"), "utf8");
+const sql100 = await fs.readFile(path.join(root, "20260903120000_0100_event_incident_optimistic_concurrency.sql"), "utf8");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const runnerSafety = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/lib/db-apply-safety.mjs"), "utf8");
@@ -169,7 +171,16 @@ const eventIncidentWorkflowIsDurable = sql65.includes("CREATE TABLE IF NOT EXIST
   && sql65.includes("FOREIGN KEY (event_id, event_created_at)")
   && sql65.includes("incident_event_tenant_conflict")
   && sql65.includes("incident_idempotency_key_conflict")
-  && sql65.includes("event_incident_history_append_only");
+  && sql65.includes("event_incident_history_append_only")
+  && sql100.includes("p_expected_version bigint")
+  && sql100.includes("v_incident.version IS DISTINCT FROM p_expected_version")
+  && /WHERE i\.id = p_incident_id\s+AND i\.version = p_expected_version/m.test(sql100)
+  && sql100.includes("incident_stale_version")
+  && sql100.indexOf("UPDATE tickets") > sql100.indexOf("AND i.version = p_expected_version")
+  && sql100.indexOf("INSERT INTO event_incident_history") > sql100.indexOf("AND i.version = p_expected_version")
+  && sql100.includes("'expected_version', p_expected_version")
+  && !sql100.includes("DROP FUNCTION IF EXISTS public.nexid_transition_event_incident")
+  && sql100.includes("REVOKE ALL ON FUNCTION public.nexid_transition_event_incident");
 const tagLifecycleGovernanceIsDurable = sql66.includes("CREATE TABLE IF NOT EXISTS tag_lifecycle_events")
   && sql66.includes("CREATE OR REPLACE FUNCTION nexid_transition_tag_lifecycle_v1")
   && sql66.includes("UNIQUE (tenant_id, operation_key)")

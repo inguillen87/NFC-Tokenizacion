@@ -52,6 +52,7 @@ export const expectedMigrations = Object.freeze([
   '20260829120000_0097_public_location_privacy.sql',
   '20260830120000_0098_event_location_context.sql',
   '20260831190000_0099_post_tap_location_observation.sql',
+  '20260903120000_0100_event_incident_optimistic_concurrency.sql',
 ]);
 
 export class EnterpriseReleasePreflightError extends Error {
@@ -1024,7 +1025,7 @@ export async function runEnterpriseReleasePreflight(options = {}) {
          to_regclass('public.event_incidents') IS NOT NULL AS has_event_incidents,
          to_regclass('public.event_incident_history') IS NOT NULL AS has_event_incident_history,
          to_regprocedure('public.nexid_open_event_incident(bigint,text,text,text,text,uuid,text,text,text)') IS NOT NULL AS has_event_incident_open_writer,
-         to_regprocedure('public.nexid_transition_event_incident(uuid,text,text,text,uuid,text,text,text,text)') IS NOT NULL AS has_event_incident_transition_writer,
+          to_regprocedure('public.nexid_transition_event_incident(uuid,text,bigint,text,text,uuid,text,text,text,text)') IS NOT NULL AS has_event_incident_transition_writer,
          to_regclass('public.tag_lifecycle_events') IS NOT NULL AS has_tag_lifecycle_events,
          to_regprocedure('public.nexid_transition_tag_lifecycle_v1(jsonb)') IS NOT NULL AS has_tag_lifecycle_writer,
          to_regclass('public.canonical_event_operations') IS NOT NULL AS has_canonical_event_operations,
@@ -1320,7 +1321,7 @@ export async function runEnterpriseReleasePreflight(options = {}) {
       ['event_incidents', state.has_event_incidents],
       ['event_incident_history', state.has_event_incident_history],
       ['nexid_open_event_incident(bigint,text,text,text,text,uuid,text,text,text)', state.has_event_incident_open_writer],
-      ['nexid_transition_event_incident(uuid,text,text,text,uuid,text,text,text,text)', state.has_event_incident_transition_writer],
+      ['nexid_transition_event_incident(uuid,text,bigint,text,text,uuid,text,text,text,text)', state.has_event_incident_transition_writer],
       ['tag_lifecycle_events', state.has_tag_lifecycle_events],
       ['nexid_transition_tag_lifecycle_v1(jsonb)', state.has_tag_lifecycle_writer],
       ['canonical_event_operations', state.has_canonical_event_operations],

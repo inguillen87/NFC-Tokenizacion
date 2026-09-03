@@ -3,12 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, BrandDot, BrandLockup, Button, Card } from "@product/ui";
+import { escapeSpreadsheetCsvCell, escapeSpreadsheetHtmlCell } from "../lib/export-utils";
 
 type Row = Record<string, string>;
-
-function escapeCsv(value: string) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
-}
 
 function downloadBlob(filename: string, type: string, content: string) {
   const blob = new Blob([content], { type });
@@ -27,15 +24,15 @@ function slugify(value: string) {
 }
 
 function buildCsv(columns: Array<{ key: string; label: string }>, rows: Row[]) {
-  const header = columns.map((column) => escapeCsv(column.label)).join(",");
-  const body = rows.map((row) => columns.map((column) => escapeCsv(row[column.key] || "")).join(",")).join("\n");
+  const header = columns.map((column) => escapeSpreadsheetCsvCell(column.label)).join(",");
+  const body = rows.map((row) => columns.map((column) => escapeSpreadsheetCsvCell(row[column.key] || "")).join(",")).join("\n");
   return `${header}\n${body}`;
 }
 
 function buildExcelHtml(title: string, columns: Array<{ key: string; label: string }>, rows: Row[]) {
-  const header = columns.map((column) => `<th>${column.label}</th>`).join("");
+  const header = columns.map((column) => `<th>${escapeSpreadsheetHtmlCell(column.label)}</th>`).join("");
   const body = rows
-    .map((row) => `<tr>${columns.map((column) => `<td>${String(row[column.key] || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>`).join("")}</tr>`)
+    .map((row) => `<tr>${columns.map((column) => `<td>${escapeSpreadsheetHtmlCell(row[column.key] || "")}</td>`).join("")}</tr>`)
     .join("");
   return `<!doctype html><html><head><meta charset="utf-8" /><title>${title}</title></head><body><table border="1"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></body></html>`;
 }

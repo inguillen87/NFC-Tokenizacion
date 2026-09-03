@@ -1,94 +1,67 @@
 import { NextResponse } from "next/server";
+import { dashboardPermissionMatches } from "../../../lib/permission-policy";
+import {
+  authorizeTenantMarketplaceMutation,
+  authorizeTenantMarketplaceRead,
+  getTenantMarketplaceStore,
+  normalizeTenantMarketplaceDraft,
+  readTenantMarketplacePayload,
+  tenantMarketplaceNoStoreHeaders,
+  tenantMarketplaceSameOrigin,
+  type MarketplaceItem,
+} from "./route-helpers";
 
-type Visibility = "network" | "private";
-type CheckoutMode = "request" | "external" | "direct";
+const MAX_IMPORT_ITEMS = 100;
 
-export type MarketplaceItem = {
-  id: string;
-  emoji: string;
-  name: string;
-  priceArs: number;
-  vertical: string;
-  checkout: CheckoutMode;
-  visibility: Visibility;
-};
-
-type MarketplaceStore = {
-  items: MarketplaceItem[];
-};
-
-const initialItems: MarketplaceItem[] = [
-  {
-    id: "balmec-malbec-2022",
-    emoji: "VI",
-    name: "Gran Reserva Malbec 2022",
-    priceArs: 45000,
-    vertical: "Vino Premium",
-    checkout: "request",
-    visibility: "network",
-  },
-  {
-    id: "balmec-olive-arbequina",
-    emoji: "OL",
-    name: "Aceite de Oliva Extra Virgen Arbequina",
-    priceArs: 14500,
-    vertical: "Oliva Gourmet",
-    checkout: "direct",
-    visibility: "network",
-  },
-  {
-    id: "balmec-experience-private-tasting",
-    emoji: "EX",
-    name: "Cata privada para dos",
-    priceArs: 32000,
-    vertical: "Experiencia",
-    checkout: "request",
-    visibility: "network",
-  },
-  {
-    id: "balmec-terroir-box",
-    emoji: "BX",
-    name: "Caja Selección Terroir",
-    priceArs: 120000,
-    vertical: "Caja / Combo",
-    checkout: "request",
-    visibility: "private",
-  },
-];
-
-const globalStore = globalThis as typeof globalThis & { __tenantMarketplaceStore?: MarketplaceStore };
-if (!globalStore.__tenantMarketplaceStore) {
-  globalStore.__tenantMarketplaceStore = { items: initialItems };
-}
-
-function getStore() {
-  return globalStore.__tenantMarketplaceStore!;
-}
-
-export async function GET() {
-  return NextResponse.json({ items: getStore().items, demoMode: true, dataSource: "demo" });
+export async function GET(req: Request) {
+  const authorization = await authorizeTenantMarketplaceRead(req);
+  if ("response" in authorization) return authorization.response;
+  const canWrite = dashboardPermissionMatches(
+    authorization.session.permissions,
+    "marketplace:write",
+    authorization.session.deniedPermissions,
+  );
+  return NextResponse.json({
+    ok: true,
+    tenant: authorization.tenantSlug,
+    items: getTenantMarketplaceStore(authorization.tenantSlug).items,
+    canWrite,
+    demoMode: true,
+    dataSource: "demo",
+  }, { headers: tenantMarketplaceNoStoreHeaders });
 }
 
 export async function POST(req: Request) {
-  const payload = (await req.json()) as Omit<MarketplaceItem, "id"> | Array<Omit<MarketplaceItem, "id">>;
-  const store = getStore();
+  if (!tenantMarketplaceSameOrigin(req)) {
+    return NextResponse.json({ ok: false, reason: "same_origin_required" }, { status: 403, headers: tenantMarketplaceNoStoreHeaders });
+  }
+  const authorization = await authorizeTenantMarketplaceMutation(req);
+  if ("response" in authorization) return authorization.response;
+  const payload = await readTenantMarketplacePayload(req);
+  if (payload === null) {
+    return NextResponse.json({ ok: false, reason: "payload_too_large" }, { status: 413, headers: tenantMarketplaceNoStoreHeaders });
+  }
+  if (payload === undefined) {
+    return NextResponse.json({ ok: false, reason: "invalid_json" }, { status: 400, headers: tenantMarketplaceNoStoreHeaders });
+  }
   const payloads = Array.isArray(payload) ? payload : [payload];
+  if (!payloads.length || payloads.length > MAX_IMPORT_ITEMS) {
+    return NextResponse.json({ ok: false, reason: "import_limit_exceeded" }, { status: 413, headers: tenantMarketplaceNoStoreHeaders });
+  }
   const normalized = payloads
-    .filter((entry) => entry?.name?.trim() && entry?.vertical?.trim())
-    .map((entry, index) => ({
-      id: `item-${Date.now()}-${index}`,
-      emoji: entry.emoji || "NX",
-      name: entry.name.trim(),
-      priceArs: Number(entry.priceArs) || 0,
-      vertical: entry.vertical.trim(),
-      checkout: entry.checkout || "request",
-      visibility: entry.visibility || "network",
-    } satisfies MarketplaceItem));
-
-  if (!normalized.length) {
-    return NextResponse.json({ error: "name and vertical are required" }, { status: 400 });
+    .map(normalizeTenantMarketplaceDraft)
+    .filter((entry): entry is Omit<MarketplaceItem, "id"> => Boolean(entry))
+    .map((entry) => ({ id: crypto.randomUUID(), ...entry }));
+  if (normalized.length !== payloads.length) {
+    return NextResponse.json({ ok: false, reason: "marketplace_item_invalid" }, { status: 400, headers: tenantMarketplaceNoStoreHeaders });
   }
 
+  const store = getTenantMarketplaceStore(authorization.tenantSlug);
   store.items = [...normalized, ...store.items];
-  return NextResponse.json({ item: normalized[0], items: normalized, imported: normalized.length }, { status: 201 });
+  return NextResponse.json({
+    ok: true,
+    item: normalized[0],
+    items: normalized,
+    imported: normalized.length,
+  }, { status: 201, headers: tenantMarketplaceNoStoreHeaders });
 }

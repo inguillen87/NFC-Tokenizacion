@@ -145,7 +145,7 @@ test("global sensitive reads without complete tenant ownership are super-admin o
 test("support tickets are visible only to the owning tenant or a global super-admin", async () => {
   const source = await routeSource("tickets/route.ts");
   const getSource = source.slice(source.indexOf("export async function GET"), source.indexOf("export async function POST"));
-  assert.match(getSource, /checkAdmin\(req, \["super_admin", "tenant_admin", "tenant_operator", "reseller"\]\)/);
+  assert.match(getSource, /checkAdminWithPermission\(req, "leads\.manage"\)/);
   assert.match(getSource, /getAdminPrincipal\(req\)/);
   assert.match(getSource, /WHERE ticket\.tenant_id = \$\{principal\.tenantId\}::uuid/);
   assert.match(getSource, /tenant\.slug AS tenant_slug/);

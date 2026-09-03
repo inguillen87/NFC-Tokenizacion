@@ -215,7 +215,16 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   ) {
     return "consumers.read_pii";
   }
-  if ((normalizedMethod === "GET" || normalizedMethod === "POST") && normalizedPath === "leads") {
+  if (
+    normalizedMethod === "GET"
+    && /^consumer-network\/member\/[^/]+\/timeline$/.test(normalizedPath)
+  ) {
+    return "consumers.read_pii";
+  }
+  if (
+    (normalizedMethod === "GET" || normalizedMethod === "POST")
+    && (normalizedPath === "leads" || normalizedPath === "tickets")
+  ) {
     return "leads.manage";
   }
   if (

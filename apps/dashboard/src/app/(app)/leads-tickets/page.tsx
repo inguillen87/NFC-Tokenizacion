@@ -4,36 +4,90 @@ import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import { readDemoDataMetaFromResponse } from "../../../lib/demo-data-mode";
-import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../../../lib/permission-policy";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
+import {
+  normalizeCustomerMembers,
+  parseCustomerMemberTimelinePayload,
+  type CustomerMemberTimelineState,
+} from "../../../lib/customer-member-timeline";
+import type {
+  CustomerSignalAvailability,
+  CustomerLeadRecord,
+  CustomerOrderRecord,
+  CustomerSignalRecord,
+  CustomerSignalSource,
+  CustomerTicketRecord,
+} from "../../../lib/customer-signal-timeline";
 import LeadsTicketsClient from "./leads-tickets-client";
 
-type AdminCollectionResult = {
-  rows: any[];
-  availability: "ready" | "upstream_error" | "invalid_payload" | "unreachable" | "access_denied";
-  source: "production" | "demo" | "unavailable";
+type AdminCollectionResult<T extends CustomerSignalRecord = CustomerSignalRecord> = {
+  rows: T[];
+  availability: CustomerSignalAvailability;
+  source: CustomerSignalSource;
 };
 
-function accessDeniedCollection(): AdminCollectionResult {
+function accessDeniedCollection<T extends CustomerSignalRecord>(): AdminCollectionResult<T> {
   return { rows: [], availability: "access_denied", source: "unavailable" };
 }
 
-async function adminGet(
+async function adminGet<T extends CustomerSignalRecord>(
   context: AdminPageContext,
   path: string,
   allowDemoData: boolean,
-): Promise<AdminCollectionResult> {
+): Promise<AdminCollectionResult<T>> {
   try {
     const response = await fetchAdminPage(context, path);
     const meta = readDemoDataMetaFromResponse(response);
-    if (!response.ok) return { rows: [], availability: "upstream_error", source: "unavailable" };
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) return accessDeniedCollection<T>();
+      return { rows: [], availability: "upstream_error", source: "unavailable" };
+    }
     const payload = await response.json().catch(() => null);
-    if (!Array.isArray(payload) || (meta.demoMode && !allowDemoData)) {
+    const payloadRows = Array.isArray(payload)
+      ? payload
+      : payload && typeof payload === "object" && Array.isArray((payload as Record<string, unknown>).items)
+        ? (payload as Record<string, unknown>).items as unknown[]
+        : null;
+    if (!payloadRows || (meta.demoMode && !allowDemoData)) {
       return { rows: [], availability: "invalid_payload", source: "unavailable" };
     }
-    return { rows: payload, availability: "ready", source: meta.demoMode ? "demo" : "production" };
+    return {
+      rows: payloadRows.filter((row): row is CustomerSignalRecord => Boolean(row) && typeof row === "object" && !Array.isArray(row)) as T[],
+      availability: "ready",
+      source: meta.demoMode ? "demo" : "production",
+    };
   } catch {
     return { rows: [], availability: "unreachable", source: "unavailable" };
+  }
+}
+
+function unavailableMemberTimeline(availability: CustomerMemberTimelineState["availability"]): CustomerMemberTimelineState {
+  return { availability, items: [], partial: false, sourceErrors: [], hasMore: false, nextCursor: null };
+}
+
+async function adminMemberTimelineGet(
+  context: AdminPageContext,
+  consumerId: string,
+): Promise<CustomerMemberTimelineState> {
+  try {
+    const response = await fetchAdminPage(
+      context,
+      `/admin/consumer-network/member/${encodeURIComponent(consumerId)}/timeline`,
+    );
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) return unavailableMemberTimeline("access_denied");
+      if (response.status === 404) return unavailableMemberTimeline("member_not_found");
+      return unavailableMemberTimeline(response.status >= 500 ? "upstream_error" : "invalid_payload");
+    }
+    const payload = await response.json().catch(() => null);
+    const parsed = parseCustomerMemberTimelinePayload(payload, {
+      tenant: context.tenantSlug,
+      consumerId,
+    });
+    return parsed ? { availability: "ready", ...parsed } : unavailableMemberTimeline("invalid_payload");
+  } catch {
+    return unavailableMemberTimeline("unreachable");
   }
 }
 
@@ -56,12 +110,24 @@ export default async function LeadsTicketsPage({
   const query = searchParams ? await searchParams : {};
   const requestedTenant = String(query.tenant || "").trim().toLowerCase();
   const sessionFilter = String(query.session || "").trim().toLowerCase();
+  const requestedConsumer = String(query.consumer || "").trim().toLowerCase();
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
   const canManageLeads = dashboardHighImpactPermissionMatches(
     session.role,
     session.permissions,
     "leads.manage",
+    session.deniedPermissions,
+  );
+  const canReadConsumerPii = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "consumers.read_pii",
+    session.deniedPermissions,
+  );
+  const canReadMemberTimeline = canReadConsumerPii && dashboardPermissionMatches(
+    session.permissions,
+    "incidents:read",
     session.deniedPermissions,
   );
   const adminContext = await createAdminPageContext(session, requestedTenant);
@@ -72,19 +138,36 @@ export default async function LeadsTicketsPage({
   const retryQuery = new URLSearchParams();
   if (tenantFilter) retryQuery.set("tenant", tenantFilter);
   if (sessionFilter) retryQuery.set("session", sessionFilter);
+  if (requestedConsumer) retryQuery.set("consumer", requestedConsumer);
   const retryHref = `/leads-tickets${retryQuery.size ? `?${retryQuery.toString()}` : ""}`;
 
-  const [leadsResult, ticketsResult, ordersResult] = await Promise.all([
+  const [leadsResult, ticketsResult, ordersResult, membersResult] = await Promise.all([
     canManageLeads
-      ? adminGet(adminContext, "/admin/leads", allowDemoData)
-      : Promise.resolve(accessDeniedCollection()),
-    adminGet(adminContext, "/admin/tickets", allowDemoData),
-    adminGet(adminContext, "/admin/consumer-portal/order-requests", allowDemoData),
+      ? adminGet(adminContext, "/admin/leads", allowDemoData) as Promise<AdminCollectionResult<CustomerLeadRecord>>
+      : Promise.resolve(accessDeniedCollection<CustomerLeadRecord>()),
+    adminGet(adminContext, "/admin/tickets", allowDemoData) as Promise<AdminCollectionResult<CustomerTicketRecord>>,
+    adminGet(adminContext, "/admin/consumer-portal/order-requests", allowDemoData) as Promise<AdminCollectionResult<CustomerOrderRecord>>,
+    !tenantScope
+      ? Promise.resolve({ rows: [], availability: "invalid_payload", source: "unavailable" } as AdminCollectionResult)
+      : canReadConsumerPii
+        ? adminGet(adminContext, "/admin/consumer-portal/members", allowDemoData)
+        : Promise.resolve(accessDeniedCollection()),
   ]);
 
   const leadsArray = leadsResult.rows;
   const ticketsArray = ticketsResult.rows;
   const ordersArray = ordersResult.rows;
+  const members = normalizeCustomerMembers(membersResult.rows);
+  const selectedMember = members.find((member) => member.id.toLowerCase() === requestedConsumer) || null;
+  const memberTimeline = !tenantScope
+    ? unavailableMemberTimeline("tenant_required")
+    : !canReadMemberTimeline
+      ? unavailableMemberTimeline("access_denied")
+      : !requestedConsumer
+        ? unavailableMemberTimeline("not_selected")
+        : !selectedMember
+          ? unavailableMemberTimeline("member_not_found")
+          : await adminMemberTimelineGet(adminContext, selectedMember.id);
   const unavailableSources = [
     { label: "prospectos", availability: leadsResult.availability },
     { label: "tickets", availability: ticketsResult.availability },
@@ -205,6 +288,15 @@ export default async function LeadsTicketsPage({
         labels={labels}
         demoMode={allowDemoData}
         leadsSource={leadsResult.source}
+        signalCollections={{
+          leads: { availability: leadsResult.availability, source: leadsResult.source },
+          tickets: { availability: ticketsResult.availability, source: ticketsResult.source },
+          orders: { availability: ordersResult.availability, source: ordersResult.source },
+        }}
+        members={members}
+        memberDirectory={{ availability: membersResult.availability, source: membersResult.source }}
+        selectedMemberId={selectedMember?.id || ""}
+        memberTimeline={memberTimeline}
       />
     </main>
   );

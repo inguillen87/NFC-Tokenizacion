@@ -9,7 +9,9 @@ import {
   isIncidentStatus,
   listEventIncidents,
   maskIncidentUid,
+  transitionEventIncident,
   validIncidentEventId,
+  validIncidentExpectedVersion,
   validIncidentId,
   validIncidentIdempotencyKey,
   validIncidentTenantSlug,
@@ -28,6 +30,14 @@ test("incident input contract rejects ambiguous and oversized values", () => {
   assert.equal(validIncidentId("../../other-tenant"), false);
   assert.equal(validIncidentIdempotencyKey("transition:12345678"), true);
   assert.equal(validIncidentIdempotencyKey("short"), false);
+  assert.equal(validIncidentExpectedVersion(1), true);
+  assert.equal(validIncidentExpectedVersion("9223372036854775807"), true);
+  assert.equal(validIncidentExpectedVersion(undefined), false);
+  assert.equal(validIncidentExpectedVersion(0), false);
+  assert.equal(validIncidentExpectedVersion("01"), false);
+  assert.equal(validIncidentExpectedVersion("1.5"), false);
+  assert.equal(validIncidentExpectedVersion(9_007_199_254_740_993), false);
+  assert.equal(validIncidentExpectedVersion("9223372036854775808"), false);
   assert.equal(isIncidentStatus("investigating"), true);
   assert.equal(isIncidentStatus("deleted"), false);
   assert.equal(isIncidentSeverity("critical"), true);
@@ -86,8 +96,56 @@ test("workflow errors are sanitized into stable API outcomes", () => {
   assert.deepEqual(incidentWorkflowError(new Error("incident_event_identity_ambiguous")), { status: 409, reason: "incident_event_identity_ambiguous" });
   assert.deepEqual(incidentWorkflowError(new Error("incident_tenant_link_broken")), { status: 409, reason: "incident_tenant_link_broken" });
   assert.deepEqual(incidentWorkflowError(new Error("incident_idempotency_key_conflict")), { status: 409, reason: "incident_idempotency_key_conflict" });
+  assert.deepEqual(incidentWorkflowError(new Error("incident_stale_version")), { status: 409, reason: "stale_version" });
   assert.deepEqual(incidentWorkflowError({ code: "42883" }), { status: 503, reason: "incident_schema_migration_required" });
   assert.deepEqual(incidentWorkflowError(new Error("password=secret internal stack")), { status: 503, reason: "incident_workflow_unavailable" });
+});
+
+test("incident transition forwards the operator-observed version to the atomic writer", async () => {
+  let queryText = "";
+  let queryValues = [];
+  await assert.rejects(
+    transitionEventIncident({
+      incidentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      expectedTenantSlug: "tenant-a",
+      expectedVersion: "7",
+      toStatus: "investigating",
+      toSeverity: "high",
+      actorId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      actorEmail: "operator@example.com",
+      actorLabel: "Operator",
+      reason: "Evidence reviewed",
+      idempotencyKey: "transition:12345678",
+    }, async (strings, ...values) => {
+      queryText = strings.join("?");
+      queryValues = values;
+      return [];
+    }),
+    /incident_commit_readback_failed/,
+  );
+  assert.match(queryText, /nexid_transition_event_incident/);
+  assert.match(queryText, /\?::bigint/);
+  assert.equal(queryValues[2], "7");
+});
+
+test("0100 rejects stale incident decisions before ticket or history side effects", async () => {
+  const migration = await read("../db/migrations/20260903120000_0100_event_incident_optimistic_concurrency.sql");
+  const idempotentReplay = migration.indexOf("IF v_history_exists THEN");
+  const staleCheck = migration.indexOf("v_incident.version IS DISTINCT FROM p_expected_version");
+  const guardedUpdate = migration.indexOf("AND i.version = p_expected_version");
+  const ticketUpdate = migration.indexOf("UPDATE tickets");
+  const historyInsert = migration.indexOf("INSERT INTO event_incident_history");
+
+  assert.doesNotMatch(migration, /DROP FUNCTION IF EXISTS public\.nexid_transition_event_incident/);
+  assert.match(migration, /keep the 0065 nine-argument signature available/);
+  assert.match(migration, /p_expected_version bigint/);
+  assert.match(migration, /'expected_version', p_expected_version/);
+  assert.ok(idempotentReplay >= 0 && staleCheck > idempotentReplay, "exact idempotent retries must remain replayable after version advances");
+  assert.ok(guardedUpdate > staleCheck, "the update must be guarded by the observed version");
+  assert.ok(ticketUpdate > guardedUpdate, "ticket synchronization must only occur after the guarded incident update");
+  assert.ok(historyInsert > guardedUpdate, "audit history must only be appended after the guarded incident update");
+  assert.match(migration, /IF NOT FOUND THEN[\s\S]*incident_stale_version/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.nexid_transition_event_incident\([\s\S]*bigint[\s\S]*FROM PUBLIC/);
 });
 
 test("0065 makes event ownership, ticket creation, state and history one atomic DB boundary", async () => {
@@ -134,6 +192,10 @@ test("incident routes enforce AdminPrincipal permissions and publish only after 
   assert.ok(collectionPost.indexOf("await openEventIncident(") < collectionPost.indexOf("publishIncident(incident"));
   assert.match(detail, /checkAdminPermission\(req, "incidents:write"\)/);
   assert.match(detail, /idempotency-key/);
+  assert.match(detail, /body\.expectedVersion \?\? body\.expected_version/);
+  assert.match(detail, /incident_expected_version_required/);
+  assert.match(detail, /validIncidentExpectedVersion\(expectedVersion\)/);
+  assert.match(detail, /expectedVersion,/);
   assert.ok(detail.indexOf("await transitionEventIncident(") < detail.indexOf("publishRealtimeEvent({"));
   assert.match(stream, /checkAdminPermission\(req, "incidents:read"\)/);
   assert.match(stream, /allowRealtimeEventForScope/);

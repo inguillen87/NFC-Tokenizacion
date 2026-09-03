@@ -20,6 +20,7 @@ test("dashboard shell exposes enterprise account drawer instead of bare logout",
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*tenantSlug=\{currentTenantSlug\}/);
   assert.doesNotMatch(shellSource, /onClick=\{handleLogout\}/);
   assert.doesNotMatch(shellSource, /const \[loggingOut, setLoggingOut\]/);
+  assert.match(shellSource, /canOpenDestination\("leadsTickets"\) \? \([\s\S]*<AdminNotificationBell/);
 });
 
 test("dashboard account trigger stays compact in mobile header", () => {
@@ -57,4 +58,7 @@ test("fullscreen CRM account menu receives same permissions contract", () => {
   assert.match(crmSource, /permissions=\{account\.permissions\}/);
   assert.match(crmSource, /surface="crm"/);
   assert.match(crmSource, /clerkEnabled=\{account\.clerkEnabled\}/);
+  assert.match(crmSource, /import \{ SecureDashboardLogoutButton \} from "\.\/secure-dashboard-logout-button"/);
+  assert.match(crmSource, /<SecureDashboardLogoutButton[\s\S]*testId="crm-rail-secure-logout"/);
+  assert.doesNotMatch(crmSource, /<form method="post" action="\/logout"/);
 });

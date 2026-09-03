@@ -14,7 +14,6 @@ import {
   Gift,
   Globe,
   Layers,
-  LogOut,
   MapPin,
   Megaphone,
   MousePointerClick,
@@ -35,6 +34,7 @@ import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map"
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { IncidentEventDrawer } from "./incident-event-drawer";
+import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { exportToCsv } from "../lib/export-utils";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import {
@@ -47,7 +47,11 @@ import {
   type RealtimeStreamSource,
   type TenantTapRealtimeEvent,
 } from "../lib/realtime-feed";
-import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../lib/permission-policy";
+import {
+  dashboardHighImpactPermissionMatches,
+  dashboardPermissionDenied,
+  dashboardPermissionMatches,
+} from "../lib/permission-policy";
 import {
   incidentByEvent,
   isIncidentRealtimeWireEvent,
@@ -696,8 +700,12 @@ export function ExecutiveRealtimeCrm({
   const [selectedEvent, setSelectedEvent] = useState<TenantTapRealtimeEvent | null>(null);
   const [incidentsByEventId, setIncidentsByEventId] = useState<Record<string, DashboardIncident>>({});
   const [incidentAvailability, setIncidentAvailability] = useState<"loading" | "ready" | "unavailable">("loading");
-  const canReadIncidents = account.role === "super-admin" || dashboardPermissionMatches(account.permissions, "incidents:read");
-  const canWriteIncidents = account.role === "super-admin" || dashboardPermissionMatches(account.permissions, "incidents:write");
+  const canReadIncidents = account.role === "super-admin"
+    ? !dashboardPermissionDenied(account.deniedPermissions, "incidents:read")
+    : dashboardPermissionMatches(account.permissions, "incidents:read", account.deniedPermissions);
+  const canWriteIncidents = account.role === "super-admin"
+    ? !dashboardPermissionDenied(account.deniedPermissions, "incidents:write")
+    : dashboardPermissionMatches(account.permissions, "incidents:write", account.deniedPermissions);
   const lastEventIdRef = useRef("");
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
 
@@ -1297,11 +1305,15 @@ export function ExecutiveRealtimeCrm({
             </button>
           ))}
         </div>
-        <form method="post" action="/logout" className="mt-auto">
-          <button type="submit" title="Cerrar sesion" className="grid h-10 w-10 place-items-center rounded-lg border border-white/8 text-slate-500 hover:border-rose-300/35 hover:text-rose-100" aria-label="Salir">
-            <LogOut className="h-5 w-5" />
-          </button>
-        </form>
+        <div className="mt-auto" title="Cerrar sesión segura">
+          <SecureDashboardLogoutButton
+            clerkEnabled={account.clerkEnabled}
+            label="Cerrar sesión segura"
+            pendingLabel="Cerrando sesión"
+            testId="crm-rail-secure-logout"
+            className="grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-white/8 text-[0px] text-slate-500 transition hover:border-rose-300/35 hover:text-rose-100 disabled:cursor-wait disabled:opacity-70 [&_svg]:h-5 [&_svg]:w-5"
+          />
+        </div>
       </aside>
 
       <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-102px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:gap-4 2xl:p-4">

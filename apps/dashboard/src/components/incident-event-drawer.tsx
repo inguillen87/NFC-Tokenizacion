@@ -131,7 +131,7 @@ export function IncidentEventDrawer({
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [canRead, incident?.id, incident?.version, onIncident, tenantSlug]);
+  }, [canRead, incident?.id, incident?.version, lookupRevision, onIncident, tenantSlug]);
 
   async function openIncident() {
     if (!canWrite || !tenantSlug || !event.eventId) return;
@@ -179,13 +179,21 @@ export function IncidentEventDrawer({
         headers: { "content-type": "application/json", "idempotency-key": idempotencyKey },
         body: JSON.stringify({
           tenantSlug,
+          expectedVersion: incident.version,
           status: nextStatus,
           severity,
           reason,
         }),
       });
       const payload = await responseJson(response);
-      if (!response.ok || !payload.ok || !payload.incident) throw new Error(String(payload.reason || `http_${response.status}`));
+      if (!response.ok || !payload.ok || !payload.incident) {
+        const failure = String(payload.reason || `http_${response.status}`);
+        if (response.status === 409 && failure === "stale_version") {
+          setLookupRevision((current) => current + 1);
+          throw new Error("Otro operador actualizó este incidente. Recargamos el expediente para que decidas sobre la versión vigente.");
+        }
+        throw new Error(failure);
+      }
       onIncident(payload.incident as DashboardIncident);
       setReason("");
     } catch (cause) {

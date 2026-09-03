@@ -1,7 +1,12 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminPrincipal } from "../../../lib/auth";
+import {
+  checkAdmin,
+  checkAdminPermission,
+  checkAdminWithPermission,
+  getAdminPrincipal,
+} from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { ensureTicketsSchema } from "../../../lib/commercial-runtime-schema";
@@ -13,7 +18,7 @@ function isMissingRelation(error: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator", "reseller"]);
+  const auth = await checkAdminWithPermission(req, "leads.manage");
   if (auth) return auth;
   const principal = getAdminPrincipal(req);
   await ensureTicketsSchema();
@@ -61,6 +66,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "leads.manage");
+  if (permission) return permission;
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const locale = String(body.locale || "es-AR");
   const contact = String(body.contact || "");

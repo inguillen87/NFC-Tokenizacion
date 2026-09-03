@@ -1,5 +1,25 @@
 "use client";
 
+const SPREADSHEET_FORMULA_PREFIX = /^[\u0000-\u0020\uFEFF]*[=+\-@]/;
+
+export function neutralizeSpreadsheetFormula(value: unknown) {
+  const text = value === null || value === undefined ? "" : String(value);
+  return SPREADSHEET_FORMULA_PREFIX.test(text) ? `'${text}` : text;
+}
+
+export function escapeSpreadsheetCsvCell(value: unknown) {
+  return `"${neutralizeSpreadsheetFormula(value).replace(/"/g, '""')}"`;
+}
+
+export function escapeSpreadsheetHtmlCell(value: unknown) {
+  return neutralizeSpreadsheetFormula(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * Convierte un arreglo de objetos planos en una cadena CSV compatible con Microsoft Excel.
  * Añade automáticamente el BOM UTF-8 (\ufeff) para asegurar que los caracteres especiales y acentos
@@ -17,15 +37,14 @@ export function exportToCsv<T extends Record<string, unknown>>(
 
   // Cabeceras
   const csvRows = [
-    labels.map(label => `"${String(label).replace(/"/g, '""')}"`).join(",")
+    labels.map(escapeSpreadsheetCsvCell).join(",")
   ];
 
   // Filas de datos
   for (const item of data) {
     const values = keys.map(key => {
       const val = item[key];
-      const strVal = val === null || val === undefined ? "" : String(val);
-      return `"${strVal.replace(/"/g, '""')}"`;
+      return escapeSpreadsheetCsvCell(val);
     });
     csvRows.push(values.join(","));
   }

@@ -12,7 +12,10 @@ test("realtime CRM combines SSE incident updates with a bounded polling fallback
   assert.match(source, /setInterval\(\(\) => void refreshIncidents\(\), 15_000\)/);
   assert.match(source, /document\.visibilityState === "visible"/);
   assert.match(source, /setIncidentAvailability\("unavailable"\)/);
-  assert.match(source, /dashboardPermissionMatches\(account\.permissions, "incidents:read"\)/);
+  assert.match(source, /!dashboardPermissionDenied\(account\.deniedPermissions, "incidents:read"\)/);
+  assert.match(source, /dashboardPermissionMatches\(account\.permissions, "incidents:read", account\.deniedPermissions\)/);
+  assert.match(source, /!dashboardPermissionDenied\(account\.deniedPermissions, "incidents:write"\)/);
+  assert.match(source, /dashboardPermissionMatches\(account\.permissions, "incidents:write", account\.deniedPermissions\)/);
   assert.match(source, /data-testid="open-event-incident-drawer"/);
 });
 
@@ -28,6 +31,10 @@ test("event drawer explains persisted evidence and supports immediate open/trans
   assert.match(drawer, /eventLookupState !== "ready"/);
   assert.match(drawer, /Reintentar consulta segura/);
   assert.match(drawer, /"idempotency-key": idempotencyKey/);
+  assert.match(drawer, /expectedVersion: incident\.version/);
+  assert.match(drawer, /response\.status === 409 && failure === "stale_version"/);
+  assert.match(drawer, /Otro operador actualizó este incidente/);
+  assert.match(drawer, /setLookupRevision\(\(current\) => current \+ 1\)/);
   assert.match(drawer, /onIncident\(payload\.incident as DashboardIncident\)/);
   assert.match(drawer, /Historial inmutable/);
   assert.match(drawer, /No se interpreta la ausencia de datos como “sin incidente”/);

@@ -7,6 +7,8 @@ const adminExperiencesPage = await readFile(new URL("../src/app/(app)/experience
 const experiencesPanel = await readFile(new URL("../src/components/verified-experiences-panel.tsx", import.meta.url), "utf8");
 const marketplace = await readFile(new URL("../src/app/(app)/consumer-network/marketplace/page.tsx", import.meta.url), "utf8");
 const marketplaceRoute = await readFile(new URL("../src/app/api/tenant-marketplace/route.ts", import.meta.url), "utf8");
+const marketplaceItemRoute = await readFile(new URL("../src/app/api/tenant-marketplace/[id]/route.ts", import.meta.url), "utf8");
+const marketplaceHelpers = await readFile(new URL("../src/app/api/tenant-marketplace/route-helpers.ts", import.meta.url), "utf8");
 
 test("experiences keeps ready-empty separate from upstream, transport and payload failures", () => {
   assert.match(experiencesPage, /availability: "unreachable"/);
@@ -58,7 +60,24 @@ test("marketplace discloses source, withholds false zeroes and marks the in-memo
   assert.match(marketplace, /setAvailability\("invalid_payload"\)/);
   assert.match(marketplace, /availability === "ready" \? totals\.total : "—"/);
   assert.match(marketplace, /Este estado no representa inventario cero/);
-  assert.match(marketplaceRoute, /demoMode: true, dataSource: "demo"/);
+  assert.match(marketplace, /Catálogo temporal del sandbox/);
+  assert.match(marketplaceRoute, /demoMode: true,[\s\S]*dataSource: "demo"/);
+  assert.match(marketplace, /setCanWrite\(data\.canWrite === true\)/);
+  assert.match(marketplace, /Solo lectura · falta marketplace:write/);
+  assert.match(marketplace, /isEditorOpen && canWrite/);
+});
+
+test("tenant marketplace demo mutations are authenticated, permissioned and tenant isolated", () => {
+  assert.match(marketplaceHelpers, /getDashboardSession\(\)/);
+  assert.match(marketplaceHelpers, /dashboardPermissionMatches\(session\.permissions, permission, session\.deniedPermissions\)/);
+  assert.match(marketplaceHelpers, /queryTenant && queryTenant !== sessionTenant/);
+  assert.match(marketplaceHelpers, /__tenantMarketplaceStores\?: Map<string, MarketplaceStore>/);
+  assert.match(marketplaceRoute, /authorizeTenantMarketplaceMutation\(req\)/);
+  assert.match(marketplaceRoute, /tenantMarketplaceSameOrigin\(req\)/);
+  assert.match(marketplaceRoute, /MAX_IMPORT_ITEMS = 100/);
+  assert.match(marketplaceItemRoute, /authorizeTenantMarketplaceMutation\(req\)/);
+  assert.match(marketplaceItemRoute, /tenantMarketplaceSameOrigin\(req\)/);
+  assert.doesNotMatch(marketplaceRoute + marketplaceItemRoute, /__tenantMarketplaceStore\?: MarketplaceStore/);
 });
 
 test("experiences and marketplace surfaces remain UTF-8 without visible mojibake", () => {

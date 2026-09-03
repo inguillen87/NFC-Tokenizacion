@@ -28,7 +28,7 @@ test("enterprise release preflight pins the expected non-secret runtime database
   );
 });
 
-test("enterprise release gate requires the reviewed ordered set through 0099", () => {
+test("enterprise release gate requires the reviewed ordered set through 0100", () => {
   assert.deepEqual(expectedMigrations, [
     "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
     "20260726103000_0058_webhook_signature_v2.sql",
@@ -74,10 +74,11 @@ test("enterprise release gate requires the reviewed ordered set through 0099", (
     "20260829120000_0097_public_location_privacy.sql",
     "20260830120000_0098_event_location_context.sql",
     "20260831190000_0099_post_tap_location_observation.sql",
+    "20260903120000_0100_event_incident_optimistic_concurrency.sql",
   ]);
 });
 
-test("migration safety gate covers 0061-0099 and the historical clean-order boundaries", () => {
+test("migration safety gate covers 0061-0100 and the historical clean-order boundaries", () => {
   const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const script = fileURLToPath(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script], {
@@ -87,7 +88,7 @@ test("migration safety gate covers 0061-0099 and the historical clean-order boun
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-39).map(({ id }) => id), [
+  assert.deepEqual(report.migrations.slice(-40).map(({ id }) => id), [
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
     "20260728120000_0062_sun_atomic_persistence.sql",
     "20260728143000_0063_supplier_packaging_governance.sql",
@@ -127,6 +128,7 @@ test("migration safety gate covers 0061-0099 and the historical clean-order boun
     "20260829120000_0097_public_location_privacy.sql",
     "20260830120000_0098_event_location_context.sql",
     "20260831190000_0099_post_tap_location_observation.sql",
+    "20260903120000_0100_event_incident_optimistic_concurrency.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
   assert.equal(report.assertions.sdk_idempotency_schema_is_durable, true);
@@ -339,7 +341,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_migrations_missing"
-      && error.details.missing_migrations.includes("20260831190000_0099_post_tap_location_observation.sql"),
+      && error.details.missing_migrations.includes("20260903120000_0100_event_incident_optimistic_concurrency.sql"),
   );
   assert.equal(ended, true);
 

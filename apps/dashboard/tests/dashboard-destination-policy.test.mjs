@@ -61,6 +61,7 @@ test("explicit denies override wildcard and compound destination grants", () => 
   assert.equal(can("super-admin", "users", { deniedPermissions: ["users:manage"] }), false);
   assert.equal(can("super-admin", "orderRequests", { deniedPermissions: ["consumers.read_pii"] }), false);
   assert.equal(can("super-admin", "orderRequests", { deniedPermissions: ["marketplace:read"] }), false);
+  assert.equal(can("super-admin", "leadsTickets", { deniedPermissions: ["leads.manage"] }), false);
 });
 
 test("production shell and account menu consume the same registry without label or email demo inference", async () => {

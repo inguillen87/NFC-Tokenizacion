@@ -542,7 +542,9 @@ export function DashboardShellInner({
               </div>
             </div>
             <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end sm:gap-3">
-              <AdminNotificationBell canReadSensitiveEvents={canReadSensitiveEvents} />
+              {canOpenDestination("leadsTickets") ? (
+                <AdminNotificationBell canReadSensitiveEvents={canReadSensitiveEvents} />
+              ) : null}
               <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
               <Badge tone="green">{shell.apiConnected}</Badge>
               <div className="hidden h-6 w-px bg-white/10 mx-1 sm:block" />

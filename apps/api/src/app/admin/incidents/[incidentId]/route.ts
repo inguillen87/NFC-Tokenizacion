@@ -17,6 +17,7 @@ import {
   transitionEventIncident,
   validIncidentId,
   validIncidentIdempotencyKey,
+  validIncidentExpectedVersion,
   validIncidentTenantSlug,
 } from "../../../../lib/incident-workflow";
 import { publishRealtimeEvent } from "../../../../lib/realtime-events";
@@ -83,11 +84,15 @@ export async function POST(req: Request, context: { params: Promise<{ incidentId
   const rawSeverity = String(body.severity ?? body.toSeverity ?? body.to_severity ?? "").trim().toLowerCase();
   const reason = boundedIncidentText(body.reason, 3, 2000);
   const idempotencyKey = String(req.headers.get("idempotency-key") || body.idempotencyKey || body.idempotency_key || "").trim();
+  const rawExpectedVersion = body.expectedVersion ?? body.expected_version;
+  const expectedVersion = String(rawExpectedVersion ?? "").trim();
   if (!isIncidentStatus(toStatus)) return json({ ok: false, reason: "incident_status_invalid" }, 400);
   if (rawSeverity && !isIncidentSeverity(rawSeverity)) return json({ ok: false, reason: "incident_severity_invalid" }, 400);
   const toSeverity = rawSeverity && isIncidentSeverity(rawSeverity) ? rawSeverity : null;
   if (!reason) return json({ ok: false, reason: "incident_reason_invalid" }, 400);
   if (!validIncidentIdempotencyKey(idempotencyKey)) return json({ ok: false, reason: "idempotency_key_required" }, 400);
+  if (!expectedVersion) return json({ ok: false, reason: "incident_expected_version_required" }, 400);
+  if (!validIncidentExpectedVersion(expectedVersion)) return json({ ok: false, reason: "incident_expected_version_invalid" }, 400);
 
   const principal = getAdminPrincipal(req);
   const actorEmail = boundedIncidentText(principal.email, 3, 320);
@@ -97,6 +102,7 @@ export async function POST(req: Request, context: { params: Promise<{ incidentId
     const incident = await transitionEventIncident({
       incidentId,
       expectedTenantSlug: scope.tenantSlug,
+      expectedVersion,
       toStatus,
       toSeverity,
       actorId: principal.userId,

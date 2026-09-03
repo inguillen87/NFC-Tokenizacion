@@ -24,6 +24,10 @@ export function shouldAllowDemoFallback(input: { allowDemoFallback: boolean; isP
   }).allowDemoFallback;
 }
 
+export function isAdminUpstreamAuthorizationOutcome(status: number) {
+  return status === 401 || status === 403;
+}
+
 const READONLY_DEMO_ALLOWED = [
   "overview",
   "analytics",
