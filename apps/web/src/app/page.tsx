@@ -107,7 +107,7 @@ export default async function HomePage() {
           <BrandHomeLink
             ariaLabel={footerCopy.home}
             locale={locale}
-            size={50}
+            size={56}
             variant="static"
             theme="light"
             brandClassName="site-brand-lockup"

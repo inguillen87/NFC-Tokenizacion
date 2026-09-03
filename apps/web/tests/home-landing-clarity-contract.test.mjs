@@ -40,9 +40,9 @@ test("home hero is large, friendly and truthful without becoming a technical das
   assert.match(content, /title: "El futuro de la trazabilidad para tu producto\."/);
   assert.match(content, /title: "O futuro da rastreabilidade para o seu produto\."/);
   assert.match(content, /title: "The future of traceability for your product\."/);
-  assert.match(heroBodies[0], /pasaporte digital:[^."]*información, historia y trazabilidad/i);
-  assert.match(heroBodies[1], /passaporte digital:[^."]*informação, história e rastreabilidade/i);
-  assert.match(heroBodies[2], /digital passport experience:[^."]*information, history and traceability/i);
+  assert.match(heroBodies[0], /Pasaporte Digital: identidad, información, historia y trazabilidad declaradas/i);
+  assert.match(heroBodies[1], /Passaporte Digital: identidade, informação, história e rastreabilidade declaradas/i);
+  assert.match(heroBodies[2], /Digital Product Passport: identity, information, history and traceability/i);
   for (const body of heroBodies) assert.doesNotMatch(body, /cumple|compliant|certified|certificado/i);
   for (const body of heroBodies) assert.doesNotMatch(body, /piloto|pilot/i);
 });
@@ -62,9 +62,9 @@ test("SimpleTrustFlow keeps one progressive industry journey and one clear actio
   assert.match(journey, /\["discover", "signal", "aftercare"\]/);
   assert.match(journey, /<SimpleTrustFlowMotion/);
   assert.match(journey, /<HorizontalRailControls/);
-  assert.match(flow, /Un toque\. Un pasaporte útil para cada producto/);
-  assert.match(flow, /Um toque\. Um passaporte útil para cada produto/);
-  assert.match(flow, /One tap\. A useful passport for every product/);
+  assert.match(flow, /Del producto a su pasaporte, en tres momentos/);
+  assert.match(flow, /Do produto ao seu passaporte, em três momentos/);
+  assert.match(flow, /From the product to its passport, in three moments/);
   assert.doesNotMatch(flow, /Botella, paquete o bolsa|Garrafa, pacote ou bolsa|Bottle, parcel or pouch/);
   assert.doesNotMatch(flow, /simple-trust-flow-continuity|continuityStages/);
 

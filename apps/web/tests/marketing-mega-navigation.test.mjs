@@ -101,8 +101,8 @@ test("public headers use a larger logo and a legible translucent aqua surface in
     read("../src/app/globals.css"),
   ]);
 
-  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{50\}/);
-  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{50\}/);
+  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{56\}/);
+  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{56\}/);
   assert.match(css, /\.landing-mega-header\s*\{[\s\S]{0,360}linear-gradient\(108deg[\s\S]{0,260}backdrop-filter: blur\(20px\) saturate\(145%\)/);
   assert.match(css, /html\.theme-dark \.landing-mega-header,[\s\S]{0,100}html\[data-theme="dark"\] \.landing-mega-header\s*\{[\s\S]{0,260}linear-gradient\(108deg/);
 });

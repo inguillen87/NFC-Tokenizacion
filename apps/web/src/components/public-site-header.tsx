@@ -27,7 +27,7 @@ export async function PublicSiteHeader() {
         <div className="container-shell header-main-row flex items-center justify-between gap-4">
           <BrandHomeLink
             locale={locale}
-            size={50}
+            size={56}
             variant="static"
             theme="light"
             brandClassName="site-brand-lockup"

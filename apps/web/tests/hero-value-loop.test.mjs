@@ -46,8 +46,8 @@ test("the immersive hero motion is short, decorative and reduced-motion safe", (
 
 test("the hero keeps a concise DPP journey and two clear actions", () => {
   assert.match(home, /Identidad por modelo, lote o unidad/);
-  assert.match(home, /NFC \+ QR en el navegador/);
-  assert.match(home, /Información según el rol/);
+  assert.match(home, /Información e historia disponibles/);
+  assert.match(home, /NFC \+ QR, sin app/);
   assert.doesNotMatch(home, /InstitutionalVideoPanel/);
   assert.match(home, /role="group" aria-label=/);
 });
