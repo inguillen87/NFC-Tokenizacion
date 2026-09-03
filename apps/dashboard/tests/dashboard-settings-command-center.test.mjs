@@ -27,6 +27,7 @@ test("settings page is an enterprise account command center", () => {
 test("settings renders the account email without triggering Cloudflare HTML rewriting", () => {
   assert.match(settingsSource, /function CloudflareSafeEmail/);
   assert.match(settingsSource, /value\.lastIndexOf\("@"\)/);
+  assert.match(settingsSource, /aria-label=\{session\.email\}/);
   assert.match(settingsSource, /<CloudflareSafeEmail value=\{session\.email\} \/>/);
   assert.doesNotMatch(settingsSource, />\{session\.email\}<\/p>/);
 });

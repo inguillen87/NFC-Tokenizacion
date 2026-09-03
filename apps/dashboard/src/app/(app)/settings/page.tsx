@@ -224,7 +224,7 @@ export default async function SettingsPage() {
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Cuenta operativa</p>
                 <h2 className="mt-2 text-3xl font-black leading-tight text-white">{session.label || tenantName}</h2>
-                <p className="mt-1 break-all text-sm text-slate-400">
+                <p aria-label={session.email} className="mt-1 break-all text-sm text-slate-400">
                   <CloudflareSafeEmail value={session.email} />
                 </p>
               </div>
