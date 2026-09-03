@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
@@ -241,10 +240,6 @@ await sql`CREATE TABLE IF NOT EXISTS tag_profiles (
 await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_tag_profiles_tag_id_unique ON tag_profiles(tag_id)`;
 await sql`ALTER TABLE tag_profiles ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
 
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
-
 function parseManifest(csv) {
   const lines = csv.trim().split("\n");
   const headers = lines[0].split(",").map((h) => h.trim());
@@ -307,13 +302,6 @@ const products = parseProducts(seedJson);
 const productByUid = new Map(products.map((p) => [p.uidHex, p]));
 const bid = manifestRows[0]?.batch_id || "DEMO-2026-02";
 
-const accounts = [
-  { email: "superadmin+demo@nexid.local", fullName: "Demo Super Admin", role: "super_admin", tenantScoped: false, password: "demo-super-admin-2026" },
-  { email: "admin+demobodega@nexid.local", fullName: "Demo Bodega Admin", role: "tenant_admin", tenantScoped: true, password: "demo-tenant-admin-2026" },
-  { email: "reseller+demo@nexid.local", fullName: "Demo Reseller", role: "reseller", tenantScoped: true, password: "demo-reseller-2026" },
-  { email: "viewer+demo@nexid.local", fullName: "Demo Viewer", role: "viewer", tenantScoped: true, password: "demo-viewer-2026" },
-];
-
 await sql`INSERT INTO tenants (slug, name, type, status, root_key_ct)
 VALUES ('demobodega', 'Demo Bodega', 'winery', 'active', 'demo-root-key')
 ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, type = 'winery', status = 'active'`;
@@ -329,19 +317,6 @@ const keyMaterial = buildBatchKeyLifecycleRecords({
 const metaKey = keyMaterial.find((item) => item.keyRole === "K_META_BATCH");
 const fileKey = keyMaterial.find((item) => item.keyRole === "K_FILE_BATCH");
 if (!metaKey || !fileKey) throw new Error("demo batch key lifecycle records are incomplete");
-
-for (const account of accounts) {
-  await sql`INSERT INTO users (email, full_name, locale)
-  VALUES (${account.email}, ${account.fullName}, 'es-AR')
-  ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name`;
-  const user = (await sql`SELECT id FROM users WHERE email = ${account.email} LIMIT 1`)[0];
-  await sql`INSERT INTO password_credentials (user_id, password_hash)
-  VALUES (${user.id}, ${hashPassword(account.password)})
-  ON CONFLICT (user_id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()`;
-  await sql`INSERT INTO memberships (user_id, tenant_id, role)
-  VALUES (${user.id}, ${account.tenantScoped ? tenant.id : null}, ${account.role}::membership_role)
-  ON CONFLICT (user_id, tenant_id, role) DO NOTHING`;
-}
 
 await sql`INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code)
 VALUES (${tenant.id}, ${bid}, 'active', ${metaKey.encryptedKeyCt}, ${fileKey.encryptedKeyCt}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
@@ -537,7 +512,3 @@ console.log(`Tenant: ${tenant.name} (${tenant.slug})`);
 console.log(`Batch: ${batch.bid}`);
 console.log(`Active tags: ${activeTags[0].count}`);
 console.log("Routes: /demo-lab, /demo, /internal/demo/scan, /me, /me/marketplace");
-if (process.env.NODE_ENV !== "production") {
-  console.log("\nDeterministic demo logins (non-production only):");
-  for (const account of accounts) console.log(`- ${account.role}: ${account.email} / ${account.password}`);
-}

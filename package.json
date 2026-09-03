@@ -25,6 +25,7 @@
     "demo:seed": "npm run demo:seed --workspace=api",
     "demo:reset": "npm run demo:reset --workspace=api",
     "demo:emit-taps": "npm run demo:emit-taps --workspace=api",
+    "tenant-admin:credentials": "npm run tenant-admin:credentials --workspace=api --",
     "check:routes": "node scripts/check-next-dynamic-routes.mjs",
     "verify:routes": "npm run check:routes && npm run test:routes --workspace=api",
     "check:placeholders": "node scripts/check-no-placeholders.mjs",

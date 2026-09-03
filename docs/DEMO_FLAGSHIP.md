@@ -67,14 +67,10 @@ Opcional: para checks autenticados de consumidor en `demo:smoke`, exportar `DEMO
 
 ## Demo login rules
 
-Las cuentas de demo son determinísticas y rotuladas como demo (dominio `.local`).
-
-- `superadmin+demo@nexid.local`
-- `admin+demobodega@nexid.local`
-- `reseller+demo@nexid.local`
-- `viewer+demo@nexid.local`
-
-Los scripts imprimen passwords demo solamente fuera de producción.
+El seed del corpus no crea, actualiza ni imprime credenciales humanas. Las
+cuentas administrativas se provisionan o rotan por el flujo IAM auditado y
+separado del contenido demo. Un dataset de demostración nunca debe convertirse
+en una vía de autoridad, incluso si `NODE_ENV` fue configurado incorrectamente.
 
 ## Demo vs production data
 
