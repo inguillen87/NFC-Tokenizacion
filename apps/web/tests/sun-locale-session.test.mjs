@@ -93,8 +93,11 @@ test("stable SUN presentation copy is localized while server evidence is explici
 });
 
 test("stable consumer and TT code interpretations localize without altering raw byte evidence", () => {
-  const consumer = resolveSunConsumerStatus(baseStatus, "pt-BR");
-  const tt = resolveSunTtEvidence({ raw: "4343", source: "enc_decrypted" }, "en");
+  const consumer = resolveSunConsumerStatus(baseStatus, (value) => translateSunUiText(value, "pt-BR"));
+  const tt = resolveSunTtEvidence(
+    { raw: "4343", source: "enc_decrypted" },
+    (value) => translateSunUiText(value, "en"),
+  );
 
   assert.equal(consumer.headline, "A tag informa: lacre fechado");
   assert.equal(tt.label, "TT reports closed");

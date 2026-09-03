@@ -48,12 +48,10 @@ function getSunHeroTraceCopyEs(isDemoPreview: boolean, state: SunHeroTraceState)
 export function getSunHeroTraceCopy(
   isDemoPreview: boolean,
   state: SunHeroTraceState,
-  locale: SunLocale = "es-AR",
+  translate: (value: string) => string = (value) => value,
 ): SunHeroTraceCopy {
   const copy = getSunHeroTraceCopyEs(isDemoPreview, state);
   return Object.fromEntries(
-    Object.entries(copy).map(([key, value]) => [key, translateSunUiText(value, locale)]),
+    Object.entries(copy).map(([key, value]) => [key, translate(value)]),
   ) as SunHeroTraceCopy;
 }
-import type { SunLocale } from "./sun-locale.ts";
-import { translateSunUiText } from "./sun-locale.ts";

@@ -158,19 +158,17 @@ function resolveSunTtEvidenceEs(input: SunTtTechnicalInput): SunTtEvidence {
 
 export function resolveSunTtEvidence(
   input: SunTtTechnicalInput,
-  locale: SunLocale = "es-AR",
+  translate: (value: string) => string = (value) => value,
 ): SunTtEvidence {
   const evidence = resolveSunTtEvidenceEs(input);
   return {
     ...evidence,
-    label: translateSunUiText(evidence.label, locale),
-    summary: translateSunUiText(evidence.summary, locale),
+    label: translate(evidence.label),
+    summary: translate(evidence.summary),
     bytes: evidence.bytes.map((byte) => ({
       ...byte,
-      title: translateSunUiText(byte.title, locale),
-      label: translateSunUiText(byte.label, locale),
+      title: translate(byte.title),
+      label: translate(byte.label),
     })),
   };
 }
-import type { SunLocale } from "./sun-locale.ts";
-import { translateSunUiText } from "./sun-locale.ts";

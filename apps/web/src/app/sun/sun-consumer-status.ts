@@ -153,17 +153,15 @@ function resolveSunConsumerStatusEs(input: ResolveSunConsumerStatusInput): SunCo
 
 export function resolveSunConsumerStatus(
   input: ResolveSunConsumerStatusInput,
-  locale: SunLocale = "es-AR",
+  translate: (value: string) => string = (value) => value,
 ): SunConsumerStatus {
   const status = resolveSunConsumerStatusEs(input);
   return {
     ...status,
-    label: translateSunUiText(status.label, locale),
-    headline: translateSunUiText(status.headline, locale),
-    copy: translateSunUiText(status.copy, locale),
-    identityLabel: translateSunUiText(status.identityLabel, locale),
-    sealLabel: translateSunUiText(status.sealLabel, locale),
+    label: translate(status.label),
+    headline: translate(status.headline),
+    copy: translate(status.copy),
+    identityLabel: translate(status.identityLabel),
+    sealLabel: translate(status.sealLabel),
   };
 }
-import type { SunLocale } from "./sun-locale.ts";
-import { translateSunUiText } from "./sun-locale.ts";

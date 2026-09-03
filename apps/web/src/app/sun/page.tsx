@@ -8,7 +8,7 @@ import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
 import { SunLocaleProvider } from "./sun-locale-provider";
-import type { SunLocale } from "./sun-locale";
+import { translateSunUiText, type SunLocale } from "./sun-locale";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { PostTapNextStep } from "./post-tap-next-step";
 import { SunSectionNav } from "./sun-section-nav";
@@ -606,7 +606,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ?? result.status?.tamperStatus
       ?? result.tag_tamper?.status
       ?? productState,
-  }, locale);
+  }, (value) => translateSunUiText(value, locale));
   const showTtTechnicalEvidence = ttEvidence.available
     || Boolean(result.status?.tamperSupported)
     || Boolean(result.tag_tamper?.available);
@@ -864,7 +864,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     isReplay,
     isSunProfileMismatch,
     isSnapshotView,
-  }, locale);
+  }, (value) => translateSunUiText(value, locale));
   const consumerServicesLabel = isRiskBlocked
     ? "Protegidos"
     : isDemoPreview

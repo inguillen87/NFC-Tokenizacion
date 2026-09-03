@@ -138,7 +138,8 @@ test("SUN reuses its existing demo preview for Demo Lab product handoffs", async
   assert.match(sun, /const canRequestBrowserLocation = !isQrScan\s*&& !isDemoPreview/);
   assert.match(sun, /const demoLabReturnHref = demoLabProfile/);
   assert.match(sun, /const requestedDemoLocale = readParam\(params, "locale"\)/);
-  assert.match(sun, /requestedDemoLocale === "en" \|\| requestedDemoLocale === "pt-BR" \|\| requestedDemoLocale === "es-AR"/);
+  assert.match(sun, /const requestedLanguage = readParam\(params, "lang"\)/);
+  assert.match(sun, /getWebI18n\(requestedLanguage \|\| \(isDemoLabHandoff \? requestedDemoLocale : null\)\)/);
   assert.match(sun, /Volver al Demo Lab/);
   assert.match(sun, /SUN_DEMO_BADGE/);
   assert.match(profiles, /type DemoProductProfileKey = "wine" \| "perfume" \| "agro"/);

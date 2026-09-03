@@ -157,12 +157,12 @@ export function SunProductHeroStage({
   tapLng,
   isDemoPreview,
 }: SunProductHeroStageProps) {
-  const { locale } = useSunLocale();
+  const { text } = useSunLocale();
   const [ready, setReady] = useState(false);
   const threeKind = toThreeKind(kind);
   const hasTraceCoordinates = originLat != null && originLng != null && tapLat != null && tapLng != null;
   const traceTone = state === "blocked" ? "warn" : state === "opened" ? "success" : "info";
-  const traceCopy = getSunHeroTraceCopy(isDemoPreview, state, locale);
+  const traceCopy = getSunHeroTraceCopy(isDemoPreview, state, text);
   const tracePoints: VectorMapPoint[] = hasTraceCoordinates
     ? [
         {

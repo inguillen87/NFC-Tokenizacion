@@ -10,7 +10,7 @@ test("SUN product-first card uses the recent truth-gated hero without a live fab
   const demoCopy = Object.values(getSunHeroTraceCopy(true, "opened")).join("\n");
 
   assert.match(hero, /isDemoPreview: boolean/);
-  assert.match(hero, /getSunHeroTraceCopy\(isDemoPreview, state\)/);
+  assert.match(hero, /getSunHeroTraceCopy\(isDemoPreview, state, text\)/);
   assert.match(page, /<SunProductHeroStage/);
   assert.match(page, /data-testid="sun-summary-product"/);
   assert.match(page, /originLat=\{wineryPoint\[0\]\?\.lat\}/);
