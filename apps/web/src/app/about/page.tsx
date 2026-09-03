@@ -4,13 +4,19 @@ import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
+  Boxes,
   BriefcaseBusiness,
   Building2,
+  Database,
   ExternalLink,
   FileBadge2,
+  FileSearch,
+  Recycle,
   ScanLine,
   ShieldCheck,
   Sparkles,
+  Users,
+  Wrench,
 } from "lucide-react";
 import { schedulingUrls, type AppLocale } from "@product/config";
 import { PublicSiteHeader } from "../../components/public-site-header";
@@ -31,6 +37,14 @@ type AboutCopy = {
   inmovarTitle: string;
   inmovarBody: string;
   boundary: string;
+  passportEyebrow: string;
+  passportTitle: string;
+  passportIntro: string;
+  passportFields: Array<{ title: string; body: string }>;
+  rolesEyebrow: string;
+  rolesTitle: string;
+  rolesIntro: string;
+  roles: Array<{ title: string; question: string; body: string }>;
   methodEyebrow: string;
   methodTitle: string;
   methodIntro: string;
@@ -56,28 +70,48 @@ const copyByLocale: Record<AppLocale, AboutCopy> = {
   "es-AR": {
     home: "Inicio de nexID",
     skip: "Ir al contenido",
-    eyebrow: "Quiénes somos",
-    title: "Tecnología para que cada producto abra una relación clara y útil.",
+    eyebrow: "Quiénes somos · Pasaporte Digital de Producto",
+    title: "Construimos el pasaporte digital que acompaña a cada producto.",
     lead:
-      "nexID es una plataforma de identidad digital de producto y postventa del ecosistema Inmovar Latam. Conecta un toque NFC o un escaneo QR con la información disponible, los controles configurados y la próxima acción que cada marca habilita.",
-    nexidLabel: "La plataforma",
+      "nexID es una plataforma de Pasaporte Digital de Producto (DPP) y trazabilidad del ecosistema Inmovar Latam. Organiza identidad, datos declarados, documentos, uso, circularidad y evidencia en un registro que evoluciona durante el ciclo de vida. NFC y QR son puertas de acceso; los permisos definen qué ve cada persona o equipo.",
+    nexidLabel: "Infraestructura de producto",
     nexidTitle: "nexID",
     nexidBody:
-      "Reúne la experiencia que ve el cliente, las herramientas de operación y las integraciones que necesita una empresa para acompañar cada producto después de la venta.",
+      "Conecta el producto físico con un pasaporte gobernado por modelo, lote o unidad. La misma base alimenta experiencias públicas, operación empresarial e integraciones sin convertir cada lectura en una promesa que los datos no respaldan.",
     inmovarLabel: "El ecosistema",
     inmovarTitle: "Inmovar Latam",
     inmovarBody:
       "Es el ecosistema tecnológico desde el que se impulsa el desarrollo de nexID y se conectan producto, ingeniería e implementación empresarial.",
     boundary:
-      "nexID verifica la etiqueta digital y aplica los controles configurados. Una lectura, por sí sola, no confirma la autenticidad del producto físico.",
-    methodEyebrow: "Cómo trabajamos",
-    methodTitle: "De una necesidad concreta a un piloto medible.",
+      "nexID conserva la fuente, el responsable, la fecha y el estado de cada dato, y puede verificar eventos digitales cuando existe evidencia. No transforma una declaración de la marca en un hecho certificado, no confirma por sí solo la autenticidad física y no garantiza automáticamente el cumplimiento de una regulación.",
+    passportEyebrow: "Qué construimos",
+    passportTitle: "Un registro vivo. No una ficha estática pegada al envase.",
+    passportIntro:
+      "El pasaporte separa con claridad qué identifica al producto, qué declara cada fuente, qué puede consultarse y qué evidencia respalda un cambio.",
+    passportFields: [
+      { title: "Identidad y alcance", body: "Referencia, modelo, lote o unidad. La granularidad se define según el producto y el dato que debe mantenerse." },
+      { title: "Trazabilidad declarada", body: "Origen, materiales, fabricación, cadena y documentos, conservando la fuente y el responsable de cada campo." },
+      { title: "Uso y circularidad", body: "Instrucciones, cuidado, reparación, reutilización, separación y fin de vida cuando esa información está disponible." },
+      { title: "Evidencia y cambios", body: "Versión, fecha, fuente y eventos verificables. Lo no informado o no validado se muestra con su estado real." },
+    ],
+    rolesEyebrow: "Información según el rol",
+    rolesTitle: "Una misma identidad. La vista adecuada para cada actor.",
+    rolesIntro:
+      "No todos necesitan —ni deben— ver lo mismo. nexID aplica permisos y contexto sin duplicar el pasaporte.",
+    roles: [
+      { title: "Persona que usa o compra", question: "¿Qué es, cómo lo uso y qué hago al final de su vida útil?", body: "Consulta únicamente la información publicada y los servicios disponibles para ese producto, sin exponer datos internos de operación." },
+      { title: "Marca y operación", question: "¿Qué dato falta, quién lo mantiene y qué versión está vigente?", body: "Administra modelos, lotes, unidades, responsables, documentos y permisos desde una fuente gobernada." },
+      { title: "Servicio y circularidad", question: "¿Cómo se cuida, repara, reutiliza, separa o recupera?", body: "Accede a instrucciones y acciones específicas cuando la marca las publica y el rol tiene permiso." },
+      { title: "Auditoría y autoridades", question: "¿De dónde proviene el dato y qué evidencia existe?", body: "Revisa fuente, estado, fecha e historial dentro del alcance habilitado. El acceso no equivale a aprobación ni certificación." },
+    ],
+    methodEyebrow: "Cómo lo llevamos a operación",
+    methodTitle: "De datos dispersos a un pasaporte gobernado.",
     methodIntro:
-      "Priorizamos una experiencia simple para las personas y una operación clara para los equipos que la administran.",
+      "Primero diseñamos el dato y sus responsabilidades; después elegimos el soporte físico y las experiencias que lo utilizan.",
     method: [
-      { title: "Entender el caso", body: "Definimos el producto, el recorrido del cliente y la acción de postventa que realmente aporta valor." },
-      { title: "Delimitar la evidencia", body: "Acordamos qué información está disponible, qué controles se aplican y qué no puede afirmar la lectura digital." },
-      { title: "Pilotear y aprender", body: "Lanzamos un alcance controlado, medimos el uso y ajustamos la experiencia antes de escalar." },
+      { title: "Modelar el pasaporte", body: "Definimos la granularidad, los campos, la fuente, el responsable, la visibilidad y el ciclo de actualización." },
+      { title: "Conectar el producto", body: "Elegimos QR, NFC estándar o NFC seguro según el caso. El soporte abre el pasaporte; no reemplaza la calidad del dato." },
+      { title: "Gobernar el ciclo de vida", body: "Versionamos información, permisos y evidencia para que cada actor consulte lo que corresponde en cada etapa." },
     ],
     founderEyebrow: "Fundador",
     founderRole: "Fundador y CEO de nexID · Ingeniero Informático",
@@ -95,36 +129,56 @@ const copyByLocale: Record<AppLocale, AboutCopy> = {
       { title: "Datos fiscales", body: "Consultá la inscripción digital pública disponible para validación institucional." },
       { title: "Descargar certificado MiPyME de Marcelo Guillén (PDF)", body: "Descargá el documento público disponible en formato PDF." },
     ],
-    closeTitle: "Conversemos sobre un caso real.",
-    closeBody: "Podemos revisar el producto, el recorrido de postventa y el alcance de un primer piloto sin sumar complejidad innecesaria.",
+    closeTitle: "Diseñemos el pasaporte de tu producto.",
+    closeBody: "Podemos mapear identidad, datos, roles, evidencia y soporte de acceso para construir un primer alcance DPP útil, comprensible y honesto.",
     meeting: "Agendar una reunión",
     docs: "Ver documentación",
   },
   "pt-BR": {
     home: "Início da nexID",
     skip: "Ir para o conteúdo",
-    eyebrow: "Quem somos",
-    title: "Tecnologia para que cada produto abra uma relação clara e útil.",
+    eyebrow: "Quem somos · Passaporte Digital de Produto",
+    title: "Construímos o passaporte digital que acompanha cada produto.",
     lead:
-      "A nexID é uma plataforma de identidade digital de produto e pós-venda do ecossistema Inmovar Latam. Ela conecta um toque NFC ou uma leitura QR às informações disponíveis, aos controles configurados e à próxima ação habilitada por cada marca.",
-    nexidLabel: "A plataforma",
+      "A nexID é uma plataforma de Passaporte Digital de Produto (DPP) e rastreabilidade do ecossistema Inmovar Latam. Organiza identidade, dados declarados, documentos, uso, circularidade e evidência em um registro que evolui durante o ciclo de vida. NFC e QR são portas de acesso; as permissões definem o que cada pessoa ou equipe pode ver.",
+    nexidLabel: "Infraestrutura de produto",
     nexidTitle: "nexID",
     nexidBody:
-      "Reúne a experiência do cliente, as ferramentas de operação e as integrações de que uma empresa precisa para acompanhar cada produto após a venda.",
+      "Conecta o produto físico a um passaporte governado por modelo, lote ou unidade. A mesma base alimenta experiências públicas, operação empresarial e integrações sem transformar cada leitura em uma promessa que os dados não sustentam.",
     inmovarLabel: "O ecossistema",
     inmovarTitle: "Inmovar Latam",
     inmovarBody:
       "É o ecossistema tecnológico que impulsiona o desenvolvimento da nexID e conecta produto, engenharia e implementação empresarial.",
     boundary:
-      "A nexID verifica a etiqueta digital e aplica os controles configurados. Uma leitura, sozinha, não confirma a autenticidade do produto físico.",
-    methodEyebrow: "Como trabalhamos",
-    methodTitle: "De uma necessidade concreta a um piloto mensurável.",
+      "A nexID preserva a fonte, o responsável, a data e o estado de cada dado, e pode verificar eventos digitais quando existe evidência. Não transforma uma declaração da marca em um fato certificado, não confirma sozinha a autenticidade física e não garante automaticamente o cumprimento de uma regulamentação.",
+    passportEyebrow: "O que construímos",
+    passportTitle: "Um registro vivo. Não uma ficha estática colada à embalagem.",
+    passportIntro:
+      "O passaporte separa com clareza o que identifica o produto, o que cada fonte declara, o que pode ser consultado e qual evidência sustenta uma mudança.",
+    passportFields: [
+      { title: "Identidade e alcance", body: "Referência, modelo, lote ou unidade. A granularidade é definida conforme o produto e o dado que deve ser mantido." },
+      { title: "Rastreabilidade declarada", body: "Origem, materiais, fabricação, cadeia e documentos, preservando a fonte e o responsável por cada campo." },
+      { title: "Uso e circularidade", body: "Instruções, cuidado, reparo, reutilização, separação e fim de vida quando essas informações estão disponíveis." },
+      { title: "Evidência e mudanças", body: "Versão, data, fonte e eventos verificáveis. O que não foi informado ou validado aparece com seu estado real." },
+    ],
+    rolesEyebrow: "Informação conforme o papel",
+    rolesTitle: "Uma mesma identidade. A visão certa para cada ator.",
+    rolesIntro:
+      "Nem todos precisam —ou devem— ver a mesma coisa. A nexID aplica permissões e contexto sem duplicar o passaporte.",
+    roles: [
+      { title: "Pessoa que usa ou compra", question: "O que é, como uso e o que faço no fim da vida útil?", body: "Consulta somente as informações publicadas e os serviços disponíveis para esse produto, sem expor dados internos da operação." },
+      { title: "Marca e operação", question: "Qual dado falta, quem o mantém e qual versão está vigente?", body: "Administra modelos, lotes, unidades, responsáveis, documentos e permissões a partir de uma fonte governada." },
+      { title: "Serviço e circularidade", question: "Como cuidar, reparar, reutilizar, separar ou recuperar?", body: "Acessa instruções e ações específicas quando a marca as publica e o papel tem permissão." },
+      { title: "Auditoria e autoridades", question: "De onde vem o dado e qual evidência existe?", body: "Revisa fonte, estado, data e histórico dentro do escopo autorizado. O acesso não equivale a aprovação nem certificação." },
+    ],
+    methodEyebrow: "Como levamos à operação",
+    methodTitle: "De dados dispersos a um passaporte governado.",
     methodIntro:
-      "Priorizamos uma experiência simples para as pessoas e uma operação clara para as equipes que a administram.",
+      "Primeiro desenhamos o dado e suas responsabilidades; depois escolhemos o suporte físico e as experiências que o utilizam.",
     method: [
-      { title: "Entender o caso", body: "Definimos o produto, a jornada do cliente e a ação de pós-venda que realmente entrega valor." },
-      { title: "Delimitar a evidência", body: "Acordamos quais informações estão disponíveis, quais controles se aplicam e o que a leitura digital não pode afirmar." },
-      { title: "Pilotar e aprender", body: "Lançamos um escopo controlado, medimos o uso e ajustamos a experiência antes de escalar." },
+      { title: "Modelar o passaporte", body: "Definimos granularidade, campos, fonte, responsável, visibilidade e ciclo de atualização." },
+      { title: "Conectar o produto", body: "Escolhemos QR, NFC padrão ou NFC seguro conforme o caso. O suporte abre o passaporte; não substitui a qualidade do dado." },
+      { title: "Governar o ciclo de vida", body: "Versionamos informações, permissões e evidências para que cada ator consulte o que corresponde em cada etapa." },
     ],
     founderEyebrow: "Fundador",
     founderRole: "Fundador e CEO da nexID · Engenheiro de Informática",
@@ -142,36 +196,56 @@ const copyByLocale: Record<AppLocale, AboutCopy> = {
       { title: "Dados fiscais", body: "Consulte a inscrição digital pública disponível para validação institucional." },
       { title: "Baixar certificado MiPyME de Marcelo Guillén (PDF)", body: "Baixe o documento público disponível em formato PDF." },
     ],
-    closeTitle: "Vamos conversar sobre um caso real.",
-    closeBody: "Podemos revisar o produto, a jornada de pós-venda e o escopo de um primeiro piloto sem adicionar complexidade desnecessária.",
+    closeTitle: "Vamos desenhar o passaporte do seu produto.",
+    closeBody: "Podemos mapear identidade, dados, papéis, evidências e suporte de acesso para construir um primeiro escopo DPP útil, compreensível e honesto.",
     meeting: "Agendar uma reunião",
     docs: "Ver documentação",
   },
   en: {
     home: "nexID home",
     skip: "Skip to content",
-    eyebrow: "About us",
-    title: "Technology that helps every product open a clear, useful relationship.",
+    eyebrow: "About us · Digital Product Passport",
+    title: "We build the digital passport that stays with every product.",
     lead:
-      "nexID is a digital product identity and after-sales platform within the Inmovar Latam ecosystem. It connects an NFC tap or QR scan with the available information, configured controls and the next action enabled by each brand.",
-    nexidLabel: "The platform",
+      "nexID is a Digital Product Passport (DPP) and traceability platform within the Inmovar Latam ecosystem. It organizes identity, declared data, documents, use, circularity and evidence in a record that evolves across the product lifecycle. NFC and QR are access points; permissions determine what each person or team can see.",
+    nexidLabel: "Product infrastructure",
     nexidTitle: "nexID",
     nexidBody:
-      "It brings together the customer experience, operating tools and integrations a company needs to support each product after the sale.",
+      "It connects the physical product to a passport governed by model, batch or unit. The same foundation serves public experiences, enterprise operations and integrations without turning every scan into a claim the data cannot support.",
     inmovarLabel: "The ecosystem",
     inmovarTitle: "Inmovar Latam",
     inmovarBody:
       "It is the technology ecosystem that supports nexID's development and connects product, engineering and enterprise implementation.",
     boundary:
-      "nexID verifies the digital tag and applies the configured controls. A reading alone does not confirm the authenticity of the physical product.",
-    methodEyebrow: "How we work",
-    methodTitle: "From a specific need to a measurable pilot.",
+      "nexID preserves the source, owner, date and status of each data point, and can verify digital events when evidence exists. It does not turn a brand declaration into a certified fact, does not by itself prove physical authenticity and does not automatically guarantee regulatory compliance.",
+    passportEyebrow: "What we build",
+    passportTitle: "A living record. Not a static page attached to a package.",
+    passportIntro:
+      "The passport clearly separates what identifies the product, what each source declares, what can be viewed and what evidence supports a change.",
+    passportFields: [
+      { title: "Identity and scope", body: "Reference, model, batch or unit. Granularity is defined by the product and the data that must be maintained." },
+      { title: "Declared traceability", body: "Origin, materials, manufacturing, supply chain and documents, retaining the source and owner of each field." },
+      { title: "Use and circularity", body: "Instructions, care, repair, reuse, separation and end-of-life guidance when that information is available." },
+      { title: "Evidence and change", body: "Version, date, source and verifiable events. Missing or unvalidated information is shown with its real status." },
+    ],
+    rolesEyebrow: "Information by role",
+    rolesTitle: "One identity. The right view for each actor.",
+    rolesIntro:
+      "Not everyone needs —or should— see the same information. nexID applies permissions and context without duplicating the passport.",
+    roles: [
+      { title: "Person using or buying", question: "What is it, how do I use it and what happens at end of life?", body: "They see only published information and services available for that product, without exposure to internal operating data." },
+      { title: "Brand and operations", question: "What data is missing, who maintains it and which version is current?", body: "They manage models, batches, units, owners, documents and permissions from a governed source." },
+      { title: "Service and circularity", question: "How can it be cared for, repaired, reused, separated or recovered?", body: "They access specific instructions and actions when the brand publishes them and the role is authorized." },
+      { title: "Auditors and authorities", question: "Where did the data come from and what evidence exists?", body: "They review source, status, date and history within the authorized scope. Access does not imply approval or certification." },
+    ],
+    methodEyebrow: "How we make it operational",
+    methodTitle: "From scattered data to a governed passport.",
     methodIntro:
-      "We prioritize a simple experience for people and a clear operation for the teams managing it.",
+      "We design the data and its responsibilities first; then we choose the physical carrier and the experiences that use it.",
     method: [
-      { title: "Understand the case", body: "We define the product, customer journey and after-sales action that can deliver meaningful value." },
-      { title: "Set the evidence boundary", body: "We agree on the available information, applied controls and what a digital reading cannot claim." },
-      { title: "Pilot and learn", body: "We launch a controlled scope, measure usage and refine the experience before scaling." },
+      { title: "Model the passport", body: "We define granularity, fields, source, owner, visibility and the update lifecycle." },
+      { title: "Connect the product", body: "We choose QR, standard NFC or secure NFC for the use case. The carrier opens the passport; it cannot replace data quality." },
+      { title: "Govern the lifecycle", body: "We version information, permissions and evidence so each actor sees what is appropriate at each stage." },
     ],
     founderEyebrow: "Founder",
     founderRole: "Founder and CEO of nexID · Computer Engineer",
@@ -189,14 +263,16 @@ const copyByLocale: Record<AppLocale, AboutCopy> = {
       { title: "Tax registration", body: "Open the public digital registration available for institutional review." },
       { title: "Download Marcelo Guillén's MiPyME certificate (PDF)", body: "Download the available public document in PDF format." },
     ],
-    closeTitle: "Let's discuss a real use case.",
-    closeBody: "We can review the product, the after-sales journey and the scope of a first pilot without adding unnecessary complexity.",
+    closeTitle: "Let's design your product passport.",
+    closeBody: "We can map identity, data, roles, evidence and the access carrier to build a useful, understandable and honest first DPP scope.",
     meeting: "Book a meeting",
     docs: "View documentation",
   },
 };
 
-const methodIcons = [ScanLine, ShieldCheck, Sparkles] as const;
+const passportIcons = [Boxes, Database, Recycle, FileSearch] as const;
+const roleIcons = [Users, Building2, Wrench, ShieldCheck] as const;
+const methodIcons = [Database, ScanLine, ShieldCheck] as const;
 
 function InstagramBrandIcon() {
   return (
@@ -283,6 +359,61 @@ export default async function AboutPage() {
             </div>
 
             <p className={styles.boundary}>{copy.boundary}</p>
+          </div>
+        </section>
+
+        <section className={`${styles.section} ${styles.passportSection}`} aria-labelledby="about-passport-title">
+          <div className={styles.sectionHeader}>
+            <div>
+              <p className={styles.eyebrow}>{copy.passportEyebrow}</p>
+              <h2 id="about-passport-title">{copy.passportTitle}</h2>
+            </div>
+            <p className={styles.sectionIntro}>{copy.passportIntro}</p>
+          </div>
+
+          <div className={styles.passportGrid}>
+            {copy.passportFields.map((item, index) => {
+              const Icon = passportIcons[index] ?? FileSearch;
+              return (
+                <article key={item.title} className={styles.passportCard}>
+                  <span className={styles.passportIcon}><Icon aria-hidden="true" /></span>
+                  <div>
+                    <span className={styles.passportNumber}>{String(index + 1).padStart(2, "0")}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.body}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className={styles.rolesBlock}>
+            <div className={styles.rolesHeader}>
+              <div>
+                <p className={styles.eyebrow}>{copy.rolesEyebrow}</p>
+                <h3>{copy.rolesTitle}</h3>
+              </div>
+              <p>{copy.rolesIntro}</p>
+            </div>
+
+            <div className={styles.roleGrid}>
+              {copy.roles.map((role, index) => {
+                const Icon = roleIcons[index] ?? Users;
+                return (
+                  <details key={role.title} className={styles.roleCard} open={index === 0}>
+                    <summary>
+                      <span className={styles.roleIcon}><Icon aria-hidden="true" /></span>
+                      <span className={styles.roleSummary}>
+                        <strong>{role.title}</strong>
+                        <span>{role.question}</span>
+                      </span>
+                      <ArrowRight aria-hidden="true" className={styles.roleArrow} />
+                    </summary>
+                    <p>{role.body}</p>
+                  </details>
+                );
+              })}
+            </div>
           </div>
         </section>
 

@@ -207,6 +207,201 @@
   margin: 0;
 }
 
+.passportSection {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(34, 211, 238, 0.1), transparent 22rem),
+    radial-gradient(circle at 88% 82%, rgba(43, 200, 145, 0.09), transparent 25rem),
+    var(--about-surface);
+}
+
+:global(html[data-theme="dark"]) .passportSection {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(34, 211, 238, 0.12), transparent 22rem),
+    radial-gradient(circle at 88% 82%, rgba(43, 200, 145, 0.08), transparent 25rem),
+    var(--about-surface);
+}
+
+.passportGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.8rem;
+}
+
+.passportGrid::before {
+  position: absolute;
+  z-index: 0;
+  top: 1.9rem;
+  right: 8%;
+  left: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(8, 145, 178, 0.38), rgba(43, 200, 145, 0.45), transparent);
+  content: "";
+}
+
+.passportCard {
+  position: relative;
+  z-index: 1;
+  min-height: 14rem;
+  border: 1px solid var(--about-line);
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--about-surface-soft) 94%, transparent);
+  padding: 1rem;
+  box-shadow: 0 15px 35px rgba(15, 35, 63, 0.05);
+}
+
+.passportIcon,
+.roleIcon {
+  display: inline-flex;
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--about-line-strong);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--about-surface) 82%, rgba(34, 211, 238, 0.18));
+  color: var(--about-cyan-strong);
+  box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--about-surface) 82%, transparent);
+}
+
+.passportIcon svg,
+.roleIcon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.passportNumber {
+  display: block;
+  margin-top: 1.15rem;
+  color: var(--about-cyan-strong);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.passportCard h3 {
+  margin: 0.45rem 0 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.passportCard p {
+  margin: 0.65rem 0 0;
+  color: var(--about-muted);
+  font-size: 0.86rem;
+  line-height: 1.65;
+}
+
+.rolesBlock {
+  margin-top: 1rem;
+  border: 1px solid var(--about-line-strong);
+  border-radius: 1.35rem;
+  background: color-mix(in srgb, var(--about-surface) 88%, rgba(34, 211, 238, 0.08));
+  padding: clamp(1.1rem, 3vw, 1.7rem);
+}
+
+.rolesHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(16rem, 0.85fr);
+  align-items: end;
+  gap: 2rem;
+}
+
+.rolesHeader h3 {
+  max-width: 38rem;
+  margin: 0.7rem 0 0;
+  font-size: clamp(1.45rem, 2.7vw, 2.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.rolesHeader > p {
+  margin: 0;
+  color: var(--about-muted);
+  line-height: 1.65;
+}
+
+.roleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.roleCard {
+  border: 1px solid var(--about-line);
+  border-radius: 1rem;
+  background: var(--about-surface-soft);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.roleCard[open] {
+  border-color: var(--about-line-strong);
+  box-shadow: 0 14px 34px rgba(15, 35, 63, 0.07);
+}
+
+.roleCard summary {
+  display: flex;
+  min-height: 6.35rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.roleCard summary::-webkit-details-marker {
+  display: none;
+}
+
+.roleCard summary:focus-visible {
+  border-radius: 1rem;
+  outline: 3px solid rgba(34, 211, 238, 0.3);
+  outline-offset: 3px;
+}
+
+.roleSummary {
+  display: grid;
+  min-width: 0;
+  gap: 0.32rem;
+}
+
+.roleSummary strong {
+  font-size: 0.95rem;
+}
+
+.roleSummary > span {
+  color: var(--about-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.roleArrow {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--about-cyan-strong);
+  transition: transform 180ms ease;
+}
+
+.roleCard[open] .roleArrow {
+  transform: rotate(90deg);
+}
+
+.roleCard > p {
+  margin: 0;
+  border-top: 1px solid var(--about-line);
+  color: var(--about-muted);
+  padding: 0.9rem 1rem 1rem 4.75rem;
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
 .methodGrid,
 .sourceGrid {
   display: grid;
@@ -462,6 +657,16 @@
     margin-top: 1rem;
   }
 
+  .passportGrid,
+  .roleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rolesHeader {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
   .actions {
     justify-content: flex-start;
   }
@@ -484,6 +689,30 @@
     font-size: clamp(2rem, 10vw, 2.75rem);
   }
 
+  .passportGrid,
+  .roleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .passportGrid::before {
+    display: none;
+  }
+
+  .passportCard {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .passportNumber {
+    margin-top: 0;
+  }
+
+  .roleCard > p {
+    padding-left: 1rem;
+  }
+
   .primaryAction,
   .secondaryAction {
     width: 100%;
@@ -492,7 +721,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .socialLink,
-  .sourceCard {
+  .sourceCard,
+  .roleCard,
+  .roleArrow {
     transition: none;
   }
 }

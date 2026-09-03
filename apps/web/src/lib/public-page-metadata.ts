@@ -24,22 +24,22 @@ const publicPageConfig: Record<PublicPageKey, PublicPageConfig> = {
     path: "/about",
     copy: {
       "es-AR": {
-        title: "Quiénes somos | nexID e Inmovar Latam",
+        title: "Quiénes somos | Pasaporte Digital de Producto nexID",
         description:
-          "Conocé nexID, la plataforma de identidad digital de producto y postventa del ecosistema Inmovar Latam, su método de trabajo y a su fundador Marcelo Guillén.",
-        imageAlt: "nexID, plataforma del ecosistema tecnológico Inmovar Latam.",
+          "Conocé nexID, la plataforma de Pasaporte Digital de Producto y trazabilidad de Inmovar Latam: identidad, datos, roles, circularidad y evidencia con límites claros.",
+        imageAlt: "nexID, plataforma de Pasaporte Digital de Producto del ecosistema Inmovar Latam.",
       },
       "pt-BR": {
-        title: "Quem somos | nexID e Inmovar Latam",
+        title: "Quem somos | Passaporte Digital de Produto nexID",
         description:
-          "Conheça a nexID, plataforma de identidade digital de produto e pós-venda do ecossistema Inmovar Latam, seu método de trabalho e o fundador Marcelo Guillén.",
-        imageAlt: "nexID, plataforma do ecossistema tecnológico Inmovar Latam.",
+          "Conheça a nexID, plataforma de Passaporte Digital de Produto e rastreabilidade da Inmovar Latam: identidade, dados, papéis, circularidade e evidência com limites claros.",
+        imageAlt: "nexID, plataforma de Passaporte Digital de Produto do ecossistema Inmovar Latam.",
       },
       en: {
-        title: "About us | nexID and Inmovar Latam",
+        title: "About us | nexID Digital Product Passport",
         description:
-          "Meet nexID, the digital product identity and after-sales platform within the Inmovar Latam ecosystem, its working method and founder Marcelo Guillén.",
-        imageAlt: "nexID, a platform within the Inmovar Latam technology ecosystem.",
+          "Meet nexID, Inmovar Latam's Digital Product Passport and traceability platform for identity, data, roles, circularity and evidence with clear boundaries.",
+        imageAlt: "nexID, the Digital Product Passport platform within the Inmovar Latam ecosystem.",
       },
     },
   },
