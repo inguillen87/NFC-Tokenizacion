@@ -2,24 +2,32 @@
 
 import { LocateFixed, MapPinned, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { requestApproximateBrowserLocation } from "./tap-location-model";
+import {
+  classifyLocationSubmissionFailure,
+  isConsentedApproximateLocationReceipt,
+  requestApproximateBrowserLocation,
+  type LocationReceipt,
+} from "./tap-location-model";
 import { useSunLocale } from "./sun-locale-provider";
 
-type TelemetryState = "idle" | "pending" | "updated" | "denied" | "timeout" | "unsupported" | "invalid" | "stale" | "unavailable" | "error";
+type TelemetryState =
+  | "idle"
+  | "requesting"
+  | "saving"
+  | "updated"
+  | "denied"
+  | "timeout"
+  | "unsupported"
+  | "invalid"
+  | "stale"
+  | "unavailable"
+  | "retryable"
+  | "fresh_tap_required"
+  | "uncertain";
 
-export type LocationReceipt = {
-  source?: string | null;
-  precision?: string | null;
-  accuracyM?: number | null;
-  city?: string | null;
-  countryCode?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-  tapReceivedAt?: string | null;
-  measuredAt?: string | null;
-  receivedAt?: string | null;
-  timing?: string | null;
-};
+export type { LocationReceipt } from "./tap-location-model";
+
+const LOCATION_SESSION_SCHEMA = "nexid-sun-location-session/v1";
 
 export type TapPrecisionTelemetryProps = {
   endpoint: string;
@@ -39,26 +47,13 @@ function clientContext() {
   };
 }
 
-function validReceipt(value: unknown): value is LocationReceipt {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const receipt = value as LocationReceipt;
-  const source = String(receipt.source || "").toLowerCase();
-  return ["browser_geolocation_approximate_consent", "browser_gps_approximate_consent"].includes(source)
-    && receipt.precision === "approximate"
-    && typeof receipt.lat === "number"
-    && Number.isFinite(receipt.lat)
-    && receipt.lat >= -90
-    && receipt.lat <= 90
-    && typeof receipt.lng === "number"
-    && Number.isFinite(receipt.lng)
-    && receipt.lng >= -180
-    && receipt.lng <= 180;
-}
-
 function failureCopy(state: TelemetryState) {
   if (state === "denied") return "El permiso fue denegado. Podés habilitarlo en el navegador y volver a intentar; el pasaporte sigue funcionando sin ubicación.";
   if (state === "timeout") return "El teléfono no obtuvo una ubicación a tiempo. Revisá señal y permisos; la validación SUN sigue disponible.";
   if (state === "unsupported") return "Este navegador o contexto no permite geolocalización. Abrí el pasaporte por HTTPS en el navegador del teléfono; la validación sigue funcionando.";
+  if (state === "invalid") return "El navegador devolvió una medición sin coordenadas o precisión utilizables. No la guardamos; podés volver a intentar.";
+  if (state === "stale") return "El navegador devolvió una medición anterior a tu solicitud. La descartamos y podés pedir una medición nueva.";
+  if (state === "retryable") return "La zona no se guardó esta vez. La autorización de la lectura sigue disponible y podés volver a intentar.";
   return "No se pudo obtener una zona aproximada. El pasaporte sigue funcionando sin ella.";
 }
 
@@ -108,8 +103,25 @@ export function TapPrecisionTelemetry({
     }
     if (!saved) return;
     try {
-      const parsed = JSON.parse(saved) as { status?: string; receipt?: unknown };
-      if (parsed.status !== "sent" || !validReceipt(parsed.receipt)) return;
+      const parsed = JSON.parse(saved) as {
+        schemaVersion?: string;
+        status?: string;
+        bid?: string;
+        eventId?: string;
+        readCounter?: number;
+        receipt?: unknown;
+      };
+      if (
+        parsed.schemaVersion !== LOCATION_SESSION_SCHEMA
+        || parsed.status !== "sent"
+        || parsed.bid !== bid
+        || parsed.eventId !== String(eventId)
+        || parsed.readCounter !== readCounter
+        || !isConsentedApproximateLocationReceipt(parsed.receipt)
+      ) {
+        window.sessionStorage.removeItem(storageKey);
+        return;
+      }
       setReceipt(parsed.receipt);
       setState("updated");
       onLocationConfirmed?.(parsed.receipt);
@@ -120,7 +132,7 @@ export function TapPrecisionTelemetry({
         // Storage is an optional UX receipt; location persistence happens server-side.
       }
     }
-  }, [onLocationConfirmed, storageKey]);
+  }, [bid, eventId, onLocationConfirmed, readCounter, storageKey]);
 
   useEffect(() => {
     if (state !== "updated" || !focusSuccessRef.current) return;
@@ -129,6 +141,7 @@ export function TapPrecisionTelemetry({
   }, [state]);
 
   async function send(payload: Record<string, unknown>) {
+    setState("saving");
     try {
       const request = await fetch(endpoint, {
         method: "POST",
@@ -136,25 +149,42 @@ export function TapPrecisionTelemetry({
         body: JSON.stringify(payload),
         cache: "no-store",
       });
+      const response = await request.json().catch(() => null) as {
+        ok?: boolean;
+        reason?: unknown;
+        fresh_token_status?: unknown;
+        updated?: boolean;
+        eventId?: string | number;
+        matchedBy?: string;
+        location?: LocationReceipt;
+      } | null;
       if (!request.ok) {
-        setState("error");
+        setState(classifyLocationSubmissionFailure(
+          request.status,
+          response?.reason,
+          response?.fresh_token_status,
+        ));
         return;
       }
-      const response = await request.json().catch(() => null) as { ok?: boolean; location?: LocationReceipt } | null;
       const nextReceipt = response?.location;
-      const rejectedLegacySource = nextReceipt?.source !== "browser_gps_approximate_consent";
-      if (
-        !response?.ok
-        || !validReceipt(nextReceipt)
-        || (rejectedLegacySource && nextReceipt?.source !== "browser_geolocation_approximate_consent")
-      ) {
-        setState("error");
+      const responseMatchesTap = response?.updated === true
+        && String(response.eventId) === String(eventId)
+        && response.matchedBy === "signed_event_bid_uid_ctr";
+      if (!response?.ok || !responseMatchesTap || !isConsentedApproximateLocationReceipt(nextReceipt)) {
+        setState("uncertain");
         return;
       }
       setReceipt(nextReceipt);
       onLocationConfirmed?.(nextReceipt);
       try {
-        window.sessionStorage.setItem(storageKey, JSON.stringify({ status: "sent", receipt: nextReceipt }));
+        window.sessionStorage.setItem(storageKey, JSON.stringify({
+          schemaVersion: LOCATION_SESSION_SCHEMA,
+          status: "sent",
+          bid,
+          eventId: String(eventId),
+          readCounter,
+          receipt: nextReceipt,
+        }));
       } catch {
         // A blocked/full sessionStorage must not turn a successful update into an error.
       }
@@ -166,19 +196,28 @@ export function TapPrecisionTelemetry({
       // warranty and other actions from the still-active physical tap. The
       // parent updates the map immediately from this receipt instead.
     } catch {
-      setState("error");
+      // A transport failure cannot prove whether the server consumed the
+      // one-time capability. Do not claim success or blindly resend it.
+      setState("uncertain");
     }
   }
 
   async function shareApproximateLocation() {
-    if (state === "pending" || requestInFlightRef.current || !hasBoundTap) return;
+    if (
+      state === "requesting"
+      || state === "saving"
+      || state === "fresh_tap_required"
+      || state === "uncertain"
+      || requestInFlightRef.current
+      || !hasBoundTap
+    ) return;
     if (typeof window === "undefined" || !window.isSecureContext || !("geolocation" in navigator)) {
       setState("unsupported");
       return;
     }
 
     requestInFlightRef.current = true;
-    setState("pending");
+    setState("requesting");
     const locationRequestedAt = new Date().toISOString();
     const locationRequestedAtMs = Date.parse(locationRequestedAt);
     const basePayload = {
@@ -217,7 +256,7 @@ export function TapPrecisionTelemetry({
   if (!hasBoundTap) return null;
   if (state === "updated") {
     const accuracyLabel = typeof receipt?.accuracyM === "number"
-      ? `±${Math.round(receipt.accuracyM)} m o más`
+      ? `±${Math.round(receipt.accuracyM)} m como mínimo`
       : "aproximada";
     const mapHref = typeof receipt?.lat === "number" && typeof receipt?.lng === "number"
       ? `https://www.openstreetmap.org/?mlat=${encodeURIComponent(String(receipt.lat))}&mlon=${encodeURIComponent(String(receipt.lng))}#map=11/${encodeURIComponent(String(receipt.lat))}/${encodeURIComponent(String(receipt.lng))}`
@@ -231,6 +270,8 @@ export function TapPrecisionTelemetry({
       <div
         ref={successRef}
         tabIndex={-1}
+        data-location-state="updated"
+        data-location-receipt="saved"
         className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-emerald-50 shadow-inner focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
         role="status"
         aria-live="polite"
@@ -240,7 +281,7 @@ export function TapPrecisionTelemetry({
             <ShieldCheck className="h-5 w-5" strokeWidth={2} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-200">Ubicación opcional guardada</p>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-200">Medición aproximada guardada</p>
             <strong className="mt-1 block break-words text-sm text-white">{receiptLocationLabel(receipt)}</strong>
             <p className="mt-1 text-xs leading-5 text-emerald-100/80">El mapa ya usa la zona aproximada que compartiste después del tap.</p>
           </div>
@@ -249,12 +290,12 @@ export function TapPrecisionTelemetry({
           <summary className="min-h-11 cursor-pointer py-2 font-bold text-emerald-100">Ver comprobante de ubicación</summary>
           <dl className="grid gap-1 leading-4 sm:grid-cols-2">
             <div><dt className="inline font-bold">Fuente: </dt><dd className="inline">geolocalización aproximada del navegador con permiso</dd></div>
-            <div><dt className="inline font-bold">Precisión publicada: </dt><dd className="inline">{accuracyLabel}</dd></div>
+            <div><dt className="inline font-bold">Precisión informada: </dt><dd className="inline">{accuracyLabel}</dd></div>
             <div><dt className="inline font-bold">Tap recibido: </dt><dd className="inline">{formatTime(receipt?.tapReceivedAt)}</dd></div>
             <div><dt className="inline font-bold">Ubicación medida: </dt><dd className="inline">{formatTime(receipt?.measuredAt)}</dd></div>
           </dl>
           <p className="mt-2 leading-4">
-            El teléfono reportó esta zona y se actualizó el evento sin repetir el tap. La medición ocurre después de abrir la página: no es una coordenada emitida por el NFC ni prueba el instante RF exacto, recorrido, custodia o autenticidad física. Como contexto agregado, nexID sólo guarda la zona horaria del navegador.
+            El teléfono reportó esta zona y se actualizó el evento sin repetir el tap. La medición ocurre después de tocar el botón: no es una coordenada emitida por el NFC, no fue verificada de forma independiente y no prueba el instante RF, recorrido, custodia o autenticidad física. El punto público está redondeado y puede abarcar un área mayor. Como contexto agregado, nexID sólo guarda la zona horaria del navegador.
           </p>
         </details>
         {mapHref ? (
@@ -267,8 +308,30 @@ export function TapPrecisionTelemetry({
     );
   }
 
+  const isBusy = state === "requesting" || state === "saving";
+  const canRetry = state === "idle"
+    || state === "denied"
+    || state === "timeout"
+    || state === "invalid"
+    || state === "stale"
+    || state === "unavailable"
+    || state === "retryable";
+  const hasRetryableFailure = state === "denied"
+    || state === "timeout"
+    || state === "unsupported"
+    || state === "invalid"
+    || state === "stale"
+    || state === "unavailable"
+    || state === "retryable";
+
   return (
-    <div className="rounded-2xl border border-cyan-300/20 bg-[linear-gradient(145deg,rgba(8,145,178,0.13),rgba(15,23,42,0.78))] p-4 text-cyan-50 shadow-inner" aria-live="polite">
+    <div
+      data-location-state={state}
+      data-location-receipt="not-saved"
+      className="rounded-2xl border border-cyan-300/20 bg-[linear-gradient(145deg,rgba(8,145,178,0.13),rgba(15,23,42,0.78))] p-4 text-cyan-50 shadow-inner"
+      aria-live="polite"
+      aria-busy={isBusy}
+    >
       <div className="flex items-start gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200" aria-hidden="true">
           <LocateFixed className="h-5 w-5" strokeWidth={2} />
@@ -279,25 +342,37 @@ export function TapPrecisionTelemetry({
           <p id="tap-location-help" className="mt-1 text-xs leading-5 text-cyan-100/80">La ciudad estimada por la red puede ser incorrecta. Sólo pediremos ubicación al tocar el botón. El origen reportado del producto no se modifica.</p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={shareApproximateLocation}
-        disabled={state === "pending"}
-        aria-describedby="tap-location-help tap-location-privacy"
-        className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/25 bg-cyan-300/15 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
-      >
-        <LocateFixed className="h-4 w-4" aria-hidden="true" />
-        {state === "pending" ? "Solicitando permiso..." : state === "idle" ? "Agregar zona al pasaporte" : "Volver a intentar"}
-      </button>
+      {canRetry || isBusy ? (
+        <button
+          type="button"
+          onClick={shareApproximateLocation}
+          disabled={isBusy}
+          aria-describedby="tap-location-help tap-location-privacy"
+          className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/25 bg-cyan-300/15 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
+        >
+          <LocateFixed className="h-4 w-4" aria-hidden="true" />
+          {state === "requesting"
+            ? "Solicitando permiso..."
+            : state === "saving"
+              ? "Guardando zona..."
+              : state === "idle"
+                ? "Agregar zona al pasaporte"
+                : "Volver a intentar"}
+        </button>
+      ) : null}
       <p id="tap-location-privacy" className="mt-2 text-center text-xs font-semibold leading-4 text-cyan-100/65">Opcional · ubicación aproximada · zona redondeada · sin cambiar la validación</p>
-      {state === "error" ? (
+      {state === "fresh_tap_required" || state === "uncertain" ? (
         <div role="alert" className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">
           <div className="flex items-start gap-2">
             <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <p>No pudimos asociar la ubicación a este evento. La validación SUN no cambió; hacé un nuevo tap físico para volver a intentarlo.</p>
+            <p>
+              {state === "fresh_tap_required"
+                ? "La autorización breve de esta lectura ya no está disponible. La ubicación no se marcó como guardada; hacé un nuevo tap físico para asociar otra medición."
+                : "No pudimos confirmar si el servidor guardó esta medición. No la mostramos como guardada; hacé un nuevo tap físico para asociar una ubicación con certeza."}
+            </p>
           </div>
         </div>
-      ) : state === "denied" || state === "timeout" || state === "unsupported" || state === "unavailable" ? (
+      ) : hasRetryableFailure ? (
         <p role="status" className="mt-3 rounded-xl border border-amber-300/15 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">{failureCopy(state)}</p>
       ) : null}
       <details className="mt-2 border-t border-cyan-200/10 pt-1 text-xs leading-5 text-cyan-100/70">

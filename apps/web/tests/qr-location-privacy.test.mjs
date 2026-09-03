@@ -31,7 +31,7 @@ test("public SUN maps only plot measured WGS84 pairs and never synthesize city c
 
 test("tap location confirmation reports the event update without claiming a CRM or map refresh", () => {
   assert.match(tapTelemetry, /actualizó el evento sin repetir el tap/);
-  assert.match(tapTelemetry, /Ubicación opcional guardada/);
+  assert.match(tapTelemetry, /Medición aproximada guardada/);
   assert.match(tapTelemetry, /El mapa ya usa la zona aproximada que compartiste después del tap/);
   assert.doesNotMatch(tapTelemetry, /recalcula el mapa|mapa actualizado/i);
   assert.doesNotMatch(tapTelemetry, /El CRM recibio la actualizacion/);

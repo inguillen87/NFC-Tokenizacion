@@ -1,7 +1,10 @@
 export const APPROXIMATE_ACCURACY_FLOOR_M = 150;
+export const APPROXIMATE_ACCURACY_CEILING_M = 50_000;
 
 export const APPROXIMATE_GEOLOCATION_OPTIONS = {
-  enableHighAccuracy: false,
+  // This is a one-shot, user-triggered measurement. Ask the browser for its
+  // best available fix, then coarsen it before any network transfer.
+  enableHighAccuracy: true,
   timeout: 12_000,
   maximumAge: 0,
 } as const;
@@ -12,6 +15,40 @@ export type ApproximateBrowserLocation = {
   accuracyM: number;
   measuredAt: string;
 };
+
+export type LocationReceipt = {
+  source?: string | null;
+  precision?: string | null;
+  accuracyM?: number | null;
+  city?: string | null;
+  countryCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  tapReceivedAt?: string | null;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  timing?: string | null;
+};
+
+export type LocationSubmissionFailure = "retryable" | "fresh_tap_required" | "uncertain";
+
+const CONSENTED_APPROXIMATE_SOURCES = new Set([
+  "browser_geolocation_approximate_consent",
+  "browser_gps_approximate_consent",
+]);
+
+const RETRYABLE_SUBMISSION_REASONS = new Set([
+  "fresh_location_measurement_required",
+  "invalid_location",
+  "invalid_location_accuracy",
+  "location_consent_required",
+  "approximate_location_required",
+  "post_tap_location_timing_invalid",
+  "rate_limited",
+  "sun_context_schema_check_unavailable",
+  "sun_context_schema_not_ready",
+  "sun_context_upstream_unavailable",
+]);
 
 export type BrowserLocationFailure =
   | "denied"
@@ -50,6 +87,57 @@ export function roundApproximateCoordinate(value: number) {
   return Math.round(value * 1_000) / 1_000;
 }
 
+function validIsoTimestamp(value: unknown) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+export function isConsentedApproximateLocationReceipt(value: unknown): value is LocationReceipt {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const receipt = value as LocationReceipt;
+  const source = String(receipt.source || "").toLowerCase();
+  const accuracyM = Number(receipt.accuracyM);
+  return CONSENTED_APPROXIMATE_SOURCES.has(source)
+    && receipt.precision === "approximate"
+    && typeof receipt.lat === "number"
+    && Number.isFinite(receipt.lat)
+    && receipt.lat >= -90
+    && receipt.lat <= 90
+    && typeof receipt.lng === "number"
+    && Number.isFinite(receipt.lng)
+    && receipt.lng >= -180
+    && receipt.lng <= 180
+    && Number.isFinite(accuracyM)
+    && accuracyM >= APPROXIMATE_ACCURACY_FLOOR_M
+    && accuracyM <= APPROXIMATE_ACCURACY_CEILING_M
+    && validIsoTimestamp(receipt.measuredAt)
+    && (!receipt.tapReceivedAt || validIsoTimestamp(receipt.tapReceivedAt))
+    && (!receipt.receivedAt || validIsoTimestamp(receipt.receivedAt))
+    && (!receipt.timing || receipt.timing === "client_reported_after_tap");
+}
+
+export function classifyLocationSubmissionFailure(
+  status: number,
+  reason: unknown,
+  freshTokenStatus?: unknown,
+): LocationSubmissionFailure {
+  const normalizedReason = String(reason || "").trim().toLowerCase();
+  const normalizedFreshStatus = String(freshTokenStatus || "").trim().toLowerCase();
+
+  if (status === 429 || RETRYABLE_SUBMISSION_REASONS.has(normalizedReason)) return "retryable";
+  if (
+    status === 403
+    || status === 404
+    || status === 409
+    || normalizedFreshStatus.includes("expired")
+    || normalizedFreshStatus.includes("already_used")
+    || normalizedReason.includes("capability")
+    || normalizedReason.includes("evidence_already_consumed")
+  ) {
+    return "fresh_tap_required";
+  }
+  return "uncertain";
+}
+
 export function normalizeApproximateBrowserPosition(
   position: GeolocationPositionLike,
   requestedAtMs: number,
@@ -68,7 +156,7 @@ export function normalizeApproximateBrowserPosition(
     || lng > 180
     || !Number.isFinite(accuracy)
     || accuracy < 0
-    || accuracy > 50_000
+    || accuracy > APPROXIMATE_ACCURACY_CEILING_M
   ) {
     return { ok: false, reason: "invalid" };
   }

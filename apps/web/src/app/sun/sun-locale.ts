@@ -86,8 +86,11 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "Red / IP · aproximada", pt: "Rede / IP · aproximada", en: "Network / IP · approximate" },
   { es: "Es una referencia amplia calculada por la conexión. No es GPS del teléfono ni una ubicación exacta.", pt: "É uma referência ampla calculada pela conexão. Não é o GPS do telefone nem uma localização exata.", en: "This is a broad estimate based on the connection. It is not the phone's GPS or an exact location." },
   { es: "Zona compartida por el teléfono", pt: "Zona compartilhada pelo telefone", en: "Area shared by the phone" },
-  { es: "GPS · con permiso", pt: "GPS · com permissão", en: "GPS · with permission" },
-  { es: "El navegador compartió esta zona después del tap y con consentimiento. La coordenada pública está redondeada.", pt: "O navegador compartilhou esta zona após o toque e com consentimento. A coordenada pública está arredondada.", en: "The browser shared this area after the tap with consent. The public coordinate is rounded." },
+  { es: "Navegador · aproximada", pt: "Navegador · aproximada", en: "Browser · approximate" },
+  { es: "El navegador compartió esta zona aproximada después del tap y con consentimiento. La coordenada pública está redondeada.", pt: "O navegador compartilhou esta zona aproximada após o toque e com consentimento. A coordenada pública está arredondada.", en: "The browser shared this approximate area after the tap with consent. The public coordinate is rounded." },
+  { es: "Ubicación informada por integración", pt: "Localização informada pela integração", en: "Integration-reported location" },
+  { es: "Fuente heredada · no confirmada", pt: "Fonte legada · não confirmada", en: "Legacy source · unconfirmed" },
+  { es: "La integración informó esta coordenada, pero el registro no acredita consentimiento del navegador ni una posición exacta.", pt: "A integração informou esta coordenada, mas o registro não comprova consentimento do navegador nem uma posição exata.", en: "The integration reported this coordinate, but the record does not prove browser consent or an exact position." },
   { es: "Zona de muestra", pt: "Zona de demonstração", en: "Demo area" },
   { es: "Demo simulado", pt: "Demonstração simulada", en: "Simulated demo" },
   { es: "Este punto pertenece al Demo Lab y no representa un teléfono ni una lectura física.", pt: "Este ponto pertence ao Demo Lab e não representa um telefone nem uma leitura física.", en: "This point belongs to the Demo Lab and does not represent a phone or a physical read." },
@@ -131,27 +134,35 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "No hay ubicaciones reportadas.", pt: "Não há localizações informadas.", en: "No reported locations." },
   { es: "La empresa no informó coordenadas de origen y el usuario no confirmó una zona para esta lectura.", pt: "A empresa não informou coordenadas de origem e o usuário não confirmou uma zona para esta leitura.", en: "The company provided no origin coordinates, and the user did not confirm an area for this read." },
   { es: "Zona por red", pt: "Zona pela rede", en: "Network area" },
+  { es: "Zona por red / IP", pt: "Zona por rede / IP", en: "Network / IP area" },
+  { es: "Navegador consentido", pt: "Navegador autorizado", en: "Consented browser" },
+  { es: "Punto demo", pt: "Ponto demo", en: "Demo point" },
   { es: "Esta lectura", pt: "Esta leitura", en: "This read" },
   { es: "No calculamos una distancia para el usuario porque la ubicación de red es demasiado amplia para presentarla como una medición precisa.", pt: "Não calculamos uma distância para o usuário porque a localização de rede é ampla demais para ser apresentada como uma medição precisa.", en: "We do not calculate a user distance because the network location is too broad to present as a precise measurement." },
+  { es: "No calculamos una distancia porque la fuente de esta ubicación no acredita una medición consentida y comparable.", pt: "Não calculamos uma distância porque a fonte desta localização não comprova uma medição consentida e comparável.", en: "We do not calculate a distance because this location source does not establish a consented, comparable measurement." },
   { es: "Se muestra únicamente la ubicación disponible. No se inventa una posición ni una ruta para el punto faltante.", pt: "Mostramos somente a localização disponível. Nenhuma posição ou rota é inventada para o ponto ausente.", en: "Only the available location is shown. No position or route is invented for the missing point." },
+  { es: "Cartografía:", pt: "Cartografia:", en: "Map data:" },
+  { es: "El proveedor cartográfico recibe la IP de red y el área de las teselas solicitadas. La URL y el identificador del pasaporte no se envían mediante la política no-referrer.", pt: "O provedor cartográfico recebe o IP da rede e a área dos blocos solicitados. A URL e o identificador do passaporte não são enviados devido à política no-referrer.", en: "The map provider receives the network IP and requested tile area. The passport URL and identifier are not sent because of the no-referrer policy." },
   { es: "Solo origen · lectura sin coordenadas", pt: "Somente origem · leitura sem coordenadas", en: "Origin only · read without coordinates" },
   { es: "No mostramos un mapa, una ruta ni puntos de ejemplo.", pt: "Não mostramos mapa, rota ou pontos de exemplo.", en: "No map, route, or sample points are shown." },
   { es: "Sin coordenadas observadas", pt: "Sem coordenadas observadas", en: "No observed coordinates" },
   { es: "Ubicación no disponible", pt: "Localização indisponível", en: "Location unavailable" },
 
   { es: "Ubicación de este teléfono", pt: "Localização deste telefone", en: "This phone's location" },
+  { es: "Zona aproximada del teléfono", pt: "Zona aproximada do telefone", en: "Phone's approximate area" },
   { es: "Agregá la zona del teléfono a esta lectura", pt: "Adicione a zona do telefone a esta leitura", en: "Add the phone's area to this read" },
   { es: "La ciudad estimada por la red puede ser incorrecta. Sólo pediremos ubicación al tocar el botón. El origen reportado del producto no se modifica.", pt: "A cidade estimada pela rede pode estar incorreta. Só pediremos a localização quando você tocar no botão. A origem informada do produto não será alterada.", en: "The network-estimated city may be wrong. Location is requested only when you press the button. The product's reported origin is not changed." },
   { es: "Agregar zona al pasaporte", pt: "Adicionar zona ao passaporte", en: "Add area to passport" },
   { es: "Solicitando permiso...", pt: "Solicitando permissão...", en: "Requesting permission..." },
+  { es: "Guardando zona...", pt: "Salvando zona...", en: "Saving area..." },
   { es: "Volver a intentar", pt: "Tentar novamente", en: "Try again" },
   { es: "Opcional · ubicación aproximada · zona redondeada · sin cambiar la validación", pt: "Opcional · localização aproximada · zona arredondada · sem alterar a validação", en: "Optional · approximate location · rounded area · validation unchanged" },
-  { es: "Ubicación opcional guardada", pt: "Localização opcional salva", en: "Optional location saved" },
+  { es: "Medición aproximada guardada", pt: "Medição aproximada salva", en: "Approximate measurement saved" },
   { es: "El mapa ya usa la zona aproximada que compartiste después del tap.", pt: "O mapa já usa a zona aproximada que você compartilhou após o toque.", en: "The map now uses the approximate area you shared after the tap." },
   { es: "Ver comprobante de ubicación", pt: "Ver comprovante de localização", en: "View location receipt" },
   { es: "Fuente:", pt: "Fonte:", en: "Source:" },
   { es: "geolocalización aproximada del navegador con permiso", pt: "geolocalização aproximada do navegador com permissão", en: "permission-based approximate browser geolocation" },
-  { es: "Precisión publicada:", pt: "Precisão publicada:", en: "Published accuracy:" },
+  { es: "Precisión informada:", pt: "Precisão informada:", en: "Reported accuracy:" },
   { es: "Tap recibido:", pt: "Toque recebido:", en: "Tap received:" },
   { es: "Ubicación medida:", pt: "Localização medida:", en: "Location measured:" },
   { es: "Abrir zona aproximada en OpenStreetMap (sitio externo)", pt: "Abrir zona aproximada no OpenStreetMap (site externo)", en: "Open approximate area in OpenStreetMap (external site)" },
@@ -160,8 +171,13 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "El permiso fue denegado. Podés habilitarlo en el navegador y volver a intentar; el pasaporte sigue funcionando sin ubicación.", pt: "A permissão foi negada. Você pode ativá-la no navegador e tentar novamente; o passaporte continua funcionando sem localização.", en: "Permission was denied. You can enable it in the browser and try again; the passport still works without location." },
   { es: "El teléfono no obtuvo una ubicación a tiempo. Revisá señal y permisos; la validación SUN sigue disponible.", pt: "O telefone não obteve a localização a tempo. Verifique o sinal e as permissões; a validação SUN continua disponível.", en: "The phone did not get a location in time. Check signal and permissions; SUN validation remains available." },
   { es: "Este navegador o contexto no permite geolocalización. Abrí el pasaporte por HTTPS en el navegador del teléfono; la validación sigue funcionando.", pt: "Este navegador ou contexto não permite geolocalização. Abra o passaporte por HTTPS no navegador do telefone; a validação continua funcionando.", en: "This browser or context does not allow geolocation. Open the passport over HTTPS in the phone browser; validation still works." },
+  { es: "El navegador devolvió una medición sin coordenadas o precisión utilizables. No la guardamos; podés volver a intentar.", pt: "O navegador retornou uma medição sem coordenadas ou precisão utilizáveis. Ela não foi salva; você pode tentar novamente.", en: "The browser returned a measurement without usable coordinates or accuracy. It was not saved; you can try again." },
+  { es: "El navegador devolvió una medición anterior a tu solicitud. La descartamos y podés pedir una medición nueva.", pt: "O navegador retornou uma medição anterior à sua solicitação. Ela foi descartada e você pode pedir uma nova medição.", en: "The browser returned a measurement older than your request. It was discarded, and you can request a new measurement." },
+  { es: "La zona no se guardó esta vez. La autorización de la lectura sigue disponible y podés volver a intentar.", pt: "A zona não foi salva desta vez. A autorização da leitura continua disponível e você pode tentar novamente.", en: "The area was not saved this time. The read authorization remains available, and you can try again." },
+  { es: "La autorización breve de esta lectura ya no está disponible. La ubicación no se marcó como guardada; hacé un nuevo tap físico para asociar otra medición.", pt: "A autorização breve desta leitura não está mais disponível. A localização não foi marcada como salva; faça um novo toque físico para associar outra medição.", en: "The short-lived authorization for this read is no longer available. The location was not marked as saved; make a new physical tap to link another measurement." },
+  { es: "No pudimos confirmar si el servidor guardó esta medición. No la mostramos como guardada; hacé un nuevo tap físico para asociar una ubicación con certeza.", pt: "Não foi possível confirmar se o servidor salvou esta medição. Ela não é mostrada como salva; faça um novo toque físico para associar uma localização com certeza.", en: "We could not confirm whether the server saved this measurement. It is not shown as saved; make a new physical tap to link a location with certainty." },
   { es: "No se pudo obtener una zona aproximada. El pasaporte sigue funcionando sin ella.", pt: "Não foi possível obter uma zona aproximada. O passaporte continua funcionando sem ela.", en: "An approximate area could not be obtained. The passport still works without it." },
-  { es: "El teléfono reportó esta zona y se actualizó el evento sin repetir el tap. La medición ocurre después de abrir la página: no es una coordenada emitida por el NFC ni prueba el instante RF exacto, recorrido, custodia o autenticidad física. Como contexto agregado, nexID sólo guarda la zona horaria del navegador.", pt: "O telefone informou esta zona e o evento foi atualizado sem repetir o toque. A medição ocorre após abrir a página: não é uma coordenada emitida pelo NFC nem prova o instante exato de RF, trajeto, custódia ou autenticidade física. Como contexto adicional, a nexID guarda apenas o fuso horário do navegador.", en: "The phone reported this area and the event was updated without repeating the tap. Measurement happens after the page opens: it is not a coordinate emitted by NFC and does not prove the exact RF moment, route, custody, or physical authenticity. As added context, nexID stores only the browser time zone." },
+  { es: "El teléfono reportó esta zona y se actualizó el evento sin repetir el tap. La medición ocurre después de tocar el botón: no es una coordenada emitida por el NFC, no fue verificada de forma independiente y no prueba el instante RF, recorrido, custodia o autenticidad física. El punto público está redondeado y puede abarcar un área mayor. Como contexto agregado, nexID sólo guarda la zona horaria del navegador.", pt: "O telefone informou esta zona e o evento foi atualizado sem repetir o toque. A medição ocorre após tocar no botão: não é uma coordenada emitida pelo NFC, não foi verificada de forma independente e não comprova o instante de RF, trajeto, custódia ou autenticidade física. O ponto público é arredondado e pode abranger uma área maior. Como contexto adicional, a nexID guarda apenas o fuso horário do navegador.", en: "The phone reported this area and the event was updated without repeating the tap. Measurement occurs after pressing the button: it is not a coordinate emitted by NFC, was not independently verified, and does not prove the RF moment, route, custody, or physical authenticity. The public point is rounded and may cover a larger area. As added context, nexID stores only the browser time zone." },
   { es: "El NFC pasivo no aporta ubicación. La geolocalización del navegador toma una medición nueva después de tocar el botón; puede usar señales del dispositivo como Wi-Fi, red móvil o GPS. nexID redondea la zona y guarda fuente, precisión y horarios separados del tap. Como contexto agrega sólo la zona horaria: no agrega idioma, user-agent, plataforma ni tamaño de pantalla.", pt: "O NFC passivo não fornece localização. A geolocalização do navegador faz uma nova medição depois que você toca no botão; pode usar sinais do dispositivo como Wi-Fi, rede móvel ou GPS. A nexID arredonda a zona e guarda fonte, precisão e horários separados do toque. Como contexto, adiciona apenas o fuso horário: não adiciona idioma, user-agent, plataforma nem tamanho da tela.", en: "Passive NFC does not provide location. Browser geolocation takes a new measurement after you press the button and may use device signals such as Wi-Fi, mobile network, or GPS. nexID rounds the area and stores source, accuracy, and timestamps separately from the tap. It adds only the browser time zone as context—not language, user agent, platform, or screen size." },
 
   { es: "Estado y sensores", pt: "Estado e sensores", en: "Status and sensors" },
@@ -443,6 +459,24 @@ function translatePattern(value: string, locale: SunLocale): string | null {
     if (!Number.isFinite(numericValue)) return token;
     return `${new Intl.NumberFormat(locale, { maximumFractionDigits: numericValue >= 100 ? 0 : 1 }).format(numericValue)} km`;
   };
+
+  const accuracy = value.match(/^±([\d.,]+) m (?:como mínimo|no mínimo|minimum)$/i);
+  if (accuracy) {
+    return locale === "pt-BR"
+      ? `±${accuracy[1]} m no mínimo`
+      : locale === "en"
+        ? `±${accuracy[1]} m minimum`
+        : `±${accuracy[1]} m como mínimo`;
+  }
+
+  const browserEvidence = value.match(/^(?:Geolocalización aproximada del navegador con permiso, medida después del tap|Geolocalização aproximada do navegador com permissão, medida após o toque|Permission-based approximate browser geolocation measured after the tap) · (?:precisión informada|precisão informada|reported accuracy) ±([\d.,]+) m (?:como mínimo|no mínimo|minimum)\. (?:Zona pública redondeada; valores reportados por el cliente|Zona pública arredondada; valores informados pelo cliente|Public area rounded; client-reported values)\.$/i);
+  if (browserEvidence) {
+    return locale === "pt-BR"
+      ? `Geolocalização aproximada do navegador com permissão, medida após o toque · precisão informada ±${browserEvidence[1]} m no mínimo. Zona pública arredondada; valores informados pelo cliente.`
+      : locale === "en"
+        ? `Permission-based approximate browser geolocation measured after the tap · reported accuracy ±${browserEvidence[1]} m minimum. Public area rounded; client-reported values.`
+        : `Geolocalización aproximada del navegador con permiso, medida después del tap · precisión informada ±${browserEvidence[1]} m como mínimo. Zona pública redondeada; valores reportados por el cliente.`;
+  }
 
   const linearDistance = value.match(/^(.+?\s+km)(?:\s+lineales|\s+em linha reta|\s+straight-line distance)$/i);
   if (linearDistance) {

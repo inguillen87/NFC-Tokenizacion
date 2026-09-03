@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  APPROXIMATE_ACCURACY_CEILING_M,
   APPROXIMATE_ACCURACY_FLOOR_M,
   APPROXIMATE_GEOLOCATION_OPTIONS,
+  classifyLocationSubmissionFailure,
+  isConsentedApproximateLocationReceipt,
   normalizeApproximateBrowserPosition,
   requestApproximateBrowserLocation,
   roundApproximateCoordinate,
@@ -27,7 +30,7 @@ test("browser location uses fresh low-precision options and normalizes before re
   }, requestedAtMs);
 
   assert.equal(calls, 1);
-  assert.deepEqual(observedOptions, { enableHighAccuracy: false, timeout: 12_000, maximumAge: 0 });
+  assert.deepEqual(observedOptions, { enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 });
   assert.deepEqual(APPROXIMATE_GEOLOCATION_OPTIONS, observedOptions);
   assert.equal(APPROXIMATE_ACCURACY_FLOOR_M, 150);
   assert.deepEqual(result, {
@@ -70,4 +73,36 @@ test("permission denial, timeout and unsupported browsers remain distinct non-th
   assert.deepEqual(await requestApproximateBrowserLocation(undefined, 1_000), { ok: false, reason: "unsupported" });
   assert.deepEqual(await requestApproximateBrowserLocation(failurePort(2), 1_000), { ok: false, reason: "unavailable" });
   assert.deepEqual(await requestApproximateBrowserLocation({ getCurrentPosition() { throw new Error("browser policy blocked geolocation"); } }, 1_000), { ok: false, reason: "unavailable" });
+});
+
+test("saved receipts require consented source, bounded accuracy and a measured timestamp", () => {
+  const receipt = {
+    source: "browser_geolocation_approximate_consent",
+    precision: "approximate",
+    lat: -34.6,
+    lng: -58.38,
+    accuracyM: APPROXIMATE_ACCURACY_FLOOR_M,
+    tapReceivedAt: "2026-09-03T12:00:00.000Z",
+    measuredAt: "2026-09-03T12:00:03.000Z",
+    receivedAt: "2026-09-03T12:00:04.000Z",
+    timing: "client_reported_after_tap",
+  };
+
+  assert.equal(isConsentedApproximateLocationReceipt(receipt), true);
+  assert.equal(isConsentedApproximateLocationReceipt({ ...receipt, source: "ip_geo" }), false);
+  assert.equal(isConsentedApproximateLocationReceipt({ ...receipt, accuracyM: null }), false);
+  assert.equal(isConsentedApproximateLocationReceipt({ ...receipt, accuracyM: APPROXIMATE_ACCURACY_CEILING_M + 1 }), false);
+  assert.equal(isConsentedApproximateLocationReceipt({ ...receipt, measuredAt: "not-a-date" }), false);
+  assert.equal(isConsentedApproximateLocationReceipt({ ...receipt, timing: "tap_http_request_received" }), false);
+});
+
+test("submission failures distinguish safe retry, spent capability and uncertain delivery", () => {
+  assert.equal(classifyLocationSubmissionFailure(422, "fresh_location_measurement_required"), "retryable");
+  assert.equal(classifyLocationSubmissionFailure(422, "post_tap_location_timing_invalid"), "retryable");
+  assert.equal(classifyLocationSubmissionFailure(429, "rate_limited"), "retryable");
+  assert.equal(classifyLocationSubmissionFailure(503, "sun_context_upstream_unavailable"), "retryable");
+  assert.equal(classifyLocationSubmissionFailure(403, "fresh_tap_capability_required", "fresh_token_expired"), "fresh_tap_required");
+  assert.equal(classifyLocationSubmissionFailure(409, "sun_context_evidence_already_consumed"), "fresh_tap_required");
+  assert.equal(classifyLocationSubmissionFailure(503, "context_persistence_unavailable"), "uncertain");
+  assert.equal(classifyLocationSubmissionFailure(200, "malformed_success_receipt"), "uncertain");
 });

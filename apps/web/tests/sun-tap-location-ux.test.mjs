@@ -23,11 +23,12 @@ test("complete dynamic SUN payload reaches the API from the browser, not an SSR 
   assert.match(page, /if \(override && localOverrideEnabled\)/);
 });
 
-test("GPS confirmation is opt-in, rounded and labelled as occurring after the tap", () => {
+test("browser location confirmation is opt-in, rounded and labelled as occurring after the tap", () => {
   assert.match(page, /const telemetryEndpoint = "\/api\/sun-context"/);
   assert.doesNotMatch(page, /telemetryEndpoint = `\$\{resolvedApiBase[^\n]+\/sun\/context/);
   assert.match(page, /const canRequestBrowserLocation = !isQrScan/);
-  assert.match(page, /&& Boolean\(eventId && freshToken\)/);
+  assert.match(page, /&& Boolean\(bid && eventId && freshToken\)/);
+  assert.match(page, /&& telemetryReadCounter !== null/);
   assert.match(page, /enabled: canRequestBrowserLocation/);
   assert.match(telemetry, /onClick=\{shareApproximateLocation\}/);
   assert.match(telemetry, /requestApproximateBrowserLocation\(navigator\.geolocation, locationRequestedAtMs\)/);
@@ -35,15 +36,16 @@ test("GPS confirmation is opt-in, rounded and labelled as occurring after the ta
   assert.match(tapLocationModel, /maximumAge: 0/);
   assert.match(tapLocationModel, /measuredAtMs < requestedAtMs/);
   assert.match(tapLocationModel, /measuredAt: new Date\(measuredAtMs\)/);
-  assert.match(telemetry, /Ubicación opcional guardada/);
+  assert.match(telemetry, /Medición aproximada guardada/);
   assert.match(telemetry, /Agregar zona al pasaporte/);
   assert.match(telemetry, /La ciudad estimada por la red puede ser incorrecta/);
-  assert.match(telemetry, /nextReceipt\?\.source !== "browser_gps_approximate_consent"/);
-  assert.match(tapLocationModel, /accuracy > 50_000/);
-  assert.match(telemetry, /no es una coordenada emitida por el NFC ni prueba el instante RF exacto/);
+  assert.match(telemetry, /isConsentedApproximateLocationReceipt\(nextReceipt\)/);
+  assert.match(tapLocationModel, /accuracy > APPROXIMATE_ACCURACY_CEILING_M/);
+  assert.match(telemetry, /no es una coordenada emitida por el NFC[\s\S]*?no fue verificada de forma independiente/);
   assert.match(telemetry, /tapReceivedAt/);
-  assert.match(telemetry, /receivedAt/);
+  assert.match(tapLocationModel, /receivedAt/);
   assert.doesNotMatch(telemetry, /ubicación exacta al momento del tap/i);
+  assert.doesNotMatch(telemetry, /GPS del navegador|GPS · con permiso/);
 });
 
 test("telemetry resets per tap and only adds timezone as browser context", () => {
@@ -76,9 +78,24 @@ test("successful confirmation updates the map locally without consuming the fres
   assert.doesNotMatch(telemetry, /router\.refresh\(\)|useRouter/);
   assert.match(locationExperience, /const effectiveTap = confirmedTap \|\| tap/);
   assert.match(locationExperience, /distanceLabelFor\(distanceKm\(origin, confirmedTap\), locale\)/);
-  assert.match(locationExperience, /source: "browser_geolocation_approximate_consent"/);
+  assert.match(locationExperience, /source = receipt\.source === "browser_gps_approximate_consent"/);
   assert.match(telemetry, /Abrir zona aproximada/);
   assert.match(telemetry, /actualizó el evento sin repetir el tap/);
+});
+
+test("location retries are explicit and never turn uncertain delivery into a saved state", () => {
+  assert.match(telemetry, /state === "requesting"/);
+  assert.match(telemetry, /state === "saving"/);
+  assert.match(telemetry, /classifyLocationSubmissionFailure/);
+  assert.match(telemetry, /response\.matchedBy === "signed_event_bid_uid_ctr"/);
+  assert.match(telemetry, /String\(response\.eventId\) === String\(eventId\)/);
+  assert.match(telemetry, /state === "retryable"/);
+  assert.match(telemetry, /state === "fresh_tap_required"/);
+  assert.match(telemetry, /state === "uncertain"/);
+  assert.match(telemetry, /No pudimos confirmar si el servidor guardó esta medición/);
+  assert.match(telemetry, /No la mostramos como guardada/);
+  assert.match(telemetry, /El navegador devolvió una medición anterior a tu solicitud/);
+  assert.match(telemetry, /if \(!response\?\.ok \|\| !responseMatchesTap \|\| !isConsentedApproximateLocationReceipt\(nextReceipt\)\) \{[\s\S]*?setState\("uncertain"\)/);
 });
 
 test("SUN summary exposes truthful location evidence before the origin map", () => {

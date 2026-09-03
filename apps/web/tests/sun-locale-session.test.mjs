@@ -87,6 +87,13 @@ test("stable SUN presentation copy is localized while server evidence is explici
     "1.003 km de separación lineal entre dos puntos de muestra; no representa un recorrido físico.",
   );
   assert.equal(translateSunUiText("Bodega Los Andes", "en"), "Bodega Los Andes");
+  assert.equal(translateSunUiText("Cartografía:", "en"), "Map data:");
+  assert.match(translateSunUiText("El proveedor cartográfico recibe la IP de red y el área de las teselas solicitadas. La URL y el identificador del pasaporte no se envían mediante la política no-referrer.", "en"), /map provider receives the network IP/);
+  assert.equal(translateSunUiText("±180 m como mínimo", "en"), "±180 m minimum");
+  assert.equal(
+    translateSunUiText("Geolocalización aproximada del navegador con permiso, medida después del tap · precisión informada ±180 m como mínimo. Zona pública redondeada; valores reportados por el cliente.", "pt-BR"),
+    "Geolocalização aproximada do navegador com permissão, medida após o toque · precisão informada ±180 m no mínimo. Zona pública arredondada; valores informados pelo cliente.",
+  );
   assert.match(dictionary, /Product names, producer declarations and API evidence are[\s\S]*?intentionally absent/);
   assert.match(provider, /closest\("\[data-sun-server-evidence='true'\]"\)/);
   assert.match(page, /data-sun-server-evidence="true"/);

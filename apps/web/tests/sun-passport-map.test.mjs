@@ -20,11 +20,17 @@ test("SUN uses a real lazy-loaded MapLibre map and keeps the landing map untouch
   assert.match(map, /IntersectionObserver/);
   assert.match(map, /new maplibre\.Map/);
   assert.match(map, /fitBounds/);
+  assert.match(map, /style: mapStyleForTheme\(isLightTheme\(\)\)/);
+  assert.match(map, /data-basemap="configured-raster"/);
+  assert.match(map, /data-basemap-state=\{isDegraded && loadState === "ready" \? "degraded" : loadState\}/);
+  assert.doesNotMatch(locationExperience, /externalTiles=\{showRoute\}/);
+  assert.doesNotMatch(map, /localCoordinateStyle|data-external-tiles/);
 });
 
 test("real taps never draw an inferred route while demo connection is explicit", () => {
   assert.match(page, /showRoute=\{isDemoPreview\}/);
-  assert.match(map, /if \(showRoute && origin && tap && !map\.getSource\("sun-demo-connection"\)\)/);
+  assert.match(map, /const showDemoConnection = Boolean\(showRoute && origin && tap\?\.source === "demo"\)/);
+  assert.match(map, /if \(showDemoConnection && origin && tap && !map\.getSource\("sun-demo-connection"\)\)/);
   assert.match(map, /properties: \{ kind: "demo_only" \}/);
   assert.match(map, /Demo: la línea punteada conecta dos puntos simulados/);
   assert.match(map, /no representa un recorrido físico/);
@@ -56,13 +62,19 @@ test("map exposes source, uncertainty, useful fallback and safe popups", () => {
   assert.match(map, /map\.on\("styleimagemissing"/);
   assert.match(map, /map\.areTilesLoaded\(\)/);
   assert.match(map, /resolveTrustMapSource/);
-  assert.match(map, /if \(!isConsentedGps\) return 0/);
+  assert.doesNotMatch(map, /map\.on\("style\.load", \(\) => \{[\s\S]{0,180}markReady\(\)/);
+  assert.match(map, /if \(!isConsentedBrowserLocation\) return 0/);
   assert.match(map, /point\.source === "ip_geo"/);
   assert.match(map, /"Popup.Close": "Cerrar"/);
   assert.match(map, /Red \/ IP · aproximada/);
   assert.match(map, /No es GPS del teléfono ni una ubicación exacta/);
   assert.match(map, /Cómo se obtuvo esta ubicación/);
   assert.match(map, /No calculamos una distancia para el usuario porque la ubicación de red es demasiado amplia/);
+  assert.match(map, /Navegador · aproximada/);
+  assert.match(map, /Fuente heredada · no confirmada/);
+  assert.match(map, /Demo simulado/);
+  assert.match(map, /data-location-source=\{tapPresentation\.kind\}/);
+  assert.doesNotMatch(map, /GPS · con permiso/);
   assert.doesNotMatch(map, /className="contents"/);
 });
 

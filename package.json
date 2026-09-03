@@ -46,6 +46,8 @@
     "test:e2e:ephemeral": "npm run test:e2e:ephemeral --workspace=api",
     "supplier:physical-evidence:validate": "npm run supplier:physical-evidence:validate --workspace=api --",
     "evidence:syngenta:screenshots": "node scripts/validate-syngenta-screenshot-evidence.mjs",
+    "evidence:sun-location:validate": "node scripts/validate-sun-location-physical-certification.mjs",
+    "test:sun-location-certification": "node --test scripts/tests/sun-location-physical-certification.test.mjs",
     "apply:staging:v2": "node scripts/apply-staging-v2-migrations.mjs",
     "check:waf:policy": "node scripts/validate-waf-policy.mjs",
     "gate:iota:readonly": "node scripts/iota-v2-readonly-smoke.mjs",

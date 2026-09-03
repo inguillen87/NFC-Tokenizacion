@@ -62,17 +62,20 @@ export function SunLocationExperience({
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     const label = [receipt.city, receipt.countryCode].filter(Boolean).join(", ") || "Zona aproximada confirmada";
     const accuracy = typeof receipt.accuracyM === "number" && Number.isFinite(receipt.accuracyM)
-      ? ` · precisión reportada ±${Math.round(receipt.accuracyM)} m o más`
+      ? ` · precisión informada ±${Math.round(receipt.accuracyM)} m como mínimo`
       : "";
+    const source = receipt.source === "browser_gps_approximate_consent"
+      ? "browser_gps_approximate_consent"
+      : "browser_geolocation_approximate_consent";
 
     setConfirmedTap({
       id: `confirmed-${telemetry.eventId || telemetry.uid || telemetry.bid}`,
       lat,
       lng,
       label,
-      evidence: `GPS del navegador con permiso, medido después del tap${accuracy}. Zona pública redondeada.`,
+      evidence: `Geolocalización aproximada del navegador con permiso, medida después del tap${accuracy}. Zona pública redondeada; valores reportados por el cliente.`,
       accuracyM: typeof receipt.accuracyM === "number" ? receipt.accuracyM : null,
-      source: "browser_geolocation_approximate_consent",
+      source,
       mapHref: openStreetMapHref(lat, lng),
     });
     setConfirmedAt(receipt.measuredAt || receipt.receivedAt || null);
@@ -104,7 +107,6 @@ export function SunLocationExperience({
           showRoute={showRoute}
           distanceLabel={effectiveDistanceLabel}
           tapTimeLabel={effectiveTapTime}
-          externalTiles={showRoute}
         />
       </div>
     </>

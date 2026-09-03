@@ -754,8 +754,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : currentTapPoint[0].city
     : "Tap actual no geolocalizado";
   const rawLocationSource = String(result.tapContext?.locationSource || "").toLowerCase();
-  const hasConfirmedBrowserLocation = isConsentedBrowserLocationSource(rawLocationSource)
-    || rawLocationSource === "browser_gps"
+  const hasConfirmedBrowserLocation = isConsentedBrowserLocationSource(rawLocationSource);
+  const isLegacyBrowserLocation = rawLocationSource === "browser_gps"
     || rawLocationSource === "browser_gps_reported";
   const accuracyM = Number(result.tapContext?.accuracyM);
   const hasAccuracy = Number.isFinite(accuracyM) && accuracyM > 0;
@@ -770,8 +770,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "Ubicacion simulada del Demo Lab"
     : isConsentedBrowserLocationSource(rawLocationSource)
       ? `Ubicación aproximada confirmada después del tap · ${publicLocationUncertaintyLabel}${hasAccuracy ? ` · precisión original del dispositivo ±${Math.round(accuracyM)} m o más` : ""}`
-    : rawLocationSource === "browser_gps" || rawLocationSource === "browser_gps_reported"
-      ? `GPS reportado por cliente · ${publicLocationUncertaintyLabel}${hasAccuracy ? ` · precisión original del dispositivo ±${Math.round(accuracyM)} m o más` : ""}`
+    : isLegacyBrowserLocation
+      ? `Ubicación informada por integración · este registro no acredita consentimiento del navegador ni posición exacta · ${publicLocationUncertaintyLabel}${hasAccuracy ? ` · precisión declarada ±${Math.round(accuracyM)} m` : ""}`
       : rawLocationSource === "ip_geo" || rawLocationSource === "edge_ip_approx"
         ? `Zona aproximada por red/IP, sin precisión GPS · ${publicLocationUncertaintyLabel}`
       : rawLocationSource.includes("error") || rawLocationSource.includes("denied")
@@ -942,11 +942,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   // origin directly would trigger a JSON CORS preflight and fail closed.
   const telemetryEndpoint = "/api/sun-context";
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
+  const telemetryReadCounter = typeof result.identity?.readCounter === "number"
+    && Number.isSafeInteger(result.identity.readCounter)
+    && result.identity.readCounter >= 0
+      ? result.identity.readCounter
+      : null;
   const canRequestBrowserLocation = !isQrScan
     && !isDemoPreview
     && isFreshHandoff
     && !isSnapshotView
-    && Boolean(eventId && freshToken);
+    && Boolean(bid && eventId && freshToken)
+    && telemetryReadCounter !== null;
   const summaryLocationLabel = isDemoPreview
     ? "Ubicación demo simulada"
     : hasConfirmedBrowserLocation
@@ -2021,7 +2027,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               uid: uid || null,
               eventId: eventId || null,
               freshToken,
-              readCounter: typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null,
+              readCounter: telemetryReadCounter,
               contextStatus: result.status?.code || null,
             }}
           />

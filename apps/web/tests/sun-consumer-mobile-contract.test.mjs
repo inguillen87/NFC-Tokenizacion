@@ -48,7 +48,7 @@ test("phone location is explicit, low-precision and sends only the minimal brows
   assert.match(telemetry, /function shareApproximateLocation\(\)/);
   assert.match(telemetry, /requestApproximateBrowserLocation\(navigator\.geolocation, locationRequestedAtMs\)/);
   assert.match(tapLocationModel, /geolocation\.getCurrentPosition/);
-  assert.match(tapLocationModel, /enableHighAccuracy: false/);
+  assert.match(tapLocationModel, /enableHighAccuracy: true/);
   assert.match(tapLocationModel, /timeout: 12_000/);
   assert.match(tapLocationModel, /maximumAge: 0/);
   assert.match(tapLocationModel, /APPROXIMATE_ACCURACY_FLOOR_M/);
@@ -64,21 +64,27 @@ test("the location capability stays event-bound and a denial never blocks the pa
   assert.match(telemetry, /`nexid:tap-context:\$\{bid\}:\$\{eventId \|\| "unknown"\}:\$\{readCounter \?\? "latest"\}`/);
   assert.match(telemetry, /Boolean\(endpoint && bid && eventId && freshToken\)/);
   assert.match(telemetry, /Number\.isSafeInteger\(readCounter\)/);
-  assert.match(telemetry, /window\.sessionStorage\.setItem\(storageKey, JSON\.stringify\(\{ status: "sent", receipt: nextReceipt \}\)\)/);
+  assert.match(telemetry, /const LOCATION_SESSION_SCHEMA = "nexid-sun-location-session\/v1"/);
+  assert.match(telemetry, /schemaVersion: LOCATION_SESSION_SCHEMA,[\s\S]*?status: "sent",[\s\S]*?bid,[\s\S]*?eventId: String\(eventId\),[\s\S]*?readCounter,[\s\S]*?receipt: nextReceipt/);
+  assert.match(telemetry, /data-location-state="updated"[\s\S]*?data-location-receipt="saved"/);
+  assert.match(telemetry, /data-location-state=\{state\}[\s\S]*?data-location-receipt="not-saved"/);
   assert.doesNotMatch(telemetry, /sessionStorage\.setItem\([^\n]*freshToken|capabilityStorageKey|window\.location\.replace/);
   assert.match(telemetry, /El permiso fue denegado[\s\S]*?el pasaporte sigue funcionando sin ubicación/);
-  assert.match(telemetry, /La validación SUN no cambió; hacé un nuevo tap físico para volver a intentarlo/);
+  assert.match(telemetry, /La autorización breve de esta lectura ya no está disponible/);
+  assert.match(telemetry, /No pudimos confirmar si el servidor guardó esta medición/);
 });
 
-test("real SUN maps keep IP separate and make third-party cartography opt-in", () => {
+test("real SUN maps keep evidence sources separate while the basemap remains visible", () => {
   assert.match(page, /browser_geolocation_approximate_consent/);
   assert.match(page, /browser_gps_approximate_consent/);
   assert.match(page, /rawLocationSource === "ip_geo" \|\| rawLocationSource === "edge_ip_approx"/);
   assert.match(locationExperience, /const effectiveTap = confirmedTap \|\| tap/);
-  assert.match(locationExperience, /externalTiles=\{showRoute\}/);
-  assert.match(passportMap, /externalTiles \? mapStyleForTheme\(isLightTheme\(\)\) : localCoordinateStyle\(isLightTheme\(\)\)/);
-  assert.match(passportMap, /data-external-tiles=\{externalTiles \? "enabled" : "disabled"\}/);
-  assert.match(passportMap, /Vista local sin solicitudes automáticas a proveedores de mapas externos/);
+  assert.doesNotMatch(locationExperience, /externalTiles=\{showRoute\}/);
+  assert.match(passportMap, /style: mapStyleForTheme\(isLightTheme\(\)\)/);
+  assert.match(passportMap, /data-basemap="configured-raster"/);
+  assert.match(passportMap, /data-basemap-state=\{isDegraded && loadState === "ready" \? "degraded" : loadState\}/);
+  assert.match(passportMap, /data-location-source=\{tapPresentation\.kind\}/);
+  assert.doesNotMatch(passportMap, /localCoordinateStyle|data-external-tiles/);
   assert.match(passportMap, /Abrir mapa ↗/);
 });
 
