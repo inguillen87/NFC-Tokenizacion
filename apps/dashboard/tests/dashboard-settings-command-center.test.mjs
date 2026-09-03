@@ -24,6 +24,13 @@ test("settings page is an enterprise account command center", () => {
   assert.match(secureLogoutSource, /Cerrar sesion segura/);
 });
 
+test("settings renders the account email without triggering Cloudflare HTML rewriting", () => {
+  assert.match(settingsSource, /function CloudflareSafeEmail/);
+  assert.match(settingsSource, /value\.lastIndexOf\("@"\)/);
+  assert.match(settingsSource, /<CloudflareSafeEmail value=\{session\.email\} \/>/);
+  assert.doesNotMatch(settingsSource, />\{session\.email\}<\/p>/);
+});
+
 test("settings page keeps tenant-scoped operational links", () => {
   assert.match(settingsSource, /const tenantQuery = tenantSlug \? `\?tenant=\$\{encodeURIComponent\(tenantSlug\)\}` : ""/);
   assert.match(settingsSource, /const tenantHref = tenantSlug \? `\/tenants\/\$\{encodeURIComponent\(tenantSlug\)\}` : "\/tenants"/);

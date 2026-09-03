@@ -36,6 +36,19 @@ type SettingsTile = {
   icon: ReactNode;
 };
 
+function CloudflareSafeEmail({ value }: { value: string }) {
+  const separatorIndex = value.lastIndexOf("@");
+  if (separatorIndex <= 0 || separatorIndex >= value.length - 1) return <>{value}</>;
+
+  return (
+    <>
+      <span>{value.slice(0, separatorIndex)}</span>
+      <span aria-hidden="true">@</span>
+      <span>{value.slice(separatorIndex + 1)}</span>
+    </>
+  );
+}
+
 const toneClasses: Record<SettingsTile["tone"], string> = {
   cyan: "border-cyan-300/25 bg-cyan-500/10 text-cyan-100 hover:border-cyan-200/60",
   green: "border-emerald-300/25 bg-emerald-500/10 text-emerald-100 hover:border-emerald-200/60",
@@ -211,7 +224,9 @@ export default async function SettingsPage() {
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Cuenta operativa</p>
                 <h2 className="mt-2 text-3xl font-black leading-tight text-white">{session.label || tenantName}</h2>
-                <p className="mt-1 break-all text-sm text-slate-400">{session.email}</p>
+                <p className="mt-1 break-all text-sm text-slate-400">
+                  <CloudflareSafeEmail value={session.email} />
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge tone={session.role === "super-admin" ? "amber" : "cyan"}>{dashboardRoleLabel(session.role)}</Badge>
