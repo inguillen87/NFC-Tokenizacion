@@ -18,6 +18,18 @@ function parseDashboardStreamSource(value: unknown): DashboardStreamSource | nul
     : null;
 }
 
+function streamAuthorizationError(reason: string, requestId: string, status: 401 | 403 = 401) {
+  return new Response(JSON.stringify({ ok: false, reason }), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "private, no-store, max-age=0",
+      "x-content-type-options": "nosniff",
+      "x-nexid-request-id": requestId,
+    },
+  });
+}
+
 function fallbackStream(
   message: string,
   requestId: string,
@@ -111,8 +123,8 @@ export async function GET(request: Request) {
   const credential = await getDashboardSessionCredential({ persistRotation: true }).catch(() => null);
   const session = credential?.session || null;
   const scopedRole = dashboardRoleToScope(session?.role);
-  if (!session) return fallbackStream("Dashboard session required", requestId, limit, { source: requestedSource });
-  if (!scopedRole) return fallbackStream("Unsupported dashboard role", requestId, limit, { source: requestedSource });
+  if (!session) return streamAuthorizationError("dashboard_session_required", requestId);
+  if (!scopedRole) return streamAuthorizationError("dashboard_session_role_invalid", requestId);
   if (!dashboardHighImpactPermissionMatches(
     session.role,
     session.permissions,
@@ -135,7 +147,7 @@ export async function GET(request: Request) {
       tenant = resolveDashboardTenantScope(session, requestedTenant).tenantSlug;
     } catch (error) {
       if (error instanceof DashboardTenantScopeError) {
-        return fallbackStream(error.code, requestId, limit, { source: requestedSource });
+        return streamAuthorizationError(error.code, requestId, 403);
       }
       throw error;
     }
@@ -159,7 +171,7 @@ export async function GET(request: Request) {
     return fallbackStream("dashboard demo sandbox stream", requestId, limit, { includeDemoRows: true, tenant, source: "demo", availability: "fallback" });
   }
 
-  if (!credential?.bearerToken) return fallbackStream("Validated dashboard session required", requestId, limit, { tenant, source: effectiveSource });
+  if (!credential?.bearerToken) return streamAuthorizationError("validated_dashboard_session_required", requestId);
 
   const response = await fetch(upstream.toString(), {
     headers: {

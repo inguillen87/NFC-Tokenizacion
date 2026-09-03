@@ -42,3 +42,15 @@ test("dashboard SSE BFF validates source and never injects demo rows into produc
   assert.match(streamBffSource, /availability: includeDemoRows \? "fallback" : "upstream_error"/);
   assert.match(streamBffSource, /rows, source: options\.source \|\| "production", availability:/);
 });
+
+test("dashboard SSE BFF rejects unauthenticated and unauthorized requests before opening a stream", () => {
+  assert.match(streamBffSource, /function streamAuthorizationError\(/);
+  assert.match(streamBffSource, /"cache-control": "private, no-store, max-age=0"/);
+  assert.match(streamBffSource, /if \(!session\) return streamAuthorizationError\("dashboard_session_required", requestId\)/);
+  assert.match(streamBffSource, /if \(!scopedRole\) return streamAuthorizationError\("dashboard_session_role_invalid", requestId\)/);
+  assert.match(streamBffSource, /return streamAuthorizationError\(error\.code, requestId, 403\)/);
+  assert.match(streamBffSource, /if \(!credential\?\.bearerToken\) return streamAuthorizationError\("validated_dashboard_session_required", requestId\)/);
+  assert.doesNotMatch(streamBffSource, /fallbackStream\("Dashboard session required"/);
+  assert.doesNotMatch(streamBffSource, /fallbackStream\("Unsupported dashboard role"/);
+  assert.doesNotMatch(streamBffSource, /fallbackStream\("Validated dashboard session required"/);
+});
