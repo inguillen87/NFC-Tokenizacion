@@ -120,8 +120,8 @@ test("admin lead creation authenticates first, binds tenant server-side, and kee
   ]);
   const post = adminLeads.slice(adminLeads.indexOf("export async function POST"));
 
-  assert.match(post, /checkAdmin\(req, \["super_admin", "tenant_admin"\]\)/);
-  assert.ok(post.indexOf("checkAdmin(req") < post.indexOf("readBoundedJsonBody"));
+  assert.match(post, /checkAdminWithPermission\(req, "leads\.manage"\)/);
+  assert.ok(post.indexOf("checkAdminWithPermission(req") < post.indexOf("readBoundedJsonBody"));
   assert.match(post, /resolveAdminWriteTenant\(/);
   assert.match(post, /tenantReference\(new URL\(req\.url\)\.searchParams\.get\("tenant"\)\)/);
   assert.match(post, /VALUES \([^]*\$\{tenantId\}::uuid/);

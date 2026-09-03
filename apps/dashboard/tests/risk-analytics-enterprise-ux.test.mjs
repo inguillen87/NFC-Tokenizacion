@@ -5,6 +5,7 @@ import test from "node:test";
 const page = await readFile(new URL("../src/app/(app)/risk-analytics/page.tsx", import.meta.url), "utf8");
 const permissions = await readFile(new URL("../src/lib/permission-policy.ts", import.meta.url), "utf8");
 const shell = await readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8");
+const destinations = await readFile(new URL("../src/lib/dashboard-destination-policy.ts", import.meta.url), "utf8");
 const proxy = await readFile(new URL("../src/app/api/admin/[...path]/route.ts", import.meta.url), "utf8");
 const { dashboardCanReadSensitiveRiskAnalytics, requiredPermissionForAdminResource } = await import("../src/lib/permission-policy.ts");
 const { CARRIER_PROFILES } = await import("../../api/src/lib/carrier-profiles.ts");
@@ -73,8 +74,8 @@ test("enterprise risk KPIs expose operational truth and bounded evidence copy", 
 test("risk analytics fails closed and is discoverable in the dashboard", () => {
   assert.match(page, /No se muestran ceros falsos/);
   assert.match(page, /Risk Analytics no está disponible/);
-  assert.match(shell, /href: "\/risk-analytics"/);
-  assert.match(shell, /const canReadRiskAnalytics = dashboardCanReadSensitiveRiskAnalytics\(/);
+  assert.match(shell, /destination: "riskAnalytics"[\s\S]*DASHBOARD_DESTINATIONS\.riskAnalytics\.href/);
+  assert.match(destinations, /riskAnalytics:\s*\{[\s\S]*href: "\/risk-analytics"[\s\S]*requiredPermissions: \["reports\.export"\][\s\S]*highImpactCapability: "events\.read_sensitive"/);
   assert.match(proxy, /normalizedPath === "risk-analytics"[\s\S]*dashboardCanReadSensitiveRiskAnalytics\(/);
   assert.match(proxy, /requiredPermissions: \["reports\.export", "events\.read_sensitive"\]/);
   assert.match(permissions, /dashboardHighImpactPermissionMatches\([\s\S]*"events\.read_sensitive"[\s\S]*dashboardPermissionMatches\(granted, "reports\.export", denied\)/);

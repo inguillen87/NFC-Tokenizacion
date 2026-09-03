@@ -52,6 +52,8 @@ function authNoticeForCode(code?: string) {
       return "La verificacion Clerk de la API no esta configurada para este dominio.";
     case "auth_upstream_unavailable":
       return "La API de autenticación no respondió. Reintenta o revisa el deploy de api.nexid.lat.";
+    case "session_expired":
+      return "Tu sesión venció o dejó de ser válida. Volvé a ingresar para continuar de forma segura.";
     case "clerk_super_admin_not_allowed":
       return "Ese Google no esta allowlisted como Super Admin de nexID.";
     case "clerk_sync_failed":

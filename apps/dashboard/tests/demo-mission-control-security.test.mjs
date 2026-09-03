@@ -7,6 +7,7 @@ const policySource = await readFile(new URL("../src/lib/demo-access-policy.ts", 
 const pageSource = await readFile(new URL("../src/app/(app)/demo-lab/page.tsx", import.meta.url), "utf8");
 const missionSource = await readFile(new URL("../src/components/demo-lab.tsx", import.meta.url), "utf8");
 const shellSource = await readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8");
+const destinationsSource = await readFile(new URL("../src/lib/dashboard-destination-policy.ts", import.meta.url), "utf8");
 const profilesSource = await readFile(new URL("../src/lib/access-profiles.ts", import.meta.url), "utf8");
 
 test("demo admin proxy requires a dashboard session, permission and tenant scope", () => {
@@ -45,9 +46,9 @@ test("dashboard Demo Lab is a permissioned native mission control, not an iframe
 });
 
 test("Demo Lab is discoverable through permission-aware dashboard navigation", () => {
-  assert.match(shellSource, /const permissionMatches = \(permission: string\) => dashboardPermissionMatches\([\s\S]*currentDeniedPermissions/);
-  assert.match(shellSource, /permissionMatches\("demo:read"\)/);
-  assert.match(shellSource, /href: "\/demo-lab", label: "Demo Mission Control", icon: FlaskConical/);
+  assert.match(shellSource, /const canAccessDemoLab = canOpenDestination\("demoLab"\)/);
+  assert.match(destinationsSource, /demoLab:\s*\{ href: "\/demo-lab", requiredPermissions: \["demo:read"\] \}/);
+  assert.match(shellSource, /destination: "demoLab"[\s\S]*label: "Demo Mission Control"[\s\S]*icon: FlaskConical/);
   assert.match(shellSource, /pathname\.startsWith\("\/demo-lab"\)[\s\S]*title: "Demo Mission Control", subtitle: "Tenant demo operations"/);
   assert.match(profilesSource, /"demo:\*"/);
   assert.match(profilesSource, /"demo:read", "demo:run"/);

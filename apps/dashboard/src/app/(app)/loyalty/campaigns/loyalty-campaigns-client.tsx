@@ -37,6 +37,7 @@ import {
   describeTriviaSummary,
   type CampaignMeasurement,
 } from "./loyalty-campaign-truth";
+import { buildLoyaltyAdminUrl } from "./loyalty-campaign-scope";
 
 // Types
 interface Campaign {
@@ -154,6 +155,11 @@ interface RedemptionValidation {
   };
 }
 
+type LoyaltyCampaignsClientProps = {
+  tenantScope: string;
+  allowDemoData: boolean;
+};
+
 const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
   {
     id: "mendoza-near-winery",
@@ -164,7 +170,7 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     offer: "2x1 en copa de bienvenida + upgrade de visita",
     modeledOutcome: "Escenario modelado: +14% visitas al portal",
     body:
-      "Hola {{name}}, vimos una lectura NFC registrada en {{city}} para {{product}}. Bodega Balmec te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu código de canje con respaldo por WhatsApp y email si lo tenés cargado. Stop para salir.",
+      "Hola {{name}}, vimos una lectura NFC registrada en {{city}} para {{product}}. {{brand}} te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu código de canje con respaldo por WhatsApp y email si lo tenés cargado. Stop para salir.",
     requirements: ["phone_verified", "whatsapp_opt_in", "city_match"],
   },
   {
@@ -267,6 +273,21 @@ const TRIVIA_FALLBACK: TriviaInsight = {
   recent: [],
 };
 
+const EMPTY_TRIVIA: TriviaInsight = {
+  summary: {
+    attempts: 0,
+    completed: 0,
+    pointsIssued: 0,
+    avgScorePct: 0,
+    topCity: null,
+    topProduct: null,
+    insight: null,
+  },
+  cities: [],
+  questions: [],
+  recent: [],
+};
+
 function asNumber(value: unknown) {
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -278,10 +299,10 @@ function firstName(name: string | null | undefined) {
 }
 
 function renderTemplateBody(template: CampaignTemplate, member: AudienceMember | undefined) {
-  const selected = member || DEMO_AUDIENCE[0];
+  const selected: AudienceMember = member || { consumer_id: "unselected" };
   const replacements: Record<string, string> = {
     name: firstName(selected.display_name),
-    city: selected.city || "Mendoza",
+    city: selected.city || "tu ciudad",
     product: selected.last_product || "tu producto registrado",
     brand: selected.tenant_slug === "demobodega" ? "Bodega Balmec" : selected.tenant_slug || "tu marca",
     offer: template.offer,
@@ -316,9 +337,9 @@ const INITIAL_CAMPAIGNS: Campaign[] = [
   }
 ];
 
-export default function LoyaltyCampaignsClient() {
+export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: LoyaltyCampaignsClientProps) {
   const [activeTab, setActiveTab] = useState<"campaigns" | "ai-optimizer">("campaigns");
-  const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(() => allowDemoData ? INITIAL_CAMPAIGNS : []);
   
   // Draft / AI Optimizer states
   const [draftTitle, setDraftTitle] = useState("");
@@ -398,15 +419,15 @@ export default function LoyaltyCampaignsClient() {
   const [chatInput, setChatInput] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
   const [audienceMembers, setAudienceMembers] = useState<AudienceMember[]>([]);
-  const [audienceLoading, setAudienceLoading] = useState(true);
+  const [audienceLoading, setAudienceLoading] = useState(Boolean(tenantScope));
   const [audienceError, setAudienceError] = useState<string | null>(null);
-  const [triviaInsight, setTriviaInsight] = useState<TriviaInsight>(TRIVIA_FALLBACK);
-  const [triviaLoading, setTriviaLoading] = useState(true);
+  const [triviaInsight, setTriviaInsight] = useState<TriviaInsight>(EMPTY_TRIVIA);
+  const [triviaLoading, setTriviaLoading] = useState(Boolean(tenantScope));
   const [triviaError, setTriviaError] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState(CAMPAIGN_TEMPLATES[0].id);
   const [selectedCity, setSelectedCity] = useState("all");
-  const [sandboxRecipientName, setSandboxRecipientName] = useState("Marcelo");
-  const [twilioRecipient, setTwilioRecipient] = useState("+5492613168608");
+  const [sandboxRecipientName, setSandboxRecipientName] = useState(allowDemoData ? "Marcelo" : "");
+  const [twilioRecipient, setTwilioRecipient] = useState(allowDemoData ? "+5492613168608" : "");
   const [twilioOptInConfirmed, setTwilioOptInConfirmed] = useState(false);
   const [twilioSending, setTwilioSending] = useState(false);
   const [twilioStatus, setTwilioStatus] = useState<TwilioStatus | null>(null);
@@ -416,11 +437,21 @@ export default function LoyaltyCampaignsClient() {
   const [voucherChecking, setVoucherChecking] = useState(false);
   const [voucherResult, setVoucherResult] = useState<RedemptionValidation | null>(null);
 
-  const audienceUsesDemo = audienceMembers.length === 0;
+  const audienceUsesDemo = allowDemoData && Boolean(audienceError);
   const audience = audienceUsesDemo ? DEMO_AUDIENCE : audienceMembers;
+  const audienceAvailable = audienceUsesDemo || (!audienceLoading && !audienceError);
   const selectedTemplate = CAMPAIGN_TEMPLATES.find((item) => item.id === selectedTemplateId) || CAMPAIGN_TEMPLATES[0];
   const triviaMeasurement = describeTriviaSummary(triviaInsight.summary);
   const triviaHasMeasurements = triviaMeasurement.hasMeasurements;
+  const triviaAvailable = !triviaLoading && (!triviaError || allowDemoData);
+  const triviaGuideEnabled = allowDemoData && !triviaLoading && Boolean(triviaError || triviaInsight.questions.length === 0);
+  const visibleTriviaQuestions = triviaGuideEnabled ? TRIVIA_FALLBACK.questions : triviaInsight.questions;
+  const triviaInsightCopy = triviaLoading
+    ? "Esperando respuesta de la fuente de trivia."
+    : triviaError && !allowDemoData
+      ? "Fuente no disponible: no se generan conclusiones ni recomendaciones desde datos sustitutos."
+      : triviaInsight.summary.insight
+        || (triviaGuideEnabled ? TRIVIA_FALLBACK.summary.insight : "Sin insight confirmado para el scope actual.");
   const measuredTriviaCities = triviaInsight.cities.filter((city) => asNumber(city.attempts) > 0);
   const cityOptions = useMemo(() => {
     return Array.from(new Set(audience.map((item) => item.city).filter(Boolean) as string[])).sort();
@@ -497,13 +528,28 @@ export default function LoyaltyCampaignsClient() {
   useEffect(() => {
     let cancelled = false;
     async function loadAudience() {
+      const endpoint = buildLoyaltyAdminUrl("consumer-network/members", tenantScope);
+      if (!endpoint) {
+        setAudienceMembers([]);
+        setAudienceError("tenant_scope_required");
+        setAudienceLoading(false);
+        return;
+      }
+      setAudienceMembers([]);
+      setSelectedCity("all");
       setAudienceLoading(true);
       setAudienceError(null);
       try {
-        const response = await fetch("/api/admin/consumer-network/members?tenant=demobodega", { cache: "no-store" });
+        const response = await fetch(endpoint, { cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !Array.isArray(payload?.items)) {
           throw new Error(payload?.reason || payload?.error || "audience_unavailable");
+        }
+        if (String(payload?.tenant || "").trim().toLowerCase() !== tenantScope) {
+          throw new Error("tenant_scope_mismatch");
+        }
+        if (payload.items.some((item: AudienceMember) => String(item?.tenant_slug || "").trim().toLowerCase() !== tenantScope)) {
+          throw new Error("tenant_scope_mismatch");
         }
         if (!cancelled) {
           setAudienceMembers(payload.items as AudienceMember[]);
@@ -521,18 +567,29 @@ export default function LoyaltyCampaignsClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tenantScope]);
 
   useEffect(() => {
     let cancelled = false;
     async function loadTriviaInsight() {
+      const endpoint = buildLoyaltyAdminUrl("loyalty/trivia/overview", tenantScope);
+      if (!endpoint) {
+        setTriviaInsight(EMPTY_TRIVIA);
+        setTriviaError("tenant_scope_required");
+        setTriviaLoading(false);
+        return;
+      }
+      setTriviaInsight(EMPTY_TRIVIA);
       setTriviaLoading(true);
       setTriviaError(null);
       try {
-        const response = await fetch("/api/admin/loyalty/trivia/overview?tenant=demobodega", { cache: "no-store" });
+        const response = await fetch(endpoint, { cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload?.ok === false || !payload?.summary) {
           throw new Error(payload?.reason || payload?.error || "trivia_unavailable");
+        }
+        if (String(payload?.tenant || "").trim().toLowerCase() !== tenantScope) {
+          throw new Error("tenant_scope_mismatch");
         }
         if (!cancelled) {
           setTriviaInsight({
@@ -544,7 +601,7 @@ export default function LoyaltyCampaignsClient() {
         }
       } catch (error) {
         if (!cancelled) {
-          setTriviaInsight(TRIVIA_FALLBACK);
+          setTriviaInsight(allowDemoData ? TRIVIA_FALLBACK : EMPTY_TRIVIA);
           setTriviaError(error instanceof Error ? error.message : "trivia_unavailable");
         }
       } finally {
@@ -555,7 +612,7 @@ export default function LoyaltyCampaignsClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [allowDemoData, tenantScope]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -929,10 +986,15 @@ export default function LoyaltyCampaignsClient() {
   }
 
   async function handleSendSandboxWhatsApp() {
+    const endpoint = buildLoyaltyAdminUrl("campaigns/test-whatsapp", tenantScope);
+    if (!endpoint) {
+      setTwilioStatus({ ok: false, message: "Seleccioná un tenant autorizado antes de enviar una prueba." });
+      return;
+    }
     setTwilioStatus(null);
     setTwilioSending(true);
     try {
-      const response = await fetch("/api/admin/campaigns/test-whatsapp", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -970,10 +1032,15 @@ export default function LoyaltyCampaignsClient() {
   }
 
   async function handleValidateVoucher(action: "lookup" | "redeem") {
+    const endpoint = buildLoyaltyAdminUrl("rewards/redemptions/validate", tenantScope);
+    if (!endpoint) {
+      setVoucherResult({ ok: false, reason: "tenant_scope_required" });
+      return;
+    }
     setVoucherChecking(true);
     setVoucherResult(null);
     try {
-      const response = await fetch("/api/admin/rewards/redemptions/validate", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1079,7 +1146,11 @@ export default function LoyaltyCampaignsClient() {
         : "bg-amber-500/10 text-amber-300";
 
   return (
-    <div className="space-y-8 pb-12">
+    <div
+      className="space-y-8 pb-12"
+      data-tenant-scope={tenantScope || "unavailable"}
+      data-demo-data-allowed={String(allowDemoData)}
+    >
       <SectionHeading 
         eyebrow="IA Comercial" 
         title="Clientes & campañas" 
@@ -1090,7 +1161,11 @@ export default function LoyaltyCampaignsClient() {
           <div>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
               <MessageCircle className="h-4 w-4" />
-              {audienceUsesDemo ? "Audiencia demo modelada" : "Audiencia CRM reportada"}
+              {audienceUsesDemo
+                ? "Audiencia demo modelada"
+                : audienceError
+                  ? "Audiencia no disponible"
+                  : "Audiencia CRM reportada"}
             </div>
             <h2 className="mt-1 text-xl font-black text-white">Segmentos, beneficios y WhatsApp</h2>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
@@ -1099,9 +1174,26 @@ export default function LoyaltyCampaignsClient() {
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200">
             <ShieldCheck className="h-4 w-4" />
-            {audienceLoading ? "Cargando audiencia" : audienceUsesDemo ? "Datos demo · no son audiencia real" : "Datos CRM reportados"}
+            {audienceLoading
+              ? "Cargando audiencia"
+              : audienceUsesDemo
+                ? "Datos demo · no son audiencia real"
+                : audienceError
+                  ? "Fuente no disponible"
+                  : "Datos CRM reportados"}
           </div>
         </div>
+
+        {audienceError && !audienceUsesDemo ? (
+          <div
+            role="status"
+            data-testid="loyalty-audience-unavailable"
+            className="mt-4 rounded-xl border border-amber-300/30 bg-amber-400/[0.07] px-4 py-3 text-xs leading-5 text-amber-100"
+          >
+            La fuente CRM no pudo confirmar la audiencia para {tenantScope ? `tenant:${tenantScope}` : "un tenant autorizado"}.
+            No se muestran perfiles demo ni se interpreta la falla como cero clientes. Motivo: <span className="font-mono">{audienceError}</span>.
+          </div>
+        ) : null}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
@@ -1116,7 +1208,7 @@ export default function LoyaltyCampaignsClient() {
                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{item.label}</span>
                 <item.icon className={`h-4 w-4 ${item.color}`} />
               </div>
-              <div className="mt-2 text-2xl font-black text-white">{item.value.toLocaleString("es-AR")}</div>
+              <div className="mt-2 text-2xl font-black text-white">{audienceAvailable ? item.value.toLocaleString("es-AR") : "—"}</div>
               <div className="mt-1 text-[10px] text-slate-500">{item.hint}</div>
             </div>
           ))}
@@ -1136,9 +1228,9 @@ export default function LoyaltyCampaignsClient() {
             </div>
             <div className="min-w-[150px] rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-3 text-right">
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Readiness de configuracion</div>
-              <div className="mt-1 text-3xl font-black text-cyan-100">{flowReadiness.score}%</div>
+              <div className="mt-1 text-3xl font-black text-cyan-100">{audienceAvailable ? `${flowReadiness.score}%` : "—"}</div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300 transition-all" style={{ width: `${flowReadiness.score}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300 transition-all" style={{ width: audienceAvailable ? `${flowReadiness.score}%` : "0%" }} />
               </div>
             </div>
           </div>
@@ -1182,9 +1274,28 @@ export default function LoyaltyCampaignsClient() {
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-100">
               <Gauge className="h-4 w-4" />
-              {triviaLoading ? "Cargando trivia" : triviaError ? "Guia demo · sin medicion" : triviaHasMeasurements ? "Intentos confirmados" : "Sin intentos confirmados"}
+              {triviaLoading
+                ? "Cargando trivia"
+                : triviaError
+                  ? allowDemoData
+                    ? "Guia demo · sin medicion"
+                    : "Fuente no disponible"
+                  : triviaHasMeasurements
+                    ? "Intentos confirmados"
+                    : "Sin intentos confirmados"}
             </div>
           </div>
+
+          {triviaError && !allowDemoData ? (
+            <div
+              role="status"
+              data-testid="loyalty-trivia-unavailable"
+              className="mt-4 rounded-xl border border-amber-300/30 bg-amber-400/[0.07] px-4 py-3 text-xs leading-5 text-amber-100"
+            >
+              La fuente de trivia no respondió para {tenantScope ? `tenant:${tenantScope}` : "un tenant autorizado"}.
+              Las métricas quedan no disponibles y no se reemplazan por una medición demo. Motivo: <span className="font-mono">{triviaError}</span>.
+            </div>
+          ) : null}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
@@ -1195,7 +1306,7 @@ export default function LoyaltyCampaignsClient() {
             ].map((item) => (
               <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
                 <div className="text-[9px] font-black uppercase tracking-wider text-slate-500">{item.label}</div>
-                <div className={`mt-2 truncate text-2xl font-black ${item.color}`}>{typeof item.value === "number" ? item.value.toLocaleString("es-AR") : item.value}</div>
+                <div className={`mt-2 truncate text-2xl font-black ${item.color}`}>{triviaAvailable ? (typeof item.value === "number" ? item.value.toLocaleString("es-AR") : item.value) : "—"}</div>
                 <div className="mt-1 truncate text-[10px] text-slate-500">{item.hint}</div>
               </div>
             ))}
@@ -1209,11 +1320,11 @@ export default function LoyaltyCampaignsClient() {
                   <p className="text-[11px] text-slate-400">Las tasas bajas marcan dónde educar mejor al cliente o crear una promo.</p>
                 </div>
                 <span className="rounded-full bg-violet-400/10 px-2 py-1 text-[9px] font-black uppercase text-violet-200">
-                  {triviaInsight.questions.length} señales
+                  {triviaGuideEnabled ? `Guía demo · ${visibleTriviaQuestions.length}` : `${visibleTriviaQuestions.length} señales`}
                 </span>
               </div>
               <div className="space-y-2">
-                {(triviaInsight.questions.length ? triviaInsight.questions : TRIVIA_FALLBACK.questions).slice(0, 4).map((question, index) => (
+                {visibleTriviaQuestions.slice(0, 4).map((question, index) => (
                   <div key={`${question.prompt}-${index}`} className="rounded-xl border border-white/10 bg-slate-900/45 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -1232,6 +1343,11 @@ export default function LoyaltyCampaignsClient() {
                     </div>
                   </div>
                 ))}
+                {!visibleTriviaQuestions.length ? (
+                  <div className="rounded-xl border border-dashed border-violet-300/20 bg-slate-900/30 p-3 text-[11px] leading-relaxed text-slate-400">
+                    {triviaError ? "Preguntas no disponibles mientras la fuente está caída." : "La fuente confirmó que todavía no hay preguntas con respuestas para este tenant."}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1272,7 +1388,7 @@ export default function LoyaltyCampaignsClient() {
                 ) : null}
               </div>
               <p className="mt-3 rounded-xl border border-violet-400/20 bg-violet-400/10 p-3 text-[11px] leading-relaxed text-violet-100">
-                {triviaInsight.summary.insight || TRIVIA_FALLBACK.summary.insight}
+                {triviaInsightCopy}
               </p>
             </div>
           </div>
@@ -1397,9 +1513,9 @@ export default function LoyaltyCampaignsClient() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                title="Enviar el preview al WhatsApp configurado"
+                title={tenantScope ? "Enviar el preview al WhatsApp configurado" : "Seleccioná un tenant autorizado para enviar una prueba"}
                 onClick={handleSendSandboxWhatsApp}
-                disabled={twilioSending || !twilioOptInConfirmed}
+                disabled={twilioSending || !twilioOptInConfirmed || !tenantScope}
                 className="gap-2 bg-cyan-400 text-slate-950 hover:bg-cyan-300 disabled:opacity-40"
               >
                 {twilioSending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" /> : <Send className="h-4 w-4" />}
@@ -1482,7 +1598,7 @@ export default function LoyaltyCampaignsClient() {
               <button
                 type="button"
                 title="Consultar estado, beneficio, consumidor y vencimiento sin marcarlo como usado"
-                disabled={voucherChecking || !voucherCode.trim()}
+                disabled={voucherChecking || !voucherCode.trim() || !tenantScope}
                 onClick={() => handleValidateVoucher("lookup")}
                 className="rounded-lg border border-emerald-400/30 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-40"
               >
@@ -1491,7 +1607,7 @@ export default function LoyaltyCampaignsClient() {
               <button
                 type="button"
                 title="Marcar el voucher como canjeado después de entregar premio, cena, experiencia o descuento"
-                disabled={voucherChecking || !voucherCode.trim()}
+                disabled={voucherChecking || !voucherCode.trim() || !tenantScope}
                 onClick={() => handleValidateVoucher("redeem")}
                 className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-300 disabled:opacity-40"
               >
@@ -1671,7 +1787,7 @@ export default function LoyaltyCampaignsClient() {
           }`}
         >
           <Layers className="w-4 h-4 text-cyan-400" />
-          Campañas Activas ({campaigns.length})
+          Campañas / borradores ({campaigns.length})
         </button>
         <button
           type="button"
@@ -1785,6 +1901,15 @@ export default function LoyaltyCampaignsClient() {
                 </Card>
                 );
               })}
+              {!campaigns.length ? (
+                <div
+                  role="status"
+                  data-testid="loyalty-campaigns-empty"
+                  className="rounded-2xl border border-dashed border-white/15 bg-slate-900/35 p-5 text-sm leading-6 text-slate-300"
+                >
+                  No hay campañas confirmadas para este tenant. El optimizador puede crear un borrador local, pero no se presenta como campaña enviada ni como resultado medido.
+                </div>
+              ) : null}
             </div>
           ) : (
             /* Tab 2: AI Optimizer Workspace */

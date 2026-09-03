@@ -6,27 +6,35 @@ import { getDashboardSession } from "../../../../lib/session";
 import { proxyToApi } from "../../../../lib/api-proxy";
 import { cookies } from "next/headers";
 
+function noStore(response: NextResponse) {
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+function expiredSessionResponse(status: 401 | 403 = 401) {
+  const response = NextResponse.json(
+    { ok: false, reason: "session_expired" },
+    { status },
+  );
+  response.cookies.delete(DASHBOARD_SESSION_COOKIE);
+  response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
+  return noStore(response);
+}
+
 export async function GET() {
-  const localSession = await getDashboardSession();
   const cookieStore = await cookies();
   const localToken = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value || "";
-  if (localSession && (localSession.id.startsWith("demo-") || localToken.startsWith("demo."))) {
-    return NextResponse.json({ ok: true, session: localSession });
+  if (!localToken || localToken.startsWith("demo.")) {
+    const localSession = await getDashboardSession();
+    if (localSession?.isDemo) {
+      return noStore(NextResponse.json({ ok: true, session: localSession }));
+    }
+    if (localToken.startsWith("demo.")) return expiredSessionResponse();
   }
   const upstream = await proxyToApi("/auth/session");
   const data = await upstream.json().catch(() => null);
-  if (upstream.status === 401) {
-    return NextResponse.json({
-      ok: true,
-      session: {
-        id: "demo-public-session",
-        email: "public@nexid.demo",
-        role: "viewer",
-        locale: "es-AR",
-        mode: "public-demo",
-      },
-      guest: true,
-    });
+  if (upstream.status === 401 || upstream.status === 403) {
+    return expiredSessionResponse(upstream.status);
   }
   const response = NextResponse.json(data || { ok: false }, { status: upstream.status });
   if (data?.session?.email && data?.session?.role) {
@@ -61,9 +69,5 @@ export async function GET() {
       maxAge: 60 * 60 * 12,
     });
   }
-  if (upstream.status === 401 || upstream.status === 403) {
-    response.cookies.delete(DASHBOARD_SESSION_COOKIE);
-    response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
-  }
-  return response;
+  return noStore(response);
 }

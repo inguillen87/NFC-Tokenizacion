@@ -84,6 +84,7 @@ test("admin BFF binds only the exact high-impact batch method and path pairs", (
     ["GET", "consumer-experiences", "consumer_experiences.read_pii"],
     ["PATCH", "consumer-experiences", "consumer_experiences.moderate"],
     ["GET", "consumer-portal/members", "consumers.read_pii"],
+    ["GET", "consumer-portal/order-requests", "consumers.read_pii"],
     ["GET", "leads", "leads.manage"],
     ["POST", "leads", "leads.manage"],
     ["POST", "supplier-orders/order-1/sub-batches/SYG-2026/production-acceptance/plan/plan-1/decision", "qa.plan.approve"],

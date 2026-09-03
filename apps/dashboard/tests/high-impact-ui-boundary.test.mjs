@@ -7,13 +7,14 @@ async function source(path) {
 }
 
 test("sensitive event reads are gated before server fetches and every SSE connection", async () => {
-  const [home, stream, executive, multirubro, bell, shell] = await Promise.all([
+  const [home, stream, executive, multirubro, bell, shell, destinations] = await Promise.all([
     source("../src/app/(app)/page.tsx"),
     source("../src/app/api/admin/events/stream/route.ts"),
     source("../src/components/executive-realtime-crm.tsx"),
     source("../src/components/multirubro-ops-panel.tsx"),
     source("../src/components/admin-notification-bell.tsx"),
     source("../src/components/dashboard-shell.tsx"),
+    source("../src/lib/dashboard-destination-policy.ts"),
   ]);
 
   assert.match(home, /dashboardHighImpactPermissionMatches\([\s\S]*"events\.read_sensitive"[\s\S]*canReadSensitiveEvents\s*\?\s*getLiveEvents/);
@@ -21,7 +22,8 @@ test("sensitive event reads are gated before server fetches and every SSE connec
   assert.match(executive, /if \(!canReadSensitiveEvents\)[\s\S]*return;[\s\S]*new EventSource/);
   assert.match(multirubro, /if \(!canReadSensitiveEvents\)[\s\S]*return;[\s\S]*new EventSource/);
   assert.match(bell, /if \(canReadSensitiveEvents && typeof EventSource/);
-  assert.match(shell, /item\.href === "\/events" && !canReadSensitiveEvents/);
+  assert.match(shell, /const canReadSensitiveEvents = canOpenDestination\("events"\)/);
+  assert.match(destinations, /events:\s*\{ href: "\/events", highImpactCapability: "events\.read_sensitive" \}/);
   assert.match(shell, /AdminNotificationBell canReadSensitiveEvents=\{canReadSensitiveEvents\}/);
 });
 
@@ -42,10 +44,11 @@ test("high-impact mutation controls use separate capability gates", async () => 
 
 test("role navigation mirrors sensitive read capability defaults", async () => {
   const shell = await source("../src/components/dashboard-shell.tsx");
+  const destinations = await source("../src/lib/dashboard-destination-policy.ts");
   const content = await source("../src/lib/dashboard-content.ts");
 
-  assert.match(shell, /entry\.href === "\/loyalty\/experiences" && !canReadConsumerExperiences/);
-  assert.match(shell, /if \(canReadConsumerExperiences\)[\s\S]*loyaltyNetworkItems\.push\(\{ href: "\/loyalty\/experiences"/);
+  assert.match(shell, /destination: "experiences"[\s\S]*DASHBOARD_DESTINATIONS\.experiences\.href/);
+  assert.match(destinations, /experiences:\s*\{ href: "\/loyalty\/experiences", highImpactCapability: "consumer_experiences\.read_pii" \}/);
   assert.doesNotMatch(content, /"packaging-operator": \[[^\]]*"events"/);
   assert.doesNotMatch(content, /viewer: \[[^\]]*"events"/);
   assert.match(content, /"super-admin": \[[^\]]*"events"[^\]]*"experiences"/);

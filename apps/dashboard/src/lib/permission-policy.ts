@@ -209,7 +209,10 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (normalizedMethod === "PATCH" && normalizedPath === "consumer-experiences") {
     return "consumer_experiences.moderate";
   }
-  if (normalizedMethod === "GET" && normalizedPath === "consumer-portal/members") {
+  if (
+    normalizedMethod === "GET"
+    && (normalizedPath === "consumer-portal/members" || normalizedPath === "consumer-portal/order-requests")
+  ) {
     return "consumers.read_pii";
   }
   if ((normalizedMethod === "GET" || normalizedMethod === "POST") && normalizedPath === "leads") {

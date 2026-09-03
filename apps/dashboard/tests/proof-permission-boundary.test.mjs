@@ -26,13 +26,13 @@ test("proof permission policy separates reads from mutations", () => {
 test("dashboard navigation and BFF enforce the same Proof contract", async () => {
   const profiles = await readFile(new URL("../src/lib/access-profiles.ts", import.meta.url), "utf8");
   const shell = await readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8");
+  const destinations = await readFile(new URL("../src/lib/dashboard-destination-policy.ts", import.meta.url), "utf8");
   const proxy = await readFile(new URL("../src/app/api/admin/[...path]/route.ts", import.meta.url), "utf8");
 
   assert.match(profiles, /"proof:\*"/);
   assert.match(profiles, /"proof:read"/);
-  assert.match(shell, /const highImpactMatches = \(capability: string\) => dashboardHighImpactPermissionMatches/);
-  assert.match(shell, /const canReadProof = highImpactMatches\("proofs\.read"\)/);
-  assert.match(shell, /item\.href !== "\/proof" \|\| canReadProof/);
+  assert.match(shell, /destination: "proof"[\s\S]*DASHBOARD_DESTINATIONS\.proof\.href/);
+  assert.match(destinations, /proof:\s*\{ href: "\/proof", highImpactCapability: "proofs\.read" \}/);
   assert.match(proxy, /requiredPermissionForAdminResource\(req\.method, normalizedPath\)/);
   assert.match(proxy, /dashboardHighImpactPermissionMatches\([\s\S]*dashboardSession\.permissions,[\s\S]*requiredPermission,[\s\S]*dashboardSession\.deniedPermissions,[\s\S]*\)/);
   assert.match(proxy, /permission_required/);

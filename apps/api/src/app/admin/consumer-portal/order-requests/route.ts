@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
@@ -41,7 +41,7 @@ async function listOrderRequests(tenant: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "consumers.read_pii");
   if (auth) return auth;
   const scope = getAdminTenantScope(req);
   const tenant = scope.forcedTenantSlug || cleanTenant(new URL(req.url).searchParams.get("tenant"));

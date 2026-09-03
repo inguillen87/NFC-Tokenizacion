@@ -7,10 +7,10 @@ import { useState, useRef, useEffect } from "react";
 import { dashboardContent } from "../lib/dashboard-content";
 import type { UserRole } from "../lib/dashboard-content";
 import {
-  dashboardCanReadSensitiveRiskAnalytics,
-  dashboardHighImpactPermissionMatches,
-  dashboardPermissionMatches,
-} from "../lib/permission-policy";
+  DASHBOARD_DESTINATIONS,
+  dashboardCanOpenDestination,
+  type DashboardDestinationKey,
+} from "../lib/dashboard-destination-policy";
 import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
@@ -145,58 +145,44 @@ export function DashboardShellInner({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const permissionMatches = (permission: string) => dashboardPermissionMatches(
-    currentPermissions,
-    permission,
-    currentDeniedPermissions,
+  const destinationAccess = {
+    role: currentRole,
+    permissions: currentPermissions,
+    deniedPermissions: currentDeniedPermissions,
+    isDemo: currentIsDemo,
+  };
+  const canOpenDestination = (destination: DashboardDestinationKey) => (
+    dashboardCanOpenDestination(destination, destinationAccess)
   );
   const isTenantAdministrator = currentRole === "tenant-owner" || currentRole === "tenant-admin";
   const isResellerRole = currentRole === "reseller-admin" || currentRole === "reseller";
-  const canReadRiskAnalytics = dashboardCanReadSensitiveRiskAnalytics(
-    currentRole,
-    currentPermissions,
-    currentDeniedPermissions,
-  );
-  const highImpactMatches = (capability: string) => dashboardHighImpactPermissionMatches(
-    currentRole,
-    currentPermissions,
-    capability,
-    currentDeniedPermissions,
-  );
-  const canReadSensitiveEvents = highImpactMatches("events.read_sensitive");
-  const canReadConsumerExperiences = highImpactMatches("consumer_experiences.read_pii");
-  const canReadApiKeys = highImpactMatches("api_keys.read");
-  const canReadProof = highImpactMatches("proofs.read");
-  const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
-  const canAccessDemoLab = currentRole === "super-admin" || permissionMatches("demo:read") || isDemoMode;
-  const items = [
-    { href: "/", label: nav.overview },
-    { href: "/batches", label: nav.batches },
-    { href: "/batches/supplier", label: nav.supplierBatches },
-    { href: "/logistics", label: nav.logistics },
-    { href: "/demo-lab", label: "Demo Lab" },
-    { href: "/proof", label: nav.proof },
-    { href: "/tags", label: nav.tags },
-    { href: "/events", label: nav.events },
-    { href: "/tokenization", label: "Tokenization" },
-    { href: "/analytics", label: nav.analytics },
-    { href: "/risk-analytics", label: "Risk Analytics" },
-    { href: "/leads-tickets", label: nav.leadsTickets },
-  ].filter((item) => {
-    if (item.href === "/proof" && !canReadProof) return false;
-    if (item.href === "/risk-analytics" && !canReadRiskAnalytics) return false;
-    if (item.href === "/demo-lab" && !canAccessDemoLab) return false;
-    if (item.href === "/events" && !canReadSensitiveEvents) return false;
-    return true;
-  });
+  const canReadSensitiveEvents = canOpenDestination("events");
+  const canAccessDemoLab = canOpenDestination("demoLab");
+  type DestinationLink = { destination: DashboardDestinationKey; href: string; label: string };
+  const itemCandidates: DestinationLink[] = [
+    { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview },
+    { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches },
+    { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches },
+    { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics },
+    { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Lab" },
+    { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof },
+    { destination: "tags", href: DASHBOARD_DESTINATIONS.tags.href, label: nav.tags },
+    { destination: "events", href: DASHBOARD_DESTINATIONS.events.href, label: nav.events },
+    { destination: "tokenization", href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Tokenization" },
+    { destination: "analytics", href: DASHBOARD_DESTINATIONS.analytics.href, label: nav.analytics },
+    { destination: "serviceLevels", href: DASHBOARD_DESTINATIONS.serviceLevels.href, label: "SLO & Runbooks" },
+    { destination: "riskAnalytics", href: DASHBOARD_DESTINATIONS.riskAnalytics.href, label: "Risk Analytics" },
+    { destination: "leadsTickets", href: DASHBOARD_DESTINATIONS.leadsTickets.href, label: nav.leadsTickets },
+  ];
+  const items = itemCandidates.filter((item) => canOpenDestination(item.destination));
 
-  if (currentRole === "super-admin") {
-    items.unshift({ href: "/tenants", label: nav.tenants });
-    items.push({ href: "/resellers", label: nav.resellers });
-    items.push({ href: "/subscriptions", label: nav.subscriptions });
+  if (canOpenDestination("tenants")) {
+    items.unshift({ destination: "tenants", href: DASHBOARD_DESTINATIONS.tenants.href, label: nav.tenants });
+    items.push({ destination: "resellers", href: DASHBOARD_DESTINATIONS.resellers.href, label: nav.resellers });
+    items.push({ destination: "subscriptions", href: DASHBOARD_DESTINATIONS.subscriptions.href, label: nav.subscriptions });
   }
-  if (canReadApiKeys) {
-    items.push({ href: "/api-keys", label: nav.apiKeys });
+  if (canOpenDestination("apiKeys")) {
+    items.push({ destination: "apiKeys", href: DASHBOARD_DESTINATIONS.apiKeys.href, label: nav.apiKeys });
   }
 
   const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -204,7 +190,7 @@ export function DashboardShellInner({
 
   const role = currentRole;
   const forbidden = (pathname === "/tenants" && currentRole !== "super-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
-  const canShowSandboxTools = isDemoMode && !isTenantAdministrator;
+  const canShowSandboxTools = currentIsDemo && !isTenantAdministrator && canOpenDestination("demoEncoder");
 
   const quick = { faq: "FAQ", stack: "Tech Stack", glossary: "Glossary", docs: "Docs" };
   const publicMobile = `${productUrls.web}/sun/simulate`;
@@ -220,40 +206,40 @@ export function DashboardShellInner({
         : { tone: "amber" as const, label: "Operator Console" };
 
   const mobileQuickLinks = [
-    { href: "/", label: nav.overview },
-    ...(canReadSensitiveEvents ? [{ href: "/events", label: nav.events }] : []),
-    canAccessDemoLab ? { href: "/demo-lab", label: "Demo" } : { href: "/batches", label: nav.batches },
-    { href: "/tokenization", label: "Chain" },
-  ];
+    { destination: "overview" as const, href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview },
+    { destination: "events" as const, href: DASHBOARD_DESTINATIONS.events.href, label: nav.events },
+    { destination: "demoLab" as const, href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo" },
+    { destination: "batches" as const, href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches },
+    { destination: "tokenization" as const, href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Chain" },
+    { destination: "loyaltyOverview" as const, href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM" },
+    { destination: "analytics" as const, href: DASHBOARD_DESTINATIONS.analytics.href, label: nav.analytics },
+  ].filter((item) => canOpenDestination(item.destination)).slice(0, 4);
 
-  const searchableLinks = [
-    { href: "/onboarding", label: "Onboarding Setup" },
-    ...(canAccessDemoLab ? [{ href: "/demo-lab", label: "Demo Mission Control" }] : []),
+  const searchableLinkCandidates: DestinationLink[] = [
+    { destination: "onboarding", href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Onboarding Setup" },
+    { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Mission Control" },
     ...items,
-    { href: "/batches/supplier", label: nav.supplierBatches },
-    { href: "/logistics", label: nav.logistics },
-    { href: "/proof", label: nav.proof },
-    { href: "/tokenization", label: "Tokenization Queue" },
-    { href: "/superadmin-network", label: "Red de clientes", role: "super-admin" },
-    { href: "/loyalty/overview", label: "CRM de clientes" },
-    { href: "/consumer-network/overview", label: "Clientes CRM" },
-    { href: "/loyalty/rewards", label: "Catálogo Beneficios" },
-    { href: "/loyalty/experiences", label: "Experiencias & Eventos" },
-    { href: "/loyalty/campaigns", label: "Campañas por señal" },
-    { href: "/investor-snapshot", label: "Investor Presentation" },
-    { href: "/sales-playbook", label: "Sales Playbook & FAQs" },
-    { href: "/consumer-network/marketplace", label: "Marketplace con opt-in" },
-    { href: "/consumer-network/offers", label: "Ofertas & Drops" },
-    { href: "/consumer-network/order-requests", label: "Order Requests" },
-    { href: "/users", label: "IAM Users" },
-    { href: "/mfa", label: "Account Security" },
-    { href: "/sdk-vision", label: nav.sdkVision },
-  ].filter((entry) => {
-    if (entry.href === "/proof" && !canReadProof) return false;
-    if (entry.href === "/events" && !canReadSensitiveEvents) return false;
-    if (entry.href === "/loyalty/experiences" && !canReadConsumerExperiences) return false;
-    return (entry as { role?: string }).role ? currentRole === (entry as { role?: string }).role : true;
-  });
+    { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches },
+    { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics },
+    { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof },
+    { destination: "tokenization", href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Tokenization Queue" },
+    { destination: "serviceLevels", href: DASHBOARD_DESTINATIONS.serviceLevels.href, label: "SLO & Runbooks" },
+    { destination: "superadminNetwork", href: DASHBOARD_DESTINATIONS.superadminNetwork.href, label: "Red de clientes" },
+    { destination: "loyaltyOverview", href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM de clientes" },
+    { destination: "consumerOverview", href: DASHBOARD_DESTINATIONS.consumerOverview.href, label: "Clientes CRM" },
+    { destination: "rewards", href: DASHBOARD_DESTINATIONS.rewards.href, label: "Catálogo Beneficios" },
+    { destination: "experiences", href: DASHBOARD_DESTINATIONS.experiences.href, label: "Experiencias & Eventos" },
+    { destination: "campaigns", href: DASHBOARD_DESTINATIONS.campaigns.href, label: "Campañas por señal" },
+    { destination: "investorSnapshot", href: DASHBOARD_DESTINATIONS.investorSnapshot.href, label: "Investor Presentation" },
+    { destination: "salesPlaybook", href: DASHBOARD_DESTINATIONS.salesPlaybook.href, label: "Sales Playbook & FAQs" },
+    { destination: "marketplace", href: DASHBOARD_DESTINATIONS.marketplace.href, label: "Marketplace con opt-in" },
+    { destination: "offers", href: DASHBOARD_DESTINATIONS.offers.href, label: "Ofertas & Drops" },
+    { destination: "orderRequests", href: DASHBOARD_DESTINATIONS.orderRequests.href, label: "Order Requests" },
+    { destination: "users", href: DASHBOARD_DESTINATIONS.users.href, label: "IAM Users" },
+    { destination: "mfa", href: DASHBOARD_DESTINATIONS.mfa.href, label: "Account Security" },
+    { destination: "sdkVision", href: DASHBOARD_DESTINATIONS.sdkVision.href, label: nav.sdkVision },
+  ];
+  const searchableLinks = searchableLinkCandidates.filter((entry) => canOpenDestination(entry.destination));
 
   const filteredLinks = normalizedQuery
     ? searchableLinks.filter((entry) => entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
@@ -269,62 +255,65 @@ export function DashboardShellInner({
           ? { title: "Secure Delivery", subtitle: "Custody and route control" }
           : { title, subtitle };
 
-  const coreOpsItems = [
-    { href: "/onboarding", label: "Onboarding Setup", icon: Compass },
-    { href: "/", label: nav.overview, icon: LayoutDashboard },
-    { href: "/logistics", label: nav.logistics, icon: Package, badge: "NUEVO" },
-    ...(canAccessDemoLab ? [{ href: "/demo-lab", label: "Demo Mission Control", icon: FlaskConical, badge: "LAB" }] : []),
-    { href: "/proof", label: nav.proof, icon: ShieldCheck, badge: "TRUST" },
-    { href: "/batches", label: nav.batches, icon: Layers },
-    { href: "/batches/supplier", label: nav.supplierBatches, icon: FileCheck2 },
-    { href: "/tags", label: nav.tags, icon: Cpu },
-    { href: "/events", label: nav.events, icon: Activity },
-    { href: "/tokenization", label: "Tokenization", icon: Coins },
-    { href: "/analytics", label: nav.analytics, icon: BarChart3 },
-    { href: "/risk-analytics", label: "Risk Analytics", icon: ShieldAlert, badge: "RISK" },
-    { href: "/leads-tickets", label: nav.leadsTickets, icon: LifeBuoy },
-    { href: "/sdk-vision", label: nav.sdkVision, icon: Terminal },
-  ].filter((item) => (
-    (item.href !== "/proof" || canReadProof)
-    && (item.href !== "/risk-analytics" || canReadRiskAnalytics)
-    && (item.href !== "/events" || canReadSensitiveEvents)
-  ));
-
-  if (currentRole === "super-admin") {
-    coreOpsItems.unshift({ href: "/tenants", label: nav.tenants, icon: Compass });
-  }
-  if (canReadApiKeys) {
-    coreOpsItems.push({ href: "/api-keys", label: nav.apiKeys, icon: KeyRound });
-  }
-
-  const globalNetworkItems = [];
-  if (currentRole === "super-admin") {
-    globalNetworkItems.push({ href: "/superadmin-network", label: "Red de clientes", icon: Network });
-    globalNetworkItems.push({ href: "/resellers", label: nav.resellers, icon: Users });
-    globalNetworkItems.push({ href: "/subscriptions", label: nav.subscriptions, icon: CreditCard });
-  }
-
-  const loyaltyNetworkItems = [];
-  if (isTenantAdministrator || currentRole === "marketing-manager" || currentRole === "super-admin") {
-    loyaltyNetworkItems.push({ href: "/loyalty/overview", label: "CRM de clientes", icon: Award });
-    loyaltyNetworkItems.push({ href: "/consumer-network/overview", label: "Clientes CRM", icon: UserSquare2 });
-    loyaltyNetworkItems.push({ href: "/loyalty/rewards", label: "Catálogo Beneficios", icon: Gift });
-    if (canReadConsumerExperiences) {
-      loyaltyNetworkItems.push({ href: "/loyalty/experiences", label: "Experiencias & Eventos", icon: PartyPopper });
-    }
-    loyaltyNetworkItems.push({ href: "/loyalty/campaigns", label: "Campañas por señal", icon: Bot });
-    loyaltyNetworkItems.push({ href: "/investor-snapshot", label: "Investor Presentation", icon: Presentation, badge: "PDF" });
-    loyaltyNetworkItems.push({ href: "/sales-playbook", label: "Sales Playbook & FAQs", icon: BookOpen, badge: "PDF" });
-    loyaltyNetworkItems.push({ href: "/consumer-network/marketplace", label: "Marketplace con opt-in", icon: ShoppingBag, badge: "Web3" });
-    loyaltyNetworkItems.push({ href: "/consumer-network/offers", label: "Ofertas & Drops", icon: Flame });
-    loyaltyNetworkItems.push({ href: "/consumer-network/order-requests", label: "Order Requests", icon: FileCheck2 });
-  }
-
-  const settingsItems = [
-    { href: "/mfa", label: "Account Security", icon: ShieldCheck }
+  type SidebarDestinationItem = {
+    destination: DashboardDestinationKey;
+    href: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+  };
+  const coreOpsItemCandidates: SidebarDestinationItem[] = [
+    { destination: "onboarding", href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Onboarding Setup", icon: Compass },
+    { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview, icon: LayoutDashboard },
+    { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics, icon: Package, badge: "NUEVO" },
+    { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Mission Control", icon: FlaskConical, badge: "LAB" },
+    { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof, icon: ShieldCheck, badge: "TRUST" },
+    { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches, icon: Layers },
+    { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches, icon: FileCheck2 },
+    { destination: "tags", href: DASHBOARD_DESTINATIONS.tags.href, label: nav.tags, icon: Cpu },
+    { destination: "events", href: DASHBOARD_DESTINATIONS.events.href, label: nav.events, icon: Activity },
+    { destination: "tokenization", href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Tokenization", icon: Coins },
+    { destination: "analytics", href: DASHBOARD_DESTINATIONS.analytics.href, label: nav.analytics, icon: BarChart3 },
+    { destination: "serviceLevels", href: DASHBOARD_DESTINATIONS.serviceLevels.href, label: "SLO & Runbooks", icon: Activity, badge: "SLO" },
+    { destination: "riskAnalytics", href: DASHBOARD_DESTINATIONS.riskAnalytics.href, label: "Risk Analytics", icon: ShieldAlert, badge: "RISK" },
+    { destination: "leadsTickets", href: DASHBOARD_DESTINATIONS.leadsTickets.href, label: nav.leadsTickets, icon: LifeBuoy },
+    { destination: "sdkVision", href: DASHBOARD_DESTINATIONS.sdkVision.href, label: nav.sdkVision, icon: Terminal },
   ];
-  if (permissionMatches("users:manage") || currentRole === "super-admin") {
-    settingsItems.unshift({ href: "/users", label: "IAM Users", icon: Users });
+  const coreOpsItems = coreOpsItemCandidates.filter((item) => canOpenDestination(item.destination));
+
+  if (canOpenDestination("tenants")) {
+    coreOpsItems.unshift({ destination: "tenants", href: DASHBOARD_DESTINATIONS.tenants.href, label: nav.tenants, icon: Compass });
+  }
+  if (canOpenDestination("apiKeys")) {
+    coreOpsItems.push({ destination: "apiKeys", href: DASHBOARD_DESTINATIONS.apiKeys.href, label: nav.apiKeys, icon: KeyRound });
+  }
+
+  const globalNetworkItemCandidates: SidebarDestinationItem[] = [
+    { destination: "superadminNetwork", href: DASHBOARD_DESTINATIONS.superadminNetwork.href, label: "Red de clientes", icon: Network },
+    { destination: "resellers", href: DASHBOARD_DESTINATIONS.resellers.href, label: nav.resellers, icon: Users },
+    { destination: "subscriptions", href: DASHBOARD_DESTINATIONS.subscriptions.href, label: nav.subscriptions, icon: CreditCard },
+  ];
+  const globalNetworkItems = globalNetworkItemCandidates.filter((item) => canOpenDestination(item.destination));
+
+  const loyaltyNetworkItemCandidates: SidebarDestinationItem[] = [
+    { destination: "loyaltyOverview", href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM de clientes", icon: Award },
+    { destination: "consumerOverview", href: DASHBOARD_DESTINATIONS.consumerOverview.href, label: "Clientes CRM", icon: UserSquare2 },
+    { destination: "rewards", href: DASHBOARD_DESTINATIONS.rewards.href, label: "Catálogo Beneficios", icon: Gift },
+    { destination: "experiences", href: DASHBOARD_DESTINATIONS.experiences.href, label: "Experiencias & Eventos", icon: PartyPopper },
+    { destination: "campaigns", href: DASHBOARD_DESTINATIONS.campaigns.href, label: "Campañas por señal", icon: Bot },
+    { destination: "investorSnapshot", href: DASHBOARD_DESTINATIONS.investorSnapshot.href, label: "Investor Presentation", icon: Presentation, badge: "PDF" },
+    { destination: "salesPlaybook", href: DASHBOARD_DESTINATIONS.salesPlaybook.href, label: "Sales Playbook & FAQs", icon: BookOpen, badge: "PDF" },
+    { destination: "marketplace", href: DASHBOARD_DESTINATIONS.marketplace.href, label: "Marketplace con opt-in", icon: ShoppingBag, badge: "Web3" },
+    { destination: "offers", href: DASHBOARD_DESTINATIONS.offers.href, label: "Ofertas & Drops", icon: Flame },
+    { destination: "orderRequests", href: DASHBOARD_DESTINATIONS.orderRequests.href, label: "Order Requests", icon: FileCheck2 },
+  ];
+  const loyaltyNetworkItems = loyaltyNetworkItemCandidates.filter((item) => canOpenDestination(item.destination));
+
+  const settingsItems: SidebarDestinationItem[] = [
+    { destination: "mfa", href: DASHBOARD_DESTINATIONS.mfa.href, label: "Account Security", icon: ShieldCheck },
+  ];
+  if (canOpenDestination("users")) {
+    settingsItems.unshift({ destination: "users", href: DASHBOARD_DESTINATIONS.users.href, label: "IAM Users", icon: Users });
   }
 
   const renderNavLink = (item: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }) => {
@@ -494,23 +483,25 @@ export function DashboardShellInner({
 
         {/* Neutral pointers until billing and realtime metrics are supplied by trusted props. */}
         <Link
-          href="/billing"
+          href={DASHBOARD_DESTINATIONS.billing.href}
           className="mt-8 block rounded-2xl border border-white/5 bg-slate-950/60 p-4 text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
         >
           <span className="block text-[10px] font-black uppercase tracking-[0.15em]">Uso</span>
           <span className="mt-2 block text-[10px] font-medium leading-4">Uso: consultar facturación</span>
         </Link>
 
-        <Link
-          href="/analytics"
-          className="mt-4 flex items-center justify-between rounded-xl border border-white/5 bg-slate-950/60 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
-        >
-          <span className="flex items-center gap-2">
-            <BarChart3 className="h-3.5 w-3.5" />
-            <span>Realtime: estado en Analytics</span>
-          </span>
-          <span aria-hidden="true" className="text-[11px]">&rarr;</span>
-        </Link>
+        {canOpenDestination("analytics") ? (
+          <Link
+            href={DASHBOARD_DESTINATIONS.analytics.href}
+            className="mt-4 flex items-center justify-between rounded-xl border border-white/5 bg-slate-950/60 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
+          >
+            <span className="flex items-center gap-2">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Realtime: estado en Analytics</span>
+            </span>
+            <span aria-hidden="true" className="text-[11px]">&rarr;</span>
+          </Link>
+        ) : null}
 
         {canShowSandboxTools ? (
           <div className="dashboard-ops-tools-card mt-4 rounded-xl border border-cyan-500/20 p-4 shadow-lg relative overflow-hidden shrink-0">
@@ -520,7 +511,7 @@ export function DashboardShellInner({
                Ops Tools
             </p>
             <div className="grid gap-2">
-              <Link href="/demo-lab/encode" className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors text-center">URL Encoder</Link>
+              <Link href={DASHBOARD_DESTINATIONS.demoEncoder.href} className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors text-center">URL Encoder</Link>
               <a href={publicMobile} target="_blank" rel="noreferrer" className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors flex justify-between">
                  Mobile Scan <span>↗</span>
               </a>
@@ -584,7 +575,7 @@ export function DashboardShellInner({
                   </div>
                </div>
                <div className="flex gap-2">
-                  <Link href="/demo-lab" className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors">Mission Control</Link>
+                  <Link href={DASHBOARD_DESTINATIONS.demoLab.href} className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors">Mission Control</Link>
                </div>
             </div>
           ) : null}
@@ -598,7 +589,7 @@ export function DashboardShellInner({
               <p className="text-sm text-rose-200/70 mb-6">Your current role does not have access to this module.</p>
               <div className="flex justify-center gap-3">
                 <Link href="/" className="rounded-xl border border-white/10 bg-slate-900 px-6 py-3 text-xs font-bold text-white transition hover:bg-slate-800 shadow-lg">Back to Overview</Link>
-                {canAccessDemoLab ? <Link href="/demo-lab" className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-500/20">Open Demo Lab</Link> : null}
+                {canAccessDemoLab ? <Link href={DASHBOARD_DESTINATIONS.demoLab.href} className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-500/20">Open Demo Lab</Link> : null}
               </div>
             </div>
           ) : children}

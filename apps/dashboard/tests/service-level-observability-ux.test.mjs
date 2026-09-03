@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const page = await readFile(new URL("../src/app/(app)/service-levels/page.tsx", import.meta.url), "utf8");
-const shell = await readFile(new URL("../src/components/dashboard-layout-shell.tsx", import.meta.url), "utf8");
+const shell = await readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8");
+const destinations = await readFile(new URL("../src/lib/dashboard-destination-policy.ts", import.meta.url), "utf8");
 const permissions = await readFile(new URL("../src/lib/permission-policy.ts", import.meta.url), "utf8");
 
 test("SLO console accepts only the persisted non-demo schema", () => {
@@ -33,7 +34,8 @@ test("console exposes response contracts and differentiates measured evaluation 
 });
 
 test("navigation and BFF permission policy require analytics read access", () => {
-  assert.match(shell, /href: "\/service-levels"/);
+  assert.match(shell, /destination: "serviceLevels"/);
+  assert.match(destinations, /serviceLevels:\s*\{ href: "\/service-levels", requiredPermissions: \["analytics:read"\] \}/);
   assert.match(permissions, /normalizedPath === "observability\/service-levels"/);
   assert.match(permissions, /return "analytics:read"/);
 });

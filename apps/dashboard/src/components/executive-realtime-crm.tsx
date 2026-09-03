@@ -59,6 +59,17 @@ type CrmSection = "summary" | "infra" | "loyalty";
 type MapView = "heat" | "points" | "nearby";
 type TimeRange = "5m" | "1h" | "24h";
 
+type CrmRailItem = {
+  icon: ReactNode;
+  active: boolean;
+  label: string;
+  short: string;
+  title: string;
+  action: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
+};
+
 type MarketOpportunity = {
   key: string;
   city: string;
@@ -672,7 +683,9 @@ export function ExecutiveRealtimeCrm({
   const [activeDataSource, setActiveDataSource] = useState<RealtimeDataSource>(initialDataSource);
   const [dataAvailability, setDataAvailability] = useState<RealtimeAvailability>(initialAvailability);
   const [availabilityDetail, setAvailabilityDetail] = useState(initialAvailabilityDetail);
-  const [selectedTenant, setSelectedTenant] = useState("all");
+  const tenantSession = mode === "tenant";
+  const lockedTenantScope = String(tenantScope || "").trim().toLowerCase();
+  const [selectedTenant, setSelectedTenant] = useState(() => tenantSession ? lockedTenantScope : "all");
   const [mapView, setMapView] = useState<MapView>("heat");
   const [baseMap, setBaseMap] = useState<BaseMapLayer>("light");
   const [mapZoom, setMapZoom] = useState(1);
@@ -687,6 +700,12 @@ export function ExecutiveRealtimeCrm({
   const canWriteIncidents = account.role === "super-admin" || dashboardPermissionMatches(account.permissions, "incidents:write");
   const lastEventIdRef = useRef("");
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (tenantSession) setSelectedTenant(lockedTenantScope);
+  }, [lockedTenantScope, tenantSession]);
+
+  const effectiveSelectedTenant = tenantSession ? lockedTenantScope : selectedTenant;
 
   const handleIncident = useCallback((incident: DashboardIncident) => {
     setIncidentsByEventId((current) => ({ ...current, [String(incident.eventId)]: incident }));
@@ -947,18 +966,18 @@ export function ExecutiveRealtimeCrm({
   const visibleEvents = useMemo(
     () => {
       const cutoff = Date.now() - timeRangeMs(timeRange);
-      return (selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant))
+      return (effectiveSelectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === effectiveSelectedTenant))
         .filter((event) => {
           const at = safeDate(event.occurredAt);
           return !at || at >= cutoff;
         });
     },
-    [events, selectedTenant, timeRange],
+    [effectiveSelectedTenant, events, timeRange],
   );
 
   const consoleTimezone = useMemo(
-    () => resolveConsoleTimezone(visibleEvents, selectedTenant, tenantScope),
-    [selectedTenant, tenantScope, visibleEvents],
+    () => resolveConsoleTimezone(visibleEvents, effectiveSelectedTenant, tenantScope),
+    [effectiveSelectedTenant, tenantScope, visibleEvents],
   );
   const consoleTimezoneLabel = useMemo(() => timezoneLabel(consoleTimezone), [consoleTimezone]);
 
@@ -1030,8 +1049,8 @@ export function ExecutiveRealtimeCrm({
   const marketOpportunities = useMemo(() => buildMarketOpportunities(hotspots, visibleEvents), [hotspots, visibleEvents]);
   const topOpportunity = marketOpportunities[0] || null;
   const commercialContext = useMemo(
-    () => resolveCommercialContext(visibleEvents, tenantScope, selectedTenant),
-    [selectedTenant, tenantScope, visibleEvents],
+    () => resolveCommercialContext(visibleEvents, tenantScope, effectiveSelectedTenant),
+    [effectiveSelectedTenant, tenantScope, visibleEvents],
   );
   const latestEvent = visibleEvents[0] || null;
   const todayLabel = useMemo(() => formatDateInZone(Date.now(), consoleTimezone), [consoleTimezone]);
@@ -1074,8 +1093,9 @@ export function ExecutiveRealtimeCrm({
   }, [consoleTimezone, hotspots, latestEvent, metrics, visibleEvents]);
 
   const handleExport = () => {
+    if (visibleEvents.length === 0) return;
     exportToCsv(
-      `nexid-crm-realtime-${selectedTenant}-${new Date().toISOString().slice(0, 10)}`,
+      `nexid-crm-realtime-${effectiveSelectedTenant || "tenant-sin-scope"}-${new Date().toISOString().slice(0, 10)}`,
       visibleEvents.map((event) => ({
         eventId: event.eventId,
         tenant: event.tenantSlug || "",
@@ -1104,6 +1124,15 @@ export function ExecutiveRealtimeCrm({
       ],
     );
   };
+
+  const exportDisabledReason = "No hay filas en el tenant, filtros y ventana actuales para exportar.";
+  const streetViewTarget = useMemo(
+    () => visibleEvents
+      .map((event) => strictCoordinatePair(event.lat, event.lng))
+      .find((coordinate) => coordinate != null) || null,
+    [visibleEvents],
+  );
+  const streetViewDisabledReason = "No hay coordenadas reportadas utilizables en la ventana actual.";
 
   const rowsForOpportunity = (opportunity: MarketOpportunity) => {
     return visibleEvents.filter((event) => {
@@ -1184,21 +1213,18 @@ export function ExecutiveRealtimeCrm({
   };
 
   const openStreetView = () => {
-    const target = visibleEvents
-      .map((event) => strictCoordinatePair(event.lat, event.lng))
-      .find((coordinate) => coordinate != null);
-    if (!target) return;
-    window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${target.lat},${target.lng}`, "_blank", "noopener,noreferrer");
+    if (!streetViewTarget) return;
+    window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${streetViewTarget.lat},${streetViewTarget.lng}`, "_blank", "noopener,noreferrer");
   };
 
-  const railItems = [
+  const railItems: CrmRailItem[] = [
     { icon: <Activity className="h-5 w-5" />, active: true, label: "Resumen operativo", short: "Vista", title: "Ver KPIs explicados, funnel post-tap y estado de la ventana activa.", action: () => onSectionChange?.("summary") },
     { icon: <Globe className="h-5 w-5" />, active: false, label: "Mapa por capas", short: "Capas", title: "Centrar el mapa y conservar la capa seleccionada.", action: () => { setMapZoom(1); document.getElementById("live-tap-map")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
     { icon: <Megaphone className="h-5 w-5" />, active: false, label: "IA de cercanía", short: "IA", title: "Ver priorización comercial por zona basada en eventos visibles.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
-    { icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } },
-    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar ventana", short: "CSV", title: "Exportar eventos visibles con horario del tenant.", action: handleExport },
-    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { setSelectedTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
+    ...(canReadSensitiveEvents ? [{ icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } }] : []),
+    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar ventana", short: "CSV", title: "Exportar eventos visibles con horario del tenant.", action: handleExport, disabled: visibleEvents.length === 0, disabledReason: exportDisabledReason },
+    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { setSelectedTenant(tenantSession ? lockedTenantScope : "all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
   ];
 
   return (
@@ -1258,9 +1284,10 @@ export function ExecutiveRealtimeCrm({
               type="button"
               aria-label={item.label}
               aria-pressed={Boolean(item.active)}
-              title={item.title}
+              title={item.disabled ? item.disabledReason : item.title}
               onClick={item.action}
-              className={`group relative flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-xl border text-[9px] font-black uppercase tracking-[0.04em] transition ${item.active ? "border-cyan-300/50 bg-cyan-400/16 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,.18)]" : "border-white/6 text-slate-400 hover:border-cyan-300/25 hover:bg-white/5 hover:text-white"}`}
+              disabled={item.disabled}
+              className={`group relative flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-xl border text-[9px] font-black uppercase tracking-[0.04em] transition ${item.disabled ? "cursor-not-allowed border-white/5 text-slate-600" : item.active ? "border-cyan-300/50 bg-cyan-400/16 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,.18)]" : "border-white/6 text-slate-400 hover:border-cyan-300/25 hover:bg-white/5 hover:text-white"}`}
             >
               {item.icon}
               <span className="max-w-full truncate">{item.short}</span>
@@ -1350,9 +1377,15 @@ export function ExecutiveRealtimeCrm({
                 <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
               </div>
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
-                <select size={1} aria-label="Filtrar lecturas por tenant" title="Filtrar lecturas por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-11 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
-                  <option value="all">Todos los tenants</option>
-                  {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenantDisplayName(tenant)}</option>)}
+                <select size={1} aria-label="Filtrar lecturas por tenant" title={tenantSession ? "Alcance fijado por la sesión tenant" : "Filtrar lecturas por tenant"} value={effectiveSelectedTenant} disabled={tenantSession} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-11 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white disabled:cursor-not-allowed disabled:text-slate-400 sm:col-span-1 sm:w-auto sm:min-w-[150px]">
+                  {tenantSession ? (
+                    <option value={lockedTenantScope}>{lockedTenantScope ? tenantDisplayName(lockedTenantScope) : "Tenant no disponible"}</option>
+                  ) : (
+                    <>
+                      <option value="all">Todos los tenants</option>
+                      {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenantDisplayName(tenant)}</option>)}
+                    </>
+                  )}
                 </select>
                 <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -1360,7 +1393,7 @@ export function ExecutiveRealtimeCrm({
                 <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
                   {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <button type="button" title="Exportar eventos visibles a CSV" onClick={handleExport} className="flex h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50"><Download className="h-4 w-4" /> Exportar</button>
+                <button type="button" title={visibleEvents.length === 0 ? exportDisabledReason : "Exportar eventos visibles a CSV"} onClick={handleExport} disabled={visibleEvents.length === 0} className="flex h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {visibleEvents.length === 0 ? "Sin filas" : "Exportar"}</button>
               </div>
             </div>
 
@@ -1407,7 +1440,7 @@ export function ExecutiveRealtimeCrm({
                     </button>
                   ))}
                 </div>
-                <button type="button" title="Abrir Google Maps Street View en la coordenada más reciente" onClick={openStreetView} className="hidden h-11 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 xl:flex"><Globe className="h-4 w-4" /> Street</button>
+                <button type="button" title={streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={!streetViewTarget} className="hidden h-11 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 xl:flex"><Globe className="h-4 w-4" /> {streetViewTarget ? "Street" : "Sin GPS"}</button>
                 <button type="button" title="Restablecer mapa a capa de densidad y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
                 <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-4 w-4" /></button>
               </div>

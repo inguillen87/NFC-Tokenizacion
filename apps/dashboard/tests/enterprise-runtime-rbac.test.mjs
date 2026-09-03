@@ -215,13 +215,14 @@ test("every dashboard locale and navigation profile is exhaustive for the enterp
 });
 
 test("admin BFF, stream and UI runtime consume the shared fail-closed role catalog", async () => {
-  const [proxy, stream, session, forms, shell, layout] = await Promise.all([
+  const [proxy, stream, session, forms, shell, layout, destinations] = await Promise.all([
     readFile(new URL("../src/app/api/admin/[...path]/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/app/api/admin/events/stream/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/session.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/components/admin-action-forms.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/(app)/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/dashboard-destination-policy.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(proxy, /import \{ dashboardRoleToScope \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/enterprise-runtime-rbac"/);
@@ -243,6 +244,8 @@ test("admin BFF, stream and UI runtime consume the shared fail-closed role catal
 
   assert.match(shell, /currentRole: UserRole/);
   assert.match(shell, /currentRole === "reseller-admin" \|\| currentRole === "reseller"/);
-  assert.match(shell, /dashboardPermissionMatches\([\s\S]*currentDeniedPermissions/);
+  assert.match(shell, /dashboardCanOpenDestination\(destination, destinationAccess\)/);
+  assert.match(destinations, /dashboardPermissionMatches\(permissions, permission, deniedPermissions\)/);
+  assert.match(destinations, /dashboardHighImpactPermissionMatches\([\s\S]*deniedPermissions/);
   assert.match(layout, /currentDeniedPermissions=\{session\.deniedPermissions\}/);
 });

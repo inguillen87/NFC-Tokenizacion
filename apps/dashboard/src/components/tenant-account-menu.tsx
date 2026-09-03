@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
 import {
   BookOpen,
@@ -24,13 +24,18 @@ import {
   dashboardRoleInitials,
   dashboardRoleLabel,
 } from "../lib/enterprise-runtime-rbac";
-import { dashboardHighImpactPermissionMatches } from "../lib/permission-policy";
+import {
+  DASHBOARD_DESTINATIONS,
+  dashboardCanOpenDestination,
+  type DashboardDestinationKey,
+} from "../lib/dashboard-destination-policy";
 
 type AccountMenuItem = {
   href: string;
   icon: ReactNode;
   label: string;
   meta: string;
+  destination?: DashboardDestinationKey;
   external?: boolean;
 };
 
@@ -581,19 +586,11 @@ export function TenantAccountMenu({
   const accountLabel = isDemo ? `Demo · ${label || tenantName}` : label || tenantName;
   const isTenantMode = mode === "tenant";
   const accountRoleDescription = dashboardRoleDescription(role, mode);
-  const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
-  const canReadApiKeys = dashboardHighImpactPermissionMatches(
-    role,
-    permissions,
-    "api_keys.read",
-    deniedPermissions,
+  const destinationAccess = { role, permissions, deniedPermissions, isDemo };
+  const canOpenDestination = (destination: DashboardDestinationKey) => (
+    dashboardCanOpenDestination(destination, destinationAccess)
   );
-  const canReadProof = dashboardHighImpactPermissionMatches(
-    role,
-    permissions,
-    "proofs.read",
-    deniedPermissions,
-  );
+  const canManageUsers = canOpenDestination("users");
   const isClerkSsoSession = role === "super-admin" && Boolean(clerkEnabled);
   const hasWildcardAccess = permissions.includes("*");
   const normalizedPermissions = isDemo
@@ -638,10 +635,10 @@ export function TenantAccountMenu({
     },
   ];
   const nextAction = setupCompleted === false && role === "tenant-admin"
-    ? { href: "/onboarding", label: "Completar setup del tenant", meta: "Datos, equipo e integraciones base" }
+    ? { href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Completar setup del tenant", meta: "Datos, equipo e integraciones base" }
     : isTenantMode
       ? { href: tenantHref, label: "Abrir perfil del tenant", meta: "Contexto, navegación y playbook del workspace" }
-      : { href: "/settings", label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
+      : { href: DASHBOARD_DESTINATIONS.settings.href, label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
 
   const updatePanelPosition = useCallback(() => {
     if (typeof window === "undefined") {
@@ -834,9 +831,10 @@ export function TenantAccountMenu({
     };
   }, [open, updatePanelPosition]);
 
-  const primaryItems = useMemo<AccountMenuItem[]>(() => [
+  const primaryItemCandidates: AccountMenuItem[] = [
     {
-      href: "/settings",
+      destination: "settings",
+      href: DASHBOARD_DESTINATIONS.settings.href,
       icon: <Settings className="h-4 w-4" />,
       label: "Configuracion del workspace",
       meta: "Tenant, seguridad, datos, integraciones y soporte",
@@ -848,52 +846,61 @@ export function TenantAccountMenu({
       meta: isTenantMode ? "Plan, vertical, health y playbook del tenant" : "Cuentas, planes, regiones y health global",
     },
     {
-      href: canManageUsers ? "/users" : "/settings",
+      destination: canManageUsers ? "users" : "settings",
+      href: canManageUsers ? DASHBOARD_DESTINATIONS.users.href : DASHBOARD_DESTINATIONS.settings.href,
       icon: <Users className="h-4 w-4" />,
       label: canManageUsers ? "Usuarios y permisos" : "Permisos del workspace",
       meta: canManageUsers ? "Roles, alcance, reset y revocación de MFA legacy" : "Solicitudes, politicas y alcance autorizado",
     },
     {
-      href: "/mfa",
+      destination: "mfa",
+      href: DASHBOARD_DESTINATIONS.mfa.href,
       icon: <ShieldCheck className="h-4 w-4" />,
       label: "Seguridad de cuenta",
       meta: "SSO, sesión y estado fail-closed de TOTP",
     },
-  ], [canManageUsers, isTenantMode, tenantHref, tenantName]);
+  ];
+  const primaryItems = primaryItemCandidates.filter((item) => !item.destination || canOpenDestination(item.destination));
 
-  const operationsItems = useMemo<AccountMenuItem[]>(() => [
+  const operationsItemCandidates: AccountMenuItem[] = [
     {
-      href: "/proof",
+      destination: "proof",
+      href: DASHBOARD_DESTINATIONS.proof.href,
       icon: <FileSearch className="h-4 w-4" />,
       label: "Proof, IOTA y anchors",
       meta: "Hashes, Merkle roots, decoder y recibos publicos",
     },
     {
-      href: "/demo-lab",
+      destination: "demoLab",
+      href: DASHBOARD_DESTINATIONS.demoLab.href,
       icon: <FlaskConical className="h-4 w-4" />,
       label: "Demo Lab enterprise",
       meta: "Secure Delivery, pharma, agro y ventas guiadas",
     },
     {
-      href: "/tokenization",
+      destination: "tokenization",
+      href: DASHBOARD_DESTINATIONS.tokenization.href,
       icon: <Network className="h-4 w-4" />,
       label: "Polygon ownership",
       meta: "Claims, certificados, warranty y ownership transferible",
     },
     {
-      href: `/api-keys${tenantQuery}`,
+      destination: "apiKeys",
+      href: `${DASHBOARD_DESTINATIONS.apiKeys.href}${tenantQuery}`,
       icon: <KeyRound className="h-4 w-4" />,
       label: "API keys y webhooks",
       meta: "ERP, CRM, proof anchors y eventos",
     },
     {
-      href: `/subscriptions${tenantQuery}`,
+      destination: "subscriptions",
+      href: `${DASHBOARD_DESTINATIONS.subscriptions.href}${tenantQuery}`,
       icon: <CreditCard className="h-4 w-4" />,
       label: "Plan y facturacion",
       meta: "Plan, renovacion, uso y upgrade path",
     },
     {
-      href: "/sales-playbook",
+      destination: "salesPlaybook",
+      href: DASHBOARD_DESTINATIONS.salesPlaybook.href,
       icon: <BookOpen className="h-4 w-4" />,
       label: "Playbook comercial",
       meta: "Como explicar valor, riesgo y ROI",
@@ -905,10 +912,8 @@ export function TenantAccountMenu({
       meta: "Cuenta, integracion, incidentes o preventa",
       external: true,
     },
-  ].filter((item) => (
-    (!item.href.startsWith("/api-keys") || canReadApiKeys)
-    && (item.href !== "/proof" || canReadProof)
-  )), [canReadApiKeys, canReadProof, tenantQuery]);
+  ];
+  const operationsItems = operationsItemCandidates.filter((item) => !item.destination || canOpenDestination(item.destination));
 
   const itemContent = (item: AccountMenuItem) => (
     <>
