@@ -125,3 +125,24 @@ test("sensitive direct destinations use the same server-side policy as dashboard
   assert.match(subscriptions, /requireDashboardDestination\("subscriptions"\)/);
   assert.match(encoderLayout, /requireDashboardDestination\("demoEncoder"\)/);
 });
+
+test("tenant operational routes that previously relied on hidden navigation are guarded server-side", async () => {
+  const guardedLayouts = {
+    analytics: "../src/app/(app)/analytics/layout.tsx",
+    serviceLevels: "../src/app/(app)/service-levels/layout.tsx",
+    tags: "../src/app/(app)/tags/layout.tsx",
+    marketplace: "../src/app/(app)/consumer-network/marketplace/layout.tsx",
+    consumerOverview: "../src/app/(app)/consumer-network/overview/layout.tsx",
+  };
+
+  for (const [destination, path] of Object.entries(guardedLayouts)) {
+    const layout = await source(path);
+    assert.match(layout, new RegExp(`requireDashboardDestination\\("${destination}"\\)`), destination);
+  }
+});
+
+test("sidebar search has one result per authorized href and billing follows the registry", async () => {
+  const shell = await source("../src/components/dashboard-shell.tsx");
+  assert.match(shell, /new Map\([\s\S]*\.map\(\(entry\) => \[entry\.href, entry\] as const\)/);
+  assert.match(shell, /canOpenDestination\("billing"\) \? \([\s\S]*DASHBOARD_DESTINATIONS\.billing\.href/);
+});

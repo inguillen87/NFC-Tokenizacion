@@ -118,6 +118,13 @@ test("account drawer exposes expected SaaS account actions and secure logout", (
   assert.match(secureLogoutSource, /signOut\(\{ redirectUrl: LOGOUT_REDIRECT \}\)/);
 });
 
+test("account drawer uses real links for every internal destination", () => {
+  assert.match(menuSource, /import Link from "next\/link"/);
+  assert.match(menuSource, /<Link[\s\S]*href=\{item\.href\}[\s\S]*data-nav-href=\{item\.href\}[\s\S]*onClick=\{closeMenu\}/);
+  assert.match(menuSource, /<Link[\s\S]*href=\{nextAction\.href\}[\s\S]*data-testid="tenant-account-primary-action"/);
+  assert.doesNotMatch(menuSource, /window\.location\.href = item\.href/);
+});
+
 test("dashboard clears stale PWA runtime before old admin CSS can mask fixes", () => {
   assert.match(layoutSource, /const staleDashboardRuntimeCleanupScript = `/);
   assert.match(layoutSource, /nexid-dashboard-runtime-cleared-v7/);

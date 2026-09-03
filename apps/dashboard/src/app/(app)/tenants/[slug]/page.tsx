@@ -23,6 +23,12 @@ import { TENANT_DIRECTORY } from "../../../../lib/tenant-directory";
 import { productUrls } from "@product/config";
 import { requireDashboardSession } from "../../../../lib/session";
 import { requireDashboardTenantScope } from "../../../../lib/admin-page-access";
+import {
+  DASHBOARD_DESTINATIONS,
+  dashboardCanOpenDestination,
+  type DashboardDestinationKey,
+} from "../../../../lib/dashboard-destination-policy";
+import { dashboardPermissionMatches } from "../../../../lib/permission-policy";
 
 type TenantKpis = {
   batches: string;
@@ -111,6 +117,7 @@ function metricCards(tenant: (typeof TENANT_DIRECTORY)[number], playbook: Tenant
 function proofLayers(tenantSlug: string) {
   return [
     {
+      destination: "events" as const,
       label: "nexID Core",
       body: "Identidad de producto, reglas de canal, CRM y permisos del tenant.",
       href: `/events?tenant=${tenantSlug}`,
@@ -118,6 +125,7 @@ function proofLayers(tenantSlug: string) {
       tone: "cyan",
     },
     {
+      destination: "proof" as const,
       label: "IOTA proof",
       body: "Integridad hash-only para registros declarados de custodia o QA.",
       href: `/proof/anchor?tenant=${tenantSlug}`,
@@ -125,6 +133,7 @@ function proofLayers(tenantSlug: string) {
       tone: "green",
     },
     {
+      destination: "tokenization" as const,
       label: "Polygon titularidad digital",
       body: "Capa opcional para reclamo, garantia o certificado digital segun policy; no prueba propiedad fisica.",
       href: `/tokenization?tenant=${tenantSlug}`,
@@ -132,6 +141,7 @@ function proofLayers(tenantSlug: string) {
       tone: "violet",
     },
     {
+      destination: "apiKeys" as const,
       label: "SDK / API",
       body: "Keys, webhooks y salida publica conectada a apps externas.",
       href: `/api-keys?tenant=${tenantSlug}`,
@@ -153,6 +163,25 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
   const session = await requireDashboardSession();
   const scope = requireDashboardTenantScope(session, slug);
   if (!scope.canSelectTenant && scope.tenantSlug !== slug.trim().toLowerCase()) notFound();
+  const destinationAccess = {
+    role: session.role,
+    permissions: session.permissions,
+    deniedPermissions: session.deniedPermissions,
+    isDemo: session.isDemo,
+  };
+  const canOpenDestination = (destination: DashboardDestinationKey) => (
+    dashboardCanOpenDestination(destination, destinationAccess)
+  );
+  const canOpenScopedLink = (link: { destination?: DashboardDestinationKey; requiredPermission?: string }) => (
+    (!link.destination || canOpenDestination(link.destination))
+    && (!link.requiredPermission || dashboardPermissionMatches(
+      session.permissions,
+      link.requiredPermission,
+      session.deniedPermissions,
+    ))
+  );
+  const backHref = canOpenDestination("tenants") ? DASHBOARD_DESTINATIONS.tenants.href : DASHBOARD_DESTINATIONS.settings.href;
+  const backLabel = canOpenDestination("tenants") ? "Volver a tenants" : "Volver a configuración";
   const tenant = TENANT_DIRECTORY.find((item) => item.slug === slug);
 
   if (!tenant) {
@@ -161,9 +190,9 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
         <SectionHeading eyebrow="Tenants" title={slug} description="Cuenta no encontrada en el directorio demo." />
         <Card className="p-6 text-sm text-rose-200">
           <p>Tenant no encontrado. Volve a la lista y elegi una cuenta disponible.</p>
-          <Link href="/tenants" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 font-bold text-rose-100">
+          <Link href={backHref} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 font-bold text-rose-100">
             <ArrowLeft className="h-4 w-4" />
-            Volver a tenants
+            {backLabel}
           </Link>
         </Card>
       </main>
@@ -174,24 +203,31 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
   const publicMobile = `${productUrls.web}/demo-lab/mobile/${tenant.slug}/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
   const playbook = tenantPlaybook(tenant.vertical);
   const metrics = metricCards(tenant, playbook);
-  const layers = proofLayers(tenantParam);
+  const layerCandidates = proofLayers(tenantParam);
+  const layers = layerCandidates.filter(canOpenScopedLink);
 
-  const accountActions = [
-    { href: "/settings", label: "Configuracion", icon: <Settings className="h-4 w-4" />, tone: "cyan" },
-    { href: "/users", label: "Usuarios", icon: <Users className="h-4 w-4" />, tone: "green" },
-    { href: `/api-keys?tenant=${tenantParam}`, label: "API", icon: <KeyRound className="h-4 w-4" />, tone: "violet" },
-    { href: `/subscriptions?tenant=${tenantParam}`, label: "Plan", icon: <CreditCard className="h-4 w-4" />, tone: "amber" },
+  const accountActionCandidates = [
+    { destination: "settings" as const, href: DASHBOARD_DESTINATIONS.settings.href, label: "Configuracion", icon: <Settings className="h-4 w-4" />, tone: "cyan" },
+    { destination: "users" as const, href: DASHBOARD_DESTINATIONS.users.href, label: "Usuarios", icon: <Users className="h-4 w-4" />, tone: "green" },
+    { destination: "apiKeys" as const, href: `/api-keys?tenant=${tenantParam}`, label: "API", icon: <KeyRound className="h-4 w-4" />, tone: "violet" },
+    { destination: "subscriptions" as const, href: `/subscriptions?tenant=${tenantParam}`, label: "Plan", icon: <CreditCard className="h-4 w-4" />, tone: "amber" },
   ];
+  const accountActions = accountActionCandidates.filter(canOpenScopedLink);
 
-  const operationalLinks = [
-    { href: `/admin/tenant-vault/${tenantParam}`, label: "Tenant Vault", body: "Órdenes, manifests, QA y evidencia segura." },
-    { href: `/batches?tenant=${tenantParam}`, label: "Lotes", body: "Emision, import y activacion." },
-    { href: `/tags?tenant=${tenantParam}`, label: "Tags", body: "NFC/QR, inventario y estado." },
-    { href: `/events?tenant=${tenantParam}`, label: "Eventos", body: "Lecturas, riesgo y auditoria." },
-    { href: `/analytics?tenant=${tenantParam}`, label: "Health operativo", body: "KPI, riesgo y tendencias." },
-    { href: `/leads-tickets?tenant=${tenantParam}`, label: "Leads y tickets", body: "CRM, soporte y oportunidades." },
-    { href: `/demo-lab?tenant=${tenantParam}`, label: "Demo Lab", body: "Experiencia publica y comercial." },
+  const operationalLinkCandidates = [
+    { requiredPermission: "supplier_orders:read", href: `/admin/tenant-vault/${tenantParam}`, label: "Tenant Vault", body: "Órdenes, manifests, QA y evidencia segura." },
+    { destination: "batches" as const, href: `/batches?tenant=${tenantParam}`, label: "Lotes", body: "Emision, import y activacion." },
+    { destination: "tags" as const, href: `/tags?tenant=${tenantParam}`, label: "Tags", body: "NFC/QR, inventario y estado." },
+    { destination: "events" as const, href: `/events?tenant=${tenantParam}`, label: "Eventos", body: "Lecturas, riesgo y auditoria." },
+    { destination: "analytics" as const, href: `/analytics?tenant=${tenantParam}`, label: "Health operativo", body: "KPI, riesgo y tendencias." },
+    { destination: "leadsTickets" as const, href: `/leads-tickets?tenant=${tenantParam}`, label: "Leads y tickets", body: "CRM, soporte y oportunidades." },
+    { destination: "demoLab" as const, href: `/demo-lab?tenant=${tenantParam}`, label: "Demo Lab", body: "Experiencia publica y comercial." },
   ];
+  const operationalLinks = operationalLinkCandidates.filter(canOpenScopedLink);
+  const canOpenBatches = canOpenDestination("batches");
+  const restrictedLinkCount = accountActionCandidates.length - accountActions.length
+    + layerCandidates.length - layers.length
+    + operationalLinkCandidates.length - operationalLinks.length;
 
   return (
     <main className="space-y-8" data-testid="tenant-detail-enterprise-profile" data-tenant-source={tenant.source}>
@@ -250,6 +286,11 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
                     </Link>
                   ))}
                 </div>
+                {restrictedLinkCount > 0 ? (
+                  <p data-testid="tenant-detail-restricted-destinations" className="mt-3 text-xs leading-5 text-amber-100">
+                    Se omitieron {restrictedLinkCount} accesos que esta sesión no tiene habilitados; no se ofrecen rutas que luego fallen por permisos.
+                  </p>
+                ) : null}
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
@@ -258,9 +299,9 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
                   Volve a la cartera o abrile al cliente una prueba publica mobile.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                  <Link href="/tenants" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 font-bold text-slate-100 transition hover:border-cyan-300/40">
+                  <Link href={backHref} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 font-bold text-slate-100 transition hover:border-cyan-300/40">
                     <ArrowLeft className="h-4 w-4" />
-                    Volver a tenants
+                    {backLabel}
                   </Link>
                   <a href={publicMobile} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-100 transition hover:border-emerald-200/60" target="_blank" rel="noreferrer">
                     <Smartphone className="h-4 w-4" />
@@ -279,9 +320,9 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
 
             <div className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Siguiente paso recomendado</p>
-              <p className="mt-2 text-sm font-bold text-white">{playbook.nextActions[0]}</p>
-              <Link href={`/batches?tenant=${tenantParam}`} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-black text-emerald-100 transition hover:border-emerald-200/60">
-                Abrir lotes
+              <p className="mt-2 text-sm font-bold text-white">{canOpenBatches ? playbook.nextActions[0] : "Revisar el alcance efectivo antes de continuar con la operación."}</p>
+              <Link href={canOpenBatches ? `/batches?tenant=${tenantParam}` : DASHBOARD_DESTINATIONS.settings.href} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-black text-emerald-100 transition hover:border-emerald-200/60">
+                {canOpenBatches ? "Abrir lotes" : "Revisar configuración"}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -338,6 +379,11 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
                 <p className="mt-1 text-xs leading-5 text-slate-300">{layer.body}</p>
               </Link>
             ))}
+            {!layers.length ? (
+              <p className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4 text-sm text-amber-100 sm:col-span-2">
+                Esta sesión no tiene habilitadas capas de evidencia adicionales. Revisá los permisos efectivos desde Configuración.
+              </p>
+            ) : null}
           </div>
         </Card>
       </section>

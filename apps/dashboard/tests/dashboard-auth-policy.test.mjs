@@ -65,6 +65,7 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   const sessionLoginRoute = readFileSync(new URL("../src/lib/session-login-route.ts", import.meta.url), "utf8");
   const secureLogoutButton = readFileSync(new URL("../src/components/secure-dashboard-logout-button.tsx", import.meta.url), "utf8");
   const accountMenu = readFileSync(new URL("../src/components/tenant-account-menu.tsx", import.meta.url), "utf8");
+  const registerPanel = readFileSync(new URL("../src/components/register-access-panel.tsx", import.meta.url), "utf8");
   const superadminPage = readFileSync(new URL("../src/app/(app)/superadmin-network/page.tsx", import.meta.url), "utf8");
 
   assert.match(loginPage, /profile\.role !== "super-admin"/);
@@ -123,6 +124,9 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(secureLogoutButton, /signOut\(\{ redirectUrl: LOGOUT_REDIRECT \}\)/);
   assert.match(secureLogoutButton, /window\.location\.href = LOGOUT_REDIRECT/);
   assert.match(accountMenu, /SecureDashboardLogoutButton/);
+  assert.match(registerPanel, /const clerk = useClerk\(\)/);
+  assert.match(registerPanel, /onClick=\{\(\) => void clerk\.openSignUp\(\)\}/);
+  assert.doesNotMatch(registerPanel, /onClick=\{\(\) => \{\}\}/);
 
   assert.match(sessionLoginRoute, /accessProfile\?\.role === "super-admin"/);
   assert.match(sessionLoginRoute, /profile_login_denied/);

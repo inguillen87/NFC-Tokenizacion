@@ -30,6 +30,17 @@ test("expired sessions fail closed and redirect once with actionable copy", () =
   assert.match(login, /Tu sesión venció o dejó de ser válida/);
 });
 
+test("heartbeat requires a confirmed session payload and explains transient failures", () => {
+  assert.match(heartbeat, /payload\.ok === true/);
+  assert.match(heartbeat, /payload\.session/);
+  assert.match(heartbeat, /setConnectionState\("degraded"\)/);
+  assert.match(heartbeat, /data-testid="session-heartbeat-degraded"/);
+  assert.match(heartbeat, /No se toma una respuesta vacía o inválida como sesión activa/);
+  assert.match(heartbeat, /dashboardAuthPath\("\/session-recovery", returnPath\)/);
+  assert.match(heartbeat, /if \(failures >= 2\)[\s\S]*window\.location\.replace\(nextRecoveryHref\)/);
+  assert.match(heartbeat, /onClick=\{\(\) => retryRef\.current\(\)\}/);
+});
+
 test("the current-session BFF never turns an upstream denial into a guest session", () => {
   assert.match(currentSession, /upstream\.status === 401 \|\| upstream\.status === 403/);
   assert.match(currentSession, /return expiredSessionResponse\(upstream\.status\)/);

@@ -17,11 +17,16 @@ import {
 import { Badge, Card, SectionHeading } from "@product/ui";
 import { SecureDashboardLogoutButton } from "../../../components/secure-dashboard-logout-button";
 import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
+import {
+  DASHBOARD_DESTINATIONS,
+  dashboardCanOpenDestination,
+  type DashboardDestinationKey,
+} from "../../../lib/dashboard-destination-policy";
 import { dashboardRoleLabel } from "../../../lib/enterprise-runtime-rbac";
-import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
 
 type SettingsTile = {
+  destination?: DashboardDestinationKey;
   href: string;
   label: string;
   eyebrow: string;
@@ -58,18 +63,16 @@ export default async function SettingsPage() {
   const tenantQuery = tenantSlug ? `?tenant=${encodeURIComponent(tenantSlug)}` : "";
   const tenantHref = tenantSlug ? `/tenants/${encodeURIComponent(tenantSlug)}` : "/tenants";
   const tenantName = tenantNameFromSlug(tenantSlug);
-  const canReadApiKeys = dashboardHighImpactPermissionMatches(
-    session.role,
-    session.permissions,
-    "api_keys.read",
-    session.deniedPermissions,
+  const destinationAccess = {
+    role: session.role,
+    permissions: session.permissions,
+    deniedPermissions: session.deniedPermissions,
+    isDemo: session.isDemo,
+  };
+  const canOpenDestination = (destination: DashboardDestinationKey) => (
+    dashboardCanOpenDestination(destination, destinationAccess)
   );
-  const canReadProof = dashboardHighImpactPermissionMatches(
-    session.role,
-    session.permissions,
-    "proofs.read",
-    session.deniedPermissions,
-  );
+  const canReadProof = canOpenDestination("proof");
   const isClerkSuperAdminSession = session.role === "super-admin" && !session.mfaVerified;
   const clerkEnabled = isClerkConfiguredForRuntime();
   const sessionSecurityLabel = session.isDemo
@@ -80,20 +83,19 @@ export default async function SettingsPage() {
         ? "MFA legacy reportado; migración requerida"
         : "TOTP nexID no disponible";
   const securityBadgeTone = isClerkSuperAdminSession ? "green" : "amber";
-  const canManageUsers = session.role === "super-admin"
-    || session.permissions.includes("*")
-    || session.permissions.includes("users:manage")
-    || session.permissions.includes("employees:*");
   const setupStatus = session.setupCompleted === false ? "Setup pendiente" : "Setup completo";
   const workspaceMode = session.role === "super-admin" ? "Global workspace" : "Tenant workspace";
 
   const primaryAction = session.setupCompleted === false && session.role === "tenant-admin"
-    ? { href: "/onboarding", label: "Completar setup", meta: "Datos base, equipo e integraciones iniciales" }
-    : { href: tenantHref, label: "Abrir workspace", meta: "Perfil, alcance y acciones del tenant" };
+    ? { href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Completar setup", meta: "Datos base, equipo e integraciones iniciales" }
+    : tenantSlug || canOpenDestination("tenants")
+      ? { href: tenantHref, label: "Abrir workspace", meta: "Perfil, alcance y acciones autorizadas del tenant" }
+      : { href: DASHBOARD_DESTINATIONS.overview.href, label: "Volver al dashboard", meta: "La sesión no tiene un tenant navegable asociado" };
 
   const allTiles: SettingsTile[] = [
     {
-      href: "/proof",
+      destination: "proof",
+      href: DASHBOARD_DESTINATIONS.proof.href,
       label: "Proof, IOTA y anchors",
       eyebrow: "Trust layer",
       body: "Verificador de hashes, Merkle roots, decoder para explorer y recibos publicos hash-only.",
@@ -102,7 +104,8 @@ export default async function SettingsPage() {
       icon: <FileSearch className="h-5 w-5" />,
     },
     {
-      href: "/tokenization",
+      destination: "tokenization",
+      href: DASHBOARD_DESTINATIONS.tokenization.href,
       label: "Polygon ownership",
       eyebrow: "Ownership",
       body: "Certificados, claims y titularidad digital segun policy, separados de la prueba IOTA.",
@@ -111,7 +114,8 @@ export default async function SettingsPage() {
       icon: <Network className="h-5 w-5" />,
     },
     {
-      href: "/demo-lab",
+      destination: "demoLab",
+      href: DASHBOARD_DESTINATIONS.demoLab.href,
       label: "Demo Lab enterprise",
       eyebrow: "Sales demo",
       body: "Secure Delivery, pharma, agro, proof verifier y mobile flows para explicar valor con simulación y evidencia identificadas.",
@@ -120,7 +124,8 @@ export default async function SettingsPage() {
       icon: <FlaskConical className="h-5 w-5" />,
     },
     {
-      href: "/sdk-vision",
+      destination: "sdkVision",
+      href: DASHBOARD_DESTINATIONS.sdkVision.href,
       label: "SDK/API integration",
       eyebrow: "Developers",
       body: "Guia para conectar taps, ERP, CRM, POS, webhooks, mobile verifier y backend privado.",
@@ -138,16 +143,18 @@ export default async function SettingsPage() {
       icon: <Building2 className="h-5 w-5" />,
     },
     {
-      href: canManageUsers ? "/users" : "/settings",
-      label: canManageUsers ? "Usuarios y permisos" : "Permisos del workspace",
+      destination: "users",
+      href: DASHBOARD_DESTINATIONS.users.href,
+      label: "Usuarios y permisos",
       eyebrow: "IAM",
       body: "Alta, roles, permisos por recurso, reset de acceso y revocación de MFA legacy.",
-      proof: canManageUsers ? "TOTP nuevo permanece bloqueado hasta completar el flujo seguro." : "Solicitudes visibles sin exponer IAM.",
+      proof: "TOTP nuevo permanece bloqueado hasta completar el flujo seguro.",
       tone: "green",
       icon: <Users className="h-5 w-5" />,
     },
     {
-      href: "/mfa",
+      destination: "mfa",
+      href: DASHBOARD_DESTINATIONS.mfa.href,
       label: "Seguridad de cuenta",
       eyebrow: "Security",
       body: "Estado de sesión, SSO y límites actuales. TOTP nexID está fail-closed y no puede habilitarse desde la UI.",
@@ -156,6 +163,7 @@ export default async function SettingsPage() {
       icon: <ShieldCheck className="h-5 w-5" />,
     },
     {
+      destination: "apiKeys",
       href: `/api-keys${tenantQuery}`,
       label: "API keys y webhooks",
       eyebrow: "Integraciones",
@@ -165,6 +173,7 @@ export default async function SettingsPage() {
       icon: <KeyRound className="h-5 w-5" />,
     },
     {
+      destination: "subscriptions",
       href: `/subscriptions${tenantQuery}`,
       label: "Simulador de plan",
       eyebrow: "Pricing model",
@@ -174,7 +183,8 @@ export default async function SettingsPage() {
       icon: <CreditCard className="h-5 w-5" />,
     },
     {
-      href: "/leads-tickets",
+      destination: "leadsTickets",
+      href: DASHBOARD_DESTINATIONS.leadsTickets.href,
       label: "Soporte y tickets",
       eyebrow: "Account ops",
       body: "Conversaciones, oportunidades, incidencias y seguimiento comercial.",
@@ -183,10 +193,8 @@ export default async function SettingsPage() {
       icon: <LifeBuoy className="h-5 w-5" />,
     },
   ];
-  const tiles = allTiles.filter((tile) => (
-    (!tile.href.startsWith("/api-keys") || canReadApiKeys)
-    && (tile.href !== "/proof" || canReadProof)
-  ));
+  const tiles = allTiles.filter((tile) => !tile.destination || canOpenDestination(tile.destination));
+  const restrictedTiles = allTiles.filter((tile) => tile.destination && !canOpenDestination(tile.destination));
 
   return (
     <main className="space-y-8" data-testid="settings-command-center">
@@ -290,29 +298,33 @@ export default async function SettingsPage() {
               testId="settings-change-account"
               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-3 font-bold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-cyan-400/16 disabled:cursor-wait disabled:opacity-70"
             />
-            <Link
-              href={tenantHref}
-              className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
-            >
-              Ver workspace asociado
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {tenantSlug || canOpenDestination("tenants") ? (
+              <Link
+                href={tenantHref}
+                className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
+              >
+                Ver workspace asociado
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : null}
             {canReadProof ? (
               <Link
-                href="/proof"
+                href={DASHBOARD_DESTINATIONS.proof.href}
                 className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-emerald-300/40 hover:text-emerald-100"
               >
                 Abrir Proof Verifier
                 <ArrowRight className="h-4 w-4" />
               </Link>
             ) : null}
-            <Link
-              href="/demo-lab"
-              className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
-            >
-              Abrir Demo Lab
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {canOpenDestination("demoLab") ? (
+              <Link
+                href={DASHBOARD_DESTINATIONS.demoLab.href}
+                className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
+              >
+                Abrir Demo Lab
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : null}
           </div>
 
           <div className="mt-5">
@@ -343,6 +355,29 @@ export default async function SettingsPage() {
           </Link>
         ))}
       </section>
+
+      {restrictedTiles.length ? (
+        <section data-testid="settings-restricted-destinations" className="rounded-2xl border border-amber-300/20 bg-amber-500/8 p-5">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">Accesos no habilitados</p>
+          <h2 className="mt-2 text-xl font-black text-white">Esta sesión no puede abrir todos los módulos.</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Los módulos siguientes se muestran como referencia, sin enlaces ni acciones. Un administrador autorizado debe cambiar el rol o los permisos efectivos para habilitarlos.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {restrictedTiles.map((tile) => (
+              <article key={tile.label} aria-disabled="true" className="rounded-xl border border-white/10 bg-slate-950/45 p-4 text-slate-400">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-900/70">{tile.icon}</span>
+                  <div>
+                    <p className="font-bold text-slate-200">{tile.label}</p>
+                    <p className="mt-0.5 text-xs">No habilitado por los permisos efectivos de esta sesión.</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

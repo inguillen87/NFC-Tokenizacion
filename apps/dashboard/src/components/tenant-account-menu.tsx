@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
+import Link from "next/link";
 import {
   BookOpen,
   Building2,
@@ -957,17 +958,15 @@ export function TenantAccountMenu({
         {itemContent(item)}
       </a>
     ) : (
-      <button
+      <Link
         key={item.label}
-        type="button"
+        href={item.href}
         data-nav-href={item.href}
         className="group flex min-h-14 w-full items-start gap-3 rounded-xl border border-white/8 bg-slate-950/50 px-3 py-2.5 text-left transition hover:border-cyan-300/35 hover:bg-cyan-400/10"
-        onClick={() => {
-          window.location.href = item.href;
-        }}
+        onClick={closeMenu}
       >
         {itemContent(item)}
-      </button>
+      </Link>
     )
   );
 
@@ -1034,8 +1033,10 @@ export function TenantAccountMenu({
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Accesos SaaS</p>
               <div className="mt-3 grid gap-2">
                 {[nextAction, ...primaryItems.slice(0, 2)].map((item) => (
-                  <div
+                  <Link
                     key={`${item.href}-${item.label}`}
+                    href={item.href}
+                    onClick={closeMenu}
                     className="group flex min-h-12 items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-left transition hover:border-cyan-300/45 hover:bg-cyan-400/10"
                   >
                     <span className="min-w-0">
@@ -1043,7 +1044,7 @@ export function TenantAccountMenu({
                       <span className="mt-0.5 block truncate text-xs text-slate-400">{item.meta}</span>
                     </span>
                     <ArrowRight className="h-4 w-4 shrink-0 text-cyan-200 transition group-hover:translate-x-0.5" />
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -1147,13 +1148,11 @@ export function TenantAccountMenu({
                 ))}
               </div>
             </div>
-            <button
-              type="button"
+            <Link
+              href={nextAction.href}
               data-testid="tenant-account-primary-action"
               className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-3 text-left text-sm font-black text-cyan-50 transition hover:border-cyan-200/70 hover:bg-cyan-400/20"
-              onClick={() => {
-                window.location.href = nextAction.href;
-              }}
+              onClick={closeMenu}
             >
               <span className="min-w-0">
                 <span className="block">{nextAction.label}</span>
@@ -1162,7 +1161,7 @@ export function TenantAccountMenu({
               <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-200/20 bg-cyan-300/10">
                 <ArrowRight className="h-4 w-4" />
               </span>
-            </button>
+            </Link>
             </div>
 
           <div className="tenant-account-panel__navigation p-3">

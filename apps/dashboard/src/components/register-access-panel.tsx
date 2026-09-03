@@ -2,7 +2,21 @@
 
 import { useState } from "react";
 import { Button } from "@product/ui";
-import { SignUpButton } from "@clerk/nextjs";
+import { useClerk } from "@clerk/nextjs";
+
+function ClerkRegistrationButton() {
+  const clerk = useClerk();
+
+  return (
+    <button
+      type="button"
+      onClick={() => void clerk.openSignUp()}
+      className="dashboard-auth-oauth-button flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 px-4 py-3 font-semibold shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition"
+    >
+      <span>🔐 Registrarse con Google o Facebook</span>
+    </button>
+  );
+}
 
 export function RegisterAccessPanel({ submitLabel, clerkEnabled }: { submitLabel: string; clerkEnabled?: boolean }) {
   const [form, setForm] = useState({ company: "", email: "", tenantSlug: "", fullName: "", role: "tenant-admin" });
@@ -31,11 +45,7 @@ export function RegisterAccessPanel({ submitLabel, clerkEnabled }: { submitLabel
     <div className="mt-2 grid gap-3 md:grid-cols-2">
       {clerkEnabled && (
         <div className="md:col-span-2 grid gap-3 mb-2">
-          <SignUpButton mode="modal">
-            <button type="button" onClick={() => {}} className="dashboard-auth-oauth-button flex items-center justify-center gap-3 w-full rounded-xl border border-cyan-400/35 px-4 py-3 font-semibold shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition">
-              <span>🔐 Registrarse con Google o Facebook</span>
-            </button>
-          </SignUpButton>
+          <ClerkRegistrationButton />
           <div className="flex items-center gap-2 px-2 py-1">
             <div className="h-px flex-1 bg-white/10" />
             <span className="text-[10px] text-slate-500 uppercase tracking-wider">o solicitar acceso manual</span>

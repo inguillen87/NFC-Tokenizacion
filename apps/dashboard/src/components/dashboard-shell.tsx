@@ -239,7 +239,13 @@ export function DashboardShellInner({
     { destination: "mfa", href: DASHBOARD_DESTINATIONS.mfa.href, label: "Account Security" },
     { destination: "sdkVision", href: DASHBOARD_DESTINATIONS.sdkVision.href, label: nav.sdkVision },
   ];
-  const searchableLinks = searchableLinkCandidates.filter((entry) => canOpenDestination(entry.destination));
+  const searchableLinks = Array.from(
+    new Map(
+      searchableLinkCandidates
+        .filter((entry) => canOpenDestination(entry.destination))
+        .map((entry) => [entry.href, entry] as const),
+    ).values(),
+  );
 
   const filteredLinks = normalizedQuery
     ? searchableLinks.filter((entry) => entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
@@ -482,13 +488,15 @@ export function DashboardShellInner({
         </nav>
 
         {/* Neutral pointers until billing and realtime metrics are supplied by trusted props. */}
-        <Link
-          href={DASHBOARD_DESTINATIONS.billing.href}
-          className="mt-8 block rounded-2xl border border-white/5 bg-slate-950/60 p-4 text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
-        >
-          <span className="block text-[10px] font-black uppercase tracking-[0.15em]">Uso</span>
-          <span className="mt-2 block text-[10px] font-medium leading-4">Uso: consultar facturación</span>
-        </Link>
+        {canOpenDestination("billing") ? (
+          <Link
+            href={DASHBOARD_DESTINATIONS.billing.href}
+            className="mt-8 block rounded-2xl border border-white/5 bg-slate-950/60 p-4 text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
+          >
+            <span className="block text-[10px] font-black uppercase tracking-[0.15em]">Uso</span>
+            <span className="mt-2 block text-[10px] font-medium leading-4">Uso: consultar facturación</span>
+          </Link>
+        ) : null}
 
         {canOpenDestination("analytics") ? (
           <Link
