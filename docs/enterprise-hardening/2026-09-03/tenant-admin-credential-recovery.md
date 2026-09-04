@@ -13,6 +13,27 @@ un solo tenant, en una transacción auditable. La ejecución por defecto es un
 dry-run completo que termina en `ROLLBACK`. `--apply` exige una confirmación
 literal ligada a operación, tenant, email y referencia de cambio.
 
+## Gate de habilitación productiva
+
+La presencia de este runbook o de variables de ejecución `TENANT_ADMIN_*` no
+demuestra que la cuenta sea utilizable: esas variables no reemplazan el hash
+persistido y no deben usarse como sustituto de la rotación. Hasta reunir toda la
+evidencia siguiente, el acceso real de Bodega Balmec se considera bloqueado:
+
+1. El dry-run confirma el tenant, la cuenta y el estado previo esperado sin
+   discrepancias.
+2. La aplicación autorizada termina con `"mode":"apply"` y
+   `"committed":true`, y deja ambos eventos de auditoría.
+3. Un login nuevo devuelve una sesión `tenant_admin` opaca cuya resolución en
+   `/auth/session` contiene el UUID tenant y `tenantSlug=demobodega`; no una
+   sesión `demo.*`.
+4. El overview del tenant declara `stats_source=real` y excluye eventos
+   `source=demo` de scans, duplicados, tamper y riesgo.
+
+En Producción, mantener `DASHBOARD_BODEGA_DEMO_ACCESS=false` o sin habilitación
+explícita mientras se valida el acceso real. Habilitar la demo es una decisión
+separada y nunca evidencia que la credencial productiva fue recuperada.
+
 ## Precondiciones operativas
 
 1. Abrir un ticket o incidente aprobado y elegir una referencia estable, por

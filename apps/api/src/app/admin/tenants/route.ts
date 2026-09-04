@@ -8,7 +8,7 @@ import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
 import { buildTenantSunProfileInput, normalizeTenantCreateSlug, upsertTenantSunProfile } from "../../../lib/tenant-onboarding";
 import { ensureSunTenantProfilesSchema } from "../../../lib/sun-tenant-profile-schema";
-import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
+import { effectiveTenantFilter, resolveTenantStatsSource } from "../../../lib/admin-tenant-filter";
 import { aggregateTenantMetrics, EVENT_TAXONOMY_VERSION } from "@product/core";
 
 function withCanonicalRisk(row: Record<string, unknown>) {
@@ -42,6 +42,14 @@ export async function GET(req: Request) {
   const withStats = searchParams.get("withStats") === "1";
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const tenantSlug = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: searchParams.get("tenant") });
+  const statsSourceResolution = resolveTenantStatsSource({
+    forcedTenantSlug,
+    requestedSource: searchParams.get("source"),
+  });
+  if (withStats && !statsSourceResolution.ok) {
+    return json({ ok: false, reason: statsSourceResolution.reason }, 400, { "cache-control": "no-store" });
+  }
+  const statsSource = statsSourceResolution.ok ? statsSourceResolution.source : "real";
   await ensureSunTenantProfilesSchema();
 
   if (withStats) {
@@ -75,7 +83,10 @@ export async function GET(req: Request) {
         ) AS authentication_verified
         FROM tenants tn
         LEFT JOIN batches b ON b.tenant_id = tn.id
-        LEFT JOIN events e ON e.batch_id = b.id AND e.tenant_id = tn.id
+        LEFT JOIN events e
+          ON e.batch_id = b.id
+         AND e.tenant_id = tn.id
+         AND LOWER(COALESCE(e.source::text, 'real')) = ${statsSource}
         WHERE tn.slug = ${tenantSlug}
       )
       SELECT
@@ -124,7 +135,10 @@ export async function GET(req: Request) {
         ) AS authentication_verified
         FROM tenants tn
         LEFT JOIN batches b ON b.tenant_id = tn.id
-        LEFT JOIN events e ON e.batch_id = b.id AND e.tenant_id = tn.id
+        LEFT JOIN events e
+          ON e.batch_id = b.id
+         AND e.tenant_id = tn.id
+         AND LOWER(COALESCE(e.source::text, 'real')) = ${statsSource}
       )
       SELECT
         id, slug, name, created_at,
@@ -143,7 +157,14 @@ export async function GET(req: Request) {
       ORDER BY created_at DESC
       LIMIT 200
     `;
-    return json(rows.map((row) => withCanonicalRisk(row as Record<string, unknown>)));
+    return json(
+      rows.map((row) => ({
+        ...withCanonicalRisk(row as Record<string, unknown>),
+        stats_source: statsSource,
+      })),
+      200,
+      { "cache-control": "no-store" },
+    );
   }
 
   const rows = tenantSlug

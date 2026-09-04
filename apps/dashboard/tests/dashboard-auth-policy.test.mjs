@@ -10,6 +10,8 @@ const FLAG_ENV_KEYS = [
   "DASHBOARD_BODEGA_DEMO_ACCESS",
   "DASHBOARD_ALLOW_BODEGA_DEMO",
   "ENABLE_BODEGA_BALMEC_DEMO",
+  "NODE_ENV",
+  "VERCEL_ENV",
 ];
 
 function withEnv(updates, run) {
@@ -42,14 +44,26 @@ test("super admin demo remains disabled even if legacy env flags are enabled", a
   );
 });
 
-test("bodega tenant demo stays available by default and can be disabled per environment", async () => {
+test("bodega tenant demo requires an explicit production opt-in", async () => {
   const flags = await import(`../src/lib/dashboard-access-flags.ts?ts=${Date.now()}-bodega-policy`);
 
-  withEnv({}, () => {
+  withEnv({ NODE_ENV: "test" }, () => {
     assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), true);
   });
 
-  withEnv({ DASHBOARD_BODEGA_DEMO_ACCESS: "false" }, () => {
+  withEnv({ NODE_ENV: "production" }, () => {
+    assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), false);
+  });
+
+  withEnv({ NODE_ENV: "test", VERCEL_ENV: "production" }, () => {
+    assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), false);
+  });
+
+  withEnv({ NODE_ENV: "production", DASHBOARD_BODEGA_DEMO_ACCESS: "true" }, () => {
+    assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), true);
+  });
+
+  withEnv({ NODE_ENV: "test", DASHBOARD_BODEGA_DEMO_ACCESS: "false" }, () => {
     assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), false);
   });
 });

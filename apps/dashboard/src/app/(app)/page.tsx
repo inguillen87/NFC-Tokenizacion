@@ -87,15 +87,20 @@ async function getOverviewRows(context: AdminPageContext, allowDemoFallback: boo
   const tenantScope = context.tenantSlug;
   try {
     const query = new URLSearchParams({ withStats: "1" });
+    const expectedStatsSource = allowDemoFallback ? "demo" : "real";
+    query.set("source", expectedStatsSource);
     if (tenantScope) query.set("tenant", tenantScope);
     const response = await fetchAdminPage(context, `tenants?${query.toString()}`);
     if (!response.ok) return fallbackHomeRows("upstream_error", `Tenant overview upstream error (${response.status})`, allowDemoFallback, demoOverviewRows);
     const meta = readDemoDataMetaFromResponse(response);
     const payload = await response.json().catch(() => null);
-    if (!Array.isArray(payload) || (meta.demoMode && !allowDemoFallback)) {
+    const statsSourceMismatch = Array.isArray(payload)
+      && !meta.demoMode
+      && payload.some((row) => String(row?.stats_source || "").trim().toLowerCase() !== expectedStatsSource);
+    if (!Array.isArray(payload) || (meta.demoMode && !allowDemoFallback) || statsSourceMismatch) {
       return fallbackHomeRows("invalid_payload", "Tenant overview returned an invalid or unauthorized demo payload", allowDemoFallback, demoOverviewRows);
     }
-    return { rows: payload, source: meta.demoMode ? "demo" : "production", availability: "ready", detail: meta.demoMode ? "Explicit demo tenant overview" : "Production tenant overview confirmed" };
+    return { rows: payload, source: meta.demoMode ? "demo" : "production", availability: "ready", detail: meta.demoMode ? "Explicit demo tenant overview" : `Production tenant overview confirmed (source=${expectedStatsSource})` };
   } catch {
     return fallbackHomeRows("unreachable", "Tenant overview upstream unreachable", allowDemoFallback, demoOverviewRows);
   }

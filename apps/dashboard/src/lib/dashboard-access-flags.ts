@@ -35,7 +35,9 @@ export function dashboardBodegaDemoAccessAllowed() {
   );
   if (explicit !== null) return explicit;
 
-  return true;
+  const productionRuntime = [process.env.VERCEL_ENV, process.env.NODE_ENV]
+    .some((value) => String(value || "").trim().toLowerCase() === "production");
+  return !productionRuntime;
 }
 
 export function dashboardDemoAccessAllowedForRole(role: string) {

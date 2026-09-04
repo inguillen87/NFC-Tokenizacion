@@ -17,6 +17,14 @@ test("home never fabricates analytics or false-zero collections on production fa
   assert.match(homePage, /payload\?\.ok === false/);
 });
 
+test("real tenant overview requests and verifies source=real before using KPIs", () => {
+  assert.match(homePage, /const allowDemoFallback = Boolean\(session\.isDemo\)/);
+  assert.match(homePage, /const expectedStatsSource = allowDemoFallback \? "demo" : "real"/);
+  assert.match(homePage, /query\.set\("source", expectedStatsSource\)/);
+  assert.match(homePage, /row\?\.stats_source/);
+  assert.match(homePage, /\(meta\.demoMode && !allowDemoFallback\) \|\| statsSourceMismatch/);
+});
+
 test("home presents unavailable and demo sources explicitly", () => {
   assert.match(homeClient, /testId="home-operations-unavailable"/);
   assert.match(homeClient, /testId="home-tokenization-unavailable"/);
