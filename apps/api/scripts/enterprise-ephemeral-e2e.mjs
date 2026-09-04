@@ -252,8 +252,8 @@ async function run() {
       ($3, 'enterprise-e2e-other', 'Other E2E tenant', 'ephemeral-test-envelope')`,
     [tenantId, tenantSlug, otherTenantId]);
     await client.query(`INSERT INTO batches (
-      id, tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config
-    ) VALUES ($1, $2, $3, 'active', $4, $5, $6::jsonb)`, [
+      id, tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code
+    ) VALUES ($1, $2, $3, 'active', $4, $5, $6::jsonb, 'ntag424_dna')`, [
       batchId,
       tenantId,
       bid,
@@ -268,8 +268,16 @@ async function run() {
       }),
     ]);
     await client.query(`INSERT INTO tags (
-      id, batch_id, uid_hex, status, lifecycle_state, lifecycle_revision
-    ) VALUES ($1, $2, $3, 'active', 'active', 0)`, [tagId, batchId, uidHex]);
+      id, batch_id, uid_hex, status, lifecycle_state, lifecycle_revision, carrier_profile_code
+    ) VALUES ($1, $2, $3, 'active', 'active', 0, 'ntag424_dna')`, [tagId, batchId, uidHex]);
+    await client.query(`INSERT INTO tag_profiles (
+      tag_id, sku, product_name, region, winery, notes, locale_data
+    ) VALUES (
+      $1::uuid, 'E2E-AGRO-001', 'Enterprise ephemeral fixture',
+      'Rosario, Santa Fe', 'Enterprise E2E Agro',
+      'Synthetic disposable product profile for the isolated HTTP acceptance harness.',
+      '{"vertical":"agro","evidence_class":"synthetic_ephemeral_software_fixture"}'::jsonb
+    )`, [tagId]);
 
     await client.query(`INSERT INTO batches (
       id, tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config
@@ -1933,7 +1941,11 @@ async function run() {
     });
     assert.equal(scanResponse.status, 200);
     const scan = await scanResponse.json();
-    assert.equal(scan.ok, true);
+    assert.equal(
+      scan.ok,
+      true,
+      `sun_contract_failed:${String(scan?.status?.code || "unknown")}:${String(scan?.status?.reason || "unknown")}`,
+    );
     assert.equal(scan.status.code, "VALID_AUTHENTIC");
     assert.equal(scan.status.productState, "VALID_AUTHENTIC");
     assert.equal(scan.tapSecurity.freshTap, true);

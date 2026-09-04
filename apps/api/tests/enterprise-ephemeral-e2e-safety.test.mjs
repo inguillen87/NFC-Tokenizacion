@@ -380,6 +380,8 @@ test("harness exercises production CMAC/SDM code with synthetic inputs and makes
   assert.match(source, /process\.env\.SDK_IDEMPOTENCY_MASTER_KEY_HEX = randomBytes\(32\)/);
   assert.match(source, /process\.env\.SDK_IDEMPOTENCY_MASTER_KEY_ID = "ephemeral-e2e-v1"/);
   assert.match(source, /sun_crypto: "production_cmac_sdm_code_with_synthetic_inputs"/);
+  assert.match(source, /INSERT INTO tag_profiles/);
+  assert.match(source, /carrier_profile_code\s*\n\s*\) VALUES \(\$1, \$2, \$3, 'active', 'active', 0, 'ntag424_dna'\)/);
   assert.match(source, /evidence_class: "synthetic_ephemeral_software_fixture"/);
   assert.match(source, /nfc_batch_key_envelope: "application_aes_256_gcm_with_process_secret"/);
   assert.match(source, /managed_kms: false/);
