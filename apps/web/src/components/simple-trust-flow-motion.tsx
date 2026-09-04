@@ -5,12 +5,23 @@ import {
   cloneElement,
   isValidElement,
   type CSSProperties,
+  type HTMLAttributes,
   type ReactElement,
   type ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+import {
+  HORIZONTAL_RAIL_INDEX_CHANGE_EVENT,
+  HORIZONTAL_RAIL_NAVIGATE_EVENT,
+  clampHorizontalRailIndex,
+  closestHorizontalRailIndex,
+  wrapHorizontalRailIndex,
+  type HorizontalRailIndexChangeDetail,
+  type HorizontalRailNavigateDetail,
+} from "../lib/horizontal-rail-model.mjs";
 
 type MotionEnvironment = {
   mounted: boolean;
@@ -136,6 +147,12 @@ export type SimpleTrustFlowMotionProps = {
   ariaLabel: string;
 };
 
+type SelectableStepProps = HTMLAttributes<HTMLElement> & {
+  "data-journey-interactive"?: string;
+  "data-motion-active"?: string;
+  "data-step-state"?: string;
+};
+
 export function SimpleTrustFlowMotion({
   children,
   id,
@@ -143,6 +160,7 @@ export function SimpleTrustFlowMotion({
 }: SimpleTrustFlowMotionProps) {
   const listRef = useRef<HTMLOListElement>(null);
   const [visibleItems, setVisibleItems] = useState<ReadonlySet<number>>(() => new Set());
+  const [activeItemIndex, setActiveItemIndex] = useState(0);
   const { mounted, pageVisible, reducedMotion } = useMotionEnvironment();
 
   useEffect(() => {
@@ -182,11 +200,118 @@ export function SimpleTrustFlowMotion({
     };
   }, [id]);
 
+  const itemCount = Children.count(children);
+
+  const selectStep = useCallback((requestedIndex: number, focus = true) => {
+    const list = listRef.current;
+    if (!list || itemCount === 0) return;
+    const nextIndex = clampHorizontalRailIndex(requestedIndex, itemCount);
+    const nextItem = list.children.item(nextIndex);
+    if (!(nextItem instanceof HTMLElement)) return;
+
+    setActiveItemIndex(nextIndex);
+    if (focus) nextItem.focus({ preventScroll: true });
+
+    const left = nextItem.getBoundingClientRect().left - list.getBoundingClientRect().left + list.scrollLeft;
+    list.scrollTo({ left, behavior: reducedMotion ? "auto" : "smooth" });
+  }, [itemCount, reducedMotion]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    let animationFrame = 0;
+
+    const syncIndexFromScroll = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        const itemLefts = Array.from(list.children, (item) => item.getBoundingClientRect().left);
+        const nextIndex = closestHorizontalRailIndex(list.getBoundingClientRect().left, itemLefts);
+        setActiveItemIndex((current) => current === nextIndex ? current : nextIndex);
+      });
+    };
+
+    const handleNavigate = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const detail = event.detail as Partial<HorizontalRailNavigateDetail> | null;
+      if (!detail || typeof detail.index !== "number") return;
+      selectStep(detail.index, detail.focus === true);
+    };
+
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncIndexFromScroll);
+    resizeObserver?.observe(list);
+    list.addEventListener("scroll", syncIndexFromScroll, { passive: true });
+    list.addEventListener(HORIZONTAL_RAIL_NAVIGATE_EVENT, handleNavigate);
+    window.addEventListener("resize", syncIndexFromScroll);
+    syncIndexFromScroll();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver?.disconnect();
+      list.removeEventListener("scroll", syncIndexFromScroll);
+      list.removeEventListener(HORIZONTAL_RAIL_NAVIGATE_EVENT, handleNavigate);
+      window.removeEventListener("resize", syncIndexFromScroll);
+    };
+  }, [id, selectStep]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const detail: HorizontalRailIndexChangeDetail = { index: activeItemIndex };
+    list.dispatchEvent(new CustomEvent(HORIZONTAL_RAIL_INDEX_CHANGE_EVENT, { detail }));
+  }, [activeItemIndex]);
+
+  function handleStepKeyDown(event: React.KeyboardEvent<HTMLElement>, index: number) {
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") nextIndex = wrapHorizontalRailIndex(index + 1, itemCount);
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") nextIndex = wrapHorizontalRailIndex(index - 1, itemCount);
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = itemCount - 1;
+
+    if (nextIndex !== null) {
+      event.preventDefault();
+      selectStep(nextIndex);
+    }
+  }
+
   const motionAllowed = mounted && pageVisible && !reducedMotion;
   const motionChildren = Children.map(children, (child, index) => {
     if (!isValidElement(child)) return child;
-    return cloneElement(child as ReactElement<{ "data-motion-active"?: string }>, {
+    const typedChild = child as ReactElement<SelectableStepProps>;
+    const isActive = index === activeItemIndex;
+    const stepState = isActive ? "active" : "idle";
+    const progress = isActive ? ((index + 1) / itemCount) * 100 : 0;
+
+    return cloneElement(typedChild, {
+      "aria-current": isActive ? "step" : undefined,
+      tabIndex: isActive ? 0 : -1,
+      "data-journey-interactive": "true",
+      "data-step-state": stepState,
       "data-motion-active": motionAllowed && visibleItems.has(index) ? "true" : "false",
+      style: {
+        ...typedChild.props.style,
+        "--trust-step-progress": `${progress}%`,
+      } as CSSProperties,
+      onClick: (event: React.MouseEvent<HTMLElement>) => {
+        typedChild.props.onClick?.(event);
+        if (!event.defaultPrevented) selectStep(index);
+      },
+      onFocus: (event: React.FocusEvent<HTMLElement>) => {
+        typedChild.props.onFocus?.(event);
+        if (!event.defaultPrevented) setActiveItemIndex(index);
+      },
+      onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+        typedChild.props.onKeyDown?.(event);
+        if (!event.defaultPrevented) handleStepKeyDown(event, index);
+      },
+      children: (
+        <>
+          {typedChild.props.children}
+          <span className="simple-trust-flow-step-progress" aria-hidden="true">
+            <span />
+          </span>
+        </>
+      ),
     });
   });
 
@@ -196,8 +321,8 @@ export function SimpleTrustFlowMotion({
       ref={listRef}
       className="simple-trust-flow-steps"
       data-motion-ready={mounted && !reducedMotion ? "true" : "false"}
+      data-active-step={activeItemIndex + 1}
       aria-label={ariaLabel}
-      tabIndex={0}
     >
       {motionChildren}
     </ol>

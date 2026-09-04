@@ -1251,11 +1251,9 @@ export function DemoLabClient({
     loadWhenVisible();
     const onVisibilityChange = () => loadWhenVisible();
     document.addEventListener("visibilitychange", onVisibilityChange);
-    const id = window.setInterval(loadWhenVisible, 10000);
     return () => {
       alive = false;
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.clearInterval(id);
     };
   }, [locale, txt.controls.adminKey]);
 
@@ -4953,21 +4951,12 @@ function DemoCrmDashboard({
   feedTruthCopy: ReturnType<typeof demoFeedCopy>;
 }) {
   const [activeTab, setActiveTab] = useState<"leads" | "tickets" | "orders" | "taps">("leads");
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  
-  // Local overrides to simulate real-time CRM updates when buttons are clicked!
+
+  // Local preview overrides applied only after an explicit CRM action.
   const [localLeadsStatus, setLocalLeadsStatus] = useState<Record<string, string>>({});
   const [localTicketsStatus, setLocalTicketsStatus] = useState<Record<string, string>>({});
   const [localOrdersStatus, setLocalOrdersStatus] = useState<Record<string, string>>({});
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const interval = setInterval(() => {
-      void refreshSummary();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshSummary]);
 
   const recentLeads = summary?.recentLeads || [];
   const recentTickets = summary?.recentTickets || [];
@@ -5113,11 +5102,11 @@ function DemoCrmDashboard({
               <p className="text-xs text-slate-400">{feedTruthCopy.explanation}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${canUseVerifiedDemoLanguage(feedTruthState) ? "bg-emerald-400" : liveEvents.length > 0 ? "bg-cyan-400" : "bg-amber-400"} ${autoRefresh && liveEvents.length > 0 ? "animate-ping" : ""}`} />
+              <span className={`h-2 w-2 rounded-full ${canUseVerifiedDemoLanguage(feedTruthState) ? "bg-emerald-400" : liveEvents.length > 0 ? "bg-cyan-400" : "bg-amber-400"} ${liveEvents.length > 0 ? "animate-ping" : ""}`} />
               <span className="text-[10px] uppercase font-bold text-slate-400">
-                {autoRefresh
-                  ? liveEvents.length > 0 ? feedTruthCopy.feedTitle : locale === "en" ? "Polling; no evidence" : locale === "pt-BR" ? "Atualizando; sem evidencia" : "Actualizando; sin evidencia"
-                  : locale === "en" ? "Updates paused" : locale === "pt-BR" ? "Atualizacao pausada" : "Actualizacion pausada"}
+                {liveEvents.length > 0
+                  ? locale === "en" ? "Latest demo snapshot" : locale === "pt-BR" ? "Último snapshot demo" : "Último snapshot demo"
+                  : locale === "en" ? "No recorded evidence" : locale === "pt-BR" ? "Sem evidência registrada" : "Sin evidencia registrada"}
               </span>
             </div>
           </div>
@@ -5277,16 +5266,14 @@ function DemoCrmDashboard({
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
-            <label className="demo-lab-crm-auto-refresh flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={autoRefresh} 
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="rounded border-white/20 bg-slate-950 text-cyan-500 focus:ring-0" 
-              />
-              Auto-refresh (10s)
-            </label>
+          <div className="flex items-center gap-3" data-demo-refresh-mode="event-driven">
+            <span className="demo-lab-crm-auto-refresh text-xs text-slate-400">
+              {locale === "en"
+                ? "Updates after demo actions, manual refresh, or tab return"
+                : locale === "pt-BR"
+                  ? "Atualiza após ações demo, atualização manual ou retorno à aba"
+                  : "Actualiza tras acciones demo, refresco manual o al volver a la pestaña"}
+            </span>
           </div>
         </div>
 

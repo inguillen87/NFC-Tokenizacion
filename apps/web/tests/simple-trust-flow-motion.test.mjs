@@ -1,12 +1,38 @@
 import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
+import {
+  clampHorizontalRailIndex,
+  closestHorizontalRailIndex,
+  wrapHorizontalRailIndex,
+} from "../src/lib/horizontal-rail-model.mjs";
 
-const [motion, visuals, css] = await Promise.all([
+const [motion, controls, visuals, css] = await Promise.all([
   readFile(new URL("../src/components/simple-trust-flow-motion.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/horizontal-rail-controls.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/simple-trust-step-visual.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
 ]);
+
+function relativeLuminance(hex) {
+  const channels = hex.slice(1).match(/../g).map((channel) => Number.parseInt(channel, 16) / 255);
+  const [red, green, blue] = channels.map((channel) => (
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  ));
+  return (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+}
+
+function contrastRatio(first, second) {
+  const lighter = Math.max(relativeLuminance(first), relativeLuminance(second));
+  const darker = Math.min(relativeLuminance(first), relativeLuminance(second));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function mixWithWhite(hex, ratio) {
+  const channels = hex.slice(1).match(/../g).map((channel) => Number.parseInt(channel, 16));
+  const mixed = channels.map((channel) => Math.round((channel * ratio) + (255 * (1 - ratio))));
+  return `#${mixed.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
 
 test("each trust step is observed and runs only while visible and allowed", () => {
   assert.match(motion, /IntersectionObserver/);
@@ -24,7 +50,59 @@ test("each trust step is observed and runs only while visible and allowed", () =
   assert.match(motion, /addEventListener\("change", handleReducedMotionChange\)/);
   assert.match(motion, /removeEventListener\("change", handleReducedMotionChange\)/);
   assert.match(motion, /intersectionObserver\.disconnect\(\)/);
-  assert.doesNotMatch(motion, /setInterval|requestAnimationFrame|framer-motion|lottie/i);
+  assert.doesNotMatch(motion, /setInterval|framer-motion|lottie/i);
+});
+
+test("rail index model clamps direct navigation, wraps keyboard movement and follows the nearest swiped card", () => {
+  assert.equal(clampHorizontalRailIndex(-8, 3), 0);
+  assert.equal(clampHorizontalRailIndex(8, 3), 2);
+  assert.equal(clampHorizontalRailIndex(Number.NaN, 3), 0);
+  assert.equal(wrapHorizontalRailIndex(3, 3), 0);
+  assert.equal(wrapHorizontalRailIndex(-1, 3), 2);
+  assert.equal(closestHorizontalRailIndex(100, [95, 280, 465]), 0);
+  assert.equal(closestHorizontalRailIndex(100, [-90, 104, 298]), 1);
+  assert.equal(closestHorizontalRailIndex(100, [-280, -85, 107]), 2);
+});
+
+test("journey cards keep ordered-list semantics while one rail index drives cards, swipe and controls", () => {
+  assert.match(motion, /<ol/);
+  assert.doesNotMatch(motion, /role="radiogroup"|role: "radio"|"aria-checked"/);
+  assert.match(motion, /"aria-current": isActive \? "step" : undefined/);
+  assert.match(motion, /tabIndex: isActive \? 0 : -1/);
+  assert.match(motion, /"data-step-state": stepState/);
+  assert.match(motion, /const stepState = isActive \? "active" : "idle"/);
+  assert.doesNotMatch(motion, /"complete"|"upcoming"/);
+  assert.match(motion, /data-active-step=\{activeItemIndex \+ 1\}/);
+  assert.match(motion, /simple-trust-flow-step-progress/);
+  assert.match(motion, /"--trust-step-progress": `\$\{progress\}%`/);
+  assert.match(motion, /event\.key === "ArrowRight" \|\| event\.key === "ArrowDown"/);
+  assert.match(motion, /event\.key === "ArrowLeft" \|\| event\.key === "ArrowUp"/);
+  assert.match(motion, /event\.key === "Home"/);
+  assert.match(motion, /event\.key === "End"/);
+  assert.match(motion, /list\.addEventListener\("scroll", syncIndexFromScroll/);
+  assert.match(motion, /closestHorizontalRailIndex/);
+  assert.match(motion, /HORIZONTAL_RAIL_NAVIGATE_EVENT/);
+  assert.match(motion, /HORIZONTAL_RAIL_INDEX_CHANGE_EVENT/);
+  assert.match(controls, /HORIZONTAL_RAIL_NAVIGATE_EVENT/);
+  assert.match(controls, /HORIZONTAL_RAIL_INDEX_CHANGE_EVENT/);
+  assert.doesNotMatch(controls, /addEventListener\("scroll"|addEventListener\("keydown"/);
+  assert.match(motion, /behavior: reducedMotion \? "auto" : "smooth"/);
+  assert.doesNotMatch(motion, /<ol[\s\S]{0,300}tabIndex=\{0\}/);
+});
+
+test("journey focus indicators clear 3:1 in light and dark themes", () => {
+  const lightFocusTones = [...css.matchAll(/--trust-step-tone-strong:\s*(#[0-9a-f]{6})/gi)].map((match) => match[1]);
+  const darkBaseTones = [...css.matchAll(/--trust-step-tone:\s*(#[0-9a-f]{6})/gi)].slice(-3).map((match) => match[1]);
+  assert.equal(lightFocusTones.length, 3);
+  assert.equal(darkBaseTones.length, 3);
+
+  for (const tone of lightFocusTones) {
+    assert.ok(contrastRatio(tone, "#ffffff") >= 3, `${tone} must remain visible against the light card`);
+  }
+  for (const tone of darkBaseTones) {
+    const darkFocus = mixWithWhite(tone, 0.64);
+    assert.ok(contrastRatio(darkFocus, "#09182a") >= 3, `${darkFocus} must remain visible against the dark card`);
+  }
 });
 
 test("the one-shot journey motion stays passive and exposes no stale playback control", () => {
@@ -159,6 +237,9 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.match(css, /@keyframes trust-visual-check/);
   assert.doesNotMatch(css, /@keyframes (?:trust-flow|trust-visual)[\s\S]{0,1200}(?:filter|box-shadow):/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.simple-trust-flow-visual \*/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.simple-trust-flow-step-progress > span \{[\s\S]{0,120}transition:\s*none !important/);
+  assert.match(css, /li\[data-journey-interactive="true"\]:focus-visible[\s\S]{0,180}#ffffff/);
+  assert.match(css, /html:is\(\.theme-light, \[data-theme="light"\]\) \.simple-trust-flow-steps > li\[data-journey-interactive="true"\]:focus-visible[\s\S]{0,140}var\(--trust-step-tone-strong\)/);
   assert.match(css, /\.simple-trust-flow-visual \.trust-visual__animated[\s\S]{0,220}opacity:\s*1 !important/);
   assert.match(css, /\.simple-trust-flow-intro :is\([\s\S]{0,420}opacity:\s*1 !important/);
   assert.match(css, /\.simple-trust-flow-ambient,[\s\S]{0,320}display:\s*none !important/);

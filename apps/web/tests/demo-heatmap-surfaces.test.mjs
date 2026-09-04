@@ -4,9 +4,10 @@ import test from "node:test";
 
 const demoLabUrl = new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url);
 const liveDemoUrl = new URL("../src/components/live-demo-surfaces.tsx", import.meta.url);
-const liveDemoPollingUrl = new URL("../src/components/live-demo-polling.ts", import.meta.url);
+const liveDemoFeedUrl = new URL("../src/components/live-demo-feed.ts", import.meta.url);
 const demoPageUrl = new URL("../src/app/demo/page.tsx", import.meta.url);
 const mobileDemoUrl = new URL("../src/components/mobile-demo-client.tsx", import.meta.url);
+const mobileDemoPageUrl = new URL("../src/app/(public)/demo-lab/mobile/[tenant]/[itemId]/page.tsx", import.meta.url);
 const sdkUrl = new URL("../src/app/sdk/page.tsx", import.meta.url);
 const investorUrl = new URL("../src/app/investor-snapshot/investor-snapshot-client.tsx", import.meta.url);
 const heroSceneUrl = new URL("../src/components/hero-scene.tsx", import.meta.url);
@@ -56,15 +57,16 @@ test("public demo groups only geolocated API events and leaves an honest empty s
   assert.match(page, /<LiveDemoSurfaces locale=\{locale\} \/>/);
 });
 
-test("public demo polling backs off, pauses when hidden, and preserves the last valid response", async () => {
+test("public demo uses user-driven refresh without periodic data polling", async () => {
   const source = await readFile(liveDemoUrl, "utf8");
 
-  assert.match(source, /schedulePoll\(LIVE_DEMO_SUCCESS_POLL_MS\)/);
-  assert.match(source, /schedulePoll\(liveDemoRetryDelay\(consecutiveFailures\)\)/);
+  assert.match(source, /const \[refreshRequest, setRefreshRequest\] = useState\(0\)/);
   assert.match(source, /if \(disposed \|\| document\.hidden \|\| requestInFlight\) return/);
   assert.match(source, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/);
   assert.match(source, /document\.removeEventListener\("visibilitychange", handleVisibilityChange\)/);
   assert.match(source, /activeController\?\.abort\(\)/);
+  assert.match(source, /onClick=\{\(\) => setRefreshRequest\(\(request\) => request \+ 1\)\}/);
+  assert.match(source, /\}, \[refreshRequest\]\)/);
   assert.match(source, /if \(!response\.ok\) throw new Error/);
   assert.match(source, /if \(!hasLiveDemoItems\(data\)\) throw new Error/);
   assert.match(source, /setItems\(data\.items as LiveEvent\[\]\)/);
@@ -72,27 +74,42 @@ test("public demo polling backs off, pauses when hidden, and preserves the last 
   assert.match(source, /hasValidSnapshot \? items\.length : "—"/);
   assert.match(source, /hasValidSnapshot \? riskSignals : "—"/);
   assert.doesNotMatch(source, /setInterval\(/);
+  assert.doesNotMatch(source, /schedulePoll|liveDemoRetryDelay|SUCCESS_POLL/);
   assert.doesNotMatch(source, /setItems\(\[\]\)/);
   assert.doesNotMatch(source, /Array\.isArray\(data\.items\) \? data\.items : \[\]/);
 });
 
-test("public demo retry policy uses a bounded 30-to-60-second error backoff", async () => {
-  const polling = await import(liveDemoPollingUrl.href);
+test("public demo feed validates snapshots and bounds each on-demand request", async () => {
+  const feed = await import(liveDemoFeedUrl.href);
 
-  assert.equal(polling.LIVE_DEMO_SUCCESS_POLL_MS, 4_000);
-  assert.equal(polling.LIVE_DEMO_REQUEST_TIMEOUT_MS, 10_000);
-  assert.equal(polling.liveDemoRetryDelay(1), 30_000);
-  assert.equal(polling.liveDemoRetryDelay(2), 60_000);
-  assert.equal(polling.liveDemoRetryDelay(8), 60_000);
-  assert.equal(polling.liveDemoRetryDelay(Number.NaN), 30_000);
-  assert.equal(polling.hasLiveDemoItems({ items: [] }), true);
-  assert.equal(polling.hasLiveDemoItems({ items: null }), false);
-  assert.equal(polling.hasLiveDemoItems(null), false);
+  assert.equal(feed.LIVE_DEMO_REQUEST_TIMEOUT_MS, 10_000);
+  assert.equal(feed.hasLiveDemoItems({ items: [] }), true);
+  assert.equal(feed.hasLiveDemoItems({ items: null }), false);
+  assert.equal(feed.hasLiveDemoItems(null), false);
+});
+
+test("Demo Lab refreshes data on mount, visibility, manual action and post-mutation only", async () => {
+  const source = await readFile(demoLabUrl, "utf8");
+  const summaryRefreshEffect = source.slice(
+    source.indexOf("let alive = true;"),
+    source.indexOf("if (!running) return;"),
+  );
+  const crmDashboard = source.slice(source.indexOf("function DemoCrmDashboard"));
+
+  assert.match(summaryRefreshEffect, /loadWhenVisible\(\)/);
+  assert.match(summaryRefreshEffect, /document\.addEventListener\("visibilitychange", onVisibilityChange\)/);
+  assert.doesNotMatch(summaryRefreshEffect, /setInterval|setTimeout/);
+  assert.match(source, /await refreshSummary\(\);[\s\S]*return true/);
+  assert.match(crmDashboard, /onClick=\{\(\) => void refreshSummary\(\)\}/);
+  assert.match(crmDashboard, /data-demo-refresh-mode="event-driven"/);
+  assert.doesNotMatch(crmDashboard, /setInterval|Auto-refresh \(10s\)|autoRefresh/);
+  assert.match(source, /window\.setInterval\(\(\) => setBeat/);
 });
 
 test("mobile demo discloses scope and SDK uses a non-geographic process diagram", async () => {
-  const [mobile, sdk, investor, heroScene] = await Promise.all([
+  const [mobile, mobilePage, sdk, investor, heroScene] = await Promise.all([
     readFile(mobileDemoUrl, "utf8"),
+    readFile(mobileDemoPageUrl, "utf8"),
     readFile(sdkUrl, "utf8"),
     readFile(investorUrl, "utf8"),
     readFile(heroSceneUrl, "utf8"),
@@ -101,6 +118,11 @@ test("mobile demo discloses scope and SDK uses a non-geographic process diagram"
   assert.match(mobile, /data-mobile-demo-map-truth=/);
   assert.match(mobile, /Sin telemetría productiva/);
   assert.match(mobile, /no genera un mapa de calor productivo/);
+  assert.equal((mobile.match(/setInterval/g) || []).length, 1);
+  assert.match(mobile, /setScanProgress\(\(value\) => \(value >= 92 \? value : value \+ 14\)\)/);
+  assert.doesNotMatch(mobile, /setInterval[\s\S]{0,500}fetch\(/);
+  assert.doesNotMatch(mobilePage, /setInterval|setTimeout|fetch\(/);
+  assert.match(mobilePage, /await loadPackSeed\(pack, itemId\)/);
   assert.doesNotMatch(mobile, /pending-location|illustrativeOrigin\.lat \+ 7|illustrativeOrigin\.lng \+ 16/);
   assert.match(sdk, /data-diagram-truth="simulated-sdk-flow"/);
   assert.match(sdk, /data-geographic="false"/);

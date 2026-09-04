@@ -2,6 +2,13 @@
 
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  HORIZONTAL_RAIL_INDEX_CHANGE_EVENT,
+  HORIZONTAL_RAIL_NAVIGATE_EVENT,
+  clampHorizontalRailIndex,
+  type HorizontalRailIndexChangeDetail,
+  type HorizontalRailNavigateDetail,
+} from "../lib/horizontal-rail-model.mjs";
 
 type HorizontalRailControlsProps = {
   railId: string;
@@ -12,71 +19,56 @@ type HorizontalRailControlsProps = {
 
 export function HorizontalRailControls({ railId, itemCount, previousLabel, nextLabel }: HorizontalRailControlsProps) {
   const railRef = useRef<HTMLElement | null>(null);
-  const itemsRef = useRef<HTMLElement[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [overflowing, setOverflowing] = useState(false);
 
-  const findCurrentIndex = useCallback(() => {
+  const requestIndex = useCallback((requestedIndex: number) => {
     const rail = railRef.current;
-    if (!rail || itemsRef.current.length === 0) return 0;
-    const railLeft = rail.getBoundingClientRect().left;
-    return itemsRef.current.reduce((closestIndex, item, index, items) => {
-      const distance = Math.abs(item.getBoundingClientRect().left - railLeft);
-      const closestDistance = Math.abs(items[closestIndex].getBoundingClientRect().left - railLeft);
-      return distance < closestDistance ? index : closestIndex;
-    }, 0);
-  }, []);
-
-  const goTo = useCallback((requestedIndex: number) => {
-    const rail = railRef.current;
-    if (!rail || itemsRef.current.length === 0) return;
-    const index = Math.max(0, Math.min(requestedIndex, itemsRef.current.length - 1));
-    const target = itemsRef.current[index];
-    const left = target.getBoundingClientRect().left - rail.getBoundingClientRect().left + rail.scrollLeft;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    rail.scrollTo({ left, behavior: reducedMotion ? "auto" : "smooth" });
-    setCurrentIndex(index);
-  }, []);
+    if (!rail) return;
+    const detail: HorizontalRailNavigateDetail = {
+      index: clampHorizontalRailIndex(requestedIndex, itemCount),
+      focus: false,
+    };
+    rail.dispatchEvent(new CustomEvent(HORIZONTAL_RAIL_NAVIGATE_EVENT, { detail }));
+  }, [itemCount]);
 
   useEffect(() => {
     const rail = document.getElementById(railId);
     if (!rail) return;
     railRef.current = rail;
-    itemsRef.current = Array.from(rail.children).filter((item): item is HTMLElement => item instanceof HTMLElement);
     let animationFrame = 0;
 
     const measure = () => {
       window.cancelAnimationFrame(animationFrame);
       animationFrame = window.requestAnimationFrame(() => {
         setOverflowing(rail.scrollWidth > rail.clientWidth + 2);
-        setCurrentIndex(findCurrentIndex());
       });
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      event.preventDefault();
-      const direction = event.key === "ArrowRight" ? 1 : -1;
-      goTo(findCurrentIndex() + direction);
+    const handleIndexChange = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const detail = event.detail as Partial<HorizontalRailIndexChangeDetail> | null;
+      if (!detail || typeof detail.index !== "number") return;
+      setCurrentIndex(clampHorizontalRailIndex(detail.index, itemCount));
     };
+
+    const initialIndex = Number(rail.dataset.activeStep) - 1;
+    setCurrentIndex(clampHorizontalRailIndex(initialIndex, itemCount));
 
     const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     resizeObserver?.observe(rail);
-    rail.addEventListener("scroll", measure, { passive: true });
-    rail.addEventListener("keydown", handleKeyDown);
+    rail.addEventListener(HORIZONTAL_RAIL_INDEX_CHANGE_EVENT, handleIndexChange);
     window.addEventListener("resize", measure);
     measure();
 
     return () => {
       window.cancelAnimationFrame(animationFrame);
       resizeObserver?.disconnect();
-      rail.removeEventListener("scroll", measure);
-      rail.removeEventListener("keydown", handleKeyDown);
+      rail.removeEventListener(HORIZONTAL_RAIL_INDEX_CHANGE_EVENT, handleIndexChange);
       window.removeEventListener("resize", measure);
       railRef.current = null;
-      itemsRef.current = [];
     };
-  }, [findCurrentIndex, goTo, railId]);
+  }, [itemCount, railId]);
 
   return (
     <div className="landing-rail-controls" hidden={!overflowing} aria-label={`${currentIndex + 1} / ${itemCount}`}>
@@ -85,7 +77,7 @@ export function HorizontalRailControls({ railId, itemCount, previousLabel, nextL
         aria-label={previousLabel}
         aria-controls={railId}
         disabled={currentIndex === 0}
-        onClick={() => goTo(currentIndex - 1)}
+        onClick={() => requestIndex(currentIndex - 1)}
       >
         <ArrowLeft aria-hidden="true" />
       </button>
@@ -95,7 +87,7 @@ export function HorizontalRailControls({ railId, itemCount, previousLabel, nextL
         aria-label={nextLabel}
         aria-controls={railId}
         disabled={currentIndex === itemCount - 1}
-        onClick={() => goTo(currentIndex + 1)}
+        onClick={() => requestIndex(currentIndex + 1)}
       >
         <ArrowRight aria-hidden="true" />
       </button>

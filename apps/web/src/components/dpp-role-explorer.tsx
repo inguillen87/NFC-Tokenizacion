@@ -27,6 +27,12 @@ type LocaleKey = "es" | "pt-BR" | "en";
 
 export type DppExplorerIndustry = "bottles" | "perfume" | "agro";
 
+const DEMO_PROFILE_BY_INDUSTRY: Readonly<Record<DppExplorerIndustry, "wine" | "packaging" | "agro">> = {
+  bottles: "wine",
+  perfume: "packaging",
+  agro: "agro",
+};
+
 type PassportField = {
   label: string;
   value: string;
@@ -1135,7 +1141,7 @@ export function DppRoleExplorer({ locale, industry }: { locale: string; industry
         </div>
         <div className={styles.footerAction}>
           <p><CircleDashed aria-hidden="true" />{copy.disclaimer}</p>
-          <Link href="/demo-lab?profile=wine">{copy.cta}<ArrowRight aria-hidden="true" /></Link>
+          <Link href={`/demo-lab?profile=${DEMO_PROFILE_BY_INDUSTRY[activeIndustry]}`}>{copy.cta}<ArrowRight aria-hidden="true" /></Link>
         </div>
       </div>
     </div>

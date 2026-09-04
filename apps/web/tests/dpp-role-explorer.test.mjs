@@ -108,7 +108,11 @@ test("DPP role explorer is truthful about demo data, permissions and verificatio
   assert.match(component, /no implica cumplimiento normativo automático/);
   assert.match(component, /La verificación digital no certifica por sí sola la autenticidad física/);
   assert.match(component, /no certifica el producto físico/);
-  assert.match(component, /href="\/demo-lab\?profile=wine"/);
+  assert.match(component, /const DEMO_PROFILE_BY_INDUSTRY: Readonly<Record<DppExplorerIndustry, "wine" \| "packaging" \| "agro">>/);
+  assert.match(component, /bottles: "wine"/);
+  assert.match(component, /perfume: "packaging"/);
+  assert.match(component, /agro: "agro"/);
+  assert.match(component, /href=\{`\/demo-lab\?profile=\$\{DEMO_PROFILE_BY_INDUSTRY\[activeIndustry\]\}`\}/);
 
   assert.doesNotMatch(component, /cumple con (?:la )?UE|EU compliant|garantiza la autenticidad|certifica la autenticidad física/i);
   assert.doesNotMatch(component, /datos reales|real data|dados reais/i);

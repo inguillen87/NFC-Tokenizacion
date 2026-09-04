@@ -8,9 +8,7 @@ import { ProductExitLink } from "./product-exit-link";
 import {
   hasLiveDemoItems,
   LIVE_DEMO_REQUEST_TIMEOUT_MS,
-  LIVE_DEMO_SUCCESS_POLL_MS,
-  liveDemoRetryDelay,
-} from "./live-demo-polling";
+} from "./live-demo-feed";
 
 type LiveEvent = {
   id: number;
@@ -59,6 +57,8 @@ const liveCopy: Record<AppLocale, {
   phoneTitle: string;
   phoneEmpty: string;
   sourceNote: string;
+  refresh: string;
+  refreshing: string;
   openMobile: string;
   openDashboard: string;
 }> = {
@@ -69,8 +69,8 @@ const liveCopy: Record<AppLocale, {
     source: "Fuente: tenant demobodega",
     loading: "Consultando el feed demo…",
     empty: "El feed respondió sin eventos geolocalizados. No se generan puntos ni zonas de calor artificiales.",
-    error: "La API demo no respondió. No mostramos valores nuevos y reintentamos automáticamente.",
-    staleError: "La API demo no respondió. Conservamos la última respuesta válida, sin convertir el error en cero.",
+    error: "La API demo no respondió. No mostramos valores nuevos; podés reintentar con «Actualizar datos».",
+    staleError: "La API demo no respondió. Conservamos la última respuesta válida; podés actualizarla manualmente.",
     contexts: "Contextos demo",
     events: "Eventos API",
     risk: "Señales de riesgo",
@@ -82,6 +82,8 @@ const liveCopy: Record<AppLocale, {
     phoneTitle: "Vista mobile del último evento",
     phoneEmpty: "Todavía no llegó un evento demo",
     sourceNote: "Fuente: API demo registrada. No es ubicación en vivo del dispositivo.",
+    refresh: "Actualizar datos",
+    refreshing: "Actualizando…",
     openMobile: "Abrir vista mobile",
     openDashboard: "Abrir dashboard",
   },
@@ -92,8 +94,8 @@ const liveCopy: Record<AppLocale, {
     source: "Fonte: tenant demobodega",
     loading: "Consultando o feed demo…",
     empty: "O feed respondeu sem eventos geolocalizados. Nenhum ponto ou zona de calor artificial é criado.",
-    error: "A API demo não respondeu. Não mostramos valores novos e tentamos novamente de forma automática.",
-    staleError: "A API demo não respondeu. Mantemos a última resposta válida, sem transformar o erro em zero.",
+    error: "A API demo não respondeu. Não mostramos valores novos; tente novamente com «Atualizar dados».",
+    staleError: "A API demo não respondeu. Mantemos a última resposta válida; você pode atualizá-la manualmente.",
     contexts: "Contextos demo",
     events: "Eventos API",
     risk: "Sinais de risco",
@@ -105,6 +107,8 @@ const liveCopy: Record<AppLocale, {
     phoneTitle: "Vista mobile do último evento",
     phoneEmpty: "Ainda não chegou um evento demo",
     sourceNote: "Fonte: API demo registrada. Não é localização ao vivo do dispositivo.",
+    refresh: "Atualizar dados",
+    refreshing: "Atualizando…",
     openMobile: "Abrir vista mobile",
     openDashboard: "Abrir dashboard",
   },
@@ -115,8 +119,8 @@ const liveCopy: Record<AppLocale, {
     source: "Source: demobodega tenant",
     loading: "Reading the demo feed…",
     empty: "The feed returned no geolocated events. No artificial points or hotspots are generated.",
-    error: "The demo API did not respond. No new values are shown and we retry automatically.",
-    staleError: "The demo API did not respond. The last valid response is retained instead of turning the error into zero.",
+    error: "The demo API did not respond. No new values are shown; use “Refresh data” to try again.",
+    staleError: "The demo API did not respond. The last valid response is retained and can be refreshed manually.",
     contexts: "Demo contexts",
     events: "API events",
     risk: "Risk signals",
@@ -128,6 +132,8 @@ const liveCopy: Record<AppLocale, {
     phoneTitle: "Latest-event mobile view",
     phoneEmpty: "No demo event has arrived yet",
     sourceNote: "Source: recorded demo API. This is not live device location.",
+    refresh: "Refresh data",
+    refreshing: "Refreshing…",
     openMobile: "Open mobile view",
     openDashboard: "Open dashboard",
   },
@@ -155,42 +161,22 @@ export function LiveDemoSurfaces({ locale = "es-AR" }: { locale?: AppLocale }) {
   const [loadState, setLoadState] = useState<DemoFeedLoadState>("loading");
   const [hasValidSnapshot, setHasValidSnapshot] = useState(false);
   const [feedMetadata, setFeedMetadata] = useState<DemoFeedMetadata>({ source: "pending", locationPrecision: "not_reported" });
+  const [refreshRequest, setRefreshRequest] = useState(0);
   const copy = liveCopy[locale];
 
   useEffect(() => {
     let disposed = false;
     let requestInFlight = false;
-    let refreshWhenVisible = false;
-    let consecutiveFailures = 0;
-    let pollTimer: number | undefined;
     let activeController: AbortController | undefined;
 
-    const clearPollTimer = () => {
-      if (pollTimer === undefined) return;
-      window.clearTimeout(pollTimer);
-      pollTimer = undefined;
-    };
-
-    const schedulePoll = (delayMs: number) => {
-      clearPollTimer();
-      if (disposed || document.hidden) return;
-
-      pollTimer = window.setTimeout(() => {
-        pollTimer = undefined;
-        void poll();
-      }, delayMs);
-    };
-
-    const poll = async () => {
+    const load = async () => {
       if (disposed || document.hidden || requestInFlight) return;
 
       requestInFlight = true;
-      refreshWhenVisible = false;
+      setLoadState("loading");
       const controller = new AbortController();
       activeController = controller;
-      let requestTimedOut = false;
       const requestTimeout = window.setTimeout(() => {
-        requestTimedOut = true;
         controller.abort();
       }, LIVE_DEMO_REQUEST_TIMEOUT_MS);
 
@@ -203,10 +189,7 @@ export function LiveDemoSurfaces({ locale = "es-AR" }: { locale?: AppLocale }) {
 
         const data: unknown = await response.json();
         if (!hasLiveDemoItems(data)) throw new Error("demo_feed_invalid_payload");
-        if (disposed || document.hidden || controller.signal.aborted) {
-          refreshWhenVisible = !disposed;
-          return;
-        }
+        if (disposed || controller.signal.aborted) return;
 
         setItems(data.items as LiveEvent[]);
         setFeedMetadata({
@@ -215,51 +198,30 @@ export function LiveDemoSurfaces({ locale = "es-AR" }: { locale?: AppLocale }) {
         });
         setHasValidSnapshot(true);
         setLoadState("ready");
-        consecutiveFailures = 0;
-        schedulePoll(LIVE_DEMO_SUCCESS_POLL_MS);
       } catch {
-        if (disposed || (controller.signal.aborted && !requestTimedOut)) return;
+        if (disposed) return;
 
-        consecutiveFailures += 1;
         setLoadState("error");
-        schedulePoll(liveDemoRetryDelay(consecutiveFailures));
       } finally {
         window.clearTimeout(requestTimeout);
         requestInFlight = false;
         if (activeController === controller) activeController = undefined;
-        if (refreshWhenVisible && !disposed && !document.hidden) {
-          refreshWhenVisible = false;
-          schedulePoll(0);
-        }
       }
     };
 
     const handleVisibilityChange = () => {
-      clearPollTimer();
-      if (document.hidden) {
-        refreshWhenVisible = true;
-        activeController?.abort();
-        return;
-      }
-
-      if (requestInFlight) {
-        refreshWhenVisible = true;
-        return;
-      }
-      void poll();
+      if (!document.hidden) void load();
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    if (!document.hidden) void poll();
+    if (!document.hidden) void load();
 
     return () => {
       disposed = true;
-      refreshWhenVisible = false;
-      clearPollTimer();
       activeController?.abort();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [refreshRequest]);
 
   const latest = items[0];
   const riskSignals = items.filter((it) => ["REPLAY_SUSPECT", "TAMPER", "INVALID"].includes(it.result)).length;
@@ -321,7 +283,17 @@ export function LiveDemoSurfaces({ locale = "es-AR" }: { locale?: AppLocale }) {
           <h2 className="mt-2 text-2xl font-semibold text-white">{copy.title}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{copy.lead}</p>
         </div>
-        <span className="demo-live-source-chip">{copy.source} · {feedMetadata.locationPrecision}</span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="demo-live-source-chip">{copy.source} · {feedMetadata.locationPrecision}</span>
+          <button
+            type="button"
+            onClick={() => setRefreshRequest((request) => request + 1)}
+            disabled={loadState === "loading"}
+            className="min-h-11 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-4 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-wait disabled:opacity-60"
+          >
+            {loadState === "loading" ? copy.refreshing : copy.refresh}
+          </button>
+        </div>
       </div>
 
       <p className={`demo-live-feed-state demo-live-feed-state--${loadState}`} role="status" aria-live="polite">
