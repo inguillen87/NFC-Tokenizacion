@@ -116,6 +116,40 @@ test("the guided journey is keyboard-visible, responsive and motion-safe", async
   assert.match(css, /:global\(\.demo-lab-hub-root--light\) \.journey/);
 });
 
+test("the final step explains the enterprise signal without inventing identity, location or outcomes", async () => {
+  const [journey, css] = await Promise.all([
+    readFile(journeyUrl, "utf8"),
+    readFile(journeyCssUrl, "utf8"),
+  ]);
+
+  assert.match(journey, /data-demo-business-signal/);
+  assert.match(journey, /Qué volvería al dashboard de la empresa/);
+  assert.match(journey, /What would return to the company dashboard/);
+  assert.match(journey, /O que voltaria ao dashboard da empresa/);
+  assert.match(journey, /Persona[\s\S]*Pasaporte[\s\S]*Servicio[\s\S]*Dashboard/);
+  assert.match(journey, /WARRANTY_STARTED/);
+  assert.match(journey, /LOYALTY_OFFER_VIEWED/);
+  assert.match(journey, /SUPPORT_STARTED/);
+  assert.doesNotMatch(journey, /(?:WARRANTY|LOYALTY|SUPPORT)_CONFIRMED/);
+  assert.match(journey, /actorUnknown: "No identificado"/);
+  assert.match(journey, /consentNotAssumed: "No asumido"/);
+  assert.match(journey, /locationNotReported: "No informada"/);
+  assert.match(journey, /demoProvenance: "Demo ilustrativa · no persistida"/);
+  assert.match(journey, /Gamificación medible/);
+  assert.match(journey, /verla no demuestra adhesión ni canje/);
+  assert.match(journey, /identidad aparece sólo si la persona decide compartirla/);
+  assert.match(journey, /Mapa y mapa de calor: preparados, sin puntos inventados/);
+  assert.match(journey, /zona reportada o una ubicación que la persona compartió con permiso/);
+  assert.match(journey, /no infiere GPS ni dibuja actividad ficticia/);
+  assert.match(journey, /Array\.from\(\{ length: 18 \}/);
+
+  assert.match(css, /\.businessSignal\s*\{[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(css, /\.signalFlow::after\s*\{[\s\S]*animation:\s*signalTravel/);
+  assert.match(css, /\.heatmapEmptyGrid i\s*\{[\s\S]*background:\s*transparent/);
+  assert.match(css, /:global\(\.demo-lab-hub-root--light\) \.businessSignal/);
+  assert.match(css, /@keyframes readinessScan/);
+});
+
 test("SUN reuses its existing demo preview for Demo Lab product handoffs", async () => {
   const [sun, profiles] = await Promise.all([
     readFile(sunUrl, "utf8"),

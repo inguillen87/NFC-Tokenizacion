@@ -3,14 +3,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  Activity,
   ArrowRight,
   BadgeCheck,
+  BookOpenCheck,
+  Building2,
   CheckCircle2,
   ChevronLeft,
+  CircleUserRound,
   Gift,
   Headphones,
+  LayoutDashboard,
+  LockKeyhole,
+  Map,
+  Radio,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Smartphone,
   Tag,
   Wine,
@@ -63,6 +72,38 @@ type JourneyCopy = {
   resultTitle: string;
   resultBody: string;
   brandSignal: string;
+  signalEyebrow: string;
+  signalTitle: string;
+  signalIntro: string;
+  flowLabel: string;
+  flow: readonly { label: string; detail: string }[];
+  packetLabel: string;
+  signalFields: {
+    event: string;
+    context: string;
+    actor: string;
+    consent: string;
+    location: string;
+    provenance: string;
+  };
+  actorUnknown: string;
+  consentNotAssumed: string;
+  locationNotReported: string;
+  demoProvenance: string;
+  customerValueLabel: string;
+  businessValueLabel: string;
+  nextBusinessActionLabel: string;
+  actionSignals: Readonly<Record<JourneyAction, {
+    event: string;
+    customerValue: string;
+    businessValue: string;
+    nextAction: string;
+  }>>;
+  heatmapTitle: string;
+  heatmapState: string;
+  heatmapBody: string;
+  heatmapFootnote: string;
+  signalBoundary: string;
   back: string;
   restart: string;
   openPreview: string;
@@ -142,6 +183,57 @@ const COPY: Record<"es" | "en" | "pt", JourneyCopy> = {
     resultTitle: "Ahora mirá la experiencia final.",
     resultBody: "Demo Lab explica el gesto y después abre la ficha que verá el cliente, con el producto, su información y las opciones de posventa.",
     brandSignal: "Vista final del cliente · experiencia de muestra",
+    signalEyebrow: "Del producto al centro de control",
+    signalTitle: "Qué volvería al dashboard de la empresa.",
+    signalIntro: "En un recorrido real, la interacción puede generar una señal contextual. Acá ves el contrato de datos antes de abrir la experiencia final: qué se registra, qué no se presume y qué puede hacer el equipo.",
+    flowLabel: "Flujo ilustrativo desde la persona hasta el dashboard empresarial",
+    flow: [
+      { label: "Persona", detail: "Elige una acción" },
+      { label: "Pasaporte", detail: "Conserva producto y lote" },
+      { label: "Servicio", detail: "Registra intención, no resultado" },
+      { label: "Dashboard", detail: "Recibe una señal contextual" },
+    ],
+    packetLabel: "Paquete ilustrativo de la señal",
+    signalFields: {
+      event: "Taxonomía",
+      context: "Producto y lote",
+      actor: "Actor",
+      consent: "Consentimiento",
+      location: "Ubicación",
+      provenance: "Procedencia",
+    },
+    actorUnknown: "No identificado",
+    consentNotAssumed: "No asumido",
+    locationNotReported: "No informada",
+    demoProvenance: "Demo ilustrativa · no persistida",
+    customerValueLabel: "Qué obtiene la persona",
+    businessValueLabel: "Qué aprende la empresa",
+    nextBusinessActionLabel: "Siguiente acción empresarial",
+    actionSignals: {
+      warranty: {
+        event: "WARRANTY_STARTED",
+        customerValue: "Inicia el alta desde el producto. La garantía sigue pendiente hasta que un sistema autorizado la confirme.",
+        businessValue: "Postventa y fidelización con contexto de producto y lote, sin confundir un inicio con una garantía confirmada.",
+        nextAction: "Crear una tarea de seguimiento y confirmar la garantía desde el sistema autorizado.",
+      },
+      benefit: {
+        event: "LOYALTY_OFFER_VIEWED",
+        customerValue: "Consulta una recompensa, trivia o experiencia; verla no demuestra adhesión ni canje.",
+        businessValue: "Gamificación medible para aprender interés y recurrencia sin convertir el tap en una identidad.",
+        nextAction: "Invitar al opt-in y medir participación antes de activar una campaña de fidelización.",
+      },
+      support: {
+        event: "SUPPORT_STARTED",
+        customerValue: "Abre el canal de ayuda elegido para ese producto; la conversación todavía debe ser atendida.",
+        businessValue: "Contacto con producto y lote; la identidad aparece sólo si la persona decide compartirla.",
+        nextAction: "Derivar al canal configurado y pedir datos únicamente con consentimiento explícito.",
+      },
+    },
+    heatmapTitle: "Mapa y mapa de calor: preparados, sin puntos inventados",
+    heatmapState: "Esperando una zona informada o ubicación consentida",
+    heatmapBody: "El dashboard muestra densidad sólo cuando un evento real incluye una zona reportada o una ubicación que la persona compartió con permiso.",
+    heatmapFootnote: "Este Demo Lab no infiere GPS ni dibuja actividad ficticia.",
+    signalBoundary: "Esta vista explica el contrato de datos. No afirma conversión, identidad, ubicación ni confirmación de servicio.",
     back: "Volver",
     restart: "Reiniciar recorrido",
     openPreview: "Ver la experiencia final",
@@ -189,6 +281,57 @@ const COPY: Record<"es" | "en" | "pt", JourneyCopy> = {
     resultTitle: "Now see the final experience.",
     resultBody: "Demo Lab explains the gesture, then opens the page customers will see, with the product, its information and after-sales options.",
     brandSignal: "Customer view · sample experience",
+    signalEyebrow: "From product to control center",
+    signalTitle: "What would return to the company dashboard.",
+    signalIntro: "In a real journey, the interaction can create a contextual signal. This is the data contract before opening the final experience: what is recorded, what is not assumed and what the team can do next.",
+    flowLabel: "Illustrative flow from the person to the company dashboard",
+    flow: [
+      { label: "Person", detail: "Chooses an action" },
+      { label: "Passport", detail: "Keeps product and batch context" },
+      { label: "Service", detail: "Records intent, not outcome" },
+      { label: "Dashboard", detail: "Receives a contextual signal" },
+    ],
+    packetLabel: "Illustrative signal packet",
+    signalFields: {
+      event: "Taxonomy",
+      context: "Product and batch",
+      actor: "Actor",
+      consent: "Consent",
+      location: "Location",
+      provenance: "Provenance",
+    },
+    actorUnknown: "Unidentified",
+    consentNotAssumed: "Not assumed",
+    locationNotReported: "Not reported",
+    demoProvenance: "Illustrative demo · not persisted",
+    customerValueLabel: "What the person gets",
+    businessValueLabel: "What the company learns",
+    nextBusinessActionLabel: "Next business action",
+    actionSignals: {
+      warranty: {
+        event: "WARRANTY_STARTED",
+        customerValue: "Starts registration from the product. The warranty remains pending until an authorized system confirms it.",
+        businessValue: "After-sales and loyalty context tied to product and batch, without treating a start as a confirmed warranty.",
+        nextAction: "Create a follow-up task and confirm the warranty in the authorized system.",
+      },
+      benefit: {
+        event: "LOYALTY_OFFER_VIEWED",
+        customerValue: "Views a reward, challenge or experience; a view does not prove enrollment or redemption.",
+        businessValue: "Measurable gamification for learning interest and recurrence without turning a tap into an identity.",
+        nextAction: "Invite opt-in and measure participation before activating a loyalty campaign.",
+      },
+      support: {
+        event: "SUPPORT_STARTED",
+        customerValue: "Opens the help channel selected for that product; the conversation still needs to be handled.",
+        businessValue: "Contact with product and batch context; identity appears only if the person chooses to share it.",
+        nextAction: "Route to the configured channel and request data only with explicit consent.",
+      },
+    },
+    heatmapTitle: "Map and heatmap: ready, with no invented points",
+    heatmapState: "Waiting for a reported zone or consented location",
+    heatmapBody: "The dashboard shows density only when a real event contains a reported zone or a location the person shared with permission.",
+    heatmapFootnote: "This Demo Lab neither infers GPS nor draws fictional activity.",
+    signalBoundary: "This view explains the data contract. It does not claim a conversion, identity, location or confirmed service outcome.",
     back: "Back",
     restart: "Restart journey",
     openPreview: "View the final experience",
@@ -236,6 +379,57 @@ const COPY: Record<"es" | "en" | "pt", JourneyCopy> = {
     resultTitle: "Agora veja a experiência final.",
     resultBody: "O Demo Lab explica o gesto e depois abre a página que o cliente verá, com o produto, suas informações e opções de pós-venda.",
     brandSignal: "Visão do cliente · experiência de exemplo",
+    signalEyebrow: "Do produto ao centro de controle",
+    signalTitle: "O que voltaria ao dashboard da empresa.",
+    signalIntro: "Em uma jornada real, a interação pode gerar um sinal contextual. Aqui você vê o contrato de dados antes de abrir a experiência final: o que é registrado, o que não é presumido e o que a equipe pode fazer.",
+    flowLabel: "Fluxo ilustrativo da pessoa até o dashboard empresarial",
+    flow: [
+      { label: "Pessoa", detail: "Escolhe uma ação" },
+      { label: "Passaporte", detail: "Mantém produto e lote" },
+      { label: "Serviço", detail: "Registra intenção, não resultado" },
+      { label: "Dashboard", detail: "Recebe um sinal contextual" },
+    ],
+    packetLabel: "Pacote ilustrativo do sinal",
+    signalFields: {
+      event: "Taxonomia",
+      context: "Produto e lote",
+      actor: "Ator",
+      consent: "Consentimento",
+      location: "Localização",
+      provenance: "Procedência",
+    },
+    actorUnknown: "Não identificado",
+    consentNotAssumed: "Não presumido",
+    locationNotReported: "Não informada",
+    demoProvenance: "Demo ilustrativa · não persistida",
+    customerValueLabel: "O que a pessoa recebe",
+    businessValueLabel: "O que a empresa aprende",
+    nextBusinessActionLabel: "Próxima ação empresarial",
+    actionSignals: {
+      warranty: {
+        event: "WARRANTY_STARTED",
+        customerValue: "Inicia o cadastro pelo produto. A garantia continua pendente até que um sistema autorizado a confirme.",
+        businessValue: "Pós-venda e fidelização com contexto de produto e lote, sem tratar um início como garantia confirmada.",
+        nextAction: "Criar uma tarefa de acompanhamento e confirmar a garantia no sistema autorizado.",
+      },
+      benefit: {
+        event: "LOYALTY_OFFER_VIEWED",
+        customerValue: "Consulta uma recompensa, desafio ou experiência; a visualização não comprova adesão nem resgate.",
+        businessValue: "Gamificação mensurável para entender interesse e recorrência sem transformar o toque em identidade.",
+        nextAction: "Convidar para o opt-in e medir participação antes de ativar uma campanha de fidelização.",
+      },
+      support: {
+        event: "SUPPORT_STARTED",
+        customerValue: "Abre o canal de ajuda escolhido para esse produto; a conversa ainda precisa ser atendida.",
+        businessValue: "Contato com contexto de produto e lote; a identidade aparece somente se a pessoa decidir compartilhá-la.",
+        nextAction: "Encaminhar ao canal configurado e solicitar dados apenas com consentimento explícito.",
+      },
+    },
+    heatmapTitle: "Mapa e mapa de calor: prontos, sem pontos inventados",
+    heatmapState: "Aguardando zona informada ou localização consentida",
+    heatmapBody: "O dashboard mostra densidade somente quando um evento real contém uma zona reportada ou uma localização compartilhada pela pessoa com permissão.",
+    heatmapFootnote: "Este Demo Lab não infere GPS nem desenha atividade fictícia.",
+    signalBoundary: "Esta visão explica o contrato de dados. Ela não afirma conversão, identidade, localização nem confirmação de serviço.",
     back: "Voltar",
     restart: "Reiniciar jornada",
     openPreview: "Ver a experiência final",
@@ -248,6 +442,8 @@ const ACTION_ICONS = {
   benefit: Gift,
   support: Headphones,
 } as const;
+
+const SIGNAL_FLOW_ICONS = [CircleUserRound, BookOpenCheck, Sparkles, LayoutDashboard] as const;
 
 function localeKey(locale: AppLocale): keyof typeof COPY {
   if (locale === "en") return "en";
@@ -285,6 +481,7 @@ export function DemoLabFeaturedJourney({
   const [productKey, setProductKey] = useState<DemoProductProfileKey>(initialProfile);
   const product = DEMO_PRODUCT_PROFILES[productKey];
   const current = copy.steps[step];
+  const actionSignal = copy.actionSignals[selectedAction];
   const sunPreviewHref = buildSunPreviewHref(productKey, selectedAction, locale);
 
   const moveToStep = (next: JourneyStep) => {
@@ -538,6 +735,92 @@ export function DemoLabFeaturedJourney({
           </div>
           <small className={styles.helper}>{copy.helper}</small>
         </div>
+
+        {step === 3 ? (
+          <section
+            className={styles.businessSignal}
+            data-demo-business-signal
+            aria-labelledby="demo-business-signal-title"
+          >
+            <header className={styles.signalHeader}>
+              <div>
+                <span className={styles.signalEyebrow}><Activity aria-hidden="true" />{copy.signalEyebrow}</span>
+                <h3 id="demo-business-signal-title">{copy.signalTitle}</h3>
+                <p>{copy.signalIntro}</p>
+              </div>
+              <span className={styles.signalProvenance}>
+                <LockKeyhole aria-hidden="true" />{copy.demoProvenance}
+              </span>
+            </header>
+
+            <ol className={styles.signalFlow} aria-label={copy.flowLabel}>
+              {copy.flow.map((item, index) => {
+                const Icon = SIGNAL_FLOW_ICONS[index];
+                const detail = index === 2
+                  ? `${copy.actions[selectedAction].label} · ${item.detail}`
+                  : item.detail;
+                return (
+                  <li key={item.label}>
+                    <span className={styles.signalFlowIcon}><Icon aria-hidden="true" /></span>
+                    <span><strong>{item.label}</strong><small>{detail}</small></span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className={styles.signalWorkspace}>
+              <section className={styles.signalPacket} aria-label={copy.packetLabel}>
+                <div className={styles.signalSectionTitle}>
+                  <span><Radio aria-hidden="true" /></span>
+                  <div><small>{copy.packetLabel}</small><strong>{copy.actions[selectedAction].label}</strong></div>
+                </div>
+                <dl>
+                  <div><dt>{copy.signalFields.event}</dt><dd><code>{actionSignal.event}</code></dd></div>
+                  <div><dt>{copy.signalFields.context}</dt><dd>{product.name} · {product.lot}</dd></div>
+                  <div><dt>{copy.signalFields.actor}</dt><dd>{copy.actorUnknown}</dd></div>
+                  <div><dt>{copy.signalFields.consent}</dt><dd>{copy.consentNotAssumed}</dd></div>
+                  <div><dt>{copy.signalFields.location}</dt><dd>{copy.locationNotReported}</dd></div>
+                  <div><dt>{copy.signalFields.provenance}</dt><dd>{copy.demoProvenance}</dd></div>
+                </dl>
+              </section>
+
+              <aside className={styles.signalImpact} aria-label={copy.businessValueLabel}>
+                <article>
+                  <span><CircleUserRound aria-hidden="true" /></span>
+                  <div><small>{copy.customerValueLabel}</small><p>{actionSignal.customerValue}</p></div>
+                </article>
+                <article>
+                  <span><Building2 aria-hidden="true" /></span>
+                  <div><small>{copy.businessValueLabel}</small><p>{actionSignal.businessValue}</p></div>
+                </article>
+                <div className={styles.nextBusinessAction}>
+                  <span>{copy.nextBusinessActionLabel}</span>
+                  <strong>{actionSignal.nextAction}</strong>
+                  <ArrowRight aria-hidden="true" />
+                </div>
+              </aside>
+            </div>
+
+            <section className={styles.heatmapReadiness} aria-labelledby="demo-heatmap-readiness-title">
+              <div className={styles.heatmapCopy}>
+                <span><Map aria-hidden="true" />{copy.signalFields.location}</span>
+                <h4 id="demo-heatmap-readiness-title">{copy.heatmapTitle}</h4>
+                <p>{copy.heatmapBody}</p>
+                <small>{copy.heatmapFootnote}</small>
+              </div>
+              <div className={styles.heatmapEmpty} role="status" aria-label={copy.heatmapState}>
+                <div className={styles.heatmapEmptyGrid} aria-hidden="true">
+                  {Array.from({ length: 18 }, (_, index) => <i key={index} />)}
+                </div>
+                <span><Map aria-hidden="true" />{copy.heatmapState}</span>
+              </div>
+            </section>
+
+            <p className={styles.signalBoundary}>
+              <ShieldCheck aria-hidden="true" />{copy.signalBoundary}
+            </p>
+          </section>
+        ) : null}
       </div>
     </section>
   );
