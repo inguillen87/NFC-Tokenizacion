@@ -18,6 +18,7 @@ import {
   MousePointerClick,
   Radio,
   RotateCcw,
+  ScanLine,
   Settings,
   Send,
   ShieldAlert,
@@ -34,10 +35,12 @@ import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map"
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { IncidentEventDrawer } from "./incident-event-drawer";
+import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { exportToCsv } from "../lib/export-utils";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import { classifyLocationProvenance } from "../lib/location-provenance";
+import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
 import {
   classifyRealtimeVerdict,
   isRealtimeRisk,
@@ -62,6 +65,7 @@ import {
 
 type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
+export type ExecutiveCrmView = "overview" | "physical-taps";
 type MapView = "heat" | "points" | "nearby";
 type TimeRange = "5m" | "1h" | "24h";
 
@@ -667,6 +671,9 @@ export function ExecutiveRealtimeCrm({
   initialDataSource,
   initialAvailability,
   initialAvailabilityDetail,
+  initialView,
+  physicalTapsResult,
+  physicalTapsTenantDisplayName,
   onSectionChange,
 }: {
   account: {
@@ -688,6 +695,9 @@ export function ExecutiveRealtimeCrm({
   initialDataSource: RealtimeDataSource;
   initialAvailability: RealtimeAvailability;
   initialAvailabilityDetail: string;
+  initialView: ExecutiveCrmView;
+  physicalTapsResult: PhysicalTapsResult;
+  physicalTapsTenantDisplayName: string;
   onSectionChange?: (section: CrmSection) => void;
 }) {
   const canReadSensitiveEvents = dashboardHighImpactPermissionMatches(
@@ -702,6 +712,7 @@ export function ExecutiveRealtimeCrm({
     deniedPermissions: account.deniedPermissions,
     isDemo: Boolean(account.isDemo),
   });
+  const [activeView, setActiveView] = useState<ExecutiveCrmView>(initialView);
   const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, 50) : []);
   const [connected, setConnected] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
@@ -782,6 +793,26 @@ export function ExecutiveRealtimeCrm({
     document.body.classList.add("nexid-crm-overlay-active");
     return () => document.body.classList.remove("nexid-crm-overlay-active");
   }, []);
+
+  const selectActiveView = useCallback((nextView: ExecutiveCrmView) => {
+    setActiveView(nextView);
+    const nextUrl = new URL(window.location.href);
+    if (nextView === "physical-taps") nextUrl.searchParams.set("view", "physical-taps");
+    else nextUrl.searchParams.delete("view");
+    const nextHref = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+    const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextHref !== currentHref) window.history.pushState(null, "", nextHref);
+  }, []);
+
+  useEffect(() => {
+    setActiveView(initialView);
+    const handlePopState = () => {
+      const requestedView = new URL(window.location.href).searchParams.get("view");
+      setActiveView(requestedView === "physical-taps" ? "physical-taps" : "overview");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [initialView]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -1314,7 +1345,8 @@ export function ExecutiveRealtimeCrm({
   };
 
   const railItems: CrmRailItem[] = [
-    { icon: <Activity className="h-5 w-5" />, active: true, label: "Resumen operativo", short: "Vista", title: "Ver KPIs explicados, funnel post-tap y estado de la ventana activa.", action: () => onSectionChange?.("summary") },
+    { icon: <Activity className="h-5 w-5" />, active: activeView === "overview", label: "Resumen operativo", short: "Vista", title: "Ver KPIs explicados, funnel post-tap y estado de la ventana activa.", action: () => selectActiveView("overview") },
+    { icon: <ScanLine className="h-5 w-5" />, active: activeView === "physical-taps", label: "TAP físicos", short: "TAP", title: "Abrir evidencia NFC física, estados reportados, mapa e inbox del tenant.", action: () => selectActiveView("physical-taps") },
     { icon: <Globe className="h-5 w-5" />, active: false, label: "Mapa por capas", short: "Capas", title: "Centrar el mapa y conservar la capa seleccionada.", action: () => { setMapZoom(1); document.getElementById("live-tap-map")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
     { icon: <Megaphone className="h-5 w-5" />, active: false, label: "IA de cercanía", short: "IA", title: "Ver priorización comercial por zona basada en eventos visibles.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
@@ -1326,8 +1358,8 @@ export function ExecutiveRealtimeCrm({
   return (
     <div className="nexid-crm-shell fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden">
       <div className="nexid-crm-backdrop pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
-      <header className="relative z-[640] flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:h-[70px] lg:flex-nowrap lg:px-4 lg:py-0">
-        <div className="flex w-full items-center gap-4 sm:w-auto lg:w-[510px] lg:gap-5">
+      <header data-testid="crm-responsive-header" className="relative z-[640] flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:h-[144px] lg:min-h-[144px] lg:px-4 lg:py-3 2xl:h-[70px] 2xl:min-h-[70px] 2xl:flex-nowrap 2xl:py-0">
+        <div className="order-1 flex min-w-0 flex-1 items-center gap-4 lg:gap-5 2xl:order-none 2xl:w-[440px] 2xl:flex-none">
           <div className="pr-4 text-[24px] font-black tracking-[-0.04em] text-white lg:pr-6 lg:text-[28px]">
             nex<span className="text-cyan-300">ID</span>
           </div>
@@ -1337,9 +1369,12 @@ export function ExecutiveRealtimeCrm({
           </div>
         </div>
 
-        <nav className="order-3 grid min-h-12 w-full grid-cols-3 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:text-sm lg:order-none lg:mx-auto lg:w-[500px]">
-          <button type="button" title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => onSectionChange?.("summary")} className="flex min-h-12 items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 px-2 text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300">
+        <nav className="order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-4 sm:text-sm 2xl:order-none 2xl:mx-auto 2xl:w-[590px]">
+          <button type="button" aria-label="Volver al mapa y CRM" title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => selectActiveView("overview")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "overview" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
             <Activity className="h-4 w-4" /> CRM en vivo
+          </button>
+          <button type="button" aria-label="Abrir TAP físicos" title="Abrir evidencia NFC física, estados reportados, mapa e inbox del tenant" onClick={() => selectActiveView("physical-taps")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "physical-taps" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
+            <ScanLine className="h-4 w-4" /> TAP físicos
           </button>
           <button type="button" title="Abrir operación NFC: lotes, tags, QA, anclaje y publicación" onClick={() => onSectionChange?.("infra")} className="flex min-h-12 items-center justify-center gap-2 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300">
             <Truck className="h-4 w-4" /> Operación NFC
@@ -1349,11 +1384,11 @@ export function ExecutiveRealtimeCrm({
           </button>
         </nav>
 
-        <div className="ml-0 flex w-full flex-wrap items-center justify-between gap-3 text-xs text-slate-300 lg:ml-auto lg:w-auto lg:flex-nowrap lg:justify-start lg:gap-5">
+        <div className="order-2 ml-auto flex w-auto flex-wrap items-center justify-end gap-3 text-xs text-slate-300 lg:flex-nowrap 2xl:order-none 2xl:justify-start 2xl:gap-5">
           <span className="flex items-center gap-2" title={streamHealth.detail}><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> Stream: {streamHealth.label}</span>
           <span data-testid="crm-source-badge" className={`rounded-full border px-2.5 py-1 font-semibold ${sourcePresentation.badge}`} title={sourcePresentation.detail}>Fuente: {sourcePresentation.label}</span>
-          <span className="flex items-center gap-2" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="hidden text-[10px] uppercase tracking-[0.08em] text-slate-500 xl:inline">{consoleTimezoneLabel}</span></span>
-          <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
+          <span className="hidden items-center gap-2 2xl:flex" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="text-[10px] uppercase tracking-[0.08em] text-slate-500">{consoleTimezoneLabel}</span></span>
+          <span className="hidden items-center gap-2 2xl:flex"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <TenantAccountMenu
             className="nexid-crm-account-menu w-full sm:w-auto"
             email={account.email}
@@ -1372,7 +1407,7 @@ export function ExecutiveRealtimeCrm({
         </div>
       </header>
 
-      <aside className="absolute bottom-0 left-0 top-[70px] z-10 hidden w-24 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:flex">
+      <aside className="absolute bottom-0 left-0 top-[70px] z-10 hidden w-24 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:top-[144px] lg:flex 2xl:top-[70px]">
         <div className="space-y-3">
           {railItems.map((item) => (
             <button
@@ -1404,7 +1439,28 @@ export function ExecutiveRealtimeCrm({
         </div>
       </aside>
 
-      <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-102px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:gap-4 2xl:p-4">
+      {activeView === "physical-taps" ? (
+        <main data-testid="crm-physical-taps-view" className="relative z-10 min-h-[calc(100vh-70px)] overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-176px)] lg:min-h-0 lg:overflow-y-auto lg:p-4 2xl:h-[calc(100vh-102px)] 2xl:p-5">
+          <section className="mx-auto w-full max-w-[1600px] space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/15 bg-slate-950/55 px-4 py-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">CRM · evidencia física del tenant</p>
+                <h2 className="mt-1 text-xl font-black text-white">TAP físicos en tiempo operativo</h2>
+              </div>
+              <button type="button" aria-label="Volver al mapa y CRM" onClick={() => selectActiveView("overview")} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-100 transition hover:border-cyan-300/30 hover:bg-cyan-400/10">
+                <Activity className="h-4 w-4 text-cyan-200" /> Volver al mapa y CRM
+              </button>
+            </div>
+            <PhysicalTapsCommandCenter
+              result={physicalTapsResult}
+              tenantSlug={tenantScope}
+              tenantDisplayName={physicalTapsTenantDisplayName}
+              clerkEnabled={account.clerkEnabled}
+            />
+          </section>
+        </main>
+      ) : (
+      <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-176px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:h-[calc(100vh-102px)] 2xl:gap-4 2xl:p-4">
         <section className="nexid-crm-kpi-column order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 xl:w-96">
           <div className="flex items-start justify-between gap-3">
             <span>
@@ -1699,6 +1755,7 @@ export function ExecutiveRealtimeCrm({
           </div>
         </section>
       </main>
+      )}
 
       {selectedEvent ? (
         <IncidentEventDrawer

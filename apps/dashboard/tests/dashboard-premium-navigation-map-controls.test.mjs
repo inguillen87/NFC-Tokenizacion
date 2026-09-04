@@ -52,6 +52,21 @@ test("fullscreen and narrow layouts reserve distinct responsive control regions"
   assert.match(globals, /@media \(min-width: 1536px\)[\s\S]*?\.nexid-crm-map-base-controls/);
 });
 
+test("the CRM header keeps two rows through laptop widths and coordinates its content offsets", () => {
+  const header = crm.match(/<header data-testid="crm-responsive-header"[^>]+>/)?.[0] || "";
+  assert.match(header, /lg:h-\[144px\]/);
+  assert.match(header, /lg:min-h-\[144px\]/);
+  assert.match(header, /2xl:h-\[70px\]/);
+  assert.match(header, /2xl:flex-nowrap/);
+  assert.doesNotMatch(header, /lg:flex-nowrap/);
+  assert.doesNotMatch(crm, /lg:w-\[510px\]/);
+  assert.doesNotMatch(crm, /lg:w-\[500px\]/);
+  assert.match(crm, /2xl:w-\[440px\]/);
+  assert.match(crm, /2xl:w-\[590px\]/);
+  assert.match(crm, /lg:top-\[144px\][^\"]*2xl:top-\[70px\]/);
+  assert.match(crm, /lg:h-\[calc\(100vh-176px\)\][^\"]*2xl:h-\[calc\(100vh-102px\)\]/);
+});
+
 test("map and shell motion honor the user's reduced-motion preference", () => {
   assert.match(shell, /useReducedMotion\(\)/);
   assert.match(shell, /whileHover=\{shouldReduceMotion \? undefined : \{ x: 4 \}\}/);

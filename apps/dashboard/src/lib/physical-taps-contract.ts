@@ -79,6 +79,35 @@ export type PhysicalTapsResult = {
   checkedAt: string;
 };
 
+const RECOVERABLE_PHYSICAL_TAPS_AVAILABILITIES: ReadonlySet<PhysicalTapsAvailability> = new Set([
+  "upstream_error",
+  "invalid_payload",
+  "unreachable",
+]);
+
+export function isRecoverablePhysicalTapsAvailability(availability: PhysicalTapsAvailability) {
+  return RECOVERABLE_PHYSICAL_TAPS_AVAILABILITIES.has(availability);
+}
+
+export function canRefreshPhysicalTaps(availability: PhysicalTapsAvailability) {
+  return availability === "ready" || isRecoverablePhysicalTapsAvailability(availability);
+}
+
+export function mergePhysicalTapsRefresh(
+  current: PhysicalTapsResult,
+  incoming: PhysicalTapsResult,
+): PhysicalTapsResult {
+  if (incoming.availability === "ready") return incoming;
+  if (
+    current.availability === "ready"
+    && current.payload
+    && isRecoverablePhysicalTapsAvailability(incoming.availability)
+  ) {
+    return current;
+  }
+  return incoming;
+}
+
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>

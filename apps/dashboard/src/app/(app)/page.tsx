@@ -34,6 +34,13 @@ type HomeRealtimeResult = {
   detail: string;
 };
 
+type DashboardCrmView = "overview" | "physical-taps";
+
+function resolveDashboardCrmView(value: string | string[] | undefined): DashboardCrmView {
+  const requested = Array.isArray(value) ? value[0] : value;
+  return requested === "physical-taps" ? "physical-taps" : "overview";
+}
+
 function demoOverviewRows() {
   return [
     { id: "balmec-tenant-001", slug: "demobodega", name: "Bodega Balmec", scans: 61, duplicates: 1, tamper: 0, created_at: new Date().toISOString() },
@@ -207,8 +214,16 @@ function toRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
   return normalizeTenantTapRealtimeEvent(row);
 }
 
-export default async function DashboardHome() {
-  const { locale } = await getDashboardI18n();
+export default async function DashboardHome({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ locale }, resolvedSearchParams] = await Promise.all([
+    getDashboardI18n(),
+    searchParams ?? Promise.resolve<Record<string, string | string[] | undefined>>({}),
+  ]);
+  const initialCrmView = resolveDashboardCrmView(resolvedSearchParams.view);
   const fallbackLocale = "es-AR" as const;
   const t = messages[locale] || messages[fallbackLocale];
   const kpis = t?.dashboard?.kpis || FALLBACK_KPIS;
@@ -427,6 +442,7 @@ export default async function DashboardHome() {
       mintedTokens={mintedTokens}
       clerkEnabled={isClerkConfiguredForRuntime()}
       physicalTapsResult={physicalTapsResult}
+      initialCrmView={initialCrmView}
     />
   );
 }

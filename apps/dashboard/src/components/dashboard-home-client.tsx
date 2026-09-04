@@ -12,7 +12,6 @@ import { ExecutiveRealtimeCrm } from "./executive-realtime-crm";
 import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
 import { CustomerGrowthCommandCenter } from "./customer-growth-command-center";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
-import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
 import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
 import type { RealtimeAvailability, RealtimeDataSource, RealtimeStreamSource } from "../lib/realtime-feed";
 import {
@@ -70,6 +69,7 @@ interface DashboardHomeClientProps {
   plannedTags: number;
   mintedTokens: number;
   physicalTapsResult: PhysicalTapsResult;
+  initialCrmView: "overview" | "physical-taps";
   clerkEnabled?: boolean;
 }
 
@@ -117,6 +117,7 @@ export default function DashboardHomeClient({
   activeTags,
   plannedTags,
   physicalTapsResult,
+  initialCrmView,
   mintedTokens,
   clerkEnabled
 }: DashboardHomeClientProps) {
@@ -226,9 +227,11 @@ export default function DashboardHomeClient({
               initialDataSource={realtimeDataSource}
               initialAvailability={realtimeAvailability}
               initialAvailabilityDetail={realtimeAvailabilityDetail}
+              initialView={initialCrmView}
+              physicalTapsResult={physicalTapsResult}
+              physicalTapsTenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"}
               onSectionChange={(section) => setActiveTab(section)}
             />
-            <PhysicalTapsCommandCenter compact result={physicalTapsResult} tenantSlug={tenantScope} tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"} clerkEnabled={clerkEnabled} />
           </div>
         )}
 

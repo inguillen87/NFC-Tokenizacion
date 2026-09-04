@@ -3,7 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const {
+  canRefreshPhysicalTaps,
   latestPhysicalTapByState,
+  mergePhysicalTapsRefresh,
   normalizePhysicalTapsPayload,
 } = await import("../src/lib/physical-taps-contract.ts");
 
@@ -128,15 +130,47 @@ test("physical TAP contract rejects provenance drift and invented journey semant
   }), null);
 });
 
+test("physical TAP refresh recovers initial outages, preserves snapshots and stops on terminal access states", () => {
+  for (const availability of ["ready", "upstream_error", "invalid_payload", "unreachable"]) {
+    assert.equal(canRefreshPhysicalTaps(availability), true, `${availability} should refresh`);
+  }
+  for (const availability of ["forbidden", "requires_tenant_session"]) {
+    assert.equal(canRefreshPhysicalTaps(availability), false, `${availability} must not refresh`);
+  }
+
+  const confirmedPayload = normalizePhysicalTapsPayload(payload());
+  assert.ok(confirmedPayload);
+  const outage = { availability: "unreachable", payload: null, detail: "offline", checkedAt: "2026-09-04T10:00:00.000Z" };
+  const confirmed = { availability: "ready", payload: confirmedPayload, detail: "live", checkedAt: "2026-09-04T10:00:05.000Z" };
+  assert.equal(mergePhysicalTapsRefresh(outage, confirmed), confirmed, "an unavailable initial state must recover to ready");
+  assert.equal(mergePhysicalTapsRefresh(confirmed, outage), confirmed, "a recoverable outage must preserve the last confirmed snapshot");
+  assert.equal(
+    mergePhysicalTapsRefresh(confirmed, { ...outage, availability: "forbidden" }).availability,
+    "forbidden",
+    "revoked access must not retain tenant evidence",
+  );
+});
+
 test("Balmec physical TAP UX is wired into home and analytics without hardcoded event ids", async () => {
-  const [component, home, analytics, reader] = await Promise.all([
+  const [component, home, crm, page, analytics, reader] = await Promise.all([
     readFile(new URL("../src/components/physical-taps-command-center.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/dashboard-home-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/(app)/analytics/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/physical-taps-read.ts", import.meta.url), "utf8"),
   ]);
-  assert.match(home, /PhysicalTapsCommandCenter compact/);
-  assert.match(home, /tenantSlug=\{tenantScope\}/);
+  assert.doesNotMatch(home, /<PhysicalTapsCommandCenter/);
+  assert.match(home, /physicalTapsResult=\{physicalTapsResult\}/);
+  assert.match(home, /initialView=\{initialCrmView\}/);
+  assert.match(page, /resolveDashboardCrmView\(resolvedSearchParams\.view\)/);
+  assert.match(page, /initialCrmView=\{initialCrmView\}/);
+  assert.match(crm, /data-testid="crm-physical-taps-view"/);
+  assert.match(crm, /aria-label="Abrir TAP físicos"/);
+  assert.match(crm, /aria-label="Volver al mapa y CRM"/);
+  assert.equal((crm.match(/<PhysicalTapsCommandCenter/g) || []).length, 1);
+  assert.doesNotMatch(crm, /<PhysicalTapsCommandCenter\s+compact/);
+  assert.match(crm, /searchParams\.set\("view", "physical-taps"\)/);
   assert.match(analytics, /<PhysicalTapsCommandCenter\s+result=/);
   assert.match(analytics, /tenantSlug=\{tenantScope\}/);
   assert.match(reader, /sun\/physical-taps/);
@@ -153,9 +187,12 @@ test("Balmec physical TAP UX is wired into home and analytics without hardcoded 
   assert.match(component, /payload\.scope\.bid !== "all"/);
   assert.match(component, /Contacto bloqueado hasta consentimiento/);
   assert.match(component, /setInterval\([\s\S]*?5_000/);
+  assert.match(component, /canRefreshPhysicalTaps\(liveResult\.availability\)/);
+  assert.doesNotMatch(component, /result\.availability !== "ready"/);
+  assert.match(component, /mergePhysicalTapsRefresh\(current, failedResult\)/);
+  assert.match(component, /response\.status === 401 \|\| response\.status === 403/);
   assert.match(component, /\/api\/admin\/sun\/physical-taps\?/);
   assert.match(component, /Último snapshot confirmado/);
-  assert.match(component, /refresh failure must never become a false zero/);
   assert.doesNotMatch(component, /\b665\b|\b666\b|0474856A0B1090|0483826A0B1090/);
 });
 

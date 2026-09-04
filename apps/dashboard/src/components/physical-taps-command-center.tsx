@@ -19,15 +19,20 @@ import {
 } from "lucide-react";
 import { PremiumVectorMap, type VectorMapPoint } from "@product/ui/premium-vector-map";
 import {
+  canRefreshPhysicalTaps,
+  isRecoverablePhysicalTapsAvailability,
   latestPhysicalTapByState,
+  mergePhysicalTapsRefresh,
   normalizePhysicalTapsPayload,
   type PhysicalTapRow,
+  type PhysicalTapsAvailability,
   type PhysicalTapsResult,
 } from "../lib/physical-taps-contract";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 
 type StateFilter = "all" | "closed" | "opened" | "other";
 type LocationFilter = "all" | "approximate" | "none";
+type SyncState = "idle" | "syncing" | "live" | "stale";
 const EMPTY_ROWS: PhysicalTapRow[] = [];
 const NUMBER_FORMATTER = new Intl.NumberFormat("es-AR");
 const DATE_FORMATTER = new Intl.DateTimeFormat("es-AR", {
@@ -201,12 +206,19 @@ function UnavailablePhysicalTaps({
   result,
   tenantDisplayName,
   clerkEnabled = false,
+  canRetry,
+  syncState,
+  onRetry,
 }: {
   result: PhysicalTapsResult;
   tenantDisplayName: string;
   clerkEnabled?: boolean;
+  canRetry: boolean;
+  syncState: SyncState;
+  onRetry: () => void;
 }) {
   const needsSession = result.availability === "requires_tenant_session";
+  const forbidden = result.availability === "forbidden";
   return (
     <section data-testid="physical-taps-unavailable" className="overflow-hidden rounded-3xl border border-amber-300/20 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,.12),transparent_36%),rgba(15,23,42,.78)]">
       <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -221,6 +233,12 @@ function UnavailablePhysicalTaps({
                 : "La fuente real no confirmó acceso o disponibilidad. No convertimos el error en contadores cero ni en eventos simulados."}
             </p>
             <p className="mt-2 text-xs text-slate-500">Estado: {result.detail} · verificado {absoluteDate(result.checkedAt)}</p>
+            {canRetry ? (
+              <p className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-cyan-100" role="status" aria-live="polite">
+                <span className={`h-2 w-2 rounded-full ${syncState === "syncing" ? "animate-pulse bg-cyan-300" : "bg-amber-300"}`} />
+                {syncState === "syncing" ? "Consultando la fuente real" : "Recuperación automática cada 5 s"}
+              </p>
+            ) : null}
           </div>
         </div>
         {needsSession ? (
@@ -231,8 +249,21 @@ function UnavailablePhysicalTaps({
             testId="physical-taps-change-account"
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/35 bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-70 lg:w-auto"
           />
+        ) : canRetry ? (
+          <button
+            type="button"
+            data-testid="physical-taps-retry"
+            onClick={onRetry}
+            disabled={syncState === "syncing"}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:bg-cyan-400/15 disabled:cursor-wait disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncState === "syncing" ? "animate-spin" : ""}`} />
+            Reintentar ahora
+          </button>
         ) : (
-          <Link href="/analytics" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/5 px-4 py-2 text-sm font-bold text-slate-100 hover:border-cyan-300/30">Reintentar <ArrowRight className="h-4 w-4" /></Link>
+          <span className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300">
+            {forbidden ? "Acceso restringido" : "Fuente no consultable"}
+          </span>
         )}
       </div>
     </section>
@@ -253,25 +284,52 @@ export function PhysicalTapsCommandCenter({
   clerkEnabled?: boolean;
 }) {
   const [liveResult, setLiveResult] = useState(result);
-  const [syncState, setSyncState] = useState<"idle" | "syncing" | "live" | "stale">("idle");
+  const [syncState, setSyncState] = useState<SyncState>("idle");
   const [state, setState] = useState<StateFilter>("all");
   const [location, setLocation] = useState<LocationFilter>("all");
   const [batch, setBatch] = useState("all");
   const initialRange = result.payload?.scope.range || "24h";
   const initialBid = result.payload?.scope.bid || "all";
+  const refreshable = Boolean(tenantSlug) && canRefreshPhysicalTaps(liveResult.availability);
   const refreshPhysicalTaps = useCallback(async () => {
-    if (!tenantSlug || result.availability !== "ready") return;
+    if (!tenantSlug || !refreshable) return;
     setSyncState("syncing");
     const params = new URLSearchParams({ tenant: tenantSlug, range: initialRange, limit: "100" });
     if (initialBid && initialBid !== "all") params.set("bid", initialBid);
+    const recordFailure = (availability: PhysicalTapsAvailability, detail: string) => {
+      const failedResult: PhysicalTapsResult = {
+        availability,
+        payload: null,
+        detail,
+        checkedAt: new Date().toISOString(),
+      };
+      setLiveResult((current) => mergePhysicalTapsRefresh(current, failedResult));
+      setSyncState("stale");
+    };
     try {
       const response = await fetch(`/api/admin/sun/physical-taps?${params.toString()}`, {
         cache: "no-store",
         headers: { Accept: "application/json" },
       });
-      if (!response.ok) throw new Error(`physical_taps_http_${response.status}`);
+      if (response.status === 401 || response.status === 403) {
+        setLiveResult({
+          availability: "forbidden",
+          payload: null,
+          detail: `HTTP_${response.status}`,
+          checkedAt: new Date().toISOString(),
+        });
+        setSyncState("idle");
+        return;
+      }
+      if (!response.ok) {
+        recordFailure("upstream_error", `HTTP_${response.status}`);
+        return;
+      }
       const payload = normalizePhysicalTapsPayload(await response.json().catch(() => null));
-      if (!payload || payload.scope.tenant !== tenantSlug) throw new Error("physical_taps_contract_invalid");
+      if (!payload || payload.scope.tenant !== tenantSlug) {
+        recordFailure("invalid_payload", "physical_taps_contract_invalid");
+        return;
+      }
       setLiveResult({
         availability: "ready",
         payload,
@@ -280,23 +338,22 @@ export function PhysicalTapsCommandCenter({
       });
       setSyncState("live");
     } catch {
-      // Preserve the last confirmed snapshot. A refresh failure must never become a false zero.
-      setSyncState("stale");
+      recordFailure("unreachable", "physical_taps_upstream_unreachable");
     }
-  }, [initialBid, initialRange, result.availability, tenantSlug]);
+  }, [initialBid, initialRange, refreshable, tenantSlug]);
 
   useEffect(() => {
     setLiveResult(result);
   }, [result]);
 
   useEffect(() => {
-    if (!tenantSlug || result.availability !== "ready") return;
+    if (!refreshable) return;
     void refreshPhysicalTaps();
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") void refreshPhysicalTaps();
     }, 5_000);
     return () => window.clearInterval(interval);
-  }, [refreshPhysicalTaps, result.availability, tenantSlug]);
+  }, [refreshPhysicalTaps, refreshable]);
 
   const payload = liveResult.payload;
   const rows = payload?.rows ?? EMPTY_ROWS;
@@ -310,7 +367,16 @@ export function PhysicalTapsCommandCenter({
   const [selectedPointId, setSelectedPointId] = useState<string | undefined>();
 
   if (liveResult.availability !== "ready" || !payload) {
-    return <UnavailablePhysicalTaps result={liveResult} tenantDisplayName={tenantDisplayName} clerkEnabled={clerkEnabled} />;
+    return (
+      <UnavailablePhysicalTaps
+        result={liveResult}
+        tenantDisplayName={tenantDisplayName}
+        clerkEnabled={clerkEnabled}
+        canRetry={Boolean(tenantSlug) && isRecoverablePhysicalTapsAvailability(liveResult.availability)}
+        syncState={syncState}
+        onRetry={() => void refreshPhysicalTaps()}
+      />
+    );
   }
 
   const latestClosed = latestPhysicalTapByState(rows, "closed");
