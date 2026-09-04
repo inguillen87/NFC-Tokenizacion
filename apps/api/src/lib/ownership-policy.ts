@@ -1,7 +1,7 @@
 import { evaluateTapCommercialRights, type TapCommercialRightsEvidence } from "./tap-commercial-rights";
 
 export const BLOCKED_OWNERSHIP_RESULTS = new Set(["REPLAY_SUSPECT", "DUPLICATE", "INVALID", "NOT_REGISTERED", "NOT_ACTIVE", "TAMPER", "TAMPERED", "REVOKED", "BROKEN", "MANUAL_OPENED", "VALID_MANUAL_OPENED"]);
-export const CLAIMABLE_OWNERSHIP_RESULTS = new Set(["VALID", "TAP_VALID", "VALID_CLOSED", "OPENED", "VALID_OPENED", "VALID_UNKNOWN_TAMPER"]);
+export const CLAIMABLE_OWNERSHIP_RESULTS = new Set(["VALID", "TAP_VALID", "VALID_AUTHENTIC", "VALID_CLOSED", "OPENED", "OPENED_PREVIOUSLY", "VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "VALID_UNKNOWN_TAMPER"]);
 
 function normalizeTenantRef(value?: string | null) {
   return String(value || "").trim().toLowerCase();

@@ -34,7 +34,10 @@ test("public certificates allow unsigned demo rows but require a signed capabili
   ]);
 
   assert.match(route, /verifyPublicCertificateShareToken\(eventId, shareToken\)/);
-  assert.match(route, /LOWER\(COALESCE\(e\.source::text, ''\)\) = 'demo' OR \$\{signedAccess\}/);
+  assert.match(
+    route,
+    /\$\{signedAccess\}[\s\S]*OR \([\s\S]*LOWER\(COALESCE\(e\.source::text, ''\)\) = 'demo'[\s\S]*DEMO_TENANT_SLUG[\s\S]*DEMO_BATCH_BID/,
+  );
   assert.match(route, /signedAccess \? "private, no-store"/);
   assert.match(route, /createPublicCertificateShareToken\(eventId\)/);
   assert.match(sunRoute, /certificateShareToken = createPublicCertificateShareToken\(eventId\)/);
@@ -44,4 +47,24 @@ test("public certificates allow unsigned demo rows but require a signed capabili
   assert.match(summary, /LOWER\(COALESCE\(e\.source::text, ''\)\) = 'demo'/);
   assert.match(summary, /scope: "public-demo-only"/);
   assert.doesNotMatch(summary, /prod_events/);
+
+  const validRatePredicate = summary.match(
+    /COUNT\(\*\) FILTER \(WHERE\s*UPPER\(COALESCE\(e\.result, ''\)\) IN \(([^)]*)\)\s*AND LOWER\(COALESCE\(e\.verdict, ''\)\) = 'valid'\s*AND UPPER\(COALESCE\(e\.event_type::text, ''\)\) = 'TAP_VALID'\s*AND e\.cmac_ok IS TRUE\s*AND e\.allowlisted IS TRUE\s*\)/,
+  )?.[1] || "";
+  assert.deepEqual(
+    [...validRatePredicate.matchAll(/'([^']+)'/g)].map((match) => match[1]),
+    [
+      "VALID",
+      "TAP_VALID",
+      "VALID_AUTHENTIC",
+      "VALID_CLOSED",
+      "OPENED",
+      "OPENED_PREVIOUSLY",
+      "VALID_OPENED",
+      "VALID_OPENED_PREVIOUSLY",
+      "VALID_UNKNOWN_TAMPER",
+    ],
+  );
+  assert.doesNotMatch(summary, /LIKE\s+'VALID_%'/);
+  assert.doesNotMatch(summary, /(?:VALID_)?MANUAL_OPENED/);
 });

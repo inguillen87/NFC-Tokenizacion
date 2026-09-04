@@ -27,7 +27,16 @@ export async function GET(req: Request): Promise<Response> {
       JOIN tenants t ON t.id = b.tenant_id
       WHERE t.slug = ${tenant}
         AND e.created_at >= now() - (${windowHours} || ' hours')::interval
-        AND UPPER(e.result) <> 'VALID'
+        AND NOT (
+          UPPER(COALESCE(e.result, '')) IN (
+            'VALID', 'TAP_VALID', 'VALID_AUTHENTIC', 'VALID_CLOSED', 'OPENED', 'OPENED_PREVIOUSLY',
+            'VALID_OPENED', 'VALID_OPENED_PREVIOUSLY', 'VALID_UNKNOWN_TAMPER'
+          )
+          AND LOWER(COALESCE(e.verdict, '')) = 'valid'
+          AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID'
+          AND e.cmac_ok IS TRUE
+          AND e.allowlisted IS TRUE
+        )
       GROUP BY e.uid_hex
       HAVING COUNT(*) >= 2
       ORDER BY invalid_count DESC, last_seen DESC
@@ -37,7 +46,16 @@ export async function GET(req: Request): Promise<Response> {
       SELECT e.uid_hex, COUNT(*)::int AS invalid_count, MAX(e.created_at)::text AS last_seen
       FROM events e
       WHERE e.created_at >= now() - (${windowHours} || ' hours')::interval
-        AND UPPER(e.result) <> 'VALID'
+        AND NOT (
+          UPPER(COALESCE(e.result, '')) IN (
+            'VALID', 'TAP_VALID', 'VALID_AUTHENTIC', 'VALID_CLOSED', 'OPENED', 'OPENED_PREVIOUSLY',
+            'VALID_OPENED', 'VALID_OPENED_PREVIOUSLY', 'VALID_UNKNOWN_TAMPER'
+          )
+          AND LOWER(COALESCE(e.verdict, '')) = 'valid'
+          AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID'
+          AND e.cmac_ok IS TRUE
+          AND e.allowlisted IS TRUE
+        )
       GROUP BY e.uid_hex
       HAVING COUNT(*) >= 2
       ORDER BY invalid_count DESC, last_seen DESC

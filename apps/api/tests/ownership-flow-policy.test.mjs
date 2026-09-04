@@ -9,6 +9,24 @@ test("tap válido produce estado claimed", () => {
   assert.equal(verdict.nextStatus, "claimed");
 });
 
+test("resultados canónicos positivos son claimables pero estados desconocidos fallan cerrados", () => {
+  for (const result of ["VALID_AUTHENTIC", "OPENED", "OPENED_PREVIOUSLY", "VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "VALID_UNKNOWN_TAMPER"]) {
+    assert.equal(isClaimableOwnershipResult(result), true);
+    assert.deepEqual(
+      evaluateOwnershipEligibility({ result, tagStatus: "active" }),
+      { isBlocked: false, nextStatus: "claimed" },
+    );
+  }
+
+  for (const result of ["VALID_FUTURE", "AUTHENTIC", "", " VALID_AUTHENTIC_UNKNOWN "]) {
+    assert.equal(isClaimableOwnershipResult(result), false);
+    assert.deepEqual(
+      evaluateOwnershipEligibility({ result, tagStatus: "active" }),
+      { isBlocked: true, nextStatus: "revoked" },
+    );
+  }
+});
+
 test("replay bloquea claim ownership", () => {
   const verdict = evaluateOwnershipEligibility({ result: "REPLAY_SUSPECT", tagStatus: "active" });
   assert.equal(verdict.isBlocked, true);

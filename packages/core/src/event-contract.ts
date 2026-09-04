@@ -164,6 +164,21 @@ const LIFECYCLE_RESULTS = new Set([
   "EXPORT_GENERATED",
 ]);
 
+// Verified authentication is a cryptographic assurance claim, so keep this
+// list closed. Lifecycle/manual states and unknown future VALID_* values must
+// not inherit authentication merely from a naming prefix.
+const VERIFIED_AUTHENTICATION_RESULTS = new Set([
+  "VALID",
+  "TAP_VALID",
+  "VALID_AUTHENTIC",
+  "VALID_CLOSED",
+  "OPENED",
+  "OPENED_PREVIOUSLY",
+  "VALID_OPENED",
+  "VALID_OPENED_PREVIOUSLY",
+  "VALID_UNKNOWN_TAMPER",
+]);
+
 type EventVerdictInput = {
   verdict?: unknown;
   result?: unknown;
@@ -198,7 +213,13 @@ export function normalizeEventVerdict(value: EventVerdictInput | unknown, reason
   // evidence must win over a contradictory stale `valid` projection.
   if (signal.includes("BLOCKED_REPLAY")) return "blocked_replay";
   if (signal.includes("REPLAY") || signal.includes("DUPLICATE")) return "replay_suspect";
-  if (signal.includes("TAMPER")) return "tampered";
+  // VALID_UNKNOWN_TAMPER means the NFC message verified but this carrier has
+  // no trustworthy opening-state evidence. It is not itself a tamper alert;
+  // an explicit adverse reason must still override it below.
+  if (
+    (result.includes("TAMPER") && result !== "VALID_UNKNOWN_TAMPER")
+    || normalizedReason.includes("TAMPER")
+  ) return "tampered";
   if (signal.includes("REVOKED")) return "revoked";
   if (signal.includes("BROKEN")) return "broken";
   if (result === "UNKNOWN_BATCH" || normalizedReason.includes("UNKNOWN_BATCH")) return "unknown_batch";
@@ -249,9 +270,11 @@ export function isVerifiedAuthenticationEvent(value: EventVerdictInput | unknown
   const input = verdictInput(value);
   const eventType = String(input.eventType ?? input.event_type ?? "").trim().toUpperCase();
   const result = String(input.result ?? "").trim().toUpperCase();
+  const verdict = String(input.verdict ?? "").trim().toLowerCase();
   const cmacOk = input.cmacOk ?? input.cmac_ok;
-  return normalizeEventVerdict(input) === "valid"
-    && (eventType === "TAP_VALID" || result === "TAP_VALID" || result === "VALID" || result.startsWith("VALID_"))
+  return verdict === "valid"
+    && eventType === "TAP_VALID"
+    && VERIFIED_AUTHENTICATION_RESULTS.has(result)
     && cmacOk === true
     && input.allowlisted === true;
 }

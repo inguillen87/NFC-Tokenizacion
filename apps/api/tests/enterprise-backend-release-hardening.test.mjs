@@ -78,6 +78,32 @@ test("alert reads require audit and sensitive-event capabilities", () => {
   }
 });
 
+test("security alerts recognize only consistently classified canonical valid taps", () => {
+  const validPredicates = [...securityAlerts.matchAll(
+    /AND NOT \(\s*UPPER\(COALESCE\(e\.result, ''\)\) IN \(([^)]*)\)\s*AND LOWER\(COALESCE\(e\.verdict, ''\)\) = 'valid'\s*AND UPPER\(COALESCE\(e\.event_type::text, ''\)\) = 'TAP_VALID'\s*AND e\.cmac_ok IS TRUE\s*AND e\.allowlisted IS TRUE\s*\)/g,
+  )];
+  assert.equal(validPredicates.length, 2);
+  for (const predicate of validPredicates) {
+    assert.deepEqual(
+      [...predicate[1].matchAll(/'([^']+)'/g)].map((match) => match[1]),
+      [
+        "VALID",
+        "TAP_VALID",
+        "VALID_AUTHENTIC",
+        "VALID_CLOSED",
+        "OPENED",
+        "OPENED_PREVIOUSLY",
+        "VALID_OPENED",
+        "VALID_OPENED_PREVIOUSLY",
+        "VALID_UNKNOWN_TAMPER",
+      ],
+    );
+  }
+  assert.doesNotMatch(securityAlerts, /UPPER\(e\.result\) <> 'VALID'/);
+  assert.doesNotMatch(securityAlerts, /LIKE\s+'VALID_%'/);
+  assert.doesNotMatch(securityAlerts, /(?:VALID_)?MANUAL_OPENED/);
+});
+
 test("overview uses the canonical risk taxonomy and excludes lifecycle outcomes", () => {
   assert.match(overview, /classified_events AS MATERIALIZED/);
   assert.match(overview, /COUNT\(\*\) FILTER \(WHERE event_class = 'invalid'\)::int AS invalid/);

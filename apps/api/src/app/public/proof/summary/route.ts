@@ -17,7 +17,16 @@ export async function GET() {
     SELECT
       COUNT(*) FILTER (WHERE e.created_at >= date_trunc('day', now()))::int AS taps_today,
       ROUND(
-        100.0 * COUNT(*) FILTER (WHERE UPPER(COALESCE(e.result, '')) IN ('VALID', 'VALID_CLOSED'))
+        100.0 * COUNT(*) FILTER (WHERE
+          UPPER(COALESCE(e.result, '')) IN (
+            'VALID', 'TAP_VALID', 'VALID_AUTHENTIC', 'VALID_CLOSED', 'OPENED', 'OPENED_PREVIOUSLY',
+            'VALID_OPENED', 'VALID_OPENED_PREVIOUSLY', 'VALID_UNKNOWN_TAMPER'
+          )
+          AND LOWER(COALESCE(e.verdict, '')) = 'valid'
+          AND UPPER(COALESCE(e.event_type::text, '')) = 'TAP_VALID'
+          AND e.cmac_ok IS TRUE
+          AND e.allowlisted IS TRUE
+        )
         / NULLIF(COUNT(*), 0),
         1
       ) AS valid_rate,

@@ -51,6 +51,48 @@ test("product recognition is independent from security verdict and authenticatio
   assert.equal(classifyEventInteraction(authenticated), "authentication_verified");
 });
 
+test("verified authentication accepts only canonical NFC results and rejects manual or future states", () => {
+  const assurance = {
+    eventType: "TAP_VALID",
+    verdict: "valid",
+    cmacOk: true,
+    allowlisted: true,
+  };
+
+  for (const result of [
+    "VALID",
+    "TAP_VALID",
+    "VALID_AUTHENTIC",
+    "VALID_CLOSED",
+    "OPENED",
+    "OPENED_PREVIOUSLY",
+    "VALID_OPENED",
+    "VALID_OPENED_PREVIOUSLY",
+    "VALID_UNKNOWN_TAMPER",
+  ]) {
+    assert.equal(isVerifiedAuthenticationEvent({ ...assurance, result }), true, result);
+  }
+
+  for (const result of ["MANUAL_OPENED", "VALID_MANUAL_OPENED", "VALID_FUTURE", "AUTHENTIC", ""]) {
+    const candidate = { ...assurance, result };
+    assert.equal(isVerifiedAuthenticationEvent(candidate), false, result || "empty result");
+    assert.notEqual(classifyEventInteraction(candidate), "authentication_verified", result || "empty result");
+  }
+
+  assert.equal(isVerifiedAuthenticationEvent({ ...assurance, eventType: "PROVENANCE_VIEWED", result: "VALID" }), false);
+  assert.equal(isVerifiedAuthenticationEvent({ ...assurance, verdict: "unknown", result: "VALID" }), false);
+
+  const unknownOpeningState = normalizeTenantTapRealtimeEvent({
+    ...assurance,
+    result: "VALID_UNKNOWN_TAMPER",
+    batch_id: "batch-unknown-opening-state",
+  });
+  assert.equal(unknownOpeningState.authenticationVerified, true);
+  assert.equal(unknownOpeningState.verdict, "valid");
+  assert.equal(unknownOpeningState.riskLevel, "none");
+  assert.equal(normalizeEventVerdict({ ...assurance, result: "VALID_UNKNOWN_TAMPER", reason: "tamper detected" }), "tampered");
+});
+
 test("realtime normalizer preserves wire identity, actor count and channel consent without exposing a person id", () => {
   const snake = normalizeTenantTapRealtimeEvent({
     id: 41,

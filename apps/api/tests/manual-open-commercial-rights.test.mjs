@@ -128,7 +128,7 @@ test("manual tamper truth is migration-owned and request paths do not hide looku
   assert.doesNotMatch(sunService, /CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides/);
   assert.doesNotMatch(markOpenedRoute, /CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides/);
   const lookup = sunService.match(
-    /async function getManualTamperOverride[\s\S]*?\n  }\n  async function logUnassignedAttempt/,
+    /async function getManualTamperOverride[\s\S]*?\r?\n  }\r?\n  async function logUnassignedAttempt/,
   )?.[0] || "";
   assert.match(lookup, /SELECT tamper_status, reason, evidence_note, source/);
   assert.doesNotMatch(lookup, /catch\s*\{/);
