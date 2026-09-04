@@ -48898,11 +48898,7 @@ html[data-theme="dark"] .landing-mega-header {
 }
 
 html.theme-light body,
-html[data-theme="light"] body,
-html.theme-light .landing-root,
-html[data-theme="light"] .landing-root,
-html.theme-light .landing-root > main,
-html[data-theme="light"] .landing-root > main {
+html[data-theme="light"] body {
   background: #ffffff !important;
 }
 
@@ -60323,7 +60319,7 @@ html:is(.theme-light, [data-theme="light"]) .landing-root {
     radial-gradient(circle at 91% 59%, rgba(251, 191, 36, 0.105), transparent 28rem),
     radial-gradient(circle at 16% 78%, rgba(59, 130, 246, 0.105), transparent 34rem),
     radial-gradient(circle at 88% 93%, rgba(244, 114, 182, 0.075), transparent 30rem),
-    linear-gradient(180deg, #f8fdfe 0%, #effbfa 32%, #f8f7ff 58%, #f3fbf8 79%, #f7fbff 100%);
+    linear-gradient(180deg, #f8fdfe 0%, #effbfa 32%, #f8f7ff 58%, #f3fbf8 79%, #f7fbff 100%) !important;
   background-color: #f5fbfc;
   background-repeat: no-repeat;
 }
@@ -60335,34 +60331,78 @@ html:is(.theme-dark, [data-theme="dark"]) .landing-root {
     radial-gradient(circle at 10% 47%, rgba(16, 185, 129, 0.12), transparent 36rem),
     radial-gradient(circle at 92% 64%, rgba(245, 158, 11, 0.085), transparent 30rem),
     radial-gradient(circle at 15% 83%, rgba(59, 130, 246, 0.12), transparent 36rem),
-    linear-gradient(180deg, #04111e 0%, #071a29 34%, #0a1728 61%, #06201f 82%, #071524 100%);
+    linear-gradient(180deg, #04111e 0%, #071a29 34%, #0a1728 61%, #06201f 82%, #071524 100%) !important;
   background-color: #061522;
   background-repeat: no-repeat;
 }
 
-html:is(.theme-light, [data-theme="light"]) .landing-root > main,
-html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-section,
-html:is(.theme-light, [data-theme="light"]) .commercial-value-section {
+html:is(.theme-light, [data-theme="light"]) .landing-root > main {
   background: transparent !important;
 }
 
-html:is(.theme-dark, [data-theme="dark"]) .landing-root > main,
-html:is(.theme-dark, [data-theme="dark"]) .simple-trust-flow-section,
-html:is(.theme-dark, [data-theme="dark"]) .commercial-value-section {
+html:is(.theme-dark, [data-theme="dark"]) .landing-root > main {
   background: transparent !important;
+}
+
+html:is(.theme-light, [data-theme="light"]) .landing-hero-section {
+  background:
+    radial-gradient(ellipse at 8% 12%, rgba(45, 212, 191, 0.12), transparent 34rem),
+    radial-gradient(ellipse at 74% 5%, rgba(96, 165, 250, 0.1), transparent 36rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(241, 251, 250, 0.82) 76%, rgba(246, 248, 255, 0.74)) !important;
+}
+
+html:is(.theme-dark, [data-theme="dark"]) .landing-hero-section {
+  background:
+    radial-gradient(ellipse at 8% 12%, rgba(45, 212, 191, 0.13), transparent 34rem),
+    radial-gradient(ellipse at 76% 4%, rgba(96, 165, 250, 0.14), transparent 38rem),
+    linear-gradient(180deg, rgba(3, 14, 25, 0.92), rgba(5, 26, 36, 0.88) 76%, rgba(9, 18, 36, 0.9)) !important;
+}
+
+html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-section {
+  background:
+    radial-gradient(ellipse at -4% 18%, rgba(34, 211, 238, 0.22), transparent 38rem),
+    radial-gradient(ellipse at 104% 58%, rgba(139, 92, 246, 0.16), transparent 40rem),
+    radial-gradient(ellipse at 42% 104%, rgba(52, 211, 153, 0.15), transparent 34rem),
+    linear-gradient(180deg, rgba(239, 251, 251, 0.72), rgba(246, 244, 255, 0.7) 58%, rgba(239, 251, 247, 0.72)) !important;
+}
+
+html:is(.theme-dark, [data-theme="dark"]) .simple-trust-flow-section {
+  background:
+    radial-gradient(ellipse at -4% 18%, rgba(34, 211, 238, 0.16), transparent 38rem),
+    radial-gradient(ellipse at 104% 58%, rgba(139, 92, 246, 0.17), transparent 40rem),
+    radial-gradient(ellipse at 42% 104%, rgba(52, 211, 153, 0.12), transparent 34rem),
+    linear-gradient(180deg, rgba(5, 20, 32, 0.86), rgba(9, 18, 38, 0.9) 58%, rgba(5, 29, 29, 0.88)) !important;
+}
+
+html:is(.theme-light, [data-theme="light"]) .commercial-value-section {
+  background:
+    radial-gradient(ellipse at 102% 8%, rgba(251, 191, 36, 0.14), transparent 32rem),
+    radial-gradient(ellipse at -2% 36%, rgba(96, 165, 250, 0.17), transparent 40rem),
+    radial-gradient(ellipse at 94% 72%, rgba(244, 114, 182, 0.1), transparent 34rem),
+    radial-gradient(ellipse at 24% 100%, rgba(45, 212, 191, 0.17), transparent 38rem),
+    linear-gradient(180deg, rgba(239, 251, 247, 0.7), rgba(246, 246, 255, 0.73) 48%, rgba(239, 249, 252, 0.78)) !important;
+}
+
+html:is(.theme-dark, [data-theme="dark"]) .commercial-value-section {
+  background:
+    radial-gradient(ellipse at 102% 8%, rgba(245, 158, 11, 0.1), transparent 34rem),
+    radial-gradient(ellipse at -2% 36%, rgba(59, 130, 246, 0.15), transparent 40rem),
+    radial-gradient(ellipse at 94% 72%, rgba(236, 72, 153, 0.09), transparent 34rem),
+    radial-gradient(ellipse at 24% 100%, rgba(45, 212, 191, 0.13), transparent 38rem),
+    linear-gradient(180deg, rgba(5, 29, 29, 0.88), rgba(9, 16, 36, 0.92) 48%, rgba(5, 22, 34, 0.92)) !important;
 }
 
 html:is(.theme-light, [data-theme="light"]) .landing-root .site-footer {
   background:
     radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.09), transparent 24rem),
-    linear-gradient(180deg, rgba(246, 252, 253, 0.94), rgba(238, 248, 250, 0.98));
+    linear-gradient(180deg, rgba(246, 252, 253, 0.94), rgba(238, 248, 250, 0.98)) !important;
 }
 
 html:is(.theme-dark, [data-theme="dark"]) .landing-root .site-footer {
   background:
     radial-gradient(circle at 16% 0%, rgba(34, 211, 238, 0.12), transparent 26rem),
     radial-gradient(circle at 84% 16%, rgba(139, 92, 246, 0.1), transparent 28rem),
-    linear-gradient(180deg, rgba(6, 22, 35, 0.96), rgba(3, 14, 25, 0.99));
+    linear-gradient(180deg, rgba(6, 22, 35, 0.96), rgba(3, 14, 25, 0.99)) !important;
 }
 
 html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-shell {
@@ -60415,10 +60455,23 @@ html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-shell {
 }
 
 html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-steps > li {
-  border-color: color-mix(in srgb, var(--trust-step-tone) 20%, #d6e7eb);
+  border-color: color-mix(in srgb, var(--trust-step-tone) 32%, #d6e7eb) !important;
   background:
-    radial-gradient(circle at 92% 0%, var(--trust-step-soft), transparent 34%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), color-mix(in srgb, var(--trust-step-soft) 24%, #ffffff));
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--trust-step-tone) 23%, transparent), transparent 42%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.95), color-mix(in srgb, var(--trust-step-tone) 8%, #ffffff)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 1.1rem 2.6rem color-mix(in srgb, var(--trust-step-tone) 11%, transparent) !important;
+}
+
+html:is(.theme-dark, [data-theme="dark"]) .simple-trust-flow-steps > li {
+  border-color: color-mix(in srgb, var(--trust-step-tone) 36%, #243c52);
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--trust-step-tone) 19%, transparent), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--trust-step-tone) 7%, #09182a), #09182a 74%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1.1rem 2.6rem color-mix(in srgb, var(--trust-step-tone) 12%, transparent);
 }
 
 html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-steps > li .simple-trust-flow-visual {
@@ -60440,13 +60493,13 @@ html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-steps > li .simpl
 
   html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-steps > li:hover,
   html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-steps > li:focus-within {
-    border-color: color-mix(in srgb, var(--trust-step-tone) 48%, #d8e7ea);
+    border-color: color-mix(in srgb, var(--trust-step-tone) 58%, #d8e7ea) !important;
     background:
       radial-gradient(circle at 88% 2%, color-mix(in srgb, var(--trust-step-tone) 25%, transparent), transparent 44%),
-      linear-gradient(145deg, #ffffff, color-mix(in srgb, var(--trust-step-tone) 10%, #ffffff));
+      linear-gradient(145deg, #ffffff, color-mix(in srgb, var(--trust-step-tone) 12%, #ffffff)) !important;
     box-shadow:
       inset 0 1px 0 #ffffff,
-      0 1.45rem 3.4rem color-mix(in srgb, var(--trust-step-tone) 18%, transparent);
+      0 1.45rem 3.4rem color-mix(in srgb, var(--trust-step-tone) 20%, transparent) !important;
   }
 
   .simple-trust-flow-steps > li:hover .simple-trust-flow-step-title,
@@ -61089,6 +61142,135 @@ html:is(.theme-light, [data-theme="light"]) .dpp-participant-detail-bridge {
 
   .dpp-participant-detail-bridge span {
     text-align: left;
+  }
+}
+
+/* Responsive narrative finishing pass. The horizontal hero artwork becomes a
+   contained product scene on phones, while rails keep a visible next item and
+   explicit controls instead of relying on a clipped native scrollbar. */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .simple-trust-flow-steps {
+    grid-template-columns: none;
+    grid-auto-columns: minmax(19rem, calc((100% - 1.4rem) / 2.18));
+    grid-auto-flow: column;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 1.1rem;
+    scroll-snap-type: inline mandatory;
+    scrollbar-width: none;
+  }
+
+  .simple-trust-flow-steps::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .simple-trust-industry-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .simple-trust-industry-panel__descriptor {
+    order: 0;
+  }
+
+  .simple-trust-industry-panel__controls {
+    order: 1;
+    justify-content: space-between;
+    padding: 0.75rem 1.1rem 0.15rem;
+  }
+
+  .simple-trust-industry-panel .simple-trust-flow-steps {
+    order: 2;
+    grid-auto-columns: minmax(17.25rem, calc(100% - 2.4rem));
+    scrollbar-width: none;
+  }
+
+  .simple-trust-industry-panel .simple-trust-flow-steps::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .landing-hero-section .hero-story-grid {
+    min-height: 0;
+    padding-block: 2.25rem calc(18rem + 2.25rem);
+  }
+
+  .hero-immersive-media {
+    top: auto !important;
+    right: 0.7rem !important;
+    bottom: 0.7rem;
+    left: 0.7rem !important;
+    height: 17rem !important;
+    overflow: hidden;
+    border: 1px solid rgba(8, 127, 140, 0.14);
+    border-radius: 1.4rem;
+    background:
+      radial-gradient(circle at 76% 34%, rgba(139, 92, 246, 0.13), transparent 42%),
+      linear-gradient(145deg, rgba(236, 254, 255, 0.82), rgba(245, 243, 255, 0.78));
+    box-shadow: 0 1.25rem 3rem rgba(15, 78, 96, 0.11);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 91%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 91%, transparent 100%);
+  }
+
+  .hero-immersive-image,
+  html:is(.theme-light, [data-theme="light"]) .hero-immersive-image {
+    object-fit: contain !important;
+    object-position: center !important;
+    opacity: 0.98 !important;
+    filter: saturate(1.08) contrast(1.04) brightness(1.02) !important;
+  }
+
+  .hero-immersive-veil,
+  html:is(.theme-light, [data-theme="light"]) .hero-immersive-veil {
+    background:
+      radial-gradient(circle at 71% 50%, rgba(34, 211, 238, 0.08), transparent 46%),
+      linear-gradient(180deg, rgba(247, 253, 254, 0.72) 0%, transparent 18%, transparent 76%, rgba(239, 250, 251, 0.82) 100%) !important;
+  }
+
+  html:is(.theme-dark, [data-theme="dark"]) .hero-immersive-media {
+    border-color: rgba(103, 232, 249, 0.14);
+    background:
+      radial-gradient(circle at 76% 34%, rgba(139, 92, 246, 0.2), transparent 44%),
+      linear-gradient(145deg, rgba(6, 28, 40, 0.94), rgba(13, 20, 43, 0.92));
+    box-shadow: 0 1.25rem 3rem rgba(2, 8, 23, 0.34);
+  }
+
+  html:is(.theme-dark, [data-theme="dark"]) .hero-immersive-image {
+    object-fit: contain !important;
+    object-position: center !important;
+    opacity: 0.9 !important;
+    filter: brightness(0.64) saturate(1.17) contrast(1.2) !important;
+  }
+
+  html:is(.theme-dark, [data-theme="dark"]) .hero-immersive-veil {
+    background:
+      radial-gradient(circle at 70% 50%, rgba(34, 211, 238, 0.09), transparent 46%),
+      linear-gradient(90deg, rgba(3, 13, 25, 0.3), rgba(5, 24, 38, 0.08) 48%, rgba(3, 13, 25, 0.34)),
+      linear-gradient(180deg, rgba(3, 13, 25, 0.68) 0%, transparent 18%, transparent 72%, rgba(4, 18, 31, 0.86) 100%) !important;
+  }
+
+  .hero-immersive-link-stage {
+    top: 46%;
+    left: 34%;
+    width: 54%;
+    height: 4.25rem;
+  }
+
+  .hero-immersive-signal .hero-immersive-ring {
+    top: 52%;
+    right: 7%;
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+
+  .hero-secondary-action,
+  .hero-proof-chip {
+    backdrop-filter: blur(7px) saturate(1.06);
   }
 }
 

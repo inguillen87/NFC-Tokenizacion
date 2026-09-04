@@ -14,7 +14,9 @@ test("the landing uses one continuous atmospheric canvas in light and dark modes
   assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.landing-root \{[\s\S]{0,980}radial-gradient[\s\S]{0,980}linear-gradient/);
   assert.match(participantCss, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.landing-root \{[\s\S]{0,980}radial-gradient[\s\S]{0,980}linear-gradient/);
   assert.match(participantCss, /rgba\(251, 191, 36, 0\.105\)/);
-  assert.match(participantCss, /\.simple-trust-flow-section,[\s\S]{0,180}\.commercial-value-section \{[\s\S]{0,80}background: transparent !important/);
+  assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.simple-trust-flow-section \{[\s\S]{0,700}radial-gradient[\s\S]{0,700}!important/);
+  assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.commercial-value-section \{[\s\S]{0,850}radial-gradient[\s\S]{0,850}!important/);
+  assert.match(participantCss, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.commercial-value-section \{[\s\S]{0,850}radial-gradient[\s\S]{0,850}!important/);
   assert.match(participantCss, /\.landing-root \.site-footer \{[\s\S]{0,260}linear-gradient/);
 });
 

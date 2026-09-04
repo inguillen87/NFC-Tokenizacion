@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
+  BarChart3,
   Building2,
   CircleDashed,
   Database,
@@ -43,6 +44,12 @@ type RoleView = {
   scope: string;
   description: string;
   condition: string;
+  journey: {
+    who: string;
+    receives: string;
+    protected: string;
+    returns: string;
+  };
   fields: PassportField[];
 };
 
@@ -54,6 +61,11 @@ type ExplorerCopy = {
   intro: string;
   guideLabel: string;
   guideSteps: [string, string, string];
+  journeyTitle: string;
+  journeyIntro: string;
+  journeyLabels: [string, string, string, string];
+  technicalToggle: string;
+  technicalHint: string;
   passportLabel: string;
   product: string;
   passportId: string;
@@ -125,6 +137,11 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
     intro: "La ficha es una sola, pero no todos ven lo mismo. Cambiá de rol para comprobar qué recibe cada participante y qué queda protegido.",
     guideLabel: "Cómo explorar el pasaporte",
     guideSteps: ["Elegí quién consulta", "Mirá qué información recibe", "Revisá fuente, responsable y estado"],
+    journeyTitle: "Qué pasa para este participante",
+    journeyIntro: "Seguí el recorrido antes de abrir el detalle técnico.",
+    journeyLabels: ["Quién está mirando", "Qué recibe", "Qué queda protegido", "Qué vuelve a la empresa"],
+    technicalToggle: "Ver fuentes, responsables y evidencia",
+    technicalHint: "Detalle auditable del pasaporte para esta vista",
     passportLabel: "Pasaporte digital de muestra",
     product: "Reserva Andina",
     passportId: "NEX-DEMO · RA-2407",
@@ -163,6 +180,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Información para quien usa o compra el producto",
         description: "Ve la historia, las instrucciones y los servicios que la marca decidió publicar para este producto.",
         condition: "Sólo campos públicos. Los datos personales requieren consentimiento explícito.",
+        journey: {
+          who: "Una persona abre el NFC o QR desde su celular, sin instalar una app.",
+          receives: "La ficha pública vigente: identidad, historia, origen e instrucciones o servicios habilitados.",
+          protected: "Su identidad y los datos internos no se exponen. Compartir datos personales requiere consentimiento explícito.",
+          returns: "Puede registrarse la lectura del producto y la acción elegida; eso no identifica automáticamente a la persona.",
+        },
         fields: [
           {
             label: "Historia y origen",
@@ -202,6 +225,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Contenido, versiones y actividad autorizada",
         description: "Publica la ficha, mantiene sus versiones y consulta señales permitidas para mejorar información y servicio.",
         condition: "Las interacciones personales sólo se vinculan cuando existe base válida y consentimiento aplicable.",
+        journey: {
+          who: "El equipo autorizado de la empresa responsable del pasaporte.",
+          receives: "Gestión de contenidos, versiones, lotes y actividad operativa disponible según su permiso.",
+          protected: "Los datos personales permanecen separados salvo base válida y consentimiento aplicable.",
+          returns: "El dashboard organiza taps y acciones registradas con producto, lote, canal y procedencia disponible.",
+        },
         fields: [
           {
             label: "Ficha de producto",
@@ -241,6 +270,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Sólo lo necesario para resolver una tarea",
         description: "Recibe el contexto del lote y del servicio asignado, sin abrir toda la información interna del pasaporte.",
         condition: "La organización define qué campos comparte, con qué operador y durante cuánto tiempo.",
+        journey: {
+          who: "Un operador o canal habilitado por la empresa para resolver una consulta.",
+          receives: "Sólo el contexto mínimo del producto, lote y servicio iniciado.",
+          protected: "No recibe el perfil completo ni información interna fuera de su permiso.",
+          returns: "El caso y su seguimiento pueden quedar vinculados al producto para atención y postventa.",
+        },
         fields: [
           {
             label: "Caso de servicio",
@@ -280,6 +315,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Materiales, instrucciones y evidencia por permiso",
         description: "Consulta campos de circularidad o control sólo cuando aplican al producto y el rol está autorizado.",
         condition: "Esta vista no implica cumplimiento normativo automático ni reemplaza la validación de una autoridad.",
+        journey: {
+          who: "Un operador de circularidad o una autoridad con acceso aplicable.",
+          receives: "Materiales, instrucciones, fuente y responsable publicados para el producto y el mercado.",
+          protected: "Los campos no aplicables o no autorizados permanecen ocultos.",
+          returns: "La consulta aporta trazabilidad operativa; no implica cumplimiento automático ni certificación.",
+        },
         fields: [
           {
             label: "Composición del envase",
@@ -323,6 +364,11 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
     intro: "A ficha é uma só, mas nem todos veem o mesmo. Troque de função para conferir o que cada participante recebe e o que permanece protegido.",
     guideLabel: "Como explorar o passaporte",
     guideSteps: ["Escolha quem consulta", "Veja quais informações recebe", "Revise fonte, responsável e estado"],
+    journeyTitle: "O que acontece para este participante",
+    journeyIntro: "Acompanhe o percurso antes de abrir os detalhes técnicos.",
+    journeyLabels: ["Quem está consultando", "O que recebe", "O que fica protegido", "O que retorna à empresa"],
+    technicalToggle: "Ver fontes, responsáveis e evidências",
+    technicalHint: "Detalhe auditável do passaporte para esta visão",
     passportLabel: "Passaporte digital de amostra",
     product: "Reserva Andina",
     passportId: "NEX-DEMO · RA-2407",
@@ -352,6 +398,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Informação para quem usa ou compra o produto",
         description: "Vê a história, as instruções e os serviços que a marca decidiu publicar para este produto.",
         condition: "Somente campos públicos. Dados pessoais exigem consentimento explícito.",
+        journey: {
+          who: "Uma pessoa abre o NFC ou QR pelo celular, sem instalar um aplicativo.",
+          receives: "A ficha pública atual: identidade, história, origem e instruções ou serviços habilitados.",
+          protected: "Sua identidade e os dados internos não são expostos. Dados pessoais exigem consentimento explícito.",
+          returns: "A leitura do produto e a ação escolhida podem ser registradas; isso não identifica automaticamente a pessoa.",
+        },
         fields: [
           { label: "História e origem", value: "Safra 2022 · Valle de Uco", source: "Declaração do produtor", responsible: "Bodega Balmec", granularity: "Lote", updated: "Atualização de amostra", visibility: "Pública", evidence: "declared" },
           { label: "Identificador do passaporte", value: "NEX-DEMO · RA-2407", source: "Registro digital de amostra", responsible: "nexID Demo", granularity: "Lote", updated: "Ao abrir esta demo", visibility: "Pública", evidence: "verified" },
@@ -364,6 +416,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Conteúdo, versões e atividade autorizada",
         description: "Publica a ficha, mantém versões e consulta sinais permitidos para melhorar informação e serviço.",
         condition: "Interações pessoais só são vinculadas quando existe uma base válida e o consentimento aplicável.",
+        journey: {
+          who: "A equipe autorizada da empresa responsável pelo passaporte.",
+          receives: "Gestão de conteúdo, versões, lotes e atividade operacional disponível conforme a permissão.",
+          protected: "Dados pessoais permanecem separados, salvo base válida e consentimento aplicável.",
+          returns: "O dashboard organiza toques e ações registradas com produto, lote, canal e procedência disponível.",
+        },
         fields: [
           { label: "Ficha do produto", value: "História, origem e recomendações", source: "Gestor de conteúdo DPP", responsible: "Bodega Balmec", granularity: "Modelo + lote", updated: "Versão demo vigente", visibility: "Publicável", evidence: "declared" },
           { label: "Integridade da versão", value: "Registro de amostra sem alterações pendentes", source: "Controle digital de versões", responsible: "nexID Demo", granularity: "Lote", updated: "Ao confirmar a versão", visibility: "Equipe da marca", evidence: "verified" },
@@ -376,6 +434,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Somente o necessário para resolver uma tarefa",
         description: "Recebe o contexto do lote e do serviço atribuído, sem abrir todas as informações internas do passaporte.",
         condition: "A organização define quais campos compartilha, com qual operador e por quanto tempo.",
+        journey: {
+          who: "Um operador ou canal habilitado pela empresa para resolver uma solicitação.",
+          receives: "Somente o contexto mínimo do produto, lote e serviço iniciado.",
+          protected: "Não recebe o perfil completo nem informações internas fora da sua permissão.",
+          returns: "O caso e seu acompanhamento podem ficar vinculados ao produto para atendimento e pós-venda.",
+        },
         fields: [
           { label: "Caso de serviço", value: "Consulta de conservação iniciada", source: "Ação escolhida na experiência", responsible: "Atendimento de amostra", granularity: "Item", updated: "Ao iniciar o caso demo", visibility: "Operador atribuído", evidence: "verified" },
           { label: "Contexto compartilhado", value: "Reserva Andina · Lote RA-2407", source: "Passaporte publicado", responsible: "Bodega Balmec", granularity: "Lote", updated: "Versão demo vigente", visibility: "Serviço autorizado", evidence: "declared" },
@@ -388,6 +452,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Materiais, instruções e evidência por permissão",
         description: "Consulta campos de circularidade ou controle somente quando se aplicam ao produto e a função está autorizada.",
         condition: "Esta visão não implica conformidade automática nem substitui a validação de uma autoridade.",
+        journey: {
+          who: "Um operador de circularidade ou uma autoridade com acesso aplicável.",
+          receives: "Materiais, instruções, fonte e responsável publicados para o produto e o mercado.",
+          protected: "Campos não aplicáveis ou não autorizados permanecem ocultos.",
+          returns: "A consulta contribui para a rastreabilidade operacional; não implica conformidade automática nem certificação.",
+        },
         fields: [
           { label: "Composição da embalagem", value: "Vidro e componentes declarados", source: "Ficha técnica da embalagem", responsible: "Produtor da amostra", granularity: "Modelo", updated: "Versão demo vigente", visibility: "Conforme a função", evidence: "declared" },
           { label: "Instruções de recuperação", value: "Separação e circuito a definir por mercado", source: "Conteúdo de circularidade", responsible: "Operador responsável", granularity: "Modelo + mercado", updated: "Ao publicar alterações", visibility: "Pública se aplicável", evidence: "declared" },
@@ -404,6 +474,11 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
     intro: "There is one record, but not everyone sees the same view. Switch roles to check what each participant receives and what remains protected.",
     guideLabel: "How to explore the passport",
     guideSteps: ["Choose who is viewing", "See which information they receive", "Check source, owner and status"],
+    journeyTitle: "What happens for this participant",
+    journeyIntro: "Follow the journey before opening the technical detail.",
+    journeyLabels: ["Who is viewing", "What they receive", "What stays protected", "What returns to the company"],
+    technicalToggle: "View sources, owners and evidence",
+    technicalHint: "Auditable passport detail for this view",
     passportLabel: "Sample digital product passport",
     product: "Reserva Andina",
     passportId: "NEX-DEMO · RA-2407",
@@ -433,6 +508,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Information for the person using or buying the product",
         description: "Sees the story, instructions and services the brand chose to publish for this product.",
         condition: "Public fields only. Personal data requires explicit consent.",
+        journey: {
+          who: "A person opens the NFC or QR from their phone without installing an app.",
+          receives: "The current public record: identity, story, origin, and enabled instructions or services.",
+          protected: "Their identity and internal data are not exposed. Sharing personal data requires explicit consent.",
+          returns: "The product read and selected action may be recorded; that does not automatically identify the person.",
+        },
         fields: [
           { label: "Story and origin", value: "2022 harvest · Valle de Uco", source: "Producer declaration", responsible: "Bodega Balmec", granularity: "Batch", updated: "Sample update", visibility: "Public", evidence: "declared" },
           { label: "Passport identifier", value: "NEX-DEMO · RA-2407", source: "Sample digital record", responsible: "nexID Demo", granularity: "Batch", updated: "When this demo opens", visibility: "Public", evidence: "verified" },
@@ -445,6 +526,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Content, versions and authorized activity",
         description: "Publishes the record, maintains its versions and reviews permitted signals to improve information and service.",
         condition: "Personal interactions are linked only when a valid basis and applicable consent exist.",
+        journey: {
+          who: "The authorized team at the company responsible for the passport.",
+          receives: "Content, version and batch management plus operational activity available to its role.",
+          protected: "Personal data stays separate unless a valid basis and applicable consent exist.",
+          returns: "The dashboard organizes recorded taps and actions with available product, batch, channel and provenance.",
+        },
         fields: [
           { label: "Product record", value: "Story, origin and recommendations", source: "DPP content manager", responsible: "Bodega Balmec", granularity: "Model + batch", updated: "Current demo version", visibility: "Publishable", evidence: "declared" },
           { label: "Version integrity", value: "Sample record with no pending changes", source: "Digital version control", responsible: "nexID Demo", granularity: "Batch", updated: "When the version is confirmed", visibility: "Brand team", evidence: "verified" },
@@ -457,6 +544,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Only what is needed to resolve a task",
         description: "Receives the batch and assigned-service context without opening every internal passport field.",
         condition: "The organization defines which fields are shared, with which operator and for how long.",
+        journey: {
+          who: "An operator or channel enabled by the company to resolve a request.",
+          receives: "Only the minimum product, batch and initiated-service context.",
+          protected: "It does not receive the full profile or internal information outside its permission.",
+          returns: "The case and follow-up can remain linked to the product for service and aftercare.",
+        },
         fields: [
           { label: "Service case", value: "Storage question started", source: "Action selected in the experience", responsible: "Sample support desk", granularity: "Item", updated: "When the demo case starts", visibility: "Assigned operator", evidence: "verified" },
           { label: "Shared context", value: "Reserva Andina · Batch RA-2407", source: "Published passport", responsible: "Bodega Balmec", granularity: "Batch", updated: "Current demo version", visibility: "Authorized service", evidence: "declared" },
@@ -469,6 +562,12 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
         scope: "Materials, instructions and evidence by permission",
         description: "Accesses circularity or oversight fields only when they apply to the product and the role is authorized.",
         condition: "This view does not imply automatic regulatory compliance or replace an authority's validation.",
+        journey: {
+          who: "A circularity operator or authority with applicable access.",
+          receives: "Published materials, instructions, source and responsible party for the product and market.",
+          protected: "Fields that do not apply or are not authorized remain hidden.",
+          returns: "The consultation can support operational traceability; it does not imply automatic compliance or certification.",
+        },
         fields: [
           { label: "Packaging composition", value: "Declared glass and components", source: "Packaging technical record", responsible: "Sample producer", granularity: "Model", updated: "Current demo version", visibility: "Role dependent", evidence: "declared" },
           { label: "Recovery instructions", value: "Sorting and route to be defined per market", source: "Circularity content", responsible: "Responsible operator", granularity: "Model + market", updated: "When changes are published", visibility: "Public if applicable", evidence: "declared" },
@@ -813,6 +912,12 @@ export function DppRoleExplorer({ locale, industry }: { locale: string; industry
   const selectedView = copy.roles[selectedRole];
   const selectedFields = getIndustryFields(copy, industryProfile, selectedRole);
   const ActiveRoleIcon = ROLE_ICONS[selectedRole];
+  const journeyCards = [
+    { key: "who", label: copy.journeyLabels[0], body: selectedView.journey.who, Icon: ActiveRoleIcon },
+    { key: "receives", label: copy.journeyLabels[1], body: selectedView.journey.receives, Icon: Eye },
+    { key: "protected", label: copy.journeyLabels[2], body: selectedView.journey.protected, Icon: LockKeyhole },
+    { key: "returns", label: copy.journeyLabels[3], body: selectedView.journey.returns, Icon: BarChart3 },
+  ] as const;
 
   useEffect(() => {
     const explorer = explorerRef.current;
@@ -945,48 +1050,71 @@ export function DppRoleExplorer({ locale, industry }: { locale: string; industry
             </div>
           </div>
 
-          <div className={styles.roleSummary}>
-            <span className={styles.roleSummaryIcon}><ActiveRoleIcon aria-hidden="true" /></span>
-            <div>
-              <strong>{selectedView.scope}</strong>
-              <p>{selectedView.description}</p>
-              <span><LockKeyhole aria-hidden="true" />{selectedView.condition}</span>
-            </div>
-          </div>
+          <section className={styles.roleJourney} aria-labelledby={`${baseId}-journey-title`}>
+            <header className={styles.roleJourneyHeader}>
+              <span className={styles.roleSummaryIcon}><ActiveRoleIcon aria-hidden="true" /></span>
+              <div>
+                <small>{copy.journeyTitle}</small>
+                <strong id={`${baseId}-journey-title`}>{selectedView.scope}</strong>
+                <p>{selectedView.description} {copy.journeyIntro}</p>
+              </div>
+            </header>
 
-          <div className={styles.tableHeader} aria-hidden="true">
-            <span>{copy.fieldLabel}</span>
-            <span>{copy.sourceLabel} · {copy.responsibleLabel}</span>
-            <span>{copy.granularityLabel} · {copy.updatedLabel}</span>
-            <span>{copy.evidenceLabel}</span>
-          </div>
-
-          <ul className={styles.fieldList}>
-            {selectedFields.map((field, index) => {
-              const EvidenceIcon = EVIDENCE_ICONS[field.evidence];
-              return (
-                <li key={`${activeIndustry}-${selectedRole}-${field.label}`} className={styles.fieldRow} data-evidence={field.evidence} style={{ "--row-index": index } as CSSProperties}>
-                  <div className={styles.fieldPrimary}>
-                    <small>{field.label}</small>
-                    <strong>{field.value}</strong>
-                  </div>
-                  <dl className={styles.fieldDetails}>
-                    <div><dt>{copy.sourceLabel}</dt><dd>{field.source}</dd></div>
-                    <div><dt>{copy.responsibleLabel}</dt><dd>{field.responsible}</dd></div>
-                  </dl>
-                  <dl className={styles.fieldDetails}>
-                    <div><dt>{copy.granularityLabel}</dt><dd>{field.granularity}</dd></div>
-                    <div><dt>{copy.updatedLabel}</dt><dd>{field.updated}</dd></div>
-                    <div><dt>{copy.visibilityLabel}</dt><dd>{field.visibility}</dd></div>
-                  </dl>
-                  <span className={styles.evidenceStatus}>
-                    <EvidenceIcon aria-hidden="true" />
-                    {copy.legend[field.evidence].label}
-                  </span>
+            <ol className={styles.journeyGrid}>
+              {journeyCards.map(({ key, label, body, Icon }, index) => (
+                <li key={key} data-journey={key} style={{ "--journey-index": index } as CSSProperties}>
+                  <span className={styles.journeyIcon}><Icon aria-hidden="true" /></span>
+                  <span className={styles.journeyNumber}>{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{label}</strong>
+                  <p>{body}</p>
+                  {index < journeyCards.length - 1 ? <ArrowRight className={styles.journeyArrow} aria-hidden="true" /> : null}
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ol>
+          </section>
+
+          <details className={styles.technicalDetails}>
+            <summary>
+              <span className={styles.technicalSummaryIcon}><Database aria-hidden="true" /></span>
+              <span><strong>{copy.technicalToggle}</strong><small>{copy.technicalHint}</small></span>
+              <ArrowRight className={styles.technicalSummaryArrow} aria-hidden="true" />
+            </summary>
+            <div className={styles.technicalContent}>
+              <div className={styles.tableHeader} aria-hidden="true">
+                <span>{copy.fieldLabel}</span>
+                <span>{copy.sourceLabel} · {copy.responsibleLabel}</span>
+                <span>{copy.granularityLabel} · {copy.updatedLabel}</span>
+                <span>{copy.evidenceLabel}</span>
+              </div>
+
+              <ul className={styles.fieldList}>
+                {selectedFields.map((field, index) => {
+                  const EvidenceIcon = EVIDENCE_ICONS[field.evidence];
+                  return (
+                    <li key={`${activeIndustry}-${selectedRole}-${field.label}`} className={styles.fieldRow} data-evidence={field.evidence} style={{ "--row-index": index } as CSSProperties}>
+                      <div className={styles.fieldPrimary}>
+                        <small>{field.label}</small>
+                        <strong>{field.value}</strong>
+                      </div>
+                      <dl className={styles.fieldDetails}>
+                        <div><dt>{copy.sourceLabel}</dt><dd>{field.source}</dd></div>
+                        <div><dt>{copy.responsibleLabel}</dt><dd>{field.responsible}</dd></div>
+                      </dl>
+                      <dl className={styles.fieldDetails}>
+                        <div><dt>{copy.granularityLabel}</dt><dd>{field.granularity}</dd></div>
+                        <div><dt>{copy.updatedLabel}</dt><dd>{field.updated}</dd></div>
+                        <div><dt>{copy.visibilityLabel}</dt><dd>{field.visibility}</dd></div>
+                      </dl>
+                      <span className={styles.evidenceStatus}>
+                        <EvidenceIcon aria-hidden="true" />
+                        {copy.legend[field.evidence].label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </details>
         </div>
       </div>
 

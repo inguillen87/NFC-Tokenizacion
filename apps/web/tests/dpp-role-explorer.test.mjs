@@ -30,6 +30,14 @@ test("DPP role explorer explains one structured passport through four authorized
   assert.match(component, /Mirá qué información recibe/);
   assert.match(component, /Revisá fuente, responsable y estado/);
   assert.match(component, /<ol className=\{styles\.guide\}/);
+  assert.match(component, /Qué pasa para este participante/);
+  assert.match(component, /Quién está mirando/);
+  assert.match(component, /Qué queda protegido/);
+  assert.match(component, /Qué vuelve a la empresa/);
+  assert.match(component, /className=\{styles\.journeyGrid\}/);
+  assert.match(component, /data-journey=\{key\}/);
+  assert.match(component, /className=\{styles\.technicalDetails\}/);
+  assert.match(component, /Ver fuentes, responsables y evidencia/);
   assert.match(component, /<ul className=\{styles\.fieldList\}>/);
   assert.match(component, /<li key=\{`\$\{activeIndustry\}-\$\{selectedRole\}-\$\{field\.label\}`\}/);
   assert.match(component, /aria-selected=\{isSelected\}/);
@@ -95,6 +103,8 @@ test("DPP role explorer makes provenance, granularity and evidence state explici
 test("DPP role explorer is truthful about demo data, permissions and verification limits", () => {
   assert.match(component, /Escenario ilustrativo · Sin datos productivos/);
   assert.match(component, /Los datos personales requieren consentimiento explícito/);
+  assert.match(component, /eso no identifica automáticamente a la persona/);
+  assert.match(component, /El dashboard organiza taps y acciones registradas/);
   assert.match(component, /no implica cumplimiento normativo automático/);
   assert.match(component, /La verificación digital no certifica por sí sola la autenticidad física/);
   assert.match(component, /no certifica el producto físico/);
@@ -118,6 +128,10 @@ test("DPP role explorer is white-first, responsive and motion-accessible", () =>
   assert.match(styles, /@keyframes dataFlow/);
   assert.match(styles, /@keyframes headerScan/);
   assert.match(styles, /@keyframes guideEnter/);
+  assert.match(styles, /@keyframes journeyEnter/);
+  assert.match(styles, /\.journeyGrid > li\[data-journey="protected"\]/);
+  assert.match(styles, /\.technicalDetails\[open\] \.technicalSummaryArrow/);
+  assert.match(styles, /@container \(max-width: 34rem\)[\s\S]{0,1000}\.roleRail \{[\s\S]{0,260}grid-template-columns: minmax\(0, 1fr\)[\s\S]{0,260}scroll-snap-type: none/);
   assert.match(styles, /\.guide li:nth-child\(2\)/);
   assert.match(styles, /\.guide li:nth-child\(3\)/);
   assert.match(styles, /:focus-visible/);

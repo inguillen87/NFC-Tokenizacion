@@ -74,10 +74,11 @@ test("SimpleTrustFlow keeps one progressive industry journey and one clear actio
 });
 
 test("CommercialValue adds a white-first role-based DPP view instead of repeating the three-step journey", async () => {
-  const [sections, explorer, styles] = await Promise.all([
+  const [sections, explorer, styles, css] = await Promise.all([
     readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/dpp-role-explorer.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/dpp-role-explorer.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
   ]);
   const value = sections.slice(sections.indexOf("export function CommercialValueSection"));
 
@@ -93,6 +94,13 @@ test("CommercialValue adds a white-first role-based DPP view instead of repeatin
   assert.match(explorer, /Cómo explorar el pasaporte/);
   assert.match(explorer, /Elegí quién consulta/);
   assert.match(explorer, /Revisá fuente, responsable y estado/);
+  assert.match(explorer, /Quién está mirando/);
+  assert.match(explorer, /Qué recibe/);
+  assert.match(explorer, /Qué queda protegido/);
+  assert.match(explorer, /Qué vuelve a la empresa/);
+  assert.match(explorer, /Ver fuentes, responsables y evidencia/);
+  assert.match(explorer, /className=\{styles\.journeyGrid\}/);
+  assert.match(explorer, /className=\{styles\.technicalDetails\}/);
   assert.match(explorer, /source: string/);
   assert.match(explorer, /responsible: string/);
   assert.match(explorer, /granularity: string/);
@@ -108,6 +116,10 @@ test("CommercialValue adds a white-first role-based DPP view instead of repeatin
   assert.match(styles, /@keyframes dataFlow/);
   assert.match(styles, /@keyframes panelEnter/);
   assert.match(styles, /@keyframes guideEnter/);
+  assert.match(styles, /@keyframes journeyEnter/);
+  assert.match(css, /@media \(max-width: 560px\)[\s\S]{0,3400}object-fit: contain !important/);
+  assert.match(css, /@media \(min-width: 761px\) and \(max-width: 1180px\)[\s\S]{0,850}grid-auto-columns: minmax\(19rem, calc\(\(100% - 1\.4rem\) \/ 2\.18\)\)/);
+  assert.match(css, /\.simple-trust-industry-panel__controls \{[\s\S]{0,150}order: 1/);
   assert.match(styles, /:focus-visible/);
   assert.doesNotMatch(explorer, /\b(?:%|KPI|ROI|conversi[oó]n)\b/i);
   assert.doesNotMatch(value, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
