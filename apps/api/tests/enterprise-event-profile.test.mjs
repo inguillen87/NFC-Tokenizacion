@@ -61,6 +61,13 @@ test("Cropwise profile is explicitly generic and the atomic payload never emits 
   assert.match(eventRoute, /normalizeEnterpriseOutboundFields/);
 });
 
+test("secret-bearing SDK events fail before durable idempotency reservation", () => {
+  const secretPreflight = eventRoute.indexOf("enterprisePayloadContainsSecret(securityEnvelope)");
+  const idempotencyBoundary = eventRoute.indexOf("return runSdkIdempotentMutation({");
+  assert.ok(secretPreflight >= 0 && idempotencyBoundary > secretPreflight);
+  assert.match(eventRoute, /reason: "enterprise_event_secret_fields_forbidden"/);
+});
+
 test("risk model covers every required enterprise factor and stays bounded", () => {
   const sourceSignals = {
     eventType: "BATCH_QUARANTINED REVOKED REPLAY UNKNOWN_UID TAMPER",

@@ -138,6 +138,9 @@ async function run() {
   process.env.WEBHOOK_SIGNING_MASTER_KEY_HEX = randomBytes(32).toString("hex");
   process.env.WEBHOOK_SIGNING_ALLOW_LEGACY_PLAINTEXT = "false";
   process.env.RATE_LIMIT_KEY_PEPPER = randomBytes(32).toString("hex");
+  process.env.SDK_IDEMPOTENCY_MASTER_KEY_HEX = randomBytes(32).toString("hex");
+  process.env.SDK_IDEMPOTENCY_MASTER_KEY_ID = "ephemeral-e2e-v1";
+  delete process.env.SDK_IDEMPOTENCY_PREVIOUS_KEYS_JSON;
 
   const client = new Client({ connectionString: config.databaseUrl, connectionTimeoutMillis: 5_000 });
   await client.connect();
@@ -1819,6 +1822,15 @@ async function run() {
       `secret_bearing_sdk_event_status:${String(secretBearingSdkPayload?.reason || "unknown")}`,
     );
     assert.equal(secretBearingSdkPayload.reason, "enterprise_event_secret_fields_forbidden");
+    const rejectedSecretIdempotency = await client.query(
+      "SELECT count(*)::integer AS count FROM sdk_idempotency_operations WHERE tenant_id = $1::uuid AND route = $2 AND idempotency_key = $3",
+      [tenantId, "/api/v1/sdk/events", "enterprise-e2e-http-sdk-secret-reject"],
+    );
+    assert.equal(
+      Number(rejectedSecretIdempotency.rows[0]?.count || 0),
+      0,
+      "secret-bearing SDK events must be rejected before reserving idempotency state",
+    );
 
     const sdkEventResponse = await httpHarness.fetch("/api/v1/sdk/events", {
       method: "POST",

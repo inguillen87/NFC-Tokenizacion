@@ -377,6 +377,8 @@ test("harness exercises production CMAC/SDM code with synthetic inputs and makes
   assert.match(source, /deliver:\s*async \(delivery\)/);
   assert.match(source, /in_process_signature_verified_no_network/);
   assert.match(source, /software_envelope_encrypted_tenant_bound/);
+  assert.match(source, /process\.env\.SDK_IDEMPOTENCY_MASTER_KEY_HEX = randomBytes\(32\)/);
+  assert.match(source, /process\.env\.SDK_IDEMPOTENCY_MASTER_KEY_ID = "ephemeral-e2e-v1"/);
   assert.match(source, /sun_crypto: "production_cmac_sdm_code_with_synthetic_inputs"/);
   assert.match(source, /evidence_class: "synthetic_ephemeral_software_fixture"/);
   assert.match(source, /nfc_batch_key_envelope: "application_aes_256_gcm_with_process_secret"/);
@@ -457,6 +459,7 @@ test("supplier-order E2E proves role defaults, explicit deny precedence and secu
   assert.match(source, /secure SUN supplier-order creation requires batch\.keys\.generate/);
   assert.match(source, /http_supplier_orders: Number\(supplierHttpAggregateEvidence\.order_count\)/);
   assert.match(source, /http_supplier_sub_batches: Number\(supplierHttpAggregateEvidence\.sub_batch_count\)/);
+  assert.match(source, /secret-bearing SDK events must be rejected before reserving idempotency state/);
   assert.doesNotMatch(source, /supplier-order creation remains super-admin-only/);
 });
 

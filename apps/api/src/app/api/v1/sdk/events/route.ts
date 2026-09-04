@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { ensureSdkSchema } from "../../../../../lib/commercial-runtime-schema";
-import { normalizeEnterpriseOutboundFields } from "../../../../../lib/enterprise-outbound-event";
+import { enterprisePayloadContainsSecret, normalizeEnterpriseOutboundFields } from "../../../../../lib/enterprise-outbound-event";
 import { json } from "../../../../../lib/http";
 import { publishRealtimeEvent } from "../../../../../lib/realtime-events";
 import { authenticateSdkRequest, logSdkUsage } from "../../../../../lib/sdk-auth";
@@ -32,6 +32,29 @@ export async function POST(req: Request) {
     return parsedBody.response;
   }
   const body = parsedBody.body;
+  const securityEnvelope = {
+    data: body.data,
+    meta: body.meta,
+    gps: body.gps,
+    device: body.device ?? body.deviceMeta ?? body.device_meta,
+    connectorConfig: body.connectorConfig ?? body.connector_config,
+  };
+  if (enterprisePayloadContainsSecret(securityEnvelope)) {
+    await logSdkUsage({
+      req,
+      context: auth.context,
+      endpoint: "sdk.events",
+      statusCode: 400,
+      startedAt,
+      reason: "enterprise_event_secret_fields_forbidden",
+      meta: { eventType: clean(body.eventType || body.event_type) || null, bid: clean(body.bid) || null },
+    });
+    return json({
+      ok: false,
+      reason: "enterprise_event_secret_fields_forbidden",
+      trace_id: auth.context.traceId,
+    }, 400, { "cache-control": "no-store", "x-nexid-trace-id": auth.context.traceId });
+  }
   if (
     isSdkSensorReadingEventType(body.eventType || body.event_type)
     && !String(req.headers.get("idempotency-key") || "").trim()
