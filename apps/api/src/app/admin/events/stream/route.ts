@@ -9,7 +9,10 @@ import { sql } from "../../../../lib/db";
 import { REALTIME_DELIVERY_ID_PATTERN } from "../../../../lib/realtime-broker-payload";
 import { subscribeRealtimeEvent } from "../../../../lib/realtime-events";
 import { createBoundedRealtimeSseOutputQueue } from "../../../../lib/realtime-sse-output-queue";
-import { readEmbeddedTenantTapProjection } from "../../../../lib/realtime-tap-projection";
+import {
+  normalizePersistedTenantTapRealtimeEvent,
+  readEmbeddedTenantTapProjection,
+} from "../../../../lib/realtime-tap-projection";
 import {
   createBoundedRealtimeProjectionDeduper,
   runRealtimeStreamLifecycle,
@@ -21,7 +24,7 @@ import {
 } from "../../../../lib/realtime-stream-window";
 import { resolveJitteredRealtimeDelay } from "../../../../lib/realtime-timing";
 import { randomUUID } from "node:crypto";
-import { normalizeTenantTapRealtimeEvent, type TenantTapRealtimeEvent } from "@product/core";
+import { type TenantTapRealtimeEvent } from "@product/core";
 import {
   REALTIME_EVENT_SOURCE_FILTERS,
   allowRealtimeEventForScope,
@@ -183,6 +186,7 @@ async function fetchRows(
           e.lng,
           e.location_source,
           e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           e.device_label,
           e.user_agent,
           e.meta,
@@ -295,6 +299,7 @@ async function fetchRows(
           e.lng,
           e.location_source,
           e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           e.device_label,
           e.user_agent,
           e.meta,
@@ -437,7 +442,7 @@ export async function GET(req: Request): Promise<Response> {
       );
       const emitTapEvent = (rawPayload: Record<string, unknown>, transportCursor = "") => {
         const embeddedProjection = readEmbeddedTenantTapProjection(rawPayload.tap_projection);
-        const normalized = embeddedProjection || normalizeTenantTapRealtimeEvent(rawPayload);
+        const normalized = embeddedProjection || normalizePersistedTenantTapRealtimeEvent(rawPayload);
         if (!allowRealtimeEventForSource(sourceFilter, embeddedProjection?.eventSource ?? rawPayload.source)) return;
         // Only complete persisted projections may cross a tenant stream. Raw
         // in-process notifications remain harmless and cannot replace truth.
@@ -577,7 +582,7 @@ export async function GET(req: Request): Promise<Response> {
         ),
         fetchSnapshot: async () => {
           const snapshotRows = await fetchRows(searchParams, realtimeWindow, forcedTenantSlug, sourceFilter);
-          return snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row));
+          return snapshotRows.map((row) => normalizePersistedTenantTapRealtimeEvent(row));
         },
         rememberSnapshotRow: rememberEvent,
         emitConnected: (subscription) => {

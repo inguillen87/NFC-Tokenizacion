@@ -1,4 +1,8 @@
-import { normalizeTenantTapRealtimeEvent, type TenantTapRealtimeEvent } from "@product/core";
+import {
+  normalizeTenantTapRealtimeEvent,
+  normalizeWgs84CoordinatePair,
+  type TenantTapRealtimeEvent,
+} from "@product/core";
 
 import { sql } from "./db";
 import { publishRealtimeEvent } from "./realtime-events";
@@ -6,6 +10,96 @@ import { publishRealtimeEvent } from "./realtime-events";
 function positiveEventId(value: unknown) {
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+const CONSENTED_POST_TAP_LOCATION_SOURCES = new Set([
+  "browser_geolocation_approximate_consent",
+  "browser_gps_approximate_consent",
+]);
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function boundedLocationText(value: unknown, maxLength: number) {
+  const normalized = typeof value === "string" || typeof value === "number"
+    ? String(value).trim()
+    : "";
+  if (!normalized || normalized.length > maxLength || /[\u0000-\u001f\u007f]/.test(normalized)) return null;
+  return normalized;
+}
+
+function finiteNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+type ConsentedPostTapLocation = {
+  city: string | null;
+  countryCode: string | null;
+  lat: number;
+  lng: number;
+  source: string;
+  accuracyM: number;
+};
+
+/**
+ * Accept only the constrained, consented browser observation persisted after
+ * the tap. Invalid/legacy JSON cannot displace the request-time evidence.
+ */
+export function readConsentedPostTapLocation(value: unknown): ConsentedPostTapLocation | null {
+  const observation = record(value);
+  if (
+    !observation
+    || observation.schemaVersion !== "sun-browser-location-observation/v1"
+    || observation.consent !== true
+    || String(observation.precision || "").trim().toLowerCase() !== "approximate"
+  ) return null;
+
+  const source = String(observation.source || "").trim().toLowerCase();
+  if (!CONSENTED_POST_TAP_LOCATION_SOURCES.has(source)) return null;
+  const coordinate = normalizeWgs84CoordinatePair(observation.lat, observation.lng);
+  const accuracyM = finiteNumber(observation.accuracyM);
+  if (!coordinate || accuracyM === null || accuracyM < 150 || accuracyM > 50_000) return null;
+
+  const countryCandidate = boundedLocationText(observation.countryCode, 3);
+  const countryCode = countryCandidate && /^[a-z]{2,3}$/i.test(countryCandidate)
+    ? countryCandidate.toUpperCase()
+    : null;
+  return {
+    city: boundedLocationText(observation.city, 120),
+    countryCode,
+    lat: coordinate.lat,
+    lng: coordinate.lng,
+    source,
+    accuracyM,
+  };
+}
+
+/**
+ * Promote a later consented browser observation only in the read projection.
+ * The canonical event columns remain untouched as request-time provenance.
+ * All promoted location fields come from one observation, preventing a map
+ * point from mixing its coordinates with the request's city/source/accuracy.
+ */
+export function normalizePersistedTenantTapRealtimeEvent(
+  row: Record<string, unknown>,
+): TenantTapRealtimeEvent {
+  const observation = readConsentedPostTapLocation(row.post_tap_location_observation);
+  if (!observation) return normalizeTenantTapRealtimeEvent(row);
+  return normalizeTenantTapRealtimeEvent({
+    ...row,
+    city: observation.city,
+    country_code: observation.countryCode,
+    lat: observation.lat,
+    lng: observation.lng,
+    location_source: observation.source,
+    location_accuracy_m: observation.accuracyM,
+  });
 }
 
 /**
@@ -97,6 +191,7 @@ export async function loadTenantTapRealtimeProjection(
       e.lng,
       e.location_source,
       e.location_accuracy_m,
+      to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
       e.device_label,
       e.user_agent,
       e.meta,
@@ -112,7 +207,7 @@ export async function loadTenantTapRealtimeProjection(
     LIMIT 1
   `;
   if (!Array.isArray(rows) || rows.length !== 1) return null;
-  const projection = normalizeTenantTapRealtimeEvent(rows[0] as Record<string, unknown>);
+  const projection = normalizePersistedTenantTapRealtimeEvent(rows[0] as Record<string, unknown>);
   if (!projection.eventId || !projection.tenantId || !projection.tenantSlug || !projection.batchId) return null;
   return projection;
 }
