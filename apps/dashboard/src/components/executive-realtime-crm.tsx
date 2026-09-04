@@ -1398,7 +1398,7 @@ export function ExecutiveRealtimeCrm({
       </aside>
 
       <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-102px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:gap-4 2xl:p-4">
-        <section className="order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-96 lg:shrink-0">
+        <section className="nexid-crm-kpi-column order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 xl:w-96">
           <div className="flex items-start justify-between gap-3">
             <span>
               <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Lectura operativa</h2>
@@ -1462,8 +1462,8 @@ export function ExecutiveRealtimeCrm({
           </div>
         </section>
 
-        <section className="order-1 flex min-h-0 flex-col gap-4 lg:order-2 lg:min-w-0 lg:flex-1">
-          <div className="flex min-h-0 flex-col lg:flex-1">
+        <section className="nexid-crm-workspace order-1 flex min-h-0 flex-col gap-4 lg:order-2 lg:min-w-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+          <div className="nexid-crm-map-stack flex min-h-0 shrink-0 flex-col">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Mapa de eventos por capas</h2>
@@ -1505,7 +1505,7 @@ export function ExecutiveRealtimeCrm({
               </div>
             ) : null}
 
-            <div id="live-tap-map" ref={mapPanelRef} data-map-fullscreen={isMapFullscreen ? "true" : "false"} className={`nexid-crm-map-panel relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[520px] rounded-2xl sm:min-h-[560px] lg:min-h-0"}`}>
+            <div id="live-tap-map" ref={mapPanelRef} data-map-fullscreen={isMapFullscreen ? "true" : "false"} className={`nexid-crm-map-panel relative shrink-0 overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "rounded-2xl"}`}>
               <div role="group" aria-label="Acciones del mapa" className="nexid-crm-map-actions absolute left-3 top-3 z-30 grid gap-2 sm:left-4 sm:top-4">
                 <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Acercar mapa">+</button>
                 <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Alejar mapa">−</button>
@@ -1538,7 +1538,7 @@ export function ExecutiveRealtimeCrm({
                 <button type="button" title={streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={!streetViewTarget} className="nexid-crm-map-street hidden h-12 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/72 px-3 text-sm font-bold text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 2xl:flex"><Globe className="h-4 w-4" /> {streetViewTarget ? "Street" : "Sin GPS"}</button>
               </div>
 
-              <div className="nexid-crm-map-legend absolute bottom-[264px] left-3 z-20 rounded-xl border border-white/10 bg-slate-950/82 p-3.5 text-xs text-slate-200 shadow-xl backdrop-blur sm:left-4 lg:bottom-20">
+              <div className="nexid-crm-map-legend absolute bottom-[264px] left-3 z-20 rounded-xl border border-white/10 bg-slate-950/82 p-3.5 text-xs text-slate-200 shadow-xl backdrop-blur sm:left-4 2xl:bottom-20">
                 <p className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
                 <p className="mb-2 max-w-[15rem] text-xs font-medium leading-[1.15rem] text-slate-400">{MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.description}</p>
                 {mapView === "heat" ? (
@@ -1556,11 +1556,11 @@ export function ExecutiveRealtimeCrm({
                 )}
               </div>
 
-              <div className={`${isMapFullscreen ? "h-full" : "h-[460px] sm:h-[520px]"} w-full p-3 pt-[76px] lg:h-full lg:p-3 lg:pr-[300px]`}>
+              <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "h-full" : "h-[460px] sm:h-[520px] 2xl:h-[560px]"} w-full p-3 pt-[76px] 2xl:pr-[300px]`}>
                 <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} />
               </div>
 
-              <div className="relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur lg:absolute lg:bottom-4 lg:right-4 lg:top-[76px] lg:m-0 lg:w-[282px] lg:max-h-none">
+              <div className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:absolute 2xl:bottom-4 2xl:right-4 2xl:top-[76px] 2xl:m-0 2xl:w-[282px] 2xl:max-h-none">
                 <p className="text-base font-extrabold tracking-[-0.015em] text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {visibleEvents.slice(0, 4).map((event) => {
@@ -1586,8 +1586,8 @@ export function ExecutiveRealtimeCrm({
             </div>
           </div>
 
-          <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
-            <div id="commercial-ai-panel" className="rounded-xl border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),linear-gradient(180deg,rgba(10,24,43,.98),rgba(4,10,20,.95))] p-3 2xl:p-4">
+          <div className="nexid-crm-insight-grid grid min-h-0 shrink-0 grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div id="commercial-ai-panel" className="nexid-crm-commercial-panel rounded-xl border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),linear-gradient(180deg,rgba(10,24,43,.98),rgba(4,10,20,.95))] p-3 2xl:p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="flex min-w-0 flex-wrap items-center gap-2 text-base font-bold text-white">
                   <Megaphone className="h-4 w-4 text-cyan-300" />
@@ -1661,7 +1661,7 @@ export function ExecutiveRealtimeCrm({
                 )}
               </div>
             </div>
-            <div className="rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
+            <div className="nexid-crm-alerts-panel rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-base font-bold text-white">Alertas y excepciones <span className="ml-1 rounded-full bg-red-500 px-1.5 text-xs">{alerts.length}</span></p>
                 <button type="button" title="Abrir todas las alertas y excepciones" onClick={() => { window.location.href = "/events"; }} className="text-sm font-semibold text-cyan-300">Ver todas</button>

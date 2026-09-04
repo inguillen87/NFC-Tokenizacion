@@ -1656,6 +1656,24 @@ html.theme-light .nexid-crm-shell select {
   -webkit-tap-highlight-color: transparent;
 }
 
+.nexid-crm-kpi-column,
+.nexid-crm-workspace {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.3) transparent;
+}
+
+.nexid-crm-kpi-column::-webkit-scrollbar,
+.nexid-crm-workspace::-webkit-scrollbar {
+  width: 0.45rem;
+}
+
+.nexid-crm-kpi-column::-webkit-scrollbar-thumb,
+.nexid-crm-workspace::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.24);
+}
+
 .nexid-crm-map-panel {
   isolation: isolate;
 }
@@ -1710,6 +1728,14 @@ html.theme-light .nexid-crm-shell select {
   border-color: rgba(8, 145, 178, 0.52) !important;
   color: #0e7490 !important;
   box-shadow: 0 12px 28px rgba(8, 145, 178, 0.16) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-commercial-panel {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(34, 211, 238, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(236, 254, 255, 0.9)) !important;
+  border-color: rgba(8, 145, 178, 0.22) !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.1) !important;
 }
 
 @media (max-width: 640px) {
