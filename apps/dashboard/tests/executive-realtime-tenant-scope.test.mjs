@@ -153,7 +153,9 @@ test("a scope transition is explicit before an empty result and capped samples a
   assert.match(crmSource, /const valuesUnavailable = requestTransitionPending \|\| !streamConfirmed/);
   assert.match(crmSource, /if \(valuesUnavailable\) return \[\]/);
   assert.match(crmSource, /data-testid="crm-velocity-pending"/);
-  assert.match(crmSource, /data-testid="crm-map-pending"/);
+  assert.doesNotMatch(crmSource, /data-testid="crm-map-pending"/);
+  assert.match(crmSource, /<RealtimeMapLibreMap[\s\S]*?dataState=\{mapEvidence\.state\}/);
+  assert.match(crmSource, /data-testid="crm-map-data-mode"/);
   assert.match(crmSource, /selectTenant\("all"\)/);
   assert.match(crmSource, /const cutoff = freshnessNow - timeRangeMs\(timeRange\)/);
   assert.doesNotMatch(crmSource, /label="Actividad total"|Todas las interacciones persistidas/);

@@ -163,5 +163,8 @@ test("dashboard heatmaps resolve a no-key shared basemap and keep visible attrib
   assert.match(realtimeMapSource, /TRUST_MAP_SOURCE\.attribution/);
   assert.match(realtimeMapSource, /AttributionControl/);
   assert.match(realtimeMapSource, /raster-brightness-max/);
+  assert.match(realtimeMapSource, /map\.on\("styleimagemissing"/);
+  assert.match(realtimeMapSource, /\^circle-\(\\d\+\)\$/);
+  assert.match(realtimeMapSource, /map\.addImage\(imageId/);
   assert.doesNotMatch(realtimeMapSource, /basemaps\.cartocdn\.com|dark_all|light_all|voyager_nolabels|tile\.openstreetmap\.org/);
 });

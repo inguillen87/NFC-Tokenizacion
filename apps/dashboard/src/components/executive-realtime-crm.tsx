@@ -409,6 +409,31 @@ function realtimeSourcePresentation(
   };
 }
 
+function mapEvidencePresentation(source: RealtimeDataSource, unconfirmed: boolean) {
+  if (unconfirmed || source === "unavailable" || source === "mixed") {
+    return {
+      state: "unavailable" as const,
+      label: source === "mixed" ? "Fuente mixta · no confirmada" : "Datos del mapa sin confirmar",
+      detail: "La cartografía base sigue disponible. La capa de eventos no debe interpretarse como actividad actual hasta confirmar fuente, tenant y ventana.",
+      badge: "border-amber-300/30 bg-amber-400/12 text-amber-100",
+    };
+  }
+  if (source === "demo" || source === "seed") {
+    return {
+      state: "demo" as const,
+      label: "Mapa demo · datos ilustrativos",
+      detail: "La cartografía es real; los eventos pertenecen al recorrido demo aislado y no representan actividad productiva.",
+      badge: "border-violet-300/30 bg-violet-400/12 text-violet-100",
+    };
+  }
+  return {
+    state: "real" as const,
+    label: "Mapa operativo · eventos confirmados",
+    detail: "La capa muestra únicamente eventos confirmados para el tenant y la ventana activos.",
+    badge: "border-emerald-300/25 bg-emerald-400/12 text-emerald-100",
+  };
+}
+
 function locationSourceLabel(row: TenantTapRealtimeEvent) {
   const source = String(row.locationSource || "").toLowerCase();
   const coordinate = strictCoordinatePair(row.lat, row.lng);
@@ -1191,6 +1216,7 @@ export function ExecutiveRealtimeCrm({
           ? { label: "Desactualizado", detail: "No se recibió heartbeat ni snapshot en los últimos 20 segundos.", dot: "bg-rose-300", badge: "border-rose-300/30 bg-rose-400/10 text-rose-100" }
           : { label: activeDataSource === "demo" ? "En vivo - demo" : activeDataSource === "mixed" ? "En vivo - fuente mixta" : "En vivo - produccion", detail: `Stream event-driven confirmado, sin polling. ${sourcePresentation.detail}`, dot: "bg-emerald-400", badge: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" };
   const streamDataUnconfirmed = Boolean(dataAvailability !== "ready" || !streamConfirmed || streamIsStale);
+  const mapEvidence = mapEvidencePresentation(activeDataSource, requestTransitionPending || streamDataUnconfirmed);
   const alerts = useMemo(() => {
     const rows: Array<{ id: string; tone: "red" | "amber" | "blue"; title: string; detail: string; time: string }> = [];
     if (metrics.explicitRiskRate > 10) {
@@ -1596,42 +1622,49 @@ export function ExecutiveRealtimeCrm({
               </div>
             ) : null}
 
-            <div id="live-tap-map" ref={mapPanelRef} data-map-fullscreen={isMapFullscreen ? "true" : "false"} className={`nexid-crm-map-panel relative shrink-0 overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "rounded-2xl"}`}>
-              <div role="group" aria-label="Acciones del mapa" className="nexid-crm-map-actions absolute left-3 top-3 z-30 grid gap-2 sm:left-4 sm:top-4">
-                <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Acercar mapa">+</button>
-                <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Alejar mapa">−</button>
-                <button type="button" title="Restablecer densidad, zoom y capa base según el tema activo" onClick={() => { setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); }} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Restablecer mapa"><RotateCcw className="h-5 w-5" /></button>
-                <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-5 w-5" /></button>
+            <div id="live-tap-map" ref={mapPanelRef} data-map-fullscreen={isMapFullscreen ? "true" : "false"} data-map-evidence-state={mapEvidence.state} className={`nexid-crm-map-panel relative flex shrink-0 flex-col overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "rounded-2xl"}`}>
+              <div className="nexid-crm-map-control-deck relative z-30 grid shrink-0 gap-3 border-b border-white/8 bg-slate-950/72 p-3 backdrop-blur-xl lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
+                <div role="group" aria-label="Acciones del mapa" className="nexid-crm-map-actions flex min-w-0 items-center gap-2 overflow-x-auto">
+                  <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Acercar mapa">+</button>
+                  <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Alejar mapa">−</button>
+                  <button type="button" title="Restablecer densidad, zoom y capa base según el tema activo" onClick={() => { setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); }} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Restablecer mapa"><RotateCcw className="h-5 w-5" /></button>
+                  <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-5 w-5" /></button>
+                </div>
+
+                <div className="nexid-crm-map-toolbar flex min-w-0 items-start justify-end gap-2">
+                  <div role="group" aria-label="Visualización de eventos" className="nexid-crm-map-view-controls flex min-w-0 flex-1 items-center justify-start gap-2 overflow-x-auto lg:justify-end">
+                    {MAP_VIEW_OPTIONS.map((option) => (
+                      <button key={option.value} type="button" aria-pressed={mapView === option.value} title={option.title} onClick={() => setMapView(option.value)} className={`nexid-crm-map-view-button flex h-11 min-w-[4.5rem] flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-bold shadow-lg transition sm:min-w-0 sm:flex-none sm:gap-2 sm:px-3 sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${mapView === option.value ? "border-cyan-300 bg-cyan-400/16 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,.2)]" : "border-white/10 bg-slate-950/72 text-slate-300 hover:border-cyan-300/35 hover:text-white"}`}>
+                        {option.icon}<span>{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div role="group" aria-label="Capa base del mapa" className="nexid-crm-map-base-controls hidden shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-slate-950/72 p-1 2xl:flex" title="Cambiar capa base del mapa">
+                    {BASEMAP_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        title={option.title}
+                        aria-pressed={baseMap === option.value}
+                        onClick={() => setBaseMap(option.value)}
+                        className={`min-h-10 rounded-lg px-3 text-[11px] font-black uppercase tracking-[0.06em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${baseMap === option.value ? "bg-cyan-300 text-slate-950 shadow-[0_6px_18px_rgba(34,211,238,.2)]" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" title={valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={valuesUnavailable || !streetViewTarget} className="nexid-crm-map-street hidden h-11 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/72 px-3 text-sm font-bold text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 2xl:flex"><Globe className="h-4 w-4" /> {valuesUnavailable ? "Sin confirmar" : streetViewTarget ? "Street" : "Sin GPS"}</button>
+                </div>
               </div>
 
-              <div className="nexid-crm-map-toolbar absolute left-[4.5rem] right-3 top-3 z-30 flex min-w-0 items-start justify-end gap-2 sm:left-[5rem] sm:top-4 lg:left-auto lg:right-5">
-                <div role="group" aria-label="Visualización de eventos" className="nexid-crm-map-view-controls flex min-w-0 flex-1 items-center justify-end gap-2 overflow-x-auto pb-1 lg:flex-none lg:overflow-visible lg:pb-0">
-                  {MAP_VIEW_OPTIONS.map((option) => (
-                    <button key={option.value} type="button" aria-pressed={mapView === option.value} title={option.title} onClick={() => setMapView(option.value)} className={`nexid-crm-map-view-button flex h-12 min-w-[4.5rem] flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-bold shadow-lg transition sm:min-w-0 sm:flex-none sm:gap-2 sm:px-3 sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${mapView === option.value ? "border-cyan-300 bg-cyan-400/16 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,.2)]" : "border-white/10 bg-slate-950/72 text-slate-300 hover:border-cyan-300/35 hover:text-white"}`}>
-                      {option.icon}<span>{option.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <div role="group" aria-label="Capa base del mapa" className="nexid-crm-map-base-controls hidden shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-slate-950/72 p-1 2xl:flex" title="Cambiar capa base del mapa">
-                  {BASEMAP_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      title={option.title}
-                      aria-pressed={baseMap === option.value}
-                      onClick={() => setBaseMap(option.value)}
-                      className={`min-h-11 rounded-lg px-3 text-[11px] font-black uppercase tracking-[0.06em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${baseMap === option.value ? "bg-cyan-300 text-slate-950 shadow-[0_6px_18px_rgba(34,211,238,.2)]" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <button type="button" title={valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={valuesUnavailable || !streetViewTarget} className="nexid-crm-map-street hidden h-12 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/72 px-3 text-sm font-bold text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 2xl:flex"><Globe className="h-4 w-4" /> {valuesUnavailable ? "Sin confirmar" : streetViewTarget ? "Street" : "Sin GPS"}</button>
-              </div>
-
-              <div className="nexid-crm-map-legend absolute bottom-[264px] left-3 z-20 rounded-xl border border-white/10 bg-slate-950/82 p-3.5 text-xs text-slate-200 shadow-xl backdrop-blur sm:left-4 2xl:bottom-20">
-                <p className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
-                <p className="mb-2 max-w-[15rem] text-xs font-medium leading-[1.15rem] text-slate-400">{MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.description}</p>
+              <div className={`nexid-crm-map-body grid min-h-0 ${isMapFullscreen ? "flex-1" : ""} 2xl:grid-cols-[minmax(0,1fr)_282px] 2xl:grid-rows-[auto_minmax(0,1fr)]`}>
+                <div className="nexid-crm-map-legend relative z-20 m-3 mb-0 min-w-0 rounded-xl border border-white/10 bg-slate-950/72 p-3 text-xs text-slate-200 shadow-xl backdrop-blur 2xl:col-start-2 2xl:row-start-1 2xl:ml-0 2xl:max-w-none">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <p className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
+                    <span data-testid="crm-map-data-mode" data-state={mapEvidence.state} className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.06em] ${mapEvidence.badge}`}>{mapEvidence.label}</span>
+                  </div>
+                  <p className="mb-2 text-xs font-medium leading-[1.15rem] text-slate-400">{MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.description}</p>
+                  <p className="mb-2 text-[11px] font-semibold leading-4 text-slate-300">{mapEvidence.detail}</p>
                 {mapView === "heat" ? (
                   <div aria-label="Escala relativa de volumen observado">
                     <div className="h-2.5 w-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-600 to-violet-600" aria-hidden="true" />
@@ -1645,17 +1678,13 @@ export function ExecutiveRealtimeCrm({
                 ) : (
                   <p className="flex items-center gap-2 text-[11px] font-medium text-slate-300"><i className="h-3 w-3 rounded-full border border-cyan-300/70 bg-cyan-300/10" /> Radio visual; no es geofencing</p>
                 )}
-              </div>
+                </div>
 
-              <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "h-full" : "h-[460px] sm:h-[520px] 2xl:h-[560px]"} w-full p-3 pt-[76px] 2xl:pr-[300px]`}>
-                {valuesUnavailable ? (
-                  <div data-testid="crm-map-pending" className="grid h-full min-h-[320px] place-items-center rounded-xl border border-dashed border-cyan-300/20 bg-[radial-gradient(circle_at_center,rgba(34,211,238,.08),transparent_55%)] px-6 text-center">
-                    <div><Radio className="mx-auto h-7 w-7 text-cyan-300" /><p className="mt-3 text-base font-bold text-white">Esperando el mapa del scope confirmado</p><p className="mt-1 max-w-md text-sm leading-6 text-slate-400">No se dibujan puntos, densidad ni ceros hasta validar el tenant y la ventana seleccionados.</p></div>
-                  </div>
-                ) : <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} />}
-              </div>
+                <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "min-h-0 h-full" : "h-[460px] sm:h-[520px] 2xl:h-[560px]"} min-w-0 w-full p-3 2xl:col-start-1 2xl:row-span-2 2xl:row-start-1`}>
+                  <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} dataState={mapEvidence.state} dataStateDetail={mapEvidence.detail} />
+                </div>
 
-              <div className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:absolute 2xl:bottom-4 2xl:right-4 2xl:top-[76px] 2xl:m-0 2xl:w-[282px] 2xl:max-h-none">
+                <div className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">
                 <p className="text-base font-extrabold tracking-[-0.015em] text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {valuesUnavailable ? <p data-testid="crm-events-pending" className="rounded-xl border border-dashed border-white/10 bg-slate-900/45 p-3 text-xs leading-5 text-slate-400">La actividad aparecerá cuando el tenant y la ventana queden confirmados.</p> : null}
@@ -1682,6 +1711,7 @@ export function ExecutiveRealtimeCrm({
                 ) : (
                   <span aria-disabled="true" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/45 px-3 text-center text-sm font-semibold text-slate-500" data-testid="events-audit-unavailable">Auditoría de eventos no habilitada</span>
                 )}
+                </div>
               </div>
             </div>
           </div>
