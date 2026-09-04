@@ -126,6 +126,10 @@ test("desktop, compact and mobile navigation keep a direct route to the passport
   assert.match(navigation, /passport: "Passaporte digital"/);
   assert.match(navigation, /passport: "Digital product passport"/);
   assert.equal(navigation.match(/href="\/#pasaporte-digital"/g)?.length, 3);
+  // Native fragments also work after leaving the home route; client route
+  // restoration can otherwise retain the hero scroll position on return.
+  assert.equal(navigation.match(/<a href="\/#pasaporte-digital"/g)?.length, 3);
+  assert.doesNotMatch(navigation, /<Link href="\/#pasaporte-digital"/);
   assert.match(navigation, /<nav className=\{styles\.compactNav\}/);
   assert.match(navigation, /href="\/#pasaporte-digital" className=\{styles\.mobileAboutLink\} onClick=\{\(\) => setMobileOpen\(false\)\}/);
   assert.match(css, /@media \(min-width: 980px\) and \(max-width: 1599px\)\s*\{\s*\.compactNav\s*\{\s*display: flex/);

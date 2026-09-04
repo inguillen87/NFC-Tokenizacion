@@ -465,9 +465,9 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   return (
     <div ref={navigationRef} className={styles.navigation}>
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
-        <Link href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
+        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
           {copy.passport}
-        </Link>
+        </a>
         {copy.groups.map((group) => {
           const expanded = openMenu === group.id;
           const groupCurrent = isNavigationGroupCurrent(group.id, pathname);
@@ -539,9 +539,9 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       </nav>
 
       <nav className={styles.compactNav} aria-label={copy.ariaLabel}>
-        <Link href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
+        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
           {copy.passport}
-        </Link>
+        </a>
         <Link
           href="/about"
           className={styles.navDirectLink}
@@ -585,10 +585,10 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
 
             <div className={styles.mobileGroups}>
-              <Link href="/#pasaporte-digital" className={styles.mobileAboutLink} onClick={() => setMobileOpen(false)}>
+              <a href="/#pasaporte-digital" className={styles.mobileAboutLink} onClick={() => setMobileOpen(false)}>
                 <span>{copy.passport}</span>
                 <ArrowRight aria-hidden="true" />
-              </Link>
+              </a>
               <Link
                 href="/about"
                 className={styles.mobileAboutLink}
