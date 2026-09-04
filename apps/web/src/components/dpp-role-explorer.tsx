@@ -52,6 +52,8 @@ type ExplorerCopy = {
   eyebrow: string;
   title: string;
   intro: string;
+  guideLabel: string;
+  guideSteps: [string, string, string];
   passportLabel: string;
   product: string;
   passportId: string;
@@ -120,7 +122,9 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
     mode: "Acceso organizado por rol",
     eyebrow: "EXPLORADOR DE PASAPORTE DIGITAL",
     title: "Un pasaporte. La información justa para cada rol.",
-    intro: "Elegí una vista para entender qué datos puede consultar cada actor, de dónde provienen y quién responde por ellos.",
+    intro: "La ficha es una sola, pero no todos ven lo mismo. Cambiá de rol para comprobar qué recibe cada participante y qué queda protegido.",
+    guideLabel: "Cómo explorar el pasaporte",
+    guideSteps: ["Elegí quién consulta", "Mirá qué información recibe", "Revisá fuente, responsable y estado"],
     passportLabel: "Pasaporte digital de muestra",
     product: "Reserva Andina",
     passportId: "NEX-DEMO · RA-2407",
@@ -316,7 +320,9 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
     mode: "Acesso organizado por função",
     eyebrow: "EXPLORADOR DE PASSAPORTE DIGITAL",
     title: "Um passaporte. A informação certa para cada função.",
-    intro: "Escolha uma visão para entender quais dados cada ator pode consultar, de onde vêm e quem responde por eles.",
+    intro: "A ficha é uma só, mas nem todos veem o mesmo. Troque de função para conferir o que cada participante recebe e o que permanece protegido.",
+    guideLabel: "Como explorar o passaporte",
+    guideSteps: ["Escolha quem consulta", "Veja quais informações recebe", "Revise fonte, responsável e estado"],
     passportLabel: "Passaporte digital de amostra",
     product: "Reserva Andina",
     passportId: "NEX-DEMO · RA-2407",
@@ -395,7 +401,9 @@ const COPY: Record<"es" | "pt-BR" | "en", ExplorerCopy> = {
     mode: "Role-based access",
     eyebrow: "DIGITAL PRODUCT PASSPORT EXPLORER",
     title: "One passport. The right information for each role.",
-    intro: "Choose a view to understand which data each actor can access, where it comes from and who is responsible for it.",
+    intro: "There is one record, but not everyone sees the same view. Switch roles to check what each participant receives and what remains protected.",
+    guideLabel: "How to explore the passport",
+    guideSteps: ["Choose who is viewing", "See which information they receive", "Check source, owner and status"],
     passportLabel: "Sample digital product passport",
     product: "Reserva Andina",
     passportId: "NEX-DEMO · RA-2407",
@@ -876,6 +884,15 @@ export function DppRoleExplorer({ locale, industry }: { locale: string; industry
           })}
         </div>
       </div>
+
+      <ol className={styles.guide} aria-label={copy.guideLabel}>
+        {copy.guideSteps.map((step, index) => (
+          <li key={step}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{step}</strong>
+          </li>
+        ))}
+      </ol>
 
       <div className={styles.workspace}>
         <div className={styles.roleRail} role="tablist" aria-label={copy.tabsLabel} aria-orientation={tabOrientation}>

@@ -90,6 +90,9 @@ test("CommercialValue adds a white-first role-based DPP view instead of repeatin
   assert.match(explorer, /Circularidad \/ autoridad/);
   assert.match(explorer, /role="tablist"/);
   assert.match(explorer, /role="tabpanel"/);
+  assert.match(explorer, /Cómo explorar el pasaporte/);
+  assert.match(explorer, /Elegí quién consulta/);
+  assert.match(explorer, /Revisá fuente, responsable y estado/);
   assert.match(explorer, /source: string/);
   assert.match(explorer, /responsible: string/);
   assert.match(explorer, /granularity: string/);
@@ -104,6 +107,7 @@ test("CommercialValue adds a white-first role-based DPP view instead of repeatin
   assert.match(styles, /@media \(forced-colors: active\)/);
   assert.match(styles, /@keyframes dataFlow/);
   assert.match(styles, /@keyframes panelEnter/);
+  assert.match(styles, /@keyframes guideEnter/);
   assert.match(styles, /:focus-visible/);
   assert.doesNotMatch(explorer, /\b(?:%|KPI|ROI|conversi[oó]n)\b/i);
   assert.doesNotMatch(value, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);

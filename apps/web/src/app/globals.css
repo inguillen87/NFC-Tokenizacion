@@ -60317,11 +60317,27 @@ html:is(.theme-dark, [data-theme="dark"]) .hero-immersive-object-label small {
    ownership and operational flow instead of repeating the three tap moments. */
 html:is(.theme-light, [data-theme="light"]) .landing-root {
   background:
-    radial-gradient(circle at 8% 25%, rgba(34, 211, 238, 0.1), transparent 28rem),
-    radial-gradient(circle at 92% 39%, rgba(139, 92, 246, 0.085), transparent 30rem),
-    radial-gradient(circle at 18% 70%, rgba(45, 212, 191, 0.1), transparent 34rem),
-    radial-gradient(circle at 86% 88%, rgba(59, 130, 246, 0.07), transparent 30rem),
-    linear-gradient(180deg, #f8fdfe 0%, #f3fbfc 48%, #f7fbff 100%);
+    radial-gradient(circle at 7% 13%, rgba(34, 211, 238, 0.15), transparent 30rem),
+    radial-gradient(circle at 94% 27%, rgba(139, 92, 246, 0.11), transparent 32rem),
+    radial-gradient(circle at 12% 44%, rgba(45, 212, 191, 0.14), transparent 36rem),
+    radial-gradient(circle at 91% 59%, rgba(251, 191, 36, 0.105), transparent 28rem),
+    radial-gradient(circle at 16% 78%, rgba(59, 130, 246, 0.105), transparent 34rem),
+    radial-gradient(circle at 88% 93%, rgba(244, 114, 182, 0.075), transparent 30rem),
+    linear-gradient(180deg, #f8fdfe 0%, #effbfa 32%, #f8f7ff 58%, #f3fbf8 79%, #f7fbff 100%);
+  background-color: #f5fbfc;
+  background-repeat: no-repeat;
+}
+
+html:is(.theme-dark, [data-theme="dark"]) .landing-root {
+  background:
+    radial-gradient(circle at 8% 12%, rgba(34, 211, 238, 0.14), transparent 31rem),
+    radial-gradient(circle at 93% 28%, rgba(139, 92, 246, 0.14), transparent 34rem),
+    radial-gradient(circle at 10% 47%, rgba(16, 185, 129, 0.12), transparent 36rem),
+    radial-gradient(circle at 92% 64%, rgba(245, 158, 11, 0.085), transparent 30rem),
+    radial-gradient(circle at 15% 83%, rgba(59, 130, 246, 0.12), transparent 36rem),
+    linear-gradient(180deg, #04111e 0%, #071a29 34%, #0a1728 61%, #06201f 82%, #071524 100%);
+  background-color: #061522;
+  background-repeat: no-repeat;
 }
 
 html:is(.theme-light, [data-theme="light"]) .landing-root > main,
@@ -60330,10 +60346,23 @@ html:is(.theme-light, [data-theme="light"]) .commercial-value-section {
   background: transparent !important;
 }
 
+html:is(.theme-dark, [data-theme="dark"]) .landing-root > main,
+html:is(.theme-dark, [data-theme="dark"]) .simple-trust-flow-section,
+html:is(.theme-dark, [data-theme="dark"]) .commercial-value-section {
+  background: transparent !important;
+}
+
 html:is(.theme-light, [data-theme="light"]) .landing-root .site-footer {
   background:
     radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.09), transparent 24rem),
     linear-gradient(180deg, rgba(246, 252, 253, 0.94), rgba(238, 248, 250, 0.98));
+}
+
+html:is(.theme-dark, [data-theme="dark"]) .landing-root .site-footer {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(34, 211, 238, 0.12), transparent 26rem),
+    radial-gradient(circle at 84% 16%, rgba(139, 92, 246, 0.1), transparent 28rem),
+    linear-gradient(180deg, rgba(6, 22, 35, 0.96), rgba(3, 14, 25, 0.99));
 }
 
 html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-shell {
@@ -60514,6 +60543,46 @@ html:is(.theme-light, [data-theme="light"]) .simple-trust-flow-steps > li .simpl
   color: #afc2d3;
   font-size: clamp(0.98rem, 1.35vw, 1.12rem);
   line-height: 1.68;
+}
+
+.dpp-participant-map__lanes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.72rem, 1.4vw, 1.1rem);
+  margin: clamp(1.45rem, 2.6vw, 2.15rem) 0 -0.65rem;
+}
+
+.dpp-participant-map__lanes > span {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.62rem;
+  padding: 0.62rem 0.8rem;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 0.9rem;
+  background: linear-gradient(110deg, rgba(34, 211, 238, 0.12), rgba(96, 165, 250, 0.07));
+  color: #a5f3fc;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  line-height: 1.35;
+}
+
+.dpp-participant-map__lanes > span:first-child {
+  grid-column: 1 / 3;
+}
+
+.dpp-participant-map__lanes > span:last-child {
+  grid-column: 3 / 5;
+  border-color: rgba(52, 211, 153, 0.24);
+  background: linear-gradient(110deg, rgba(52, 211, 153, 0.12), rgba(167, 139, 250, 0.08), rgba(245, 158, 11, 0.07));
+  color: #a7f3d0;
+}
+
+.dpp-participant-map__lanes svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
 }
 
 .dpp-participant-map__flow {
@@ -60875,6 +60944,19 @@ html:is(.theme-light, [data-theme="light"]) .dpp-participant-map__intro > span {
   color: #536a80;
 }
 
+html:is(.theme-light, [data-theme="light"]) .dpp-participant-map__lanes > span {
+  border-color: rgba(8, 145, 178, 0.2);
+  background: linear-gradient(110deg, rgba(34, 211, 238, 0.13), rgba(96, 165, 250, 0.07), rgba(255, 255, 255, 0.75));
+  color: #0e7490;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+html:is(.theme-light, [data-theme="light"]) .dpp-participant-map__lanes > span:last-child {
+  border-color: rgba(5, 150, 105, 0.2);
+  background: linear-gradient(110deg, rgba(52, 211, 153, 0.13), rgba(167, 139, 250, 0.075), rgba(251, 191, 36, 0.07));
+  color: #087968;
+}
+
 html:is(.theme-light, [data-theme="light"]) .dpp-participant-card {
   border-color: color-mix(in srgb, var(--participant-tone) 28%, #d8e7eb);
   background:
@@ -60967,6 +61049,15 @@ html:is(.theme-light, [data-theme="light"]) .dpp-participant-detail-bridge {
   .dpp-participant-map__secondary {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .dpp-participant-map__lanes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dpp-participant-map__lanes > span:first-child,
+  .dpp-participant-map__lanes > span:last-child {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 620px) {
@@ -60984,6 +61075,10 @@ html:is(.theme-light, [data-theme="light"]) .dpp-participant-detail-bridge {
   }
 
   .dpp-participant-map__return ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dpp-participant-map__lanes {
     grid-template-columns: minmax(0, 1fr);
   }
 

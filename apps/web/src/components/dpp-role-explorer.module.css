@@ -144,6 +144,67 @@
   line-height: 1.65;
 }
 
+.guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: -0.35rem clamp(1rem, 3vw, 2rem) 1.15rem;
+  padding: 0;
+  list-style: none;
+}
+
+.guide li {
+  --guide-tone: #0891b2;
+  --guide-soft: rgba(34, 211, 238, 0.11);
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.15rem minmax(0, 1fr);
+  min-height: 3.8rem;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.68rem 0.78rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--guide-tone) 24%, #d7e8eb);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 100% 0%, var(--guide-soft), transparent 66%),
+    rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0.75rem 1.8rem color-mix(in srgb, var(--guide-tone) 7%, transparent);
+  animation: guideEnter 420ms calc(var(--guide-index, 0) * 90ms) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.guide li:nth-child(2) {
+  --guide-tone: #7c5ce5;
+  --guide-soft: rgba(139, 92, 246, 0.11);
+  --guide-index: 1;
+}
+
+.guide li:nth-child(3) {
+  --guide-tone: #0f9f83;
+  --guide-soft: rgba(16, 185, 129, 0.12);
+  --guide-index: 2;
+}
+
+.guide li > span {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  border-radius: 0.72rem;
+  background: color-mix(in srgb, var(--guide-tone) 12%, white);
+  color: color-mix(in srgb, var(--guide-tone) 86%, #10233f);
+  font-size: 0.64rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.guide li > strong {
+  color: #17314d;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
 .accessMap {
   position: relative;
   width: 16rem;
@@ -353,7 +414,7 @@
 
 .roleText strong {
   color: inherit;
-  font-size: 0.88rem;
+  font-size: 0.94rem;
   font-weight: 850;
   line-height: 1.25;
 }
@@ -503,14 +564,14 @@
 .roleSummary > div > strong {
   display: block;
   color: #132c48;
-  font-size: 0.94rem;
+  font-size: 1.02rem;
   font-weight: 900;
 }
 
 .roleSummary p {
   margin: 0.3rem 0 0;
   color: #536b84;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   line-height: 1.5;
 }
 
@@ -591,7 +652,7 @@
 
 .fieldPrimary strong {
   color: #17314d;
-  font-size: 0.79rem;
+  font-size: 0.86rem;
   font-weight: 850;
   line-height: 1.35;
 }
@@ -786,6 +847,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes guideEnter {
+  from { opacity: 0; transform: translateY(0.45rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes rowEnter {
   from { opacity: 0; transform: translateX(0.6rem); }
   to { opacity: 1; transform: translateX(0); }
@@ -829,6 +895,23 @@
   background-image:
     linear-gradient(rgba(103, 232, 249, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(103, 232, 249, 0.055) 1px, transparent 1px);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .guide li {
+  border-color: color-mix(in srgb, var(--guide-tone) 30%, #213f53);
+  background:
+    radial-gradient(circle at 100% 0%, var(--guide-soft), transparent 68%),
+    rgba(7, 26, 42, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 0.8rem 2rem rgba(0, 0, 0, 0.12);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .guide li > span {
+  background: color-mix(in srgb, var(--guide-tone) 16%, #0b2234);
+  color: color-mix(in srgb, var(--guide-tone) 56%, #dffaff);
+}
+
+:global(html:is(.theme-dark, [data-theme="dark"])) .guide li > strong {
+  color: #e9f7fb;
 }
 
 :global(html:is(.theme-dark, [data-theme="dark"])) .topbar,
@@ -1027,6 +1110,10 @@
     align-items: start;
   }
 
+  .guide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .fieldPrimary,
   .evidenceStatus {
     grid-column: 1 / -1;
@@ -1050,6 +1137,11 @@
 
   .introCopy h2 {
     font-size: clamp(1.9rem, 11vw, 2.7rem);
+  }
+
+  .guide {
+    margin-right: 1.1rem;
+    margin-left: 1.1rem;
   }
 
   .roleRail {
@@ -1091,7 +1183,8 @@
   .dataPath::after,
   .recordHeader::after,
   .passportPanel,
-  .fieldRow {
+  .fieldRow,
+  .guide li {
     animation: none !important;
   }
 

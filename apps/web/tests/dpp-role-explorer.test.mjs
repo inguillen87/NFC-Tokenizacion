@@ -25,6 +25,11 @@ test("DPP role explorer explains one structured passport through four authorized
   assert.match(component, /ResizeObserver/);
   assert.match(component, /role="tab"/);
   assert.match(component, /role="tabpanel"/);
+  assert.match(component, /Cómo explorar el pasaporte/);
+  assert.match(component, /Elegí quién consulta/);
+  assert.match(component, /Mirá qué información recibe/);
+  assert.match(component, /Revisá fuente, responsable y estado/);
+  assert.match(component, /<ol className=\{styles\.guide\}/);
   assert.match(component, /<ul className=\{styles\.fieldList\}>/);
   assert.match(component, /<li key=\{`\$\{activeIndustry\}-\$\{selectedRole\}-\$\{field\.label\}`\}/);
   assert.match(component, /aria-selected=\{isSelected\}/);
@@ -112,6 +117,9 @@ test("DPP role explorer is white-first, responsive and motion-accessible", () =>
   assert.match(styles, /@keyframes orbitPulse/);
   assert.match(styles, /@keyframes dataFlow/);
   assert.match(styles, /@keyframes headerScan/);
+  assert.match(styles, /@keyframes guideEnter/);
+  assert.match(styles, /\.guide li:nth-child\(2\)/);
+  assert.match(styles, /\.guide li:nth-child\(3\)/);
   assert.match(styles, /:focus-visible/);
   assert.match(styles, /:global\(html:is\(\.theme-dark, \[data-theme="dark"\]\)\) \.explorer/);
   assert.match(styles, /:global\(html:is\(\.theme-dark, \[data-theme="dark"\]\)\) \.introCopy h2/);

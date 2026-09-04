@@ -139,6 +139,8 @@ export function CommercialValueSection({ locale }: { locale: string }) {
         title: "Every participant sees what they need. The company keeps control.",
         intro:
           "A tap opens the experience for the person. The passport keeps the product context. The company publishes and governs it. The dashboard returns operational activity without treating a tag as a person's identity.",
+        personLane: "PERSON EXPERIENCE · WHAT OPENS FROM THE PRODUCT",
+        businessLane: "BUSINESS OPERATION · WHAT RETURNS TO THE CONTROL CENTER",
         stages: [
           {
             key: "person",
@@ -192,6 +194,8 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           title: "Cada participante vê o que precisa. A empresa mantém o controle.",
           intro:
             "Um toque abre a experiência para a pessoa. O passaporte preserva o contexto do produto. A empresa publica e governa. O dashboard devolve atividade operacional sem tratar uma etiqueta como identidade pessoal.",
+          personLane: "EXPERIÊNCIA DA PESSOA · O QUE ABRE A PARTIR DO PRODUTO",
+          businessLane: "OPERAÇÃO DA EMPRESA · O QUE VOLTA AO CENTRO DE CONTROLE",
           stages: [
             {
               key: "person",
@@ -244,6 +248,8 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           title: "Cada participante ve lo que necesita. La empresa conserva el control.",
           intro:
             "Un tap abre la experiencia para la persona. El pasaporte conserva el contexto del producto. La empresa publica y gobierna. El dashboard devuelve actividad operativa sin convertir una etiqueta en la identidad de una persona.",
+          personLane: "EXPERIENCIA DE LA PERSONA · LO QUE ABRE DESDE EL PRODUCTO",
+          businessLane: "OPERACIÓN DE LA EMPRESA · LO QUE VUELVE AL CENTRO DE CONTROL",
           stages: [
             {
               key: "person",
@@ -302,6 +308,11 @@ export function CommercialValueSection({ locale }: { locale: string }) {
             <h2>{copy.title}</h2>
             <span>{copy.intro}</span>
           </header>
+
+          <div className="dpp-participant-map__lanes">
+            <span><UserRound />{copy.personLane}</span>
+            <span><Building2 />{copy.businessLane}</span>
+          </div>
 
           <ol className="dpp-participant-map__flow" aria-label={copy.label}>
             {copy.stages.map((stage, index) => {

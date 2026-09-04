@@ -10,8 +10,10 @@ const [home, css] = await Promise.all([
 const commercialValue = home.slice(home.indexOf("export function CommercialValueSection"));
 const participantCss = css.slice(css.indexOf("/* Landing ecosystem narrative."));
 
-test("the landing uses one continuous white-first atmospheric canvas", () => {
-  assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.landing-root \{[\s\S]{0,620}radial-gradient[\s\S]{0,620}linear-gradient/);
+test("the landing uses one continuous atmospheric canvas in light and dark modes", () => {
+  assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.landing-root \{[\s\S]{0,980}radial-gradient[\s\S]{0,980}linear-gradient/);
+  assert.match(participantCss, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.landing-root \{[\s\S]{0,980}radial-gradient[\s\S]{0,980}linear-gradient/);
+  assert.match(participantCss, /rgba\(251, 191, 36, 0\.105\)/);
   assert.match(participantCss, /\.simple-trust-flow-section,[\s\S]{0,180}\.commercial-value-section \{[\s\S]{0,80}background: transparent !important/);
   assert.match(participantCss, /\.landing-root \.site-footer \{[\s\S]{0,260}linear-gradient/);
 });
@@ -41,6 +43,9 @@ test("the closing section explains participants and the return to the business d
   assert.match(commercialValue, /Zona informada o consentida/);
   assert.match(commercialValue, /Servicio \/ canal/);
   assert.match(commercialValue, /Circularidad \/ autoridad/);
+  assert.match(commercialValue, /EXPERIENCIA DE LA PERSONA · LO QUE ABRE DESDE EL PRODUCTO/);
+  assert.match(commercialValue, /OPERACIÓN DE LA EMPRESA · LO QUE VUELVE AL CENTRO DE CONTROL/);
+  assert.match(commercialValue, /className="dpp-participant-map__lanes"/);
   assert.match(commercialValue, /<DppRoleExplorer locale=\{locale\} \/>/);
 });
 
