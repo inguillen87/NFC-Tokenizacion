@@ -66,6 +66,8 @@ const ENTERPRISE_CAPABILITY_ROLES = Object.freeze<Record<string, readonly string
   "proofs.anchor": ["super-admin", "tenant-owner", "security-operator"],
   "audit.read": ["super-admin", "tenant-owner", "tenant-admin", "security-analyst", "security-operator"],
   "events.read_sensitive": ["super-admin", "tenant-owner", "tenant-admin", "security-analyst", "operations-manager", "security-operator"],
+  "incidents:read": ["super-admin", "tenant-owner", "tenant-admin", "security-analyst", "operations-manager", "security-operator"],
+  "incidents:write": ["super-admin", "tenant-owner", "tenant-admin", "operations-manager", "security-operator"],
   "consumer_experiences.read_pii": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
   "consumer_experiences.moderate": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
   "consumers.read_pii": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],

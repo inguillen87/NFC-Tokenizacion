@@ -1,8 +1,15 @@
 export type ScanSource = "real" | "demo" | "imported";
-export type TimeRange = "24h" | "7d" | "30d";
+export type TimeRange = "5m" | "1h" | "24h" | "7d" | "30d";
 
 const VALID_SOURCES = new Set<ScanSource>(["real", "demo", "imported"]);
-const VALID_RANGES = new Set<TimeRange>(["24h", "7d", "30d"]);
+const RANGE_SQL = Object.freeze({
+  "5m": "5 minutes",
+  "1h": "1 hour",
+  "24h": "24 hours",
+  "7d": "7 days",
+  "30d": "30 days",
+} satisfies Record<TimeRange, string>);
+const VALID_RANGES = new Set<TimeRange>(Object.keys(RANGE_SQL) as TimeRange[]);
 
 export function parseAnalyticsFilters(searchParams: URLSearchParams) {
   const tenant = (searchParams.get("tenant") || "").trim();
@@ -15,7 +22,7 @@ export function parseAnalyticsFilters(searchParams: URLSearchParams) {
 
   const rangeParam = (searchParams.get("range") || "").trim().toLowerCase() as TimeRange | "";
   const range = VALID_RANGES.has(rangeParam as TimeRange) ? (rangeParam as TimeRange) : "30d";
-  const rangeSql = range === "24h" ? "24 hours" : range === "7d" ? "7 days" : "30 days";
+  const rangeSql = RANGE_SQL[range];
 
   return { tenant, source, range, rangeSql, country };
 }

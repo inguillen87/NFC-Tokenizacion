@@ -2,8 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import {
-  checkAdmin,
-  checkAdminPermission,
+  checkAdminWithPermission,
   getAdminPrincipal,
 } from "../../../../lib/auth";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
@@ -38,10 +37,8 @@ function requestedTenant(req: Request, inputTenant?: unknown) {
 }
 
 export async function GET(req: Request, context: { params: Promise<{ incidentId: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "incidents:read");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "incidents:read");
-  if (permission) return permission;
 
   const { incidentId: encodedId } = await context.params;
   const incidentId = decodeURIComponent(encodedId || "").trim();
@@ -60,10 +57,8 @@ export async function GET(req: Request, context: { params: Promise<{ incidentId:
 }
 
 export async function POST(req: Request, context: { params: Promise<{ incidentId: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "incidents:write");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "incidents:write");
-  if (permission) return permission;
 
   const { incidentId: encodedId } = await context.params;
   const incidentId = decodeURIComponent(encodedId || "").trim();

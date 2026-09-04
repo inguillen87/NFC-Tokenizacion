@@ -3,6 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  checkAdminWithPermission,
+  getAdminTenantAccess,
+} from "../src/lib/auth.ts";
+import {
+  enterpriseCapabilityRoles,
+  roleMayUseEnterpriseCapability,
+} from "../src/lib/enterprise-capability-policy.ts";
+import {
   boundedIncidentText,
   incidentWorkflowError,
   isIncidentSeverity,
@@ -18,6 +26,25 @@ import {
 } from "../src/lib/incident-workflow.ts";
 
 const read = (url) => readFile(new URL(url, import.meta.url), "utf8");
+const TENANT_A_ID = "11111111-1111-4111-8111-111111111111";
+
+function operationsManagerSession(permissions, deniedPermissions = []) {
+  return {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    email: "operations@tenant-a.example",
+    label: "Operations Manager",
+    role: "operations-manager",
+    tenantId: TENANT_A_ID,
+    tenantSlug: "tenant-a",
+    permissions,
+    deniedPermissions,
+    mfaVerified: true,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rotatedCookieValue: null,
+    setupCompleted: true,
+  };
+}
 
 test("incident input contract rejects ambiguous and oversized values", () => {
   assert.equal(validIncidentEventId("42"), true);
@@ -183,14 +210,18 @@ test("incident routes enforce AdminPrincipal permissions and publish only after 
     read("../src/app/admin/events/stream/route.ts"),
   ]);
 
-  assert.match(collection, /await checkAdmin\(req\)/);
-  assert.match(collection, /checkAdminPermission\(req, "incidents:read"\)/);
-  assert.match(collection, /checkAdminPermission\(req, "incidents:write"\)/);
+  assert.match(collection, /await checkAdminWithPermission\(req, "incidents:read"\)/);
+  assert.match(collection, /await checkAdminWithPermission\(req, "incidents:write"\)/);
+  assert.doesNotMatch(collection, /await checkAdmin\(req\)|checkAdminPermission\(req,/);
   assert.match(collection, /getAdminPrincipal\(req\)/);
   assert.match(collection, /incident_tenant_scope_required/);
+  assert.match(collection, /scope: \{ tenant: scope\.tenantSlug \|\| "global" \}/);
   const collectionPost = collection.slice(collection.indexOf("export async function POST"));
+  assert.ok(collectionPost.indexOf('checkAdminWithPermission(req, "incidents:write")') < collectionPost.indexOf("readBoundedJsonBody"));
   assert.ok(collectionPost.indexOf("await openEventIncident(") < collectionPost.indexOf("publishIncident(incident"));
-  assert.match(detail, /checkAdminPermission\(req, "incidents:write"\)/);
+  assert.match(detail, /await checkAdminWithPermission\(req, "incidents:read"\)/);
+  assert.match(detail, /await checkAdminWithPermission\(req, "incidents:write"\)/);
+  assert.doesNotMatch(detail, /await checkAdmin\(req\)|checkAdminPermission\(req,/);
   assert.match(detail, /idempotency-key/);
   assert.match(detail, /body\.expectedVersion \?\? body\.expected_version/);
   assert.match(detail, /incident_expected_version_required/);
@@ -200,6 +231,83 @@ test("incident routes enforce AdminPrincipal permissions and publish only after 
   assert.match(stream, /checkAdminPermission\(req, "incidents:read"\)/);
   assert.match(stream, /allowRealtimeEventForScope/);
   assert.match(stream, /isIncidentPayload/);
+  assert.match(stream, /send\("snapshot", \{[\s\S]*?scope: \{ tenant: tenant \|\| "global" \},[\s\S]*?rows: normalizedSnapshot/);
+});
+
+test("permission-bearing operations managers can operate incidents only inside their session tenant", async () => {
+  for (const permission of ["incidents:read", "incidents:write"]) {
+    const request = new Request("https://api.nexid.test/admin/incidents?tenant=tenant-b", {
+      headers: { authorization: "Bearer operations-manager-session" },
+    });
+    assert.equal(
+      await checkAdminWithPermission(
+        request,
+        permission,
+        async () => operationsManagerSession(["incidents:read", "incidents:write"]),
+      ),
+      null,
+      permission,
+    );
+    assert.deepEqual(getAdminTenantAccess(request, "tenant-b"), {
+      scope: "tenant_operator",
+      tenantSlug: "tenant-a",
+      forcedTenantSlug: "tenant-a",
+      tenantBound: true,
+      requestedTenantSlug: "tenant-b",
+      effectiveTenantSlug: "tenant-a",
+    });
+  }
+
+  const missingPermissionRequest = new Request("https://api.nexid.test/admin/incidents", {
+    headers: { authorization: "Bearer operations-manager-session" },
+  });
+  assert.equal(
+    (await checkAdminWithPermission(
+      missingPermissionRequest,
+      "incidents:write",
+      async () => operationsManagerSession(["incidents:read"]),
+    ))?.status,
+    403,
+  );
+
+  const explicitlyDeniedRequest = new Request("https://api.nexid.test/admin/incidents", {
+    headers: { authorization: "Bearer operations-manager-session" },
+  });
+  assert.equal(
+    (await checkAdminWithPermission(
+      explicitlyDeniedRequest,
+      "incidents:read",
+      async () => operationsManagerSession(["incidents:read"], ["incidents:read"]),
+    ))?.status,
+    403,
+  );
+});
+
+test("incident permissions are restricted to operational and security roles", () => {
+  assert.deepEqual(enterpriseCapabilityRoles("incidents:read"), [
+    "super-admin",
+    "tenant-owner",
+    "tenant-admin",
+    "security-analyst",
+    "operations-manager",
+    "security-operator",
+  ]);
+  assert.deepEqual(enterpriseCapabilityRoles("incidents:write"), [
+    "super-admin",
+    "tenant-owner",
+    "tenant-admin",
+    "operations-manager",
+    "security-operator",
+  ]);
+
+  for (const role of ["marketing-manager", "packaging-operator", "reseller", "reseller-admin", "viewer"]) {
+    assert.equal(roleMayUseEnterpriseCapability(role, "incidents:read"), false, `${role}:read`);
+    assert.equal(roleMayUseEnterpriseCapability(role, "incidents:write"), false, `${role}:write`);
+  }
+  assert.equal(roleMayUseEnterpriseCapability("security-analyst", "incidents:read"), true);
+  assert.equal(roleMayUseEnterpriseCapability("security-analyst", "incidents:write"), false);
+  assert.equal(roleMayUseEnterpriseCapability("operations-manager", "incidents:read"), true);
+  assert.equal(roleMayUseEnterpriseCapability("operations-manager", "incidents:write"), true);
 });
 
 test("unauthenticated admin ticket creation is closed while the guarded public lead path remains", async () => {

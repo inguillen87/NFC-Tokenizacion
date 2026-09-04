@@ -2,8 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import {
-  checkAdmin,
-  checkAdminPermission,
+  checkAdminWithPermission,
   getAdminPrincipal,
 } from "../../../lib/auth";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
@@ -52,10 +51,8 @@ function publishIncident(incident: Awaited<ReturnType<typeof openEventIncident>>
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "incidents:read");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "incidents:read");
-  if (permission) return permission;
 
   const scope = requestedTenant(req);
   if (scope.error) return scope.error;
@@ -75,7 +72,12 @@ export async function GET(req: Request) {
       status,
       limit: rawLimit,
     });
-    return json({ ok: true, count: incidents.length, incidents }, 200, { "cache-control": "no-store" });
+    return json({
+      ok: true,
+      scope: { tenant: scope.tenantSlug || "global" },
+      count: incidents.length,
+      incidents,
+    }, 200, { "cache-control": "no-store" });
   } catch (error) {
     if (process.env.NODE_ENV === "test" && process.env.VERCEL_ENV === "test") {
       console.warn("[incident_workflow_test_failure]", JSON.stringify({
@@ -91,10 +93,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "incidents:write");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "incidents:write");
-  if (permission) return permission;
 
   let body: Record<string, unknown>;
   try {

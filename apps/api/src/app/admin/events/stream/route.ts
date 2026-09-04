@@ -472,7 +472,14 @@ export async function GET(req: Request): Promise<Response> {
         const normalizedSnapshot = snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row));
         normalizedSnapshot.forEach((row) => rememberEvent(row));
         reconciliationCursor = greatestPersistedEventId(snapshotRows);
-        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", rows: normalizedSnapshot });
+        send("snapshot", {
+          id: `snapshot-${Date.now()}`,
+          stream_request_id: requestId,
+          source: sourceFilter,
+          availability: "ready",
+          scope: { tenant: tenant || "global" },
+          rows: normalizedSnapshot,
+        });
       } catch (error) {
         const errorCode = safeOperationalErrorCode(error, "snapshot_query_failed");
         console.warn("[admin_sse_snapshot_unavailable]", JSON.stringify({
