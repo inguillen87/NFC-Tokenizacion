@@ -28,6 +28,7 @@ type NavGroup = {
 
 type NavigationCopy = {
   ariaLabel: string;
+  passport: string;
   about: string;
   login: string;
   demo: string;
@@ -48,6 +49,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "en") {
     return {
       ariaLabel: "Main navigation",
+      passport: "Digital product passport",
       about: "About us",
       login: "Sign in",
       demo: "Book a demo",
@@ -120,6 +122,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "pt-BR") {
     return {
       ariaLabel: "Navegação principal",
+      passport: "Passaporte digital",
       about: "Quem somos",
       login: "Entrar",
       demo: "Agendar demo",
@@ -191,6 +194,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
 
   return {
     ariaLabel: "Navegación principal",
+    passport: "Pasaporte digital",
     about: "Quiénes somos",
     login: "Ingresar",
     demo: "Agendar demo",
@@ -461,6 +465,9 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   return (
     <div ref={navigationRef} className={styles.navigation}>
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
+        <Link href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
+          {copy.passport}
+        </Link>
         {copy.groups.map((group) => {
           const expanded = openMenu === group.id;
           const groupCurrent = isNavigationGroupCurrent(group.id, pathname);
@@ -531,6 +538,20 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
         })}
       </nav>
 
+      <nav className={styles.compactNav} aria-label={copy.ariaLabel}>
+        <Link href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
+          {copy.passport}
+        </Link>
+        <Link
+          href="/about"
+          className={styles.navDirectLink}
+          aria-current={pathname === "/about" ? "page" : undefined}
+          onClick={closeDesktopMenu}
+        >
+          {copy.about}
+        </Link>
+      </nav>
+
       <div className={styles.headerUtilities}>
         <div className={styles.desktopUtility}><LocaleSwitcher value={locale} options={[...locales]} /></div>
         <div className={styles.desktopUtility}><ThemeToggle initialTheme={initialTheme} locale={locale} /></div>
@@ -564,6 +585,10 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
 
             <div className={styles.mobileGroups}>
+              <Link href="/#pasaporte-digital" className={styles.mobileAboutLink} onClick={() => setMobileOpen(false)}>
+                <span>{copy.passport}</span>
+                <ArrowRight aria-hidden="true" />
+              </Link>
               <Link
                 href="/about"
                 className={styles.mobileAboutLink}

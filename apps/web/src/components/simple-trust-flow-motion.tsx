@@ -210,7 +210,10 @@ export function SimpleTrustFlowMotion({
     if (!(nextItem instanceof HTMLElement)) return;
 
     setActiveItemIndex(nextIndex);
-    if (focus) nextItem.focus({ preventScroll: true });
+    if (focus) {
+      const nextTrigger = nextItem.querySelector<HTMLButtonElement>(".simple-trust-flow-step-trigger");
+      nextTrigger?.focus({ preventScroll: true });
+    }
 
     const left = nextItem.getBoundingClientRect().left - list.getBoundingClientRect().left + list.scrollLeft;
     list.scrollTo({ left, behavior: reducedMotion ? "auto" : "smooth" });
@@ -283,8 +286,6 @@ export function SimpleTrustFlowMotion({
     const progress = isActive ? ((index + 1) / itemCount) * 100 : 0;
 
     return cloneElement(typedChild, {
-      "aria-current": isActive ? "step" : undefined,
-      tabIndex: isActive ? 0 : -1,
       "data-journey-interactive": "true",
       "data-step-state": stepState,
       "data-motion-active": motionAllowed && visibleItems.has(index) ? "true" : "false",
@@ -292,25 +293,35 @@ export function SimpleTrustFlowMotion({
         ...typedChild.props.style,
         "--trust-step-progress": `${progress}%`,
       } as CSSProperties,
-      onClick: (event: React.MouseEvent<HTMLElement>) => {
-        typedChild.props.onClick?.(event);
-        if (!event.defaultPrevented) selectStep(index);
-      },
-      onFocus: (event: React.FocusEvent<HTMLElement>) => {
-        typedChild.props.onFocus?.(event);
-        if (!event.defaultPrevented) setActiveItemIndex(index);
-      },
-      onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
-        typedChild.props.onKeyDown?.(event);
-        if (!event.defaultPrevented) handleStepKeyDown(event, index);
-      },
+      "aria-current": undefined,
+      tabIndex: undefined,
+      onClick: undefined,
+      onFocus: undefined,
+      onKeyDown: undefined,
       children: (
-        <>
+        <button
+          type="button"
+          className="simple-trust-flow-step-trigger"
+          aria-current={isActive ? "step" : undefined}
+          tabIndex={isActive ? 0 : -1}
+          onClick={(event) => {
+            typedChild.props.onClick?.(event);
+            if (!event.defaultPrevented) selectStep(index);
+          }}
+          onFocus={(event) => {
+            typedChild.props.onFocus?.(event);
+            if (!event.defaultPrevented) setActiveItemIndex(index);
+          }}
+          onKeyDown={(event) => {
+            typedChild.props.onKeyDown?.(event);
+            if (!event.defaultPrevented) handleStepKeyDown(event, index);
+          }}
+        >
           {typedChild.props.children}
           <span className="simple-trust-flow-step-progress" aria-hidden="true">
             <span />
           </span>
-        </>
+        </button>
       ),
     });
   });

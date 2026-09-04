@@ -134,3 +134,34 @@ test("stable consumer and TT code interpretations localize without altering raw 
   assert.equal(tt.rawHex, "4343");
   assert.equal(tt.source, "enc_decrypted");
 });
+
+test("SUN map distance and demo source labels survive a complete locale round trip", async () => {
+  let distance = "1.003 km lineales";
+  let source = "JSON simulado del Demo Lab";
+  for (const [locale, expectedDistance, expectedSource] of [
+    ["en", "1,003 km straight-line distance", "Simulated Demo Lab JSON"],
+    ["pt-BR", "1.003 km em linha reta", "JSON simulado do Demo Lab"],
+    ["es-AR", "1.003 km lineales", "JSON simulado del Demo Lab"],
+  ]) {
+    distance = translateSunUiText(distance, locale);
+    source = translateSunUiText(source, locale);
+    assert.equal(distance, expectedDistance);
+    assert.equal(source, expectedSource);
+  }
+  // Keep the phrase in one text node so the in-place translator sees its number and unit.
+  assert.ok((await readFile(urls.page, "utf8")).includes("{`${distanceDisplay} lineales`}"));
+});
+
+test("SUN-owned map guidance localizes without changing provider attribution", () => {
+  for (const [source, english, portuguese] of [
+    ["Usá Ctrl + desplazamiento para acercar el mapa", "Use Ctrl + scroll to zoom the map", "Use Ctrl + rolagem para ampliar o mapa"],
+    ["Demo · conexión ilustrativa", "Demo · illustrative connection", "Demo · conexão ilustrativa"],
+  ]) {
+    assert.equal(translateSunUiText(source, "en"), english);
+    assert.equal(translateSunUiText(english, "pt-BR"), portuguese);
+    assert.equal(translateSunUiText(portuguese, "es-AR"), source);
+  }
+  const attribution = "Esri World Street Map / OpenStreetMap contributors";
+  assert.equal(translateSunUiText(attribution, "en"), attribution);
+  assert.equal(translateSunUiText(attribution, "pt-BR"), attribution);
+});

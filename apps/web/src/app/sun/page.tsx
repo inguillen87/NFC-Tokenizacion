@@ -1999,7 +1999,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span className="rounded-full border border-emerald-300/15 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">Origen informado</span>
               <span className="rounded-full border border-cyan-300/15 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">{summaryLocationSourceBadge}</span>
               {hasConsumerComparableDistance
-                ? <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1.5 text-slate-300">{distanceDisplay} lineales</span>
+                ? <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1.5 text-slate-300">{`${distanceDisplay} lineales`}</span>
                 : null}
             </div>
           </div>

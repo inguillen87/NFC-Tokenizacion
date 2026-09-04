@@ -35,6 +35,15 @@
 .desktopNav {
   position: static;
   display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.15rem;
+  white-space: nowrap;
+}
+
+.compactNav {
+  display: none;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.15rem;
   white-space: nowrap;
@@ -42,6 +51,7 @@
 
 .navGroup {
   position: static;
+  flex: 0 0 auto;
 }
 
 .navGroupButton,
@@ -227,6 +237,7 @@
 
 .headerUtilities {
   display: flex;
+  flex: 0 0 auto;
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
@@ -564,7 +575,9 @@
   to { opacity: 1; }
 }
 
-@media (max-width: 1279px) {
+/* The public header deliberately gives the nexID lockup more visual weight.
+   Collapse before the full navigation and utilities can compete for space. */
+@media (max-width: 1599px) {
   .desktopNav,
   .desktopUtility {
     display: none;
@@ -572,6 +585,12 @@
 
   .mobileMenuButton {
     display: inline-flex;
+  }
+}
+
+@media (min-width: 980px) and (max-width: 1599px) {
+  .compactNav {
+    display: flex;
   }
 }
 

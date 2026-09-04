@@ -182,8 +182,10 @@ export function CommercialValueSection({ locale }: { locale: string }) {
         serviceBody: "Receives only the product context needed to resolve the task when the company enables it.",
         circularityTitle: "Circularity / authority",
         circularityBody: "Reviews applicable information, its source and responsible party according to the available access.",
-        boundary:
-          "nexID organizes records and digital evidence. It does not identify a person from a tag and does not certify the physical product by itself.",
+        boundaryPrefix: "",
+        boundaryBrand: "nexID",
+        boundaryBody:
+          "organizes records and digital evidence. It does not identify a person from a tag and does not certify the physical product by itself.",
         detailEyebrow: "EXPLORE THE DETAIL",
         detailBody: "Choose a role below to inspect fields, sources, responsible parties, record level and visibility.",
       }
@@ -237,8 +239,10 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           serviceBody: "Recebe somente o contexto necessário do produto quando a empresa habilita esse atendimento.",
           circularityTitle: "Circularidade / autoridade",
           circularityBody: "Consulta a informação aplicável, sua fonte e responsável conforme o acesso disponível.",
-          boundary:
-            "A nexID organiza registros e evidência digital. Não identifica uma pessoa por uma etiqueta nem certifica, sozinha, o produto físico.",
+          boundaryPrefix: "A ",
+          boundaryBrand: "nexID",
+          boundaryBody:
+            "organiza registros e evidência digital. Não identifica uma pessoa por uma etiqueta nem certifica, sozinha, o produto físico.",
           detailEyebrow: "EXPLORE O DETALHE",
           detailBody: "Escolha um papel abaixo para ver campos, fontes, responsáveis, nível do registro e visibilidade.",
         }
@@ -291,8 +295,10 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           serviceBody: "Recibe sólo el contexto necesario del producto cuando la empresa habilita esa atención.",
           circularityTitle: "Circularidad / autoridad",
           circularityBody: "Consulta la información aplicable, su fuente y responsable según el acceso disponible.",
-          boundary:
-            "nexID organiza registros y evidencia digital. No identifica a una persona desde una etiqueta ni certifica por sí sola el producto físico.",
+          boundaryPrefix: "",
+          boundaryBrand: "nexID",
+          boundaryBody:
+            "organiza registros y evidencia digital. No identifica a una persona desde una etiqueta ni certifica por sí sola el producto físico.",
           detailEyebrow: "EXPLORÁ EL DETALLE",
           detailBody: "Elegí un rol abajo para revisar campos, fuentes, responsables, nivel de registro y visibilidad.",
         };
@@ -300,7 +306,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
   const stageIcons = [UserRound, Package, Building2, BarChart3] as const;
 
   return (
-    <section className="commercial-value-section container-shell" aria-label={copy.label}>
+    <section id="pasaporte-digital" className="commercial-value-section container-shell scroll-mt-24" aria-label={copy.label}>
       <div className="commercial-value-shell">
         <div className="dpp-participant-map">
           <header className="dpp-participant-map__intro">
@@ -366,7 +372,9 @@ export function CommercialValueSection({ locale }: { locale: string }) {
             </article>
           </aside>
 
-          <p className="dpp-participant-map__boundary">{copy.boundary}</p>
+          <p className="dpp-participant-map__boundary">
+            {copy.boundaryPrefix}<strong>{copy.boundaryBrand}</strong>{" "}{copy.boundaryBody}
+          </p>
         </div>
 
         <div className="dpp-participant-detail-bridge">

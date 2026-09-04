@@ -67,8 +67,12 @@ test("rail index model clamps direct navigation, wraps keyboard movement and fol
 test("journey cards keep ordered-list semantics while one rail index drives cards, swipe and controls", () => {
   assert.match(motion, /<ol/);
   assert.doesNotMatch(motion, /role="radiogroup"|role: "radio"|"aria-checked"/);
-  assert.match(motion, /"aria-current": isActive \? "step" : undefined/);
-  assert.match(motion, /tabIndex: isActive \? 0 : -1/);
+  assert.match(motion, /<button/);
+  assert.match(motion, /type="button"/);
+  assert.match(motion, /className="simple-trust-flow-step-trigger"/);
+  assert.match(motion, /aria-current=\{isActive \? "step" : undefined\}/);
+  assert.match(motion, /tabIndex=\{isActive \? 0 : -1\}/);
+  assert.match(motion, /querySelector<HTMLButtonElement>\("\.simple-trust-flow-step-trigger"\)/);
   assert.match(motion, /"data-step-state": stepState/);
   assert.match(motion, /const stepState = isActive \? "active" : "idle"/);
   assert.doesNotMatch(motion, /"complete"|"upcoming"/);
@@ -107,7 +111,7 @@ test("journey focus indicators clear 3:1 in light and dark themes", () => {
 
 test("the one-shot journey motion stays passive and exposes no stale playback control", () => {
   assert.match(motion, /export type SimpleTrustFlowMotionProps/);
-  assert.doesNotMatch(motion, /<button|aria-pressed|userPaused|pauseLabel|resumeLabel|motionOffLabel/);
+  assert.doesNotMatch(motion, /aria-pressed|userPaused|pauseLabel|resumeLabel|motionOffLabel/);
   assert.match(motion, /const motionAllowed = mounted && pageVisible && !reducedMotion/);
   assert.match(motion, /export function SimpleTrustFlowIntroMotion/);
   assert.match(motion, /data-motion-active=\{motionAllowed && introVisible \? "true" : "false"\}/);
@@ -238,8 +242,8 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.doesNotMatch(css, /@keyframes (?:trust-flow|trust-visual)[\s\S]{0,1200}(?:filter|box-shadow):/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.simple-trust-flow-visual \*/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.simple-trust-flow-step-progress > span \{[\s\S]{0,120}transition:\s*none !important/);
-  assert.match(css, /li\[data-journey-interactive="true"\]:focus-visible[\s\S]{0,180}#ffffff/);
-  assert.match(css, /html:is\(\.theme-light, \[data-theme="light"\]\) \.simple-trust-flow-steps > li\[data-journey-interactive="true"\]:focus-visible[\s\S]{0,140}var\(--trust-step-tone-strong\)/);
+  assert.match(css, /li\[data-journey-interactive="true"\] \.simple-trust-flow-step-trigger:focus-visible[\s\S]{0,180}#ffffff/);
+  assert.match(css, /html:is\(\.theme-light, \[data-theme="light"\]\) \.simple-trust-flow-steps > li\[data-journey-interactive="true"\] \.simple-trust-flow-step-trigger:focus-visible[\s\S]{0,140}var\(--trust-step-tone-strong\)/);
   assert.match(css, /\.simple-trust-flow-visual \.trust-visual__animated[\s\S]{0,220}opacity:\s*1 !important/);
   assert.match(css, /\.simple-trust-flow-intro :is\([\s\S]{0,420}opacity:\s*1 !important/);
   assert.match(css, /\.simple-trust-flow-ambient,[\s\S]{0,320}display:\s*none !important/);

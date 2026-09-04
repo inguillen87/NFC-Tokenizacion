@@ -43,7 +43,8 @@ test("the hero names both physical anchors and animates a bidirectional multicol
   assert.match(enterpriseHero, /@keyframes hero-signal-spectrum-flow/);
   assert.match(enterpriseHero, /data-motion-active="true"[\s\S]{0,180}hero-immersive-link-spectrum/);
   assert.match(enterpriseHero, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.hero-immersive-link-spectrum[\s\S]*animation: none !important/);
-  assert.match(enterpriseHero, /@media \(max-width: 1200px\)[\s\S]{0,120}hero-immersive-object-label[\s\S]{0,80}display: none/);
+  assert.match(enterpriseHero, /@media \(min-width: 561px\) and \(max-width: 1200px\)[\s\S]{0,180}hero-immersive-object-label[\s\S]{0,160}display: inline-flex/);
+  assert.match(enterpriseHero, /@media \(max-width: 560px\)[\s\S]{0,1400}hero-immersive-object-label--device[\s\S]{0,260}hero-immersive-object-label--product/);
 });
 
 test("DPP copy stays concise while the three-step section owns the explanation", () => {

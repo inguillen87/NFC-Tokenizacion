@@ -13,8 +13,10 @@ const participantCss = css.slice(css.indexOf("/* Landing ecosystem narrative."))
 test("the landing uses one continuous atmospheric canvas in light and dark modes", () => {
   assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.landing-root \{[\s\S]{0,980}radial-gradient[\s\S]{0,980}linear-gradient/);
   assert.match(participantCss, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.landing-root \{[\s\S]{0,980}radial-gradient[\s\S]{0,980}linear-gradient/);
-  assert.match(participantCss, /rgba\(251, 191, 36, 0\.105\)/);
+  assert.match(participantCss, /rgba\(251, 191, 36, 0\.17\)/);
   assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.simple-trust-flow-section \{[\s\S]{0,700}radial-gradient[\s\S]{0,700}!important/);
+  assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.landing-hero-section::before \{[\s\S]{0,700}rgba\(139, 92, 246, 0\.13\)/);
+  assert.match(participantCss, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.landing-hero-section::before \{[\s\S]{0,700}rgba\(139, 92, 246, 0\.16\)/);
   assert.match(participantCss, /html:is\(\.theme-light, \[data-theme="light"\]\) \.commercial-value-section \{[\s\S]{0,850}radial-gradient[\s\S]{0,850}!important/);
   assert.match(participantCss, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.commercial-value-section \{[\s\S]{0,850}radial-gradient[\s\S]{0,850}!important/);
   assert.match(participantCss, /\.landing-root \.site-footer \{[\s\S]{0,260}linear-gradient/);
@@ -48,6 +50,9 @@ test("the closing section explains participants and the return to the business d
   assert.match(commercialValue, /EXPERIENCIA DE LA PERSONA · LO QUE ABRE DESDE EL PRODUCTO/);
   assert.match(commercialValue, /OPERACIÓN DE LA EMPRESA · LO QUE VUELVE AL CENTRO DE CONTROL/);
   assert.match(commercialValue, /className="dpp-participant-map__lanes"/);
+  assert.match(commercialValue, /boundaryBrand: "nexID"/);
+  assert.match(commercialValue, /<strong>\{copy\.boundaryBrand\}<\/strong>/);
+  assert.match(participantCss, /\.dpp-participant-map__boundary strong \{[\s\S]{0,180}font-weight: 950/);
   assert.match(commercialValue, /<DppRoleExplorer locale=\{locale\} \/>/);
 });
 

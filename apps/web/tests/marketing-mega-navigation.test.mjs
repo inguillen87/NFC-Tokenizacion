@@ -70,7 +70,7 @@ test("mega navigation shares one accessible keyboard and mobile interaction mode
   assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\)/);
   assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*min-height: 2\.75rem/);
   assert.match(css, /\.mobileAboutLink\s*\{[\s\S]*min-height: 3\.65rem/);
-  assert.match(css, /@media \(max-width: 1279px\)[\s\S]*\.desktopNav,[\s\S]*\.desktopUtility/);
+  assert.match(css, /@media \(max-width: 1599px\)[\s\S]*\.desktopNav,[\s\S]*\.desktopUtility/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
@@ -94,17 +94,43 @@ test("mega navigation keeps hover intent stable instead of closing on pointer ga
   assert.doesNotMatch(navigation, /onPointerLeave=\{\(\) => setOpenMenu\(null\)\}/);
 });
 
-test("public headers use a larger logo and a legible translucent aqua surface in both themes", async () => {
-  const [home, publicHeader, css] = await Promise.all([
+test("public headers give the brand a responsive, prominent lockup on every viewport", async () => {
+  const [home, publicHeader, css, navigationCss] = await Promise.all([
     read("../src/app/page.tsx"),
     read("../src/components/public-site-header.tsx"),
     read("../src/app/globals.css"),
+    read("../src/components/marketing-mega-nav.module.css"),
   ]);
 
-  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{56\}/);
-  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{56\}/);
+  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{64\}/);
+  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{64\}/);
   assert.match(css, /\.landing-mega-header\s*\{[\s\S]{0,360}linear-gradient\(108deg[\s\S]{0,260}backdrop-filter: blur\(20px\) saturate\(145%\)/);
   assert.match(css, /html\.theme-dark \.landing-mega-header,[\s\S]{0,100}html\[data-theme="dark"\] \.landing-mega-header\s*\{[\s\S]{0,260}linear-gradient\(108deg/);
+  assert.match(css, /\.landing-mega-header \.site-brand-lockup \.brand-wordmark-svg\s*\{[\s\S]{0,100}width: clamp\(11\.5rem, 15vw, 14\.5rem\)/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]{0,520}\.landing-mega-header \.site-brand-lockup\s*\{[\s\S]{0,220}transform: scale\(0\.94\)/);
+  assert.match(navigationCss, /@media \(max-width: 1599px\)[\s\S]{0,180}\.desktopNav,[\s\S]{0,100}display: none/);
+  assert.match(css, /\.landing-mega-header \.header-main-row\s*\{[^}]*max-width: 96rem/);
+  for (const group of ["desktopNav", "compactNav", "navGroup", "headerUtilities"]) {
+    assert.match(navigationCss, new RegExp(`\\.${group}\\s*\\{[^}]*flex: 0 0 auto`));
+  }
+});
+
+test("desktop, compact and mobile navigation keep a direct route to the passport explanation", async () => {
+  const [navigation, css, home, globalCss] = await Promise.all([
+    read("../src/components/marketing-mega-nav.tsx"),
+    read("../src/components/marketing-mega-nav.module.css"),
+    read("../src/components/home-sections.tsx"),
+    read("../src/app/globals.css"),
+  ]);
+  assert.match(navigation, /passport: "Pasaporte digital"/);
+  assert.match(navigation, /passport: "Passaporte digital"/);
+  assert.match(navigation, /passport: "Digital product passport"/);
+  assert.equal(navigation.match(/href="\/#pasaporte-digital"/g)?.length, 3);
+  assert.match(navigation, /<nav className=\{styles\.compactNav\}/);
+  assert.match(navigation, /href="\/#pasaporte-digital" className=\{styles\.mobileAboutLink\} onClick=\{\(\) => setMobileOpen\(false\)\}/);
+  assert.match(css, /@media \(min-width: 980px\) and \(max-width: 1599px\)\s*\{\s*\.compactNav\s*\{\s*display: flex/);
+  assert.match(home, /id="pasaporte-digital"/);
+  assert.match(globalCss, /width: clamp\(8\.75rem, calc\(100vw - 200px\), 12rem\) !important/);
 });
 
 test("focused home keeps the commercial journey while the mega menu carries depth", async () => {
