@@ -142,12 +142,15 @@ test("trust visuals reserve layout, pause offscreen and become static with reduc
   assert.match(css, /\.trust-photo__action-grid \{[\s\S]{0,180}grid-template-columns:\s*repeat\(3/);
   assert.match(css, /\.trust-photo-frame \{[\s\S]{0,700}padding-top:\s*0/);
   assert.match(css, /\.trust-photo-frame > \.trust-photo__callout \{[\s\S]{0,420}position:\s*relative[\s\S]{0,420}margin:\s*0 0\.18rem 0\.62rem/);
-  assert.match(css, /\.trust-photo-frame \.trust-photo__callout--aftercare > \.trust-photo__action-grid \{[\s\S]{0,180}grid-template-columns:\s*minmax\(0, 1fr\)/);
-  assert.match(css, /\.trust-photo-frame \.trust-photo__callout--aftercare \.trust-photo__action \{[\s\S]{0,320}font-size:\s*clamp\(0\.75rem/);
+  assert.match(css, /\.trust-photo-frame > \.trust-photo__callout \{[\s\S]{0,520}min-height:\s*8\.75rem/);
+  assert.match(css, /\.trust-photo-frame \.trust-photo__callout--aftercare > \.trust-photo__action-grid \{[\s\S]{0,180}grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.trust-photo-frame \.trust-photo__callout--aftercare \.trust-photo__action \{[\s\S]{0,360}flex-direction:\s*column[\s\S]{0,220}font-size:\s*clamp\(0\.64rem/);
   assert.match(css, /@media \(max-width: 360px\)[\s\S]{0,800}grid-auto-columns:\s*calc\(100% - 0\.25rem\)/);
+  assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame > \.trust-photo__callout \{[\s\S]{0,120}min-height:\s*4\.7rem/);
   assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame > \.trust-photo__callout--signal \{[\s\S]{0,260}grid-template-areas:[\s\S]{0,180}"product"/);
   assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame \.trust-photo__callout--aftercare > \.trust-photo__action-grid \{[\s\S]{0,120}grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame > \.trust-photo__callout--aftercare \{[\s\S]{0,260}grid-template-areas:[\s\S]{0,180}"kicker"[\s\S]{0,180}"actions"/);
+  assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.trust-photo-frame \.trust-photo__callout--aftercare \.trust-photo__action \{[\s\S]{0,420}flex-direction:\s*row[\s\S]{0,260}text-align:\s*left/);
   assert.match(css, /\.trust-visual__phone-approach[\s\S]{0,260}1 both paused/);
   assert.match(css, /\.trust-visual__response-packet[\s\S]{0,260}trust-photo-packet-return/);
   assert.doesNotMatch(css, /simple-trust-flow-continuity|trust-continuity-travel/);

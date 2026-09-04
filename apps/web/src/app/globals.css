@@ -57701,7 +57701,9 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-status {
   bottom: auto;
   left: auto;
   width: calc(100% - 0.36rem);
-  min-height: 4.7rem;
+  /* Keep every product journey on one visual baseline. The service card has
+     more information, so all three callouts reserve the same readable band. */
+  min-height: 8.75rem;
   align-content: center;
   gap: 0.24rem 0.75rem;
   box-sizing: border-box;
@@ -57856,20 +57858,20 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-status {
 
 .trust-photo-frame .trust-photo__callout--aftercare > .trust-photo__action-grid {
   grid-area: actions;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.32rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
 }
 
 .trust-photo-frame .trust-photo__callout--aftercare .trust-photo__action {
-  min-height: 2.15rem;
-  flex-direction: row;
-  justify-content: flex-start;
-  gap: 0.3rem;
-  padding: 0.3rem 0.48rem;
-  font-size: clamp(0.75rem, 2.85cqw, 0.8rem);
-  line-height: 1.18;
-  overflow-wrap: normal;
-  text-align: left;
+  min-height: 3rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.3rem 0.22rem;
+  font-size: clamp(0.64rem, 2.45cqw, 0.72rem);
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+  text-align: center;
   white-space: normal;
 }
 
@@ -58953,6 +58955,10 @@ html[data-theme="light"] .simple-trust-flow-footer {
     padding-top: 0;
   }
 
+  .trust-photo-frame > .trust-photo__callout {
+    min-height: 4.7rem;
+  }
+
   .simple-trust-step-visual-shell--aftercare {
     padding-top: 0;
   }
@@ -59006,6 +59012,14 @@ html[data-theme="light"] .simple-trust-flow-footer {
 
   .trust-photo-frame .trust-photo__callout--aftercare .trust-photo__action {
     min-height: 2.35rem;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.3rem;
+    padding: 0.3rem 0.48rem;
+    font-size: clamp(0.75rem, 2.85cqw, 0.8rem);
+    line-height: 1.18;
+    overflow-wrap: normal;
+    text-align: left;
   }
 
 }
