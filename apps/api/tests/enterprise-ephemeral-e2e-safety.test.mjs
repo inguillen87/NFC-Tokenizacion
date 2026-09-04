@@ -435,6 +435,21 @@ test("enterprise E2E registers every consumer-network handler and proves persist
   assert.doesNotMatch(source, /x-tenant-id|x-tenant-slug|x-admin-scope/i);
 });
 
+test("supplier-order E2E proves role defaults, explicit deny precedence and secure-key separation", async () => {
+  const source = await readFile(new URL("../scripts/enterprise-ephemeral-e2e.mjs", import.meta.url), "utf8");
+  assert.match(source, /'supplier_orders', 'write', 'deny'/);
+  assert.match(source, /headers: \{ \.\.\.supplierDeniedHeaders, "content-type": "application\/json" \}/);
+  assert.match(source, /carrier_profile_code: "ntag213"/);
+  assert.match(source, /tenant-scoped deny must override the tenant-admin role default/);
+  assert.match(source, /denied supplier order must not mutate PostgreSQL/);
+  assert.match(source, /const tenantKeylessSupplierResponse = await httpHarness\.fetch/);
+  assert.match(source, /tenantKeylessSupplierResponse\.status,[\s\S]*201/);
+  assert.match(source, /const tenantSecureSupplierResponse = await httpHarness\.fetch/);
+  assert.match(source, /secure SUN supplier-order creation requires batch\.keys\.generate/);
+  assert.match(source, /body: JSON\.stringify\(secureSupplierOrderPayload\)/);
+  assert.doesNotMatch(source, /supplier-order creation remains super-admin-only/);
+});
+
 test("consumer-network E2E captures the production SQL and bounds handler and EXPLAIN execution", async () => {
   const source = await readFile(new URL("../scripts/enterprise-ephemeral-e2e.mjs", import.meta.url), "utf8");
   assert.match(source, /statement_timeout: 5_000/);

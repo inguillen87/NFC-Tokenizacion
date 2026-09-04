@@ -185,6 +185,7 @@ async function run() {
     const otherTenantUserId = "56565656-5656-4656-8656-565656565656";
     const packagingApproverUserId = "57575757-5757-4757-8757-575757575757";
     const superAdminUserId = "58585858-5858-4858-8858-585858585858";
+    const supplierDeniedUserId = "59595959-5959-4959-8959-595959595959";
     const tenantSlug = "enterprise-e2e";
     const otherTenantSlug = "enterprise-e2e-other";
     const bid = "E2E-ENTERPRISE-001";
@@ -477,6 +478,13 @@ async function run() {
        ($1, $4, 'webhooks', 'write', 'allow'),
        ($2, $4, 'supplier', 'approve_packaging', 'allow'),
        ($3, $5, 'webhooks', 'read', 'allow')`, [userId, packagingApproverUserId, otherTenantUserId, tenantId, otherTenantId]);
+    await client.query(`INSERT INTO users (id, email, full_name, admin_status)
+      VALUES ($1::uuid, 'enterprise-e2e-supplier-denied@nexid.invalid', 'Enterprise E2E Supplier Denied', 'active')`,
+    [supplierDeniedUserId]);
+    await client.query(`INSERT INTO memberships (user_id, tenant_id, role)
+      VALUES ($1::uuid, $2::uuid, 'tenant_admin')`, [supplierDeniedUserId, tenantId]);
+    await client.query(`INSERT INTO resource_permissions (user_id, tenant_id, resource, action, effect)
+      VALUES ($1::uuid, $2::uuid, 'supplier_orders', 'write', 'deny')`, [supplierDeniedUserId, tenantId]);
     await client.query(`INSERT INTO tenant_sun_profiles (
       tenant_id, vertical, club_name, product_label, origin_label, origin_address,
       origin_lat, origin_lng, tokenization_mode, claim_policy, ownership_policy,
@@ -1001,10 +1009,18 @@ async function run() {
       role: "super_admin",
       tenantId: null,
     });
+    const supplierDeniedBearer = await issueHumanSession({
+      id: supplierDeniedUserId,
+      email: "enterprise-e2e-supplier-denied@nexid.invalid",
+      label: "Enterprise E2E Supplier Denied",
+      role: "tenant_admin",
+      tenantId,
+    });
     const adminHeaders = { authorization: `Bearer ${bearer}` };
     const otherTenantAdminHeaders = { authorization: `Bearer ${otherTenantBearer}` };
     const packagingApproverHeaders = { authorization: `Bearer ${packagingApproverBearer}` };
     const superAdminHeaders = { authorization: `Bearer ${superAdminBearer}` };
+    const supplierDeniedHeaders = { authorization: `Bearer ${supplierDeniedBearer}` };
 
     const { GET: listSupplierOrders, POST: createSupplierOrder } = await import("../src/app/admin/supplier-orders/route.ts");
     const { GET: readSupplierPackaging, POST: decideSupplierPackaging } = await import("../src/app/admin/supplier-orders/[orderId]/packaging/route.ts");
@@ -1253,12 +1269,79 @@ async function run() {
     });
     assert.equal(unauthenticatedSupplierResponse.status, 401);
 
-    const tenantAdminSupplierResponse = await httpHarness.fetch("/admin/supplier-orders", {
+    const deniedSupplierBaseBatchId = "E2E-SUPPLIER-DENIED-001";
+    const deniedSupplierResponse = await httpHarness.fetch("/admin/supplier-orders", {
+      method: "POST",
+      headers: { ...supplierDeniedHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        tenant: tenantSlug,
+        customer_slug: tenantSlug,
+        order_name: "Enterprise denied capability fixture",
+        base_batch_id: deniedSupplierBaseBatchId,
+        total_quantity: 1,
+        sub_batch_size: 1,
+        chip_model: "NTAG 213",
+        carrier_profile_code: "ntag213",
+        pack_purpose: "trial_integration",
+        material_type: "converted_smart_label",
+        notes: "Disposable authorization fixture; no physical order.",
+      }),
+    });
+    assert.equal(deniedSupplierResponse.status, 403, "tenant-scoped deny must override the tenant-admin role default");
+    assert.equal(await deniedSupplierResponse.text(), "Forbidden");
+    const deniedSupplierMutation = await client.query(
+      "SELECT count(*)::integer AS count FROM supplier_orders WHERE base_batch_id = $1",
+      [deniedSupplierBaseBatchId],
+    );
+    assert.equal(Number(deniedSupplierMutation.rows[0]?.count || 0), 0, "denied supplier order must not mutate PostgreSQL");
+
+    const tenantKeylessBaseBatchId = "E2E-TENANT-KEYLESS-001";
+    const tenantKeylessSupplierResponse = await httpHarness.fetch("/admin/supplier-orders", {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json", "x-request-id": "enterprise-e2e-tenant-keyless" },
+      body: JSON.stringify({
+        tenant: tenantSlug,
+        customer_slug: tenantSlug,
+        order_name: "Enterprise tenant keyless fixture",
+        base_batch_id: tenantKeylessBaseBatchId,
+        total_quantity: 1,
+        sub_batch_size: 1,
+        chip_model: "NTAG 213",
+        carrier_profile_code: "ntag213",
+        pack_purpose: "trial_integration",
+        material_type: "converted_smart_label",
+        notes: "Disposable keyless tenant-order fixture; no physical order.",
+      }),
+    });
+    const tenantKeylessSupplierPayload = await tenantKeylessSupplierResponse.json();
+    assert.equal(
+      tenantKeylessSupplierResponse.status,
+      201,
+      `tenant_keyless_supplier_create_failed:${String(tenantKeylessSupplierPayload?.reason || "unknown")}`,
+    );
+    assert.equal(String(tenantKeylessSupplierPayload.order.tenant_id), tenantId);
+    assert.equal(String(tenantKeylessSupplierPayload.order.base_batch_id), tenantKeylessBaseBatchId);
+
+    const secureSupplierOrderPayload = {
+      tenant: tenantSlug,
+      customer_slug: tenantSlug,
+      order_name: "Enterprise HTTP 5K secure pilot",
+      base_batch_id: "E2E-SYN-HTTP-5000",
+      total_quantity: 5000,
+      sub_batch_size: 1000,
+      chip_model: "NTAG 424 DNA",
+      carrier_profile_code: "ntag424_dna",
+      pack_purpose: "trial_integration",
+      material_type: "converted_smart_label",
+      notes: "Synthetic disposable HTTP acceptance fixture; not a physical manufacturing order.",
+    };
+    const tenantSecureSupplierResponse = await httpHarness.fetch("/admin/supplier-orders", {
       method: "POST",
       headers: { ...adminHeaders, "content-type": "application/json" },
-      body: JSON.stringify({ tenant: tenantSlug }),
+      body: JSON.stringify(secureSupplierOrderPayload),
     });
-    assert.equal(tenantAdminSupplierResponse.status, 403, "supplier-order creation remains super-admin-only");
+    assert.equal(tenantSecureSupplierResponse.status, 403, "secure SUN supplier-order creation requires batch.keys.generate");
+    assert.equal(await tenantSecureSupplierResponse.text(), "Forbidden");
 
     const supplierOrderResponse = await httpHarness.fetch("/admin/supplier-orders", {
       method: "POST",
@@ -1267,19 +1350,7 @@ async function run() {
         "content-type": "application/json",
         "x-request-id": "enterprise-e2e-http-supplier-5000",
       },
-      body: JSON.stringify({
-        tenant: tenantSlug,
-        customer_slug: tenantSlug,
-        order_name: "Enterprise HTTP 5K secure pilot",
-        base_batch_id: "E2E-SYN-HTTP-5000",
-        total_quantity: 5000,
-        sub_batch_size: 1000,
-        chip_model: "NTAG 424 DNA",
-        carrier_profile_code: "ntag424_dna",
-        pack_purpose: "trial_integration",
-        material_type: "converted_smart_label",
-        notes: "Synthetic disposable HTTP acceptance fixture; not a physical manufacturing order.",
-      }),
+      body: JSON.stringify(secureSupplierOrderPayload),
     });
     const supplierOrderPayload = await supplierOrderResponse.json();
     assert.equal(
