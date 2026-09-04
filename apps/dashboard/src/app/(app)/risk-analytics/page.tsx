@@ -8,6 +8,13 @@ import {
   parseRiskAnalyticsPayload,
   type RiskKpis,
 } from "../../../lib/risk-analytics-contract";
+import {
+  IOT_TRACKER_CARRIER_LABEL,
+  IOT_TRACKER_EMPTY_DESCRIPTION,
+  IOT_TRACKER_EMPTY_TITLE,
+  IOT_TRACKER_EVIDENCE_DESCRIPTION,
+  isIotTrackerEvidenceCarrier,
+} from "../../../lib/iot-tracker-evidence-copy";
 import { dashboardCanReadSensitiveRiskAnalytics } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
 
@@ -83,6 +90,7 @@ export default async function RiskAnalyticsPage({ searchParams }: { searchParams
   const { payload, status, reason } = await loadRiskAnalytics(context, query);
   const filters = Object.fromEntries(FILTER_KEYS.map((key) => [key, safeFilter(query[key])])) as Record<(typeof FILTER_KEYS)[number], string>;
   const confirmedPayload = payload || undefined;
+  const iotTrackerEvidenceSelected = isIotTrackerEvidenceCarrier(filters.carrier);
 
   return (
     <main className="space-y-6">
@@ -128,7 +136,7 @@ export default async function RiskAnalyticsPage({ searchParams }: { searchParams
               <option value="uhf_rfid">UHF RFID</option>
               <option value="event_wristband">Pulsera de evento</option>
               <option value="hotel_keycard">Tarjeta hotelera</option>
-              <option value="iot_tracker_placeholder">Tracker IoT (placeholder)</option>
+              <option value="iot_tracker_placeholder">{IOT_TRACKER_CARRIER_LABEL}</option>
             </select>
           </label>
           <label className="grid gap-1.5 text-xs font-bold text-slate-300">
@@ -145,6 +153,17 @@ export default async function RiskAnalyticsPage({ searchParams }: { searchParams
           </div>
         </form>
       </section>
+
+      {iotTrackerEvidenceSelected ? (
+        <section
+          data-testid="iot-tracker-evidence-boundary"
+          aria-labelledby="iot-tracker-evidence-title"
+          className="rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.06] p-4"
+        >
+          <h2 id="iot-tracker-evidence-title" className="text-sm font-black text-cyan-100">{IOT_TRACKER_CARRIER_LABEL}</h2>
+          <p className="mt-1 text-xs leading-5 text-slate-300">{IOT_TRACKER_EVIDENCE_DESCRIPTION}</p>
+        </section>
+      ) : null}
 
       {!confirmedPayload ? (
         <EnterpriseOpsState
@@ -186,7 +205,12 @@ export default async function RiskAnalyticsPage({ searchParams }: { searchParams
                 <p className="mt-1 text-xs text-slate-400">Referencia local por evento, ubicación aproximada y reglas persistidas; no se entrega UID ni un hash global correlacionable.</p>
               </div>
               {!confirmedPayload.events?.length ? (
-                <EnterpriseOpsState variant="empty" compact title="Sin eventos confirmados" description="El upstream confirmó cero eventos para este scope; ajustá filtros o realizá un tap autorizado." />
+                <EnterpriseOpsState
+                  variant="empty"
+                  compact
+                  title={iotTrackerEvidenceSelected ? IOT_TRACKER_EMPTY_TITLE : "Sin eventos confirmados"}
+                  description={iotTrackerEvidenceSelected ? IOT_TRACKER_EMPTY_DESCRIPTION : "El upstream confirmó cero eventos para este scope; ajustá filtros o realizá un tap autorizado."}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-left text-xs">

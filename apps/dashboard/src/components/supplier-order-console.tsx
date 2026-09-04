@@ -10,6 +10,11 @@ import {
   resolveSupplierPackPurpose,
   type SupplierPackPurpose,
 } from "../lib/supplier-pack-purpose-policy";
+import {
+  IOT_TRACKER_CARRIER_LABEL,
+  IOT_TRACKER_EVIDENCE_DESCRIPTION,
+  isIotTrackerEvidenceCarrier,
+} from "../lib/iot-tracker-evidence-copy";
 import { resolveSupplierOpsErrorReport, type SupplierOpsDownloadableErrorReport } from "../lib/supplier-ops-error-report";
 import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../lib/permission-policy";
 import { SupplierProductionAcceptancePanel } from "./supplier-production-acceptance-panel";
@@ -192,7 +197,7 @@ const carrierProfiles = [
   { value: "uhf_rfid", label: "UHF / EPC - logistica y agro" },
   { value: "event_wristband", label: "Pulsera NFC - eventos/acceso" },
   { value: "hotel_keycard", label: "Credencial / keycard hotel" },
-  { value: "iot_tracker_placeholder", label: "IoT tracker - telemetria" },
+  { value: "iot_tracker_placeholder", label: IOT_TRACKER_CARRIER_LABEL },
   { value: "ntag216", label: "NTAG216 - UX extendida" },
   { value: "ntag215", label: "NTAG215 - eventos/acceso" },
 ];
@@ -1339,6 +1344,11 @@ export function SupplierOrderConsole({
               >
                 {carrierProfiles.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
+              {isIotTrackerEvidenceCarrier(carrierProfileCode) ? (
+                <span data-testid="supplier-iot-tracker-evidence-boundary" className="mt-2 block rounded-lg border border-cyan-300/20 bg-cyan-400/[0.06] px-3 py-2 text-xs leading-5 text-slate-300">
+                  {IOT_TRACKER_EVIDENCE_DESCRIPTION}
+                </span>
+              ) : null}
             </label>
             <label className="block">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Propósito comercial</span>

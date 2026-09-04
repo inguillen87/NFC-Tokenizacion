@@ -7,8 +7,17 @@ const permissions = await readFile(new URL("../src/lib/permission-policy.ts", im
 const shell = await readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8");
 const destinations = await readFile(new URL("../src/lib/dashboard-destination-policy.ts", import.meta.url), "utf8");
 const proxy = await readFile(new URL("../src/app/api/admin/[...path]/route.ts", import.meta.url), "utf8");
+const supplierConsole = await readFile(new URL("../src/components/supplier-order-console.tsx", import.meta.url), "utf8");
 const { dashboardCanReadSensitiveRiskAnalytics, requiredPermissionForAdminResource } = await import("../src/lib/permission-policy.ts");
 const { CARRIER_PROFILES } = await import("../../api/src/lib/carrier-profiles.ts");
+const {
+  IOT_TRACKER_CARRIER_CODE,
+  IOT_TRACKER_CARRIER_LABEL,
+  IOT_TRACKER_EMPTY_DESCRIPTION,
+  IOT_TRACKER_EMPTY_TITLE,
+  IOT_TRACKER_EVIDENCE_DESCRIPTION,
+  isIotTrackerEvidenceCarrier,
+} = await import("../src/lib/iot-tracker-evidence-copy.ts");
 
 test("enterprise risk page exposes the required filters without inventing tenant authority", () => {
   for (const name of ["tenant", "sku", "product", "batch", "lot", "region", "distributor", "riskLevel", "from", "to", "carrier"]) {
@@ -69,6 +78,30 @@ test("enterprise risk KPIs expose operational truth and bounded evidence copy", 
   assert.doesNotMatch(page, /value="qr_static"|value="uhf_epc"/);
   for (const profile of CARRIER_PROFILES) assert.match(page, new RegExp(`value="${profile.code}"`));
   assert.doesNotMatch(page, /uid_hex|K_META|K_FILE|hsm_backed|managed_kms/);
+});
+
+test("IoT tracker filter preserves its contract while bounding declared evidence", () => {
+  assert.equal(IOT_TRACKER_CARRIER_CODE, "iot_tracker_placeholder");
+  assert.equal(IOT_TRACKER_CARRIER_LABEL, "Sensor / tracker IoT · evidencia declarada");
+  assert.equal(isIotTrackerEvidenceCarrier(IOT_TRACKER_CARRIER_CODE), true);
+  assert.equal(isIotTrackerEvidenceCarrier("ntag424_dna_tt"), false);
+  assert.match(IOT_TRACKER_EVIDENCE_DESCRIPTION, /evidencia declarada[\s\S]*persistió/);
+  assert.match(IOT_TRACKER_EVIDENCE_DESCRIPTION, /No confirma conexión en vivo, hardware atestado, controles anti-replay ni presencia física/);
+  assert.match(IOT_TRACKER_EMPTY_TITLE, /Sin evidencia confirmada/);
+  assert.match(IOT_TRACKER_EMPTY_DESCRIPTION, /No se muestran ni infieren temperatura, estado offline o rutas/);
+
+  assert.match(page, /value="iot_tracker_placeholder">\{IOT_TRACKER_CARRIER_LABEL\}<\/option>/);
+  assert.match(page, /iotTrackerEvidenceSelected = isIotTrackerEvidenceCarrier\(filters\.carrier\)/);
+  assert.match(page, /data-testid="iot-tracker-evidence-boundary"/);
+  assert.match(page, /title=\{iotTrackerEvidenceSelected \? IOT_TRACKER_EMPTY_TITLE/);
+  assert.match(page, /description=\{iotTrackerEvidenceSelected \? IOT_TRACKER_EMPTY_DESCRIPTION/);
+  assert.doesNotMatch(page, /Tracker IoT \(placeholder\)/);
+
+  assert.match(supplierConsole, /value: "iot_tracker_placeholder", label: IOT_TRACKER_CARRIER_LABEL/);
+  assert.match(supplierConsole, /isIotTrackerEvidenceCarrier\(carrierProfileCode\)/);
+  assert.match(supplierConsole, /data-testid="supplier-iot-tracker-evidence-boundary"/);
+  assert.match(supplierConsole, /\{IOT_TRACKER_EVIDENCE_DESCRIPTION\}/);
+  assert.doesNotMatch(supplierConsole, /IoT tracker - telemetria/);
 });
 
 test("risk analytics fails closed and is discoverable in the dashboard", () => {
