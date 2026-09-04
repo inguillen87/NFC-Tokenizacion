@@ -1404,6 +1404,25 @@ async function run() {
       distinct_file_envelopes: 5,
       material_count: 10,
     });
+    const supplierHttpAggregateEvidence = (await client.query(`SELECT
+      count(DISTINCT supplier_order.id)::integer AS order_count,
+      count(supplier_sub_batch.id)::integer AS sub_batch_count
+      FROM supplier_orders supplier_order
+      LEFT JOIN supplier_sub_batches supplier_sub_batch
+        ON supplier_sub_batch.supplier_order_id = supplier_order.id
+       AND supplier_sub_batch.tenant_id = supplier_order.tenant_id
+      WHERE supplier_order.tenant_id = $1::uuid
+        AND supplier_order.base_batch_id = ANY($2::text[])`, [
+      tenantId,
+      [tenantKeylessBaseBatchId, secureSupplierOrderPayload.base_batch_id],
+    ])).rows[0];
+    assert.deepEqual({
+      order_count: Number(supplierHttpAggregateEvidence.order_count),
+      sub_batch_count: Number(supplierHttpAggregateEvidence.sub_batch_count),
+    }, {
+      order_count: 2,
+      sub_batch_count: 6,
+    });
 
     const crossTenantPackagingResponse = await httpHarness.fetch(
       `/admin/supplier-orders/${httpSupplierOrderId}/packaging`,
@@ -1467,8 +1486,13 @@ async function run() {
       headers: { ...adminHeaders, "content-type": "application/json" },
       body: JSON.stringify({ status: "draft", tenant_id: otherTenantId, spec: packagingSpec }),
     });
-    assert.equal(forgedPackagingContext.status, 400);
-    assert.equal((await forgedPackagingContext.json()).reason, "packaging_context_fields_server_derived");
+    const forgedPackagingPayload = await forgedPackagingContext.json();
+    assert.equal(
+      forgedPackagingContext.status,
+      400,
+      `forged_packaging_context_status:${String(forgedPackagingPayload?.reason || "unknown")}`,
+    );
+    assert.equal(forgedPackagingPayload.reason, "packaging_context_fields_server_derived");
 
     const draftPackagingResponse = await httpHarness.fetch(packagingPath, {
       method: "POST",
@@ -1638,9 +1662,14 @@ async function run() {
         enabled: false,
         events: ["sdk.verify"],
         signatureVersion: "v2",
-      }),
-    });
-    assert.equal(forgedWebhookResponse.status, 400);
+        }),
+      });
+    const forgedWebhookPayload = await forgedWebhookResponse.json();
+    assert.equal(
+      forgedWebhookResponse.status,
+      400,
+      `forged_webhook_context_status:${String(forgedWebhookPayload?.reason || "unknown")}`,
+    );
 
     const webhookUrl = "https://webhook.enterprise-e2e.invalid/hooks/synthetic-secret";
     const createWebhookResponse = await httpHarness.fetch("/admin/webhooks", {
@@ -1781,10 +1810,15 @@ async function run() {
         eventType: "shipment.received",
         bid,
         data: { private_key: "synthetic-forbidden-value" },
-      }),
-    });
-    assert.equal(secretBearingSdkEvent.status, 400);
-    assert.equal((await secretBearingSdkEvent.json()).reason, "enterprise_event_secret_fields_forbidden");
+        }),
+      });
+    const secretBearingSdkPayload = await secretBearingSdkEvent.json();
+    assert.equal(
+      secretBearingSdkEvent.status,
+      400,
+      `secret_bearing_sdk_event_status:${String(secretBearingSdkPayload?.reason || "unknown")}`,
+    );
+    assert.equal(secretBearingSdkPayload.reason, "enterprise_event_secret_fields_forbidden");
 
     const sdkEventResponse = await httpHarness.fetch("/api/v1/sdk/events", {
       method: "POST",
@@ -2118,8 +2152,9 @@ async function run() {
         tickets: Number(databaseEvidence.ticket_count),
         incident_history: Number(databaseEvidence.history_count),
         api_keys: 3,
-        http_supplier_orders: 1,
-        http_supplier_sub_batches: Number(supplierHttpDatabaseEvidence.sub_batch_count),
+        http_supplier_orders: Number(supplierHttpAggregateEvidence.order_count),
+        http_supplier_sub_batches: Number(supplierHttpAggregateEvidence.sub_batch_count),
+        http_supplier_secure_sub_batches: Number(supplierHttpDatabaseEvidence.sub_batch_count),
         http_supplier_key_pairs: Number(supplierHttpDatabaseEvidence.pair_count),
         sdk_external_events: Number(enterpriseSecurityEvidence.sdk_event_count),
         webhook_endpoints: Number(enterpriseSecurityEvidence.webhook_count),

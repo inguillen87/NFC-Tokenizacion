@@ -437,16 +437,26 @@ test("enterprise E2E registers every consumer-network handler and proves persist
 
 test("supplier-order E2E proves role defaults, explicit deny precedence and secure-key separation", async () => {
   const source = await readFile(new URL("../scripts/enterprise-ephemeral-e2e.mjs", import.meta.url), "utf8");
+  const keylessStart = source.indexOf("const tenantKeylessSupplierResponse");
+  const securePayloadStart = source.indexOf("const secureSupplierOrderPayload", keylessStart);
+  const tenantSecureStart = source.indexOf("const tenantSecureSupplierResponse", securePayloadStart);
+  const superAdminSecureStart = source.indexOf("const supplierOrderResponse", tenantSecureStart);
+  assert.ok(keylessStart >= 0 && securePayloadStart > keylessStart);
+  assert.ok(tenantSecureStart > securePayloadStart && superAdminSecureStart > tenantSecureStart);
+  const keylessBlock = source.slice(keylessStart, securePayloadStart);
+  const tenantSecureBlock = source.slice(tenantSecureStart, superAdminSecureStart);
   assert.match(source, /'supplier_orders', 'write', 'deny'/);
   assert.match(source, /headers: \{ \.\.\.supplierDeniedHeaders, "content-type": "application\/json" \}/);
   assert.match(source, /carrier_profile_code: "ntag213"/);
   assert.match(source, /tenant-scoped deny must override the tenant-admin role default/);
   assert.match(source, /denied supplier order must not mutate PostgreSQL/);
-  assert.match(source, /const tenantKeylessSupplierResponse = await httpHarness\.fetch/);
-  assert.match(source, /tenantKeylessSupplierResponse\.status,[\s\S]*201/);
-  assert.match(source, /const tenantSecureSupplierResponse = await httpHarness\.fetch/);
+  assert.match(keylessBlock, /carrier_profile_code: "ntag213"/);
+  assert.match(keylessBlock, /tenantKeylessSupplierResponse\.status,[\s\S]{1,40}?201,/);
+  assert.match(tenantSecureBlock, /body: JSON\.stringify\(secureSupplierOrderPayload\)/);
+  assert.match(tenantSecureBlock, /tenantSecureSupplierResponse\.status, 403/);
   assert.match(source, /secure SUN supplier-order creation requires batch\.keys\.generate/);
-  assert.match(source, /body: JSON\.stringify\(secureSupplierOrderPayload\)/);
+  assert.match(source, /http_supplier_orders: Number\(supplierHttpAggregateEvidence\.order_count\)/);
+  assert.match(source, /http_supplier_sub_batches: Number\(supplierHttpAggregateEvidence\.sub_batch_count\)/);
   assert.doesNotMatch(source, /supplier-order creation remains super-admin-only/);
 });
 
