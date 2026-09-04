@@ -7,6 +7,7 @@ import { enforceCriticalRateLimit, enforceWebhookAuthenticationRateLimit } from 
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureLeadsSchema } from "../../../../lib/commercial-runtime-schema";
 import { publishRealtimeEvent } from "../../../../lib/realtime-events";
+import { publishTenantTapRealtimeProjection } from "../../../../lib/realtime-tap-projection";
 import { ensureRewardPublicToken, publicRewardPassUrl, publicRewardUrl } from "../../../../lib/reward-public-links";
 import { readAndVerifyTwilioInbound } from "../../../../lib/twilio-inbound-security";
 
@@ -193,7 +194,42 @@ async function resolveConsumerTenant(phone: string) {
   return tenantRows[0] ? { consumer_id: null, display_name: null, email: null, phone, ...tenantRows[0] } : null;
 }
 
-async function updateConsent(input: { consumerId: string; tenantId: string; granted: boolean }) {
+async function publishWhatsAppConsentProjection(input: {
+  consumerId: string;
+  tenantId: string;
+  lastTapEventId?: unknown;
+}) {
+  if (input.lastTapEventId === null || input.lastTapEventId === undefined || String(input.lastTapEventId).trim() === "") return;
+  try {
+    const affectedRows = await sql/*sql*/`
+      SELECT event.id
+      FROM consumer_tap_history history
+      JOIN events event
+        ON event.id = history.tap_event_id
+       AND event.tenant_id = history.tenant_id
+      WHERE history.tenant_id = ${input.tenantId}
+        AND history.consumer_id = ${input.consumerId}
+        AND history.tap_event_id = ${input.lastTapEventId}
+      LIMIT 1
+    `;
+    const affectedEventId = affectedRows[0]?.id;
+    if (!affectedEventId) return;
+    const publication = await publishTenantTapRealtimeProjection(affectedEventId);
+    if (!publication.projected || !publication.distributed) {
+      console.warn("[whatsapp_consent_realtime_projection_unavailable]", JSON.stringify({
+        eventId: String(affectedEventId),
+        projected: publication.projected,
+        distributed: publication.distributed,
+      }));
+    }
+  } catch (error) {
+    console.warn("[whatsapp_consent_realtime_projection_failed]", JSON.stringify({
+      reason: error instanceof Error ? error.name : "unknown_error",
+    }));
+  }
+}
+
+async function updateConsent(input: { consumerId: string; tenantId: string; granted: boolean; lastTapEventId?: unknown }) {
   const scopes = ["whatsapp", "whatsapp_marketing", "promotions", "campaigns"];
   for (const scope of scopes) {
     await sql/*sql*/`
@@ -203,6 +239,9 @@ async function updateConsent(input: { consumerId: string; tenantId: string; gran
       DO UPDATE SET granted = EXCLUDED.granted, granted_at = EXCLUDED.granted_at, revoked_at = EXCLUDED.revoked_at, source = EXCLUDED.source
     `;
   }
+  // The consent rows are durable at this point. Resolve the membership's
+  // persisted tap inside the same tenant before publishing its new projection.
+  await publishWhatsAppConsentProjection(input);
 }
 
 async function recordCampaignIntent(input: {
@@ -264,11 +303,11 @@ async function recordCampaignIntent(input: {
     )
     RETURNING *
   `;
-  publishRealtimeEvent({
+  await publishRealtimeEvent({
     event_type: "lead.created",
     lead_id: String(rows[0]?.id || ""),
-    contact: input.phone,
-    company: displayTenantName(input.tenantSlug),
+    tenant_id: input.tenantId || undefined,
+    tenant_slug: input.tenantSlug || undefined,
     source: "twilio_whatsapp_campaign",
     status,
     created_at: String(rows[0]?.created_at || new Date().toISOString()),
@@ -836,7 +875,12 @@ export async function POST(req: Request) {
   }
 
   if (context?.consumer_id && context?.tenant_id && (intent === "promo_yes" || intent === "promo_no")) {
-    await updateConsent({ consumerId: String(context.consumer_id), tenantId: String(context.tenant_id), granted: intent === "promo_yes" });
+    await updateConsent({
+      consumerId: String(context.consumer_id),
+      tenantId: String(context.tenant_id),
+      granted: intent === "promo_yes",
+      lastTapEventId: context.last_tap_event_id,
+    });
     await sql/*sql*/`
       UPDATE tenant_consumer_memberships
       SET metadata_json = metadata_json || ${JSON.stringify({

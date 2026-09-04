@@ -14,6 +14,21 @@ test("tenant A no recibe evento de tenant B", () => {
   assert.equal(allowed, false);
 });
 
+test("un operador queda aislado al tenant forzado por su sesión", () => {
+  assert.equal(allowRealtimeEventForScope({
+    scope: "tenant_operator",
+    forcedTenantSlug: "tenant-a",
+    requestedTenant: "tenant-b",
+    eventTenantSlug: "tenant-b",
+  }), false);
+  assert.equal(allowRealtimeEventForScope({
+    scope: "tenant_operator",
+    forcedTenantSlug: "tenant-a",
+    requestedTenant: "tenant-b",
+    eventTenantSlug: "tenant-a",
+  }), true);
+});
+
 test("snapshot/event normalized payload no expone uid crudo", () => {
   const normalized = normalizeTenantTapRealtimeEvent({
     id: 9,

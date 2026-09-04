@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { normalizeCoordinatePair } from "./approximate-location";
 import { sql } from "./db";
 import { findForbiddenProofPayloadKey, stableJson } from "./proof-layer";
-import { publishRealtimeEvent } from "./realtime-events";
+import { publishTenantTapRealtimeProjection } from "./realtime-tap-projection";
 
 export const CANONICAL_EVENT_NAMES = [
   "demo.tap.simulated",
@@ -278,27 +278,29 @@ export async function writeCanonicalEvent(input: CanonicalEventInput): Promise<C
     },
   };
 
-  if (!receipt.replayed) {
-    publishRealtimeEvent({
-      id: receipt.eventId,
-      tenant_id: receipt.tenantId,
-      batch_id: receipt.batchId,
-      tag_id: receipt.tagId || undefined,
-      bid: receipt.bid,
-      result: validated.result,
-      verdict: input.verdict,
-      risk_level: input.riskLevel,
-      cmac_ok: input.cmacOk ?? null,
-      allowlisted: input.allowlisted ?? null,
-      source: input.mode === "live" ? (input.family === "tap" ? "real" : "imported") : "demo",
-      event_type: validated.eventType,
-      created_at: receipt.eventCreatedAt,
-      meta: {
-        canonical_event_name: input.eventName,
-        event_mode: input.mode,
-        simulated: input.mode !== "live",
-      },
-    });
+  try {
+    const traceId = typeof validated.meta.trace_id === "string" ? validated.meta.trace_id : null;
+    // Re-publishing an idempotent database replay repairs the request-level gap
+    // where the durable commit succeeded but its post-commit fanout did not.
+    // The broker delivery id and stream projection deduper suppress exact copies.
+    // This is best-effort repair, not a durable outbox guarantee.
+    const realtimeProjection = await publishTenantTapRealtimeProjection(receipt.eventId, traceId);
+    if (!realtimeProjection.projected || !realtimeProjection.distributed) {
+      console.warn("[canonical_realtime_projection_unavailable]", JSON.stringify({
+        eventId: receipt.eventId,
+        replayed: receipt.replayed,
+        projected: realtimeProjection.projected,
+        distributed: realtimeProjection.distributed,
+      }));
+    }
+  } catch (error) {
+    // The canonical write already committed. Realtime fanout is observable but
+    // must never convert a successful, idempotent write into a client error.
+    console.warn("[canonical_realtime_projection_failed]", JSON.stringify({
+      eventId: receipt.eventId,
+      replayed: receipt.replayed,
+      reason: error instanceof Error ? error.name : "unknown_error",
+    }));
   }
 
   return receipt;

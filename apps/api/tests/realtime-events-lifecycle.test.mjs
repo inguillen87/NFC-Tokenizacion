@@ -9,15 +9,51 @@ test("memory realtime subscriptions deliver locally and unsubscribe cleanly", as
   const received = [];
   const unsubscribe = onRealtimeEvent((event) => received.push(event));
 
-  publishRealtimeEvent({ id: "evt-1", result: "VALID" });
-  assert.deepEqual(received, [{ id: "evt-1", result: "VALID" }]);
+  await publishRealtimeEvent({ id: "evt-1", result: "VALID" });
+  assert.equal(received.length, 1);
+  assert.equal(received[0].id, "evt-1");
+  assert.equal(received[0].result, "VALID");
+  assert.match(received[0].realtime_delivery_id, /^rtv1_[a-f0-9]{32}$/);
 
   unsubscribe();
-  publishRealtimeEvent({ id: "evt-2", result: "TAMPER" });
+  await publishRealtimeEvent({ id: "evt-2", result: "TAMPER" });
   assert.equal(received.length, 1);
 
   if (previousMode === undefined) delete process.env.REALTIME_MODE;
   else process.env.REALTIME_MODE = previousMode;
+});
+
+test("production requires an explicit safe realtime mode and gates the PostgreSQL pilot", async () => {
+  const {
+    isRealtimeProductionEnvironment,
+    resolveRealtimeMode,
+  } = await import("../src/lib/realtime-events.ts");
+
+  assert.equal(isRealtimeProductionEnvironment({ VERCEL_ENV: "production", NODE_ENV: "development" }), true);
+  assert.equal(isRealtimeProductionEnvironment({ VERCEL_ENV: "preview", NODE_ENV: "production" }), false);
+  assert.equal(isRealtimeProductionEnvironment({ NODE_ENV: "production" }), true);
+  assert.equal(resolveRealtimeMode({ VERCEL_ENV: "production" }), null);
+  assert.equal(resolveRealtimeMode({ VERCEL_ENV: "production", REALTIME_MODE: "memory" }), null);
+  assert.equal(resolveRealtimeMode({ VERCEL_ENV: "production", REALTIME_MODE: "upstash" }), "upstash");
+  assert.equal(resolveRealtimeMode({ VERCEL_ENV: "production", REALTIME_MODE: "postgres" }), null);
+  assert.equal(resolveRealtimeMode({
+    VERCEL_ENV: "production",
+    REALTIME_MODE: "postgres",
+    REALTIME_POSTGRES_PILOT_ENABLED: "true",
+  }), "postgres");
+  assert.equal(resolveRealtimeMode({ REALTIME_MODE: "memory" }), "memory");
+  assert.equal(resolveRealtimeMode({}), "postgres");
+});
+
+test("the production mode and PostgreSQL pilot gate are explicit in operator configuration", async () => {
+  const [envExample, runbook] = await Promise.all([
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+    readFile(new URL("../../../docs/realtime-tenant-stream.md", import.meta.url), "utf8"),
+  ]);
+  assert.match(envExample, /^REALTIME_MODE=upstash$/m);
+  assert.match(envExample, /^REALTIME_POSTGRES_PILOT_ENABLED=false$/m);
+  assert.match(runbook, /REALTIME_MODE=postgres\s+REALTIME_POSTGRES_PILOT_ENABLED=true/);
+  assert.match(runbook, /`REALTIME_MODE` ausente, inválido o igual a `memory` deja el transporte indisponible/);
 });
 
 test("postgres realtime lifecycle handles socket failures instead of crashing the process", async () => {
@@ -29,8 +65,52 @@ test("postgres realtime lifecycle handles socket failures instead of crashing th
   assert.match(source, /client\.on\("error", onDisconnect\)/);
   assert.match(source, /client\.on\("end", onDisconnect\)/);
   assert.match(source, /schedulePgListenerReconnect/);
-  assert.match(source, /if \(emitter\.listenerCount\("event"\) === 0\) stopPgListener\(\)/);
+  assert.match(source, /emitTransportReset\("listener_disconnected"\)/);
+  assert.match(source, /if \(store\.emitter\.listenerCount\("event"\) === 0\) stopPgListener\(\)/);
   assert.match(source, /store\.publishPool = null/);
+  assert.match(source, /attempt \+ 1 < PUBLISH_MAX_ATTEMPTS/);
+  assert.match(source, /PUBLISH_RETRY_BASE_MS \* \(2 \*\* attempt\)/);
+  assert.match(source, /resolveJitteredRealtimeDelay/);
+  assert.match(source, /emitTransportReset\("publisher_unavailable"\)/);
+  assert.match(source, /export async function subscribeRealtimeEvent/);
+  assert.match(source, /const distributedReady = mode === "postgres" \? await startPgListener\(\) : true/);
+  assert.match(source, /distributed: await publishDistributed\(safePayload\)/);
+  assert.doesNotMatch(source, /void pool\.query\("SELECT pg_notify/);
+});
+
+test("readiness-aware subscription is ready in memory mode and fails closed without a distributed URL", async () => {
+  const previousMode = process.env.REALTIME_MODE;
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  const previousUnpooledUrl = process.env.DATABASE_URL_UNPOOLED;
+  const previousNonPoolingUrl = process.env.POSTGRES_URL_NON_POOLING;
+  const { subscribeRealtimeEvent, publishRealtimeEvent } = await import("../src/lib/realtime-events.ts");
+
+  process.env.REALTIME_MODE = "memory";
+  const received = [];
+  const memorySubscription = await subscribeRealtimeEvent((event) => received.push(event));
+  assert.equal(memorySubscription.distributedReady, true);
+  assert.equal(memorySubscription.transport, "memory");
+  await publishRealtimeEvent({ id: "evt-memory", result: "VALID" });
+  assert.equal(received.some((event) => event.id === "evt-memory"), true);
+  memorySubscription.unsubscribe();
+
+  process.env.REALTIME_MODE = "postgres";
+  delete process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL_UNPOOLED;
+  delete process.env.POSTGRES_URL_NON_POOLING;
+  const unavailableSubscription = await subscribeRealtimeEvent(() => {});
+  assert.equal(unavailableSubscription.distributedReady, false);
+  assert.equal(unavailableSubscription.transport, "postgres");
+  unavailableSubscription.unsubscribe();
+
+  if (previousMode === undefined) delete process.env.REALTIME_MODE;
+  else process.env.REALTIME_MODE = previousMode;
+  if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+  else process.env.DATABASE_URL = previousDatabaseUrl;
+  if (previousUnpooledUrl === undefined) delete process.env.DATABASE_URL_UNPOOLED;
+  else process.env.DATABASE_URL_UNPOOLED = previousUnpooledUrl;
+  if (previousNonPoolingUrl === undefined) delete process.env.POSTGRES_URL_NON_POOLING;
+  else process.env.POSTGRES_URL_NON_POOLING = previousNonPoolingUrl;
 });
 
 test("LISTEN prefers an unpooled URL while pg_notify may use the pooled runtime URL", async () => {

@@ -34,7 +34,7 @@ export function allowRealtimeEventForScope(input: {
   const eventTenant = String(input.eventTenantSlug || "").toLowerCase();
   const forced = String(input.forcedTenantSlug || "").toLowerCase();
   const requested = String(input.requestedTenant || "").toLowerCase();
-  if (input.scope === "tenant_admin" || input.scope === "reseller") {
+  if (input.scope === "tenant_admin" || input.scope === "tenant_operator" || input.scope === "reseller") {
     if (!forced) return false;
     return eventTenant === forced;
   }

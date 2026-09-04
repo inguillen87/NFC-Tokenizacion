@@ -42,19 +42,22 @@ export async function createAlert(input: {
     RETURNING id, created_at
   `;
   const alert = rows[0];
-  publishRealtimeEvent(
-    {
-      ...toRealtimeAlertEvent({
-        alertId: String(alert?.id || ""),
-        tenantId: input.tenantId || null,
-        tenantSlug: input.tenantSlug || null,
-        type: input.type,
-        severity: input.severity,
-        createdAt: String(alert?.created_at || new Date().toISOString()),
-      }),
-      trace_id: String(input.eventId),
-    },
-  );
+  const realtimeAlert = {
+    ...toRealtimeAlertEvent({
+      alertId: String(alert?.id || ""),
+      tenantId: input.tenantId || null,
+      tenantSlug: input.tenantSlug || null,
+      type: input.type,
+      severity: input.severity,
+      createdAt: String(alert?.created_at || new Date().toISOString()),
+    }),
+  };
+  if (input.tenantId) {
+    const tenantSlug = String(input.tenantSlug || "").trim();
+    if (tenantSlug) await publishRealtimeEvent(realtimeAlert, { tenantSlug });
+  } else {
+    await publishRealtimeEvent(realtimeAlert, { global: true });
+  }
 }
 
 export async function evaluateSecurityAlerts(input: EvaluateInput) {

@@ -149,8 +149,8 @@ async function loadPublicLeadEventContext(eventId: string): Promise<PublicLeadEv
   }));
 }
 
-function publishLead(lead: Record<string, unknown>, context: { source: string; eventContext: PublicLeadEventContext | null }) {
-  publishRealtimeEvent({
+async function publishLead(lead: Record<string, unknown>, context: { source: string; eventContext: PublicLeadEventContext | null }) {
+  await publishRealtimeEvent({
     event_type: "lead.created",
     lead_id: String(lead.id || ""),
     tenant_id: context.eventContext?.tenantId,
@@ -211,7 +211,7 @@ async function createCompanionTicket(context: {
     `;
     const ticket = rows[0] as Record<string, unknown> | undefined;
     if (ticket) {
-      publishRealtimeEvent({
+      await publishRealtimeEvent({
         event_type: "ticket.created",
         ticket_id: String(ticket.id || ""),
         tenant_id: context.eventContext?.tenantId,
@@ -425,7 +425,7 @@ export async function POST(req: Request) {
   };
 
   async function finishLead(lead: Record<string, unknown>, compatibilityMode = false) {
-    publishLead(lead, { source, eventContext });
+    await publishLead(lead, { source, eventContext });
     const ticket = await createCompanionTicket(context);
     const delivery = await notifyLead({ lead, sourceBody: sanitizedSourceBody });
     const warnings = [

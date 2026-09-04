@@ -14,6 +14,7 @@ export type PublicCtaEventIdentity = {
   bid?: string | null;
   batch_id?: string | null;
   tenant_id?: string | null;
+  tenant_slug?: string | null;
   batch_sdm_config?: unknown;
   sun_profile_vertical?: string | null;
   sun_profile_tokenization_mode?: string | null;
@@ -270,6 +271,7 @@ async function loadEventIdentity(eventId: string) {
       e.uid_hex,
       e.batch_id,
       e.tenant_id,
+      t.slug AS tenant_slug,
       b.bid,
       b.sdm_config AS batch_sdm_config,
       tsp.vertical AS sun_profile_vertical,
@@ -279,6 +281,7 @@ async function loadEventIdentity(eventId: string) {
       tsp.metadata AS sun_profile_metadata
     FROM events e
     JOIN batches b ON b.id = e.batch_id
+    JOIN tenants t ON t.id = e.tenant_id
     LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = e.tenant_id
     WHERE e.id = ${eventId}::bigint
     LIMIT 1
@@ -327,6 +330,7 @@ export async function resolvePublicCtaTarget(
       eventId: canonicalEventId,
       batchId: clean(identity.batch_id) || null,
       tenantId: clean(identity.tenant_id) || null,
+      tenantSlug: clean(identity.tenant_slug) || null,
       shareUid: eventShareUid(canonicalEventId),
       source: "event" as const,
       tokenizationPolicy: tokenizationConfig.policy,
@@ -348,6 +352,7 @@ export async function resolvePublicCtaTarget(
     eventId: null,
     batchId: null,
     tenantId: null,
+    tenantSlug: null,
     shareUid: suppliedUid,
     source: "uid" as const,
     tokenizationPolicy: "ownership_required" as const,

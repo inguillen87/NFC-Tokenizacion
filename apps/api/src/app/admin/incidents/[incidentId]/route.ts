@@ -106,7 +106,7 @@ export async function POST(req: Request, context: { params: Promise<{ incidentId
       reason,
       idempotencyKey,
     });
-    publishRealtimeEvent({
+    await publishRealtimeEvent({
       event_type: "incident.updated",
       incident_id: incident.id,
       tenant_id: incident.tenantId,
@@ -115,7 +115,6 @@ export async function POST(req: Request, context: { params: Promise<{ incidentId
       incident_event_id: incident.eventId,
       incident_status: incident.status,
       incident_severity: incident.severity,
-      incident_title: incident.title,
       source: incident.evidence.source,
       created_at: incident.updatedAt,
     });

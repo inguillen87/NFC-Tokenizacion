@@ -1,8 +1,20 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "@neondatabase/serverless";
+import { minimizeRealtimePayloadForBroker } from "./realtime-broker-payload";
+import { resolveJitteredRealtimeDelay } from "./realtime-timing";
+import {
+  resolveUpstashChannelPrefix,
+  resolveUpstashPublishChannels,
+  resolveUpstashRealtimeChannel,
+  resolveUpstashRealtimeConfig,
+  publishUpstashRealtimeEvent,
+  subscribeUpstashRealtimeEvent,
+  type RealtimePublishScope,
+  type RealtimeSubscriptionScope,
+} from "./realtime-upstash-transport";
 
-type RealtimeEventPayload = {
+export type RealtimeEventPayload = {
   id?: string | number;
   event_type?: string;
   alert_id?: string;
@@ -14,7 +26,6 @@ type RealtimeEventPayload = {
   tag_id?: string;
   product_name?: string;
   bid?: string;
-  uid_hex?: string;
   verdict?: string;
   risk_level?: string;
   cmac_ok?: boolean | null;
@@ -31,32 +42,55 @@ type RealtimeEventPayload = {
   lng?: number | null;
   location_source?: string | null;
   location_accuracy_m?: number | null;
-  device_label?: string | null;
   device_os?: string | null;
   device_type?: string | null;
   source?: string | null;
   created_at?: string;
-  meta?: Record<string, unknown> | null;
-  trace_id?: string | null;
+  realtime_cursor?: string;
+  realtime_channel?: string;
   lead_id?: string;
   ticket_id?: string;
   incident_id?: string;
   incident_event_id?: string;
   incident_status?: string;
   incident_severity?: string;
-  incident_title?: string;
   event_id?: string;
   sdk_event_id?: string;
-  contact?: string;
-  company?: string;
   status?: string;
-  title?: string;
   external_event_type?: string;
+  realtime_delivery_id?: string;
+  tap_projection?: Record<string, unknown>;
 };
 
 const BUS_KEY = "__nexid_realtime_bus__";
 const INSTANCE_ID = randomUUID();
 const CHANNEL = String(process.env.REALTIME_PG_CHANNEL || "nexid_events").replace(/[^a-zA-Z0-9_]/g, "");
+const PUBLISH_MAX_ATTEMPTS = 3;
+const PUBLISH_RETRY_BASE_MS = 250;
+const LOCAL_UPSTASH_EVENT_PREFIX = "upstash:";
+
+export type RealtimeMode = "memory" | "postgres" | "upstash";
+
+export function isRealtimeProductionEnvironment(env: NodeJS.ProcessEnv = process.env) {
+  const vercelEnvironment = String(env.VERCEL_ENV || "").trim().toLowerCase();
+  if (vercelEnvironment) return vercelEnvironment === "production";
+  return String(env.NODE_ENV || "").trim().toLowerCase() === "production";
+}
+
+export function resolveRealtimeMode(env: NodeJS.ProcessEnv = process.env): RealtimeMode | null {
+  const configuredMode = String(env.REALTIME_MODE || "").trim().toLowerCase();
+  const production = isRealtimeProductionEnvironment(env);
+  if (production && !configuredMode) return null;
+  const mode = configuredMode || "postgres";
+  if (mode !== "memory" && mode !== "postgres" && mode !== "upstash") return null;
+  if (production && mode === "memory") return null;
+  if (
+    production
+    && mode === "postgres"
+    && String(env.REALTIME_POSTGRES_PILOT_ENABLED || "").trim().toLowerCase() !== "true"
+  ) return null;
+  return mode;
+}
 
 type BusStore = {
   emitter: EventEmitter;
@@ -87,8 +121,7 @@ function getStore(): BusStore {
 }
 
 function postgresRealtimeEnabled() {
-  const mode = String(process.env.REALTIME_MODE || "postgres").trim().toLowerCase();
-  return mode !== "memory";
+  return resolveRealtimeMode() === "postgres";
 }
 
 function validPostgresConnectionString(value: unknown) {
@@ -150,10 +183,16 @@ function publisherEnabled() {
   return postgresRealtimeEnabled() && Boolean(resolveRealtimePublisherDatabaseUrl());
 }
 
+function brokerSafePayload(value: unknown): RealtimeEventPayload | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return minimizeRealtimePayloadForBroker(value as Record<string, unknown>) as RealtimeEventPayload;
+}
+
 function safeParse(data: string): { source?: string; payload?: RealtimeEventPayload } | null {
   try {
     const parsed = JSON.parse(data) as { source?: string; payload?: RealtimeEventPayload };
-    return parsed;
+    const payload = brokerSafePayload(parsed.payload);
+    return payload ? { source: parsed.source, payload } : null;
   } catch {
     return null;
   }
@@ -170,8 +209,36 @@ function schedulePgListenerReconnect() {
   store.reconnectTimer = setTimeout(() => {
     store.reconnectTimer = null;
     void startPgListener();
-  }, 1_000);
+  }, resolveJitteredRealtimeDelay(1_000, { jitterRatio: 0.2 }));
   store.reconnectTimer.unref?.();
+}
+
+function localUpstashEventName(channel: string) {
+  return `${LOCAL_UPSTASH_EVENT_PREFIX}${channel}`;
+}
+
+function transportResetPayload(reason: "listener_disconnected" | "publisher_unavailable") {
+  return {
+    event_type: "realtime.transport_reset",
+    reason,
+    source: "system",
+    created_at: new Date().toISOString(),
+  } satisfies RealtimeEventPayload;
+}
+
+function emitTransportReset(
+  reason: "listener_disconnected" | "publisher_unavailable",
+  upstashChannels?: string[],
+) {
+  const store = getStore();
+  const payload = transportResetPayload(reason);
+  if (upstashChannels?.length) {
+    for (const channel of upstashChannels) {
+      store.emitter.emit(localUpstashEventName(channel), payload);
+    }
+    return;
+  }
+  store.emitter.emit("event", payload);
 }
 
 function resetPgListener(pool: Pool, client: PoolClient | null, reconnect: boolean) {
@@ -187,7 +254,10 @@ function resetPgListener(pool: Pool, client: PoolClient | null, reconnect: boole
     // The socket may already be closed.
   }
   void pool.end().catch(() => null);
-  if (reconnect) schedulePgListenerReconnect();
+  if (reconnect) {
+    emitTransportReset("listener_disconnected");
+    schedulePgListenerReconnect();
+  }
 }
 
 function stopPgListener() {
@@ -210,9 +280,15 @@ function stopPgListener() {
   void pool.end().catch(() => null);
 }
 
-async function startPgListener() {
+async function startPgListener(): Promise<boolean> {
   const store = getStore();
-  if (store.started || store.startPromise || !listenerEnabled()) return;
+  if (!postgresRealtimeEnabled()) return true;
+  if (store.started) return true;
+  if (store.startPromise) {
+    await store.startPromise;
+    return store.started;
+  }
+  if (!listenerEnabled()) return false;
 
   store.startPromise = (async () => {
     const url = resolveRealtimeListenerDatabaseUrl();
@@ -247,49 +323,251 @@ async function startPgListener() {
       // The socket may already be closed.
     }
     if (pool) void pool.end().catch(() => null);
+    emitTransportReset("listener_disconnected");
     schedulePgListenerReconnect();
   }).finally(() => {
     store.startPromise = null;
   });
 
   await store.startPromise;
+  return store.started;
 }
 
-function publishDistributed(payload: RealtimeEventPayload) {
-  if (!publisherEnabled()) return;
+function waitForPublishRetry(delayMs: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function publishDistributed(payload: RealtimeEventPayload): Promise<boolean> {
+  if (!postgresRealtimeEnabled()) return true;
+  if (!publisherEnabled()) {
+    emitTransportReset("publisher_unavailable");
+    return false;
+  }
   const envelope = JSON.stringify({ source: INSTANCE_ID, payload });
+  // PostgreSQL NOTIFY has an 8 KB payload ceiling. Fail visibly rather than
+  // silently truncating or pretending that a cross-instance event was sent.
+  if (Buffer.byteLength(envelope, "utf8") > 7_500) {
+    emitTransportReset("publisher_unavailable");
+    return false;
+  }
   // notify through postgres to reach all running instances without polling
   const store = getStore();
-  if (!store.publishPool) {
-    const connectionString = resolveRealtimePublisherDatabaseUrl();
-    if (!connectionString) return;
-    const pool = new Pool({ connectionString, max: 1 });
-    pool.on("error", () => {
-      if (store.publishPool !== pool) return;
-      store.publishPool = null;
+  for (let attempt = 0; attempt < PUBLISH_MAX_ATTEMPTS; attempt += 1) {
+    if (!store.publishPool) {
+      const connectionString = resolveRealtimePublisherDatabaseUrl();
+      if (!connectionString) break;
+      const nextPool = new Pool({ connectionString, max: 1 });
+      nextPool.on("error", () => {
+        if (store.publishPool !== nextPool) return;
+        store.publishPool = null;
+        void nextPool.end().catch(() => null);
+      });
+      store.publishPool = nextPool;
+    }
+    const pool = store.publishPool;
+    try {
+      await pool.query("SELECT pg_notify($1, $2)", [CHANNEL, envelope]);
+      return true;
+    } catch {
+      if (store.publishPool === pool) store.publishPool = null;
       void pool.end().catch(() => null);
-    });
-    store.publishPool = pool;
+      if (attempt + 1 < PUBLISH_MAX_ATTEMPTS) {
+        await waitForPublishRetry(resolveJitteredRealtimeDelay(
+          PUBLISH_RETRY_BASE_MS * (2 ** attempt),
+          { jitterRatio: 0.2 },
+        ));
+      }
+    }
   }
-  const pool = store.publishPool;
-  void pool.query("SELECT pg_notify($1, $2)", [CHANNEL, envelope]).catch(() => {
-    if (store.publishPool === pool) store.publishPool = null;
-    void pool.end().catch(() => null);
-  });
+  emitTransportReset("publisher_unavailable");
+  return false;
 }
 
-export function publishRealtimeEvent(payload: RealtimeEventPayload) {
+export async function publishRealtimeEvent(
+  payload: RealtimeEventPayload,
+  explicitScope?: RealtimePublishScope,
+) {
+  const mode = resolveRealtimeMode();
   const store = getStore();
-  store.emitter.emit("event", payload);
-  publishDistributed(payload);
+  const brokerInput = explicitScope && "tenantSlug" in explicitScope && !payload.tenant_slug
+    ? { ...payload, tenant_slug: explicitScope.tenantSlug }
+    : payload;
+  // This projection is the only payload allowed to reach memory, PostgreSQL or
+  // the managed broker. Rich domain/contact objects remain in their durable
+  // stores and cannot leak through a newly added publisher by accident.
+  const safePayload = brokerSafePayload(brokerInput);
+  if (!safePayload) {
+    return { distributed: false, transport: "misconfigured" as const, attempts: 0 };
+  }
+  if (mode === "memory") {
+    store.emitter.emit("event", safePayload);
+    return { distributed: true, transport: "memory" as const, attempts: 1 };
+  }
+  if (mode === "postgres") {
+    // PostgreSQL remains an explicit pilot transport. Local listeners are
+    // notified synchronously and cross-instance delivery is awaited.
+    store.emitter.emit("event", safePayload);
+    return {
+      distributed: await publishDistributed(safePayload),
+      transport: "postgres" as const,
+    };
+  }
+  if (mode !== "upstash") {
+    console.warn("[realtime_publish_unavailable]", JSON.stringify({
+      transport: "misconfigured",
+      reason: "mode_invalid",
+      attempts: 0,
+    }));
+    return { distributed: false, transport: "misconfigured" as const, attempts: 0 };
+  }
+
+  const config = resolveUpstashRealtimeConfig();
+  const channelPrefix = resolveUpstashChannelPrefix();
+  const channels = channelPrefix
+    ? resolveUpstashPublishChannels(
+      // Resolve scope against the original payload so an invalid or conflicting
+      // tenant slug cannot disappear during minimization and become authorized.
+      payload as Record<string, unknown>,
+      explicitScope,
+      channelPrefix,
+    )
+    : null;
+  if (!config || !channels?.length) {
+    console.warn("[realtime_publish_unavailable]", JSON.stringify({
+      transport: "upstash",
+      reason: !config ? "configuration_unavailable" : "scope_invalid",
+      attempts: 0,
+    }));
+    return { distributed: false, transport: "upstash" as const, attempts: 0 };
+  }
+
+  // No local fast path here: every subscriber consumes the same managed
+  // stream. Retrying the pair can repeat a channel after partial fanout, so the
+  // stable realtime_delivery_id is mandatory and consumers dedupe exact copies.
+  for (let attempt = 0; attempt < PUBLISH_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await publishUpstashRealtimeEvent({
+        config,
+        channels,
+        source: INSTANCE_ID,
+        payload: safePayload as Record<string, unknown>,
+      });
+      return { distributed: true, transport: "upstash" as const, attempts: attempt + 1 };
+    } catch {
+      if (attempt + 1 < PUBLISH_MAX_ATTEMPTS) {
+        await waitForPublishRetry(resolveJitteredRealtimeDelay(
+          PUBLISH_RETRY_BASE_MS * (2 ** attempt),
+          { jitterRatio: 0.2 },
+        ));
+      }
+    }
+  }
+  console.warn("[realtime_publish_unavailable]", JSON.stringify({
+    transport: "upstash",
+    reason: "publish_failed",
+    attempts: PUBLISH_MAX_ATTEMPTS,
+    channel_count: channels.length,
+  }));
+  emitTransportReset("publisher_unavailable", channels);
+  return { distributed: false, transport: "upstash" as const, attempts: PUBLISH_MAX_ATTEMPTS };
 }
 
 export function onRealtimeEvent(listener: (payload: RealtimeEventPayload) => void) {
+  const mode = resolveRealtimeMode();
+  if (mode === "upstash") {
+    throw new Error("realtime_scoped_subscription_required");
+  }
+  if (!mode) {
+    throw new Error("realtime_transport_misconfigured");
+  }
   const emitter = getStore().emitter;
-  void startPgListener();
   emitter.on("event", listener);
+  if (mode === "postgres") void startPgListener();
   return () => {
     emitter.off("event", listener);
-    if (emitter.listenerCount("event") === 0) stopPgListener();
+    if (mode === "postgres" && emitter.listenerCount("event") === 0) stopPgListener();
+  };
+}
+
+export async function subscribeRealtimeEvent(
+  listener: (payload: RealtimeEventPayload) => void,
+  scope?: RealtimeSubscriptionScope,
+) {
+  const mode = resolveRealtimeMode();
+  if (mode === "upstash") {
+    const config = resolveUpstashRealtimeConfig();
+    const channelPrefix = resolveUpstashChannelPrefix();
+    const channel = channelPrefix
+      ? resolveUpstashRealtimeChannel(scope, channelPrefix)
+      : null;
+    if (!config || !channel) {
+      return {
+        distributedReady: false,
+        transport: "upstash" as const,
+        unsubscribe() {},
+      };
+    }
+
+    const emitter = getStore().emitter;
+    const localEventName = localUpstashEventName(channel);
+    emitter.on(localEventName, listener);
+    try {
+      const remote = await subscribeUpstashRealtimeEvent({
+        config,
+        channel,
+        after: scope?.after,
+        signal: scope?.signal,
+        onData({ envelope, cursor, channel: messageChannel }) {
+          const safePayload = brokerSafePayload(envelope.payload);
+          if (!safePayload) return;
+          listener({
+            ...safePayload,
+            realtime_cursor: cursor,
+            realtime_channel: messageChannel,
+          });
+        },
+        onTransportReset() {
+          listener(transportResetPayload("listener_disconnected"));
+        },
+      });
+      return {
+        distributedReady: true,
+        transport: "upstash" as const,
+        replay: remote.replay,
+        replayResetReason: remote.replayResetReason,
+        unsubscribe() {
+          emitter.off(localEventName, listener);
+          remote.unsubscribe();
+        },
+      };
+    } catch {
+      emitter.off(localEventName, listener);
+      return {
+        distributedReady: false,
+        transport: "upstash" as const,
+        unsubscribe() {},
+      };
+    }
+  }
+
+  const emitter = getStore().emitter;
+  if (!mode) {
+    return {
+      distributedReady: false,
+      transport: "misconfigured" as const,
+      unsubscribe() {},
+    };
+  }
+  // Register before awaiting LISTEN readiness so in-process events cannot fall
+  // through the startup gap. The caller buffers until its snapshot is ready.
+  emitter.on("event", listener);
+  const distributedReady = mode === "postgres" ? await startPgListener() : true;
+  return {
+    distributedReady,
+    transport: mode,
+    unsubscribe() {
+      emitter.off("event", listener);
+      if (mode === "postgres" && emitter.listenerCount("event") === 0) stopPgListener();
+    },
   };
 }

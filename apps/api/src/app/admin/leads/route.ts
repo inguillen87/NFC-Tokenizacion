@@ -156,13 +156,11 @@ export async function POST(req: Request) {
   `;
   const lead = rows[0] as Record<string, unknown>;
 
-  publishRealtimeEvent({
+  await publishRealtimeEvent({
     event_type: "lead.created",
     tenant_id: tenantId,
     tenant_slug: tenantSlug,
     lead_id: String(lead.id || ""),
-    contact,
-    company,
     source,
     status: "new",
     created_at: String(lead.created_at || new Date().toISOString()),

@@ -97,6 +97,7 @@ test("stream snapshot rows normalized", () => {
   });
   assert.equal(row.eventId, "22");
   assert.equal(row.tenantSlug, "demobodega");
+  assert.equal(row.bid, "DEMO-2026-02");
   assert.equal(row.verdict, "replay_suspect");
   assert.equal(row.source, "production");
 });

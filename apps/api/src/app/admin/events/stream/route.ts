@@ -1,9 +1,25 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// The lifecycle rotates around four minutes, with bounded jitter, so EventSource
+// reconnects with a fresh broker cursor before the five-minute compute ceiling.
+export const maxDuration = 300;
 
 import { checkAdminPermission, checkAdminWithPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
-import { onRealtimeEvent } from "../../../../lib/realtime-events";
+import { REALTIME_DELIVERY_ID_PATTERN } from "../../../../lib/realtime-broker-payload";
+import { subscribeRealtimeEvent } from "../../../../lib/realtime-events";
+import { createBoundedRealtimeSseOutputQueue } from "../../../../lib/realtime-sse-output-queue";
+import { readEmbeddedTenantTapProjection } from "../../../../lib/realtime-tap-projection";
+import {
+  createBoundedRealtimeProjectionDeduper,
+  runRealtimeStreamLifecycle,
+} from "../../../../lib/realtime-stream-lifecycle";
+import {
+  REALTIME_STREAM_WINDOW_IDS,
+  resolveRealtimeStreamWindow,
+  type RealtimeStreamWindow,
+} from "../../../../lib/realtime-stream-window";
+import { resolveJitteredRealtimeDelay } from "../../../../lib/realtime-timing";
 import { randomUUID } from "node:crypto";
 import { normalizeTenantTapRealtimeEvent, type TenantTapRealtimeEvent } from "@product/core";
 import {
@@ -34,73 +50,38 @@ type RealtimeIncidentPayload = {
   tenant_slug?: string;
   incident_status: string;
   incident_severity: string;
-  incident_title: string;
   source?: string;
   created_at: string;
 };
+
+const OPERATIONAL_NOTIFICATION_EVENT_TYPES = new Set([
+  "lead.created",
+  "ticket.created",
+  "order.created",
+  "order_request.created",
+  "marketplace.order_requested",
+  "supplier_order.created",
+  "sdk.external_event",
+]);
 
 function isSecurityAlertPayload(payload: Record<string, unknown>): payload is RealtimeAlertPayload {
   return String(payload.event_type || "") === "security_alert.created" && Boolean(payload.alert_id);
 }
 
-function resolveWindow(search: URLSearchParams) {
-  const raw = String(search.get("window") || "24h").toLowerCase();
-  const map: Record<string, string> = {
-    "5m": "5 minutes",
-    "1h": "1 hour",
-    "24h": "24 hours",
-    "7d": "7 days",
-    "30d": "30 days",
-    all: "",
-  };
-  return { raw, interval: map[raw] ?? "24 hours" };
+function isOperationalNotificationPayload(payload: Record<string, unknown>) {
+  return OPERATIONAL_NOTIFICATION_EVENT_TYPES.has(String(payload.event_type || "").trim().toLowerCase());
 }
 
-function resolveWindowMs(raw: string): number | null {
-  const map: Record<string, number> = {
-    "5m": 5 * 60 * 1000,
-    "1h": 60 * 60 * 1000,
-    "24h": 24 * 60 * 60 * 1000,
-    "7d": 7 * 24 * 60 * 60 * 1000,
-    "30d": 30 * 24 * 60 * 60 * 1000,
-  };
-  return map[raw] ?? null;
-}
-
-const DEFAULT_RECONCILIATION_INTERVAL_MS = 10_000;
-const MIN_RECONCILIATION_INTERVAL_MS = 5_000;
-const MAX_RECONCILIATION_INTERVAL_MS = 60_000;
-const RECONCILIATION_BATCH_SIZE = 200;
-const PROJECTION_REFRESH_BATCH_SIZE = 50;
 const MAX_SEEN_EVENT_IDS = 10_000;
-
-function resolveReconciliationIntervalMs() {
-  const configured = Number(process.env.REALTIME_RECONCILIATION_INTERVAL_MS || DEFAULT_RECONCILIATION_INTERVAL_MS);
-  if (!Number.isFinite(configured)) return DEFAULT_RECONCILIATION_INTERVAL_MS;
-  return Math.max(MIN_RECONCILIATION_INTERVAL_MS, Math.min(MAX_RECONCILIATION_INTERVAL_MS, Math.trunc(configured)));
-}
+const MAX_PENDING_OUTPUT_FRAMES = 256;
+const MAX_PENDING_OUTPUT_BYTES = 1024 * 1024;
+const SSE_OUTPUT_HIGH_WATER_MARK_BYTES = 64 * 1024;
 
 function safeOperationalErrorCode(error: unknown, fallback: string) {
   const candidate = typeof (error as { code?: unknown })?.code === "string"
     ? String((error as { code: string }).code).trim()
     : "";
   return /^[a-z0-9_]{1,32}$/i.test(candidate) ? candidate : fallback;
-}
-
-function persistedEventId(value: unknown) {
-  const candidate = String(value ?? "").trim();
-  return /^\d+$/.test(candidate) ? candidate : null;
-}
-
-function greatestPersistedEventId(rows: EventRow[], current = "0") {
-  let greatest = /^\d+$/.test(current) ? BigInt(current) : 0n;
-  for (const row of rows) {
-    const id = persistedEventId(row.id);
-    if (!id) continue;
-    const parsed = BigInt(id);
-    if (parsed > greatest) greatest = parsed;
-  }
-  return greatest.toString();
 }
 
 function isIncidentPayload(payload: Record<string, unknown>): payload is RealtimeIncidentPayload {
@@ -113,19 +94,16 @@ function isIncidentPayload(payload: Record<string, unknown>): payload is Realtim
 
 async function fetchRows(
   search: URLSearchParams,
+  realtimeWindow: RealtimeStreamWindow,
   forcedTenantSlug = "",
   sourceFilter: RealtimeEventSourceFilter = "all",
-  options: { afterEventId?: string; limit?: number } = {},
 ): Promise<EventRow[]> {
-  const requestedLimit = options.limit ?? Number(search.get("limit") || 40);
-  const limit = Math.max(1, Math.min(RECONCILIATION_BATCH_SIZE, Number(requestedLimit) || 40));
-  const afterEventId = /^\d+$/.test(String(options.afterEventId || ""))
-    ? String(options.afterEventId)
-    : "";
+  const requestedLimit = Number(search.get("limit") || 40);
+  const limit = Math.max(1, Math.min(200, Number(requestedLimit) || 40));
   const tenant = (forcedTenantSlug || String(search.get("tenant") || "")).trim().toLowerCase();
   const verdict = String(search.get("verdict") || "").trim().toUpperCase();
   const risk = String(search.get("risk") || "").trim().toUpperCase();
-  const { interval } = resolveWindow(search);
+  const { interval } = realtimeWindow;
   const rows = tenant
     ? await sql/*sql*/`
         SELECT
@@ -222,7 +200,6 @@ async function fetchRows(
             OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source::text, '')) IN ('real', 'imported'))
             OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source::text, '')) = ${sourceFilter})
           )
-          AND (${afterEventId} = '' OR e.id > NULLIF(${afterEventId}, '')::bigint)
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
@@ -237,10 +214,7 @@ async function fetchRows(
             ) = ${risk}
           )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
-        ORDER BY
-          CASE WHEN ${afterEventId} <> '' THEN e.id END ASC,
-          CASE WHEN ${afterEventId} = '' THEN e.created_at END DESC,
-          e.id DESC
+        ORDER BY e.created_at DESC, e.id DESC
         LIMIT ${limit}
       `
     : await sql/*sql*/`
@@ -337,7 +311,6 @@ async function fetchRows(
             OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source::text, '')) IN ('real', 'imported'))
             OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source::text, '')) = ${sourceFilter})
           )
-          AND (${afterEventId} = '' OR e.id > NULLIF(${afterEventId}, '')::bigint)
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
@@ -352,10 +325,7 @@ async function fetchRows(
             ) = ${risk}
           )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
-        ORDER BY
-          CASE WHEN ${afterEventId} <> '' THEN e.id END ASC,
-          CASE WHEN ${afterEventId} = '' THEN e.created_at END DESC,
-          e.id DESC
+        ORDER BY e.created_at DESC, e.id DESC
         LIMIT ${limit}
       `;
   return Array.isArray(rows) ? rows : [];
@@ -379,9 +349,21 @@ export async function GET(req: Request): Promise<Response> {
       headers: { "content-type": "application/json; charset=utf-8" },
     });
   }
+  const realtimeWindow = resolveRealtimeStreamWindow(searchParams.get("window"));
+  if (!realtimeWindow) {
+    return new Response(JSON.stringify({
+      ok: false,
+      reason: "invalid_window",
+      allowed: REALTIME_STREAM_WINDOW_IDS,
+    }), {
+      status: 400,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
   const requestId = req.headers.get("x-request-id") || req.headers.get("x-nexid-request-id") || randomUUID();
+  const resumeCursor = String(req.headers.get("last-event-id") || "").trim();
   const encoder = new TextEncoder();
-  if ((scope === "tenant_admin" || scope === "reseller") && forcedTenantSlug) {
+  if ((scope === "tenant_admin" || scope === "tenant_operator" || scope === "reseller") && forcedTenantSlug) {
     const requestedTenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
     if (requestedTenant && requestedTenant !== forcedTenantSlug) {
       return new Response(JSON.stringify({ ok: false, reason: "forbidden_tenant_scope" }), { status: 403, headers: { "content-type": "application/json" } });
@@ -391,53 +373,74 @@ export async function GET(req: Request): Promise<Response> {
 
   let cancelled = false;
   let cancelStream: ((closeController: boolean) => void) | null = null;
-  const stream = new ReadableStream({
-    async start(controller) {
+  let flushOutput: (() => void) | null = null;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
       let closed = false;
       const tenant = (forcedTenantSlug || String(searchParams.get("tenant") || "")).trim().toLowerCase();
       const verdict = String(searchParams.get("verdict") || "").trim().toUpperCase();
       const risk = String(searchParams.get("risk") || "").trim().toUpperCase();
-      const { raw } = resolveWindow(searchParams);
-      const windowMs = resolveWindowMs(raw);
-      const send = (event: string, payload: unknown) => {
-        if (closed || cancelled) return;
-        const eventId = typeof payload === "object" && payload && "eventId" in (payload as Record<string, unknown>)
-          ? String((payload as Record<string, unknown>).eventId)
-          : String(Date.now());
-        controller.enqueue(encoder.encode(`id: ${eventId}\n`));
-        controller.enqueue(encoder.encode("retry: 5000\n"));
-        controller.enqueue(encoder.encode(`event: ${event}\n`));
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
-      };
-
-      const seenEventProjections = new Map<string, string>();
-      let reconciliationCursor: string | null = null;
-      let reconciliationInFlight = false;
-      let reconciliation: ReturnType<typeof setInterval> | null = null;
-      const eventProjectionFingerprint = (event: TenantTapRealtimeEvent) => JSON.stringify({
-        ...event,
-        commercialConsentChannels: [...event.commercialConsentChannels].sort(),
+      const reconnectRetryMs = resolveJitteredRealtimeDelay(3_000, { jitterRatio: 0.15 });
+      const encodeEventFrame = (event: string, payload: unknown, eventId = "") => encoder.encode(
+        `${eventId ? `id: ${eventId}\n` : ""}event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`,
+      );
+      const outputQueue = createBoundedRealtimeSseOutputQueue({
+        controller,
+        maxPendingFrames: MAX_PENDING_OUTPUT_FRAMES,
+        maxPendingBytes: MAX_PENDING_OUTPUT_BYTES,
+        overflowFrame: encoder.encode(`id:\nevent: warning\ndata: ${JSON.stringify({
+          id: `warning-${Date.now()}`,
+          stream_request_id: requestId,
+          source: sourceFilter,
+          availability: "upstream_error",
+          reason: "output_backpressure_overflow",
+          recovery: "snapshot_reset",
+        })}\n\n`),
+        onOverflow: () => {
+          closed = true;
+          console.warn("[admin_sse_output_backpressure_overflow]", JSON.stringify({
+            requestId,
+            sourceFilter,
+            maxPendingFrames: MAX_PENDING_OUTPUT_FRAMES,
+            maxPendingBytes: MAX_PENDING_OUTPUT_BYTES,
+          }));
+          cancelStream?.(false);
+        },
       });
-      const rememberEvent = (event: TenantTapRealtimeEvent) => {
-        const key = String(event.eventId || "").trim();
-        if (!key) return false;
-        const fingerprint = eventProjectionFingerprint(event);
-        if (seenEventProjections.get(key) === fingerprint) return false;
-        seenEventProjections.delete(key);
-        seenEventProjections.set(key, fingerprint);
-        if (seenEventProjections.size > MAX_SEEN_EVENT_IDS) {
-          const oldest = seenEventProjections.keys().next().value as string | undefined;
-          if (oldest) seenEventProjections.delete(oldest);
-        }
-        return true;
+      flushOutput = outputQueue.flush;
+      const send = (event: string, payload: unknown, transportCursor = "") => {
+        if (closed || cancelled) return;
+        const durableEventId = event === "event" && typeof payload === "object" && payload && "eventId" in (payload as Record<string, unknown>)
+          ? String((payload as Record<string, unknown>).eventId || "").trim()
+          : "";
+        const eventId = /^\d+-\d+$/.test(transportCursor)
+          ? transportCursor
+          : /^\d+$/.test(durableEventId)
+            ? durableEventId
+            : "";
+        outputQueue.write(encodeEventFrame(event, payload, eventId));
       };
-      const emitTapEvent = (rawPayload: Record<string, unknown>) => {
-        if (!allowRealtimeEventForSource(sourceFilter, rawPayload.source)) return;
-        const normalized = normalizeTenantTapRealtimeEvent(rawPayload);
-        // In-memory publishers can fire before they have the tenant slug and
-        // complete persisted projection. Do not leak or de-duplicate that
-        // incomplete event on the global feed: reconciliation emits the same
-        // durable event only after the exact event/batch/tenant join succeeds.
+      outputQueue.write(encoder.encode(`retry: ${reconnectRetryMs}\n\n`));
+
+      const rememberEvent = createBoundedRealtimeProjectionDeduper<TenantTapRealtimeEvent>(
+        (event) => String(event.eventId || ""),
+        (event) => JSON.stringify({
+          ...event,
+          commercialConsentChannels: [...event.commercialConsentChannels].sort(),
+        }),
+        MAX_SEEN_EVENT_IDS,
+      );
+      const rememberDelivery = createBoundedRealtimeProjectionDeduper<Record<string, unknown>>(
+        (payload) => String(payload.realtime_delivery_id || ""),
+        () => "delivered",
+        MAX_SEEN_EVENT_IDS,
+      );
+      const emitTapEvent = (rawPayload: Record<string, unknown>, transportCursor = "") => {
+        const embeddedProjection = readEmbeddedTenantTapProjection(rawPayload.tap_projection);
+        const normalized = embeddedProjection || normalizeTenantTapRealtimeEvent(rawPayload);
+        if (!allowRealtimeEventForSource(sourceFilter, embeddedProjection?.eventSource ?? rawPayload.source)) return;
+        // Only complete persisted projections may cross a tenant stream. Raw
+        // in-process notifications remain harmless and cannot replace truth.
         if (!normalized.tenantId || !normalized.tenantSlug || !normalized.batchId) return;
         if (!allowRealtimeEventForScope({
           scope,
@@ -447,10 +450,10 @@ export async function GET(req: Request): Promise<Response> {
         })) return;
         if (verdict && String(normalized.verdict || "").toUpperCase() !== verdict) return;
         if (risk && String(normalized.riskLevel || "").toUpperCase() !== risk) return;
-        if (windowMs) {
+        if (realtimeWindow.maxAgeMs !== null) {
           const createdAt = new Date(String(normalized.occurredAt || Date.now()));
           if (Number.isNaN(createdAt.getTime())) return;
-          if (createdAt.getTime() < Date.now() - windowMs) return;
+          if (createdAt.getTime() < Date.now() - realtimeWindow.maxAgeMs) return;
         }
         if (!rememberEvent(normalized)) return;
         const emittedAt = new Date();
@@ -461,38 +464,26 @@ export async function GET(req: Request): Promise<Response> {
           stream_sent_at: emittedAt.toISOString(),
           stream_latency_ms: streamLatencyMs,
           stream_request_id: requestId,
-          origin_trace_id: typeof rawPayload.trace_id === "string" && rawPayload.trace_id ? rawPayload.trace_id : null,
+          realtime_delivery_id: String(rawPayload.realtime_delivery_id || "") || null,
           request_id: requestId,
-        });
+        }, transportCursor);
       };
-
-      try {
-        send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", ts: new Date().toISOString() });
-        const snapshotRows = await fetchRows(searchParams, forcedTenantSlug, sourceFilter);
-        const normalizedSnapshot = snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row));
-        normalizedSnapshot.forEach((row) => rememberEvent(row));
-        reconciliationCursor = greatestPersistedEventId(snapshotRows);
-        send("snapshot", {
-          id: `snapshot-${Date.now()}`,
-          stream_request_id: requestId,
-          source: sourceFilter,
-          availability: "ready",
-          scope: { tenant: tenant || "global" },
-          rows: normalizedSnapshot,
-        });
-      } catch (error) {
-        const errorCode = safeOperationalErrorCode(error, "snapshot_query_failed");
-        console.warn("[admin_sse_snapshot_unavailable]", JSON.stringify({
-          requestId,
-          errorCode,
-        }));
-        send("warning", { id: `warning-${Date.now()}`, stream_request_id: requestId, reason: "snapshot_unavailable" });
-      }
-
-      if (cancelled) return;
-
-      const unsubscribe = onRealtimeEvent((payload) => {
-        const rawPayload = payload as Record<string, unknown>;
+      const handleRealtimePayload = (rawPayload: Record<string, unknown>) => {
+        const transportCursor = String(rawPayload.realtime_cursor || "").trim();
+        if (String(rawPayload.event_type || "") === "realtime.transport_reset") {
+          send("warning", {
+            reason: String(rawPayload.reason || "realtime_transport_reset"),
+            source: sourceFilter,
+            availability: "upstream_error",
+            stream_request_id: requestId,
+          });
+          return;
+        }
+        const deliveryId = String(rawPayload.realtime_delivery_id || "").trim();
+        if (deliveryId) {
+          if (!REALTIME_DELIVERY_ID_PATTERN.test(deliveryId)) return;
+          if (!rememberDelivery(rawPayload)) return;
+        }
         if (isSecurityAlertPayload(rawPayload)) {
           // Alerts do not yet carry the source of their originating tap. Keep them
           // on explicit mixed streams only instead of guessing demo/production.
@@ -513,8 +504,9 @@ export async function GET(req: Request): Promise<Response> {
             created_at: String(rawPayload.created_at || new Date().toISOString()),
             stream_sent_at: new Date().toISOString(),
             stream_request_id: requestId,
+            realtime_delivery_id: deliveryId || null,
             request_id: requestId,
-          });
+          }, transportCursor);
           return;
         }
 
@@ -536,102 +528,174 @@ export async function GET(req: Request): Promise<Response> {
             tenant_slug: rawPayload.tenant_slug ? String(rawPayload.tenant_slug) : null,
             incident_status: String(rawPayload.incident_status || ""),
             incident_severity: String(rawPayload.incident_severity || ""),
-            incident_title: String(rawPayload.incident_title || ""),
             source: rawPayload.source ? String(rawPayload.source) : null,
             created_at: String(rawPayload.created_at || new Date().toISOString()),
             stream_sent_at: new Date().toISOString(),
             stream_request_id: requestId,
+            realtime_delivery_id: deliveryId || null,
             request_id: requestId,
-          });
+          }, transportCursor);
           return;
         }
 
-        emitTapEvent(rawPayload);
-      });
-
-      const reconcilePersistedEvents = async () => {
-        if (closed || cancelled || reconciliationInFlight) return;
-        reconciliationInFlight = true;
-        const startingCursor = reconciliationCursor;
-        try {
-          const rows = await fetchRows(
-            searchParams,
+        if (isOperationalNotificationPayload(rawPayload)) {
+          if (!allowRealtimeEventForSource(sourceFilter, rawPayload.source)) return;
+          if (!allowRealtimeEventForScope({
+            scope,
             forcedTenantSlug,
-            sourceFilter,
-            startingCursor === null
-              ? { limit: RECONCILIATION_BATCH_SIZE }
-              : { afterEventId: startingCursor, limit: RECONCILIATION_BATCH_SIZE },
-          );
-          if (closed || cancelled) return;
-          reconciliationCursor = greatestPersistedEventId(rows, startingCursor || "0");
-          const orderedRows = startingCursor === null ? [...rows].reverse() : rows;
-          for (const row of orderedRows) emitTapEvent(row);
-          // Actor/consent projections can change after the immutable tap event is
-          // created. Refresh the visible persisted window so a grant or revoke is
-          // re-emitted for the same event id without counting another activity.
-          if (startingCursor !== null) {
-            const projectionRows = await fetchRows(
-              searchParams,
-              forcedTenantSlug,
-              sourceFilter,
-              { limit: PROJECTION_REFRESH_BATCH_SIZE },
-            );
-            if (closed || cancelled) return;
-            for (const row of [...projectionRows].reverse()) emitTapEvent(row);
-          }
-        } catch (error) {
-          console.warn("[admin_sse_reconciliation_unavailable]", JSON.stringify({
-            requestId,
-            errorCode: safeOperationalErrorCode(error, "reconciliation_query_failed"),
-          }));
-        } finally {
-          reconciliationInFlight = false;
+            requestedTenant: tenant,
+            eventTenantSlug: typeof rawPayload.tenant_slug === "string" ? rawPayload.tenant_slug : null,
+          })) return;
+          send("event", {
+            event_type: String(rawPayload.event_type || "").trim().toLowerCase(),
+            tenant_id: rawPayload.tenant_id ? String(rawPayload.tenant_id) : null,
+            tenant_slug: rawPayload.tenant_slug ? String(rawPayload.tenant_slug) : null,
+            lead_id: rawPayload.lead_id ? String(rawPayload.lead_id) : null,
+            ticket_id: rawPayload.ticket_id ? String(rawPayload.ticket_id) : null,
+            sdk_event_id: rawPayload.sdk_event_id ? String(rawPayload.sdk_event_id) : null,
+            status: rawPayload.status ? String(rawPayload.status) : null,
+            source: rawPayload.source ? String(rawPayload.source) : null,
+            created_at: String(rawPayload.created_at || new Date().toISOString()),
+            stream_sent_at: new Date().toISOString(),
+            stream_request_id: requestId,
+            realtime_delivery_id: deliveryId || null,
+            request_id: requestId,
+          }, transportCursor);
+          return;
         }
+
+        emitTapEvent(rawPayload, transportCursor);
       };
 
-      void reconcilePersistedEvents();
-      reconciliation = setInterval(() => {
-        void reconcilePersistedEvents();
-      }, resolveReconciliationIntervalMs());
-
-      const heartbeat = setInterval(() => {
-        const now = Date.now();
-        controller.enqueue(encoder.encode(`: ping ${now}\n\n`));
-        send("heartbeat", { id: `hb-${now}`, ts: now, stream_request_id: requestId });
-      }, 15000);
-
-      const onAbort = () => shutdown();
-      let lifetime: ReturnType<typeof setTimeout> | null = null;
-      const shutdown = (closeController = true) => {
-        if (closed) return;
+      void runRealtimeStreamLifecycle<TenantTapRealtimeEvent, Record<string, unknown>>({
+        signal: req.signal,
+        subscribe: (listener) => subscribeRealtimeEvent(
+          listener,
+          tenant
+            ? { tenantSlug: tenant, after: resumeCursor || null, signal: req.signal }
+            : { global: true, after: resumeCursor || null, signal: req.signal },
+        ),
+        fetchSnapshot: async () => {
+          const snapshotRows = await fetchRows(searchParams, realtimeWindow, forcedTenantSlug, sourceFilter);
+          return snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row));
+        },
+        rememberSnapshotRow: rememberEvent,
+        emitConnected: (subscription) => {
+          send("connected", {
+            id: `connected-${Date.now()}`,
+            stream_request_id: requestId,
+            source: sourceFilter,
+            transport: subscription.transport,
+            availability: "ready",
+            ts: new Date().toISOString(),
+          });
+        },
+        emitSnapshot: (rows, subscription) => {
+          const resetResumeCursor = subscription.replay === "snapshot_reset";
+          // An empty SSE id field clears EventSource's stored Last-Event-ID.
+          // Without it, a trimmed/invalid cursor would be sent forever on every
+          // automatic reconnect even though this durable snapshot recovered it.
+          if (resetResumeCursor) outputQueue.write(encoder.encode("id:\n"));
+          send("snapshot", {
+            id: `snapshot-${Date.now()}`,
+            stream_request_id: requestId,
+            source: sourceFilter,
+            availability: "ready",
+            scope: { tenant: tenant || "global", window: realtimeWindow.id },
+            replay: {
+              mode: subscription.replay || "snapshot_only",
+              cursor_reset: resetResumeCursor,
+              reset_reason: subscription.replayResetReason || null,
+            },
+            rows,
+          });
+        },
+        handlePayload: handleRealtimePayload,
+        isTerminalPayload: (payload) => String(payload.event_type || "") === "realtime.transport_reset",
+        emitTransportUnavailable: () => {
+          send("warning", {
+            id: `warning-${Date.now()}`,
+            stream_request_id: requestId,
+            source: sourceFilter,
+            availability: "upstream_error",
+            reason: "realtime_transport_unavailable",
+          });
+        },
+        emitSnapshotUnavailable: (error) => {
+          const errorCode = safeOperationalErrorCode(error, "snapshot_query_failed");
+          console.warn("[admin_sse_snapshot_unavailable]", JSON.stringify({
+            requestId,
+            errorCode,
+          }));
+          send("warning", {
+            id: `warning-${Date.now()}`,
+            stream_request_id: requestId,
+            source: sourceFilter,
+            availability: "upstream_error",
+            reason: "snapshot_unavailable",
+          });
+        },
+        emitStartupBufferOverflow: () => {
+          send("warning", {
+            id: `warning-${Date.now()}`,
+            stream_request_id: requestId,
+            source: sourceFilter,
+            availability: "upstream_error",
+            reason: "startup_buffer_overflow",
+          });
+        },
+        emitHeartbeat: (now) => {
+          outputQueue.write(encoder.encode(`: ping ${now}\n\n`));
+          send("heartbeat", { id: `hb-${now}`, ts: now, stream_request_id: requestId });
+        },
+        closeController: () => {
+          closed = true;
+          flushOutput = null;
+          outputQueue.close();
+        },
+        isExternallyCancelled: () => cancelled,
+        registerShutdown: (shutdown) => {
+          cancelStream = shutdown;
+        },
+      }).catch((error) => {
+        if (closed || cancelled) return;
+        console.warn("[admin_sse_lifecycle_failed]", JSON.stringify({
+          requestId,
+          errorCode: safeOperationalErrorCode(error, "realtime_lifecycle_failed"),
+        }));
+        send("warning", {
+          id: `warning-${Date.now()}`,
+          stream_request_id: requestId,
+          source: sourceFilter,
+          availability: "upstream_error",
+          reason: "realtime_lifecycle_failed",
+        });
+        cancelStream?.(false);
         closed = true;
-        clearInterval(heartbeat);
-        if (reconciliation) clearInterval(reconciliation);
-        if (lifetime) clearTimeout(lifetime);
-        unsubscribe();
-        req.signal.removeEventListener("abort", onAbort);
-        cancelStream = null;
-        if (closeController) controller.close();
-      };
-      cancelStream = shutdown;
-
-      lifetime = setTimeout(() => {
-        shutdown();
-      }, 4 * 60 * 1000);
-
-      req.signal.addEventListener("abort", onAbort, { once: true });
+        flushOutput = null;
+        outputQueue.close();
+      });
+    },
+    pull() {
+      flushOutput?.();
     },
     cancel() {
       cancelled = true;
+      flushOutput = null;
       cancelStream?.(false);
     },
+  }, {
+    highWaterMark: SSE_OUTPUT_HIGH_WATER_MARK_BYTES,
+    size: (chunk) => chunk.byteLength,
   });
 
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
+      "Cache-Control": "private, no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+      "X-Content-Type-Options": "nosniff",
       "x-nexid-request-id": requestId,
     },
   });

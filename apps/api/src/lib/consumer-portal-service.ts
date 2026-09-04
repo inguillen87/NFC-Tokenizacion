@@ -4,6 +4,25 @@ import { evaluateOwnershipEligibility } from "./ownership-policy";
 import { ensureConsumerPortalSchema } from "./commercial-runtime-schema";
 import { CanonicalEventWriteError, writeCanonicalEvent } from "./canonical-event-writer";
 import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "./tap-commercial-rights";
+import { publishTenantTapRealtimeProjection } from "./realtime-tap-projection";
+
+async function publishActorAssociationProjection(eventId: unknown) {
+  try {
+    const publication = await publishTenantTapRealtimeProjection(eventId);
+    if (!publication.projected || !publication.distributed) {
+      console.warn("[consumer_actor_realtime_projection_unavailable]", JSON.stringify({
+        eventId: String(eventId || ""),
+        projected: publication.projected,
+        distributed: publication.distributed,
+      }));
+    }
+  } catch (error) {
+    console.warn("[consumer_actor_realtime_projection_failed]", JSON.stringify({
+      eventId: String(eventId || ""),
+      reason: error instanceof Error ? error.name : "unknown_error",
+    }));
+  }
+}
 
 export async function ensureTenantMembership(input: { consumerId: string; tenantId: string; tapEventId?: string; source?: string }) {
   await ensureConsumerPortalSchema();
@@ -37,7 +56,7 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       ? "low"
       : "medium";
 
-  await sql/*sql*/`
+  const actorAssociationRows = await sql/*sql*/`
     INSERT INTO consumer_tap_history (consumer_id, tenant_id, tap_event_id, verdict, risk_level, city, country)
     VALUES (
       ${input.consumerId},
@@ -49,7 +68,18 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       ${event.country_code || null}
     )
     ON CONFLICT (consumer_id, tap_event_id) DO NOTHING
+    RETURNING tenant_id, tap_event_id
   `;
+
+  const actorAssociation = actorAssociationRows[0];
+  if (
+    actorAssociation?.tap_event_id
+    && String(actorAssociation.tenant_id || "") === String(event.tenant_id || "")
+  ) {
+    // The association already committed. Re-publish its canonical tenant tap
+    // projection so live CRM clients see the actor without waiting for a read.
+    await publishActorAssociationProjection(actorAssociation.tap_event_id);
+  }
 
   const tagRows = await sql/*sql*/`
     SELECT

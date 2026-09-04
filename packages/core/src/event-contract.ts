@@ -68,6 +68,7 @@ export type TenantTapRealtimeEvent = {
   tenantId: string | null;
   tenantSlug: string | null;
   batchId: string | null;
+  bid?: string | null;
   tagId: string | null;
   uidMasked: string;
   occurredAt: string;
@@ -451,6 +452,7 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
   const deviceMeta = asRecord(sunContext.device);
   const tenantIdValue = row.tenant_id ?? row.tenantId;
   const batchIdValue = row.batch_id ?? row.batchId;
+  const bidValue = row.bid;
   const tagIdValue = row.tag_id ?? row.tagId;
   const productNameValue = row.product_name ?? row.productName;
   const tenantId = tenantIdValue == null ? null : String(tenantIdValue);
@@ -497,6 +499,7 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
     tenantId,
     tenantSlug: normalized.tenantSlug || null,
     batchId,
+    bid: bidValue == null ? null : String(bidValue),
     tagId,
     uidMasked: maskUid(normalized.uidHex || null),
     occurredAt: time.occurredAtUtc,

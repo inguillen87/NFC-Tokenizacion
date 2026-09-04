@@ -34,8 +34,8 @@ function requestedTenant(req: Request, inputTenant?: unknown) {
   return { error: null, tenantSlug: principal.tenantSlug || requested };
 }
 
-function publishIncident(incident: Awaited<ReturnType<typeof openEventIncident>>, eventType: "incident.created" | "incident.updated") {
-  publishRealtimeEvent({
+async function publishIncident(incident: Awaited<ReturnType<typeof openEventIncident>>, eventType: "incident.created" | "incident.updated") {
+  await publishRealtimeEvent({
     event_type: eventType,
     incident_id: incident.id,
     tenant_id: incident.tenantId,
@@ -44,7 +44,6 @@ function publishIncident(incident: Awaited<ReturnType<typeof openEventIncident>>
     incident_event_id: incident.eventId,
     incident_status: incident.status,
     incident_severity: incident.severity,
-    incident_title: incident.title,
     source: incident.evidence.source,
     created_at: incident.updatedAt,
   });
@@ -134,7 +133,7 @@ export async function POST(req: Request) {
       actorLabel,
       reason,
     });
-    publishIncident(incident, "incident.created");
+    await publishIncident(incident, "incident.created");
     return json({ ok: true, incident }, incident.idempotentReplay ? 200 : 201, { "cache-control": "no-store" });
   } catch (error) {
     if (process.env.NODE_ENV === "test" && process.env.VERCEL_ENV === "test") {

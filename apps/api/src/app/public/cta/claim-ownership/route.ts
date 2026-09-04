@@ -322,6 +322,7 @@ export async function POST(req: Request) {
   if (event.tenant_id && (!isMobileUaReported || (reportedDistanceKm !== null && reportedDistanceKm > 150))) {
     await createAlert({
       tenantId: event.tenant_id,
+      tenantSlug: event.tenant_slug,
       eventId: Number(eventId),
       type: "suspicious_claim_attempt",
       severity: reportedDistanceKm !== null && reportedDistanceKm > 150 ? "high" : "low",
@@ -474,6 +475,7 @@ export async function POST(req: Request) {
     if (isGrayMarket && event.tenant_id) {
       await createAlert({
         tenantId: event.tenant_id,
+        tenantSlug: event.tenant_slug,
         eventId: Number(eventId),
         type: "suspicious_claim_attempt",
         severity: "high",

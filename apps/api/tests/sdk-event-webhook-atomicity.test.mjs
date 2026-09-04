@@ -171,5 +171,8 @@ test("SDK events route has no post-commit webhook window", () => {
   assert.match(route, /if \(!mapped\)[\s\S]*operationCommitted: null/);
   assert.match(route, /Requests without an Idempotency-Key cannot be safely auto-retried/);
   assert.match(route, /operationCommitted: mapped\.operationCommitted/);
-  assert.match(route, /if \(!persisted\.replayed\)[\s\S]*publishRealtimeEvent/);
+  assert.match(route, /const realtimePublication = await publishRealtimeEvent/);
+  assert.match(route, /replayed: persisted\.replayed/);
+  assert.match(route, /request-level repair; automatic durable recovery still/);
+  assert.doesNotMatch(route, /if \(!persisted\.replayed\)[\s\S]*publishRealtimeEvent/);
 });

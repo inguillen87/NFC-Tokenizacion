@@ -231,7 +231,7 @@ test("incident routes enforce AdminPrincipal permissions and publish only after 
   assert.match(stream, /checkAdminPermission\(req, "incidents:read"\)/);
   assert.match(stream, /allowRealtimeEventForScope/);
   assert.match(stream, /isIncidentPayload/);
-  assert.match(stream, /send\("snapshot", \{[\s\S]*?scope: \{ tenant: tenant \|\| "global" \},[\s\S]*?rows: normalizedSnapshot/);
+  assert.match(stream, /emitSnapshot: \(rows, subscription\) => \{[\s\S]*?send\("snapshot", \{[\s\S]*?scope: \{ tenant: tenant \|\| "global", window: realtimeWindow\.id \},[\s\S]*?rows/);
 });
 
 test("permission-bearing operations managers can operate incidents only inside their session tenant", async () => {

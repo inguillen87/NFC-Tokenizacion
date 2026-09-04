@@ -29,9 +29,10 @@ test("persisted event filters map every supported window to one exact allowliste
 });
 
 test("persisted admin events bind only the parser-produced interval across every query path", async () => {
-  const [eventsRoute, streamRoute] = await Promise.all([
+  const [eventsRoute, streamRoute, streamWindow] = await Promise.all([
     read("../src/app/admin/events/route.ts"),
     read("../src/app/admin/events/stream/route.ts"),
+    read("../src/lib/realtime-stream-window.ts"),
   ]);
 
   assert.match(eventsRoute, /parseAnalyticsFilters\(searchParams\)/);
@@ -40,10 +41,9 @@ test("persisted admin events bind only the parser-produced interval across every
     5,
   );
   assert.doesNotMatch(eventsRoute, /\$\{\s*searchParams\.get\(["']range["']\)\s*\}/);
-  assert.match(streamRoute, /"5m": "5 minutes"/);
-  assert.match(streamRoute, /"1h": "1 hour"/);
-  assert.match(
-    streamRoute,
-    /send\("snapshot", \{[\s\S]*?scope: \{ tenant: tenant \|\| "global" \},[\s\S]*?rows: normalizedSnapshot/,
-  );
+  assert.match(streamWindow, /"5m": \{ id: "5m", interval: "5 minutes"/);
+  assert.match(streamWindow, /"1h": \{ id: "1h", interval: "1 hour"/);
+  assert.match(streamRoute, /resolveRealtimeStreamWindow\(searchParams\.get\("window"\)\)/);
+  assert.equal((streamRoute.match(/\$\{interval\} = '' OR e\.created_at >= now\(\) - \$\{interval\}::interval/g) || []).length, 2);
+  assert.match(streamRoute, /scope: \{ tenant: tenant \|\| "global", window: realtimeWindow\.id \}/);
 });

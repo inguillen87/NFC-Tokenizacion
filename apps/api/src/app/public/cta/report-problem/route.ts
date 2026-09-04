@@ -93,11 +93,11 @@ export async function POST(req: Request) {
     console.warn("[public_cta_report] companion action log failed", { traceId, error });
   }
 
-  publishRealtimeEvent({
+  await publishRealtimeEvent({
     event_type: "ticket.created",
     ticket_id: String(ticket?.id || ""),
     tenant_id: target.tenantId || undefined,
-    contact,
+    tenant_slug: target.tenantSlug || undefined,
     source: "sun_public_report",
     status: String(ticket?.status || "open"),
     created_at: String(ticket?.created_at || new Date().toISOString()),

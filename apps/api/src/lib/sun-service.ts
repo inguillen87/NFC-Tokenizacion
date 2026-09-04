@@ -2,7 +2,7 @@ import { sql } from './db';
 import { randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
 import { DEFAULT_SUN_MAC_INPUT_MODE, SUN_MAC_INPUT_MODES, type SunMacInputMode, verifySun } from './crypto/sdm';
-import { publishRealtimeEvent } from './realtime-events';
+import { publishTenantTapRealtimeProjection } from './realtime-tap-projection';
 import { decodeTTStatus, parseTTStatusFromDecryptedPayload } from './ttstatus';
 import { evaluateSecurityAlerts } from './alert-engine';
 import { buildSunPayloadHashes } from './sun-payload.ts';
@@ -777,30 +777,22 @@ export async function processSunScan(input: {
     // Notifications and alerts are post-commit projections. Their failure must
     // never undo or misreport the canonical tag/event transaction.
     try {
-      publishRealtimeEvent({
-        id: receipt.eventId,
-        tenant_id: String(batch.tenant_id),
-        tenant_slug: (batch as { tenant_slug?: string }).tenant_slug || undefined,
-        batch_id: String(batch.id),
-        tag_id: receipt.tagId || undefined,
-        bid: input.bid,
-        uid_hex: resolvedUidHex || undefined,
-        verdict: receipt.verdict,
-        risk_level: receipt.riskLevel,
-        event_type: receipt.eventType,
-        product_name: productName || undefined,
-        result: String(receipt.finalResult).toUpperCase(),
-        reason: receipt.finalReason || undefined,
-        city: input.context?.city || null,
-        country_code: input.context?.countryCode || null,
-        lat: coordinate?.lat ?? null,
-        lng: coordinate?.lng ?? null,
-        source: input.context?.source || 'real',
-        created_at: receipt.createdAt,
-        trace_id: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
-      });
+      const projection = await publishTenantTapRealtimeProjection(
+        receipt.eventId,
+        typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
+      );
+      if (!projection.projected || !projection.distributed) {
+        console.warn("[sun_realtime_projection_unavailable]", JSON.stringify({
+          eventId: receipt.eventId,
+          projected: projection.projected,
+          distributed: projection.distributed,
+        }));
+      }
     } catch (error) {
-      console.error("[sun_realtime_projection_failed]", error instanceof Error ? error.message : "unknown_error");
+      console.error("[sun_realtime_projection_failed]", JSON.stringify({
+        eventId: receipt.eventId,
+        reason: error instanceof Error ? error.name : "unknown_error",
+      }));
     }
     void evaluateSecurityAlerts({
       eventId: receipt.eventId,

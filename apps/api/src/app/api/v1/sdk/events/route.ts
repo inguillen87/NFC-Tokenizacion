@@ -235,18 +235,35 @@ export async function POST(req: Request) {
       recovery: "The external event was recorded for audit, but its unit binding changed during ingestion. Do not use it as SUN evidence; submit a new reading only after the BID and UID registration is stable.",
     }, 409, { "cache-control": "no-store", "x-nexid-trace-id": auth.context.traceId });
   }
-  if (!persisted.replayed) {
-    publishRealtimeEvent({
+  try {
+    // A retry with the same idempotency key re-emits the same durable event.
+    // This can repair a post-commit fanout failure without creating a second
+    // SDK event. It is request-level repair; automatic durable recovery still
+    // requires a transactional realtime outbox and worker.
+    const realtimePublication = await publishRealtimeEvent({
       event_type: "sdk.external_event",
       sdk_event_id: eventId,
       tenant_id: auth.context.tenantId,
       tenant_slug: auth.context.tenantSlug,
       bid: persisted.bid || undefined,
-      uid_hex: persisted.uidHex || undefined,
       external_event_type: persisted.eventType,
       created_at: persisted.createdAt,
-      trace_id: auth.context.traceId,
     });
+    if (!realtimePublication.distributed) {
+      console.warn("[sdk_realtime_publish_unavailable]", JSON.stringify({
+        eventId,
+        replayed: persisted.replayed,
+        transport: realtimePublication.transport,
+      }));
+    }
+  } catch (error) {
+    // Persistence and webhook outbox already committed; never report that
+    // mutation as failed solely because the optional live projection failed.
+    console.warn("[sdk_realtime_publish_failed]", JSON.stringify({
+      eventId,
+      replayed: persisted.replayed,
+      reason: error instanceof Error ? error.name : "unknown_error",
+    }));
   }
   await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 201, startedAt, meta: { eventId, eventType, bid: bid || null } });
 

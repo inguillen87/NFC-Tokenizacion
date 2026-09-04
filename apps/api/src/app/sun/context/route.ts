@@ -9,6 +9,7 @@ import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
 import { consumeSunFreshHandoff, requireSunFreshHandoff } from "../../../lib/sun-fresh-handoff";
 import { normalizeConsentedApproximateLocation, sanitizePublicLocationProjection } from "../../../lib/approximate-location";
 import { isPostTapLocationTimingValid } from "../../../lib/sun-tap-location";
+import { publishTenantTapRealtimeProjection } from "../../../lib/realtime-tap-projection";
 
 const MAX_CONTEXT_BODY_BYTES = 32 * 1024;
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
@@ -54,6 +55,24 @@ function sqlState(error: unknown) {
   return cause && typeof cause === "object" && "code" in cause
     ? String((cause as { code?: unknown }).code || "")
     : "";
+}
+
+async function publishLocationProjection(eventId: unknown, traceId: string | null) {
+  try {
+    const publication = await publishTenantTapRealtimeProjection(eventId, traceId);
+    if (!publication.projected || !publication.distributed) {
+      console.warn("[sun_context_realtime_projection_unavailable]", JSON.stringify({
+        eventId: String(eventId || ""),
+        projected: publication.projected,
+        distributed: publication.distributed,
+      }));
+    }
+  } catch (error) {
+    console.warn("[sun_context_realtime_projection_failed]", JSON.stringify({
+      eventId: String(eventId || ""),
+      reason: sqlState(error) || (error instanceof Error ? error.name : "unknown_error"),
+    }));
+  }
 }
 
 function safeClientContext(client: Record<string, unknown> | undefined) {
@@ -446,6 +465,13 @@ export async function POST(req: Request): Promise<Response> {
       eventId: capabilityBinding.eventId,
       matchedBy,
     }, 409, { "cache-control": "no-store" });
+  }
+
+  const persistedEventId = persistenceRows[0]?.event_id;
+  if (persistedEventId !== null && persistedEventId !== undefined && String(persistedEventId).trim() !== "") {
+    // Both location evidence writes committed atomically. Push the exact
+    // persisted event projection; a fanout failure must not roll back consent.
+    await publishLocationProjection(persistedEventId, String(capabilityBinding.traceId || "") || null);
   }
 
   return json({

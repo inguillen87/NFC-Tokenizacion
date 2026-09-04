@@ -42,7 +42,7 @@ test("SSE route applies source to both snapshots and live events before emitting
   assert.match(source, /reason: "invalid_source_filter"/);
   assert.equal((source.match(/LOWER\(COALESCE\(e\.source::text, ''\)\) IN \('real', 'imported'\)/g) || []).length, 2);
   assert.doesNotMatch(source, /COALESCE\(e\.source, ''\)/);
-  assert.match(source, /allowRealtimeEventForSource\(sourceFilter, rawPayload\.source\)/);
+  assert.match(source, /allowRealtimeEventForSource\(sourceFilter, embeddedProjection\?\.eventSource \?\? rawPayload\.source\)/);
   assert.match(source, /if \(sourceFilter !== "all"\) return/);
 });
 
@@ -50,15 +50,16 @@ test("persisted event fallback preserves the production aggregate", async () => 
   const source = await readFile(new URL("../src/app/admin/events/route.ts", import.meta.url), "utf8");
   assert.match(source, /requestedEventSource === "production"/);
   assert.equal((source.match(/e\.source::text IN \('real', 'imported'\)/g) || []).length, 4);
-  assert.match(source, /if \(eventSource === ""\)/);
+  assert.match(source, /if \(eventSource === "" && !tenant\)/);
   assert.match(source, /scope: \{ tenant: tenant \|\| "global", source: eventSource \|\| "all"/);
 });
 
 test("SSE reader cancellation releases timers, listeners and realtime subscriptions", async () => {
   const source = await readFile(new URL("../src/app/admin/events/stream/route.ts", import.meta.url), "utf8");
+  const lifecycleSource = await readFile(new URL("../src/lib/realtime-stream-lifecycle.ts", import.meta.url), "utf8");
   assert.match(source, /cancel\(\)\s*\{[\s\S]*cancelStream\?\.\(false\)/);
-  assert.match(source, /const shutdown = \(closeController = true\)[\s\S]*clearInterval\(heartbeat\)/);
-  assert.match(source, /if \(lifetime\) clearTimeout\(lifetime\)/);
-  assert.match(source, /unsubscribe\(\)/);
-  assert.match(source, /req\.signal\.removeEventListener\("abort", onAbort\)/);
+  assert.match(lifecycleSource, /const shutdown = \(closeController = true\)[\s\S]*if \(heartbeat\) clearIntervalImpl\(heartbeat\)/);
+  assert.match(lifecycleSource, /if \(lifetime\) clearTimeoutImpl\(lifetime\)/);
+  assert.match(lifecycleSource, /unsubscribe\(\)/);
+  assert.match(lifecycleSource, /options\.signal\.removeEventListener\("abort", onAbort\)/);
 });
