@@ -32,8 +32,8 @@ test("consumer CRM reports partial sources and withholds false zero metrics and 
   assert.match(consumerOverview, /un UID nunca se interpreta como una persona/);
   assert.doesNotMatch(consumerOverview, /Anonymous tappers|Tap → registration|Registration → membership/);
   assert.match(consumerOverview, /Heatmap no disponible/);
-  assert.match(consumerOverview, /Members source unavailable; this is not a confirmed zero/);
-  assert.match(consumerOverview, /Taps source unavailable; this is not a confirmed zero/);
+  assert.match(consumerOverview, /Fuente de miembros no disponible; no es un cero confirmado/);
+  assert.match(consumerOverview, /Fuente de taps no disponible; no es un cero confirmado/);
 });
 
 test("batch operations distinguish unavailable sources from confirmed empty inventory", () => {
