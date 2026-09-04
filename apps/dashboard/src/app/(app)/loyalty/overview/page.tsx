@@ -27,11 +27,23 @@ function rateWidth(value: unknown, available: boolean) {
   return `${Math.max(0, Math.min(100, Number(value || 0)))}%`;
 }
 
+function tenantDisplayName(tenantSlug: string | null) {
+  const normalized = String(tenantSlug || "").trim().toLowerCase();
+  if (!normalized) return "Red multi-tenant";
+  if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") {
+    return "Bodega Balmec";
+  }
+  return normalized
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
+}
+
 export default async function LoyaltyOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession("rewards:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
+  const tenantName = tenantDisplayName(tenantScope);
   const canReadEngagement = dashboardPermissionMatches(
     session.permissions,
     "crm:read",
@@ -65,8 +77,8 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
         </div>
       </header>
 
-      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-300">
-        Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+        Workspace activo: <b className="text-white">{tenantName}</b>
       </div>
 
       {!loyaltyReady || !consumerReady || !rewardsReady ? (
@@ -75,7 +87,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
         </div>
       ) : null}
 
-      <TenantEngagementPanel tenantSlug={tenantScope} canRead={canReadEngagement} />
+      <TenantEngagementPanel tenantSlug={tenantScope} tenantName={tenantName} canRead={canReadEngagement} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">

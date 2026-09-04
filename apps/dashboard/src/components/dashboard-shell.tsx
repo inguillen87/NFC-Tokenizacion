@@ -15,7 +15,7 @@ import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
 import { TenantAccountMenu } from "./tenant-account-menu";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Compass,
   LayoutDashboard,
@@ -43,6 +43,7 @@ import {
   Zap,
   Presentation,
   BookOpen,
+  Building2,
   Terminal,
   FlaskConical,
   Menu,
@@ -50,6 +51,34 @@ import {
 } from "lucide-react";
 
 type DashboardText = typeof dashboardContent["es-AR"];
+
+function readableTenantSlug(slug?: string | null) {
+  const normalized = String(slug || "").trim().toLowerCase();
+  if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") return "Bodega Balmec";
+  if (!normalized) return "";
+  return normalized.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function sessionWorkspaceLabel({
+  label,
+  role,
+  tenantSlug,
+}: {
+  label: string;
+  role: UserRole;
+  tenantSlug?: string | null;
+}) {
+  const fromSession = String(label || "")
+    .replace(/^\s*demo\s*[·:—-]?\s*/i, "")
+    .replace(/^\s*(?:admin(?:istrador)?\s+tenant|tenant\s+admin)\s*[·:—-]?\s*/i, "")
+    .trim();
+  const genericLabel = /^(?:admin|bodega admin|tenant|tenant session|session)$/i.test(fromSession);
+  const tenantName = readableTenantSlug(tenantSlug);
+  const baseLabel = role !== "super-admin" && tenantName && (!fromSession || genericLabel)
+    ? tenantName
+    : fromSession || tenantName || "Workspace global";
+  return baseLabel;
+}
 
 export function ThemeToggle() {
   return <SharedThemeToggle />;
@@ -129,6 +158,18 @@ export function DashboardShellInner({
   const searchRef = useRef<HTMLInputElement>(null);
   const { mode, setMode } = useAudienceMode();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
+  const sessionLabel = sessionWorkspaceLabel({
+    label: currentLabel,
+    role: currentRole,
+    tenantSlug: currentTenantSlug,
+  });
+  const sidebarSessionLabel = currentIsDemo ? `Demo · ${sessionLabel}` : sessionLabel;
+  const sessionScopeLabel = currentIsDemo
+    ? "Entorno demo"
+    : currentTenantSlug
+      ? "Sesión tenant activa"
+      : "Sesión global activa";
 
   useEffect(() => {
     setIsMobileSidebarOpen(false);
@@ -206,14 +247,14 @@ export function DashboardShellInner({
         : { tone: "amber" as const, label: "Operator Console" };
 
   const mobileQuickLinks = [
-    { destination: "overview" as const, href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview },
-    { destination: "events" as const, href: DASHBOARD_DESTINATIONS.events.href, label: nav.events },
-    { destination: "demoLab" as const, href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo" },
-    { destination: "batches" as const, href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches },
-    { destination: "tokenization" as const, href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Chain" },
-    { destination: "loyaltyOverview" as const, href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM" },
-    { destination: "analytics" as const, href: DASHBOARD_DESTINATIONS.analytics.href, label: nav.analytics },
-  ].filter((item) => canOpenDestination(item.destination)).slice(0, 4);
+    { destination: "overview" as const, href: DASHBOARD_DESTINATIONS.overview.href, label: "Control", icon: LayoutDashboard },
+    { destination: "events" as const, href: DASHBOARD_DESTINATIONS.events.href, label: nav.events, icon: Activity },
+    { destination: "loyaltyOverview" as const, href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM", icon: Award },
+    { destination: "analytics" as const, href: DASHBOARD_DESTINATIONS.analytics.href, label: nav.analytics, icon: BarChart3 },
+    { destination: "demoLab" as const, href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo", icon: FlaskConical },
+    { destination: "batches" as const, href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches, icon: Layers },
+    { destination: "tokenization" as const, href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Chain", icon: Coins },
+  ].filter((item) => item.destination === "overview" || canOpenDestination(item.destination)).slice(0, 4);
 
   const searchableLinkCandidates: DestinationLink[] = [
     { destination: "onboarding", href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Onboarding Setup" },
@@ -326,11 +367,16 @@ export function DashboardShellInner({
     const isActive = isActiveRoute(item.href);
     const IconComponent = item.icon;
     return (
-      <Link key={item.href} href={item.href} className="relative block">
+      <Link
+        key={item.href}
+        href={item.href}
+        aria-current={isActive ? "page" : undefined}
+        className="relative block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+      >
         <motion.div
-          whileHover={{ x: 4 }}
+          whileHover={shouldReduceMotion ? undefined : { x: 4 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-xs font-black tracking-tight transition duration-200 ${
+          className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-[13px] font-extrabold tracking-[-0.01em] transition duration-200 ${
             isActive
               ? "border-cyan-500/35 bg-cyan-500/10 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
               : "border-transparent text-slate-400 hover:bg-white/[0.02] hover:text-white"
@@ -380,7 +426,7 @@ export function DashboardShellInner({
           <button
             type="button"
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg border border-white/10 bg-slate-900/50 text-slate-400 hover:text-white"
+            className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-slate-900/50 text-slate-400 transition hover:border-cyan-300/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:hidden"
             aria-label="Close navigation menu"
             title="Cerrar menú de navegación"
           >
@@ -388,28 +434,45 @@ export function DashboardShellInner({
           </button>
         </div>
 
+        <Link
+          href={DASHBOARD_DESTINATIONS.overview.href}
+          aria-current={pathname === DASHBOARD_DESTINATIONS.overview.href ? "page" : undefined}
+          className={`dashboard-control-return sticky top-0 z-20 mb-4 flex min-h-14 shrink-0 items-center gap-3 rounded-2xl border px-3 py-2.5 shadow-lg backdrop-blur-xl transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${
+            pathname === DASHBOARD_DESTINATIONS.overview.href
+              ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100"
+              : "border-white/10 bg-slate-950/90 text-slate-200 hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-white"
+          }`}
+          title="Volver al Centro de control y CRM en vivo"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-300">
+            <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0">
+            <b className="block truncate text-[13px] font-black">Centro de control</b>
+            <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400">CRM en vivo</span>
+          </span>
+          <span className="ml-auto text-lg text-cyan-300" aria-hidden="true">←</span>
+        </Link>
+
         <div className="space-y-4">
-          {/* Grape / Winery Role Card */}
+          {/* Session-derived account identity. Never infer demo or vertical branding. */}
           <div className="dashboard-role-card relative overflow-hidden rounded-2xl border border-white/5 p-4 shadow-xl backdrop-blur-md">
             <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-violet-500/5 blur-2xl" />
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 text-xl border border-violet-500/20">
-                🍇
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/15 to-blue-500/10 text-cyan-200">
+                {currentTenantSlug ? <Building2 className="h-5 w-5" aria-hidden="true" /> : <Network className="h-5 w-5" aria-hidden="true" />}
               </div>
               <div className="min-w-0 flex-1">
-                <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                  {roles[role] || "Tenant Admin"}
+                <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                  {currentIsDemo ? `Demo · ${roles[role] || "Tenant Admin"}` : roles[role] || "Tenant Admin"}
                 </span>
-                <h3 className="mt-0.5 text-xs font-black text-white truncate">
-                  {currentLabel}
+                <h3 className="mt-1 truncate text-sm font-black tracking-[-0.015em] text-white" title={sidebarSessionLabel}>
+                  {sidebarSessionLabel}
                 </h3>
                 <div className="mt-1 flex items-center gap-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/90">
-                    Polygon Amoy
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-300/90">
+                    {sessionScopeLabel}
                   </span>
                 </div>
               </div>
@@ -428,7 +491,7 @@ export function DashboardShellInner({
                 }
               }}
               placeholder={shell.search}
-              className="w-full rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all outline-none"
+              className="min-h-12 w-full rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2 text-sm font-medium text-white outline-none transition-all focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20"
             />
             <div className="absolute right-3 top-2.5 text-[10px] text-slate-500 font-mono border border-white/10 rounded px-1">/</div>
           </div>
@@ -452,7 +515,7 @@ export function DashboardShellInner({
         <nav className="mt-8 space-y-6">
           {/* Core Ops Group */}
           <div>
-            <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Core Ops</p>
+            <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Core Ops</p>
             <div className="space-y-0.5">
               {coreOpsItems.map(renderNavLink)}
             </div>
@@ -461,7 +524,7 @@ export function DashboardShellInner({
           {/* Global Network Group */}
           {globalNetworkItems.length > 0 && (
             <div>
-              <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Global Network</p>
+              <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Global Network</p>
               <div className="space-y-0.5">
                 {globalNetworkItems.map(renderNavLink)}
               </div>
@@ -471,7 +534,7 @@ export function DashboardShellInner({
           {/* Clientes & campañas Group */}
           {loyaltyNetworkItems.length > 0 && (
             <div>
-              <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Clientes & campañas</p>
+              <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Clientes & campañas</p>
               <div className="space-y-0.5">
                 {loyaltyNetworkItems.map(renderNavLink)}
               </div>
@@ -480,7 +543,7 @@ export function DashboardShellInner({
 
           {/* Settings Group */}
           <div>
-            <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Settings</p>
+            <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Settings</p>
             <div className="space-y-0.5">
               {settingsItems.map(renderNavLink)}
             </div>
@@ -535,18 +598,18 @@ export function DashboardShellInner({
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-xl border border-white/10 bg-slate-900/50 text-slate-305 hover:text-white"
+                className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-slate-900/50 text-slate-300 transition hover:border-cyan-300/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:hidden"
                 aria-label="Open navigation menu"
                 title="Abrir menú de navegación"
               >
                 <Menu className="h-5 w-5" />
               </button>
               <div>
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-1">
+                <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-400">
                    <BrandDot size={6} variant="pulse" theme="dark" />
                    {contextualHeader.subtitle}
                 </div>
-                <h1 className="text-xl font-bold text-white tracking-tight">{contextualHeader.title}</h1>
+                <h1 className="text-xl font-extrabold tracking-[-0.025em] text-white sm:text-2xl">{contextualHeader.title}</h1>
               </div>
             </div>
             <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end sm:gap-3">
@@ -561,7 +624,7 @@ export function DashboardShellInner({
               <TenantAccountMenu
                 className="dashboard-shell-account-menu shrink-0 sm:w-auto"
                 email={currentEmail}
-                label={currentLabel}
+                label={sessionLabel}
                 mfaVerified={currentMfaVerified}
                 mode={currentRole === "super-admin" ? "global" : "tenant"}
                 permissions={currentPermissions}
@@ -605,19 +668,26 @@ export function DashboardShellInner({
           ) : children}
         </div>
 
-        <div className="dashboard-mobile-dock fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-slate-950/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl lg:hidden">
+        <nav aria-label="Navegación rápida" className="dashboard-mobile-dock fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-slate-950/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl lg:hidden">
           <div className="grid grid-cols-4 gap-2">
             {mobileQuickLinks.map((item) => {
               const isActive = isActiveRoute(item.href);
+              const IconComponent = item.icon;
               return (
-                <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center rounded-xl p-2 text-[10px] font-bold transition-all ${isActive ? "text-cyan-300" : "text-slate-400 hover:text-slate-200"}`}>
-                  <span className={`w-8 h-1 mb-1 rounded-full transition-colors ${isActive ? "bg-cyan-400" : "bg-transparent"}`} />
-                  {item.label}
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  title={item.destination === "overview" ? "Volver al Centro de control y CRM en vivo" : `Abrir ${item.label}`}
+                  className={`dashboard-mobile-dock__link flex min-h-[3.75rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-[11px] font-extrabold leading-none transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${isActive ? "border-cyan-300/25 bg-cyan-400/12 text-cyan-200 shadow-[0_8px_22px_rgba(34,211,238,.12)]" : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/5 hover:text-slate-200"}`}
+                >
+                  <IconComponent className="h-5 w-5" aria-hidden="true" />
+                  <span className="max-w-full truncate">{item.label}</span>
                 </Link>
               );
             })}
           </div>
-        </div>
+        </nav>
       </div>
     </div>
   );

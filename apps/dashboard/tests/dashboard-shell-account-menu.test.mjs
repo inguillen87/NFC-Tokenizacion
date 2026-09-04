@@ -11,7 +11,8 @@ const globalsSource = await readFile(new URL("../src/app/globals.css", import.me
 test("dashboard shell exposes enterprise account drawer instead of bare logout", () => {
   assert.match(shellSource, /import \{ TenantAccountMenu \} from "\.\/tenant-account-menu"/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*email=\{currentEmail\}/);
-  assert.match(shellSource, /<TenantAccountMenu[\s\S]*label=\{currentLabel\}/);
+  assert.match(shellSource, /sessionWorkspaceLabel\(\{[\s\S]*label: currentLabel/);
+  assert.match(shellSource, /<TenantAccountMenu[\s\S]*label=\{sessionLabel\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*permissions=\{currentPermissions\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*deniedPermissions=\{currentDeniedPermissions\}/);
   assert.match(shellSource, /className="dashboard-shell-account-menu shrink-0 sm:w-auto"/);

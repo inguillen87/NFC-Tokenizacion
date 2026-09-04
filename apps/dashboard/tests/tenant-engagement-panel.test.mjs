@@ -158,7 +158,9 @@ test("CRM overview renders an interactive, source-separated engagement surface",
     readFile(new URL("../src/components/tenant-engagement-panel.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /TenantEngagementPanel tenantSlug=\{tenantScope\} canRead=\{canReadEngagement\}/);
+  assert.match(page, /TenantEngagementPanel tenantSlug=\{tenantScope\} tenantName=\{tenantName\} canRead=\{canReadEngagement\}/);
+  assert.match(page, /Workspace activo:[\s\S]*?\{tenantName\}/);
+  assert.match(component, /Inteligencia post-tap · \{tenantName \|\| tenantSlug\}/);
   assert.match(page, /dashboardPermissionMatches\([\s\S]*?"crm:read"/);
   assert.match(component, /\/api\/admin\/engagement\?\$\{query\.toString\(\)\}/);
   assert.match(component, /"24h"/);

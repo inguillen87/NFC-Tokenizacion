@@ -448,6 +448,11 @@ function defaultBaseMapLayer(): BaseMapLayer {
   return document.documentElement.classList.contains("theme-light") || document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 
+function mapMotionDuration(duration: number) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return duration;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : duration;
+}
+
 function setBasemapLayer(map: MapLibreMap, layer: BaseMapLayer) {
   ensureTerrainEnhancement(map, layer);
   if (map.getLayer("operator-raster")) {
@@ -456,7 +461,7 @@ function setBasemapLayer(map: MapLibreMap, layer: BaseMapLayer) {
     map.setPaintProperty("operator-raster", "raster-saturation", dark ? -0.32 : 0);
     map.setPaintProperty("operator-raster", "raster-contrast", dark ? 0.16 : 0);
   }
-  map.easeTo({ pitch: layer === "terrain" ? 52 : 0, bearing: layer === "terrain" ? -18 : 0, duration: 500 });
+  map.easeTo({ pitch: layer === "terrain" ? 52 : 0, bearing: layer === "terrain" ? -18 : 0, duration: mapMotionDuration(500) });
   const pointStroke = layer === "light" ? "#0f172a" : "#ffffff";
   if (map.getLayer("tap-points")) map.setPaintProperty("tap-points", "circle-stroke-color", pointStroke);
   if (map.getLayer("tap-clusters")) map.setPaintProperty("tap-clusters", "circle-stroke-color", layer === "light" ? "rgba(15,23,42,.72)" : "rgba(255,255,255,.78)");
@@ -464,12 +469,12 @@ function setBasemapLayer(map: MapLibreMap, layer: BaseMapLayer) {
 
 function fitData(maplibre: typeof import("maplibre-gl"), map: MapLibreMap, data: TapFeatureCollection, zoom: number) {
   if (!data.features.length) {
-    map.easeTo({ center: [-64.2, -34.6], zoom: 3.7 + (zoom - 1) * 3, duration: 500 });
+    map.easeTo({ center: [-64.2, -34.6], zoom: 3.7 + (zoom - 1) * 3, duration: mapMotionDuration(500) });
     return;
   }
 
   if (data.features.length === 1) {
-    map.easeTo({ center: data.features[0].geometry.coordinates, zoom: 8 + (zoom - 1) * 4, duration: 500 });
+    map.easeTo({ center: data.features[0].geometry.coordinates, zoom: 8 + (zoom - 1) * 4, duration: mapMotionDuration(500) });
     return;
   }
 
@@ -478,7 +483,7 @@ function fitData(maplibre: typeof import("maplibre-gl"), map: MapLibreMap, data:
   map.fitBounds(bounds, {
     padding: { top: 72, bottom: 56, left: 56, right: 56 },
     maxZoom: 8.4 + (zoom - 1) * 3,
-    duration: 650,
+    duration: mapMotionDuration(650),
   });
 }
 
@@ -602,7 +607,7 @@ export function RealtimeMapLibreMap({
         if (!feature || !source || clusterId == null) return;
         const expansionZoom = await source.getClusterExpansionZoom(clusterId);
         const coords = (feature.geometry as { coordinates?: [number, number] }).coordinates;
-        if (coords) map.easeTo({ center: coords, zoom: expansionZoom, duration: 450 });
+        if (coords) map.easeTo({ center: coords, zoom: expansionZoom, duration: mapMotionDuration(450) });
       });
 
       map.on("click", "tap-points", (event: MapLayerMouseEvent) => {
@@ -707,12 +712,12 @@ export function RealtimeMapLibreMap({
     >
       <h3 id={mapTitleId} className="sr-only">Mapa operativo de lecturas con precisión geográfica declarada</h3>
       <div ref={containerRef} className="h-full w-full" />
-      <div id={mapSummaryId} className="nexid-map-status pointer-events-none absolute left-16 top-20 max-w-[calc(100%-5rem)] rounded-lg border border-white/10 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 shadow-xl backdrop-blur sm:top-16 lg:top-20">
-        <b className="text-cyan-200">{geojson.features.length}</b> ubicaciones mapeables / {hotspots.length} zonas / {mode === "tenant" ? "tenant" : "global"}
-        <span className="mt-1 block text-[10px] text-slate-400">
+      <div id={mapSummaryId} className="nexid-map-status pointer-events-none absolute left-16 top-20 max-w-[calc(100%-5rem)] rounded-xl border border-white/10 bg-slate-950/78 px-3.5 py-2.5 text-sm font-semibold text-slate-300 shadow-xl backdrop-blur sm:top-16 lg:top-20">
+        <b className="text-base font-black text-cyan-200">{geojson.features.length}</b> ubicaciones mapeables <span aria-hidden="true">·</span> {hotspots.length} zonas <span aria-hidden="true">·</span> {mode === "tenant" ? "tenant" : "global"}
+        <span className="mt-1 block text-[11px] font-medium leading-4 text-slate-400">
           {precisionSummary.reported} reportadas · {precisionSummary.approximate} aproximadas · sin coordenada persistida, el evento no se dibuja
         </span>
-        <span className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px]" aria-label="Procedencia de las ubicaciones visibles">
+        <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold" aria-label="Procedencia de las ubicaciones visibles">
           <span className="text-emerald-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />GPS consentido {sourceSummary.consented_gps}</span>
           <span className="text-amber-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />Red/IP {sourceSummary.network_approx}</span>
           <span className="text-violet-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-violet-400" aria-hidden="true" />Mixta/otra {sourceSummary.mixed_approx + sourceSummary.other_reported}</span>
@@ -743,8 +748,8 @@ export function RealtimeMapLibreMap({
           </div>
         </div>
       ) : null}
-      <details className="absolute bottom-8 right-3 z-10 max-w-[min(22rem,calc(100%-1.5rem))] rounded-lg border border-white/10 bg-slate-950/85 text-xs text-slate-300 shadow-xl backdrop-blur">
-        <summary className="cursor-pointer px-3 py-2 font-black text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+      <details className="absolute bottom-8 right-3 z-10 max-w-[min(22rem,calc(100%-1.5rem))] rounded-xl border border-white/10 bg-slate-950/85 text-xs text-slate-300 shadow-xl backdrop-blur">
+        <summary className="flex min-h-11 cursor-pointer items-center px-3 py-2 font-black text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
           Resumen textual del mapa
         </summary>
         <div className="border-t border-white/10 px-3 py-2">

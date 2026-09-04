@@ -17,6 +17,7 @@ import {
   Megaphone,
   MousePointerClick,
   Radio,
+  RotateCcw,
   Settings,
   Send,
   ShieldAlert,
@@ -252,6 +253,13 @@ function timeRangeLabel(value: TimeRange) {
 
 function timeRangeMs(value: TimeRange) {
   return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.ms || TIME_RANGE_OPTIONS[2].ms;
+}
+
+function preferredDashboardBaseMap(): BaseMapLayer {
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.classList.contains("theme-light") || document.documentElement.getAttribute("data-theme") === "light"
+    ? "light"
+    : "dark";
 }
 
 function formatPercent(value: number) {
@@ -599,19 +607,19 @@ function MetricCard({
 }) {
   const color = tone === "red" ? "#ef4444" : tone === "green" ? "#22c55e" : tone === "blue" ? "#60a5fa" : "#22d3ee";
   return (
-    <div className="rounded-lg border border-slate-700/70 bg-[linear-gradient(180deg,rgba(17,31,52,.92),rgba(7,15,29,.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+    <div className="rounded-xl border border-slate-700/70 bg-[linear-gradient(180deg,rgba(17,31,52,.92),rgba(7,15,29,.94))] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-300">
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase leading-4 tracking-[0.055em] text-slate-300">
           <span style={{ color }}>{icon}</span>
           {label}
         </div>
-        <span className={tone === "red" ? "text-[11px] font-semibold text-red-300" : "text-[11px] font-semibold text-emerald-300"}>{delta}</span>
+        <span className={tone === "red" ? "rounded-full bg-red-400/10 px-2 py-0.5 text-[10px] font-bold text-red-300" : "rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300"}>{delta}</span>
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="text-[22px] font-black tracking-[-0.02em] text-white">{value}</p>
-        <p className="pb-1 text-[10px] text-slate-500">ventana activa</p>
+        <p className="text-[26px] font-black leading-none tracking-[-0.035em] text-white">{value}</p>
+        <p className="pb-0.5 text-[10px] font-medium text-slate-500">ventana activa</p>
       </div>
-      <p className="mt-1 min-h-[28px] text-[10px] leading-3 text-slate-400">{help}</p>
+      <p className="mt-1.5 min-h-[32px] text-[10.5px] leading-4 text-slate-400">{help}</p>
       <div className="mt-1">
         <MiniSparkline data={data} color={color} dataKey={dataKey} />
       </div>
@@ -722,6 +730,16 @@ export function ExecutiveRealtimeCrm({
   useEffect(() => {
     if (tenantSession) setSelectedTenant(lockedTenantScope);
   }, [lockedTenantScope, tenantSession]);
+
+  useEffect(() => {
+    const syncBaseMapWithTheme = () => {
+      setBaseMap((current) => current === "light" || current === "dark" ? preferredDashboardBaseMap() : current);
+    };
+    syncBaseMapWithTheme();
+    const observer = new MutationObserver(syncBaseMapWithTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    return () => observer.disconnect();
+  }, []);
 
   const effectiveSelectedTenant = tenantSession ? lockedTenantScope : selectedTenant;
 
@@ -1295,7 +1313,7 @@ export function ExecutiveRealtimeCrm({
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
     ...(canReadSensitiveEvents ? [{ icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } }] : []),
     { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar actividad", short: "CSV", title: "Exportar sólo interacciones con señal comercial; no exporta audiencia ni destinatarios.", action: handleExport, disabled: commercialActivityEvents.length === 0, disabledReason: exportDisabledReason },
-    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { setSelectedTenant(tenantSession ? lockedTenantScope : "all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
+    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { setSelectedTenant(tenantSession ? lockedTenantScope : "all"); setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); } },
   ];
 
   return (
@@ -1308,18 +1326,18 @@ export function ExecutiveRealtimeCrm({
           </div>
           <div className="border-l border-white/10 pl-4 lg:pl-5">
             <p className="text-xs text-slate-400">Admin enterprise</p>
-            <h1 className="text-xl font-black tracking-[-0.03em] text-white lg:text-2xl">CRM Semántica Operativa</h1>
+            <h1 className="text-[1.4rem] font-black leading-tight tracking-[-0.035em] text-white lg:text-[1.65rem]">CRM Semántica Operativa</h1>
           </div>
         </div>
 
-        <nav className="order-3 grid h-11 w-full grid-cols-3 overflow-hidden rounded-xl border border-white/8 bg-slate-950/45 text-[11px] font-semibold text-slate-300 sm:text-sm lg:order-none lg:mx-auto lg:h-12 lg:w-[500px]">
-          <button type="button" title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => onSectionChange?.("summary")} className="flex items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200">
+        <nav className="order-3 grid min-h-12 w-full grid-cols-3 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:text-sm lg:order-none lg:mx-auto lg:w-[500px]">
+          <button type="button" title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => onSectionChange?.("summary")} className="flex min-h-12 items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 px-2 text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300">
             <Activity className="h-4 w-4" /> CRM en vivo
           </button>
-          <button type="button" title="Abrir operación NFC: lotes, tags, QA, anclaje y publicación" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+          <button type="button" title="Abrir operación NFC: lotes, tags, QA, anclaje y publicación" onClick={() => onSectionChange?.("infra")} className="flex min-h-12 items-center justify-center gap-2 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300">
             <Truck className="h-4 w-4" /> Operación NFC
           </button>
-          <button type="button" title="Abrir segmentos, beneficios y campañas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+          <button type="button" title="Abrir segmentos, beneficios y campañas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex min-h-12 items-center justify-center gap-2 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300">
             <Users className="h-4 w-4" /> Clientes & campañas
           </button>
         </nav>
@@ -1383,8 +1401,8 @@ export function ExecutiveRealtimeCrm({
         <section className="order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-96 lg:shrink-0">
           <div className="flex items-start justify-between gap-3">
             <span>
-              <h2 className="text-lg font-bold text-white">Lectura operativa</h2>
-              <p className="text-[11px] text-slate-500">Qué pasó, qué es confiable y qué se puede activar ahora.</p>
+              <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Lectura operativa</h2>
+              <p className="mt-0.5 text-xs font-medium leading-5 text-slate-500">Qué pasó, qué es confiable y qué se puede activar ahora.</p>
             </span>
             <span className="flex items-center gap-2 text-xs text-slate-400" title={streamHealth.detail}><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> {streamHealth.label}</span>
           </div>
@@ -1448,11 +1466,11 @@ export function ExecutiveRealtimeCrm({
           <div className="flex min-h-0 flex-col lg:flex-1">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-white">Mapa de eventos por capas</h2>
-                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
+                <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Mapa de eventos por capas</h2>
+                <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
               </div>
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
-                <select size={1} aria-label="Filtrar lecturas por tenant" title={tenantSession ? "Alcance fijado por la sesión tenant" : "Filtrar lecturas por tenant"} value={effectiveSelectedTenant} disabled={tenantSession} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-11 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white disabled:cursor-not-allowed disabled:text-slate-400 sm:col-span-1 sm:w-auto sm:min-w-[150px]">
+                <select size={1} aria-label="Filtrar lecturas por tenant" title={tenantSession ? "Alcance fijado por la sesión tenant" : "Filtrar lecturas por tenant"} value={effectiveSelectedTenant} disabled={tenantSession} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-12 w-full min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 disabled:cursor-not-allowed disabled:text-slate-400 sm:col-span-1 sm:w-auto sm:min-w-[160px]">
                   {tenantSession ? (
                     <option value={lockedTenantScope}>{lockedTenantScope ? tenantDisplayName(lockedTenantScope) : "Tenant no disponible"}</option>
                   ) : (
@@ -1462,13 +1480,13 @@ export function ExecutiveRealtimeCrm({
                     </>
                   )}
                 </select>
-                <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
+                <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
+                <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 2xl:hidden">
                   {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <button type="button" title={commercialActivityEvents.length === 0 ? exportDisabledReason : "Exportar actividad con señal comercial a CSV"} onClick={handleExport} disabled={commercialActivityEvents.length === 0} className="flex h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {commercialActivityEvents.length === 0 ? "Sin señales" : "Exportar"}</button>
+                <button type="button" title={commercialActivityEvents.length === 0 ? exportDisabledReason : "Exportar actividad con señal comercial a CSV"} onClick={handleExport} disabled={commercialActivityEvents.length === 0} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/80 px-4 text-sm font-bold text-white transition hover:border-cyan-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {commercialActivityEvents.length === 0 ? "Sin señales" : "Exportar"}</button>
               </div>
             </div>
 
@@ -1487,21 +1505,23 @@ export function ExecutiveRealtimeCrm({
               </div>
             ) : null}
 
-            <div id="live-tap-map" ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[520px] rounded-xl sm:min-h-[560px] lg:min-h-0"}`}>
-              <div className="absolute left-4 top-4 z-20 grid gap-2">
-                <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
-                <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
-                <button type="button" title="Mostrar radio visual de cercanía por hotspot" onClick={() => setMapView("nearby")} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanía comercial"><Crosshair className="h-4 w-4" /></button>
-                <button type="button" title="Mostrar puntos individuales de lectura" onClick={() => setMapView("points")} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar puntos"><Layers className="h-4 w-4" /></button>
+            <div id="live-tap-map" ref={mapPanelRef} data-map-fullscreen={isMapFullscreen ? "true" : "false"} className={`nexid-crm-map-panel relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[520px] rounded-2xl sm:min-h-[560px] lg:min-h-0"}`}>
+              <div role="group" aria-label="Acciones del mapa" className="nexid-crm-map-actions absolute left-3 top-3 z-30 grid gap-2 sm:left-4 sm:top-4">
+                <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Acercar mapa">+</button>
+                <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Alejar mapa">−</button>
+                <button type="button" title="Restablecer densidad, zoom y capa base según el tema activo" onClick={() => { setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); }} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Restablecer mapa"><RotateCcw className="h-5 w-5" /></button>
+                <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="nexid-crm-map-control grid h-12 w-12 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-5 w-5" /></button>
               </div>
 
-              <div className="absolute left-[72px] right-3 top-4 z-30 flex flex-wrap items-center justify-end gap-2 lg:left-auto lg:right-5 lg:flex-nowrap">
-                {MAP_VIEW_OPTIONS.map((option) => (
-                  <button key={option.value} type="button" aria-pressed={mapView === option.value} title={option.title} onClick={() => setMapView(option.value)} className={`flex h-11 items-center gap-2 rounded-lg border px-2 text-sm font-semibold sm:px-3 ${mapView === option.value ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
-                    {option.icon}<span className="hidden sm:inline">{option.label}</span>
-                  </button>
-                ))}
-                <div className="hidden items-center gap-1 rounded-lg border border-white/10 bg-slate-950/70 p-1 xl:flex" title="Cambiar capa base del mapa">
+              <div className="nexid-crm-map-toolbar absolute left-[4.5rem] right-3 top-3 z-30 flex min-w-0 items-start justify-end gap-2 sm:left-[5rem] sm:top-4 lg:left-auto lg:right-5">
+                <div role="group" aria-label="Visualización de eventos" className="nexid-crm-map-view-controls flex min-w-0 flex-1 items-center justify-end gap-2 overflow-x-auto pb-1 lg:flex-none lg:overflow-visible lg:pb-0">
+                  {MAP_VIEW_OPTIONS.map((option) => (
+                    <button key={option.value} type="button" aria-pressed={mapView === option.value} title={option.title} onClick={() => setMapView(option.value)} className={`nexid-crm-map-view-button flex h-12 min-w-[4.5rem] flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-bold shadow-lg transition sm:min-w-0 sm:flex-none sm:gap-2 sm:px-3 sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${mapView === option.value ? "border-cyan-300 bg-cyan-400/16 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,.2)]" : "border-white/10 bg-slate-950/72 text-slate-300 hover:border-cyan-300/35 hover:text-white"}`}>
+                      {option.icon}<span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div role="group" aria-label="Capa base del mapa" className="nexid-crm-map-base-controls hidden shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-slate-950/72 p-1 2xl:flex" title="Cambiar capa base del mapa">
                   {BASEMAP_OPTIONS.map((option) => (
                     <button
                       key={option.value}
@@ -1509,32 +1529,30 @@ export function ExecutiveRealtimeCrm({
                       title={option.title}
                       aria-pressed={baseMap === option.value}
                       onClick={() => setBaseMap(option.value)}
-                      className={`h-11 min-h-11 rounded-md px-3 text-[11px] font-black uppercase tracking-[0.06em] ${baseMap === option.value ? "bg-cyan-300 text-slate-950" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
+                      className={`min-h-11 rounded-lg px-3 text-[11px] font-black uppercase tracking-[0.06em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${baseMap === option.value ? "bg-cyan-300 text-slate-950 shadow-[0_6px_18px_rgba(34,211,238,.2)]" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
                     >
                       {option.label}
                     </button>
                   ))}
                 </div>
-                <button type="button" title={streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={!streetViewTarget} className="hidden h-11 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 xl:flex"><Globe className="h-4 w-4" /> {streetViewTarget ? "Street" : "Sin GPS"}</button>
-                <button type="button" title="Restablecer mapa a capa de densidad y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
-                <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-4 w-4" /></button>
+                <button type="button" title={streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={!streetViewTarget} className="nexid-crm-map-street hidden h-12 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/72 px-3 text-sm font-bold text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 2xl:flex"><Globe className="h-4 w-4" /> {streetViewTarget ? "Street" : "Sin GPS"}</button>
               </div>
 
-              <div className="absolute bottom-[260px] left-4 z-20 rounded-lg border border-white/10 bg-slate-950/75 p-3 text-xs text-slate-200 shadow-xl lg:bottom-20">
-                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
-                <p className="mb-2 max-w-[13rem] text-[10px] leading-4 text-slate-400">{MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.description}</p>
+              <div className="nexid-crm-map-legend absolute bottom-[264px] left-3 z-20 rounded-xl border border-white/10 bg-slate-950/82 p-3.5 text-xs text-slate-200 shadow-xl backdrop-blur sm:left-4 lg:bottom-20">
+                <p className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
+                <p className="mb-2 max-w-[15rem] text-xs font-medium leading-[1.15rem] text-slate-400">{MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.description}</p>
                 {mapView === "heat" ? (
                   <div aria-label="Escala relativa de volumen observado">
                     <div className="h-2.5 w-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-600 to-violet-600" aria-hidden="true" />
-                    <div className="mt-1 flex justify-between gap-3 text-[9px] text-slate-300"><span>Menor volumen</span><span>Mayor volumen</span></div>
+                    <div className="mt-1.5 flex justify-between gap-3 text-[10px] font-semibold text-slate-300"><span>Menor volumen</span><span>Mayor volumen</span></div>
                   </div>
                 ) : mapView === "points" ? (
-                  <div className="space-y-1 text-[10px] text-slate-300">
+                  <div className="space-y-1.5 text-[11px] font-medium text-slate-300">
                     <p className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-cyan-300" /> Lectura observada</p>
                     <p className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-rose-400" /> Evento con señal de riesgo</p>
                   </div>
                 ) : (
-                  <p className="flex items-center gap-2 text-[10px] text-slate-300"><i className="h-3 w-3 rounded-full border border-cyan-300/70 bg-cyan-300/10" /> Radio visual; no es geofencing</p>
+                  <p className="flex items-center gap-2 text-[11px] font-medium text-slate-300"><i className="h-3 w-3 rounded-full border border-cyan-300/70 bg-cyan-300/10" /> Radio visual; no es geofencing</p>
                 )}
               </div>
 
@@ -1542,8 +1560,8 @@ export function ExecutiveRealtimeCrm({
                 <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} />
               </div>
 
-              <div className="relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/72 p-3 shadow-2xl backdrop-blur lg:absolute lg:bottom-4 lg:right-4 lg:top-[76px] lg:m-0 lg:w-[270px] lg:max-h-none">
-                <p className="text-sm font-semibold text-white">Últimos eventos visibles</p>
+              <div className="relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur lg:absolute lg:bottom-4 lg:right-4 lg:top-[76px] lg:m-0 lg:w-[282px] lg:max-h-none">
+                <p className="text-base font-extrabold tracking-[-0.015em] text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {visibleEvents.slice(0, 4).map((event) => {
                     const authenticated = event.authenticationVerified === true;
@@ -1551,19 +1569,19 @@ export function ExecutiveRealtimeCrm({
                     const risk = isRealtimeRisk(event.verdict, event.reason);
                     const linkedIncident = incidentsByEventId[String(event.eventId)] || null;
                     return (
-                      <button type="button" onClick={() => setSelectedEvent(event)} key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="w-full rounded-lg border border-white/8 bg-slate-900/70 p-3 text-left transition hover:border-cyan-300/35 hover:bg-slate-900" data-testid="open-event-incident-drawer">
+                      <button type="button" onClick={() => setSelectedEvent(event)} key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="min-h-[5.25rem] w-full rounded-xl border border-white/8 bg-slate-900/70 p-3 text-left transition hover:border-cyan-300/35 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" data-testid="open-event-incident-drawer">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[11px] text-slate-500">{formatTimeInZone(event.occurredAt || Date.now(), consoleTimezone)}</p>
-                          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : authenticated ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${linkedIncident.status}` : authenticated ? "Autenticación verificada" : recognized ? "Producto reconocido" : risk ? "Riesgo" : "Actividad"}</span>
+                          <span className={`rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : authenticated ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${linkedIncident.status}` : authenticated ? "Autenticación verificada" : recognized ? "Producto reconocido" : risk ? "Riesgo" : "Actividad"}</span>
                         </div>
-                        <p className="mt-1 text-sm font-black text-white">UID: {event.uidMasked}</p>
+                        <p className="mt-1.5 text-[15px] font-black tracking-[-0.015em] text-white">UID: {event.uidMasked}</p>
                         <p className="text-xs text-slate-400">{deviceSummary(event)}</p>
-                        <p className="mt-1 text-[10px] font-bold text-cyan-300">Abrir evidencia y expediente →</p>
+                        <p className="mt-1.5 text-[11px] font-bold text-cyan-300">Abrir evidencia y expediente →</p>
                       </button>
                     );
                   })}
                 </div>
-                <button type="button" title="Abrir la auditoría completa de eventos" onClick={() => { window.location.href = "/events"; }} className="mt-3 text-sm font-semibold text-cyan-300">Ver todos los eventos</button>
+                <button type="button" title="Abrir la auditoría completa de eventos" onClick={() => { window.location.href = "/events"; }} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 text-sm font-bold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-400/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Ver todos los eventos</button>
               </div>
             </div>
           </div>

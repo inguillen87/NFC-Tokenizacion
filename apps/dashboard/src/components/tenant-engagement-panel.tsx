@@ -164,9 +164,11 @@ function LoadingState() {
 
 export function TenantEngagementPanel({
   tenantSlug,
+  tenantName,
   canRead,
 }: {
   tenantSlug: string | null;
+  tenantName?: string;
   canRead: boolean;
 }) {
   const [range, setRange] = useState<TenantEngagementRange>("24h");
@@ -281,7 +283,7 @@ export function TenantEngagementPanel({
       <div className={styles.ambient} aria-hidden="true" />
       <header className={styles.header}>
         <div className={styles.heading}>
-          <span className={styles.eyebrow}><Sparkles size={15} /> Inteligencia post-tap · {tenantSlug}</span>
+          <span className={styles.eyebrow}><Sparkles size={15} /> Inteligencia post-tap · {tenantName || tenantSlug}</span>
           <h2 id="engagement-title">Del pasaporte a la relación: qué ocurrió y qué podés activar</h2>
           <p>Cada registro es una <strong>interacción posterior al tap</strong> respaldada por una fuente. La lectura NFC sigue siendo actividad de una unidad, no una persona; un contacto aparece únicamente cuando existe identidad vinculada y consentimiento vigente.</p>
         </div>
