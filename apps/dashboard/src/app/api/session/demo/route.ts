@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../../../lib/session";
 import { getAccessProfiles } from "../../../../lib/access-profiles";
+import { noStoreJson, requireSameOrigin } from "../../../../lib/auth-recovery-proxy";
 import { dashboardDemoAccessAllowedForRole } from "../../../../lib/dashboard-access-flags";
 import { normalizeDashboardReturnPath } from "../../../../lib/dashboard-return-path";
 
@@ -60,33 +61,36 @@ function useSecureCookie(req: Request) {
   return process.env.NODE_ENV === "production";
 }
 
-function isNavigationPrefetch(req: Request, url: URL) {
-  return (
-    url.searchParams.has("_rsc") ||
-    req.headers.get("next-router-prefetch") === "1" ||
-    req.headers.get("purpose")?.toLowerCase() === "prefetch" ||
-    req.headers.get("sec-purpose")?.toLowerCase() === "prefetch"
-  );
+function methodNotAllowed() {
+  return new NextResponse(null, {
+    status: 405,
+    headers: {
+      Allow: "POST",
+      "Cache-Control": "no-store, max-age=0",
+      Pragma: "no-cache",
+    },
+  });
 }
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  if (isNavigationPrefetch(req, url)) {
-    console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_prefetch_ignored" }));
-    return new NextResponse(null, { status: 204 });
+export async function POST(req: Request) {
+  if (!requireSameOrigin(req)) {
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_denied", reason: "same_origin_required" }));
+    return noStoreJson({ ok: false, code: "same_origin_required", reason: "Same-origin POST required." }, 403);
   }
+
+  const url = new URL(req.url);
   const role = normalizeRole(url.searchParams.get("role"));
   const nextPath = normalizeDashboardReturnPath(url.searchParams.get("next"));
   if (role === "super-admin") {
     console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_denied", reason: "superadmin_requires_clerk", role }));
-    return NextResponse.json(
+    return noStoreJson(
       { ok: false, code: "superadmin_requires_clerk", reason: "Super Admin requires Google/Clerk allowlist access." },
-      { status: 403 },
+      403,
     );
   }
   if (!dashboardDemoAccessAllowedForRole(role)) {
     console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_denied", reason: "role_disabled", role }));
-    return NextResponse.json({ ok: false, reason: "demo access disabled for this role" }, { status: 403 });
+    return noStoreJson({ ok: false, reason: "demo access disabled for this role" }, 403);
   }
   const account = demoAccountForRole(role);
   const scope = demoTenantScope(role);
@@ -108,6 +112,16 @@ export async function GET(req: Request) {
     maxAge: 60 * 60 * 12,
   });
 
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  response.headers.set("Pragma", "no-cache");
   console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_ok", email: account.email, role }));
   return response;
+}
+
+export async function GET() {
+  return methodNotAllowed();
+}
+
+export async function HEAD() {
+  return methodNotAllowed();
 }

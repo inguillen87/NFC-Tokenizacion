@@ -5,12 +5,13 @@ import test from "node:test";
 const source = async (relativePath) => readFile(new URL(relativePath, import.meta.url), "utf8");
 
 test("dashboard network boundaries share one abortable timeout", async () => {
-  const [fetchSource, session, apiProxy, heartbeat, recovery] = await Promise.all([
+  const [fetchSource, session, apiProxy, heartbeat, recovery, clerkCallback] = await Promise.all([
     source("../src/lib/dashboard-fetch.ts"),
     source("../src/lib/session.ts"),
     source("../src/lib/api-proxy.ts"),
     source("../src/components/session-heartbeat.tsx"),
     source("../src/app/session-recovery/session-recovery-client.tsx"),
+    source("../src/app/auth/clerk/super-admin/route.ts"),
   ]);
 
   assert.match(fetchSource, /DASHBOARD_FETCH_TIMEOUT_MS = 8_000/);
@@ -21,6 +22,13 @@ test("dashboard network boundaries share one abortable timeout", async () => {
   assert.match(apiProxy, /return dashboardFetch\(`\$\{API_BASE\}\$\{path\}`/);
   assert.match(heartbeat, /dashboardFetch\("\/api\/session\/current"/);
   assert.match(recovery, /dashboardFetch\("\/api\/session\/current"/);
+  assert.match(clerkCallback, /dashboardFetch\(`\$\{API_BASE\}\/auth\/clerk-sync`/);
+  assert.doesNotMatch(clerkCallback, /await fetch\(`\$\{API_BASE\}\/auth\/clerk-sync`/);
+  assert.match(clerkCallback, /response\.headers\.set\("Cache-Control", "private, no-store, max-age=0"\)/);
+  assert.match(clerkCallback, /privateNoStoreRedirect\(NextResponse\.redirect\(signInUrl, 303\)\)/);
+  assert.match(clerkCallback, /return privateNoStoreRedirect\(response\)/);
+  assert.match(clerkCallback, /reason === "clerk_google_required"/);
+  assert.match(clerkCallback, /data\?\.code \|\| data\?\.reason/);
 
   const { dashboardFetch } = await import(`../src/lib/dashboard-fetch.ts?timeout=${Date.now()}`);
   const originalFetch = globalThis.fetch;

@@ -7,6 +7,8 @@ const { resolveVerifiedClerkAdminIdentity } = await import("../src/lib/clerk-adm
 const original = {
   secret: process.env.CLERK_SECRET_KEY,
   parties: process.env.CLERK_AUTHORIZED_PARTIES,
+  dashboardOrigin: process.env.DASHBOARD_ORIGIN,
+  publicDashboardUrl: process.env.NEXT_PUBLIC_DASHBOARD_URL,
   webOrigin: process.env.WEB_ORIGIN,
   publicWebUrl: process.env.NEXT_PUBLIC_WEB_URL,
   nodeEnv: process.env.NODE_ENV,
@@ -22,6 +24,8 @@ test.after(() => {
   for (const [key, value] of Object.entries({
     CLERK_SECRET_KEY: original.secret,
     CLERK_AUTHORIZED_PARTIES: original.parties,
+    DASHBOARD_ORIGIN: original.dashboardOrigin,
+    NEXT_PUBLIC_DASHBOARD_URL: original.publicDashboardUrl,
     WEB_ORIGIN: original.webOrigin,
     NEXT_PUBLIC_WEB_URL: original.publicWebUrl,
     NODE_ENV: original.nodeEnv,
@@ -54,6 +58,11 @@ test("Clerk bootstrap derives identity from a verified token and fetched verifie
             { id: "email_primary", emailAddress: "Founder@Nexid.Lat", verification: { status: "verified" } },
           ],
           fullName: "NexID Founder",
+          externalAccounts: [{
+            provider: "oauth_google",
+            emailAddress: "Founder@Nexid.Lat",
+            verification: { status: "verified" },
+          }],
           web3Wallets: [{
             web3Wallet: "0x0000000000000000000000000000000000000001",
             verification: { status: "verified", strategy: "metamask" },
@@ -69,6 +78,7 @@ test("Clerk bootstrap derives identity from a verified token and fetched verifie
       externalUserId: "user_clerk_123",
       email: "founder@nexid.lat",
       fullName: "NexID Founder",
+      verifiedOAuthProviders: ["google"],
       verifiedWeb3Wallets: [{ address: "0x0000000000000000000000000000000000000001", provider: "metamask" }],
     },
   });
@@ -116,23 +126,130 @@ test("invalid token, mismatched user and unverified email all fail closed", asyn
   assert.deepEqual(unverifiedPrimary, { ok: false, status: 403, reason: "clerk_email_unverified" });
 });
 
-test("production Clerk bootstrap requires an authorized-party origin", { concurrency: false }, async () => {
+test("OAuth provider evidence must be verified and belong to the primary email", async () => {
+  const result = await resolveVerifiedClerkAdminIdentity(
+    new Request("https://api.nexid.lat/auth/clerk-sync", {
+      headers: { authorization: "Bearer clerk-session-jwt" },
+    }),
+    {
+      verify: async () => ({ sub: "user_expected" }),
+      loadUser: async () => ({
+        id: "user_expected",
+        primaryEmailAddressId: "email_primary",
+        emailAddresses: [{
+          id: "email_primary",
+          emailAddress: "founder@nexid.lat",
+          verification: { status: "verified" },
+        }],
+        externalAccounts: [
+          {
+            provider: "google",
+            emailAddress: "other@example.com",
+            verification: { status: "verified" },
+          },
+          {
+            provider: "oauth_google",
+            emailAddress: "founder@nexid.lat",
+            verification: { status: "unverified" },
+          },
+          {
+            provider: "oauth_github",
+            emailAddress: "founder@nexid.lat",
+            verification: { status: "verified" },
+          },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.ok ? result.identity.verifiedOAuthProviders : [], ["github"]);
+});
+
+test("production Clerk bootstrap requires explicit parties even when a public web URL exists", { concurrency: false }, async () => {
   delete process.env.CLERK_AUTHORIZED_PARTIES;
+  delete process.env.DASHBOARD_ORIGIN;
+  delete process.env.NEXT_PUBLIC_DASHBOARD_URL;
+  delete process.env.WEB_ORIGIN;
+  process.env.NEXT_PUBLIC_WEB_URL = "https://nexid.lat";
+  process.env.NODE_ENV = "production";
+  let verifyCalled = false;
+  const result = await resolveVerifiedClerkAdminIdentity(
+    new Request("https://api.nexid.lat/auth/clerk-sync", { headers: { authorization: "Bearer token" } }),
+    {
+      verify: async () => {
+        verifyCalled = true;
+        return { sub: "unused" };
+      },
+      loadUser: async () => ({ id: "unused" }),
+    },
+  );
+  assert.deepEqual(result, { ok: false, status: 503, reason: "clerk_authorized_parties_not_configured" });
+  assert.equal(verifyCalled, false);
+});
+
+test("production Clerk bootstrap verifies explicit consumer and dashboard origins together", { concurrency: false }, async () => {
+  process.env.CLERK_AUTHORIZED_PARTIES = "https://app.nexid.lat,https://nexid.lat";
   delete process.env.DASHBOARD_ORIGIN;
   delete process.env.NEXT_PUBLIC_DASHBOARD_URL;
   delete process.env.WEB_ORIGIN;
   delete process.env.NEXT_PUBLIC_WEB_URL;
   process.env.NODE_ENV = "production";
+  let observedParties = [];
   const result = await resolveVerifiedClerkAdminIdentity(
     new Request("https://api.nexid.lat/auth/clerk-sync", { headers: { authorization: "Bearer token" } }),
-    { verify: async () => ({ sub: "unused" }), loadUser: async () => ({ id: "unused" }) },
+    {
+      verify: async (_token, options) => {
+        observedParties = options.authorizedParties || [];
+        return { sub: "user_founder" };
+      },
+      loadUser: async () => ({
+        id: "user_founder",
+        primaryEmailAddressId: "email_founder",
+        emailAddresses: [{
+          id: "email_founder",
+          emailAddress: "founder@nexid.lat",
+          verification: { status: "verified" },
+        }],
+      }),
+    },
   );
-  assert.deepEqual(result, { ok: false, status: 503, reason: "clerk_authorized_parties_not_configured" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(observedParties, ["https://app.nexid.lat", "https://nexid.lat"]);
+});
+
+test("Clerk verification failures preserve safe diagnostic categories", async () => {
+  const req = new Request("https://api.nexid.lat/auth/clerk-sync", {
+    headers: { authorization: "Bearer invalid" },
+  });
+  const loadUser = async () => { throw new Error("must not load"); };
+
+  const wrongParty = await resolveVerifiedClerkAdminIdentity(req, {
+    verify: async () => { throw { reason: "token-invalid-authorized-parties" }; },
+    loadUser,
+  });
+  assert.deepEqual(wrongParty, { ok: false, status: 401, reason: "clerk_authorized_party_invalid" });
+
+  const expired = await resolveVerifiedClerkAdminIdentity(req, {
+    verify: async () => { throw { reason: "token-expired" }; },
+    loadUser,
+  });
+  assert.deepEqual(expired, { ok: false, status: 401, reason: "clerk_session_expired" });
+
+  const unavailable = await resolveVerifiedClerkAdminIdentity(req, {
+    verify: async () => { throw { reason: "jwk-remote-failed-to-load" }; },
+    loadUser,
+  });
+  assert.deepEqual(unavailable, { ok: false, status: 503, reason: "clerk_verification_unavailable" });
 });
 
 test("Clerk sync rejects caller identity substitution and no longer accepts ADMIN_API_KEY", async () => {
   const route = await readFile(new URL("../src/app/auth/clerk-sync/route.ts", import.meta.url), "utf8");
   assert.match(route, /resolveVerifiedClerkAdminIdentity\(req\)/);
+  assert.match(route, /verifiedOAuthProviders\.includes\('google'\)/);
+  assert.match(route, /code: 'clerk_google_required'/);
+  const deniedAudit = route.match(/console\.info\("\[clerk_sync_audit\]"[\s\S]*?\}\)\);/)?.[0] || "";
+  assert.doesNotMatch(deniedAudit, /\bemail\b/);
   assert.match(route, /claimedExternalUserId !== clerkAuth\.identity\.externalUserId/);
   assert.match(route, /claimedEmail !== clerkAuth\.identity\.email/);
   assert.match(route, /membership\.role = 'super_admin'::membership_role/);

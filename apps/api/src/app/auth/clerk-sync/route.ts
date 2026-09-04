@@ -15,6 +15,13 @@ import { resolveVerifiedClerkAdminIdentity } from '../../../lib/clerk-admin-auth
 export async function POST(req: Request) {
   const clerkAuth = await resolveVerifiedClerkAdminIdentity(req);
   if (!clerkAuth.ok) return json({ ok: false, reason: clerkAuth.reason }, clerkAuth.status);
+  if (!clerkAuth.identity.verifiedOAuthProviders.includes('google')) {
+    return json({
+      ok: false,
+      reason: 'Google authentication required for dashboard super admin',
+      code: 'clerk_google_required',
+    }, 403);
+  }
 
   const limited = await enforceCriticalRateLimit(req, {
     rateClass: 'auth',
@@ -44,7 +51,6 @@ export async function POST(req: Request) {
   if (!isSuperAdmin) {
     console.info("[clerk_sync_audit]", JSON.stringify({
       event: "clerk_super_admin_denied",
-      email,
       allowlist: redactAllowlistForLogs(),
     }));
     return json({

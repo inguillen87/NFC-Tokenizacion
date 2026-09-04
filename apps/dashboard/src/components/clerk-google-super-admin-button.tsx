@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useClerk } from "@clerk/nextjs";
 import { useSignIn } from "@clerk/nextjs/legacy";
 import { normalizeDashboardReturnPath } from "../lib/dashboard-return-path";
 
@@ -9,6 +10,7 @@ type Props = {
   label?: string;
   compact?: boolean;
   nextPath?: string;
+  resetSessionOnStart?: boolean;
 };
 
 function getErrorMessage(error: unknown) {
@@ -28,7 +30,9 @@ export function ClerkGoogleSuperAdminButton({
   label = "Entrar con Google como Super Admin",
   compact,
   nextPath = "/",
+  resetSessionOnStart = false,
 }: Props) {
+  const clerk = useClerk();
   const { isLoaded, signIn } = useSignIn();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +45,13 @@ export function ClerkGoogleSuperAdminButton({
 
     try {
       const origin = window.location.origin;
+      if (resetSessionOnStart) {
+        const restartUrl = new URL("/sign-in", origin);
+        restartUrl.searchParams.set("next", safeNextPath);
+        restartUrl.searchParams.set("reauth", "1");
+        await clerk.signOut({ redirectUrl: restartUrl.toString() });
+        return;
+      }
       const completeUrl = new URL("/auth/clerk/super-admin", origin);
       completeUrl.searchParams.set("next", safeNextPath);
       await signIn.authenticateWithRedirect({
@@ -75,7 +86,9 @@ export function ClerkGoogleSuperAdminButton({
         <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-black text-slate-950">
           G
         </span>
-        {pending ? "Abriendo Google..." : label}
+        {pending
+          ? resetSessionOnStart ? "Cerrando sesión anterior..." : "Abriendo Google..."
+          : !isLoaded ? "Preparando acceso seguro..." : label}
       </button>
       {error ? (
         <p className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100">

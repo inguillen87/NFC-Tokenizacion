@@ -1,4 +1,3 @@
-import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandLockup } from "@product/ui";
 import { CheckCircle2, CircleAlert } from "lucide-react";
@@ -20,8 +19,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const params = searchParams ? await searchParams : {};
   const rawNextPath = Array.isArray(params.next) ? params.next[0] : params.next;
   const nextPath = normalizeDashboardReturnPath(rawNextPath);
-  const completePath = `/auth/clerk/super-admin?next=${encodeURIComponent(nextPath)}`;
   const loginPath = `/login?next=${encodeURIComponent(nextPath)}`;
+  const reauth = (Array.isArray(params.reauth) ? params.reauth[0] : params.reauth) === "1";
 
   return (
     <main data-testid="sign-in-superadmin-page" className="dashboard-auth-surface relative min-h-screen overflow-hidden bg-slate-950 text-white">
@@ -66,19 +65,20 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </p>
             </div>
             {bodegaDemoAllowed ? (
-              <Link
-                href={`/api/session/demo?role=tenant-admin&next=${encodeURIComponent(nextPath)}`}
-                prefetch={false}
-                data-testid="sign-in-bodega-demo-link"
-                title="Abrir la demo simulada de Bodega Balmec"
-                className="dashboard-auth-profile-card rounded-2xl border border-cyan-300/25 p-4 text-left transition hover:border-cyan-200/70"
-              >
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Demo comercial 12h</p>
-                <h2 className="mt-2 text-lg font-black text-white">Demo Bodega Balmec</h2>
-                <p className="mt-2 text-sm leading-5 text-slate-300">
-                  Tenant completo para mostrar CRM, mapa de eventos reportados, proof y marketplace sin permisos globales.
-                </p>
-              </Link>
+              <form action={`/api/session/demo?role=tenant-admin&next=${encodeURIComponent(nextPath)}`} method="post" className="h-full">
+                <button
+                  type="submit"
+                  data-testid="sign-in-bodega-demo-link"
+                  title="Abrir la demo simulada de Bodega Balmec"
+                  className="dashboard-auth-profile-card h-full w-full rounded-2xl border border-cyan-300/25 p-4 text-left transition hover:border-cyan-200/70"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Demo comercial 12h</p>
+                  <h2 className="mt-2 text-lg font-black text-white">Demo Bodega Balmec</h2>
+                  <p className="mt-2 text-sm leading-5 text-slate-300">
+                    Tenant completo para mostrar CRM, mapa de eventos reportados, proof y marketplace sin permisos globales.
+                  </p>
+                </button>
+              </form>
             ) : (
               <div className="dashboard-auth-panel dashboard-auth-panel--soft rounded-2xl border border-white/10 p-4 text-left opacity-80">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Demo deshabilitada</p>
@@ -103,35 +103,24 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </div>
           {clerkEnabled ? (
             <div data-testid="sign-in-clerk-live-panel" className="grid gap-4">
+              {reauth ? (
+                <p className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
+                  La sesión anterior quedó cerrada. Continuá con el Google fundador autorizado.
+                </p>
+              ) : null}
               <ClerkGoogleSuperAdminButton
                 label="Continuar con Google allowlisted"
                 nextPath={nextPath}
                 className="dashboard-auth-oauth-button dashboard-auth-oauth-button--solid flex w-full items-center justify-center gap-3 rounded-2xl border border-cyan-300/45 px-5 py-4 text-sm font-black shadow-[0_22px_55px_rgba(34,211,238,0.22)] transition disabled:cursor-wait disabled:opacity-70"
               />
-              <div className="dashboard-auth-panel dashboard-auth-panel--inset rounded-2xl border border-white/10 p-3">
-                <p className="px-2 pb-3 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
-                  Fallback Clerk
+              <div data-testid="sign-in-google-only-boundary" className="dashboard-auth-panel dashboard-auth-panel--inset rounded-2xl border border-white/10 p-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200">
+                  Único acceso global habilitado
                 </p>
-                <SignIn
-                  routing="path"
-                  path="/sign-in"
-                  signUpUrl="/sign-up"
-                  forceRedirectUrl={completePath}
-                  fallbackRedirectUrl={completePath}
-                  appearance={{
-                    variables: {
-                      colorPrimary: "var(--auth-accent)",
-                      colorPrimaryForeground: "var(--auth-primary-foreground)",
-                      colorBackground: "var(--auth-clerk-bg)",
-                      colorForeground: "var(--auth-text)",
-                      colorMutedForeground: "var(--auth-muted)",
-                      colorInput: "var(--auth-input-bg)",
-                      colorInputForeground: "var(--auth-text)",
-                      colorBorder: "var(--auth-border-solid)",
-                      borderRadius: "0.875rem",
-                    },
-                  }}
-                />
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Esta pantalla no ofrece Facebook, wallet ni contraseña. El rol Super Admin exige Google verificado,
+                  email fundador aprobado y una sesión interna emitida por nexID.
+                </p>
               </div>
             </div>
           ) : (

@@ -12,6 +12,11 @@ type ClerkWeb3Wallet = {
   identifier?: string | null;
   verification?: { status?: string | null; strategy?: string | null } | null;
 };
+type ClerkExternalAccount = {
+  provider?: string | null;
+  emailAddress?: string | null;
+  verification?: { status?: string | null } | null;
+};
 type ClerkUser = {
   id: string;
   primaryEmailAddressId?: string | null;
@@ -20,12 +25,14 @@ type ClerkUser = {
   firstName?: string | null;
   lastName?: string | null;
   web3Wallets?: ClerkWeb3Wallet[];
+  externalAccounts?: ClerkExternalAccount[];
 };
 
 export type VerifiedClerkIdentity = {
   externalUserId: string;
   email: string;
   fullName: string;
+  verifiedOAuthProviders: string[];
   verifiedWeb3Wallets: Array<{ address: string; provider: string }>;
 };
 export type VerifiedClerkAdminIdentity = VerifiedClerkIdentity;
@@ -40,8 +47,24 @@ export type ClerkAdminAuthDependencies = {
 };
 
 function configuredAuthorizedParties() {
-  const candidates = [
-    process.env.CLERK_AUTHORIZED_PARTIES,
+  // Production must name every Clerk token origin explicitly. A public-web
+  // URL alone is not sufficient because operator tokens are issued by the
+  // separate dashboard origin (app.nexid.lat).
+  const explicit = String(process.env.CLERK_AUTHORIZED_PARTIES || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => {
+      try {
+        return new URL(value).origin;
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean);
+  if (process.env.NODE_ENV === "production") return [...new Set(explicit)];
+
+  const developmentFallbacks = [
     process.env.DASHBOARD_ORIGIN,
     process.env.NEXT_PUBLIC_DASHBOARD_URL,
     process.env.WEB_ORIGIN,
@@ -58,7 +81,33 @@ function configuredAuthorizedParties() {
       }
     })
     .filter(Boolean);
-  return [...new Set(candidates)];
+  return [...new Set([...explicit, ...developmentFallbacks])];
+}
+
+function clerkVerificationFailure(error: unknown): {
+  status: 401 | 503;
+  reason: string;
+  diagnostic: string;
+} {
+  const diagnostic = String((error as { reason?: unknown } | null)?.reason || "").trim();
+  switch (diagnostic) {
+    case "token-invalid-authorized-parties":
+      return { status: 401, reason: "clerk_authorized_party_invalid", diagnostic };
+    case "token-expired":
+    case "token-not-active-yet":
+    case "token-iat-in-the-future":
+      return { status: 401, reason: "clerk_session_expired", diagnostic };
+    case "secret-key-invalid":
+    case "jwk-local-missing":
+    case "jwk-remote-failed-to-load":
+    case "jwk-remote-invalid":
+    case "jwk-remote-missing":
+    case "jwk-failed-to-resolve":
+    case "jwk-kid-mismatch":
+      return { status: 503, reason: "clerk_verification_unavailable", diagnostic };
+    default:
+      return { status: 401, reason: "unauthorized", diagnostic: diagnostic || "unclassified" };
+  }
 }
 
 function verifiedWeb3Wallets(user: ClerkUser) {
@@ -76,6 +125,19 @@ function verifiedPrimaryEmail(user: ClerkUser) {
   const primary = emails.find((entry) => entry.id === user.primaryEmailAddressId);
   if (primary?.verification?.status !== "verified") return "";
   return String(primary.emailAddress || "").trim().toLowerCase();
+}
+
+function verifiedOAuthProviders(user: ClerkUser, primaryEmail: string) {
+  return [...new Set(
+    (Array.isArray(user.externalAccounts) ? user.externalAccounts : [])
+      .filter((entry) => entry.verification?.status === "verified")
+      .filter((entry) => {
+        const externalEmail = String(entry.emailAddress || "").trim().toLowerCase();
+        return !externalEmail || externalEmail === primaryEmail;
+      })
+      .map((entry) => String(entry.provider || "").trim().toLowerCase().replace(/^oauth_/, ""))
+      .filter(Boolean),
+  )];
 }
 
 const defaultDependencies: ClerkAdminAuthDependencies = {
@@ -129,11 +191,27 @@ export async function resolveVerifiedClerkIdentity(
         externalUserId: userId,
         email,
         fullName,
+        verifiedOAuthProviders: verifiedOAuthProviders(user, email),
         verifiedWeb3Wallets: verifiedWeb3Wallets(user),
       },
     };
-  } catch {
-    return { ok: false, status: 401, reason: "unauthorized" };
+  } catch (error) {
+    const failure = clerkVerificationFailure(error);
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("[clerk_auth_audit]", JSON.stringify({
+        event: "clerk_token_rejected",
+        reason: failure.diagnostic,
+        requestPath: (() => {
+          try {
+            return new URL(req.url).pathname;
+          } catch {
+            return "unknown";
+          }
+        })(),
+        authorizedPartyCount: parties.length,
+      }));
+    }
+    return { ok: false, status: failure.status, reason: failure.reason };
   }
 }
 
