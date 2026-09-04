@@ -308,6 +308,45 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     ];
     return NextResponse.json(rows);
   }
+  if (method === "GET" && normalized === "incidents") {
+    const demoIncidentBaseTime = Date.now();
+    const incidents = demoTenant.slug === "demobodega"
+      ? [{
+        id: "demo-incident-replay-001",
+        tenantId: "demo-tenant-001",
+        tenantSlug: demoTenant.slug,
+        eventId: "demo-baseline-replay-001",
+        ticketId: "DEMO-RISK-001",
+        ticketStatus: "open",
+        status: "investigating",
+        severity: "high",
+        title: "Repetición de lectura para revisar",
+        summary: "Caso ilustrativo: el mismo identificador fue leído nuevamente y el equipo puede revisar el contexto antes de actuar.",
+        openedAt: new Date(demoIncidentBaseTime - 18 * 60_000).toISOString(),
+        resolvedAt: null,
+        createdAt: new Date(demoIncidentBaseTime - 18 * 60_000).toISOString(),
+        updatedAt: new Date(demoIncidentBaseTime - 8 * 60_000).toISOString(),
+        version: 1,
+        evidence: {
+          result: "REPLAY_SUSPECT",
+          verdict: "replay_suspect",
+          reason: "replay_detected",
+          riskLevel: "high",
+          uidMasked: "04D3****90",
+          bid: "BALMEC-DEMO-2026-02",
+          occurredAt: new Date(demoIncidentBaseTime - 19 * 60_000).toISOString(),
+          city: "Buenos Aires",
+          country: "AR",
+          source: "demo",
+        },
+      }]
+      : [];
+    return NextResponse.json({
+      ok: true,
+      scope: { tenant: demoTenant.slug, source: "demo" },
+      incidents,
+    });
+  }
   if (method === "GET" && normalized === "events") {
     const requestedRange = (url.searchParams.get("range") || "24h").trim().toLowerCase();
     const range = ["5m", "1h", "24h", "7d", "30d"].includes(requestedRange) ? requestedRange : "24h";

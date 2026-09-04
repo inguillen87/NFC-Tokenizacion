@@ -40,6 +40,16 @@ const demoCities = [
   { city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505 },
 ];
 
+const demoBaselineCreatedAt = Date.now();
+const demoBaselineSpecs = [
+  { id: "demo-baseline-valid-001", result: "VALID", minutesAgo: 4, cityIndex: 0, vertical: "wine", risk: 4 },
+  { id: "demo-baseline-claim-001", result: "CLAIMED", minutesAgo: 11, cityIndex: 1, vertical: "cabernet", risk: 6 },
+  { id: "demo-baseline-replay-001", result: "REPLAY_SUSPECT", minutesAgo: 19, cityIndex: 2, vertical: "chardonnay", risk: 82 },
+  { id: "demo-baseline-tamper-001", result: "TAMPER", minutesAgo: 28, cityIndex: 3, vertical: "pinot", risk: 48 },
+  { id: "demo-baseline-valid-002", result: "VALID", minutesAgo: 41, cityIndex: 4, vertical: "wine", risk: 3 },
+  { id: "demo-baseline-valid-003", result: "VALID", minutesAgo: 52, cityIndex: 5, vertical: "cabernet", risk: 2 },
+] as const;
+
 function getState(): DashboardDemoState {
   const globalStore = globalThis as typeof globalThis & { [runtimeKey]?: DashboardDemoState };
   if (!globalStore[runtimeKey]) {
@@ -157,6 +167,40 @@ export function resetDashboardDemoEvents() {
 
 export function getDashboardDemoEvents(limit = 80) {
   return getState().events.slice(0, Math.max(0, limit));
+}
+
+export function getDashboardDemoStreamEvents(limit = 80) {
+  const boundedLimit = Math.min(Math.max(Number(limit) || 80, 0), 160);
+  if (!boundedLimit) return [] as DashboardDemoEvent[];
+  const runtimeRows = getDashboardDemoEvents(boundedLimit);
+  const runtimeIds = new Set(runtimeRows.map((row) => row.id));
+  const baselineRows = demoBaselineSpecs
+    .map((spec, index): DashboardDemoEvent => {
+      const location = demoCities[spec.cityIndex] || demoCities[0];
+      return {
+        id: spec.id,
+        sequence: -(index + 1),
+        result: spec.result,
+        reason: reasonFor(spec.result),
+        uid_hex: `04D3A0${String(index + 1).padStart(2, "0")}1090`,
+        bid: "BALMEC-DEMO-2026-02",
+        tenant_slug: "demobodega",
+        city: location.city,
+        country_code: location.country_code,
+        lat: location.lat,
+        lng: location.lng,
+        product_name: productByVertical(spec.vertical),
+        device: "Dispositivo ilustrativo",
+        vertical: spec.vertical,
+        mode: spec.result === "TAMPER" ? "tamper" : spec.result === "REPLAY_SUSPECT" ? "replay" : "valid",
+        scenario: spec.result === "CLAIMED" ? "claim" : "valid",
+        risk: spec.risk,
+        source: "dashboard-demo-baseline",
+        created_at: new Date(demoBaselineCreatedAt - spec.minutesAgo * 60_000).toISOString(),
+      };
+    })
+    .filter((row) => !runtimeIds.has(row.id));
+  return [...runtimeRows, ...baselineRows].slice(0, boundedLimit);
 }
 
 export function toDemoAdminEventRow(event: DashboardDemoEvent) {

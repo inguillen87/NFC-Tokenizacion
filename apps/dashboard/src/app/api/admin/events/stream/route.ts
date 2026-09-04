@@ -10,7 +10,7 @@ import {
   getDashboardSessionCredential,
   isDashboardSessionUpstreamUnavailable,
 } from "../../../../../lib/session";
-import { getDashboardDemoEvents, toDemoRealtimeEvent } from "../../../../../lib/demo-runtime-state";
+import { getDashboardDemoStreamEvents, toDemoRealtimeEvent } from "../../../../../lib/demo-runtime-state";
 import { DashboardTenantScopeError, resolveDashboardTenantScope } from "../../../../../lib/dashboard-tenant-scope-policy";
 import { dashboardRoleToScope } from "../../../../../lib/enterprise-runtime-rbac";
 import { dashboardHighImpactPermissionMatches } from "../../../../../lib/permission-policy";
@@ -56,7 +56,7 @@ function fallbackStream(
   message: string,
   requestId: string,
   limit = 8,
-  options: { includeDemoRows?: boolean; tenant?: string; window?: string; source?: DashboardStreamSource; availability?: "fallback" | "upstream_error" } = {},
+  options: { includeDemoRows?: boolean; tenant?: string; window?: string; source?: DashboardStreamSource; availability?: "ready" | "fallback" | "upstream_error"; emitWarning?: boolean } = {},
 ) {
   const encoder = new TextEncoder();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -91,7 +91,7 @@ function fallbackStream(
       const pushSnapshot = () => {
         const tenant = String(options.tenant || "").toLowerCase();
         const rows = options.includeDemoRows
-          ? getDashboardDemoEvents(limit)
+          ? getDashboardDemoStreamEvents(limit)
             .filter((row) => !tenant || row.tenant_slug === tenant)
             .map(toDemoRealtimeEvent)
           : [];
@@ -104,7 +104,9 @@ function fallbackStream(
       };
       enqueue("retry: 3000\n\n");
       pushSnapshot();
-      enqueue(`event: warning\ndata: ${JSON.stringify({ reason: message, requestId, source: options.source || "production", availability: options.availability || "upstream_error" })}\n\n`);
+      if (options.emitWarning !== false) {
+        enqueue(`event: warning\ndata: ${JSON.stringify({ reason: message, requestId, source: options.source || "production", availability: options.availability || "upstream_error" })}\n\n`);
+      }
       heartbeat = setInterval(() => {
         const now = Date.now();
         enqueue(`: ping ${now}\n\n`);
@@ -200,7 +202,8 @@ export async function GET(request: Request) {
       tenant,
       window: requestedWindow,
       source: "demo",
-      availability: "fallback",
+      availability: "ready",
+      emitWarning: false,
     });
   }
 
