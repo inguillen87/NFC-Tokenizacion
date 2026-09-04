@@ -11,7 +11,6 @@ import {
   dashboardCanOpenDestination,
   type DashboardDestinationKey,
 } from "../lib/dashboard-destination-policy";
-import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
 import { TenantAccountMenu } from "./tenant-account-menu";
@@ -234,8 +233,6 @@ export function DashboardShellInner({
   const canShowSandboxTools = currentIsDemo && !isTenantAdministrator && canOpenDestination("demoEncoder");
 
   const quick = { faq: "FAQ", stack: "Tech Stack", glossary: "Glossary", docs: "Docs" };
-  const publicMobile = `${productUrls.web}/sun/simulate`;
-
   const audienceCopy = isTenantAdministrator
     ? { tone: "cyan" as const, label: "Tenant CRM" }
     : isResellerRole
@@ -583,9 +580,14 @@ export function DashboardShellInner({
             </p>
             <div className="grid gap-2">
               <Link href={DASHBOARD_DESTINATIONS.demoEncoder.href} className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors text-center">URL Encoder</Link>
-              <a href={publicMobile} target="_blank" rel="noreferrer" className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors flex justify-between">
-                 Mobile Scan <span>↗</span>
-              </a>
+              <div
+                aria-disabled="true"
+                className="rounded-lg border border-white/10 bg-slate-950/45 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-slate-400"
+                data-testid="mobile-scan-signed-link-required"
+                title="La vista móvil se abre únicamente desde la URL firmada de un tag o desde un escenario configurado."
+              >
+                Tap móvil · requiere URL firmada
+              </div>
             </div>
           </div>
         ) : null}
@@ -617,7 +619,12 @@ export function DashboardShellInner({
                 <AdminNotificationBell canReadSensitiveEvents={canReadSensitiveEvents} />
               ) : null}
               <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
-              <Badge tone="green">{shell.apiConnected}</Badge>
+              <span
+                data-testid="dashboard-data-status-neutral"
+                title="El estado de cada fuente se confirma dentro del módulo que la consulta."
+              >
+                <Badge>{shell.apiConnected}</Badge>
+              </span>
               <div className="hidden h-6 w-px bg-white/10 mx-1 sm:block" />
               <LocaleSwitcher value={locale} options={[...locales]} />
               <SharedThemeToggle />

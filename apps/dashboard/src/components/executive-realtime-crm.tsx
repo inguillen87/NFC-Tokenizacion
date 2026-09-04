@@ -53,6 +53,7 @@ import {
   dashboardPermissionDenied,
   dashboardPermissionMatches,
 } from "../lib/permission-policy";
+import { dashboardCanOpenDestination } from "../lib/dashboard-destination-policy";
 import {
   incidentByEvent,
   isIncidentRealtimeWireEvent,
@@ -695,6 +696,12 @@ export function ExecutiveRealtimeCrm({
     "events.read_sensitive",
     account.deniedPermissions,
   );
+  const canOpenCampaigns = dashboardCanOpenDestination("campaigns", {
+    role: account.role,
+    permissions: account.permissions,
+    deniedPermissions: account.deniedPermissions,
+    isDemo: Boolean(account.isDemo),
+  });
   const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, 50) : []);
   const [connected, setConnected] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
@@ -1581,7 +1588,11 @@ export function ExecutiveRealtimeCrm({
                     );
                   })}
                 </div>
-                <button type="button" title="Abrir la auditoría completa de eventos" onClick={() => { window.location.href = "/events"; }} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 text-sm font-bold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-400/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Ver todos los eventos</button>
+                {canReadSensitiveEvents ? (
+                  <button type="button" title="Abrir la auditoría completa de eventos" onClick={() => { window.location.href = "/events"; }} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 text-sm font-bold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-400/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Ver todos los eventos</button>
+                ) : (
+                  <span aria-disabled="true" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/45 px-3 text-center text-sm font-semibold text-slate-500" data-testid="events-audit-unavailable">Auditoría de eventos no habilitada</span>
+                )}
               </div>
             </div>
           </div>
@@ -1594,7 +1605,11 @@ export function ExecutiveRealtimeCrm({
                   <span className="truncate">{commercialContext.panelTitle}</span>
                   <span className="hidden text-sm font-normal text-slate-400 sm:inline">({commercialContext.panelSubtitle})</span>
                 </p>
-                <button type="button" title="Abrir Clientes & campañas con estas señales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Crear campaña</button>
+                {canOpenCampaigns ? (
+                  <button type="button" title="Abrir Clientes & campañas con estas señales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Abrir campañas</button>
+                ) : (
+                  <span aria-disabled="true" className="shrink-0 text-sm font-semibold text-slate-500" data-testid="campaigns-unavailable">Campañas no habilitadas</span>
+                )}
               </div>
 
               {topOpportunity ? (

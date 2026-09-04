@@ -17,6 +17,11 @@ import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
 import type { RealtimeAvailability, RealtimeDataSource, RealtimeStreamSource } from "../lib/realtime-feed";
 import {
+  DASHBOARD_DESTINATIONS,
+  dashboardCanOpenDestination,
+  type DashboardDestinationKey,
+} from "../lib/dashboard-destination-policy";
+import {
   LayoutDashboard,
   Cpu,
   Trophy,
@@ -124,6 +129,34 @@ export default function DashboardHomeClient({
   const operationsAvailable = overviewAvailable && batchesAvailable && realtimeAvailable && tokenizationAvailable;
   const hasExplicitDemoData = [overviewDataSource, batchDataSource, tokenizationDataSource, realtimeDataSource]
     .some((source) => source === "demo" || source === "seed");
+  const destinationAccess = {
+    role: session.role,
+    permissions: session.permissions,
+    deniedPermissions: session.deniedPermissions,
+    isDemo: Boolean(session.isDemo),
+  };
+  const loyaltyModuleCandidates: Array<{
+    destination: DashboardDestinationKey;
+    title: string;
+    description: string;
+    href: string;
+    status: string;
+    tone: "green";
+  }> = isTenantAdmin
+    ? [
+        { destination: "campaigns", title: "Campañas por señal", description: "Consultar campañas WhatsApp/email basadas en señales de tap, ciudad y producto; las acciones dependen de los permisos de la sesión.", href: DASHBOARD_DESTINATIONS.campaigns.href, status: "habilitado", tone: "green" },
+        { destination: "rewards", title: "Beneficios y vouchers", description: "Consultar premios, canjes, códigos QR y reglas de expiración habilitados para el tenant.", href: DASHBOARD_DESTINATIONS.rewards.href, status: "habilitado", tone: "green" },
+        { destination: "consumerOverview", title: "Clientes CRM", description: "Consultar actores identificados y consentidos, lecturas y actividad vinculada dentro del alcance autorizado.", href: DASHBOARD_DESTINATIONS.consumerOverview.href, status: "habilitado", tone: "green" },
+        { destination: "experiences", title: "Experiencias con evidencia", description: "Consultar experiencias sujetas a policy, moderación de marca y evidencia digital del evento NFC.", href: DASHBOARD_DESTINATIONS.experiences.href, status: "habilitado", tone: "green" },
+      ]
+    : [
+        { destination: "campaigns", title: "Portfolio de campañas", description: "Comparar tenants por señales, campaña, canje, recurrencia y riesgo dentro del alcance autorizado.", href: DASHBOARD_DESTINATIONS.campaigns.href, status: "habilitado", tone: "green" },
+        { destination: "rewards", title: "Beneficios y vouchers", description: "Gobernar catálogos de premios por marca, ciudad, campaña y segmento según los permisos vigentes.", href: DASHBOARD_DESTINATIONS.rewards.href, status: "habilitado", tone: "green" },
+        { destination: "marketplace", title: "Marketplace opt-in", description: "Administrar experiencias habilitadas únicamente para actores identificados y con consentimiento aplicable.", href: DASHBOARD_DESTINATIONS.marketplace.href, status: "habilitado", tone: "green" },
+      ];
+  const loyaltyModules = loyaltyModuleCandidates
+    .filter(({ destination }) => dashboardCanOpenDestination(destination, destinationAccess))
+    .map(({ destination: _destination, ...module }) => module);
 
   const tabClass = (tab: DashboardTab) =>
     `flex min-w-[11.5rem] items-center gap-3 px-4 py-2.5 rounded-xl text-left text-sm font-semibold transition-all select-none border ${
@@ -340,21 +373,17 @@ export default function DashboardHomeClient({
             <VerifiedExperiencesPanel mode="loyalty" />
             
             {/* Quick access grid for marketing features */}
-            <ModuleGrid
-              actionLabel={copy.shell.openModule}
-              modules={isTenantAdmin
-                ? [
-                    { title: "Campañas por señal", description: "Crear campañas WhatsApp/email desde señales de tap, ciudad y producto.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
-                    { title: "Beneficios y vouchers", description: "Configurar premios, canjes, códigos QR y reglas de expiración.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
-                    { title: "Clientes CRM", description: "Ver usuarios, opt-in, lecturas, wallet, rewards y marketplace conectado.", href: "/consumer-network/overview", status: "activo", tone: "green" as const },
-                    { title: "Experiencias con evidencia", description: "Reviews sujetas a policy, moderación de marca y evidencia digital del evento NFC.", href: "/loyalty/experiences", status: "activo", tone: "green" as const },
-                  ]
-                : [
-                    { title: "Portfolio de campañas", description: "Comparar tenants por audiencia, campaña, canje, recurrencia y riesgo.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
-                    { title: "Beneficios y vouchers", description: "Gobernar catálogos de premios por marca, ciudad, campaña y segmento.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
-                    { title: "Marketplace opt-in", description: "Usuarios habilitados para comprar, vender, tokenizar o reclamar ownership.", href: "/consumer-network/marketplace", status: "activo", tone: "green" as const },
-                  ]}
-            />
+            {loyaltyModules.length > 0 ? (
+              <ModuleGrid actionLabel={copy.shell.openModule} modules={loyaltyModules} />
+            ) : (
+              <EnterpriseOpsState
+                variant="empty"
+                title="Módulos de actividad no habilitados"
+                description="La sesión actual no tiene permisos para abrir campañas, beneficios ni superficies con datos de actores. Solicitá acceso al administrador del tenant."
+                compact
+                testId="home-loyalty-destinations-unavailable"
+              />
+            )}
           </div>
         )}
 
@@ -366,11 +395,15 @@ export default function DashboardHomeClient({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200 flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-amber-400" />
-                  10 Escenarios Demo Pack Listos
+                  {demoPacks.length === 0
+                    ? "Sin escenarios Demo Pack configurados"
+                    : `${demoPacks.length} ${demoPacks.length === 1 ? "escenario Demo Pack configurado" : "escenarios Demo Pack configurados"}`}
                 </h2>
-                <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">
-                  Consola Demo Lab
-                </Link>
+                {dashboardCanOpenDestination("demoLab", destinationAccess) ? (
+                  <Link href={DASHBOARD_DESTINATIONS.demoLab.href} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">
+                    Consola Demo Lab
+                  </Link>
+                ) : null}
               </div>
               <p className="mt-2 text-xs text-slate-400">Packs de prueba configurados para auditoría B2B, pitch comercial y simulaciones rápidas.</p>
               
