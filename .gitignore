@@ -28,5 +28,6 @@ pnpm-lock.yaml
 apps/api/artifacts
 apps/api/cache
 apps/api/typechain-types
+*.tsbuildinfo
 
 .vercel

@@ -24,7 +24,6 @@ test-results
 *.log
 
 # Local one-off NFC/debug helpers.
-api_all.txt
 KEYS_FLOW.md
 KEYS_ONE_FLOW.md
 nfc_key_tool.ps1
