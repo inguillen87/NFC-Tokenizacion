@@ -2064,7 +2064,11 @@ async function run() {
       FROM events e
       JOIN tags t ON t.id = e.tag_id
       WHERE e.id = $1 AND e.tenant_id = $2`, [eventId, tenantId])).rows[0];
-    assert.equal(databaseEvidence.result, "VALID");
+    assert.equal(
+      databaseEvidence.result,
+      "VALID_AUTHENTIC",
+      "non-TT NTAG 424 DNA taps must persist the canonical carrier trust state",
+    );
     assert.equal(databaseEvidence.verdict, "valid");
     assert.equal(databaseEvidence.event_type, "TAP_VALID");
     assert.equal(databaseEvidence.cmac_ok, true);
