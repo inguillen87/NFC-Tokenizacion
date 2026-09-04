@@ -19,6 +19,7 @@ import { SunUpdatesOptIn } from "./sun-updates-opt-in";
 import { resolveSunConsumerStatus } from "./sun-consumer-status";
 import { OfflinePublicProductCache } from "./offline-public-product-cache";
 import { AgroDppExperience } from "./agro-dpp-experience";
+import { WineExperienceEvents } from "./wine-experience-events";
 import { normalizeAgroDppProfile } from "./agro-dpp-model";
 import { resolveCommercialTapFreshness, resolvePostTapQuickActionAvailability } from "./post-tap-policy";
 import { fmtDistance, haversineKm } from "./sun-route-distance";
@@ -1589,6 +1590,21 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     <SunLocaleProvider initialLocale={locale}>
     <main className="sun-tap-experience relative flex min-h-screen flex-col items-center overflow-x-clip bg-[#060813] px-4 pb-[calc(env(safe-area-inset-bottom)+8.5rem)] pt-4 font-sans text-slate-100 sm:pt-8">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
+      <WineExperienceEvents
+        enabled={isWineProduct
+          && isFreshCommercialTap
+          && !isDemoPreview
+          && !isQrScan
+          && !isSnapshotView
+          && !isRiskBlocked
+          && Boolean(bid && /^\d+$/.test(eventId) && freshToken)}
+        allowSensitiveEvents={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked}
+        bid={bid}
+        eventId={eventId}
+        freshToken={freshToken}
+        locale={locale}
+        sourceCarrier={carrierLabel}
+      />
       <OfflinePublicProductCache
         enabled={!isDemoPreview && result.ok === true && Boolean(bid)}
         bid={bid}
@@ -1631,6 +1647,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             profile={agroProfile}
             bid={bid}
             eventId={eventId}
+            freshToken={freshToken}
             productName={productDisplayName}
             brand={tenantDisplayName}
             statusCode={statusCode}
@@ -2151,7 +2168,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           {/* Wine content uses producer data, or explicitly labelled Demo Lab fixtures. */}
           {isWineProduct && (
-            <div className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-4">
+            <div
+              className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-4"
+              data-sun-experience-impression={dynamicTastingNotes ? "TECHNICAL_SHEET_VIEWED" : undefined}
+              data-sun-experience-placement="producer_product_sheet"
+              data-sun-experience-interaction="sensory_sheet_visible"
+            >
               <div className="space-y-1">
                 <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
                 {dynamicTastingNotes ? (
@@ -2250,7 +2272,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ) : null}
 
             {isRiskBlocked ? (
-              <Link href={reportProblemHref} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 text-sm font-black text-rose-100 transition hover:bg-rose-500/15">
+              <Link
+                href={reportProblemHref}
+                data-sun-experience-event="PROBLEM_REPORTED"
+                data-sun-experience-placement="risk_notice"
+                data-sun-experience-interaction="report_started"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 text-sm font-black text-rose-100 transition hover:bg-rose-500/15"
+              >
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 Reportar esta lectura a la marca
               </Link>

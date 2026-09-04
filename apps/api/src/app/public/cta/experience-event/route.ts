@@ -6,11 +6,11 @@ import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { json } from "../../../../lib/http";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
+import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import {
   POST_TAP_ENGAGEMENT_TAXONOMY_VERSION,
   isPublicExperienceContextBlocked,
   isPublicClientExperienceEvent,
-  isSensitivePublicExperienceEvent,
   loadPublicExperienceContext,
   normalizePublicExperienceEventType,
   normalizePublicExperienceIdempotencyKey,
@@ -65,14 +65,27 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: auth.reason, share_token_status: auth.share_token_status, trace_id: trace }, 401, { "cache-control": "no-store" });
   }
 
+  // This capability is verified, not consumed: one physical tap may produce
+  // several distinct semantic events. Durable idempotency below still makes
+  // an exact retry of one event safe and prevents payload drift.
+  const fresh = requireSunFreshHandoff(req, body, { bid: target.bid, eventId: target.eventId });
+  if (!fresh.ok) {
+    return json({
+      ok: false,
+      reason: "fresh_tap_capability_required",
+      fresh_token_status: fresh.reason,
+      trace_id: trace,
+    }, 403, { "cache-control": "no-store" });
+  }
+
   const context = await loadPublicExperienceContext(target.eventId, target.tenantId).catch(() => null);
   if (!context || context.batchId !== target.batchId || context.bid !== target.bid) {
     return json({ ok: false, reason: "experience_event_context_unavailable", trace_id: trace }, 409, { "cache-control": "no-store" });
   }
-  if (isSensitivePublicExperienceEvent(eventType) && isPublicExperienceContextBlocked(context)) {
+  if (isPublicExperienceContextBlocked(context)) {
     return json({
       ok: false,
-      reason: "sensitive_action_blocked_by_trust_state",
+      reason: "experience_event_blocked_by_trust_state",
       event_type: eventType,
       trace_id: trace,
     }, 409, { "cache-control": "no-store" });

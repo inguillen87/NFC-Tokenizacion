@@ -843,6 +843,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             type="button"
             disabled={isActionDisabled("report")}
             onClick={() => void trigger("/api/public-cta/report-problem", "POST", "report")}
+            data-sun-experience-event="PROBLEM_REPORTED"
+            data-sun-experience-placement="protected_actions"
+            data-sun-experience-interaction="report_started"
             className="mt-3 min-h-12 w-full rounded-xl border border-amber-200/50 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {getButtonLabel("Enviar aviso para revisión", "report")}
@@ -1174,6 +1177,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               key={key}
               disabled={isActionDisabled(key)}
               onClick={() => void trigger(item.path, item.method, key)}
+              data-sun-experience-event={key === "report" ? "PROBLEM_REPORTED" : undefined}
+              data-sun-experience-placement={key === "report" ? "protected_actions" : undefined}
+              data-sun-experience-interaction={key === "report" ? "report_started" : undefined}
               className={`sun-public-cta-card rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
             >
               <div className="flex items-center justify-between gap-2">

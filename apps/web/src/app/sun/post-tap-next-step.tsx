@@ -194,6 +194,8 @@ export function PostTapNextStep({
       label: "No lo abrí: avisar a la marca",
       help: "Registrá un ticket de revisión con los datos de esta lectura.",
       icon: AlertTriangle,
+      experienceEvent: "PROBLEM_REPORTED",
+      experiencePlacement: "opened_seal_guidance",
     }] : []),
     ...(available.trace ? [{
       key: "trace",
@@ -215,6 +217,8 @@ export function PostTapNextStep({
       label: "Entrar al club de la marca",
       help: "Beneficios y puntos sólo después de una acción explícita.",
       icon: Sparkles,
+      experienceEvent: "LOYALTY_OFFER_VIEWED",
+      experiencePlacement: "post_tap_options",
     }] : []),
     ...(available.marketplace ? [{
       key: "marketplace",
@@ -248,6 +252,9 @@ export function PostTapNextStep({
         key={action.key}
         href={action.href}
         prefetch={isProtectedConsumerPortalHref(action.href) ? false : undefined}
+        data-sun-experience-event={"experienceEvent" in action ? action.experienceEvent : undefined}
+        data-sun-experience-placement={"experiencePlacement" in action ? action.experiencePlacement : undefined}
+        data-sun-experience-interaction={"experienceEvent" in action ? `${action.key}_opened` : undefined}
         className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">

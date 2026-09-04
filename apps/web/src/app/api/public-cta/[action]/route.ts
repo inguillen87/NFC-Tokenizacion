@@ -144,6 +144,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
   if (!input.ok) return errorResponse(input.reason, input.status, trace);
   const body = parseJsonRecord(input.text);
   if (!body) return errorResponse("invalid_json", 400, trace);
+  if (action === "experience-event" && !clean(body.fresh_token || body.freshToken)) {
+    return errorResponse("fresh_tap_capability_required", 403, trace);
+  }
   return forward(req, action, "POST", clean(body.bid), clean(body.uid || body.uid_hex).toUpperCase(), clean(body.event_id || body.eventId), trace, body);
 }
 

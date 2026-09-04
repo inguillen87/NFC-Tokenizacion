@@ -276,7 +276,12 @@ export function SunServicesHub({
         </div>
       </div>
 
-      <div className={`mt-4 rounded-2xl border p-4 ${available.promotionDegraded ? "border-amber-300/20 bg-amber-500/[0.06]" : "border-violet-300/15 bg-violet-500/[0.07]"}`}>
+      <div
+        className={`mt-4 rounded-2xl border p-4 ${available.promotionDegraded ? "border-amber-300/20 bg-amber-500/[0.06]" : "border-violet-300/15 bg-violet-500/[0.07]"}`}
+        data-sun-experience-impression={!isDemo && available.promotionVisible ? "LOYALTY_OFFER_VIEWED" : undefined}
+        data-sun-experience-placement="services_promotion"
+        data-sun-experience-interaction="published_offer_visible"
+      >
         <div className="flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-300/20 bg-violet-500/10 text-violet-200">
             <Gift className="h-4 w-4" aria-hidden="true" />

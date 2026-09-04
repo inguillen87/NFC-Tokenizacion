@@ -46,8 +46,9 @@ test("Agro profile rejects unsafe destinations and keeps only bounded public fie
 });
 
 test("mobile Agro DPP implements the ten ordered surfaces and all structured events", async () => {
-  const [component, page, bff, offline] = await Promise.all([
+  const [component, eventWriter, page, bff, offline] = await Promise.all([
     read("../src/app/sun/agro-dpp-experience.tsx"),
+    read("../src/app/sun/public-experience-events.ts"),
     read("../src/app/sun/page.tsx"),
     read("../src/app/api/public-cta/[action]/route.ts"),
     read("../src/app/offline/offline-queue-client.tsx"),
@@ -83,8 +84,11 @@ test("mobile Agro DPP implements the ten ordered surfaces and all structured eve
   assert.doesNotMatch(component, /eventType: "(?:LOYALTY_JOINED|TRAINING_COMPLETED|LEAD_CREATED)"/);
   assert.match(component, /eventType: "LOYALTY_OFFER_VIEWED"/);
   assert.match(component, /Abrir el beneficio registra intención, no adhesión/);
-  assert.match(component, /fetch\("\/api\/public-cta\/experience-event"/);
-  assert.match(component, /idempotency-key/);
+  assert.match(component, /recordPublicExperienceEvent/);
+  assert.match(component, /freshToken: props\.freshToken/);
+  assert.match(page, /<AgroDppExperience[\s\S]*?freshToken=\{freshToken\}/);
+  assert.match(eventWriter, /fetch\("\/api\/public-cta\/experience-event"/);
+  assert.match(eventWriter, /idempotency-key/);
   assert.match(page, /<AgroDppExperience/);
   assert.match(bff, /"experience-event"/);
   assert.match(offline, /VERIFICATION_PENDING/);

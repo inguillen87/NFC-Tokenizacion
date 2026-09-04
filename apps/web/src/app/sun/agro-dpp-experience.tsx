@@ -17,10 +17,13 @@ import {
 import {
   AGRO_DPP_PROFILE_VERSION,
   type AgroDppProfile,
-  type AgroExperienceEventType,
   resolveAgroSensitiveActionGate,
   resolveAgroTrustCopy,
 } from "./agro-dpp-model";
+import {
+  recordPublicExperienceEvent,
+  type PublicClientExperienceEventType,
+} from "./public-experience-events";
 import { useSunLocale } from "./sun-locale-provider";
 import type { SunLocale } from "./sun-locale";
 
@@ -35,6 +38,7 @@ type AgroDppExperienceProps = {
   profile: AgroDppProfile;
   bid: string;
   eventId: string;
+  freshToken: string;
   productName: string;
   brand: string;
   statusCode: string;
@@ -68,23 +72,6 @@ function destinationHost(value: string | null | undefined) {
     return new URL(value).hostname;
   } catch {
     return "";
-  }
-}
-
-function eventKey(eventId: string, eventType: AgroExperienceEventType, placement: string) {
-  return `nexid:agro-event:${eventId}:${eventType}:${placement}`;
-}
-
-function idempotencyKey(eventId: string, eventType: AgroExperienceEventType, placement: string) {
-  const key = eventKey(eventId, eventType, placement);
-  try {
-    const existing = sessionStorage.getItem(key);
-    if (existing) return existing;
-    const created = `agro_${crypto.randomUUID()}`;
-    sessionStorage.setItem(key, created);
-    return created;
-  } catch {
-    return `agro_${eventId}_${eventType}_${placement}`.replace(/[^A-Za-z0-9._:-]/g, "_").slice(0, 128);
   }
 }
 
@@ -134,35 +121,26 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
   }), [online, props.isFreshTap, props.isQr, props.productState, props.riskLevel, props.statusCode, props.verdict]);
 
   const recordEvent = useCallback(async (
-    eventType: AgroExperienceEventType,
+    eventType: PublicClientExperienceEventType,
     placement: string,
     data: Record<string, string | number | boolean> = {},
   ) => {
     if (!online) return { ok: false, reason: "VERIFICATION_PENDING" };
-    if (!props.eventId || !props.bid) return { ok: false, reason: "event_scope_unavailable" };
-    const key = idempotencyKey(props.eventId, eventType, placement);
-    try {
-      const response = await fetch("/api/public-cta/experience-event", {
-        method: "POST",
-        headers: { "content-type": "application/json", "idempotency-key": key },
-        body: JSON.stringify({
-          bid: props.bid,
-          event_id: props.eventId,
-          event_type: eventType,
-          idempotency_key: key,
-          data: { surface: "agro_dpp", placement, profileVersion: AGRO_DPP_PROFILE_VERSION, ...data },
-        }),
-        cache: "no-store",
-        credentials: "same-origin",
-      });
-      const payload = await response.json().catch(() => null) as { ok?: unknown; reason?: unknown } | null;
-      return payload?.ok === true
-        ? { ok: true as const }
-        : { ok: false as const, reason: String(payload?.reason || "event_record_failed") };
-    } catch {
-      return { ok: false as const, reason: "network_unavailable" };
+    if (!props.isFreshTap || props.isQr || !props.freshToken) {
+      return { ok: false, reason: "fresh_tap_capability_unavailable" };
     }
-  }, [online, props.bid, props.eventId]);
+    if (!props.eventId || !props.bid) return { ok: false, reason: "event_scope_unavailable" };
+    return recordPublicExperienceEvent({
+      bid: props.bid,
+      eventId: props.eventId,
+      freshToken: props.freshToken,
+      eventType,
+      placement,
+      interactionId: placement,
+      sensitiveActionAllowed: sensitiveGate.allowed,
+      data: { surface: "agro_dpp", profileVersion: AGRO_DPP_PROFILE_VERSION, ...data },
+    });
+  }, [online, props.bid, props.eventId, props.freshToken, props.isFreshTap, props.isQr, sensitiveGate.allowed]);
 
   useEffect(() => {
     if (!props.eventId || !online) return;
@@ -170,7 +148,7 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
   }, [online, props.eventId, recordEvent]);
 
   const runRecordedAction = async (input: {
-    eventType: AgroExperienceEventType;
+    eventType: PublicClientExperienceEventType;
     placement: string;
     href?: string | null;
     sensitive?: boolean;

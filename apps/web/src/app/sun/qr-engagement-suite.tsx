@@ -434,6 +434,9 @@ export function QREngagementSuite({
             type="button"
             title={tab.title}
             onClick={() => setActiveTab(tab.id)}
+            data-sun-experience-event={tab.id === "trivia" ? "TRAINING_STARTED" : undefined}
+            data-sun-experience-placement={tab.id === "trivia" ? "wine_education" : undefined}
+            data-sun-experience-interaction={tab.id === "trivia" ? "trivia_opened" : undefined}
             className={`flex-1 border-b-2 py-3.5 font-bold uppercase tracking-wider transition ${
               activeTab === tab.id
                 ? "border-amber-500 bg-amber-500/5 text-amber-300"
