@@ -12,7 +12,6 @@ import {
 } from "react";
 import {
   SUN_LOCALES,
-  SUN_LOCALE_COOKIE,
   formatSunDateTime,
   isSunLocale,
   toDocumentLanguage,
@@ -22,7 +21,9 @@ import {
 
 type SunLocaleContextValue = {
   locale: SunLocale;
-  setLocale: (locale: SunLocale) => void;
+  setLocale: (locale: SunLocale) => Promise<void>;
+  localePending: boolean;
+  localeError: string | null;
   text: (value: string) => string;
 };
 
@@ -77,8 +78,11 @@ export function SunLocaleProvider({
   children: ReactNode;
 }) {
   const [locale, setLocaleState] = useState<SunLocale>(initialLocale);
+  const [localePending, setLocalePending] = useState(false);
+  const [localeError, setLocaleError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const translatingRef = useRef(false);
+  const localeRequestRef = useRef<{ controller: AbortController; sequence: number } | null>(null);
 
   const applyLocale = useCallback((nextLocale: SunLocale) => {
     const root = rootRef.current;
@@ -92,14 +96,42 @@ export function SunLocaleProvider({
     }
   }, []);
 
-  const setLocale = useCallback((nextLocale: SunLocale) => {
+  const setLocale = useCallback(async (nextLocale: SunLocale) => {
     if (!isSunLocale(nextLocale)) return;
-    document.cookie = `${SUN_LOCALE_COOKIE}=${encodeURIComponent(nextLocale)}; path=/; max-age=31536000; SameSite=Lax`;
-    const url = new URL(window.location.href);
-    url.searchParams.set("lang", nextLocale);
-    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    setLocaleState(nextLocale);
-  }, []);
+    if (nextLocale === locale) return;
+
+    localeRequestRef.current?.controller.abort();
+    const controller = new AbortController();
+    const sequence = (localeRequestRef.current?.sequence || 0) + 1;
+    localeRequestRef.current = { controller, sequence };
+    setLocalePending(true);
+    setLocaleError(null);
+
+    try {
+      const response = await fetch("/api/sun/locale", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ locale: nextLocale }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("locale_preference_not_saved");
+      if (localeRequestRef.current?.sequence !== sequence) return;
+
+      setLocaleState(nextLocale);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setLocaleError(error instanceof Error ? error.message : "locale_preference_not_saved");
+    } finally {
+      if (localeRequestRef.current?.sequence === sequence) {
+        localeRequestRef.current = null;
+        setLocalePending(false);
+      }
+    }
+  }, [locale]);
+
+  useLayoutEffect(() => () => localeRequestRef.current?.controller.abort(), []);
 
   useLayoutEffect(() => {
     applyLocale(locale);
@@ -117,8 +149,10 @@ export function SunLocaleProvider({
   const value = useMemo<SunLocaleContextValue>(() => ({
     locale,
     setLocale,
+    localePending,
+    localeError,
     text: (source) => translateSunUiText(source, locale),
-  }), [locale, setLocale]);
+  }), [locale, localeError, localePending, setLocale]);
 
   return (
     <SunLocaleContext.Provider value={value}>
@@ -150,18 +184,21 @@ const ARIA_LABELS: Record<SunLocale, string> = {
 };
 
 export function SunLocaleSwitcher() {
-  const { locale, setLocale } = useSunLocale();
+  const { locale, setLocale, localePending, localeError } = useSunLocale();
 
   return (
     <label className="locale-switcher inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-0 text-xs font-semibold text-slate-200">
       <span aria-hidden className="locale-switcher__icon">ID</span>
       <select
         value={locale}
+        disabled={localePending}
+        aria-busy={localePending}
+        data-locale-error={localeError || undefined}
         className="min-h-11 bg-transparent pr-1 text-xs font-semibold"
         aria-label={ARIA_LABELS[locale]}
         onChange={(event) => {
           const nextLocale = event.target.value;
-          if (isSunLocale(nextLocale)) setLocale(nextLocale);
+          if (isSunLocale(nextLocale)) void setLocale(nextLocale);
         }}
       >
         {SUN_LOCALES.map((item) => (

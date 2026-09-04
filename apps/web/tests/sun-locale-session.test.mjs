@@ -9,6 +9,7 @@ import { resolveSunTtEvidence } from "../src/app/sun/sun-tt-evidence.ts";
 const urls = {
   locale: new URL("../src/lib/locale.ts", import.meta.url),
   provider: new URL("../src/app/sun/sun-locale-provider.tsx", import.meta.url),
+  preferenceRoute: new URL("../src/app/api/sun/locale/route.ts", import.meta.url),
   dictionary: new URL("../src/app/sun/sun-locale.ts", import.meta.url),
   page: new URL("../src/app/sun/page.tsx", import.meta.url),
   qr: new URL("../src/app/sun/qr-engagement-suite.tsx", import.meta.url),
@@ -47,17 +48,30 @@ test("SUN timestamps stay deterministic between the server and the phone", () =>
   assert.match(formatSunDateTime(observedAt, "en", "not-a-time-zone"), /UTC$/);
 });
 
-test("SUN selector changes presentation in place and cannot revalidate or reload the tap", async () => {
-  const [provider, page] = await Promise.all([
+test("SUN selector persists server-side, changes in place and cannot revalidate or reload the tap", async () => {
+  const [provider, preferenceRoute, page] = await Promise.all([
     readFile(urls.provider, "utf8"),
+    readFile(urls.preferenceRoute, "utf8"),
     readFile(urls.page, "utf8"),
   ]);
 
-  assert.match(provider, /document\.cookie = `\$\{SUN_LOCALE_COOKIE\}=/);
+  assert.match(provider, /fetch\("\/api\/sun\/locale",/);
+  assert.match(provider, /credentials: "same-origin"/);
+  assert.match(provider, /localeRequestRef\.current\?\.controller\.abort\(\)/);
   assert.match(provider, /document\.documentElement\.lang = toDocumentLanguage\(nextLocale\)/);
-  assert.match(provider, /url\.searchParams\.set\("lang", nextLocale\)/);
-  assert.match(provider, /window\.history\.replaceState\(/);
+  assert.doesNotMatch(provider, /url\.searchParams\.set\("lang", nextLocale\)/);
+  assert.doesNotMatch(provider, /window\.history\.replaceState\(/);
+  assert.doesNotMatch(provider, /document\.cookie\s*=/);
   assert.doesNotMatch(provider, /useRouter|router\.(push|replace|refresh)|window\.location\.(assign|replace)|location\.reload/);
+  assert.match(preferenceRoute, /origin_not_allowed/);
+  assert.match(preferenceRoute, /isJsonRequest\(request\)/);
+  assert.match(preferenceRoute, /readBoundedText\(request, MAX_PAYLOAD_BYTES\)/);
+  assert.match(preferenceRoute, /consumePublicApiRateLimit\("sun-locale"/);
+  assert.match(preferenceRoute, /isSunLocale\(locale\)/);
+  assert.match(preferenceRoute, /response\.cookies\.set\(/);
+  assert.match(preferenceRoute, /sameSite: "lax"/);
+  assert.match(preferenceRoute, /httpOnly: true/);
+  assert.match(preferenceRoute, /Cache-Control", "private, no-store/);
   assert.match(page, /getWebI18n\(requestedLanguage \|\| \(isDemoLabHandoff \? requestedDemoLocale : null\)\)/);
   assert.match(page, /query\.set\("lang", locale\)/);
   assert.match(page, /<SunLocaleProvider initialLocale=\{locale\}>/);
