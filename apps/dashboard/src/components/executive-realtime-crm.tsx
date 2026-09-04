@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   Activity,
   BadgeCheck,
@@ -30,12 +31,12 @@ import {
   Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { normalizeTenantTapRealtimeEvent } from "@product/core";
 import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map";
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { IncidentEventDrawer } from "./incident-event-drawer";
 import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
+import { useDashboardRealtime } from "./dashboard-realtime-provider";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { exportToCsv } from "../lib/export-utils";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
@@ -57,11 +58,24 @@ import {
   dashboardPermissionMatches,
 } from "../lib/permission-policy";
 import { dashboardCanOpenDestination } from "../lib/dashboard-destination-policy";
+import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 import {
   incidentByEvent,
   isIncidentRealtimeWireEvent,
   type DashboardIncident,
 } from "../lib/incident-workflow";
+import {
+  EXECUTIVE_REALTIME_EVENT_LIMIT,
+  executiveRealtimeResponseScopeMatches,
+  executiveRealtimeRowsMatchTenant,
+  executiveRealtimeSnapshotScopeMatches,
+  executiveRealtimeSourceMatchesRequest,
+  isExecutiveRealtimeEvent,
+  normalizeExecutiveRealtimeTenantDirectory,
+  recentEventSamplePresentation,
+  resolveExecutiveRealtimeQueryTenant,
+  type ExecutiveRealtimeTenantDirectoryEntry,
+} from "../lib/executive-realtime-scope";
 
 type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
@@ -580,6 +594,7 @@ function commercialRecommendation(context: CommercialContext, opportunity: Marke
 }
 
 function MiniSparkline({ data, color, dataKey = "taps" }: { data: Array<Record<string, number | string>>; color: string; dataKey?: string }) {
+  if (!data.length) return <div className="h-6 w-full rounded border border-dashed border-white/8 bg-slate-950/25" aria-hidden="true" />;
   return (
     <div className="h-6 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -643,7 +658,7 @@ function FunnelNode({
 }: {
   icon: ReactNode;
   label: string;
-  value: number;
+  value: number | string;
   pct: number;
   tone: string;
   detail: string;
@@ -655,7 +670,7 @@ function FunnelNode({
         {icon}
       </div>
       <p className="mt-1 text-[11px] font-semibold text-slate-200">{label}</p>
-      <p className="text-sm font-black text-white">{formatNumber(value)}</p>
+      <p className="text-sm font-black text-white">{typeof value === "number" ? formatNumber(value) : value}</p>
       <p className="text-xs text-slate-400">{pctLabel || formatPercent(pct)}</p>
       <p className="mt-0.5 max-w-[5.5rem] text-[9px] leading-3 text-slate-500">{detail}</p>
     </div>
@@ -666,8 +681,8 @@ export function ExecutiveRealtimeCrm({
   account,
   initialEvents,
   tenantScope,
+  tenantDirectory,
   mode,
-  streamSource,
   initialDataSource,
   initialAvailability,
   initialAvailabilityDetail,
@@ -690,6 +705,7 @@ export function ExecutiveRealtimeCrm({
   };
   initialEvents: TenantTapRealtimeEvent[];
   tenantScope: string;
+  tenantDirectory: ExecutiveRealtimeTenantDirectoryEntry[];
   mode: MapMode;
   streamSource: RealtimeStreamSource;
   initialDataSource: RealtimeDataSource;
@@ -713,10 +729,9 @@ export function ExecutiveRealtimeCrm({
     isDemo: Boolean(account.isDemo),
   });
   const [activeView, setActiveView] = useState<ExecutiveCrmView>(initialView);
-  const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, 50) : []);
+  const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, EXECUTIVE_REALTIME_EVENT_LIMIT) : []);
   const [connected, setConnected] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
-  const [pollingFallbackActive, setPollingFallbackActive] = useState(false);
   const [streamConfirmed, setStreamConfirmed] = useState(initialAvailability === "ready" && initialEvents.length > 0);
   const [streamWarning, setStreamWarning] = useState<string | null>(null);
   const [lastUpdateAt, setLastUpdateAt] = useState<string | null>(initialEvents[0]?.occurredAt || null);
@@ -743,7 +758,15 @@ export function ExecutiveRealtimeCrm({
   const canWriteIncidents = account.role === "super-admin"
     ? !dashboardPermissionDenied(account.deniedPermissions, "incidents:write")
     : dashboardPermissionMatches(account.permissions, "incidents:write", account.deniedPermissions);
+  const effectiveSelectedTenant = tenantSession ? lockedTenantScope : selectedTenant;
+  const queryTenant = resolveExecutiveRealtimeQueryTenant({ mode, tenantScope: lockedTenantScope, selectedTenant });
+  const router = useRouter();
+  const realtime = useDashboardRealtime();
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
+  const incidentRequestAbortRef = useRef<AbortController | null>(null);
+  const consumedEventSequenceRef = useRef(0);
+  const requestTransitionPending = false;
+  const valuesUnavailable = requestTransitionPending || !streamConfirmed;
 
   useEffect(() => {
     if (tenantSession) setSelectedTenant(lockedTenantScope);
@@ -759,8 +782,6 @@ export function ExecutiveRealtimeCrm({
     return () => observer.disconnect();
   }, []);
 
-  const effectiveSelectedTenant = tenantSession ? lockedTenantScope : selectedTenant;
-
   const handleIncident = useCallback((incident: DashboardIncident) => {
     setIncidentsByEventId((current) => ({ ...current, [String(incident.eventId)]: incident }));
     setIncidentAvailability("ready");
@@ -768,26 +789,36 @@ export function ExecutiveRealtimeCrm({
 
   const refreshIncidents = useCallback(async () => {
     if (!canReadIncidents) return;
+    incidentRequestAbortRef.current?.abort();
+    const controller = new AbortController();
+    incidentRequestAbortRef.current = controller;
     const url = new URL("/api/admin/incidents", window.location.origin);
     url.searchParams.set("limit", "100");
-    if (tenantScope) url.searchParams.set("tenant", tenantScope);
+    if (queryTenant) url.searchParams.set("tenant", queryTenant);
     try {
-      const response = await fetch(url, { cache: "no-store" });
+      const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (controller.signal.aborted) return;
       if (!response.ok) {
         setIncidentAvailability("unavailable");
         return;
       }
-      const payload = await response.json().catch(() => null) as { ok?: boolean; incidents?: DashboardIncident[] } | null;
-      if (!payload?.ok || !Array.isArray(payload.incidents)) {
+      const payload = await response.json().catch(() => null) as { ok?: boolean; scope?: { tenant?: unknown }; incidents?: DashboardIncident[] } | null;
+      if (controller.signal.aborted) return;
+      if (!payload?.ok
+        || !executiveRealtimeResponseScopeMatches(queryTenant, payload.scope?.tenant)
+        || !Array.isArray(payload.incidents)
+        || !executiveRealtimeRowsMatchTenant(payload.incidents, queryTenant)) {
         setIncidentAvailability("unavailable");
         return;
       }
       setIncidentsByEventId(incidentByEvent(payload.incidents));
       setIncidentAvailability("ready");
     } catch {
-      setIncidentAvailability("unavailable");
+      if (!controller.signal.aborted) setIncidentAvailability("unavailable");
+    } finally {
+      if (incidentRequestAbortRef.current === controller) incidentRequestAbortRef.current = null;
     }
-  }, [canReadIncidents, tenantScope]);
+  }, [canReadIncidents, queryTenant]);
 
   useEffect(() => {
     document.body.classList.add("nexid-crm-overlay-active");
@@ -835,16 +866,22 @@ export function ExecutiveRealtimeCrm({
   }, []);
 
   useEffect(() => {
-    if (!canReadIncidents) return;
+    if (!canReadIncidents) {
+      incidentRequestAbortRef.current?.abort();
+      setIncidentsByEventId({});
+      setIncidentAvailability("unavailable");
+      return;
+    }
+    setIncidentsByEventId({});
+    setIncidentAvailability("loading");
     void refreshIncidents();
-    const poll = window.setInterval(() => void refreshIncidents(), 15_000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") void refreshIncidents();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisibility);
+      incidentRequestAbortRef.current?.abort();
     };
   }, [canReadIncidents, refreshIncidents]);
 
@@ -853,205 +890,169 @@ export function ExecutiveRealtimeCrm({
       setEvents([]);
       setConnected(false);
       setConnectionAttempted(true);
-      setPollingFallbackActive(false);
       setStreamConfirmed(false);
       setActiveDataSource("unavailable");
       setDataAvailability("upstream_error");
       setAvailabilityDetail("events.read_sensitive permission required");
       return;
     }
-    const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
-    streamUrl.searchParams.set("limit", "50");
-    streamUrl.searchParams.set("window", timeRange);
-    streamUrl.searchParams.set("source", streamSource);
-    if (tenantScope) streamUrl.searchParams.set("tenant", tenantScope);
-    const pollUrl = new URL("/api/admin/events", window.location.origin);
-    pollUrl.searchParams.set("limit", "50");
-    pollUrl.searchParams.set("range", timeRange);
-    pollUrl.searchParams.set("source", streamSource);
-    if (tenantScope) pollUrl.searchParams.set("tenant", tenantScope);
-
-    let disposed = false;
-    let pollInFlight = false;
-    let pollTimer: number | null = null;
-    const stopPollingFallback = () => {
-      if (pollTimer !== null) window.clearInterval(pollTimer);
-      pollTimer = null;
-      if (!disposed) setPollingFallbackActive(false);
-    };
-    const pollPersistedEvents = async () => {
-      if (disposed || pollInFlight) return;
-      pollInFlight = true;
-      try {
-        const response = await fetch(pollUrl, { cache: "no-store" });
-        if (!response.ok) return;
-        const payload = await response.json().catch(() => null) as { rows?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null;
-        const rawRows = Array.isArray(payload) ? payload : Array.isArray(payload?.rows) ? payload.rows : null;
-        if (!rawRows) return;
-        const normalizedRows = rawRows.flatMap((row) => {
-          try {
-            return [normalizeTenantTapRealtimeEvent(row) as TenantTapRealtimeEvent];
-          } catch {
-            return [];
-          }
-        });
-        if (streamSource === "production" && normalizedRows.some((row) => row.source !== "production")) return;
-        setEvents((previous) => normalizedRows.reduce(
-          (current, incoming) => mergeRealtimeEvents(current, incoming, 50),
-          previous,
-        ));
-        setActiveDataSource(streamSource === "all" ? "mixed" : streamSource === "demo" ? "demo" : "production");
-        setDataAvailability("ready");
-        setAvailabilityDetail("Eventos persistidos confirmados; el canal inmediato está reconectando.");
-        setStreamWarning(null);
-        setStreamConfirmed(true);
-        setLastUpdateAt(new Date().toISOString());
-      } finally {
-        pollInFlight = false;
-      }
-    };
-    const startPollingFallback = () => {
-      if (disposed || pollTimer !== null) return;
-      setPollingFallbackActive(true);
-      void pollPersistedEvents();
-      pollTimer = window.setInterval(() => void pollPersistedEvents(), 10_000);
-    };
-
-    setConnected(false);
-    setConnectionAttempted(false);
-    setPollingFallbackActive(false);
-    setStreamConfirmed(false);
+    setEvents(sortRealtimeEvents(initialEvents, EXECUTIVE_REALTIME_EVENT_LIMIT));
+    setSelectedEvent(null);
+    setLastUpdateAt(initialEvents[0]?.occurredAt || null);
+    setStreamConfirmed(initialAvailability === "ready" && initialEvents.length > 0);
     setStreamWarning(null);
     setActiveDataSource(initialDataSource);
     setDataAvailability(initialAvailability);
     setAvailabilityDetail(initialAvailabilityDetail);
-    // Start with the durable path as a safety net. Only a tenant-scoped SSE
-    // snapshot or tap event may retire it; open/heartbeat are transport-only.
-    startPollingFallback();
-    const source = new EventSource(streamUrl.toString());
-    source.onopen = () => {
-      setConnectionAttempted(true);
-      setConnected(true);
-      // An open TCP/SSE channel is not proof that the scoped dataset arrived.
-      // Keep persisted polling alive until a snapshot or event confirms data.
-    };
-    source.onerror = () => {
+  }, [canReadSensitiveEvents, initialAvailability, initialAvailabilityDetail, initialDataSource, initialEvents, realtime.activeScopeKey]);
+
+  useEffect(() => {
+    if (!canReadSensitiveEvents) return;
+    setConnectionAttempted(realtime.status !== "connecting");
+    setConnected(realtime.status === "connected");
+    if (realtime.status === "reconnecting") {
+      setStreamWarning("El canal en vivo se interrumpió; EventSource está reconectando sin polling.");
+    }
+  }, [canReadSensitiveEvents, realtime.status]);
+
+  useEffect(() => {
+    const frame = realtime.snapshot;
+    if (!frame || frame.scopeKey !== realtime.activeScopeKey) return;
+    const parsed = frame.data;
+    const payload = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as { rows?: unknown; scope?: { tenant?: unknown; window?: unknown }; source?: unknown; availability?: unknown }
+      : null;
+    const rawRows = payload && Array.isArray(payload.rows) ? payload.rows : null;
+    const normalizedRows = rawRows ? rawRows.filter(isExecutiveRealtimeEvent) : [];
+    if (!payload
+      || !rawRows
+      || normalizedRows.length !== rawRows.length
+      || !executiveRealtimeSnapshotScopeMatches(realtime.activeScope.tenant, realtime.activeScope.window, payload.scope)
+      || !executiveRealtimeRowsMatchTenant(normalizedRows, realtime.activeScope.tenant)
+      || !executiveRealtimeSourceMatchesRequest(realtime.activeScope.source, payload.source)
+      || normalizedRows.some((row) => !executiveRealtimeSourceMatchesRequest(realtime.activeScope.source, row.source))) {
+      setDataAvailability("invalid_payload");
+      setAvailabilityDetail("El snapshot inmediato no confirmó tenant, ventana, origen y contrato de eventos válidos.");
+      return;
+    }
+    const snapshotAvailability = String(payload.availability || "").toLowerCase();
+    if (snapshotAvailability !== "ready" && snapshotAvailability !== "fallback") {
       setConnectionAttempted(true);
       setConnected(false);
-      startPollingFallback();
-    };
+      setStreamWarning("El canal inmediato no confirmó un snapshot; EventSource reintentará sin polling.");
+      return;
+    }
+    setEvents(sortRealtimeEvents(normalizedRows, EXECUTIVE_REALTIME_EVENT_LIMIT));
+    const confirmedSource = String(payload.source).toLowerCase();
+    setActiveDataSource(confirmedSource === "all" ? "mixed" : confirmedSource === "demo" ? "demo" : "production");
+    setDataAvailability(snapshotAvailability === "fallback" ? "fallback" : "ready");
+    setAvailabilityDetail(snapshotAvailability === "fallback" ? "Stream operando con datos de respaldo declarados." : "Fuente confirmada por nexID Core.");
+    if (snapshotAvailability !== "fallback") setStreamWarning(null);
+    setStreamConfirmed(true);
+    setLastUpdateAt(frame.receivedAt);
+    // A reconnect snapshot recovers tap truth; incidents reconcile once from
+    // their durable endpoint. No timer or browser polling loop is created.
+    if (canReadIncidents) void refreshIncidents();
+  }, [canReadIncidents, realtime.activeScope.source, realtime.activeScope.tenant, realtime.activeScope.window, realtime.activeScopeKey, realtime.snapshot, refreshIncidents]);
 
-    const onSnapshot = (event: MessageEvent<string>) => {
-      try {
-        const payload = JSON.parse(event.data) as { rows?: TenantTapRealtimeEvent[]; source?: string; availability?: string };
-        if (!Array.isArray(payload.rows)) return;
-        const snapshotAvailability = String(payload.availability || "ready").toLowerCase();
-        if (snapshotAvailability !== "ready" && snapshotAvailability !== "fallback") {
-          setConnectionAttempted(true);
-          setConnected(false);
-          setStreamWarning("El canal inmediato no confirmó un snapshot; se consultan los eventos persistidos.");
-          startPollingFallback();
-          return;
-        }
-        setEvents(sortRealtimeEvents(payload.rows || [], 50));
-        const confirmedSource = String(payload.source || streamSource).toLowerCase();
-        setActiveDataSource(confirmedSource === "all" ? "mixed" : confirmedSource === "demo" ? "demo" : "production");
-        setDataAvailability(snapshotAvailability === "fallback" ? "fallback" : "ready");
-        setAvailabilityDetail(snapshotAvailability === "fallback" ? "Stream operando con datos de respaldo declarados." : "Fuente confirmada por nexID Core.");
-        if (snapshotAvailability !== "fallback") setStreamWarning(null);
-        setStreamConfirmed(true);
-        setLastUpdateAt(new Date().toISOString());
-        stopPollingFallback();
-      } catch {
-        // keep previous state
+  useEffect(() => {
+    const frames = unreadDashboardRealtimeFrames(
+      realtime.events,
+      consumedEventSequenceRef.current,
+      realtime.activeScopeKey,
+    );
+    const fellBehind = dashboardRealtimeConsumerFellBehind(
+      consumedEventSequenceRef.current,
+      realtime.droppedThroughSequence,
+    );
+    if (!frames.length && !fellBehind) return;
+    consumedEventSequenceRef.current = frames[frames.length - 1]?.sequence || realtime.droppedThroughSequence;
+
+    let incidentChanged = false;
+    let contractMismatch = false;
+    const accepted: Array<{ payload: TenantTapRealtimeEvent; receivedAt: string }> = [];
+    for (const frame of frames) {
+      const payload = frame.data;
+      if (isIncidentRealtimeWireEvent(payload)) {
+        if (
+          executiveRealtimeRowsMatchTenant([{ tenant_slug: payload.tenant_slug }], realtime.activeScope.tenant)
+          && executiveRealtimeRowsMatchTenant([{ tenant_slug: payload.tenant_slug }], queryTenant)
+        ) incidentChanged = true;
+        continue;
       }
-    };
-
-    const onEvent = (event: MessageEvent<string>) => {
-      try {
-        const payload = JSON.parse(event.data) as unknown;
-        if (isIncidentRealtimeWireEvent(payload)) {
-          void refreshIncidents();
-          return;
-        }
-        const tapPayload = payload as TenantTapRealtimeEvent;
-        // A durable event can be re-projected when actor association or consent
-        // changes. mergeRealtimeEvents replaces that id without adding activity.
-        setEvents((prev) => mergeRealtimeEvents(prev, tapPayload, 50));
-        setActiveDataSource(streamSource === "all" ? "mixed" : streamSource);
-        setDataAvailability("ready");
-        setAvailabilityDetail("Evento confirmado por nexID Core.");
-        setStreamWarning(null);
-        setStreamConfirmed(true);
-        setLastUpdateAt(new Date().toISOString());
-        stopPollingFallback();
-      } catch {
-        // keep previous state
+      if (!isExecutiveRealtimeEvent(payload) || !executiveRealtimeSourceMatchesRequest(realtime.activeScope.source, payload.source)) {
+        contractMismatch = true;
+        continue;
       }
-    };
+      if (!executiveRealtimeRowsMatchTenant([payload], realtime.activeScope.tenant)) continue;
+      accepted.push({ payload, receivedAt: frame.receivedAt });
+    }
 
-    const onHeartbeat = (event: MessageEvent<string>) => {
-      try {
-        const payload = JSON.parse(event.data) as { ts?: number | string };
-        const heartbeatAt = safeDate(payload.ts);
-        setLastUpdateAt(heartbeatAt ? new Date(heartbeatAt).toISOString() : new Date().toISOString());
-        setConnectionAttempted(true);
-        setConnected(true);
-        // Heartbeats prove transport liveness only. They cannot replace a
-        // tenant-scoped snapshot or persisted event confirmation.
-      } catch {
-        setLastUpdateAt(new Date().toISOString());
-      }
-    };
+    if (contractMismatch) {
+      setStreamWarning("El canal inmediato emitió un evento fuera del contrato esperado; se descarta y el stream seguirá activo.");
+    }
+    if (accepted.length) {
+      // Durable events can be re-projected when actor association or consent
+      // changes. Drain the complete burst in transport order and replace ids.
+      setEvents((previous) => accepted.reduce(
+        (next, item) => mergeRealtimeEvents(next, item.payload, EXECUTIVE_REALTIME_EVENT_LIMIT),
+        previous,
+      ));
+      setActiveDataSource(realtime.activeScope.source === "all" ? "mixed" : realtime.activeScope.source);
+      setLastUpdateAt(accepted[accepted.length - 1].receivedAt);
+    }
+    if (incidentChanged) void refreshIncidents();
+    if (fellBehind) {
+      setStreamWarning("Una ráfaga superó el buffer local; se solicita una reconciliación durable sin polling.");
+      router.refresh();
+    }
+  }, [queryTenant, realtime.activeScope.source, realtime.activeScope.tenant, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events, refreshIncidents, router]);
 
-    const onWarning = (event: MessageEvent<string>) => {
-      try {
-        const payload = JSON.parse(event.data) as { reason?: string; source?: string; availability?: string };
-        const hasReason = Boolean(String(payload.reason || "").trim());
-        if (payload.availability === "fallback") setDataAvailability("fallback");
-        else setDataAvailability("upstream_error");
-        if (String(payload.source || "").toLowerCase() === "demo") setActiveDataSource("demo");
-        if (String(payload.source || "").toLowerCase() === "seed") setActiveDataSource("seed");
-        setAvailabilityDetail(String(payload.reason || "Stream realtime degradado"));
-        setStreamWarning(hasReason
-          ? "La fuente en tiempo real informó una degradación; se conserva el último snapshot confirmado."
-          : "El stream opera en modo degradado.");
-        if (payload.availability !== "fallback") startPollingFallback();
-      } catch {
-        setStreamWarning("El stream opera en modo degradado.");
-      }
-    };
+  useEffect(() => {
+    const frame = realtime.heartbeat;
+    if (!frame || frame.scopeKey !== realtime.activeScopeKey) return;
+    const payload = frame.data as { ts?: number | string } | null;
+    const heartbeatAt = safeDate(payload?.ts);
+    setLastUpdateAt(heartbeatAt ? new Date(heartbeatAt).toISOString() : frame.receivedAt);
+    setConnectionAttempted(true);
+    // Heartbeats prove transport liveness only; the scoped snapshot still
+    // controls whether dashboard values are considered confirmed.
+  }, [realtime.activeScopeKey, realtime.heartbeat]);
 
-    source.addEventListener("snapshot", onSnapshot as EventListener);
-    source.addEventListener("event", onEvent as EventListener);
-    source.addEventListener("heartbeat", onHeartbeat as EventListener);
-    source.addEventListener("warning", onWarning as EventListener);
-    return () => {
-      disposed = true;
-      if (pollTimer !== null) window.clearInterval(pollTimer);
-      source.removeEventListener("snapshot", onSnapshot as EventListener);
-      source.removeEventListener("event", onEvent as EventListener);
-      source.removeEventListener("heartbeat", onHeartbeat as EventListener);
-      source.removeEventListener("warning", onWarning as EventListener);
-      source.close();
-    };
-  }, [canReadSensitiveEvents, initialAvailability, initialAvailabilityDetail, initialDataSource, initialEvents.length, refreshIncidents, streamSource, tenantScope, timeRange]);
+  useEffect(() => {
+    const frame = realtime.warning;
+    if (!frame || frame.scopeKey !== realtime.activeScopeKey) return;
+    const payload = frame.data as { reason?: string; source?: string; availability?: string } | null;
+    const hasReason = Boolean(String(payload?.reason || "").trim());
+    if (payload?.availability === "fallback") setDataAvailability("fallback");
+    else setDataAvailability("upstream_error");
+    if (String(payload?.source || "").toLowerCase() === "demo") setActiveDataSource("demo");
+    if (String(payload?.source || "").toLowerCase() === "seed") setActiveDataSource("seed");
+    setAvailabilityDetail(String(payload?.reason || "Stream realtime degradado"));
+    setStreamWarning(hasReason
+      ? "La fuente en tiempo real informó una degradación; se conserva el último snapshot confirmado."
+      : "El stream opera en modo degradado.");
+  }, [realtime.activeScopeKey, realtime.warning]);
 
   const tenantOptions = useMemo(
-    () => [...new Set(events.map((event) => String(event.tenantSlug || "unknown").toLowerCase()))].filter(Boolean).sort(),
-    [events],
+    () => normalizeExecutiveRealtimeTenantDirectory(tenantDirectory),
+    [tenantDirectory],
   );
+  const queryTenantDisplayName = queryTenant
+    ? tenantOptions.find((tenant) => tenant.slug === queryTenant)?.name || tenantDisplayName(queryTenant)
+    : "todos los tenants";
 
   const visibleEvents = useMemo(
     () => {
-      const cutoff = Date.now() - timeRangeMs(timeRange);
+      if (valuesUnavailable) return [];
+      const cutoff = freshnessNow - timeRangeMs(timeRange);
       return (effectiveSelectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === effectiveSelectedTenant))
         .filter((event) => {
           const at = safeDate(event.occurredAt);
           return !at || at >= cutoff;
         });
     },
-    [effectiveSelectedTenant, events, timeRange],
+    [effectiveSelectedTenant, events, freshnessNow, timeRange, valuesUnavailable],
   );
   const commercialActivityEvents = useMemo(
     () => visibleEvents.filter(isCommercialActivitySignal),
@@ -1075,7 +1076,25 @@ export function ExecutiveRealtimeCrm({
     return () => clearInterval(timer);
   }, [consoleTimezone]);
 
+  const selectTenant = (nextTenant: string) => {
+    if (tenantSession || nextTenant === selectedTenant) return;
+    setSelectedEvent(null);
+    setCampaignDraft(null);
+    setIncidentsByEventId({});
+    setIncidentAvailability(canReadIncidents ? "loading" : "unavailable");
+    setSelectedTenant(nextTenant);
+  };
+
+  const selectTimeRange = (nextTimeRange: TimeRange) => {
+    if (nextTimeRange === timeRange) return;
+    setSelectedEvent(null);
+    setCampaignDraft(null);
+    setTimeRange(nextTimeRange);
+  };
+
   const cycleTimeRange = () => {
+    setSelectedEvent(null);
+    setCampaignDraft(null);
     setTimeRange((current) => current === "5m" ? "1h" : current === "1h" ? "24h" : "5m");
   };
 
@@ -1114,6 +1133,7 @@ export function ExecutiveRealtimeCrm({
       commercialSignalRate: total ? (commercialSignals / total) * 100 : 0,
     };
   }, [commercialActivityEvents, geoOpportunityEvents, visibleEvents]);
+  const recentEventSample = recentEventSamplePresentation(metrics.total);
 
   const velocitySeries = useMemo(() => {
     const now = Date.now();
@@ -1159,21 +1179,18 @@ export function ExecutiveRealtimeCrm({
   const lastUpdateMs = safeDate(lastUpdateAt);
   const streamIsStale = Boolean(connected && streamConfirmed && lastUpdateMs && freshnessNow - lastUpdateMs > 20_000);
   const sourcePresentation = realtimeSourcePresentation(activeDataSource, dataAvailability, availabilityDetail);
-  const streamHealth = pollingFallbackActive && dataAvailability === "ready" && streamConfirmed
-    ? { label: "Actualizando por respaldo", detail: "El canal inmediato se está reconectando; los eventos persistidos se consultan cada 10 segundos.", dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
-    : streamWarning || dataAvailability !== "ready"
+  const streamHealth = streamWarning || dataAvailability !== "ready"
     ? { label: "Degradado", detail: streamWarning || sourcePresentation.detail, dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
     : !connected
       ? connectionAttempted
-        ? { label: "Reconectando", detail: "La conexión se interrumpió; EventSource reintentará automáticamente.", dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
+        ? { label: "Reconectando", detail: "La conexión se interrumpió; EventSource reintentará automáticamente sin polling.", dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
         : { label: "Conectando", detail: "Abriendo el canal de eventos y esperando su primera confirmación.", dot: "bg-cyan-300", badge: "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" }
       : !streamConfirmed
         ? { label: "Sincronizando", detail: "Conexión abierta; esperando la primera confirmación de datos.", dot: "bg-cyan-300", badge: "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" }
         : streamIsStale
           ? { label: "Desactualizado", detail: "No se recibió heartbeat ni snapshot en los últimos 20 segundos.", dot: "bg-rose-300", badge: "border-rose-300/30 bg-rose-400/10 text-rose-100" }
-          : { label: activeDataSource === "demo" ? "En vivo - demo" : activeDataSource === "mixed" ? "En vivo - fuente mixta" : "En vivo - produccion", detail: `Stream confirmado. ${sourcePresentation.detail}`, dot: "bg-emerald-400", badge: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" };
+          : { label: activeDataSource === "demo" ? "En vivo - demo" : activeDataSource === "mixed" ? "En vivo - fuente mixta" : "En vivo - produccion", detail: `Stream event-driven confirmado, sin polling. ${sourcePresentation.detail}`, dot: "bg-emerald-400", badge: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" };
   const streamDataUnconfirmed = Boolean(dataAvailability !== "ready" || !streamConfirmed || streamIsStale);
-
   const alerts = useMemo(() => {
     const rows: Array<{ id: string; tone: "red" | "amber" | "blue"; title: string; detail: string; time: string }> = [];
     if (metrics.explicitRiskRate > 10) {
@@ -1351,8 +1368,8 @@ export function ExecutiveRealtimeCrm({
     { icon: <Megaphone className="h-5 w-5" />, active: false, label: "IA de cercanía", short: "IA", title: "Ver priorización comercial por zona basada en eventos visibles.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
     ...(canReadSensitiveEvents ? [{ icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } }] : []),
-    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar actividad", short: "CSV", title: "Exportar sólo interacciones con señal comercial; no exporta audiencia ni destinatarios.", action: handleExport, disabled: commercialActivityEvents.length === 0, disabledReason: exportDisabledReason },
-    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { setSelectedTenant(tenantSession ? lockedTenantScope : "all"); setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); } },
+    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar actividad", short: "CSV", title: "Exportar sólo interacciones con señal comercial; no exporta audiencia ni destinatarios.", action: handleExport, disabled: valuesUnavailable || commercialActivityEvents.length === 0, disabledReason: valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : exportDisabledReason },
+    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { if (!tenantSession && selectedTenant !== "all") selectTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); } },
   ];
 
   return (
@@ -1471,13 +1488,16 @@ export function ExecutiveRealtimeCrm({
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <MetricCard icon={<Radio className="h-5 w-5" />} label="Actividad total" value={formatNumber(metrics.total)} delta="stream" help="Todas las interacciones persistidas para el tenant y la ventana activos." tone="cyan" data={velocitySeries} />
-            <MetricCard icon={<BadgeCheck className="h-5 w-5" />} label="Producto reconocido" value={formatPercent(metrics.productRecognizedRate)} delta={`${metrics.productRecognized} interacciones`} help="Producto, lote o unidad resuelto contra registros NexID. No identifica a una persona ni equivale a autenticación física." tone="blue" data={velocitySeries} dataKey="productRecognized" />
-            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Autenticación verificada" value={formatPercent(metrics.authenticationRate)} delta={`${metrics.authenticated} eventos`} help="Sólo mensajes SUN con verdict válido, CMAC correcto y UID allowlisted." tone="green" data={velocitySeries} dataKey="authenticated" />
-            <MetricCard icon={<Users className="h-5 w-5" />} label="Actor conocido" value={formatPercent(metrics.knownActorRate)} delta={`${metrics.knownActors} interacciones`} help="Interacciones vinculadas a un consumer/member pseudónimo persistido. No cuenta UIDs como personas ni expone el identificador del actor." tone="blue" data={velocitySeries} dataKey="knownActors" />
-            <MetricCard icon={<Megaphone className="h-5 w-5" />} label="Consentimiento por canal" value={formatPercent(metrics.channelConsentRate)} delta={`${metrics.channelConsented} interacciones`} help="Actor conocido con consentimiento vigente para WhatsApp, teléfono o email. Consentimientos genéricos no habilitan contacto." tone="green" data={velocitySeries} dataKey="consented" />
-            <MetricCard icon={<Target className="h-5 w-5" />} label="Señales comerciales" value={formatNumber(metrics.commercialSignals)} delta={`${metrics.geoCommercialSignals} con zona útil`} help="Actividad event-level: producto reconocido, actor asociado, tipo elegible y canal consentido. No representa audiencia, contactos ni destinatarios; éstos se resuelven server-side con permisos." tone="blue" data={velocitySeries} dataKey="consented" />
+            <MetricCard icon={<Radio className="h-5 w-5" />} label="Eventos recientes visibles" value={valuesUnavailable ? "—" : recentEventSample.value} delta={valuesUnavailable ? "sin confirmar" : recentEventSample.detail} help={activeDataSource === "demo" ? "Muestra de hasta 50 eventos del recorrido demo aislado; no representa actividad productiva ni un total histórico." : "Muestra de hasta 50 eventos persistidos para el tenant y la ventana activos; no representa un total histórico."} tone="cyan" data={valuesUnavailable ? [] : velocitySeries} />
+            <MetricCard icon={<BadgeCheck className="h-5 w-5" />} label="Producto reconocido" value={valuesUnavailable ? "—" : formatPercent(metrics.productRecognizedRate)} delta={valuesUnavailable ? "sin confirmar" : `${metrics.productRecognized} interacciones`} help="Producto, lote o unidad resuelto contra registros NexID. No identifica a una persona ni equivale a autenticación física." tone="blue" data={valuesUnavailable ? [] : velocitySeries} dataKey="productRecognized" />
+            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Autenticación verificada" value={valuesUnavailable ? "—" : formatPercent(metrics.authenticationRate)} delta={valuesUnavailable ? "sin confirmar" : `${metrics.authenticated} eventos`} help="Sólo mensajes SUN con verdict válido, CMAC correcto y UID allowlisted." tone="green" data={valuesUnavailable ? [] : velocitySeries} dataKey="authenticated" />
+            <MetricCard icon={<Users className="h-5 w-5" />} label="Actor conocido" value={valuesUnavailable ? "—" : formatPercent(metrics.knownActorRate)} delta={valuesUnavailable ? "sin confirmar" : `${metrics.knownActors} interacciones`} help="Interacciones vinculadas a un consumer/member pseudónimo persistido. No cuenta UIDs como personas ni expone el identificador del actor." tone="blue" data={valuesUnavailable ? [] : velocitySeries} dataKey="knownActors" />
+            <MetricCard icon={<Megaphone className="h-5 w-5" />} label="Consentimiento por canal" value={valuesUnavailable ? "—" : formatPercent(metrics.channelConsentRate)} delta={valuesUnavailable ? "sin confirmar" : `${metrics.channelConsented} interacciones`} help="Actor conocido con consentimiento vigente para WhatsApp, teléfono o email. Consentimientos genéricos no habilitan contacto." tone="green" data={valuesUnavailable ? [] : velocitySeries} dataKey="consented" />
+            <MetricCard icon={<Target className="h-5 w-5" />} label="Señales comerciales" value={valuesUnavailable ? "—" : formatNumber(metrics.commercialSignals)} delta={valuesUnavailable ? "sin confirmar" : `${metrics.geoCommercialSignals} con zona útil`} help="Actividad event-level: producto reconocido, actor asociado, tipo elegible y canal consentido. No representa audiencia, contactos ni destinatarios; éstos se resuelven server-side con permisos." tone="blue" data={valuesUnavailable ? [] : velocitySeries} dataKey="consented" />
           </div>
+          <p data-testid="crm-recent-events-sample-note" className="px-1 text-[10px] leading-4 text-slate-500">
+            Indicadores calculados sobre hasta 50 eventos recientes visibles. {recentEventSample.limitReached ? "La muestra alcanzó el límite; puede haber más eventos en la ventana." : "No se presenta este recorte como un total histórico."}
+          </p>
 
           <div className="rounded-lg border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
             <div className="flex items-center justify-between">
@@ -1485,7 +1505,9 @@ export function ExecutiveRealtimeCrm({
               <button type="button" title="Cambiar ventana temporal del CRM" onClick={cycleTimeRange} className="rounded-lg border border-white/8 bg-slate-950/60 px-3 py-1 text-xs text-slate-300">{timeRangeLabel(timeRange)}</button>
             </div>
             <div className="mt-2 h-[92px] 2xl:h-[112px]">
-              <ResponsiveContainer width="100%" height="100%">
+              {valuesUnavailable ? (
+                <div data-testid="crm-velocity-pending" className="grid h-full place-items-center rounded-lg border border-dashed border-cyan-300/15 bg-slate-950/35 text-xs font-semibold text-slate-500">Esperando datos confirmados</div>
+              ) : <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={velocitySeries} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
                   <defs>
                     <linearGradient id="execTaps" x1="0" x2="0" y1="0" y2="1">
@@ -1499,7 +1521,7 @@ export function ExecutiveRealtimeCrm({
                   <Tooltip contentStyle={tooltipStyle} />
                   <Area type="monotone" dataKey="taps" stroke="#22d3ee" strokeWidth={2} fill="url(#execTaps)" dot={{ r: 2, fill: "#22d3ee" }} />
                 </AreaChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer>}
             </div>
           </div>
 
@@ -1509,18 +1531,18 @@ export function ExecutiveRealtimeCrm({
                 <p className="text-sm font-bold text-white">Funnel post-tap</p>
                 <p className="text-[11px] text-slate-500">De actividad registrada a acción comercial consentida.</p>
               </span>
-              <span className="text-xs text-slate-500">{metrics.commercialSignals ? `${metrics.commercialSignals} señales de actividad` : "sin señales listas aún"}</span>
+              <span className="text-xs text-slate-500">{valuesUnavailable ? "sin confirmar" : metrics.commercialSignals ? `${metrics.commercialSignals} señales de actividad` : "sin señales listas aún"}</span>
             </div>
             <div className="mt-3 flex items-start gap-1 overflow-x-auto pb-1">
-              <FunnelNode icon={<MousePointerClick className="h-5 w-5" />} label="Actividad" value={metrics.total} pct={100} tone="#22d3ee" detail="eventos persistidos" pctLabel="base" />
+              <FunnelNode icon={<MousePointerClick className="h-5 w-5" />} label="Actividad" value={valuesUnavailable ? "—" : metrics.total} pct={100} tone="#22d3ee" detail="eventos recientes visibles" pctLabel={valuesUnavailable ? "sin confirmar" : "base"} />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<BadgeCheck className="h-5 w-5" />} label="Producto" value={metrics.productRecognized} pct={metrics.productRecognizedRate} tone="#38bdf8" detail="lote o unidad resuelto" />
+              <FunnelNode icon={<BadgeCheck className="h-5 w-5" />} label="Producto" value={valuesUnavailable ? "—" : metrics.productRecognized} pct={metrics.productRecognizedRate} tone="#38bdf8" detail="lote o unidad resuelto" pctLabel={valuesUnavailable ? "sin confirmar" : undefined} />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Users className="h-5 w-5" />} label="Actor" value={metrics.knownActors} pct={metrics.knownActorRate} tone="#22c55e" detail="pseudónimo persistido" />
+              <FunnelNode icon={<Users className="h-5 w-5" />} label="Actor" value={valuesUnavailable ? "—" : metrics.knownActors} pct={metrics.knownActorRate} tone="#22c55e" detail="pseudónimo persistido" pctLabel={valuesUnavailable ? "sin confirmar" : undefined} />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Megaphone className="h-5 w-5" />} label="Señal comercial" value={metrics.commercialSignals} pct={metrics.commercialSignalRate} tone="#a855f7" detail="actividad, no audiencia" />
+              <FunnelNode icon={<Megaphone className="h-5 w-5" />} label="Señal comercial" value={valuesUnavailable ? "—" : metrics.commercialSignals} pct={metrics.commercialSignalRate} tone="#a855f7" detail="actividad, no audiencia" pctLabel={valuesUnavailable ? "sin confirmar" : undefined} />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Tags className="h-5 w-5" />} label="Campaña" value={metrics.offerReady} pct={metrics.offerReady ? 100 : 0} tone="#38bdf8" detail="zonas con señal" pctLabel={metrics.offerReady ? "zonas listas" : "sin zona"} />
+              <FunnelNode icon={<Tags className="h-5 w-5" />} label="Campaña" value={valuesUnavailable ? "—" : metrics.offerReady} pct={metrics.offerReady ? 100 : 0} tone="#38bdf8" detail="zonas con señal" pctLabel={valuesUnavailable ? "sin confirmar" : metrics.offerReady ? "zonas listas" : "sin zona"} />
             </div>
           </div>
         </section>
@@ -1533,36 +1555,42 @@ export function ExecutiveRealtimeCrm({
                 <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
               </div>
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
-                <select size={1} aria-label="Filtrar lecturas por tenant" title={tenantSession ? "Alcance fijado por la sesión tenant" : "Filtrar lecturas por tenant"} value={effectiveSelectedTenant} disabled={tenantSession} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-12 w-full min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 disabled:cursor-not-allowed disabled:text-slate-400 sm:col-span-1 sm:w-auto sm:min-w-[160px]">
+                <select size={1} aria-label="Filtrar lecturas por tenant" title={tenantSession ? "Alcance fijado por la sesión tenant" : "Consultar lecturas del tenant seleccionado"} value={effectiveSelectedTenant} disabled={tenantSession} onChange={(event) => selectTenant(event.target.value)} className="col-span-2 h-12 w-full min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 disabled:cursor-not-allowed disabled:text-slate-400 sm:col-span-1 sm:w-auto sm:min-w-[160px]">
                   {tenantSession ? (
                     <option value={lockedTenantScope}>{lockedTenantScope ? tenantDisplayName(lockedTenantScope) : "Tenant no disponible"}</option>
                   ) : (
                     <>
                       <option value="all">Todos los tenants</option>
-                      {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenantDisplayName(tenant)}</option>)}
+                      {tenantOptions.map((tenant) => <option key={tenant.slug} value={tenant.slug}>{tenant.name}</option>)}
                     </>
                   )}
                 </select>
-                <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20">
+                <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => selectTimeRange(event.target.value as TimeRange)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 2xl:hidden">
                   {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <button type="button" title={commercialActivityEvents.length === 0 ? exportDisabledReason : "Exportar actividad con señal comercial a CSV"} onClick={handleExport} disabled={commercialActivityEvents.length === 0} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/80 px-4 text-sm font-bold text-white transition hover:border-cyan-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {commercialActivityEvents.length === 0 ? "Sin señales" : "Exportar"}</button>
+                <button type="button" title={valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : commercialActivityEvents.length === 0 ? exportDisabledReason : "Exportar actividad con señal comercial a CSV"} onClick={handleExport} disabled={valuesUnavailable || commercialActivityEvents.length === 0} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/80 px-4 text-sm font-bold text-white transition hover:border-cyan-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {valuesUnavailable ? "Sin confirmar" : commercialActivityEvents.length === 0 ? "Sin señales" : "Exportar"}</button>
               </div>
             </div>
 
-            {(streamDataUnconfirmed || !visibleEvents.length) ? (
+            {(requestTransitionPending || streamDataUnconfirmed || !visibleEvents.length) ? (
               <div className="mb-3">
                 <EnterpriseOpsState
                   compact
-                  variant={streamDataUnconfirmed ? "warning" : "empty"}
-                  title={streamDataUnconfirmed ? "Actividad todavía no confirmada" : "Sin eventos en los filtros activos"}
-                  description={streamDataUnconfirmed
-                    ? `${streamHealth.detail} Los indicadores visibles pueden provenir del último snapshot confirmado y no representan un cero operativo.`
-                    : "El stream respondió correctamente, pero no hay lecturas para este tenant y esta ventana temporal."}
-                  checklist={streamDataUnconfirmed ? ["Esperar reconexión o revisar la fuente antes de decidir", `Última actualización: ${timeAgo(lastUpdateAt)}`] : ["Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
+                  variant={requestTransitionPending || streamDataUnconfirmed ? "warning" : "empty"}
+                  title={requestTransitionPending ? "Sincronizando tenant…" : streamDataUnconfirmed ? "Actividad todavía no confirmada" : "Sin eventos en los filtros activos"}
+                  description={requestTransitionPending
+                    ? `Consultando ${queryTenantDisplayName} para la ventana y fuente activas. Todavía no se confirma un cero operativo.`
+                    : streamDataUnconfirmed
+                      ? `${streamHealth.detail} Los indicadores visibles pueden provenir del último snapshot confirmado y no representan un cero operativo.`
+                      : "El stream y la consulta persistida confirmaron que no hay eventos recientes visibles para este tenant y esta ventana temporal."}
+                  checklist={requestTransitionPending
+                    ? ["Esperar la respuesta del scope seleccionado", "No usar los indicadores hasta completar la sincronización"]
+                    : streamDataUnconfirmed
+                      ? ["Esperar reconexión o revisar la fuente antes de decidir", `Última actualización: ${timeAgo(lastUpdateAt)}`]
+                      : ["Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
                   testId="crm-realtime-data-state"
                 />
               </div>
@@ -1598,7 +1626,7 @@ export function ExecutiveRealtimeCrm({
                     </button>
                   ))}
                 </div>
-                <button type="button" title={streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={!streetViewTarget} className="nexid-crm-map-street hidden h-12 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/72 px-3 text-sm font-bold text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 2xl:flex"><Globe className="h-4 w-4" /> {streetViewTarget ? "Street" : "Sin GPS"}</button>
+                <button type="button" title={valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : streetViewTarget ? "Abrir Google Maps Street View en una coordenada reportada de la ventana actual" : streetViewDisabledReason} onClick={openStreetView} disabled={valuesUnavailable || !streetViewTarget} className="nexid-crm-map-street hidden h-12 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/72 px-3 text-sm font-bold text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-white/5 disabled:text-slate-600 2xl:flex"><Globe className="h-4 w-4" /> {valuesUnavailable ? "Sin confirmar" : streetViewTarget ? "Street" : "Sin GPS"}</button>
               </div>
 
               <div className="nexid-crm-map-legend absolute bottom-[264px] left-3 z-20 rounded-xl border border-white/10 bg-slate-950/82 p-3.5 text-xs text-slate-200 shadow-xl backdrop-blur sm:left-4 2xl:bottom-20">
@@ -1620,12 +1648,17 @@ export function ExecutiveRealtimeCrm({
               </div>
 
               <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "h-full" : "h-[460px] sm:h-[520px] 2xl:h-[560px]"} w-full p-3 pt-[76px] 2xl:pr-[300px]`}>
-                <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} />
+                {valuesUnavailable ? (
+                  <div data-testid="crm-map-pending" className="grid h-full min-h-[320px] place-items-center rounded-xl border border-dashed border-cyan-300/20 bg-[radial-gradient(circle_at_center,rgba(34,211,238,.08),transparent_55%)] px-6 text-center">
+                    <div><Radio className="mx-auto h-7 w-7 text-cyan-300" /><p className="mt-3 text-base font-bold text-white">Esperando el mapa del scope confirmado</p><p className="mt-1 max-w-md text-sm leading-6 text-slate-400">No se dibujan puntos, densidad ni ceros hasta validar el tenant y la ventana seleccionados.</p></div>
+                  </div>
+                ) : <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} />}
               </div>
 
               <div className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:absolute 2xl:bottom-4 2xl:right-4 2xl:top-[76px] 2xl:m-0 2xl:w-[282px] 2xl:max-h-none">
                 <p className="text-base font-extrabold tracking-[-0.015em] text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
+                  {valuesUnavailable ? <p data-testid="crm-events-pending" className="rounded-xl border border-dashed border-white/10 bg-slate-900/45 p-3 text-xs leading-5 text-slate-400">La actividad aparecerá cuando el tenant y la ventana queden confirmados.</p> : null}
                   {visibleEvents.slice(0, 4).map((event) => {
                     const authenticated = event.authenticationVerified === true;
                     const recognized = event.productIdentityRecognized === true;
@@ -1727,14 +1760,14 @@ export function ExecutiveRealtimeCrm({
                   </div>
                 )) : (
                   <div className="rounded-lg border border-white/8 bg-slate-950/48 px-3 py-5 text-sm text-slate-400">
-                    {commercialContext.noData}
+                    {valuesUnavailable ? "Esperando la confirmación del tenant y la ventana antes de calcular oportunidades." : commercialContext.noData}
                   </div>
                 )}
               </div>
             </div>
             <div className="nexid-crm-alerts-panel rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-base font-bold text-white">Alertas y excepciones <span className="ml-1 rounded-full bg-red-500 px-1.5 text-xs">{alerts.length}</span></p>
+                <p className="text-base font-bold text-white">Alertas y excepciones <span className="ml-1 rounded-full bg-red-500 px-1.5 text-xs">{valuesUnavailable ? "—" : alerts.length}</span></p>
                 <button type="button" title="Abrir todas las alertas y excepciones" onClick={() => { window.location.href = "/events"; }} className="text-sm font-semibold text-cyan-300">Ver todas</button>
               </div>
               <div className="space-y-2">

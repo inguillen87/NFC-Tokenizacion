@@ -222,6 +222,7 @@ export default function DashboardHomeClient({
               }}
               initialEvents={initialRealtimeEvents}
               tenantScope={tenantScope}
+              tenantDirectory={opsTenantRows}
               mode={isTenantAdmin ? "tenant" : "global"}
               streamSource={realtimeStreamSource}
               initialDataSource={realtimeDataSource}

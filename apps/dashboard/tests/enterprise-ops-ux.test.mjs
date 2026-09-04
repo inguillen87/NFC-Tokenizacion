@@ -38,11 +38,11 @@ test("analytics separates confirmed zero activity from upstream failure and labe
 test("CRM tracks connection, snapshots, heartbeat freshness and degraded stream warnings", () => {
   assert.match(crmSource, /const \[streamConfirmed, setStreamConfirmed\]/);
   assert.match(crmSource, /const \[connectionAttempted, setConnectionAttempted\]/);
-  assert.match(crmSource, /source\.addEventListener\("heartbeat", onHeartbeat/);
-  assert.match(crmSource, /source\.addEventListener\("warning", onWarning/);
+  assert.match(crmSource, /const frame = realtime\.heartbeat/);
+  assert.match(crmSource, /const frame = realtime\.warning/);
   assert.match(crmSource, /freshnessNow - lastUpdateMs > 20_000/);
-  assert.match(crmSource, /const \[pollingFallbackActive, setPollingFallbackActive\]/);
-  assert.match(crmSource, /pollingFallbackActive && dataAvailability === "ready" && streamConfirmed/);
+  assert.doesNotMatch(crmSource, /pollPersistedEvents|pollingFallbackActive/);
+  assert.match(crmSource, /EventSource está reconectando sin polling/);
   assert.match(crmSource, /dataAvailability !== "ready" \|\| !streamConfirmed \|\| streamIsStale/);
   assert.match(crmSource, /no representan un cero operativo/);
   assert.match(crmSource, /data-testid="crm-stream-live-region"/);

@@ -276,3 +276,152 @@ export function latestPhysicalTapByState(rows: PhysicalTapRow[], state: "closed"
   }
   return latest;
 }
+
+const REALTIME_PHYSICAL_EVENT_TYPES = new Set(["TAP_VALID", "TAP_INVALID", "REPLAY_SUSPECT"]);
+const REALTIME_CLOSED_RESULTS = new Set(["VALID_CLOSED"]);
+const REALTIME_OPENED_RESULTS = new Set([
+  "OPENED",
+  "OPENED_PREVIOUSLY",
+  "MANUAL_OPENED",
+  "VALID_OPENED",
+  "VALID_OPENED_PREVIOUSLY",
+  "VALID_MANUAL_OPENED",
+]);
+
+function realtimeSealState(result: string): PhysicalTapState {
+  if (REALTIME_CLOSED_RESULTS.has(result)) return "closed";
+  if (REALTIME_OPENED_RESULTS.has(result)) return "opened";
+  return "other";
+}
+
+/**
+ * Convert the canonical SSE projection into a conservative physical-tap row.
+ * The realtime projection proves a persisted event, but it does not currently
+ * include the durable TT receipt. We therefore never fabricate receipt fields;
+ * an existing row loaded from the physical-taps endpoint always wins on dedupe.
+ */
+export function physicalTapFromRealtimeProjection(value: unknown, tenantSlug: string): PhysicalTapRow | null {
+  const input = record(value);
+  if (!input) return null;
+  const expectedTenant = text(tenantSlug).toLowerCase();
+  const eventTenant = text(input.tenantSlug || input.tenant_slug).toLowerCase();
+  const eventType = text(input.eventType || input.event_type).toUpperCase();
+  const source = text(input.source).toLowerCase();
+  const eventSource = text(input.eventSource || input.event_source).toLowerCase();
+  if (
+    !expectedTenant
+    || eventTenant !== expectedTenant
+    || !REALTIME_PHYSICAL_EVENT_TYPES.has(eventType)
+    || source !== "production"
+    || !["real", "imported", "production"].includes(eventSource)
+  ) return null;
+
+  const eventId = text(input.eventId || input.id);
+  const bid = text(input.bid);
+  const uidMasked = text(input.uidMasked || input.uid_masked);
+  const occurredAtUtc = isoOrEmpty(input.occurredAtUtc || input.occurredAt || input.created_at);
+  if (!eventId || !bid || !uidMasked || !occurredAtUtc) return null;
+
+  const result = text(input.result).toUpperCase();
+  const lat = finiteNumber(input.lat);
+  const lng = finiteNumber(input.lng);
+  const hasCoordinate = lat !== null
+    && lng !== null
+    && lat >= -90
+    && lat <= 90
+    && lng >= -180
+    && lng <= 180;
+  const locationSource = text(input.locationSource || input.location_source).toLowerCase();
+  const browserConsent = [
+    "browser_geolocation_approximate_consent",
+    "browser_gps_approximate_consent",
+    "browser_gps_reported",
+  ].includes(locationSource);
+  const accuracyM = finiteNumber(input.locationAccuracyM || input.location_accuracy_m);
+  const authenticationVerified = input.authenticationVerified === true || input.authentication_verified === true;
+
+  return {
+    eventId,
+    tenantSlug: eventTenant,
+    bid,
+    productName: text(input.productName || input.product_name),
+    uidMasked,
+    sealState: realtimeSealState(result),
+    reportedState: result,
+    messageValid: authenticationVerified,
+    result,
+    verdict: text(input.verdict).toLowerCase(),
+    source: "real",
+    dataMode: "physical_real",
+    occurredAt: {
+      utc: occurredAtUtc,
+      local: text(input.occurredAtLocal || input.occurred_at_local) || occurredAtUtc,
+      timezone: text(input.timezone) || "UTC",
+      label: text(input.timezoneLabel || input.timezone_label) || "UTC",
+    },
+    readCounter: null,
+    location: {
+      city: text(input.city),
+      region: "",
+      country: text(input.country || input.country_code),
+      lat: hasCoordinate ? lat : null,
+      lng: hasCoordinate ? lng : null,
+      source: hasCoordinate ? locationSource || "unknown_approx" : "none",
+      precision: hasCoordinate ? browserConsent ? "browser_approximate_consent" : "approximate" : "none",
+      accuracyM: hasCoordinate && accuracyM !== null && accuracyM >= 0 ? accuracyM : null,
+      evidence: hasCoordinate ? "persisted_event" : "none",
+    },
+    evidence: {
+      kind: "real_tap_event_carrier_unconfirmed",
+      messageAuthentication: authenticationVerified ? "validated" : "not_validated",
+      ttStatusReported: false,
+      ttState: null,
+      ttRaw: null,
+      ttBindingStatus: "NOT_AVAILABLE_IN_REALTIME_PROJECTION",
+      ttBindingReason: "durable_tt_receipt_requires_reconciliation",
+      ttStatusSource: null,
+      ttStatusOffset: null,
+      ttStatusLength: null,
+      ttEvidenceAuthority: "not_reported",
+      physicalPackagingMeaning: "integration_dependent",
+    },
+  };
+}
+
+export function mergePhysicalTapRealtimeProjection(
+  current: PhysicalTapsResult,
+  incoming: PhysicalTapRow,
+  checkedAt: string,
+): PhysicalTapsResult | null {
+  const payload = current.payload;
+  if (current.availability !== "ready" || !payload) return null;
+  if (incoming.tenantSlug !== payload.scope.tenant) return null;
+  if (payload.scope.bid !== "all" && incoming.bid !== payload.scope.bid) return null;
+
+  const existing = payload.rows.find((row) => row.eventId === incoming.eventId);
+  const nextRows = [existing || incoming, ...payload.rows.filter((row) => row.eventId !== incoming.eventId)]
+    .sort((left, right) => Date.parse(right.occurredAt.utc) - Date.parse(left.occurredAt.utc))
+    .slice(0, payload.scope.limit);
+  const closed = nextRows.filter((row) => row.sealState === "closed").length;
+  const opened = nextRows.filter((row) => row.sealState === "opened").length;
+  const latestAt = nextRows[0]?.occurredAt.utc || null;
+  return {
+    availability: "ready",
+    detail: current.detail,
+    checkedAt: isoOrEmpty(checkedAt) || new Date().toISOString(),
+    payload: {
+      ...payload,
+      rows: nextRows,
+      summary: {
+        total: nextRows.length,
+        closed,
+        opened,
+        other: Math.max(nextRows.length - closed - opened, 0),
+        distinctUnits: new Set(nextRows.map((row) => row.uidMasked)).size,
+        latestAt,
+        comparisonAvailable: closed > 0 && opened > 0,
+        comparisonMeaning: "independent_physical_taps_not_a_product_journey",
+      },
+    },
+  };
+}

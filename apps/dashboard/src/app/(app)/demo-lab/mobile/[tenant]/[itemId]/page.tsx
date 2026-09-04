@@ -136,6 +136,7 @@ export default function DemoMobileItemPage() {
   const requestedUid = searchParams.get("uid");
   const demoMode = searchParams.get("demoMode") || "simulated";
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [refreshRequest, setRefreshRequest] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -157,14 +158,12 @@ export default function DemoMobileItemPage() {
     loadWhenVisible();
     const onVisibilityChange = () => loadWhenVisible();
     document.addEventListener("visibilitychange", onVisibilityChange);
-    const timer = window.setInterval(loadWhenVisible, 20000);
 
     return () => {
       active = false;
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.clearInterval(timer);
     };
-  }, []);
+  }, [refreshRequest]);
 
   const latest = events[0];
   const evidenceSource = events.length > 0 ? "backend_reported" : "synthetic_seed";
@@ -195,6 +194,16 @@ export default function DemoMobileItemPage() {
         title="Preview de evidencia reportada"
         description="Vista orientativa por tenant/item. Expone la fuente de los datos y nunca sustituye una lectura NFC física."
       />
+      <div className="flex items-center justify-end gap-3 text-xs text-slate-400">
+        <span>Actualización a demanda</span>
+        <button
+          type="button"
+          onClick={() => setRefreshRequest((current) => current + 1)}
+          className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 font-semibold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        >
+          Actualizar evidencia
+        </button>
+      </div>
       <div className="mx-auto w-full max-w-[420px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
         <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">

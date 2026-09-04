@@ -10,24 +10,22 @@ const account = await readFile(new URL("../src/components/tenant-account-menu.ts
 const fallbackStream = await readFile(new URL("../src/app/api/admin/events/stream/route.ts", import.meta.url), "utf8");
 const map = await readFile(new URL("../src/components/realtime-maplibre-map.tsx", import.meta.url), "utf8");
 
-test("CRM keeps SSE as the primary channel and reconciles persisted events every ten seconds", () => {
-  assert.match(crm, /new EventSource\(streamUrl\.toString\(\)\)/);
-  assert.match(crm, /new URL\("\/api\/admin\/events", window\.location\.origin\)/);
-  assert.match(crm, /pollUrl\.searchParams\.set\("source", streamSource\)/);
-  assert.match(crm, /pollUrl\.searchParams\.set\("range", timeRange\)/);
-  assert.doesNotMatch(crm, /streamSource === "production" \? "real" : streamSource/);
-  assert.match(crm, /setInterval\(\(\) => void pollPersistedEvents\(\), 10_000\)/);
-  assert.match(crm, /startPollingFallback\(\);\s*const source = new EventSource/);
-  assert.match(crm, /normalizeTenantTapRealtimeEvent/);
-  assert.match(crm, /row\.source !== "production"/);
-  assert.match(crm, /Actualizando por respaldo/);
-  assert.match(crm, /eventos persistidos se consultan cada 10 segundos/);
-  const onOpen = crm.match(/source\.onopen = \(\) => \{[\s\S]*?\n    \};/)?.[0] || "";
-  const onHeartbeat = crm.match(/const onHeartbeat = \(event: MessageEvent<string>\) => \{[\s\S]*?\n    \};/)?.[0] || "";
-  assert.doesNotMatch(onOpen, /stopPollingFallback\(\)/);
-  assert.doesNotMatch(onHeartbeat, /stopPollingFallback\(\)/);
+test("CRM uses a tenant-scoped event stream without browser polling", () => {
+  assert.match(crm, /useDashboardRealtime\(\)/);
+  assert.doesNotMatch(crm, /new EventSource\(/);
+  assert.doesNotMatch(crm, /new URL\("\/api\/admin\/events", window\.location\.origin\)/);
+  assert.doesNotMatch(crm, /pollPersistedEvents|startPollingFallback|pollingFallbackActive/);
+  assert.match(crm, /executiveRealtimeSnapshotScopeMatches\(realtime\.activeScope\.tenant, realtime\.activeScope\.window, payload\.scope\)/);
+  assert.match(crm, /EventSource está reconectando sin polling/);
+  const heartbeatEffect = crm.match(/const frame = realtime\.heartbeat;[\s\S]*?\}, \[realtime\.activeScopeKey, realtime\.heartbeat\]\);/)?.[0] || "";
+  assert.doesNotMatch(heartbeatEffect, /setStreamConfirmed\(true\)/);
+  const eventEffect = crm.match(/const frames = unreadDashboardRealtimeFrames\([\s\S]*?\}, \[queryTenant,[\s\S]*?\]\);/)?.[0] || "";
+  assert.doesNotMatch(eventEffect, /setStreamConfirmed\(true\)/);
   assert.doesNotMatch(crm, /incomingId === lastEventIdRef\.current/);
-  assert.match(crm, /mergeRealtimeEvents\(prev, tapPayload, 50\)/);
+  assert.match(crm, /accepted\.reduce\([\s\S]*?mergeRealtimeEvents\(next, item\.payload, EXECUTIVE_REALTIME_EVENT_LIMIT\)/);
+  assert.match(crm, /dashboardRealtimeConsumerFellBehind\(/);
+  assert.match(crm, /router\.refresh\(\)/);
+  assert.match(fallbackStream, /scope: \{ tenant: tenant \|\| "global", window: options\.window \|\| "24h" \}/);
 });
 
 test("demo access is unmistakably isolated from a real tenant session", () => {

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@product/ui";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DemoOpsMap } from "./demo-ops-map";
+import { useDashboardRealtime } from "./dashboard-realtime-provider";
 import {
   classifyRealtimeVerdict,
   isRealtimeRisk,
@@ -14,6 +16,8 @@ import {
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import { classifyLocationProvenance } from "../lib/location-provenance";
 import { exportToCsv } from "../lib/export-utils";
+import { isExecutiveRealtimeEvent } from "../lib/executive-realtime-scope";
+import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 import { Maximize2, Minimize2, Clock, Terminal, Volume2, VolumeX, Activity, Globe, MapPin, Radio, Target } from "lucide-react";
 
 type MapMode = "tenant" | "global";
@@ -227,12 +231,15 @@ export function RealtimeOpsMonitor({
   const [lastUpdateAt, setLastUpdateAt] = useState<string>(initialEvents[0]?.occurredAt || "");
   const [latestEventId, setLatestEventId] = useState<string>("");
   const [selectedTenant, setSelectedTenant] = useState<string>("all");
+  const router = useRouter();
+  const realtime = useDashboardRealtime();
 
   const [isFullscreenOps, setIsFullscreenOps] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [timeStr, setTimeStr] = useState("");
 
   const audioEnabledRef = useRef(audioEnabled);
+  const consumedEventSequenceRef = useRef(0);
   useEffect(() => {
     audioEnabledRef.current = audioEnabled;
   }, [audioEnabled]);
@@ -367,66 +374,63 @@ Acción recomendada: ${recommendation}
   }, []);
 
   useEffect(() => {
-    const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
-    streamUrl.searchParams.set("limit", "40");
-    streamUrl.searchParams.set("range", "24h");
-    streamUrl.searchParams.set("source", "all");
-    if (tenantScope) streamUrl.searchParams.set("tenant", tenantScope);
-    const source = new EventSource(streamUrl.toString());
+    setConnected(realtime.status === "connected");
+  }, [realtime.status]);
 
-    source.onopen = () => setConnected(true);
-    source.onerror = () => setConnected(false);
-    const onSnapshot = (event: MessageEvent<string>) => {
-      try {
-        const payload = JSON.parse(event.data) as { rows?: TenantTapRealtimeEvent[] };
-        if (Array.isArray(payload.rows)) {
-          const incomingRows = payload.rows as TenantTapRealtimeEvent[];
-          const incomingFirst = sortRealtimeEvents(incomingRows, 1)[0];
-          const incomingId = incomingFirst ? String((incomingFirst as TenantTapRealtimeEvent).eventId || "") : "";
-          if (incomingId && incomingId !== latestEventId) setLatestEventId(incomingId);
-          setEvents((prevEvents) => sortRealtimeEvents([...incomingRows, ...prevEvents], 40));
-          setLastUpdateAt(new Date().toISOString());
-        }
-      } catch {
-        // ignore malformed chunk and keep previous state
+  useEffect(() => {
+    const frame = realtime.snapshot;
+    if (!frame || frame.scopeKey !== realtime.activeScopeKey) return;
+    const payload = frame.data as { rows?: unknown } | null;
+    if (!payload || !Array.isArray(payload.rows)) return;
+    const incomingRows = payload.rows.filter(isExecutiveRealtimeEvent);
+    if (incomingRows.length !== payload.rows.length) return;
+    const incomingFirst = sortRealtimeEvents(incomingRows, 1)[0];
+    const incomingId = incomingFirst ? String(incomingFirst.eventId || "") : "";
+    if (incomingId) setLatestEventId(incomingId);
+    setEvents((prevEvents) => sortRealtimeEvents([...incomingRows, ...prevEvents], 40));
+    setLastUpdateAt(frame.receivedAt);
+  }, [realtime.activeScopeKey, realtime.snapshot]);
+
+  useEffect(() => {
+    const frames = unreadDashboardRealtimeFrames(
+      realtime.events,
+      consumedEventSequenceRef.current,
+      realtime.activeScopeKey,
+    );
+    const fellBehind = dashboardRealtimeConsumerFellBehind(
+      consumedEventSequenceRef.current,
+      realtime.droppedThroughSequence,
+    );
+    if (!frames.length && !fellBehind) return;
+    consumedEventSequenceRef.current = frames[frames.length - 1]?.sequence || realtime.droppedThroughSequence;
+    const accepted = frames.flatMap((frame) => {
+      if (!isExecutiveRealtimeEvent(frame.data)) return [];
+      const payload = frame.data;
+      if (tenantScope && String(payload.tenantSlug || "").trim().toLowerCase() !== tenantScope.trim().toLowerCase()) return [];
+      return [{ payload, receivedAt: frame.receivedAt }];
+    });
+    if (!accepted.length && !fellBehind) return;
+
+    if (accepted.length) {
+      setEvents((previous) => accepted.reduce(
+        (next, item) => mergeRealtimeEvents(next, item.payload, 40),
+        previous,
+      ));
+      const latest = accepted[accepted.length - 1];
+      const latestId = String(latest.payload.eventId || "");
+      if (latestId) setLatestEventId(latestId);
+      setLastUpdateAt(latest.receivedAt);
+      if (audioEnabledRef.current) {
+        const verdictBucket = classifyRealtimeVerdict(latest.payload.verdict, latest.payload.reason);
+        if (verdictBucket === "valid") playPing("success");
+        else if (isRealtimeRisk(latest.payload.verdict, latest.payload.reason)) playPing("warning");
       }
-    };
-    source.addEventListener("snapshot", onSnapshot as EventListener);
-
-    const onEvent = (event: MessageEvent<string>) => {
-      try {
-        const payload = JSON.parse(event.data) as TenantTapRealtimeEvent;
-        if (payload) {
-          const incomingId = String(payload.eventId || "");
-          setLatestEventId((prev) => {
-            if (incomingId && incomingId !== prev) {
-              setEvents((prevEvents) => mergeRealtimeEvents(prevEvents, payload, 40));
-              setLastUpdateAt(new Date().toISOString());
-
-              // Audio chime
-              const verdictBucket = classifyRealtimeVerdict(payload.verdict, payload.reason);
-              if (audioEnabledRef.current) {
-                if (verdictBucket === "valid") playPing("success");
-                else if (isRealtimeRisk(payload.verdict, payload.reason)) playPing("warning");
-              }
-
-              return incomingId;
-            }
-            return prev;
-          });
-        }
-      } catch {
-        // ignore malformed chunk
-      }
-    };
-    source.addEventListener("event", onEvent as EventListener);
-
-    return () => {
-      source.removeEventListener("snapshot", onSnapshot as EventListener);
-      source.removeEventListener("event", onEvent as EventListener);
-      source.close();
-    };
-  }, [tenantScope]);
+    }
+    if (fellBehind) {
+      setConnected(false);
+      router.refresh();
+    }
+  }, [realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events, router, tenantScope]);
 
   const tenantOptions = useMemo(
     () =>

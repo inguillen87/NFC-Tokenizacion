@@ -18,10 +18,10 @@ test("CRM high-impact and data-dependent actions fail closed", () => {
   assert.match(crmSource, /dashboardHighImpactPermissionMatches\([\s\S]*"events\.read_sensitive"[\s\S]*account\.deniedPermissions/);
   assert.match(crmSource, /\.\.\.\(canReadSensitiveEvents \? \[\{[\s\S]*label: "Riesgos"[\s\S]*\}\] : \[\]\)/);
   assert.match(crmSource, /if \(commercialActivityEvents\.length === 0\) return/);
-  assert.match(crmSource, /disabled=\{commercialActivityEvents\.length === 0\}/);
+  assert.match(crmSource, /disabled=\{valuesUnavailable \|\| commercialActivityEvents\.length === 0\}/);
   assert.match(crmSource, /No hay actividad con producto reconocido, actor asociado, tipo elegible y consentimiento por canal para exportar/);
   assert.match(crmSource, /const streetViewTarget = useMemo\([\s\S]*strictCoordinatePair\(event\.lat, event\.lng\)/);
-  assert.match(crmSource, /disabled=\{!streetViewTarget\}/);
+  assert.match(crmSource, /disabled=\{valuesUnavailable \|\| !streetViewTarget\}/);
   assert.match(crmSource, /No hay coordenadas reportadas utilizables en la ventana actual/);
 });
 

@@ -12,6 +12,9 @@ import { strictCoordinatePair } from "../lib/geo-coordinates";
 import { classifyRealtimeVerdict, isRealtimeRisk, type TenantTapRealtimeWireEvent } from "../lib/realtime-feed";
 import type { UserRole } from "../lib/dashboard-content";
 import { dashboardHighImpactPermissionMatches } from "../lib/permission-policy";
+import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
+import { isExecutiveRealtimeEvent } from "../lib/executive-realtime-scope";
+import { useDashboardRealtime } from "./dashboard-realtime-provider";
 
 type AnalyticsPayload = {
   ok?: boolean;
@@ -142,12 +145,10 @@ export function MultirubroOpsPanel({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [demoDataMode, setDemoDataMode] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<string>("");
-  const [streamOnline, setStreamOnline] = useState(false);
   const [streamState, setStreamState] = useState<"connected" | "reconnecting" | "stale" | "offline">("offline");
   const [lastEventAt, setLastEventAt] = useState<string>("");
-  const streamOnlineRef = useRef(false);
   const staleTimerRef = useRef<number | null>(null);
-  const eventRefreshGateRef = useRef(0);
+  const consumedEventSequenceRef = useRef(0);
   const [demoActionStatus, setDemoActionStatus] = useState("");
   const [botQuestion, setBotQuestion] = useState("explicame el riesgo actual");
   const [botAnswer, setBotAnswer] = useState("");
@@ -168,6 +169,7 @@ export function MultirubroOpsPanel({
     "events.read_sensitive",
     currentDeniedPermissions,
   );
+  const realtime = useDashboardRealtime();
 
   function isLocalDashboardRuntime() {
     if (typeof window === "undefined") return false;
@@ -194,32 +196,35 @@ export function MultirubroOpsPanel({
   }
 
   function normalizeFeedItem(payload: TenantTapRealtimeWireEvent): LiveFeedItem {
+    const occurredAt = payload.occurredAt || payload.created_at || new Date().toISOString();
+    const uid = payload.uidMasked || payload.uid_hex || "—";
     return {
-      id: String(payload.id || `${payload.created_at || Date.now()}-${payload.uid_hex || "evt"}`),
-      at: String(payload.created_at || new Date().toISOString()),
+      id: String(payload.eventId || payload.id || `${occurredAt}-${uid}`),
+      at: String(occurredAt),
       result: String(payload.result || "UNKNOWN"),
       reason: String(payload.reason || "n/a"),
-      uid: String(payload.uid_hex || "—"),
+      uid: String(uid),
       bid: String(payload.bid || "—"),
-      tenant: String(payload.tenant_slug || "—"),
+      tenant: String(payload.tenantSlug || payload.tenant_slug || "—"),
       city: String(payload.city || "Unknown"),
-      country: String(payload.country_code || "--"),
+      country: String(payload.country || payload.country_code || "--"),
       streamLatencyMs: Number.isFinite(Number(payload.stream_latency_ms)) ? Number(payload.stream_latency_ms) : null,
-      requestId: String(payload.origin_trace_id || payload.request_id || payload.stream_request_id || "n/a"),
+      requestId: String(payload.origin_trace_id || payload.request_id || payload.stream_request_id || "minimized-projection"),
     };
   }
 
   function applyIncomingEvent(payload: TenantTapRealtimeWireEvent) {
     const coordinate = strictCoordinatePair(payload.lat, payload.lng);
-    const createdAt = payload.created_at || new Date().toISOString();
+    const createdAt = payload.occurredAt || payload.created_at || new Date().toISOString();
     const verdictBucket = classifyRealtimeVerdict(payload, payload.reason);
     const isValid = verdictBucket === "valid";
     const isReplay = verdictBucket === "duplicate_replay";
     const isRisk = isRealtimeRisk(payload, payload.reason);
-    const locationSource = normalizeLocationSource(payload.coordinate_source || payload.location_source);
-    const locationAccuracyM = payload.location_accuracy_m == null || (typeof payload.location_accuracy_m === "string" && !payload.location_accuracy_m.trim())
+    const locationSource = normalizeLocationSource(payload.locationSource || payload.coordinate_source || payload.location_source);
+    const rawLocationAccuracyM = payload.locationAccuracyM ?? payload.location_accuracy_m;
+    const locationAccuracyM = rawLocationAccuracyM == null || (typeof rawLocationAccuracyM === "string" && !rawLocationAccuracyM.trim())
       ? Number.NaN
-      : Number(payload.location_accuracy_m);
+      : Number(rawLocationAccuracyM);
 
     setAnalytics((prev) => {
       if (!prev) return prev;
@@ -255,7 +260,7 @@ export function MultirubroOpsPanel({
       const geoPoints = [...(prev.geoPoints || [])];
       if (coordinate) {
         const city = String(payload.city || "Unknown");
-        const country = String(payload.country_code || "--");
+        const country = String(payload.country || payload.country_code || "--");
         const existing = geoPoints.find((point) => {
           const pointSource = normalizeLocationSource(point.coordinateSource || point.coordinate_source || point.locationSource || point.location_source);
           return point.city === city && (point.country || "--") === country && pointSource === locationSource;
@@ -368,133 +373,106 @@ export function MultirubroOpsPanel({
 
   useEffect(() => {
     void loadData();
-    const timer = setInterval(() => {
-      if (!streamOnlineRef.current) void loadData();
-    }, 10_000);
-    return () => clearInterval(timer);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadData();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => document.removeEventListener("visibilitychange", refreshWhenVisible);
   }, [alertSeverityFilter, alertTypeFilter]);
 
   useEffect(() => {
-    if (!canReadSensitiveEvents) {
-      setStreamOnline(false);
+    if (!canReadSensitiveEvents || realtime.status === "disabled") {
       setStreamState("offline");
-      streamOnlineRef.current = false;
       return;
     }
-    let active = true;
-    let reconnectTimer: number | null = null;
-    let stream: EventSource | null = null;
-    const clearStaleTimer = () => {
-      if (staleTimerRef.current) {
-        window.clearTimeout(staleTimerRef.current);
-        staleTimerRef.current = null;
+    setStreamState(realtime.status === "connected" ? "connected" : "reconnecting");
+  }, [canReadSensitiveEvents, realtime.status]);
+
+  useEffect(() => {
+    const frame = realtime.snapshot;
+    if (!canReadSensitiveEvents || !frame) return;
+    setLastEventAt(frame.receivedAt);
+    const payload = frame.data as { rows?: unknown[] } | null;
+    const rows = Array.isArray(payload?.rows) ? payload.rows.filter(isExecutiveRealtimeEvent) : [];
+    setLiveFeed(rows.slice(0, 12).map(normalizeFeedItem));
+  }, [canReadSensitiveEvents, realtime.snapshot]);
+
+  useEffect(() => {
+    if (!canReadSensitiveEvents) return;
+    const frames = unreadDashboardRealtimeFrames(
+      realtime.events,
+      consumedEventSequenceRef.current,
+      realtime.activeScopeKey,
+    );
+    const fellBehind = dashboardRealtimeConsumerFellBehind(
+      consumedEventSequenceRef.current,
+      realtime.droppedThroughSequence,
+    );
+    if (!frames.length && !fellBehind) return;
+    consumedEventSequenceRef.current = frames[frames.length - 1]?.sequence || realtime.droppedThroughSequence;
+    const payloadFrames = frames.filter((frame) => frame.data && typeof frame.data === "object");
+    if (!payloadFrames.length && !fellBehind) return;
+    if (payloadFrames.length) setLastEventAt(payloadFrames[payloadFrames.length - 1].receivedAt);
+
+    const alertItems: AlertCenterItem[] = [];
+    const tapItems: ReturnType<typeof normalizeFeedItem>[] = [];
+    for (const frame of payloadFrames) {
+      const payload = frame.data;
+      if (isSecurityAlertCreatedEvent(payload as Record<string, unknown>)) {
+        alertItems.push(toAlertCenterItem(payload as SecurityAlertRealtimePayload));
+        continue;
       }
-    };
-    const bumpStaleTimer = () => {
-      clearStaleTimer();
-      staleTimerRef.current = window.setTimeout(() => {
-        if (!active) return;
-        setStreamState("stale");
-      }, 45_000);
-    };
+      if (!isExecutiveRealtimeEvent(payload)) continue;
+      const tapPayload: TenantTapRealtimeWireEvent = payload;
+      applyIncomingEvent(tapPayload);
+      tapItems.push(normalizeFeedItem(tapPayload));
+    }
+    if (alertItems.length) {
+      setAlerts((previous) => alertItems.reduce(
+        (next, item) => mergeAlertCenterItems(next, item, 12),
+        previous,
+      ));
+    }
+    if (tapItems.length) {
+      setLiveFeed((previous) => tapItems.reduce(
+        (next, item) => [item, ...next.filter((row) => row.id !== item.id)].slice(0, 12),
+        previous,
+      ));
+      const pulse = document.getElementById("nexid-live-pulse");
+      pulse?.animate(
+        [{ transform: "scale(1)", opacity: 0.8 }, { transform: "scale(1.5)", opacity: 0 }],
+        { duration: 500, easing: "ease-out" },
+      );
+    }
+    if (fellBehind) {
+      setStreamState("stale");
+      setWarnings((previous) => Array.from(new Set([...previous, "event_buffer_overflow_reconciled"])));
+      void loadData();
+    }
+    // KPI, heatmap and feed are updated from the embedded event projection.
+    // The operator refresh and visibility refresh remain the durable reconcile.
+  }, [canReadSensitiveEvents, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events]);
 
-    const connect = () => {
-      if (!active || typeof window === "undefined") return;
-      stream = new EventSource(adminPath("/api/admin/events/stream?limit=8"));
-      setStreamOnline(false);
-      setStreamState("reconnecting");
-      streamOnlineRef.current = false;
-      stream.onopen = () => {
-        if (!active) return;
-        setStreamOnline(true);
-        setStreamState("connected");
-        streamOnlineRef.current = true;
-        bumpStaleTimer();
-      };
-      stream.addEventListener("snapshot", (event) => {
-        if (!active) return;
-        setLastEventAt(new Date().toISOString());
-        bumpStaleTimer();
-        void loadData();
-        try {
-          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as { rows?: TenantTapRealtimeWireEvent[] };
-          const rows = Array.isArray(payload.rows) ? payload.rows : [];
-          setLiveFeed(rows.slice(0, 12).map(normalizeFeedItem));
-        } catch {
-          setLiveFeed([]);
-        }
-      });
-      stream.addEventListener("heartbeat", () => {
-        if (!active) return;
-        setLastEventAt(new Date().toISOString());
-        setStreamState("connected");
-        bumpStaleTimer();
-      });
-      stream.addEventListener("warning", (event) => {
-        if (!active) return;
-        try {
-          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as { reason?: string };
-          if (payload.reason) setWarnings((prev) => Array.from(new Set([...prev, payload.reason!])));
-        } catch {
-          setWarnings((prev) => Array.from(new Set([...prev, "stream_warning"])));
-        }
-      });
-      stream.addEventListener("event", (event) => {
-        if (!active) return;
-        setLastEventAt(new Date().toISOString());
-        setStreamState("connected");
-        bumpStaleTimer();
-        try {
-          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as TenantTapRealtimeWireEvent | SecurityAlertRealtimePayload;
-          if (isSecurityAlertCreatedEvent(payload as Record<string, unknown>)) {
-            const item = toAlertCenterItem(payload as SecurityAlertRealtimePayload);
-            setAlerts((prev) => mergeAlertCenterItems(prev, item, 12));
-            return;
-          }
-          const tapPayload = payload as TenantTapRealtimeWireEvent;
-          applyIncomingEvent(tapPayload);
-          const item = normalizeFeedItem(tapPayload);
-          setLiveFeed((prev) => [item, ...prev.filter((row) => row.id !== item.id)].slice(0, 12));
-        } catch {
-          // ignore malformed payload; reconciliation fetch below will refresh state
-        }
-        const now = Date.now();
-        if (now - eventRefreshGateRef.current > 2000) {
-          eventRefreshGateRef.current = now;
-          void loadData();
-        }
-        if (typeof window !== "undefined") {
-          const pulse = document.getElementById("nexid-live-pulse");
-          if (pulse) {
-            pulse.animate(
-              [{ transform: "scale(1)", opacity: 0.8 }, { transform: "scale(1.5)", opacity: 0 }],
-              { duration: 500, easing: "ease-out" },
-            );
-          }
-        }
-      });
-      stream.onerror = () => {
-        setStreamOnline(false);
-        setStreamState("reconnecting");
-        streamOnlineRef.current = false;
-        clearStaleTimer();
-        if (stream) stream.close();
-        if (!active) return;
-        reconnectTimer = window.setTimeout(connect, 7000);
-      };
-    };
+  useEffect(() => {
+    const frame = realtime.warning;
+    if (!canReadSensitiveEvents || !frame) return;
+    const payload = frame.data as { reason?: string } | null;
+    setStreamState("stale");
+    setWarnings((previous) => Array.from(new Set([...previous, payload?.reason || "stream_warning"])));
+  }, [canReadSensitiveEvents, realtime.warning]);
 
-    connect();
+  useEffect(() => {
+    const latestEvent = realtime.events[realtime.events.length - 1] || null;
+    const latestFrame = realtime.heartbeat || latestEvent || realtime.snapshot;
+    if (!canReadSensitiveEvents || !latestFrame) return;
+    setLastEventAt(latestFrame.receivedAt);
+    if (staleTimerRef.current) window.clearTimeout(staleTimerRef.current);
+    staleTimerRef.current = window.setTimeout(() => setStreamState("stale"), 45_000);
     return () => {
-      active = false;
-      setStreamOnline(false);
-      setStreamState("offline");
-      streamOnlineRef.current = false;
-      clearStaleTimer();
-      if (reconnectTimer) window.clearTimeout(reconnectTimer);
-      if (stream) stream.close();
+      if (staleTimerRef.current) window.clearTimeout(staleTimerRef.current);
+      staleTimerRef.current = null;
     };
-  }, [canReadSensitiveEvents]);
+  }, [canReadSensitiveEvents, realtime.events, realtime.heartbeat, realtime.snapshot]);
 
   const tapsTotal = Number(analytics?.kpis?.scans || 0);
   const validRate = Number(analytics?.kpis?.validRate || 0);
@@ -689,6 +667,13 @@ export function MultirubroOpsPanel({
           Pipeline: {diagnostics?.freshness?.streamState || "unknown"} · eventos {Number(diagnostics?.counters?.eventsTotal || 0)}
         </span>
         <span className="text-slate-500">Risk {Number(diagnostics?.counters?.riskEvents || 0)} · Replay {Number(diagnostics?.counters?.replayEvents || 0)}</span>
+        <button
+          type="button"
+          onClick={() => void loadData()}
+          className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1 font-semibold text-cyan-100 transition hover:border-cyan-200/45 hover:bg-cyan-500/15"
+        >
+          Actualizar ahora
+        </button>
       </div>
       {warnings.length ? (
         <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">

@@ -1,6 +1,10 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Keep headroom above the API's 240s rotation so EventSource receives the
+// upstream close and reconnects cleanly before the BFF runtime is terminated.
+export const maxDuration = 300;
 import { randomUUID } from "node:crypto";
+import { productUrls } from "@product/config";
 import {
   type DashboardSessionCredential,
   getDashboardSessionCredential,
@@ -11,7 +15,7 @@ import { DashboardTenantScopeError, resolveDashboardTenantScope } from "../../..
 import { dashboardRoleToScope } from "../../../../../lib/enterprise-runtime-rbac";
 import { dashboardHighImpactPermissionMatches } from "../../../../../lib/permission-policy";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 const DASHBOARD_STREAM_SOURCES = ["production", "demo", "all", "real", "imported"] as const;
 type DashboardStreamSource = (typeof DASHBOARD_STREAM_SOURCES)[number];
 
@@ -52,7 +56,7 @@ function fallbackStream(
   message: string,
   requestId: string,
   limit = 8,
-  options: { includeDemoRows?: boolean; tenant?: string; source?: DashboardStreamSource; availability?: "fallback" | "upstream_error" } = {},
+  options: { includeDemoRows?: boolean; tenant?: string; window?: string; source?: DashboardStreamSource; availability?: "fallback" | "upstream_error" } = {},
 ) {
   const encoder = new TextEncoder();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -91,7 +95,12 @@ function fallbackStream(
             .filter((row) => !tenant || row.tenant_slug === tenant)
             .map(toDemoRealtimeEvent)
           : [];
-        enqueue(`event: snapshot\ndata: ${JSON.stringify({ rows, source: options.source || "production", availability: options.availability || "upstream_error" })}\n\n`);
+        enqueue(`event: snapshot\ndata: ${JSON.stringify({
+          rows,
+          scope: { tenant: tenant || "global", window: options.window || "24h" },
+          source: options.source || "production",
+          availability: options.availability || "upstream_error",
+        })}\n\n`);
       };
       enqueue("retry: 3000\n\n");
       pushSnapshot();
@@ -99,7 +108,6 @@ function fallbackStream(
       heartbeat = setInterval(() => {
         const now = Date.now();
         enqueue(`: ping ${now}\n\n`);
-        pushSnapshot();
         enqueue(`event: heartbeat\ndata: ${JSON.stringify({ id: `hb-${now}`, ts: now, requestId, source: options.source || "production", availability: options.availability || "upstream_error" })}\n\n`);
       }, 5000);
       // Vercel terminates long-lived route handlers at the platform limit. Rotate
@@ -118,6 +126,7 @@ function fallbackStream(
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
       "x-nexid-request-id": requestId,
     },
   });
@@ -130,6 +139,7 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(incoming.searchParams.get("limit") || 8), 1), 50);
   const forceSandbox = ["1", "true", "sandbox"].includes(String(incoming.searchParams.get("sandbox") || incoming.searchParams.get("demoFallback") || "").toLowerCase());
   const requestedTenant = String(incoming.searchParams.get("tenant") || "").trim().toLowerCase();
+  const requestedWindow = String(incoming.searchParams.get("window") || "24h").trim().toLowerCase();
   const requestedSource = parseDashboardStreamSource(incoming.searchParams.get("source"));
   if (!requestedSource) {
     return new Response(JSON.stringify({ ok: false, reason: "invalid_source_filter", allowed: DASHBOARD_STREAM_SOURCES }), {
@@ -188,13 +198,14 @@ export async function GET(request: Request) {
     return fallbackStream("dashboard demo sandbox stream", requestId, limit, {
       includeDemoRows: true,
       tenant,
+      window: requestedWindow,
       source: "demo",
       availability: "fallback",
     });
   }
 
   if (forceSandbox && Boolean(scopedRole) && scopedRole !== "tenant_admin") {
-    return fallbackStream("dashboard demo sandbox stream", requestId, limit, { includeDemoRows: true, tenant, source: "demo", availability: "fallback" });
+    return fallbackStream("dashboard demo sandbox stream", requestId, limit, { includeDemoRows: true, tenant, window: requestedWindow, source: "demo", availability: "fallback" });
   }
 
   if (!credential?.bearerToken) return streamAuthorizationError("validated_dashboard_session_required", requestId);
@@ -209,10 +220,12 @@ export async function GET(request: Request) {
         ...(request.headers.get("last-event-id") ? { "Last-Event-ID": String(request.headers.get("last-event-id")) } : {}),
       },
       cache: "no-store",
+      signal: request.signal,
     });
   } catch {
     return fallbackStream("upstream stream unreachable", requestId, limit, {
       tenant,
+      window: requestedWindow,
       source: effectiveSource,
       includeDemoRows: effectiveSource === "demo",
       availability: effectiveSource === "demo" ? "fallback" : "upstream_error",
@@ -233,6 +246,7 @@ export async function GET(request: Request) {
     const includeDemoRows = effectiveSource === "demo";
     return fallbackStream(`upstream stream unavailable (${response?.status || 503})`, requestId, limit, {
       tenant,
+      window: requestedWindow,
       source: effectiveSource,
       includeDemoRows,
       availability: includeDemoRows ? "fallback" : "upstream_error",
@@ -245,6 +259,7 @@ export async function GET(request: Request) {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
       "x-nexid-request-id": response.headers.get("x-nexid-request-id") || requestId,
     },
   });

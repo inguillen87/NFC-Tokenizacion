@@ -13,6 +13,7 @@ import {
 } from "../lib/dashboard-destination-policy";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
+import { DashboardRealtimeProvider } from "./dashboard-realtime-provider";
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { motion, useReducedMotion } from "framer-motion";
@@ -724,9 +725,21 @@ export function DashboardShellInner({
 
 
 export function DashboardShell(props: Parameters<typeof DashboardShellInner>[0]) {
+  const realtimeEnabled = dashboardCanOpenDestination("events", {
+    role: props.currentRole,
+    permissions: props.currentPermissions || [],
+    deniedPermissions: props.currentDeniedPermissions || [],
+    isDemo: Boolean(props.currentIsDemo),
+  });
   return (
     <AudienceModeProvider>
-      <DashboardShellInner {...props} />
+      <DashboardRealtimeProvider
+        enabled={realtimeEnabled}
+        tenantSlug={props.currentTenantSlug}
+        source={props.currentIsDemo ? "demo" : "production"}
+      >
+        <DashboardShellInner {...props} />
+      </DashboardRealtimeProvider>
     </AudienceModeProvider>
   );
 }

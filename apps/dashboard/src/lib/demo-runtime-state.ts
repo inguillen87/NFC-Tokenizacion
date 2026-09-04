@@ -162,6 +162,7 @@ export function getDashboardDemoEvents(limit = 80) {
 export function toDemoAdminEventRow(event: DashboardDemoEvent) {
   return {
     id: event.id,
+    event_type: "DEMO_TAP_SIMULATED",
     result: event.result,
     reason: event.reason,
     uid_hex: event.uid_hex,
@@ -174,7 +175,7 @@ export function toDemoAdminEventRow(event: DashboardDemoEvent) {
     tenant_slug: event.tenant_slug,
     product_name: event.product_name,
     device: event.device,
-    source: event.source,
+    source: "demo",
   };
 }
 

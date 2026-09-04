@@ -4,12 +4,15 @@ import test from "node:test";
 
 const read = (url) => readFile(new URL(url, import.meta.url), "utf8");
 
-test("realtime CRM combines SSE incident updates with a bounded polling fallback", async () => {
+test("realtime CRM recovers incidents from events, reconnect snapshots and operator visibility", async () => {
   const source = await read("../src/components/executive-realtime-crm.tsx");
-  assert.match(source, /new EventSource\(/);
+  assert.match(source, /useDashboardRealtime\(\)/);
+  assert.doesNotMatch(source, /new EventSource\(/);
   assert.match(source, /isIncidentRealtimeWireEvent\(payload\)/);
-  assert.match(source, /fetch\(url, \{ cache: "no-store" \}\)/);
-  assert.match(source, /setInterval\(\(\) => void refreshIncidents\(\), 15_000\)/);
+  assert.match(source, /fetch\(url, \{ cache: "no-store", signal: controller\.signal \}\)/);
+  assert.match(source, /incidentRequestAbortRef\.current\?\.abort\(\)/);
+  assert.doesNotMatch(source, /setInterval\(\(\) => void refreshIncidents/);
+  assert.match(source, /if \(canReadIncidents\) void refreshIncidents\(\)/);
   assert.match(source, /document\.visibilityState === "visible"/);
   assert.match(source, /setIncidentAvailability\("unavailable"\)/);
   assert.match(source, /!dashboardPermissionDenied\(account\.deniedPermissions, "incidents:read"\)/);

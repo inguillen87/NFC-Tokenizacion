@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -22,18 +22,24 @@ import {
   canRefreshPhysicalTaps,
   isRecoverablePhysicalTapsAvailability,
   latestPhysicalTapByState,
+  mergePhysicalTapRealtimeProjection,
   mergePhysicalTapsRefresh,
   normalizePhysicalTapsPayload,
+  physicalTapFromRealtimeProjection,
   type PhysicalTapRow,
   type PhysicalTapsAvailability,
   type PhysicalTapsResult,
 } from "../lib/physical-taps-contract";
+import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
+import { useDashboardRealtime } from "./dashboard-realtime-provider";
 
 type StateFilter = "all" | "closed" | "opened" | "other";
 type LocationFilter = "all" | "approximate" | "none";
-type SyncState = "idle" | "syncing" | "live" | "stale";
+type SyncState = "idle" | "connecting" | "syncing" | "live" | "stale";
 const EMPTY_ROWS: PhysicalTapRow[] = [];
+const PHYSICAL_RECONCILE_MIN_INTERVAL_MS = 15_000;
+const PHYSICAL_TAP_EVENT_TYPES = new Set(["TAP_VALID", "TAP_INVALID", "REPLAY_SUSPECT"]);
 const NUMBER_FORMATTER = new Intl.NumberFormat("es-AR");
 const DATE_FORMATTER = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "medium",
@@ -236,7 +242,7 @@ function UnavailablePhysicalTaps({
             {canRetry ? (
               <p className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-cyan-100" role="status" aria-live="polite">
                 <span className={`h-2 w-2 rounded-full ${syncState === "syncing" ? "animate-pulse bg-cyan-300" : "bg-amber-300"}`} />
-                {syncState === "syncing" ? "Consultando la fuente real" : "Recuperación automática cada 5 s"}
+                {syncState === "syncing" ? "Consultando la fuente real" : "Recuperación por stream o reintento"}
               </p>
             ) : null}
           </div>
@@ -270,6 +276,19 @@ function UnavailablePhysicalTaps({
   );
 }
 
+function isPhysicalTapStreamEvent(value: unknown, tenantSlug: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const event = value as Record<string, unknown>;
+  const eventTenant = String(event.tenant_slug || event.tenantSlug || "").trim().toLowerCase();
+  const eventType = String(event.event_type || event.eventType || "").trim().toUpperCase();
+  const streamSource = String(event.source || "").trim().toLowerCase();
+  const eventSource = String(event.event_source || event.eventSource || "").trim().toLowerCase();
+  return eventTenant === tenantSlug.trim().toLowerCase()
+    && PHYSICAL_TAP_EVENT_TYPES.has(eventType)
+    && streamSource === "production"
+    && (eventSource === "real" || eventSource === "imported" || eventSource === "production");
+}
+
 export function PhysicalTapsCommandCenter({
   result,
   compact = false,
@@ -288,11 +307,26 @@ export function PhysicalTapsCommandCenter({
   const [state, setState] = useState<StateFilter>("all");
   const [location, setLocation] = useState<LocationFilter>("all");
   const [batch, setBatch] = useState("all");
+  const liveResultRef = useRef(result);
+  const refreshAbortRef = useRef<AbortController | null>(null);
+  const refreshInFlightRef = useRef(false);
+  const trailingRefreshRef = useRef(false);
+  const eventRefreshTimerRef = useRef<number | null>(null);
+  const lastEventReconcileAtRef = useRef(0);
+  const consumedEventSequenceRef = useRef(0);
   const initialRange = result.payload?.scope.range || "24h";
   const initialBid = result.payload?.scope.bid || "all";
   const refreshable = Boolean(tenantSlug) && canRefreshPhysicalTaps(liveResult.availability);
-  const refreshPhysicalTaps = useCallback(async () => {
+  const realtime = useDashboardRealtime();
+  const refreshPhysicalTaps = useCallback(async function runPhysicalTapsRefresh(): Promise<void> {
     if (!tenantSlug || !refreshable) return;
+    if (refreshInFlightRef.current) {
+      trailingRefreshRef.current = true;
+      return;
+    }
+    refreshInFlightRef.current = true;
+    const controller = new AbortController();
+    refreshAbortRef.current = controller;
     setSyncState("syncing");
     const params = new URLSearchParams({ tenant: tenantSlug, range: initialRange, limit: "100" });
     if (initialBid && initialBid !== "all") params.set("bid", initialBid);
@@ -309,8 +343,10 @@ export function PhysicalTapsCommandCenter({
     try {
       const response = await fetch(`/api/admin/sun/physical-taps?${params.toString()}`, {
         cache: "no-store",
+        signal: controller.signal,
         headers: { Accept: "application/json" },
       });
+      if (controller.signal.aborted) return;
       if (response.status === 401 || response.status === 403) {
         setLiveResult({
           availability: "forbidden",
@@ -326,6 +362,7 @@ export function PhysicalTapsCommandCenter({
         return;
       }
       const payload = normalizePhysicalTapsPayload(await response.json().catch(() => null));
+      if (controller.signal.aborted) return;
       if (!payload || payload.scope.tenant !== tenantSlug) {
         recordFailure("invalid_payload", "physical_taps_contract_invalid");
         return;
@@ -337,23 +374,127 @@ export function PhysicalTapsCommandCenter({
         checkedAt: new Date().toISOString(),
       });
       setSyncState("live");
+      lastEventReconcileAtRef.current = Date.now();
     } catch {
+      if (controller.signal.aborted) return;
       recordFailure("unreachable", "physical_taps_upstream_unreachable");
+    } finally {
+      if (refreshAbortRef.current === controller) refreshAbortRef.current = null;
+      refreshInFlightRef.current = false;
+      if (controller.signal.aborted) {
+        trailingRefreshRef.current = false;
+      } else if (trailingRefreshRef.current) {
+        trailingRefreshRef.current = false;
+        void runPhysicalTapsRefresh();
+      }
     }
   }, [initialBid, initialRange, refreshable, tenantSlug]);
+
+  const queuePhysicalTapsRefresh = useCallback(() => {
+    if (eventRefreshTimerRef.current !== null) return;
+    const elapsed = Date.now() - lastEventReconcileAtRef.current;
+    const delay = Math.max(750, PHYSICAL_RECONCILE_MIN_INTERVAL_MS - elapsed);
+    eventRefreshTimerRef.current = window.setTimeout(() => {
+      eventRefreshTimerRef.current = null;
+      void refreshPhysicalTaps();
+    }, delay);
+  }, [refreshPhysicalTaps]);
 
   useEffect(() => {
     setLiveResult(result);
   }, [result]);
 
   useEffect(() => {
+    liveResultRef.current = liveResult;
+  }, [liveResult]);
+
+  useEffect(() => {
     if (!refreshable) return;
-    void refreshPhysicalTaps();
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") void refreshPhysicalTaps();
-    }, 5_000);
-    return () => window.clearInterval(interval);
-  }, [refreshPhysicalTaps, refreshable]);
+    if (realtime.status === "connected") {
+      setSyncState((current) => current === "syncing" ? current : "connecting");
+    } else if (realtime.status === "reconnecting") {
+      setSyncState("stale");
+    }
+  }, [realtime.status, refreshable]);
+
+  useEffect(() => {
+    const frame = realtime.snapshot;
+    if (!refreshable || !frame || frame.scopeKey !== realtime.activeScopeKey) return;
+    const snapshot = frame.data as { availability?: unknown; scope?: { tenant?: unknown; window?: unknown }; source?: unknown; rows?: unknown } | null;
+    if (
+      !snapshot
+      || snapshot.availability !== "ready"
+      || String(snapshot.scope?.tenant || "").trim().toLowerCase() !== tenantSlug.trim().toLowerCase()
+      || String(snapshot.scope?.window || "").trim().toLowerCase() !== realtime.activeScope.window
+      || String(snapshot.source || "").trim().toLowerCase() !== "production"
+      || !Array.isArray(snapshot.rows)
+    ) {
+      setSyncState("stale");
+      return;
+    }
+    const snapshotRows: unknown[] = snapshot.rows;
+    setLiveResult((current) => snapshotRows.reduce<PhysicalTapsResult>((next, candidate) => {
+      const projected = physicalTapFromRealtimeProjection(candidate, tenantSlug);
+      return projected ? mergePhysicalTapRealtimeProjection(next, projected, frame.receivedAt) || next : next;
+    }, current));
+    setSyncState("live");
+  }, [realtime.activeScope.window, realtime.activeScopeKey, realtime.snapshot, refreshable, tenantSlug]);
+
+  useEffect(() => {
+    if (!refreshable) return;
+    const frames = unreadDashboardRealtimeFrames(
+      realtime.events,
+      consumedEventSequenceRef.current,
+      realtime.activeScopeKey,
+    );
+    const fellBehind = dashboardRealtimeConsumerFellBehind(
+      consumedEventSequenceRef.current,
+      realtime.droppedThroughSequence,
+    );
+    if (!frames.length && !fellBehind) return;
+    consumedEventSequenceRef.current = frames[frames.length - 1]?.sequence || realtime.droppedThroughSequence;
+    const physicalFrames = frames.filter((frame) => isPhysicalTapStreamEvent(frame.data, tenantSlug));
+    if (!physicalFrames.length && !fellBehind) return;
+
+    const projected = physicalFrames.flatMap((frame) => {
+      const row = physicalTapFromRealtimeProjection(frame.data, tenantSlug);
+      return row ? [{ row, receivedAt: frame.receivedAt }] : [];
+    });
+    if (projected.length && liveResultRef.current.availability === "ready" && liveResultRef.current.payload) {
+      setLiveResult((current) => projected.reduce(
+        (next, item) => mergePhysicalTapRealtimeProjection(next, item.row, item.receivedAt) || next,
+        current,
+      ));
+      if (realtime.status === "connected") setSyncState("live");
+    }
+    if (!fellBehind && projected.length === physicalFrames.length && liveResultRef.current.availability === "ready" && liveResultRef.current.payload) return;
+    // Exceptional durable reconciliation only: an incomplete projection or an
+    // unavailable initial dataset is coalesced and capped to one GET per 15s.
+    queuePhysicalTapsRefresh();
+  }, [queuePhysicalTapsRefresh, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events, realtime.status, refreshable, tenantSlug]);
+
+  useEffect(() => {
+    const frame = realtime.warning;
+    if (refreshable && frame?.scopeKey === realtime.activeScopeKey) setSyncState("stale");
+  }, [realtime.activeScopeKey, realtime.warning, refreshable]);
+
+  useEffect(() => {
+    if (!refreshable) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") queuePhysicalTapsRefresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [queuePhysicalTapsRefresh, refreshable]);
+
+  useEffect(() => () => {
+    if (eventRefreshTimerRef.current !== null) window.clearTimeout(eventRefreshTimerRef.current);
+    eventRefreshTimerRef.current = null;
+    refreshAbortRef.current?.abort();
+    refreshAbortRef.current = null;
+    refreshInFlightRef.current = false;
+    trailingRefreshRef.current = false;
+  }, []);
 
   const payload = liveResult.payload;
   const rows = payload?.rows ?? EMPTY_ROWS;
@@ -410,7 +551,7 @@ export function PhysicalTapsCommandCenter({
           <div className="mt-3 flex items-center justify-end gap-2">
             <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${syncState === "stale" ? "text-amber-200" : "text-emerald-200"}`} role="status" aria-live="polite">
               <span className={`h-2 w-2 rounded-full ${syncState === "stale" ? "bg-amber-300" : "bg-emerald-300"}`} />
-              {syncState === "stale" ? "Último snapshot confirmado" : syncState === "syncing" ? "Sincronizando" : "Actualización cada 5 s"}
+              {syncState === "stale" ? "Último snapshot confirmado" : syncState === "syncing" ? "Sincronizando" : syncState === "live" ? "Canal en vivo" : "Conectando stream"}
             </span>
             <button type="button" onClick={() => void refreshPhysicalTaps()} disabled={syncState === "syncing"} className="inline-grid min-h-11 min-w-11 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100 transition hover:bg-cyan-400/15 disabled:cursor-wait disabled:opacity-60" aria-label="Actualizar TAP físicos ahora">
               <RefreshCw className={`h-4 w-4 ${syncState === "syncing" ? "animate-spin" : ""}`} />

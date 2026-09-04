@@ -5,31 +5,31 @@ import { readFile } from "node:fs/promises";
 const component = await readFile(new URL("../src/components/consumer-network-live-refresh.tsx", import.meta.url), "utf8");
 const page = await readFile(new URL("../src/app/(app)/consumer-network/overview/page.tsx", import.meta.url), "utf8");
 
-test("consumer network refreshes from tenant-scoped SSE and polls only while the stream is unavailable", () => {
-  assert.match(component, /new EventSource\(streamUrl\.toString\(\)\)/);
-  assert.match(component, /streamUrl\.searchParams\.set\("source", "production"\)/);
-  assert.match(component, /if \(tenantSlug\) streamUrl\.searchParams\.set\("tenant", tenantSlug\)/);
-  assert.match(component, /source\.addEventListener\("event", onEvent as EventListener\)/);
-  assert.match(component, /source\.addEventListener\("snapshot", onSnapshot as EventListener\)/);
-  assert.match(component, /reconcileTimer = window\.setInterval\(poll, RECONCILE_INTERVAL_MS\)/);
-  assert.match(component, /streamHealthy = true;[\s\S]*?stopPolling\(\);[\s\S]*?setMode\("live"\)/);
-  assert.match(component, /document\.visibilityState !== "visible"[\s\S]*?stopPolling\(\)/);
-  assert.match(component, /refreshOnVisible = true/);
-  assert.match(component, /if \(refreshOnVisible\)[\s\S]*?queueRefresh\(\)/);
+test("consumer network refreshes from tenant-scoped SSE without periodic polling", () => {
+  assert.match(component, /useDashboardRealtime\(\)/);
+  assert.doesNotMatch(component, /new EventSource\(/);
+  assert.match(component, /realtime\.event/);
+  assert.match(component, /realtime\.snapshot/);
+  assert.match(component, /setMode\("live"\)/);
+  assert.doesNotMatch(component, /setInterval|RECONCILE_INTERVAL_MS|startPolling|stopPolling/);
+  assert.match(component, /realtime\.status === "reconnecting"/);
+  assert.match(component, /refreshOnVisibleRef\.current = true/);
+  assert.match(component, /if \(refreshOnVisibleRef\.current\)[\s\S]*?queueRefresh\(\)/);
   assert.match(component, /pendingRef\.current[\s\S]*?trailingRefreshRef\.current/);
-  assert.match(component, /const RECONCILE_INTERVAL_MS = 10_000/);
+  assert.match(component, /EventSource intenta restablecer el canal automáticamente/);
   assert.match(component, /router\.refresh\(\)/);
   assert.match(component, /document\.visibilityState === "visible"/);
   assert.match(component, /data-testid="consumer-network-live-refresh"/);
 });
 
-test("demo never refreshes production while authorized non-sensitive roles retain durable polling", () => {
+test("demo never refreshes production while non-sensitive roles retain explicit refresh only", () => {
   assert.match(page, /dashboardHighImpactPermissionMatches\([\s\S]*?"events\.read_sensitive"/);
   assert.match(page, /refreshEnabled=\{!session\.isDemo\}/);
   assert.match(page, /streamEnabled=\{canReadSensitiveEvents\}/);
-  assert.match(component, /if \(streamEnabled\) \{[\s\S]*?new EventSource\(streamUrl\.toString\(\)\)/);
-  assert.match(component, /else \{[\s\S]*?enterPollingMode\(\)/);
-  assert.doesNotMatch(component, /source", "demo"|demoFallback|sandbox/);
+  assert.match(component, /if \(!refreshEnabled \|\| !streamEnabled\)[\s\S]*?setMode\("manual"\)/);
+  assert.match(component, /Actualización bajo demanda/);
+  assert.doesNotMatch(component, /Actualización periódica|cada 10 segundos|polling/);
+  assert.doesNotMatch(component, /demoFallback|sandbox/);
 });
 
 test("consumer network distinguishes session resolver outages from generic CRM failures", () => {

@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Radio, RefreshCw } from "lucide-react";
+import { useDashboardRealtime } from "./dashboard-realtime-provider";
+import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 
-const RECONCILE_INTERVAL_MS = 10_000;
-const EVENT_REFRESH_DEBOUNCE_MS = 350;
+const EVENT_REFRESH_DEBOUNCE_MS = 5_000;
 
-type SyncMode = "connecting" | "live" | "polling";
+type SyncMode = "connecting" | "live" | "reconnecting" | "manual";
 
 export function ConsumerNetworkLiveRefresh({
   refreshEnabled,
@@ -19,12 +20,15 @@ export function ConsumerNetworkLiveRefresh({
   tenantSlug?: string | null;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<SyncMode>(streamEnabled ? "connecting" : "polling");
+  const [mode, setMode] = useState<SyncMode>(streamEnabled ? "connecting" : "manual");
   const [lastAttemptAt, setLastAttemptAt] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const refreshTimer = useRef<number | null>(null);
   const pendingRef = useRef(false);
   const trailingRefreshRef = useRef(false);
+  const refreshOnVisibleRef = useRef(false);
+  const consumedEventSequenceRef = useRef(0);
+  const realtime = useDashboardRealtime();
 
   const refresh = useCallback(() => {
     if (pendingRef.current) {
@@ -52,132 +56,92 @@ export function ConsumerNetworkLiveRefresh({
   }, [isPending, queueRefresh]);
 
   useEffect(() => {
-    if (!refreshEnabled) return;
-
-    let disposed = false;
-    let streamHealthy = false;
-    let refreshOnVisible = false;
-    let reconcileTimer: number | null = null;
-    const stopPolling = () => {
-      if (reconcileTimer === null) return;
-      window.clearInterval(reconcileTimer);
-      reconcileTimer = null;
-    };
-    const poll = () => {
-      if (!disposed && document.visibilityState === "visible") queueRefresh();
-    };
-    const startPolling = () => {
-      if (disposed || reconcileTimer !== null || document.visibilityState !== "visible") return;
-      reconcileTimer = window.setInterval(poll, RECONCILE_INTERVAL_MS);
-    };
-    const enterPollingMode = () => {
-      if (disposed) return;
-      streamHealthy = false;
-      setMode("polling");
-      startPolling();
-    };
-    const refreshFromStream = () => {
-      if (document.visibilityState === "visible") {
-        queueRefresh();
-      } else {
-        refreshOnVisible = true;
-      }
-    };
-
-    let source: EventSource | null = null;
-    let onSnapshot: ((event: MessageEvent<string>) => void) | null = null;
-    let onEvent: (() => void) | null = null;
-    let onWarning: (() => void) | null = null;
-
-    if (streamEnabled) {
-      setMode("connecting");
-      startPolling();
-      const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
-      streamUrl.searchParams.set("limit", "12");
-      streamUrl.searchParams.set("window", "24h");
-      streamUrl.searchParams.set("source", "production");
-      if (tenantSlug) streamUrl.searchParams.set("tenant", tenantSlug);
-
-      source = new EventSource(streamUrl.toString());
-      source.onopen = () => {
-        if (!disposed && !streamHealthy) setMode("connecting");
-      };
-      source.onerror = enterPollingMode;
-      onSnapshot = (event: MessageEvent<string>) => {
-        try {
-          const payload = JSON.parse(event.data) as { rows?: unknown[]; availability?: string };
-          if (!Array.isArray(payload.rows) || payload.availability !== "ready") {
-            enterPollingMode();
-            return;
-          }
-          streamHealthy = true;
-          stopPolling();
-          setMode("live");
-          refreshFromStream();
-        } catch {
-          enterPollingMode();
-        }
-      };
-      onEvent = () => {
-        streamHealthy = true;
-        stopPolling();
-        setMode("live");
-        refreshFromStream();
-      };
-      onWarning = enterPollingMode;
-      source.addEventListener("snapshot", onSnapshot as EventListener);
-      source.addEventListener("event", onEvent as EventListener);
-      source.addEventListener("warning", onWarning as EventListener);
-    } else {
-      enterPollingMode();
+    if (!refreshEnabled || !streamEnabled) {
+      setMode("manual");
+      return;
     }
+    setMode(realtime.status === "connected"
+      ? "live"
+      : realtime.status === "reconnecting" ? "reconnecting" : "connecting");
+  }, [realtime.status, refreshEnabled, streamEnabled]);
 
+  useEffect(() => {
+    if (!refreshEnabled || !streamEnabled) return;
+    const frame = realtime.snapshot;
+    if (!frame || frame.scopeKey !== realtime.activeScopeKey) return;
+    const payload = frame.data as { rows?: unknown[]; availability?: string } | null;
+    if (!payload || !Array.isArray(payload.rows) || String(payload.availability) !== "ready") {
+      setMode("reconnecting");
+      return;
+    }
+    setMode("live");
+  }, [realtime.activeScopeKey, realtime.snapshot, refreshEnabled, streamEnabled]);
+
+  useEffect(() => {
+    if (!refreshEnabled || !streamEnabled) return;
+    const frames = unreadDashboardRealtimeFrames(
+      realtime.events,
+      consumedEventSequenceRef.current,
+      realtime.activeScopeKey,
+    );
+    const fellBehind = dashboardRealtimeConsumerFellBehind(
+      consumedEventSequenceRef.current,
+      realtime.droppedThroughSequence,
+    );
+    if (!frames.length && !fellBehind) return;
+    consumedEventSequenceRef.current = frames[frames.length - 1]?.sequence || realtime.droppedThroughSequence;
+    const matchingFrames = tenantSlug
+      ? frames.filter((frame) => {
+        const event = frame.data && typeof frame.data === "object" && !Array.isArray(frame.data)
+          ? frame.data as { tenantSlug?: unknown; tenant_slug?: unknown }
+          : null;
+        const eventTenant = String(event?.tenantSlug || event?.tenant_slug || "").trim().toLowerCase();
+        return eventTenant === tenantSlug.trim().toLowerCase();
+      })
+      : frames;
+    if (!matchingFrames.length && !fellBehind) return;
+    setMode(realtime.status === "connected" ? "live" : "reconnecting");
+    if (document.visibilityState === "visible") queueRefresh();
+    else refreshOnVisibleRef.current = true;
+  }, [queueRefresh, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events, realtime.status, refreshEnabled, streamEnabled, tenantSlug]);
+
+  useEffect(() => {
+    if (!refreshEnabled) return;
     const onVisibility = () => {
-      if (document.visibilityState !== "visible") {
-        stopPolling();
-        return;
-      }
-      if (refreshOnVisible) {
-        refreshOnVisible = false;
+      if (document.visibilityState !== "visible") return;
+      if (refreshOnVisibleRef.current) {
+        refreshOnVisibleRef.current = false;
         queueRefresh();
-      }
-      if (!streamHealthy) {
+      } else if (!streamEnabled || realtime.status !== "connected") {
+        // One reconciliation when the operator returns; never a periodic loop.
         refresh();
-        startPolling();
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
-
     return () => {
-      disposed = true;
-      if (source && onSnapshot) source.removeEventListener("snapshot", onSnapshot as EventListener);
-      if (source && onEvent) source.removeEventListener("event", onEvent as EventListener);
-      if (source && onWarning) source.removeEventListener("warning", onWarning as EventListener);
-      source?.close();
-      stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
       if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current);
       refreshTimer.current = null;
     };
-  }, [queueRefresh, refresh, refreshEnabled, streamEnabled, tenantSlug]);
+  }, [queueRefresh, realtime.status, refresh, refreshEnabled, streamEnabled]);
 
   if (!refreshEnabled) return null;
 
   const live = mode === "live";
   const label = live
     ? "Sincronización en vivo"
-    : mode === "polling"
-      ? streamEnabled
-        ? "Canal en vivo interrumpido · reconciliando"
-        : "Actualización periódica segura"
+    : mode === "reconnecting"
+      ? "Canal en vivo reconectando"
+      : mode === "manual"
+        ? "Actualización bajo demanda"
       : "Conectando actividad en vivo";
   const description = live
     ? "Los nuevos taps actualizan esta vista por SSE; PostgreSQL sigue siendo la fuente durable."
     : streamEnabled
-      ? mode === "polling"
-        ? "El canal inmediato está interrumpido; se consulta la fuente durable cada 10 segundos mientras esta pestaña está visible."
-        : "Esperando el primer snapshot autorizado; hasta entonces se mantiene una reconciliación acotada."
-      : "Tu rol puede consultar el CRM, pero no el stream de eventos sensibles; la vista se actualiza desde la fuente durable cada 10 segundos mientras está visible.";
+      ? mode === "reconnecting"
+        ? "EventSource intenta restablecer el canal automáticamente. Conservamos el último snapshot y no abrimos un ciclo de consultas periódicas."
+        : "Esperando el primer snapshot autorizado del canal tenant."
+      : "Tu rol puede consultar el CRM, pero no el stream de eventos sensibles. Actualizá manualmente o volvé a la pestaña para consultar la fuente durable una vez.";
 
   return (
     <aside

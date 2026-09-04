@@ -162,8 +162,11 @@ export function DemoLabControlCenter({
 
   useEffect(() => {
     void refresh();
-    const interval = window.setInterval(() => void refresh(), 12000);
-    return () => window.clearInterval(interval);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => document.removeEventListener("visibilitychange", refreshWhenVisible);
   }, [refresh]);
 
   const run = async (mode: "valid" | "replay" | "tamper") => {

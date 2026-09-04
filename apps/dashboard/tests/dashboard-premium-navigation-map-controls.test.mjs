@@ -38,7 +38,7 @@ test("the realtime map groups actions, views and base layers without duplicating
   assert.match(crm, /role="group" aria-label="Capa base del mapa" className="nexid-crm-map-base-controls/);
   assert.match(crm, /nexid-crm-map-view-button flex h-12/);
   assert.match(crm, /nexid-crm-map-control grid h-12 w-12/);
-  assert.match(crm, /disabled=\{!streetViewTarget\}/);
+  assert.match(crm, /disabled=\{valuesUnavailable \|\| !streetViewTarget\}/);
   assert.match(crm, /2xl:hidden/);
   assert.match(crm, /nexid-crm-map-base-controls hidden[\s\S]*?2xl:flex/);
   assert.doesNotMatch(crm, /Restablecer mapa[\s\S]{0,240}<Settings/);

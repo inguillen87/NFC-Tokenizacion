@@ -18,7 +18,7 @@ import {
   Sparkles,
   UserCheck,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   TENANT_ENGAGEMENT_DOMAINS,
   TENANT_ENGAGEMENT_SOURCES,
@@ -31,11 +31,16 @@ import {
   type TenantEngagementSource,
   type TenantEngagementView,
 } from "../lib/tenant-engagement-view";
+import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
+import { useDashboardRealtime } from "./dashboard-realtime-provider";
 import styles from "./tenant-engagement-panel.module.css";
 
 type FilterDomain = TenantEngagementDomain | "all";
 type FilterSource = TenantEngagementSource | "all";
 type LoadPhase = "idle" | "loading" | "refreshing" | "ready" | "error";
+type StreamPhase = "disabled" | "connecting" | "live" | "reconnecting";
+
+const ENGAGEMENT_EVENT_REFRESH_DEBOUNCE_MS = 2_000;
 
 const RANGE_OPTIONS: Array<{ value: TenantEngagementRange; label: string }> = [
   { value: "24h", label: "24 horas" },
@@ -94,6 +99,27 @@ function actorLabel(activity: TenantEngagementActivity) {
   if (activity.actorState === "linked_without_contact_consent") return "Actor vinculado, sin permiso de contacto";
   if (activity.actorState === "ambiguous_link") return "Vínculo ambiguo; no se habilita contacto";
   return "Actividad anónima";
+}
+
+function isTenantEngagementStreamEvent(value: unknown, tenantSlug: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const event = value as Record<string, unknown>;
+  const eventTenant = String(event.tenant_slug || event.tenantSlug || "").trim().toLowerCase();
+  const eventType = String(event.event_type || event.eventType || "").trim().toLowerCase();
+  if (eventTenant !== tenantSlug.trim().toLowerCase() || !eventType) return false;
+  return eventType !== "realtime.transport_reset"
+    && !eventType.startsWith("incident.")
+    && eventType !== "security_alert.created";
+}
+
+function isTenantEngagementSnapshot(value: unknown, tenantSlug: string, window: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const snapshot = value as { availability?: unknown; scope?: { tenant?: unknown; window?: unknown } };
+  const expectedTenant = tenantSlug.trim().toLowerCase();
+  const reportedTenant = String(snapshot.scope?.tenant || "").trim().toLowerCase();
+  return snapshot.availability === "ready"
+    && (expectedTenant ? reportedTenant === expectedTenant : reportedTenant === "global")
+    && String(snapshot.scope?.window || "").trim().toLowerCase() === window;
 }
 
 function ActivityRow({ activity }: { activity: TenantEngagementActivity }) {
@@ -166,10 +192,12 @@ export function TenantEngagementPanel({
   tenantSlug,
   tenantName,
   canRead,
+  streamEnabled = false,
 }: {
   tenantSlug: string | null;
   tenantName?: string;
   canRead: boolean;
+  streamEnabled?: boolean;
 }) {
   const [range, setRange] = useState<TenantEngagementRange>("24h");
   const [domain, setDomain] = useState<FilterDomain>("all");
@@ -179,6 +207,18 @@ export function TenantEngagementPanel({
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [streamPhase, setStreamPhase] = useState<StreamPhase>(streamEnabled ? "connecting" : "disabled");
+  const eventRefreshTimerRef = useRef<number | null>(null);
+  const consumedEventSequenceRef = useRef(0);
+  const realtime = useDashboardRealtime();
+
+  const queueEngagementRefresh = useCallback(() => {
+    if (eventRefreshTimerRef.current !== null) return;
+    eventRefreshTimerRef.current = window.setTimeout(() => {
+      eventRefreshTimerRef.current = null;
+      setRefreshTick((current) => current + 1);
+    }, ENGAGEMENT_EVENT_REFRESH_DEBOUNCE_MS);
+  }, []);
 
   useEffect(() => {
     if (!canRead || !tenantSlug) {
@@ -232,12 +272,63 @@ export function TenantEngagementPanel({
   }, [canRead, tenantSlug, range, domain, source, refreshTick]);
 
   useEffect(() => {
+    if (!canRead || !tenantSlug || !streamEnabled) {
+      setStreamPhase("disabled");
+      return;
+    }
+    setStreamPhase(realtime.status === "connected"
+      ? "live"
+      : realtime.status === "reconnecting" ? "reconnecting" : "connecting");
+  }, [canRead, realtime.status, streamEnabled, tenantSlug]);
+
+  useEffect(() => {
+    if (!canRead || !tenantSlug || !streamEnabled) return;
+    const frame = realtime.snapshot;
+    if (!frame || frame.scopeKey !== realtime.activeScopeKey) return;
+    if (!isTenantEngagementSnapshot(frame.data, realtime.activeScope.tenant, realtime.activeScope.window)) {
+      setStreamPhase("reconnecting");
+      return;
+    }
+    setStreamPhase("live");
+    // Reconcile the connect-time race once from the durable engagement view.
+    queueEngagementRefresh();
+  }, [canRead, queueEngagementRefresh, realtime.activeScope.tenant, realtime.activeScope.window, realtime.activeScopeKey, realtime.snapshot, streamEnabled, tenantSlug]);
+
+  useEffect(() => {
+    if (!canRead || !tenantSlug || !streamEnabled) return;
+    const frames = unreadDashboardRealtimeFrames(
+      realtime.events,
+      consumedEventSequenceRef.current,
+      realtime.activeScopeKey,
+    );
+    const fellBehind = dashboardRealtimeConsumerFellBehind(
+      consumedEventSequenceRef.current,
+      realtime.droppedThroughSequence,
+    );
+    if (!frames.length && !fellBehind) return;
+    consumedEventSequenceRef.current = frames[frames.length - 1]?.sequence || realtime.droppedThroughSequence;
+    if (!fellBehind && !frames.some((frame) => isTenantEngagementStreamEvent(frame.data, tenantSlug))) return;
+    setStreamPhase(realtime.status === "connected" ? "live" : "reconnecting");
+    queueEngagementRefresh();
+  }, [canRead, queueEngagementRefresh, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events, realtime.status, streamEnabled, tenantSlug]);
+
+  useEffect(() => {
+    const frame = realtime.warning;
+    if (canRead && tenantSlug && streamEnabled && frame?.scopeKey === realtime.activeScopeKey) setStreamPhase("reconnecting");
+  }, [canRead, realtime.activeScopeKey, realtime.warning, streamEnabled, tenantSlug]);
+
+  useEffect(() => {
     if (!canRead || !tenantSlug) return;
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") setRefreshTick((current) => current + 1);
-    }, 15_000);
-    return () => window.clearInterval(interval);
-  }, [canRead, tenantSlug]);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") queueEngagementRefresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (eventRefreshTimerRef.current !== null) window.clearTimeout(eventRefreshTimerRef.current);
+      eventRefreshTimerRef.current = null;
+    };
+  }, [canRead, queueEngagementRefresh, tenantSlug]);
 
   const stageMaximum = useMemo(() => data
     ? Math.max(1, ...TENANT_ENGAGEMENT_STAGES.map((stage) => data.counts.byStage[stage]))
@@ -288,7 +379,7 @@ export function TenantEngagementPanel({
           <p>Cada registro es una <strong>interacción posterior al tap</strong> respaldada por una fuente. La lectura NFC sigue siendo actividad de una unidad, no una persona; un contacto aparece únicamente cuando existe identidad vinculada y consentimiento vigente.</p>
         </div>
         <div className={styles.syncStatus}>
-          <span data-state={phase}><span />{phase === "refreshing" ? "Sincronizando" : phase === "error" ? "Fuente no disponible" : "Consulta automática cada 15 s"}</span>
+          <span data-state={phase}><span />{phase === "refreshing" ? "Sincronizando actividad" : phase === "error" ? "Fuente no disponible" : streamPhase === "live" ? "Canal en vivo" : streamPhase === "connecting" ? "Conectando stream" : streamPhase === "reconnecting" ? "Reconectando stream" : "Actualización manual"}</span>
           <button type="button" onClick={() => setRefreshTick((current) => current + 1)} disabled={phase === "loading" || phase === "refreshing"}>
             <RefreshCw size={15} /> Actualizar
           </button>

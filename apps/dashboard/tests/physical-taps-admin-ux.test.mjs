@@ -5,8 +5,10 @@ import test from "node:test";
 const {
   canRefreshPhysicalTaps,
   latestPhysicalTapByState,
+  mergePhysicalTapRealtimeProjection,
   mergePhysicalTapsRefresh,
   normalizePhysicalTapsPayload,
+  physicalTapFromRealtimeProjection,
 } = await import("../src/lib/physical-taps-contract.ts");
 
 function row(overrides = {}) {
@@ -151,6 +153,57 @@ test("physical TAP refresh recovers initial outages, preserves snapshots and sto
   );
 });
 
+test("canonical realtime tap projections update the tenant snapshot without inventing a TT receipt", () => {
+  const projection = physicalTapFromRealtimeProjection({
+    eventId: "evt-live-3",
+    tenantSlug: "demobodega",
+    bid: "DEMO-2026-02",
+    tagId: "tag-3",
+    uidMasked: "0499****90",
+    occurredAt: "2026-09-04T21:12:00.000Z",
+    eventType: "TAP_VALID",
+    result: "VALID_OPENED",
+    verdict: "VALID",
+    riskLevel: "LOW",
+    productName: "Gran Reserva 2022",
+    source: "production",
+    eventSource: "real",
+    authenticationVerified: true,
+    lat: -34.6037,
+    lng: -58.3816,
+    locationSource: "browser_geolocation_approximate_consent",
+    locationAccuracyM: 120,
+  }, "demobodega");
+  assert.ok(projection);
+  assert.equal(projection.bid, "DEMO-2026-02");
+  assert.equal(projection.sealState, "opened");
+  assert.equal(projection.evidence.ttStatusReported, false);
+  assert.equal(projection.evidence.ttEvidenceAuthority, "not_reported");
+  assert.equal(projection.location.precision, "browser_approximate_consent");
+
+  const currentPayload = normalizePhysicalTapsPayload(payload());
+  assert.ok(currentPayload);
+  const merged = mergePhysicalTapRealtimeProjection({
+    availability: "ready",
+    payload: currentPayload,
+    detail: "durable",
+    checkedAt: "2026-09-04T21:11:00.000Z",
+  }, projection, "2026-09-04T21:12:01.000Z");
+  assert.ok(merged?.payload);
+  assert.equal(merged.payload.rows[0].eventId, "evt-live-3");
+  assert.equal(merged.payload.summary.total, 3);
+
+  assert.equal(physicalTapFromRealtimeProjection({
+    ...projection,
+    eventId: "evt-without-bid",
+    bid: "",
+    source: "production",
+    eventSource: "real",
+    eventType: "TAP_VALID",
+    occurredAt: "2026-09-04T21:13:00.000Z",
+  }, "demobodega"), null, "an incomplete projection must reconcile durably instead of inventing a BID");
+});
+
 test("Balmec physical TAP UX is wired into home and analytics without hardcoded event ids", async () => {
   const [component, home, crm, page, analytics, reader] = await Promise.all([
     readFile(new URL("../src/components/physical-taps-command-center.tsx", import.meta.url), "utf8"),
@@ -186,7 +239,22 @@ test("Balmec physical TAP UX is wired into home and analytics without hardcoded 
   assert.match(component, /Ubicación aproximada compartida desde el navegador con consentimiento/);
   assert.match(component, /payload\.scope\.bid !== "all"/);
   assert.match(component, /Contacto bloqueado hasta consentimiento/);
-  assert.match(component, /setInterval\([\s\S]*?5_000/);
+  assert.doesNotMatch(component, /setInterval|Actualización cada 5 s/);
+  assert.match(component, /const realtime = useDashboardRealtime\(\)/);
+  assert.doesNotMatch(component, /new EventSource\(/);
+  assert.match(component, /frame\.scopeKey !== realtime\.activeScopeKey/);
+  assert.match(component, /isPhysicalTapStreamEvent\(frame\.data, tenantSlug\)/);
+  assert.match(component, /streamSource === "production"/);
+  assert.match(component, /eventSource === "real" \|\| eventSource === "imported" \|\| eventSource === "production"/);
+  assert.match(component, /snapshot\.scope\?\.tenant/);
+  assert.match(component, /snapshot\.scope\?\.window/);
+  assert.match(component, /snapshot\.source/);
+  assert.match(component, /physicalTapFromRealtimeProjection\(frame\.data, tenantSlug\)/);
+  assert.match(component, /PHYSICAL_RECONCILE_MIN_INTERVAL_MS = 15_000/);
+  assert.match(component, /if \(refreshInFlightRef\.current\)[\s\S]*?trailingRefreshRef\.current = true/);
+  assert.match(component, /else if \(trailingRefreshRef\.current\)[\s\S]*?void runPhysicalTapsRefresh\(\)/);
+  assert.match(component, /document\.addEventListener\("visibilitychange", onVisibility\)/);
+  assert.match(component, /Canal en vivo/);
   assert.match(component, /canRefreshPhysicalTaps\(liveResult\.availability\)/);
   assert.doesNotMatch(component, /result\.availability !== "ready"/);
   assert.match(component, /mergePhysicalTapsRefresh\(current, failedResult\)/);

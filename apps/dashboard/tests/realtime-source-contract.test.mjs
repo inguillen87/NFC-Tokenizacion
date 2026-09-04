@@ -7,6 +7,7 @@ const { classifyRealtimeEventSource } = await tsImport("../src/lib/realtime-feed
 
 const homeSource = await readFile(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
 const crmSource = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
+const realtimeProviderSource = await readFile(new URL("../src/components/dashboard-realtime-provider.tsx", import.meta.url), "utf8");
 const streamBffSource = await readFile(new URL("../src/app/api/admin/events/stream/route.ts", import.meta.url), "utf8");
 
 test("dashboard keeps seed and unknown origins out of the production label", () => {
@@ -26,10 +27,14 @@ test("Home returns explicit source and availability when upstream data falls bac
   assert.match(homeSource, /limit: "18",\s*range: "24h",\s*source:/);
 });
 
-test("CRM requests one source, replaces fallback snapshots and labels it explicitly", () => {
-  assert.match(crmSource, /streamUrl\.searchParams\.set\("source", streamSource\)/);
-  assert.match(crmSource, /streamUrl\.searchParams\.set\("window", timeRange\)/);
-  assert.match(crmSource, /setEvents\(sortRealtimeEvents\(payload\.rows \|\| \[\], 50\)\)/);
+test("shared realtime provider requests one stable source while CRM replaces snapshots and labels them", () => {
+  assert.match(realtimeProviderSource, /streamUrl\.searchParams\.set\("source", activeScope\.source\)/);
+  assert.match(realtimeProviderSource, /streamUrl\.searchParams\.set\("window", activeScope\.window\)/);
+  assert.match(realtimeProviderSource, /window: "all"/);
+  assert.match(realtimeProviderSource, /const stream = new EventSource\(streamUrl\.toString\(\)\)/);
+  assert.doesNotMatch(crmSource, /new EventSource\(/);
+  assert.match(crmSource, /realtime\.activeScope\.source/);
+  assert.match(crmSource, /setEvents\(sortRealtimeEvents\(normalizedRows, EXECUTIVE_REALTIME_EVENT_LIMIT\)\)/);
   assert.match(crmSource, /data-testid="crm-source-badge"/);
   assert.match(crmSource, /"Respaldo seed"/);
   assert.match(crmSource, /"Demo declarada"/);
@@ -41,7 +46,8 @@ test("dashboard SSE BFF validates source and never injects demo rows into produc
   assert.match(streamBffSource, /const effectiveSource: DashboardStreamSource = forceSandbox \? "demo" : requestedSource/);
   assert.match(streamBffSource, /const includeDemoRows = effectiveSource === "demo"/);
   assert.match(streamBffSource, /availability: includeDemoRows \? "fallback" : "upstream_error"/);
-  assert.match(streamBffSource, /rows, source: options\.source \|\| "production", availability:/);
+  assert.match(streamBffSource, /scope: \{ tenant: tenant \|\| "global", window: options\.window \|\| "24h" \}/);
+  assert.match(streamBffSource, /source: options\.source \|\| "production"/);
 });
 
 test("dashboard SSE BFF rejects unauthenticated and unauthorized requests before opening a stream", () => {

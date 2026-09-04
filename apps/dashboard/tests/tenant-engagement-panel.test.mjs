@@ -158,10 +158,11 @@ test("CRM overview renders an interactive, source-separated engagement surface",
     readFile(new URL("../src/components/tenant-engagement-panel.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /TenantEngagementPanel tenantSlug=\{tenantScope\} tenantName=\{tenantName\} canRead=\{canReadEngagement\}/);
+  assert.match(page, /<TenantEngagementPanel[\s\S]*?tenantSlug=\{tenantScope\}[\s\S]*?tenantName=\{tenantName\}[\s\S]*?canRead=\{canReadEngagement\}[\s\S]*?streamEnabled=\{canStreamEngagement\}/);
   assert.match(page, /Workspace activo:[\s\S]*?\{tenantName\}/);
   assert.match(component, /Inteligencia post-tap · \{tenantName \|\| tenantSlug\}/);
   assert.match(page, /dashboardPermissionMatches\([\s\S]*?"crm:read"/);
+  assert.match(page, /dashboardHighImpactPermissionMatches\([\s\S]*?"events\.read_sensitive"/);
   assert.match(component, /\/api\/admin\/engagement\?\$\{query\.toString\(\)\}/);
   assert.match(component, /"24h"/);
   assert.match(component, /"7d"/);
@@ -173,4 +174,13 @@ test("CRM overview renders an interactive, source-separated engagement surface",
   assert.match(component, /consentChannels/);
   assert.match(component, /data-source=\{activity\.source\}/);
   assert.match(component, /aria-busy=/);
+  assert.match(component, /useDashboardRealtime\(\)/);
+  assert.doesNotMatch(component, /new EventSource\(/);
+  assert.match(component, /const frame = realtime\.snapshot/);
+  assert.match(component, /const frames = unreadDashboardRealtimeFrames\(/);
+  assert.match(component, /frames\.some\(\(frame\) => isTenantEngagementStreamEvent\(frame\.data, tenantSlug\)\)/);
+  assert.match(component, /dashboardRealtimeConsumerFellBehind\(/);
+  assert.match(component, /return snapshot\.availability === "ready"/);
+  assert.match(component, /document\.addEventListener\("visibilitychange", onVisibility\)/);
+  assert.doesNotMatch(component, /setInterval|Consulta automática cada 15 s/);
 });

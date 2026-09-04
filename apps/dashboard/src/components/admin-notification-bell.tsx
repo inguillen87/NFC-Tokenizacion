@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useDashboardRealtime } from "./dashboard-realtime-provider";
+import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 
 type NotificationSummary = {
   unreadCount?: number;
@@ -12,57 +14,94 @@ type NotificationSummary = {
   };
 };
 
+const NOTIFICATION_EVENT_TYPES = new Set([
+  "lead.created",
+  "ticket.created",
+  "order.created",
+  "order_request.created",
+  "marketplace.order_requested",
+  "supplier_order.created",
+]);
+
+function notificationMayHaveChanged(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const payload = value as { event_type?: unknown; eventType?: unknown };
+  const eventType = String(payload.event_type || payload.eventType || "").trim().toLowerCase();
+  return NOTIFICATION_EVENT_TYPES.has(eventType);
+}
+
 export function AdminNotificationBell({ canReadSensitiveEvents = false }: { canReadSensitiveEvents?: boolean }) {
   const [summary, setSummary] = useState<NotificationSummary>({});
   const [liveConnected, setLiveConnected] = useState(false);
   const [lastPulseAt, setLastPulseAt] = useState("");
+  const realtime = useDashboardRealtime();
+  const mountedRef = useRef(false);
+  const loadingRef = useRef(false);
+  const trailingLoadRef = useRef(false);
+  const consumedEventSequenceRef = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    let stream: EventSource | null = null;
-
-    async function load() {
-      const response = await fetch("/api/admin/notifications", { cache: "no-store" }).catch(() => null);
-      if (!response?.ok) return;
-      const data = await response.json().catch(() => null) as NotificationSummary | null;
-      if (!cancelled && data) setSummary(data);
+  const load = useCallback(async () => {
+    if (loadingRef.current) {
+      trailingLoadRef.current = true;
+      return;
     }
-
-    function refreshFromRealtime() {
-      if (cancelled) return;
-      setLastPulseAt(new Date().toISOString());
+    loadingRef.current = true;
+    const response = await fetch("/api/admin/notifications", { cache: "no-store" }).catch(() => null);
+    if (response?.ok) {
+      const data = await response.json().catch(() => null) as NotificationSummary | null;
+      if (mountedRef.current && data) setSummary(data);
+    }
+    loadingRef.current = false;
+    if (mountedRef.current && trailingLoadRef.current) {
+      trailingLoadRef.current = false;
       void load();
     }
+  }, []);
 
-    void load();
-    const timer = window.setInterval(load, 5000);
-
-    if (canReadSensitiveEvents && typeof EventSource !== "undefined") {
-      const url = new URL("/api/admin/events/stream", window.location.origin);
-      url.searchParams.set("limit", "8");
-      url.searchParams.set("range", "24h");
-      url.searchParams.set("source", "all");
-      stream = new EventSource(url.toString());
-      stream.onopen = () => {
-        if (!cancelled) setLiveConnected(true);
-      };
-      stream.onerror = () => {
-        if (!cancelled) setLiveConnected(false);
-      };
-      stream.addEventListener("snapshot", refreshFromRealtime as EventListener);
-      stream.addEventListener("event", refreshFromRealtime as EventListener);
-      stream.addEventListener("heartbeat", refreshFromRealtime as EventListener);
-    }
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-      stream?.removeEventListener("snapshot", refreshFromRealtime as EventListener);
-      stream?.removeEventListener("event", refreshFromRealtime as EventListener);
-      stream?.removeEventListener("heartbeat", refreshFromRealtime as EventListener);
-      stream?.close();
+  useEffect(() => {
+    mountedRef.current = true;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
     };
-  }, [canReadSensitiveEvents]);
+    void load();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      mountedRef.current = false;
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [load]);
+
+  useEffect(() => {
+    setLiveConnected(canReadSensitiveEvents && realtime.status === "connected");
+  }, [canReadSensitiveEvents, realtime.status]);
+
+  useEffect(() => {
+    if (!canReadSensitiveEvents || !realtime.snapshot) return;
+    setLastPulseAt(realtime.snapshot.receivedAt);
+    void load();
+  }, [canReadSensitiveEvents, load, realtime.snapshot]);
+
+  useEffect(() => {
+    if (!canReadSensitiveEvents) return;
+    const frames = unreadDashboardRealtimeFrames(
+      realtime.events,
+      consumedEventSequenceRef.current,
+      realtime.activeScopeKey,
+    );
+    const fellBehind = dashboardRealtimeConsumerFellBehind(
+      consumedEventSequenceRef.current,
+      realtime.droppedThroughSequence,
+    );
+    if (!frames.length && !fellBehind) return;
+    consumedEventSequenceRef.current = frames[frames.length - 1]?.sequence || realtime.droppedThroughSequence;
+    if (frames.length) setLastPulseAt(frames[frames.length - 1].receivedAt);
+    if (fellBehind || frames.some((frame) => notificationMayHaveChanged(frame.data))) void load();
+  }, [canReadSensitiveEvents, load, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events]);
+
+  useEffect(() => {
+    if (!canReadSensitiveEvents || !realtime.heartbeat) return;
+    setLastPulseAt(realtime.heartbeat.receivedAt);
+  }, [canReadSensitiveEvents, realtime.heartbeat]);
 
   const unread = Number(summary.unreadCount || 0);
   const counts = summary.counts || {};

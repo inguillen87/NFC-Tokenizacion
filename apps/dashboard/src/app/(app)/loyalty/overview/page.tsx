@@ -1,6 +1,6 @@
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
-import { dashboardPermissionMatches } from "../../../../lib/permission-policy";
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../../../../lib/permission-policy";
 import { TenantEngagementPanel } from "../../../../components/tenant-engagement-panel";
 import Link from "next/link";
 
@@ -49,6 +49,12 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
     "crm:read",
     session.deniedPermissions,
   );
+  const canStreamEngagement = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "events.read_sensitive",
+    session.deniedPermissions,
+  );
 
   const [loyaltyOverview, consumerOverview, rewardsRaw] = await Promise.all([
     adminGet(adminContext, "/admin/loyalty/overview"),
@@ -87,7 +93,12 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
         </div>
       ) : null}
 
-      <TenantEngagementPanel tenantSlug={tenantScope} tenantName={tenantName} canRead={canReadEngagement} />
+      <TenantEngagementPanel
+        tenantSlug={tenantScope}
+        tenantName={tenantName}
+        canRead={canReadEngagement}
+        streamEnabled={canStreamEngagement}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">

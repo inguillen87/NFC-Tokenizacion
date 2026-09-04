@@ -309,15 +309,24 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     return NextResponse.json(rows);
   }
   if (method === "GET" && normalized === "events") {
+    const requestedRange = (url.searchParams.get("range") || "24h").trim().toLowerCase();
+    const range = ["5m", "1h", "24h", "7d", "30d"].includes(requestedRange) ? requestedRange : "24h";
+    const requestedLimit = Number.parseInt(url.searchParams.get("limit") || "50", 10);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 200) : 50;
     const runtimeRows = getDashboardDemoEvents(80).map(toDemoAdminEventRow);
     const rows = [
-      { id: "evt-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date().toISOString(), city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
-      { id: "evt-demo-002", result: "VALID", reason: "sun_ok", uid_hex: "04B1C2D3E4", created_at: new Date().toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
-      { id: "evt-demo-003", result: "INVALID", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date().toISOString(), city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505, bid: "EVENT-2026-01", tenant_slug: "demoevents" },
+      { id: "evt-demo-001", event_type: "DEMO_TAP_SIMULATED", source: "demo", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date().toISOString(), city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
+      { id: "evt-demo-002", event_type: "DEMO_TAP_SIMULATED", source: "demo", result: "VALID", reason: "sun_ok", uid_hex: "04B1C2D3E4", created_at: new Date().toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
+      { id: "evt-demo-003", event_type: "DEMO_TAP_SIMULATED", source: "demo", result: "INVALID", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date().toISOString(), city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505, bid: "EVENT-2026-01", tenant_slug: "demoevents" },
     ];
     const allRows = [...runtimeRows, ...rows];
     const filtered = tenantFilter ? allRows.filter((row) => row.tenant_slug === tenantFilter) : allRows;
-    return NextResponse.json(filtered);
+    return NextResponse.json({
+      scope: { tenant: tenantFilter || "global", source: "demo", range, limit },
+      rows: filtered.slice(0, limit),
+      source: "demo",
+      availability: "ready",
+    });
   }
   if (method === "GET" && normalized === "analytics") {
     const now = Date.now();
