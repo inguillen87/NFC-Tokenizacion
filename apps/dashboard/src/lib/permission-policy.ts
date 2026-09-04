@@ -174,7 +174,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     return "crm:read";
   }
   if (normalizedMethod === "GET" && normalizedPath === "loyalty/overview") {
-    return "rewards:read";
+    return "crm:read";
   }
   if (normalizedPath === "loyalty/rewards") {
     return normalizedMethod === "GET" ? "rewards:read" : "rewards:write";

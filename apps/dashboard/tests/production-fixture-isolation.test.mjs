@@ -28,7 +28,8 @@ test("consumer CRM and its heatmap accept fixture rows only for an explicit demo
   assert.match(consumerOverview, /const allowDemoData = Boolean\(session\.isDemo\)/);
   assert.match(consumerOverview, /data-testid="consumer-network-source"/);
   assert.match(consumerOverview, /dataSource === "demo" \? " · DEMO DATA; no se agrega como actividad productiva\."/);
-  assert.match(consumerOverview, /const heatmapCells = tapsReady \?/);
+  assert.match(consumerOverview, /const operationalTaps = taps\.filter\(\(tap\) => tap\.dataProvenance === "operational_tap"\)/);
+  assert.match(consumerOverview, /const heatmapCells = tapsReady && operationalTaps\.length > 0 \?/);
   assert.doesNotMatch(consumerOverview, /TENANT_DIRECTORY/);
 });
 

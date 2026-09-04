@@ -1,9 +1,11 @@
 import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../../components/data-table";
 import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state";
+import { ConsumerNetworkLiveRefresh } from "../../../../components/consumer-network-live-refresh";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import { readDemoDataMetaFromResponse } from "../../../../lib/demo-data-mode";
+import { dashboardHighImpactPermissionMatches } from "../../../../lib/permission-policy";
 import {
   buildUtcHourlyHeatmap,
   describeProductActivity,
@@ -14,11 +16,13 @@ import {
   parseConsumerNetworkTaps,
   withTenantScope,
   type ConsumerNetworkOverviewMetrics,
+  type ConsumerNetworkProvenance,
+  type ConsumerNetworkRecordProvenance,
   type ParsedConsumerNetworkPayload,
 } from "../../../../lib/consumer-network-overview-truth";
 
 type SourceAvailability = "ready" | "empty" | "unavailable" | "error";
-type SourceReason = "ready" | "empty" | "forbidden" | "demo_rejected" | "invalid_payload" | "upstream_error" | "unreachable";
+type SourceReason = "ready" | "empty" | "forbidden" | "demo_rejected" | "invalid_payload" | "session_unavailable" | "upstream_error" | "unreachable";
 type AdminGetResult<T> = {
   availability: SourceAvailability;
   reason: SourceReason;
@@ -27,6 +31,7 @@ type AdminGetResult<T> = {
   endpoint: string;
   observedAt: string;
   latestRecordedAt: string | null;
+  recordProvenance: ConsumerNetworkProvenance | null;
 };
 type PayloadParser<T> = (payload: unknown, expectedTenant: string) => ParsedConsumerNetworkPayload<T> | null;
 
@@ -38,7 +43,7 @@ async function adminGet<T>(
 ): Promise<AdminGetResult<T>> {
   const failed = (
     availability: Extract<SourceAvailability, "unavailable" | "error">,
-    reason: Extract<SourceReason, "forbidden" | "demo_rejected" | "invalid_payload" | "upstream_error" | "unreachable">,
+    reason: Extract<SourceReason, "forbidden" | "demo_rejected" | "invalid_payload" | "session_unavailable" | "upstream_error" | "unreachable">,
   ): AdminGetResult<T> => ({
     availability,
     reason,
@@ -47,13 +52,22 @@ async function adminGet<T>(
     endpoint: path,
     observedAt: new Date().toISOString(),
     latestRecordedAt: null,
+    recordProvenance: null,
   });
 
   try {
     const response = await fetchAdminPage(context, path);
-    const meta = readDemoDataMetaFromResponse(response);
     if (response.status === 401 || response.status === 403) return failed("unavailable", "forbidden");
+    if (
+      response.status === 503
+      && response.headers.get("x-nexid-auth-outcome") === "session-resolver-unavailable"
+    ) return failed("error", "session_unavailable");
     if (!response.ok) return failed("error", "upstream_error");
+    const declaredTransport = String(response.headers.get("x-nexid-data-mode") || "").trim().toLowerCase();
+    if (declaredTransport !== "demo" && declaredTransport !== "production") {
+      return failed("unavailable", "invalid_payload");
+    }
+    const meta = readDemoDataMetaFromResponse(response);
 
     const payload = await response.json().catch(() => null);
     const upstreamUnavailable = Boolean(
@@ -67,6 +81,9 @@ async function adminGet<T>(
 
     const parsed = parse(payload, context.tenantSlug);
     if (!parsed) return failed("unavailable", "invalid_payload");
+    if (meta.demoMode && parsed.provenance.counts.operationalTap > 0) {
+      return failed("unavailable", "invalid_payload");
+    }
 
     return {
       availability: parsed.empty ? "empty" : "ready",
@@ -76,6 +93,7 @@ async function adminGet<T>(
       endpoint: path,
       observedAt: new Date().toISOString(),
       latestRecordedAt: parsed.latestRecordedAt,
+      recordProvenance: parsed.provenance,
     };
   } catch {
     return failed("error", "unreachable");
@@ -87,29 +105,39 @@ function sourceIsConfirmed(availability: SourceAvailability) {
 }
 
 function sourceStateLabel(result: AdminGetResult<unknown>) {
+  if (result.recordProvenance?.state === "legacy_unclassified") return "Legado sin procedencia suficiente";
+  if (result.recordProvenance?.state === "partial_legacy_unclassified") return "Disponible con legado aislado";
+  if (result.recordProvenance?.hasIsolatedRecords) return "Disponible con modos aislados";
   if (result.availability === "ready") return "Disponible con registros";
   if (result.availability === "empty") return "Vacío confirmado";
   if (result.reason === "forbidden") return "No disponible por permisos";
   if (result.reason === "demo_rejected") return "Fuente demo rechazada en sesión operativa";
   if (result.reason === "invalid_payload") return "No disponible: contrato inválido";
+  if (result.reason === "session_unavailable") return "Sesión no verificable temporalmente";
   if (result.reason === "unreachable") return "Error de conexión";
   return "Error del servicio";
 }
 
 function SourceEvidenceCard({ label, result }: { label: string; result: AdminGetResult<unknown> }) {
   const confirmed = sourceIsConfirmed(result.availability);
-  const provenance = result.source === "production"
-    ? "API operativa declarada por el BFF"
+  const transport = result.source === "production"
+    ? "API operativa declarada por el BFF; no clasifica por sí sola los registros"
     : result.source === "demo"
       ? "Sandbox demo declarado por el BFF"
       : "Procedencia no confirmada";
+  const recordProvenance = result.recordProvenance;
+  const recordScope = recordProvenance
+    ? `${recordProvenance.primaryScope}; presencia física no afirmada`
+    : "No confirmado";
   const latest = result.latestRecordedAt
     ? formatUtcTimestamp(result.latestRecordedAt)
     : result.availability === "empty"
       ? "Sin registros en la respuesta válida"
-      : confirmed
-        ? "La API no informa timestamp de corte"
-        : "No confirmada";
+      : recordProvenance?.counts.operationalTap === 0
+        ? "Sin registro operativo clasificado"
+        : confirmed
+          ? "Timestamp operativo no informado"
+          : "No confirmada";
 
   return (
     <article className="rounded-xl border border-white/10 bg-slate-950/55 p-3" data-source-state={result.availability}>
@@ -120,13 +148,25 @@ function SourceEvidenceCard({ label, result }: { label: string; result: AdminGet
         </span>
       </div>
       <dl className="mt-3 space-y-1 text-xs text-slate-400">
-        <div><dt className="inline text-slate-500">Procedencia: </dt><dd className="inline">{provenance}</dd></div>
+        <div><dt className="inline text-slate-500">Transporte: </dt><dd className="inline">{transport}</dd></div>
+        <div><dt className="inline text-slate-500">Alcance primario: </dt><dd className="inline">{recordScope}</dd></div>
+        {recordProvenance ? (
+          <div><dt className="inline text-slate-500">Registros aislados: </dt><dd className="inline">demo {recordProvenance.counts.declaredDemo} · importados {recordProvenance.counts.imported} · legado {recordProvenance.counts.legacyUnclassified} · mixtos {recordProvenance.counts.mixed}</dd></div>
+        ) : null}
         <div><dt className="inline text-slate-500">Endpoint: </dt><dd className="inline font-mono">{result.endpoint}</dd></div>
         <div><dt className="inline text-slate-500">Último registro: </dt><dd className="inline">{latest}</dd></div>
         <div><dt className="inline text-slate-500">Consulta observada: </dt><dd className="inline">{formatUtcTimestamp(result.observedAt)}</dd></div>
       </dl>
     </article>
   );
+}
+
+function provenanceLabel(value: ConsumerNetworkRecordProvenance) {
+  if (value === "operational_tap") return "Tap operativo clasificado";
+  if (value === "declared_demo") return "Demo declarado";
+  if (value === "imported") return "Importado";
+  if (value === "mixed") return "Fuentes mixtas";
+  return "Legado sin clasificar";
 }
 
 function pct(value: number | undefined, available = true) {
@@ -138,6 +178,12 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   const session = await requireDashboardSession();
   const adminContext = await createAdminPageContext(session, query.tenant);
   const allowDemoData = Boolean(session.isDemo);
+  const canReadSensitiveEvents = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "events.read_sensitive",
+    session.deniedPermissions,
+  );
 
   const [overviewResult, membersResult, productsResult, tapsResult] = await Promise.all([
     adminGet(adminContext, "/admin/consumer-network/overview", allowDemoData, parseConsumerNetworkOverview),
@@ -160,15 +206,19 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
     .map(([, result]) => result)
     .filter((result) => sourceIsConfirmed(result.availability))
     .map((result) => result.source);
+  const hasIsolatedRecords = sourceEntries.some(([, result]) => result.recordProvenance?.hasIsolatedRecords);
   const dataSource = visibleSources.length === 0
     ? "unavailable"
-    : visibleSources.every((source) => source === "production")
-      ? "production"
-      : visibleSources.every((source) => source === "demo")
-        ? "demo"
-        : "mixed";
+    : visibleSources.every((source) => source === "demo")
+      ? "demo"
+      : hasIsolatedRecords
+        ? "mixed"
+        : visibleSources.every((source) => source === "production")
+          ? "production"
+          : "mixed";
   const unavailableSources = sourceEntries.filter(([, result]) => result.availability === "unavailable");
   const errorSources = sourceEntries.filter(([, result]) => result.availability === "error");
+  const sessionUnavailable = errorSources.some(([, result]) => result.reason === "session_unavailable");
   const retryHref = withTenantScope("/consumer-network/overview", adminContext.tenantSlug);
   const membersHref = withTenantScope("/consumer-network/overview#miembros", adminContext.tenantSlug);
   const productsHref = withTenantScope("/consumer-network/overview#productos", adminContext.tenantSlug);
@@ -180,30 +230,37 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   const members = membersResult.data || [];
   const products = productsResult.data || [];
   const taps = tapsResult.data || [];
-  const heatmapCells = tapsReady ? buildUtcHourlyHeatmap(taps) : [];
+  const operationalTaps = taps.filter((tap) => tap.dataProvenance === "operational_tap");
+  const heatmapCells = tapsReady && operationalTaps.length > 0 ? buildUtcHourlyHeatmap(operationalTaps) : [];
 
   const description = dataSource === "demo"
     ? "Escenario demo aislado: separa lecturas, acciones, unidades y actores sin afirmar personas ni conversiones reales."
     : dataSource === "production"
       ? "Actividad agregada y relaciones de actores devueltas por fuentes operativas dentro del alcance autorizado."
       : dataSource === "mixed"
-        ? "La vista combina fuentes operativas y demo declaradas; cada módulo muestra su procedencia y no se agrega como un único total productivo."
+        ? "La vista conserva registros operativos, demo, importados, mixtos y legado en grupos explícitos; el resumen agrega sólo taps operativos clasificados."
         : "No hay una fuente confirmada para mostrar métricas; la vista conserva el estado de error o indisponibilidad sin fabricar ceros.";
 
   return (
     <main className="space-y-6">
-      <SectionHeading eyebrow="Clientes CRM" title="Clientes & campañas" description={description} />
+      <SectionHeading eyebrow="CRM DEL TENANT" title="Actores, consentimiento y actividad" description={description} />
+
+      <ConsumerNetworkLiveRefresh
+        refreshEnabled={!session.isDemo}
+        streamEnabled={canReadSensitiveEvents}
+        tenantSlug={adminContext.tenantSlug}
+      />
 
       <nav aria-label="Secciones de clientes y campañas" className="flex flex-wrap gap-2 text-xs">
-        <a href={membersHref} className="rounded-lg border border-white/10 bg-slate-900/55 px-3 py-2 font-bold text-slate-200">Miembros</a>
-        <a href={productsHref} className="rounded-lg border border-white/10 bg-slate-900/55 px-3 py-2 font-bold text-slate-200">Productos</a>
-        <a href={tapsHref} className="rounded-lg border border-white/10 bg-slate-900/55 px-3 py-2 font-bold text-slate-200">Actividad</a>
+        <a href={membersHref} className="rounded-lg border border-white/10 bg-slate-900/55 px-3 py-2 font-bold text-slate-200">Actores conocidos</a>
+        <a href={productsHref} className="rounded-lg border border-white/10 bg-slate-900/55 px-3 py-2 font-bold text-slate-200">Productos vinculados</a>
+        <a href={tapsHref} className="rounded-lg border border-white/10 bg-slate-900/55 px-3 py-2 font-bold text-slate-200">Taps registrados</a>
       </nav>
 
       <div data-testid="consumer-network-source" data-data-source={dataSource} className="rounded-xl border border-white/10 bg-slate-900/50 px-4 py-3 text-xs text-slate-300">
-        Fuente visible: <b className={dataSource === "production" ? "text-emerald-200" : dataSource === "unavailable" ? "text-slate-200" : "text-amber-200"}>{dataSource}</b>
+        Fuente visible: <b className={dataSource === "production" ? "text-emerald-200" : dataSource === "unavailable" ? "text-slate-200" : "text-amber-200"}>{dataSource === "production" ? "operational_classified" : dataSource}</b>
         {dataSource === "demo" ? " · DEMO DATA; no se agrega como actividad productiva." : null}
-        {dataSource === "mixed" ? " · FUENTES MIXTAS; consultar la procedencia de cada módulo." : null}
+        {dataSource === "mixed" ? " · MODOS AISLADOS; demo, importado, mixto y legado no integran el total operativo." : null}
         <span className="ml-2">Scope: <b>{adminContext.isGlobal ? "global autorizado" : adminContext.tenantSlug}</b>.</span>
       </div>
 
@@ -223,8 +280,8 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
       {errorSources.length ? (
         <EnterpriseOpsState
           variant="error"
-          title="Error al consultar fuentes del CRM"
-          description="El servicio devolvió un error o no pudo establecerse la conexión. Los módulos afectados no se convierten en actividad cero."
+          title={sessionUnavailable ? "Sesión temporalmente no verificable" : "Error al consultar fuentes del CRM"}
+          description={sessionUnavailable ? "El verificador de sesión no respondió. Conservamos la sesión, evitamos mostrar datos antiguos como actuales y reintentamos sin ampliar permisos." : "El servicio devolvió un error o no pudo establecerse la conexión. Los módulos afectados no se convierten en actividad cero."}
           checklist={errorSources.map(([name, result]) => `${name}: ${sourceStateLabel(result)}`)}
           action={<a href={retryHref} className="rounded-xl border border-rose-300/30 bg-rose-400/10 px-3 py-2 text-xs font-black text-rose-100">Reintentar con el mismo tenant</a>}
           testId="consumer-network-source-errors"
@@ -253,9 +310,9 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Lecturas NFC / QR</p>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Taps SUN operativos</p>
           <p className="mt-2 text-3xl font-bold text-white">{overviewReady ? Number(overview.totalTaps) : "—"}</p>
-          <p className="mt-1 text-xs text-slate-400">Lecturas registradas por la API; no prueban presencia física por sí solas.</p>
+          <p className="mt-1 text-xs text-slate-400">Taps con vínculo tenant/lote/tag y evidencia del writer actual; no prueban presencia física por sí solos.</p>
         </article>
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <p className="text-xs uppercase tracking-widest text-slate-400">Acciones post-tap</p>
@@ -291,8 +348,8 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
           </div>
         </div>
         <div className="mt-5" id="taps">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Heatmap horario de taps asociados · UTC</p>
-          {tapsResult.availability === "ready" ? (
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Heatmap horario de taps operativos clasificados · UTC</p>
+          {tapsResult.availability === "ready" && operationalTaps.length > 0 ? (
             <>
               <div className="mt-2 grid grid-cols-12 gap-1">
                 {heatmapCells.map((cell) => (
@@ -308,8 +365,8 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
               </div>
               <div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>00h UTC</span><span>12h UTC</span><span>23h UTC</span></div>
             </>
-          ) : tapsResult.availability === "empty" ? (
-            <EnterpriseOpsState compact variant="empty" title="Sin taps en el scope" description="La fuente respondió correctamente con una lista vacía; no se dibuja una grilla de ceros como si fueran observaciones horarias." testId="consumer-taps-empty" />
+          ) : tapsResult.availability === "empty" || (tapsResult.availability === "ready" && operationalTaps.length === 0) ? (
+            <EnterpriseOpsState compact variant="empty" title="Sin taps operativos clasificados en el scope" description="Demo, importados y legado permanecen visibles en la tabla, pero no se dibujan como observaciones operativas." testId="consumer-taps-empty" />
           ) : (
             <EnterpriseOpsState compact variant={tapsResult.availability === "error" ? "error" : "warning"} title="Heatmap no disponible" description="La fuente de taps no confirmó registros; no generamos una grilla de ceros." />
           )}
@@ -361,6 +418,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
               { key: "tenant", label: "Tenant" },
               { key: "status", label: "Estado reportado" },
               { key: "points", label: "Puntos reportados" },
+              { key: "provenance", label: "Procedencia" },
               { key: "last", label: "Última actividad (UTC)" },
             ]}
             rows={members.map((item) => ({
@@ -368,6 +426,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
               tenant: item.tenantSlug,
               status: item.status,
               points: item.pointsBalance === null ? "—" : String(item.pointsBalance),
+              provenance: provenanceLabel(item.dataProvenance),
               last: formatUtcTimestamp(item.lastActivityAt),
             }))}
             filterKey="status"
@@ -394,6 +453,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
               { key: "claimed", label: "Claims" },
               { key: "saved", label: "Guardados" },
               { key: "status", label: "Lectura derivada" },
+              { key: "provenance", label: "Procedencia" },
               { key: "last", label: "Última actividad (UTC)" },
             ]}
             rows={products.map((item) => ({
@@ -402,6 +462,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
               claimed: String(item.claimedCount),
               saved: String(item.savedCount),
               status: describeProductActivity(item),
+              provenance: provenanceLabel(item.dataProvenance),
               last: formatUtcTimestamp(item.latestActivityAt),
             }))}
             filterKey="status"
@@ -427,6 +488,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
               { key: "tenant", label: "Tenant" },
               { key: "verdict", label: "Veredicto reportado" },
               { key: "risk", label: "Riesgo reportado" },
+              { key: "provenance", label: "Procedencia" },
               { key: "at", label: "Creado (UTC)" },
             ]}
             rows={taps.map((item) => ({
@@ -434,6 +496,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
               tenant: item.tenantSlug,
               verdict: item.verdict || "No informado por la fuente",
               risk: item.riskLevel || "No informado por la fuente",
+              provenance: provenanceLabel(item.dataProvenance),
               at: formatUtcTimestamp(item.createdAt),
             }))}
             filterKey="verdict"

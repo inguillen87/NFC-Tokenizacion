@@ -1,7 +1,11 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { randomUUID } from "node:crypto";
-import { getDashboardSessionCredential } from "../../../../../lib/session";
+import {
+  type DashboardSessionCredential,
+  getDashboardSessionCredential,
+  isDashboardSessionUpstreamUnavailable,
+} from "../../../../../lib/session";
 import { getDashboardDemoEvents, toDemoRealtimeEvent } from "../../../../../lib/demo-runtime-state";
 import { DashboardTenantScopeError, resolveDashboardTenantScope } from "../../../../../lib/dashboard-tenant-scope-policy";
 import { dashboardRoleToScope } from "../../../../../lib/enterprise-runtime-rbac";
@@ -24,6 +28,20 @@ function streamAuthorizationError(reason: string, requestId: string, status: 401
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "private, no-store, max-age=0",
+      "x-content-type-options": "nosniff",
+      "x-nexid-request-id": requestId,
+    },
+  });
+}
+
+function streamSessionUnavailable(requestId: string) {
+  return new Response(JSON.stringify({ ok: false, reason: "dashboard_session_upstream_unavailable" }), {
+    status: 503,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "private, no-store, max-age=0",
+      "retry-after": "5",
+      "x-nexid-auth-outcome": "session-resolver-unavailable",
       "x-content-type-options": "nosniff",
       "x-nexid-request-id": requestId,
     },
@@ -120,7 +138,15 @@ export async function GET(request: Request) {
     });
   }
 
-  const credential = await getDashboardSessionCredential({ persistRotation: true }).catch(() => null);
+  let credential: DashboardSessionCredential | null;
+  try {
+    credential = await getDashboardSessionCredential({ persistRotation: true });
+  } catch (error) {
+    if (isDashboardSessionUpstreamUnavailable(error)) {
+      return streamSessionUnavailable(requestId);
+    }
+    throw error;
+  }
   const session = credential?.session || null;
   const scopedRole = dashboardRoleToScope(session?.role);
   if (!session) return streamAuthorizationError("dashboard_session_required", requestId);
@@ -173,15 +199,35 @@ export async function GET(request: Request) {
 
   if (!credential?.bearerToken) return streamAuthorizationError("validated_dashboard_session_required", requestId);
 
-  const response = await fetch(upstream.toString(), {
-    headers: {
-      Authorization: `Bearer ${credential.bearerToken}`,
-      Accept: "text/event-stream",
-      "x-nexid-request-id": requestId,
-      ...(request.headers.get("last-event-id") ? { "Last-Event-ID": String(request.headers.get("last-event-id")) } : {}),
-    },
-    cache: "no-store",
-  }).catch(() => null);
+  let response: Response;
+  try {
+    response = await fetch(upstream.toString(), {
+      headers: {
+        Authorization: `Bearer ${credential.bearerToken}`,
+        Accept: "text/event-stream",
+        "x-nexid-request-id": requestId,
+        ...(request.headers.get("last-event-id") ? { "Last-Event-ID": String(request.headers.get("last-event-id")) } : {}),
+      },
+      cache: "no-store",
+    });
+  } catch {
+    return fallbackStream("upstream stream unreachable", requestId, limit, {
+      tenant,
+      source: effectiveSource,
+      includeDemoRows: effectiveSource === "demo",
+      availability: effectiveSource === "demo" ? "fallback" : "upstream_error",
+    });
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return streamAuthorizationError("dashboard_session_rejected", requestId, response.status);
+  }
+  if (
+    response.status === 503
+    && response.headers.get("x-nexid-auth-outcome") === "session-resolver-unavailable"
+  ) {
+    return streamSessionUnavailable(requestId);
+  }
 
   if (!response?.ok || !response.body) {
     const includeDemoRows = effectiveSource === "demo";

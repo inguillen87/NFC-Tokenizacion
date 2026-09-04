@@ -16,12 +16,13 @@ const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const { Client, Pool } = pg;
 let config = null;
 
-function taggedExecutor(client) {
+function taggedExecutor(client, { observeStatement } = {}) {
   return async (strings, ...values) => {
     let statement = strings[0] || "";
     for (let index = 0; index < values.length; index += 1) {
       statement += `$${index + 1}${strings[index + 1] || ""}`;
     }
+    observeStatement?.({ statement, values: [...values] });
     return (await client.query(statement, values)).rows;
   };
 }
@@ -143,9 +144,27 @@ async function run() {
   const appPool = new Pool({
     connectionString: config.databaseUrl,
     connectionTimeoutMillis: 5_000,
+    statement_timeout: 5_000,
+    query_timeout: 6_000,
     max: 4,
   });
-  const query = taggedExecutor(appPool);
+  const consumerNetworkSqlCaptures = new Map();
+  let activeConsumerNetworkSqlLabel = null;
+  const query = taggedExecutor(appPool, {
+    observeStatement({ statement, values }) {
+      if (
+        !activeConsumerNetworkSqlLabel
+        || !/\bWITH\s+tenant_scope\s+AS\s*\(/i.test(statement)
+        || !/\bevent_evidence_candidates\s+AS\s*\(/i.test(statement)
+      ) return;
+      assert.equal(
+        consumerNetworkSqlCaptures.has(activeConsumerNetworkSqlLabel),
+        false,
+        `consumer-network ${activeConsumerNetworkSqlLabel} must execute exactly one aggregate SQL statement`,
+      );
+      consumerNetworkSqlCaptures.set(activeConsumerNetworkSqlLabel, { statement, values });
+    },
+  });
   const { installEphemeralE2eSqlExecutor } = await import("../src/lib/db.ts");
   const uninstallSqlExecutor = installEphemeralE2eSqlExecutor(query, process.env);
   const abortStream = new AbortController();
@@ -167,8 +186,55 @@ async function run() {
     const packagingApproverUserId = "57575757-5757-4757-8757-575757575757";
     const superAdminUserId = "58585858-5858-4858-8858-585858585858";
     const tenantSlug = "enterprise-e2e";
+    const otherTenantSlug = "enterprise-e2e-other";
     const bid = "E2E-ENTERPRISE-001";
     const uidHex = "0487856A0B1090";
+    const consumerNetworkFixture = {
+      tenantA: {
+        tenantId,
+        slug: tenantSlug,
+        marker: "CN-E2E-A",
+        batchId: "19191919-1919-4191-8191-191919191919",
+        bid: "CN-E2E-A-BATCH",
+        operational: {
+          eventId: 910000001,
+          tagId: "a1010101-0101-4101-8101-010101010101",
+          uidHex: "04A10101010101",
+          consumerId: "a3030303-0303-4303-8303-030303030303",
+          productId: "a5050505-0505-4505-8505-050505050505",
+          ownershipId: "a7070707-0707-4707-8707-070707070707",
+        },
+        demo: {
+          eventId: 910000002,
+          tagId: "a2020202-0202-4202-8202-020202020202",
+          uidHex: "04A20202020202",
+          consumerId: "a4040404-0404-4404-8404-040404040404",
+          productId: "a6060606-0606-4606-8606-060606060606",
+        },
+      },
+      tenantB: {
+        tenantId: otherTenantId,
+        slug: otherTenantSlug,
+        marker: "CN-E2E-B",
+        batchId: "29292929-2929-4292-8292-292929292929",
+        bid: "CN-E2E-B-BATCH",
+        operational: {
+          eventId: 920000001,
+          tagId: "b1010101-0101-4101-8101-010101010101",
+          uidHex: "04B10101010101",
+          consumerId: "b3030303-0303-4303-8303-030303030303",
+          productId: "b5050505-0505-4505-8505-050505050505",
+          ownershipId: "b7070707-0707-4707-8707-070707070707",
+        },
+        demo: {
+          eventId: 920000002,
+          tagId: "b2020202-0202-4202-8202-020202020202",
+          uidHex: "04B20202020202",
+          consumerId: "b4040404-0404-4404-8404-040404040404",
+          productId: "b6060606-0606-4606-8606-060606060606",
+        },
+      },
+    };
     const kMetaHex = randomBytes(16).toString("hex").toUpperCase();
     const kFileHex = randomBytes(16).toString("hex").toUpperCase();
 
@@ -200,6 +266,186 @@ async function run() {
     await client.query(`INSERT INTO tags (
       id, batch_id, uid_hex, status, lifecycle_state, lifecycle_revision
     ) VALUES ($1, $2, $3, 'active', 'active', 0)`, [tagId, batchId, uidHex]);
+
+    await client.query(`INSERT INTO batches (
+      id, tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config
+    ) VALUES
+      ($1::uuid, $2::uuid, $3, 'active', NULL, NULL, $4::jsonb),
+      ($5::uuid, $6::uuid, $7, 'active', NULL, NULL, $8::jsonb)`, [
+      consumerNetworkFixture.tenantA.batchId,
+      consumerNetworkFixture.tenantA.tenantId,
+      consumerNetworkFixture.tenantA.bid,
+      JSON.stringify({ fixture: "consumer-network-ephemeral-e2e", tenant: "A" }),
+      consumerNetworkFixture.tenantB.batchId,
+      consumerNetworkFixture.tenantB.tenantId,
+      consumerNetworkFixture.tenantB.bid,
+      JSON.stringify({ fixture: "consumer-network-ephemeral-e2e", tenant: "B" }),
+    ]);
+
+    for (const fixtureTenant of Object.values(consumerNetworkFixture)) {
+      for (const eventClass of ["operational", "demo"]) {
+        const fixtureEvent = fixtureTenant[eventClass];
+        await client.query(`INSERT INTO tags (
+          id, batch_id, uid_hex, status, lifecycle_state, lifecycle_revision
+        ) VALUES ($1::uuid, $2::uuid, $3, 'active', 'active', 0)`, [
+          fixtureEvent.tagId,
+          fixtureTenant.batchId,
+          fixtureEvent.uidHex,
+        ]);
+      }
+    }
+
+    await client.query(`INSERT INTO consumers (
+      id, email, phone, display_name, preferred_locale, country, city, status
+    ) VALUES
+      ($1::uuid, 'cn-e2e-a-operational@nexid.invalid', '+5491100000101', 'CN-E2E-A Operational Actor', 'es-AR', 'AR', 'Tenant A City', 'verified'),
+      ($2::uuid, 'cn-e2e-a-demo@nexid.invalid', '+5491100000102', 'CN-E2E-A Demo Actor', 'es-AR', 'AR', 'Tenant A City', 'registered'),
+      ($3::uuid, 'cn-e2e-b-operational@nexid.invalid', '+5491100000201', 'CN-E2E-B Operational Actor', 'es-AR', 'AR', 'Tenant B City', 'verified'),
+      ($4::uuid, 'cn-e2e-b-demo@nexid.invalid', '+5491100000202', 'CN-E2E-B Demo Actor', 'es-AR', 'AR', 'Tenant B City', 'registered')`, [
+      consumerNetworkFixture.tenantA.operational.consumerId,
+      consumerNetworkFixture.tenantA.demo.consumerId,
+      consumerNetworkFixture.tenantB.operational.consumerId,
+      consumerNetworkFixture.tenantB.demo.consumerId,
+    ]);
+
+    const consumerNetworkEvents = [
+      {
+        fixtureTenant: consumerNetworkFixture.tenantA,
+        fixtureEvent: consumerNetworkFixture.tenantA.operational,
+        eventClass: "operational",
+        ageMinutes: 8,
+      },
+      {
+        fixtureTenant: consumerNetworkFixture.tenantA,
+        fixtureEvent: consumerNetworkFixture.tenantA.demo,
+        eventClass: "demo",
+        ageMinutes: 7,
+      },
+      {
+        fixtureTenant: consumerNetworkFixture.tenantB,
+        fixtureEvent: consumerNetworkFixture.tenantB.operational,
+        eventClass: "operational",
+        ageMinutes: 6,
+      },
+      {
+        fixtureTenant: consumerNetworkFixture.tenantB,
+        fixtureEvent: consumerNetworkFixture.tenantB.demo,
+        eventClass: "demo",
+        ageMinutes: 5,
+      },
+    ];
+    for (const { fixtureTenant, fixtureEvent, eventClass, ageMinutes } of consumerNetworkEvents) {
+      const operational = eventClass === "operational";
+      await client.query(`INSERT INTO events (
+        id, tenant_id, batch_id, tenant_slug, tag_id, uid_hex, bid,
+        event_type, result, verdict, risk_level, cmac_ok, allowlisted, tag_status,
+        source, meta, product_name, created_at
+      ) VALUES (
+        $1::bigint, $2::uuid, $3::uuid, $4, $5::uuid, $6, $7,
+        'TAP_VALID', 'VALID', 'valid', 'none', true, true, 'active',
+        $8, $9::jsonb, $10, now() - ($11::integer * interval '1 minute')
+      )`, [
+        fixtureEvent.eventId,
+        fixtureTenant.tenantId,
+        fixtureTenant.batchId,
+        fixtureTenant.slug,
+        fixtureEvent.tagId,
+        fixtureEvent.uidHex,
+        fixtureTenant.bid,
+        operational ? "real" : "demo",
+        JSON.stringify(operational ? {
+          fixture: "consumer-network-ephemeral-e2e",
+          fixture_tenant: fixtureTenant.marker,
+          replay_execution_class: "operational",
+          simulated: false,
+        } : {
+          fixture: "consumer-network-ephemeral-e2e",
+          fixture_tenant: fixtureTenant.marker,
+          event_mode: "demo",
+          demoEmitter: true,
+          simulated: true,
+        }),
+        `${fixtureTenant.marker}-${eventClass.toUpperCase()}`,
+        ageMinutes,
+      ]);
+    }
+
+    await client.query(`INSERT INTO tenant_consumer_memberships (
+      tenant_id, consumer_id, status, source, first_tap_event_id, last_tap_event_id,
+      points_balance, lifetime_points, metadata_json
+    ) VALUES
+      ($1::uuid, $2::uuid, 'active', 'tap', $3::bigint, $3::bigint, 11, 111, $4::jsonb),
+      ($1::uuid, $5::uuid, 'active', 'demo_login', $6::bigint, $6::bigint, 12, 112, $4::jsonb),
+      ($7::uuid, $8::uuid, 'active', 'tap', $9::bigint, $9::bigint, 21, 221, $10::jsonb),
+      ($7::uuid, $11::uuid, 'active', 'demo_login', $12::bigint, $12::bigint, 22, 222, $10::jsonb)`, [
+      consumerNetworkFixture.tenantA.tenantId,
+      consumerNetworkFixture.tenantA.operational.consumerId,
+      consumerNetworkFixture.tenantA.operational.eventId,
+      JSON.stringify({ fixture: "consumer-network-ephemeral-e2e", tenant: "A" }),
+      consumerNetworkFixture.tenantA.demo.consumerId,
+      consumerNetworkFixture.tenantA.demo.eventId,
+      consumerNetworkFixture.tenantB.tenantId,
+      consumerNetworkFixture.tenantB.operational.consumerId,
+      consumerNetworkFixture.tenantB.operational.eventId,
+      JSON.stringify({ fixture: "consumer-network-ephemeral-e2e", tenant: "B" }),
+      consumerNetworkFixture.tenantB.demo.consumerId,
+      consumerNetworkFixture.tenantB.demo.eventId,
+    ]);
+
+    for (const fixtureTenant of Object.values(consumerNetworkFixture)) {
+      for (const eventClass of ["operational", "demo"]) {
+        const fixtureEvent = fixtureTenant[eventClass];
+        await client.query(`INSERT INTO consumer_tap_history (
+          consumer_id, tenant_id, tap_event_id, product_passport_id, tag_id,
+          verdict, risk_level, city, country, created_at
+        ) VALUES (
+          $1::uuid, $2::uuid, $3::bigint, $4, $5::uuid,
+          'valid', 'none', $6, 'AR', now() - interval '2 minutes'
+        )`, [
+          fixtureEvent.consumerId,
+          fixtureTenant.tenantId,
+          fixtureEvent.eventId,
+          fixtureEvent.uidHex,
+          fixtureEvent.tagId,
+          fixtureTenant.marker === "CN-E2E-A" ? "Tenant A City" : "Tenant B City",
+        ]);
+        await client.query(`INSERT INTO consumer_products (
+          id, consumer_id, tenant_id, product_passport_id, tag_id,
+          first_tap_event_id, latest_tap_event_id, ownership_status, collection_type,
+          product_name, brand_name, acquired_at, updated_at
+        ) VALUES (
+          $1::uuid, $2::uuid, $3::uuid, $4, $5::uuid,
+          $6::bigint, $6::bigint, $7, 'test_fixture',
+          $8, 'nexID ephemeral E2E', now() - interval '2 minutes', now() - interval '1 minute'
+        )`, [
+          fixtureEvent.productId,
+          fixtureEvent.consumerId,
+          fixtureTenant.tenantId,
+          fixtureEvent.uidHex,
+          fixtureEvent.tagId,
+          fixtureEvent.eventId,
+          eventClass === "operational" ? "claimed" : "viewed",
+          `${fixtureTenant.marker}-${eventClass.toUpperCase()}`,
+        ]);
+      }
+      await client.query(`INSERT INTO consumer_product_ownerships (
+        id, tenant_id, consumer_id, batch_id, tag_id, uid_hex, event_id,
+        status, source, trust_snapshot
+      ) VALUES (
+        $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7::bigint,
+        'claimed', 'admin', $8::jsonb
+      )`, [
+        fixtureTenant.operational.ownershipId,
+        fixtureTenant.tenantId,
+        fixtureTenant.operational.consumerId,
+        fixtureTenant.batchId,
+        fixtureTenant.operational.tagId,
+        fixtureTenant.operational.uidHex,
+        fixtureTenant.operational.eventId,
+        JSON.stringify({ fixture: "consumer-network-ephemeral-e2e", physical_presence_claim: "not_asserted" }),
+      ]);
+    }
+
     await client.query(`INSERT INTO users (id, email, full_name, admin_status) VALUES
       ($1, 'enterprise-e2e@nexid.invalid', 'Enterprise E2E Operator', 'active'),
       ($2, 'enterprise-e2e-other@nexid.invalid', 'Other Tenant E2E Operator', 'active'),
@@ -771,6 +1017,10 @@ async function run() {
     const { GET: pollEvents } = await import("../src/app/admin/events/route.ts");
     const { GET: pollIncidents, POST: openIncident } = await import("../src/app/admin/incidents/route.ts");
     const { POST: writeSdkEvent } = await import("../src/app/api/v1/sdk/events/route.ts");
+    const { GET: readConsumerNetworkOverview } = await import("../src/app/admin/consumer-network/overview/route.ts");
+    const { GET: listConsumerNetworkMembers } = await import("../src/app/admin/consumer-network/members/route.ts");
+    const { GET: listConsumerNetworkProducts } = await import("../src/app/admin/consumer-network/products/route.ts");
+    const { GET: listConsumerNetworkTaps } = await import("../src/app/admin/consumer-network/taps/route.ts");
     const uuidSegment = "([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})";
     const exact = (pathname) => (url) => url.pathname === pathname ? true : null;
     const dynamic = (pattern, parameter) => (url) => {
@@ -812,9 +1062,189 @@ async function run() {
         { method: "GET", match: exact("/admin/events"), handle: pollEvents },
         { method: "GET", match: exact("/admin/incidents"), handle: pollIncidents },
         { method: "POST", match: exact("/admin/incidents"), handle: openIncident },
+        { method: "GET", match: exact("/admin/consumer-network/overview"), handle: readConsumerNetworkOverview },
+        { method: "GET", match: exact("/admin/consumer-network/members"), handle: listConsumerNetworkMembers },
+        { method: "GET", match: exact("/admin/consumer-network/products"), handle: listConsumerNetworkProducts },
+        { method: "GET", match: exact("/admin/consumer-network/taps"), handle: listConsumerNetworkTaps },
         { method: "POST", match: exact("/api/v1/sdk/events"), handle: writeSdkEvent },
       ],
     });
+
+    const consumerNetworkRouteSpecs = [
+      { label: "overview", path: "/admin/consumer-network/overview" },
+      { label: "members", path: "/admin/consumer-network/members" },
+      { label: "products", path: "/admin/consumer-network/products" },
+      { label: "taps", path: "/admin/consumer-network/taps" },
+    ];
+
+    function stableConsumerNetworkPayload(payload) {
+      const stable = structuredClone(payload);
+      if (stable?.provenance) delete stable.provenance.observedAt;
+      return stable;
+    }
+
+    function assertConsumerNetworkFixturePayload(label, payload, expectedTenant, forbiddenTenant) {
+      assert.equal(payload.ok, true);
+      assert.equal(payload.tenant, expectedTenant.slug);
+      assert.equal(payload.provenance?.contractVersion, "consumer-network-event-provenance/v1");
+      assert.deepEqual(payload.provenance?.counts, {
+        operationalTap: 1,
+        declaredDemo: 1,
+        imported: 0,
+        legacyUnclassified: 0,
+        mixed: 0,
+      });
+      assert.equal(payload.provenance?.physicalPresenceClaim, "not_asserted");
+      assert.ok(payload.provenance?.latestOperationalAt);
+      const serialized = JSON.stringify(payload);
+      assert.equal(serialized.includes(forbiddenTenant.marker), false, `${label} leaked the other tenant marker`);
+
+      if (label === "overview") {
+        assert.equal(payload.overview?.totalTaps, 1);
+        assert.equal(payload.overview?.savedProducts, 1);
+        assert.deepEqual(
+          payload.topProductsByClaims?.map((item) => item.product_name),
+          [`${expectedTenant.marker}-OPERATIONAL`],
+        );
+        return;
+      }
+
+      assert.ok(Array.isArray(payload.items));
+      assert.equal(payload.items.length, 2);
+      assert.equal(payload.items.every((item) => item.tenant_slug === expectedTenant.slug), true);
+      if (label === "members") {
+        assert.deepEqual(
+          payload.items.map((item) => item.consumer_id).sort(),
+          [expectedTenant.operational.consumerId, expectedTenant.demo.consumerId].sort(),
+        );
+        assert.equal(payload.items.every((item) => item.email === undefined && item.phone === undefined), true);
+        assert.equal(serialized.includes("cn-e2e-a-operational@nexid.invalid"), false);
+        assert.equal(serialized.includes("cn-e2e-b-operational@nexid.invalid"), false);
+      } else if (label === "products") {
+        assert.deepEqual(
+          payload.items.map((item) => item.product_name).sort(),
+          [`${expectedTenant.marker}-OPERATIONAL`, `${expectedTenant.marker}-DEMO`].sort(),
+        );
+      } else if (label === "taps") {
+        assert.deepEqual(
+          payload.items.map((item) => String(item.tap_event_id)).sort(),
+          [expectedTenant.operational.eventId, expectedTenant.demo.eventId].map(String).sort(),
+        );
+        assert.equal(
+          payload.items.some((item) => [forbiddenTenant.operational.eventId, forbiddenTenant.demo.eventId]
+            .map(String)
+            .includes(String(item.tap_event_id))),
+          false,
+        );
+      }
+    }
+
+    async function fetchConsumerNetworkPayload({ spec, headers, requestedTenantSlug, capture = false }) {
+      assert.equal(activeConsumerNetworkSqlLabel, null, "consumer-network SQL capture must not overlap");
+      activeConsumerNetworkSqlLabel = capture ? spec.label : null;
+      try {
+        const response = await httpHarness.fetch(
+          `${spec.path}?tenant=${encodeURIComponent(requestedTenantSlug)}`,
+          { headers },
+        );
+        assert.equal(response.status, 200, `${spec.label} must accept the persisted tenant session`);
+        return await response.json();
+      } finally {
+        activeConsumerNetworkSqlLabel = null;
+      }
+    }
+
+    const consumerNetworkPayloads = {};
+    for (const spec of consumerNetworkRouteSpecs) {
+      const unauthenticated = await httpHarness.fetch(`${spec.path}?tenant=${tenantSlug}`);
+      assert.equal(unauthenticated.status, 401, `${spec.label} must reject an unauthenticated request`);
+
+      const tenantA = await fetchConsumerNetworkPayload({
+        spec,
+        headers: adminHeaders,
+        requestedTenantSlug: consumerNetworkFixture.tenantA.slug,
+        capture: true,
+      });
+      assertConsumerNetworkFixturePayload(
+        spec.label,
+        tenantA,
+        consumerNetworkFixture.tenantA,
+        consumerNetworkFixture.tenantB,
+      );
+
+      const tenantARequestingB = await fetchConsumerNetworkPayload({
+        spec,
+        headers: adminHeaders,
+        requestedTenantSlug: consumerNetworkFixture.tenantB.slug,
+      });
+      assertConsumerNetworkFixturePayload(
+        spec.label,
+        tenantARequestingB,
+        consumerNetworkFixture.tenantA,
+        consumerNetworkFixture.tenantB,
+      );
+      assert.deepEqual(
+        stableConsumerNetworkPayload(tenantARequestingB),
+        stableConsumerNetworkPayload(tenantA),
+        `${spec.label} must ignore tenant B requested by tenant A`,
+      );
+
+      const tenantBRequestingA = await fetchConsumerNetworkPayload({
+        spec,
+        headers: otherTenantAdminHeaders,
+        requestedTenantSlug: consumerNetworkFixture.tenantA.slug,
+      });
+      assertConsumerNetworkFixturePayload(
+        spec.label,
+        tenantBRequestingA,
+        consumerNetworkFixture.tenantB,
+        consumerNetworkFixture.tenantA,
+      );
+      consumerNetworkPayloads[spec.label] = { tenantA, tenantARequestingB, tenantBRequestingA };
+    }
+
+    assert.deepEqual(
+      [...consumerNetworkSqlCaptures.keys()].sort(),
+      consumerNetworkRouteSpecs.map((spec) => spec.label).sort(),
+      "all four production consumer-network SQL statements must be captured",
+    );
+    const consumerNetworkExplainEvidence = {};
+    for (const spec of consumerNetworkRouteSpecs) {
+      const capture = consumerNetworkSqlCaptures.get(spec.label);
+      assert.ok(capture?.statement && Array.isArray(capture.values));
+      assert.ok(capture.values.includes(consumerNetworkFixture.tenantA.slug));
+      await client.query("BEGIN READ ONLY");
+      try {
+        await client.query("SET LOCAL statement_timeout = '5s'");
+        await client.query("SET LOCAL lock_timeout = '1s'");
+        const startedAt = Date.now();
+        const explained = await client.query(
+          `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${capture.statement}`,
+          capture.values,
+        );
+        const elapsedMs = Date.now() - startedAt;
+        const planDocuments = explained.rows[0]?.["QUERY PLAN"];
+        assert.ok(Array.isArray(planDocuments) && planDocuments.length === 1);
+        const planDocument = planDocuments[0];
+        const executionTimeMs = Number(planDocument?.["Execution Time"]);
+        const planningTimeMs = Number(planDocument?.["Planning Time"]);
+        const topNode = String(planDocument?.Plan?.["Node Type"] || "");
+        assert.ok(Number.isFinite(executionTimeMs) && executionTimeMs >= 0 && executionTimeMs <= 5_000);
+        assert.ok(Number.isFinite(planningTimeMs) && planningTimeMs >= 0);
+        assert.ok(elapsedMs <= 6_500, `${spec.label} EXPLAIN exceeded the bounded wall-clock budget`);
+        assert.ok(topNode, `${spec.label} EXPLAIN must expose a top-level plan node`);
+        consumerNetworkExplainEvidence[spec.label] = {
+          planning_time_ms: planningTimeMs,
+          execution_time_ms: executionTimeMs,
+          wall_clock_ms: elapsedMs,
+          top_node: topNode,
+          statement_timeout_ms: 5_000,
+          query_timeout_ms: 6_000,
+        };
+      } finally {
+        await client.query("ROLLBACK");
+      }
+    }
 
     const unauthenticatedSupplierResponse = await httpHarness.fetch("/admin/supplier-orders", {
       method: "POST",
@@ -1588,6 +2018,10 @@ async function run() {
         incident_idempotency: "replayed_without_duplicate",
         aged_open_incident_signal: "visible_beyond_selected_sli_window",
         cross_tenant_mutation: "rejected",
+        consumer_network_http: "four_production_handlers_exercised_with_persisted_tenant_sessions",
+        consumer_network_tenant_isolation: "tenant_a_cannot_select_tenant_b_even_with_explicit_query_override",
+        consumer_network_provenance: "operational_and_declared_demo_rows_isolated_per_tenant",
+        consumer_network_query_budget: "five_second_statement_timeout_six_second_driver_timeout_explain_analyze_json",
         dynamic_sun_query_values: "redacted",
         api_key_lifecycle: "created_authenticated_scope_checked_tenant_bound_revoked",
         webhook_secret_storage: "software_envelope_encrypted_tenant_bound",
@@ -1621,7 +2055,10 @@ async function run() {
         webhook_deliveries: Number(enterpriseSecurityEvidence.webhook_delivery_count),
         webhook_audit_events: Number(enterpriseSecurityEvidence.webhook_audit_count),
         distributed_rate_buckets: Number(enterpriseSecurityEvidence.distributed_rate_bucket_count),
+        consumer_network_fixture_events: consumerNetworkEvents.length,
+        consumer_network_routes: Object.keys(consumerNetworkPayloads).length,
       },
+      consumer_network_query_plans: consumerNetworkExplainEvidence,
       external_effects: false,
       webhook_delivery_transport: "in_process_signature_verified_no_network",
       next_router_middleware_exercised: false,

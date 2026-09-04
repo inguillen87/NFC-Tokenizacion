@@ -3,7 +3,11 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { aggregateTenantMetrics } from "@product/core";
-import { getDashboardSessionCredential } from "../../../../lib/session";
+import {
+  type DashboardSessionCredential,
+  getDashboardSessionCredential,
+  isDashboardSessionUpstreamUnavailable,
+} from "../../../../lib/session";
 import {
   canDemoSandboxAccess,
   isAdminUpstreamAuthorizationOutcome,
@@ -97,6 +101,20 @@ function markDemoData(res: NextResponse) {
   res.headers.set("x-nexid-data-mode", "demo");
   res.headers.set("x-nexid-demo-source", "fallback");
   return res;
+}
+
+function dashboardSessionUnavailableResponse() {
+  return NextResponse.json(
+    { ok: false, reason: "dashboard_session_upstream_unavailable" },
+    {
+      status: 503,
+      headers: {
+        "cache-control": "private, no-store, max-age=0",
+        "retry-after": "5",
+        "x-nexid-auth-outcome": "session-resolver-unavailable",
+      },
+    },
+  );
 }
 
 function annotatePayload<T extends Record<string, unknown>>(payload: T, source: "demo" | "production") {
@@ -1049,7 +1067,15 @@ async function forward(req: Request, path: string[]) {
     demoFallbackAllowed: allowDemoFallback,
     requireScopedAdminAuth,
   });
-  const credential = await getDashboardSessionCredential({ persistRotation: true }).catch(() => null);
+  let credential: DashboardSessionCredential | null;
+  try {
+    credential = await getDashboardSessionCredential({ persistRotation: true });
+  } catch (error) {
+    if (isDashboardSessionUpstreamUnavailable(error)) {
+      return dashboardSessionUnavailableResponse();
+    }
+    throw error;
+  }
   const dashboardSession = credential?.session || null;
   const demoSession = Boolean(dashboardSession?.isDemo) || isDemoSession(req);
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
@@ -1301,6 +1327,13 @@ async function forward(req: Request, path: string[]) {
     });
   } catch {
     return unavailable("Admin upstream unreachable.");
+  }
+
+  if (
+    response.status === 503
+    && response.headers.get("x-nexid-auth-outcome") === "session-resolver-unavailable"
+  ) {
+    return dashboardSessionUnavailableResponse();
   }
 
   const upstreamAuthorizationOutcome = isAdminUpstreamAuthorizationOutcome(response.status);

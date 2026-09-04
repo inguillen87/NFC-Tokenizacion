@@ -133,7 +133,7 @@ test("commercial authorization permits intended specialists and rejects forged r
     "marketing-manager",
     COMMERCIAL_DEFAULTS.marketing_manager,
   );
-  assert.equal(await growth.authorize("rewards:read"), null);
+  assert.equal(await growth.authorize("crm:read"), null);
   assert.deepEqual(getAdminTenantAccess(growth.request, "tenant-b"), {
     scope: "tenant_operator",
     tenantSlug: "tenant-a",
@@ -152,8 +152,8 @@ test("commercial authorization permits intended specialists and rejects forged r
   assert.equal((await authorizedRequest(
     "admin/loyalty/overview",
     "operations-manager",
-    ["rewards:read"],
-  ).authorize("rewards:read"))?.status, 403);
+    ["crm:read"],
+  ).authorize("crm:read"))?.status, 403);
   assert.equal((await authorizedRequest(
     "admin/consumer-network/offers",
     "packaging-operator",
@@ -169,7 +169,7 @@ test("commercial authorization permits intended specialists and rejects forged r
 
 test("commercial read endpoints authorize before schema or data access", async () => {
   const cases = [
-    ["../src/app/admin/loyalty/overview/route.ts", 'checkAdminWithPermission(req, "rewards:read")', "await ensureLoyaltySchema()"],
+    ["../src/app/admin/loyalty/overview/route.ts", 'checkAdminWithPermission(req, "crm:read")', "await ensureLoyaltySchema()"],
     ["../src/app/admin/loyalty/trivia/overview/route.ts", 'checkAdminWithPermission(req, "campaigns:read")', "await ensureLoyaltySchema()"],
     ["../src/app/admin/consumer-network/offers/route.ts", 'checkAdminWithPermission(req, "marketplace:read")', "await ensureConsumerPortalSchema()"],
   ];

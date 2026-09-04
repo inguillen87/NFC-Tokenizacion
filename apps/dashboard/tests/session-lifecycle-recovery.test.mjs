@@ -9,6 +9,8 @@ const sessionBoundary = await readFile(new URL("../src/lib/session.ts", import.m
 const recoveryPage = await readFile(new URL("../src/app/session-recovery/page.tsx", import.meta.url), "utf8");
 const recoveryClient = await readFile(new URL("../src/app/session-recovery/session-recovery-client.tsx", import.meta.url), "utf8");
 const secureLogout = await readFile(new URL("../src/components/secure-dashboard-logout-button.tsx", import.meta.url), "utf8");
+const adminProxy = await readFile(new URL("../src/app/api/admin/[...path]/route.ts", import.meta.url), "utf8");
+const eventStream = await readFile(new URL("../src/app/api/admin/events/stream/route.ts", import.meta.url), "utf8");
 
 test("a hidden tab resumes session validation on visibility and focus", () => {
   assert.match(heartbeat, /document\.visibilityState === "hidden"/);
@@ -67,6 +69,15 @@ test("transient auth outages preserve the opaque credential and use a real recov
   assert.match(recoveryPage, /SessionRecoveryClient/);
   assert.match(recoveryPage, /session-recovery-title/);
   assert.doesNotMatch(sessionBoundary, /cookieStore\.get\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)\?\.value/);
+  for (const boundary of [adminProxy, eventStream]) {
+    assert.match(boundary, /isDashboardSessionUpstreamUnavailable\(error\)/);
+    assert.match(boundary, /dashboard_session_upstream_unavailable/);
+    assert.match(boundary, /status: 503/);
+    assert.match(boundary, /"x-nexid-auth-outcome": "session-resolver-unavailable"/);
+    assert.doesNotMatch(boundary, /getDashboardSessionCredential\(\{ persistRotation: true \}\)\.catch\(\(\) => null\)/);
+  }
+  assert.match(adminProxy, /response\.status === 503[\s\S]*?x-nexid-auth-outcome[\s\S]*?return dashboardSessionUnavailableResponse\(\);/);
+  assert.match(eventStream, /response\.status === 503[\s\S]*?x-nexid-auth-outcome[\s\S]*?return streamSessionUnavailable\(requestId\);/);
 });
 
 test("recovery retries without overlapping and only leaves on confirmed outcomes", () => {
@@ -83,13 +94,13 @@ test("recovery retries without overlapping and only leaves on confirmed outcomes
 });
 
 test("recovery and account-switch actions revoke the upstream session with POST", async () => {
-  const dashboardHome = await readFile(new URL("../src/components/dashboard-home-client.tsx", import.meta.url), "utf8");
+  const dashboardShell = await readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8");
   const physicalTaps = await readFile(new URL("../src/components/physical-taps-command-center.tsx", import.meta.url), "utf8");
 
   assert.match(recoveryClient, /SecureDashboardLogoutButton/);
   assert.doesNotMatch(recoveryClient, /href="\/logout"/);
-  assert.match(dashboardHome, /testId="dashboard-demo-exit"/);
-  assert.doesNotMatch(dashboardHome, /href="\/logout"/);
+  assert.match(dashboardShell, /testId="dashboard-demo-exit"/);
+  assert.doesNotMatch(dashboardShell, /href="\/logout"/);
   assert.match(physicalTaps, /testId="physical-taps-change-account"/);
   assert.doesNotMatch(physicalTaps, /href="\/logout"/);
   assert.match(secureLogout, /method="post" action="\/logout"/);

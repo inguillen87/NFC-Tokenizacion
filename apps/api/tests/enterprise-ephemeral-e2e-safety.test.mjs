@@ -407,6 +407,52 @@ test("harness exercises production CMAC/SDM code with synthetic inputs and makes
   assert.match(webhookWorker, /webhookDeliveryTransport\(dependencies\)/);
 });
 
+test("enterprise E2E registers every consumer-network handler and proves persisted-session tenant isolation", async () => {
+  const source = await readFile(new URL("../scripts/enterprise-ephemeral-e2e.mjs", import.meta.url), "utf8");
+  for (const contract of [
+    ["readConsumerNetworkOverview", "/admin/consumer-network/overview"],
+    ["listConsumerNetworkMembers", "/admin/consumer-network/members"],
+    ["listConsumerNetworkProducts", "/admin/consumer-network/products"],
+    ["listConsumerNetworkTaps", "/admin/consumer-network/taps"],
+  ]) {
+    assert.match(source, new RegExp(`const \\{ GET: ${contract[0]} \\} = await import`));
+    assert.match(source, new RegExp(`exact\\(\"${contract[1]}\"\\)`));
+    assert.match(source, new RegExp(`path: \"${contract[1]}\"`));
+  }
+  assert.match(source, /const \{ createSession, sessionCookieValue \} = await import/);
+  assert.match(source, /human_bearer_authentication: "persisted_revocable_sessions_resolved_per_http_request"/);
+  assert.match(source, /marker: "CN-E2E-A"/);
+  assert.match(source, /marker: "CN-E2E-B"/);
+  assert.match(source, /replay_execution_class: "operational"/);
+  assert.match(source, /event_mode: "demo"/);
+  assert.match(source, /demoEmitter: true/);
+  assert.match(source, /const tenantARequestingB = await fetchConsumerNetworkPayload/);
+  assert.match(source, /headers: adminHeaders,[\s\S]*requestedTenantSlug: consumerNetworkFixture\.tenantB\.slug/);
+  assert.match(source, /headers: otherTenantAdminHeaders,[\s\S]*requestedTenantSlug: consumerNetworkFixture\.tenantA\.slug/);
+  assert.match(source, /stableConsumerNetworkPayload\(tenantARequestingB\)/);
+  assert.match(source, /operationalTap: 1,[\s\S]*declaredDemo: 1/);
+  assert.match(source, /consumer_network_tenant_isolation: "tenant_a_cannot_select_tenant_b_even_with_explicit_query_override"/);
+  assert.doesNotMatch(source, /x-tenant-id|x-tenant-slug|x-admin-scope/i);
+});
+
+test("consumer-network E2E captures the production SQL and bounds handler and EXPLAIN execution", async () => {
+  const source = await readFile(new URL("../scripts/enterprise-ephemeral-e2e.mjs", import.meta.url), "utf8");
+  assert.match(source, /statement_timeout: 5_000/);
+  assert.match(source, /query_timeout: 6_000/);
+  assert.match(source, /consumerNetworkSqlCaptures = new Map\(\)/);
+  assert.match(source, /event_evidence_candidates\\s\+AS/);
+  assert.match(source, /all four production consumer-network SQL statements must be captured/);
+  assert.match(source, /await client\.query\("BEGIN READ ONLY"\)/);
+  assert.match(source, /await client\.query\("SET LOCAL statement_timeout = '5s'"\)/);
+  assert.match(source, /await client\.query\("SET LOCAL lock_timeout = '1s'"\)/);
+  assert.match(source, /EXPLAIN \(ANALYZE, BUFFERS, FORMAT JSON\) \$\{capture\.statement\}/);
+  assert.match(source, /executionTimeMs <= 5_000/);
+  assert.match(source, /elapsedMs <= 6_500/);
+  assert.match(source, /await client\.query\("ROLLBACK"\)/);
+  assert.match(source, /consumer_network_query_plans: consumerNetworkExplainEvidence/);
+  assert.doesNotMatch(source, /SET\s+(?:LOCAL\s+)?statement_timeout\s*=\s*(?:0|'0')/i);
+});
+
 test("enterprise E2E and supplier governance docs preserve the physical NFC and software-custody boundary", async () => {
   const [e2eGuide, supplierPurpose] = await Promise.all([
     readFile(new URL("../../../docs/enterprise-hardening/2026-07-28/ephemeral-tap-to-ticket-e2e.md", import.meta.url), "utf8"),

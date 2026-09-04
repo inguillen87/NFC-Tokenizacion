@@ -40,7 +40,7 @@ function tenantDisplayName(tenantSlug: string | null) {
 
 export default async function LoyaltyOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
-  const session = await requireDashboardSession("rewards:read");
+  const session = await requireDashboardSession("crm:read");
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
   const tenantName = tenantDisplayName(tenantScope);
@@ -67,7 +67,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">CRM de actividad y relación</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Actividad post-tap</h1>
           <p className="mt-1 text-sm text-slate-400">Acciones post-tap, consentimiento, beneficios y seguimiento operativo del tenant.</p>
         </div>
         <div className="flex gap-2">

@@ -79,6 +79,31 @@ test("unknown, revoked or expired opaque sessions fail closed without ADMIN_API_
   }
 });
 
+test("session resolver outages remain distinguishable from an absent session", async () => {
+  const unavailableRequest = new Request("https://api.nexid.lat/admin/tenants", {
+    headers: { authorization: "Bearer opaque-session-secret" },
+  });
+  const unavailable = await checkAdmin(unavailableRequest, ["super_admin"], async () => {
+    throw new Error("simulated_session_store_outage");
+  });
+
+  assert.equal(unavailable?.status, 503);
+  assert.equal(unavailable?.headers.get("cache-control"), "private, no-store, max-age=0");
+  assert.equal(unavailable?.headers.get("retry-after"), "5");
+  assert.equal(unavailable?.headers.get("x-nexid-auth-outcome"), "session-resolver-unavailable");
+  assert.deepEqual(await unavailable?.json(), {
+    ok: false,
+    reason: "admin_session_resolution_unavailable",
+  });
+  assert.throws(() => getAdminPrincipal(unavailableRequest), /authenticated_admin_principal_required/);
+
+  const missingRequest = new Request("https://api.nexid.lat/admin/tenants", {
+    headers: { authorization: "Bearer unknown-session" },
+  });
+  const missing = await checkAdmin(missingRequest, ["super_admin"], async () => null);
+  assert.equal(missing?.status, 401);
+});
+
 test("session role and tenant binding fail closed even when headers request a broader scope", async () => {
   const viewer = new Request("https://api.nexid.lat/admin/tenants", {
     headers: { authorization: "Bearer viewer", "x-nexid-admin-scope": "super_admin" },

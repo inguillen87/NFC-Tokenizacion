@@ -64,16 +64,55 @@ test("explicit denies override wildcard and compound destination grants", () => 
   assert.equal(can("super-admin", "leadsTickets", { deniedPermissions: ["leads.manage"] }), false);
 });
 
+test("post-tap activity and benefits use separate read capabilities", () => {
+  const base = {
+    role: "marketing-manager",
+    deniedPermissions: [],
+    isDemo: false,
+  };
+
+  assert.equal(dashboardCanOpenDestination("loyaltyOverview", {
+    ...base,
+    permissions: ["crm:read"],
+  }), true);
+  assert.equal(dashboardCanOpenDestination("rewards", {
+    ...base,
+    permissions: ["crm:read"],
+  }), false);
+  assert.equal(dashboardCanOpenDestination("loyaltyOverview", {
+    ...base,
+    permissions: ["rewards:read"],
+  }), false);
+  assert.equal(dashboardCanOpenDestination("rewards", {
+    ...base,
+    permissions: ["rewards:read"],
+  }), true);
+});
+
+test("investor and sales materials are restricted to the internal super-admin audience", () => {
+  for (const profileKey of ["tenant-admin", "tenant-growth"]) {
+    assert.equal(can(profileKey, "investorSnapshot"), false, `${profileKey}:investorSnapshot`);
+    assert.equal(can(profileKey, "salesPlaybook"), false, `${profileKey}:salesPlaybook`);
+  }
+  assert.equal(can("super-admin", "investorSnapshot"), true);
+  assert.equal(can("super-admin", "salesPlaybook"), true);
+});
+
 test("production shell and account menu consume the same registry without label or email demo inference", async () => {
-  const [shell, accountMenu] = await Promise.all([
+  const [shell, accountMenu, home] = await Promise.all([
     readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/tenant-account-menu.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/dashboard-home-client.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(shell, /dashboardCanOpenDestination\(destination, destinationAccess\)/);
   assert.match(shell, /\.filter\(\(item\) => canOpenDestination\(item\.destination\)\)/);
   assert.match(shell, /mobileQuickLinks[\s\S]*filter\(\(item\) => canOpenDestination\(item\.destination\)\)/);
   assert.match(shell, /searchableLinks[\s\S]*filter\(\(entry\) => canOpenDestination\(entry\.destination\)\)/);
+  assert.match(shell, /label: "Actividad post-tap"/);
+  assert.match(shell, /label: "Actores y consentimiento"/);
+  assert.match(home, /title: "Actores y consentimiento"/);
+  assert.doesNotMatch(home, /title: "Clientes CRM"/);
   assert.doesNotMatch(shell, /currentLabel\.toLowerCase\(\)\.includes\("demo"\)|currentEmail\.includes\("demo"\)/);
   assert.match(accountMenu, /dashboardCanOpenDestination\(destination, destinationAccess\)/);
   assert.doesNotMatch(accountMenu, /permissions\.includes\("employees:\*"\)/);

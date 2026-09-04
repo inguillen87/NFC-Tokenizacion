@@ -14,6 +14,7 @@ import {
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
 import { TenantAccountMenu } from "./tenant-account-menu";
+import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Compass,
@@ -246,7 +247,7 @@ export function DashboardShellInner({
   const mobileQuickLinks = [
     { destination: "overview" as const, href: DASHBOARD_DESTINATIONS.overview.href, label: "Control", icon: LayoutDashboard },
     { destination: "events" as const, href: DASHBOARD_DESTINATIONS.events.href, label: nav.events, icon: Activity },
-    { destination: "loyaltyOverview" as const, href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM", icon: Award },
+    { destination: "loyaltyOverview" as const, href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "Actividad post-tap", icon: Award },
     { destination: "analytics" as const, href: DASHBOARD_DESTINATIONS.analytics.href, label: nav.analytics, icon: BarChart3 },
     { destination: "demoLab" as const, href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo", icon: FlaskConical },
     { destination: "batches" as const, href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches, icon: Layers },
@@ -263,8 +264,8 @@ export function DashboardShellInner({
     { destination: "tokenization", href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Tokenization Queue" },
     { destination: "serviceLevels", href: DASHBOARD_DESTINATIONS.serviceLevels.href, label: "SLO & Runbooks" },
     { destination: "superadminNetwork", href: DASHBOARD_DESTINATIONS.superadminNetwork.href, label: "Red de clientes" },
-    { destination: "loyaltyOverview", href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM de clientes" },
-    { destination: "consumerOverview", href: DASHBOARD_DESTINATIONS.consumerOverview.href, label: "Clientes CRM" },
+    { destination: "loyaltyOverview", href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "Actividad post-tap" },
+    { destination: "consumerOverview", href: DASHBOARD_DESTINATIONS.consumerOverview.href, label: "Actores y consentimiento" },
     { destination: "rewards", href: DASHBOARD_DESTINATIONS.rewards.href, label: "Catálogo Beneficios" },
     { destination: "experiences", href: DASHBOARD_DESTINATIONS.experiences.href, label: "Experiencias & Eventos" },
     { destination: "campaigns", href: DASHBOARD_DESTINATIONS.campaigns.href, label: "Campañas por señal" },
@@ -340,8 +341,8 @@ export function DashboardShellInner({
   const globalNetworkItems = globalNetworkItemCandidates.filter((item) => canOpenDestination(item.destination));
 
   const loyaltyNetworkItemCandidates: SidebarDestinationItem[] = [
-    { destination: "loyaltyOverview", href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "CRM de clientes", icon: Award },
-    { destination: "consumerOverview", href: DASHBOARD_DESTINATIONS.consumerOverview.href, label: "Clientes CRM", icon: UserSquare2 },
+    { destination: "loyaltyOverview", href: DASHBOARD_DESTINATIONS.loyaltyOverview.href, label: "Actividad post-tap", icon: Award },
+    { destination: "consumerOverview", href: DASHBOARD_DESTINATIONS.consumerOverview.href, label: "Actores y consentimiento", icon: UserSquare2 },
     { destination: "rewards", href: DASHBOARD_DESTINATIONS.rewards.href, label: "Catálogo Beneficios", icon: Gift },
     { destination: "experiences", href: DASHBOARD_DESTINATIONS.experiences.href, label: "Experiencias & Eventos", icon: PartyPopper },
     { destination: "campaigns", href: DASHBOARD_DESTINATIONS.campaigns.href, label: "Campañas por señal", icon: Bot },
@@ -660,6 +661,27 @@ export function DashboardShellInner({
             </div>
           ) : null}
         </header>
+
+        {currentIsDemo ? (
+          <div
+            data-testid="dashboard-demo-session-warning"
+            className="mx-4 mt-4 flex flex-col gap-3 rounded-2xl border border-amber-300/35 bg-[linear-gradient(110deg,rgba(120,53,15,.72),rgba(69,26,3,.5),rgba(8,47,73,.5))] px-4 py-3 text-amber-50 shadow-[0_18px_50px_rgba(245,158,11,.1)] sm:flex-row sm:items-center sm:justify-between lg:mx-8"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-black">Sandbox ilustrativo: no muestra taps físicos.</p>
+              <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                Esta sesión usa datos simulados y aislados. Para ver los taps, métricas y mapa reales de Bodega Balmec, ingresá con la cuenta piloto autorizada.
+              </p>
+            </div>
+            <SecureDashboardLogoutButton
+              clerkEnabled={clerkEnabled}
+              label="Cambiar a cuenta piloto"
+              pendingLabel="Cerrando sandbox…"
+              testId="dashboard-demo-exit"
+              className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/35 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-70 sm:w-auto"
+            />
+          </div>
+        ) : null}
 
         <div className="p-4 lg:p-8">
           {forbidden ? (

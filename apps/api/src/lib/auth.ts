@@ -26,6 +26,18 @@ export type AdminSessionResolver = (token: string) => Promise<SessionRecord | nu
 
 const adminPrincipals = new WeakMap<Request, AdminPrincipal>();
 
+function adminSessionResolutionUnavailable() {
+  return new Response(JSON.stringify({ ok: false, reason: "admin_session_resolution_unavailable" }), {
+    status: 503,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "private, no-store, max-age=0",
+      "retry-after": "5",
+      "x-nexid-auth-outcome": "session-resolver-unavailable",
+    },
+  });
+}
+
 function scopeForSession(session: SessionRecord): AdminScope | null {
   if (session.role === "super-admin") return "super_admin";
   if (session.role === "tenant-admin" || session.role === "tenant-owner") return "tenant_admin";
@@ -93,7 +105,12 @@ export async function checkAdmin(
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const session = await sessionResolver(token).catch(() => null);
+  let session: SessionRecord | null;
+  try {
+    session = await sessionResolver(token);
+  } catch {
+    return adminSessionResolutionUnavailable();
+  }
   if (!session) return new Response("Unauthorized", { status: 401 });
 
   const principal = principalFromSession(session);

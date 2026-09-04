@@ -13,7 +13,6 @@ import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
 import { CustomerGrowthCommandCenter } from "./customer-growth-command-center";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
-import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
 import type { RealtimeAvailability, RealtimeDataSource, RealtimeStreamSource } from "../lib/realtime-feed";
 import {
@@ -146,7 +145,7 @@ export default function DashboardHomeClient({
     ? [
         { destination: "campaigns", title: "Campañas por señal", description: "Consultar campañas WhatsApp/email basadas en señales de tap, ciudad y producto; las acciones dependen de los permisos de la sesión.", href: DASHBOARD_DESTINATIONS.campaigns.href, status: "habilitado", tone: "green" },
         { destination: "rewards", title: "Beneficios y vouchers", description: "Consultar premios, canjes, códigos QR y reglas de expiración habilitados para el tenant.", href: DASHBOARD_DESTINATIONS.rewards.href, status: "habilitado", tone: "green" },
-        { destination: "consumerOverview", title: "Clientes CRM", description: "Consultar actores identificados y consentidos, lecturas y actividad vinculada dentro del alcance autorizado.", href: DASHBOARD_DESTINATIONS.consumerOverview.href, status: "habilitado", tone: "green" },
+        { destination: "consumerOverview", title: "Actores y consentimiento", description: "Separar taps anónimos, productos reconocidos, actores identificados y permisos de contacto antes de activar métricas o campañas.", href: DASHBOARD_DESTINATIONS.consumerOverview.href, status: "habilitado", tone: "green" },
         { destination: "experiences", title: "Experiencias con evidencia", description: "Consultar experiencias sujetas a policy, moderación de marca y evidencia digital del evento NFC.", href: DASHBOARD_DESTINATIONS.experiences.href, status: "habilitado", tone: "green" },
       ]
     : [
@@ -174,21 +173,6 @@ export default function DashboardHomeClient({
 
   return (
     <div className="space-y-6">
-      {session.isDemo ? (
-        <div data-testid="dashboard-demo-session-warning" className="flex flex-col gap-3 rounded-2xl border border-amber-300/35 bg-amber-400/10 px-4 py-3 text-amber-50 shadow-[0_14px_40px_rgba(245,158,11,.08)] sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-black">Estás viendo una simulación, no el tenant productivo.</p>
-            <p className="mt-1 text-xs leading-5 text-amber-100/80">Los TAP físicos no aparecen en esta sesión. Ingresá con la cuenta real de Bodega Balmec para ver lecturas y mapa de producción.</p>
-          </div>
-          <SecureDashboardLogoutButton
-            clerkEnabled={clerkEnabled}
-            label="Ir al acceso real"
-            pendingLabel="Cerrando demo…"
-            testId="dashboard-demo-exit"
-            className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/35 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-70 sm:w-auto"
-          />
-        </div>
-      ) : null}
       {/* Dynamic Tab Navigation */}
       <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
         <button type="button" title="CRM en vivo: lecturas, riesgo, mapa por zona y próxima acción comercial" aria-label="Abrir CRM en vivo" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>

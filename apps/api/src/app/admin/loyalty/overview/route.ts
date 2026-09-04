@@ -7,7 +7,7 @@ import { json } from "../../../../lib/http";
 import { ensureLoyaltySchema } from "../../../../lib/loyalty-schema";
 
 export async function GET(req: Request) {
-  const auth = await checkAdminWithPermission(req, "rewards:read");
+  const auth = await checkAdminWithPermission(req, "crm:read");
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
