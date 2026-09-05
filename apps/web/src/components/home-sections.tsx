@@ -10,6 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { DppRoleExplorer } from "./dpp-role-explorer";
+import { PassportFragmentTarget } from "./passport-fragment-target";
 import { HeroImmersiveSignal } from "./hero-immersive-signal";
 import { SimpleTrustFlowIntroMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustIndustryJourney } from "./simple-trust-industry-journey";
@@ -307,6 +308,7 @@ export function CommercialValueSection({ locale }: { locale: string }) {
 
   return (
     <section id="pasaporte-digital" className="commercial-value-section container-shell scroll-mt-24" aria-label={copy.label}>
+      <PassportFragmentTarget />
       <div className="commercial-value-shell">
         <div className="dpp-participant-map">
           <header className="dpp-participant-map__intro">
