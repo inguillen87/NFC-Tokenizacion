@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.04-dashboard-demo.2",
-  "scope": "demo-only",
+  "release": "2026.09.05-dashboard.1",
+  "scope": "login-presentation-and-tap-navigation-demo-incidents",
   "realTapCertification": "not-included",
-  "baseCommit": "aa1ae87b5cc635d6814b86a4b4cbd8e6ccfaee0b",
-  "source": "isolated-reviewed-subset",
+  "baseCommit": "9d4e8000049cd78e43c6f23f6c335ca1ea2d8218",
+  "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
   "productionDemoAccess": "requires-explicit-environment-opt-in"

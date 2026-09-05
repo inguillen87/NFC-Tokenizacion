@@ -30,9 +30,11 @@ test("CRM uses a tenant-scoped event stream without browser polling", () => {
 
 test("demo access is unmistakably isolated from a real tenant session", () => {
   assert.match(login, /data-testid="login-real-tenant-entry"/);
-  assert.match(login, /Consultar TAP físicos y actividad reportada/);
-  assert.match(login, /No muestra lecturas NFC físicas/);
-  assert.match(login, /Abrir demo simulada/);
+  assert.match(login, /Consultá tus TAP físicos, productos y CRM con la cuenta que te asignó tu empresa/);
+  assert.match(login, /No muestra tus TAP físicos ni datos de tu empresa/);
+  assert.match(login, /Abrir demo interactiva/);
+  assert.match(login, /Los TAP físicos de Bodega Balmec se consultan con una cuenta asignada a esa empresa, no desde la demo interactiva/);
+  assert.match(login, /Sin cuenta · Datos ilustrativos/);
   assert.match(shell, /data-testid="dashboard-demo-session-warning"/);
   assert.match(shell, /Sandbox ilustrativo: no muestra taps físicos\./);
   assert.match(shell, /Cambiar a cuenta piloto/);

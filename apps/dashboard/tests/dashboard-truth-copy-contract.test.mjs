@@ -4,6 +4,7 @@ import test from "node:test";
 
 const executiveCrm = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
 const loginPanel = await readFile(new URL("../src/components/login-form-panel.tsx", import.meta.url), "utf8");
+const loginPage = await readFile(new URL("../src/app/login/page.tsx", import.meta.url), "utf8");
 const dashboardHome = await readFile(new URL("../src/components/dashboard-home-client.tsx", import.meta.url), "utf8");
 const signInPage = await readFile(new URL("../src/app/sign-in/[[...sign-in]]/page.tsx", import.meta.url), "utf8");
 const realtimeMonitor = await readFile(new URL("../src/components/realtime-ops-monitor.tsx", import.meta.url), "utf8");
@@ -29,10 +30,12 @@ test("global sidebars do not invent usage or realtime status", () => {
 });
 
 test("dashboard map labels describe reported events instead of physical live movement", () => {
-  const dashboardMapCopy = [executiveCrm, loginPanel, dashboardHome, signInPage, realtimeMonitor].join("\n");
+  const dashboardMapCopy = [executiveCrm, loginPanel, loginPage, dashboardHome, signInPage, realtimeMonitor].join("\n");
 
   assert.match(executiveCrm, /Mapa de eventos por capas/);
-  assert.match(loginPanel, /mapa de eventos reportados/);
+  assert.match(loginPanel, /el CRM, el mapa y los eventos de ejemplo/);
+  assert.match(loginPanel, /No muestra tus TAP físicos ni datos de tu empresa/);
+  assert.match(loginPage, /Ubicaciones reportadas y su precisión, sin confundirlas con el origen/);
   assert.match(dashboardHome, /evento reportado aparezca en el mapa/);
   assert.match(signInPage, /mapa de eventos reportados/);
   assert.match(realtimeMonitor, /Mapa de eventos reportados/);

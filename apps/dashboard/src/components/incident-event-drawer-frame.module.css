@@ -1,0 +1,218 @@
+.dialog {
+  --drawer-surface: #07111f;
+  --drawer-text: #f1f5f9;
+  --drawer-muted: #9fb1c7;
+  --drawer-border: rgba(103, 232, 249, 0.2);
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  color: var(--drawer-text);
+  background: transparent;
+}
+
+.dialog[open] {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dialog::backdrop {
+  background: rgba(2, 6, 23, 0.66);
+  backdrop-filter: blur(3px);
+}
+
+.panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(100%, 42rem);
+  height: 100%;
+  min-height: 0;
+  border-left: 1px solid var(--drawer-border);
+  background: var(--drawer-surface);
+  box-shadow: -20px 0 70px rgba(2, 6, 23, 0.36);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem 1rem;
+  border-bottom: 1px solid var(--drawer-border);
+  background: var(--drawer-surface);
+}
+
+.heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--drawer-muted);
+  font-size: 0.6875rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heading h2 {
+  margin: 0.4rem 0 0;
+  font-size: clamp(1.2rem, 4.8vw, 1.5rem);
+  font-weight: 850;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  margin: 0.6rem 0 0;
+  color: var(--drawer-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.closeButton,
+.navigation button,
+.returnButton {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid var(--drawer-border);
+  border-radius: 0.7rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--drawer-text);
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.closeButton {
+  width: 2.75rem;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.dialog button:focus-visible {
+  outline: 3px solid #0891b2;
+  outline-offset: 2px;
+}
+
+.closeButton svg,
+.navigation svg,
+.returnButton svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 1.25rem;
+}
+
+.content:focus-visible {
+  outline: 3px solid #0891b2;
+  outline-offset: -3px;
+}
+
+.content > :first-child {
+  margin-top: 0;
+}
+
+.content :is(p, li) {
+  overflow-wrap: anywhere;
+}
+
+.footer {
+  padding: 0.85rem 1.25rem max(1rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--drawer-border);
+  background: var(--drawer-surface);
+}
+
+.navigation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.navigation span {
+  color: var(--drawer-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.navigation button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.returnButton {
+  width: 100%;
+  border-color: #0891b2;
+  background: #087b91;
+  color: #fff;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .dialog {
+  --drawer-surface: #fff;
+  --drawer-text: #132b44;
+  --drawer-muted: #50647a;
+  --drawer-border: rgba(14, 116, 144, 0.18);
+}
+
+/* The modal is portalled outside the CRM shell: its content must own its
+   light palette rather than depending on an ancestor's utility overrides. */
+:global(html:is(.theme-light, [data-theme="light"])) .content [class*="bg-slate-"] {
+  background: #f4f8fb !important;
+  border-color: var(--drawer-border) !important;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .content :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-950"]) {
+  color: var(--drawer-text) !important;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .content :is([class~="text-slate-200"], [class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"]) {
+  color: var(--drawer-muted) !important;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .content [class*="text-emerald-"] {
+  color: #086347 !important;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .content [class*="text-amber-"] {
+  color: #824307 !important;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .content [class*="text-cyan-"] {
+  color: #0e647b !important;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .content [class*="text-rose-"] {
+  color: #9f1239 !important;
+}
+
+@media (min-width: 768px) {
+  .dialog[open] {
+    padding: 1rem;
+  }
+
+  .panel {
+    border: 1px solid var(--drawer-border);
+    border-radius: 1.25rem;
+    overflow: hidden;
+  }
+}

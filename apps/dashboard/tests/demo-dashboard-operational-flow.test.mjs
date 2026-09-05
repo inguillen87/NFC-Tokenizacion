@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { canReadonlyDemoAccess } from "../src/lib/admin-proxy-policy.ts";
+import { demoIncidentResource } from "../src/lib/demo-incidents.ts";
 import {
   filterDashboardDemoEvents,
   getDashboardDemoStreamEvents,
@@ -41,8 +42,10 @@ test("demo stream and incident response use the same replay event identity", asy
   ]);
   assert.match(streamRoute, /getDashboardDemoStreamEvents\(limit\)/);
   assert.match(streamRoute, /session\.isDemo[\s\S]*availability: "ready"[\s\S]*emitWarning: false/);
-  assert.match(proxyRoute, /eventId: "demo-baseline-replay-001"/);
-  assert.match(proxyRoute, /scope: \{ tenant: demoTenant\.slug, source: "demo" \}/);
+  assert.match(proxyRoute, /demoIncidentResource\(method, normalized, demoTenant\.slug, url\.searchParams, getDashboardDemoStreamEvents\(160\)\)/);
+  const response = demoIncidentResource("GET", "incidents", "demobodega", new URLSearchParams(), getDashboardDemoStreamEvents(160));
+  assert.equal(response.body.incidents[0].eventId, "demo-baseline-replay-001");
+  assert.deepEqual(response.body.scope, { tenant: "demobodega", source: "demo" });
   assert.match(proxyRoute, /filterDashboardDemoEvents\(getDashboardDemoStreamEvents\(160\), url\.searchParams\)/);
   assert.match(proxyRoute, /rows: filtered\.events\.map\(toDemoAdminEventRow\)/);
 });

@@ -23,7 +23,10 @@ test("global dashboard surfaces do not fabricate deployment or realtime health",
 
   assert.match(manifest, /source-labelled analytics/);
   assert.match(ogImage, /procedencia de datos visible/);
-  assert.match(login, /La disponibilidad productiva se valida por módulo y entorno/);
+  assert.match(login, /Tu cuenta define qué empresa y módulos podés consultar/);
+  assert.match(login, /La demo interactiva es un recorrido separado con datos ilustrativos/);
+  assert.match(loginPanel, /bodegaDemoAllowed \? "Disponible" : "Pendiente"/);
+  assert.match(loginPanel, /El ingreso requiere una cuenta Google autorizada por nexID/);
   assert.match(loginPanel, /Google configurado/);
   assert.match(layoutShell, /Estado API en cada módulo/);
   assert.match(demoPage, /mapa del dataset demo/);

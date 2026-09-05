@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@product/ui";
-import { ArrowRight, Building2, CheckCircle2, CircleAlert, KeyRound, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, CircleAlert, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
 import type { PublicAccessProfile } from "../lib/access-profiles";
 import { ClerkGoogleSuperAdminButton } from "./clerk-google-super-admin-button";
 import { normalizeDashboardReturnPath } from "../lib/dashboard-return-path";
+import styles from "./login-entry.module.css";
 
 type Props = {
   emailPlaceholder: string;
@@ -26,7 +27,6 @@ type Props = {
 export function LoginFormPanel({
   emailPlaceholder,
   passwordPlaceholder,
-  loginAction,
   registerLabel,
   forgotLabel,
   inviteLabel,
@@ -38,33 +38,33 @@ export function LoginFormPanel({
   nextPath = "/",
 }: Props) {
   const LOGIN_TIMEOUT_MS = 10_000;
-  const firstAvailable = profiles.find((profile) => profile.available) || profiles[0];
   const hasAvailableProfiles = profiles.some((profile) => profile.available);
-  const [email, setEmail] = useState(firstAvailable?.email || "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState(firstAvailable?.role || "tenant-admin");
-  const [profileLabel, setProfileLabel] = useState(firstAvailable?.label || "Perfil operativo");
+  const [showPassword, setShowPassword] = useState(false);
+  const [profileLabel, setProfileLabel] = useState("");
   const [status, setStatus] = useState("");
   const [opsStatus, setOpsStatus] = useState("");
   const [pending, setPending] = useState(false);
+  const requestInFlight = useRef(false);
   const safeNextPath = normalizeDashboardReturnPath(nextPath);
   const accessPaths = [
     {
-      label: "Recorrido simulado",
+      label: "Demo interactiva",
       value: bodegaDemoAllowed ? "Disponible" : "Pendiente",
-      detail: "Sandbox comercial con datos ilustrativos y mapa de eventos reportados. No muestra lecturas NFC físicas ni información productiva de Bodega Balmec.",
+      detail: "Datos ilustrativos, separados de los TAP físicos y de la información de tu empresa.",
       ok: bodegaDemoAllowed,
     },
     {
       label: "Super Admin",
-      value: clerkEnabled ? "Google configurado" : "Setup pendiente",
-      detail: "La presencia de configuración habilita el intento; solo una sesión verificada y un email fundador allowlisted conceden acceso global.",
+      value: clerkEnabled ? "Google configurado" : "Configuración pendiente",
+      detail: "El ingreso requiere una cuenta Google autorizada por nexID. La demo no concede acceso global.",
       ok: Boolean(clerkEnabled),
     },
     {
       label: "Equipo operativo",
-      value: hasAvailableProfiles ? "Credenciales activas" : "Manual",
-      detail: "Admins y empleados entran con cuentas tenant; no usan el portal consumidor.",
+      value: "Correo y contraseña",
+      detail: "La cuenta debe estar asignada a una empresa. Los atajos de correo no confirman que una cuenta esté activa.",
       ok: hasAvailableProfiles,
     },
   ];
@@ -86,13 +86,14 @@ export function LoginFormPanel({
   function useProfile(profile: PublicAccessProfile) {
     setEmail(profile.email);
     setPassword("");
-    setRole(profile.role);
     setProfileLabel(profile.label);
     setStatus("");
     setOpsStatus("");
   }
 
   async function submit(input?: { email?: string; password?: string }) {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
     setPending(true);
     setStatus("");
     setOpsStatus("");
@@ -111,7 +112,13 @@ export function LoginFormPanel({
     if (!res?.ok) {
       const diagnosticsNote = formatDiagnostics(data?.diagnostics);
       if (diagnosticsNote) setOpsStatus(diagnosticsNote);
-      if (res?.status === 502) {
+      if (data?.code === "superadmin_requires_clerk") {
+        setStatus("Super Admin ingresa únicamente con Google/Clerk y allowlist server-side.");
+      } else if (data?.code === "auth_upstream_not_configured") {
+        setStatus("El acceso tenant no está conectado a una API explícita en este entorno.");
+      } else if (res?.status === 429) {
+        setStatus("Demasiados intentos. Esperá unos minutos antes de volver a ingresar.");
+      } else if (res?.status === 502) {
         setStatus("Servicio de autenticación no disponible temporalmente.");
       } else if (res?.status === 403) {
         setStatus("Acceso denegado por política y alcance del entorno.");
@@ -120,18 +127,158 @@ export function LoginFormPanel({
       } else if (res?.status && res.status >= 500) {
         setStatus("Error interno al autenticar.");
       } else if (!res) {
-        setStatus("El login tardo demasiado o no hubo respuesta. Reintenta en unos segundos.");
+        setStatus("El ingreso tardó demasiado o no hubo respuesta. Tus datos siguen aquí; reintentá en unos segundos.");
       } else {
         setStatus(data?.reason || "Credenciales inválidas.");
       }
       setPending(false);
+      requestInFlight.current = false;
       return;
     }
     window.location.assign(safeNextPath);
   }
 
   return (
-    <div data-testid="login-enterprise-access-panel" className="dashboard-auth-access-flow">
+    <div data-testid="login-enterprise-access-panel" className={`dashboard-auth-access-flow ${styles.accessFlow}`}>
+      <form
+        id="tenant-credentials"
+        aria-labelledby="tenant-login-heading"
+        aria-busy={pending}
+        className={`dashboard-auth-manual-access ${styles.tenantForm}`}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <div data-testid="login-real-tenant-entry" className={styles.formHeading}>
+          <span className={styles.accessIcon}><Building2 aria-hidden="true" size={22} /></span>
+          <div>
+            <p className={styles.eyebrow}>Acceso a tu empresa</p>
+            <h2 id="tenant-login-heading">Ingresar a mi empresa</h2>
+          </div>
+        </div>
+        <p id="tenant-access-description" className={styles.formDescription}>
+          Consultá tus TAP físicos, productos y CRM con la cuenta que te asignó tu empresa.
+        </p>
+        <div className={styles.field}>
+          <label htmlFor="tenant-email">Correo electrónico</label>
+          <input suppressHydrationWarning
+            id="tenant-email"
+            type="email"
+            name="email"
+            required
+            inputMode="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            disabled={pending}
+            className="dashboard-auth-input"
+            placeholder={emailPlaceholder}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="tenant-password">Contraseña</label>
+          <div className={styles.passwordField}>
+            <input suppressHydrationWarning
+              id="tenant-password"
+              type={showPassword ? "text" : "password"}
+              name="password"
+              required
+              autoComplete="current-password"
+              disabled={pending}
+              className="dashboard-auth-input"
+              placeholder={passwordPlaceholder}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <button
+              type="button"
+              className={styles.passwordToggle}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              aria-controls="tenant-password"
+              aria-pressed={showPassword}
+              disabled={pending}
+              onClick={() => setShowPassword((visible) => !visible)}
+            >
+              {showPassword ? <EyeOff aria-hidden="true" size={20} /> : <Eye aria-hidden="true" size={20} />}
+            </button>
+          </div>
+        </div>
+        {profileLabel ? <p className={styles.selectedProfile}>Correo seleccionado: {profileLabel}. Los permisos se verifican al ingresar.</p> : null}
+        <Button type="submit" className={styles.submitButton} disabled={pending}>
+          {pending ? <LoaderCircle aria-hidden="true" className={styles.spinner} size={18} /> : <LockKeyhole aria-hidden="true" size={18} />}
+          {pending ? "Verificando acceso…" : "Ingresar a mi empresa"}
+          {!pending ? <ArrowRight aria-hidden="true" size={18} /> : null}
+        </Button>
+        <div aria-live="polite" aria-atomic="true">
+          {status ? <p role="alert" className={styles.errorMessage}>{status}</p> : null}
+          {pending ? <p className={styles.pendingMessage}>Estamos verificando tu cuenta. No cierres esta ventana.</p> : null}
+        </div>
+        {opsStatus ? <details className={styles.diagnostics}><summary>Detalle para soporte</summary><p>{opsStatus}</p></details> : null}
+        <p className={styles.accessHint}><KeyRound aria-hidden="true" size={16} /> ¿Todavía no tenés acceso? Pedile una cuenta al administrador de tu empresa.</p>
+      </form>
+
+      <div className={styles.alternativeHeading}><span>Otras formas de explorar nexID</span></div>
+      <div className="dashboard-auth-primary-actions grid gap-3">
+        <div data-testid="login-bodega-demo-card" className={`dashboard-auth-feature-card ${styles.demoCard}`}>
+          <div className={styles.demoHeading}>
+            <span className={styles.demoIcon}><Building2 aria-hidden="true" size={20} /></span>
+            <div><p className={styles.eyebrow}>Sin cuenta · Datos ilustrativos</p><h2>Demo interactiva</h2></div>
+          </div>
+          <p>Explorá el CRM, el mapa y los eventos de ejemplo. <strong>No muestra tus TAP físicos ni datos de tu empresa.</strong></p>
+          {bodegaDemoAllowed ? (
+            <form action={`/api/session/demo?role=tenant-admin&next=${encodeURIComponent(safeNextPath)}`} method="post">
+              <button type="submit" data-testid="login-bodega-demo-button" className={styles.demoButton}>
+                Abrir demo interactiva <ArrowRight aria-hidden="true" size={18} />
+              </button>
+            </form>
+          ) : <p className={styles.unavailable}>La demo no está habilitada en este entorno. El acceso a tu empresa es independiente.</p>}
+        </div>
+
+        <details className="dashboard-auth-disclosure rounded-2xl border border-white/10" open={Boolean(authNotice)}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-white">
+            <span>Super Admin</span>
+            <span className="text-xs font-semibold text-slate-400">Cuenta Google autorizada</span>
+          </summary>
+          <div data-testid="login-superadmin-google-card" className={`dashboard-auth-panel ${styles.superAdminContent}`}>
+            <p><ShieldCheck aria-hidden="true" size={20} /> Administración global de nexID. Super Admin entra por Google/Clerk; los permisos se verifican en el servidor.</p>
+            {authNotice ? <p role="status" className={styles.unavailable}>{authNotice}</p> : null}
+            {clerkEnabled ? <>
+              <ClerkGoogleSuperAdminButton
+                label={clerkRecoveryRequired ? "Reiniciar sesión Google" : "Continuar con Google allowlisted"}
+                nextPath={safeNextPath}
+                resetSessionOnStart={clerkRecoveryRequired}
+              />
+              <Link href={`/sign-in?next=${encodeURIComponent(safeNextPath)}`} className={styles.fullscreenLink}>Abrir ingreso seguro en pantalla completa</Link>
+            </> : <p data-testid="login-clerk-config-warning" className={styles.unavailable}>El ingreso con Google todavía no está configurado en este entorno. Contactá al equipo de nexID.</p>}
+          </div>
+        </details>
+      </div>
+
+      <details data-testid="login-credentials-panel" className={`dashboard-auth-disclosure ${styles.secondaryDisclosure}`}>
+        <summary>Ayuda y opciones de acceso</summary>
+        <div className={styles.supportContent}>
+          <p>Requiere una cuenta tenant real; conserva aislamiento, permisos y trazabilidad. Una cuenta del portal consumidor no da acceso al dashboard de una empresa.</p>
+          <p>Los TAP físicos de Bodega Balmec se consultan con una cuenta asignada a esa empresa, no desde la demo interactiva.</p>
+          {hasAvailableProfiles ? <div className={styles.profileList}>
+            <p>Atajos de correo configurados. Elegir uno no inicia sesión ni confirma permisos.</p>
+            {profiles.filter((profile) => profile.available).map((profile) => (
+              <button key={profile.key} type="button" disabled={pending} data-availability="available" className="dashboard-auth-profile-card" onClick={() => useProfile(profile)}>
+                <UserCheck aria-hidden="true" size={18} /><span>{profile.label}<small>{profile.email}</small></span>
+              </button>
+            ))}
+          </div> : null}
+          <nav aria-label="Opciones de acceso" className={styles.supportLinks}>
+            <Link href="/register">{registerLabel}</Link>
+            <Link href="/forgot-password">{forgotLabel}</Link>
+            <Link href="/invite-user">{inviteLabel}</Link>
+          </nav>
+          <p className={styles.securityNote}>TOTP nexID está temporalmente bloqueado. Esta pantalla no ofrece ingreso por código de correo ni promete doble factor.</p>
+          <a href="https://nexid.lat/login" className={styles.fullscreenLink}>Ir al portal consumidor <ArrowRight aria-hidden="true" size={16} /></a>
+        </div>
+      </details>
       <details data-testid="login-access-status" className="dashboard-auth-access-status dashboard-auth-disclosure mb-3 rounded-2xl border border-white/10">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-white">
           <span>Estado del entorno</span>
@@ -162,217 +309,6 @@ export function LoginFormPanel({
           ))}
         </div>
       </details>
-      <div className="dashboard-auth-primary-actions grid gap-3">
-        <a href="#tenant-credentials" data-testid="login-real-tenant-entry" className="dashboard-auth-panel dashboard-auth-panel--elevated flex flex-col gap-3 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 shadow-[0_20px_70px_rgba(16,185,129,.1)] sm:flex-row sm:items-center sm:justify-between">
-          <span>
-            <span className="block text-xs font-black uppercase tracking-[0.16em] text-emerald-200">Operación real</span>
-            <span className="mt-1 block text-base font-black text-white">Consultar TAP físicos y actividad reportada</span>
-            <span className="mt-1 block text-xs leading-5 text-slate-300">Requiere una cuenta tenant real; conserva aislamiento, permisos y trazabilidad.</span>
-          </span>
-          <span className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-200/35 bg-emerald-200 px-4 py-2 text-xs font-black text-slate-950">
-            Ingresar al tenant <ArrowRight className="h-4 w-4" />
-          </span>
-        </a>
-        <div data-testid="login-bodega-demo-card" className="dashboard-auth-feature-card rounded-2xl border border-cyan-300/25 p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-200/30 bg-cyan-300/10 text-cyan-100">
-                <Building2 className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Recorrido simulado</p>
-                <h2 className="mt-1 text-xl font-black text-white">Demo Bodega Balmec</h2>
-                <p className="mt-1 text-sm leading-5 text-slate-300">
-                  Muestra el recorrido de CRM, mapa, tags y campañas con datos ilustrativos. No consulta TAP físicos ni datos del tenant productivo.
-                </p>
-              </div>
-            </div>
-            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bodegaDemoAllowed ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100" : "border-amber-300/30 bg-amber-400/10 text-amber-100"}`}>
-              {bodegaDemoAllowed ? "habilitado 12h" : "requiere env"}
-            </span>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-            {bodegaDemoAllowed ? (
-              <form action={`/api/session/demo?role=tenant-admin&next=${encodeURIComponent(safeNextPath)}`} method="post" className="w-full">
-                <button
-                  type="submit"
-                  data-testid="login-bodega-demo-button"
-                  title="Abrir la simulación de Bodega Balmec"
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
-                >
-                  <span>Abrir demo simulada</span>
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </form>
-            ) : (
-              <div className="rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-3 text-sm text-amber-100">
-                Demo Bodega Balmec deshabilitada en este entorno.
-              </div>
-            )}
-            <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-cyan-100/80">
-              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">Sin datos reales</span>
-              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">Eventos demo</span>
-              <span className="dashboard-auth-feature-chip rounded-lg border border-white/10 bg-white/5 px-2 py-2">CRM</span>
-            </div>
-          </div>
-        </div>
-
-        <details className="dashboard-auth-disclosure rounded-2xl border border-white/10">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-white">
-            <span>Acceso avanzado · Super Admin</span>
-            <span className="text-xs font-semibold text-slate-400">Google + allowlist</span>
-          </summary>
-          <div data-testid="login-superadmin-google-card" className="dashboard-auth-panel dashboard-auth-panel--elevated grid gap-3 rounded-b-2xl border-0 border-t border-cyan-300/20 p-4">
-          <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
-              <ShieldCheck className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Super Admin fundador</p>
-              <p className="mt-1 text-sm leading-5 text-slate-300">
-                Google prueba identidad. nexID emite sesión Super Admin solo si el email está en allowlist server-side.
-                La demo Bodega no otorga permisos globales.
-              </p>
-            </div>
-          </div>
-          {authNotice ? (
-            <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
-              {authNotice}
-            </p>
-          ) : null}
-          {clerkEnabled ? (
-            <>
-              <ClerkGoogleSuperAdminButton
-                label={clerkRecoveryRequired ? "Reiniciar sesión Google" : "Continuar con Google allowlisted"}
-                nextPath={safeNextPath}
-                resetSessionOnStart={clerkRecoveryRequired}
-              />
-              <Link
-                href={`/sign-in?next=${encodeURIComponent(safeNextPath)}`}
-                title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."
-                className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
-              >
-                Abrir login seguro en pantalla completa
-              </Link>
-            </>
-          ) : (
-            <p data-testid="login-clerk-config-warning" className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
-              Google/Clerk todavía no está activo en este entorno: faltan claves Clerk live o no están asociadas a este deploy.
-            </p>
-          )}
-          </div>
-        </details>
-      </div>
-
-      <details data-testid="login-credentials-panel" className="dashboard-auth-disclosure mt-4 rounded-2xl border border-white/10">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-white">
-          <span>Atajos de perfiles configurados</span>
-          <span className="text-xs font-semibold text-slate-400">{hasAvailableProfiles ? "Disponibles" : "Sin presets"}</span>
-        </summary>
-        <div className="border-t border-white/10 p-4">
-          <p className="text-xs text-slate-400">Opcional: elegí un perfil habilitado para completar el email. Super Admin entra por Google/Clerk.</p>
-          <div className="mt-4 grid gap-3">
-            {profiles.map((profile) => (
-              <button suppressHydrationWarning
-                key={profile.key}
-                type="button"
-                disabled={!profile.available}
-                data-availability={profile.available ? "available" : "unavailable"}
-                onClick={() => useProfile(profile)}
-                title={profile.available ? `Entrar como ${profile.label}` : `${profile.label}: requiere configuración server-side`}
-                className="dashboard-auth-profile-card group rounded-xl border border-white/10 p-3 text-left transition hover:border-cyan-300/30 disabled:cursor-not-allowed"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-cyan-200 group-disabled:text-slate-500">
-                    {profile.role === "super-admin" ? <LockKeyhole className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center justify-between gap-2">
-                      <span data-profile-title className="text-sm font-semibold">{profile.label}</span>
-                      <span className="dashboard-auth-profile-availability">
-                        {profile.available ? "Disponible" : "No configurado"}
-                      </span>
-                    </span>
-                    <span data-profile-credential className="mt-1 block text-xs">
-                      {profile.email || "Configurar en variables de entorno del server"}
-                    </span>
-                  </span>
-                </div>
-                <p data-profile-note className="mt-2 text-xs">{profile.note}</p>
-              </button>
-            ))}
-          </div>
-          {!hasAvailableProfiles ? (
-            <p className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-              Los presets solo muestran perfiles habilitados. La contraseña queda server-side y se ingresa manualmente o por Google/Clerk.
-            </p>
-          ) : null}
-        </div>
-      </details>
-
-      <form
-        id="tenant-credentials"
-        className="dashboard-auth-manual-access mt-4 grid gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
-        <div className="dashboard-auth-field-note flex items-start gap-3 rounded-xl border border-white/10 px-3 py-3 text-xs text-slate-300">
-          <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
-          <span>
-            Ingresa con cuenta de <span className="text-cyan-200">dashboard admin</span>. Este login no corresponde al portal de consumidores.
-          </span>
-        </div>
-        <input suppressHydrationWarning
-          type="email"
-          name="email"
-          inputMode="email"
-          autoComplete="username"
-          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
-          placeholder={emailPlaceholder}
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <input suppressHydrationWarning
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
-          placeholder={passwordPlaceholder}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        <p className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
-          TOTP nexID está temporalmente bloqueado. Super Admin usa Google/Clerk allowlisted; las cuentas tenant usan sesión y permisos nexID.
-        </p>
-        <div className="dashboard-auth-field-note rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
-          Perfil activo: <span className="text-cyan-200">{profileLabel}</span>
-          <span className="ml-2 text-slate-500">({role})</span>
-        </div>
-        <Button type="submit" className="w-full" disabled={pending}>
-          {loginAction}
-        </Button>
-        {status ? <p aria-live="polite" className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{status}</p> : null}
-        {opsStatus ? <p aria-live="polite" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{opsStatus}</p> : null}
-      </form>
-
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-        <Link href="/register" className="dashboard-auth-secondary-link rounded-lg border border-white/10 px-2 py-2 text-cyan-300">
-          {registerLabel}
-        </Link>
-        <Link href="/forgot-password" className="dashboard-auth-secondary-link rounded-lg border border-white/10 px-2 py-2 text-cyan-300">
-          {forgotLabel}
-        </Link>
-        <Link href="/invite-user" className="dashboard-auth-secondary-link rounded-lg border border-white/10 px-2 py-2 text-cyan-300">
-          {inviteLabel}
-        </Link>
-      </div>
-      <div className="mt-2 grid gap-2 text-center text-xs">
-        <a href="https://nexid.lat/login" className="rounded-lg border border-cyan-300/20 bg-cyan-500/5 px-2 py-2 text-cyan-200">
-          Ir al login del portal consumidor
-        </a>
-      </div>
     </div>
   );
 }

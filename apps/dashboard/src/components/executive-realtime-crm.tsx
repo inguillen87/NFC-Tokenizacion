@@ -35,6 +35,7 @@ import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map"
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { IncidentEventDrawer } from "./incident-event-drawer";
+import { incidentEventNavigationKey, moveIncidentEventSelection, snapshotIncidentEventSelection, type IncidentEventSelection } from "../lib/incident-event-navigation";
 import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
 import { useDashboardRealtime } from "./dashboard-realtime-provider";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
@@ -776,7 +777,8 @@ export function ExecutiveRealtimeCrm({
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [clock, setClock] = useState("");
   const [campaignDraft, setCampaignDraft] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<TenantTapRealtimeEvent | null>(null);
+  const [incidentSelection, setIncidentSelection] = useState<IncidentEventSelection<TenantTapRealtimeEvent> | null>(null);
+  const selectedEvent = incidentSelection?.events[incidentSelection.index] || null;
   const [incidentsByEventId, setIncidentsByEventId] = useState<Record<string, DashboardIncident>>({});
   const [incidentAvailability, setIncidentAvailability] = useState<"loading" | "ready" | "unavailable">("loading");
   const canReadIncidents = account.role === "super-admin"
@@ -924,7 +926,7 @@ export function ExecutiveRealtimeCrm({
       return;
     }
     setEvents(sortRealtimeEvents(initialEvents, EXECUTIVE_REALTIME_EVENT_LIMIT));
-    setSelectedEvent(null);
+    setIncidentSelection(null);
     setLastUpdateAt(initialEvents[0]?.occurredAt || null);
     setStreamConfirmed(initialAvailability === "ready" && initialEvents.length > 0);
     setStreamWarning(null);
@@ -1105,7 +1107,7 @@ export function ExecutiveRealtimeCrm({
 
   const selectTenant = (nextTenant: string) => {
     if (tenantSession || nextTenant === selectedTenant) return;
-    setSelectedEvent(null);
+    setIncidentSelection(null);
     setCampaignDraft(null);
     setIncidentsByEventId({});
     setIncidentAvailability(canReadIncidents ? "loading" : "unavailable");
@@ -1114,13 +1116,13 @@ export function ExecutiveRealtimeCrm({
 
   const selectTimeRange = (nextTimeRange: TimeRange) => {
     if (nextTimeRange === timeRange) return;
-    setSelectedEvent(null);
+    setIncidentSelection(null);
     setCampaignDraft(null);
     setTimeRange(nextTimeRange);
   };
 
   const cycleTimeRange = () => {
-    setSelectedEvent(null);
+    setIncidentSelection(null);
     setCampaignDraft(null);
     setTimeRange((current) => current === "5m" ? "1h" : current === "1h" ? "24h" : "5m");
   };
@@ -1687,7 +1689,7 @@ export function ExecutiveRealtimeCrm({
                   <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} dataState={mapEvidence.state} dataStateDetail={mapEvidence.detail} />
                 </div>
 
-                <div className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">
+                <div tabIndex={-1} data-incident-event-list className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">
                 <p className="text-base font-extrabold tracking-[-0.015em] text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {valuesUnavailable ? <p data-testid="crm-events-pending" className="rounded-xl border border-dashed border-white/10 bg-slate-900/45 p-3 text-xs leading-5 text-slate-400">La actividad aparecerá cuando el tenant y la ventana queden confirmados.</p> : null}
@@ -1697,12 +1699,14 @@ export function ExecutiveRealtimeCrm({
                     const risk = isRealtimeRisk(event.verdict, event.reason);
                     const linkedIncident = incidentsByEventId[String(event.eventId)] || null;
                     return (
-                      <button type="button" onClick={() => setSelectedEvent(event)} key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="min-h-[5.25rem] w-full rounded-xl border border-white/8 bg-slate-900/70 p-3 text-left transition hover:border-cyan-300/35 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" data-testid="open-event-incident-drawer">
+                      <button type="button" onClick={() => setIncidentSelection(snapshotIncidentEventSelection(event, visibleEvents.slice(0, 4)))} key={incidentEventNavigationKey(event)} aria-haspopup="dialog" aria-expanded={selectedEvent ? incidentEventNavigationKey(selectedEvent) === incidentEventNavigationKey(event) : false} data-incident-event-key={incidentEventNavigationKey(event)} data-selected={selectedEvent ? incidentEventNavigationKey(selectedEvent) === incidentEventNavigationKey(event) : false} className="min-h-[5.25rem] w-full rounded-xl border border-white/8 bg-slate-900/70 p-3 text-left transition hover:border-cyan-300/35 hover:bg-slate-900 data-[selected=true]:border-cyan-300 data-[selected=true]:ring-1 data-[selected=true]:ring-cyan-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" data-testid="open-event-incident-drawer">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[11px] text-slate-500">{formatTimeInZone(event.occurredAt || Date.now(), consoleTimezone)}</p>
                           <span className={`rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : authenticated ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${linkedIncident.status}` : authenticated ? "Autenticación verificada" : recognized ? "Producto reconocido" : risk ? "Riesgo" : "Actividad"}</span>
                         </div>
-                        <p className="mt-1.5 text-[15px] font-black tracking-[-0.015em] text-white">UID: {event.uidMasked}</p>
+                        <p className="mt-1.5 text-[15px] font-black tracking-[-0.015em] text-white">{event.productName?.trim() || "Lectura NFC"}</p>
+                        {event.city && event.locationSource ? <p className="mt-0.5 text-xs text-slate-300">{event.city}{event.country ? `, ${event.country}` : ""} · ubicación reportada</p> : null}
+                        <p className="mt-0.5 font-mono text-[11px] text-slate-400">UID: {event.uidMasked || "no disponible"}</p>
                         <p className="text-xs text-slate-400">{deviceSummary(event)}</p>
                         <p className="mt-1.5 text-[11px] font-bold text-cyan-300">Abrir evidencia y expediente →</p>
                       </button>
@@ -1838,9 +1842,15 @@ export function ExecutiveRealtimeCrm({
           incident={incidentsByEventId[String(selectedEvent.eventId)] || null}
           incidentAvailability={incidentAvailability}
           canRead={canReadIncidents}
-          canWrite={canWriteIncidents}
-          onClose={() => setSelectedEvent(null)}
+          canWrite={canWriteIncidents && selectedEvent.source === "production"}
+          onClose={() => setIncidentSelection(null)}
           onIncident={handleIncident}
+          navigation={incidentSelection ? {
+            position: incidentSelection.index + 1,
+            total: incidentSelection.events.length,
+            onPrevious: incidentSelection.index > 0 ? () => setIncidentSelection((current) => moveIncidentEventSelection(current, -1)) : undefined,
+            onNext: incidentSelection.index < incidentSelection.events.length - 1 ? () => setIncidentSelection((current) => moveIncidentEventSelection(current, 1)) : undefined,
+          } : undefined}
         />
       ) : null}
 

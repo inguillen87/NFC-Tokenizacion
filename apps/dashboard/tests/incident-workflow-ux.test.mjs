@@ -27,7 +27,7 @@ test("event drawer explains persisted evidence and supports immediate open/trans
     read("../src/components/incident-event-drawer.tsx"),
     read("../src/lib/incident-workflow.ts"),
   ]);
-  assert.match(drawer, /La explicación siguiente es determinística/);
+  assert.match(drawer, /Resumen basado en los datos registrados de esta lectura, sin inferencias generativas/);
   assert.match(drawer, /fetch\("\/api\/admin\/incidents",/);
   assert.match(drawer, /url\.searchParams\.set\("eventId", String\(event\.eventId\)\)/);
   assert.match(drawer, /matches\.length !== payload\.incidents\.length \|\| matches\.length > 1/);

@@ -83,7 +83,9 @@ test("auth tokens define complete dark and light surfaces instead of recoloring 
 test("manual login is password-manager friendly in both themes", () => {
   assert.match(loginPanel, /<form[\s\S]*onSubmit=/);
   assert.match(loginPanel, /type="email"[\s\S]*name="email"[\s\S]*autoComplete="username"/);
-  assert.match(loginPanel, /type="password"[\s\S]*name="password"[\s\S]*autoComplete="current-password"/);
+  assert.match(loginPanel, /const \[showPassword, setShowPassword\] = useState\(false\)/);
+  assert.match(loginPanel, /type=\{showPassword \? "text" : "password"\}[\s\S]*name="password"[\s\S]*autoComplete="current-password"/);
+  assert.match(loginPanel, /aria-controls="tenant-password"/);
   assert.match(loginPanel, /<Button type="submit"/);
 });
 
@@ -94,10 +96,12 @@ test("auth brand lockup remains fully visible on 294px-class viewports", () => {
   );
 });
 
-test("unavailable profiles stay legible while communicating that they cannot be selected", () => {
-  assert.match(loginPanel, /data-availability=\{profile\.available \? "available" : "unavailable"\}/);
-  assert.match(loginPanel, /profile\.available \? "Disponible" : "No configurado"/);
-  assert.match(loginPanel, /dashboard-auth-profile-availability/);
+test("unavailable profiles cannot be selected and visible shortcuts never assert an active account", () => {
+  assert.match(loginPanel, /profiles\.filter\(\(profile\) => profile\.available\)\.map/);
+  assert.match(loginPanel, /data-availability="available"[\s\S]{0,120}onClick=\{\(\) => useProfile\(profile\)\}/);
+  assert.match(loginPanel, /Elegir uno no inicia sesión ni confirma permisos/);
+  assert.match(loginPanel, /const \[email, setEmail\] = useState\(""\)/);
+  assert.doesNotMatch(loginPanel, /Perfil activo|Credenciales activas/);
   assert.doesNotMatch(loginPanel, /disabled:opacity-50/);
   assert.match(globals, /\.dashboard-auth-profile-card:disabled \{[\s\S]*opacity:\s*1[\s\S]*border-style:\s*dashed/);
   assert.match(globals, /data-availability="unavailable"[\s\S]*\.dashboard-auth-profile-availability/);

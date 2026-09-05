@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, LoaderCircle, ShieldAlert, TicketCheck, X } from "lucide-react";
-import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
+import { ExternalLink, LoaderCircle, ShieldAlert, ShieldCheck, TicketCheck } from "lucide-react";
+import { classifyRealtimeVerdict, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
+import { incidentEventNavigationKey } from "../lib/incident-event-navigation";
+import { IncidentEventDrawerFrame, type IncidentEventDrawerNavigation } from "./incident-event-drawer-frame";
 import {
   allowedIncidentTransitions,
   deterministicIncidentExplanation,
@@ -27,8 +29,27 @@ const SEVERITY_LABEL: Record<DashboardIncidentSeverity, string> = {
   critical: "Crítica",
 };
 
+const HISTORY_ACTION_LABEL: Record<DashboardIncidentHistory["action"], string> = {
+  opened: "Expediente abierto",
+  transitioned: "Estado actualizado",
+  severity_changed: "Severidad actualizada",
+};
+
 async function responseJson(response: Response) {
   return response.json().catch(() => ({ ok: false, reason: `http_${response.status}` })) as Promise<Record<string, any>>;
+}
+
+function readingDateContext(event: TenantTapRealtimeEvent) {
+  const timestamp = Date.parse(event.occurredAt || event.occurredAtUtc);
+  if (!Number.isFinite(timestamp)) return "Fecha de lectura no informada";
+  const options: Intl.DateTimeFormatOptions = {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "shortOffset",
+  };
+  try {
+    return new Intl.DateTimeFormat("es-AR", { ...options, timeZone: event.timezone || "UTC" }).format(timestamp);
+  } catch {
+    return new Intl.DateTimeFormat("es-AR", { ...options, timeZone: "UTC" }).format(timestamp);
+  }
 }
 
 export function IncidentEventDrawer({
@@ -39,6 +60,7 @@ export function IncidentEventDrawer({
   canWrite,
   onClose,
   onIncident,
+  navigation,
 }: {
   event: TenantTapRealtimeEvent;
   incident: DashboardIncident | null;
@@ -47,8 +69,12 @@ export function IncidentEventDrawer({
   canWrite: boolean;
   onClose: () => void;
   onIncident: (incident: DashboardIncident) => void;
+  navigation?: IncidentEventDrawerNavigation;
 }) {
   const explanation = useMemo(() => deterministicIncidentExplanation(event), [event]);
+  const isDemo = event.source === "demo" || event.eventSource === "demo";
+  const hasNormalEvidence = classifyRealtimeVerdict(event.verdict, event.reason) === "valid" && explanation.severity === "low";
+  const canEditIncident = canWrite && event.source === "production" && !isDemo;
   const [severity, setSeverity] = useState<DashboardIncidentSeverity>(incident?.severity || explanation.severity);
   const [title, setTitle] = useState(incident?.title || explanation.title);
   const [summary, setSummary] = useState(incident?.summary || explanation.summary);
@@ -134,7 +160,7 @@ export function IncidentEventDrawer({
   }, [canRead, incident?.id, incident?.version, lookupRevision, onIncident, tenantSlug]);
 
   async function openIncident() {
-    if (!canWrite || !tenantSlug || !event.eventId) return;
+    if (!canEditIncident || !tenantSlug || !event.eventId) return;
     setBusy(true);
     setError("");
     try {
@@ -167,7 +193,7 @@ export function IncidentEventDrawer({
   }
 
   async function transitionIncident() {
-    if (!canWrite || !incident || !tenantSlug) return;
+    if (!canEditIncident || !incident || !tenantSlug) return;
     setBusy(true);
     setError("");
     try {
@@ -204,35 +230,35 @@ export function IncidentEventDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/72 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Detalle operativo del evento" data-testid="incident-event-drawer">
-      <button type="button" className="absolute inset-0 cursor-default" aria-label="Cerrar detalle" onClick={onClose} />
-      <aside className="relative z-10 h-full w-full max-w-2xl overflow-y-auto border-l border-cyan-300/20 bg-[#07111f] p-5 shadow-[-24px_0_80px_rgba(2,8,23,.75)] sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">Evento → incidente</p>
-            <h2 className="mt-1 text-xl font-black text-white">Evidencia operativa #{event.eventId}</h2>
-            <p className="mt-1 text-sm text-slate-400">La explicación siguiente es determinística: usa el resultado persistido, no una inferencia generativa.</p>
+    <IncidentEventDrawerFrame
+      eventKey={incidentEventNavigationKey(event)}
+      title={event.productName?.trim() || "Lectura NFC"}
+      description={readingDateContext(event)}
+      navigation={navigation}
+      navigationDisabled={busy}
+      onClose={onClose}
+    >
+
+        <p className="text-xs leading-5 text-slate-400">{isDemo
+          ? "Muestra de la consola: datos ilustrativos, sin una lectura física real."
+          : "Resumen basado en los datos registrados de esta lectura, sin inferencias generativas."}</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-slate-950/65 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500">Empresa · identificador</p>
+            <p className="mt-1 text-sm font-bold text-white">{tenantSlug || "No informado"}</p>
           </div>
-          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-slate-300 hover:border-cyan-300/40 hover:text-white" aria-label="Cerrar"><X className="h-4 w-4" /></button>
+          <div className="rounded-xl border border-white/10 bg-slate-950/65 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500">Lote</p>
+            <p className="mt-1 text-sm font-bold text-white">{event.batchId || "No informado"}</p>
+          </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-slate-950/65 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">UID enmascarada</p>
-            <p className="mt-1 font-mono text-sm font-bold text-white">{event.uidMasked || "no disponible"}</p>
+        <section data-evidence-tone={hasNormalEvidence ? "normal" : "attention"} className={`mt-4 rounded-xl border p-4 ${hasNormalEvidence ? "border-emerald-300/20 bg-emerald-500/[0.07]" : "border-amber-300/20 bg-amber-400/[0.07]"}`}>
+          <div className={`flex items-center gap-2 ${hasNormalEvidence ? "text-emerald-100" : "text-amber-100"}`}>
+            {hasNormalEvidence ? <ShieldCheck className="h-4 w-4" aria-hidden="true" /> : <ShieldAlert className="h-4 w-4" aria-hidden="true" />}
+            <b>{hasNormalEvidence ? "Resumen de la lectura" : "Por qué requiere atención"}</b>
           </div>
-          <div className="rounded-xl border border-white/10 bg-slate-950/65 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">Tenant y lote</p>
-            <p className="mt-1 text-sm font-bold text-white">{tenantSlug || "sin tenant confirmado"} · {event.batchId || "lote no informado"}</p>
-          </div>
-        </div>
-
-        <section className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/7 p-4">
-          <div className="flex items-center gap-2 text-amber-100"><ShieldAlert className="h-4 w-4" /><b>Por qué requiere atención</b></div>
           <p className="mt-2 text-sm leading-6 text-slate-200">{explanation.decision}</p>
-          <ul className="mt-3 space-y-1 text-xs text-slate-400">
-            {explanation.facts.map((fact) => <li key={fact}>• {fact}</li>)}
-          </ul>
         </section>
 
         {!canRead ? (
@@ -243,22 +269,24 @@ export function IncidentEventDrawer({
           <section className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-500/7 p-4" data-testid="incident-existing-state">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-emerald-300">Incidente durable vinculado</p>
-                <p className="mt-1 font-mono text-xs text-white">{incident.id}</p>
+                <p className="text-[10px] uppercase tracking-wider text-emerald-300">{isDemo ? "Expediente ilustrativo · sólo lectura" : "Incidente durable vinculado"}</p>
               </div>
               <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-200">{STATUS_LABEL[incident.status]}</span>
             </div>
-            <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
+            <div className="mt-3 text-xs text-slate-300">
               <p>Severidad: <b className="text-white">{SEVERITY_LABEL[incident.severity]}</b></p>
-              <p>Ticket: <b className="font-mono text-white">{incident.ticketId.slice(0, 8)}…</b></p>
-              <p>Versión: <b className="text-white">{incident.version}</b></p>
             </div>
             <a href={`/leads-tickets?tenant=${encodeURIComponent(tenantSlug)}`} className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-cyan-300 hover:text-cyan-200"><TicketCheck className="h-4 w-4" /> Ver cola de tickets <ExternalLink className="h-3 w-3" /></a>
           </section>
         ) : eventLookupState === "ready" ? (
           <section className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/7 p-4" data-testid="incident-empty-state">
             <p className="text-sm font-bold text-cyan-100">Todavía no existe un incidente para este evento.</p>
-            <p className="mt-1 text-xs text-slate-400">Al abrirlo se crea, en una sola transacción, el expediente, el ticket vinculado y su primer asiento histórico.</p>
+            <p className="mt-1 text-xs text-slate-400">{isDemo ? "Este evento de muestra no tiene un expediente ilustrativo vinculado. La demo es de sólo lectura." : "Al abrirlo se crea, en una sola transacción, el expediente, el ticket vinculado y su primer asiento histórico."}</p>
+          </section>
+        ) : eventLookupState === "loading" ? (
+          <section className="mt-4 rounded-xl border border-cyan-300/20 bg-slate-950/55 p-4" data-testid="incident-loading-state" role="status" aria-live="polite" aria-busy="true">
+            <p className="flex items-center gap-2 text-sm font-bold text-cyan-100"><LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Consultando el expediente</p>
+            <p className="mt-1 text-xs text-slate-400">Estamos comprobando si hay un expediente vinculado a esta lectura.</p>
           </section>
         ) : (
           <section className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/7 p-4" data-testid="incident-unconfirmed-state">
@@ -270,7 +298,9 @@ export function IncidentEventDrawer({
           </section>
         )}
 
-        {canWrite ? (
+        {canEditIncident ? (
+          <details className="mt-4 rounded-xl border border-white/10 bg-slate-950/55" data-testid="incident-edit-disclosure">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-cyan-200">{incident ? "Actualizar expediente" : "Abrir un expediente"}</summary>
           <section className="mt-4 space-y-3 rounded-xl border border-white/10 bg-slate-950/55 p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {incident ? (
@@ -307,17 +337,18 @@ export function IncidentEventDrawer({
               {incident ? "Registrar transición" : "Abrir incidente y ticket"}
             </button>
           </section>
+          </details>
         ) : canRead ? (
-          <p className="mt-4 rounded-xl border border-white/10 bg-slate-950/55 p-4 text-sm text-slate-400">Modo lectura: se requiere `incidents:write` para abrir o cambiar el expediente.</p>
+          <p className="mt-4 rounded-xl border border-white/10 bg-slate-950/55 p-4 text-sm text-slate-400">{isDemo ? "Expediente ilustrativo · sólo lectura. Esta muestra no permite abrir ni modificar casos reales." : event.source !== "production" ? "La fuente de esta lectura no permite habilitar cambios del expediente." : "Modo lectura: se requiere `incidents:write` para abrir o cambiar el expediente."}</p>
         ) : null}
 
         {history.length ? (
           <section className="mt-4 rounded-xl border border-white/10 bg-slate-950/55 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Historial inmutable</p>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">{isDemo ? "Historial de ejemplo" : "Historial inmutable"}</p>
             <div className="mt-3 space-y-3">
               {history.map((entry) => (
                 <div key={entry.id} className="border-l-2 border-cyan-300/30 pl-3 text-xs text-slate-300">
-                  <p><b className="text-white">{entry.actorLabel}</b> · {entry.action} · {STATUS_LABEL[entry.toStatus]}</p>
+                  <p><b className="text-white">{entry.actorLabel}</b> · {HISTORY_ACTION_LABEL[entry.action] || entry.action} · {STATUS_LABEL[entry.toStatus]}</p>
                   <p className="mt-0.5 text-slate-400">{entry.reason}</p>
                   <p className="mt-0.5 text-[10px] text-slate-500">{new Date(entry.createdAt).toLocaleString("es-AR")}</p>
                 </div>
@@ -325,7 +356,23 @@ export function IncidentEventDrawer({
             </div>
           </section>
         ) : null}
-      </aside>
-    </div>
+
+        <details className="mt-4 rounded-xl border border-white/10 bg-slate-950/55" data-testid="incident-technical-disclosure">
+          <summary className="min-h-11 cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500">Datos técnicos de la lectura</summary>
+          <div className="space-y-2 px-4 pb-4 text-xs text-slate-400">
+            <p>UID enmascarada: <span className="font-mono">{event.uidMasked || "no disponible"}</span></p>
+            <p>Identificador del evento: <span className="font-mono">{event.eventId}</span></p>
+            {event.timezone ? <p>Zona horaria informada: <span className="font-mono">{event.timezone}</span></p> : null}
+            <ul className="space-y-1">
+              {explanation.facts.map((fact) => <li key={fact}>• {fact}</li>)}
+            </ul>
+            {canRead && incident ? <div className="space-y-2 border-t border-white/10 pt-2">
+              <p>Identificador del expediente: <span className="font-mono">{incident.id}</span></p>
+              <p>Identificador del ticket: <span className="font-mono">{incident.ticketId}</span></p>
+              <p>Versión del expediente: {incident.version}</p>
+            </div> : null}
+          </div>
+        </details>
+    </IncidentEventDrawerFrame>
   );
 }
