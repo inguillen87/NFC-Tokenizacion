@@ -213,7 +213,7 @@ async function fetchRows(
               END
             ) = ${risk}
           )
-          AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
+          AND (${interval} = '' OR e.created_at >= now() - NULLIF(${interval}, '')::interval)
         ORDER BY e.created_at DESC, e.id DESC
         LIMIT ${limit}
       `
@@ -324,7 +324,7 @@ async function fetchRows(
               END
             ) = ${risk}
           )
-          AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
+          AND (${interval} = '' OR e.created_at >= now() - NULLIF(${interval}, '')::interval)
         ORDER BY e.created_at DESC, e.id DESC
         LIMIT ${limit}
       `;

@@ -1,8 +1,10 @@
 {
-  "release": "2026.09.05-api-access.1",
-  "scope": "clerk-origin-verification-and-safe-diagnostics",
-  "baseCommit": "aa1ae87b5cc635d6814b86a4b4cbd8e6ccfaee0b",
+  "release": "2026.09.05-api-stream.1",
+  "scope": "unbounded-stream-window-snapshot-fix",
+  "baseCommit": "9249dc52879e54c939e5cb0635590e5a24485969",
   "requiredDeploymentConfiguration": { "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat" },
   "databaseMigrationsIncluded": false,
-  "realtimeChangesIncluded": false
+  "realtimeChangesIncluded": true,
+  "realtimeBrokerChanged": false,
+  "physicalLiveCertification": "pending-new-tap"
 }
