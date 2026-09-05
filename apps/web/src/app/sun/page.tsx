@@ -14,6 +14,7 @@ import { PostTapNextStep } from "./post-tap-next-step";
 import { SunSectionNav } from "./sun-section-nav";
 import { SunServicesHub, type SunPublishedPromotion } from "./sun-services-hub";
 import { SunLocationExperience } from "./sun-location-experience";
+import { SunLocationOriginHeading, SunLocationProvider, SunLocationRequestButton, SunLocationSummary } from "./sun-location-controller";
 import type { SunPassportMapLocation } from "./sun-passport-map";
 import { SunUpdatesOptIn } from "./sun-updates-opt-in";
 import { resolveSunConsumerStatus } from "./sun-consumer-status";
@@ -34,6 +35,7 @@ import {
   resolveDemoProductProfile,
 } from "../../lib/demo-product-profiles";
 import { BrandHomeLink } from "../../components/brand-home-link";
+import passportStyles from "./sun-passport-experience.module.css";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -1588,6 +1590,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   return (
     <SunLocaleProvider initialLocale={locale}>
+    <SunLocationProvider key={`${bid}:${eventId}:${telemetryReadCounter}`}>
     <main className="sun-tap-experience relative flex min-h-screen flex-col items-center overflow-x-clip bg-[#060813] px-4 pb-[calc(env(safe-area-inset-bottom)+8.5rem)] pt-4 font-sans text-slate-100 sm:pt-8">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
       <WineExperienceEvents
@@ -1622,7 +1625,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="sun-tap-shell w-full max-w-[430px] z-10 space-y-5 mx-auto">
+      <div className={`${passportStyles.passport} sun-tap-shell w-full max-w-[430px] z-10 space-y-5 mx-auto`}>
         
         <SunPassportHeader
           isQrScan={isQrScan}
@@ -1803,6 +1806,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               data-testid="sun-summary-location"
               className="sun-summary-location rounded-2xl border border-cyan-300/15 bg-slate-950/45 p-3 text-left shadow-inner"
             >
+              <SunLocationSummary>
               <div className="flex items-start gap-2.5">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 text-cyan-200" aria-hidden="true">
                   <MapPin className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -1825,14 +1829,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 </div>
               </div>
               {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? (
-                <a
-                  data-testid="sun-location-consent-cta"
-                  href="#tap-location-consent"
-                  className="mt-2.5 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 text-[10px] font-black text-cyan-100 transition hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                <SunLocationRequestButton
+                  className="mt-2.5 flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/30 bg-cyan-400/20 px-3 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-400/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-wait disabled:opacity-60"
                 >
                   <span>Compartir ubicación aproximada del teléfono</span>
                   <span className="rounded-full bg-slate-950/40 px-2 py-1 text-[8px] uppercase tracking-[0.1em] text-cyan-200">Opcional · con permiso</span>
-                </a>
+                </SunLocationRequestButton>
               ) : null}
               <details className="sun-summary-location-details mt-2 border-t border-white/5 pt-2 text-[9px] text-slate-400">
                 <summary className="min-h-8 cursor-pointer list-none py-1.5 font-bold text-slate-300 marker:hidden">
@@ -1844,6 +1846,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   <p>Este resultado corresponde únicamente a este tag y esta lectura.</p>
                 </div>
               </details>
+              </SunLocationSummary>
             </div>
 
             <div data-testid="sun-summary-actions" className="sun-summary-actions grid grid-cols-2 gap-2">
@@ -1870,11 +1873,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         </section>
 
         {/* 2. Premium Product Profile Card */}
-        <section id="product-info" className="rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden">
+        <section id="product-info" aria-labelledby="sun-product-title" className={`${passportStyles.productProfile} rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden`}>
           <div className="flex flex-col items-center">
 
             {/* Floating Premium Image */}
-            <div className="w-full h-64 relative mb-4 rounded-2xl overflow-hidden bg-slate-900/30 flex items-center justify-center">
+            <div className={passportStyles.productMedia}>
               {productHeroImageUrl ? (
                 <img
                   src={productHeroImageUrl}
@@ -1892,7 +1895,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span data-sun-server-evidence="true" className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
                 {tenantDisplayName}
               </span>
-              <h2 data-sun-server-evidence="true" className="text-2xl font-black text-white leading-tight mt-1 tracking-tight">
+              <h2 id="sun-product-title" data-sun-server-evidence="true" className={`${passportStyles.productTitle} mt-1`}>
                 {productDisplayName}
               </h2>
               <p data-sun-server-evidence="true" className="text-xs text-slate-400 mt-1 leading-normal">
@@ -1901,7 +1904,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
 
             {/* Spec grid for fast reading */}
-            <div className="w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left">
+            <div className={`${passportStyles.productSpecs} w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left`}>
               <div>
                 <span className="text-[9px] uppercase text-slate-500 block">Lote comercial</span>
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay || "No informado"}</span>
@@ -1930,7 +1933,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <span className="sun-result-card__demo">{SUN_DEMO_BADGE}</span>
               )}
               <span className="sun-result-card__eyebrow">{consumerSignalLabel}</span>
-              <h1 id="sun-result-title" className="brand-editorial-gradient">{friendlyStageTitle}</h1>
+              <h2 id="sun-result-title" className={passportStyles.resultTitle}>{friendlyStageTitle}</h2>
               <p>{friendlyStageBody}</p>
             </div>
           </div>
@@ -1989,10 +1992,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           className="scroll-mt-24 space-y-4 rounded-3xl border border-white/5 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md sm:p-5 md:relative md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2 md:p-6"
           aria-labelledby="sun-origin-title"
         >
+          <SunLocationOriginHeading titleClassName={passportStyles.originTitle}>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="max-w-2xl">
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">Mapa del pasaporte</span>
-              <h3 id="sun-origin-title" className="mt-1 text-lg font-black text-white sm:text-xl">{locationSectionTitle}</h3>
+              <h2 id="sun-origin-title" className={`${passportStyles.originTitle} mt-1 text-white`}>{locationSectionTitle}</h2>
               <p className="mt-1 text-xs leading-5 text-slate-400">{locationSectionDescription}</p>
             </div>
             <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-[0.08em]">
@@ -2003,6 +2007,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 : null}
             </div>
           </div>
+          </SunLocationOriginHeading>
 
           <SunLocationExperience
             origin={wineryPoint[0] ? {
@@ -2474,6 +2479,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       </div>
     </main>
+    </SunLocationProvider>
     </SunLocaleProvider>
   );
 }

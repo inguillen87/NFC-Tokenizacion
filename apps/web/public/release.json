@@ -1,6 +1,6 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.04-web.3",
-  "scope": "Public website, DPP navigation, responsive visual design and SUN language preference",
+  "version": "2026.09.05-web.1",
+  "scope": "SUN single-action consented location, synchronized receipt and map, mobile visual hierarchy",
   "physicalTapCertification": "not-included"
 }

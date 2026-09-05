@@ -1,0 +1,260 @@
+.passport {
+  --passport-ink: #f8fafc;
+  --passport-muted: #b3c2d5;
+  --passport-accent: #67e8f9;
+  --passport-warning: #fcd34d;
+  --passport-line: rgba(103, 232, 249, 0.22);
+  --passport-media: linear-gradient(145deg, #122b41, #101a30);
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .passport {
+  --passport-ink: #10233f;
+  --passport-muted: #52657a;
+  --passport-accent: #087c91;
+  --passport-warning: #92400e;
+  --passport-line: rgba(8, 124, 145, 0.22);
+  --passport-media: linear-gradient(145deg, #f4fdff, #e0f4f4);
+}
+
+.passport :global(.sun-passport-header) {
+  border-top: 3px solid var(--passport-accent);
+  padding-top: 0.75rem;
+}
+
+.passport :global(.sun-passport-brand__caption) {
+  color: var(--passport-muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.passport :global(.sun-passport-brand) :global(.brand-wordmark-svg) {
+  width: 9rem !important;
+  height: 2.125rem !important;
+}
+
+.passport :global(.sun-live-tap-pill) > span:last-child {
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+}
+
+.passport :global(.sun-summary-panel) {
+  border-color: var(--passport-line);
+  box-shadow: 0 18px 52px rgba(8, 47, 73, 0.14);
+}
+
+.passport :global(.sun-summary-product__copy) > p:first-of-type {
+  font-size: 0.69rem;
+  letter-spacing: 0.13em;
+}
+
+.passport :global(.sun-summary-product__title) {
+  font-size: clamp(1.45rem, 6.2vw, 1.8rem) !important;
+  font-weight: 900;
+  line-height: 1.08 !important;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.passport :global(.sun-summary-product__copy) > p:last-of-type {
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.passport :global(.sun-summary-product__copy) > span {
+  font-size: 0.625rem;
+  line-height: 1.35;
+}
+
+.passport :global(.sun-summary-status__headline) {
+  font-size: clamp(1.22rem, 5.3vw, 1.5rem) !important;
+  line-height: 1.18 !important;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.passport :global(.sun-summary-status__copy) {
+  font-size: 0.8125rem !important;
+  line-height: 1.55 !important;
+}
+
+.passport [data-testid="sun-summary-facts"] dt {
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+}
+
+.passport [data-testid="sun-summary-facts"] dd {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.passport :global(.sun-summary-location) strong {
+  font-size: 1rem;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.passport :global(.sun-summary-location) p {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.passport :global(.sun-summary-location-details) summary {
+  min-height: 2.75rem;
+  font-size: 0.75rem;
+}
+
+/* The optional phone action stays visually distinct from section navigation.
+   This hook applies equally to the inline button and its confirmed state. */
+.passport:global(.sun-tap-shell) :global(.sun-summary-location) [data-testid="sun-location-consent-cta"] {
+  min-height: 3.25rem;
+  flex-wrap: wrap;
+  padding: 0.75rem;
+  gap: 0.4rem 0.7rem;
+  border-color: #087c91 !important;
+  background: linear-gradient(120deg, #087c91, #155eaa) !important;
+  color: #fff !important;
+  font-size: 0.8125rem;
+  font-weight: 850;
+  line-height: 1.4;
+  text-align: left;
+  box-shadow: 0 6px 18px rgba(8, 124, 145, 0.16);
+}
+
+.passport:global(.sun-tap-shell) [data-testid="sun-location-consent-cta"] > span {
+  color: inherit !important;
+}
+
+.passport [data-testid="sun-location-consent-cta"] > span:last-child:not(:first-child) {
+  background: rgba(255, 255, 255, 0.15) !important;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+}
+
+.passport :global(.sun-summary-actions) a {
+  min-height: 3rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.productProfile {
+  scroll-margin-top: 6rem;
+}
+
+.passport .productMedia {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: clamp(16rem, 68vw, 20rem);
+  margin-bottom: 1.25rem;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--passport-line);
+  border-radius: 1.25rem;
+  background: var(--passport-media);
+}
+
+.productMedia > img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  object-position: center;
+}
+
+.productMedia > svg {
+  width: 4rem;
+  height: 4rem;
+  color: var(--passport-accent);
+}
+
+.productMedia > span {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  width: fit-content;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.4rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.6rem;
+  background: #102d41;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.passport .productTitle,
+.passport .resultTitle {
+  color: var(--passport-ink);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.14;
+  text-wrap: balance;
+}
+
+.passport .productTitle {
+  font-size: clamp(1.6rem, 6.5vw, 2rem);
+}
+
+.passport .resultTitle {
+  font-size: 1.4rem;
+}
+
+.productProfile :global(.sun-result-card__intro) {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--passport-line);
+}
+
+.productProfile :global(.sun-result-card__demo) {
+  color: var(--passport-warning);
+}
+
+.productSpecs > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.productSpecs > div > span:first-child {
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+}
+
+.productSpecs > div > span:last-child {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.passport .originTitle {
+  font-size: clamp(1.4rem, 5.8vw, 1.8rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.16;
+  text-wrap: balance;
+}
+
+.originTitle + p {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.passport :global(.sun-mobile-dock) a {
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.passport :global(.sun-mobile-dock) a[aria-current="location"] {
+  box-shadow: inset 0 3px 0 var(--passport-accent);
+}
+
+@container (max-width: 280px) {
+  .passport :global(.sun-summary-product__title) {
+    font-size: 1.3rem !important;
+  }
+
+  .passport :global(.sun-summary-status__headline) {
+    font-size: 1.2rem !important;
+  }
+}

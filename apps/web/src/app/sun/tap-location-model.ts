@@ -47,7 +47,8 @@ const RETRYABLE_SUBMISSION_REASONS = new Set([
   "rate_limited",
   "sun_context_schema_check_unavailable",
   "sun_context_schema_not_ready",
-  "sun_context_upstream_unavailable",
+  // A BFF transport failure cannot prove the upstream did not persist/consume
+  // the one-time capability. It must remain uncertain, never a blind retry.
 ]);
 
 export type BrowserLocationFailure =

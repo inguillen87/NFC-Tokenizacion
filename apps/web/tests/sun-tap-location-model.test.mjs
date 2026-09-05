@@ -100,7 +100,7 @@ test("submission failures distinguish safe retry, spent capability and uncertain
   assert.equal(classifyLocationSubmissionFailure(422, "fresh_location_measurement_required"), "retryable");
   assert.equal(classifyLocationSubmissionFailure(422, "post_tap_location_timing_invalid"), "retryable");
   assert.equal(classifyLocationSubmissionFailure(429, "rate_limited"), "retryable");
-  assert.equal(classifyLocationSubmissionFailure(503, "sun_context_upstream_unavailable"), "retryable");
+  assert.equal(classifyLocationSubmissionFailure(503, "sun_context_upstream_unavailable"), "uncertain");
   assert.equal(classifyLocationSubmissionFailure(403, "fresh_tap_capability_required", "fresh_token_expired"), "fresh_tap_required");
   assert.equal(classifyLocationSubmissionFailure(409, "sun_context_evidence_already_consumed"), "fresh_tap_required");
   assert.equal(classifyLocationSubmissionFailure(503, "context_persistence_unavailable"), "uncertain");

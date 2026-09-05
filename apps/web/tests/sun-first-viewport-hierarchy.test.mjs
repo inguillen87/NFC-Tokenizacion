@@ -69,7 +69,7 @@ test("SUN location wraps and the two first actions are touch-safe", () => {
   assert.match(location, /Fuente \/ precisión:/);
   assert.match(location, /Hora del tap:/);
   assert.match(location, /summaryLocationFriendlyCopy/);
-  assert.match(location, /data-testid="sun-location-consent-cta"/);
+  assert.match(location, /<SunLocationRequestButton/);
   assert.match(location, /Compartir ubicación aproximada del teléfono/);
   assert.match(location, />Opcional · con permiso</);
   assert.match(location, /Ver fuente y horario/);

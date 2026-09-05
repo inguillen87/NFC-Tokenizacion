@@ -1,7 +1,7 @@
 "use client";
 
 import { LocateFixed, MapPinned, ShieldCheck, TriangleAlert } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   classifyLocationSubmissionFailure,
   isConsentedApproximateLocationReceipt,
@@ -9,6 +9,7 @@ import {
   type LocationReceipt,
 } from "./tap-location-model";
 import { useSunLocale } from "./sun-locale-provider";
+import { useSunLocationController } from "./sun-location-controller";
 
 type TelemetryState =
   | "idle"
@@ -76,6 +77,9 @@ export function TapPrecisionTelemetry({
   onLocationConfirmed,
 }: TapPrecisionTelemetryProps) {
   const { locale } = useSunLocale();
+  const locationController = useSunLocationController();
+  const registerLocationRequest = locationController?.register;
+  const publishLocationStatus = locationController?.publish;
   const [state, setState] = useState<TelemetryState>("idle");
   const [receipt, setReceipt] = useState<LocationReceipt | null>(null);
   const successRef = useRef<HTMLDivElement | null>(null);
@@ -206,6 +210,7 @@ export function TapPrecisionTelemetry({
     if (
       state === "requesting"
       || state === "saving"
+      || state === "updated"
       || state === "fresh_tap_required"
       || state === "uncertain"
       || requestInFlightRef.current
@@ -252,6 +257,20 @@ export function TapPrecisionTelemetry({
       requestInFlightRef.current = false;
     }
   }
+
+  // Keep the summary button connected to this exact mounted tap. Registering
+  // does not request permission: the browser call remains inside a user click.
+  const locationRequestRef = useRef(shareApproximateLocation);
+  useLayoutEffect(() => {
+    locationRequestRef.current = shareApproximateLocation;
+  });
+  useEffect(() => {
+    if (!hasBoundTap || !registerLocationRequest) return;
+    return registerLocationRequest(() => { void locationRequestRef.current(); });
+  }, [hasBoundTap, registerLocationRequest]);
+  useEffect(() => {
+    publishLocationStatus?.({ state, receipt });
+  }, [state, receipt, publishLocationStatus]);
 
   if (!hasBoundTap) return null;
   if (state === "updated") {

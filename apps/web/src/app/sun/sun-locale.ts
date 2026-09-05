@@ -115,6 +115,8 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "Hora del tap", pt: "Horário do toque", en: "Tap time" },
   { es: "Ver fuente y horario", pt: "Ver fonte e horário", en: "View source and time" },
   { es: "Compartir ubicación aproximada del teléfono", pt: "Compartilhar localização aproximada do telefone", en: "Share the phone's approximate location" },
+  { es: "Ver estado de la ubicación", pt: "Ver estado da localização", en: "View location status" },
+  { es: "Ver zona en el mapa", pt: "Ver zona no mapa", en: "View area on the map" },
   { es: "El tap no compartió ubicación. El pasaporte funciona igual y podés agregar una zona si querés.", pt: "O toque não compartilhou localização. O passaporte continua funcionando e você pode adicionar uma zona se quiser.", en: "The tap did not share a location. The passport still works, and you can add an area if you choose." },
   { es: "Esta ubicación pertenece a la simulación y no a un teléfono real.", pt: "Esta localização pertence à demonstração, não a um telefone real.", en: "This location belongs to the simulation, not to a real phone." },
   { es: "El teléfono compartió una zona aproximada después del tap y con tu permiso.", pt: "O telefone compartilhou uma zona aproximada após o toque e com a sua permissão.", en: "The phone shared an approximate area after the tap and with your permission." },

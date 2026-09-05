@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const [page, telemetry, tapLocationModel, locationExperience] = await Promise.all([
+const [page, telemetry, tapLocationModel, locationExperience, locationController] = await Promise.all([
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/tap-precision-telemetry.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/tap-location-model.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/sun-location-experience.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/sun/sun-location-controller.tsx", import.meta.url), "utf8"),
 ]);
 
 test("complete dynamic SUN payload reaches the API from the browser, not an SSR BFF", () => {
@@ -113,10 +114,22 @@ test("SUN summary exposes truthful location evidence before the origin map", () 
   assert.match(summary, /Fuente \/ precisión/);
   assert.match(summary, /Hora del tap/);
   assert.match(summary, /canRequestBrowserLocation && !hasConfirmedBrowserLocation/);
-  assert.match(summary, /data-testid="sun-location-consent-cta"/);
+  assert.match(summary, /<SunLocationRequestButton/);
+  assert.match(locationController, /data-testid="sun-location-consent-cta"/);
   assert.match(summary, /Compartir ubicación aproximada del teléfono/);
   assert.match(page, /No es tu posición:[\s\S]*?puede ubicarte en otra ciudad/);
   assert.match(summary, /Este resultado corresponde únicamente a este tag y esta lectura/);
+});
+
+test("both location entry points share a user-triggered request for the current tap", () => {
+  assert.match(page, /<SunLocationProvider key=\{`\$\{bid\}:\$\{eventId\}:\$\{telemetryReadCounter\}`\}/);
+  assert.match(locationController, /onClick=\{\(\) => control\?\.request\(\)\}/);
+  assert.match(locationController, /disabled=\{!control\?\.ready \|\| busy \|\| state === "updated"\}/);
+  assert.match(telemetry, /registerLocationRequest\(\(\) => \{ void locationRequestRef\.current\(\); \}\)/);
+  assert.match(telemetry, /\|\| state === "updated"/);
+  assert.match(telemetry, /\|\| requestInFlightRef\.current/);
+  assert.match(locationController, /control\?\.state === "updated" \? control\.receipt : null/);
+  assert.match(page, /<SunLocationSummary>/);
 });
 
 test("a historical location is never relabelled as the current tap", () => {
