@@ -39,7 +39,7 @@ import {
 import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from '../../lib/sun-sensor-evidence';
 import { listSdkSensorTimeline } from '../../lib/sdk-sensor-sun-source';
 import { publishedPromotionsFromLocaleData } from '../../lib/sun-engagement';
-import { persistSunRequestLocation } from '../../lib/sun-tap-location';
+import { persistSunRequestLocationAndPublish } from '../../lib/sun-request-location-realtime';
 import { escapeHtmlText, escapeHtmlTreeForMarkup, serializeForInlineScript } from '../../lib/public-html-security';
 import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from '../../lib/agro-product-profile';
 import { Gs1RegistryError } from '../../lib/gs1-digital-link-registry';
@@ -3249,7 +3249,7 @@ export async function GET(req: Request): Promise<Response> {
   let eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   let ctr = typeof result.body.ctr === 'number' ?result.body.ctr : null;
   if (eventId && edgeCoordinate) {
-    await persistSunRequestLocation({
+    await persistSunRequestLocationAndPublish({
       eventId,
       lat: edgeCoordinate.lat,
       lng: edgeCoordinate.lng,

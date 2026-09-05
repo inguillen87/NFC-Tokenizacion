@@ -146,7 +146,7 @@ test("post-tap browser location works without exposing the raw UID in the passpo
 
 test("physical SUN route durably classifies edge location before timeline projection", async () => {
   const route = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
-  const enrichment = route.indexOf("await persistSunRequestLocation({");
+  const enrichment = route.indexOf("await persistSunRequestLocationAndPublish({");
   const timeline = route.indexOf("withTimeout(getTimelineSummary", enrichment);
 
   assert.notEqual(enrichment, -1);

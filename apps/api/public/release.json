@@ -1,10 +1,10 @@
 {
-  "release": "2026.09.05-api-stream.1",
-  "scope": "unbounded-stream-window-snapshot-fix",
-  "baseCommit": "9249dc52879e54c939e5cb0635590e5a24485969",
+  "release": "2026.09.05-api-stream.2",
+  "scope": "publish-persisted-network-location-revision-for-same-tap",
+  "baseCommit": "68796366cd4daa7bb2f3ca2e4f4cad116266edd6",
   "requiredDeploymentConfiguration": { "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat" },
   "databaseMigrationsIncluded": false,
   "realtimeChangesIncluded": true,
   "realtimeBrokerChanged": false,
-  "physicalLiveCertification": "pending-new-tap"
+  "physicalLiveCertification": "prior-stream-delivery-verified-new-location-revision-pending-physical-tap"
 }
