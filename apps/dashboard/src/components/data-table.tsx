@@ -69,9 +69,9 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
           <h3 className="text-sm font-semibold text-white">{title}</h3>
           <p className="mt-1 text-xs text-slate-400">{filtered.length} / {rows.length} rows visible</p>
         </div>
-        <div className="flex items-center gap-2">
-          <input suppressHydrationWarning placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
-          <select suppressHydrationWarning value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
+        <div className="data-table-toolbar flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
+          <input suppressHydrationWarning placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm sm:w-48" />
+          <select suppressHydrationWarning value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
             <option value="all">{allFilterLabel}</option>
             {statuses.map((item) => <option key={item} value={item}>{statusMap?.[item] ?? item}</option>)}
           </select>

@@ -22,10 +22,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   TENANT_ENGAGEMENT_DOMAINS,
   TENANT_ENGAGEMENT_SOURCES,
-  TENANT_ENGAGEMENT_STAGES,
+  classifyEngagementConfirmation,
   parseTenantEngagementPayload,
   readableEngagementEvent,
   type TenantEngagementActivity,
+  type TenantEngagementConfirmation,
   type TenantEngagementDomain,
   type TenantEngagementRange,
   type TenantEngagementSource,
@@ -65,7 +66,13 @@ const DOMAIN_META: Record<TenantEngagementDomain, {
 const STAGE_META: Record<TenantEngagementActivity["stage"], { label: string; explanation: string }> = {
   VIEWED: { label: "Consultó", explanation: "La fuente registró una vista o apertura." },
   STARTED: { label: "Inició", explanation: "La fuente registró el inicio de una acción, sin afirmar que terminó." },
-  CONFIRMED: { label: "Confirmó", explanation: "El sistema de origen persistió el resultado de la acción." },
+  CONFIRMED: { label: "Registró un resultado", explanation: "La fuente acredita un registro de garantía, caso, titularidad o adhesión." },
+};
+
+const CONFIRMATION_META: Record<TenantEngagementConfirmation, { label: string; explanation: string }> = {
+  source_confirmed: { label: "Registró un resultado", explanation: "Registro del sistema de origen; no implica aprobación, resolución ni autenticidad física." },
+  client_declaration: { label: "Declaró", explanation: "Declaración del usuario registrada; no acredita un resultado operativo ni el uso físico del producto." },
+  unverified_confirmation: { label: "Confirmación sin validar", explanation: "La fuente no permite acreditar un resultado del sistema. No se cuenta como tal." },
 };
 
 const SOURCE_META: Record<TenantEngagementSource, { label: string; description: string }> = {
@@ -124,7 +131,8 @@ function isTenantEngagementSnapshot(value: unknown, tenantSlug: string, window: 
 
 function ActivityRow({ activity }: { activity: TenantEngagementActivity }) {
   const domain = DOMAIN_META[activity.domain];
-  const stage = STAGE_META[activity.stage];
+  const confirmation = classifyEngagementConfirmation(activity);
+  const stage = confirmation ? CONFIRMATION_META[confirmation] : STAGE_META[activity.stage];
   const Icon = domain.Icon;
   const context = [
     activity.unit.bid ? `BID ${activity.unit.bid}` : null,
@@ -149,6 +157,8 @@ function ActivityRow({ activity }: { activity: TenantEngagementActivity }) {
             <time dateTime={activity.occurredAt}>{formatTimestamp(activity.occurredAt)}</time>
           </div>
         </div>
+
+        {confirmation ? <p className={styles.truthNote}>{stage.explanation}</p> : null}
 
         <div className={styles.activityFacts}>
           <span className={activity.contactable ? styles.contactable : styles.actorBoundary}>
@@ -330,9 +340,14 @@ export function TenantEngagementPanel({
     };
   }, [canRead, queueEngagementRefresh, tenantSlug]);
 
-  const stageMaximum = useMemo(() => data
-    ? Math.max(1, ...TENANT_ENGAGEMENT_STAGES.map((stage) => data.counts.byStage[stage]))
-    : 1, [data]);
+  const stageBreakdown = useMemo(() => data ? [
+    { id: "viewed", ...STAGE_META.VIEWED, count: data.counts.byStage.VIEWED },
+    { id: "started", ...STAGE_META.STARTED, count: data.counts.byStage.STARTED },
+    { id: "source_confirmed", ...CONFIRMATION_META.source_confirmed, count: data.counts.confirmations.source_confirmed },
+    { id: "client_declaration", ...CONFIRMATION_META.client_declaration, count: data.counts.confirmations.client_declaration },
+    ...(data.counts.confirmations.unverified_confirmation ? [{ id: "unverified_confirmation", ...CONFIRMATION_META.unverified_confirmation, count: data.counts.confirmations.unverified_confirmation }] : []),
+  ] : [], [data]);
+  const stageMaximum = Math.max(1, ...stageBreakdown.map((stage) => stage.count));
 
   const selectRange = (value: TenantEngagementRange) => {
     setData(null);
@@ -441,14 +456,14 @@ export function TenantEngagementPanel({
               <p>Entre las filas devueltas, con consentimiento vigente</p>
             </article>
             <article>
-              <span><BadgeCheck size={17} /> Resultados confirmados</span>
-              <strong>{formatNumber(data.counts.byStage.CONFIRMED)}</strong>
-              <p>Persistidos por su sistema de origen; no implica autenticidad física</p>
+              <span><BadgeCheck size={17} /> Confirmados por sistema</span>
+              <strong>{formatNumber(data.counts.confirmations.source_confirmed)}</strong>
+              <p>Filas devueltas con fuente acreditada; excluye declaraciones del usuario</p>
             </article>
             <article>
-              <span><Database size={17} /> Origen productivo</span>
-              <strong>{formatNumber(data.counts.bySource.real)}</strong>
-              <p>Filas reales separadas de demo, importadas y sin clasificar</p>
+              <span><BookOpen size={17} /> Declaraciones del usuario</span>
+              <strong>{formatNumber(data.counts.confirmations.client_declaration)}</strong>
+              <p>Entre las filas devueltas; no prueban uso físico ni un resultado operativo</p>
             </article>
           </div>
 
@@ -476,18 +491,18 @@ export function TenantEngagementPanel({
                 <Clock3 size={21} />
               </div>
               <div className={styles.stageList}>
-                {TENANT_ENGAGEMENT_STAGES.map((stage) => {
-                  const count = data.counts.byStage[stage];
+                {stageBreakdown.map((stage) => {
+                  const count = stage.count;
                   return (
-                    <div key={stage}>
-                      <div><strong>{STAGE_META[stage].label}</strong><span>{formatNumber(count)}</span></div>
+                    <div key={stage.id}>
+                      <div><strong>{stage.label}</strong><span>{formatNumber(count)}</span></div>
                       <span className={styles.stageTrack}><i style={{ width: `${(count / stageMaximum) * 100}%` }} /></span>
-                      <small>{STAGE_META[stage].explanation}</small>
+                      <small>{stage.explanation}</small>
                     </div>
                   );
                 })}
               </div>
-              <p className={styles.truthNote}>Esta distribución cuenta actividades devueltas; no es una tasa de conversión ni afirma que los tres pasos pertenezcan a la misma persona.</p>
+              <p className={styles.truthNote}>Esta distribución cuenta actividades devueltas según los filtros activos, con declaraciones y resultados separados. No es una tasa de conversión ni afirma que las acciones pertenezcan a la misma persona. El origen real, demo o importado se distingue por separado.</p>
             </article>
 
             <article className={styles.sourcePanel}>

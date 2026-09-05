@@ -82,7 +82,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const tenantScope = adminContext.tenantSlug;
   const isTenantBound = !adminContext.canSelectTenant;
   const isTenantAdmin = isTenantBound;
-  const source = isTenantBound ? "real" : String(query.source || "all");
+  const source = session.isDemo ? "demo" : isTenantBound ? "real" : String(query.source || "all");
   const range = String(query.range || "30d");
 
   const params = new URLSearchParams();

@@ -48,6 +48,14 @@ function authNoticeForCode(code?: string) {
       return "Clerk no entrego una sesion verificable. Cerra la sesion de Google/Clerk y volve a ingresar.";
     case "clerk_session_invalid":
       return "La API rechazo la sesion Clerk. Revisa issuer, claves y dominios autorizados de Clerk.";
+    case "clerk_authorized_party_invalid":
+      return "La sesion Google es valida, pero la API no reconoce app.nexid.lat como origen autorizado. La configuracion del entorno debe corregirse antes de reintentar.";
+    case "clerk_session_expired":
+      return "La sesion Google/Clerk vencio. Volve a iniciar sesion para obtener una credencial nueva.";
+    case "clerk_google_required":
+      return "El acceso Super Admin exige una cuenta Google verificada. Reinicia el ingreso y elegi el Google fundador autorizado.";
+    case "clerk_verification_unavailable":
+      return "Clerk no pudo verificar la sesion por una falla de claves o JWKS en la API. El acceso permanece cerrado hasta recuperar la verificacion.";
     case "clerk_verification_not_configured":
     case "clerk_authorized_parties_not_configured":
       return "La verificacion Clerk de la API no esta configurada para este dominio.";
@@ -73,7 +81,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = searchParams ? await searchParams : {};
   const nextPath = normalizeDashboardReturnPath(firstParam(params.next));
   const loggedOut = firstParam(params.logged_out) === "1";
-  const authNotice = authNoticeForCode(firstParam(params.auth_error)) || (loggedOut ? "Sesión cerrada. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted." : "");
+  const authErrorCode = firstParam(params.auth_error);
+  const clerkRecoveryRequired = authErrorCode === "clerk_session_invalid"
+    || authErrorCode === "clerk_session_expired"
+    || authErrorCode === "clerk_google_required";
+  const authNotice = authNoticeForCode(authErrorCode) || (loggedOut ? "Sesión cerrada. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted." : "");
   let session = null;
   if (!loggedOut) {
     try {
@@ -137,6 +149,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                   bodegaDemoAllowed={bodegaDemoAllowed}
                   clerkEnabled={isClerkConfiguredForRuntime()}
                   authNotice={authNotice}
+                  clerkRecoveryRequired={clerkRecoveryRequired}
                   nextPath={nextPath}
                 />
               </div>

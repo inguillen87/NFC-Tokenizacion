@@ -48,13 +48,19 @@ test("all public authentication entry points share one semantic theme shell", ()
   assert.doesNotMatch(loginPanel, /linear-gradient\(145deg,rgba\(8,47,73/);
 });
 
-test("Clerk surfaces inherit live dashboard theme variables", () => {
-  for (const source of [signInPage, signUpPage]) {
-    assert.match(source, /colorBackground: "var\(--auth-clerk-bg\)"/);
-    assert.match(source, /colorForeground: "var\(--auth-text\)"/);
-    assert.match(source, /colorInput: "var\(--auth-input-bg\)"/);
-    assert.doesNotMatch(source, /colorBackground: "#020617"/);
-  }
+test("Clerk registration and Google-only Super Admin access inherit live dashboard theme variables", () => {
+  assert.match(signUpPage, /colorBackground: "var\(--auth-clerk-bg\)"/);
+  assert.match(signUpPage, /colorForeground: "var\(--auth-text\)"/);
+  assert.match(signUpPage, /colorInput: "var\(--auth-input-bg\)"/);
+  assert.doesNotMatch(signUpPage, /colorBackground: "#020617"/);
+
+  assert.match(signInPage, /ClerkGoogleSuperAdminButton/);
+  assert.match(signInPage, /dashboard-auth-oauth-button dashboard-auth-oauth-button--solid/);
+  assert.match(signInPage, /sign-in-google-only-boundary/);
+  assert.doesNotMatch(signInPage, /<SignIn\b/);
+  assert.match(globals, /\.dashboard-auth-oauth-button \{[\s\S]*var\(--auth-accent\)[\s\S]*var\(--auth-panel-bg\)/);
+  assert.match(globals, /\.dashboard-auth-oauth-button \{[\s\S]*border-color: var\(--auth-border-strong\)/);
+  assert.match(globals, /\.dashboard-auth-oauth-button \{[\s\S]*color: var\(--auth-accent-strong\)/);
 });
 
 test("auth tokens define complete dark and light surfaces instead of recoloring text over dark panels", () => {

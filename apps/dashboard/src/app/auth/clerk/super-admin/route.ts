@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { isClerkConfiguredForRuntime } from "../../../../lib/clerk-env";
 import { DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE, type DashboardSession } from "../../../../lib/session";
 import { normalizeDashboardReturnPath } from "../../../../lib/dashboard-return-path";
+import { dashboardFetch } from "../../../../lib/dashboard-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,12 @@ function redirectToLogin(req: Request, authError: string, nextPath: string) {
   const url = new URL("/login", req.url);
   url.searchParams.set("auth_error", authError);
   url.searchParams.set("next", nextPath);
-  return NextResponse.redirect(url, 303);
+  return privateNoStoreRedirect(NextResponse.redirect(url, 303));
+}
+
+function privateNoStoreRedirect(response: NextResponse) {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  return response;
 }
 
 function encodeSnapshot(session: DashboardSession) {
@@ -31,6 +37,19 @@ type ClerkEmailLike = {
   emailAddress?: string | null;
   verification?: { status?: string | null } | null;
 };
+
+function clerkSyncErrorCode(status: number, reason?: string) {
+  if (reason === "clerk_verification_not_configured" || reason === "clerk_authorized_parties_not_configured") {
+    return reason;
+  }
+  if (reason === "clerk_authorized_party_invalid") return "clerk_authorized_party_invalid";
+  if (reason === "clerk_session_expired") return "clerk_session_expired";
+  if (reason === "clerk_google_required") return "clerk_google_required";
+  if (reason === "clerk_verification_unavailable") return "clerk_verification_unavailable";
+  if (status === 403) return "clerk_super_admin_not_allowed";
+  if (status === 401) return "clerk_session_invalid";
+  return "clerk_sync_failed";
+}
 
 function resolveVerifiedEmail(user: Awaited<ReturnType<typeof currentUser>>) {
   const emailAddresses = ((user?.emailAddresses || []) as ClerkEmailLike[]).filter((item) => item.emailAddress);
@@ -57,7 +76,7 @@ export async function GET(req: Request) {
     signInUrl.searchParams.set("next", nextPath);
     signInUrl.searchParams.set("fallback_redirect_url", completePath);
     signInUrl.searchParams.set("force_redirect_url", completePath);
-    return NextResponse.redirect(signInUrl, 303);
+    return privateNoStoreRedirect(NextResponse.redirect(signInUrl, 303));
   }
 
   const clerkUser = await currentUser().catch(() => null);
@@ -67,7 +86,7 @@ export async function GET(req: Request) {
   const clerkSessionToken = await clerkAuth.getToken().catch(() => null);
   if (!clerkSessionToken) return redirectToLogin(req, "clerk_session_token_missing", nextPath);
 
-  const syncRes = await fetch(`${API_BASE}/auth/clerk-sync`, {
+  const syncRes = await dashboardFetch(`${API_BASE}/auth/clerk-sync`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -95,16 +114,11 @@ export async function GET(req: Request) {
     tenantId?: string | null;
     tenantSlug?: string | null;
     reason?: string;
+    code?: string;
   } | null;
 
   if (!syncRes.ok || !data?.ok || !data.sessionToken) {
-    const error = data?.reason === "clerk_verification_not_configured" || data?.reason === "clerk_authorized_parties_not_configured"
-      ? data.reason
-      : syncRes.status === 403
-      ? "clerk_super_admin_not_allowed"
-      : syncRes.status === 401
-      ? "clerk_session_invalid"
-      : "clerk_sync_failed";
+    const error = clerkSyncErrorCode(syncRes.status, data?.code || data?.reason);
     return redirectToLogin(req, error, nextPath);
   }
 
@@ -139,5 +153,5 @@ export async function GET(req: Request) {
     maxAge: 60 * 60 * 12,
   });
   response.cookies.delete(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE);
-  return response;
+  return privateNoStoreRedirect(response);
 }

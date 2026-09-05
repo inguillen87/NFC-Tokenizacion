@@ -1678,8 +1678,13 @@ html.theme-light .nexid-crm-shell select {
   isolation: isolate;
 }
 
+.nexid-crm-map-control-deck {
+  background:
+    linear-gradient(110deg, rgba(8, 47, 73, 0.78), rgba(15, 23, 42, 0.82) 52%, rgba(30, 27, 75, 0.72));
+}
+
 .nexid-crm-map-toolbar {
-  max-width: calc(100% - 5.25rem);
+  min-width: 0;
 }
 
 .nexid-crm-map-actions,
@@ -1688,17 +1693,23 @@ html.theme-light .nexid-crm-shell select {
   contain: layout;
 }
 
-.nexid-crm-map-panel[data-map-fullscreen="true"] .nexid-crm-map-actions {
-  left: 1rem;
-  top: 1rem;
+.nexid-crm-map-panel[data-map-fullscreen="true"] .nexid-crm-map-body {
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
 }
 
-.nexid-crm-map-panel[data-map-fullscreen="true"] .nexid-crm-map-toolbar {
-  left: 5rem;
-  right: 1rem;
-  top: 1rem;
-  width: auto;
-  max-width: none;
+.nexid-crm-map-panel[data-map-fullscreen="true"] .nexid-crm-map-canvas-region {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  height: 100% !important;
+  min-height: 0;
+}
+
+.nexid-crm-map-panel[data-map-fullscreen="true"] .nexid-crm-map-legend,
+.nexid-crm-map-panel[data-map-fullscreen="true"] .nexid-crm-events-rail {
+  display: none;
 }
 
 .nexid-crm-map-control,
@@ -1706,21 +1717,38 @@ html.theme-light .nexid-crm-shell select {
   backdrop-filter: blur(16px) saturate(1.15);
 }
 
+.nexid-crm-map-actions,
 .nexid-crm-map-view-controls {
   scrollbar-width: none;
 }
 
+.nexid-crm-map-actions::-webkit-scrollbar,
 .nexid-crm-map-view-controls::-webkit-scrollbar {
   display: none;
 }
 
 :where(html.theme-light, html[data-theme="light"]) .nexid-crm-map-control,
 :where(html.theme-light, html[data-theme="light"]) .nexid-crm-map-view-button,
-:where(html.theme-light, html[data-theme="light"]) .nexid-crm-map-legend {
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-map-legend,
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-empty-state-card {
   background: rgba(255, 255, 255, 0.92) !important;
   border-color: rgba(100, 116, 139, 0.28) !important;
   color: #334155 !important;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.13) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-map-control-deck {
+  background:
+    linear-gradient(110deg, rgba(236, 254, 255, 0.96), rgba(248, 250, 252, 0.96) 52%, rgba(245, 243, 255, 0.94)) !important;
+  border-color: rgba(8, 145, 178, 0.18) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-empty-state-card b {
+  color: #0f172a !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-empty-state-card span {
+  color: #475569 !important;
 }
 
 :where(html.theme-light, html[data-theme="light"]) .nexid-crm-map-view-button[aria-pressed="true"] {
@@ -1739,8 +1767,14 @@ html.theme-light .nexid-crm-shell select {
 }
 
 @media (max-width: 640px) {
+  .nexid-crm-map-control-deck {
+    gap: 0.625rem;
+    padding: 0.625rem;
+  }
+
+  .nexid-crm-map-actions,
   .nexid-crm-map-toolbar {
-    max-width: none;
+    width: 100%;
   }
 
   .nexid-crm-map-view-controls {
@@ -1752,13 +1786,7 @@ html.theme-light .nexid-crm-shell select {
   }
 
   .nexid-map-status {
-    max-width: calc(100% - 5rem) !important;
-  }
-}
-
-@media (min-width: 1024px) and (max-width: 1535px) {
-  .nexid-crm-map-toolbar {
-    max-width: calc(100% - 6rem);
+    max-width: calc(100% - 1.5rem) !important;
   }
 }
 
@@ -1796,6 +1824,37 @@ html.theme-light .nexid-map-popup .maplibregl-popup-content {
   border-color: rgba(15, 23, 42, 0.16) !important;
   color: #0f172a !important;
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-status-summary,
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-status-precision {
+  color: #475569 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-status-count {
+  color: #0e7490 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-status-detail {
+  color: #92400e !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-data-badge[data-state="real"] {
+  border-color: rgba(5, 150, 105, 0.32) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #047857 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-data-badge[data-state="demo"] {
+  border-color: rgba(124, 58, 237, 0.28) !important;
+  background: rgba(139, 92, 246, 0.11) !important;
+  color: #6d28d9 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-map-data-badge[data-state="unavailable"] {
+  border-color: rgba(217, 119, 6, 0.32) !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #92400e !important;
 }
 
 html.theme-light .nexid-map-popup .maplibregl-popup-tip {

@@ -40,6 +40,16 @@ const demoCities = [
   { city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505 },
 ];
 
+const demoBaselineCreatedAt = Date.now();
+const demoBaselineSpecs = [
+  { id: "demo-baseline-valid-001", result: "VALID", minutesAgo: 4, cityIndex: 0, vertical: "wine", risk: 4 },
+  { id: "demo-baseline-claim-001", result: "CLAIMED", minutesAgo: 11, cityIndex: 1, vertical: "cabernet", risk: 6 },
+  { id: "demo-baseline-replay-001", result: "REPLAY_SUSPECT", minutesAgo: 19, cityIndex: 2, vertical: "chardonnay", risk: 82 },
+  { id: "demo-baseline-tamper-001", result: "TAMPER", minutesAgo: 28, cityIndex: 3, vertical: "pinot", risk: 48 },
+  { id: "demo-baseline-valid-002", result: "VALID", minutesAgo: 41, cityIndex: 4, vertical: "wine", risk: 3 },
+  { id: "demo-baseline-valid-003", result: "VALID", minutesAgo: 52, cityIndex: 5, vertical: "cabernet", risk: 2 },
+] as const;
+
 function getState(): DashboardDemoState {
   const globalStore = globalThis as typeof globalThis & { [runtimeKey]?: DashboardDemoState };
   if (!globalStore[runtimeKey]) {
@@ -159,9 +169,122 @@ export function getDashboardDemoEvents(limit = 80) {
   return getState().events.slice(0, Math.max(0, limit));
 }
 
+export function getDashboardDemoStreamEvents(limit = 80) {
+  const boundedLimit = Math.min(Math.max(Number(limit) || 80, 0), 160);
+  if (!boundedLimit) return [] as DashboardDemoEvent[];
+  const runtimeRows = getDashboardDemoEvents(boundedLimit);
+  const runtimeIds = new Set(runtimeRows.map((row) => row.id));
+  const baselineRows = demoBaselineSpecs
+    .map((spec, index): DashboardDemoEvent => {
+      const location = demoCities[spec.cityIndex] || demoCities[0];
+      return {
+        id: spec.id,
+        sequence: -(index + 1),
+        result: spec.result,
+        reason: reasonFor(spec.result),
+        uid_hex: `04D3A0${String(index + 1).padStart(2, "0")}1090`,
+        bid: "BALMEC-DEMO-2026-02",
+        tenant_slug: "demobodega",
+        city: location.city,
+        country_code: location.country_code,
+        lat: location.lat,
+        lng: location.lng,
+        product_name: productByVertical(spec.vertical),
+        device: "Dispositivo ilustrativo",
+        vertical: spec.vertical,
+        mode: spec.result === "TAMPER" ? "tamper" : spec.result === "REPLAY_SUSPECT" ? "replay" : "valid",
+        scenario: spec.result === "CLAIMED" ? "claim" : "valid",
+        risk: spec.risk,
+        source: "dashboard-demo-baseline",
+        created_at: new Date(demoBaselineCreatedAt - spec.minutesAgo * 60_000).toISOString(),
+      };
+    })
+    .filter((row) => !runtimeIds.has(row.id));
+  return [...runtimeRows, ...baselineRows].slice(0, boundedLimit);
+}
+
+const demoEventRangeMs = {
+  "5m": 5 * 60_000,
+  "1h": 60 * 60_000,
+  "24h": 24 * 60 * 60_000,
+  "7d": 7 * 24 * 60 * 60_000,
+  "30d": 30 * 24 * 60 * 60_000,
+} as const;
+
+/** Query the existing illustrative events; filtering must never create activity. */
+export function filterDashboardDemoEvents(
+  events: readonly DashboardDemoEvent[],
+  params: URLSearchParams,
+  now = Date.now(),
+) {
+  const requestedRange = (params.get("range") || "24h").trim().toLowerCase();
+  const range = Object.prototype.hasOwnProperty.call(demoEventRangeMs, requestedRange)
+    ? requestedRange as keyof typeof demoEventRangeMs
+    : "24h";
+  const requestedLimit = Number.parseInt(params.get("limit") || "50", 10);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 200) : 50;
+  const tenant = (params.get("tenant") || "").trim().toLowerCase();
+  const uid = (params.get("uid") || "").trim().toUpperCase();
+  // Batch identifiers are case-sensitive, just as in the real events endpoint.
+  const bid = params.get("bid") || "";
+  const result = (params.get("result") || "").trim().toUpperCase();
+  const since = now - demoEventRangeMs[range];
+  const filtered = events
+    .map((event) => ({ event, timestamp: Date.parse(event.created_at) }))
+    .filter(({ event, timestamp }) => (
+      Number.isFinite(timestamp)
+      && timestamp >= since
+      && timestamp <= now
+      && (!tenant || event.tenant_slug.trim().toLowerCase() === tenant)
+      && (!uid || event.uid_hex.trim().toUpperCase() === uid)
+      && (!bid || event.bid === bid)
+      && (!result || event.result.trim().toUpperCase() === result)
+    ))
+    .sort((left, right) => right.timestamp - left.timestamp)
+    .slice(0, limit)
+    .map(({ event }) => event);
+
+  return {
+    scope: { tenant: tenant || "global", source: "demo" as const, range, limit, uid, bid, result },
+    events: filtered,
+  };
+}
+
 export function toDemoAdminEventRow(event: DashboardDemoEvent) {
+  const coordinate = strictCoordinatePair(event.lat, event.lng);
   return {
     id: event.id,
+    tenantId: null,
+    tenantSlug: event.tenant_slug,
+    batchId: null,
+    tagId: null,
+    uidHex: event.uid_hex,
+    createdAt: event.created_at,
+    eventType: "DEMO_TAP_SIMULATED",
+    productName: event.product_name,
+    dataMode: "demo",
+    isPhysicalTap: false,
+    cmacOk: null,
+    allowlisted: null,
+    readCounter: null,
+    location: {
+      city: event.city || "No informada",
+      country: event.country_code || "--",
+      lat: coordinate?.lat ?? null,
+      lng: coordinate?.lng ?? null,
+      source: "demo",
+      accuracyM: null,
+    },
+    device: {
+      label: event.device || "Dispositivo no informado",
+      os: "No informado",
+      browser: "No informado",
+      deviceType: "No informado",
+      timezone: "No informada",
+      mobile: null,
+    },
+    // Flat aliases are retained for existing home projections. The audit view
+    // consumes the same camel-case /admin/events contract as the real API.
     event_type: "DEMO_TAP_SIMULATED",
     result: event.result,
     reason: event.reason,
@@ -174,7 +297,7 @@ export function toDemoAdminEventRow(event: DashboardDemoEvent) {
     bid: event.bid,
     tenant_slug: event.tenant_slug,
     product_name: event.product_name,
-    device: event.device,
+    device_label: event.device,
     source: "demo",
   };
 }

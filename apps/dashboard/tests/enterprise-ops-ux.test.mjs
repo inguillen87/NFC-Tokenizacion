@@ -56,6 +56,11 @@ test("realtime map has accessible status, failure fallback and a textual geograp
   assert.match(mapSource, /role="status" aria-busy="true"/);
   assert.match(mapSource, /role="alert"/);
   assert.match(mapSource, /prefers-reduced-motion: reduce/);
+  assert.match(mapSource, /data-map-data-state=\{dataState\}/);
+  assert.match(mapSource, /data-testid="crm-maplibre-data-state"/);
+  assert.match(mapSource, /data-testid="crm-map-empty-state"/);
+  assert.match(mapSource, /Cartografía disponible · eventos sin confirmar/);
+  assert.doesNotMatch(mapSource, /data-testid="crm-map-empty-state" className="[^"]*absolute inset-0/);
   assert.match(mapSource, /Resumen textual del mapa/);
   assert.match(mapSource, /El resumen textual conserva las zonas disponibles y explicita su nivel de precisi/);
 });

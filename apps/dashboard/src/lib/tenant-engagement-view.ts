@@ -14,6 +14,7 @@ export type TenantEngagementDomain = (typeof TENANT_ENGAGEMENT_DOMAINS)[number];
 export type TenantEngagementStage = (typeof TENANT_ENGAGEMENT_STAGES)[number];
 export type TenantEngagementSource = (typeof TENANT_ENGAGEMENT_SOURCES)[number];
 export type TenantEngagementRange = "24h" | "7d" | "30d";
+export type TenantEngagementConfirmation = "source_confirmed" | "client_declaration" | "unverified_confirmation";
 
 export type TenantEngagementActivity = {
   id: string;
@@ -54,6 +55,7 @@ export type TenantEngagementView = {
     byDomain: Record<TenantEngagementDomain, number>;
     byStage: Record<TenantEngagementStage, number>;
     bySource: Record<TenantEngagementSource, number>;
+    confirmations: Record<TenantEngagementConfirmation, number>;
     contactable: number;
   };
   boundaries: {
@@ -101,6 +103,30 @@ function nonNegativeInteger(value: unknown) {
 
 function emptyCount<T extends readonly string[]>(keys: T) {
   return Object.fromEntries(keys.map((key) => [key, 0])) as Record<T[number], number>;
+}
+
+// Exact provenance tuples emitted by /admin/engagement. Unknown or mismatched
+// evidence never becomes a system outcome merely because its stage is CONFIRMED.
+const CONFIRMED_SOURCE_CONTRACTS = [
+  ["canonical_lifecycle_event", "events", "server_confirmed_warranty_registration"],
+  ["support_ticket", "tickets", "durable_ticket_created"],
+  ["ownership_registry", "consumer_product_ownerships", "durable_claimed_ownership_record"],
+  ["loyalty_registry", "loyalty_members", "durable_loyalty_membership"],
+] as const;
+
+export function classifyEngagementConfirmation(
+  activity: Pick<TenantEngagementActivity, "stage" | "provenance">,
+): TenantEngagementConfirmation | null {
+  if (activity.stage !== "CONFIRMED") return null;
+  const { sourceKind, recordType, recordId, evidence } = activity.provenance;
+  if (!recordId) return "unverified_confirmation";
+  if (sourceKind === "public_experience_event"
+    && recordType === "sdk_external_events"
+    && evidence === "client_reported_action") return "client_declaration";
+  return CONFIRMED_SOURCE_CONTRACTS.some(([kind, record, proof]) =>
+    sourceKind === kind && recordType === record && evidence === proof)
+    ? "source_confirmed"
+    : "unverified_confirmation";
 }
 
 function normalizeActivity(value: unknown): TenantEngagementActivity | null {
@@ -202,11 +228,14 @@ export function parseTenantEngagementPayload(
   const byDomain = emptyCount(TENANT_ENGAGEMENT_DOMAINS);
   const byStage = emptyCount(TENANT_ENGAGEMENT_STAGES);
   const bySource = emptyCount(TENANT_ENGAGEMENT_SOURCES);
+  const confirmations = emptyCount(["source_confirmed", "client_declaration", "unverified_confirmation"] as const);
   let contactable = 0;
   for (const activity of activities) {
     byDomain[activity.domain] += 1;
     byStage[activity.stage] += 1;
     bySource[activity.source] += 1;
+    const confirmation = classifyEngagementConfirmation(activity);
+    if (confirmation) confirmations[confirmation] += 1;
     if (activity.contactable) contactable += 1;
   }
 
@@ -219,7 +248,7 @@ export function parseTenantEngagementPayload(
     returned,
     truncated: totals.truncated === true,
     activities,
-    counts: { byDomain, byStage, bySource, contactable },
+    counts: { byDomain, byStage, bySource, confirmations, contactable },
     boundaries: {
       actor: optionalText(boundaries?.actor, 420),
       source: optionalText(boundaries?.source, 420),
@@ -235,7 +264,7 @@ export function readableEngagementEvent(value: unknown) {
     TECHNICAL_SHEET_VIEWED: "Ficha técnica consultada",
     SAFETY_SHEET_VIEWED: "Información de seguridad consultada",
     PPE_CONTENT_VIEWED: "Protección recomendada consultada",
-    STEWARDSHIP_CONFIRMED: "Uso responsable confirmado",
+    STEWARDSHIP_CONFIRMED: "Lectura declarada por el usuario",
     CROPWISE_CTA_CLICKED: "Herramienta agronómica iniciada",
     ADVISOR_CONTACT_REQUESTED: "Contacto con asesor solicitado",
     LOYALTY_OFFER_VIEWED: "Beneficio consultado",

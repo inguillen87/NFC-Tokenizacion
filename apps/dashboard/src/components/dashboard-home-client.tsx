@@ -75,9 +75,7 @@ interface DashboardHomeClientProps {
 
 function displayBatchId(value: unknown) {
   const bid = String(value || "");
-  if (!bid) return "BID pendiente";
-  if (bid.startsWith("DEMO-")) return bid.replace(/^DEMO-/, "BALMEC-");
-  return bid;
+  return bid || "BID pendiente";
 }
 
 export default function DashboardHomeClient({

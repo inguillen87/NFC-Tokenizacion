@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  classifyEngagementConfirmation,
   parseTenantEngagementPayload,
   readableEngagementEvent,
 } from "../src/lib/tenant-engagement-view.ts";
 import { requiredPermissionForAdminResource } from "../src/lib/permission-policy.ts";
 
+// Synthetic API fixtures only: these records do not attest tenant activity.
 function activity(overrides = {}) {
   return {
     id: "public-experience:1",
@@ -83,6 +85,12 @@ test("normalizes tenant-scoped activity and derives truthful visible counts", ()
       stage: "CONFIRMED",
       dataMode: "imported",
       sourceEventType: "WARRANTY_REGISTERED",
+      provenance: {
+        ...activity().provenance,
+        sourceKind: "canonical_lifecycle_event",
+        recordType: "events",
+        evidence: "server_confirmed_warranty_registration",
+      },
       actor: {
         state: "contactable_consumer",
         consumerId: "consumer-secret-reference",
@@ -97,6 +105,7 @@ test("normalizes tenant-scoped activity and derives truthful visible counts", ()
   assert.equal(parsed.counts.byDomain.content, 1);
   assert.equal(parsed.counts.byDomain.warranty, 1);
   assert.equal(parsed.counts.byStage.CONFIRMED, 1);
+  assert.deepEqual(parsed.counts.confirmations, { source_confirmed: 1, client_declaration: 0, unverified_confirmation: 0 });
   assert.equal(parsed.counts.bySource.real, 1);
   assert.equal(parsed.counts.bySource.imported, 1);
   assert.equal(parsed.counts.contactable, 1);
@@ -148,8 +157,73 @@ test("fails closed on cross-tenant, unknown-source or identity-confused payloads
 });
 
 test("turns known event codes into client-readable activity labels", () => {
+  assert.equal(readableEngagementEvent("STEWARDSHIP_CONFIRMED"), "Lectura declarada por el usuario");
   assert.equal(readableEngagementEvent("LOYALTY_JOINED"), "Adhesión a fidelización confirmada");
   assert.equal(readableEngagementEvent("CUSTOM_RECORDED_ACTION"), "Custom Recorded Action");
+});
+
+test("client confirmations remain declarations and never inflate system results", () => {
+  const parsed = parseTenantEngagementPayload(payload([
+    activity({ sourceEventType: "STEWARDSHIP_CONFIRMED", stage: "CONFIRMED" }),
+    activity({ id: "legacy-client:2", sourceEventType: "LOYALTY_JOINED", stage: "CONFIRMED", domain: "loyalty" }),
+  ]), "demobodega");
+  assert.ok(parsed);
+  assert.deepEqual(parsed.counts.confirmations, { source_confirmed: 0, client_declaration: 2, unverified_confirmation: 0 });
+  assert.equal(parsed.counts.byStage.CONFIRMED, 2, "wire stages are preserved, not renamed");
+  assert.ok(parsed.activities.every((item) => classifyEngagementConfirmation(item) === "client_declaration"));
+});
+
+test("only exact authoritative provenance tuples contribute to system results", () => {
+  const contracts = [
+    ["warranty", "WARRANTY_REGISTERED", "canonical_lifecycle_event", "events", "server_confirmed_warranty_registration"],
+    ["support", "TICKET_CREATED", "support_ticket", "tickets", "durable_ticket_created"],
+    ["ownership", "OWNERSHIP_ACTIVATED", "ownership_registry", "consumer_product_ownerships", "durable_claimed_ownership_record"],
+    ["loyalty", "LOYALTY_JOINED", "loyalty_registry", "loyalty_members", "durable_loyalty_membership"],
+  ];
+  const items = contracts.map(([domain, sourceEventType, sourceKind, recordType, evidence], index) => activity({
+    id: `system-fixture:${index}`,
+    domain,
+    sourceEventType,
+    stage: "CONFIRMED",
+    provenance: { ...activity().provenance, sourceKind, recordType, evidence },
+  }));
+  const parsed = parseTenantEngagementPayload(payload(items), "demobodega");
+  assert.ok(parsed);
+  assert.equal(parsed.counts.confirmations.source_confirmed, 4);
+  assert.ok(parsed.activities.every((item) => classifyEngagementConfirmation(item) === "source_confirmed"));
+});
+
+test("unknown or contradictory confirmation provenance stays visible but fails closed for results", () => {
+  const base = activity().provenance;
+  const uncertain = [
+    { ...base, sourceKind: "new_source", recordType: "new_records", evidence: "new_confirmation" },
+    { ...base, sourceKind: "support_ticket", recordType: "tickets", evidence: "client_reported_action" },
+    { ...base, evidence: "durable_ticket_created" },
+    { ...base, sourceKind: "support_ticket", recordType: "tickets", evidence: "durable_ticket_created", recordId: "" },
+    { ...base, sourceKind: "support_ticket", recordType: "tickets", evidence: "DURABLE_TICKET_CREATED" },
+  ].map((provenance, index) => activity({
+    id: `unknown-fixture:${index}`,
+    stage: "CONFIRMED",
+    sourceEventType: "TICKET_CREATED",
+    dataMode: "unknown",
+    provenance,
+  }));
+  const parsed = parseTenantEngagementPayload(payload(uncertain), "demobodega");
+  assert.ok(parsed);
+  assert.equal(parsed.activities.length, uncertain.length);
+  assert.deepEqual(parsed.counts.confirmations, { source_confirmed: 0, client_declaration: 0, unverified_confirmation: uncertain.length });
+  assert.equal(Object.values(parsed.counts.confirmations).reduce((sum, value) => sum + value, 0), parsed.counts.byStage.CONFIRMED);
+});
+
+test("viewed and started stages do not become confirmations because their source is authoritative", () => {
+  const parsed = parseTenantEngagementPayload(payload([activity({
+    stage: "STARTED",
+    sourceEventType: "WARRANTY_REVIEW_REQUESTED",
+    provenance: { ...activity().provenance, sourceKind: "canonical_lifecycle_event", recordType: "events", evidence: "server_confirmed_warranty_registration" },
+  }), activity()]), "demobodega");
+  assert.ok(parsed);
+  assert.deepEqual(parsed.counts.confirmations, { source_confirmed: 0, client_declaration: 0, unverified_confirmation: 0 });
+  assert.ok(parsed.activities.every((item) => classifyEngagementConfirmation(item) === null));
 });
 
 test("CRM overview renders an interactive, source-separated engagement surface", async () => {

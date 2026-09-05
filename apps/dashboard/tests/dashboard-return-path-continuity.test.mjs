@@ -15,6 +15,10 @@ test("dashboard return paths stay internal and cannot loop through auth surfaces
   assert.equal(normalizeDashboardReturnPath("/safe/../login?next=/events"), "/");
   assert.equal(normalizeDashboardReturnPath("/safe/%2e%2e/logout"), "/");
   assert.equal(normalizeDashboardReturnPath("/safe/%2E%2E/api/session/demo?role=tenant-admin"), "/");
+  assert.equal(normalizeDashboardReturnPath("/%61pi/session/demo"), "/");
+  assert.equal(normalizeDashboardReturnPath("/%61uth/clerk/super-admin"), "/");
+  assert.equal(normalizeDashboardReturnPath("/%6cogin"), "/");
+  assert.equal(normalizeDashboardReturnPath("/%73ign-in"), "/");
   assert.equal(
     dashboardAuthPath("/login", "/events?range=24h", { auth_error: "session_expired" }),
     "/login?auth_error=session_expired&next=%2Fevents%3Frange%3D24h",
@@ -31,6 +35,10 @@ test("dashboard return paths are canonical before auth and API denylist checks",
     "/reports/../auth/clerk/super-admin",
     "/reports/%2e%2e/api/session/demo?role=tenant-admin",
     "/reports/%2e%2e//evil.example/steal",
+    "/%2561pi/session/demo",
+    "/%2561uth/clerk/super-admin",
+    "/%256cogin",
+    "/%2573ign-in",
   ]) {
     assert.equal(normalizeDashboardReturnPath(unsafe), "/", unsafe);
   }
@@ -60,7 +68,7 @@ test("guard, heartbeat, recovery and login preserve one sanitized return path", 
   assert.match(loginPage, /normalizeDashboardReturnPath\(firstParam\(params\.next\)\)/);
   assert.match(loginPage, /if \(session\) redirect\(nextPath\)/);
   assert.match(loginPanel, /window\.location\.assign\(safeNextPath\)/);
-  assert.match(demoRoute, /new URL\(nextPath, url\.origin\)/);
+  assert.match(demoRoute, /new URL\(demoReturnPath\(role, nextPath\), url\.origin\)/);
 });
 
 test("advanced dashboard access choices use progressive disclosure", async () => {

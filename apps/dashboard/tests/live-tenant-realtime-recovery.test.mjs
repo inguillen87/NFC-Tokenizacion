@@ -45,6 +45,6 @@ test("demo access is unmistakably isolated from a real tenant session", () => {
 test("fallback streams rotate before the platform timeout and the map expression uses one zoom operator", () => {
   assert.match(fallbackStream, /lifetime = setTimeout\(close, 55_000\)/);
   assert.match(fallbackStream, /enqueue\("retry: 3000/);
-  const radiusBlock = map.match(/id: "tap-nearby-radius"[\s\S]*?"circle-radius": \[([\s\S]*?)\n\s*\],\n\s*"circle-color"/u)?.[1] || "";
+  const radiusBlock = map.match(/id: "tap-nearby-radius"[\s\S]*?"circle-radius": \[([\s\S]*?)\r?\n\s*\],\r?\n\s*"circle-color"/u)?.[1] || "";
   assert.equal((radiusBlock.match(/"zoom"/g) || []).length, 1);
 });

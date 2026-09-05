@@ -18,6 +18,7 @@ type Props = {
   profiles: PublicAccessProfile[];
   bodegaDemoAllowed: boolean;
   clerkEnabled?: boolean;
+  clerkRecoveryRequired?: boolean;
   authNotice?: string;
   nextPath?: string;
 };
@@ -32,6 +33,7 @@ export function LoginFormPanel({
   profiles,
   bodegaDemoAllowed,
   clerkEnabled,
+  clerkRecoveryRequired = false,
   authNotice,
   nextPath = "/",
 }: Props) {
@@ -191,16 +193,17 @@ export function LoginFormPanel({
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
             {bodegaDemoAllowed ? (
-              <Link
-                href={`/api/session/demo?role=tenant-admin&next=${encodeURIComponent(safeNextPath)}`}
-                prefetch={false}
-                data-testid="login-bodega-demo-button"
-                title="Abrir la simulación de Bodega Balmec"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
-              >
-                <span>Abrir demo simulada</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <form action={`/api/session/demo?role=tenant-admin&next=${encodeURIComponent(safeNextPath)}`} method="post" className="w-full">
+                <button
+                  type="submit"
+                  data-testid="login-bodega-demo-button"
+                  title="Abrir la simulación de Bodega Balmec"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
+                >
+                  <span>Abrir demo simulada</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </form>
             ) : (
               <div className="rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-3 text-sm text-amber-100">
                 Demo Bodega Balmec deshabilitada en este entorno.
@@ -239,7 +242,11 @@ export function LoginFormPanel({
           ) : null}
           {clerkEnabled ? (
             <>
-              <ClerkGoogleSuperAdminButton label="Continuar con Google allowlisted" nextPath={safeNextPath} />
+              <ClerkGoogleSuperAdminButton
+                label={clerkRecoveryRequired ? "Reiniciar sesión Google" : "Continuar con Google allowlisted"}
+                nextPath={safeNextPath}
+                resetSessionOnStart={clerkRecoveryRequired}
+              />
               <Link
                 href={`/sign-in?next=${encodeURIComponent(safeNextPath)}`}
                 title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."

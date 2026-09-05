@@ -30,10 +30,13 @@ import {
   resolveDashboardTenantScope,
 } from "../../../../lib/dashboard-tenant-scope-policy";
 import { dashboardRoleToScope } from "../../../../lib/enterprise-runtime-rbac";
+import { demoConsumerNetworkResource } from "../../../../lib/demo-consumer-network";
 import {
   aggregateDemoGeoPoints,
   demoRuntimeSummary,
+  filterDashboardDemoEvents,
   getDashboardDemoEvents,
+  getDashboardDemoStreamEvents,
   mergeDemoGeoPoints,
   mergeDemoTrend,
   toDemoAdminEventRow,
@@ -199,6 +202,16 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   const tenantFilter = (url.searchParams.get("tenant") || "").trim().toLowerCase();
   const demoTenant = resolveDemoTenant(tenantFilter);
   const demoBatch = demoBatchFor(demoTenant.slug);
+  const consumerNetwork = demoConsumerNetworkResource(method, normalized, demoTenant.slug);
+  if (consumerNetwork) {
+    return NextResponse.json(consumerNetwork.body, {
+      status: consumerNetwork.status,
+      headers: {
+        "cache-control": "private, no-store, max-age=0",
+        ...(consumerNetwork.status === 405 ? { Allow: "GET" } : {}),
+      },
+    });
+  }
   const demoProofHashes = [
     `sha256:${"1".repeat(64)}`,
     `sha256:${"2".repeat(64)}`,
@@ -308,22 +321,50 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     ];
     return NextResponse.json(rows);
   }
-  if (method === "GET" && normalized === "events") {
-    const requestedRange = (url.searchParams.get("range") || "24h").trim().toLowerCase();
-    const range = ["5m", "1h", "24h", "7d", "30d"].includes(requestedRange) ? requestedRange : "24h";
-    const requestedLimit = Number.parseInt(url.searchParams.get("limit") || "50", 10);
-    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 200) : 50;
-    const runtimeRows = getDashboardDemoEvents(80).map(toDemoAdminEventRow);
-    const rows = [
-      { id: "evt-demo-001", event_type: "DEMO_TAP_SIMULATED", source: "demo", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date().toISOString(), city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
-      { id: "evt-demo-002", event_type: "DEMO_TAP_SIMULATED", source: "demo", result: "VALID", reason: "sun_ok", uid_hex: "04B1C2D3E4", created_at: new Date().toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
-      { id: "evt-demo-003", event_type: "DEMO_TAP_SIMULATED", source: "demo", result: "INVALID", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date().toISOString(), city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505, bid: "EVENT-2026-01", tenant_slug: "demoevents" },
-    ];
-    const allRows = [...runtimeRows, ...rows];
-    const filtered = tenantFilter ? allRows.filter((row) => row.tenant_slug === tenantFilter) : allRows;
+  if (method === "GET" && normalized === "incidents") {
+    const demoIncidentBaseTime = Date.now();
+    const incidents = demoTenant.slug === "demobodega"
+      ? [{
+        id: "demo-incident-replay-001",
+        tenantId: "demo-tenant-001",
+        tenantSlug: demoTenant.slug,
+        eventId: "demo-baseline-replay-001",
+        ticketId: "DEMO-RISK-001",
+        ticketStatus: "open",
+        status: "investigating",
+        severity: "high",
+        title: "Repetición de lectura para revisar",
+        summary: "Caso ilustrativo: el mismo identificador fue leído nuevamente y el equipo puede revisar el contexto antes de actuar.",
+        openedAt: new Date(demoIncidentBaseTime - 18 * 60_000).toISOString(),
+        resolvedAt: null,
+        createdAt: new Date(demoIncidentBaseTime - 18 * 60_000).toISOString(),
+        updatedAt: new Date(demoIncidentBaseTime - 8 * 60_000).toISOString(),
+        version: 1,
+        evidence: {
+          result: "REPLAY_SUSPECT",
+          verdict: "replay_suspect",
+          reason: "replay_detected",
+          riskLevel: "high",
+          uidMasked: "04D3****90",
+          bid: "BALMEC-DEMO-2026-02",
+          occurredAt: new Date(demoIncidentBaseTime - 19 * 60_000).toISOString(),
+          city: "Buenos Aires",
+          country: "AR",
+          source: "demo",
+        },
+      }]
+      : [];
     return NextResponse.json({
-      scope: { tenant: tenantFilter || "global", source: "demo", range, limit },
-      rows: filtered.slice(0, limit),
+      ok: true,
+      scope: { tenant: demoTenant.slug, source: "demo" },
+      incidents,
+    });
+  }
+  if (method === "GET" && normalized === "events") {
+    const filtered = filterDashboardDemoEvents(getDashboardDemoStreamEvents(160), url.searchParams);
+    return NextResponse.json({
+      scope: filtered.scope,
+      rows: filtered.events.map(toDemoAdminEventRow),
       source: "demo",
       availability: "ready",
     });

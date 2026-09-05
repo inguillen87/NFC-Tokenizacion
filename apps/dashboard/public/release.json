@@ -1,0 +1,10 @@
+{
+  "release": "2026.09.04-dashboard-demo.2",
+  "scope": "demo-only",
+  "realTapCertification": "not-included",
+  "baseCommit": "aa1ae87b5cc635d6814b86a4b4cbd8e6ccfaee0b",
+  "source": "isolated-reviewed-subset",
+  "apiChangesIncluded": false,
+  "databaseMigrationsIncluded": false,
+  "productionDemoAccess": "requires-explicit-environment-opt-in"
+}

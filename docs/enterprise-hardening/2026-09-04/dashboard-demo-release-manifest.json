@@ -1,0 +1,523 @@
+{
+  "schemaVersion": "nexid-release-manifest/v1",
+  "release": "2026.09.04-dashboard-demo.2",
+  "scope": "demo-only",
+  "createdAt": "2026-09-04T23:33:26.884Z",
+  "baseCommit": "aa1ae87b5cc635d6814b86a4b4cbd8e6ccfaee0b",
+  "headSnapshot": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+  "realTapCertification": "not-included",
+  "apiChangesIncluded": false,
+  "databaseMigrationsIncluded": false,
+  "sourceDirectory": "C:/Users/guill/AppData/Local/Temp/nexid-dashboard-demo-20260904-9e0fc0c2c8ea40e7b08842835985fca9/source",
+  "baseArchive": {
+    "file": "base-aa1ae.tar",
+    "sha256": "107bca1caac9c80ace235ea02e9113312053c6661cbfffe99cad3dd559c2c8fe",
+    "bytes": 199874560,
+    "available": false,
+    "retention": "Regenerable archive removed by main after exporting; source and original archive hash retained."
+  },
+  "sourceTree": {
+    "algorithm": "sha256(sorted(path + NUL + sha256(file) + LF))",
+    "sha256": "062e3c99b1a414c48044e92fefb1442af98e7202f45817a15a05cfe15d8b9f99",
+    "fileCount": 2153,
+    "bytes": 197922526,
+    "hashList": "source-files.sha256",
+    "excluded": [
+      "node_modules (local dependency links only)",
+      ".next and other build outputs",
+      ".vercel (local deployment link; not application source)"
+    ],
+    "previousSha256": "6c1651cfd4a39bce309de0793682b26cc427a267af14051fad1a22ad4107c565"
+  },
+  "overlays": [
+    {
+      "path": "apps/dashboard/src/app/(app)/consumer-network/overview/page.tsx",
+      "origin": "working-tree",
+      "sourceSha256": "51875fe436476a5644fee2dca9053247c428a644addb84df4ca75ffc23762a92",
+      "normalizedSourceSha256": "da8e98d784164ddc1971009d1deba5301068b7c4aa22be0e21aaeb5e8a19a194",
+      "exportedSha256": "30a3a179a54b7481b65716899391a2476dadaafd653d248f19211fd901eed19d"
+    },
+    {
+      "path": "apps/dashboard/src/app/(app)/events/page.tsx",
+      "origin": "working-tree",
+      "sourceSha256": "8b5bbcc9d5f219994ca58e562bf49ea8f26cbef6e942b6e1d9125ec1b90afae3",
+      "normalizedSourceSha256": "19409b1d8c1d65cb6e873fbb151e8934400cbcb2dd0647cc6be2888f572fab3c",
+      "exportedSha256": "ad9f13d54a0bcecaaebfd6c860e223ecad76573a90a8868c47f252917c6e81d5"
+    },
+    {
+      "path": "apps/dashboard/src/app/api/admin/[...path]/route.ts",
+      "origin": "working-tree",
+      "sourceSha256": "69a110d954c701c5ccd9ea95ab658f409951ac24dc9a18fe5941a2d94390c8ce",
+      "normalizedSourceSha256": "3e575f3bd760b1ea4bfb9291017eff9c6a0459940ecb30bbf7139fb6361e1c09",
+      "exportedSha256": "aaf622a3d640b891a735b75153386ad752a449831fc32236e44134d355dd5ef6"
+    },
+    {
+      "path": "apps/dashboard/src/app/api/session/demo/route.ts",
+      "origin": "working-tree",
+      "sourceSha256": "a9373eb0afb1e431af6d6dc3c9425fbf15ce5579bfddf5f0bd9dad59c77c86e0",
+      "normalizedSourceSha256": "e22b1178d53e64145ec2a7e7b6f2051f615e500bc78caea8b51e1dceeb94a9e7",
+      "exportedSha256": "409c82ea2e2edc5f30a82437ea1ea5db83d350b26b62ddd38bf9cc3dfbbb74ed"
+    },
+    {
+      "path": "apps/dashboard/src/components/consumer-network-demo-summary.tsx",
+      "origin": "working-tree",
+      "sourceSha256": "9de08e00fd0fa1a5b139cff5775852bc6d76bc0c80968cc92f13ee8143eccfcd",
+      "normalizedSourceSha256": "9de08e00fd0fa1a5b139cff5775852bc6d76bc0c80968cc92f13ee8143eccfcd",
+      "exportedSha256": "9de08e00fd0fa1a5b139cff5775852bc6d76bc0c80968cc92f13ee8143eccfcd"
+    },
+    {
+      "path": "apps/dashboard/src/components/dashboard-home-client.tsx",
+      "origin": "working-tree",
+      "sourceSha256": "e774d0f255321554ca573e94c76806b0921fb11f6e09170428e7aa16f73eade1",
+      "normalizedSourceSha256": "d16874a63e5f1da4fb24b69ab38e0633e5175810113014bd713ca29709a591e2",
+      "exportedSha256": "6328758c347d21b0164bd3c0e5c9f2d63fad3495ae35d2fd15dc65c71a41c94e"
+    },
+    {
+      "path": "apps/dashboard/src/components/executive-realtime-crm.tsx",
+      "origin": "working-tree",
+      "sourceSha256": "14cc5a3dd342e1a8b05ef792a1c520f0d4bb4e573adce53887f6dd601a0dd43c",
+      "normalizedSourceSha256": "6c6839f0abcc65682b99b22fc00abc6d0f776dcd650a15bc172066f6e368dd26",
+      "exportedSha256": "c3520e0fe32fbdf0d4a7ad409a639df0dd6e1c28f79141f240bc62aeac9120fb"
+    },
+    {
+      "path": "apps/dashboard/src/components/realtime-maplibre-map.tsx",
+      "origin": "working-tree",
+      "sourceSha256": "63deb586025b4faae5e721c9a1e706865e7e27b74572c3795dc2051632f4ee8e",
+      "normalizedSourceSha256": "60e30e5196ceb3540a18b3ed4c851169aab27923f12da3b92f2e359696c77c6f",
+      "exportedSha256": "015020660d75581813a57ebf6e8ab040fd3dcad6c551ed00dd33a9115e44814d"
+    },
+    {
+      "path": "apps/dashboard/src/components/tenant-engagement-panel.tsx",
+      "origin": "working-tree",
+      "sourceSha256": "f4759097d581124f45ac2f69b7b605cc8409c3c6d238a7b6098eda0795543d1f",
+      "normalizedSourceSha256": "13ede797d98b0e5bc6b644d16e06b18fcc969a537d70b5e7ac2db4a284f10d42",
+      "exportedSha256": "fc7affdcfd755d76b2329d1e1ab8738f52a3f9a63124e31d4aafd6ad00a58e41"
+    },
+    {
+      "path": "apps/dashboard/src/lib/consumer-network-demo-timeline.ts",
+      "origin": "working-tree",
+      "sourceSha256": "d8a57c3d0cb77d4606c2ca4be92f019af6c79330a1890d7bdc0e4b46ff3b7355",
+      "normalizedSourceSha256": "d8a57c3d0cb77d4606c2ca4be92f019af6c79330a1890d7bdc0e4b46ff3b7355",
+      "exportedSha256": "d8a57c3d0cb77d4606c2ca4be92f019af6c79330a1890d7bdc0e4b46ff3b7355"
+    },
+    {
+      "path": "apps/dashboard/src/lib/dashboard-access-flags.ts",
+      "origin": "working-tree",
+      "sourceSha256": "12379856705a53557c7af51f7400c298bb32f6dabb15561f29f570fb4eb62db7",
+      "normalizedSourceSha256": "156d4f9d0606917af73d5daff0659ef5e433eacdc5daf5be281ea8e3cc92b4d7",
+      "exportedSha256": "e7b287841f1a869b98091e22fe8175c5c92f07f59157ac288018f9d907db7d1b"
+    },
+    {
+      "path": "apps/dashboard/src/lib/demo-consumer-network.ts",
+      "origin": "working-tree",
+      "sourceSha256": "56cc985701936453e6fe233efaa82bcc781d29dbfea5dfd815bdab36f13cd39c",
+      "normalizedSourceSha256": "56cc985701936453e6fe233efaa82bcc781d29dbfea5dfd815bdab36f13cd39c",
+      "exportedSha256": "56cc985701936453e6fe233efaa82bcc781d29dbfea5dfd815bdab36f13cd39c"
+    },
+    {
+      "path": "apps/dashboard/src/lib/demo-runtime-state.ts",
+      "origin": "working-tree",
+      "sourceSha256": "51e76321f6e6b718e0a4221d4e9822b82c66ec5c4c26e9448e2d0992dbf6e9dd",
+      "normalizedSourceSha256": "a738234e2f2fa8bb756b15fef59aa528a5916eb6516f0b4f601a10e9a6ba2eec",
+      "exportedSha256": "fe955ce7884de9694051af51bd1a4b0ee6ba6f062a16fd2e6c0accf7fb4f72d1"
+    },
+    {
+      "path": "apps/dashboard/src/lib/tenant-engagement-view.ts",
+      "origin": "working-tree",
+      "sourceSha256": "9658e0b8e1fe5c0cc3d1ef5cfa52d6e1f6cf87e19b19d6585f1df7cfbee172fa",
+      "normalizedSourceSha256": "36571de3cd0f2c95b74b926a7c863d2cd8a336c1b02bb2e0505c7dee24f7747d",
+      "exportedSha256": "db86aa12a74d3aba7d2dd5f8ef9be6b6b56aefa338a183d05364f8b2a8cc19d8"
+    },
+    {
+      "path": "apps/dashboard/tests/consumer-network-demo-timeline.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "d38df0d7030b6f13f85800aa8c0b10e625c573ccdc9bfb6b98a0d409217289c5",
+      "normalizedSourceSha256": "d38df0d7030b6f13f85800aa8c0b10e625c573ccdc9bfb6b98a0d409217289c5",
+      "exportedSha256": "d38df0d7030b6f13f85800aa8c0b10e625c573ccdc9bfb6b98a0d409217289c5"
+    },
+    {
+      "path": "apps/dashboard/tests/crm-control-action-integrity.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "b2d8596aad7d95191e5b670b59676348578fa1517fb0bbacf9b0960cfc88b40d",
+      "normalizedSourceSha256": "b2d8596aad7d95191e5b670b59676348578fa1517fb0bbacf9b0960cfc88b40d",
+      "exportedSha256": "b2d8596aad7d95191e5b670b59676348578fa1517fb0bbacf9b0960cfc88b40d"
+    },
+    {
+      "path": "apps/dashboard/tests/dashboard-responsive-crm-layout.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "50a31cd5107d8d558cdc3f238b95a253976fc333f3792aa207cd1b4235cf42e5",
+      "normalizedSourceSha256": "b000b3475b0dfb5d3ee36b6863b351442719aefebcc3defc2579337d1cdf857f",
+      "exportedSha256": "131b935f72a75a18d7ba087ccde2020fbbf2eea06e4efcbca5c9f409d360acf1"
+    },
+    {
+      "path": "apps/dashboard/tests/dashboard-return-path-continuity.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "73bf83d8ce7c5ba5029fb0a64971a0af1197b87f0d9e38d1c65ce2fd50032ef6",
+      "normalizedSourceSha256": "a08a5b4bd31929ae358e5659f09d80c5b313b20f903b9f99129f6f70a4b91b29",
+      "exportedSha256": "4c15893b64effaf53886528ece66e7e2bbf813918007258ec8622a0d2a7ccf37"
+    },
+    {
+      "path": "apps/dashboard/tests/demo-consumer-network.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "d8e83f7bedd05394510d8f7d377350511c2fcc86738c9c84dca5720f2911242e",
+      "normalizedSourceSha256": "d8e83f7bedd05394510d8f7d377350511c2fcc86738c9c84dca5720f2911242e",
+      "exportedSha256": "d8e83f7bedd05394510d8f7d377350511c2fcc86738c9c84dca5720f2911242e"
+    },
+    {
+      "path": "apps/dashboard/tests/demo-dashboard-operational-flow.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "6657d30bb13133ebd4533df7da4afa6d3d3ecf38585ddcbbe351c7b0f7303b32",
+      "normalizedSourceSha256": "6657d30bb13133ebd4533df7da4afa6d3d3ecf38585ddcbbe351c7b0f7303b32",
+      "exportedSha256": "6657d30bb13133ebd4533df7da4afa6d3d3ecf38585ddcbbe351c7b0f7303b32"
+    },
+    {
+      "path": "apps/dashboard/tests/demo-session-safety.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "0dae98268946672d4ddedc58dd99ec013fb9a329cf41835815e9d4d2b6765404",
+      "normalizedSourceSha256": "0dae98268946672d4ddedc58dd99ec013fb9a329cf41835815e9d4d2b6765404",
+      "exportedSha256": "0dae98268946672d4ddedc58dd99ec013fb9a329cf41835815e9d4d2b6765404"
+    },
+    {
+      "path": "apps/dashboard/tests/live-tenant-realtime-recovery.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "4ac0d7aaead7a4ea73802705e5995b8e950acfc2cc3c43ee2f45862bfc935955",
+      "normalizedSourceSha256": "de6a498bf290e6826c4b08dae235cb7bf56e2035872416df162c558c15048d47",
+      "exportedSha256": "139656be097e51656604d3f305bac67c806debd8f260e8728235e1856023913f"
+    },
+    {
+      "path": "apps/dashboard/tests/tenant-engagement-panel.test.mjs",
+      "origin": "working-tree",
+      "sourceSha256": "98fe3b6292ed1867717819acc7b80e75006f8840b8d8f2b23994000171884f72",
+      "normalizedSourceSha256": "780815b7b32a3039a8556709ae8014cb3d945eb58539ecae5755bdcbf1b88570",
+      "exportedSha256": "f0a4486433ae71eb63d3edd7b7b3f89a8edc644177585b2ffe81f4b09c171741"
+    },
+    {
+      "path": "apps/dashboard/src/app/api/admin/events/stream/route.ts",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "12c3d7e7465d31fcd28bee46f5569074f4dc72fe5f57838e1840a2dee21ab1c2",
+      "normalizedSourceSha256": "12c3d7e7465d31fcd28bee46f5569074f4dc72fe5f57838e1840a2dee21ab1c2",
+      "exportedSha256": "62a7b175a9712bd8e8ad030a0038e581fa5713656b8376e22ba1fc9a4d98e281"
+    },
+    {
+      "path": "apps/dashboard/src/app/globals.css",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "d96b2ce5909b98073dadf6d69fec0da400a576795eebed0eef079b78392190ec",
+      "normalizedSourceSha256": "d96b2ce5909b98073dadf6d69fec0da400a576795eebed0eef079b78392190ec",
+      "exportedSha256": "62ba8b6b23f03b434264897f79bf0e7288dbde4335bdf8bd4619410378fc4320"
+    },
+    {
+      "path": "apps/dashboard/src/lib/admin-proxy-policy.ts",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "5cee9e44cc445654256266fa6cc0784ce87955ba7dec8c6cd30839a628bece5f",
+      "normalizedSourceSha256": "5cee9e44cc445654256266fa6cc0784ce87955ba7dec8c6cd30839a628bece5f",
+      "exportedSha256": "72d360257ae5f8ba64e3a26320a120a6ac0546268d84d13e9df2373c277c470f"
+    },
+    {
+      "path": "apps/dashboard/src/lib/dashboard-return-path.ts",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "beb7fc1ddf5f03a5549e53d5afe64a3d7f9fbd8d08ebe60834948656589430c2",
+      "normalizedSourceSha256": "beb7fc1ddf5f03a5549e53d5afe64a3d7f9fbd8d08ebe60834948656589430c2",
+      "exportedSha256": "00e266d2ce8e5cee4e5412a697a92055e3904e94759bfaf88086e748f827c667"
+    },
+    {
+      "path": "apps/dashboard/src/components/login-form-panel.tsx",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "9fed69fb6f3cdf9ee2cc637970abc1988fdccde6fd38892cba0a429c3cc0da8b",
+      "normalizedSourceSha256": "9fed69fb6f3cdf9ee2cc637970abc1988fdccde6fd38892cba0a429c3cc0da8b",
+      "exportedSha256": "8b548638020b4c855901ed7eb4ef27ad9dc27bd12401526a2194439fd6bd5b59"
+    },
+    {
+      "path": "apps/dashboard/src/components/clerk-google-super-admin-button.tsx",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "a5785f006c13d200187bc7b87f13ce8a45dffd41fb00d9f063eb015612c75c88",
+      "normalizedSourceSha256": "a5785f006c13d200187bc7b87f13ce8a45dffd41fb00d9f063eb015612c75c88",
+      "exportedSha256": "9d589621623fe04e1307af0cdbe18a4b7c532c0ff4d62c9199bcc46f656f4b65"
+    },
+    {
+      "path": "apps/dashboard/src/app/sign-in/[[...sign-in]]/page.tsx",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "0f933da450a21ba469bf49867910f8e74959e05ffef8d7eb28b56bc8dfa30dce",
+      "normalizedSourceSha256": "0f933da450a21ba469bf49867910f8e74959e05ffef8d7eb28b56bc8dfa30dce",
+      "exportedSha256": "c638568148892e82d8e42dcc09672695c96b33ceb09dea08276d443b3c211c90"
+    },
+    {
+      "path": "apps/dashboard/src/app/login/page.tsx",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "e488cdbd1301c4b353aefad55d670524b6d815ce52b7fd1cb03d7245641c6a87",
+      "normalizedSourceSha256": "e488cdbd1301c4b353aefad55d670524b6d815ce52b7fd1cb03d7245641c6a87",
+      "exportedSha256": "4093244b0403a97327035bcce6adc47124d828eccb76da3fefd0143c77bac3bb"
+    },
+    {
+      "path": "apps/dashboard/src/app/auth/clerk/super-admin/route.ts",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "864c6ea9e5431ccf5cbecc1fe6042f039d46b7c28d207208b404764cbbf02421",
+      "normalizedSourceSha256": "864c6ea9e5431ccf5cbecc1fe6042f039d46b7c28d207208b404764cbbf02421",
+      "exportedSha256": "a98a23dbad0cadb33f570b11df9da9563bc859a1fc2f379ed519327b4b785a65"
+    },
+    {
+      "path": "apps/dashboard/tests/dashboard-auth-policy.test.mjs",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "076df86732eb2952d090834da9f831348a1ccad894678793add4709f2a29ef67",
+      "normalizedSourceSha256": "076df86732eb2952d090834da9f831348a1ccad894678793add4709f2a29ef67",
+      "exportedSha256": "2e4f8de58001738a1aabccea7cf2b0377712d5270eded38910a485b1797cf41c"
+    },
+    {
+      "path": "apps/dashboard/tests/dashboard-theme-coherence.test.mjs",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "fb9f8133826de4d4386d3db80b36affeb5e4e772c63fbce6a2d037249a6c9bb0",
+      "normalizedSourceSha256": "fb9f8133826de4d4386d3db80b36affeb5e4e772c63fbce6a2d037249a6c9bb0",
+      "exportedSha256": "91bd9aa365e8d67297ddd58626ae31a9568d7e327b25f7de2d5d3acb0841c2ac"
+    },
+    {
+      "path": "apps/dashboard/tests/dashboard-session-navigation-hardening.test.mjs",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "f029cd63e31fa7615990a6ff5a6b1ff63c9a61cf79a5455da210b62fdc6c28d1",
+      "normalizedSourceSha256": "f029cd63e31fa7615990a6ff5a6b1ff63c9a61cf79a5455da210b62fdc6c28d1",
+      "exportedSha256": "99dfb39576e49db2aa6ce234aa50de0f58feeba4e61c92934ecfd19b3242fd84"
+    },
+    {
+      "path": "apps/dashboard/tests/dashboard-premium-navigation-map-controls.test.mjs",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "199fbe3dee82c37ad4bc3fdd0a26ed6c712af3aff5b7ec3fcc315be263536a22",
+      "normalizedSourceSha256": "199fbe3dee82c37ad4bc3fdd0a26ed6c712af3aff5b7ec3fcc315be263536a22",
+      "exportedSha256": "1ef44d32e9c586ecf4e40bc3cb6dd759dd359ceca54a58925fb97457e90f6fcb"
+    },
+    {
+      "path": "apps/dashboard/tests/enterprise-ops-ux.test.mjs",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "5288400fefbaac18e367ce7c347249f1ba3be1524512f4d0f7f12844b480708f",
+      "normalizedSourceSha256": "5288400fefbaac18e367ce7c347249f1ba3be1524512f4d0f7f12844b480708f",
+      "exportedSha256": "ebc3b35a00299bc2f77fac11672312d8583078d35135d10744c54dac1cb16a3f"
+    },
+    {
+      "path": "apps/dashboard/tests/executive-realtime-tenant-scope.test.mjs",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "d93923b7a4e3e6ae490217e0c82d35cfc30fe4cb684b5375c823791459995e06",
+      "normalizedSourceSha256": "d93923b7a4e3e6ae490217e0c82d35cfc30fe4cb684b5375c823791459995e06",
+      "exportedSha256": "45f2ddc11cd690c63c9fc39874d42363bef952a765768a8cac40918e88578ab7"
+    },
+    {
+      "path": "apps/dashboard/tests/geographic-truth.test.mjs",
+      "origin": "2fc139c5b1e533f997d6181bd6c16feec0f5d833",
+      "sourceSha256": "0c086b5e2d8268a83ccbd789211e6b272190f2c1ff245530adc995bd2c50e2db",
+      "normalizedSourceSha256": "0c086b5e2d8268a83ccbd789211e6b272190f2c1ff245530adc995bd2c50e2db",
+      "exportedSha256": "2abe966e29faa3a0d17ba6dbbe1b30ce71d96881f36ddc278259901206c7daca"
+    },
+    {
+      "path": "apps/dashboard/src/components/data-table.tsx",
+      "origin": "working-tree-responsive-toolbar-followup",
+      "sourceSha256": "e306a51af9b96bd70c601e472b22665e0808ff771bd7d3e2fd3744991993f17a",
+      "exportedSha256": "e306a51af9b96bd70c601e472b22665e0808ff771bd7d3e2fd3744991993f17a"
+    },
+    {
+      "path": "apps/dashboard/tests/data-table-responsive-toolbar.test.mjs",
+      "origin": "working-tree-responsive-toolbar-followup",
+      "sourceSha256": "d70564424d5eae4577f8911f537b1113c92b90c72dd4de44f08d499e9e6d530f",
+      "exportedSha256": "d70564424d5eae4577f8911f537b1113c92b90c72dd4de44f08d499e9e6d530f"
+    }
+  ],
+  "generated": [
+    {
+      "path": "apps/dashboard/public/release.json",
+      "bytes": 349,
+      "sha256": "03a19e75331fb5d96b61bf9a0f4f394d9cd035b23f693b5a00f78672140dfffb"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "apps/dashboard/src/app/(app)/page.tsx",
+      "unchangedAfterLineEndingNormalization": true,
+      "rawIdentical": false,
+      "gitBlobBytes": 22543,
+      "archiveBytes": 22991,
+      "sha256": "a120467c12e904b4e882b7666206b6d34d1419b815054d10d0dcdc7cb49cac89",
+      "normalizedSha256": "93b289e9da5cd530a0b46bc6ecd1b845ac30c7032640e30bb4e6906d2558ec04"
+    },
+    {
+      "path": "apps/dashboard/src/lib/session-login-route.ts",
+      "unchangedAfterLineEndingNormalization": true,
+      "rawIdentical": false,
+      "gitBlobBytes": 11960,
+      "archiveBytes": 12244,
+      "sha256": "89768553f101d1929dd0a00b6459f00fa0541013ddd5dfd8f7c9777357ed6acb",
+      "normalizedSha256": "e249a2ab6dfd78d6088d922266e89b98a7e8255648c88177a3d6916e96d6ddb7"
+    },
+    {
+      "path": "apps/dashboard/src/lib/session.ts",
+      "unchangedAfterLineEndingNormalization": true,
+      "rawIdentical": false,
+      "gitBlobBytes": 7308,
+      "archiveBytes": 7510,
+      "sha256": "e9b1cbb8f8cf21bfb9bb398029a9a05af537fd0a53295bdd6ef610b071ae4246",
+      "normalizedSha256": "30196a945638ce8a868b3fe17b0eec0862bb00718fced1d1c254e66f3ebbf4a8"
+    },
+    {
+      "path": "apps/api/src/app/auth/login/route.ts",
+      "unchangedAfterLineEndingNormalization": true,
+      "rawIdentical": false,
+      "gitBlobBytes": 10677,
+      "archiveBytes": 10916,
+      "sha256": "7aea731a3c9bc6c33611710425ab17030f543d83b1a03971c6d592f53b17aaae",
+      "normalizedSha256": "36af9d3698684ada7e0c9bf5a5975eaf27fd39bb7f183c22de9d6af1048b909d"
+    },
+    {
+      "path": "apps/api/src/app/admin/tenants/route.ts",
+      "unchangedAfterLineEndingNormalization": true,
+      "rawIdentical": false,
+      "gitBlobBytes": 13100,
+      "archiveBytes": 13358,
+      "sha256": "85e1f7f9b8bc07fef5fc060d920a07bfbbfd700d9b77122cdf375bb57fc52828",
+      "normalizedSha256": "fe742d4e4d1c49a0e1299288308be6f1a4753aeebade376c1ad75d6b6d7c4498"
+    },
+    {
+      "path": "packages/core/src/event-contract.ts",
+      "unchangedAfterLineEndingNormalization": true,
+      "rawIdentical": false,
+      "gitBlobBytes": 25523,
+      "archiveBytes": 26154,
+      "sha256": "0a1cfda05e352984830413ce030684c8a51040b1abd7444bd1e3c23aed25ba9c",
+      "normalizedSha256": "484aed1df28375b7e33aa32babd878fef6ad3412eb3b8a41db293a95dab7c1b5"
+    }
+  ],
+  "validation": {
+    "focusedTests": {
+      "status": "passed",
+      "passed": 95,
+      "failed": 0,
+      "testFiles": [
+        "apps/dashboard/tests/consumer-network-demo-timeline.test.mjs",
+        "apps/dashboard/tests/crm-control-action-integrity.test.mjs",
+        "apps/dashboard/tests/dashboard-responsive-crm-layout.test.mjs",
+        "apps/dashboard/tests/dashboard-return-path-continuity.test.mjs",
+        "apps/dashboard/tests/demo-consumer-network.test.mjs",
+        "apps/dashboard/tests/demo-dashboard-operational-flow.test.mjs",
+        "apps/dashboard/tests/demo-session-safety.test.mjs",
+        "apps/dashboard/tests/live-tenant-realtime-recovery.test.mjs",
+        "apps/dashboard/tests/tenant-engagement-panel.test.mjs",
+        "apps/dashboard/tests/dashboard-auth-policy.test.mjs",
+        "apps/dashboard/tests/dashboard-theme-coherence.test.mjs",
+        "apps/dashboard/tests/dashboard-session-navigation-hardening.test.mjs",
+        "apps/dashboard/tests/dashboard-premium-navigation-map-controls.test.mjs",
+        "apps/dashboard/tests/enterprise-ops-ux.test.mjs",
+        "apps/dashboard/tests/executive-realtime-tenant-scope.test.mjs",
+        "apps/dashboard/tests/geographic-truth.test.mjs"
+      ]
+    },
+    "typecheck": {
+      "status": "passed",
+      "exitCode": 0,
+      "command": "node ../../node_modules/typescript/bin/tsc --noEmit --incremental false"
+    },
+    "dependencyResolution": {
+      "installed": false,
+      "method": "local directory links to existing dependency packages; @product/* resolve to candidate source",
+      "excludedWorkspace": "realtime-dispatcher intentionally absent from deployed base and not linked",
+      "nodeVersion": "24.15.0"
+    },
+    "browserQa": {
+      "release": "2026.09.04-dashboard-demo.1",
+      "status": "functional-flow-passed-with-mobile-toolbar-defect",
+      "widths": [
+        1440,
+        390
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "apiHttpErrors": 0,
+      "evidenceDirectory": "C:/Users/guill/AppData/Local/Temp/nexid-dashboard-production-qa-53d4",
+      "limits": "Demo only. Mobile DataTable toolbar overflow confirmed; corrected candidate requires postdeploy browser QA."
+    },
+    "browserQaToolbarFollowup": {
+      "release": "2026.09.04-dashboard-demo.2",
+      "status": "passed-on-public-production",
+      "widths": [390, 1440],
+      "controlsVisibleAndKeyboardAccessible": true,
+      "refreshHttpStatus": 200,
+      "csvAndExcelDownloaded": true,
+      "pdfLimit": "Visible and keyboard focusable; native print dialog not automated",
+      "tableScrollIsLocal": true,
+      "hiddenDocumentOverflow": false,
+      "javascriptErrors": 0,
+      "evidence": "C:/Users/guill/AppData/Local/Temp/nexid-navbar-qa-53d4/dashboard-2026.09.04-dashboard-demo.2-390-events-toolbar.png",
+      "physicalTapCertification": "not-included"
+    },
+    "build": {
+      "status": "READY",
+      "release": "2026.09.04-dashboard-demo.2",
+      "durationSeconds": 61.7,
+      "verifiedBy": "main Vercel build and deployment inspection"
+    },
+    "deployment": {
+      "status": "production",
+      "release": "2026.09.04-dashboard-demo.2",
+      "deploymentId": "dpl_FksoCWUk8bNnz9GraGwPCESWotCN",
+      "url": "https://app.nexid.lat/login",
+      "immutableUrl": "https://nexid-dashboard-gjl4z0mqn-marcelos-projects-c26aa499.vercel.app",
+      "markerConfirmedBy": "main public release.json",
+      "sourceMetadata": "aa1ae87b +41 selected overlays +release marker; toolbar commit f8069c94 is not the exact candidate commit",
+      "demoFlag": "DASHBOARD_BODEGA_DEMO_ACCESS=true retained in release build/runtime; not a project-global change",
+      "previousDeploymentId": "dpl_4Su4caMBmDb7zGMUaEbP8b27y5sH"
+    },
+    "fullSuite": {
+      "status": "passed",
+      "passed": 517,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "command": "node --import tsx --test tests/*.test.mjs",
+      "verifiedBy": "main after responsive toolbar followup"
+    },
+    "previousFullSuite": {
+      "release": "2026.09.04-dashboard-demo.1",
+      "passed": 513,
+      "failed": 0,
+      "evidence": "full-suite-513-pass.txt",
+      "sha256": "825cfd5e81e0672090d6db4964ddb82b6d81d62240dd79d1dd84bd0070890a9b"
+    },
+    "toolbarFocusedTests": {
+      "status": "passed",
+      "passed": 20,
+      "failed": 0,
+      "testFiles": [
+        "data-table-responsive-toolbar.test.mjs",
+        "dashboard-responsive-crm-layout.test.mjs",
+        "demo-dashboard-operational-flow.test.mjs"
+      ]
+    },
+    "candidateToolbarLayout": {
+      "status": "passed-isolated-chrome-layout",
+      "viewport": 390,
+      "bodyScrollWidth": 390,
+      "toolbarWidth": 316,
+      "allActionsWithinViewport": true,
+      "tableHorizontalScrollPreserved": true,
+      "evidence": "candidate-demo2-toolbar-390-isolated.png",
+      "limits": "Static DOM + generated Tailwind CSS, not a production render of demo.2"
+    }
+  },
+  "remainingGates": [
+    "Final public demo.2 responsive-toolbar QA at390/1440 by verify_access_sprint",
+    "Real Balmec credential-login/API contract remains separate",
+    "Real TAP -> tenant realtime physical certification not included",
+    "Real overview source segregation requires separate compatible API release",
+    "Super Admin real authorization and physical-device SUN validation not certified"
+  ],
+  "notes": [
+    "Git archive applied local line-ending conversion; normalized source hashes confirm unchanged protected contracts.",
+    "No repository files, branch, production environment, database or credentials were changed by candidate preparation.",
+    "Do not package local node_modules links as release source.",
+    "Demo.1 Production entry and demo-only map/events/consumer-hour navigation verified. This candidate contains only a CSS toolbar followup and4tests over that release. No API/auth logic changed."
+  ],
+  "updatedAt": "2026-09-05T00:29:58.368Z",
+  "packagingChanges": [
+    {
+      "path": ".gitignore",
+      "reason": "Vercel link added .vercel and .env* exclusions",
+      "sha256": "7498dc9f6d1aa2ca5fbbbda28eee2b22532fcfd2022d045e8bdbdb901f797b6b"
+    }
+  ]
+}

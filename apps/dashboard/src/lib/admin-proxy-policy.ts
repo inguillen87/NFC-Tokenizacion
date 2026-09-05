@@ -31,8 +31,10 @@ export function isAdminUpstreamAuthorizationOutcome(status: number) {
 const READONLY_DEMO_ALLOWED = [
   "overview",
   "analytics",
+  "tenants",
   "events",
   "events/stream",
+  "incidents",
   "sun/physical-taps",
   "notifications",
   "consumer-network",

@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [crm, globals] = await Promise.all([
+const [crm, globals, map] = await Promise.all([
   readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/realtime-maplibre-map.tsx", import.meta.url), "utf8"),
 ]);
 
 test("desktop-height constraints scroll each CRM column instead of clipping the map and insights", () => {
@@ -16,17 +17,25 @@ test("desktop-height constraints scroll each CRM column instead of clipping the 
 });
 
 test("the map owns a stable canvas height and cannot collapse inside a flex remainder", () => {
-  assert.match(crm, /nexid-crm-map-panel relative shrink-0/);
+  assert.match(crm, /nexid-crm-map-panel relative flex shrink-0 flex-col/);
   assert.match(crm, /nexid-crm-map-canvas-region[\s\S]*?h-\[460px\][\s\S]*?sm:h-\[520px\][\s\S]*?2xl:h-\[560px\]/);
   assert.doesNotMatch(crm, /nexid-crm-map-canvas-region[^\n]*lg:h-full/);
   assert.doesNotMatch(crm, /rounded-2xl sm:min-h-\[560px\] lg:min-h-0/);
 });
 
-test("events and decision panels stay stacked until an actually wide workspace is available", () => {
+test("the mobile map summary leaves space for wrapped cartography attribution", () => {
+  assert.match(map, /<details className="absolute bottom-20[^"\n]*sm:bottom-8"/);
+});
+
+test("map controls and events use document flow until an actually wide workspace is available", () => {
   const insightGridLine = crm.split(/\r?\n/).find((line) => line.includes("nexid-crm-insight-grid")) || "";
-  assert.match(crm, /nexid-crm-events-rail[\s\S]*?2xl:absolute[\s\S]*?2xl:w-\[282px\]/);
-  assert.match(crm, /nexid-crm-map-canvas-region[\s\S]*?2xl:pr-\[300px\]/);
-  assert.match(crm, /nexid-crm-map-legend[\s\S]*?2xl:bottom-20/);
+  assert.match(crm, /nexid-crm-map-control-deck relative z-30 grid shrink-0/);
+  assert.match(crm, /nexid-crm-map-body grid min-h-0[\s\S]*?2xl:grid-cols-\[minmax\(0,1fr\)_282px\][\s\S]*?2xl:grid-rows-\[auto_minmax\(0,1fr\)\]/);
+  assert.match(crm, /nexid-crm-map-body[\s\S]*?nexid-crm-map-legend[\s\S]*?2xl:col-start-2[\s\S]*?nexid-crm-map-canvas-region/);
+  assert.match(crm, /nexid-crm-events-rail relative z-20[\s\S]*?2xl:row-start-2[\s\S]*?2xl:max-h-none/);
+  assert.doesNotMatch(crm, /nexid-crm-events-rail[^\n]*2xl:absolute/);
+  assert.doesNotMatch(crm, /nexid-crm-map-canvas-region[^\n]*2xl:pr-\[300px\]/);
+  assert.doesNotMatch(crm, /nexid-crm-map-legend[^\n]*(?:absolute|2xl:bottom)/);
   assert.match(crm, /nexid-crm-insight-grid[\s\S]*?2xl:grid-cols-\[minmax\(0,1fr\)_380px\]/);
   assert.match(crm, /nexid-crm-alerts-panel rounded-xl/);
   assert.doesNotMatch(insightGridLine, /(?:^|\s)xl:grid-cols/);

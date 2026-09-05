@@ -32,12 +32,13 @@ test("the sidebar identity follows the authenticated session instead of fixed de
 
 test("the realtime map groups actions, views and base layers without duplicating controls", () => {
   assert.match(crm, /data-map-fullscreen=\{isMapFullscreen \? "true" : "false"\}/);
+  assert.match(crm, /nexid-crm-map-control-deck relative z-30 grid shrink-0/);
   assert.match(crm, /role="group" aria-label="Acciones del mapa" className="nexid-crm-map-actions/);
   assert.match(crm, /className="nexid-crm-map-toolbar/);
   assert.match(crm, /role="group" aria-label="Visualización de eventos" className="nexid-crm-map-view-controls/);
   assert.match(crm, /role="group" aria-label="Capa base del mapa" className="nexid-crm-map-base-controls/);
-  assert.match(crm, /nexid-crm-map-view-button flex h-12/);
-  assert.match(crm, /nexid-crm-map-control grid h-12 w-12/);
+  assert.match(crm, /nexid-crm-map-view-button flex h-11/);
+  assert.match(crm, /nexid-crm-map-control grid h-11 w-11/);
   assert.match(crm, /disabled=\{valuesUnavailable \|\| !streetViewTarget\}/);
   assert.match(crm, /2xl:hidden/);
   assert.match(crm, /nexid-crm-map-base-controls hidden[\s\S]*?2xl:flex/);
@@ -45,9 +46,11 @@ test("the realtime map groups actions, views and base layers without duplicating
 });
 
 test("fullscreen and narrow layouts reserve distinct responsive control regions", () => {
-  assert.match(globals, /\.nexid-crm-map-toolbar\s*\{[\s\S]*?max-width: calc\(100% - 5\.25rem\)/);
-  assert.match(globals, /\.nexid-crm-map-panel\[data-map-fullscreen="true"\] \.nexid-crm-map-actions/);
-  assert.match(globals, /\.nexid-crm-map-panel\[data-map-fullscreen="true"\] \.nexid-crm-map-toolbar/);
+  assert.match(globals, /\.nexid-crm-map-control-deck\s*\{[\s\S]*?linear-gradient/);
+  assert.match(globals, /\.nexid-crm-map-toolbar\s*\{[\s\S]*?min-width: 0/);
+  assert.match(globals, /\.nexid-crm-map-panel\[data-map-fullscreen="true"\] \.nexid-crm-map-body[\s\S]*?flex: 1/);
+  assert.match(globals, /\.nexid-crm-map-panel\[data-map-fullscreen="true"\] \.nexid-crm-map-canvas-region[\s\S]*?height: 100% !important/);
+  assert.match(globals, /\.nexid-crm-map-panel\[data-map-fullscreen="true"\] \.nexid-crm-map-legend,[\s\S]*?\.nexid-crm-map-panel\[data-map-fullscreen="true"\] \.nexid-crm-events-rail[\s\S]*?display: none/);
   assert.match(globals, /@media \(max-width: 640px\)[\s\S]*?\.nexid-crm-map-view-controls[\s\S]*?justify-content: flex-start/);
   assert.match(globals, /@media \(min-width: 1536px\)[\s\S]*?\.nexid-crm-map-base-controls/);
 });

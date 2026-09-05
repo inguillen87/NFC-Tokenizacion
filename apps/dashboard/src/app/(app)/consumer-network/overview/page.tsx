@@ -2,6 +2,7 @@ import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../../components/data-table";
 import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state";
 import { ConsumerNetworkLiveRefresh } from "../../../../components/consumer-network-live-refresh";
+import { ConsumerNetworkDemoSummary } from "../../../../components/consumer-network-demo-summary";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import { readDemoDataMetaFromResponse } from "../../../../lib/demo-data-mode";
@@ -220,9 +221,10 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   const errorSources = sourceEntries.filter(([, result]) => result.availability === "error");
   const sessionUnavailable = errorSources.some(([, result]) => result.reason === "session_unavailable");
   const retryHref = withTenantScope("/consumer-network/overview", adminContext.tenantSlug);
-  const membersHref = withTenantScope("/consumer-network/overview#miembros", adminContext.tenantSlug);
-  const productsHref = withTenantScope("/consumer-network/overview#productos", adminContext.tenantSlug);
-  const tapsHref = withTenantScope("/consumer-network/overview#taps", adminContext.tenantSlug);
+  // Local fragments preserve the current tenant query without restarting the streamed page.
+  const membersHref = "#miembros";
+  const productsHref = "#productos";
+  const tapsHref = "#taps";
 
   const overviewPayload = overviewResult.data;
   const overview: Partial<ConsumerNetworkOverviewMetrics> = overviewPayload?.overview || {};
@@ -232,6 +234,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   const taps = tapsResult.data || [];
   const operationalTaps = taps.filter((tap) => tap.dataProvenance === "operational_tap");
   const heatmapCells = tapsReady && operationalTaps.length > 0 ? buildUtcHourlyHeatmap(operationalTaps) : [];
+  const showDemoSummary = allowDemoData && dataSource === "demo" && overviewReady && membersReady && productsReady && tapsReady;
 
   const description = dataSource === "demo"
     ? "Escenario demo aislado: separa lecturas, acciones, unidades y actores sin afirmar personas ni conversiones reales."
@@ -264,7 +267,10 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         <span className="ml-2">Scope: <b>{adminContext.isGlobal ? "global autorizado" : adminContext.tenantSlug}</b>.</span>
       </div>
 
-      <section data-testid="consumer-network-provenance" className="rounded-2xl border border-cyan-300/20 bg-slate-900/60 p-4">
+      {showDemoSummary ? <ConsumerNetworkDemoSummary taps={taps} members={members} products={products} tenantSlug={adminContext.tenantSlug} /> : null}
+
+      <details data-testid="consumer-network-provenance" className="rounded-2xl border border-cyan-300/20 bg-slate-900/60 p-4">
+        <summary className="cursor-pointer text-sm font-bold text-slate-200">Fuentes y actualización · ver detalle</summary>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Procedencia y vigencia</p>
@@ -275,7 +281,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {sourceEntries.map(([label, result]) => <SourceEvidenceCard key={label} label={label} result={result} />)}
         </div>
-      </section>
+      </details>
 
       {errorSources.length ? (
         <EnterpriseOpsState
@@ -308,6 +314,9 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         />
       ) : null}
 
+      <details open={!showDemoSummary} className="rounded-2xl border border-white/10 p-4">
+      <summary className="cursor-pointer text-sm font-bold text-slate-200">Indicadores operativos · excluyen los ejemplos de la demo</summary>
+      <div className="mt-4 space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <p className="text-xs uppercase tracking-widest text-slate-400">Taps SUN operativos</p>
@@ -347,7 +356,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
             <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Teléfono opt-in <b className="text-emerald-100">{overviewReady ? Number(overview.consentedActorsByChannel?.phone) : "—"}</b></span>
           </div>
         </div>
-        <div className="mt-5" id="taps">
+        <div className="mt-5" id="taps-operativos">
           <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Heatmap horario de taps operativos clasificados · UTC</p>
           {tapsResult.availability === "ready" && operationalTaps.length > 0 ? (
             <>
@@ -409,7 +418,10 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         </section>
       </div>
 
-      <section id="miembros">
+      </div>
+      </details>
+
+      <section id="miembros" className="scroll-mt-64 lg:scroll-mt-28">
         {membersReady ? (
           <DataTable
             title="Actores conocidos"
@@ -443,7 +455,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         )}
       </section>
 
-      <section id="productos">
+      <section id="productos" className="scroll-mt-64 lg:scroll-mt-28">
         {productsReady ? (
           <DataTable
             title="Conversión por producto"
@@ -479,7 +491,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         )}
       </section>
 
-      <section>
+      <section id="taps" className="scroll-mt-64 lg:scroll-mt-28">
         {tapsReady ? (
           <DataTable
             title="Actividad de taps"

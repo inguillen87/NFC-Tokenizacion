@@ -35,7 +35,9 @@ export function dashboardBodegaDemoAccessAllowed() {
   );
   if (explicit !== null) return explicit;
 
-  return true;
+  const productionRuntime = [process.env.VERCEL_ENV, process.env.NODE_ENV]
+    .some((value) => String(value || "").trim().toLowerCase() === "production");
+  return !productionRuntime;
 }
 
 export function dashboardDemoAccessAllowedForRole(role: string) {
@@ -51,5 +53,7 @@ export function dashboardDemoAccessAllowedForRole(role: string) {
 
 export function dashboardFallbackSessionAllowed() {
   const explicitAutoSession = readFlag("DASHBOARD_AUTO_SESSION");
-  return explicitAutoSession === true;
+  const productionRuntime = [process.env.VERCEL_ENV, process.env.NODE_ENV]
+    .some((value) => String(value || "").trim().toLowerCase() === "production");
+  return explicitAutoSession === true && !productionRuntime && dashboardBodegaDemoAccessAllowed();
 }

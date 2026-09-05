@@ -10,6 +10,8 @@ const FLAG_ENV_KEYS = [
   "DASHBOARD_BODEGA_DEMO_ACCESS",
   "DASHBOARD_ALLOW_BODEGA_DEMO",
   "ENABLE_BODEGA_BALMEC_DEMO",
+  "NODE_ENV",
+  "VERCEL_ENV",
 ];
 
 function withEnv(updates, run) {
@@ -42,16 +44,74 @@ test("super admin demo remains disabled even if legacy env flags are enabled", a
   );
 });
 
-test("bodega tenant demo stays available by default and can be disabled per environment", async () => {
+test("bodega tenant demo requires an explicit production opt-in", async () => {
   const flags = await import(`../src/lib/dashboard-access-flags.ts?ts=${Date.now()}-bodega-policy`);
 
-  withEnv({}, () => {
+  withEnv({ NODE_ENV: "test" }, () => {
     assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), true);
   });
 
-  withEnv({ DASHBOARD_BODEGA_DEMO_ACCESS: "false" }, () => {
+  withEnv({ NODE_ENV: "production" }, () => {
     assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), false);
   });
+
+  withEnv({ NODE_ENV: "test", VERCEL_ENV: "production" }, () => {
+    assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), false);
+  });
+
+  withEnv({ NODE_ENV: "production", DASHBOARD_BODEGA_DEMO_ACCESS: "true" }, () => {
+    assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), true);
+  });
+
+  withEnv({ NODE_ENV: "test", DASHBOARD_BODEGA_DEMO_ACCESS: "false" }, () => {
+    assert.equal(flags.dashboardDemoAccessAllowedForRole("tenant-admin"), false);
+  });
+});
+
+test("demo session cookies are issued only by a same-origin POST", async () => {
+  const route = await import(`../src/app/api/session/demo/route.ts?ts=${Date.now()}-post-only`);
+  const endpoint = "https://app.nexid.lat/api/session/demo?role=tenant-admin&next=%2F";
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousDemoFlag = process.env.DASHBOARD_BODEGA_DEMO_ACCESS;
+
+  try {
+    process.env.NODE_ENV = "production";
+    process.env.DASHBOARD_BODEGA_DEMO_ACCESS = "true";
+
+    for (const handler of [route.GET, route.HEAD]) {
+      const response = await handler(new Request(endpoint));
+      assert.equal(response.status, 405);
+      assert.equal(response.headers.get("allow"), "POST");
+      assert.match(response.headers.get("cache-control") || "", /no-store/);
+      assert.equal(response.headers.get("set-cookie"), null);
+    }
+
+    const missingOrigin = await route.POST(new Request(endpoint, { method: "POST" }));
+    assert.equal(missingOrigin.status, 403);
+    assert.equal(missingOrigin.headers.get("set-cookie"), null);
+
+    const crossOrigin = await route.POST(new Request(endpoint, {
+      method: "POST",
+      headers: { origin: "https://attacker.example" },
+    }));
+    assert.equal(crossOrigin.status, 403);
+    assert.equal(crossOrigin.headers.get("set-cookie"), null);
+
+    const sameOrigin = await route.POST(new Request(endpoint, {
+      method: "POST",
+      headers: { origin: "https://app.nexid.lat" },
+    }));
+    assert.equal(sameOrigin.status, 303);
+    assert.equal(sameOrigin.headers.get("location"), "https://app.nexid.lat/");
+    assert.match(sameOrigin.headers.get("cache-control") || "", /no-store/);
+    assert.match(sameOrigin.headers.get("set-cookie") || "", /nexid_dashboard_session=/);
+    assert.match(sameOrigin.headers.get("set-cookie") || "", /nexid_dashboard_session_snapshot=/);
+  } finally {
+    if (typeof previousNodeEnv === "undefined") delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    if (typeof previousDemoFlag === "undefined") delete process.env.DASHBOARD_BODEGA_DEMO_ACCESS;
+    else process.env.DASHBOARD_BODEGA_DEMO_ACCESS = previousDemoFlag;
+  }
 });
 
 test("login surfaces separate founder Google auth from tenant demo access", () => {
@@ -75,7 +135,8 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.doesNotMatch(loginPanel, /api\/session\/demo\?role=\$\{encodeURIComponent/);
   assert.doesNotMatch(loginPanel, /demoLogin:\s*true/);
   assert.doesNotMatch(loginPanel, /startBodegaDemo/);
-  assert.match(loginPanel, /href=\{`\/api\/session\/demo\?role=tenant-admin&next=\$\{encodeURIComponent\(safeNextPath\)\}`\}/);
+  assert.match(loginPanel, /action=\{`\/api\/session\/demo\?role=tenant-admin&next=\$\{encodeURIComponent\(safeNextPath\)\}`\}/);
+  assert.match(loginPanel, /method="post"/);
   assert.match(loginPanel, /data-testid="login-access-status"/);
   assert.match(loginPanel, /data-testid="login-bodega-demo-button"/);
   assert.match(loginPanel, /data-testid="login-superadmin-google-card"/);
@@ -83,21 +144,39 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(loginPanel, /Super Admin entra por Google\/Clerk/);
   assert.match(loginPanel, /Continuar con Google allowlisted/);
   assert.match(loginPage, /firstParam\(params\.logged_out\) === "1"/);
+  assert.match(loginPage, /authErrorCode === "clerk_session_invalid"/);
+  assert.match(loginPage, /authErrorCode === "clerk_google_required"/);
+  assert.match(loginPanel, /resetSessionOnStart=\{clerkRecoveryRequired\}/);
   assert.match(loginPage, /Sesión cerrada\. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted\./);
 
   assert.match(googleButton, /already signed in/);
   assert.match(googleButton, /completeUrl\.searchParams\.set\("next", safeNextPath\)/);
   assert.match(googleButton, /window\.location\.assign\(`\/auth\/clerk\/super-admin\?next=\$\{encodeURIComponent\(safeNextPath\)\}`\)/);
+  assert.match(googleButton, /useClerk/);
+  assert.match(googleButton, /resetSessionOnStart/);
+  assert.match(googleButton, /await clerk\.signOut/);
+  assert.match(googleButton, /Preparando acceso seguro/);
 
   assert.doesNotMatch(signInPage, /getAccessProfiles/);
   assert.doesNotMatch(signInPage, /profile\.role/);
   assert.match(signInPage, /data-testid="sign-in-superadmin-page"/);
   assert.match(signInPage, /data-testid="sign-in-auth-status"/);
   assert.match(signInPage, /data-testid="sign-in-bodega-demo-link"/);
-  assert.match(signInPage, /\/api\/session\/demo\?role=tenant-admin&next=\$\{encodeURIComponent\(nextPath\)\}/);
+  assert.match(signInPage, /action=\{`\/api\/session\/demo\?role=tenant-admin&next=\$\{encodeURIComponent\(nextPath\)\}`\}/);
+  assert.match(signInPage, /method="post"/);
+  assert.match(signInPage, /data-testid="sign-in-google-only-boundary"/);
+  assert.doesNotMatch(signInPage, /<SignIn/);
+  assert.doesNotMatch(signInPage, /Fallback Clerk/);
 
   assert.match(demoRoute, /superadmin_requires_clerk/);
   assert.doesNotMatch(demoRoute, /permissions:\s*\["\*"\]/);
+  assert.match(demoRoute, /export async function POST\(req: Request\)/);
+  assert.match(demoRoute, /!requireSameOrigin\(req\)/);
+  assert.match(demoRoute, /export async function GET\(\)/);
+  assert.match(demoRoute, /export async function HEAD\(\)/);
+  assert.match(demoRoute, /status: 405/);
+  assert.match(demoRoute, /Allow: "POST"/);
+  assert.match(demoRoute, /"Cache-Control": "no-store, max-age=0"/);
 
   assert.match(logoutRoute, /loginUrl\.searchParams\.set\("logged_out", "1"\)/);
   assert.match(logoutRoute, /const redirectPath = `\$\{loginUrl\.pathname\}\$\{loginUrl\.search\}`/);
