@@ -86,6 +86,24 @@ const defaultDependencies: ClerkAdminAuthDependencies = {
   },
 };
 
+const safeVerificationFailureReasons = new Set([
+  "token-expired",
+  "token-invalid",
+  "token-invalid-algorithm",
+  "token-invalid-authorized-parties",
+  "token-invalid-signature",
+  "token-not-active-yet",
+  "token-iat-in-the-future",
+  "token-verification-failed",
+  "secret-key-invalid",
+  "jwk-local-missing",
+  "jwk-remote-failed-to-load",
+  "jwk-remote-invalid",
+  "jwk-remote-missing",
+  "jwk-failed-to-resolve",
+  "jwk-kid-mismatch",
+]);
+
 export async function resolveVerifiedClerkIdentity(
   req: Request,
   dependencies: ClerkAdminAuthDependencies = defaultDependencies,
@@ -105,6 +123,7 @@ export async function resolveVerifiedClerkIdentity(
   const token = match?.[1] || "";
   if (!token) return { ok: false, status: 401, reason: "unauthorized" };
 
+  let stage: "verify_token" | "load_user" = "verify_token";
   try {
     const payload = await dependencies.verify(token, {
       secretKey,
@@ -116,6 +135,7 @@ export async function resolveVerifiedClerkIdentity(
     const userId = String(payload.sub || "").trim();
     if (!userId) return { ok: false, status: 401, reason: "unauthorized" };
 
+    stage = "load_user";
     const user = await dependencies.loadUser(userId, secretKey);
     if (!user || user.id !== userId) return { ok: false, status: 401, reason: "unauthorized" };
     const email = verifiedPrimaryEmail(user);
@@ -132,7 +152,13 @@ export async function resolveVerifiedClerkIdentity(
         verifiedWeb3Wallets: verifiedWeb3Wallets(user),
       },
     };
-  } catch {
+  } catch (error) {
+    const candidateReason = error && typeof error === "object" && "reason" in error ? error.reason : undefined;
+    const reason = typeof candidateReason === "string" && safeVerificationFailureReasons.has(candidateReason)
+      ? candidateReason
+      : "unknown";
+    // Log only bounded diagnostic categories, never SDK messages, claims, identities, or credentials.
+    console.warn("[clerk_verification_failed]", JSON.stringify({ stage, reason }));
     return { ok: false, status: 401, reason: "unauthorized" };
   }
 }
