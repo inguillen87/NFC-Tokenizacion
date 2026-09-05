@@ -16,28 +16,6 @@
   --passport-media: linear-gradient(145deg, #f4fdff, #e0f4f4);
 }
 
-.passport :global(.sun-passport-header) {
-  border-top: 3px solid var(--passport-accent);
-  padding-top: 0.75rem;
-}
-
-.passport :global(.sun-passport-brand__caption) {
-  color: var(--passport-muted);
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-}
-
-.passport :global(.sun-passport-brand) :global(.brand-wordmark-svg) {
-  width: 9rem !important;
-  height: 2.125rem !important;
-}
-
-.passport :global(.sun-live-tap-pill) > span:last-child {
-  font-size: 0.625rem;
-  letter-spacing: 0.05em;
-}
-
 .passport :global(.sun-summary-panel) {
   border-color: var(--passport-line);
   box-shadow: 0 18px 52px rgba(8, 47, 73, 0.14);

@@ -1,0 +1,174 @@
+.header:global(.sun-passport-header) {
+  --header-ink: #eef8ff;
+  --header-muted: #b9cfdf;
+  --header-accent: #67e8f9;
+  --header-line: rgba(125, 211, 252, 0.2);
+  --header-control: rgba(18, 38, 58, 0.8);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-top: 3px solid var(--header-accent);
+  border-radius: 1.2rem;
+  color: var(--header-ink);
+}
+
+.header .brand {
+  position: relative;
+  min-width: 0;
+  min-height: 3.5rem;
+  overflow: hidden;
+  padding-block: 0.125rem;
+}
+
+.header .brand :global(.brand-lockup) {
+  gap: 0.5rem;
+  max-width: none;
+}
+
+.header .brand :global(.brand-mark) {
+  width: 3.25rem !important;
+  height: 3.25rem !important;
+  flex-shrink: 0;
+  border-radius: 1rem;
+}
+
+.header .brand :global(.brand-wordmark-svg) {
+  /* The existing 520:120 SVG draws within its left ~270 units. Preserve
+     that ratio and remove only reserved trailing space from the lockup. */
+  width: 13rem !important;
+  height: 3rem !important;
+  max-width: none !important;
+  flex-shrink: 0;
+  margin-inline-end: -5.75rem;
+  animation: none;
+}
+
+.header .caption {
+  position: absolute;
+  right: 0;
+  bottom: 0.125rem;
+  left: 3.75rem;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  color: var(--header-muted);
+  font-size: 0.625rem;
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: 0.045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme {
+  justify-self: end;
+  align-self: start;
+  padding-top: 0.25rem;
+}
+
+.header .theme :global(.theme-toggle) {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--header-line);
+  border-radius: 0.85rem;
+  background: var(--header-control);
+  color: var(--header-ink);
+  box-shadow: none;
+}
+
+.header .theme :global(.theme-toggle) span:not(:global(.theme-toggle__glyph)) {
+  display: none;
+}
+
+.header .utilities {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--header-line);
+}
+
+.header .status {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 1.75rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--header-line);
+  border-radius: 0.65rem;
+  background: var(--header-control);
+  white-space: normal;
+  box-shadow: none;
+}
+
+.header .status > span:last-child {
+  color: var(--header-muted);
+  font-size: 0.625rem;
+  font-weight: 750;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.locale {
+  min-width: 0;
+}
+
+.header .locale :global(.locale-switcher) {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  gap: 0;
+  padding-inline: 0.625rem;
+  border-color: var(--header-line);
+  border-radius: 0.85rem;
+  background: var(--header-control);
+  color: var(--header-ink);
+}
+
+.header .locale :global(.locale-switcher__icon) {
+  display: none;
+}
+
+.header .locale select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  color: inherit;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+}
+
+.header :is(button, select):focus-visible {
+  outline: 2px solid #0891b2;
+  outline-offset: 3px;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .header {
+  --header-ink: #12304a;
+  --header-muted: #426077;
+  --header-accent: #087c91;
+  --header-line: rgba(8, 124, 145, 0.2);
+  --header-control: #f2f9fc;
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .header .theme :global(.theme-toggle),
+:global(html:is(.theme-light, [data-theme="light"])) .header .status {
+  background: var(--header-control) !important;
+  border-color: var(--header-line) !important;
+  color: var(--header-ink) !important;
+  box-shadow: none;
+}

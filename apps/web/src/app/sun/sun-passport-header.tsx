@@ -2,6 +2,7 @@
 
 import { BrandLockup, ThemeToggle } from "@product/ui";
 import { SunLocaleSwitcher, useSunLocale } from "./sun-locale-provider";
+import styles from "./sun-passport-header.module.css";
 
 type SunPassportHeaderProps = {
   isQrScan: boolean;
@@ -20,34 +21,32 @@ export function SunPassportHeader({
 
   return (
     <header
-      className="sun-passport-header sun-topbar grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2"
+      className={`sun-passport-header sun-topbar ${styles.header}`}
       aria-label={text("Controles del pasaporte")}
       data-testid="sun-passport-header"
     >
-      <div className="sun-passport-brand min-w-0 overflow-hidden">
-        <BrandLockup size={36} variant="ripple" theme="dark" />
-        <span className="sun-passport-brand__caption mt-1 block truncate whitespace-nowrap">
+      <div className={`sun-passport-brand ${styles.brand}`}>
+        <BrandLockup size={52} variant="ripple" theme="dark" />
+        <span className={`sun-passport-brand__caption ${styles.caption}`}>
           {passportLabel}
         </span>
       </div>
 
-      <div
-        className="sun-live-tap-pill flex min-w-0 max-w-full items-center justify-self-end gap-1.5 rounded-full border border-white/5 bg-slate-900/80 px-2.5 py-1.5 backdrop-blur-md"
-        role="status"
-        aria-label={`${text("Estado")}: ${translatedLivePillLabel}`}
-      >
-        <span className={`h-2 w-2 shrink-0 rounded-full ${pulseClass} animate-pulse`} aria-hidden="true" />
-        <span className="truncate whitespace-nowrap text-[9px] font-black uppercase tracking-wider text-slate-300">
-          {translatedLivePillLabel}
-        </span>
+      <div className={styles.theme}>
+        <ThemeToggle locale={locale} />
       </div>
 
-      <div className="sun-topbar-actions col-span-2 flex w-full min-w-0 items-center gap-2 border-t border-white/5 pt-2">
-        <div className="min-w-0 flex-1 [&_.locale-switcher]:flex [&_.locale-switcher]:w-full [&_.locale-switcher]:min-w-0 [&_.locale-switcher_select]:w-full [&_.locale-switcher_select]:min-w-0">
-          <SunLocaleSwitcher />
+      <div className={`sun-topbar-actions ${styles.utilities}`}>
+        <div
+          className={`sun-live-tap-pill ${styles.status}`}
+          role="status"
+          aria-label={`${text("Estado")}: ${translatedLivePillLabel}`}
+        >
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${pulseClass} animate-pulse motion-reduce:animate-none`} aria-hidden="true" />
+          <span>{translatedLivePillLabel}</span>
         </div>
-        <div className="shrink-0">
-          <ThemeToggle locale={locale} />
+        <div className={styles.locale}>
+          <SunLocaleSwitcher />
         </div>
       </div>
     </header>

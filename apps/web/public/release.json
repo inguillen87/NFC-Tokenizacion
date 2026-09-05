@@ -1,6 +1,6 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.05-web.1",
-  "scope": "SUN single-action consented location, synchronized receipt and map, mobile visual hierarchy",
+  "version": "2026.09.05-web.2",
+  "scope": "SUN larger brand lockup and compact accessible mobile header in both themes",
   "physicalTapCertification": "not-included"
 }
