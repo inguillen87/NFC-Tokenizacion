@@ -59,7 +59,7 @@ test("drawer presentation keeps demo and unknown sources read-only and editing p
   assert.match(drawer, /Expediente ilustrativo · sólo lectura/);
   assert.match(drawer, /Historial de ejemplo/);
   assert.match(drawer, /title=\{event\.productName\?\.trim\(\) \|\| "Lectura NFC"\}/);
-  assert.match(drawer, /description=\{readingDateContext\(event\)\}/);
+  assert.match(drawer, /description=\{formatReadingDateTime\(event, operationalTimeZone\)\}/);
   assert.match(drawer, /Identificador del evento:/);
   assert.match(drawer, /hasNormalEvidence = classifyRealtimeVerdict\(event\.verdict, event\.reason\) === "valid" && explanation\.severity === "low"/);
   assert.match(drawer, /hasNormalEvidence \? "Resumen de la lectura" : "Por qué requiere atención"/);
@@ -78,7 +78,7 @@ test("reading summary retains technical evidence in an accessible, initially clo
   for (const evidence of ["event.uidMasked", "event.eventId", "event.timezone", "explanation.facts.map", "incident.id", "incident.ticketId", "incident.version"]) assert.ok(technical.includes(evidence));
   assert.match(technical, /canRead && incident/);
   assert.doesNotMatch(drawer.slice(drawer.indexOf("return ("), drawer.indexOf('data-testid="incident-existing-state"')), /explanation\.facts\.map|Identificador del evento:|UID enmascarada/);
-  assert.match(drawer, /timeZoneName: "shortOffset"/);
+  assert.match(drawer, /formatReadingDateTime\(event, operationalTimeZone\)/);
   assert.match(drawer, /opened: "Expediente abierto"/);
   assert.match(drawer, /transitioned: "Estado actualizado"/);
   assert.match(drawer, /severity_changed: "Severidad actualizada"/);

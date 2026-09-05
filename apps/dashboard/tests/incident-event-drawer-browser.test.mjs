@@ -28,7 +28,7 @@ test("incident drawer stays above global headers and preserves keyboard, scroll 
         <main style={{paddingTop:180,minHeight:2000,transform:'translateZ(0)',isolation:'isolate'}}>
           {[0,1].map(index => <button key={index} data-incident-event-key={'event-'+index} onClick={() => setSelected(index)}>Open event {index+1}</button>)}
           {['demo','production','unknown'].map(source=><button key={source} onClick={()=>setDetailSource(source)}>Open {source} detail</button>)}
-          {detailSource ? <IncidentEventDrawer event={{...localEvent,source:detailSource,eventSource:detailSource}} incident={null} incidentAvailability="ready" canRead={true} canWrite={true} onClose={()=>setDetailSource(null)} onIncident={onIncident} /> : null}
+          {detailSource ? <IncidentEventDrawer event={{...localEvent,source:detailSource,eventSource:detailSource}} operationalTimeZone={{timeZone:'America/Argentina/Buenos_Aires',isFallback:false}} incident={null} incidentAvailability="ready" canRead={true} canWrite={true} onClose={()=>setDetailSource(null)} onIncident={onIncident} /> : null}
           {selected !== null ? <IncidentEventDrawerFrame
             key={selected} eventKey={'event-'+selected} title={'Evidence '+(selected+1)} description="Local UI fixture; no API or physical event."
             onClose={() => setSelected(null)}
@@ -151,7 +151,7 @@ test("incident drawer stays above global headers and preserves keyboard, scroll 
         assert.equal(await page.locator('[data-evidence-tone="normal"]').count(), 1);
         assert.equal(await page.getByTestId("incident-technical-disclosure").getAttribute("open"), null);
         assert.doesNotMatch(await page.getByTestId("incident-drawer-header").innerText(), /America\//);
-        assert.match(await page.getByTestId("incident-drawer-header").innerText(), /GMT-3/);
+        assert.match(await page.getByTestId("incident-drawer-header").innerText(), /UTC-03:00/);
         const colors = await page.getByTestId("incident-drawer-content").evaluate((content) => {
           const text = content.querySelector('p.text-white');
           const card = text.parentElement;

@@ -4,23 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, LoaderCircle, ShieldAlert, ShieldCheck, TicketCheck } from "lucide-react";
 import { classifyRealtimeVerdict, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 import { incidentEventNavigationKey } from "../lib/incident-event-navigation";
+import { formatOperationalDateTime, formatReadingDateTime, type OperationalTimeZone } from "../lib/operational-reading-time";
 import { IncidentEventDrawerFrame, type IncidentEventDrawerNavigation } from "./incident-event-drawer-frame";
 import {
   allowedIncidentTransitions,
   deterministicIncidentExplanation,
+  incidentStatusLabel,
   type DashboardIncident,
   type DashboardIncidentHistory,
   type DashboardIncidentSeverity,
   type DashboardIncidentStatus,
 } from "../lib/incident-workflow";
-
-const STATUS_LABEL: Record<DashboardIncidentStatus, string> = {
-  open: "Abierto",
-  investigating: "En investigación",
-  contained: "Contenido",
-  resolved: "Resuelto",
-  dismissed: "Descartado",
-};
 
 const SEVERITY_LABEL: Record<DashboardIncidentSeverity, string> = {
   low: "Baja",
@@ -39,19 +33,6 @@ async function responseJson(response: Response) {
   return response.json().catch(() => ({ ok: false, reason: `http_${response.status}` })) as Promise<Record<string, any>>;
 }
 
-function readingDateContext(event: TenantTapRealtimeEvent) {
-  const timestamp = Date.parse(event.occurredAt || event.occurredAtUtc);
-  if (!Number.isFinite(timestamp)) return "Fecha de lectura no informada";
-  const options: Intl.DateTimeFormatOptions = {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "shortOffset",
-  };
-  try {
-    return new Intl.DateTimeFormat("es-AR", { ...options, timeZone: event.timezone || "UTC" }).format(timestamp);
-  } catch {
-    return new Intl.DateTimeFormat("es-AR", { ...options, timeZone: "UTC" }).format(timestamp);
-  }
-}
-
 export function IncidentEventDrawer({
   event,
   incident,
@@ -61,6 +42,7 @@ export function IncidentEventDrawer({
   onClose,
   onIncident,
   navigation,
+  operationalTimeZone,
 }: {
   event: TenantTapRealtimeEvent;
   incident: DashboardIncident | null;
@@ -70,6 +52,7 @@ export function IncidentEventDrawer({
   onClose: () => void;
   onIncident: (incident: DashboardIncident) => void;
   navigation?: IncidentEventDrawerNavigation;
+  operationalTimeZone?: OperationalTimeZone;
 }) {
   const explanation = useMemo(() => deterministicIncidentExplanation(event), [event]);
   const isDemo = event.source === "demo" || event.eventSource === "demo";
@@ -233,7 +216,7 @@ export function IncidentEventDrawer({
     <IncidentEventDrawerFrame
       eventKey={incidentEventNavigationKey(event)}
       title={event.productName?.trim() || "Lectura NFC"}
-      description={readingDateContext(event)}
+      description={formatReadingDateTime(event, operationalTimeZone)}
       navigation={navigation}
       navigationDisabled={busy}
       onClose={onClose}
@@ -271,7 +254,7 @@ export function IncidentEventDrawer({
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-emerald-300">{isDemo ? "Expediente ilustrativo · sólo lectura" : "Incidente durable vinculado"}</p>
               </div>
-              <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-200">{STATUS_LABEL[incident.status]}</span>
+              <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-200">{incidentStatusLabel(incident.status)}</span>
             </div>
             <div className="mt-3 text-xs text-slate-300">
               <p>Severidad: <b className="text-white">{SEVERITY_LABEL[incident.severity]}</b></p>
@@ -306,7 +289,7 @@ export function IncidentEventDrawer({
               {incident ? (
                 <label className="text-xs text-slate-300">Próximo estado
                   <select value={nextStatus} onChange={(entry) => setNextStatus(entry.target.value as DashboardIncidentStatus)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
-                    {allowedIncidentTransitions(incident.status).map((status) => <option key={status} value={status}>{STATUS_LABEL[status]}</option>)}
+                    {allowedIncidentTransitions(incident.status).map((status) => <option key={status} value={status}>{incidentStatusLabel(status)}</option>)}
                   </select>
                 </label>
               ) : (
@@ -348,9 +331,9 @@ export function IncidentEventDrawer({
             <div className="mt-3 space-y-3">
               {history.map((entry) => (
                 <div key={entry.id} className="border-l-2 border-cyan-300/30 pl-3 text-xs text-slate-300">
-                  <p><b className="text-white">{entry.actorLabel}</b> · {HISTORY_ACTION_LABEL[entry.action] || entry.action} · {STATUS_LABEL[entry.toStatus]}</p>
+                  <p><b className="text-white">{entry.actorLabel}</b> · {HISTORY_ACTION_LABEL[entry.action] || entry.action} · {incidentStatusLabel(entry.toStatus)}</p>
                   <p className="mt-0.5 text-slate-400">{entry.reason}</p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">{new Date(entry.createdAt).toLocaleString("es-AR")}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">{formatOperationalDateTime(entry.createdAt, operationalTimeZone)}</p>
                 </div>
               ))}
             </div>

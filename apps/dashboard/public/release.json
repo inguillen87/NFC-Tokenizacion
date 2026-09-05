@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.05-dashboard.1",
-  "scope": "login-presentation-and-tap-navigation-demo-incidents",
+  "release": "2026.09.05-dashboard.2",
+  "scope": "consistent-reading-timezone-incident-status-and-clear-account-labels",
   "realTapCertification": "not-included",
-  "baseCommit": "9d4e8000049cd78e43c6f23f6c335ca1ea2d8218",
+  "baseCommit": "88477333fdb054845cd8bc4efe793e44c7386ef0",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,

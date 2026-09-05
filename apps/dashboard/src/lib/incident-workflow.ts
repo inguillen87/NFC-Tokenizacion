@@ -3,6 +3,20 @@ import { classifyRealtimeVerdict, isRealtimeRisk, type TenantTapRealtimeEvent } 
 export type DashboardIncidentStatus = "open" | "investigating" | "contained" | "resolved" | "dismissed";
 export type DashboardIncidentSeverity = "low" | "medium" | "high" | "critical";
 
+const INCIDENT_STATUS_LABELS: Record<DashboardIncidentStatus, string> = {
+  open: "Abierto",
+  investigating: "En investigación",
+  contained: "Contenido",
+  resolved: "Resuelto",
+  dismissed: "Descartado",
+};
+
+export function incidentStatusLabel(status: unknown): string {
+  return typeof status === "string" && Object.prototype.hasOwnProperty.call(INCIDENT_STATUS_LABELS, status)
+    ? INCIDENT_STATUS_LABELS[status as DashboardIncidentStatus]
+    : "Estado no informado";
+}
+
 export type DashboardIncident = {
   id: string;
   tenantId: string;

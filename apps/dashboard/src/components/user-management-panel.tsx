@@ -194,9 +194,21 @@ export function UserManagementPanel() {
         <h2 className="text-lg font-semibold text-white">Alta / actualización</h2>
         <p className="mt-2 text-sm text-slate-400">Los permisos no se escriben manualmente: se derivan del rol publicado por el backend.</p>
         <div className="mt-4 grid gap-3">
-          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Work email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
-          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Full name" value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} />
-          <input suppressHydrationWarning type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Temp password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} />
+          <label htmlFor="managed-user-email" className="grid gap-1.5 text-xs font-bold text-slate-300">
+            Correo electrónico
+            <input id="managed-user-email" name="email" type="email" autoComplete="username" suppressHydrationWarning className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm font-normal" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
+          </label>
+          <label htmlFor="managed-user-full-name" className="grid gap-1.5 text-xs font-bold text-slate-300">
+            Nombre completo
+            <input id="managed-user-full-name" name="fullName" autoComplete="name" suppressHydrationWarning className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm font-normal" value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} />
+          </label>
+          <div className="grid gap-1.5">
+            <label htmlFor="managed-user-initial-password" className="grid gap-1.5 text-xs font-bold text-slate-300">
+              Contraseña inicial
+              <input id="managed-user-initial-password" name="password" type="password" autoComplete="new-password" aria-describedby="managed-user-password-help" suppressHydrationWarning className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm font-normal" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} />
+            </label>
+            <p id="managed-user-password-help" className="text-xs leading-relaxed text-slate-400">No vence ni exige cambio automático al ingresar. Crear la cuenta no verifica el correo.</p>
+          </div>
           <EnterpriseRoleSelect
             roles={catalog.roles}
             value={form.role}

@@ -36,6 +36,7 @@ import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { IncidentEventDrawer } from "./incident-event-drawer";
 import { incidentEventNavigationKey, moveIncidentEventSelection, snapshotIncidentEventSelection, type IncidentEventSelection } from "../lib/incident-event-navigation";
+import { formatReadingDateTime, parseOperationalTimestamp, resolveOperationalTimeZone } from "../lib/operational-reading-time";
 import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
 import { useDashboardRealtime } from "./dashboard-realtime-provider";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
@@ -62,6 +63,7 @@ import { DASHBOARD_DESTINATIONS, dashboardCanOpenDestination } from "../lib/dash
 import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 import {
   incidentByEvent,
+  incidentStatusLabel,
   isIncidentRealtimeWireEvent,
   type DashboardIncident,
 } from "../lib/incident-workflow";
@@ -245,28 +247,6 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
   },
 };
 
-const DEFAULT_CONSOLE_TIMEZONE = "America/Argentina/Buenos_Aires";
-
-const TENANT_TIMEZONE_HINTS: Record<string, string> = {
-  demobodega: DEFAULT_CONSOLE_TIMEZONE,
-  bodegabalmec: DEFAULT_CONSOLE_TIMEZONE,
-  "bodega-balmec": DEFAULT_CONSOLE_TIMEZONE,
-};
-
-const COUNTRY_TIMEZONE_HINTS: Record<string, string> = {
-  AR: DEFAULT_CONSOLE_TIMEZONE,
-  UY: "America/Montevideo",
-  CL: "America/Santiago",
-  BR: "America/Sao_Paulo",
-  PY: "America/Asuncion",
-  BO: "America/La_Paz",
-  PE: "America/Lima",
-  CO: "America/Bogota",
-  MX: "America/Mexico_City",
-  US: "America/New_York",
-  ES: "Europe/Madrid",
-};
-
 function timeRangeLabel(value: TimeRange) {
   return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.label || "Últimas 24h";
 }
@@ -297,19 +277,9 @@ function safeDate(value: unknown) {
   return Number.isFinite(ms) ? ms : 0;
 }
 
-function validTimeZone(value: unknown) {
-  const candidate = String(value || "").trim();
-  if (!candidate) return "";
-  try {
-    new Intl.DateTimeFormat("es-AR", { timeZone: candidate }).format(new Date());
-    return candidate;
-  } catch {
-    return "";
-  }
-}
-
 function formatInTimeZone(value: unknown, timeZone: string, options: Intl.DateTimeFormatOptions) {
-  const ms = safeDate(value) || Date.now();
+  const ms = parseOperationalTimestamp(value);
+  if (ms === null) return "Fecha y hora no informadas";
   return new Intl.DateTimeFormat("es-AR", { ...options, timeZone }).format(new Date(ms));
 }
 
@@ -338,25 +308,6 @@ function tenantDisplayName(value?: string | null) {
   if (!value || normalized === "all") return "Todos los tenants";
   if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") return "Bodega Balmec";
   return String(value);
-}
-
-function resolveConsoleTimezone(rows: TenantTapRealtimeEvent[], selectedTenant: string, tenantScope: string) {
-  const selectedSlug = selectedTenant !== "all" ? selectedTenant : tenantScope;
-  const tenantHint = TENANT_TIMEZONE_HINTS[String(selectedSlug || "").toLowerCase()];
-  if (tenantHint) return tenantHint;
-
-  for (const row of rows) {
-    const zone = validTimeZone(row.timezone);
-    if (zone) return zone;
-  }
-
-  for (const row of rows) {
-    const country = String(row.country || "").toUpperCase();
-    const zone = validTimeZone(COUNTRY_TIMEZONE_HINTS[country]);
-    if (zone) return zone;
-  }
-
-  return DEFAULT_CONSOLE_TIMEZONE;
 }
 
 function timeAgo(value: unknown) {
@@ -1092,11 +1043,12 @@ export function ExecutiveRealtimeCrm({
     [visibleEvents],
   );
 
-  const consoleTimezone = useMemo(
-    () => resolveConsoleTimezone(visibleEvents, effectiveSelectedTenant, tenantScope),
+  const operationalTimeZone = useMemo(
+    () => resolveOperationalTimeZone(visibleEvents, effectiveSelectedTenant, tenantScope),
     [effectiveSelectedTenant, tenantScope, visibleEvents],
   );
-  const consoleTimezoneLabel = useMemo(() => timezoneLabel(consoleTimezone), [consoleTimezone]);
+  const consoleTimezone = operationalTimeZone.timeZone;
+  const consoleTimezoneLabel = operationalTimeZone.isFallback ? "UTC · zona no confirmada" : timezoneLabel(consoleTimezone);
 
   useEffect(() => {
     const updateClock = () => setClock(formatTimeInZone(Date.now(), consoleTimezone));
@@ -1435,7 +1387,7 @@ export function ExecutiveRealtimeCrm({
         <div className="order-2 ml-auto flex w-auto flex-wrap items-center justify-end gap-3 text-xs text-slate-300 lg:flex-nowrap 2xl:order-none 2xl:justify-start 2xl:gap-5">
           <span className="flex items-center gap-2" title={streamHealth.detail}><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> Stream: {streamHealth.label}</span>
           <span data-testid="crm-source-badge" className={`rounded-full border px-2.5 py-1 font-semibold ${sourcePresentation.badge}`} title={sourcePresentation.detail}>Fuente: {sourcePresentation.label}</span>
-          <span className="hidden items-center gap-2 2xl:flex" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="text-[10px] uppercase tracking-[0.08em] text-slate-500">{consoleTimezoneLabel}</span></span>
+          <span className="hidden items-center gap-2 2xl:flex" title={operationalTimeZone.isFallback ? "Zona no confirmada: horario mostrado en UTC" : `Zona informada para la operación: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="text-[10px] uppercase tracking-[0.08em] text-slate-500">{consoleTimezoneLabel}</span></span>
           <span className="hidden items-center gap-2 2xl:flex"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <TenantAccountMenu
             className="nexid-crm-account-menu w-full sm:w-auto"
@@ -1700,9 +1652,9 @@ export function ExecutiveRealtimeCrm({
                     const linkedIncident = incidentsByEventId[String(event.eventId)] || null;
                     return (
                       <button type="button" onClick={() => setIncidentSelection(snapshotIncidentEventSelection(event, visibleEvents.slice(0, 4)))} key={incidentEventNavigationKey(event)} aria-haspopup="dialog" aria-expanded={selectedEvent ? incidentEventNavigationKey(selectedEvent) === incidentEventNavigationKey(event) : false} data-incident-event-key={incidentEventNavigationKey(event)} data-selected={selectedEvent ? incidentEventNavigationKey(selectedEvent) === incidentEventNavigationKey(event) : false} className="min-h-[5.25rem] w-full rounded-xl border border-white/8 bg-slate-900/70 p-3 text-left transition hover:border-cyan-300/35 hover:bg-slate-900 data-[selected=true]:border-cyan-300 data-[selected=true]:ring-1 data-[selected=true]:ring-cyan-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" data-testid="open-event-incident-drawer">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] text-slate-500">{formatTimeInZone(event.occurredAt || Date.now(), consoleTimezone)}</p>
-                          <span className={`rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : authenticated ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${linkedIncident.status}` : authenticated ? "Autenticación verificada" : recognized ? "Producto reconocido" : risk ? "Riesgo" : "Actividad"}</span>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <p className="min-w-0 text-[11px] leading-4 text-slate-500">{formatReadingDateTime(event, operationalTimeZone)}</p>
+                          <span className={`rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : authenticated ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${incidentStatusLabel(linkedIncident.status)}` : authenticated ? "Autenticación verificada" : recognized ? "Producto reconocido" : risk ? "Riesgo" : "Actividad"}</span>
                         </div>
                         <p className="mt-1.5 text-[15px] font-black tracking-[-0.015em] text-white">{event.productName?.trim() || "Lectura NFC"}</p>
                         {event.city && event.locationSource ? <p className="mt-0.5 text-xs text-slate-300">{event.city}{event.country ? `, ${event.country}` : ""} · ubicación reportada</p> : null}
@@ -1839,6 +1791,7 @@ export function ExecutiveRealtimeCrm({
         <IncidentEventDrawer
           key={`${selectedEvent.tenantSlug || "global"}:${selectedEvent.eventId}`}
           event={selectedEvent}
+          operationalTimeZone={operationalTimeZone}
           incident={incidentsByEventId[String(selectedEvent.eventId)] || null}
           incidentAvailability={incidentAvailability}
           canRead={canReadIncidents}
