@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.05-dashboard.4",
-  "scope": "consented-phone-location-revisions-physical-tap-time-window-and-permission-aware-operations",
+  "release": "2026.09.05-dashboard.5",
+  "scope": "native-browser-safe-tap-arrival-animation-with-consented-location-and-physical-time-window",
   "realTapCertification": "not-included",
-  "baseCommit": "d1e5dca22e199a6de33d6d9c1d75cdab120dd485",
+  "baseCommit": "432c5647fabbfd932fa20b6dc1f8c703fa7b8911",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,

@@ -740,8 +740,8 @@ export function RealtimeMapLibreMap({
       expiresAt: arrival.expiresAt,
       motion,
       now: Date.now,
-      requestFrame: (callback) => requestAnimationFrame(callback),
-      cancelFrame: cancelAnimationFrame,
+      requestFrame: (callback) => window.requestAnimationFrame(callback),
+      cancelFrame: (id) => window.cancelAnimationFrame(id),
       paint: (progress) => {
         if (mapRef.current !== map || !map.getLayer("tap-arrival-ring")) return;
         map.setPaintProperty("tap-arrival-ring", "circle-radius", 7 + progress * 18);

@@ -4,6 +4,7 @@ import test from "node:test";
 import ts from "typescript";
 
 import { buildGeojson } from "../src/components/realtime-maplibre-map.tsx";
+import { startFiniteTapArrivalAnimation } from "../src/lib/realtime-tap-arrival.ts";
 
 const source = await readFile(new URL("../src/components/realtime-maplibre-map.tsx", import.meta.url), "utf8");
 const parsed = ts.createSourceFile("map.tsx", source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
@@ -16,6 +17,56 @@ function actualFunction(name, dependencies = {}) {
   }).outputText;
   return new Function(...Object.keys(dependencies), `${compiled}\nreturn ${name};`)(...Object.values(dependencies));
 }
+
+function actualAnimationAdapters(browserWindow) {
+  let options;
+  function visit(node) {
+    if (ts.isCallExpression(node) && node.expression.getText(parsed) === "startFiniteTapArrivalAnimation") options = node.arguments[0];
+    ts.forEachChild(node, visit);
+  }
+  visit(parsed);
+  assert.ok(options && ts.isObjectLiteralExpression(options));
+  const adapters = ["requestFrame", "cancelFrame"].map((name) => {
+    const property = options.properties.find((node) => ts.isPropertyAssignment(node) && node.name.getText(parsed) === name);
+    assert.ok(property, `exercise the component's actual ${name} adapter`);
+    return property.getText(parsed);
+  });
+  return new Function("window", `return ({ ${adapters.join(",")} });`)(browserWindow);
+}
+
+test("the actual map adapters preserve the browser receiver on animation completion and cleanup", () => {
+  for (const finish of ["cleanup", "expiry"]) {
+    let clock = 1_000;
+    let tick;
+    let cancellations = 0;
+    let cleared = 0;
+    const browserWindow = {
+      requestAnimationFrame(callback) {
+        assert.equal(this, browserWindow, "native requestAnimationFrame requires its Window receiver");
+        tick = callback;
+        return 1;
+      },
+      cancelAnimationFrame(id) {
+        assert.equal(this, browserWindow, "native cancelAnimationFrame requires its Window receiver");
+        assert.equal(id, 1);
+        cancellations += 1;
+      },
+    };
+    const stop = startFiniteTapArrivalAnimation({
+      ...actualAnimationAdapters(browserWindow),
+      expiresAt: 2_500,
+      now: () => clock,
+      motion: { matches: false, addEventListener() {}, removeEventListener() {} },
+      paint() {},
+      clear() { cleared += 1; },
+    });
+    if (finish === "expiry") { clock = 2_500; tick(); }
+    stop();
+    stop();
+    assert.equal(cancellations, 1);
+    assert.equal(cleared, 1);
+  }
+});
 
 function mapFixture() {
   const layers = new Map();
