@@ -1,10 +1,12 @@
 {
-  "release": "2026.09.05-api-stream.3",
-  "scope": "project-persisted-consented-phone-location-in-push-snapshots-and-admin-events",
-  "baseCommit": "11a7c7e5e44a1294545920efb6c691f805d66bac",
+  "release": "2026.09.06-api-campaigns.1",
+  "scope": "tenant-campaign-draft-persistence-idempotency-revision-and-audit",
+  "baseCommit": "210edf69e3b708472cc4c9859155f797cc1b700d",
   "requiredDeploymentConfiguration": { "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat" },
-  "databaseMigrationsIncluded": false,
-  "realtimeChangesIncluded": true,
+  "databaseMigrationsIncluded": true,
+  "requiredMigration": "20260906120000_0102_campaign_drafts.sql",
+  "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
-  "physicalLiveCertification": "tap-693-consented-location-persisted-production-projection-check-pending"
+  "campaignDeliveryIncluded": false,
+  "physicalLiveCertification": "not-included-in-this-release"
 }

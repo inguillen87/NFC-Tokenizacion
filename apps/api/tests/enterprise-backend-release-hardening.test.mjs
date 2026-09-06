@@ -236,8 +236,9 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /20260903110000_0099_commercial_role_defaults\.sql/);
   assert.match(dbRuntime, /20260903120000_0100_event_incident_optimistic_concurrency\.sql/);
   assert.match(dbRuntime, /20260903130000_0101_identified_unverified_event_taxonomy\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 47);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1), "20260903130000_0101_identified_unverified_event_taxonomy.sql");
+  assert.match(dbRuntime, /20260906120000_0102_campaign_drafts\.sql/);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 48);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1), "20260906120000_0102_campaign_drafts.sql");
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 1; /* request path */ ALTER TABLE tags ADD COLUMN unsafe text"), true);
