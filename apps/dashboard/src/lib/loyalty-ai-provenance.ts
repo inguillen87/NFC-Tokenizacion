@@ -20,8 +20,8 @@ type ResolveLoyaltyAiProvenanceInput = {
   provider?: string | null;
   model?: string | null;
   requestPending?: boolean;
-  customTokenPresent?: boolean;
   serverConfigured?: boolean | null;
+  serverUnavailable?: boolean;
   serverModel?: string | null;
 };
 
@@ -38,8 +38,8 @@ export function resolveLoyaltyAiProvenance({
   provider,
   model,
   requestPending = false,
-  customTokenPresent = false,
   serverConfigured = null,
+  serverUnavailable = false,
   serverModel,
 }: ResolveLoyaltyAiProvenanceInput): LoyaltyAiProvenance {
   const confirmedProvider = clean(provider);
@@ -87,13 +87,13 @@ export function resolveLoyaltyAiProvenance({
     };
   }
 
-  if (customTokenPresent) {
+  if (serverUnavailable) {
     return {
-      kind: "ready",
+      kind: "checking",
       isLive: false,
-      tabBadge: "LLM listo",
-      headline: "Override LLM listo · todavía sin ejecutar",
-      detail: "Hay un token de prueba en este navegador. Solo se indicará live después de confirmar proveedor y modelo en la respuesta.",
+      tabBadge: "Sin confirmar",
+      headline: "Configuración del proveedor no disponible",
+      detail: "No se pudo consultar el estado del servidor. El borrador se conserva; no se afirma que haya un proveedor activo.",
     };
   }
 
@@ -102,7 +102,7 @@ export function resolveLoyaltyAiProvenance({
     return {
       kind: "ready",
       isLive: false,
-      tabBadge: "LLM listo",
+      tabBadge: "Configurado",
       headline: "Proveedor LLM configurado · todavía sin ejecutar",
       detail: configuredModel
         ? `El servidor intentará usar ${configuredModel}. Configurado no significa que exista una respuesta live.`

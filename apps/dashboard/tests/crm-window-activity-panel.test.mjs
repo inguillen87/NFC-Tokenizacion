@@ -5,10 +5,17 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CrmWindowActivityPanel } from "../src/components/crm-window-activity-panel.tsx";
 
-const [crm, panel] = await Promise.all([
+const [crm, panel, css] = await Promise.all([
   readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/crm-window-activity-panel.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
 ]);
+
+test("activity primary action retains its semantic foreground above legacy theme resets", () => {
+  assert.match(css, /html \.nexid-crm-shell \.nexid-crm-window-activity \.nexid-crm-activity-primary\s*\{[^}]*color: var\(--crm-primary-ink\) !important;/);
+  assert.match(css, /--crm-primary: #0b3659;\s*--crm-primary-ink: #ffffff;/);
+  assert.match(css, /--crm-primary: #67e8f9;\s*--crm-primary-ink: #083344;/);
+});
 
 // Synthetic normalized events exercise presentation only; no API or live data.
 function event(index, overrides = {}) {

@@ -40,10 +40,14 @@ import {
 import { buildLoyaltyAdminUrl } from "./loyalty-campaign-scope";
 import {
   CampaignAudienceIdentity,
-  campaignAudienceIsDemo,
+  CampaignConsentAudiencePanel,
+  campaignAudienceRequestKey,
   campaignAudienceRowKey,
-  parseCampaignAudienceRows,
+  loadCampaignConsentAudience,
   type AudienceMember,
+  type CampaignAudienceChannel,
+  type CampaignAudienceRequest,
+  type CampaignConsentAudience,
 } from "./loyalty-campaign-audience";
 
 // Types
@@ -284,14 +288,14 @@ function firstName(name: string | null | undefined) {
 }
 
 function renderTemplateBody(template: CampaignTemplate, member: AudienceMember | undefined) {
-  const selected: AudienceMember = member || { consumer_id: "unselected" };
+  const selected: AudienceMember = member || {};
   const replacements: Record<string, string> = {
-    name: firstName(selected.display_name),
-    city: selected.city || "tu ciudad",
-    product: selected.last_product || "tu producto registrado",
-    brand: selected.tenant_slug === "demobodega" ? "Bodega Balmec" : selected.tenant_slug || "tu marca",
+    name: selected.display_name ? firstName(selected.display_name) : "{{name}}",
+    city: selected.city || "{{city}}",
+    product: selected.last_product || "{{product}}",
+    brand: selected.tenant_slug === "demobodega" ? "Bodega Balmec" : selected.tenant_slug || "{{brand}}",
     offer: template.offer,
-    points: String(asNumber(selected.points_balance)),
+    points: selected.points_balance == null ? "{{points}}" : String(asNumber(selected.points_balance)),
   };
   return template.body.replace(/\{\{(name|city|product|brand|offer|points)\}\}/g, (_, key: string) => replacements[key] || "");
 }
@@ -334,32 +338,17 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   const [showOptimizedResult, setShowOptimizedResult] = useState(false);
   const [selectedTone, setSelectedTone] = useState<"sommelier" | "vip-club" | "modern-web3">("sommelier");
   const [appliedImprovements, setAppliedImprovements] = useState<ImprovementApplied[]>([]);
-  const [selectedModel, setSelectedModel] = useState("Qwen/Qwen2.5-7B-Instruct");
   const [optimizerMode, setOptimizerMode] = useState<LoyaltyOptimizerMode>("idle");
   const [serverAiConfigured, setServerAiConfigured] = useState<boolean | null>(null);
+  const [serverAiUnavailable, setServerAiUnavailable] = useState(false);
   const [serverAiModel, setServerAiModel] = useState("");
   const [lastOptimizerModel, setLastOptimizerModel] = useState("");
   const [lastOptimizerProvider, setLastOptimizerProvider] = useState("");
 
-  // Custom Hugging Face Token state loaded from localStorage
-  const [hfTokenInput, setHfTokenInput] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("hf_api_token") || "";
-    }
-    return "";
-  });
-
-  const handleSaveToken = (val: string) => {
-    const cleanValue = val.trim();
-    setHfTokenInput(cleanValue);
-    if (typeof window !== "undefined") {
-      if (cleanValue) {
-        localStorage.setItem("hf_api_token", cleanValue);
-      } else {
-        localStorage.removeItem("hf_api_token");
-      }
-    }
-  };
+  useEffect(() => {
+    // Retire only this editor's obsolete key, without reading or transmitting its value.
+    try { window.localStorage.removeItem("hf_api_token"); } catch { /* Storage may be disabled. */ }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -367,11 +356,12 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
       try {
         const response = await fetch("/api/cognitive-ai", { cache: "no-store" });
         const payload = await response.json().catch(() => null);
+        if (!response.ok || payload?.ok !== true || typeof payload?.configured !== "boolean") throw new Error("ai_status_unavailable");
         if (cancelled) return;
-        setServerAiConfigured(Boolean(payload?.configured));
+        setServerAiConfigured(payload.configured);
         setServerAiModel(String(payload?.defaultModel || ""));
       } catch {
-        if (!cancelled) setServerAiConfigured(false);
+        if (!cancelled) setServerAiUnavailable(true);
       }
     }
     void loadAiStatus();
@@ -403,10 +393,13 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
-  const [audienceMembers, setAudienceMembers] = useState<AudienceMember[]>([]);
-  const [audienceLoading, setAudienceLoading] = useState(Boolean(tenantScope));
-  const [audienceError, setAudienceError] = useState<string | null>(null);
-  const [audienceIsDeclaredDemo, setAudienceIsDeclaredDemo] = useState(false);
+  const [audienceChannel, setAudienceChannel] = useState<CampaignAudienceChannel>("whatsapp");
+  const [audienceRefresh, setAudienceRefresh] = useState(0);
+  const audienceRequest = useMemo<CampaignAudienceRequest>(() => ({ tenant: tenantScope, channel: audienceChannel, purpose: "marketing" }), [tenantScope, audienceChannel]);
+  const audienceKey = campaignAudienceRequestKey(audienceRequest);
+  const [audienceState, setAudienceState] = useState<{
+    key: string; loading: boolean; error: string | null; result: CampaignConsentAudience | null;
+  }>(() => ({ key: audienceKey, loading: Boolean(tenantScope), error: tenantScope ? null : "tenant_scope_required", result: null }));
   const [triviaInsight, setTriviaInsight] = useState<TriviaInsight>(EMPTY_TRIVIA);
   const [triviaLoading, setTriviaLoading] = useState(Boolean(tenantScope));
   const [triviaError, setTriviaError] = useState<string | null>(null);
@@ -423,10 +416,13 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   const [voucherChecking, setVoucherChecking] = useState(false);
   const [voucherResult, setVoucherResult] = useState<RedemptionValidation | null>(null);
 
-  const audienceUsesDemo = allowDemoData && Boolean(audienceError);
-  const audienceDataIsDemo = audienceUsesDemo || audienceIsDeclaredDemo;
-  const audience = audienceUsesDemo ? DEMO_AUDIENCE : audienceMembers;
-  const audienceAvailable = audienceUsesDemo || (!audienceLoading && !audienceError);
+  // Demonstration profiles never enter the consent audience or become real recipients.
+  const audienceDataIsDemo = allowDemoData;
+  const audience = audienceDataIsDemo ? DEMO_AUDIENCE : [];
+  const audienceContextMatches = audienceState.key === audienceKey;
+  const audienceLoading = !allowDemoData && (!audienceContextMatches || audienceState.loading);
+  const audienceError = audienceContextMatches ? audienceState.error : null;
+  const confirmedAudience = audienceContextMatches ? audienceState.result : null;
   const selectedTemplate = CAMPAIGN_TEMPLATES.find((item) => item.id === selectedTemplateId) || CAMPAIGN_TEMPLATES[0];
   const triviaMeasurement = describeTriviaSummary(triviaInsight.summary);
   const triviaHasMeasurements = triviaMeasurement.hasMeasurements;
@@ -459,108 +455,29 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
     const taps = audience.reduce((sum, member) => sum + asNumber(member.tap_count), 0);
     return { total, withPhone, whatsappOptIn, mendoza, taps };
   }, [audience]);
-  const flowReadiness = useMemo(() => {
-    const selectedProfiles = filteredAudience.length;
-    const optInProfiles = filteredAudience.filter((member) => member.whatsapp_opt_in || member.marketing_opt_in).length;
-    const score =
-      (audienceKpis.taps > 0 ? 20 : 0) +
-      (selectedProfiles > 0 ? 20 : 0) +
-      (optInProfiles > 0 ? 20 : 0) +
-      (selectedTemplate ? 20 : 0) +
-      (twilioOptInConfirmed ? 20 : 0);
-    return {
-      score,
-      selectedProfiles,
-      optInProfiles,
-      steps: [
-        {
-          label: "Lecturas NFC registradas",
-          value: `${audienceKpis.taps.toLocaleString("es-AR")} lecturas`,
-          detail: "Mensajes NFC asociados por backend y sujetos a la politica del tenant.",
-          ready: audienceKpis.taps > 0,
-          Icon: Gauge,
-        },
-        {
-          label: "Segmento CRM",
-          value: `${selectedProfiles.toLocaleString("es-AR")} perfiles`,
-          detail: selectedCity === "all" ? "Todos los perfiles accionables." : `Filtrado por ${selectedCity}.`,
-          ready: selectedProfiles > 0,
-          Icon: Layers,
-        },
-        {
-          label: "Consentimiento",
-          value: `${optInProfiles.toLocaleString("es-AR")} opt-in`,
-          detail: "WhatsApp o marketing habilitado antes de enviar.",
-          ready: optInProfiles > 0,
-          Icon: ShieldCheck,
-        },
-        {
-          label: "Plantilla demo",
-          value: selectedTemplate.name,
-          detail: `${selectedTemplate.offer}. Hipotesis no medida.`,
-          ready: Boolean(selectedTemplate),
-          Icon: MessageSquare,
-        },
-        {
-          label: "Canje staff",
-          value: voucherResult?.redemption?.status || "lookup/redeem",
-          detail: "Código, sello y teléfono validables desde el CRM.",
-          ready: Boolean(voucherResult?.ok),
-          Icon: BookmarkCheck,
-        },
-      ],
-    };
-  }, [audienceKpis.taps, filteredAudience, selectedCity, selectedTemplate, twilioOptInConfirmed, voucherResult]);
-
   useEffect(() => {
+    if (allowDemoData) return;
     let cancelled = false;
+    const controller = new AbortController();
     async function loadAudience() {
-      setAudienceIsDeclaredDemo(false);
-      const endpoint = buildLoyaltyAdminUrl("consumer-network/members", tenantScope);
-      if (!endpoint) {
-        setAudienceMembers([]);
-        setAudienceError("tenant_scope_required");
-        setAudienceLoading(false);
-        return;
-      }
-      setAudienceMembers([]);
-      setSelectedCity("all");
-      setAudienceLoading(true);
-      setAudienceError(null);
+      setAudienceState({ key: audienceKey, loading: true, error: null, result: null });
       try {
-        const response = await fetch(endpoint, { cache: "no-store" });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !Array.isArray(payload?.items)) {
-          throw new Error(payload?.reason || payload?.error || "audience_unavailable");
-        }
-        if (String(payload?.tenant || "").trim().toLowerCase() !== tenantScope) {
-          throw new Error("tenant_scope_mismatch");
-        }
-        if (payload.items.some((item: AudienceMember) => String(item?.tenant_slug || "").trim().toLowerCase() !== tenantScope)) {
-          throw new Error("tenant_scope_mismatch");
-        }
-        const declaredDemo = campaignAudienceIsDemo(response, payload);
-        if (declaredDemo && !allowDemoData) throw new Error("demo_audience_not_allowed");
-        const members = parseCampaignAudienceRows(payload.items);
-        if (!members) throw new Error("audience_contract_invalid");
+        const result = await loadCampaignConsentAudience(audienceRequest, { signal: controller.signal });
         if (!cancelled) {
-          setAudienceMembers(members);
-          setAudienceIsDeclaredDemo(declaredDemo);
+          setAudienceState({ key: audienceKey, loading: false, error: null, result });
         }
       } catch (error) {
         if (!cancelled) {
-          setAudienceMembers([]);
-          setAudienceError(error instanceof Error ? error.message : "audience_unavailable");
+          setAudienceState({ key: audienceKey, loading: false, error: error instanceof Error ? error.message : "campaign_audience_unavailable", result: null });
         }
-      } finally {
-        if (!cancelled) setAudienceLoading(false);
       }
     }
-    loadAudience();
+    void loadAudience();
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [allowDemoData, tenantScope]);
+  }, [allowDemoData, audienceKey, audienceRequest, audienceRefresh]);
 
   useEffect(() => {
     let cancelled = false;
@@ -842,8 +759,6 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
         body: JSON.stringify({ 
           text: draftText, 
           tone: selectedTone,
-          customToken: hfTokenInput || undefined,
-          model: selectedModel
         }),
       });
 
@@ -1125,8 +1040,8 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
     provider: lastOptimizerProvider,
     model: lastOptimizerModel,
     requestPending: isOptimizing,
-    customTokenPresent: Boolean(hfTokenInput),
     serverConfigured: serverAiConfigured,
+    serverUnavailable: serverAiUnavailable,
     serverModel: serverAiModel,
   });
   const optimizerModeLabel = aiProvenance.tabBadge;
@@ -1160,11 +1075,11 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   ? "Consultando audiencia"
                 : audienceError
                   ? "Audiencia no disponible"
-                  : "Audiencia CRM reportada"}
+                  : "Consulta de audiencia autorizada"}
             </div>
-            <h2 className="mt-1 text-xl font-black text-white">Segmentos, beneficios y WhatsApp</h2>
+            <h2 className="mt-1 text-xl font-black text-white">Audiencia y preparación de campañas</h2>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
-              De mensaje NFC registrado a relación comercial: perfil, ciudad declarada o reportada, producto asociado, consentimiento, plantilla y envío controlado.
+              Consultá consentimientos por canal y prepará el contenido. Los borradores son locales; guardado en servidor, aprobación y envío de campañas siguen pendientes.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200">
@@ -1175,25 +1090,26 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 ? "Datos demo · no son audiencia real"
                 : audienceError
                   ? "Fuente no disponible"
-                  : "Datos CRM reportados"}
+                  : "Consulta protegida · sin envío"}
           </div>
         </div>
 
-        {audienceError && !audienceUsesDemo ? (
-          <div
-            role="status"
-            data-testid="loyalty-audience-unavailable"
-            className="mt-4 rounded-xl border border-amber-300/30 bg-amber-400/[0.07] px-4 py-3 text-xs leading-5 text-amber-100"
-          >
-            La fuente CRM no pudo confirmar la audiencia para {tenantScope ? `tenant:${tenantScope}` : "un tenant autorizado"}.
-            No se muestran perfiles demo ni se interpreta la falla como cero clientes. Motivo: <span className="font-mono">{audienceError}</span>.
-          </div>
+        {!audienceDataIsDemo ? (
+          <CampaignConsentAudiencePanel
+            key={audienceKey}
+            audience={confirmedAudience}
+            request={audienceRequest}
+            loading={audienceLoading}
+            error={audienceError}
+            onChannelChange={setAudienceChannel}
+            onRefresh={() => setAudienceRefresh((value) => value + 1)}
+          />
         ) : null}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {audienceDataIsDemo ? <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
             { label: "Clientes registrados", value: audienceKpis.total, hint: "con perfil CRM", icon: Phone, color: "text-cyan-300" },
-            { label: "Con teléfono", value: audienceKpis.withPhone, hint: "listos para canal", icon: MessageCircle, color: "text-sky-300" },
+            { label: "Con teléfono demo", value: audienceKpis.withPhone, hint: "no habilita envíos", icon: MessageCircle, color: "text-sky-300" },
             { label: "WhatsApp opt-in", value: audienceKpis.whatsappOptIn, hint: "consentidos", icon: ShieldCheck, color: "text-emerald-300" },
             { label: "Mendoza", value: audienceKpis.mendoza, hint: "cercanía bodega", icon: MapPin, color: "text-amber-300" },
             { label: "Lecturas acumuladas", value: audienceKpis.taps, hint: "señal comercial", icon: Gauge, color: "text-purple-300" },
@@ -1203,53 +1119,38 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{item.label}</span>
                 <item.icon className={`h-4 w-4 ${item.color}`} />
               </div>
-              <div className="mt-2 text-2xl font-black text-white">{audienceAvailable ? item.value.toLocaleString("es-AR") : "—"}</div>
+              <div className="mt-2 text-2xl font-black text-white">{item.value.toLocaleString("es-AR")}</div>
               <div className="mt-1 text-[10px] text-slate-500">{item.hint}</div>
             </div>
           ))}
-        </div>
+        </div> : null}
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.16),transparent_36%),linear-gradient(135deg,rgba(2,6,23,.92),rgba(8,47,73,.36))] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">
                 <Sparkles className="h-4 w-4" />
-                Flujo comercial
+                Estado del circuito
               </div>
-              <h3 className="mt-1 text-sm font-black text-white">Circuito post-tap listo para mostrar</h3>
+              <h3 className="mt-1 text-sm font-black text-white">Qué podés hacer hoy</h3>
               <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-400">
-                De la lectura NFC al beneficio canjeable: segmento, consentimiento, plantilla, WhatsApp/email y validación staff en un solo recorrido.
+                La consulta de audiencia no guarda ni aprueba una campaña. La prueba manual de WhatsApp es una función separada, no un envío a esta lista.
               </p>
             </div>
-            <div className="min-w-[150px] rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-3 text-right">
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Readiness de configuracion</div>
-              <div className="mt-1 text-3xl font-black text-cyan-100">{audienceAvailable ? `${flowReadiness.score}%` : "—"}</div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300 transition-all" style={{ width: audienceAvailable ? `${flowReadiness.score}%` : "0%" }} />
-              </div>
-            </div>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-5">
-            {flowReadiness.steps.map((step, index) => (
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {[
+              { label: "Audiencia", value: audienceDataIsDemo ? "Ejemplos demo" : audienceLoading ? "Consultando" : audienceError ? "No disponible" : "Consulta protegida", detail: "Consentimiento por canal y finalidad. No crea destinatarios desde UIDs.", Icon: ShieldCheck },
+              { label: "Borrador", value: "Edición local", detail: "Prepará el texto en este navegador. Se pierde al recargar; no se guarda en el servidor.", Icon: FileText },
+              { label: "Aprobación y envío", value: "Pendiente de conexión", detail: "Todavía no hay revisión persistida ni envío de campañas desde esta lista.", Icon: MessageSquare },
+            ].map((step) => (
               <div key={step.label} className="relative rounded-2xl border border-white/10 bg-slate-950/55 p-3">
-                {index < flowReadiness.steps.length - 1 ? (
-                  <div className="absolute -right-2 top-1/2 hidden h-px w-4 bg-cyan-300/30 md:block" />
-                ) : null}
-                <div className="flex items-start justify-between gap-2">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
-                    step.ready ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" : "border-slate-600/50 bg-slate-900 text-slate-500"
-                  }`}>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/25 bg-cyan-400/10 text-cyan-200">
                     <step.Icon className="h-4 w-4" />
-                  </div>
-                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${
-                    step.ready ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-800 text-slate-500"
-                  }`}>
-                    {step.ready ? "ready" : "pendiente"}
-                  </span>
                 </div>
                 <div className="mt-3 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">{step.label}</div>
                 <div className="mt-1 line-clamp-1 text-sm font-black text-white">{step.value}</div>
-                <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-400">{step.detail}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">{step.detail}</p>
               </div>
             ))}
           </div>
@@ -1359,9 +1260,9 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   <button
                     key={city.city}
                     type="button"
-                    title={`Usar ${city.city} como segmento de campaña`}
+                    title={`Preparar un borrador basado en el resumen de trivia de ${city.city}; no selecciona destinatarios`}
                     onClick={() => {
-                      setSelectedCity(city.city === "Sin ciudad" ? "all" : city.city);
+                      if (audienceDataIsDemo) setSelectedCity(city.city === "Sin ciudad" ? "all" : city.city);
                       setDraftTitle(`Trivia ${city.city} - ${city.topProduct || "post tap"}`);
                       setDraftText(`Hola {{name}}, vimos tu tap y tu avance en la trivia de ${city.topProduct || "tu producto"}. Te reservamos un beneficio por 48h para completar la experiencia en ${city.city}.`);
                     }}
@@ -1442,10 +1343,10 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             </div>
 
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Ciudad / segmento
+              {audienceDataIsDemo ? <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Ciudad / ejemplo demo
                 <select
-                  title="Filtra la audiencia por ciudad detectada en las lecturas"
+                  title="Filtra sólo los perfiles ficticios de demostración por ciudad"
                   value={selectedCity}
                   onChange={(event) => setSelectedCity(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
@@ -1455,7 +1356,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                     <option key={city} value={city}>{city}</option>
                   ))}
                 </select>
-              </label>
+              </label> : null}
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Nombre preview
                 <input
@@ -1652,10 +1553,10 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
           )}
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
+        {audienceDataIsDemo ? <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
             <div>
-              <h3 className="text-sm font-black text-white">{audienceDataIsDemo ? "Perfiles ficticios de demostración" : "Perfiles reportados por la fuente"}</h3>
+              <h3 className="text-sm font-black text-white">Perfiles ficticios de demostración</h3>
               <p className="text-[11px] text-slate-400">Nombre, contacto enmascarado, ciudad, lecturas, puntos, opt-in y segmento.</p>
             </div>
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-300">
@@ -1764,14 +1665,14 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
               </tbody>
             </table>
           </div>
-        </div>
+        </div> : null}
       </section>
 
       {/* Tabs Menu */}
-      <div className="flex border-b border-white/10 mb-6">
+      <div className="flex flex-wrap gap-2 border-b border-white/10 mb-6">
         <button
           type="button"
-          title="Ver campañas activas, resultados y recompensas emitidas"
+          title="Ver los borradores locales de esta sesión y los ejemplos si estás en modo demo"
           onClick={() => setActiveTab("campaigns")}
           className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors flex items-center gap-2 ${
             activeTab === "campaigns" 
@@ -1780,7 +1681,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
           }`}
         >
           <Layers className="w-4 h-4 text-cyan-400" />
-          Campañas / borradores ({campaigns.length})
+          Borradores locales ({campaigns.length})
         </button>
         <button
           type="button"
@@ -1793,7 +1694,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
           }`}
         >
           <Sparkle className="w-4 h-4 text-purple-400 animate-pulse" />
-          nexID Cognitive AI Engine
+          Editor asistido
           <span
             title={aiProvenance.detail}
             className={`absolute -top-1.5 -right-2 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${optimizerStatusClass}`}
@@ -1810,7 +1711,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             /* Tab 1: Campaigns List */
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white">Listado de Campañas</h2>
+                <h2 className="text-lg font-bold text-white">Borradores de esta sesión</h2>
                 <Button 
                   type="button"
                   title="Abrir el editor IA para crear una nueva campaña"
@@ -1822,6 +1723,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   Abrir optimizador
                 </Button>
               </div>
+              <p className="text-xs leading-relaxed text-slate-400">Estos borradores sólo viven en esta página y se pierden al recargar. No se guardan en el servidor ni habilitan envíos.</p>
 
               {/* Promo Banner to AI Optimizer */}
               <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-500/10 to-transparent p-4 flex items-center justify-between gap-4">
@@ -1860,7 +1762,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                         )}
                         {camp.status === "DRAFT" && (
                           <span className="inline-flex px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-wider">
-                            DRAFT
+                            {camp.measurement === "demo_model" ? "BORRADOR DEMO" : "BORRADOR LOCAL"}
                           </span>
                         )}
                         <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
@@ -1900,7 +1802,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   data-testid="loyalty-campaigns-empty"
                   className="rounded-2xl border border-dashed border-white/15 bg-slate-900/35 p-5 text-sm leading-6 text-slate-300"
                 >
-                  No hay campañas confirmadas para este tenant. El optimizador puede crear un borrador local, pero no se presenta como campaña enviada ni como resultado medido.
+                  Todavía no agregaste borradores en esta sesión. No se consultó una lista de campañas guardadas: la persistencia en servidor sigue pendiente.
                 </div>
               ) : null}
             </div>
@@ -1928,51 +1830,11 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 leading-normal">
-                    El editor usa el proveedor configurado en el servidor y, solo para pruebas, permite un token local opcional.
-                    Sin proveedor activo, no llama modelos externos: usa fallback seguro y scores estimados de copy.
+                    La credencial y el modelo se administran en el servidor; este editor no recibe ni guarda claves.
+                    Configurado no significa ejecutado. Cada resultado informa si respondió un proveedor o si se usaron reglas de respaldo.
                   </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      title="Override opcional para pruebas del editor AI. Se guarda solo en este navegador."
-                      placeholder="hf_..."
-                      value={hfTokenInput}
-                      onChange={(e) => handleSaveToken(e.target.value)}
-                      className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500 transition-colors font-mono"
-                    />
-                    {hfTokenInput && (
-                      <button
-                        onClick={() => handleSaveToken("")}
-                        title="Eliminar el token Hugging Face guardado en este navegador"
-                        className="text-[10px] px-2.5 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition font-bold"
-                      >
-                        Limpiar
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Model Selector below the token input */}
-                  <div className="space-y-1.5 pt-1 border-t border-white/5">
-                    <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-400">
-                      Modelo LLM
-                    </label>
-                    <div className="flex flex-col gap-1.5 md:flex-row md:items-center">
-                      <select
-                        value={selectedModel}
-                        title="Modelo solicitado al proveedor LLM cuando el modo IA este activo"
-                        onChange={(e) => setSelectedModel(e.target.value)}
-                        className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-200 outline-none focus:border-purple-500 transition-colors cursor-pointer w-full"
-                      >
-                        <option value="Qwen/Qwen2.5-7B-Instruct">Qwen 2.5 7B Instruct (Recomendado)</option>
-                        <option value="google/gemma-2-9b-it">Gemma 2 9B Instruct (Creativo)</option>
-                        <option value="meta-llama/Llama-3-8b-instruct">Llama 3 8B Instruct (Comercial)</option>
-                        <option value="mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B Instruct (Estándar)</option>
-                      </select>
-                      
-                      <span className="text-[7.5px] text-slate-550 leading-normal font-mono uppercase bg-white/5 px-2 py-1 rounded w-fit shrink-0">
-                        {(lastOptimizerModel || serverAiModel || selectedModel).split("/")[0]} Engine
-                      </span>
-                    </div>
+                  <div className="space-y-1.5 border-t border-white/5 pt-2">
+                    <p className="break-words text-xs text-slate-300">{aiProvenance.detail}</p>
                   </div>
                 </div>
 
@@ -2144,6 +2006,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                       <Plus className="w-4 h-4" />
                       <span>Agregar borrador local</span>
                     </Button>
+                    <p className="mt-2 text-xs text-slate-400">Sólo en esta sesión. Guardado en servidor, aprobación y envío todavía no conectados.</p>
                   </div>
                 </div>
               </div>

@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.05-dashboard.7",
-  "scope": "adaptive-CRM-layout-and-source-backed-window-activity-with-working-event-navigation",
+  "release": "2026.09.06-dashboard.8",
+  "scope": "consented-campaign-audience-by-channel-and-server-confirmed-AI-provenance-with-CRM-action-contrast",
   "realTapCertification": "not-included",
-  "baseCommit": "69baef4c062de87346f7e73f6735012720dae1fb",
+  "baseCommit": "596766606ec27951cccdd958bcd86ffdb4419105",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,

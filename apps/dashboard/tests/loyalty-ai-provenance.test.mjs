@@ -69,3 +69,28 @@ test("loyalty UI derives top badges from provenance and labels BotIA as rule sim
   assert.doesNotMatch(loyaltyClient, /Cognitive AI Suite Activo/);
   assert.doesNotMatch(loyaltyClient, /optimizadas en tiempo real/);
 });
+
+test("server configuration is not execution and a legacy browser override cannot imply readiness", () => {
+  const configured = resolveLoyaltyAiProvenance({ mode: "idle", serverConfigured: true, serverModel: "server/model" });
+  assert.equal(configured.isLive, false);
+  assert.equal(configured.tabBadge, "Configurado");
+  assert.match(configured.headline, /todavía sin ejecutar/);
+  const browserOnly = resolveLoyaltyAiProvenance({ mode: "idle", customTokenPresent: true, serverConfigured: false });
+  assert.equal(browserOnly.kind, "local-rules");
+  assert.equal(browserOnly.isLive, false);
+  assert.doesNotMatch(`${browserOnly.tabBadge} ${browserOnly.detail}`, /LLM listo|Override|token de prueba/);
+  const unavailable = resolveLoyaltyAiProvenance({ mode: "idle", serverUnavailable: true });
+  assert.equal(unavailable.tabBadge, "Sin confirmar");
+  assert.equal(unavailable.isLive, false);
+  assert.match(unavailable.detail, /No se pudo consultar/);
+});
+
+test("editor retires only its own obsolete storage key without reading, accepting or sending credentials", () => {
+  assert.match(loyaltyClient, /window.localStorage.removeItem\("hf_api_token"\)/);
+  assert.doesNotMatch(loyaltyClient, /localStorage\.(?:getItem|setItem|clear)|hfTokenInput|handleSaveToken|customToken|selectedModel|setSelectedModel|type="password"|LLM listo/);
+  assert.match(loyaltyClient, /body: JSON.stringify\(\{\s*text: draftText,\s*tone: selectedTone,\s*\}\)/);
+  assert.match(loyaltyClient, /!response.ok \|\| payload\?\.ok !== true \|\| typeof payload\?\.configured !== "boolean"/);
+  assert.match(loyaltyClient, /if \(!cancelled\) setServerAiUnavailable\(true\)/);
+  const optimizer = loyaltyClient.slice(loyaltyClient.indexOf("async function handleOptimizeText"), loyaltyClient.indexOf("function handleCreateCampaign"));
+  assert.doesNotMatch(optimizer, /setDraftText\(""\)|setDraftTitle\(""\)/);
+});

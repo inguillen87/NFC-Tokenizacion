@@ -13,6 +13,7 @@ const campaignClient = await readFile(
   new URL("../src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx", import.meta.url),
   "utf8",
 );
+const campaignAudience = await readFile(new URL("../src/app/(app)/loyalty/campaigns/loyalty-campaign-audience.tsx", import.meta.url), "utf8");
 const orderRequestsPage = await readFile(
   new URL("../src/app/(app)/consumer-network/order-requests/page.tsx", import.meta.url),
   "utf8",
@@ -35,7 +36,9 @@ test("loyalty campaigns derive scope on the server and never hardcode the demo t
   assert.match(campaignPage, /tenantScope=\{adminContext\.tenantSlug\}/);
   assert.match(campaignPage, /allowDemoData=\{Boolean\(session\.isDemo\)\}/);
 
-  assert.match(campaignClient, /buildLoyaltyAdminUrl\("consumer-network\/members", tenantScope\)/);
+  assert.match(campaignClient, /tenant: tenantScope, channel: audienceChannel, purpose: "marketing"/);
+  assert.match(campaignAudience, /buildLoyaltyAdminUrl\("campaigns\/audience", request.tenant\)/);
+  assert.doesNotMatch(campaignClient, /consumer-network\/members/);
   assert.match(campaignClient, /buildLoyaltyAdminUrl\("loyalty\/trivia\/overview", tenantScope\)/);
   assert.match(campaignClient, /buildLoyaltyAdminUrl\("campaigns\/test-whatsapp", tenantScope\)/);
   assert.match(campaignClient, /buildLoyaltyAdminUrl\("rewards\/redemptions\/validate", tenantScope\)/);
@@ -44,13 +47,15 @@ test("loyalty campaigns derive scope on the server and never hardcode the demo t
 });
 
 test("production loyalty views fail closed instead of substituting demo audiences, trivia or campaigns", () => {
-  assert.match(campaignClient, /const audienceUsesDemo = allowDemoData && Boolean\(audienceError\)/);
+  assert.match(campaignClient, /const audienceDataIsDemo = allowDemoData/);
+  assert.match(campaignClient, /const audience = audienceDataIsDemo \? DEMO_AUDIENCE : \[\]/);
   assert.match(campaignClient, /allowDemoData \? INITIAL_CAMPAIGNS : \[\]/);
   assert.match(campaignClient, /triviaGuideEnabled = allowDemoData/);
   assert.match(campaignClient, /visibleTriviaQuestions/);
-  assert.match(campaignClient, /loyalty-audience-unavailable/);
+  assert.match(campaignAudience, /loyalty-audience-unavailable/);
   assert.match(campaignClient, /loyalty-trivia-unavailable/);
-  assert.match(campaignClient, /No se muestran perfiles demo ni se interpreta la falla como cero clientes/);
+  assert.match(campaignAudience, /No se interpreta la falla como cero clientes/);
+  assert.match(campaignAudience, /if \(campaignAudienceIsDemo\(response, payload\)\) throw new Error\("demo_audience_not_allowed"\)/);
   assert.match(campaignClient, /no se generan conclusiones ni recomendaciones desde datos sustitutos/);
 });
 

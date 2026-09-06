@@ -2199,9 +2199,10 @@ html.theme-light .maplibregl-ctrl-attrib a {
   font-weight: 700;
 }
 
-.nexid-crm-activity-primary {
+html .nexid-crm-shell .nexid-crm-window-activity .nexid-crm-activity-primary {
   background: var(--crm-primary);
-  color: var(--crm-primary-ink);
+  /* Keep this semantic foreground above the legacy light-theme button reset. */
+  color: var(--crm-primary-ink) !important;
   border-color: var(--crm-primary);
 }
 
