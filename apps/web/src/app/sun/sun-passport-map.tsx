@@ -63,9 +63,18 @@ function configuredRasterStyle(light: boolean): StyleSpecification {
         id: "configured-basemap",
         type: "raster",
         source: "configured-basemap",
+        // MapLibre mixes brightness-min to brightness-max per raster channel.
+        // Reversing these endpoints makes light cartography charcoal with light
+        // labels; only this basemap layer changes, never the evidence overlays.
+        // https://maplibre.org/maplibre-style-spec/layers/#raster-brightness-min
         paint: light
           ? { "raster-saturation": -0.12, "raster-contrast": 0.04 }
-          : { "raster-saturation": -0.3, "raster-brightness-max": 0.64, "raster-contrast": 0.12 },
+          : {
+              "raster-saturation": -1,
+              "raster-brightness-min": 0.94,
+              "raster-brightness-max": 0.08,
+              "raster-contrast": 0.08,
+            },
       },
     ],
   };

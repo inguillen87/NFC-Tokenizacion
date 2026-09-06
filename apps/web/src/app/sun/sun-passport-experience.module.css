@@ -5,6 +5,16 @@
   --passport-warning: #fcd34d;
   --passport-line: rgba(103, 232, 249, 0.22);
   --passport-media: linear-gradient(145deg, #122b41, #101a30);
+  --passport-product: radial-gradient(ellipse at 0% 0%, rgba(45, 212, 191, 0.15), transparent 75%), #102338;
+  --passport-surface: #0e1d30;
+  --passport-closed: #6ee7b7;
+  --passport-closed-bg: #0d302b;
+  --passport-attention: #fcd34d;
+  --passport-attention-bg: #322818;
+  --passport-info: #67e8f9;
+  --passport-info-bg: #102c3d;
+  --passport-risk: #fda4af;
+  --passport-risk-bg: #351f2c;
 }
 
 :global(html:is(.theme-light, [data-theme="light"])) .passport {
@@ -14,11 +24,43 @@
   --passport-warning: #92400e;
   --passport-line: rgba(8, 124, 145, 0.22);
   --passport-media: linear-gradient(145deg, #f4fdff, #e0f4f4);
+  --passport-product: radial-gradient(ellipse at 0% 0%, rgba(13, 148, 136, 0.12), transparent 75%), #f2fafb;
+  --passport-surface: #ffffff;
+  --passport-closed: #086148;
+  --passport-closed-bg: #e9f8f0;
+  --passport-attention: #8a4708;
+  --passport-attention-bg: #fff5de;
+  --passport-info: #07647a;
+  --passport-info-bg: #eaf7fc;
+  --passport-risk: #a52140;
+  --passport-risk-bg: #fff0f2;
 }
 
 .passport :global(.sun-summary-panel) {
   border-color: var(--passport-line);
   box-shadow: 0 18px 52px rgba(8, 47, 73, 0.14);
+}
+
+.passport:global(.sun-tap-shell) :global(.sun-summary-product) {
+  padding: 0.75rem;
+  border: 1px solid var(--passport-line);
+  border-radius: 1.15rem;
+  background: var(--passport-product);
+}
+
+.passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual) {
+  height: 8rem !important;
+  border-color: var(--passport-line) !important;
+  background: var(--passport-media) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 16px rgba(8, 47, 73, 0.1);
+}
+
+.passport :global(.sun-summary-product__copy) {
+  overflow-wrap: anywhere;
+}
+
+.passport :global(.sun-summary-product__copy) > span {
+  flex-wrap: wrap;
 }
 
 .passport :global(.sun-summary-product__copy) > p:first-of-type {
@@ -51,19 +93,72 @@
   text-wrap: balance;
 }
 
+.passport [data-status-tone="closed"] {
+  --status-ink: var(--passport-closed);
+  --status-surface: var(--passport-closed-bg);
+}
+
+.passport [data-status-tone="opened"],
+.passport [data-status-tone="review"] {
+  --status-ink: var(--passport-attention);
+  --status-surface: var(--passport-attention-bg);
+}
+
+.passport [data-status-tone="verified"],
+.passport [data-status-tone="info"] {
+  --status-ink: var(--passport-info);
+  --status-surface: var(--passport-info-bg);
+}
+
+.passport [data-status-tone="risk"] {
+  --status-ink: var(--passport-risk);
+  --status-surface: var(--passport-risk-bg);
+}
+
+/* Specificity keeps the scoped palette above legacy global light-mode rules. */
+.passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-status)[data-status-tone] {
+  border-color: var(--status-ink) !important;
+  border-left-width: 4px;
+  background: var(--status-surface) !important;
+  box-shadow: none;
+}
+
+.passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] :global(.sun-summary-status__icon) {
+  border-color: var(--status-ink) !important;
+  background: var(--passport-surface) !important;
+  color: var(--status-ink) !important;
+}
+
+.passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] :global(.sun-summary-status__headline) {
+  color: var(--passport-ink) !important;
+}
+
+.passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] :global(.sun-summary-status__copy) {
+  color: var(--passport-ink) !important;
+}
+
 .passport :global(.sun-summary-status__copy) {
   font-size: 0.8125rem !important;
   line-height: 1.55 !important;
 }
 
 .passport [data-testid="sun-summary-facts"] dt {
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   letter-spacing: 0.04em;
 }
 
 .passport [data-testid="sun-summary-facts"] dd {
   font-size: 0.75rem;
   line-height: 1.4;
+}
+
+.passport [data-testid="sun-summary-facts"] > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.15rem;
+  overflow-wrap: anywhere;
 }
 
 .passport :global(.sun-summary-location) strong {
@@ -80,6 +175,24 @@
 .passport :global(.sun-summary-location-details) summary {
   min-height: 2.75rem;
   font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.passport :global(.sun-summary-location-details) summary::after {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-inline-end: 0.2rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  content: "";
+}
+
+.passport :global(.sun-summary-location-details)[open] summary::after {
+  transform: rotate(225deg);
 }
 
 /* The optional phone action stays visually distinct from section navigation.
@@ -113,6 +226,11 @@
   min-height: 3rem;
   font-size: 0.8125rem;
   line-height: 1.35;
+}
+
+.passport :is(a, button, select, summary):focus-visible {
+  outline: 2px solid var(--passport-accent);
+  outline-offset: 3px;
 }
 
 .productProfile {
@@ -219,8 +337,59 @@
 }
 
 .passport :global(.sun-mobile-dock) a {
+  min-height: 2.75rem;
   font-size: 0.6875rem;
   font-weight: 800;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .passport :global(.sun-summary-product) {
+    animation: productArrival 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .passport :global(.sun-summary-product__visual) > img {
+    animation: photoArrival 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .passport :global(.sun-summary-status__icon) {
+    animation: resultArrival 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both;
+  }
+
+  .passport :global(.sun-summary-actions) a,
+  .passport :global(.sun-summary-location-details) summary::after {
+    transition: transform 160ms ease;
+  }
+
+  .passport :global(.sun-summary-actions) a:active {
+    transform: translateY(1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .passport :global(.sun-summary-panel),
+  .passport :global(.sun-summary-panel) *,
+  .passport :global(.sun-summary-panel) *::before,
+  .passport :global(.sun-summary-panel) *::after,
+  .passport :global(.sun-mobile-dock),
+  .passport :global(.sun-mobile-dock) * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes productArrival {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes photoArrival {
+  from { opacity: 0; transform: translateY(5px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes resultArrival {
+  from { opacity: 0; transform: scale(0.88); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .passport :global(.sun-mobile-dock) a[aria-current="location"] {

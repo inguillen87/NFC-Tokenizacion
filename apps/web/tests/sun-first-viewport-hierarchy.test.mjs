@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const [page, sectionNav, css] = await Promise.all([
+const [page, sectionNav, css, experienceCss] = await Promise.all([
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/sun-section-nav.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/sun/sun-passport-experience.module.css", import.meta.url), "utf8"),
 ]);
 
 function firstViewportSummary() {
@@ -116,4 +117,50 @@ test("SUN light mode moves dark passport surfaces and status accents to an acces
   assert.match(css, /html\.theme-light \.sun-tap-experience \.sun-summary-panel,[\s\S]*?rgba\(255, 255, 255, 0\.98\)/);
   assert.match(css, /html\.theme-light \.sun-tap-experience \[class\*="text-amber-"\],[\s\S]*?color: #92400e !important;/);
   assert.match(css, /html\.theme-light \.sun-tap-experience \.sun-summary-actions a:first-child,[\s\S]*?color: #ffffff !important;/);
+});
+
+test("SUN summary uses its existing state for every visual tone and labels the product region", () => {
+  const summary = firstViewportSummary();
+  assert.match(summary, /aria-labelledby="sun-summary-product-title"/);
+  assert.match(summary, /<h1 id="sun-summary-product-title"/);
+  assert.match(summary, /data-status-tone=\{consumerStatus\.tone\}/);
+  for (const tone of ["closed", "opened", "review", "verified", "info", "risk"]) {
+    assert.ok(experienceCss.includes(`[data-status-tone="${tone}"]`), `${tone} must have a presentation`);
+  }
+});
+
+function contrastRatio(foreground, background) {
+  const luminance = (hex) => {
+    const linear = hex.slice(1).match(/../g).map((channel) => {
+      const value = Number.parseInt(channel, 16) / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  };
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
+test("SUN scoped status palettes provide at least 4.5:1 text contrast in both themes", () => {
+  const themeBlocks = [
+    experienceCss.match(/^\.passport\s*\{([^}]+)\}/)?.[1],
+    experienceCss.match(/:global\(html:is\(\.theme-light, \[data-theme="light"\]\)\) \.passport\s*\{([^}]+)\}/)?.[1],
+  ];
+  for (const [index, block] of themeBlocks.entries()) {
+    assert.ok(block, `theme ${index} must declare a palette`);
+    const palette = Object.fromEntries([...block.matchAll(/--passport-([a-z-]+):\s*(#[0-9a-f]{6});/g)].map((match) => [match[1], match[2]]));
+    for (const tone of ["closed", "attention", "info", "risk"]) {
+      assert.ok(contrastRatio(palette[tone], palette[`${tone}-bg`]) >= 4.5, `${tone} accent in theme ${index}`);
+      assert.ok(contrastRatio(palette.ink, palette[`${tone}-bg`]) >= 4.5, `${tone} body in theme ${index}`);
+    }
+  }
+});
+
+test("SUN summary motion is finite, reduced-motion safe and leaves touch controls usable", () => {
+  assert.doesNotMatch(experienceCss, /animation[^;]*infinite/);
+  assert.match(experienceCss, /@media \(prefers-reduced-motion: no-preference\)/);
+  assert.match(experienceCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation: none !important;[\s\S]*?transition: none !important;/);
+  assert.match(experienceCss, /:global\(\.sun-summary-location-details\) summary\s*\{[^}]*min-height: 2\.75rem;/);
+  assert.match(experienceCss, /:global\(\.sun-mobile-dock\) a\s*\{[^}]*min-height: 2\.75rem;/);
+  assert.match(experienceCss, /:is\(a, button, select, summary\):focus-visible/);
 });

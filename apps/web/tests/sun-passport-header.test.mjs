@@ -12,7 +12,7 @@ test("SUN header gives the existing brand priority and puts status and locale in
   ]);
 
   assert.match(source, /sun-passport-header sun-topbar \$\{styles\.header\}/);
-  assert.match(source, /<BrandLockup size=\{52\} variant="ripple" theme="dark" \/>/);
+  assert.match(source, /<BrandLockup size=\{52\} variant="static" theme="dark" \/>/);
   assert.ok(source.indexOf("<BrandLockup") < source.indexOf("<ThemeToggle"));
   assert.ok(source.indexOf("<ThemeToggle") < source.indexOf("sun-topbar-actions"));
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("sun-live-tap-pill"));
@@ -60,4 +60,16 @@ test("SUN header presentation has one local owner without changing shared brand 
   ]);
   assert.doesNotMatch(experienceCss, /sun-passport-header|sun-passport-brand|sun-live-tap-pill/);
   assert.match(wordmark, /viewBox="0 0 520 120"/);
+});
+
+test("SUN brand entrance is finite and respects reduced motion, including inherited animation", async () => {
+  const [source, css] = await Promise.all([
+    readFile(headerUrl, "utf8"),
+    readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(source, /animate-pulse|variant="ripple"/);
+  assert.match(css, /\.header \.brand \*[\s\S]*?animation: none !important;/);
+  assert.match(css, /@media \(prefers-reduced-motion: no-preference\)/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation: none !important;[\s\S]*?transition: none !important;/);
+  assert.doesNotMatch(css, /animation[^;]*infinite/);
 });

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
 
 const [page, locationExperience, map, css, layout] = await Promise.all([
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
@@ -86,6 +87,55 @@ test("map has mobile-sized canvas, desktop expansion and 44px controls", () => {
   assert.match(css, /\.externalLink[\s\S]*?min-height: 2\.75rem/);
   assert.match(css, /maplibregl-ctrl-group button[\s\S]*?width: 2\.75rem;[\s\S]*?height: 2\.75rem/);
   assert.match(css, /prefers-reduced-motion/);
+});
+
+test("map legends, fallback and native controls follow both themes with visible keyboard focus", () => {
+  assert.match(css, /^\.shell\s*\{[^}]*--map-ui-bg: #102338;[^}]*--map-ui-ink: #f1f7fc;/);
+  assert.match(css, /:global\(html\.theme-light\) \.shell\s*\{[^}]*--map-ui-bg: #ffffff;[^}]*--map-ui-ink: #163048;/);
+  for (const selector of [".loading,", ".legendItem,", ".popup {", ".map :global(.maplibregl-ctrl-group) {", ".map :global(.maplibregl-popup-content) {"]) {
+    const block = css.slice(css.indexOf(selector)).split("}", 1)[0];
+    assert.ok(block.includes("var(--map-ui-"), `${selector} must use the theme palette`);
+  }
+  assert.match(css, /maplibregl-ctrl-group button:focus-visible/);
+  assert.match(css, /maplibregl-popup-close-button:focus-visible/);
+  assert.match(css, /\.fitButton\s*\{[^}]*color: #ffffff;[^}]*background: #0e7490;/);
+  assert.match(css, /maplibregl-popup-content\)\s*\{[^}]*padding: 0\.85rem 2\.75rem 0\.85rem 1rem;/);
+});
+
+test("dark SUN raster is a valid inverted charcoal basemap with readable light labels", () => {
+  const paints = map.match(/paint: light\s*\?\s*(\{[^}]+\})\s*:\s*(\{[^}]+\})/);
+  assert.ok(paints, "both raster theme paints must remain explicit");
+  const parsePaint = (source) => JSON.parse(source.replace(/,\s*}/g, "}"));
+  const light = parsePaint(paints[1]);
+  const dark = parsePaint(paints[2]);
+  for (const paint of [light, dark]) {
+    const errors = validateStyleMin({
+      version: 8,
+      sources: { raster: { type: "raster", tiles: ["https://example.invalid/{z}/{x}/{y}.png"], tileSize: 256 } },
+      layers: [{ id: "raster", type: "raster", source: "raster", paint }],
+    });
+    assert.deepEqual(errors, [], "the installed MapLibre specification must accept the paint");
+  }
+  assert.deepEqual(light, { "raster-saturation": -0.12, "raster-contrast": 0.04 });
+  assert.ok(dark["raster-brightness-min"] > dark["raster-brightness-max"], "dimming alone is not dark cartography");
+  assert.equal(dark["raster-saturation"], -1, "charcoal avoids inverted land/water hues");
+
+  // Evaluate MapLibre's raster shader for representative light land/dark ink.
+  // This catches a return to dimming, while browser QA covers real tile labels.
+  const sample = (input) => {
+    const contrast = dark["raster-contrast"];
+    const factor = contrast > 0 ? 1 / (1 - contrast) : 1 + contrast;
+    const channel = (input - 0.5) * factor + 0.5;
+    return Math.max(0, Math.min(1, dark["raster-brightness-min"]
+      + (dark["raster-brightness-max"] - dark["raster-brightness-min"]) * channel));
+  };
+  const land = sample(0.93);
+  const label = sample(0.25);
+  const luminance = (value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  assert.ok(land < 0.2, "light source land must become charcoal");
+  assert.ok(label > 0.7, "dark source labels must become light");
+  assert.ok((luminance(label) + 0.05) / (luminance(land) + 0.05) >= 4.5);
+  assert.doesNotMatch(css, /canvas[^}]*filter\s*:/);
 });
 
 test("map markers are semantic and a single origin cannot look like an event count", () => {

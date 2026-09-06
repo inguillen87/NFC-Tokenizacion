@@ -26,7 +26,7 @@ export function SunPassportHeader({
       data-testid="sun-passport-header"
     >
       <div className={`sun-passport-brand ${styles.brand}`}>
-        <BrandLockup size={52} variant="ripple" theme="dark" />
+        <BrandLockup size={52} variant="static" theme="dark" />
         <span className={`sun-passport-brand__caption ${styles.caption}`}>
           {passportLabel}
         </span>
@@ -42,7 +42,7 @@ export function SunPassportHeader({
           role="status"
           aria-label={`${text("Estado")}: ${translatedLivePillLabel}`}
         >
-          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${pulseClass} animate-pulse motion-reduce:animate-none`} aria-hidden="true" />
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${pulseClass} ${styles.signal}`} aria-hidden="true" />
           <span>{translatedLivePillLabel}</span>
         </div>
         <div className={styles.locale}>

@@ -1669,6 +1669,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         {/* 1. First-tap summary: product first, then a compact truthful result. */}
         <section
           id="sun-summary"
+          aria-labelledby="sun-summary-product-title"
           className="sun-summary-panel scroll-mt-24 relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-3 shadow-2xl backdrop-blur-2xl sm:p-4"
         >
           <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-500 opacity-10 blur-[60px]" />
@@ -1716,7 +1717,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <p data-sun-server-evidence="true" className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
                   {tenantDisplayName}
                 </p>
-                <h1 data-sun-server-evidence="true" className="sun-summary-product__title mt-1 break-words text-[21px] font-black leading-[1.02] tracking-tight text-white">
+                <h1 id="sun-summary-product-title" data-sun-server-evidence="true" className="sun-summary-product__title mt-1 break-words text-[21px] font-black leading-[1.02] tracking-tight text-white">
                   {productDisplayName}
                 </h1>
                 <p data-sun-server-evidence="true" className="mt-1 break-words text-[10px] leading-4 text-slate-400">
@@ -1734,6 +1735,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             <div
               data-testid="sun-summary-status"
+              data-status-tone={consumerStatus.tone}
               className={`sun-summary-status rounded-2xl border border-l-4 p-3.5 ${
                 consumerStatus.tone === "closed"
                   ? "border-emerald-300/25 border-l-emerald-400 bg-emerald-500/[0.07]"
