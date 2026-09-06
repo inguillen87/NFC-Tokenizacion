@@ -1,10 +1,10 @@
 {
-  "release": "2026.09.05-api-stream.2",
-  "scope": "publish-persisted-network-location-revision-for-same-tap",
-  "baseCommit": "68796366cd4daa7bb2f3ca2e4f4cad116266edd6",
+  "release": "2026.09.05-api-stream.3",
+  "scope": "project-persisted-consented-phone-location-in-push-snapshots-and-admin-events",
+  "baseCommit": "11a7c7e5e44a1294545920efb6c691f805d66bac",
   "requiredDeploymentConfiguration": { "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat" },
   "databaseMigrationsIncluded": false,
   "realtimeChangesIncluded": true,
   "realtimeBrokerChanged": false,
-  "physicalLiveCertification": "prior-stream-delivery-verified-new-location-revision-pending-physical-tap"
+  "physicalLiveCertification": "tap-693-consented-location-persisted-production-projection-check-pending"
 }

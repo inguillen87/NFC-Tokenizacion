@@ -8,6 +8,7 @@ import { json } from "../../../lib/http";
 import { resolveEventLocalTime } from "@product/core";
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 import { classifyPhysicalTapSealState, isAuthenticatedNfcMessage } from "../../../lib/admin-physical-taps";
+import { projectConsentedPostTapLocation } from "../../../lib/post-tap-location-projection";
 
 export async function GET(req: Request) {
   const auth = await checkAdminWithPermission(req, "events.read_sensitive");
@@ -65,6 +66,7 @@ export async function GET(req: Request) {
           ) AS commercial_consent_granted,
           e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng,
           e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           COALESCE(
             NULLIF(e.product_name, ''),
             NULLIF(b.sdm_config->>'product_name', ''),
@@ -124,6 +126,7 @@ export async function GET(req: Request) {
           ) AS commercial_consent_granted,
           e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng,
           e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           COALESCE(
             NULLIF(e.product_name, ''),
             NULLIF(b.sdm_config->>'product_name', ''),
@@ -183,6 +186,7 @@ export async function GET(req: Request) {
               AND LOWER(consent.scope) IN ('whatsapp','whatsapp_marketing','phone_marketing','email','email_marketing')
           ) AS commercial_consent_granted,
           e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           COALESCE(NULLIF(e.product_name, ''), NULLIF(b.sdm_config->>'product_name', ''), NULLIF(b.sdm_config #>> '{sun,product,name}', ''), NULLIF(b.sdm_config->>'sku', ''), NULLIF(b.sdm_config #>> '{sun,product,sku}', '')) AS product_name,
           b.bid, tn.slug AS tenant_slug
         FROM events e
@@ -234,6 +238,7 @@ export async function GET(req: Request) {
               AND LOWER(consent.scope) IN ('whatsapp','whatsapp_marketing','phone_marketing','email','email_marketing')
           ) AS commercial_consent_granted,
           e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, e.read_counter, e.source, e.device_label, e.user_agent, e.meta, e.location_source, e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           COALESCE(NULLIF(e.product_name, ''), NULLIF(b.sdm_config->>'product_name', ''), NULLIF(b.sdm_config #>> '{sun,product,name}', ''), NULLIF(b.sdm_config->>'sku', ''), NULLIF(b.sdm_config #>> '{sun,product,sku}', '')) AS product_name,
           b.bid, tn.slug AS tenant_slug
         FROM events e
@@ -282,7 +287,8 @@ export async function GET(req: Request) {
     .sort((a, b) => new Date(String(b.created_at || "")).getTime() - new Date(String(a.created_at || "")).getTime())
     .slice(0, safeLimit);
 
-  const normalized = combinedRows.map((row) => {
+  const normalized = combinedRows.map((persistedRow) => {
+    const row = projectConsentedPostTapLocation(persistedRow);
     const time = resolveEventLocalTime(row);
     const sunClient = (row.meta && typeof row.meta === "object"
       ? (row.meta as { sun_context?: { client?: Record<string, unknown> } }).sun_context?.client

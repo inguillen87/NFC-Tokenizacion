@@ -10,6 +10,7 @@ import { REALTIME_DELIVERY_ID_PATTERN } from "../../../../lib/realtime-broker-pa
 import { subscribeRealtimeEvent } from "../../../../lib/realtime-events";
 import { createBoundedRealtimeSseOutputQueue } from "../../../../lib/realtime-sse-output-queue";
 import { readEmbeddedTenantTapProjection } from "../../../../lib/realtime-tap-projection";
+import { projectConsentedPostTapLocation } from "../../../../lib/post-tap-location-projection";
 import {
   createBoundedRealtimeProjectionDeduper,
   runRealtimeStreamLifecycle,
@@ -183,6 +184,7 @@ async function fetchRows(
           e.lng,
           e.location_source,
           e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           e.device_label,
           e.user_agent,
           e.meta,
@@ -295,6 +297,7 @@ async function fetchRows(
           e.lng,
           e.location_source,
           e.location_accuracy_m,
+          to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
           e.device_label,
           e.user_agent,
           e.meta,
@@ -328,7 +331,7 @@ async function fetchRows(
         ORDER BY e.created_at DESC, e.id DESC
         LIMIT ${limit}
       `;
-  return Array.isArray(rows) ? rows : [];
+  return Array.isArray(rows) ? rows.map((row) => projectConsentedPostTapLocation(row as EventRow)) : [];
 }
 
 export async function GET(req: Request): Promise<Response> {

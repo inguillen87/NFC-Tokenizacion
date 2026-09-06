@@ -1,5 +1,6 @@
 import { isVerifiedAuthenticationEvent, maskUid, normalizeEventVerdict, normalizeWgs84CoordinatePair, resolveEventLocalTime } from "@product/core";
 import { sql } from "./db";
+import { CONSENTED_BROWSER_LOCATION_SOURCES, postTapBrowserLocation } from "./post-tap-location-projection";
 
 export type PhysicalTapSealState = "closed" | "opened" | "other";
 
@@ -13,10 +14,6 @@ const OPENED_STATES = new Set([
   "VALID_OPENED",
   "VALID_OPENED_PREVIOUSLY",
   "VALID_MANUAL_OPENED",
-]);
-const CONSENTED_BROWSER_LOCATION_SOURCES = new Set([
-  "browser_geolocation_approximate_consent",
-  "browser_gps_approximate_consent",
 ]);
 const BROWSER_LOCATION_SOURCES_WITH_ACCURACY = new Set([
   ...CONSENTED_BROWSER_LOCATION_SOURCES,
@@ -32,31 +29,6 @@ function finiteNumber(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function record(value: unknown): PhysicalTapRow | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as PhysicalTapRow
-    : null;
-}
-
-function postTapBrowserLocation(row: PhysicalTapRow) {
-  const observation = record(row.post_tap_location_observation);
-  if (!observation || observation.consent !== true || text(observation.precision).toLowerCase() !== "approximate") {
-    return null;
-  }
-  const source = text(observation.source).toLowerCase();
-  if (!CONSENTED_BROWSER_LOCATION_SOURCES.has(source)) return null;
-  const coordinate = normalizeWgs84CoordinatePair(observation.lat, observation.lng);
-  const accuracyM = finiteNumber(observation.accuracyM);
-  if (!coordinate || accuracyM === null || accuracyM < 150 || accuracyM > 50_000) return null;
-  return {
-    city: text(observation.city) || null,
-    country: text(observation.countryCode) || null,
-    coordinate,
-    source,
-    accuracyM,
-  };
 }
 
 function canonicalReportedState(row: PhysicalTapRow) {

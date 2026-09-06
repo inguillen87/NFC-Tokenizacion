@@ -2,6 +2,7 @@ import { normalizeTenantTapRealtimeEvent, type TenantTapRealtimeEvent } from "@p
 
 import { sql } from "./db";
 import { publishRealtimeEvent } from "./realtime-events";
+import { projectConsentedPostTapLocation } from "./post-tap-location-projection";
 
 function positiveEventId(value: unknown) {
   const parsed = Number(value);
@@ -97,6 +98,7 @@ export async function loadTenantTapRealtimeProjection(
       e.lng,
       e.location_source,
       e.location_accuracy_m,
+      to_jsonb(e)->'post_tap_location_observation' AS post_tap_location_observation,
       e.device_label,
       e.user_agent,
       e.meta,
@@ -112,7 +114,7 @@ export async function loadTenantTapRealtimeProjection(
     LIMIT 1
   `;
   if (!Array.isArray(rows) || rows.length !== 1) return null;
-  const projection = normalizeTenantTapRealtimeEvent(rows[0] as Record<string, unknown>);
+  const projection = normalizeTenantTapRealtimeEvent(projectConsentedPostTapLocation(rows[0] as Record<string, unknown>));
   if (!projection.eventId || !projection.tenantId || !projection.tenantSlug || !projection.batchId) return null;
   return projection;
 }

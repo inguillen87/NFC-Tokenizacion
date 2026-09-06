@@ -14,7 +14,7 @@ test("tap push is rebuilt from persisted tenant truth rather than request guesse
   assert.match(projectionSource, /AS commercial_consent_channels/);
   assert.match(projectionSource, /e\.location_source/);
   assert.match(projectionSource, /AS bid/);
-  assert.match(projectionSource, /normalizeTenantTapRealtimeEvent\(rows\[0\]/);
+  assert.match(projectionSource, /normalizeTenantTapRealtimeEvent\(projectConsentedPostTapLocation\(rows\[0\]/);
   assert.match(projectionSource, /bid: projection\.bid/);
   assert.match(projectionSource, /tap_projection: projection/);
 });
