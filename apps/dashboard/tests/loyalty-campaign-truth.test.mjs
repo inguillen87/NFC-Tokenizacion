@@ -66,7 +66,8 @@ test("loyalty campaign copy qualifies NFC, origin, templates and modeled outcome
   assert.match(source, /mensaje NFC/i);
   assert.match(source, /origen declarado/i);
   assert.match(source, /Plantillas demo para configurar/);
-  assert.match(source, /uplift, recompra y conversion no estan medidos/);
+  assert.match(source, /No describen beneficios activos ni resultados medidos/);
+  assert.doesNotMatch(source, /modeledOutcome|\+14%|\+22%|-18%/);
   assert.match(source, /Sin ciudades con intentos confirmados/);
   assert.match(source, /Datos demo · no son audiencia real/);
   assert.doesNotMatch(source, /tu producto .*qued[oó] autenticado/i);
@@ -75,4 +76,11 @@ test("loyalty campaign copy qualifies NFC, origin, templates and modeled outcome
   assert.doesNotMatch(source, /producto f[ií]sico en investigaci[oó]n de mercado/i);
   assert.doesNotMatch(source, /Gemelo digital verificado nexID/i);
   assert.doesNotMatch(source, /reclamar el certificado de propiedad de tu activo f[ií]sico/i);
+});
+
+test("demo counts have one explicit locale for server and browser hydration", () => {
+  for (const field of ["sentCount", "clicksCount", "rewardsCount"]) {
+    assert.ok(source.includes(`camp.${field}.toLocaleString("es-AR")`));
+  }
+  assert.doesNotMatch(source, /\.toLocaleString\(\)/);
 });

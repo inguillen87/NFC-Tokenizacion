@@ -91,6 +91,6 @@ test("editor retires only its own obsolete storage key without reading, acceptin
   assert.match(loyaltyClient, /body: JSON.stringify\(\{\s*text: draftText,\s*tone: selectedTone,\s*\}\)/);
   assert.match(loyaltyClient, /!response.ok \|\| payload\?\.ok !== true \|\| typeof payload\?\.configured !== "boolean"/);
   assert.match(loyaltyClient, /if \(!cancelled\) setServerAiUnavailable\(true\)/);
-  const optimizer = loyaltyClient.slice(loyaltyClient.indexOf("async function handleOptimizeText"), loyaltyClient.indexOf("function handleCreateCampaign"));
+  const optimizer = loyaltyClient.slice(loyaltyClient.indexOf("async function handleOptimizeText"), loyaltyClient.indexOf("function applySavedDraft"));
   assert.doesNotMatch(optimizer, /setDraftText\(""\)|setDraftTitle\(""\)/);
 });

@@ -204,6 +204,9 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (normalizedMethod === "GET" && normalizedPath === "campaigns/audience") {
     return "campaigns:read";
   }
+  if (normalizedPath === "campaigns/drafts" || /^campaigns\/drafts\/[^/]+$/.test(normalizedPath)) {
+    return normalizedMethod === "GET" ? "campaigns:read" : "campaigns:write";
+  }
   if (normalizedPath === "consumer-network/offers") {
     return normalizedMethod === "GET" ? "marketplace:read" : "marketplace:write";
   }

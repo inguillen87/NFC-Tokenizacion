@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Card, Badge, Button, SectionHeading } from "@product/ui";
 import { 
   AlertTriangle,
@@ -49,6 +49,8 @@ import {
   type CampaignAudienceRequest,
   type CampaignConsentAudience,
 } from "./loyalty-campaign-audience";
+import { campaignDraftContent, campaignDraftErrorCopy, CampaignDraftError, type CampaignDraft } from "./loyalty-campaign-drafts";
+import { CampaignDraftListPanel, CampaignDraftSaveFeedback, useCampaignDraftWorkspace } from "./loyalty-campaign-draft-workspace";
 
 // Types
 interface Campaign {
@@ -114,7 +116,6 @@ interface CampaignTemplate {
   category: "MARKETING" | "UTILITY" | "LOYALTY";
   segment: string;
   offer: string;
-  modeledOutcome: string;
   body: string;
   requirements: string[];
 }
@@ -147,6 +148,7 @@ interface RedemptionValidation {
 type LoyaltyCampaignsClientProps = {
   tenantScope: string;
   allowDemoData: boolean;
+  canWriteDrafts?: boolean;
 };
 
 const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
@@ -157,7 +159,6 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     category: "MARKETING",
     segment: "Perfiles demo con ciudad declarada cerca de Mendoza",
     offer: "2x1 en copa de bienvenida + upgrade de visita",
-    modeledOutcome: "Escenario modelado: +14% visitas al portal",
     body:
       "Hola {{name}}, vimos una lectura NFC registrada en {{city}} para {{product}}. {{brand}} te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu código de canje con respaldo por WhatsApp y email si lo tenés cargado. Stop para salir.",
     requirements: ["phone_verified", "whatsapp_opt_in", "city_match"],
@@ -169,7 +170,6 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     category: "UTILITY",
     segment: "Primer tap validado",
     offer: "club digital con puntos iniciales",
-    modeledOutcome: "Escenario modelado: +22% registros completados",
     body:
       "Hola {{name}}, la lectura NFC de {{product}} fue aceptada según la política de {{brand}}. Ya tenés {{points}} puntos y podés guardar el pasaporte, solicitar beneficios y recibir novedades. La lectura no certifica por sí sola el contenido físico ni el origen. Stop para salir.",
     requirements: ["tap_valid", "consumer_session"],
@@ -181,7 +181,6 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     category: "UTILITY",
     segment: "Usuarios con señales de riesgo",
     offer: "validación asistida y beneficio compensatorio",
-    modeledOutcome: "Escenario modelado: -18% abandono post-alerta",
     body:
       "Hola {{name}}, detectamos una lectura NFC que requiere revisión para {{product}}. El equipo de {{brand}} puede revisar el mensaje y la política aplicable antes de activar un beneficio desde tu Pasaporte nexID. Stop para salir.",
     requirements: ["risk_case", "support_ready"],
@@ -193,7 +192,6 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     category: "LOYALTY",
     segment: "Clientes con 2+ taps o puntos",
     offer: "bonus de 300 puntos + badge Vendimia Insider",
-    modeledOutcome: "Escenario modelado: +9% recompra; no medida",
     body:
       "Hola {{name}}, por tus lecturas NFC registradas en {{city}} desbloqueaste el reto Vendimia Insider. Lee otra etiqueta de {{brand}} esta semana y gana {{offer}} según las bases del portal nexID. Stop para salir.",
     requirements: ["loyalty_member", "marketing_opt_in"],
@@ -326,16 +324,42 @@ const INITIAL_CAMPAIGNS: Campaign[] = [
   }
 ];
 
-export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: LoyaltyCampaignsClientProps) {
+export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, canWriteDrafts = false }: LoyaltyCampaignsClientProps) {
   const [activeTab, setActiveTab] = useState<"campaigns" | "ai-optimizer">("campaigns");
   const [campaigns, setCampaigns] = useState<Campaign[]>(() => allowDemoData ? INITIAL_CAMPAIGNS : []);
   
   // Draft / AI Optimizer states
   const [draftTitle, setDraftTitle] = useState("");
   const [draftText, setDraftText] = useState("");
+  const [draftChannel, setDraftChannel] = useState<CampaignAudienceChannel>("whatsapp");
+  const [draftFormError, setDraftFormError] = useState<CampaignDraftError | null>(null);
+  const draftWorkspace = useCampaignDraftWorkspace({ tenant: tenantScope, enabled: !allowDemoData, canWrite: canWriteDrafts });
   const [optimizedText, setOptimizedText] = useState("");
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [showOptimizedResult, setShowOptimizedResult] = useState(false);
+  const editorValue = { id: draftWorkspace.selected?.id || "new", title: draftTitle, message: showOptimizedResult ? optimizedText : draftText, channel: draftChannel };
+  const editorValueRef = useRef(editorValue);
+  editorValueRef.current = editorValue;
+  const draftDirty = draftWorkspace.selected
+    ? draftWorkspace.selected.title !== editorValue.title.trim() || draftWorkspace.selected.message !== editorValue.message.trim() || draftWorkspace.selected.channel !== draftChannel
+    : Boolean(editorValue.title.trim() || editorValue.message.trim());
+  useEffect(() => {
+    if (!draftDirty && !draftWorkspace.write.pending && !draftWorkspace.hasUnresolved) return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const confirmLinkExit = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+      const destination = new URL(link.href, window.location.href);
+      if (destination.pathname === window.location.pathname && destination.search === window.location.search) return;
+      if (!window.confirm("Hay texto sin guardar o un guardado sin confirmar. ¿Querés salir de esta página? El texto no guardado y la clave de reintento de esta sesión se perderán.")) {
+        event.preventDefault(); event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    document.addEventListener("click", confirmLinkExit, true);
+    return () => { window.removeEventListener("beforeunload", warnBeforeLeaving); document.removeEventListener("click", confirmLinkExit, true); };
+  }, [draftDirty, draftWorkspace.write.pending, draftWorkspace.hasUnresolved]);
   const [selectedTone, setSelectedTone] = useState<"sommelier" | "vip-club" | "modern-web3">("sommelier");
   const [appliedImprovements, setAppliedImprovements] = useState<ImprovementApplied[]>([]);
   const [optimizerMode, setOptimizerMode] = useState<LoyaltyOptimizerMode>("idle");
@@ -344,6 +368,14 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   const [serverAiModel, setServerAiModel] = useState("");
   const [lastOptimizerModel, setLastOptimizerModel] = useState("");
   const [lastOptimizerProvider, setLastOptimizerProvider] = useState("");
+  const optimizerGeneration = useRef(0);
+  const optimizerRequest = useRef<AbortController | null>(null);
+  useEffect(() => {
+    optimizerGeneration.current += 1;
+    optimizerRequest.current?.abort();
+    setIsOptimizing(false);
+    return () => { optimizerGeneration.current += 1; optimizerRequest.current?.abort(); };
+  }, [draftWorkspace.selected?.id, draftTitle, draftText, draftChannel, selectedTone]);
 
   useEffect(() => {
     // Retire only this editor's obsolete key, without reading or transmitting its value.
@@ -747,6 +779,12 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   // Re-writer premium (Sommelier translator using Hugging Face + Local Fallback)
   async function handleOptimizeText() {
     if (!draftText.trim()) return;
+    const generation = ++optimizerGeneration.current;
+    const initialEditor = JSON.stringify(editorValueRef.current);
+    const isCurrentEditor = () => generation === optimizerGeneration.current && initialEditor === JSON.stringify(editorValueRef.current);
+    const controller = new AbortController();
+    optimizerRequest.current?.abort();
+    optimizerRequest.current = controller;
     setIsOptimizing(true);
     setOptimizerMode("idle");
     setLastOptimizerProvider("");
@@ -755,6 +793,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
     try {
       const response = await fetch("/api/cognitive-ai", {
         method: "POST",
+        signal: controller.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           text: draftText, 
@@ -767,6 +806,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
       }
 
       const data = await response.json();
+      if (!isCurrentEditor()) return;
       if (!data.optimizedText) {
         throw new Error("No text returned from API");
       }
@@ -791,10 +831,12 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
       setShowOptimizedResult(true);
       setIsOptimizing(false);
     } catch (err) {
+      if (!isCurrentEditor()) return;
       console.warn("Hugging Face API failed or not configured, using premium local heuristics fallback:", err);
       
       // Local Heuristic Fallback
       setTimeout(() => {
+        if (!isCurrentEditor()) return;
         const replacements = TONE_DICTIONARIES[selectedTone];
         const foundImprovements: ImprovementApplied[] = [];
 
@@ -850,10 +892,63 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
     }
   }
 
-  // Create Campaign from current draft
-  function handleCreateCampaign() {
+  function applySavedDraft(draft: CampaignDraft) {
+    if (!draftWorkspace.select(draft)) return;
+    optimizerGeneration.current += 1;
+    optimizerRequest.current?.abort();
+    setDraftTitle(draft.title);
+    setDraftText(draft.message);
+    setDraftChannel(draft.channel);
+    setOptimizedText("");
+    setShowOptimizedResult(false);
+    setAppliedImprovements([]);
+    setOptimizerMode("idle");
+    setDraftFormError(null);
+    setActiveTab("ai-optimizer");
+  }
+
+  async function handleOpenDraft(draft: CampaignDraft) {
+    if (draftDirty && !window.confirm("Hay cambios sin guardar en el editor. ¿Querés reemplazarlos por este borrador?")) return;
+    const before = JSON.stringify(editorValueRef.current);
+    const current = await draftWorkspace.readDraft(draft.id);
+    // A late read never discards text typed while it was in flight.
+    if (current && before === JSON.stringify(editorValueRef.current)) applySavedDraft(current);
+  }
+
+  function handleNewDraft() {
+    if (draftWorkspace.hasUnresolved || draftWorkspace.write.pending || draftWorkspace.reading) return;
+    if (draftDirty && !window.confirm("Hay cambios sin guardar. ¿Querés descartarlos y empezar otro borrador?")) return;
+    if (!draftWorkspace.select(null)) return;
+    optimizerGeneration.current += 1;
+    optimizerRequest.current?.abort();
+    setDraftTitle("");
+    setDraftText("");
+    setOptimizedText("");
+    setShowOptimizedResult(false);
+    setAppliedImprovements([]);
+    setDraftChannel(audienceChannel);
+    setOptimizerMode("idle");
+    setLastOptimizerProvider("");
+    setLastOptimizerModel("");
+    setDraftFormError(null);
+    setActiveTab("ai-optimizer");
+  }
+
+  async function handleCreateCampaign() {
     const textToUse = showOptimizedResult ? optimizedText : draftText;
     if (!textToUse.trim()) return;
+    if (!allowDemoData) {
+      if (!canWriteDrafts || draftWorkspace.write.pending) return;
+      setDraftFormError(null);
+      try {
+        const content = campaignDraftContent(draftTitle, textToUse, draftChannel);
+        await draftWorkspace.save(content);
+      } catch (error) {
+        setDraftFormError(error instanceof CampaignDraftError ? error : new CampaignDraftError("campaign_drafts_unavailable"));
+      }
+      // Server errors, conflicts and acknowledgements preserve the editor text.
+      return;
+    }
 
     const newCampaign: Campaign = {
       id: Date.now().toString(),
@@ -1079,7 +1174,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             </div>
             <h2 className="mt-1 text-xl font-black text-white">Audiencia y preparación de campañas</h2>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
-              Consultá consentimientos por canal y prepará el contenido. Los borradores son locales; guardado en servidor, aprobación y envío de campañas siguen pendientes.
+              Consultá consentimientos por canal y prepará el contenido. {allowDemoData ? "Los borradores demo son locales y no escriben en el servidor." : "Los borradores se guardan por tenant con control de versión."} Guardar no aprueba ni envía una campaña.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200">
@@ -1134,14 +1229,14 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
               </div>
               <h3 className="mt-1 text-sm font-black text-white">Qué podés hacer hoy</h3>
               <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-400">
-                La consulta de audiencia no guarda ni aprueba una campaña. La prueba manual de WhatsApp es una función separada, no un envío a esta lista.
+                Guardamos sólo texto, canal y finalidad: ningún contacto ni conteo de audiencia. La audiencia consultada es una referencia actual, no un listado de envío guardado.
               </p>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
               { label: "Audiencia", value: audienceDataIsDemo ? "Ejemplos demo" : audienceLoading ? "Consultando" : audienceError ? "No disponible" : "Consulta protegida", detail: "Consentimiento por canal y finalidad. No crea destinatarios desde UIDs.", Icon: ShieldCheck },
-              { label: "Borrador", value: "Edición local", detail: "Prepará el texto en este navegador. Se pierde al recargar; no se guarda en el servidor.", Icon: FileText },
+              { label: "Borrador", value: allowDemoData ? "Demo local" : "Guardado por versión", detail: allowDemoData ? "La simulación se pierde al recargar; nunca escribe borradores reales." : "Título, mensaje, canal y finalidad. Recuperá la versión guardada al volver a abrir la página.", Icon: FileText },
               { label: "Aprobación y envío", value: "Pendiente de conexión", detail: "Todavía no hay revisión persistida ni envío de campañas desde esta lista.", Icon: MessageSquare },
             ].map((step) => (
               <div key={step.label} className="relative rounded-2xl border border-white/10 bg-slate-950/55 p-3">
@@ -1156,6 +1251,9 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
           </div>
         </div>
 
+        <details className="mt-4 rounded-2xl border border-white/10 p-3">
+          <summary className="min-h-11 cursor-pointer px-1 py-3 text-sm font-semibold text-slate-200">Herramientas de prueba y canje</summary>
+          <p className="px-1 text-xs leading-relaxed text-slate-400">Plantillas de ejemplo, trivia, prueba manual de WhatsApp y canjes. Son funciones separadas de los borradores guardados; no envían campañas a la audiencia consultada.</p>
         <div className="mt-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-[radial-gradient(circle_at_0%_0%,rgba(168,85,247,.16),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.92),rgba(30,41,59,.52))] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -1295,7 +1393,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-black text-white">Plantillas demo para configurar</h3>
-                <p className="text-[11px] text-slate-400">Hipotesis de promos y fidelizacion; uplift, recompra y conversion no estan medidos.</p>
+                <p className="text-[11px] text-slate-400">Ejemplos para configurar y revisar. No describen beneficios activos ni resultados medidos.</p>
               </div>
               <Gift className="h-5 w-5 text-amber-300" />
             </div>
@@ -1324,7 +1422,6 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                      <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-bold text-emerald-300">{template.modeledOutcome}</span>
                       <span className="rounded-full bg-amber-400/10 px-2 py-1 font-bold text-amber-200">{template.offer}</span>
                     </div>
                   </button>
@@ -1666,6 +1763,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             </table>
           </div>
         </div> : null}
+        </details>
       </section>
 
       {/* Tabs Menu */}
@@ -1681,7 +1779,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
           }`}
         >
           <Layers className="w-4 h-4 text-cyan-400" />
-          Borradores locales ({campaigns.length})
+          {allowDemoData ? `Borradores demo locales (${campaigns.length})` : "Borradores guardados"}
         </button>
         <button
           type="button"
@@ -1707,7 +1805,12 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         {/* Main Column */}
         <div className="space-y-6">
-          {activeTab === "campaigns" ? (
+          {activeTab === "campaigns" && !allowDemoData ? (
+            <div className="space-y-4">
+              <CampaignDraftSaveFeedback workspace={draftWorkspace} dirty={draftDirty} onUseServer={applySavedDraft} />
+              <CampaignDraftListPanel workspace={draftWorkspace} canWrite={canWriteDrafts} onEdit={(draft) => void handleOpenDraft(draft)} onNew={handleNewDraft} />
+            </div>
+          ) : activeTab === "campaigns" ? (
             /* Tab 1: Campaigns List */
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1786,9 +1889,9 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/5 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-400">
-                    <span>Enviado: <strong className="text-white">{camp.sentCount.toLocaleString()}</strong></span>
-                    <span>Clicks: <strong className="text-white">{camp.clicksCount.toLocaleString()}</strong></span>
-                    <span>Recompensas emitidas: <strong className="text-white">{camp.rewardsCount.toLocaleString()}</strong></span>
+                    <span>Enviado: <strong className="text-white">{camp.sentCount.toLocaleString("es-AR")}</strong></span>
+                    <span>Clicks: <strong className="text-white">{camp.clicksCount.toLocaleString("es-AR")}</strong></span>
+                    <span>Recompensas emitidas: <strong className="text-white">{camp.rewardsCount.toLocaleString("es-AR")}</strong></span>
                   </div>
                   {camp.measurement !== "confirmed" ? (
                     <p className="mt-2 text-[10px] leading-relaxed text-violet-200">Valores de demostracion o borrador; no representan envios, conversion ni recompra medidas del tenant.</p>
@@ -1802,7 +1905,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   data-testid="loyalty-campaigns-empty"
                   className="rounded-2xl border border-dashed border-white/15 bg-slate-900/35 p-5 text-sm leading-6 text-slate-300"
                 >
-                  Todavía no agregaste borradores en esta sesión. No se consultó una lista de campañas guardadas: la persistencia en servidor sigue pendiente.
+                  Todavía no agregaste borradores demo en esta sesión. La simulación no consulta ni escribe borradores reales.
                 </div>
               ) : null}
             </div>
@@ -1813,7 +1916,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white">Redacción de Campaña</h3>
-                  <p className="text-xs text-slate-400">Escribí tu propuesta comercial y revisá scores estimados, reglas aplicadas y procedencia de la reescritura.</p>
+                  <p className="text-xs text-slate-400">{allowDemoData ? "Simulación local; no se guarda en el servidor." : draftWorkspace.selected ? `Borrador ${draftWorkspace.selected.status === "archived" ? "archivado" : "guardado"} · versión ${draftWorkspace.selected.revision}.` : "Nuevo borrador; guardalo para recuperarlo al recargar."} Aprobación y envío no están conectados.</p>
                 </div>
 
                 {/* AI provider settings */}
@@ -1840,17 +1943,26 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    <label htmlFor="campaign-draft-title" className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                       Nombre de la Campaña
                     </label>
                     <input
+                      id="campaign-draft-title"
+                      maxLength={160}
                       type="text"
                       placeholder="Ej. Cosecha Especial VIP o Lanzamiento Reserva"
                       value={draftTitle}
                       onChange={(e) => setDraftTitle(e.target.value)}
-                      className="w-full bg-slate-950/70 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500 transition-colors"
+                      className="min-h-11 w-full bg-slate-950/70 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-purple-500 transition-colors"
                     />
                   </div>
+                  {!allowDemoData ? <label className="block text-xs font-semibold text-slate-400">
+                    Canal del borrador · finalidad Marketing
+                    <select value={draftChannel} onChange={(event) => setDraftChannel(event.target.value as CampaignAudienceChannel)} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 text-sm text-white">
+                      <option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="phone">Teléfono</option>
+                    </select>
+                    <span className="mt-1 block text-xs font-normal leading-relaxed">Se guarda la elección de canal, no la muestra de contactos ni su consentimiento. La audiencia actual se consulta por separado.</span>
+                  </label> : null}
 
                   {/* Profile Tone Switcher */}
                   {!showOptimizedResult && (
@@ -1888,7 +2000,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
 
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <label htmlFor="campaign-draft-message" className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Cuerpo del Mensaje (Borrador)
                       </label>
                       <span className="text-[9px] text-slate-500 font-mono">
@@ -1899,6 +2011,8 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                     <div className="relative">
                       {!showOptimizedResult ? (
                         <textarea
+                          id="campaign-draft-message"
+                          maxLength={6000}
                           placeholder="Escribí aquí tu borrador plano. Ejemplo: 'Este vino malbec es muy rico y es barato para comprar en nuestro club.'"
                           value={draftText}
                           onChange={(e) => setDraftText(e.target.value)}
@@ -1997,16 +2111,20 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   <div className="pt-2">
                     <Button
                       type="button"
-                      title="Agregar este borrador local a la lista de campañas"
+                      title={allowDemoData ? "Agregar un borrador demo local" : "Guardar el texto en el servidor con control de versión, sin enviar mensajes"}
                       onClick={handleCreateCampaign}
-                      disabled={!draftText.trim() && !optimizedText.trim()}
+                      disabled={(!draftText.trim() && !optimizedText.trim()) || (!allowDemoData && (!canWriteDrafts || draftWorkspace.write.pending || draftWorkspace.reading || draftWorkspace.hasUnresolved || draftWorkspace.selected?.status === "archived"))}
                       variant="primary"
-                      className="w-full gap-2 text-xs py-2 bg-gradient-to-r from-cyan-400 to-emerald-500 border-none text-slate-950 font-bold shadow-[0_0_20px_rgba(6,182,212,0.2)] disabled:opacity-40"
+                      className="min-h-11 w-full gap-2 text-xs py-2 bg-gradient-to-r from-cyan-400 to-emerald-500 border-none text-slate-950 font-bold shadow-[0_0_20px_rgba(6,182,212,0.2)] disabled:opacity-40"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Agregar borrador local</span>
+                      <span>{allowDemoData ? "Agregar borrador demo local" : draftWorkspace.write.pending ? "Guardando…" : draftWorkspace.selected ? "Guardar nueva versión" : "Guardar borrador"}</span>
                     </Button>
-                    <p className="mt-2 text-xs text-slate-400">Sólo en esta sesión. Guardado en servidor, aprobación y envío todavía no conectados.</p>
+                    <p className="mt-2 text-xs text-slate-400">{allowDemoData ? "Sólo en esta sesión; se pierde al recargar." : !canWriteDrafts ? "Tu rol permite consultar, pero no guardar ni archivar borradores." : draftWorkspace.selected?.status === "archived" ? "Este borrador está archivado y no se puede editar desde aquí." : "Sólo se confirma el guardado al recibir y validar la versión del servidor."}</p>
+                    {!allowDemoData ? <div className="mt-3 space-y-3">
+                      {draftFormError ? <p role="alert" className="text-sm text-amber-200">{campaignDraftErrorCopy(draftFormError)}</p> : null}
+                      <CampaignDraftSaveFeedback workspace={draftWorkspace} dirty={draftDirty} onUseServer={applySavedDraft} />
+                    </div> : null}
                   </div>
                 </div>
               </div>
