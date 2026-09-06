@@ -10,6 +10,7 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { resolveOpsDestinationAccess } from "../../../lib/ops-destination-access";
 
 const rolloutSteps = [
   {
@@ -256,6 +257,7 @@ export default async function BatchesPage({
       />
       {batchesReady ? <OpsCommandCenter
         mode={isTenantAdmin ? "tenant" : "global"}
+        allowedDestinations={resolveOpsDestinationAccess(session)}
         title="Rollout center de batches"
         subtitle="Pensado para resellers, administradores y auditores: recibe la caja de tags, carga el manifest, valida el lote y deja el producto listo para venta sin depender de un tecnico."
         metrics={[

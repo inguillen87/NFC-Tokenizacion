@@ -7,6 +7,7 @@ import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import { readDemoDataMetaFromResponse } from "../../../lib/demo-data-mode";
 import { resolveCanonicalTenantRisk } from "../../../lib/tenant-risk";
+import { resolveOpsDestinationAccess } from "../../../lib/ops-destination-access";
 
 type TenantRow = Record<string, unknown>;
 type BatchRow = Record<string, unknown>;
@@ -249,6 +250,7 @@ export default async function SuperadminConsumerNetworkPage() {
 
       {allSourcesReady ? <OpsCommandCenter
         mode="global"
+        allowedDestinations={resolveOpsDestinationAccess(session)}
         metrics={[
           { label: "Tenants", value: String(scopedTenants.length), detail: "Marcas conectadas a la red", tone: scopedTenants.length ? "good" : "warn" },
           { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${totalTags.toLocaleString("es-AR")} tags en inventario`, tone: activeTags > 0 ? "good" : "warn" },

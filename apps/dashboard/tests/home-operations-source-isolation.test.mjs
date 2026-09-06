@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { build } from "esbuild";
+import { resolveOpsDestinationAccess } from "../src/lib/ops-destination-access.ts";
 
 const componentUrl = new URL("../src/components/dashboard-home-client.tsx", import.meta.url);
 const componentsDirectory = fileURLToPath(new URL("../src/components/", import.meta.url));
@@ -143,6 +144,7 @@ test("operation scope is fixed by the caller and exposes no simulated role or te
   assert.doesNotMatch(operationsSource, /activado exitosamente|pausado preventivamente|anclaje cambiado|<button|onClick=|\bfetch\(|setTimeout\(/);
   for (const [mode, label] of [["tenant", "Admin tenant"], ["global", "Super Admin"], ["auditor", "Equipo operativo"]]) {
     const tree = OpsCommandCenter({ mode,
+      allowedDestinations: resolveOpsDestinationAccess({ role: "super-admin", permissions: ["*"] }),
       metrics: [{ label: "Tags", value: "10", detail: "Fixture" }],
       steps: [], funnel: [{ stage: "Tags", value: 10 }], readiness: [{ label: "Activación", ready: 10, pending: 0 }],
       tenants: [{ name: "Empresa de prueba", slug: "offline-fixture", scans: 7, batches: 1, tags: 10, riskScore: 0, status: "healthy" }],
@@ -158,11 +160,11 @@ test("operation scope is fixed by the caller and exposes no simulated role or te
 });
 
 test("operation navigation describes consultation and optional setup rather than completed commercial actions", () => {
-  for (const [href, cta] of [
-    ["/batches/supplier", "Ver lotes"], ["/tags", "Ver tags"], ["/events", "Auditar eventos"],
-    ["/tokenization", "Revisar anclaje"], ["/loyalty/rewards", "Ver beneficios"],
-    ["/api-keys", "Consultar integración"], ["/loyalty/campaigns", "Ver campañas"],
-  ]) assert.ok(operationsSource.includes(`href: "${href}",\n      cta: "${cta}"`), `${cta} keeps its existing destination`);
+  for (const [destination, cta] of [
+    ["supplierBatches", "Ver lotes"], ["tags", "Ver tags"], ["events", "Auditar eventos"],
+    ["tokenization", "Revisar anclaje"], ["rewards", "Ver beneficios"],
+    ["apiKeys", "Consultar integración"], ["campaigns", "Ver campañas"],
+  ]) assert.ok(operationsSource.includes(`href: DASHBOARD_DESTINATIONS.${destination}.href,\n      cta: "${cta}"`), `${cta} keeps its registered destination`);
   assert.match(operationsSource, /title: "4\. Anclaje opcional"/);
   assert.match(operationsSource, /no emite tokens ni publica un pasaporte/);
   assert.match(operationsSource, /no activa ventas ni envía promociones/);

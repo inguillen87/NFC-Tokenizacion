@@ -183,12 +183,17 @@ test("canonical realtime tap projections update the tenant snapshot without inve
 
   const currentPayload = normalizePhysicalTapsPayload(payload());
   assert.ok(currentPayload);
+  currentPayload.rows = currentPayload.rows.map((item, index) => ({
+    ...item,
+    occurredAt: { ...item.occurredAt, utc: `2026-09-04T20:0${index}:00.000Z` },
+  }));
+  currentPayload.summary.latestAt = "2026-09-04T20:01:00.000Z";
   const merged = mergePhysicalTapRealtimeProjection({
     availability: "ready",
     payload: currentPayload,
     detail: "durable",
     checkedAt: "2026-09-04T21:11:00.000Z",
-  }, projection, "2026-09-04T21:12:01.000Z");
+  }, projection, "2026-09-04T21:12:01.000Z", Date.parse("2026-09-04T21:12:01.000Z"));
   assert.ok(merged?.payload);
   assert.equal(merged.payload.rows[0].eventId, "evt-live-3");
   assert.equal(merged.payload.summary.total, 3);
@@ -202,6 +207,131 @@ test("canonical realtime tap projections update the tenant snapshot without inve
     eventType: "TAP_VALID",
     occurredAt: "2026-09-04T21:13:00.000Z",
   }, "demobodega"), null, "an incomplete projection must reconcile durably instead of inventing a BID");
+});
+
+const WINDOW_NOW = "2026-09-05T18:00:00.000Z";
+const WINDOW_NOW_MS = Date.parse(WINDOW_NOW);
+
+function timedRow(eventId, utc, overrides = {}) {
+  return row({ eventId, uidMasked: `TEST****${eventId}`, occurredAt: { ...row().occurredAt, utc }, ...overrides });
+}
+
+function windowResult(range = "24h", rows = []) {
+  const closed = rows.filter((item) => item.sealState === "closed").length;
+  const opened = rows.filter((item) => item.sealState === "opened").length;
+  return {
+    availability: "ready", checkedAt: WINDOW_NOW, detail: "fixture",
+    payload: {
+      scope: { tenant: "demobodega", bid: "DEMO-2026-02", source: "real", range, limit: 20 },
+      rows,
+      summary: { total: rows.length, closed, opened, other: rows.length - closed - opened, distinctUnits: new Set(rows.map((item) => item.uidMasked)).size, latestAt: rows[0]?.occurredAt.utc || null, comparisonAvailable: closed > 0 && opened > 0, comparisonMeaning: "independent_physical_taps_not_a_product_journey" },
+    },
+  };
+}
+
+test("shared all-time snapshot and single events both respect the physical 24h window", () => {
+  const snapshot = { scope: { window: "all" }, rows: [
+    timedRow("old", "2026-09-03T15:00:00.000Z"),
+    timedRow("today", "2026-09-05T15:00:00.000Z"),
+    timedRow("today-open", "2026-09-05T16:00:00.000Z", { sealState: "opened" }),
+  ] };
+  const merged = snapshot.rows.reduce((current, item) => mergePhysicalTapRealtimeProjection(current, item, WINDOW_NOW, WINDOW_NOW_MS) || current, windowResult());
+  assert.deepEqual(merged.payload.rows.map((item) => item.eventId), ["today-open", "today"]);
+  assert.equal(merged.payload.scope.range, "24h");
+  assert.equal(merged.payload.summary.total, 2);
+  assert.equal(merged.payload.summary.closed, 1);
+  assert.equal(merged.payload.summary.opened, 1);
+  assert.equal(merged.payload.summary.distinctUnits, 2);
+  assert.equal(merged.payload.summary.latestAt, "2026-09-05T16:00:00.000Z");
+  const oldUpdate = { ...snapshot.rows[0], updatedAt: WINDOW_NOW };
+  const afterUpdate = mergePhysicalTapRealtimeProjection(merged, oldUpdate, WINDOW_NOW, WINDOW_NOW_MS);
+  assert.deepEqual(afterUpdate.payload.rows, merged.payload.rows, "a newly received update cannot change the original reading time");
+});
+
+test("physical TAP ranges use inclusive lower bounds and an injected clock", () => {
+  for (const [range, days] of [["24h", 1], ["7d", 7], ["30d", 30], ["90d", 90]]) {
+    const cutoff = WINDOW_NOW_MS - days * 86_400_000;
+    const incoming = timedRow("boundary", new Date(cutoff).toISOString());
+    const current = windowResult(range, [timedRow("expired", new Date(cutoff - 1).toISOString())]);
+    const merged = mergePhysicalTapRealtimeProjection(current, incoming, WINDOW_NOW, WINDOW_NOW_MS);
+    assert.deepEqual(merged.payload.rows.map((item) => item.eventId), ["boundary"], range);
+    assert.equal(merged.payload.summary.total, 1);
+    const future = timedRow("future", new Date(WINDOW_NOW_MS + 1).toISOString());
+    assert.deepEqual(mergePhysicalTapRealtimeProjection(merged, future, WINDOW_NOW, WINDOW_NOW_MS).payload.rows, merged.payload.rows);
+  }
+});
+
+test("physical TAP merge defaults to the current clock, not the frame or event timestamp", (context) => {
+  context.mock.method(Date, "now", () => WINDOW_NOW_MS);
+  const old = timedRow("old", "2026-09-03T15:00:00.000Z");
+  const merged = mergePhysicalTapRealtimeProjection(windowResult(), old, "2026-09-03T15:00:01.000Z");
+  assert.equal(merged.payload.summary.total, 0, "a delayed frame must not move the 24h window backward");
+});
+
+test("realtime dedupe preserves durable evidence and expires the original event time", () => {
+  const durable = timedRow("same", "2026-09-05T15:00:00.000Z");
+  const lessCompleteUpdate = { ...durable, sealState: "opened", evidence: { ...durable.evidence, ttStatusReported: false, ttEvidenceAuthority: "not_reported" } };
+  const merged = mergePhysicalTapRealtimeProjection(windowResult("24h", [durable]), lessCompleteUpdate, WINDOW_NOW, WINDOW_NOW_MS);
+  assert.equal(merged.payload.summary.total, 1);
+  assert.deepEqual(merged.payload.rows[0], durable, "existing durable receipt wins on duplicate ID");
+  assert.equal(merged.payload.summary.closed, 1);
+  const original = { ...durable, occurredAt: { ...durable.occurredAt, utc: "2026-09-03T15:00:00.000Z" } };
+  const expired = mergePhysicalTapRealtimeProjection(windowResult("24h", [original]), lessCompleteUpdate, WINDOW_NOW, WINDOW_NOW_MS);
+  assert.equal(expired.payload.summary.total, 0, "a duplicate must not replace an old original time with today's time");
+  assert.equal(expired.payload.summary.latestAt, null);
+});
+
+test("physical same-id location enrichment and removal preserve original reading, receipt and counts", () => {
+  const original = timedRow("location-update", "2026-09-05T15:00:00.000Z");
+  const browserLocation = {
+    ...original.location, city: "Mendoza", lat: -32.9, lng: -68.8,
+    source: "browser_geolocation_approximate_consent", precision: "browser_approximate_consent", accuracyM: 150,
+  };
+  const incoming = {
+    ...original, location: browserLocation, productName: "Less complete projection", readCounter: null,
+    occurredAt: { ...original.occurredAt, utc: "2026-09-05T17:00:00.000Z" },
+    evidence: { ...original.evidence, ttStatusReported: false, ttEvidenceAuthority: "not_reported" },
+  };
+  const current = windowResult("24h", [original]);
+  const enriched = mergePhysicalTapRealtimeProjection(current, incoming, WINDOW_NOW, WINDOW_NOW_MS);
+  assert.equal(enriched.payload.rows.length, 1);
+  assert.equal(enriched.payload.rows[0].location, browserLocation);
+  assert.equal(enriched.payload.rows[0].evidence, original.evidence);
+  assert.equal(enriched.payload.rows[0].occurredAt, original.occurredAt);
+  assert.equal(enriched.payload.rows[0].productName, original.productName);
+  assert.equal(enriched.payload.rows[0].readCounter, original.readCounter);
+  assert.deepEqual(enriched.payload.summary, current.payload.summary);
+  assert.deepEqual(enriched.payload.scope, current.payload.scope);
+  assert.equal(original.location.source, "edge_ip_approx", "retained source row is not mutated");
+
+  const removedLocation = { city: "", region: "", country: "", lat: null, lng: null, source: "none", precision: "none", accuracyM: null, evidence: "none" };
+  const removed = mergePhysicalTapRealtimeProjection(enriched, { ...incoming, location: removedLocation }, WINDOW_NOW, WINDOW_NOW_MS);
+  assert.equal(removed.payload.rows[0].location, removedLocation, "a new removal cannot keep an older consented coordinate");
+  assert.equal(removed.payload.rows[0].evidence, original.evidence);
+  assert.equal(removed.payload.rows[0].occurredAt, original.occurredAt);
+  assert.equal(removed.payload.summary.total, 1);
+  assert.equal(removed.payload.summary.distinctUnits, 1);
+  assert.equal(removed.payload.scope.range, "24h");
+});
+
+test("invalid dates or undeclared physical ranges cannot broaden the recent collection", () => {
+  const current = windowResult();
+  const incoming = timedRow("today", "2026-09-05T15:00:00.000Z");
+  for (const invalidDate of ["", "not-a-date"]) {
+    assert.equal(mergePhysicalTapRealtimeProjection(current, timedRow("invalid", invalidDate), WINDOW_NOW, WINDOW_NOW_MS), null);
+    assert.equal(mergePhysicalTapRealtimeProjection(current, incoming, invalidDate, WINDOW_NOW_MS), null);
+  }
+  assert.equal(mergePhysicalTapRealtimeProjection(current, incoming, WINDOW_NOW, NaN), null);
+  for (const range of ["", "unexpected", "all", "5m", "1h"]) {
+    assert.equal(mergePhysicalTapRealtimeProjection(windowResult(range), incoming, WINDOW_NOW, WINDOW_NOW_MS), null, `${range} is not a declared physical query range`);
+  }
+  assert.equal(mergePhysicalTapRealtimeProjection(current, { ...incoming, tenantSlug: "other" }, WINDOW_NOW, WINDOW_NOW_MS), null);
+  assert.equal(mergePhysicalTapRealtimeProjection(current, { ...incoming, bid: "other" }, WINDOW_NOW, WINDOW_NOW_MS), null);
+  const event = { eventId: "source-check", tenantSlug: "demobodega", eventType: "TAP_VALID", bid: "DEMO-2026-02", uidMasked: "TEST****01", occurredAt: WINDOW_NOW, source: "production", eventSource: "real" };
+  assert.ok(physicalTapFromRealtimeProjection(event, "demobodega"));
+  assert.equal(physicalTapFromRealtimeProjection({ ...event, source: "demo" }, "demobodega"), null);
+  assert.equal(physicalTapFromRealtimeProjection({ ...event, eventSource: "demo" }, "demobodega"), null);
+  assert.equal(physicalTapFromRealtimeProjection({ ...event, occurredAt: "not-a-date" }, "demobodega"), null);
 });
 
 test("Balmec physical TAP UX is wired into home and analytics without hardcoded event ids", async () => {

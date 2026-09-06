@@ -50,6 +50,21 @@ test("evidence dates and live claims remain explicit without adding polling or n
   assert.doesNotMatch(source, /setInterval|new EventSource|relativeDate\(/);
 });
 
+test("physical TAP summary describes the recent collection without promising a time window", () => {
+  const summaryCards = source.slice(source.indexOf("const summaryCards = ["), source.indexOf("  return (", source.indexOf("const summaryCards = [")));
+  assert.match(summaryCards, /number\(payload\.summary\.distinctUnits\)\} unidades · \$\{number\(payload\.summary\.total\)\} lecturas recientes/);
+  assert.doesNotMatch(summaryCards, /scope\.range|24h|ventana confirmada/);
+  // The request window remains unchanged; only the unsupported display claim is removed.
+  assert.match(source, /const initialRange = result\.payload\?\.scope\.range \|\| "24h"/);
+  assert.match(source, /Período consultado: \{rangeLabel\}\. Lecturas recientes del período, no un total histórico\./);
+});
+
+test("physical TAP map names both reported location sources without implying a journey", () => {
+  assert.match(source, /subtitle="Zonas aproximadas informadas por la red o el navegador con consentimiento, según cada evento\. No forman un recorrido\."/);
+  assert.match(source, /routes=\{\[\]\}/);
+  assert.match(source, /No identifica una dirección ni demuestra presencia exacta/);
+});
+
 test("physical TAP browser QA checks themes, filters, pending state and retained evidence locally", {
   skip: !process.env.NEXID_TEST_PLAYWRIGHT_MODULE || !process.env.NEXID_TEST_CHROMIUM
     ? "Set the installed Playwright module and Chromium paths for offline browser QA." : false,
@@ -116,6 +131,7 @@ test("physical TAP browser QA checks themes, filters, pending state and retained
       await page.goto(`${origin}/?theme=${theme}`);
       const workspace = page.getByTestId("physical-taps-command-center");
       await workspace.waitFor();
+      assert.match(await workspace.textContent(), /2 unidades · 2 lecturas recientes/);
       assert.equal(await page.getByTestId("physical-taps-event-row").count(), 2);
       assert.equal(requests, 0, "rendering and waiting for stream must not poll");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);

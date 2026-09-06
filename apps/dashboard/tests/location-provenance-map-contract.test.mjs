@@ -11,12 +11,14 @@ const analyticsPanels = await readFile(new URL("../src/components/analytics-pane
 const analyticsPage = await readFile(new URL("../src/app/(app)/analytics/page.tsx", import.meta.url), "utf8");
 
 test("location provenance keeps consented GPS separate from network and mixed approximations", () => {
+  assert.equal(classifyLocationProvenance("browser_geolocation_approximate_consent"), "consented_gps");
   assert.equal(classifyLocationProvenance("browser_gps_approximate_consent"), "consented_gps");
   assert.equal(classifyLocationProvenance("browser_approximate_consent"), "consented_gps");
   assert.equal(classifyLocationProvenance("ip_geo"), "network_approx");
   assert.equal(classifyLocationProvenance("ip_approx"), "network_approx");
   assert.equal(classifyLocationProvenance("mixed_or_unknown_approx"), "mixed_approx");
   assert.equal(classifyLocationProvenance("browser_gps_reported"), "other_reported");
+  assert.equal(classifyLocationProvenance("browser_geolocation"), "other_reported");
   assert.match(locationProvenanceLabel("ip_approx"), /Red\/IP/);
 });
 
@@ -31,10 +33,11 @@ test("realtime GeoJSON preserves source classification without changing heat wei
   const collection = buildGeojson([
     { ...shared, eventId: "gps", uidMasked: "GPS", lat: -32.889, lng: -68.845, locationSource: "browser_gps_approximate_consent", locationAccuracyM: 150 },
     { ...shared, eventId: "ip", uidMasked: "IP", lat: -34.603, lng: -58.381, locationSource: "ip_geo", locationAccuracyM: 20_000 },
+    { ...shared, eventId: "sun-browser", uidMasked: "SUN", lat: -32.9, lng: -68.8, locationSource: "browser_geolocation_approximate_consent", locationAccuracyM: 150 },
   ]);
 
-  assert.deepEqual(collection.features.map((feature) => feature.properties.locationClass), ["consented_gps", "network_approx"]);
-  assert.deepEqual(collection.features.map((feature) => feature.properties.weight), [1, 1]);
+  assert.deepEqual(collection.features.map((feature) => feature.properties.locationClass), ["consented_gps", "network_approx", "consented_gps"]);
+  assert.deepEqual(collection.features.map((feature) => feature.properties.weight), [1, 1, 1]);
 });
 
 test("MapLibre renders provenance-specific heat and uncertainty layers with attribution intact", () => {

@@ -298,7 +298,8 @@ function realtimeSealState(result: string): PhysicalTapState {
  * Convert the canonical SSE projection into a conservative physical-tap row.
  * The realtime projection proves a persisted event, but it does not currently
  * include the durable TT receipt. We therefore never fabricate receipt fields;
- * an existing row loaded from the physical-taps endpoint always wins on dedupe.
+ * an existing row loaded from the physical-taps endpoint keeps its original
+ * reading and receipt on dedupe. Location is a mutable server projection.
  */
 export function physicalTapFromRealtimeProjection(value: unknown, tenantSlug: string): PhysicalTapRow | null {
   const input = record(value);
@@ -388,18 +389,41 @@ export function physicalTapFromRealtimeProjection(value: unknown, tenantSlug: st
   };
 }
 
+// These are the ranges accepted by the physical TAP reader and API, not the
+// wider window of the shared realtime transport.
+const PHYSICAL_TAPS_RANGE_MS: Readonly<Record<string, number>> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+  "90d": 90 * 24 * 60 * 60 * 1000,
+};
+
 export function mergePhysicalTapRealtimeProjection(
   current: PhysicalTapsResult,
   incoming: PhysicalTapRow,
   checkedAt: string,
+  nowMs: number = Date.now(),
 ): PhysicalTapsResult | null {
   const payload = current.payload;
   if (current.availability !== "ready" || !payload) return null;
   if (incoming.tenantSlug !== payload.scope.tenant) return null;
   if (payload.scope.bid !== "all" && incoming.bid !== payload.scope.bid) return null;
+  const rangeMs = PHYSICAL_TAPS_RANGE_MS[text(payload.scope.range)];
+  const confirmedAt = isoOrEmpty(checkedAt);
+  if (!Number.isFinite(rangeMs) || !Number.isFinite(nowMs) || !confirmedAt || !isoOrEmpty(incoming.occurredAt.utc)) return null;
 
   const existing = payload.rows.find((row) => row.eventId === incoming.eventId);
-  const nextRows = [existing || incoming, ...payload.rows.filter((row) => row.eventId !== incoming.eventId)]
+  // Keep the original physical evidence while applying the latest received
+  // location projection, including an explicit removal. There is no location
+  // revision in this contract, so this does not claim out-of-order protection.
+  const updated = existing ? { ...existing, location: incoming.location } : incoming;
+  const nextRows = [updated, ...payload.rows.filter((row) => row.eventId !== incoming.eventId)]
+    .filter((row) => {
+      // The original reading time controls membership. A newer snapshot or
+      // location update must not bring an old reading into the current window.
+      const occurredAtMs = Date.parse(row.occurredAt.utc);
+      return Number.isFinite(occurredAtMs) && occurredAtMs >= nowMs - rangeMs && occurredAtMs <= nowMs;
+    })
     .sort((left, right) => Date.parse(right.occurredAt.utc) - Date.parse(left.occurredAt.utc))
     .slice(0, payload.scope.limit);
   const closed = nextRows.filter((row) => row.sealState === "closed").length;
@@ -408,7 +432,7 @@ export function mergePhysicalTapRealtimeProjection(
   return {
     availability: "ready",
     detail: current.detail,
-    checkedAt: isoOrEmpty(checkedAt) || new Date().toISOString(),
+    checkedAt: confirmedAt,
     payload: {
       ...payload,
       rows: nextRows,

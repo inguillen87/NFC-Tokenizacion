@@ -5,6 +5,7 @@ export type LocationProvenanceClass =
   | "other_reported";
 
 const CONSENTED_GPS_SOURCES = new Set([
+  "browser_geolocation_approximate_consent",
   "browser_gps_approximate_consent",
   "browser_approximate_consent",
 ]);

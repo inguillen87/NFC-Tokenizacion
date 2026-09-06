@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.05-dashboard.3",
-  "scope": "visible-realtime-map-points-physical-taps-and-operations-themes-campaign-navigation",
+  "release": "2026.09.05-dashboard.4",
+  "scope": "consented-phone-location-revisions-physical-tap-time-window-and-permission-aware-operations",
   "realTapCertification": "not-included",
-  "baseCommit": "d87394b09a8d0af02bfdc1c18f097dbe638405b5",
+  "baseCommit": "d1e5dca22e199a6de33d6d9c1d75cdab120dd485",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,

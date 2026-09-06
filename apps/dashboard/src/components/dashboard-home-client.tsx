@@ -13,6 +13,7 @@ import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
 import { CustomerGrowthCommandCenter } from "./customer-growth-command-center";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
+import type { OpsDestinationAccess } from "../lib/ops-destination-access";
 import type { RealtimeAvailability, RealtimeDataSource, RealtimeStreamSource } from "../lib/realtime-feed";
 import {
   DASHBOARD_DESTINATIONS,
@@ -40,6 +41,7 @@ interface DashboardHomeClientProps {
   labels: any;
   opsSteps: OpsCommandStep[];
   opsTenantRows: OpsCommandTenantRow[];
+  opsDestinationAccess: OpsDestinationAccess;
   initialRealtimeEvents: any[];
   realtimeStreamSource: RealtimeStreamSource;
   realtimeDataSource: RealtimeDataSource;
@@ -87,6 +89,7 @@ export default function DashboardHomeClient({
   labels,
   opsSteps,
   opsTenantRows,
+  opsDestinationAccess,
   initialRealtimeEvents,
   realtimeStreamSource,
   realtimeDataSource,
@@ -254,6 +257,7 @@ export default function DashboardHomeClient({
             {/* Operations center and batch status */}
             {operationsAvailable ? <OpsCommandCenter
               mode={isTenantAdmin ? "tenant" : "global"}
+              allowedDestinations={opsDestinationAccess}
               metrics={[
                 { label: "Tenants", value: String(opsTenantRows.length), detail: tenantScope ? "Scope tenant activo" : "Marcas registradas", tone: opsTenantRows.length ? "good" : "warn" },
                 { label: "Batches", value: String(scopedBatchRows.length), detail: `${importedTags.toLocaleString("es-AR")} importados`, tone: scopedBatchRows.length ? "good" : "warn" },

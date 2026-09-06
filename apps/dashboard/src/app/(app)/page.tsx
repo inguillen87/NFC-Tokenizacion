@@ -16,6 +16,7 @@ import { readDemoDataMetaFromResponse } from "../../lib/demo-data-mode";
 import { resolveCanonicalTenantRisk } from "../../lib/tenant-risk";
 import { dashboardHighImpactPermissionMatches } from "../../lib/permission-policy";
 import { readPhysicalTaps } from "../../lib/physical-taps-read";
+import { resolveOpsDestinationAccess } from "../../lib/ops-destination-access";
 
 const FALLBACK_KPIS = {
   scans: "Scans",
@@ -412,6 +413,7 @@ export default async function DashboardHome({
       labels={labels}
       opsSteps={opsSteps}
       opsTenantRows={opsTenantRows}
+      opsDestinationAccess={resolveOpsDestinationAccess(session)}
       initialRealtimeEvents={initialRealtimeEvents}
       realtimeStreamSource={realtimeStreamSource}
       realtimeDataSource={liveEventsResult.source}

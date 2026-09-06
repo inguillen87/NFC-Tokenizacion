@@ -512,11 +512,12 @@ export function PhysicalTapsCommandCenter({
   const latestClosed = latestPhysicalTapByState(rows, "closed");
   const latestOpened = latestPhysicalTapByState(rows, "opened");
   const located = rows.filter((row) => row.location.precision !== "none").length;
+  const rangeLabel = ({ "24h": "últimas 24 horas", "7d": "últimos 7 días", "30d": "últimos 30 días", "90d": "últimos 90 días" } as Record<string, string>)[payload.scope.range || ""];
   const evidenceHref = payload.scope.bid && payload.scope.bid !== "all"
     ? `/events?bid=${encodeURIComponent(payload.scope.bid)}&source=real`
     : "/events?source=real";
   const summaryCards = [
-    { label: "TAP reales", value: number(payload.summary.total), detail: `${number(payload.summary.distinctUnits)} unidades · ${payload.scope.range || "ventana confirmada"}`, icon: Radio, tone: "text-[var(--taps-accent)]" },
+    { label: "TAP reales", value: number(payload.summary.total), detail: `${number(payload.summary.distinctUnits)} unidades · ${number(payload.summary.total)} lecturas recientes`, icon: Radio, tone: "text-[var(--taps-accent)]" },
     { label: "Cerrado reportado", value: number(payload.summary.closed), detail: "Estado TT del tag", icon: CheckCircle2, tone: "text-[var(--taps-success)]" },
     { label: "Abierto reportado", value: number(payload.summary.opened), detail: "Señal operativa, no alarma", icon: CircleAlert, tone: "text-[var(--taps-warning)]" },
     { label: "Zona disponible", value: `${located}/${rows.length}`, detail: "Red o navegador con consentimiento", icon: MapPin, tone: "text-[var(--taps-accent)]" },
@@ -532,6 +533,7 @@ export function PhysicalTapsCommandCenter({
           </div>
           <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--taps-text)] sm:text-3xl">TAP reales recientes, listos para revisar</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--taps-muted)]">Cada tarjeta representa un evento persistido. No inferimos que cerrado y abierto formen un antes/después ni una ruta del mismo producto.</p>
+          {rangeLabel ? <p className="mt-2 text-xs font-bold text-[var(--taps-muted)]">Período consultado: {rangeLabel}. Lecturas recientes del período, no un total histórico.</p> : null}
         </div>
         <div data-testid="physical-taps-last-evidence" className="rounded-2xl border border-[var(--taps-border)] bg-[var(--taps-surface)] px-4 py-3 text-right">
           <p className="flex items-center justify-end gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-muted)]"><Clock3 className="h-3.5 w-3.5" /> Última evidencia</p>
@@ -582,7 +584,7 @@ export function PhysicalTapsCommandCenter({
               selectedPointId={selectedPointId}
               onPointSelect={(point) => setSelectedPointId(point.id)}
               title="Dónde se registraron los TAP"
-              subtitle="Zonas aproximadas informadas por la red; los eventos no forman un recorrido."
+              subtitle="Zonas aproximadas informadas por la red o el navegador con consentimiento, según cada evento. No forman un recorrido."
               caption="La ubicación ayuda a priorizar operaciones y campañas regionales. No identifica una dirección ni demuestra presencia exacta."
               density="balanced"
               chrome="compact"

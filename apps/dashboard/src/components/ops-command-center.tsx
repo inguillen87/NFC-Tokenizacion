@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BadgeCheck, Boxes, ClipboardCheck, Database, MapPin, PackageCheck, QrCode, Radar, Send, ShieldCheck, ShoppingBag, Sprout, Store, UserCog } from "lucide-react";
 import styles from "./ops-command-center.module.css";
+import { DASHBOARD_DESTINATIONS } from "../lib/dashboard-destination-policy";
+import type { OpsDestinationAccess, OpsDestinationKey } from "../lib/ops-destination-access";
 
 export type OpsCommandMetric = {
   label: string;
@@ -39,6 +41,7 @@ export type OpsCommandCenterProps = {
   funnel: Array<{ stage: string; value: number }>;
   readiness: Array<{ label: string; ready: number; pending: number }>;
   mode?: "global" | "tenant" | "auditor";
+  allowedDestinations: OpsDestinationAccess;
 };
 
 const roles = {
@@ -132,7 +135,9 @@ export function OpsCommandCenter({
   funnel,
   readiness,
   mode = "global",
+  allowedDestinations,
 }: OpsCommandCenterProps) {
+  const canOpen = (destination: OpsDestinationKey) => allowedDestinations?.[destination] === true;
   const role = roles[mode];
   const RoleIcon = role.icon;
   const normalizedMetrics = metrics.length ? metrics : [
@@ -159,35 +164,40 @@ export function OpsCommandCenter({
       icon: Boxes,
       title: "1. Lotes de proveedor",
       body: "Consultá lotes, proveedor, SKU y manifest. La carga o edición requiere los permisos correspondientes.",
-      href: "/batches/supplier",
+      destination: "supplierBatches" as const,
+      href: DASHBOARD_DESTINATIONS.supplierBatches.href,
       cta: "Ver lotes",
     },
     {
       icon: QrCode,
       title: "2. Registro de tags",
       body: "Ver UIDs, estado reportado, ficha asociada y tags pendientes o sospechosos.",
-      href: "/tags",
+      destination: "tags" as const,
+      href: DASHBOARD_DESTINATIONS.tags.href,
       cta: "Ver tags",
     },
     {
       icon: ShieldCheck,
       title: "3. Eventos y QA",
       body: "Revisar taps reportados, replay, TT/tamper, ubicación declarada y dispositivo por UID.",
-      href: "/events",
+      destination: "events" as const,
+      href: DASHBOARD_DESTINATIONS.events.href,
       cta: "Auditar eventos",
     },
     {
       icon: BadgeCheck,
       title: "4. Anclaje opcional",
       body: "Consultá solicitudes de tokenización cuando tu cuenta tenga acceso. Abrir este módulo no emite tokens ni publica un pasaporte.",
-      href: "/tokenization",
+      destination: "tokenization" as const,
+      href: DASHBOARD_DESTINATIONS.tokenization.href,
       cta: "Revisar anclaje",
     },
     {
       icon: ShoppingBag,
       title: "5. Beneficios",
       body: "Revisá el catálogo y los canjes disponibles para tu empresa. Este acceso no activa ventas ni envía promociones.",
-      href: "/loyalty/rewards",
+      destination: "rewards" as const,
+      href: DASHBOARD_DESTINATIONS.rewards.href,
       cta: "Ver beneficios",
     },
   ];
@@ -198,7 +208,8 @@ export function OpsCommandCenter({
       title: "Agro / producto crítico",
       body: "Referencias para configurar productos, lotes y soportes NFC/QR según las necesidades del proyecto.",
       metric: "Referencia técnica",
-      href: "/sdk-vision?vertical=agro",
+      destination: "sdkVision" as const,
+      href: `${DASHBOARD_DESTINATIONS.sdkVision.href}?vertical=agro`,
       cta: "Consultar documentación",
     },
     {
@@ -206,7 +217,8 @@ export function OpsCommandCenter({
       title: "Canal y territorio",
       body: "Revisá la ubicación reportada y su precisión cuando estén disponibles. Un mapa de lecturas no confirma un desvío de distribución.",
       metric: "Ubicación reportada",
-      href: "/events",
+      destination: "events" as const,
+      href: DASHBOARD_DESTINATIONS.events.href,
       cta: "Auditar eventos",
     },
     {
@@ -214,7 +226,8 @@ export function OpsCommandCenter({
       title: "Dato para sistemas externos",
       body: "Consultá la configuración de API y webhooks autorizada para tu cuenta. La conexión con sistemas externos requiere configuración y validación independientes.",
       metric: "Según configuración",
-      href: "/api-keys",
+      destination: "apiKeys" as const,
+      href: DASHBOARD_DESTINATIONS.apiKeys.href,
       cta: "Consultar integración",
     },
     {
@@ -222,10 +235,18 @@ export function OpsCommandCenter({
       title: "Uso responsable post-tap",
       body: "Consultá campañas disponibles según tu cuenta. El contacto y cualquier envío requieren la configuración, los permisos y el consentimiento aplicables.",
       metric: "contenido + opt-in",
-      href: "/loyalty/campaigns",
+      destination: "campaigns" as const,
+      href: DASHBOARD_DESTINATIONS.campaigns.href,
       cta: "Ver campañas",
     },
   ];
+
+  const tenantActions = [
+    { destination: "batches" as const, label: "Lotes" },
+    { destination: "tags" as const, label: "Tags" },
+    { destination: "events" as const, label: "Eventos" },
+  ];
+  const unavailableTenantActions = tenantActions.filter((item) => !canOpen(item.destination));
 
   return (
     <section data-testid="ops-command-center" className={`${styles.workspace} relative overflow-hidden rounded-3xl border p-0`}>
@@ -277,20 +298,30 @@ export function OpsCommandCenter({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--ops-accent)]">Accesos operativos</p>
-              <p className="mt-1 text-xs text-[var(--ops-muted)]">Cada enlace abre una consulta. Las funciones disponibles dependen de los permisos y la configuración del módulo.</p>
+              <p className="mt-1 text-xs text-[var(--ops-muted)]">Cada enlace abre una consulta. Las funciones disponibles dependen de los permisos y la configuración del módulo. Los módulos sin acceso se muestran sin enlace; solicitá su habilitación al administrador de tu empresa.</p>
             </div>
             <StatusChip label="Acceso según permisos" tone="neutral" />
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-5">
             {runbook.map((item) => {
               const Icon = item.icon;
-              return (
-                <Link key={item.title} href={item.href} className="group rounded-2xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-3 transition hover:-translate-y-0.5 hover:border-[var(--ops-accent-border)] hover:bg-[var(--ops-accent-bg)]">
+              const allowed = canOpen(item.destination);
+              const content = (
+                <>
                   <Icon className="h-5 w-5 text-[var(--ops-accent)]" aria-hidden="true" />
                   <p className="mt-3 text-sm font-black text-[var(--ops-text)]">{item.title}</p>
                   <p className="mt-2 min-h-[54px] text-xs leading-5 text-[var(--ops-muted)]">{item.body}</p>
-                  <span className="mt-3 inline-flex rounded-lg border border-[var(--ops-accent-border)] px-2 py-1 text-xs font-black uppercase tracking-[0.1em] text-[var(--ops-accent)] group-hover:bg-[var(--ops-accent)] group-hover:text-[var(--ops-on-accent)]">{item.cta}</span>
+                  {allowed ? <span className="mt-3 inline-flex rounded-lg border border-[var(--ops-accent-border)] px-2 py-1 text-xs font-black uppercase tracking-[0.1em] text-[var(--ops-accent)] group-hover:bg-[var(--ops-accent)] group-hover:text-[var(--ops-on-accent)]">{item.cta}</span> : <p className="mt-3 text-xs font-semibold leading-5 text-[var(--ops-muted)]">No habilitado para tu cuenta.</p>}
+                </>
+              );
+              return allowed ? (
+                <Link key={item.title} href={item.href} className="group rounded-2xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-3 transition hover:-translate-y-0.5 hover:border-[var(--ops-accent-border)] hover:bg-[var(--ops-accent-bg)]">
+                  {content}
                 </Link>
+              ) : (
+                <article key={item.title} data-unavailable-destination={item.destination} className="rounded-2xl border border-[var(--ops-border)] bg-[var(--ops-surface-strong)] p-3">
+                  {content}
+                </article>
               );
             })}
           </div>
@@ -311,8 +342,9 @@ export function OpsCommandCenter({
         <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
           {enterpriseLanes.map((lane) => {
             const Icon = lane.icon;
-            return (
-              <Link key={lane.title} href={lane.href} className="group rounded-2xl border border-[var(--ops-success-border)] bg-[var(--ops-surface)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--ops-success-border)]">
+            const allowed = canOpen(lane.destination);
+            const content = (
+              <>
                 <div className="flex items-start justify-between gap-3">
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--ops-success-border)] bg-[var(--ops-success-bg)] text-[var(--ops-success)]">
                     <Icon className="h-5 w-5" aria-hidden="true" />
@@ -321,8 +353,17 @@ export function OpsCommandCenter({
                 </div>
                 <h4 className="mt-4 text-base font-black text-[var(--ops-text)]">{lane.title}</h4>
                 <p className="mt-2 min-h-[72px] text-xs leading-5 text-[var(--ops-muted)]">{lane.body}</p>
-                <span className="mt-3 inline-flex rounded-lg border border-[var(--ops-success-border)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.1em] text-[var(--ops-success)] group-hover:bg-[var(--ops-success)] group-hover:text-[var(--ops-on-accent)]">{lane.cta}</span>
+                {allowed ? <span className="mt-3 inline-flex rounded-lg border border-[var(--ops-success-border)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.1em] text-[var(--ops-success)] group-hover:bg-[var(--ops-success)] group-hover:text-[var(--ops-on-accent)]">{lane.cta}</span> : <p className="mt-3 text-xs font-semibold leading-5 text-[var(--ops-muted)]">No habilitado para tu cuenta.</p>}
+              </>
+            );
+            return allowed ? (
+              <Link key={lane.title} href={lane.href} className="group rounded-2xl border border-[var(--ops-success-border)] bg-[var(--ops-surface)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--ops-success-border)]">
+                {content}
               </Link>
+            ) : (
+              <article key={lane.title} data-unavailable-destination={lane.destination} className="rounded-2xl border border-[var(--ops-border)] bg-[var(--ops-surface-strong)] p-4">
+                {content}
+              </article>
             );
           })}
         </div>
@@ -431,18 +472,21 @@ export function OpsCommandCenter({
                       <td className="px-3 py-3 text-right">
                         {mode === "global" ? (
                           <div className="flex flex-wrap justify-end gap-2">
-                            <Link
+                            {canOpen("overview") ? <Link
                               href={`/?tenant=${encodeURIComponent(tenant.slug)}`}
                               className="rounded-xl border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-accent)] transition hover:bg-[var(--ops-accent-bg)]"
                             >
                               Abrir tenant
-                            </Link>
+                            </Link> : <p className="text-xs text-[var(--ops-muted)]">Vista no habilitada para tu cuenta.</p>}
                           </div>
                         ) : (
-                          <div className="flex justify-end gap-1.5">
-                            <Link href="/batches" className="rounded-xl border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-accent)] transition hover:bg-[var(--ops-accent-bg)]">Lotes</Link>
-                            <Link href="/tags" className="rounded-xl border border-[var(--ops-success-border)] bg-[var(--ops-success-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-success)] transition hover:bg-[var(--ops-success-bg)]">Tags</Link>
-                            <Link href="/events" className="rounded-xl border border-[var(--ops-warning-border)] bg-[var(--ops-warning-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-warning)] transition hover:bg-[var(--ops-warning-bg)]">Eventos</Link>
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                              {tenantActions.filter((item) => canOpen(item.destination)).map((item) => (
+                                <Link key={item.destination} href={DASHBOARD_DESTINATIONS[item.destination].href} className="rounded-xl border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-accent)] transition hover:bg-[var(--ops-accent-bg)]">{item.label}</Link>
+                              ))}
+                            </div>
+                            {unavailableTenantActions.length ? <p className="text-xs leading-5 text-[var(--ops-muted)]">Sin acceso a: {unavailableTenantActions.map((item) => item.label).join(", ")}.</p> : null}
                           </div>
                         )}
                       </td>
