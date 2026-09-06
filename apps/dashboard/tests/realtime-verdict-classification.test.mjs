@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { tsImport } from "tsx/esm/api";
 
-const [{ classifyRealtimeVerdict, isRealtimeRisk }, source, executiveSource, multirubroSource] = await Promise.all([
+const [{ classifyRealtimeVerdict, isRealtimeRisk }, source, executiveSource, multirubroSource, windowActivity] = await Promise.all([
   tsImport("../src/lib/realtime-feed.ts", import.meta.url),
   readFile(new URL("../src/components/realtime-ops-monitor.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/multirubro-ops-panel.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/lib/crm-window-activity.ts", import.meta.url), "utf8"),
 ]);
 
 test("realtime operations centralize verdict classes and exclude lifecycle unknowns from risk", () => {
@@ -63,7 +64,8 @@ test("executive CRM keeps lifecycle unknowns out of risk and recognizes reported
   assert.doesNotMatch(executiveSource, /function classifyRealtimeVerdict|function isRealtimeRisk/);
   assert.match(executiveSource, /const unknown = visibleEvents\.filter/);
   assert.match(executiveSource, /explicitRiskRate/);
-  assert.match(executiveSource, /no se cuentan como riesgo/);
+  assert.match(windowActivity, /const eventRisk = isRealtimeRisk\(event\)/);
+  assert.match(windowActivity, /signal: eventRisk \? "risk" : eventOpened \? "opened" : "activity"/);
   assert.match(executiveSource, /classifyLocationProvenance\(value\) === "consented_gps"/);
   assert.match(executiveSource, /productIdentityRecognized/);
   assert.match(executiveSource, /knownActor/);

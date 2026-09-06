@@ -55,19 +55,15 @@ test("fullscreen and narrow layouts reserve distinct responsive control regions"
   assert.match(globals, /@media \(min-width: 1536px\)[\s\S]*?\.nexid-crm-map-base-controls/);
 });
 
-test("the CRM header keeps two rows through laptop widths and coordinates its content offsets", () => {
+test("the CRM header grows with content and adapts its columns without fixed vertical offsets", () => {
   const header = crm.match(/<header data-testid="crm-responsive-header"[^>]+>/)?.[0] || "";
-  assert.match(header, /lg:h-\[144px\]/);
-  assert.match(header, /lg:min-h-\[144px\]/);
-  assert.match(header, /2xl:h-\[70px\]/);
-  assert.match(header, /2xl:flex-nowrap/);
-  assert.doesNotMatch(header, /lg:flex-nowrap/);
-  assert.doesNotMatch(crm, /lg:w-\[510px\]/);
-  assert.doesNotMatch(crm, /lg:w-\[500px\]/);
-  assert.match(crm, /2xl:w-\[440px\]/);
-  assert.match(crm, /2xl:w-\[590px\]/);
-  assert.match(crm, /lg:top-\[144px\][^\"]*2xl:top-\[70px\]/);
-  assert.match(crm, /lg:h-\[calc\(100vh-176px\)\][^\"]*2xl:h-\[calc\(100vh-102px\)\]/);
+  assert.match(header, /nexid-crm-header/);
+  assert.doesNotMatch(header, /(?:lg|2xl):(?:h-\[|flex-nowrap)/);
+  assert.doesNotMatch(crm, /2xl:w-\[(?:440|590)px\]/);
+  assert.match(globals, /\.nexid-crm-header\s*\{[^}]*height: auto;[^}]*padding-block: 0\.875rem/);
+  assert.match(globals, /\.nexid-crm-header \.nexid-crm-nav\s*\{[^}]*grid-column: 1 \/ -1;[^}]*grid-row: 2/);
+  assert.match(globals, /@media \(min-width: 1800px\)\s*\{[\s\S]*?\.nexid-crm-header-status\s*\{[^}]*grid-column: 3;[^}]*grid-row: 1/);
+  assert.match(crm, /nexid-crm-header-status[^\n]*flex-wrap/);
 });
 
 test("map and shell motion honor the user's reduced-motion preference", () => {

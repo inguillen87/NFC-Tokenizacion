@@ -149,7 +149,8 @@ test("a scope transition is explicit before an empty result and capped samples a
   assert.match(crmSource, /label="Eventos recientes visibles"/);
   assert.match(crmSource, /Indicadores calculados sobre hasta 50 eventos recientes visibles/);
   assert.match(crmSource, /La muestra alcanzó el límite; puede haber más eventos en la ventana/);
-  assert.match(crmSource, /setCampaignDraft\(null\)/);
+  assert.match(crmSource, /selectTenant = [\s\S]*?setIncidentSelection\(null\)/);
+  assert.match(crmSource, /<CrmWindowActivityPanel[\s\S]*?events=\{visibleEvents\}[\s\S]*?confirmed=\{!valuesUnavailable && mapEvidence\.state !== "unavailable"\}/);
   assert.match(crmSource, /const valuesUnavailable = requestTransitionPending \|\| !streamConfirmed/);
   assert.match(crmSource, /if \(valuesUnavailable\) return \[\]/);
   assert.match(crmSource, /data-testid="crm-velocity-pending"/);

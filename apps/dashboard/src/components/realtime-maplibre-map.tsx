@@ -816,7 +816,7 @@ export function RealtimeMapLibreMap({
           </div>
         </div>
       ) : null}
-      <details className="absolute bottom-20 right-3 z-10 max-w-[min(22rem,calc(100%-1.5rem))] rounded-xl border border-white/10 bg-slate-950/85 text-xs text-slate-300 nexid-map-text-summary shadow-xl backdrop-blur sm:bottom-8">
+      <details className="absolute bottom-20 right-3 z-10 max-w-[min(22rem,calc(100%-1.5rem))] rounded-xl border border-white/10 bg-slate-950/85 text-xs text-slate-300 nexid-map-text-summary shadow-xl backdrop-blur sm:bottom-16">
         <summary className="flex min-h-11 cursor-pointer items-center px-3 py-2 font-black text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
           Resumen textual del mapa
         </summary>

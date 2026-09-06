@@ -37,8 +37,9 @@ test("home module cards are filtered through the shared destination policy", () 
 
 test("CRM deep links become honest unavailable states without permission", () => {
   assert.match(crm, /canReadSensitiveEvents \? \([\s\S]*Ver todos los eventos[\s\S]*events-audit-unavailable/);
-  assert.match(crm, /canOpenCampaigns \? \([\s\S]*Abrir campañas[\s\S]*campaigns-unavailable/);
-  assert.match(crm, /dashboardCanOpenDestination\("campaigns"/);
+  assert.match(crm, /onOpenAudit=\{canReadSensitiveEvents \? \(\) => router\.push\(DASHBOARD_DESTINATIONS\.events\.href\) : undefined\}/);
+  assert.match(crm, /auditUnavailableReason=\{eventsUnavailableReason\}/);
+  assert.doesNotMatch(crm, /openCampaignStudio|DASHBOARD_DESTINATIONS\.campaigns/);
 });
 
 test("shell health is neutral and Demo Pack count reflects configured data", () => {

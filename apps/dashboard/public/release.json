@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.05-dashboard.6",
-  "scope": "accessible-light-dark-CRM-controls-and-theme-aware-map-with-explicit-layer-preference",
+  "release": "2026.09.05-dashboard.7",
+  "scope": "adaptive-CRM-layout-and-source-backed-window-activity-with-working-event-navigation",
   "realTapCertification": "not-included",
-  "baseCommit": "1788df103fe6ef01896609b375a99acd00e242f3",
+  "baseCommit": "69baef4c062de87346f7e73f6735012720dae1fb",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,

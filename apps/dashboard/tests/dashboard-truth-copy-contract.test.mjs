@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const executiveCrm = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
+const windowActivity = await readFile(new URL("../src/components/crm-window-activity-panel.tsx", import.meta.url), "utf8");
 const loginPanel = await readFile(new URL("../src/components/login-form-panel.tsx", import.meta.url), "utf8");
 const loginPage = await readFile(new URL("../src/app/login/page.tsx", import.meta.url), "utf8");
 const dashboardHome = await readFile(new URL("../src/components/dashboard-home-client.tsx", import.meta.url), "utf8");
@@ -43,10 +44,9 @@ test("dashboard map labels describe reported events instead of physical live mov
 });
 
 test("VALID remains a message-level NFC result and is not promoted to physical-product authenticity", () => {
-  assert.match(executiveCrm, /title: "Mensaje NFC validado"/);
-  assert.match(executiveCrm, /title: "Producto NFC reconocido"/);
-  assert.match(executiveCrm, /datos reportados por el evento; no prueban la ubicación física/);
-  assert.match(executiveCrm, /autenticación criptográfica SUN/);
+  assert.match(executiveCrm, /label="Autenticación verificada"[^\n]*Sólo mensajes SUN con verdict válido, CMAC correcto y UID allowlisted/);
+  assert.match(executiveCrm, /label="Producto reconocido"[^\n]*No identifica a una persona ni equivale a autenticación física/);
+  assert.match(windowActivity, /GPS, red\/IP y fuentes mixtas no prueban la ubicación física del producto/);
   assert.doesNotMatch(executiveCrm, /title: "Unidad (?:física )?verificada"/);
 
   assert.match(demoMobile, /if \(result === "VALID"\)/);

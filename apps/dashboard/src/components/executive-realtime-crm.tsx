@@ -12,7 +12,6 @@ import {
   Crosshair,
   Download,
   Expand,
-  Gift,
   Globe,
   Layers,
   MapPin,
@@ -22,11 +21,7 @@ import {
   RotateCcw,
   ScanLine,
   Settings,
-  Send,
-  ShieldAlert,
   ShieldCheck,
-  Sparkles,
-  Tags,
   Target,
   Truck,
   Users,
@@ -36,6 +31,7 @@ import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map"
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { IncidentEventDrawer } from "./incident-event-drawer";
+import { CrmWindowActivityPanel } from "./crm-window-activity-panel";
 import { incidentEventNavigationKey, moveIncidentEventSelection, snapshotIncidentEventSelection, type IncidentEventSelection } from "../lib/incident-event-navigation";
 import { formatReadingDateTime, parseOperationalTimestamp, resolveOperationalTimeZone } from "../lib/operational-reading-time";
 import { PhysicalTapsCommandCenter } from "./physical-taps-command-center";
@@ -61,7 +57,7 @@ import {
   dashboardPermissionDenied,
   dashboardPermissionMatches,
 } from "../lib/permission-policy";
-import { DASHBOARD_DESTINATIONS, dashboardCanOpenDestination } from "../lib/dashboard-destination-policy";
+import { DASHBOARD_DESTINATIONS } from "../lib/dashboard-destination-policy";
 import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 import {
   incidentByEvent,
@@ -97,23 +93,6 @@ type CrmRailItem = {
   action: () => void;
   disabled?: boolean;
   disabledReason?: string;
-};
-
-type MarketOpportunity = {
-  key: string;
-  city: string;
-  country: string;
-  taps: number;
-  authenticationRate: number;
-  gpsRate: number;
-  riskRate: number;
-  geoCommercialSignals: number;
-  score: number;
-  channel: string;
-  offer: string;
-  playbook: string;
-  reason: string;
-  campaignName: string;
 };
 
 const tooltipStyle = {
@@ -161,93 +140,9 @@ const MAP_VIEW_OPTIONS: Array<{ value: MapView; label: string; title: string; de
   },
 ];
 
-type CommercialContext = {
-  key: "wine" | "agro" | "general";
-  panelTitle: string;
-  panelSubtitle: string;
-  headline: string;
-  noData: string;
-  playbooks: Array<{ eyebrow: string; title: string; body: string }>;
-};
-
 function isClientReportedGps(value?: string | null) {
   return classifyLocationProvenance(value) === "consented_gps";
 }
-
-const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> = {
-  wine: {
-    key: "wine",
-    panelTitle: "IA de cercanía comercial",
-    panelSubtitle: "reglas sobre lecturas visibles para priorizar ciudad, club, stock y canje",
-    headline: "Próxima acción comercial",
-    noData: "Cuando entren productos reconocidos, actores conocidos y consentimientos por canal, la consola prioriza ciudad, club, voucher, stock y punto de canje.",
-    playbooks: [
-      {
-        eyebrow: "Señal",
-        title: "Mensaje NFC validado",
-        body: "nexID separa el producto QR/NFC estático reconocido de la autenticación SUN verificada. La ciudad, coordenada y hora son datos reportados por el evento; no prueban la ubicación física de la unidad.",
-      },
-      {
-        eyebrow: "Zona",
-        title: "Actividad por ciudad",
-        body: "El CRM muestra actividad, producto reconocido, autenticación verificada, actor conocido y consentimiento por canal como métricas independientes.",
-      },
-      {
-        eyebrow: "Acción",
-        title: "Club y recompra",
-        body: "Activa voucher, cata, visita guiada, WhatsApp/email y recompra desde el mismo evento.",
-      },
-    ],
-  },
-  agro: {
-    key: "agro",
-    panelTitle: "IA de cercanía comercial",
-    panelSubtitle: "reglas sobre lecturas visibles para priorizar canal, territorio, stock y soporte",
-    headline: "Zona agro accionable",
-    noData: "Cuando entren productos reconocidos, actores conocidos y consentimientos por canal, la consola prioriza lote, canal, región, uso responsable y soporte técnico.",
-    playbooks: [
-      {
-        eyebrow: "Señal",
-        title: "Producto NFC reconocido",
-        body: "nexID distingue producto registrado de autenticación criptográfica SUN. La ubicación mostrada fue reportada por el evento y no certifica el recorrido físico de la unidad.",
-      },
-      {
-        eyebrow: "Zona",
-        title: "Canal y territorio",
-        body: "El CRM muestra actividad por zona, GPS bajo, riesgo e interacciones elegibles por canal para soporte o campaña.",
-      },
-      {
-        eyebrow: "Acción",
-        title: "Post-venta accionable",
-        body: "Activa capacitación, uso responsable, reclamos, garantía, recompra y logística desde el mismo evento.",
-      },
-    ],
-  },
-  general: {
-    key: "general",
-    panelTitle: "IA de cercanía comercial",
-    panelSubtitle: "reglas sobre lecturas visibles para priorizar zona, segmento, canal y acción",
-    headline: "Dónde actuar ahora",
-    noData: "Cuando entren productos reconocidos, actores conocidos y consentimientos por canal, la consola prioriza ciudad, segmento, canal y acción comercial.",
-    playbooks: [
-      {
-        eyebrow: "Señal",
-        title: "Lectura asociada al producto",
-        body: "El evento vincula NFC/QR, lote y producto con el contexto reportado. La ubicación es una señal del dispositivo o una estimación declarada, no una prueba física del producto.",
-      },
-      {
-        eyebrow: "Zona",
-        title: "Actividad por zona",
-        body: "El CRM muestra ciudades con actividad, riesgo, producto reconocido e interacciones consentidas accionables.",
-      },
-      {
-        eyebrow: "Acción",
-        title: "Accion post-tap",
-        body: "Activa beneficio, soporte, encuesta, ticket, recompra o campaña desde el mismo tap.",
-      },
-    ],
-  },
-};
 
 function timeRangeLabel(value: TimeRange) {
   return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.label || "Últimas 24h";
@@ -472,106 +367,6 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
   return [...buckets.values()].sort((a, b) => b.taps - a.taps || b.lastSeenMs - a.lastSeenMs).slice(0, 5);
 }
 
-function buildMarketOpportunities(
-  hotspots: ReturnType<typeof buildHotspots>,
-  rows: TenantTapRealtimeEvent[],
-): MarketOpportunity[] {
-  return hotspots.map((hotspot, index) => {
-    const cityRows = rows.filter((row) => {
-      const city = String(row.city || "Unknown");
-      const country = String(row.country || "--");
-      return city === hotspot.city && country === hotspot.country;
-    });
-    const authenticationRate = hotspot.taps ? (hotspot.valid / hotspot.taps) * 100 : 0;
-    const gpsRate = hotspot.taps ? (hotspot.gps / hotspot.taps) * 100 : 0;
-    const riskRate = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
-    const geoCommercialSignals = cityRows.filter(isGeoOpportunitySignal).length;
-    const consentChannels = [...new Set(cityRows
-      .filter(isGeoOpportunitySignal)
-      .flatMap((row) => row.commercialConsentChannels))];
-    const channel = consentChannels
-      .map((value) => value === "whatsapp" ? "WhatsApp" : value === "phone" ? "Teléfono" : value === "email" ? "Email" : value)
-      .join(" + ") || "Sin canal consentido";
-
-    let offer = "15% club post-tap";
-    let playbook = "Enviar beneficio sólo por canales con consentimiento vigente y medir canje por ciudad.";
-    let reason = "Hay interacciones asociadas a producto, actor conocido y canal consentido para evaluar fidelización.";
-
-    if (riskRate > 12) {
-      offer = "Beneficio con validación";
-      playbook = "Separar lecturas sospechosas y resolver cualquier destinatario mediante el endpoint server-side de audiencia, alcance y permisos.";
-      reason = "La zona tiene actividad, pero necesita control antifraude antes de escalar.";
-    } else if (gpsRate < 60) {
-      offer = "Bono por activar GPS";
-      playbook = "Pedir opt-in de portal y mejorar precision antes de pauta paga.";
-      reason = "Hay actividad, pero falta ubicación fina para cercanía comercial.";
-    } else if (hotspot.taps >= 10) {
-      offer = "Drop local 2x1";
-      playbook = "Activar pauta local, historias con QR/NFC y cupo limitado por barrio.";
-      reason = "Volumen suficiente para campaña geolocalizada.";
-    } else if (authenticationRate >= 90) {
-      offer = "Early access club";
-      playbook = "Premiar primeros compradores y pedir referido en portal de usuario.";
-      reason = "Pocas lecturas, pero de alta calidad comercial.";
-    }
-
-    const score = Math.max(
-      0,
-      Math.min(99, Math.round(authenticationRate * 0.42 + gpsRate * 0.22 + Math.min(hotspot.taps * 7, 28) + geoCommercialSignals * 2 - riskRate * 0.45)),
-    );
-
-    return {
-      key: hotspot.key,
-      city: hotspot.city,
-      country: hotspot.country,
-      taps: hotspot.taps,
-      authenticationRate,
-      gpsRate,
-      riskRate,
-      geoCommercialSignals,
-      score,
-      channel,
-      offer,
-      playbook,
-      reason,
-      campaignName: `Campaña CRM ${index + 1}: ${hotspot.city}`,
-    };
-  })
-    .filter((opportunity) => opportunity.geoCommercialSignals > 0)
-    .sort((a, b) => b.score - a.score || b.taps - a.taps)
-    .slice(0, 5);
-}
-
-function resolveCommercialContext(
-  rows: TenantTapRealtimeEvent[],
-  tenantScope: string,
-  selectedTenant: string,
-): CommercialContext {
-  const haystack = [
-    tenantScope,
-    selectedTenant,
-    ...rows.flatMap((row) => [row.tenantSlug, row.productName, row.batchId, row.city, row.country]),
-  ].filter(Boolean).join(" ").toLowerCase();
-
-  if (/(syngenta|agro|semilla|seed|campo|bidon|bidón|fertiliz|crop|soja|maiz|maíz)/.test(haystack)) {
-    return COMMERCIAL_CONTEXTS.agro;
-  }
-  if (/(bodega|balmec|vino|wine|malbec|cabernet|chardonnay|pinot|cata|viñedo|vinedo)/.test(haystack)) {
-    return COMMERCIAL_CONTEXTS.wine;
-  }
-  return COMMERCIAL_CONTEXTS.general;
-}
-
-function commercialRecommendation(context: CommercialContext, opportunity: MarketOpportunity) {
-  if (context.key === "wine") {
-    return `Activar ${opportunity.offer} en ${opportunity.city}: cata, visita o beneficio sólo por canales con consentimiento vigente. Reponer producto, habilitar QR/NFC de canje y pauta local donde ya hay ${opportunity.taps} interacciones.`;
-  }
-  if (context.key === "agro") {
-    return `Priorizar ${opportunity.city}: revisar canal, disponibilidad de lote, soporte técnico y uso responsable. Activar comunicación por ${opportunity.channel} donde ya hay ${opportunity.taps} lecturas.`;
-  }
-  return `Activar ${opportunity.offer} en ${opportunity.city} por ${opportunity.channel}. Priorizar stock, QR/NFC activos, puntos de canje y pauta local donde ya hay ${opportunity.taps} lecturas.`;
-}
-
 function MiniSparkline({ data, color, dataKey = "taps" }: { data: Array<Record<string, number | string>>; color: string; dataKey?: string }) {
   if (!data.length) return <div className="h-6 w-full rounded border border-dashed border-white/8 bg-slate-950/25" aria-hidden="true" />;
   return (
@@ -701,15 +496,9 @@ export function ExecutiveRealtimeCrm({
     "events.read_sensitive",
     account.deniedPermissions,
   );
-  const canOpenCampaigns = dashboardCanOpenDestination("campaigns", {
-    role: account.role,
-    permissions: account.permissions,
-    deniedPermissions: account.deniedPermissions,
-    isDemo: Boolean(account.isDemo),
-  });
   const eventsUnavailableReason = "Auditoría no habilitada: esta sesión no tiene events.read_sensitive.";
-  const campaignsUnavailableReason = "Campañas no habilitadas: esta sesión no tiene campaigns:read.";
   const [activeView, setActiveView] = useState<ExecutiveCrmView>(initialView);
+  const [activityPanelRequested, setActivityPanelRequested] = useState(false);
   const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, EXECUTIVE_REALTIME_EVENT_LIMIT) : []);
   const [connected, setConnected] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
@@ -731,7 +520,6 @@ export function ExecutiveRealtimeCrm({
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [clock, setClock] = useState("");
-  const [campaignDraft, setCampaignDraft] = useState<string | null>(null);
   const [incidentSelection, setIncidentSelection] = useState<IncidentEventSelection<TenantTapRealtimeEvent> | null>(null);
   const selectedEvent = incidentSelection?.events[incidentSelection.index] || null;
   const [incidentsByEventId, setIncidentsByEventId] = useState<Record<string, DashboardIncident>>({});
@@ -835,6 +623,23 @@ export function ExecutiveRealtimeCrm({
     const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     if (nextHref !== currentHref) window.history.pushState(null, "", nextHref);
   }, []);
+
+  const openWindowActivity = () => {
+    selectActiveView("overview");
+    setActivityPanelRequested(true);
+  };
+
+  useEffect(() => {
+    if (!activityPanelRequested) return;
+    // Consume once, including when another navigation interrupted this request.
+    setActivityPanelRequested(false);
+    if (activeView !== "overview") return;
+    const panel = document.getElementById("window-activity-panel");
+    const heading = document.getElementById("window-activity-title");
+    if (!panel || !heading) return;
+    panel.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+    heading.focus({ preventScroll: true });
+  }, [activityPanelRequested, activeView]);
 
   useEffect(() => {
     setActiveView(initialView);
@@ -1099,7 +904,6 @@ export function ExecutiveRealtimeCrm({
   const selectTenant = (nextTenant: string) => {
     if (tenantSession || nextTenant === selectedTenant) return;
     setIncidentSelection(null);
-    setCampaignDraft(null);
     setIncidentsByEventId({});
     setIncidentAvailability(canReadIncidents ? "loading" : "unavailable");
     setSelectedTenant(nextTenant);
@@ -1108,13 +912,11 @@ export function ExecutiveRealtimeCrm({
   const selectTimeRange = (nextTimeRange: TimeRange) => {
     if (nextTimeRange === timeRange) return;
     setIncidentSelection(null);
-    setCampaignDraft(null);
     setTimeRange(nextTimeRange);
   };
 
   const cycleTimeRange = () => {
     setIncidentSelection(null);
-    setCampaignDraft(null);
     setTimeRange((current) => current === "5m" ? "1h" : current === "1h" ? "24h" : "5m");
   };
 
@@ -1131,7 +933,6 @@ export function ExecutiveRealtimeCrm({
     const gps = visibleEvents.filter((event) => isClientReportedGps(event.locationSource) && strictCoordinatePair(event.lat, event.lng) != null).length;
     const commercialSignals = commercialActivityEvents.length;
     const geoCommercialSignals = geoOpportunityEvents.length;
-    const offerReady = buildMarketOpportunities(buildHotspots(visibleEvents), visibleEvents).filter((item) => item.geoCommercialSignals > 0).length;
     return {
       total,
       productRecognized,
@@ -1143,7 +944,6 @@ export function ExecutiveRealtimeCrm({
       gps,
       commercialSignals,
       geoCommercialSignals,
-      offerReady,
       productRecognizedRate: total ? (productRecognized / total) * 100 : 0,
       authenticationRate: total ? (authenticated / total) * 100 : 0,
       knownActorRate: total ? (knownActors / total) * 100 : 0,
@@ -1188,12 +988,6 @@ export function ExecutiveRealtimeCrm({
   }, [consoleTimezone, visibleEvents]);
 
   const hotspots = useMemo(() => buildHotspots(visibleEvents), [visibleEvents]);
-  const marketOpportunities = useMemo(() => buildMarketOpportunities(hotspots, visibleEvents), [hotspots, visibleEvents]);
-  const topOpportunity = marketOpportunities[0] || null;
-  const commercialContext = useMemo(
-    () => resolveCommercialContext(visibleEvents, tenantScope, effectiveSelectedTenant),
-    [effectiveSelectedTenant, tenantScope, visibleEvents],
-  );
   const latestEvent = visibleEvents[0] || null;
   const todayLabel = useMemo(() => formatDateInZone(Date.now(), consoleTimezone), [consoleTimezone]);
   const lastUpdateMs = safeDate(lastUpdateAt);
@@ -1212,26 +1006,6 @@ export function ExecutiveRealtimeCrm({
           : { label: activeDataSource === "demo" ? "En vivo - demo" : activeDataSource === "mixed" ? "En vivo - fuente mixta" : "En vivo - produccion", detail: `Stream event-driven confirmado, sin polling. ${sourcePresentation.detail}`, dot: "bg-emerald-400", badge: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" };
   const streamDataUnconfirmed = Boolean(dataAvailability !== "ready" || !streamConfirmed || streamIsStale);
   const mapEvidence = mapEvidencePresentation(activeDataSource, requestTransitionPending || streamDataUnconfirmed);
-  const alerts = useMemo(() => {
-    const rows: Array<{ id: string; tone: "red" | "amber" | "blue"; title: string; detail: string; time: string }> = [];
-    if (metrics.explicitRiskRate > 10) {
-      rows.push({ id: `risk-${hotspots[0]?.key || "operation"}`, tone: "red", title: `Riesgo elevado en ${hotspots[0]?.city || "la operación"}`, detail: `Riesgo explícito ${formatPercent(metrics.explicitRiskRate)}: solo replay, tamper o INVALID`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
-    }
-    if (metrics.gpsCoverage < 60 && metrics.total > 0) {
-      rows.push({ id: `gps-${metrics.total}-${Math.round(metrics.gpsCoverage)}`, tone: "amber", title: "Cobertura GPS baja", detail: `Solo ${formatPercent(metrics.gpsCoverage)} de lecturas con GPS útil`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
-    }
-    visibleEvents.filter((event) => isRealtimeRisk(event.verdict, event.reason)).slice(0, 3).forEach((event, index) => {
-      rows.push({ id: `exception-${String(event.eventId || event.uidMasked || "uid")}-${index}`, tone: "amber", title: `UID con excepción ${event.uidMasked}`, detail: `${event.city || "sin ciudad"} · ${deviceSummary(event)}`, time: timeAgo(event.occurredAt) });
-    });
-    if (metrics.unknown > 0) {
-      rows.push({ id: `unknown-${metrics.unknown}`, tone: "blue", title: "Eventos sin clasificar", detail: `${metrics.unknown} eventos UNKNOWN, NOT_REGISTERED, NOT_ACTIVE o no reconocidos; no se cuentan como riesgo.`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
-    }
-    if (metrics.commercialSignals > 0) {
-      rows.push({ id: `commercial-${String(latestEvent?.eventId || metrics.commercialSignals)}`, tone: "blue", title: "Actividad con señal comercial", detail: `${metrics.commercialSignals} interacciones tienen producto reconocido, actor asociado, tipo elegible y canal consentido; ${metrics.geoCommercialSignals} además tienen ubicación útil. No son destinatarios ni audiencia.`, time: timeAgo(latestEvent?.occurredAt) });
-    }
-    return rows.slice(0, 4);
-  }, [consoleTimezone, hotspots, latestEvent, metrics, visibleEvents]);
-
   const handleExport = () => {
     if (commercialActivityEvents.length === 0) return;
     exportToCsv(
@@ -1286,80 +1060,6 @@ export function ExecutiveRealtimeCrm({
   );
   const streetViewDisabledReason = "No hay coordenadas reportadas utilizables en la ventana actual.";
 
-  const rowsForOpportunity = (opportunity: MarketOpportunity) => {
-    return visibleEvents.filter((event) => {
-      const city = String(event.city || "Unknown");
-      const country = String(event.country || "--");
-      return city === opportunity.city && country === opportunity.country && isGeoOpportunitySignal(event);
-    });
-  };
-
-  const handleCampaignExport = (opportunity: MarketOpportunity) => {
-    const rows = rowsForOpportunity(opportunity);
-    exportToCsv(
-      `nexid-geo-opportunity-activity-${opportunity.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${new Date().toISOString().slice(0, 10)}`,
-      rows.map((event) => ({
-        campaign: opportunity.campaignName,
-        city: opportunity.city,
-        country: opportunity.country,
-        channel: opportunity.channel,
-        offer: opportunity.offer,
-        tenant: event.tenantSlug || "",
-        uid: event.uidMasked,
-        verdict: event.verdict,
-        eventType: event.eventType,
-        interactionClass: event.interactionClass,
-        productRecognized: event.productIdentityRecognized,
-        authenticationVerified: event.authenticationVerified,
-        knownActor: event.knownActor,
-        commercialConsent: event.commercialConsentGranted,
-        occurredAt: event.occurredAt,
-        occurredAtTenant: formatDateTimeInZone(event.occurredAt, consoleTimezone),
-        timezone: consoleTimezone,
-        product: event.productName || "",
-        device: deviceSummary(event),
-        location: locationSourceLabel(event),
-      })),
-      [
-        { key: "campaign", label: "Campaña" },
-        { key: "city", label: "Ciudad" },
-        { key: "country", label: "País" },
-        { key: "channel", label: "Canal sugerido" },
-        { key: "offer", label: "Promo sugerida" },
-        { key: "tenant", label: "Tenant" },
-        { key: "uid", label: "UID producto" },
-        { key: "verdict", label: "Veredicto" },
-        { key: "eventType", label: "Tipo de evento" },
-        { key: "interactionClass", label: "Clase de interacción" },
-        { key: "productRecognized", label: "Producto reconocido" },
-        { key: "authenticationVerified", label: "Autenticación verificada" },
-        { key: "knownActor", label: "Actor conocido" },
-        { key: "commercialConsent", label: "Consentimiento comercial asociado" },
-        { key: "occurredAtTenant", label: "Fecha tenant" },
-        { key: "timezone", label: "Zona horaria" },
-        { key: "occurredAt", label: "Fecha UTC/origen" },
-        { key: "product", label: "Producto" },
-        { key: "device", label: "Dispositivo" },
-        { key: "location", label: "Ubicacion" },
-      ],
-    );
-    setCampaignDraft(`${opportunity.campaignName}: actividad geográfica ${opportunity.channel} exportada (${rows.length} interacciones; no destinatarios).`);
-  };
-
-  const openCampaignStudio = (opportunity: MarketOpportunity) => {
-    if (!canOpenCampaigns) return;
-    const params = new URLSearchParams({
-      city: opportunity.city,
-      country: opportunity.country,
-      channel: opportunity.channel,
-      offer: opportunity.offer,
-      activity_count: String(opportunity.geoCommercialSignals),
-      audience_ready: "false",
-      audience_source: "server_actor_scope_required",
-    });
-    router.push(`${DASHBOARD_DESTINATIONS.campaigns.href}?${params.toString()}`);
-  };
-
   const toggleMapFullscreen = async () => {
     const panel = mapPanelRef.current;
     if (!panel) return;
@@ -1387,7 +1087,7 @@ export function ExecutiveRealtimeCrm({
     { icon: <Activity className="h-5 w-5" />, active: activeView === "overview", label: "Resumen operativo", short: "Vista", title: "Ver KPIs explicados, funnel post-tap y estado de la ventana activa.", action: () => selectActiveView("overview") },
     { icon: <ScanLine className="h-5 w-5" />, active: activeView === "physical-taps", label: "TAP físicos", short: "TAP", title: "Abrir evidencia NFC física, estados reportados, mapa e inbox del tenant.", action: () => selectActiveView("physical-taps") },
     { icon: <Globe className="h-5 w-5" />, active: false, label: "Mapa por capas", short: "Capas", title: "Centrar el mapa y conservar la capa seleccionada.", action: () => { setMapZoom(1); document.getElementById("live-tap-map")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
-    { icon: <Megaphone className="h-5 w-5" />, active: false, label: "IA de cercanía", short: "IA", title: "Ver priorización comercial por zona basada en eventos visibles.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
+    { icon: <Activity className="h-5 w-5" />, active: false, label: "Actividad", short: "DATOS", title: "Ver zonas, productos y eventos observados en esta ventana.", action: openWindowActivity },
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange("loyalty") },
     ...(canReadSensitiveEvents ? [{ icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { router.push(`${DASHBOARD_DESTINATIONS.events.href}?filter=risk`); } }] : []),
     { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar actividad", short: "CSV", title: "Exportar sólo interacciones con señal comercial; no exporta audiencia ni destinatarios.", action: handleExport, disabled: valuesUnavailable || commercialActivityEvents.length === 0, disabledReason: valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : exportDisabledReason },
@@ -1397,18 +1097,18 @@ export function ExecutiveRealtimeCrm({
   return (
     <div className="nexid-crm-shell fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden">
       <div className="nexid-crm-backdrop pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
-      <header data-testid="crm-responsive-header" className="relative z-[640] flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:h-[144px] lg:min-h-[144px] lg:px-4 lg:py-3 2xl:h-[70px] 2xl:min-h-[70px] 2xl:flex-nowrap 2xl:py-0">
-        <div className="order-1 flex min-w-0 flex-1 items-center gap-4 lg:gap-5 2xl:order-none 2xl:w-[440px] 2xl:flex-none">
+      <header data-testid="crm-responsive-header" className="nexid-crm-header relative z-[640] flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:px-4">
+        <div className="nexid-crm-identity order-1 flex min-w-0 flex-1 items-center gap-4 lg:gap-5">
           <div className="pr-4 text-[24px] font-black tracking-[-0.04em] text-white lg:pr-6 lg:text-[28px]">
             nex<span className="text-cyan-300">ID</span>
           </div>
-          <div className="border-l border-white/10 pl-4 lg:pl-5">
+          <div className="min-w-0 border-l border-white/10 pl-4 lg:pl-5">
             <p className="text-xs text-slate-400">Admin enterprise</p>
-            <h1 className="text-[1.4rem] font-black leading-tight tracking-[-0.035em] text-white lg:text-[1.65rem]">CRM Semántica Operativa</h1>
+            <h1 className="text-[1.4rem] font-black leading-tight tracking-[-0.035em] text-white lg:text-[1.65rem]">CRM y trazabilidad</h1>
           </div>
         </div>
 
-        <nav className="nexid-crm-nav order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-4 sm:text-sm 2xl:order-none 2xl:mx-auto 2xl:w-[590px]">
+        <nav className="nexid-crm-nav order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-4 sm:text-sm">
           <button type="button" aria-label="Volver al mapa y CRM" aria-pressed={activeView === "overview"} title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => selectActiveView("overview")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "overview" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
             <Activity className="h-4 w-4" /> CRM en vivo
           </button>
@@ -1423,7 +1123,7 @@ export function ExecutiveRealtimeCrm({
           </button>
         </nav>
 
-        <div className="order-2 ml-auto flex w-auto flex-wrap items-center justify-end gap-3 text-xs text-slate-300 lg:flex-nowrap 2xl:order-none 2xl:justify-start 2xl:gap-5">
+        <div className="nexid-crm-header-status order-2 ml-auto flex min-w-0 w-auto flex-wrap items-center justify-end gap-3 text-xs text-slate-300">
           <span className="flex items-center gap-2" title={streamHealth.detail}><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> Stream: {streamHealth.label}</span>
           <span data-testid="crm-source-badge" className={`rounded-full border px-2.5 py-1 font-semibold ${sourcePresentation.badge}`} title={sourcePresentation.detail}>Fuente: {sourcePresentation.label}</span>
           <span className="hidden items-center gap-2 2xl:flex" title={operationalTimeZone.isFallback ? "Zona no confirmada: horario mostrado en UTC" : `Zona informada para la operación: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="text-[10px] uppercase tracking-[0.08em] text-slate-500">{consoleTimezoneLabel}</span></span>
@@ -1449,7 +1149,7 @@ export function ExecutiveRealtimeCrm({
         </div>
       </header>
 
-      <aside className="absolute bottom-0 left-0 top-[70px] z-10 hidden w-24 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:top-[144px] lg:flex 2xl:top-[70px]">
+      <aside className="nexid-crm-rail relative z-10 hidden w-24 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:flex">
         <div className="space-y-3">
           {railItems.map((item) => (
             <button
@@ -1464,9 +1164,6 @@ export function ExecutiveRealtimeCrm({
             >
               {item.icon}
               <span className="max-w-full truncate">{item.short}</span>
-              <span className="pointer-events-none absolute left-14 top-1/2 z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-100 opacity-0 shadow-xl transition group-hover:opacity-100 lg:block">
-                {item.label}
-              </span>
             </button>
           ))}
         </div>
@@ -1482,7 +1179,7 @@ export function ExecutiveRealtimeCrm({
       </aside>
 
       {activeView === "physical-taps" ? (
-        <main data-testid="crm-physical-taps-view" className="relative z-10 min-h-[calc(100vh-70px)] overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-176px)] lg:min-h-0 lg:overflow-y-auto lg:p-4 2xl:h-[calc(100vh-102px)] 2xl:p-5">
+        <main data-testid="crm-physical-taps-view" className="nexid-crm-main relative z-10 overflow-visible px-3 py-3 pb-14 lg:overflow-y-auto lg:p-4 2xl:p-5">
           <section className="mx-auto w-full max-w-[1600px] space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/15 bg-slate-950/55 px-4 py-3">
               <div>
@@ -1502,7 +1199,7 @@ export function ExecutiveRealtimeCrm({
           </section>
         </main>
       ) : (
-      <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-176px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:h-[calc(100vh-102px)] 2xl:gap-4 2xl:p-4">
+      <main className="nexid-crm-main relative z-10 flex flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:gap-4 2xl:p-4">
         <section className="nexid-crm-kpi-column order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 xl:w-96">
           <div className="flex items-start justify-between gap-3">
             <span>
@@ -1567,7 +1264,7 @@ export function ExecutiveRealtimeCrm({
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
               <FunnelNode icon={<Megaphone className="h-5 w-5" />} label="Señal comercial" value={valuesUnavailable ? "—" : metrics.commercialSignals} pct={metrics.commercialSignalRate} tone="#a855f7" detail="actividad, no audiencia" pctLabel={valuesUnavailable ? "sin confirmar" : undefined} />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Tags className="h-5 w-5" />} label="Campaña" value={valuesUnavailable ? "—" : metrics.offerReady} pct={metrics.offerReady ? 100 : 0} tone="#38bdf8" detail="zonas con señal" pctLabel={valuesUnavailable ? "sin confirmar" : metrics.offerReady ? "zonas listas" : "sin zona"} />
+              <FunnelNode icon={<MapPin className="h-5 w-5" />} label="Con GPS" value={valuesUnavailable ? "—" : metrics.geoCommercialSignals} pct={metrics.total ? metrics.geoCommercialSignals / metrics.total * 100 : 0} tone="#38bdf8" detail="actividad elegible con GPS" pctLabel={valuesUnavailable ? "sin confirmar" : undefined} />
             </div>
           </div>
         </section>
@@ -1657,7 +1354,7 @@ export function ExecutiveRealtimeCrm({
               </div>
 
               <div className={`nexid-crm-map-body grid min-h-0 ${isMapFullscreen ? "flex-1" : ""} 2xl:grid-cols-[minmax(0,1fr)_282px] 2xl:grid-rows-[auto_minmax(0,1fr)]`}>
-                <div className="nexid-crm-map-legend relative z-20 m-3 mb-0 min-w-0 rounded-xl border border-white/10 bg-slate-950/72 p-3 text-xs text-slate-200 shadow-xl backdrop-blur 2xl:col-start-2 2xl:row-start-1 2xl:ml-0 2xl:max-w-none">
+                <div tabIndex={0} role="region" aria-label="Leyenda y fuente del mapa" className="nexid-crm-map-legend relative z-20 m-3 mb-0 min-w-0 rounded-xl border border-white/10 bg-slate-950/72 p-3 text-xs text-slate-200 shadow-xl backdrop-blur 2xl:col-start-2 2xl:row-start-1 2xl:ml-0 2xl:max-w-none">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <p className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
                     <span data-testid="crm-map-data-mode" data-state={mapEvidence.state} className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.06em] ${mapEvidence.badge}`}>{mapEvidence.label}</span>
@@ -1679,11 +1376,11 @@ export function ExecutiveRealtimeCrm({
                 )}
                 </div>
 
-                <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "min-h-0 h-full" : "h-[460px] sm:h-[520px] 2xl:h-[560px]"} min-w-0 w-full p-3 2xl:col-start-1 2xl:row-span-2 2xl:row-start-1`}>
+                <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "min-h-0 h-full" : "h-[460px] sm:h-[520px]"} min-w-0 w-full p-3 2xl:col-start-1 2xl:row-span-2 2xl:row-start-1`}>
                   <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} dataState={mapEvidence.state} dataStateDetail={mapEvidence.detail} arrival={mapArrival} />
                 </div>
 
-                <div tabIndex={-1} data-incident-event-list className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">
+                <div tabIndex={0} role="region" aria-label="Últimos eventos visibles" data-incident-event-list className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">
                 <p className="text-base font-extrabold tracking-[-0.015em] text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {valuesUnavailable ? <p data-testid="crm-events-pending" className="rounded-xl border border-dashed border-white/10 bg-slate-900/45 p-3 text-xs leading-5 text-slate-400">La actividad aparecerá cuando el tenant y la ventana queden confirmados.</p> : null}
@@ -1717,114 +1414,19 @@ export function ExecutiveRealtimeCrm({
             </div>
           </div>
 
-          <div className="nexid-crm-insight-grid grid min-h-0 shrink-0 grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1fr)_380px]">
-            <div id="commercial-ai-panel" className="nexid-crm-commercial-panel rounded-xl border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),linear-gradient(180deg,rgba(10,24,43,.98),rgba(4,10,20,.95))] p-3 2xl:p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="flex min-w-0 flex-wrap items-center gap-2 text-base font-bold text-white">
-                  <Megaphone className="h-4 w-4 text-cyan-300" />
-                  <span className="truncate">{commercialContext.panelTitle}</span>
-                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">({commercialContext.panelSubtitle})</span>
-                </p>
-                {canOpenCampaigns ? (
-                  <button type="button" title="Abrir Clientes & campañas con estas señales" onClick={() => { router.push(DASHBOARD_DESTINATIONS.campaigns.href); }} className="shrink-0 text-sm font-semibold text-cyan-300">Abrir campañas</button>
-                ) : (
-                  <span aria-disabled="true" title={campaignsUnavailableReason} className="shrink-0 max-w-[19rem] text-right text-xs font-semibold leading-5 text-slate-500" data-testid="campaigns-unavailable">{campaignsUnavailableReason}</span>
-                )}
-              </div>
-
-              {topOpportunity ? (
-                <div className="mb-3 grid gap-3 rounded-xl border border-cyan-300/20 bg-cyan-400/8 p-3 text-xs text-slate-300 sm:grid-cols-[minmax(0,1fr)_260px]">
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> {commercialContext.headline}</p>
-                    <p className="mt-1 text-sm leading-5">
-                      {commercialRecommendation(commercialContext, topOpportunity)}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="Prioridad heurística calculada con autenticación, consentimiento, GPS, volumen y riesgo."><b className="block text-base text-white">{topOpportunity.score}</b> prioridad</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="Actividad geográfica agregada; no es audiencia ni lista de destinatarios."><b className="block text-base text-white">{topOpportunity.geoCommercialSignals}</b> señales geográficas</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.authenticationRate)}</b> autenticado</span>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="mb-3 grid gap-2 md:grid-cols-3">
-                {commercialContext.playbooks.map((item) => (
-                  <div key={item.title} className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3 text-xs text-slate-300">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">{item.eyebrow}</p>
-                    <p className="mt-1 font-bold text-white">{item.title}</p>
-                    <p className="mt-1 leading-4 text-slate-400">{item.body}</p>
-                  </div>
-                ))}
-              </div>
-
-              {campaignDraft ? (
-                <div className="mb-2 flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-200">
-                  <BadgeCheck className="h-4 w-4" /> {campaignDraft}
-                </div>
-              ) : null}
-
-              <div className="max-h-[150px] space-y-2 overflow-y-auto pr-1 2xl:max-h-[210px]">
-                {marketOpportunities.length ? marketOpportunities.map((opportunity) => (
-                  <div key={opportunity.key} className="rounded-xl border border-white/8 bg-slate-950/55 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="min-w-0">
-                        <b className="block truncate text-sm text-white">{opportunity.city}, {opportunity.country}</b>
-                        <span className="block truncate text-[11px] text-slate-400">{opportunity.reason}</span>
-                      </span>
-                      <span className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-bold text-cyan-200" title="Prioridad heurística">P{opportunity.score}</span>
-                    </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-slate-400">
-                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1" title="Actividad agregada; la audiencia debe resolverse server-side con permisos."><b className="block text-sm text-white">{opportunity.geoCommercialSignals}</b> señales geográficas</span>
-                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-white">{opportunity.channel}</b> canal</span>
-                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-emerald-200">{opportunity.offer}</b> beneficio</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button type="button" title={`Exportar actividad geográfica de ${opportunity.city} con canal consentido y beneficio sugerido`} onClick={() => handleCampaignExport(opportunity)} className="rounded-md border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:border-cyan-300/50">
-                        <Download className="mr-1 inline h-3.5 w-3.5" /> CSV
-                      </button>
-                      {canOpenCampaigns ? (
-                        <button type="button" title={`Abrir campaña para ${opportunity.city}: ${opportunity.playbook}`} onClick={() => openCampaignStudio(opportunity)} className="rounded-md border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 hover:border-emerald-200/60">
-                          <Send className="mr-1 inline h-3.5 w-3.5" /> Campaña
-                        </button>
-                      ) : (
-                        <span aria-disabled="true" title={campaignsUnavailableReason} className="rounded-md border border-white/8 bg-slate-950/45 px-2.5 py-1 text-xs font-semibold text-slate-500" data-testid="opportunity-campaign-unavailable">Campaña no habilitada</span>
-                      )}
-                      <span className="min-w-0 truncate text-[11px] text-slate-500"><Gift className="mr-1 inline h-3.5 w-3.5 text-emerald-300" /> {opportunity.playbook}</span>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="rounded-lg border border-white/8 bg-slate-950/48 px-3 py-5 text-sm text-slate-400">
-                    {valuesUnavailable ? "Esperando la confirmación del tenant y la ventana antes de calcular oportunidades." : commercialContext.noData}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="nexid-crm-alerts-panel rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-base font-bold text-white">Alertas y excepciones <span className="ml-1 rounded-full bg-red-500 px-1.5 text-xs">{valuesUnavailable ? "—" : alerts.length}</span></p>
-                {canReadSensitiveEvents ? (
-                  <button type="button" title="Abrir todas las alertas y excepciones" onClick={() => { router.push(DASHBOARD_DESTINATIONS.events.href); }} className="text-sm font-semibold text-cyan-300">Ver todas</button>
-                ) : (
-                  <span aria-disabled="true" title={eventsUnavailableReason} className="max-w-[13rem] text-right text-xs font-semibold leading-4 text-slate-500" data-testid="alerts-audit-unavailable">Auditoría no habilitada</span>
-                )}
-              </div>
-              <div className="space-y-2">
-                {alerts.map((alert) => (
-                  <div key={alert.id} className="flex items-center gap-3 rounded-lg border border-white/6 bg-slate-900/60 px-3 py-1.5">
-                    <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${alert.tone === "red" ? "bg-red-500/12 text-red-300" : alert.tone === "amber" ? "bg-amber-400/12 text-amber-300" : "bg-sky-400/12 text-sky-300"}`}>
-                      {alert.tone === "red" ? <ShieldAlert className="h-3.5 w-3.5" /> : alert.tone === "amber" ? <Target className="h-3.5 w-3.5" /> : <Activity className="h-3.5 w-3.5" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-xs text-white">{alert.title}</b>
-                      <span className="block truncate text-[11px] text-slate-400">{alert.detail}</span>
-                    </span>
-                    <span className="text-xs text-slate-500">{alert.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <CrmWindowActivityPanel
+            events={visibleEvents}
+            confirmed={!valuesUnavailable && mapEvidence.state !== "unavailable"}
+            source={activeDataSource}
+            sourceLabel={sourcePresentation.label}
+            tenantLabel={queryTenantDisplayName}
+            timeRangeLabel={timeRangeLabel(timeRange)}
+            formatEventTime={(event) => formatReadingDateTime(event, operationalTimeZone)}
+            onSelectEvent={(event, selection) => setIncidentSelection(snapshotIncidentEventSelection(event, selection))}
+            onOpenPhysicalTaps={() => selectActiveView("physical-taps")}
+            onOpenAudit={canReadSensitiveEvents ? () => router.push(DASHBOARD_DESTINATIONS.events.href) : undefined}
+            auditUnavailableReason={eventsUnavailableReason}
+          />
         </section>
       </main>
       )}
@@ -1849,7 +1451,7 @@ export function ExecutiveRealtimeCrm({
         />
       ) : null}
 
-      <footer className="fixed bottom-0 left-0 right-0 z-20 flex h-9 items-center justify-between gap-3 border-t border-white/8 bg-[#06101d]/95 px-3 text-[11px] text-slate-400 lg:absolute lg:h-8 lg:px-8 lg:text-xs">
+      <footer className="nexid-crm-footer fixed bottom-0 left-0 right-0 z-20 flex h-9 items-center justify-between gap-3 border-t border-white/8 bg-[#06101d]/95 px-3 text-[11px] text-slate-400 lg:px-8 lg:text-xs">
         <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> Stream: {streamHealth.label}</span>
         <span className="hidden sm:inline">Actualizado: {timeAgo(lastUpdateAt)}</span>
         <span className="hidden md:inline">Fuente: {sourcePresentation.label} · nexID Core · Precisión de ubicación: {latestEvent?.locationAccuracyM ? `±${Math.round(Number(latestEvent.locationAccuracyM))} m` : "según evento"}</span>

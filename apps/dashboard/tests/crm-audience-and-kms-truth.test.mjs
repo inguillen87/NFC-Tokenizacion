@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const crm = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
+const activity = await readFile(new URL("../src/components/crm-window-activity-panel.tsx", import.meta.url), "utf8");
 const home = await readFile(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
 const growth = await readFile(new URL("../src/components/customer-growth-command-center.tsx", import.meta.url), "utf8");
 const eventsPage = await readFile(new URL("../src/app/(app)/events/page.tsx", import.meta.url), "utf8");
@@ -15,16 +16,14 @@ test("CRM treats UID as product activity and never exports an event as an audien
   assert.match(crm, /classifyLocationProvenance\(value\) === "consented_gps"/);
   assert.match(crm, /isClientReportedGps\(row\.locationSource\)/);
   assert.match(crm, /row\.interactionClass !== "security_signal"/);
-  assert.match(crm, /flatMap\(\(row\) => row\.commercialConsentChannels\)/);
-  assert.match(crm, /filter\(\(opportunity\) => opportunity\.geoCommercialSignals > 0\)/);
   assert.match(crm, /visibleEvents\.filter\(isCommercialActivitySignal\)/);
-  assert.match(crm, /city === opportunity\.city && country === opportunity\.country && isGeoOpportunitySignal\(event\)/);
+  assert.match(crm, /visibleEvents\.filter\(isGeoOpportunitySignal\)/);
   assert.match(crm, /commercialActivityEvents\.map\(\(event\) =>/);
   assert.match(crm, /commercialConsent: event\.commercialConsentGranted/);
   assert.doesNotMatch(crm, /consentChannels: event\.commercialConsentChannels\.join/);
-  assert.match(crm, /audience_ready: "false"/);
-  assert.match(crm, /audience_source: "server_actor_scope_required"/);
-  assert.match(crm, /no destinatarios/);
+  assert.match(activity, /Actividad elegible, no audiencia/);
+  assert.match(activity, /Un UID no identifica a una persona ni genera destinatarios/);
+  assert.doesNotMatch(crm, /buildMarketOpportunities|commercialRecommendation|offerReady|campaignDraft|handleCampaignExport|openCampaignStudio/);
   assert.doesNotMatch(crm, /unique_valid_uid|UIDs válidos únicos|const audience =|opportunity\.audience/);
 });
 
