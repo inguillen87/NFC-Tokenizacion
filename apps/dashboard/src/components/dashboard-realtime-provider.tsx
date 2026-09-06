@@ -16,6 +16,7 @@ import {
   DASHBOARD_REALTIME_EVENT_BUFFER_LIMIT,
   type DashboardRealtimeEventBuffer,
 } from "../lib/dashboard-realtime-buffer";
+import { createRealtimeTapArrivalGate } from "../lib/realtime-tap-arrival";
 
 export type DashboardRealtimeWindow = "5m" | "1h" | "24h" | "7d" | "30d" | "all";
 export type DashboardRealtimeSource = "production" | "demo" | "all";
@@ -34,6 +35,7 @@ export type DashboardRealtimeFrame = {
   receivedAt: string;
   scopeKey: string;
   sequence: number;
+  newPhysicalTapArrival?: boolean;
 };
 
 type DashboardRealtimeContextValue = {
@@ -140,6 +142,7 @@ export function DashboardRealtimeProvider({
     streamUrl.searchParams.set("source", activeScope.source);
     if (activeScope.tenant) streamUrl.searchParams.set("tenant", activeScope.tenant);
     const stream = new EventSource(streamUrl.toString());
+    const arrivalGate = createRealtimeTapArrivalGate(activeScope);
 
     const frame = (message: MessageEvent<string>): DashboardRealtimeFrame => ({
       data: parseFrameData(message),
@@ -151,12 +154,14 @@ export function DashboardRealtimeProvider({
     const onSnapshot = (message: MessageEvent<string>) => {
       if (disposed) return;
       const next = frame(message);
+      arrivalGate.snapshot(next.data);
       setSnapshot(next);
       setStatus(dashboardRealtimeSnapshotConfirmsReady(next.data, activeScope) ? "connected" : "reconnecting");
     };
     const onEvent = (message: MessageEvent<string>) => {
       if (disposed) return;
       const next = frame(message);
+      next.newPhysicalTapArrival = arrivalGate.accept(next.data);
       // React may batch a burst into one render. The ordered, bounded buffer
       // lets every consumer drain every frame instead of seeing only the last
       // state assignment.
@@ -171,19 +176,23 @@ export function DashboardRealtimeProvider({
     };
     const onWarning = (message: MessageEvent<string>) => {
       if (disposed) return;
+      arrivalGate.pause();
       setWarning(frame(message));
       setStatus("reconnecting");
     };
     const onConnected = (message: MessageEvent<string>) => {
       if (disposed) return;
       const next = frame(message);
+      arrivalGate.connect(next.data);
       setStatus(dashboardRealtimeControlConfirmsReady(next.data) ? "connected" : "reconnecting");
     };
 
     stream.onopen = () => {
+      arrivalGate.pause();
       if (!disposed) setStatus("connecting");
     };
     stream.onerror = () => {
+      arrivalGate.pause();
       if (!disposed) setStatus("reconnecting");
     };
     stream.addEventListener("snapshot", onSnapshot as EventListener);

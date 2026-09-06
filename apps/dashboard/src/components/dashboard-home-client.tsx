@@ -124,7 +124,11 @@ export default function DashboardHomeClient({
   const batchesAvailable = batchAvailability === "ready" || batchAvailability === "fallback";
   const tokenizationAvailable = tokenizationAvailability === "ready" || tokenizationAvailability === "fallback";
   const realtimeAvailable = realtimeAvailability === "ready" || realtimeAvailability === "fallback";
-  const operationsAvailable = overviewAvailable && batchesAvailable && realtimeAvailable && tokenizationAvailable;
+  const operationsAvailable = overviewAvailable && batchesAvailable && realtimeAvailable;
+  // This optional step is derived from tokenization on the server, not from TAP evidence.
+  const availableOpsSteps = tokenizationAvailable
+    ? opsSteps
+    : opsSteps.filter((step) => step.label !== "Ownership, NFT y experiencia");
   const hasExplicitDemoData = [overviewDataSource, batchDataSource, tokenizationDataSource, realtimeDataSource]
     .some((source) => source === "demo" || source === "seed");
   const destinationAccess = {
@@ -256,20 +260,20 @@ export default function DashboardHomeClient({
                 { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${plannedTags.toLocaleString("es-AR")} planeados`, tone: activeTags > 0 ? "good" : "warn" },
                 { label: "Riesgo explícito", value: riskInteractions.toLocaleString("es-AR"), detail: "Replay / tamper / invalid", tone: riskInteractions > 5 ? "risk" : riskInteractions > 0 ? "warn" : "good" },
               ]}
-              steps={opsSteps}
+              steps={availableOpsSteps}
               tenants={opsTenantRows}
               funnel={[
                 { stage: "Tenants", value: opsTenantRows.length },
                 { stage: "Batches", value: scopedBatchRows.length },
                 { stage: "Tags", value: activeTags },
                 { stage: "Actividad", value: activityTotal },
-                { stage: "NFT", value: mintedTokens },
+                ...(tokenizationAvailable ? [{ stage: "NFT", value: mintedTokens }] : []),
               ]}
               readiness={[
                 { label: "Manifest", ready: importedTags, pending: Math.max(plannedTags - importedTags, 0) },
                 { label: "Activación", ready: activeTags, pending: Math.max(importedTags - activeTags, 0) },
                 { label: "Autenticación", ready: authenticatedInteractions, pending: Math.max(activityTotal - authenticatedInteractions, 0) },
-                { label: "Token", ready: mintedTokens, pending: Math.max(scopedTokenizationRows.length - mintedTokens, 0) },
+                ...(tokenizationAvailable ? [{ label: "Token", ready: mintedTokens, pending: Math.max(scopedTokenizationRows.length - mintedTokens, 0) }] : []),
               ]}
             /> : (
               <EnterpriseOpsState

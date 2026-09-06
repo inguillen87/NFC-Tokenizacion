@@ -38,6 +38,13 @@ import {
   type CampaignMeasurement,
 } from "./loyalty-campaign-truth";
 import { buildLoyaltyAdminUrl } from "./loyalty-campaign-scope";
+import {
+  CampaignAudienceIdentity,
+  campaignAudienceIsDemo,
+  campaignAudienceRowKey,
+  parseCampaignAudienceRows,
+  type AudienceMember,
+} from "./loyalty-campaign-audience";
 
 // Types
 interface Campaign {
@@ -79,28 +86,6 @@ interface ChatMessage {
 interface ImprovementApplied {
   from: string;
   to: string;
-}
-
-interface AudienceMember {
-  consumer_id: string;
-  display_name?: string | null;
-  email_masked?: string | null;
-  phone_masked?: string | null;
-  city?: string | null;
-  country?: string | null;
-  tenant_slug?: string | null;
-  status?: string | null;
-  points_balance?: number | string | null;
-  lifetime_points?: number | string | null;
-  tap_count?: number | string | null;
-  valid_taps?: number | string | null;
-  risk_taps?: number | string | null;
-  saved_products?: number | string | null;
-  last_product?: string | null;
-  marketing_opt_in?: boolean | null;
-  whatsapp_opt_in?: boolean | null;
-  segment?: string | null;
-  last_tap_at?: string | null;
 }
 
 interface TriviaInsight {
@@ -421,6 +406,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   const [audienceMembers, setAudienceMembers] = useState<AudienceMember[]>([]);
   const [audienceLoading, setAudienceLoading] = useState(Boolean(tenantScope));
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  const [audienceIsDeclaredDemo, setAudienceIsDeclaredDemo] = useState(false);
   const [triviaInsight, setTriviaInsight] = useState<TriviaInsight>(EMPTY_TRIVIA);
   const [triviaLoading, setTriviaLoading] = useState(Boolean(tenantScope));
   const [triviaError, setTriviaError] = useState<string | null>(null);
@@ -438,6 +424,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   const [voucherResult, setVoucherResult] = useState<RedemptionValidation | null>(null);
 
   const audienceUsesDemo = allowDemoData && Boolean(audienceError);
+  const audienceDataIsDemo = audienceUsesDemo || audienceIsDeclaredDemo;
   const audience = audienceUsesDemo ? DEMO_AUDIENCE : audienceMembers;
   const audienceAvailable = audienceUsesDemo || (!audienceLoading && !audienceError);
   const selectedTemplate = CAMPAIGN_TEMPLATES.find((item) => item.id === selectedTemplateId) || CAMPAIGN_TEMPLATES[0];
@@ -528,6 +515,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
   useEffect(() => {
     let cancelled = false;
     async function loadAudience() {
+      setAudienceIsDeclaredDemo(false);
       const endpoint = buildLoyaltyAdminUrl("consumer-network/members", tenantScope);
       if (!endpoint) {
         setAudienceMembers([]);
@@ -551,8 +539,13 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
         if (payload.items.some((item: AudienceMember) => String(item?.tenant_slug || "").trim().toLowerCase() !== tenantScope)) {
           throw new Error("tenant_scope_mismatch");
         }
+        const declaredDemo = campaignAudienceIsDemo(response, payload);
+        if (declaredDemo && !allowDemoData) throw new Error("demo_audience_not_allowed");
+        const members = parseCampaignAudienceRows(payload.items);
+        if (!members) throw new Error("audience_contract_invalid");
         if (!cancelled) {
-          setAudienceMembers(payload.items as AudienceMember[]);
+          setAudienceMembers(members);
+          setAudienceIsDeclaredDemo(declaredDemo);
         }
       } catch (error) {
         if (!cancelled) {
@@ -567,7 +560,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
     return () => {
       cancelled = true;
     };
-  }, [tenantScope]);
+  }, [allowDemoData, tenantScope]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1161,8 +1154,10 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
           <div>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
               <MessageCircle className="h-4 w-4" />
-              {audienceUsesDemo
+              {audienceDataIsDemo
                 ? "Audiencia demo modelada"
+                : audienceLoading
+                  ? "Consultando audiencia"
                 : audienceError
                   ? "Audiencia no disponible"
                   : "Audiencia CRM reportada"}
@@ -1176,7 +1171,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             <ShieldCheck className="h-4 w-4" />
             {audienceLoading
               ? "Cargando audiencia"
-              : audienceUsesDemo
+              : audienceDataIsDemo
                 ? "Datos demo · no son audiencia real"
                 : audienceError
                   ? "Fuente no disponible"
@@ -1660,7 +1655,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
             <div>
-              <h3 className="text-sm font-black text-white">Usuarios accionables del tenant</h3>
+              <h3 className="text-sm font-black text-white">{audienceDataIsDemo ? "Perfiles ficticios de demostración" : "Perfiles reportados por la fuente"}</h3>
               <p className="text-[11px] text-slate-400">Nombre, contacto enmascarado, ciudad, lecturas, puntos, opt-in y segmento.</p>
             </div>
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-300">
@@ -1668,12 +1663,11 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             </span>
           </div>
           <div className="grid gap-2 p-3 md:hidden">
-            {filteredAudience.slice(0, 8).map((member) => (
-              <div key={member.consumer_id} className="rounded-2xl border border-white/10 bg-slate-900/45 p-3">
+            {filteredAudience.slice(0, 8).map((member, index) => (
+              <div key={campaignAudienceRowKey(member, index)} className="rounded-2xl border border-white/10 bg-slate-900/45 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-black text-white">{member.display_name || "Usuario registrado"}</div>
-                    <div className="truncate text-[10px] text-slate-500">{member.email_masked || member.consumer_id.slice(0, 8)}</div>
+                    <CampaignAudienceIdentity member={member} />
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
                     member.whatsapp_opt_in
@@ -1731,11 +1725,10 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 </tr>
               </thead>
               <tbody>
-                {filteredAudience.slice(0, 8).map((member) => (
-                  <tr key={member.consumer_id} className="border-t border-white/5 text-slate-300">
+                {filteredAudience.slice(0, 8).map((member, index) => (
+                  <tr key={campaignAudienceRowKey(member, index)} className="border-t border-white/5 text-slate-300">
                     <td className="px-4 py-3">
-                      <div className="font-bold text-white">{member.display_name || "Usuario registrado"}</div>
-                      <div className="text-[10px] text-slate-500">{member.email_masked || member.consumer_id.slice(0, 8)}</div>
+                      <CampaignAudienceIdentity member={member} />
                     </td>
                     <td className="px-4 py-3">{member.city || "Sin ciudad"}{member.country ? `, ${member.country}` : ""}</td>
                     <td className="px-4 py-3 font-mono text-cyan-200">{member.phone_masked || "no phone"}</td>

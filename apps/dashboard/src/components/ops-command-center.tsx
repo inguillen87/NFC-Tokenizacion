@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BadgeCheck, Boxes, ClipboardCheck, Database, MapPin, PackageCheck, QrCode, Radar, Send, ShieldCheck, ShoppingBag, Sprout, Store, UserCog } from "lucide-react";
-import { Card, StatusChip } from "@product/ui";
+import styles from "./ops-command-center.module.css";
 
 export type OpsCommandMetric = {
   label: string;
@@ -45,29 +45,33 @@ const roles = {
   global: {
     label: "Super Admin",
     icon: UserCog,
-    headline: "Gobernar tenants, permisos, riesgo y expansión comercial desde una sola consola.",
-    action: "Decidís qué cuenta escalar, cuál pausar, qué lote auditar y dónde hay oportunidad real de revenue.",
+    headline: "Revisá empresas, lotes y actividad NFC desde una sola consola.",
+    action: "Consultá los datos disponibles y abrí cada empresa para revisar sus lotes, tags y eventos dentro de tu alcance autorizado.",
   },
   tenant: {
     label: "Admin tenant",
     icon: Store,
-    headline: "Convertir tags físicos en productos vendibles sin perder control.",
-    action: "La marca ve qué lote está listo, qué bloqueo impide vender y qué equipo debe resolverlo hoy.",
+    headline: "Controlá los lotes, tags y lecturas de tu empresa.",
+    action: "Revisá qué se importó, qué tags están activos y qué eventos necesitan atención. Cada acceso conserva los permisos de tu cuenta.",
   },
   auditor: {
     label: "Equipo operativo",
     icon: ShieldCheck,
-    headline: "Ejecutar encoding, QA de campo, anclaje y publicación con trazabilidad.",
-    action: "Nada pasa a producción comercial sin manifest, UID, prueba física, eventos y salida post-tap.",
+    headline: "Revisá lotes, tags y evidencia NFC dentro de tu alcance.",
+    action: "Los registros ayudan a preparar la revisión operativa; no reemplazan el QA de campo ni autorizan una publicación.",
   },
 } as const;
 
 const toneClasses: Record<NonNullable<OpsCommandMetric["tone"]>, string> = {
-  good: "border-emerald-300/25 bg-emerald-500/10 text-emerald-100",
-  warn: "border-amber-300/25 bg-amber-500/10 text-amber-100",
-  risk: "border-rose-300/25 bg-rose-500/10 text-rose-100",
-  neutral: "border-white/10 bg-slate-950/55 text-slate-100",
+  good: "border-[var(--ops-success-border)] bg-[var(--ops-success-bg)] text-[var(--ops-success)]",
+  warn: "border-[var(--ops-warning-border)] bg-[var(--ops-warning-bg)] text-[var(--ops-warning)]",
+  risk: "border-[var(--ops-danger-border)] bg-[var(--ops-danger-bg)] text-[var(--ops-danger)]",
+  neutral: "border-[var(--ops-border)] bg-[var(--ops-surface)] text-[var(--ops-text)]",
 };
+
+function StatusChip({ label, tone = "neutral" }: { label: string; tone?: "good" | "warn" | "risk" | "neutral" }) {
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClasses[tone]}`}>{label}</span>;
+}
 
 const statusTone: Record<OpsCommandStep["status"], "good" | "warn" | "risk"> = {
   ready: "good",
@@ -101,17 +105,17 @@ function MiniIconRail() {
     { icon: Boxes, label: "Lote" },
     { icon: PackageCheck, label: "Encoding" },
     { icon: ClipboardCheck, label: "QA campo" },
-    { icon: BadgeCheck, label: "Passport" },
-    { icon: Radar, label: "Salida" },
+    { icon: BadgeCheck, label: "Anclaje" },
+    { icon: Radar, label: "Beneficios" },
   ];
   return (
-    <div className="grid grid-cols-5 gap-2">
+    <div className={`${styles.iconRail} grid gap-2`}>
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-center">
-            <Icon className="mx-auto h-5 w-5 text-cyan-200" aria-hidden="true" />
-            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">{item.label}</p>
+          <div key={item.label} className="rounded-2xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-3 text-center">
+            <Icon className="mx-auto h-5 w-5 text-[var(--ops-accent)]" aria-hidden="true" />
+            <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-[var(--ops-muted)]">{item.label}</p>
           </div>
         );
       })}
@@ -121,7 +125,7 @@ function MiniIconRail() {
 
 export function OpsCommandCenter({
   title = "Centro de mando operativo",
-  subtitle = "Esta solapa responde una pregunta concreta: qué falta para que un lote NFC pase de depósito a producto activo, vendible, medible y seguro.",
+  subtitle = "Revisá los lotes, tags y eventos disponibles. Los módulos de anclaje, beneficios e integración son opcionales y conservan sus propios permisos.",
   metrics,
   steps,
   tenants = [],
@@ -129,39 +133,7 @@ export function OpsCommandCenter({
   readiness,
   mode = "global",
 }: OpsCommandCenterProps) {
-  const [selectedMode, setSelectedMode] = useState<keyof typeof roles>(mode);
-  const [pausedTenants, setPausedTenants] = useState<Set<string>>(new Set());
-  const [networkModes, setNetworkModes] = useState<Record<string, "Interno" | "Polygon">>(
-    tenants.reduce((acc, t) => ({ ...acc, [t.slug]: "Interno" }), {})
-  );
-  const [actionAlert, setActionAlert] = useState<string | null>(null);
-
-  const handleTogglePause = (slug: string) => {
-    setPausedTenants((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) {
-        next.delete(slug);
-        setActionAlert(`Tenant ${slug} activado exitosamente.`);
-      } else {
-        next.add(slug);
-        setActionAlert(`Tenant ${slug} pausado preventivamente. Se bloquearon temporalmente sus validaciones.`);
-      }
-      return next;
-    });
-    setTimeout(() => setActionAlert(null), 4000);
-  };
-
-  const handleToggleMode = (slug: string) => {
-    setNetworkModes((prev) => {
-      const current = prev[slug] || "Interno";
-      const nextMode = current === "Interno" ? "Polygon" : "Interno";
-      setActionAlert(`Tenant ${slug}: anclaje cambiado a ${nextMode === "Polygon" ? "Polygon Blockchain" : "cola interna controlada"}.`);
-      return { ...prev, [slug]: nextMode };
-    });
-    setTimeout(() => setActionAlert(null), 4000);
-  };
-
-  const role = roles[selectedMode];
+  const role = roles[mode];
   const RoleIcon = role.icon;
   const normalizedMetrics = metrics.length ? metrics : [
     { label: "Batches", value: "0", detail: "Sin lotes en el scope actual", tone: "neutral" as const },
@@ -185,38 +157,38 @@ export function OpsCommandCenter({
   const runbook = [
     {
       icon: Boxes,
-      title: "1. Recibir lote",
-      body: "Crear batch, proveedor, SKU, cantidad esperada y manifest auditable.",
+      title: "1. Lotes de proveedor",
+      body: "Consultá lotes, proveedor, SKU y manifest. La carga o edición requiere los permisos correspondientes.",
       href: "/batches/supplier",
-      cta: "Cargar lote",
+      cta: "Ver lotes",
     },
     {
       icon: QrCode,
-      title: "2. Activar tags",
+      title: "2. Registro de tags",
       body: "Ver UIDs, estado reportado, ficha asociada y tags pendientes o sospechosos.",
       href: "/tags",
       cta: "Ver tags",
     },
     {
       icon: ShieldCheck,
-      title: "3. QA de campo",
+      title: "3. Eventos y QA",
       body: "Revisar taps reportados, replay, TT/tamper, ubicación declarada y dispositivo por UID.",
       href: "/events",
       cta: "Auditar eventos",
     },
     {
       icon: BadgeCheck,
-      title: "4. Passport",
-      body: "Publicar certificado, titularidad digital, wallet y evidencia visible para consumidor.",
+      title: "4. Anclaje opcional",
+      body: "Consultá solicitudes de tokenización cuando tu cuenta tenga acceso. Abrir este módulo no emite tokens ni publica un pasaporte.",
       href: "/tokenization",
-      cta: "Anclar",
+      cta: "Revisar anclaje",
     },
     {
       icon: ShoppingBag,
-      title: "5. Salida comercial",
-      body: "Habilitar beneficio, marketplace, campaña o reward post-tap.",
+      title: "5. Beneficios",
+      body: "Revisá el catálogo y los canjes disponibles para tu empresa. Este acceso no activa ventas ni envía promociones.",
       href: "/loyalty/rewards",
-      cta: "Activar venta",
+      cta: "Ver beneficios",
     },
   ];
 
@@ -224,82 +196,65 @@ export function OpsCommandCenter({
     {
       icon: Sprout,
       title: "Agro / producto crítico",
-      body: "Bidón, bolsa de semillas, biológico o kit técnico unido a NFC/QR, lote, canal y política de carrier por riesgo.",
-      metric: "424 DNA / TT",
+      body: "Referencias para configurar productos, lotes y soportes NFC/QR según las necesidades del proyecto.",
+      metric: "Referencia técnica",
       href: "/sdk-vision?vertical=agro",
-      cta: "Ver stack agro",
+      cta: "Consultar documentación",
     },
     {
       icon: MapPin,
       title: "Canal y territorio",
-      body: "Detecta taps fuera de zona, concentración por ciudad, GPS bajo y posibles desvíos de distribuidor.",
-      metric: "mapa + riesgo",
+      body: "Revisá la ubicación reportada y su precisión cuando estén disponibles. Un mapa de lecturas no confirma un desvío de distribución.",
+      metric: "Ubicación reportada",
       href: "/events",
       cta: "Auditar eventos",
     },
     {
       icon: Database,
       title: "Dato para sistemas externos",
-      body: "Cada tap produce SKU, lote, estado, geografía, score y acción para CRM, data lake, ERP o Cropwise vía webhook.",
-      metric: "API / webhook",
+      body: "Consultá la configuración de API y webhooks autorizada para tu cuenta. La conexión con sistemas externos requiere configuración y validación independientes.",
+      metric: "Según configuración",
       href: "/api-keys",
-      cta: "Abrir APIs",
+      cta: "Consultar integración",
     },
     {
       icon: Send,
       title: "Uso responsable post-tap",
-      body: "Ficha técnica, uso responsable, soporte, reclamo o beneficio aparecen después de validar el mensaje NFC y aplicar la policy; no prueban el producto físico.",
+      body: "Consultá campañas disponibles según tu cuenta. El contacto y cualquier envío requieren la configuración, los permisos y el consentimiento aplicables.",
       metric: "contenido + opt-in",
       href: "/loyalty/campaigns",
-      cta: "Crear acción",
+      cta: "Ver campañas",
     },
   ];
 
   return (
-    <Card className="relative overflow-hidden p-0">
-      {actionAlert && (
-        <div className="absolute left-4 right-4 top-4 z-50 flex items-center justify-between rounded-xl border border-cyan-400/30 bg-slate-950/95 px-4 py-3 text-xs font-bold text-cyan-200 shadow-xl shadow-black/45">
-          <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-            {actionAlert}
-          </span>
-          <button suppressHydrationWarning onClick={() => setActionAlert(null)} className="text-cyan-400 hover:text-white ml-2 text-sm font-black">✕</button>
-        </div>
-      )}
-      <div className="dashboard-hero-panel dashboard-hero-panel--cyan border-b border-white/10 bg-[radial-gradient(circle_at_8%_10%,rgba(45,212,191,0.2),transparent_28%),radial-gradient(circle_at_88%_18%,rgba(59,130,246,0.16),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-5 sm:p-6">
+    <section data-testid="ops-command-center" className={`${styles.workspace} relative overflow-hidden rounded-3xl border p-0`}>
+      <div className={`${styles.hero} border-b border-[var(--ops-border)] p-5 sm:p-6`}>
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              {(Object.keys(roles) as Array<keyof typeof roles>).map((key) => (
-                <button
-                  suppressHydrationWarning
-                  key={key}
-                  type="button"
-                  onClick={() => setSelectedMode(key)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-black transition ${selectedMode === key ? "border-cyan-300/55 bg-cyan-400/15 text-cyan-50" : "border-white/10 bg-slate-950/45 text-slate-300 hover:border-cyan-300/30"}`}
-                >
-                  {roles[key].label}
-                </button>
-              ))}
+              <span data-testid="operations-session-role" className="rounded-full border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-3 py-1.5 text-xs font-black text-[var(--ops-accent)]">
+                {role.label} · Alcance de la sesión
+              </span>
             </div>
             <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-500/10 text-cyan-100">
+              <div className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] text-[var(--ops-accent)]">
                 <RoleIcon className="h-7 w-7" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">{title}</p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">{role.headline}</h2>
-                <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{subtitle}</p>
-                <p className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-100">{role.action}</p>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--ops-accent)]">{title}</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-[var(--ops-text)] sm:text-3xl">{role.headline}</h2>
+                <p className="mt-3 max-w-4xl text-sm leading-6 text-[var(--ops-muted)]">{subtitle}</p>
+                <p className="mt-3 rounded-2xl border border-[var(--ops-success-border)] bg-[var(--ops-success-bg)] px-4 py-3 text-sm leading-6 text-[var(--ops-success)]">{role.action}</p>
               </div>
             </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-slate-950/55 p-4">
+          <div className="rounded-3xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Preparacion del rollout</p>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-sm font-black text-cyan-100">{stepCompletion}%</span>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--ops-muted)]">Estado orientativo de etapas</p>
+              <span className="rounded-full border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-3 py-1 text-sm font-black text-[var(--ops-accent)]">{stepCompletion}%</span>
             </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--ops-track)]">
               <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-emerald-300 to-violet-300" style={{ width: `${stepCompletion}%` }} />
             </div>
             <div className="mt-4">
@@ -311,30 +266,30 @@ export function OpsCommandCenter({
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {normalizedMetrics.map((metric) => (
             <article key={metric.label} className={`rounded-2xl border p-4 ${toneClasses[metric.tone || "neutral"]}`}>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] opacity-75">{metric.label}</p>
-              <p className="mt-2 text-2xl font-black text-white">{metric.value}</p>
-              <p className="mt-2 text-xs leading-5 opacity-85">{metric.detail}</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em]">{metric.label}</p>
+              <p className="mt-2 text-2xl font-black text-[var(--ops-text)]">{metric.value}</p>
+              <p className="mt-2 text-xs leading-5">{metric.detail}</p>
             </article>
           ))}
         </div>
 
-        <div className="mt-5 rounded-3xl border border-cyan-300/15 bg-slate-950/45 p-4">
+        <div className="mt-5 rounded-3xl border border-[var(--ops-accent-border)] bg-[var(--ops-surface)] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Runbook de producción</p>
-              <p className="mt-1 text-xs text-slate-400">Cada bloque abre una pantalla donde se hace trabajo real, no una descripción decorativa.</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--ops-accent)]">Accesos operativos</p>
+              <p className="mt-1 text-xs text-[var(--ops-muted)]">Cada enlace abre una consulta. Las funciones disponibles dependen de los permisos y la configuración del módulo.</p>
             </div>
-            <StatusChip label={stepCompletion >= 80 ? "listo para operar" : "requiere atención"} tone={stepCompletion >= 80 ? "good" : "warn"} />
+            <StatusChip label="Acceso según permisos" tone="neutral" />
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-5">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-5">
             {runbook.map((item) => {
               const Icon = item.icon;
               return (
-                <Link key={item.title} href={item.href} className="group rounded-2xl border border-white/10 bg-slate-950/65 p-3 transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-500/10">
-                  <Icon className="h-5 w-5 text-cyan-200" aria-hidden="true" />
-                  <p className="mt-3 text-sm font-black text-white">{item.title}</p>
-                  <p className="mt-2 min-h-[54px] text-xs leading-5 text-slate-400">{item.body}</p>
-                  <span className="mt-3 inline-flex rounded-lg border border-cyan-300/25 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100 group-hover:bg-cyan-300 group-hover:text-slate-950">{item.cta}</span>
+                <Link key={item.title} href={item.href} className="group rounded-2xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-3 transition hover:-translate-y-0.5 hover:border-[var(--ops-accent-border)] hover:bg-[var(--ops-accent-bg)]">
+                  <Icon className="h-5 w-5 text-[var(--ops-accent)]" aria-hidden="true" />
+                  <p className="mt-3 text-sm font-black text-[var(--ops-text)]">{item.title}</p>
+                  <p className="mt-2 min-h-[54px] text-xs leading-5 text-[var(--ops-muted)]">{item.body}</p>
+                  <span className="mt-3 inline-flex rounded-lg border border-[var(--ops-accent-border)] px-2 py-1 text-xs font-black uppercase tracking-[0.1em] text-[var(--ops-accent)] group-hover:bg-[var(--ops-accent)] group-hover:text-[var(--ops-on-accent)]">{item.cta}</span>
                 </Link>
               );
             })}
@@ -342,31 +297,31 @@ export function OpsCommandCenter({
         </div>
       </div>
 
-      <div className="border-b border-white/10 bg-slate-950/35 p-5 sm:p-6">
+      <div className="border-b border-[var(--ops-border)] bg-[var(--ops-surface)] p-5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Playbook enterprise agro</p>
-            <h3 className="mt-2 text-xl font-black tracking-tight text-white">De producto físico a señal operativa para agro, pharma y marcas enterprise.</h3>
-            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">
-              Esta zona explica para qué existe Operación NFC: no es un tablero decorativo, es la cadena de trabajo para transformar cada unidad en evidencia verificable, auditable y accionable por sistemas externos.
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--ops-success)]">Contexto e integraciones</p>
+            <h3 className="mt-2 text-xl font-black tracking-tight text-[var(--ops-text)]">Recursos para revisar el uso de los datos de tu producto.</h3>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-[var(--ops-muted)]">
+              Estos accesos reúnen documentación, eventos e integración. No acreditan una conexión activa con plataformas externas ni ejecutan acciones al abrirlos. Los eventos aportan evidencia digital; no certifican el producto físico.
             </p>
           </div>
-          <StatusChip label="Cropwise-ready" tone="good" />
+          <StatusChip label="Configuración por proyecto" tone="neutral" />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
           {enterpriseLanes.map((lane) => {
             const Icon = lane.icon;
             return (
-              <Link key={lane.title} href={lane.href} className="group rounded-2xl border border-emerald-300/15 bg-[linear-gradient(135deg,rgba(6,78,59,.18),rgba(15,23,42,.72))] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/35">
+              <Link key={lane.title} href={lane.href} className="group rounded-2xl border border-[var(--ops-success-border)] bg-[var(--ops-surface)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--ops-success-border)]">
                 <div className="flex items-start justify-between gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-500/10 text-emerald-100">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--ops-success-border)] bg-[var(--ops-success-bg)] text-[var(--ops-success)]">
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </span>
-                  <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100">{lane.metric}</span>
+                  <span className="rounded-full border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.1em] text-[var(--ops-accent)]">{lane.metric}</span>
                 </div>
-                <h4 className="mt-4 text-base font-black text-white">{lane.title}</h4>
-                <p className="mt-2 min-h-[72px] text-xs leading-5 text-slate-400">{lane.body}</p>
-                <span className="mt-3 inline-flex rounded-lg border border-emerald-300/25 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-100 group-hover:bg-emerald-300 group-hover:text-slate-950">{lane.cta}</span>
+                <h4 className="mt-4 text-base font-black text-[var(--ops-text)]">{lane.title}</h4>
+                <p className="mt-2 min-h-[72px] text-xs leading-5 text-[var(--ops-muted)]">{lane.body}</p>
+                <span className="mt-3 inline-flex rounded-lg border border-[var(--ops-success-border)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.1em] text-[var(--ops-success)] group-hover:bg-[var(--ops-success)] group-hover:text-[var(--ops-on-accent)]">{lane.cta}</span>
               </Link>
             );
           })}
@@ -374,25 +329,25 @@ export function OpsCommandCenter({
       </div>
 
       <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+        <section className="rounded-3xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Camino guiado</h3>
-              <p className="mt-1 text-xs text-slate-400">Responsable, estado y próximo paso para destrabar la operación.</p>
+              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-[var(--ops-accent)]">Camino guiado</h3>
+              <p className="mt-1 text-xs text-[var(--ops-muted)]">Estados orientativos de los registros consultados; no constituyen una aprobación de QA o producción.</p>
             </div>
             <StatusChip label={`${readySteps}/${steps.length || 0} listo`} tone={stepCompletion >= 80 ? "good" : stepCompletion >= 40 ? "warn" : "risk"} />
           </div>
           <div className="mt-4 space-y-3">
             {steps.map((step, index) => (
-              <div key={`${step.label}-${index}`} className="grid gap-3 rounded-2xl border border-white/10 bg-slate-900/55 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-start">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-500/10 text-xs font-black text-cyan-100">{index + 1}</span>
+              <div key={`${step.label}-${index}`} className="grid gap-3 rounded-2xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-3 sm:grid-cols-[auto_1fr_auto] sm:items-start">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] text-xs font-black text-[var(--ops-accent)]">{index + 1}</span>
                 <div>
-                  <p className="font-black text-white">{step.label}</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-400">{step.body}</p>
+                  <p className="font-black text-[var(--ops-text)]">{step.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--ops-muted)]">{step.body}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:justify-end">
                   <StatusChip label={step.status} tone={statusTone[step.status]} />
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300">{ownerDisplayLabel(step.owner)}</span>
+                  <span className="rounded-full border border-[var(--ops-border)] bg-[var(--ops-surface-strong)] px-2.5 py-1 text-xs font-medium text-[var(--ops-muted)]">{ownerDisplayLabel(step.owner)}</span>
                 </div>
               </div>
             ))}
@@ -401,56 +356,56 @@ export function OpsCommandCenter({
 
         <section className="grid gap-5">
           <div className="grid gap-5 lg:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
-              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Embudo de confianza</h3>
-              <p className="mt-1 text-xs text-slate-400">De lote cargado a evento NFC, titularidad digital y tokenización.</p>
+            <div className="rounded-3xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-[var(--ops-accent)]">Volúmenes por etapa</h3>
+              <p className="mt-1 text-xs text-[var(--ops-muted)]">Conteos distintos de empresas, lotes, tags y actividad; el anclaje se incluye sólo cuando hay datos disponibles.</p>
               <div className="mt-4 h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={normalizedFunnel} margin={{ left: 0, right: 8, top: 16, bottom: 0 }}>
                     <defs>
                       <linearGradient id="opsTrustGradient" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.75} />
-                        <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.05} />
+                        <stop offset="0%" stopColor="var(--ops-accent)" stopOpacity={0.75} />
+                        <stop offset="100%" stopColor="var(--ops-accent)" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid stroke="rgba(148,163,184,0.12)" vertical={false} />
-                    <XAxis dataKey="stage" stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} />
-                    <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} width={34} />
+                    <CartesianGrid stroke="var(--ops-chart-grid)" vertical={false} />
+                    <XAxis dataKey="stage" stroke="var(--ops-muted)" tickLine={false} axisLine={false} fontSize={12} />
+                    <YAxis stroke="var(--ops-muted)" tickLine={false} axisLine={false} fontSize={12} width={34} />
                     <Tooltip contentStyle={{ background: "var(--dashboard-chart-tooltip-bg)", border: "1px solid var(--dashboard-chart-tooltip-border)", borderRadius: 12, color: "var(--dashboard-chart-tooltip-text)" }} />
-                    <Area type="monotone" dataKey="value" stroke="#22d3ee" fill="url(#opsTrustGradient)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="value" stroke="var(--ops-accent)" fill="url(#opsTrustGradient)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
-              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Readiness por etapa</h3>
-              <p className="mt-1 text-xs text-slate-400">Lo listo vs pendiente en manifest, tags, assets y salida comercial.</p>
+            <div className="rounded-3xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-[var(--ops-accent)]">Disponibilidad por etapa</h3>
+              <p className="mt-1 text-xs text-[var(--ops-muted)]">Valores listos y pendientes según los datos consultados para cada etapa.</p>
               <div className="mt-4 h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={normalizedReadiness} margin={{ left: 0, right: 8, top: 16, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(148,163,184,0.12)" vertical={false} />
-                    <XAxis dataKey="label" stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} />
-                    <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} fontSize={10} width={34} />
+                    <CartesianGrid stroke="var(--ops-chart-grid)" vertical={false} />
+                    <XAxis dataKey="label" stroke="var(--ops-muted)" tickLine={false} axisLine={false} fontSize={12} />
+                    <YAxis stroke="var(--ops-muted)" tickLine={false} axisLine={false} fontSize={12} width={34} />
                     <Tooltip contentStyle={{ background: "var(--dashboard-chart-tooltip-bg)", border: "1px solid var(--dashboard-chart-tooltip-border)", borderRadius: 12, color: "var(--dashboard-chart-tooltip-text)" }} />
-                    <Bar dataKey="ready" stackId="a" fill="#34d399" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="pending" stackId="a" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="ready" stackId="a" fill="var(--ops-success)" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="pending" stackId="a" fill="var(--ops-warning)" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+          <div className="rounded-3xl border border-[var(--ops-border)] bg-[var(--ops-surface)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Tenants / lotes bajo control</h3>
-                <p className="mt-1 text-xs text-slate-400">Vista operativa para decidir qué activar, investigar o escalar.</p>
+                <h3 className="text-sm font-black uppercase tracking-[0.16em] text-[var(--ops-accent)]">Tenants / lotes bajo control</h3>
+                <p className="mt-1 text-xs text-[var(--ops-muted)]">Vista operativa para decidir qué activar, investigar o escalar.</p>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-slate-200">{tenants.length} registros</span>
+              <span className="rounded-full border border-[var(--ops-border)] bg-[var(--ops-surface-strong)] px-3 py-1 text-xs font-black text-[var(--ops-text)]">{tenants.length} registros</span>
             </div>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[720px] text-left text-xs">
-                <thead className="border-b border-white/10 text-slate-500">
+                <thead className="border-b border-[var(--ops-border)] text-[var(--ops-muted)]">
                   <tr>
                     <th className="py-2 pr-3">Tenant / lote</th>
                     <th className="px-3 py-2">Scans</th>
@@ -463,56 +418,38 @@ export function OpsCommandCenter({
                 </thead>
                 <tbody>
                   {tenants.length ? tenants.map((tenant) => (
-                    <tr key={`${tenant.slug}-${tenant.name}`} className="border-b border-white/5 text-slate-200">
+                    <tr key={`${tenant.slug}-${tenant.name}`} className="border-b border-[var(--ops-border)] text-[var(--ops-text)]">
                       <td className="py-3 pr-3">
-                        <b className="text-white">{tenant.name}</b>
-                        <span className="mt-1 block text-slate-500">{tenantSlugLabel(tenant.slug)}</span>
+                        <b className="text-[var(--ops-text)]">{tenant.name}</b>
+                        <span className="mt-1 block text-[var(--ops-muted)]">{tenantSlugLabel(tenant.slug)}</span>
                       </td>
                       <td className="px-3 py-3">{formatNumber(tenant.scans)}</td>
                       <td className="px-3 py-3">{formatNumber(tenant.batches)}</td>
                       <td className="px-3 py-3">{formatNumber(tenant.tags)}</td>
                       <td className="px-3 py-3"><StatusChip label={tenant.scans > 0 ? `${tenant.riskScore}/100` : "sin base"} tone={tenant.scans > 0 ? riskTone(tenant.riskScore) : "warn"} /></td>
-                      <td className="px-3 py-3"><StatusChip label={pausedTenants.has(tenant.slug) ? "pausado" : tenant.status} tone={pausedTenants.has(tenant.slug) ? "risk" : tenant.status === "risk" ? "risk" : tenant.status === "pending" ? "warn" : "good"} /></td>
+                      <td className="px-3 py-3"><StatusChip label={tenant.status} tone={tenant.status === "risk" ? "risk" : tenant.status === "pending" ? "warn" : "good"} /></td>
                       <td className="px-3 py-3 text-right">
-                        {selectedMode === "global" ? (
-                          <div className="flex justify-end gap-1.5">
-                            <button suppressHydrationWarning
-                              type="button"
-                              onClick={() => handleTogglePause(tenant.slug)}
-                              className={`rounded-xl border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition ${
-                                pausedTenants.has(tenant.slug)
-                                  ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20"
-                                  : "border-rose-300/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
-                              }`}
-                            >
-                              {pausedTenants.has(tenant.slug) ? "Activar" : "Pausar"}
-                            </button>
+                        {mode === "global" ? (
+                          <div className="flex flex-wrap justify-end gap-2">
                             <Link
                               href={`/?tenant=${encodeURIComponent(tenant.slug)}`}
-                              className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-500/20"
+                              className="rounded-xl border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-accent)] transition hover:bg-[var(--ops-accent-bg)]"
                             >
                               Abrir tenant
                             </Link>
-                            <button suppressHydrationWarning
-                              type="button"
-                              onClick={() => handleToggleMode(tenant.slug)}
-                              className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-100 transition hover:bg-violet-500/20"
-                            >
-                              {networkModes[tenant.slug] || "Interno"}
-                            </button>
                           </div>
                         ) : (
                           <div className="flex justify-end gap-1.5">
-                            <Link href="/batches" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-500/20">Lotes</Link>
-                            <Link href="/tags" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-100 transition hover:bg-emerald-500/20">Tags</Link>
-                            <Link href="/events" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-100 transition hover:bg-amber-500/20">Eventos</Link>
+                            <Link href="/batches" className="rounded-xl border border-[var(--ops-accent-border)] bg-[var(--ops-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-accent)] transition hover:bg-[var(--ops-accent-bg)]">Lotes</Link>
+                            <Link href="/tags" className="rounded-xl border border-[var(--ops-success-border)] bg-[var(--ops-success-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-success)] transition hover:bg-[var(--ops-success-bg)]">Tags</Link>
+                            <Link href="/events" className="rounded-xl border border-[var(--ops-warning-border)] bg-[var(--ops-warning-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[var(--ops-warning)] transition hover:bg-[var(--ops-warning-bg)]">Eventos</Link>
                           </div>
                         )}
                       </td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-500">Sin datos reales en este scope. Crea tenant, registra batch e importa manifest para poblar la consola.</td>
+                      <td colSpan={7} className="py-8 text-center text-[var(--ops-muted)]">La fuente consultada no contiene empresas para el alcance actual.</td>
                     </tr>
                   )}
                 </tbody>
@@ -521,6 +458,6 @@ export function OpsCommandCenter({
           </div>
         </section>
       </div>
-    </Card>
+    </section>
   );
 }

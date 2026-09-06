@@ -43,6 +43,7 @@ import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { exportToCsv } from "../lib/export-utils";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import { classifyLocationProvenance } from "../lib/location-provenance";
+import { realtimeTapArrivalIsVisible, type RealtimeTapArrival } from "../lib/realtime-tap-arrival";
 import type { PhysicalTapsResult } from "../lib/physical-taps-contract";
 import {
   classifyRealtimeVerdict,
@@ -724,6 +725,7 @@ export function ExecutiveRealtimeCrm({
   const [mapView, setMapView] = useState<MapView>("heat");
   const [baseMap, setBaseMap] = useState<BaseMapLayer>("light");
   const [mapZoom, setMapZoom] = useState(1);
+  const [mapArrival, setMapArrival] = useState<RealtimeTapArrival | null>(null);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [clock, setClock] = useState("");
@@ -747,6 +749,11 @@ export function ExecutiveRealtimeCrm({
   const consumedEventSequenceRef = useRef(0);
   const requestTransitionPending = false;
   const valuesUnavailable = requestTransitionPending || !streamConfirmed;
+
+  useEffect(() => {
+    // Changing a view or recovering a snapshot is never a new physical read.
+    setMapArrival(null);
+  }, [queryTenant, timeRange, activeView, realtime.activeScopeKey, realtime.snapshot]);
 
   useEffect(() => {
     if (tenantSession) setSelectedTenant(lockedTenantScope);
@@ -951,6 +958,7 @@ export function ExecutiveRealtimeCrm({
     let incidentChanged = false;
     let contractMismatch = false;
     const accepted: Array<{ payload: TenantTapRealtimeEvent; receivedAt: string }> = [];
+    const arrivalIds: string[] = [];
     for (const frame of frames) {
       const payload = frame.data;
       if (isIncidentRealtimeWireEvent(payload)) {
@@ -966,6 +974,16 @@ export function ExecutiveRealtimeCrm({
       }
       if (!executiveRealtimeRowsMatchTenant([payload], realtime.activeScope.tenant)) continue;
       accepted.push({ payload, receivedAt: frame.receivedAt });
+      if (realtimeTapArrivalIsVisible(frame, payload, {
+        connected: realtime.status === "connected",
+        active: activeView === "overview",
+        snapshotSequence: realtime.snapshot?.sequence || 0,
+        tenant: queryTenant,
+        windowStart: Date.now() - timeRangeMs(timeRange),
+        now: Date.now(),
+      })) {
+        arrivalIds.push(payload.eventId);
+      }
     }
 
     if (contractMismatch) {
@@ -981,12 +999,19 @@ export function ExecutiveRealtimeCrm({
       setActiveDataSource(realtime.activeScope.source === "all" ? "mixed" : realtime.activeScope.source);
       setLastUpdateAt(accepted[accepted.length - 1].receivedAt);
     }
+    if (arrivalIds.length && !fellBehind) {
+      setMapArrival({
+        key: `${realtime.activeScopeKey}:${consumedEventSequenceRef.current}`,
+        eventIds: arrivalIds.slice(-8),
+        expiresAt: Date.now() + 1_500,
+      });
+    }
     if (incidentChanged) void refreshIncidents();
     if (fellBehind) {
       setStreamWarning("Una ráfaga superó el buffer local; se solicita una reconciliación durable sin polling.");
       router.refresh();
     }
-  }, [queryTenant, realtime.activeScope.source, realtime.activeScope.tenant, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events, refreshIncidents, router]);
+  }, [activeView, queryTenant, realtime.activeScope.source, realtime.activeScope.tenant, realtime.activeScopeKey, realtime.droppedThroughSequence, realtime.events, realtime.snapshot, realtime.status, refreshIncidents, router, timeRange]);
 
   useEffect(() => {
     const frame = realtime.heartbeat;
@@ -1638,7 +1663,7 @@ export function ExecutiveRealtimeCrm({
                 </div>
 
                 <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "min-h-0 h-full" : "h-[460px] sm:h-[520px] 2xl:h-[560px]"} min-w-0 w-full p-3 2xl:col-start-1 2xl:row-span-2 2xl:row-start-1`}>
-                  <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} dataState={mapEvidence.state} dataStateDetail={mapEvidence.detail} />
+                  <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} dataState={mapEvidence.state} dataStateDetail={mapEvidence.detail} arrival={mapArrival} />
                 </div>
 
                 <div tabIndex={-1} data-incident-event-list className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">

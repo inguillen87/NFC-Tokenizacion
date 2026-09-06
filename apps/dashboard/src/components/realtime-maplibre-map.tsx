@@ -6,6 +6,7 @@ import { resolveTrustMapSource } from "@product/ui/trust-map-source";
 import { resolveEventMapCoordinate, type MapCoordinatePrecision } from "../lib/geo-coordinates";
 import { classifyLocationProvenance, locationProvenanceLabel, type LocationProvenanceClass } from "../lib/location-provenance";
 import { isRealtimeRisk, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
+import { startFiniteTapArrivalAnimation, type RealtimeTapArrival } from "../lib/realtime-tap-arrival";
 
 type MapMode = "tenant" | "global";
 type MapView = "heat" | "points" | "nearby";
@@ -357,7 +358,9 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       source: "tap-events",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, 3, 4, 5, 12, 8, 30, 12],
+        // A legible marker is independent from heat intensity. Even one
+        // observed event must remain discoverable at regional zoom levels.
+        "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, 5, 4, 6, 12, 8, 30, 12],
         "circle-color": [
           "case",
           ["==", ["get", "risk"], 1], "#fb7185",
@@ -365,11 +368,11 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
           ["==", ["get", "locationClass"], "network_approx"], "#f59e0b",
           "#a78bfa",
         ],
-        "circle-blur": ["interpolate", ["linear"], ["zoom"], 7, 1.15, 11, 0.32],
-        "circle-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0, 9, 0.12, 11, 0.58, 13, 0.78],
+        "circle-blur": 0.08,
+        "circle-opacity": 0.92,
         "circle-stroke-color": "rgba(255,255,255,.8)",
-        "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 1],
-        "circle-stroke-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.72],
+        "circle-stroke-width": 1.5,
+        "circle-stroke-opacity": 0.9,
       },
     });
   }
@@ -415,22 +418,6 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
     });
   }
 
-  if (!map.getLayer("tap-pulse")) {
-    map.addLayer({
-      id: "tap-pulse",
-      type: "circle",
-      source: "tap-events",
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 0, 10, 12, 13, 22],
-        "circle-color": "rgba(34,211,238,0)",
-        "circle-stroke-color": ["case", ["==", ["get", "risk"], 1], "#fb7185", "#22d3ee"],
-        "circle-stroke-width": 1,
-        "circle-stroke-opacity": 0.28,
-      },
-    });
-  }
-
   if (!map.getLayer("tap-points")) {
     map.addLayer({
       id: "tap-points",
@@ -464,7 +451,6 @@ function setLayerVisibility(map: MapLibreMap, view: MapView) {
   set("tap-bubbles", view === "heat");
   set("tap-nearby-radius", view === "nearby");
   set("tap-clusters", view !== "nearby");
-  set("tap-pulse", view === "points" || view === "nearby");
   set("tap-points", view === "points" || view === "nearby");
 }
 
@@ -488,6 +474,7 @@ function setBasemapLayer(map: MapLibreMap, layer: BaseMapLayer) {
   }
   map.easeTo({ pitch: layer === "terrain" ? 52 : 0, bearing: layer === "terrain" ? -18 : 0, duration: mapMotionDuration(500) });
   const pointStroke = layer === "light" ? "#0f172a" : "#ffffff";
+  if (map.getLayer("tap-bubbles")) map.setPaintProperty("tap-bubbles", "circle-stroke-color", pointStroke);
   if (map.getLayer("tap-points")) map.setPaintProperty("tap-points", "circle-stroke-color", pointStroke);
   if (map.getLayer("tap-clusters")) map.setPaintProperty("tap-clusters", "circle-stroke-color", layer === "light" ? "rgba(15,23,42,.72)" : "rgba(255,255,255,.78)");
 }
@@ -521,6 +508,7 @@ export function RealtimeMapLibreMap({
   zoom,
   dataState,
   dataStateDetail,
+  arrival,
 }: {
   hotspots: MapHotspot[];
   events: TenantTapRealtimeEvent[];
@@ -530,6 +518,7 @@ export function RealtimeMapLibreMap({
   zoom: number;
   dataState: MapDataState;
   dataStateDetail: string;
+  arrival?: RealtimeTapArrival | null;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -540,6 +529,7 @@ export function RealtimeMapLibreMap({
   const zoomRef = useRef(zoom);
   const activeBaseMapRef = useRef<BaseMapLayer>(baseMap || "light");
   const activeStyleKeyRef = useRef("");
+  const consumedArrivalRef = useRef("");
   const mapTitleId = useId();
   const mapSummaryId = useId();
   const [loaded, setLoaded] = useState(false);
@@ -579,7 +569,6 @@ export function RealtimeMapLibreMap({
   useEffect(() => {
     let cancelled = false;
     let cleanupResize: (() => void) | null = null;
-    let cleanupAnimation: (() => void) | null = null;
 
     const boot = async () => {
       setMapError(null);
@@ -605,7 +594,6 @@ export function RealtimeMapLibreMap({
       map.addControl(new maplibre.ScaleControl({ unit: "metric" }), "bottom-left");
       map.addControl(new maplibre.AttributionControl({ compact: true }), "bottom-right");
 
-      let pulseStarted = false;
       map.on("style.load", () => {
         if (cancelled) return;
         const currentData = geojsonRef.current;
@@ -614,19 +602,6 @@ export function RealtimeMapLibreMap({
         setLayerVisibility(map, mapViewRef.current);
         setBasemapLayer(map, activeBaseMapRef.current);
         fitData(maplibre, map, currentData, zoomRef.current);
-        if (!pulseStarted && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-          pulseStarted = true;
-          let frame = 0;
-          const animatePulse = () => {
-            const wave = (Math.sin((performance.now() / 900) * Math.PI) + 1) / 2;
-            if (map.getLayer("tap-pulse")) {
-              map.setPaintProperty("tap-pulse", "circle-stroke-opacity", 0.12 + wave * 0.28);
-            }
-            frame = requestAnimationFrame(animatePulse);
-          };
-          frame = requestAnimationFrame(animatePulse);
-          cleanupAnimation = () => cancelAnimationFrame(frame);
-        }
         setLoaded(true);
       });
 
@@ -640,7 +615,7 @@ export function RealtimeMapLibreMap({
         if (coords) map.easeTo({ center: coords, zoom: expansionZoom, duration: mapMotionDuration(450) });
       });
 
-      map.on("click", "tap-points", (event: MapLayerMouseEvent) => {
+      const onTapClick = (event: MapLayerMouseEvent) => {
         const feature = event.features?.[0] as TapFeature | undefined;
         const coordinates = feature?.geometry.coordinates;
         const props = feature?.properties;
@@ -659,10 +634,14 @@ export function RealtimeMapLibreMap({
             </div>
           `)
           .addTo(map);
-      });
+      };
 
-      map.on("mouseenter", "tap-points", () => { map.getCanvas().style.cursor = "pointer"; });
-      map.on("mouseleave", "tap-points", () => { map.getCanvas().style.cursor = ""; });
+      // Density markers expose the same observed evidence as the Events view.
+      for (const layer of ["tap-bubbles", "tap-points"]) {
+        map.on("click", layer, onTapClick);
+        map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+      }
       map.on("mouseenter", "tap-clusters", () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", "tap-clusters", () => { map.getCanvas().style.cursor = ""; });
 
@@ -682,7 +661,6 @@ export function RealtimeMapLibreMap({
     return () => {
       cancelled = true;
       cleanupResize?.();
-      cleanupAnimation?.();
       popupRef.current?.remove();
       mapRef.current?.remove();
       mapRef.current = null;
@@ -698,7 +676,12 @@ export function RealtimeMapLibreMap({
     source?.setData(geojson as any);
     const heatSource = map.getSource("tap-events-heat") as GeoJSONSource | undefined;
     heatSource?.setData(geojson as any);
-  }, [geojson, loaded]);
+    const arrivalSource = map.getSource("tap-arrival") as GeoJSONSource | undefined;
+    if (arrivalSource && arrival) {
+      const ids = new Set(arrival.eventIds);
+      arrivalSource.setData({ type: "FeatureCollection", features: geojson.features.filter((feature) => ids.has(feature.properties.eventId)) });
+    }
+  }, [arrival, geojson, loaded]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -728,6 +711,49 @@ export function RealtimeMapLibreMap({
     fitData(maplibre, map, geojson, zoom);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, signature, zoom]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loaded || dataState !== "real" || !arrival || consumedArrivalRef.current === arrival.key) return;
+    consumedArrivalRef.current = arrival.key;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (motion.matches || arrival.expiresAt <= Date.now()) return;
+    const ids = new Set(arrival.eventIds);
+    const features = geojsonRef.current.features.filter((feature) => ids.has(feature.properties.eventId));
+    if (!features.length) return;
+    // Separate, transient overlay: the density source, weights and historical
+    // markers remain untouched. Only explicitly gated SSE arrivals get a ring.
+    map.addSource("tap-arrival", { type: "geojson", data: { type: "FeatureCollection", features } });
+    map.addLayer({
+      id: "tap-arrival-ring",
+      type: "circle",
+      source: "tap-arrival",
+      paint: {
+        "circle-radius": 7,
+        "circle-color": "rgba(0,0,0,0)",
+        "circle-stroke-color": ["case", ["==", ["get", "locationClass"], "network_approx"], "#f59e0b", ["==", ["get", "locationClass"], "consented_gps"], "#2dd4bf", "#a78bfa"],
+        "circle-stroke-width": 2.5,
+        "circle-stroke-opacity": 0.85,
+      },
+    });
+    return startFiniteTapArrivalAnimation({
+      expiresAt: arrival.expiresAt,
+      motion,
+      now: Date.now,
+      requestFrame: (callback) => requestAnimationFrame(callback),
+      cancelFrame: cancelAnimationFrame,
+      paint: (progress) => {
+        if (mapRef.current !== map || !map.getLayer("tap-arrival-ring")) return;
+        map.setPaintProperty("tap-arrival-ring", "circle-radius", 7 + progress * 18);
+        map.setPaintProperty("tap-arrival-ring", "circle-stroke-opacity", (1 - progress) * 0.85);
+      },
+      clear: () => {
+        if (mapRef.current !== map) return;
+        if (map.getLayer("tap-arrival-ring")) map.removeLayer("tap-arrival-ring");
+        if (map.getSource("tap-arrival")) map.removeSource("tap-arrival");
+      },
+    });
+  }, [arrival, dataState, loaded]);
 
   return (
     <div

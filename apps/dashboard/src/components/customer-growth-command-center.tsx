@@ -2,13 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Badge, Card, StatusChip } from "@product/ui";
 import { AlertTriangle, Bot, ClipboardCheck, Download, Mail, MapPin, MessageCircle, MousePointerClick, Route, Send, ShieldCheck, Sparkles, Sprout, Users } from "lucide-react";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import { classifyLocationProvenance } from "../lib/location-provenance";
 import { isRealtimeRisk, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
-
-type SegmentTone = "cyan" | "green" | "amber" | "rose" | "violet";
+import styles from "./customer-growth-command-center.module.css";
 
 type CustomerGrowthCommandCenterProps = {
   events: TenantTapRealtimeEvent[];
@@ -16,14 +14,6 @@ type CustomerGrowthCommandCenterProps = {
   activityTotal: number;
   authenticatedInteractions: number;
   riskInteractions: number;
-};
-
-const toneClass: Record<SegmentTone, string> = {
-  cyan: "border-cyan-300/25 bg-cyan-500/10 text-cyan-100",
-  green: "border-emerald-300/25 bg-emerald-500/10 text-emerald-100",
-  amber: "border-amber-300/25 bg-amber-500/10 text-amber-100",
-  rose: "border-rose-300/25 bg-rose-500/10 text-rose-100",
-  violet: "border-violet-300/25 bg-violet-500/10 text-violet-100",
 };
 
 function cityKey(event: TenantTapRealtimeEvent) {
@@ -101,8 +91,8 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
       title: `Actividad en ${insights.topCityName}`,
       activity: insights.topCityCount,
       detail: "Zona con mayor cantidad de interacciones en la ventana visible; no es una audiencia ni una lista de contactos.",
-      action: "Evaluar oportunidad",
-      href: `/loyalty/campaigns?city=${encodeURIComponent(insights.topCityName)}&offer=${encodeURIComponent("voucher_cercania")}`,
+      action: "Abrir campañas",
+      href: "/loyalty/campaigns",
       tone: "cyan" as const,
       icon: MapPin,
     },
@@ -116,11 +106,11 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
       icon: Users,
     },
     {
-      title: "Ubicación incompleta",
+      title: "Sin ubicación del teléfono",
       activity: insights.missingGps,
-      detail: "Interacciones sin coordenada utilizable. Cualquier ubicación posterior exige opt-in explícito en la experiencia.",
-      action: "Diseñar opt-in",
-      href: "/loyalty/campaigns?channel=portal_whatsapp&offer=gps_opt_in",
+      detail: "Sin zona compartida por el navegador con consentimiento; pueden conservar una estimación de red. Compartirla es opcional.",
+      action: "Revisar eventos",
+      href: "/events",
       tone: insights.missingGps ? "amber" as const : "green" as const,
       icon: ShieldCheck,
     },
@@ -128,7 +118,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
       title: "Riesgo o soporte",
       activity: insights.risk,
       detail: "Lecturas que conviene revisar antes de entregar beneficio o abrir reclamo.",
-      action: "Abrir tickets",
+      action: "Ver soporte",
       href: "/leads-tickets",
       tone: insights.risk ? "rose" as const : "green" as const,
       icon: Bot,
@@ -157,97 +147,97 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
   const enterpriseGrowthPlays = [
     {
       icon: Sprout,
-      title: "Soporte técnico desde evento NFC",
-      body: "Después de un mensaje NFC válido según policy se abre ficha técnica, EPP, dosificación, soporte y confirmación. No autentica el producto físico ni reemplaza sistemas agro.",
+      title: "Campañas de soporte técnico",
+      body: "Abrí el módulo de campañas para revisar su configuración. Este acceso no activa una campaña ni acredita soporte prestado.",
       metric: `${formatNumber(insights.authenticated)} autenticaciones verificadas`,
-      href: "/loyalty/campaigns?template=agro_soporte",
+      href: "/loyalty/campaigns",
+      action: "Abrir campañas",
     },
     {
       icon: Route,
-      title: "Canal gris y distribución",
-      body: "Cruza ciudad, lote y repetición de UID para detectar producto fuera de zona, vendedor no previsto o concentración sospechosa de lecturas.",
+      title: "Revisión de eventos",
+      body: "Consultá el listado de eventos y su evidencia disponible. El contexto geográfico por sí solo no prueba desvíos de distribución.",
       metric: `${formatNumber(insights.risk)} alertas`,
-      href: "/events?view=channel-risk",
+      href: "/events",
+      action: "Revisar eventos",
     },
     {
       icon: ClipboardCheck,
-      title: "Trivia técnica y first-party data",
-      body: "Encuestas cortas post-tap miden respuestas como actividad. El seguimiento personal exige actor conocido, membresía activa y consentimiento vigente para el canal.",
+      title: "Campañas y consentimiento",
+      body: "El seguimiento personal exige actor conocido, membresía activa y consentimiento vigente para el canal. Abrir el módulo no habilita destinatarios ni envíos.",
       metric: `${formatNumber(insights.productRecognized)} interacciones con producto`,
-      href: "/loyalty/campaigns?template=agro_trivia",
+      href: "/loyalty/campaigns",
+      action: "Abrir campañas",
     },
   ];
 
   return (
-    <Card className="relative overflow-hidden p-0">
+    <section className={styles.root} aria-labelledby="growth-title" data-testid="customer-growth-command-center">
       {notice ? (
-        <div className="absolute right-4 top-4 z-30 rounded-xl border border-cyan-300/30 bg-slate-950/95 px-4 py-3 text-xs font-bold text-cyan-100 shadow-xl">
+        <div className={styles.notice} role="status">
           {notice}
         </div>
       ) : null}
-      <div className="border-b border-white/10 bg-[radial-gradient(circle_at_12%_10%,rgba(168,85,247,.2),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(34,211,238,.18),transparent_30%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(2,6,23,.98))] p-5 sm:p-6">
+      <div className={`${styles.header} p-5 sm:p-6`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">Actividad & campañas</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Convertir actividad trazable en decisiones comerciales verificables.</h2>
-            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
-              Esta vista resume interacciones, producto, autenticación y contexto geográfico. La audiencia real debe resolverse en servidor por actor pseudónimo, tenant, scope, consentimiento vigente y permisos de campañas/PII.
+            <p className={styles.eyebrow}>Actividad y campañas</p>
+            <h2 id="growth-title" className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Taps, actividad y consentimiento</h2>
+            <p className={`${styles.muted} mt-2 max-w-3xl text-sm leading-6`}>
+              Consultá las interacciones disponibles y su contexto. Un tap es actividad de una unidad, no una persona. Contactar a alguien exige identidad vinculada y consentimiento vigente.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge tone="cyan">Preparación CRM</Badge>
-            <Badge tone="green">Opt-in primero</Badge>
-            <Badge>UID ≠ persona</Badge>
+            <span className={styles.badge}>Actividad, no audiencia</span>
+            <span className={styles.badge}>Consentimiento requerido</span>
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">Producto reconocido</p>
-            <p className="mt-2 text-3xl font-black text-white">{formatNumber(insights.productRecognized)}</p>
-            <p className="mt-1 text-xs text-cyan-100/80">Identidad de producto, nunca identidad personal</p>
+          <div className={styles.metricCard}>
+            <p className={styles.metricLabel}>Producto reconocido</p>
+            <p className="mt-2 text-3xl font-bold">{formatNumber(insights.productRecognized)}</p>
+            <p className={`${styles.muted} mt-1 text-xs`}>Identidad de producto, nunca identidad personal</p>
           </div>
-          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-100">Autenticación verificada</p>
-            <p className="mt-2 text-3xl font-black text-white">{insights.authenticationRate}%</p>
-            <p className="mt-1 text-xs text-emerald-100/80">{formatNumber(insights.authenticated)} mensajes NFC con evidencia criptográfica</p>
+          <div className={styles.metricCard}>
+            <p className={styles.metricLabel}>Autenticación verificada</p>
+            <p className="mt-2 text-3xl font-bold">{insights.authenticationRate}%</p>
+            <p className={`${styles.muted} mt-1 text-xs`}>{formatNumber(insights.authenticated)} mensajes NFC con evidencia criptográfica. No autentica el producto físico.</p>
           </div>
-          <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-100">GPS útil</p>
-            <p className="mt-2 text-3xl font-black text-white">{insights.gpsRate}%</p>
-            <p className="mt-1 text-xs text-amber-100/80">Cobertura consentida y reportada; no identifica una persona</p>
+          <div className={styles.metricCard}>
+            <p className={styles.metricLabel}>Ubicación consentida</p>
+            <p className="mt-2 text-3xl font-bold">{insights.gpsRate}%</p>
+            <p className={`${styles.muted} mt-1 text-xs`}>Cobertura consentida y reportada; no identifica una persona</p>
           </div>
-          <div className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-100">Tenant activo</p>
-            <p className="mt-2 text-3xl font-black text-white">{tenantScope ? "1" : "multi"}</p>
-            <p className="mt-1 text-xs text-violet-100/80">{activeTenantLabel}</p>
+          <div className={styles.metricCard}>
+            <p className={styles.metricLabel}>Empresas en la vista</p>
+            <p className="mt-2 text-3xl font-bold">{tenantScope ? "1" : "multi"}</p>
+            <p className={`${styles.muted} mt-1 text-xs`}>{activeTenantLabel}</p>
           </div>
         </div>
 
-        <div className="mt-5 rounded-3xl border border-emerald-300/15 bg-slate-950/45 p-4">
+        <div className={`${styles.tools} mt-5 p-4`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Modo enterprise por vertical</p>
-              <h3 className="mt-1 text-lg font-black text-white">De evidencia NFC registrada a una decisión útil para canal y equipo técnico.</h3>
-              <p className="mt-1 text-xs leading-5 text-slate-400">
-                Esta capa evita vender un CRM genérico: convierte señales físicas en acciones comerciales, soporte y aprendizaje de mercado.
+              <h3 className="text-lg font-bold">Herramientas relacionadas</h3>
+              <p className={`${styles.muted} mt-1 text-xs leading-5`}>
+                Estos accesos abren módulos existentes. No activan campañas ni envían mensajes.
               </p>
             </div>
-            <Badge tone="green">Verticalizable</Badge>
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-3">
             {enterpriseGrowthPlays.map((play) => {
               const Icon = play.icon;
               return (
-                <Link key={play.title} href={play.href} className="group rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(6,78,59,.16),rgba(15,23,42,.72))] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/35">
+                <Link key={play.title} href={play.href} className={`${styles.toolLink} p-4`}>
                   <div className="flex items-start justify-between gap-3">
-                    <Icon className="h-5 w-5 text-emerald-200" aria-hidden="true" />
-                    <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100">{play.metric}</span>
+                    <Icon className={`${styles.accent} h-5 w-5 shrink-0`} aria-hidden="true" />
+                    <span className={styles.badge}>{play.metric}</span>
                   </div>
-                  <h4 className="mt-3 text-sm font-black text-white">{play.title}</h4>
-                  <p className="mt-2 min-h-[72px] text-xs leading-5 text-slate-400">{play.body}</p>
-                  <span className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300/25 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-100 group-hover:bg-emerald-300 group-hover:text-slate-950">
-                    <Send className="h-3.5 w-3.5" /> Activar play
+                  <h4 className="mt-3 text-sm font-bold">{play.title}</h4>
+                  <p className={`${styles.muted} mt-2 text-xs leading-5`}>{play.body}</p>
+                  <span className={`${styles.linkLabel} mt-3`}>
+                    <Send className="h-3.5 w-3.5" aria-hidden="true" /> {play.action}
                   </span>
                 </Link>
               );
@@ -260,10 +250,10 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Señales operativas</p>
-              <p className="mt-1 text-xs text-slate-400">Son agregados de actividad, no contactos, audiencia ni destinatarios.</p>
+              <h3 className={styles.eyebrow}>Señales operativas</h3>
+              <p className={`${styles.muted} mt-1 text-xs`}>Son agregados de actividad, no contactos, audiencia ni destinatarios.</p>
             </div>
-            <button type="button" onClick={exportSegments} className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-500/20">
+            <button type="button" onClick={exportSegments} className={styles.action}>
               <Download className="h-4 w-4" /> Exportar CSV
             </button>
           </div>
@@ -271,16 +261,16 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
             {segments.map((segment) => {
               const Icon = segment.icon;
               return (
-                <article key={segment.title} className={`rounded-2xl border p-4 ${toneClass[segment.tone]}`}>
+                <article key={segment.title} className={`${styles.segment} p-4`} data-tone={segment.tone}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <Icon className="h-5 w-5" aria-hidden="true" />
-                      <h3 className="mt-3 text-lg font-black text-white">{segment.title}</h3>
+                      <Icon className={`${styles.accent} h-5 w-5`} aria-hidden="true" />
+                      <h4 className="mt-3 text-lg font-bold">{segment.title}</h4>
                     </div>
-                    <StatusChip label={`${formatNumber(segment.activity)} interacciones`} tone={segment.tone === "rose" ? "risk" : segment.tone === "amber" ? "warn" : "good"} />
+                    <span className={styles.badge}>{formatNumber(segment.activity)} interacciones</span>
                   </div>
-                  <p className="mt-3 min-h-[42px] text-sm leading-6 opacity-85">{segment.detail}</p>
-                  <Link href={segment.href} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-current/25 bg-slate-950/30 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] hover:bg-white/10">
+                  <p className={`${styles.muted} mt-3 text-sm leading-6`}>{segment.detail}</p>
+                  <Link href={segment.href} className={`${styles.action} mt-4`}>
                     <Send className="h-4 w-4" /> {segment.action}
                   </Link>
                 </article>
@@ -290,27 +280,27 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+          <div className={`${styles.panel} p-4`}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Cobertura operativa</p>
-                <p className="mt-1 text-[11px] text-slate-500">Indicadores independientes: sólo hay porcentaje cuando numerador y denominador comparten el mismo grano.</p>
+                <h3 className={styles.eyebrow}>Cobertura operativa</h3>
+                <p className={`${styles.muted} mt-1 text-xs leading-5`}>Indicadores independientes: cada porcentaje compara actividades de la misma base.</p>
               </div>
-              <StatusChip label="post-tap" tone="good" />
+              <span className={styles.badge}>Actividad</span>
             </div>
             <div className="mt-4 space-y-3">
               {operationalMetrics.map((step) => {
                 const Icon = step.icon;
                 return (
-                  <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+                  <div key={step.label} className={`${styles.coverageRow} p-3`}>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2 text-sm font-bold text-white"><Icon className="h-4 w-4 text-cyan-200" /> {step.label}</span>
-                      <span className="font-mono text-sm font-black text-cyan-100">{formatNumber(step.value)} {step.rate == null ? null : <span className="text-xs text-slate-500">({step.rate}%)</span>}</span>
+                      <span className="flex items-center gap-2 text-sm font-bold"><Icon className={`${styles.accent} h-4 w-4 shrink-0`} /> {step.label}</span>
+                      <span className={`${styles.value} font-mono text-sm font-bold`}>{formatNumber(step.value)} {step.rate == null ? null : <span className={`${styles.muted} text-xs`}>({step.rate}%)</span>}</span>
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-500">{step.detail}</p>
+                    <p className={`${styles.muted} mt-1 text-xs leading-5`}>{step.detail}</p>
                     {step.rate == null ? null : (
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                        <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300" style={{ width: `${Math.max(4, Math.min(100, step.rate))}%` }} />
+                      <div className={`${styles.track} mt-2`}>
+                        <div style={{ width: `${Math.max(4, Math.min(100, step.rate))}%` }} />
                       </div>
                     )}
                   </div>
@@ -319,27 +309,26 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
             </div>
           </div>
 
-          <div className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
-            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-violet-100"><Sparkles className="h-4 w-4" /> Playbook recomendado</p>
-            <div className="mt-3 space-y-2 text-xs leading-5 text-violet-50/90">
-              <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">1. Validar la oportunidad por zona sin convertir eventos o UIDs en destinatarios.</p>
-              <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">2. Resolver audiencia actor-level en servidor con tenant, scope, consentimiento y permisos.</p>
-              <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">3. Recién entonces activar un beneficio o encuesta por un canal expresamente consentido.</p>
+          <div className={`${styles.panel} p-4`}>
+            <h3 className={`${styles.eyebrow} flex items-center gap-2`}><Sparkles className="h-4 w-4" aria-hidden="true" /> Antes de contactar</h3>
+            <div className={`${styles.muted} mt-3 space-y-2 text-xs leading-5`}>
+              <p>La audiencia real debe resolverse en servidor por actor pseudónimo, tenant, scope, consentimiento vigente y permisos de campañas/PII.</p>
+              <p>Los eventos y UIDs no son destinatarios. Abrir campañas o beneficios no habilita contacto ni realiza envíos.</p>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <Link href="/loyalty/campaigns" className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-500/20"><MessageCircle className="h-4 w-4" /> Campañas</Link>
-              <Link href="/loyalty/rewards" className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-500/20"><Mail className="h-4 w-4" /> Beneficios</Link>
+              <Link href="/loyalty/campaigns" className={styles.action}><MessageCircle className="h-4 w-4" /> Abrir campañas</Link>
+              <Link href="/loyalty/rewards" className={styles.action}><Mail className="h-4 w-4" /> Ver beneficios</Link>
             </div>
           </div>
 
           {riskInteractions ? (
-            <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4 text-xs leading-5 text-amber-100">
-              <p className="flex items-center gap-2 font-black"><AlertTriangle className="h-4 w-4" /> Antes de escalar pauta</p>
+            <div className={`${styles.warning} p-4 text-xs leading-5`}>
+              <p className="flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" /> Eventos para revisar</p>
               <p className="mt-2">Hay {formatNumber(riskInteractions)} eventos con señal explícita de riesgo. Los eventos neutrales o de ciclo de vida no se cuentan como fallos.</p>
             </div>
           ) : null}
         </aside>
       </div>
-    </Card>
+    </section>
   );
 }

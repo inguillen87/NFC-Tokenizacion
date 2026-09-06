@@ -119,7 +119,7 @@ test("directory playbooks and operational copy do not invent live tenant evidenc
   assert.doesNotMatch(tenantDetail, /240\/30d|680\/30d|1\.2k\/30d|3 clones|1 replay aislado/);
 
   assert.match(homePage, /no certifica el producto físico/);
-  assert.match(opsCenter, /validar el mensaje NFC y aplicar la policy; no prueban el producto físico/);
+  assert.match(opsCenter, /Los eventos aportan evidencia digital; no certifican el producto físico/);
   assert.match(customerGrowth, /No autentica el producto físico/);
   assert.match(dashboardHome, /no representa autenticidad física/);
   assert.match(demoMobile, /no prueba recorrido, contenido ni apertura física/);
