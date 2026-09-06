@@ -1587,65 +1587,63 @@ html.theme-light .admin-notification-bell__badge {
   color: #67e8f9 !important;
 }
 
-html.theme-light .nexid-crm-shell {
-  background: #f5f8ff !important;
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell {
+  background: #f3f6fa !important;
   color: #0f172a !important;
 }
 
-html.theme-light .nexid-crm-backdrop {
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-backdrop {
   background:
-    radial-gradient(circle at 78% 0%, rgba(14, 165, 233, 0.14), transparent 34%),
-    linear-gradient(180deg, #f8fbff, #edf5ff 52%, #f8fbff) !important;
+    radial-gradient(circle at 78% 0%, rgba(14, 165, 233, 0.045), transparent 34%),
+    linear-gradient(180deg, #f8fafc, #f1f5f9 52%, #f8fafc) !important;
 }
 
-html.theme-light .nexid-crm-shell header,
-html.theme-light .nexid-crm-shell aside,
-html.theme-light .nexid-crm-shell footer {
-  background: rgba(255, 255, 255, 0.92) !important;
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell header,
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell aside,
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell footer {
+  background: #ffffff !important;
   border-color: rgba(15, 23, 42, 0.12) !important;
   color: #334155 !important;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
-html.theme-light .nexid-crm-shell [class*="bg-slate-950"],
-html.theme-light .nexid-crm-shell [class*="bg-slate-900"],
-html.theme-light .nexid-crm-shell [class*="bg-[#061426]"],
-html.theme-light .nexid-crm-shell [class*="bg-[#06101d]"],
-html.theme-light .nexid-crm-shell [class*="bg-[#07111e]"],
-html.theme-light .nexid-crm-shell [class*="bg-[linear-gradient"] {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.9)) !important;
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="bg-slate-950"],
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="bg-slate-900"],
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="bg-[#061426]"],
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="bg-[#06101d]"],
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="bg-[#07111e]"],
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="bg-[linear-gradient"] {
+  background: #ffffff !important;
   border-color: rgba(15, 23, 42, 0.12) !important;
 }
 
-html.theme-light .nexid-crm-shell .text-white {
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell .text-white {
   color: #0f172a !important;
 }
 
-html.theme-light .nexid-crm-shell .text-slate-100,
-html.theme-light .nexid-crm-shell .text-slate-200,
-html.theme-light .nexid-crm-shell .text-slate-300 {
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell .text-slate-100,
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell .text-slate-200,
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell .text-slate-300 {
   color: #334155 !important;
 }
 
-html.theme-light .nexid-crm-shell .text-slate-400,
-html.theme-light .nexid-crm-shell .text-slate-500 {
-  color: #64748b !important;
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell .text-slate-400,
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell .text-slate-500 {
+  color: #526176 !important;
 }
 
-html.theme-light .nexid-crm-shell [class*="border-white/"],
-html.theme-light .nexid-crm-shell [class*="border-slate-700"],
-html.theme-light .nexid-crm-shell [class*="border-cyan-100/"] {
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="border-white/"],
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="border-slate-700"],
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell [class*="border-cyan-100/"] {
   border-color: rgba(15, 23, 42, 0.13) !important;
 }
 
-html.theme-light .nexid-crm-shell select,
-html.theme-light .nexid-crm-shell button {
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell select,
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell button {
   color: #0f172a;
 }
 
-html.theme-light .nexid-crm-shell select {
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell select {
   background: rgba(255, 255, 255, 0.95) !important;
   border-color: rgba(15, 23, 42, 0.18) !important;
 }
@@ -1891,6 +1889,192 @@ html.theme-light .maplibregl-ctrl-attrib a {
 :where(html.theme-light, html[data-theme="light"]) .maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
 :where(html.theme-light, html[data-theme="light"]) .maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon {
   filter: none;
+}
+
+/* CRM surface tokens also cover the map when it is rendered on its own. */
+.nexid-crm-shell,
+.nexid-realtime-map {
+  --crm-panel: #101c2e;
+  --crm-panel-soft: #0b1525;
+  --crm-overlay: #101c2ef5;
+  --crm-ink: #f1f5f9;
+  --crm-muted: #a8b7cc;
+  --crm-border: #36485f;
+  --crm-control: #17283e;
+  --crm-control-border: #607b97;
+  --crm-control-hover: #203750;
+  --crm-active: #123e51;
+  --crm-accent: #67e8f9;
+  --crm-primary: #67e8f9;
+  --crm-primary-ink: #083344;
+  --crm-disabled: #101c2e;
+  --crm-disabled-ink: #92a2b8;
+  --crm-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  --crm-chart-cyan: #22d3ee;
+  --crm-chart-green: #34d399;
+  --crm-chart-blue: #60a5fa;
+  --crm-chart-red: #fb7185;
+}
+
+:where(html.theme-light, html[data-theme="light"]) :is(.nexid-crm-shell, .nexid-realtime-map) {
+  --crm-panel: #ffffff;
+  --crm-panel-soft: #f3f6fa;
+  --crm-overlay: #fffffff5;
+  --crm-ink: #14263d;
+  --crm-muted: #526176;
+  --crm-border: #b6c4d4;
+  --crm-control: #ffffff;
+  --crm-control-border: #7a8da4;
+  --crm-control-hover: #edf4fa;
+  --crm-active: #e0f2fa;
+  --crm-accent: #075c79;
+  --crm-primary: #0b3659;
+  --crm-primary-ink: #ffffff;
+  --crm-disabled: #eef2f6;
+  --crm-disabled-ink: #5c6b7e;
+  --crm-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  --crm-chart-cyan: #087995;
+  --crm-chart-green: #047857;
+  --crm-chart-blue: #2563eb;
+  --crm-chart-red: #be123c;
+}
+
+html .nexid-crm-shell > :is(header, aside, footer),
+html .nexid-crm-shell :is([class*="bg-slate-950"], [class*="bg-slate-900"], [class*="bg-[linear-gradient"]) {
+  background: var(--crm-panel) !important;
+  border-color: var(--crm-border) !important;
+  box-shadow: var(--crm-shadow);
+}
+
+html .nexid-crm-shell :is(.text-slate-400, .text-slate-500) {
+  color: var(--crm-muted) !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell :is(.text-sky-200, .text-sky-300) {
+  color: #075985 !important;
+}
+
+:where(html.theme-light, html[data-theme="light"]) .nexid-crm-shell :is(.text-red-200, .text-red-300) {
+  color: #9f1239 !important;
+}
+
+html .nexid-crm-shell .nexid-crm-map-panel,
+html .nexid-crm-shell .nexid-crm-nav,
+html .nexid-crm-shell .nexid-crm-map-base-controls {
+  background: var(--crm-panel-soft) !important;
+  border-color: var(--crm-border) !important;
+  box-shadow: none !important;
+}
+
+html .nexid-crm-shell .nexid-crm-map-control-deck {
+  background: linear-gradient(110deg, var(--crm-panel), var(--crm-panel-soft)) !important;
+  border-color: var(--crm-border) !important;
+}
+
+html .nexid-crm-shell :is(.nexid-crm-map-legend, .nexid-crm-events-rail) {
+  background: var(--crm-panel) !important;
+  border-color: var(--crm-border) !important;
+  box-shadow: var(--crm-shadow) !important;
+}
+
+.nexid-crm-shell :is(button, select) {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+html .nexid-crm-shell .nexid-crm-filters :is(button, select),
+html .nexid-crm-shell .nexid-crm-theme-control .theme-toggle,
+html .nexid-crm-shell :is(.nexid-crm-map-control, .nexid-crm-map-view-button, .nexid-crm-map-street),
+html .nexid-crm-shell .nexid-crm-map-base-controls button {
+  background: var(--crm-control) !important;
+  color: var(--crm-ink) !important;
+  border-color: var(--crm-control-border) !important;
+  box-shadow: var(--crm-shadow) !important;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+html .nexid-crm-shell .nexid-crm-filters :is(button, select):hover:not(:disabled),
+html .nexid-crm-shell .nexid-crm-theme-control .theme-toggle:hover,
+html .nexid-crm-shell :is(.nexid-crm-map-control, .nexid-crm-map-view-button, .nexid-crm-map-street):hover:not(:disabled),
+html .nexid-crm-shell .nexid-crm-map-base-controls button:hover,
+html .nexid-crm-shell .nexid-crm-nav button:hover {
+  background: var(--crm-control-hover) !important;
+  border-color: var(--crm-accent) !important;
+}
+
+html .nexid-crm-shell .nexid-crm-nav button[aria-pressed="true"],
+html .nexid-crm-shell .nexid-crm-map-view-button[aria-pressed="true"],
+html .nexid-crm-shell aside button[aria-pressed="true"],
+html .nexid-crm-shell .nexid-crm-events-rail button[data-selected="true"] {
+  background: var(--crm-active) !important;
+  color: var(--crm-accent) !important;
+  border-color: var(--crm-accent) !important;
+  box-shadow: inset 0 0 0 1px var(--crm-accent) !important;
+}
+
+html .nexid-crm-shell .nexid-crm-map-base-controls button[aria-pressed="true"],
+html .nexid-crm-shell .nexid-crm-filters button:not(:disabled),
+html .nexid-crm-shell .nexid-crm-filters button:not(:disabled):hover {
+  background: var(--crm-primary) !important;
+  color: var(--crm-primary-ink) !important;
+  border-color: var(--crm-primary) !important;
+}
+
+html .nexid-crm-shell :is(button, select):disabled {
+  background: var(--crm-disabled) !important;
+  color: var(--crm-disabled-ink) !important;
+  border-color: var(--crm-border) !important;
+  border-style: dashed;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+html .nexid-crm-shell :is(button, select):focus-visible,
+html .nexid-realtime-map :is(button, summary, a):focus-visible {
+  outline: 3px solid var(--crm-accent) !important;
+  outline-offset: 2px;
+}
+
+html .nexid-crm-shell .nexid-crm-nav button:focus-visible,
+html .nexid-crm-shell :is(.nexid-crm-map-actions, .nexid-crm-map-view-controls, .nexid-crm-map-base-controls) button:focus-visible {
+  outline-offset: -4px;
+}
+
+html .nexid-realtime-map :is(.nexid-map-status, .nexid-map-text-summary, .nexid-map-empty-state-card, .maplibregl-popup-content) {
+  background: var(--crm-overlay) !important;
+  color: var(--crm-ink) !important;
+  border-color: var(--crm-border) !important;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14) !important;
+}
+
+html .nexid-realtime-map :is(.nexid-map-status-summary, .nexid-map-status-precision, .nexid-map-popup-card small) {
+  color: var(--crm-muted) !important;
+}
+
+html .nexid-realtime-map :is(.nexid-map-status-count, .nexid-map-popup-card span, .nexid-map-text-summary summary) {
+  color: var(--crm-accent) !important;
+}
+
+html .nexid-realtime-map :is(.nexid-map-loading, .nexid-map-error) {
+  background: var(--crm-overlay) !important;
+  color: var(--crm-muted) !important;
+}
+
+.nexid-realtime-map .maplibregl-ctrl-attrib-button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.nexid-realtime-map .maplibregl-canvas:focus-visible {
+  outline: 3px solid var(--crm-accent);
+  outline-offset: -3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nexid-crm-shell :is(button, select) {
+    transition: none !important;
+  }
 }
 
 body.nexid-crm-overlay-active {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@product/ui";
 import {
   Activity,
   BadgeCheck,
@@ -116,10 +117,10 @@ type MarketOpportunity = {
 };
 
 const tooltipStyle = {
-  backgroundColor: "rgba(5, 12, 25, 0.96)",
-  border: "1px solid rgba(34, 211, 238, 0.2)",
+  backgroundColor: "var(--dashboard-chart-tooltip-bg)",
+  border: "1px solid var(--dashboard-chart-tooltip-border)",
   borderRadius: "10px",
-  color: "#f8fafc",
+  color: "var(--dashboard-chart-tooltip-text)",
   fontSize: "12px",
 };
 
@@ -603,7 +604,7 @@ function MetricCard({
   data: Array<Record<string, number | string>>;
   dataKey?: string;
 }) {
-  const color = tone === "red" ? "#ef4444" : tone === "green" ? "#22c55e" : tone === "blue" ? "#60a5fa" : "#22d3ee";
+  const color = `var(--crm-chart-${tone})`;
   return (
     <div data-testid="crm-metric-card" className="min-w-0 rounded-xl border border-slate-700/70 bg-[linear-gradient(180deg,rgba(17,31,52,.92),rgba(7,15,29,.94))] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
       <div className="flex min-w-0 flex-col items-start gap-2">
@@ -724,6 +725,7 @@ export function ExecutiveRealtimeCrm({
   const [selectedTenant, setSelectedTenant] = useState(() => tenantSession ? lockedTenantScope : "all");
   const [mapView, setMapView] = useState<MapView>("heat");
   const [baseMap, setBaseMap] = useState<BaseMapLayer>("light");
+  const baseMapFollowsTheme = useRef(true);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapArrival, setMapArrival] = useState<RealtimeTapArrival | null>(null);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
@@ -760,14 +762,26 @@ export function ExecutiveRealtimeCrm({
   }, [lockedTenantScope, tenantSession]);
 
   useEffect(() => {
-    const syncBaseMapWithTheme = () => {
-      setBaseMap((current) => current === "light" || current === "dark" ? preferredDashboardBaseMap() : current);
-    };
+    function syncBaseMapWithTheme() {
+      if (baseMapFollowsTheme.current) setBaseMap(preferredDashboardBaseMap());
+    }
     syncBaseMapWithTheme();
     const observer = new MutationObserver(syncBaseMapWithTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
     return () => observer.disconnect();
   }, []);
+
+  function selectBaseMap(nextBaseMap: BaseMapLayer) {
+    baseMapFollowsTheme.current = false;
+    setBaseMap(nextBaseMap);
+  }
+
+  function resetMapPresentation() {
+    baseMapFollowsTheme.current = true;
+    setMapView("heat");
+    setMapZoom(1);
+    setBaseMap(preferredDashboardBaseMap());
+  }
 
   const handleIncident = useCallback((incident: DashboardIncident) => {
     setIncidentsByEventId((current) => ({ ...current, [String(incident.eventId)]: incident }));
@@ -1377,7 +1391,7 @@ export function ExecutiveRealtimeCrm({
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange("loyalty") },
     ...(canReadSensitiveEvents ? [{ icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { router.push(`${DASHBOARD_DESTINATIONS.events.href}?filter=risk`); } }] : []),
     { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar actividad", short: "CSV", title: "Exportar sólo interacciones con señal comercial; no exporta audiencia ni destinatarios.", action: handleExport, disabled: valuesUnavailable || commercialActivityEvents.length === 0, disabledReason: valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : exportDisabledReason },
-    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { if (!tenantSession && selectedTenant !== "all") selectTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); } },
+    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { if (!tenantSession && selectedTenant !== "all") selectTenant("all"); resetMapPresentation(); } },
   ];
 
   return (
@@ -1394,11 +1408,11 @@ export function ExecutiveRealtimeCrm({
           </div>
         </div>
 
-        <nav className="order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-4 sm:text-sm 2xl:order-none 2xl:mx-auto 2xl:w-[590px]">
-          <button type="button" aria-label="Volver al mapa y CRM" title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => selectActiveView("overview")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "overview" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
+        <nav className="nexid-crm-nav order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-4 sm:text-sm 2xl:order-none 2xl:mx-auto 2xl:w-[590px]">
+          <button type="button" aria-label="Volver al mapa y CRM" aria-pressed={activeView === "overview"} title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => selectActiveView("overview")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "overview" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
             <Activity className="h-4 w-4" /> CRM en vivo
           </button>
-          <button type="button" aria-label="Abrir TAP físicos" title="Abrir evidencia NFC física, estados reportados, mapa e inbox del tenant" onClick={() => selectActiveView("physical-taps")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "physical-taps" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
+          <button type="button" aria-label="Abrir TAP físicos" aria-pressed={activeView === "physical-taps"} title="Abrir evidencia NFC física, estados reportados, mapa e inbox del tenant" onClick={() => selectActiveView("physical-taps")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "physical-taps" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
             <ScanLine className="h-4 w-4" /> TAP físicos
           </button>
           <button type="button" title="Abrir operación NFC: lotes, tags, QA, anclaje y publicación" onClick={() => onSectionChange("infra")} className="flex min-h-12 items-center justify-center gap-2 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300">
@@ -1414,6 +1428,9 @@ export function ExecutiveRealtimeCrm({
           <span data-testid="crm-source-badge" className={`rounded-full border px-2.5 py-1 font-semibold ${sourcePresentation.badge}`} title={sourcePresentation.detail}>Fuente: {sourcePresentation.label}</span>
           <span className="hidden items-center gap-2 2xl:flex" title={operationalTimeZone.isFallback ? "Zona no confirmada: horario mostrado en UTC" : `Zona informada para la operación: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="text-[10px] uppercase tracking-[0.08em] text-slate-500">{consoleTimezoneLabel}</span></span>
           <span className="hidden items-center gap-2 2xl:flex"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
+          <div className="nexid-crm-theme-control shrink-0" data-testid="crm-theme-control">
+            <ThemeToggle locale="es-AR" />
+          </div>
           <TenantAccountMenu
             className="nexid-crm-account-menu w-full sm:w-auto"
             email={account.email}
@@ -1519,15 +1536,15 @@ export function ExecutiveRealtimeCrm({
                 <AreaChart data={velocitySeries} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
                   <defs>
                     <linearGradient id="execTaps" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.55} />
-                      <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.03} />
+                      <stop offset="0%" stopColor="var(--crm-chart-cyan)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="var(--crm-chart-cyan)" stopOpacity={0.03} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="rgba(148,163,184,.1)" vertical={false} />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="label" stroke="var(--crm-muted)" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--crm-muted)" fontSize={10} tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={tooltipStyle} />
-                  <Area type="monotone" dataKey="taps" stroke="#22d3ee" strokeWidth={2} fill="url(#execTaps)" dot={{ r: 2, fill: "#22d3ee" }} />
+                  <Area type="monotone" dataKey="taps" stroke="var(--crm-chart-cyan)" strokeWidth={2} fill="url(#execTaps)" dot={{ r: 2, fill: "var(--crm-chart-cyan)" }} />
                 </AreaChart>
               </ResponsiveContainer>}
             </div>
@@ -1562,7 +1579,7 @@ export function ExecutiveRealtimeCrm({
                 <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Mapa de eventos por capas</h2>
                 <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
               </div>
-              <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
+              <div className="nexid-crm-filters grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
                 <select size={1} aria-label="Filtrar lecturas por tenant" title={tenantSession ? "Alcance fijado por la sesión tenant" : "Consultar lecturas del tenant seleccionado"} value={effectiveSelectedTenant} disabled={tenantSession} onChange={(event) => selectTenant(event.target.value)} className="col-span-2 h-12 w-full min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 disabled:cursor-not-allowed disabled:text-slate-400 sm:col-span-1 sm:w-auto sm:min-w-[160px]">
                   {tenantSession ? (
                     <option value={lockedTenantScope}>{lockedTenantScope ? tenantDisplayName(lockedTenantScope) : "Tenant no disponible"}</option>
@@ -1576,7 +1593,7 @@ export function ExecutiveRealtimeCrm({
                 <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => selectTimeRange(event.target.value as TimeRange)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 2xl:hidden">
+                <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => selectBaseMap(event.target.value as BaseMapLayer)} className="h-12 min-w-0 rounded-xl border border-slate-700 bg-slate-950/80 px-3 text-sm font-semibold text-white focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20 2xl:hidden">
                   {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <button type="button" title={valuesUnavailable ? "Esperando la confirmación del tenant y la ventana seleccionados." : commercialActivityEvents.length === 0 ? exportDisabledReason : "Exportar actividad con señal comercial a CSV"} onClick={handleExport} disabled={valuesUnavailable || commercialActivityEvents.length === 0} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/80 px-4 text-sm font-bold text-white transition hover:border-cyan-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"><Download className="h-4 w-4" /> {valuesUnavailable ? "Sin confirmar" : commercialActivityEvents.length === 0 ? "Sin señales" : "Exportar"}</button>
@@ -1609,7 +1626,7 @@ export function ExecutiveRealtimeCrm({
                 <div role="group" aria-label="Acciones del mapa" className="nexid-crm-map-actions flex min-w-0 items-center gap-2 overflow-x-auto">
                   <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Acercar mapa">+</button>
                   <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-xl font-bold text-white shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Alejar mapa">−</button>
-                  <button type="button" title="Restablecer densidad, zoom y capa base según el tema activo" onClick={() => { setMapView("heat"); setMapZoom(1); setBaseMap(preferredDashboardBaseMap()); }} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Restablecer mapa"><RotateCcw className="h-5 w-5" /></button>
+                  <button type="button" title="Restablecer densidad, zoom y capa base según el tema activo" onClick={resetMapPresentation} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label="Restablecer mapa"><RotateCcw className="h-5 w-5" /></button>
                   <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="nexid-crm-map-control grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-slate-950/78 text-slate-200 shadow-lg transition hover:border-cyan-300/50 hover:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-5 w-5" /></button>
                 </div>
 
@@ -1628,7 +1645,7 @@ export function ExecutiveRealtimeCrm({
                         type="button"
                         title={option.title}
                         aria-pressed={baseMap === option.value}
-                        onClick={() => setBaseMap(option.value)}
+                        onClick={() => selectBaseMap(option.value)}
                         className={`min-h-10 rounded-lg px-3 text-[11px] font-black uppercase tracking-[0.06em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${baseMap === option.value ? "bg-cyan-300 text-slate-950 shadow-[0_6px_18px_rgba(34,211,238,.2)]" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
                       >
                         {option.label}

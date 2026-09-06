@@ -792,7 +792,7 @@ export function RealtimeMapLibreMap({
         )}
       </div>
       {!loaded && !mapError ? (
-        <div className="absolute inset-0 grid place-items-center bg-slate-950/70 text-center text-sm text-slate-300" role="status" aria-busy="true">
+        <div className="nexid-map-loading absolute inset-0 grid place-items-center bg-slate-950/70 text-center text-sm text-slate-300" role="status" aria-busy="true">
           <div>
             <span className="mx-auto mb-3 block h-7 w-7 animate-spin rounded-full border-2 border-cyan-300/25 border-t-cyan-300 motion-reduce:animate-none" aria-hidden="true" />
             <b className="block text-white">Preparando mapa operativo</b>
@@ -801,7 +801,7 @@ export function RealtimeMapLibreMap({
         </div>
       ) : null}
       {mapError ? (
-        <div className="absolute inset-0 grid place-items-center bg-slate-950/90 p-6 text-center text-sm text-slate-300" role="alert">
+        <div className="nexid-map-error absolute inset-0 grid place-items-center bg-slate-950/90 p-6 text-center text-sm text-slate-300" role="alert">
           <div className="max-w-md">
             <b className="block text-rose-200">Mapa visual no disponible</b>
             <span className="mt-1 block">{mapError} El resumen textual conserva las zonas disponibles y explicita su nivel de precisión.</span>
@@ -816,7 +816,7 @@ export function RealtimeMapLibreMap({
           </div>
         </div>
       ) : null}
-      <details className="absolute bottom-20 right-3 z-10 max-w-[min(22rem,calc(100%-1.5rem))] rounded-xl border border-white/10 bg-slate-950/85 text-xs text-slate-300 shadow-xl backdrop-blur sm:bottom-8">
+      <details className="absolute bottom-20 right-3 z-10 max-w-[min(22rem,calc(100%-1.5rem))] rounded-xl border border-white/10 bg-slate-950/85 text-xs text-slate-300 nexid-map-text-summary shadow-xl backdrop-blur sm:bottom-8">
         <summary className="flex min-h-11 cursor-pointer items-center px-3 py-2 font-black text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
           Resumen textual del mapa
         </summary>

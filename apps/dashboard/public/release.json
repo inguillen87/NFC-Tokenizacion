@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.05-dashboard.5",
-  "scope": "native-browser-safe-tap-arrival-animation-with-consented-location-and-physical-time-window",
+  "release": "2026.09.05-dashboard.6",
+  "scope": "accessible-light-dark-CRM-controls-and-theme-aware-map-with-explicit-layer-preference",
   "realTapCertification": "not-included",
-  "baseCommit": "432c5647fabbfd932fa20b6dc1f8c703fa7b8911",
+  "baseCommit": "1788df103fe6ef01896609b375a99acd00e242f3",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
