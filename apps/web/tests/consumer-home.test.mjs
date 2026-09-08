@@ -66,14 +66,27 @@ test("the client model only contains required display fields, no raw consumer re
   assert.doesNotMatch(JSON.stringify(data), /private-|password_hash|provider_id|consents/);
 });
 
-test("links only use persisted event IDs and encode them as a single URL segment", () => {
-  for (const value of [null, undefined, "", " ", 0, "0", -1, "-1", 1.1, "1.1", {}, "bad\nvalue"]) assert.equal(model.homeReadingHref(value), null);
-  assert.equal(model.homeReadingHref(703), "/certificado/703");
-  assert.equal(model.homeReadingHref("tag/a?next=x"), "/certificado/tag%2Fa%3Fnext%3Dx");
+test("private reading links preserve canonical PostgreSQL bigint strings and only safe legacy numbers", () => {
+  for (const value of [null, undefined, "", " ", 0, "0", -1, "-1", 1.1, "1.1", {}, "bad\nvalue", "1\n", " 1", "1 ", "+1", NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) assert.equal(model.homeReadingHref(value), null);
+  assert.equal(model.homeReadingHref(703), "/me/taps/703");
+  for (const id of ["1", "703", "9007199254740992", "9007199254740993", "9223372036854775807"]) assert.equal(model.homeReadingHref(id), `/me/taps/${id}`);
+  for (const id of ["tag/a?next=x", "01", "1e2", "9223372036854775808", "99999999999999999999"]) assert.equal(model.homeReadingHref(id), null);
   const data = model.buildConsumerHomeModel({ ...empty(), products: list([{ latest_tap_event_id: null, first_tap_event_id: 22 }, {}]), taps: list([{}]) });
-  assert.equal(data.products.data[0].readingHref, "/certificado/22");
+  assert.equal(data.products.data[0].readingHref, "/me/taps/22");
   assert.equal(data.products.data[1].readingHref, null);
   assert.equal(data.taps.data[0].href, null);
+});
+
+test("large event references remain exact in home products, taps and rendered private links", () => {
+  for (const id of ["9007199254740993", "9223372036854775807"]) {
+    const payloads = { ...empty(), products: list([{ product_name: "Producto de prueba", latest_tap_event_id: id, first_tap_event_id: 22 }]), taps: list([{ tap_event_id: id }]) };
+    const data = model.buildConsumerHomeModel(payloads);
+    assert.equal(data.products.data[0].eventId, id);
+    assert.equal(data.products.data[0].readingHref, `/me/taps/${id}`);
+    assert.equal(data.taps.data[0].id, id);
+    assert.equal(data.taps.data[0].href, `/me/taps/${id}`);
+    assert.match(render(payloads), new RegExp(`href="/me/taps/${id}"`));
+  }
 });
 
 test("images must be a reported safe relative or HTTPS URL; missing images never become a stock wine", () => {
@@ -126,7 +139,7 @@ test("unavailable sources show retry and do not claim the account is empty or in
 test("partial failures preserve real products and links; email is rendered once in the account card", () => {
   const html = render({ ...empty(), account: { ok: true, consumer: { display_name: "Alex", email: "alex@example.test", status: "verified" }, stats: { products: 1, taps: 250 } }, products: list([{ product_name: "Filtro durable", brand_name: "Acme", bid: "LOTE-A", latest_tap_event_id: 88, image_url: "/images/real-filter.jpg" }]), taps: null });
   assert.match(html, /Filtro durable/);
-  assert.match(html, /href="\/certificado\/88"/);
+  assert.match(html, /href="\/me\/taps\/88"/);
   assert.match(html, /src="\/images\/real-filter.jpg"/);
   assert.match(html, /No se pudo cargar el historial/);
   assert.equal((html.match(/alex@example\.test/g) || []).length, 1);
@@ -270,7 +283,7 @@ test("products show actual metadata and real certificate/experience destinations
   const html = renderToStaticMarkup(await loadProductsPage(payload).page({}));
   assert.match(html, /Filtro industrial/);
   assert.match(html, /Empresa Agua/);
-  assert.match(html, /href="\/certificado\/88"/);
+  assert.match(html, /href="\/me\/taps\/88"/);
   assert.match(html, /href="\/me\/experiences\?tenant=agua&amp;eventId=88&amp;product=Filtro\+industrial"/);
   assert.match(html, /href="\/me\/marketplace\?tenant=agua"/);
   assert.match(html, /Solicitud pendiente/);

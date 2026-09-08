@@ -1,6 +1,6 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.08-web.2",
-  "scope": "Consumer portal and actionable email fallback for unavailable WhatsApp access",
+  "version": "2026.09.08-web.3",
+  "scope": "Consumer reading history, reported risk and private authenticated detail",
   "physicalTapCertification": "not-included"
 }

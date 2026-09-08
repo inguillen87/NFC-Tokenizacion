@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Clock, ExternalLink, Search, Send, ShieldCheck } from "lucide-react";
+import { ArrowRight, Clock, ExternalLink, Search, Send, ShieldCheck } from "lucide-react";
 import type { ConsumerPortalProduct } from "./consumer-portal-model";
+import { homeReadingHref } from "./consumer-home-model";
 
 type Product = ConsumerPortalProduct & {
   batch?: string | null;
@@ -45,10 +46,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
     return Boolean(txHash && status !== "none" && !txHash.toUpperCase().includes("DEMO"));
   };
 
-  const certificateHref = (product: Product) => {
-    const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
-    return eventId ? `/certificado/${encodeURIComponent(eventId)}` : "";
-  };
+  const readingHref = (product: Product) => homeReadingHref(product.latest_tap_event_id) || homeReadingHref(product.first_tap_event_id);
 
   const handleTransfer = (bid: string, productName: string) => {
     if (!transferDemoEnabled) {
@@ -171,7 +169,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
               const isOnChain = hasOnChainProof(product);
               const txHash = String(product.tokenization_tx_hash || "");
               const explorerHref = isOnChain ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
-              const certificateUrl = certificateHref(product);
+              const readingUrl = readingHref(product);
               const thumbnailImg = product.imageUrl || product.image_url || product.photoUrl || product.photo_url || "";
 
               return (
@@ -219,9 +217,9 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
 
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
                     <div className="flex flex-wrap gap-2">
-                      {certificateUrl ? (
-                        <Link href={certificateUrl} className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 transition hover:text-white">
-                          Firma digital <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                      {readingUrl ? (
+                        <Link href={readingUrl} prefetch={false} className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 transition hover:text-white">
+                          Abrir lectura <ArrowRight className="h-3 w-3" aria-hidden="true" />
                         </Link>
                       ) : null}
 

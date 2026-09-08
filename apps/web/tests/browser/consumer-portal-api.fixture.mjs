@@ -4,8 +4,12 @@ if (process.argv[2] !== "--local-qa") throw new Error("Run only with --local-qa 
 let scenario = "populated";
 const consumer = { display_name: "Prueba local · no productiva", email: "qa@example.invalid", status: "verified" };
 const items = {
-  products: [{ product_name: "Producto de prueba local", brand_name: "Marca de prueba", tenant_slug: "qa-local", latest_tap_event_id: "fixture-only-1", ownership_status: "viewed" }],
-  taps: [{ tap_event_id: "fixture-only-1", created_at: "2026-09-08T14:00:00Z", verdict: "VALID_CLOSED", tenant_slug: "qa-local", city: "Zona de prueba", country: "AR" }],
+  products: [{ product_name: "Producto de prueba local", brand_name: "Marca de prueba", tenant_slug: "qa-local", latest_tap_event_id: 900001, ownership_status: "viewed" }],
+  taps: [
+    { tap_event_id: 900001, created_at: "2026-09-08T14:00:00Z", verdict: "VALID_CLOSED", risk_level: "low", tenant_slug: "qa-local", city: "Zona de prueba", country: "AR" },
+    { tap_event_id: 900002, created_at: "2026-09-08T13:30:00Z", verdict: "REPLAY", risk_level: "high", tenant_slug: "qa-local", city: null, country: null },
+    { tap_event_id: 900003, created_at: null, verdict: "UNKNOWN", risk_level: null, tenant_slug: "qa-local", city: null, country: null },
+  ],
   brands: [{ name: "Marca de prueba", slug: "qa-local", status: "active", points_balance: 120 }],
   rewards: [],
 };
@@ -23,7 +27,12 @@ createServer(async (req, res) => {
   if (req.method !== "GET") { res.writeHead(503); res.end(JSON.stringify({ ok: false, error: "otp_provider_unavailable" })); return; }
   if (url.pathname === "/consumer/session") { res.end(JSON.stringify({ ok: scenario !== "login", authenticated: scenario !== "login" })); return; }
   if (scenario === "unavailable") { res.writeHead(503); res.end(JSON.stringify({ ok: false })); return; }
-  if (url.pathname === "/consumer/me") { res.end(JSON.stringify({ ok: true, consumer, stats: scenario === "empty" ? {products:0,taps:0,memberships:0} : {products:1,taps:1,memberships:1} })); return; }
+  if (url.pathname === "/consumer/me") { res.end(JSON.stringify({ ok: true, consumer, stats: scenario === "empty" ? {products:0,taps:0,memberships:0} : {products:1,taps:3,memberships:1} })); return; }
+  if (url.pathname.startsWith("/consumer/taps/")) {
+    const item = scenario === "empty" ? null : items.taps.find(tap => String(tap.tap_event_id) === url.pathname.split("/").at(-1));
+    if (!item) { res.writeHead(404); res.end(JSON.stringify({ok:false,error:"not_found"})); return; }
+    res.end(JSON.stringify({ok:true,item:{...item,tenant_name:"Marca de prueba",product_name:"Producto de prueba local",brand_name:"Marca de prueba",bid:"QA-LOCAL"}})); return;
+  }
   const key = url.pathname.replace("/consumer/", "");
   res.end(JSON.stringify({ ok: true, items: scenario === "empty" ? [] : items[key] || [] }));
 }).listen(3323, "127.0.0.1", () => console.log("Local synthetic portal API http://127.0.0.1:3323/qa"));

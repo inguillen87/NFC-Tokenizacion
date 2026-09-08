@@ -24,14 +24,16 @@ export function reportedHomeCount(value: unknown): number | null {
 
 function eventId(value: unknown): string | null {
   if (typeof value === "number") return Number.isSafeInteger(value) && value > 0 ? String(value) : null;
-  const id = text(value);
-  if (id && /^-?\d+(?:\.\d+)?$/.test(id)) return Number.isSafeInteger(Number(id)) && Number(id) > 0 ? id : null;
-  return id && id.length <= 160 && !/[\u0000-\u001f\u007f]/.test(id) ? id : null;
+  // The API emits PostgreSQL bigint IDs as strings. Never round them through
+  // Number or normalize a non-canonical path into a different reference.
+  if (typeof value !== "string" || !/^[1-9]\d{0,18}$/.test(value)) return null;
+  return BigInt(value) <= 9_223_372_036_854_775_807n ? value : null;
 }
 
 export function homeReadingHref(value: unknown): string | null {
   const id = eventId(value);
-  return id ? `/certificado/${encodeURIComponent(id)}` : null;
+  // An authenticated account reference is not a public certificate share token.
+  return id ? `/me/taps/${encodeURIComponent(id)}` : null;
 }
 
 export function homeImageUrl(value: unknown): string | null {

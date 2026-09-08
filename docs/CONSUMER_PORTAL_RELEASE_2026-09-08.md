@@ -56,3 +56,22 @@ No se leyeron códigos ni se fabricó una sesión productiva. En ese primer inte
 Solicitud oficial de cambio de `chatboc.ar` a `nexID` presentada a Twilio: [ticket #29439677](https://help.twilio.com/tickets/29439677), acuse recibido el 2026-09-08 a las 13:24 ART. El acuse no es aprobación de Meta. Mientras se revisa, el nombre anterior puede seguir apareciendo aunque el logo, perfil y plantilla ya estén configurados.
 
 No se activaron envíos promocionales, consentimientos automáticos, membresías premium ni beneficios por el solo hecho de iniciar sesión. Este cierre corresponde al acceso del consumidor, no a una certificación completa de todos los módulos de la plataforma.
+
+## Fase 4: historial y detalle privado de lecturas
+
+- API `b089c07f`, release `2026.09.08-api-portal.1`, deployment `dpl_Dd46XRgtN9kP9oZQeBpGtjDmBsFo`. Build READY, promovido y `/release.json` verificado en el dominio productivo.
+- Nuevo `GET /consumer/taps/[eventId]`: sesión obligatoria, lectura propia y coincidencia de empresa en la misma consulta. Puede resolver una referencia first/latest de un producto propio; no habilita otras lecturas del mismo tag. No devuelve UID completo, coordenadas, tokens ni metadatos crudos.
+- La API pública de certificados conserva su acceso firmado. Inicio, productos, historial y billetera usan el detalle autenticado `/me/taps/:id`, sin fabricar enlaces compartibles ni presentar la lectura como una firma digital.
+- Historial: riesgo categórico legible (`none`, `low`, `medium`, `high`, `critical`), desconocidos neutrales, fecha con zona explícita, botones de lectura y estados vacío/fallo diferentes. Máximo 200 lecturas; no se presenta como total histórico.
+- IDs PostgreSQL bigint conservados como strings hasta `9223372036854775807`, sin redondearlos a Number.
+- QA: 526/526 pruebas web, 262/262 seguridad de API y build API aprobado. Navegador local con datos sintéticos: historial, detalle, regreso, modo claro/oscuro, vacío, fuente indisponible y recuperación mediante Reintentar. Comprobación móvil a ancho CSS observado 355 (documento 341), sin desborde horizontal; no se atribuye a un teléfono físico de 390 px. Sin polling agregado.
+- Sonda negativa productiva: `/consumer/taps/1` sin sesión devuelve 401 `unauthorized`, `private, no-store`. Las URLs inmutables no canónicas conservan el rechazo del guard de origen.
+- La publicación y QA autenticado de la interfaz `.3` se registran después de promover el build revisado; no se consideran concluidos por las pruebas locales.
+
+## Actualización Meta / Twilio de los nombres — 8 septiembre, tarde
+
+Se solicitó `nexID` para `+18564858589` directamente desde Meta. La tabla pasó a En revisión; al recargar apareció también un banner de rechazo para nexID. No hay aprobación confirmada. Se envió la discrepancia y la solicitud de revisión al ticket #29439677; comentario visible publicado a las 16:59 ART.
+
+Por autorización posterior y explícita del usuario también se solicitó `Juni` para `+17432643718`. Esa escritura coincide con el logo existente y evita la advertencia de Meta contra todo en mayúsculas. La solicitud quedó En revisión. Logo, descripción y About guardados en Twilio, con datos municipales existentes conservados; no se modificaron desde esta tarea los endpoints Chatboc que atienden ese número. El guardado de perfil desde Meta había sido rechazado mientras revisa el nombre; no se confundió la previsualización con persistencia.
+
+El mismo comentario de soporte separa ambos números, pide el estado y los requisitos de marca de cada uno y solicita explicar previamente cualquier re-registro o interrupción. No se compraron números, no se transfirió titularidad ni se desactivó verificación en dos pasos. El cambio de branding no certifica el flujo completo del bot Juni.

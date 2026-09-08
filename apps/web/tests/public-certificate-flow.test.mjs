@@ -2,17 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-test("post tap and consumer portal surfaces link to public certificate", async () => {
+test("post tap preserves public certificates while authenticated product and wallet actions open private readings", async () => {
   const sunPage = await readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8");
   const postTap = await readFile(new URL("../src/app/sun/post-tap-next-step.tsx", import.meta.url), "utf8");
-  const walletPage = await readFile(new URL("../src/app/me/wallet/page.tsx", import.meta.url), "utf8");
+  const wallet = await readFile(new URL("../src/app/me/_components/wallet-interactive-client.tsx", import.meta.url), "utf8");
   const productsPage = await readFile(new URL("../src/app/me/products/page.tsx", import.meta.url), "utf8");
+  const homeModel = await readFile(new URL("../src/app/me/_components/consumer-home-model.ts", import.meta.url), "utf8");
 
   assert.match(sunPage, /\/certificado\//);
   assert.match(sunPage, /certificateHref=\{certificateHref\}/);
   assert.match(postTap, /Ver certificado digital/);
-  assert.match(walletPage, /certificateHref/);
-  assert.match(productsPage, /certificateHref/);
+  assert.match(wallet, /homeReadingHref\(product\.latest_tap_event_id\)/);
+  assert.match(wallet, /Abrir lectura/);
+  assert.match(productsPage, /product\.readingHref/);
+  assert.match(homeModel, /\/me\/taps\//);
+  assert.doesNotMatch(wallet, /\/certificado\//);
+  assert.doesNotMatch(productsPage, /\/certificado\//);
 });
 
 test("public certificate page gives wallet marketplace and explorer exits", async () => {
