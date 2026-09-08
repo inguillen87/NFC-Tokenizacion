@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.06-dashboard.9",
-  "scope": "tenant-campaign-draft-persistence-revisions-archive-restore-and-concurrency-safe-editor",
+  "release": "2026.09.08-dashboard.1",
+  "scope": "compact-responsive-admin-header-accessible-controls-and-mobile-navigation",
   "realTapCertification": "not-included",
-  "baseCommit": "0847a143c377f4effc55994d2bc1e9e2a918de9c",
+  "baseCommit": "8ab819fcc81a67508627b5e2475ceaa3219f5b14",
   "requiredApiRelease": "2026.09.06-api-campaigns.1",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,

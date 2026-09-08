@@ -17,6 +17,7 @@ import { DashboardRealtimeProvider } from "./dashboard-realtime-provider";
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { motion, useReducedMotion } from "framer-motion";
+import headerStyles from "./dashboard-shell-header.module.css";
 import {
   Compass,
   LayoutDashboard,
@@ -417,7 +418,7 @@ export function DashboardShellInner({
         />
       )}
 
-      <aside className={`dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-80 lg:p-6 z-50 shadow-[4px_0_24px_rgba(0,0,0,0.4)] flex flex-col h-screen overflow-y-auto transition-transform duration-300 fixed inset-y-0 left-0 w-72 lg:static lg:translate-x-0 ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside id="dashboard-primary-navigation" className={`dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-80 lg:p-6 z-50 shadow-[4px_0_24px_rgba(0,0,0,0.4)] flex flex-col h-screen overflow-y-auto transition-transform duration-300 fixed inset-y-0 left-0 w-72 lg:static lg:translate-x-0 ${isMobileSidebarOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible lg:translate-x-0"}`}>
         <div className="flex items-center justify-between mb-8 shrink-0">
           <Link href="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
             <BrandLockup size={40} variant="pulse" theme="dark" className="brand-surface-sidebar" />
@@ -596,40 +597,45 @@ export function DashboardShellInner({
       </aside>
 
       <div className="dashboard-main min-w-0 flex-1 bg-slate-950/50">
-        <header className="dashboard-header sticky top-0 z-30 border-b border-white/5 bg-slate-950/80 px-4 py-4 backdrop-blur-xl lg:px-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+        <header data-testid="dashboard-compact-header" className={`dashboard-header ${headerStyles.header} sticky top-0 z-30 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl`}>
+          <div className={headerStyles.layout}>
+            <div className={headerStyles.identity}>
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-slate-900/50 text-slate-300 transition hover:border-cyan-300/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:hidden"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-900/50 text-slate-300 transition hover:border-cyan-300/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:hidden"
                 aria-label="Open navigation menu"
+                aria-expanded={isMobileSidebarOpen}
+                aria-controls="dashboard-primary-navigation"
                 title="Abrir menú de navegación"
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div>
-                <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-400">
-                   <BrandDot size={6} variant="pulse" theme="dark" />
+              <div className={headerStyles.heading}>
+                <div id="dashboard-header-context" className={`${headerStyles.context} text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400`}>
                    {contextualHeader.subtitle}
                 </div>
-                <h1 className="text-xl font-extrabold tracking-[-0.025em] text-white sm:text-2xl">{contextualHeader.title}</h1>
+                <h1 className={`${headerStyles.title} font-extrabold tracking-[-0.025em] text-white`} title={contextualHeader.title} aria-describedby="dashboard-header-context dashboard-header-audience dashboard-header-data-status">{contextualHeader.title}</h1>
               </div>
             </div>
-            <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end sm:gap-3">
+            <div className={headerStyles.controls} role="group" aria-label="Controles del workspace">
               {canOpenDestination("leadsTickets") ? (
                 <AdminNotificationBell canReadSensitiveEvents={canReadSensitiveEvents} />
               ) : null}
-              <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
+              <span id="dashboard-header-audience" className={headerStyles.secondaryContext}>
+                <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
+              </span>
               <span
+                id="dashboard-header-data-status"
+                className={headerStyles.secondaryContext}
                 data-testid="dashboard-data-status-neutral"
                 title="El estado de cada fuente se confirma dentro del módulo que la consulta."
               >
                 <Badge>{shell.apiConnected}</Badge>
+                <span className="sr-only">El estado de cada fuente se confirma dentro del módulo que la consulta.</span>
               </span>
-              <div className="hidden h-6 w-px bg-white/10 mx-1 sm:block" />
               <LocaleSwitcher value={locale} options={[...locales]} />
-              <SharedThemeToggle />
+              <SharedThemeToggle locale={locale} />
               <TenantAccountMenu
                 className="dashboard-shell-account-menu shrink-0 sm:w-auto"
                 email={currentEmail}
@@ -647,8 +653,9 @@ export function DashboardShellInner({
               />
             </div>
           </div>
-          {canShowSandboxTools ? (
-            <div className="mt-4 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-4 py-3 flex items-center justify-between shadow-inner backdrop-blur-sm">
+        </header>
+        {canShowSandboxTools ? (
+            <div className="mx-4 mt-4 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-4 py-3 flex flex-wrap gap-3 items-center justify-between shadow-inner backdrop-blur-sm lg:mx-8">
                <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-400 border border-cyan-500/30">🧪</div>
                   <div>
@@ -661,7 +668,6 @@ export function DashboardShellInner({
                </div>
             </div>
           ) : null}
-        </header>
 
         {currentIsDemo ? (
           <div
