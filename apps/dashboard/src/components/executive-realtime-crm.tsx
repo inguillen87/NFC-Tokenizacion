@@ -499,6 +499,7 @@ export function ExecutiveRealtimeCrm({
   const eventsUnavailableReason = "Auditoría no habilitada: esta sesión no tiene events.read_sensitive.";
   const [activeView, setActiveView] = useState<ExecutiveCrmView>(initialView);
   const [activityPanelRequested, setActivityPanelRequested] = useState(false);
+  const [mapPanelRequested, setMapPanelRequested] = useState(false);
   const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, EXECUTIVE_REALTIME_EVENT_LIMIT) : []);
   const [connected, setConnected] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
@@ -617,6 +618,7 @@ export function ExecutiveRealtimeCrm({
   const selectActiveView = useCallback((nextView: ExecutiveCrmView) => {
     setActiveView(nextView);
     const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete("section");
     if (nextView === "physical-taps") nextUrl.searchParams.set("view", "physical-taps");
     else nextUrl.searchParams.delete("view");
     const nextHref = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
@@ -628,6 +630,21 @@ export function ExecutiveRealtimeCrm({
     selectActiveView("overview");
     setActivityPanelRequested(true);
   };
+
+  const openMapPanel = () => {
+    selectActiveView("overview");
+    setMapPanelRequested(true);
+  };
+
+  useEffect(() => {
+    if (!mapPanelRequested) return;
+    setMapPanelRequested(false);
+    if (activeView !== "overview") return;
+    const panel = document.getElementById("live-tap-map");
+    if (!panel) return;
+    panel.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    panel.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+  }, [mapPanelRequested, activeView]);
 
   useEffect(() => {
     if (!activityPanelRequested) return;
@@ -1086,7 +1103,7 @@ export function ExecutiveRealtimeCrm({
   const railItems: CrmRailItem[] = [
     { icon: <Activity className="h-5 w-5" />, active: activeView === "overview", label: "Resumen operativo", short: "Vista", title: "Ver KPIs explicados, funnel post-tap y estado de la ventana activa.", action: () => selectActiveView("overview") },
     { icon: <ScanLine className="h-5 w-5" />, active: activeView === "physical-taps", label: "TAP físicos", short: "TAP", title: "Abrir evidencia NFC física, estados reportados, mapa e inbox del tenant.", action: () => selectActiveView("physical-taps") },
-    { icon: <Globe className="h-5 w-5" />, active: false, label: "Mapa por capas", short: "Capas", title: "Centrar el mapa y conservar la capa seleccionada.", action: () => { setMapZoom(1); document.getElementById("live-tap-map")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
+    { icon: <Globe className="h-5 w-5" />, active: false, label: "Mapa por capas", short: "Capas", title: "Abrir el mapa y conservar la capa seleccionada.", action: openMapPanel },
     { icon: <Activity className="h-5 w-5" />, active: false, label: "Actividad", short: "DATOS", title: "Ver zonas, productos y eventos observados en esta ventana.", action: openWindowActivity },
     { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange("loyalty") },
     ...(canReadSensitiveEvents ? [{ icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { router.push(`${DASHBOARD_DESTINATIONS.events.href}?filter=risk`); } }] : []),

@@ -18,12 +18,13 @@ const operationsSource = await readFile(operationsUrl, "utf8");
 const stubs = {
   react: 'export function useState(initial){return [initial === "summary" ? "infra" : initial, () => {}]};export function useMemo(compute){return compute()}',
   "next/link": "export default function Link(){return null}",
+  "next/navigation": 'export function useSearchParams(){return new URLSearchParams("section=operations")}',
   "@product/ui": "export function Badge(){return null};export function Card(){return null};export function StatusChip(){return null}",
   "./ops-command-center.module.css": "export default {workspace:'fixture-workspace',hero:'fixture-hero',iconRail:'fixture-icon-rail'}",
   "lucide-react": "export function LayoutDashboard(){return null};export function Cpu(){return null};export function Trophy(){return null};export function Terminal(){return null};export function Building2(){return null};export function Sparkles(){return null};export function ShieldCheck(){return null}",
 };
 for (const [path, names] of [
-  ["lucide-react", "BadgeCheck Boxes ClipboardCheck Database MapPin PackageCheck QrCode Radar Send ShieldCheck ShoppingBag Sprout Store UserCog"],
+  ["lucide-react", "ArrowUpRight BadgeCheck Boxes ClipboardCheck Database MapPin PackageCheck QrCode Radar Send ShieldCheck ShoppingBag Sprout Store UserCog"],
   ["recharts", "Area AreaChart Bar BarChart CartesianGrid ResponsiveContainer Tooltip XAxis YAxis"],
 ]) {
   stubs[path] = (stubs[path] || "") + names.split(" ")
@@ -69,6 +70,7 @@ function render(overrides = {}) {
   return DashboardHomeClient({
     session: { role: "tenant_admin", permissions: ["batches:read", "tags:read"], isDemo: false },
     tenantScope: "offline-fixture", isTenantAdmin: true,
+    opsDestinationAccess: { tokenization: true },
     copy: { shell: { openModule: "Abrir" } },
     overviewAvailability: "ready", batchAvailability: "ready", realtimeAvailability: "ready",
     tokenizationAvailability: "upstream_error",
@@ -112,6 +114,12 @@ test("each unavailable core source still prevents unconfirmed operation metrics"
     assert.equal(states(tree, "home-operations-unavailable").length, 1, field);
     assert.equal(states(tree, "home-tokenization-unavailable").length, 1, field);
   }
+});
+
+test("a restricted optional module is not presented as a broken operation", () => {
+  const tree = render({ opsDestinationAccess: { events: true, tokenization: false } });
+  assert.equal(commandCenters(tree).length, 1);
+  assert.equal(states(tree, "home-tokenization-unavailable").length, 0);
 });
 
 test("confirmed tokenization keeps its numeric metrics and derived step", () => {
@@ -165,7 +173,7 @@ test("operation navigation describes consultation and optional setup rather than
     ["tokenization", "Revisar anclaje"], ["rewards", "Ver beneficios"],
     ["apiKeys", "Consultar integración"], ["campaigns", "Ver campañas"],
   ]) assert.ok(operationsSource.includes(`href: DASHBOARD_DESTINATIONS.${destination}.href,\n      cta: "${cta}"`), `${cta} keeps its registered destination`);
-  assert.match(operationsSource, /title: "4\. Anclaje opcional"/);
+  assert.match(operationsSource, /title: "Anclaje opcional"/);
   assert.match(operationsSource, /no emite tokens ni publica un pasaporte/);
   assert.match(operationsSource, /no activa ventas ni envía promociones/);
   assert.match(operationsSource, /permisos y la configuración del módulo/);

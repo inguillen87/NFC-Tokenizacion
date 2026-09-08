@@ -1,7 +1,8 @@
-import { Card, SectionHeading, StatusChip } from "@product/ui";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight, ListFilter, ScanLine } from "lucide-react";
+import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
-import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
@@ -9,6 +10,8 @@ import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import { isRealtimeRisk } from "../../../lib/realtime-feed";
 import { normalizeTenantTapRealtimeEvent } from "@product/core";
+import { eventsFilterHref, filterEventsActivitySample, normalizeEventsActivityFilter } from "../../../lib/events-activity-filter";
+import styles from "./events.module.css";
 
 type EventRow = {
   id: number;
@@ -84,6 +87,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const isTenantAdmin = isTenantBound;
   const source = session.isDemo ? "demo" : isTenantBound ? "real" : String(query.source || "all");
   const range = String(query.range || "30d");
+  const activityFilter = normalizeEventsActivityFilter(query.filter);
 
   const params = new URLSearchParams();
   if (tenantScope) params.set("tenant", tenantScope);
@@ -100,39 +104,56 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     raw: row,
     event: normalizeTenantTapRealtimeEvent(row as unknown as Record<string, unknown>),
   }));
-  const productRecognizedCount = classifiedRows.filter(({ event }) => event.productIdentityRecognized).length;
-  const authenticationVerifiedCount = classifiedRows.filter(({ event }) => event.authenticationVerified).length;
-  const riskCount = classifiedRows.filter(({ event }) => isRealtimeRisk(event.verdict, event.reason)).length;
+  const visibleRows = filterEventsActivitySample(classifiedRows, activityFilter);
+  const productRecognizedCount = visibleRows.filter(({ event }) => event.productIdentityRecognized).length;
+  const authenticationVerifiedCount = visibleRows.filter(({ event }) => event.authenticationVerified).length;
+  const riskCount = visibleRows.filter(({ event }) => isRealtimeRisk(event.verdict, event.reason)).length;
+  const retryHref = eventsFilterHref(params, activityFilter);
+  const resetParams = new URLSearchParams({ source, range });
+  if (tenantScope) resetParams.set("tenant", tenantScope);
+  const resetHref = eventsFilterHref(resetParams, "all");
+  const workspaceParams = new URLSearchParams();
+  if (tenantScope) workspaceParams.set("tenant", tenantScope);
+  const crmHref = workspaceParams.size ? `/?${workspaceParams.toString()}` : "/";
+  workspaceParams.set("view", "physical-taps");
+  const physicalTapsHref = `/?${workspaceParams.toString()}`;
+  const sourceLabel = session.isDemo ? "Demo · datos ilustrativos" : source === "real" || source === "production" ? "Producción" : source === "all" ? "Todas las fuentes" : source;
 
-  const rows = classifiedRows.map(({ raw: row, event }) => ({
+  const rows = visibleRows.map(({ raw: row, event }) => ({
     tenant: row.tenantSlug || "-",
     uid: row.uidHex,
     bid: row.bid,
     result: row.result,
-    status: event.authenticationVerified
-      ? "Autenticación verificada"
-      : isRealtimeRisk(event.verdict, event.reason)
-        ? "Riesgo explícito"
+    status: isRealtimeRisk(event.verdict, event.reason)
+      ? "Riesgo explícito"
+      : event.authenticationVerified
+        ? "Autenticación verificada"
         : event.productIdentityRecognized
           ? "Producto reconocido"
           : "Actividad",
-    geo: `${row.location.city}, ${row.location.country}`,
-    device: `${row.device.os} · ${row.device.browser}`,
-    deviceType: row.device.deviceType,
-    timezone: row.device.timezone,
+    authentication: event.authenticationVerified ? "Verificada" : "No confirmada",
+    geo: [row.location?.city, row.location?.country].filter(Boolean).join(", ") || "Sin zona informada",
+    device: [row.device?.os, row.device?.browser].filter(Boolean).join(" · ") || "No informado",
+    deviceType: row.device?.deviceType || "No informado",
+    timezone: row.device?.timezone || "No informada",
     source: row.source,
     reason: row.reason || "-",
-    time: new Date(row.createdAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }),
+    time: Number.isFinite(Date.parse(row.createdAt)) ? new Date(row.createdAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }) : "No informada",
   }));
 
   return (
-    <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
-      <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Vista ejecutiva del tenant con eventos reportados y alertas derivadas de la validación NFC." : "Events muestra la actividad devuelta por la fuente seleccionada y sus alertas operativas.", decision: "Priorizás mitigación de riesgo con evidencia técnica por evento.", cta: "Úsalo como feed operativo con fuente y alcance visibles." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Consola cruda para revisar mensajes NFC, replay, tamper reportado y contexto de dispositivo.", decision: "Investigás anomalías por UID/BID/resultado y contexto técnico.", cta: isTenantAdmin ? "Scope actual: solo tu tenant." : "Scope configurable multi-tenant." }}
-        buyer={{ eyebrow: "Buyer / Client read", summary: "Demuestra qué señales NFC y de dispositivo reporta la plataforma.", decision: "Validás nivel de control y trazabilidad digital de eventos.", cta: "Cerrá la conversación con evidencia verificable y sus límites." }}
-      />
+    <main className={styles.workspace}>
+      <header className={styles.header}>
+        <div>
+          <p className={styles.eyebrow}>Trazabilidad · revisión operativa</p>
+          <h1>Eventos y evidencia</h1>
+          <p>Encontrá una lectura por producto o lote, revisá su resultado y consultá las señales de riesgo.</p>
+        </div>
+        <nav aria-label="Volver al centro de control" className={styles.navigation}>
+          <Link href={crmHref} className={styles.secondaryAction}><ArrowLeft aria-hidden="true" /> CRM en vivo</Link>
+          <Link href={physicalTapsHref} className={styles.secondaryAction}><ScanLine aria-hidden="true" /> TAP físicos</Link>
+        </nav>
+      </header>
 
       {eventsResult.availability !== "ready" ? (
         <EnterpriseOpsState
@@ -143,54 +164,72 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             `Estado de fuente: ${eventsResult.availability}`,
             "Los contadores y la tabla permanecen sin afirmar valores.",
           ]}
-          action={<a href="/events" className="rounded-xl border border-rose-300/30 bg-rose-400/10 px-3 py-2 text-xs font-black text-rose-100">Reintentar feed</a>}
+          action={<Link href={retryHref} className={styles.secondaryAction}>Reintentar con estos filtros <ArrowRight aria-hidden="true" /></Link>}
           testId="events-source-unavailable"
         />
       ) : null}
 
-      <Card className="p-5">
-        <form className="grid gap-3 md:grid-cols-6">
-          <input suppressHydrationWarning name="uid" defaultValue={query.uid || ""} placeholder="UID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <input suppressHydrationWarning name="bid" defaultValue={query.bid || ""} placeholder="BID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <input suppressHydrationWarning name="result" defaultValue={query.result || ""} placeholder="VALID / TAMPER..." className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <select suppressHydrationWarning name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select>
-          {!isTenantAdmin ? <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
-          <button suppressHydrationWarning className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
-        </form>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
-          <StatusChip label={eventsResult.availability === "ready" ? `Events ${liveRows.length}` : "Events no disponibles"} tone="neutral" />
-          {eventsResult.availability === "ready" ? <StatusChip label={`Producto reconocido ${productRecognizedCount}`} tone="neutral" /> : null}
-          {eventsResult.availability === "ready" ? <StatusChip label={`Autenticación verificada ${authenticationVerifiedCount}`} tone="good" /> : null}
-          {eventsResult.availability === "ready" ? <StatusChip label={`Riesgo explícito ${riskCount}`} tone="risk" /> : null}
-          <StatusChip label={`Scope ${tenantScope || "global"}`} tone="neutral" />
+      <section className={styles.filters} aria-label="Filtros del historial de eventos">
+        <div className={styles.filterHeading}>
+          <h2><ListFilter aria-hidden="true" /> Buscar eventos</h2>
+          <span className={styles.sourceBadge}>{sourceLabel} · {tenantScope || "Alcance global"}</span>
         </div>
-      </Card>
+        <form action="/events" method="get" className={styles.filterGrid}>
+          <label>Tipo de actividad<select suppressHydrationWarning name="filter" defaultValue={activityFilter}><option value="all">Todas</option><option value="risk">Riesgo explícito</option></select></label>
+          <label>Período<select suppressHydrationWarning name="range" defaultValue={range}><option value="24h">Últimas 24 horas</option><option value="7d">Últimos 7 días</option><option value="30d">Últimos 30 días</option>{!["24h", "7d", "30d"].includes(range) ? <option value={range}>{range}</option> : null}</select></label>
+          <label>Identificador del tag<input suppressHydrationWarning name="uid" defaultValue={query.uid || ""} placeholder="UID completo" autoComplete="off" /></label>
+          <label>Lote<input suppressHydrationWarning name="bid" defaultValue={query.bid || ""} placeholder="Identificador del lote" autoComplete="off" /></label>
+          <label>Resultado técnico<input suppressHydrationWarning name="result" defaultValue={query.result || ""} placeholder="Ej.: VALID, TAMPER" autoComplete="off" /></label>
+          {!isTenantAdmin ? <label>Empresa<input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="Identificador de empresa" autoComplete="off" /></label> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
+          <input suppressHydrationWarning type="hidden" name="source" value={source} />
+          <div className={styles.filterActions}>
+            <button suppressHydrationWarning className={styles.primaryAction} type="submit">Aplicar filtros <ArrowRight aria-hidden="true" /></button>
+            <Link href={resetHref} className={styles.secondaryAction}>Limpiar filtros</Link>
+          </div>
+        </form>
+      </section>
+
+      {eventsResult.availability === "ready" ? <>
+      <section className={styles.sampleSummary} aria-label="Resumen de la muestra recibida" data-testid="events-sample-summary">
+        <div className={styles.sampleScope}>
+          <h2>{activityFilter === "risk" ? "Riesgo explícito" : "Actividad recibida"}</h2>
+          <p>{rows.length} de {liveRows.length} eventos de la muestra{activityFilter === "risk" ? " coinciden con riesgo explícito" : " visibles"}.</p>
+          <p>Se consultan hasta 250 eventos del período. El filtro de actividad se aplica a esa muestra, no al historial completo.</p>
+        </div>
+        <dl className={styles.sampleMetrics}>
+          <div><dt>Producto reconocido</dt><dd>{productRecognizedCount}</dd></div>
+          <div><dt>Autenticación verificada</dt><dd>{authenticationVerifiedCount}</dd></div>
+          <div><dt>Riesgo explícito</dt><dd>{riskCount}</dd></div>
+        </dl>
+      </section>
 
       <DataTable
-        title={copy.tables.events.title}
+        title="Eventos de la muestra · hora de Argentina (UTC−03:00)"
         columns={[
           ...(!isTenantAdmin ? [{ key: "tenant", label: copy.tables.events.tenant }] : []),
           { key: "uid", label: "UID producto" },
-          { key: "bid", label: "BID" },
+          { key: "bid", label: "Lote" },
           { key: "result", label: copy.tables.events.result },
           { key: "status", label: copy.tables.events.status },
+          { key: "authentication", label: "Autenticación del mensaje" },
           { key: "geo", label: copy.tables.events.geo },
-          { key: "device", label: "OS/Browser" },
-          { key: "deviceType", label: "Device type" },
-          { key: "timezone", label: "Timezone" },
-          { key: "source", label: "Source" },
-          { key: "reason", label: "Reason" },
+          { key: "device", label: "Sistema / navegador" },
+          { key: "deviceType", label: "Dispositivo" },
+          { key: "timezone", label: "Zona horaria reportada" },
+          { key: "source", label: "Fuente" },
+          { key: "reason", label: "Motivo" },
           { key: "time", label: copy.tables.events.time },
         ]}
         rows={rows}
         filterKey="status"
         loadingLabel={copy.shell.loading}
-        emptyLabel={eventsResult.availability === "ready" ? copy.shell.empty : "El feed no pudo cargarse; no es un cero operativo."}
+        emptyLabel={activityFilter === "risk" ? "No hay señales de riesgo explícito en esta muestra. Podés ampliar el período o consultar todas las actividades." : "No se recibieron eventos con estos filtros. Probá otro período, tag o lote."}
         searchPlaceholder={copy.shell.search}
         allFilterLabel={copy.shell.all}
         refreshLabel={copy.shell.refresh}
         statusMap={copy.statuses}
       />
+      </> : null}
     </main>
   );
 }

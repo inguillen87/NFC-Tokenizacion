@@ -125,10 +125,11 @@ test("tenant account drawer is light in light mode and dark in dark mode", () =>
   assert.doesNotMatch(accountMenu, /html\.theme-light \.nexid-account-layer \.tenant-account-panel \{[\s\S]{0,260}#08111f/);
 });
 
-test("maps and operational chart tooltips follow the selected theme", () => {
+test("maps follow the selected theme and operations use a scoped theme instead of mixed-unit charts", () => {
   assert.match(globals, /data-theme="light"\]\) \.maplibregl-ctrl-group/);
   assert.match(globals, /data-theme="light"\]\) \.maplibregl-ctrl button\.maplibregl-ctrl-zoom-in/);
   assert.match(globals, /--dashboard-chart-tooltip-bg: #ffffff/);
-  assert.match(opsCommandCenter, /background: "var\(--dashboard-chart-tooltip-bg\)"/);
+  assert.match(opsCommandCenter, /import styles from "\.\/ops-command-center\.module\.css"/);
+  assert.doesNotMatch(opsCommandCenter, /AreaChart|stepCompletion/);
   assert.doesNotMatch(opsCommandCenter, /contentStyle=\{\{ background: "#020617"/);
 });

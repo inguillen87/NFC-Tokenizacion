@@ -345,7 +345,8 @@ test("Balmec physical TAP UX is wired into home and analytics without hardcoded 
   ]);
   assert.doesNotMatch(home, /<PhysicalTapsCommandCenter/);
   assert.match(home, /physicalTapsResult=\{physicalTapsResult\}/);
-  assert.match(home, /initialView=\{initialCrmView\}/);
+  assert.match(home, /initialView=\{currentCrmView\}/);
+  assert.match(home, /searchParams\.get\("view"\) === "physical-taps"/);
   assert.match(page, /resolveDashboardCrmView\(resolvedSearchParams\.view\)/);
   assert.match(page, /initialCrmView=\{initialCrmView\}/);
   assert.match(crm, /data-testid="crm-physical-taps-view"/);

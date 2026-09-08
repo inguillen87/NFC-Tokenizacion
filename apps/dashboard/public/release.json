@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.08-dashboard.2",
-  "scope": "campaign-circuit-and-trivia-panels-light-dark-contrast-with-compact-admin-header",
+  "release": "2026.09.08-dashboard.3",
+  "scope": "operational-navigation-risk-filter-and-physical-taps-light-dark-workspaces",
   "realTapCertification": "not-included",
-  "baseCommit": "9bae6ce218d4448a854b45dffe11b2d3bbce321a",
+  "baseCommit": "523e830376e91c7492f4d97efb890deab33fbf56",
   "requiredApiRelease": "2026.09.06-api-campaigns.1",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,

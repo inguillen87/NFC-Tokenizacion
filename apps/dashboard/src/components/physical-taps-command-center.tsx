@@ -14,8 +14,6 @@ import {
   RefreshCw,
   ScanLine,
   ShieldCheck,
-  Sparkles,
-  Wine,
 } from "lucide-react";
 import { PremiumVectorMap, type VectorMapPoint } from "@product/ui/premium-vector-map";
 import {
@@ -79,7 +77,6 @@ function stateCopy(state: PhysicalTapRow["sealState"]) {
       eyebrow: "Lectura con sello reportado cerrado",
       title: "Producto sin apertura reportada",
       detail: "El mensaje autenticado del tag reportó estado TT cerrado. No certifica por sí solo el contenido ni el montaje del sello.",
-      action: "Preparar bienvenida, garantía o club sólo si la persona brinda consentimiento.",
       tone: "emerald",
     } as const;
   }
@@ -88,7 +85,6 @@ function stateCopy(state: PhysicalTapRow["sealState"]) {
       eyebrow: "Lectura con sello reportado abierto",
       title: "Apertura electrónica reportada",
       detail: "El tag reportó estado TT abierto. Es una señal operativa útil, no una prueba independiente del estado físico del envase.",
-      action: "Ofrecer soporte, recompra o reposición sólo después de opt-in o claim autorizado.",
       tone: "amber",
     } as const;
   }
@@ -96,7 +92,6 @@ function stateCopy(state: PhysicalTapRow["sealState"]) {
     eyebrow: "Estado no clasificado",
     title: "Lectura para revisión",
     detail: "La validación existe, pero el estado TT no se pudo presentar como cerrado o abierto.",
-    action: "Revisar evidencia técnica antes de iniciar cualquier automatización comercial.",
     tone: "slate",
   } as const;
 }
@@ -146,9 +141,10 @@ function EventEvidenceCard({ row }: { row: PhysicalTapRow }) {
 
         <div className="flex items-start gap-2 rounded-2xl border border-[var(--taps-accent-border)] bg-[var(--taps-accent-bg)] p-3 text-xs leading-5 text-[var(--taps-muted)]">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--taps-accent)]" />
-          <span><b className="text-[var(--taps-text)]">{locationLabel(row)}</b><br />{locationEvidenceCopy(row)}</span>
+          <span><b className="text-[var(--taps-text)]">{locationLabel(row)}</b><br />{row.location.precision === "none" ? "Sin ubicación" : row.location.precision === "browser_approximate_consent" ? "Teléfono · ubicación aproximada consentida" : "Red / IP · ubicación aproximada"}</span>
         </div>
-        <p className="text-xs leading-5 text-[var(--taps-muted)]">{row.messageValid ? ttReceiptBound ? copy.detail : "El evento source=real fue validado, pero no tiene un receipt TT durable que confirme el carrier y su estado electrónico. Requiere revisión técnica." : "El evento fue registrado con source=real, pero el mensaje NFC no quedó validado. Requiere revisión técnica antes de operar."}</p>
+        {!row.messageValid || !ttReceiptBound ? <p className="text-xs leading-5 text-[var(--taps-warning)]">{row.messageValid ? "Estado del carrier pendiente de revisión: falta un receipt TT durable." : "Mensaje NFC no validado. Revisá la evidencia antes de operar."}</p> : null}
+        <div className="flex flex-wrap gap-2">
         <p className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${row.messageValid ? "border-[var(--taps-success-border)] bg-[var(--taps-success-bg)] text-[var(--taps-success)]" : "border-[var(--taps-warning-border)] bg-[var(--taps-warning-bg)] text-[var(--taps-warning)]"}`}>
           {row.messageValid ? <CheckCircle2 className="h-3 w-3" /> : <CircleAlert className="h-3 w-3" />}
           {row.messageValid ? "Mensaje NFC validado" : "Mensaje no validado"}
@@ -157,11 +153,13 @@ function EventEvidenceCard({ row }: { row: PhysicalTapRow }) {
           <Fingerprint className="h-3 w-3" />
           {ttReceiptBound ? "TT respaldado por receipt durable" : "Carrier físico sin confirmar"}
         </p>
-        <div className="rounded-2xl border border-[var(--taps-violet-border)] bg-[var(--taps-violet-bg)] p-3">
-          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.13em] text-[var(--taps-violet)]"><Sparkles className="h-3.5 w-3.5" /> Próximo paso comercial</p>
-          <p className="mt-1 text-xs leading-5 text-[var(--taps-text)]">{copy.action}</p>
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--taps-border)] bg-[var(--taps-surface)] px-2.5 py-1 text-xs font-bold text-[var(--taps-muted)]"><LockKeyhole className="h-3 w-3" /> Contacto bloqueado hasta consentimiento</p>
         </div>
+        <details className={styles.evidenceDisclosure}>
+          <summary>Alcance de esta evidencia</summary>
+          <p>{row.messageValid ? ttReceiptBound ? copy.detail : "El evento source=real fue validado, pero no tiene un receipt TT durable que confirme el carrier y su estado electrónico. Requiere revisión técnica." : "El evento fue registrado con source=real, pero el mensaje NFC no quedó validado. Requiere revisión técnica antes de operar."}</p>
+          <p>{locationEvidenceCopy(row)}</p>
+          <p>Contacto bloqueado hasta consentimiento. Este TAP no crea un contacto comercial automáticamente.</p>
+        </details>
       </div>
     </article>
   );
@@ -516,6 +514,15 @@ export function PhysicalTapsCommandCenter({
   const evidenceHref = payload.scope.bid && payload.scope.bid !== "all"
     ? `/events?bid=${encodeURIComponent(payload.scope.bid)}&source=real`
     : "/events?source=real";
+  const scopedEvidenceHref = tenantSlug ? `${evidenceHref}&tenant=${encodeURIComponent(tenantSlug)}` : evidenceHref;
+  const hasReadings = rows.length > 0;
+  const hasFilters = state !== "all" || location !== "all" || batch !== "all";
+  const resetFilters = () => {
+    setState("all");
+    setLocation("all");
+    setBatch("all");
+    setSelectedPointId(undefined);
+  };
   const summaryCards = [
     { label: "TAP reales", value: number(payload.summary.total), detail: `${number(payload.summary.distinctUnits)} unidades · ${number(payload.summary.total)} lecturas recientes`, icon: Radio, tone: "text-[var(--taps-accent)]" },
     { label: "Cerrado reportado", value: number(payload.summary.closed), detail: "Estado TT del tag", icon: CheckCircle2, tone: "text-[var(--taps-success)]" },
@@ -528,15 +535,15 @@ export function PhysicalTapsCommandCenter({
       <header className="flex flex-wrap items-start justify-between gap-5">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--taps-accent-border)] bg-[var(--taps-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-accent)]"><ScanLine className="h-3.5 w-3.5" /> {tenantDisplayName} · evidencia tenant</span>
-            <span className="rounded-full border border-[var(--taps-success-border)] bg-[var(--taps-success-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-success)]">source=real</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--taps-accent-border)] bg-[var(--taps-accent-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-accent)]"><ScanLine className="h-3.5 w-3.5" /> {tenantDisplayName} · TAP físicos</span>
+            <span className="rounded-full border border-[var(--taps-success-border)] bg-[var(--taps-success-bg)] px-2.5 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-success)]">Producción</span>
           </div>
-          <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--taps-text)] sm:text-3xl">TAP reales recientes, listos para revisar</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--taps-muted)]">Cada tarjeta representa un evento persistido. No inferimos que cerrado y abierto formen un antes/después ni una ruta del mismo producto.</p>
+          <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--taps-text)] sm:text-3xl">Lecturas NFC de tu empresa</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--taps-muted)]">Revisá el estado reportado del sello, la zona y la evidencia de cada lectura.</p>
           {rangeLabel ? <p className="mt-2 text-xs font-bold text-[var(--taps-muted)]">Período consultado: {rangeLabel}. Lecturas recientes del período, no un total histórico.</p> : null}
         </div>
         <div data-testid="physical-taps-last-evidence" className="rounded-2xl border border-[var(--taps-border)] bg-[var(--taps-surface)] px-4 py-3 text-right">
-          <p className="flex items-center justify-end gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-muted)]"><Clock3 className="h-3.5 w-3.5" /> Última evidencia</p>
+          <p className="flex items-center justify-end gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-muted)]"><Clock3 className="h-3.5 w-3.5" /> Última lectura</p>
           <p className="mt-1 text-lg font-black text-[var(--taps-text)]">{payload.summary.latestAt ? absoluteDate(payload.summary.latestAt) : "Sin lecturas confirmadas"}</p>
           <p className="mt-2 text-xs text-[var(--taps-muted)]">Última confirmación: {absoluteDate(liveResult.checkedAt)}</p>
           <div className="mt-3 flex items-center justify-end gap-2">
@@ -551,6 +558,28 @@ export function PhysicalTapsCommandCenter({
         </div>
       </header>
 
+      {!hasReadings ? (
+        <div data-testid="physical-taps-empty-period" className={styles.emptyPeriod}>
+          <div className={styles.emptyIntro}>
+            <span className={styles.emptyIcon}><ScanLine aria-hidden="true" /></span>
+            <div>
+              <p className={styles.eyebrow}>Sin lecturas en este período</p>
+              <h3>Tus próximos TAP aparecerán acá</h3>
+              <p>La consulta del período no devolvió lecturas. Esto no significa que no existan tags ni lecturas anteriores.</p>
+              <Link href={scopedEvidenceHref} className={styles.primaryAction} data-testid="physical-taps-empty-history">Consultar historial de eventos <ArrowRight aria-hidden="true" /></Link>
+            </div>
+          </div>
+          <div className={styles.firstTap}>
+            <h4>Probá con una etiqueta de {tenantDisplayName}</h4>
+            <ol>
+              <li><span>1</span><p>Acercá tu teléfono a uno de los tags NFC asignados a la empresa.</p></li>
+              <li><span>2</span><p>Abrí el pasaporte. Compartir la ubicación es opcional.</p></li>
+              <li><span>3</span><p>Volvé a esta vista para revisar la lectura. Si el canal está conectado, se recibe sin recargar.</p></li>
+            </ol>
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map((card) => (
           <div key={card.label} className="rounded-2xl border border-[var(--taps-border)] bg-[var(--taps-surface)] p-4">
@@ -597,30 +626,37 @@ export function PhysicalTapsCommandCenter({
               ]}
             />
           ) : (
-            <div className="grid min-h-[23rem] place-items-center p-6 text-center">
-              <div className="max-w-md"><MapPin className="mx-auto h-8 w-8 text-[var(--taps-muted)]" /><p className="mt-3 font-bold text-[var(--taps-text)]">Los filtros no dejan zonas visibles</p><p className="mt-2 text-sm leading-6 text-[var(--taps-muted)]">Los eventos siguen en el inbox; su ubicación no se reemplaza por coordenadas inventadas.</p></div>
+            <div data-testid="physical-taps-map-empty" className={styles.mapEmpty}>
+              <MapPin aria-hidden="true" />
+              <p>{!filteredRows.length ? "No hay lecturas con estos filtros" : "Estas lecturas no incluyen coordenadas"}</p>
+              <span>{!filteredRows.length ? "Quitá los filtros para volver a ver las lecturas del período." : "Podés revisar su estado y su evidencia en la lista. El mapa no estima una ubicación que no fue informada."}</span>
+              {hasFilters ? <button type="button" onClick={resetFilters} className={styles.secondaryAction}>Quitar filtros</button> : compact ? <Link href={scopedEvidenceHref} className={styles.secondaryAction}>Consultar historial <ArrowRight aria-hidden="true" /></Link> : <a href="#physical-taps-inbox" className={styles.secondaryAction}>Ver lecturas del período <ArrowRight aria-hidden="true" /></a>}
             </div>
           )}
         </div>
 
-        <aside className="space-y-3 rounded-3xl border border-[var(--taps-violet-border)] bg-[var(--taps-violet-bg)] p-4">
-          <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-[var(--taps-violet-border)] bg-[var(--taps-violet-bg)] text-[var(--taps-violet)]"><Fingerprint className="h-4 w-4" /></span><div><p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-violet)]">CRM después del TAP</p><h3 className="mt-1 font-black text-[var(--taps-text)]">Convertir sin invadir</h3></div></div>
-          <ol className="space-y-2 text-xs leading-5">
-            <li className="rounded-2xl border border-[var(--taps-success-border)] bg-[var(--taps-success-bg)] p-3 text-[var(--taps-muted)]"><b className="text-[var(--taps-success)]">1. Evidencia recibida</b><br />Producto, lote, estado TT, hora y zona aproximada.</li>
-            <li className="rounded-2xl border border-[var(--taps-warning-border)] bg-[var(--taps-warning-bg)] p-3 text-[var(--taps-muted)]"><b className="text-[var(--taps-warning)]">2. Cliente todavía anónimo</b><br />El TAP no crea owner, lead ni suscriptor automáticamente.</li>
-            <li className="rounded-2xl border border-[var(--taps-accent-border)] bg-[var(--taps-accent-bg)] p-3 text-[var(--taps-muted)]"><b className="text-[var(--taps-accent)]">3. Acción con permiso</b><br />Claim, garantía, club, soporte o recompra sólo después de opt-in.</li>
-          </ol>
-          <div className="grid gap-2 pt-1">
-            <Link href={evidenceHref} className="inline-flex min-h-11 items-center justify-between rounded-xl border border-[var(--taps-accent-border)] bg-[var(--taps-accent-bg)] px-3 py-2 text-xs font-black text-[var(--taps-accent)] hover:bg-[var(--taps-accent-bg)]"><span className="inline-flex items-center gap-2"><Radio className="h-3.5 w-3.5" /> Abrir evidencia técnica</span><ArrowRight className="h-3.5 w-3.5" /></Link>
-            <Link href="/leads-tickets" className="inline-flex min-h-11 items-center justify-between rounded-xl border border-[var(--taps-border)] bg-[var(--taps-surface)] px-3 py-2 text-xs font-bold text-[var(--taps-text)] hover:border-[var(--taps-violet-border)]"><span className="inline-flex items-center gap-2"><Wine className="h-3.5 w-3.5" /> Abrir CRM y servicios</span><ArrowRight className="h-3.5 w-3.5" /></Link>
-          </div>
+        <aside className={styles.reviewTools}>
+          <p className={styles.eyebrow}>Revisión operativa</p>
+          <h3>Del mapa a la evidencia</h3>
+          <dl className={styles.reviewCounts}>
+            <div><dt>Lecturas visibles</dt><dd>{number(filteredRows.length)}</dd></div>
+            <div><dt>Zonas agrupadas</dt><dd>{number(points.length)}</dd></div>
+            <div><dt>Sin ubicación</dt><dd>{number(filteredRows.filter((row) => row.location.precision === "none").length)}</dd></div>
+          </dl>
+          <Link href={scopedEvidenceHref} className={styles.primaryAction}>Abrir historial y filtros <ArrowRight aria-hidden="true" /></Link>
+          {hasFilters ? <button type="button" onClick={resetFilters} className={styles.secondaryAction}>Quitar filtros de esta vista</button> : null}
+          <details className={styles.evidenceDisclosure}>
+            <summary>Cómo interpretar la evidencia</summary>
+            <p>Cada tarjeta representa un evento persistido. No inferimos que cerrado y abierto formen un antes/después ni una ruta del mismo producto.</p>
+            <p>El estado del tag no certifica por sí solo el contenido del envase. Un TAP no identifica automáticamente a una persona ni habilita contacto comercial.</p>
+          </details>
         </aside>
       </div>
 
       {!compact ? (
-        <div data-testid="physical-taps-inbox" className="rounded-3xl border border-[var(--taps-border)] bg-[var(--taps-surface)] p-4">
+        <div id="physical-taps-inbox" data-testid="physical-taps-inbox" className="rounded-3xl border border-[var(--taps-border)] bg-[var(--taps-surface)] p-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <div><p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--taps-muted)]">Inbox operativo</p><p className="mt-1 text-xs text-[var(--taps-muted)]">Filtrá sin modificar la evidencia original.</p></div>
+            <div><h3 className="font-black text-[var(--taps-text)]">Lecturas del período</h3><p className="mt-1 text-xs text-[var(--taps-muted)]">{number(filteredRows.length)} de {number(rows.length)} lecturas · filtrá por estado, ubicación o lote.</p></div>
             <div className="flex flex-wrap gap-2">
               <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.1em] text-[var(--taps-muted)]">Estado<select aria-label="Filtrar TAP por estado" value={state} onChange={(event) => setState(event.target.value as StateFilter)} className="min-h-10 rounded-xl border border-[var(--taps-border)] bg-[var(--taps-surface-strong)] px-3 text-xs normal-case tracking-normal text-[var(--taps-text)]"><option value="all">Todos</option><option value="closed">Cerrado</option><option value="opened">Abierto</option><option value="other">Revisión</option></select></label>
               <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.1em] text-[var(--taps-muted)]">Ubicación<select aria-label="Filtrar TAP por ubicación" value={location} onChange={(event) => setLocation(event.target.value as LocationFilter)} className="min-h-10 rounded-xl border border-[var(--taps-border)] bg-[var(--taps-surface-strong)] px-3 text-xs normal-case tracking-normal text-[var(--taps-text)]"><option value="all">Todas</option><option value="approximate">Zona aproximada</option><option value="none">Sin zona</option></select></label>
@@ -635,10 +671,12 @@ export function PhysicalTapsCommandCenter({
                 <span className="justify-self-start rounded-full border border-[var(--taps-accent-border)] bg-[var(--taps-accent-bg)] px-2 py-1 text-xs font-bold text-[var(--taps-accent)] sm:justify-self-end">real</span>
               </div>
             ))}
-            {!filteredRows.length ? <p className="rounded-2xl border border-[var(--taps-border)] bg-[var(--taps-surface)] p-5 text-center text-sm text-[var(--taps-muted)]">No hay eventos que coincidan con estos filtros.</p> : null}
+            {!filteredRows.length ? <div className={styles.filteredEmpty}><p>No hay eventos que coincidan con estos filtros.</p><button type="button" onClick={resetFilters} className={styles.secondaryAction}>Restablecer todos los filtros</button></div> : null}
           </div>
         </div>
       ) : null}
+      </>
+      )}
     </section>
   );
 }

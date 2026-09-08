@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { dashboardWorkspaceHref, dashboardWorkspaceTab, type DashboardWorkspaceTab } from "../lib/dashboard-workspace-navigation";
 import { Badge, Card, StatusChip } from "@product/ui";
 import { AdminActionForms } from "./admin-action-forms";
 import { DataTable } from "./data-table";
@@ -30,7 +31,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 
-type DashboardTab = "summary" | "infra" | "loyalty" | "demo" | "tenants";
+type DashboardTab = DashboardWorkspaceTab;
 
 interface DashboardHomeClientProps {
   session: any;
@@ -118,11 +119,18 @@ export default function DashboardHomeClient({
   activeTags,
   plannedTags,
   physicalTapsResult,
-  initialCrmView,
   mintedTokens,
   clerkEnabled
 }: DashboardHomeClientProps) {
-  const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
+  const searchParams = useSearchParams();
+  const activeTab = dashboardWorkspaceTab(searchParams.get("section"), isTenantAdmin);
+  const currentCrmView = searchParams.get("view") === "physical-taps" ? "physical-taps" : "overview";
+  const setActiveTab = (tab: DashboardTab) => {
+    const href = dashboardWorkspaceHref(window.location.search, tab);
+    if (href !== `${window.location.pathname}${window.location.search}`) {
+      window.history.pushState(null, "", href);
+    }
+  };
   const overviewAvailable = overviewAvailability === "ready" || overviewAvailability === "fallback";
   const batchesAvailable = batchAvailability === "ready" || batchAvailability === "fallback";
   const tokenizationAvailable = tokenizationAvailability === "ready" || tokenizationAvailability === "fallback";
@@ -180,16 +188,16 @@ export default function DashboardHomeClient({
   return (
     <div className="space-y-6">
       {/* Dynamic Tab Navigation */}
-      <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
+      {activeTab !== "summary" && <nav aria-label="Secciones del centro de control" className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5">
         <button type="button" title="CRM en vivo: lecturas, riesgo, mapa por zona y próxima acción comercial" aria-label="Abrir CRM en vivo" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
           <LayoutDashboard className="h-4 w-4" />
           {tabText("CRM en vivo", "lecturas, riesgo, zona")}
         </button>
-        <button type="button" title="Operación NFC: recibir lote, activar tags, auditar campo, anclar y publicar producto" aria-label="Abrir operación NFC" onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
+        <button type="button" title="Consultar inventario, lotes y lecturas según tus permisos" aria-label="Abrir operación NFC" aria-pressed={activeTab === "infra"} onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
           <Cpu className="h-4 w-4" />
-          {tabText("Operación NFC", "lotes, QA, anclaje")}
+          {tabText("Operación NFC", "inventario y lecturas")}
         </button>
-        <button type="button" title="Actividad & campañas: separar producto, autenticación, actor y consentimiento" aria-label="Abrir actividad y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
+        <button type="button" title="Consultar clientes, consentimiento y campañas disponibles" aria-label="Abrir actividad y campañas" aria-pressed={activeTab === "loyalty"} onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
           <Trophy className="h-4 w-4" />
           {tabText("Actividad & campañas", isTenantAdmin ? "señales, consentimiento" : "portfolio, campañas")}
         </button>
@@ -205,7 +213,7 @@ export default function DashboardHomeClient({
             {tabText("Tenants", "marcas y permisos")}
           </button>
         )}
-      </nav>
+      </nav>}
 
       {/* Tab Contents */}
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -233,7 +241,7 @@ export default function DashboardHomeClient({
               initialDataSource={realtimeDataSource}
               initialAvailability={realtimeAvailability}
               initialAvailabilityDetail={realtimeAvailabilityDetail}
-              initialView={initialCrmView}
+              initialView={currentCrmView}
               physicalTapsResult={physicalTapsResult}
               physicalTapsTenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"}
               onSectionChange={(section) => setActiveTab(section)}
@@ -259,8 +267,8 @@ export default function DashboardHomeClient({
               mode={isTenantAdmin ? "tenant" : "global"}
               allowedDestinations={opsDestinationAccess}
               metrics={[
-                { label: "Tenants", value: String(opsTenantRows.length), detail: tenantScope ? "Scope tenant activo" : "Marcas registradas", tone: opsTenantRows.length ? "good" : "warn" },
-                { label: "Batches", value: String(scopedBatchRows.length), detail: `${importedTags.toLocaleString("es-AR")} importados`, tone: scopedBatchRows.length ? "good" : "warn" },
+                { label: "Empresas", value: String(opsTenantRows.length), detail: tenantScope ? "Empresa en tu alcance" : "Marcas registradas", tone: opsTenantRows.length ? "good" : "warn" },
+                { label: "Lotes", value: String(scopedBatchRows.length), detail: `${importedTags.toLocaleString("es-AR")} tags importados`, tone: scopedBatchRows.length ? "good" : "warn" },
                 { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${plannedTags.toLocaleString("es-AR")} planeados`, tone: activeTags > 0 ? "good" : "warn" },
                 { label: "Riesgo explícito", value: riskInteractions.toLocaleString("es-AR"), detail: "Replay / tamper / invalid", tone: riskInteractions > 5 ? "risk" : riskInteractions > 0 ? "warn" : "good" },
               ]}
@@ -290,7 +298,7 @@ export default function DashboardHomeClient({
             )}
 
             {/* Polygon / tokenization details card */}
-            <Card className="p-5">
+            {opsDestinationAccess?.tokenization === true && <Card className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200 flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-400" />
@@ -339,7 +347,7 @@ export default function DashboardHomeClient({
                   <EnterpriseOpsState variant="warning" title="Tokenización no disponible" description="No se recibió una respuesta válida. No se muestra cero porque la ausencia de datos no confirma ausencia de solicitudes." checklist={[tokenizationAvailabilityDetail]} compact testId="home-tokenization-unavailable" />
                 ) : null}
               </div>
-            </Card>
+            </Card>}
           </div>
         )}
 

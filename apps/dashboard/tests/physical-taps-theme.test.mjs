@@ -65,6 +65,23 @@ test("physical TAP map names both reported location sources without implying a j
   assert.match(source, /No identifica una dirección ni demuestra presencia exacta/);
 });
 
+test("physical TAP empty states give one useful next step without fabricated metrics or lost scope", () => {
+  assert.match(source, /const hasReadings = rows\.length > 0/);
+  assert.match(source, /!hasReadings \? \(/);
+  assert.match(source, /data-testid="physical-taps-empty-period"/);
+  assert.match(source, /Esto no significa que no existan tags ni lecturas anteriores/);
+  assert.match(source, /href=\{scopedEvidenceHref\}[^>]+data-testid="physical-taps-empty-history"/);
+  assert.match(source, /tenantSlug \? `\$\{evidenceHref\}&tenant=\$\{encodeURIComponent\(tenantSlug\)\}` : evidenceHref/);
+  assert.match(source, /const evidenceHref = payload\.scope\.bid && payload\.scope\.bid !== "all"/);
+  assert.match(source, /const resetFilters = \(\) => \{\s*setState\("all"\);\s*setLocation\("all"\);\s*setBatch\("all"\);\s*setSelectedPointId\(undefined\);/);
+  assert.match(source, /Estas lecturas no incluyen coordenadas/);
+  assert.match(source, /Restablecer todos los filtros/);
+  assert.doesNotMatch(source, /CRM después del TAP|Convertir sin invadir|Próximo paso comercial/);
+  assert.match(source, /<details className=\{styles\.evidenceDisclosure\}>\s*<summary>Alcance de esta evidencia/);
+  assert.match(moduleCss, /\.workspace summary:focus-visible/);
+  assert.match(moduleCss, /\.emptyPeriod \{\s*grid-template-columns: minmax\(0, 1fr\)/);
+});
+
 test("physical TAP browser QA checks themes, filters, pending state and retained evidence locally", {
   skip: !process.env.NEXID_TEST_PLAYWRIGHT_MODULE || !process.env.NEXID_TEST_CHROMIUM
     ? "Set the installed Playwright module and Chromium paths for offline browser QA." : false,
@@ -79,8 +96,8 @@ test("physical TAP browser QA checks themes, filters, pending state and retained
     import React from 'react';import{createRoot}from'react-dom/client';
     import{PhysicalTapsCommandCenter}from'./physical-taps-command-center';
     const params=new URLSearchParams(location.search);
-    const rows=['closed','opened'].map((sealState,index)=>({eventId:'fixture-'+index,tenantSlug:'fixture-tenant',bid:'LOT-FIXTURE',productName:'Producto de prueba local',uidMasked:'TEST****0'+index,messageValid:true,sealState,reportedState:sealState==='closed'?'VALID_CLOSED':'VALID_OPENED',readCounter:2+index,occurredAt:{utc:'2026-09-05T12:00:00Z',timezone:'America/Argentina/Buenos_Aires'},location:{city:'Zona de prueba',region:'',country:'',lat:null,lng:null,source:'none',precision:'none'},evidence:{kind:'physical_nfc_tt_evidenced',ttStatusReported:true}}));
-    const result=params.get('availability')==='forbidden'?{availability:'forbidden',payload:null,detail:'HTTP_403',checkedAt:'2026-09-05T12:05:00Z'}:{availability:'ready',detail:'offline fixture only',checkedAt:'2026-09-05T12:05:00Z',payload:{scope:{tenant:'fixture-tenant',range:'24h',bid:'all',source:'real'},summary:{total:2,closed:1,opened:1,distinctUnits:2,latestAt:'2026-09-05T12:00:00Z'},rows}};
+    const rows=(params.has('empty')?[]:['closed','opened']).map((sealState,index)=>({eventId:'fixture-'+index,tenantSlug:'fixture-tenant',bid:'LOT-FIXTURE',productName:'Producto de prueba local',uidMasked:'TEST****0'+index,messageValid:true,sealState,reportedState:sealState==='closed'?'VALID_CLOSED':'VALID_OPENED',readCounter:2+index,occurredAt:{utc:'2026-09-05T12:00:00Z',timezone:'America/Argentina/Buenos_Aires'},location:{city:'Zona de prueba',region:'',country:'',lat:null,lng:null,source:'none',precision:'none'},evidence:{kind:'physical_nfc_tt_evidenced',ttStatusReported:true}}));
+    const result=params.has('availability')?{availability:params.get('availability'),payload:null,detail:'HTTP_403',checkedAt:'2026-09-05T12:05:00Z'}:{availability:'ready',detail:'offline fixture only',checkedAt:'2026-09-05T12:05:00Z',payload:{scope:{tenant:'fixture-tenant',range:'24h',bid:params.get('bid')||'all',source:'real'},summary:{total:rows.length,closed:rows.length?1:0,opened:rows.length?1:0,distinctUnits:rows.length,latestAt:rows.length?'2026-09-05T12:00:00Z':null},rows}};
     createRoot(document.getElementById('root')).render(<PhysicalTapsCommandCenter result={result} tenantSlug="fixture-tenant" tenantDisplayName="Empresa de prueba local"/>);
   `;
   const stubs = {
@@ -112,7 +129,7 @@ test("physical TAP browser QA checks themes, filters, pending state and retained
   const origin = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ headless: true, executablePath: process.env.NEXID_TEST_CHROMIUM });
   try {
-    for (const theme of ["light", "dark"]) for (const width of [390, 1440]) {
+    for (const theme of ["light", "dark"]) for (const width of [320, 390, 1440]) {
       const page = await browser.newPage({ viewport: { width, height: 950 } });
       const errors = [];
       let requests = 0;
@@ -150,6 +167,12 @@ test("physical TAP browser QA checks themes, filters, pending state and retained
       await page.getByLabel("Filtrar TAP por estado").selectOption("closed");
       assert.equal(await page.getByTestId("physical-taps-event-row").count(), 1);
       assert.equal(requests, 0, "filters operate on retained data");
+      await page.getByLabel("Filtrar TAP por estado").selectOption("other");
+      assert.equal(await page.getByTestId("physical-taps-event-row").count(), 0);
+      await page.getByRole("button", { name: "Restablecer todos los filtros", exact: true }).click();
+      assert.equal(await page.getByTestId("physical-taps-event-row").count(), 2);
+      assert.match(await page.getByTestId("physical-taps-map-empty").textContent(), /Estas lecturas no incluyen coordenadas/);
+      await page.getByLabel("Filtrar TAP por estado").selectOption("closed");
       await page.getByRole("button", { name: "Actualizar TAP físicos ahora" }).click();
       await page.getByText("Consultando evidencia…", { exact: true }).waitFor();
       assert.equal(await page.getByRole("button", { name: "Actualizar TAP físicos ahora" }).isDisabled(), true);
@@ -158,6 +181,26 @@ test("physical TAP browser QA checks themes, filters, pending state and retained
       await page.getByText("Último snapshot confirmado", { exact: true }).waitFor();
       assert.equal(await page.getByTestId("physical-taps-event-row").count(), 1, "outage preserves evidence and filter");
       assert.deepEqual(errors, []);
+      await page.goto(`${origin}/?theme=${theme}&empty=1&bid=LOT-FIXTURE`);
+      const emptyPeriod = page.getByTestId("physical-taps-empty-period");
+      await emptyPeriod.waitFor();
+      assert.match(await emptyPeriod.textContent(), /no existan tags ni lecturas anteriores/);
+      assert.equal(await page.getByTestId("physical-taps-inbox").count(), 0, "empty collection has no repeated empty list");
+      assert.equal(await page.getByTestId("physical-taps-map-empty").count(), 0, "empty collection has no meaningless map");
+      assert.equal(await page.getByText("Cerrado reportado", { exact: true }).count(), 0, "empty collection omits zero-card wall");
+      const history = page.getByTestId("physical-taps-empty-history");
+      const historyUrl = new URL(await history.getAttribute("href"), origin);
+      assert.equal(historyUrl.pathname, "/events");
+      assert.equal(historyUrl.searchParams.get("source"), "real");
+      assert.equal(historyUrl.searchParams.get("tenant"), "fixture-tenant");
+      assert.equal(historyUrl.searchParams.get("bid"), "LOT-FIXTURE");
+      assert.ok((await history.boundingBox()).height >= 44);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
+      if (process.env.NEXID_PHYSICAL_TAPS_QA_SCREENSHOTS) await page.screenshot({ path: join(process.env.NEXID_PHYSICAL_TAPS_QA_SCREENSHOTS, `physical-taps-empty-${width}-${theme}.png`), fullPage: true });
+      await page.goto(`${origin}/?theme=${theme}&availability=upstream_error`);
+      await page.getByRole("heading", { name: "No pudimos confirmar la fuente de TAP" }).waitFor();
+      assert.equal(await page.getByTestId("physical-taps-empty-period").count(), 0, "unavailable must not masquerade as confirmed empty");
+      assert.equal(await page.getByRole("button", { name: "Reintentar ahora" }).count(), 1);
       await page.goto(`${origin}/?theme=${theme}&availability=forbidden`);
       await page.getByRole("heading", { name: "Tu cuenta no tiene acceso a estos TAP" }).waitFor();
       assert.equal(await page.getByTestId("physical-taps-command-center").count(), 0);

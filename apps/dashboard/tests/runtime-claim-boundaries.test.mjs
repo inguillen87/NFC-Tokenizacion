@@ -91,7 +91,8 @@ test("runtime rates and visual scores withhold values without a denominator", ()
   assert.match(batches, /assetsReady && assetScores\.length/);
   assert.match(pilot, /snapshot\.assetsAvailable && snapshot\.scoredAssetProfiles > 0/);
   assert.match(superadmin, /assetScores\.length \? [`'"]/);
-  assert.match(opsCenter, /tenant\.scans > 0 \? `\$\{tenant\.riskScore\}\/100` : "sin base"/);
+  assert.match(opsCenter, /Number\.isFinite\(tenant\.scans\) && tenant\.scans > 0 && Number\.isFinite\(tenant\.riskScore\)/);
+  assert.match(opsCenter, /hasRiskBase \? `\$\{tenant\.riskScore\}\/100` : "Sin base"/);
 });
 
 test("experience policy describes digital evidence instead of physical owner or product proof", () => {
@@ -126,8 +127,9 @@ test("directory playbooks and operational copy do not invent live tenant evidenc
 });
 
 test("events and dashboard descriptions describe NFC evidence instead of physical authenticity", () => {
-  assert.match(eventsPage, /eventos reportados y alertas derivadas de la validación NFC/);
-  assert.match(eventsPage, /evidencia técnica por evento/);
+  assert.match(eventsPage, /Eventos y evidencia/);
+  assert.match(eventsPage, /Autenticación del mensaje/);
+  assert.match(eventsPage, /El filtro de actividad se aplica a esa muestra, no al historial completo/);
   assert.doesNotMatch(eventsPage, /actividad real y alertas de autenticidad|evidencia real por tap|revisar autenticaciones/);
   assert.match(dashboardCopy, /KPIs críticos de validación de mensajes NFC/);
   assert.match(dashboardCopy, /standardizes digital evidence for NFC events/);
