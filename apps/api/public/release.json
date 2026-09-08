@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.08-api-otp.3",
-  "scope": "dedicated-nexid-whatsapp-otp-sender-and-private-inbound",
-  "baseCommit": "5a545657",
+  "release": "2026.09.08-api-portal.1",
+  "scope": "authenticated-consumer-owned-reading-detail",
+  "baseCommit": "afa7c5b5",
   "requiredDeploymentConfiguration": { "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat" },
   "databaseMigrationsIncluded": false,
   "requiredMigration": "20260906120000_0102_campaign_drafts.sql",
