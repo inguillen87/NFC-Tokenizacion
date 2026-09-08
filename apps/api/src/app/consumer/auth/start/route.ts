@@ -24,7 +24,11 @@ function startStatus(error: string) {
     error === "smtp_credentials_missing" ||
     error === "consumer_auth_mode_invalid" ||
     error === "consumer_auth_demo_forbidden" ||
-    error === "consumer_phone_otp_channel_invalid"
+    error === "consumer_phone_otp_channel_invalid" ||
+    error === "consumer_auth_email_provider_invalid" ||
+    error === "twilio_content_sid_invalid" ||
+    error === "twilio_status_callback_url_invalid" ||
+    error === "twilio_whatsapp_sandbox_forbidden"
   ) return 503;
   if (["smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout"].includes(error)) return 504;
   if (["smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid"].includes(error)) return 502;

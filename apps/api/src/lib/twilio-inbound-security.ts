@@ -51,8 +51,8 @@ function internalBypassAllowed(req: Request, environment: RuntimeEnvironment) {
   );
 }
 
-function canonicalWebhookUrl(req: Request, environment: RuntimeEnvironment) {
-  const configured = envValue(environment, "TWILIO_INBOUND_WEBHOOK_URL");
+function canonicalWebhookUrl(req: Request, environment: RuntimeEnvironment, override?: string) {
+  const configured = override ?? envValue(environment, "TWILIO_INBOUND_WEBHOOK_URL");
   if (!configured) return new URL(req.url).toString();
   try {
     const parsed = new URL(configured);
@@ -64,7 +64,7 @@ function canonicalWebhookUrl(req: Request, environment: RuntimeEnvironment) {
 }
 
 function formParamsObject(params: URLSearchParams) {
-  const output: Record<string, string> = {};
+  const output: Record<string, string> = Object.create(null);
   for (const [key, value] of params.entries()) output[key] = value;
   return output;
 }
@@ -74,6 +74,9 @@ export async function readAndVerifyTwilioInbound(
   options: {
     environment?: RuntimeEnvironment;
     maxBodyBytes?: number;
+    webhookUrl?: string;
+    requireSignature?: boolean;
+    rejectDuplicateParameters?: boolean;
   } = {},
 ): Promise<TwilioInboundVerification> {
   const environment = options.environment || process.env;
@@ -91,12 +94,19 @@ export async function readAndVerifyTwilioInbound(
   }
 
   const form = new URLSearchParams(rawBody);
-  if (internalBypassAllowed(req, environment)) return { ok: true, form };
-  if (!validationRequired(environment)) return { ok: true, form };
+  if (options.rejectDuplicateParameters) {
+    const seen = new Set<string>();
+    for (const key of form.keys()) {
+      if (seen.has(key)) return { ok: false, status: 400, reason: "invalid_body" };
+      seen.add(key);
+    }
+  }
+  if (!options.requireSignature && internalBypassAllowed(req, environment)) return { ok: true, form };
+  if (!options.requireSignature && !validationRequired(environment)) return { ok: true, form };
 
   const authToken = envValue(environment, "TWILIO_AUTH_TOKEN");
   const signature = String(req.headers.get("x-twilio-signature") || "").trim();
-  const webhookUrl = canonicalWebhookUrl(req, environment);
+  const webhookUrl = canonicalWebhookUrl(req, environment, options.webhookUrl);
   if (!authToken || !signature || !webhookUrl) {
     return { ok: false, status: 403, reason: "unauthorized" };
   }

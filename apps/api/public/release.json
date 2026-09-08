@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.08-api-otp.1",
-  "scope": "consumer-otp-provider-acceptance-fail-closed-and-private-delivery-diagnostics",
-  "baseCommit": "798aed0b",
+  "release": "2026.09.08-api-otp.2",
+  "scope": "explicit-email-provider-resend-and-signed-whatsapp-delivery-status",
+  "baseCommit": "d96640af",
   "requiredDeploymentConfiguration": { "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat" },
   "databaseMigrationsIncluded": false,
   "requiredMigration": "20260906120000_0102_campaign_drafts.sql",

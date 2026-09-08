@@ -27,6 +27,7 @@ const TWILIO_ENV = {
 const RAW_ERROR = `untrusted provider error ${EMAIL} ${PHONE} ${CODE} ${SMTP_ENV.SMTP_PASSWORD} ${TWILIO_ENV.TWILIO_AUTH_TOKEN}`;
 const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const compiled = Object.fromEntries(Object.entries({
+  status: source("../src/lib/consumer-otp-twilio-status.ts"),
   provider: source("../src/lib/consumer-auth-provider.ts"),
   auth: source("../src/lib/consumer-auth.ts"),
   route: source("../src/app/consumer/auth/start/route.ts"),
@@ -40,7 +41,7 @@ function harness(options = {}) {
   const logs = [], requests = [], mail = [], transports = [], queries = [], rates = [], timeouts = [], closed = [];
   const pendingTimers = new Map();
   let timerId = 0;
-  let provider, auth;
+  let provider, auth, statusHelper;
   class RequestBodyTooLargeError extends Error {}
   const sql = async (parts, ...values) => {
     const text = parts.join("?").replace(/\s+/g, " ").trim();
@@ -69,6 +70,7 @@ function harness(options = {}) {
     };
     if (name === "node:net") return { isIP };
     if (name === "node:url") return { domainToASCII };
+    if (name === "./consumer-otp-twilio-status") return statusHelper;
     if (name === "nodemailer" && options.realSmtp) return localRequire("nodemailer");
     if (name === "nodemailer") return { createTransport: (config) => {
       transports.push(config);
@@ -106,6 +108,7 @@ function harness(options = {}) {
     );
     return loaded.exports;
   };
+  statusHelper = load("status");
   provider = load("provider");
   auth = load("auth");
   const route = load("route");
@@ -178,6 +181,129 @@ test("configured driver names without credentials never acknowledge an OTP deliv
     await fails(h, error, contact);
     assert.equal(h.requests.length + h.mail.length, 0);
   }
+});
+
+test("explicit email provider selects only SMTP or Resend across email modes and normalizes one matched quote pair", async () => {
+  for (const mode of ["smtp", "email", "resend", "smart", "production", "provider"]) {
+    for (const [configured, expected] of [
+      ["smtp", "smtp"], ["resend", "resend"], [" SMTP ", "smtp"], ["RESEND", "resend"],
+      [' " SmTp " ', "smtp"], [" ' ReSeNd ' ", "resend"],
+    ]) {
+      const h = harness({
+        env: { ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_AUTH_EMAIL_PROVIDER: configured },
+        fetch: async () => response({ id: UUID }),
+      });
+      assert.deepEqual(await h.send(), delivery(expected, "email"), `${mode}: ${configured}`);
+      assert.equal(h.mail.length, expected === "smtp" ? 1 : 0);
+      assert.equal(h.requests.length, expected === "resend" ? 1 : 0);
+      if (expected === "resend") {
+        assert.match(String(h.requests[0].url), /^https:\/\/api\.resend\.com\//);
+        assert.equal(h.transports.length, 0);
+      }
+      assertSanitizedLogs(h);
+    }
+  }
+});
+
+test("an unset or blank email provider preserves the legacy priority including forced SMTP mode", async () => {
+  for (const mode of ["smtp", "email", "resend", "smart", "production", "provider"]) {
+    for (const configured of [undefined, "", " \t "]) {
+      const h = harness({
+        env: { ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_AUTH_EMAIL_PROVIDER: configured },
+      });
+      assert.deepEqual(await h.send(), delivery("smtp", "email"), mode);
+      assert.equal(h.mail.length, 1);
+      assert.equal(h.requests.length, 0);
+      assertSanitizedLogs(h);
+    }
+    const onlyResend = harness({
+      env: { ...RESEND_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_AUTH_EMAIL_PROVIDER: " " },
+      fetch: async () => response({ id: UUID }),
+    });
+    if (mode === "smtp") {
+      await fails(onlyResend, "smtp_credentials_missing");
+      assert.equal(onlyResend.requests.length, 0);
+    } else {
+      assert.deepEqual(await onlyResend.send(), delivery("resend", "email"), mode);
+      assert.equal(onlyResend.requests.length, 1);
+    }
+    assert.equal(onlyResend.mail.length, 0);
+    assertSanitizedLogs(onlyResend);
+  }
+});
+
+test("email provider misconfiguration fails with stable 503 errors and never falls back to another ready provider", async () => {
+  for (const mode of ["smtp", "email", "resend", "smart", "production", "provider"]) {
+    for (const [configured, credentials, error] of [
+      ["smtp", RESEND_ENV, "smtp_credentials_missing"],
+      ["resend", SMTP_ENV, "resend_api_key_missing"],
+    ]) {
+      const h = harness({ env: { ...credentials, CONSUMER_AUTH_MODE: mode, CONSUMER_AUTH_EMAIL_PROVIDER: configured } });
+      const result = await h.post();
+      assert.equal(result.status, 503);
+      assert.deepEqual(await result.json(), { ok: false, error });
+      assert.equal(h.requests.length + h.mail.length + h.transports.length, 0);
+      assertSanitizedLogs(h);
+    }
+    for (const configured of ["ses", '""smtp""', "''resend''", "'smtp\"", '"smtp', 'resend"', "SMTP-INVALID", RAW_ERROR]) {
+      const h = harness({ env: { ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_AUTH_EMAIL_PROVIDER: configured } });
+      const result = await h.post();
+      assert.equal(result.status, 503);
+      assert.deepEqual(await result.json(), { ok: false, error: "consumer_auth_email_provider_invalid" });
+      assert.equal(result.headers.get("cache-control"), "no-store");
+      assert.equal(h.requests.length + h.mail.length + h.transports.length, 0);
+      assertSanitizedLogs(h);
+    }
+  }
+  const invalidMode = harness({ env: { ...RESEND_ENV, CONSUMER_AUTH_MODE: "not-a-mode", CONSUMER_AUTH_EMAIL_PROVIDER: "resend" } });
+  const result = await invalidMode.post();
+  assert.equal(result.status, 503);
+  assert.deepEqual(await result.json(), { ok: false, error: "consumer_auth_mode_invalid" });
+  assert.equal(invalidMode.requests.length + invalidMode.mail.length, 0);
+});
+
+test("email provider selection never changes phone or demo delivery and a secondary email failure preserves primary phone success", async () => {
+  for (const mode of ["smart", "production", "provider", "sms", "twilio", "whatsapp", "twilio_whatsapp"]) {
+    for (const configured of ["smtp", "resend", "invalid-email-provider"]) {
+      const h = harness({
+        env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_AUTH_EMAIL_PROVIDER: configured },
+        fetch: async () => twilioOk(),
+      });
+      const channel = ["whatsapp", "twilio_whatsapp"].includes(mode) ? "whatsapp" : "sms";
+      assert.deepEqual(await h.send(PHONE), delivery("twilio", channel));
+      assert.equal(h.requests.length, 1);
+      assert.match(String(h.requests[0].url), /^https:\/\/api\.twilio\.com\//);
+      assert.equal(h.mail.length + h.transports.length, 0);
+      assertSanitizedLogs(h);
+    }
+  }
+  for (const mode of ["sms", "twilio", "whatsapp", "twilio_whatsapp"]) {
+    const h = harness({ env: { ...SMTP_ENV, ...RESEND_ENV, ...TWILIO_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_AUTH_EMAIL_PROVIDER: "invalid-email-provider" } });
+    const result = await h.post(EMAIL);
+    assert.equal(result.status, 422);
+    assert.deepEqual(await result.json(), { ok: false, error: "phone_contact_required" });
+    assert.equal(h.requests.length + h.mail.length, 0);
+  }
+  const demo = harness({ env: { NODE_ENV: "test", CONSUMER_AUTH_MODE: "demo", CONSUMER_AUTH_EMAIL_PROVIDER: "invalid-email-provider" } });
+  assert.deepEqual(await demo.send(), delivery("demo", "email", "simulated"));
+  assert.equal(demo.requests.length + demo.mail.length, 0);
+
+  const primary = harness({
+    env: { ...TWILIO_ENV, ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_AUTH_EMAIL_PROVIDER: "invalid-email-provider" },
+    secondaryContact: EMAIL, fetch: async () => twilioOk(),
+  });
+  const result = await primary.post(PHONE);
+  assert.equal(result.status, 200);
+  const body = await result.json();
+  assert.deepEqual(body.delivery, delivery("twilio", "sms").delivery);
+  assert.deepEqual(body.secondaryDelivery, { channel: "email", status: "failed" });
+  assert.equal(body.multiChannelDelivery, false);
+  assert.equal(body.deliveryChannel, "sms");
+  assert.equal(primary.requests.length, 1);
+  assert.equal(primary.mail.length + primary.transports.length, 0);
+  assertPublicPayload(body);
+  assertSanitizedLogs(primary);
+  assert.ok(primary.logs.some((line) => line.includes('"reason":"consumer_auth_email_provider_invalid"')));
 });
 
 test("SMTP accepts the requested address only when it is accepted and is absent from rejected", async () => {
@@ -334,6 +460,74 @@ test("smart routes email and phones to configured drivers, including Whatsapp; l
   await fails(invalid, "consumer_phone_otp_channel_invalid", PHONE);
 });
 
+test("WhatsApp authentication template sends only the OTP variable and preserves SMS/free-form fallback", async () => {
+  const contentSid = `HX${"c".repeat(32)}`;
+  const h = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "whatsapp", TWILIO_WHATSAPP_AUTH_CONTENT_SID: `"${contentSid}"` }, fetch: async () => twilioOk() });
+  assert.deepEqual(await h.send(PHONE), delivery("twilio", "whatsapp"));
+  const body = h.requests[0].init.body;
+  assert.equal(body.get("ContentSid"), contentSid);
+  assert.deepEqual(JSON.parse(body.get("ContentVariables")), { "1": CODE });
+  assert.equal(body.has("Body"), false);
+  assert.equal(body.has("MediaUrl"), false);
+  assert.equal(body.toString().includes(MAGIC), false);
+  assertSanitizedLogs(h, [contentSid]);
+  for (const [mode, content] of [["whatsapp", ""], ["sms", contentSid]]) {
+    const legacy = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: mode, TWILIO_WHATSAPP_AUTH_CONTENT_SID: content }, fetch: async () => twilioOk() });
+    await legacy.send(PHONE);
+    assert.equal(legacy.requests[0].init.body.has("ContentSid"), false);
+    assert.ok(legacy.requests[0].init.body.get("Body").includes(CODE));
+    assertSanitizedLogs(legacy);
+  }
+  for (const invalid of ["HXshort", `SM${"c".repeat(32)}`, `HX${"z".repeat(32)}`]) {
+    const rejected = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "whatsapp", TWILIO_WHATSAPP_AUTH_CONTENT_SID: invalid } });
+    await fails(rejected, "twilio_content_sid_invalid", PHONE);
+    assert.equal(rejected.requests.length, 0);
+  }
+});
+
+test("known WhatsApp Sandbox sender is forbidden in production-like runtimes before any HTTP request", async () => {
+  for (const runtime of [{ NODE_ENV: "production" }, { NODE_ENV: "test", VERCEL_ENV: "preview" }, { NODE_ENV: "test", VERCEL: "1" }]) {
+    for (const from of ["+14155238886", "whatsapp:+14155238886", " WhatsApp:+1 (415) 523-8886 ", '"whatsapp:+14155238886"']) {
+      const h = harness({ env: { ...TWILIO_ENV, ...runtime, CONSUMER_AUTH_MODE: "whatsapp", TWILIO_WHATSAPP_FROM: from } });
+      await fails(h, "twilio_whatsapp_sandbox_forbidden", PHONE);
+      const result = await h.post(PHONE);
+      assert.equal(result.status, 503);
+      assert.deepEqual(await result.json(), { ok: false, error: "twilio_whatsapp_sandbox_forbidden" });
+      assert.equal(h.requests.length, 0);
+      assertSanitizedLogs(h, [from, "14155238886"]);
+    }
+  }
+  for (const extra of [
+    { NODE_ENV: "test" },
+    { TWILIO_WHATSAPP_FROM: TWILIO_ENV.TWILIO_WHATSAPP_FROM },
+    { TWILIO_MESSAGING_SERVICE_SID: `MG${"c".repeat(32)}` },
+    { CONSUMER_AUTH_MODE: "sms", TWILIO_FROM_NUMBER: "+14155238886" },
+  ]) {
+    const h = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "whatsapp", TWILIO_WHATSAPP_FROM: "whatsapp:+14155238886", ...extra }, fetch: async () => twilioOk() });
+    assert.equal((await h.send(PHONE)).delivery.status, "accepted");
+    assert.equal(h.requests.length, 1);
+  }
+});
+
+test("Twilio status URL is production-only by default and never comes from the inbound URL", async () => {
+  const canonical = "https://api.nexid.lat/twilio/consumer-otp/status";
+  const preview = "https://otp-preview.example.test/twilio/consumer-otp/status";
+  for (const [runtime, expected] of [
+    [{ VERCEL_ENV: "production" }, canonical],
+    [{ NODE_ENV: "production" }, null],
+    [{ NODE_ENV: "test" }, null],
+    [{ VERCEL_ENV: "preview" }, null],
+    [{ VERCEL_ENV: "preview", TWILIO_CONSUMER_OTP_STATUS_CALLBACK_URL: preview }, preview],
+  ]) {
+    const h = harness({ env: { ...TWILIO_ENV, ...runtime, CONSUMER_AUTH_MODE: "sms", TWILIO_INBOUND_WEBHOOK_URL: "https://wrong.example.test/twilio/whatsapp/inbound" }, fetch: async () => twilioOk() });
+    await h.send(PHONE);
+    assert.equal(h.requests[0].init.body.get("StatusCallback"), expected);
+  }
+  const invalid = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "sms", TWILIO_CONSUMER_OTP_STATUS_CALLBACK_URL: "http://localhost/twilio/consumer-otp/status" } });
+  await fails(invalid, "twilio_status_callback_url_invalid", PHONE);
+  assert.equal(invalid.requests.length, 0);
+});
+
 test("production mock-social contact with DEMO_MODE still calls and requires its real configured driver", async () => {
   const h = harness({ env: { ...SMTP_ENV, CONSUMER_AUTH_MODE: "smart", DEMO_MODE: "true" } });
   const result = await h.auth.startConsumerAuth("demo.consumer@nexid.local");
@@ -390,6 +584,8 @@ test("start route maps configuration, invalid receipts and timeouts to explicit 
     [{ CONSUMER_AUTH_MODE: "noop" }, undefined, EMAIL, 503, "consumer_auth_mode_invalid"],
     [{ CONSUMER_AUTH_MODE: "demo" }, undefined, EMAIL, 503, "consumer_auth_demo_forbidden"],
     [{ CONSUMER_AUTH_MODE: "smtp" }, undefined, EMAIL, 503, "smtp_credentials_missing"],
+    [{ ...TWILIO_ENV, CONSUMER_AUTH_MODE: "whatsapp", TWILIO_WHATSAPP_AUTH_CONTENT_SID: "invalid" }, undefined, PHONE, 503, "twilio_content_sid_invalid"],
+    [{ ...TWILIO_ENV, CONSUMER_AUTH_MODE: "sms", TWILIO_CONSUMER_OTP_STATUS_CALLBACK_URL: "invalid" }, undefined, PHONE, 503, "twilio_status_callback_url_invalid"],
     [{ ...TWILIO_ENV, CONSUMER_AUTH_MODE: "sms" }, async () => twilioOk({ sid: "bad" }), PHONE, 502, "twilio_receipt_invalid"],
     [{ ...RESEND_ENV, CONSUMER_AUTH_MODE: "resend" }, async () => { const error = new Error(RAW_ERROR); error.name = "TimeoutError"; throw error; }, EMAIL, 504, "resend_delivery_timeout"],
   ]) {

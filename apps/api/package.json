@@ -48,7 +48,7 @@
     "webhooks:migrate-signing-secrets": "node --import tsx scripts/migrate-webhook-signing-secrets.mjs",
     "supplier:physical-evidence:validate": "node scripts/validate-physical-nfc-evidence-pack.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
-    "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs",
+    "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs tests/consumer-otp-twilio-status.test.mjs",
     "test:rewards": "node --test tests/reward-public-links-security.test.mjs",
     "test:sun": "node --import tsx --test tests/sun-*.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",

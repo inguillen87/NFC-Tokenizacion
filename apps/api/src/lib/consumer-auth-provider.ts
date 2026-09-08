@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { createHash } from "node:crypto";
 import { domainToASCII } from "node:url";
+import { getConsumerOtpTwilioStatusCallbackUrl } from "./consumer-otp-twilio-status";
 
 export type OtpDeliveryPayload = {
   contact: string;
@@ -299,12 +300,26 @@ class TwilioOtpProvider implements ConsumerOtpProvider {
       : env("TWILIO_FROM_NUMBER") || env("TWILIO_FROM");
     if (!accountSid || !authToken) throw new Error("twilio_credentials_missing");
     if (!messagingServiceSid && !from) throw new Error("twilio_sender_missing");
+    if (this.channel === "whatsapp" && !messagingServiceSid && isConsumerOtpProduction() && normalizePhone(from) === "+14155238886") {
+      throw new Error("twilio_whatsapp_sandbox_forbidden");
+    }
 
     const toPhone = normalizePhone(payload.contact);
     const to = this.channel === "whatsapp" ? `whatsapp:${toPhone}` : toPhone;
     const body = new URLSearchParams();
     body.set("To", to);
-    body.set("Body", otpText(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken));
+    const contentSid = this.channel === "whatsapp" ? env("TWILIO_WHATSAPP_AUTH_CONTENT_SID") : "";
+    if (contentSid) {
+      if (!/^HX[a-fA-F\d]{32}$/.test(contentSid)) throw new Error("twilio_content_sid_invalid");
+      body.set("ContentSid", contentSid);
+      body.set("ContentVariables", JSON.stringify({ "1": payload.code }));
+    } else {
+      // Compatibility fallback until an approved authentication template is
+      // configured. WhatsApp free-form delivery requires an open service window.
+      body.set("Body", otpText(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken));
+    }
+    const statusCallback = getConsumerOtpTwilioStatusCallbackUrl();
+    if (statusCallback) body.set("StatusCallback", statusCallback);
     if (messagingServiceSid) {
       body.set("MessagingServiceSid", messagingServiceSid);
     } else {
@@ -334,18 +349,33 @@ class TwilioOtpProvider implements ConsumerOtpProvider {
   }
 }
 
-class SmartOtpProvider implements ConsumerOtpProvider {
+class EmailOtpProvider implements ConsumerOtpProvider {
   private readonly resend = new ResendEmailOtpProvider();
   private readonly smtp = new SmtpOtpProvider();
+
+  constructor(private readonly legacySmtpOnly = false) {}
+
+  async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
+    if (!isEmail(payload.contact)) throw new Error("email_contact_required");
+    const selected = env("CONSUMER_AUTH_EMAIL_PROVIDER").toLowerCase();
+    if (selected && selected !== "smtp" && selected !== "resend") throw new Error("consumer_auth_email_provider_invalid");
+    // An explicit choice never falls back to the other provider, even if it has
+    // usable credentials. Empty configuration preserves each legacy mode.
+    if (selected === "smtp" || (!selected && (this.legacySmtpOnly || (env("SMTP_USER") && env("SMTP_PASSWORD"))))) {
+      return this.smtp.sendOtp(payload);
+    }
+    return this.resend.sendOtp(payload);
+  }
+}
+
+class SmartOtpProvider implements ConsumerOtpProvider {
+  private readonly email = new EmailOtpProvider();
   private readonly sms = new TwilioOtpProvider("sms");
   private readonly whatsapp = new TwilioOtpProvider("whatsapp");
 
   async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
     if (isEmail(payload.contact)) {
-      if (env("SMTP_USER") && env("SMTP_PASSWORD")) {
-        return this.smtp.sendOtp(payload);
-      }
-      return this.resend.sendOtp(payload);
+      return this.email.sendOtp(payload);
     }
     const channel = env("CONSUMER_PHONE_OTP_CHANNEL").toLowerCase();
     if (channel === "whatsapp") return this.whatsapp.sendOtp(payload);
@@ -361,11 +391,8 @@ export function resolveConsumerOtpProvider() {
     if (isConsumerOtpProduction()) throw new Error("consumer_auth_demo_forbidden");
     return new DemoOtpProvider();
   }
-  if (mode === "smtp") return new SmtpOtpProvider();
-  if (mode === "email" || mode === "resend") {
-    if (env("SMTP_USER") && env("SMTP_PASSWORD")) return new SmtpOtpProvider();
-    return new ResendEmailOtpProvider();
-  }
+  if (mode === "smtp") return new EmailOtpProvider(true);
+  if (mode === "email" || mode === "resend") return new EmailOtpProvider();
   if (mode === "sms" || mode === "twilio") return new TwilioOtpProvider("sms");
   if (mode === "whatsapp" || mode === "twilio_whatsapp") return new TwilioOtpProvider("whatsapp");
   return new SmartOtpProvider();
