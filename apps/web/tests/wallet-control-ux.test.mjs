@@ -16,7 +16,7 @@ test("wallet UX separates detected, presentation and control-verified states", a
   assert.match(card, /Solo presentación/);
   assert.match(card, /no se guarda, no prueba control/);
   assert.doesNotMatch(card, /persistWallet/);
-  assert.match(page, /<div className="space-y-6">\s*<MetamaskSandboxCard[\s\S]*?<div className="grid gap-6 lg:grid-cols-\[minmax\(0,1fr\)_340px\]">/);
+  assert.match(page, /<section aria-labelledby="wallet-brand-points-title"[\s\S]*?<MetamaskSandboxCard initialWallet=\{wallet\?\.blockchainWallet\} autoConnect=\{shouldAutoConnectMetaMask\} \/>[\s\S]*?<div className="grid gap-6 lg:grid-cols-\[minmax\(0,1fr\)_340px\]">/);
   assert.match(card, /consumer-wallet-control/);
   assert.match(page, /consumer-passport-collection/);
   assert.match(globals, /html\[data-theme="light"\] \.consumer-wallet-control/);

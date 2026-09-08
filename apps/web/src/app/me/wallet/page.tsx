@@ -1,26 +1,13 @@
-import Link from "next/link";
-// Reference for public certificate mapping test matching: certificateHref
-import { BadgeCheck, Coins, ExternalLink, PackageCheck, ShieldCheck, Store, WalletCards, Award } from "lucide-react";
+import { BadgeCheck, Coins, PackageCheck, ShieldCheck, Store, WalletCards } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import type { ConsumerPortalProduct } from "../_components/consumer-portal-model";
+import { buildConsumerWalletPointsModel } from "../_components/consumer-wallet-points-model";
+import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
 import { PortalShell } from "../_components/portal-shell";
 import { MetamaskSandboxCard } from "./metamask-sandbox-card";
 import { WalletInteractiveClient } from "../_components/wallet-interactive-client";
 
-type TenantWallet = {
-  slug?: string | null;
-  name?: string | null;
-  points_balance?: number | string | null;
-  lifetime_points?: number | string | null;
-};
-
 type WalletPayload = {
-  tenantWallets?: TenantWallet[];
-  networkWallet?: {
-    points_balance?: number | string | null;
-    lifetime_points?: number | string | null;
-    enabled?: boolean;
-  };
   blockchainWallet?: {
     address?: string | null;
     chainId?: string | null;
@@ -30,11 +17,6 @@ type WalletPayload = {
     verificationMethod?: string | null;
   };
 };
-
-function toNumber(value: unknown) {
-  const next = Number(value || 0);
-  return Number.isFinite(next) ? next : 0;
-}
 
 function hasOnChainProof(product: ConsumerPortalProduct) {
   const txHash = String(product.tokenization_tx_hash || "");
@@ -51,10 +33,8 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
     fetchConsumerPath("products"),
   ]);
   
-  const tenantWallets = Array.isArray(wallet?.tenantWallets) ? wallet.tenantWallets : [];
+  const points = buildConsumerWalletPointsModel(wallet);
   const products = asArray<ConsumerPortalProduct>(productsPayload);
-  const networkPoints = toNumber(wallet?.networkWallet?.points_balance);
-  const lifetimePoints = toNumber(wallet?.networkWallet?.lifetime_points);
   const claimedProducts = products.filter((product) => String(product.ownership_record_status || product.ownership_status || "").toLowerCase() === "claimed");
   const onChainProducts = products.filter(hasOnChainProof);
   const selectedTenant = typeof params.tenant === "string" ? params.tenant : "";
@@ -66,6 +46,38 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
       subtitle="Administrá certificados digitales, registros de ownership, NFT y puntos. Ninguno garantiza por sí solo autenticidad física, contenido o procedencia."
     >
       <div className="space-y-6">
+        <section aria-labelledby="wallet-brand-points-title" className="rounded-3xl border border-[color:var(--portal-border)] bg-[var(--portal-surface)] p-5 text-[var(--portal-text)] sm:p-6">
+          <div className="flex items-start gap-3">
+            <Coins className="mt-0.5 h-6 w-6 shrink-0 text-[var(--portal-accent)]" aria-hidden="true" />
+            <div>
+              <h2 id="wallet-brand-points-title" className="text-xl font-extrabold">Tus puntos por marca</h2>
+              <p className="mt-1 text-sm leading-6 text-[var(--portal-muted)]">Cada saldo pertenece a su marca. No se suman ni se transfieren entre empresas.</p>
+            </div>
+          </div>
+
+          {points.brands.status === "unavailable" ? (
+            <div role="status" className="mt-5 space-y-3 rounded-2xl border border-[color:var(--portal-border)] bg-[var(--portal-subtle)] p-4">
+              <p className="text-sm text-[var(--portal-muted)]">No pudimos cargar tus saldos por marca. No se muestran como cero.</p>
+              <ConsumerDataRetryButton />
+            </div>
+          ) : points.brands.data.length === 0 ? (
+            <p className="mt-5 rounded-2xl bg-[var(--portal-subtle)] p-4 text-sm leading-6 text-[var(--portal-muted)]">Todavía no hay saldos por marca asociados a esta cuenta.</p>
+          ) : (
+            <div className="mt-5 grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
+              {points.brands.data.map((brand, index) => (
+                <article key={`${brand.slug || "brand"}-${index}`} data-wallet-scope="brand" className="min-w-0 rounded-2xl border border-[color:var(--portal-border)] bg-[var(--portal-subtle)] p-4">
+                  <h3 className="break-words text-base font-extrabold">{brand.name || brand.slug || "Marca no informada"}</h3>
+                  <dl className="mt-4 grid grid-cols-2 gap-3">
+                    <div><dt className="text-xs font-semibold text-[var(--portal-muted)]">Saldo de esta marca</dt><dd className="mt-1 text-2xl font-extrabold text-[var(--portal-accent)]">{brand.balance === null ? <span className="text-sm font-semibold text-[var(--portal-muted)]">No informado</span> : brand.balance}</dd></div>
+                    <div><dt className="text-xs font-semibold text-[var(--portal-muted)]">Acumulados en esta marca</dt><dd className="mt-1 text-xl font-bold">{brand.lifetime === null ? <span className="text-sm font-semibold text-[var(--portal-muted)]">No informado</span> : brand.lifetime}</dd></div>
+                  </dl>
+                  <p className="mt-3 text-xs leading-5 text-[var(--portal-muted)]">Puntos reportados. Los beneficios y sus condiciones se consultan por separado.</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
         <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} autoConnect={shouldAutoConnectMetaMask} />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -123,10 +135,8 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
             </section>
 
             {/* Quick Metrics Cards */}
-            <section className="grid gap-3 grid-cols-3">
+            <section className="grid gap-3">
               {[
-                { label: "Puntos Disponibles", value: networkPoints, Icon: Coins, desc: "Canjeables en bodega" },
-                { label: "Puntos Históricos", value: lifetimePoints, Icon: Award, desc: "Acumulado total" },
                 { label: "Botellas Totales", value: products.length, Icon: PackageCheck, desc: "Unidades asociadas" },
               ].map(({ label, value, Icon, desc }) => (
                 <article key={label} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 transition duration-300 hover:border-white/10">
@@ -148,37 +158,23 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
          {/* Right Column: Faucet / Metamask / Sandbox & Tenant Points */}
          <div className="space-y-6">
             
-            {/* Tenant Wallets/Points summary */}
-            <div className="rounded-3xl border border-white/10 bg-slate-950/65 p-5">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Mis Puntos por Marca</h3>
-              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Saldos activos canjeables por experiencias.</p>
-
-              <div className="mt-4 space-y-2.5">
-                {tenantWallets.length ? (
-                  tenantWallets.map((tenant) => (
-                    <div key={String(tenant.slug || tenant.name || "tenant")} className="rounded-2xl border border-white/5 bg-slate-900/30 p-4 transition hover:border-white/10">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/10 text-xs font-black">
-                          🍇
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-white leading-none">{tenant.name || tenant.slug || "Bodega"}</p>
-                          <p className="text-[8px] uppercase tracking-wider text-slate-500 mt-1 font-mono">{tenant.slug || "general"}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-baseline justify-between">
-                        <span className="text-lg font-black text-white">{toNumber(tenant.points_balance)} <span className="text-[10px] font-medium text-slate-400">puntos</span></span>
-                        <span className="text-[9px] text-slate-500">{toNumber(tenant.lifetime_points)} hist.</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-white/5 bg-slate-900/10 p-4 text-center text-[10px] text-slate-500">
-                    Aún no acumulas puntos. La marca define qué interacción elegible los activa.
-                  </div>
-                )}
-              </div>
-            </div>
+            <section data-wallet-scope="network" aria-labelledby="wallet-network-points-title" className="rounded-3xl border border-[color:var(--portal-border)] bg-[var(--portal-surface)] p-5 text-[var(--portal-text)]">
+              <h3 id="wallet-network-points-title" className="text-base font-extrabold">Puntos de la red nexID</h3>
+              <p className="mt-2 text-sm leading-6 text-[var(--portal-muted)]">Cuenta independiente de los saldos por marca.</p>
+              {points.network.status === "disabled" ? (
+                <p className="mt-4 rounded-xl bg-[var(--portal-subtle)] p-3 text-sm leading-6 text-[var(--portal-muted)]">La red nexID no está habilitada para esta cuenta. Esto no afecta tus puntos de cada marca.</p>
+              ) : points.network.status === "unavailable" ? (
+                <div role="status" className="mt-4 space-y-3">
+                  <p className="text-sm leading-6 text-[var(--portal-muted)]">Saldo de red no disponible. No se reemplaza con cero ni con los puntos de tus marcas.</p>
+                  {points.brands.status === "ready" ? <ConsumerDataRetryButton /> : null}
+                </div>
+              ) : (
+                <dl className="mt-4 space-y-4">
+                  <div><dt className="text-xs font-semibold text-[var(--portal-muted)]">Saldo reportado de la red</dt><dd className="mt-1 text-xl font-extrabold">{points.network.balance === null ? "No informado" : points.network.balance}</dd></div>
+                  <div><dt className="text-xs font-semibold text-[var(--portal-muted)]">Acumulados en la red nexID</dt><dd className="mt-1 text-xl font-bold">{points.network.lifetime === null ? "No informado" : points.network.lifetime}</dd></div>
+                </dl>
+              )}
+            </section>
 
             {/* Premium details widget */}
             <div className="rounded-3xl border border-cyan-500/15 bg-cyan-500/5 p-5">

@@ -28,6 +28,14 @@ createServer(async (req, res) => {
   if (url.pathname === "/consumer/session") { res.end(JSON.stringify({ ok: scenario !== "login", authenticated: scenario !== "login" })); return; }
   if (scenario === "unavailable") { res.writeHead(503); res.end(JSON.stringify({ ok: false })); return; }
   if (url.pathname === "/consumer/me") { res.end(JSON.stringify({ ok: true, consumer, stats: scenario === "empty" ? {products:0,taps:0,memberships:0} : {products:1,taps:3,memberships:1} })); return; }
+  if (url.pathname === "/consumer/wallet") {
+    res.end(JSON.stringify({
+      ok: true,
+      tenantWallets: scenario === "empty" ? [] : [{ slug: "qa-local", name: "Marca de prueba", points_balance: 120, lifetime_points: 180 }],
+      networkWallet: { enabled: false, points_balance: 0, lifetime_points: 0 },
+    }));
+    return;
+  }
   if (url.pathname.startsWith("/consumer/taps/")) {
     const item = scenario === "empty" ? null : items.taps.find(tap => String(tap.tap_event_id) === url.pathname.split("/").at(-1));
     if (!item) { res.writeHead(404); res.end(JSON.stringify({ok:false,error:"not_found"})); return; }
