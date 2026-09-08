@@ -869,6 +869,33 @@ html.theme-light .glass {
   color: #0f172a !important;
 }
 
+/* Local campaign panels only: pair their backgrounds with the existing theme text colors. */
+.loyalty-campaign-circuit-panel {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.16), transparent 36%),
+    linear-gradient(135deg, rgba(2, 6, 23, 0.92), rgba(8, 47, 73, 0.36));
+}
+
+.loyalty-campaign-trivia-panel {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(168, 85, 247, 0.16), transparent 38%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.52));
+}
+
+/* Replace the entire dark image; background-color alone would remain behind it. */
+html:is(.theme-light, [data-theme="light"]) .loyalty-campaign-circuit-panel {
+  background: linear-gradient(135deg, #ffffff, #ecfeff);
+}
+
+html:is(.theme-light, [data-theme="light"]) .loyalty-campaign-trivia-panel {
+  background: linear-gradient(135deg, #ffffff, #f5f3ff);
+}
+
+html:is(.theme-light, [data-theme="light"]) .loyalty-campaign-trivia-panel .bg-slate-800.text-slate-400 {
+  background: #f1f5f9;
+  color: #334155;
+}
+
 html.theme-light .dashboard-hero-panel {
   background:
     radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.13), transparent 34%),

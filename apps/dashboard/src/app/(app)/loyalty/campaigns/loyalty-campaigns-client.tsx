@@ -1220,7 +1220,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
           ))}
         </div> : null}
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.16),transparent_36%),linear-gradient(135deg,rgba(2,6,23,.92),rgba(8,47,73,.36))] p-4">
+        <div className="loyalty-campaign-circuit-panel mt-4 overflow-hidden rounded-2xl border border-cyan-400/20 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">
@@ -1254,7 +1254,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
         <details className="mt-4 rounded-2xl border border-white/10 p-3">
           <summary className="min-h-11 cursor-pointer px-1 py-3 text-sm font-semibold text-slate-200">Herramientas de prueba y canje</summary>
           <p className="px-1 text-xs leading-relaxed text-slate-400">Plantillas de ejemplo, trivia, prueba manual de WhatsApp y canjes. Son funciones separadas de los borradores guardados; no envían campañas a la audiencia consultada.</p>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-[radial-gradient(circle_at_0%_0%,rgba(168,85,247,.16),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.92),rgba(30,41,59,.52))] p-4">
+        <div className="loyalty-campaign-trivia-panel mt-4 overflow-hidden rounded-2xl border border-violet-400/20 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-violet-200">

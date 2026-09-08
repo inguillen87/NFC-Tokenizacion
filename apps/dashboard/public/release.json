@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.08-dashboard.1",
-  "scope": "compact-responsive-admin-header-accessible-controls-and-mobile-navigation",
+  "release": "2026.09.08-dashboard.2",
+  "scope": "campaign-circuit-and-trivia-panels-light-dark-contrast-with-compact-admin-header",
   "realTapCertification": "not-included",
-  "baseCommit": "8ab819fcc81a67508627b5e2475ceaa3219f5b14",
+  "baseCommit": "9bae6ce218d4448a854b45dffe11b2d3bbce321a",
   "requiredApiRelease": "2026.09.06-api-campaigns.1",
   "source": "isolated-committed-production-baseline",
   "apiChangesIncluded": false,
