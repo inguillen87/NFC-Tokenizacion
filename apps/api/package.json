@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3003",
     "prebuild": "npm run prisma:generate",
-    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && npm run test:sun && npm run test:supplier-security && npm run test:commercial-scope && npm run test:campaign-drafts && npm run test:polygon-transfer && npm run test:wallet-control && npm run test:proof && npm run test:webhooks && npm run test:gs1-epcis && npm run test:auth-security && npm run test:rate-limits && next build",
+    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && npm run test:sun && npm run test:supplier-security && npm run test:commercial-scope && npm run test:campaign-drafts && npm run test:polygon-transfer && npm run test:wallet-control && npm run test:proof && npm run test:webhooks && npm run test:gs1-epcis && npm run test:auth-security && npm run test:consumer-otp && npm run test:rate-limits && next build",
     "start": "next start -p 3003",
     "db:new": "node scripts/db-new-migration.mjs",
     "db:migrate": "node scripts/db-apply.mjs",
@@ -48,6 +48,7 @@
     "webhooks:migrate-signing-secrets": "node --import tsx scripts/migrate-webhook-signing-secrets.mjs",
     "supplier:physical-evidence:validate": "node scripts/validate-physical-nfc-evidence-pack.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
+    "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs",
     "test:rewards": "node --test tests/reward-public-links-security.test.mjs",
     "test:sun": "node --import tsx --test tests/sun-*.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",

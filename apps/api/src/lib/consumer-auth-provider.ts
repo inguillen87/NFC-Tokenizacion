@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import { createHash } from "node:crypto";
+import { domainToASCII } from "node:url";
 
 export type OtpDeliveryPayload = {
   contact: string;
@@ -7,17 +9,71 @@ export type OtpDeliveryPayload = {
   magicToken?: string;
 };
 
-export interface ConsumerOtpProvider {
-  sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }>;
-}
+export type OtpDeliveryChannel = "email" | "sms" | "whatsapp";
+export type OtpDelivery = { channel: OtpDeliveryChannel; provider: "smtp" | "resend" | "twilio" | "demo"; status: "accepted" | "simulated" };
+export type OtpDeliveryResult = { ok: true; delivery: OtpDelivery };
+export interface ConsumerOtpProvider { sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult>; }
 
 type TwilioChannel = "sms" | "whatsapp";
+const DELIVERY_TIMEOUT_MS = 10_000;
+const DELIVERY_MODES = new Set(["demo", "smtp", "email", "resend", "sms", "twilio", "whatsapp", "twilio_whatsapp", "smart", "production", "provider"]);
 
 function env(name: string) {
-  return String(process.env[name] || "")
-    .trim()
-    .replace(/^['"]|['"]$/g, "")
-    .trim();
+  const value = String(process.env[name] || "").trim();
+  const quote = value[0];
+  return value.length >= 2 && (quote === "'" || quote === '"') && value.at(-1) === quote
+    ? value.slice(1, -1).trim()
+    : value;
+}
+
+export function isConsumerOtpProduction() {
+  return env("NODE_ENV").toLowerCase() === "production" || env("VERCEL") === "1" || ["production", "preview"].includes(env("VERCEL_ENV").toLowerCase());
+}
+
+export function consumerOtpDeliveryMode() {
+  const mode = env("CONSUMER_AUTH_MODE").toLowerCase() || (isConsumerOtpProduction() ? "smart" : "demo");
+  return DELIVERY_MODES.has(mode) ? mode : "invalid";
+}
+
+export function consumerOtpDeliveryChannel(contact: string): OtpDeliveryChannel {
+  if (isEmail(contact)) return "email";
+  const mode = consumerOtpDeliveryMode();
+  if (mode === "whatsapp" || mode === "twilio_whatsapp") return "whatsapp";
+  if (mode === "sms" || mode === "twilio") return "sms";
+  return env("CONSUMER_PHONE_OTP_CHANNEL").toLowerCase() === "whatsapp" ? "whatsapp" : "sms";
+}
+
+type DeliveryDiagnostics = { providerStatus?: string; receiptHash?: string; httpStatus?: number; errorCode?: number; acceptedCount?: number; rejectedCount?: number };
+function auditDelivery(provider: OtpDelivery["provider"], channel: OtpDeliveryChannel, status: "accepted" | "failed" | "simulated", details: DeliveryDiagnostics = {}) {
+  // Never include message content, recipients, credentials or raw provider errors.
+  console.log("[consumer_auth_delivery_audit]", JSON.stringify({ event: "consumer_otp_provider_result", mode: consumerOtpDeliveryMode(), provider, channel, status, ...details, at: new Date().toISOString() }));
+}
+
+function receiptHash(value: string) { return createHash("sha256").update(value).digest("hex").slice(0, 16); }
+function accepted(provider: OtpDelivery["provider"], channel: OtpDeliveryChannel, details: DeliveryDiagnostics): OtpDeliveryResult {
+  auditDelivery(provider, channel, "accepted", details);
+  return { ok: true, delivery: { provider, channel, status: "accepted" } };
+}
+
+async function providerRequest(url: string, init: RequestInit, provider: "resend" | "twilio", channel: OtpDeliveryChannel) {
+  try {
+    const response = await fetch(url, { ...init, signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS) });
+    const data = await response.json().catch((error: unknown) => {
+      if (error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name)) throw error;
+      return null;
+    }) as Record<string, unknown> | null;
+    if (!response.ok) {
+      const errorCode = typeof data?.code === "number" && Number.isSafeInteger(data.code) ? data.code : undefined;
+      auditDelivery(provider, channel, "failed", { httpStatus: response.status, ...(errorCode !== undefined ? { errorCode } : {}) });
+      throw new Error(`${provider}_delivery_failed`);
+    }
+    return { response, data };
+  } catch (error) {
+    if (error instanceof Error && error.message === `${provider}_delivery_failed`) throw error;
+    const timedOut = error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name);
+    auditDelivery(provider, channel, "failed", { providerStatus: timedOut ? "timeout" : "request_failed" });
+    throw new Error(`${provider}_${timedOut ? "delivery_timeout" : "delivery_failed"}`);
+  }
 }
 
 function isEmail(contact: string) {
@@ -29,15 +85,6 @@ function normalizePhone(contact: string) {
   const digits = trimmed.replace(/[^\d]/g, "");
   if (trimmed.startsWith("+")) return `+${digits}`;
   return digits.length >= 10 ? `+${digits}` : digits;
-}
-
-function maskContact(contact: string) {
-  if (isEmail(contact)) {
-    const [name, domain] = contact.split("@");
-    return `${name.slice(0, 2)}***@${domain}`;
-  }
-  const phone = normalizePhone(contact);
-  return `${phone.slice(0, 4)}***${phone.slice(-3)}`;
 }
 
 function isPublicHttpsOrigin(value: string) {
@@ -129,20 +176,17 @@ function otpHtml(contact: string, code: string, ttlMinutes: number, magicToken?:
   `;
 }
 
-async function requireOk(res: Response, provider: string) {
-  if (res.ok) return;
-  const detail = await res.text().catch(() => "");
-  throw new Error(`${provider}_delivery_failed:${res.status}${detail ? `:${detail.slice(0, 160)}` : ""}`);
-}
-
 class DemoOtpProvider implements ConsumerOtpProvider {
-  async sendOtp(): Promise<{ ok: true }> {
-    return { ok: true };
+  async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
+    if (isConsumerOtpProduction()) throw new Error("consumer_auth_demo_forbidden");
+    const channel = consumerOtpDeliveryChannel(payload.contact);
+    auditDelivery("demo", channel, "simulated");
+    return { ok: true, delivery: { provider: "demo", channel, status: "simulated" } };
   }
 }
 
 class ResendEmailOtpProvider implements ConsumerOtpProvider {
-  async sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }> {
+  async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
     if (!isEmail(payload.contact)) throw new Error("email_contact_required");
     const apiKey = env("RESEND_API_KEY") || env("OTP_PROVIDER_API_KEY");
     const from = env("CONSUMER_AUTH_FROM_EMAIL") || env("OTP_FROM_EMAIL");
@@ -150,7 +194,7 @@ class ResendEmailOtpProvider implements ConsumerOtpProvider {
     if (!from) throw new Error("consumer_auth_from_email_missing");
 
     const replyTo = env("CONSUMER_AUTH_REPLY_TO_EMAIL") || env("OTP_REPLY_TO_EMAIL");
-    const response = await fetch("https://api.resend.com/emails", {
+    const { response, data } = await providerRequest("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -164,14 +208,17 @@ class ResendEmailOtpProvider implements ConsumerOtpProvider {
         html: otpHtml(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken),
         ...(replyTo ? { reply_to: replyTo } : {}),
       }),
-    });
-    await requireOk(response, "resend");
-    return { ok: true };
+    }, "resend", "email");
+    if (typeof data?.id !== "string" || !/^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(data.id)) {
+      auditDelivery("resend", "email", "failed", { httpStatus: response.status, providerStatus: "invalid_receipt" });
+      throw new Error("resend_receipt_invalid");
+    }
+    return accepted("resend", "email", { httpStatus: response.status, providerStatus: "accepted", receiptHash: receiptHash(data.id) });
   }
 }
 
 class SmtpOtpProvider implements ConsumerOtpProvider {
-  async sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }> {
+  async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
     if (!isEmail(payload.contact)) throw new Error("email_contact_required");
     const host = env("SMTP_HOST") || "mail.privateemail.com";
     const port = Number(env("SMTP_PORT") || "465");
@@ -189,6 +236,10 @@ class SmtpOtpProvider implements ConsumerOtpProvider {
       host,
       port,
       secure,
+      dnsTimeout: DELIVERY_TIMEOUT_MS,
+      connectionTimeout: DELIVERY_TIMEOUT_MS,
+      greetingTimeout: DELIVERY_TIMEOUT_MS,
+      socketTimeout: DELIVERY_TIMEOUT_MS,
       auth: {
         user,
         pass,
@@ -196,18 +247,41 @@ class SmtpOtpProvider implements ConsumerOtpProvider {
     });
 
     try {
-      await transporter.sendMail({
+      // Driver timeouts close the SMTP connection before rejecting; an external
+      // Promise.race would return a failure while the send could still continue.
+      const info = await transporter.sendMail({
         from,
         to: payload.contact,
         subject: "Tu código nexID",
         text: otpText(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken),
         html: otpHtml(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken),
       });
+      const acceptedAddresses = Array.isArray(info.accepted) ? info.accepted : [];
+      const rejectedAddresses = Array.isArray(info.rejected) ? info.rejected : [];
+      const address = (entry: string | { address: string }) => {
+        const value = (typeof entry === "string" ? entry : entry.address || "").trim().toLowerCase();
+        const separator = value.lastIndexOf("@");
+        return separator < 0 ? value : `${value.slice(0, separator)}@${domainToASCII(value.slice(separator + 1))}`;
+      };
+      const recipient = address(payload.contact);
+      const details = { acceptedCount: acceptedAddresses.length, rejectedCount: rejectedAddresses.length };
+      if (!acceptedAddresses.some((entry) => address(entry) === recipient) || rejectedAddresses.some((entry) => address(entry) === recipient)) {
+        auditDelivery("smtp", "email", "failed", { ...details, providerStatus: "recipient_not_accepted" });
+        throw new Error("smtp_receipt_invalid");
+      }
+      return accepted("smtp", "email", { ...details, providerStatus: "accepted", ...(typeof info.messageId === "string" && info.messageId ? { receiptHash: receiptHash(info.messageId) } : {}) });
     } catch (error) {
-      throw new Error(`smtp_delivery_failed:${error instanceof Error ? error.message : String(error)}`);
+      if (error instanceof Error && error.message === "smtp_receipt_invalid") throw error;
+      const failure = error && typeof error === "object" ? error as { code?: unknown; responseCode?: unknown } : {};
+      const statusByCode: Record<string, string> = { EAUTH: "authentication_failed", ECONNECTION: "connection_failed", ETIMEDOUT: "timeout", ESOCKET: "socket_failed", EDNS: "dns_failed", EENVELOPE: "envelope_failed", EMESSAGE: "message_failed", ESTREAM: "stream_failed" };
+      const providerStatus = typeof failure.code === "string" && Object.hasOwn(statusByCode, failure.code) ? statusByCode[failure.code] : "request_failed";
+      const timedOut = providerStatus === "timeout";
+      const errorCode = typeof failure.responseCode === "number" && Number.isSafeInteger(failure.responseCode) ? failure.responseCode : undefined;
+      auditDelivery("smtp", "email", "failed", { providerStatus: timedOut ? "timeout" : providerStatus, ...(errorCode !== undefined ? { errorCode } : {}) });
+      throw new Error(timedOut ? "smtp_delivery_timeout" : "smtp_delivery_failed");
+    } finally {
+      transporter.close();
     }
-
-    return { ok: true };
   }
 }
 
@@ -215,7 +289,7 @@ class SmtpOtpProvider implements ConsumerOtpProvider {
 class TwilioOtpProvider implements ConsumerOtpProvider {
   constructor(private readonly channel: TwilioChannel) {}
 
-  async sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }> {
+  async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
     if (isEmail(payload.contact)) throw new Error(`${this.channel}_phone_contact_required`);
     const accountSid = env("TWILIO_ACCOUNT_SID");
     const authToken = env("TWILIO_AUTH_TOKEN");
@@ -238,16 +312,25 @@ class TwilioOtpProvider implements ConsumerOtpProvider {
     }
 
     const basic = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+    const { response, data } = await providerRequest(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
       method: "POST",
       headers: {
         Authorization: `Basic ${basic}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body,
-    });
-    await requireOk(response, "twilio");
-    return { ok: true };
+    }, "twilio", this.channel);
+    const status = typeof data?.status === "string" ? data.status : "";
+    const allowedStatuses = ["accepted", "queued", "sending", "sent", "delivered", "read"];
+    const knownStatuses = [...allowedStatuses, "scheduled", "canceled", "failed", "undelivered", "receiving", "received"];
+    const validSid = typeof data?.sid === "string" && /^(SM|MM)[a-f\d]{32}$/i.test(data.sid);
+    const errorCode = typeof data?.error_code === "number" && Number.isSafeInteger(data.error_code) ? data.error_code : undefined;
+    const details = { httpStatus: response.status, providerStatus: knownStatuses.includes(status) ? status : "invalid_receipt", ...(validSid ? { receiptHash: receiptHash(data!.sid as string) } : {}), ...(errorCode !== undefined ? { errorCode } : {}) };
+    if (!validSid || !allowedStatuses.includes(status) || (data?.error_code !== null && data?.error_code !== undefined)) {
+      auditDelivery("twilio", this.channel, "failed", details);
+      throw new Error("twilio_receipt_invalid");
+    }
+    return accepted("twilio", this.channel, details);
   }
 }
 
@@ -257,7 +340,7 @@ class SmartOtpProvider implements ConsumerOtpProvider {
   private readonly sms = new TwilioOtpProvider("sms");
   private readonly whatsapp = new TwilioOtpProvider("whatsapp");
 
-  async sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }> {
+  async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
     if (isEmail(payload.contact)) {
       if (env("SMTP_USER") && env("SMTP_PASSWORD")) {
         return this.smtp.sendOtp(payload);
@@ -266,26 +349,18 @@ class SmartOtpProvider implements ConsumerOtpProvider {
     }
     const channel = env("CONSUMER_PHONE_OTP_CHANNEL").toLowerCase();
     if (channel === "whatsapp") return this.whatsapp.sendOtp(payload);
+    if (channel && channel !== "sms") throw new Error("consumer_phone_otp_channel_invalid");
     return this.sms.sendOtp(payload);
   }
 }
 
-class NoopExternalOtpProvider implements ConsumerOtpProvider {
-  async sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }> {
-    const apiKey = env("OTP_PROVIDER_API_KEY");
-    if (!apiKey) throw new Error("otp_provider_api_key_missing");
-    console.log("[consumer_auth_delivery_audit]", JSON.stringify({
-      event: "consumer_auth_provider_noop",
-      contact: maskContact(payload.contact),
-      at: new Date().toISOString(),
-    }));
-    return { ok: true };
-  }
-}
-
 export function resolveConsumerOtpProvider() {
-  const defaultMode = process.env.NODE_ENV === "production" || process.env.VERCEL === "1" ? "smart" : "demo";
-  const mode = env("CONSUMER_AUTH_MODE").toLowerCase() || defaultMode;
+  const mode = consumerOtpDeliveryMode();
+  if (mode === "invalid") throw new Error("consumer_auth_mode_invalid");
+  if (mode === "demo") {
+    if (isConsumerOtpProduction()) throw new Error("consumer_auth_demo_forbidden");
+    return new DemoOtpProvider();
+  }
   if (mode === "smtp") return new SmtpOtpProvider();
   if (mode === "email" || mode === "resend") {
     if (env("SMTP_USER") && env("SMTP_PASSWORD")) return new SmtpOtpProvider();
@@ -293,10 +368,5 @@ export function resolveConsumerOtpProvider() {
   }
   if (mode === "sms" || mode === "twilio") return new TwilioOtpProvider("sms");
   if (mode === "whatsapp" || mode === "twilio_whatsapp") return new TwilioOtpProvider("whatsapp");
-  if (mode === "smart" || mode === "production") return new SmartOtpProvider();
-  if (mode === "provider") {
-    if (env("RESEND_API_KEY") || env("TWILIO_ACCOUNT_SID") || (env("SMTP_USER") && env("SMTP_PASSWORD"))) return new SmartOtpProvider();
-    return new NoopExternalOtpProvider();
-  }
-  return new DemoOtpProvider();
+  return new SmartOtpProvider();
 }

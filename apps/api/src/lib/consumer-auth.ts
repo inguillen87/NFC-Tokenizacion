@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { isIP } from "node:net";
 import { sql } from "./db";
-import { resolveConsumerOtpProvider } from "./consumer-auth-provider";
+import { consumerOtpDeliveryChannel, consumerOtpDeliveryMode, isConsumerOtpProduction, resolveConsumerOtpProvider, type OtpDelivery, type OtpDeliveryChannel } from "./consumer-auth-provider";
 import { ensureConsumerAuthSchema } from "./commercial-runtime-schema";
 import { hitSunRateLimit, shouldFailClosedSunRateLimit } from "./sun-rate-limit-store";
 
@@ -26,10 +26,10 @@ async function consumeAuthRate(scope: string, key: string, maxHits: number) {
     const result = await hitSunRateLimit(scope, key, 10 * 60, maxHits);
     if (result.unavailable) return shouldFailClosedSunRateLimit() ? "unavailable" as const : "allowed" as const;
     return result.limited ? "limited" as const : "allowed" as const;
-  } catch (error) {
+  } catch {
     audit("consumer_auth_rate_limit_unavailable", {
       scope,
-      reason: error instanceof Error ? error.message : "rate_limit_unavailable",
+      reason: "rate_limit_unavailable",
     });
     return shouldFailClosedSunRateLimit() ? "unavailable" as const : "allowed" as const;
   }
@@ -68,6 +68,8 @@ function audit(event: string, payload: Record<string, unknown>) {
 
 function normalizeOtpDeliveryError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "");
+  const deliveryErrors = ["consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout"];
+  if (deliveryErrors.includes(message)) return message;
   if (message.includes("email_contact_required")) return "email_contact_required";
   if (message.includes("resend_api_key_missing")) return "resend_api_key_missing";
   if (message.includes("consumer_auth_from_email_missing")) return "consumer_auth_from_email_missing";
@@ -225,16 +227,17 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
   const normalizedContact = normalizeContact(contact);
+  const contactHash = sha(normalizedContact).slice(0, 16);
   const [contactRate, ipRate] = await Promise.all([
     consumeAuthRate("consumer_auth_start_contact", normalizedContact, 5),
     consumeAuthRate("consumer_auth_start_ip", ip, 20),
   ]);
   if (contactRate === "unavailable" || ipRate === "unavailable") {
-    audit("consumer_auth_start_unavailable", { contact: normalizedContact, ip });
+    audit("consumer_auth_start_unavailable", { contactHash, ipHash: sha(ip).slice(0, 16) });
     return { ok: false as const, error: "unavailable" };
   }
   if (contactRate === "limited" || ipRate === "limited") {
-    audit("consumer_auth_start_rate_limited", { contact: normalizedContact, ip });
+    audit("consumer_auth_start_rate_limited", { contactHash, ipHash: sha(ip).slice(0, 16) });
     return { ok: false as const, error: "rate_limited" };
   }
 
@@ -254,30 +257,36 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
   const demoMode = String(process.env.DEMO_MODE || "").toLowerCase();
   const consumerAuthMode = String(process.env.CONSUMER_AUTH_MODE || "").toLowerCase();
   const demoBypassAllowed = ["1", "true", "yes", "demo"].includes(demoMode) || consumerAuthMode === "demo";
-  const isMockSocial = demoBypassAllowed && normalized === "demo.consumer@nexid.local";
+  const isMockSocial = !isConsumerOtpProduction() && demoBypassAllowed && normalized === "demo.consumer@nexid.local";
+  let delivery: OtpDelivery;
+  let secondaryDelivery: { channel: OtpDeliveryChannel; status: "accepted" | "failed" } | undefined;
 
   try {
     if (!isMockSocial) {
-      await resolveConsumerOtpProvider().sendOtp({ contact: normalizedContact, code, ttlMinutes: expiresMinutes, magicToken });
+      const result = await resolveConsumerOtpProvider().sendOtp({ contact: normalizedContact, code, ttlMinutes: expiresMinutes, magicToken });
+      delivery = result.delivery;
 
       for (const secondaryContact of contacts.filter((item) => item !== normalizedContact)) {
         try {
-          await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes, magicToken });
-          audit("consumer_auth_2fa_sent", { contact: normalizedContact, secondaryContact });
+          const result = await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes, magicToken });
+          secondaryDelivery = { channel: result.delivery.channel, status: result.delivery.status === "accepted" ? "accepted" : "failed" };
+          audit("consumer_auth_secondary_delivery", { contactHash, mode: consumerOtpDeliveryMode(), ...result.delivery });
         } catch (err) {
-          audit("consumer_auth_2fa_send_fail", { contact: normalizedContact, secondaryContact, error: String(err) });
+          secondaryDelivery = { channel: consumerOtpDeliveryChannel(secondaryContact), status: "failed" };
+          audit("consumer_auth_secondary_delivery", { contactHash, mode: consumerOtpDeliveryMode(), ...secondaryDelivery, reason: normalizeOtpDeliveryError(err) });
         }
       }
     } else {
-      audit("consumer_auth_mock_social_start", { contact: normalizedContact, ip });
+      delivery = { channel: consumerOtpDeliveryChannel(normalizedContact), provider: "demo", status: "simulated" };
+      audit("consumer_auth_mock_social_start", { contactHash, ...delivery });
     }
   } catch (error) {
     const reason = normalizeOtpDeliveryError(error);
-    audit("consumer_auth_delivery_fail", { contact: normalizedContact, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo", reason });
+    audit("consumer_auth_delivery_fail", { contactHash, channel: consumerOtpDeliveryChannel(normalizedContact), mode: consumerOtpDeliveryMode(), status: "failed", reason });
     return { ok: false as const, error: reason };
   }
-  audit("consumer_auth_start", { contact: normalizedContact, linkedContacts: contacts.length, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo" });
-  return { ok: true as const, code, challengeTtlMinutes: expiresMinutes };
+  audit("consumer_auth_start", { contactHash, linkedContacts: contacts.length, mode: consumerOtpDeliveryMode(), ...delivery, ...(secondaryDelivery ? { secondaryDelivery } : {}) });
+  return { ok: true as const, code, challengeTtlMinutes: expiresMinutes, delivery, ...(secondaryDelivery ? { secondaryDelivery } : {}) };
 }
 
 export async function verifyConsumerAuth(contact: string, code: string, meta?: { userAgent?: string | null; ip?: string | null }) {

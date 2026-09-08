@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.06-api-campaigns.1",
-  "scope": "tenant-campaign-draft-persistence-idempotency-revision-and-audit",
-  "baseCommit": "210edf69e3b708472cc4c9859155f797cc1b700d",
+  "release": "2026.09.08-api-otp.1",
+  "scope": "consumer-otp-provider-acceptance-fail-closed-and-private-delivery-diagnostics",
+  "baseCommit": "798aed0b",
   "requiredDeploymentConfiguration": { "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat" },
-  "databaseMigrationsIncluded": true,
+  "databaseMigrationsIncluded": false,
   "requiredMigration": "20260906120000_0102_campaign_drafts.sql",
   "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
