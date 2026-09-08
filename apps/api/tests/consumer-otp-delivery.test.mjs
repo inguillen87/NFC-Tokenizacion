@@ -28,6 +28,7 @@ const RAW_ERROR = `untrusted provider error ${EMAIL} ${PHONE} ${CODE} ${SMTP_ENV
 const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const compiled = Object.fromEntries(Object.entries({
   status: source("../src/lib/consumer-otp-twilio-status.ts"),
+  twilioConfig: source("../src/lib/consumer-otp-twilio-config.ts"),
   provider: source("../src/lib/consumer-auth-provider.ts"),
   auth: source("../src/lib/consumer-auth.ts"),
   route: source("../src/app/consumer/auth/start/route.ts"),
@@ -41,7 +42,7 @@ function harness(options = {}) {
   const logs = [], requests = [], mail = [], transports = [], queries = [], rates = [], timeouts = [], closed = [];
   const pendingTimers = new Map();
   let timerId = 0;
-  let provider, auth, statusHelper;
+  let provider, auth, statusHelper, twilioConfig;
   class RequestBodyTooLargeError extends Error {}
   const sql = async (parts, ...values) => {
     const text = parts.join("?").replace(/\s+/g, " ").trim();
@@ -71,6 +72,7 @@ function harness(options = {}) {
     if (name === "node:net") return { isIP };
     if (name === "node:url") return { domainToASCII };
     if (name === "./consumer-otp-twilio-status") return statusHelper;
+    if (name === "./consumer-otp-twilio-config") return twilioConfig;
     if (name === "nodemailer" && options.realSmtp) return localRequire("nodemailer");
     if (name === "nodemailer") return { createTransport: (config) => {
       transports.push(config);
@@ -109,6 +111,7 @@ function harness(options = {}) {
     return loaded.exports;
   };
   statusHelper = load("status");
+  twilioConfig = load("twilioConfig");
   provider = load("provider");
   auth = load("auth");
   const route = load("route");
@@ -482,6 +485,101 @@ test("WhatsApp authentication template sends only the OTP variable and preserves
     const rejected = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "whatsapp", TWILIO_WHATSAPP_AUTH_CONTENT_SID: invalid } });
     await fails(rejected, "twilio_content_sid_invalid", PHONE);
     assert.equal(rejected.requests.length, 0);
+  }
+});
+
+test("dedicated consumer WhatsApp sender takes precedence over shared sender pools in every WhatsApp mode", async () => {
+  const dedicated = "whatsapp:+12025550126";
+  for (const mode of ["whatsapp", "twilio_whatsapp", "smart", "production", "provider"]) {
+    for (const value of [dedicated, ` '${dedicated}' `, `"${dedicated}"`]) {
+      const h = harness({ env: {
+        ...TWILIO_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_PHONE_OTP_CHANNEL: "whatsapp",
+        TWILIO_CONSUMER_OTP_WHATSAPP_FROM: value,
+        TWILIO_WHATSAPP_FROM: "whatsapp:+14155238886", TWILIO_MESSAGING_SERVICE_SID: `MG${"c".repeat(32)}`,
+      }, fetch: async () => twilioOk() });
+      assert.deepEqual(await h.send(PHONE), delivery("twilio", "whatsapp"));
+      const body = h.requests[0].init.body;
+      assert.equal(body.get("From"), dedicated);
+      assert.equal(body.has("MessagingServiceSid"), false);
+      assert.equal(body.get("To"), `whatsapp:${PHONE}`);
+      assertSanitizedLogs(h, [dedicated, value]);
+    }
+  }
+  const onlyDedicated = harness({ env: {
+    TWILIO_ACCOUNT_SID: TWILIO_ENV.TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN: TWILIO_ENV.TWILIO_AUTH_TOKEN,
+    CONSUMER_AUTH_MODE: "whatsapp", TWILIO_CONSUMER_OTP_WHATSAPP_FROM: dedicated,
+    TWILIO_CONSUMER_OTP_INBOUND_WEBHOOK_URL: "invalid-inbound-url-does-not-configure-outbound",
+  }, fetch: async () => twilioOk() });
+  assert.deepEqual(await onlyDedicated.send(PHONE), delivery("twilio", "whatsapp"));
+  assert.equal(onlyDedicated.requests[0].init.body.get("From"), dedicated);
+  assert.equal(onlyDedicated.requests[0].init.body.has("MessagingServiceSid"), false);
+});
+
+test("blank dedicated WhatsApp sender preserves legacy aliases and shared service priority exactly", async () => {
+  for (const value of [undefined, "", " ", '""', "''"]) {
+    for (const legacy of [
+      {},
+      { TWILIO_WHATSAPP_FROM: undefined, TWILIO_FROM_WHATSAPP: "whatsapp:+12025550127" },
+      { TWILIO_MESSAGING_SERVICE_SID: `MG${"c".repeat(32)}` },
+    ]) {
+      const env = { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "whatsapp", ...legacy };
+      const baseline = harness({ env, fetch: async () => twilioOk() });
+      const configured = harness({ env: { ...env, TWILIO_CONSUMER_OTP_WHATSAPP_FROM: value }, fetch: async () => twilioOk() });
+      assert.deepEqual(await configured.send(PHONE), await baseline.send(PHONE));
+      assert.equal(configured.requests[0].init.body.toString(), baseline.requests[0].init.body.toString());
+    }
+  }
+});
+
+test("invalid dedicated WhatsApp sender fails closed before HTTP even with a shared service configured", async () => {
+  for (const value of [
+    "+12025550126", "WhatsApp:+12025550126", "whatsapp:12025550126", "whatsapp:+012025550126",
+    "whatsapp:+1 (202) 555-0126", "whatsapp:+1234567", "whatsapp:+1234567890123456",
+    '"whatsapp:+12025550126', "whatsapp:+12025550126\nFrom:other",
+  ]) {
+    const h = harness({ env: {
+      ...TWILIO_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_PHONE_OTP_CHANNEL: "whatsapp",
+      TWILIO_CONSUMER_OTP_WHATSAPP_FROM: value, TWILIO_MESSAGING_SERVICE_SID: `MG${"c".repeat(32)}`,
+    } });
+    await fails(h, "twilio_consumer_otp_whatsapp_from_invalid", PHONE);
+    const result = await h.post(PHONE);
+    assert.equal(result.status, 503);
+    assert.deepEqual(await result.json(), { ok: false, error: "twilio_consumer_otp_whatsapp_from_invalid" });
+    assert.equal(h.requests.length, 0);
+    assertSanitizedLogs(h, [value]);
+  }
+});
+
+test("dedicated WhatsApp configuration never changes SMS, email or campaign sender selection", async () => {
+  for (const mode of ["sms", "twilio", "smart", "production", "provider"]) {
+    const h = harness({ env: {
+      ...TWILIO_ENV, CONSUMER_AUTH_MODE: mode, TWILIO_CONSUMER_OTP_WHATSAPP_FROM: "invalid-dedicated-sender",
+      TWILIO_MESSAGING_SERVICE_SID: `MG${"c".repeat(32)}`,
+    }, fetch: async () => twilioOk() });
+    assert.deepEqual(await h.send(PHONE), delivery("twilio", "sms"));
+    assert.equal(h.requests[0].init.body.get("MessagingServiceSid"), `MG${"c".repeat(32)}`);
+    assert.equal(h.requests[0].init.body.has("From"), false);
+  }
+  for (const mode of ["smtp", "email", "resend", "smart", "production", "provider"]) {
+    const h = harness({ env: {
+      ...SMTP_ENV, CONSUMER_AUTH_MODE: mode, TWILIO_CONSUMER_OTP_WHATSAPP_FROM: "invalid-dedicated-sender",
+    } });
+    assert.deepEqual(await h.send(EMAIL), delivery("smtp", "email"));
+    assert.equal(h.requests.length, 0);
+  }
+  const campaignSource = source("../src/app/admin/campaigns/test-whatsapp/route.ts");
+  assert.match(campaignSource, /env\("TWILIO_WHATSAPP_FROM"\) \|\| env\("TWILIO_FROM_WHATSAPP"\)/);
+  assert.doesNotMatch(campaignSource, /TWILIO_CONSUMER_OTP_WHATSAPP_FROM|getConsumerOtpWhatsappFrom|consumer-otp-twilio-config/);
+});
+
+test("dedicated Sandbox sender cannot bypass the production guard through a shared Messaging Service", async () => {
+  for (const runtime of [{ NODE_ENV: "production" }, { NODE_ENV: "test", VERCEL_ENV: "preview" }, { NODE_ENV: "test", VERCEL: "1" }]) {
+    const h = harness({ env: {
+      ...TWILIO_ENV, ...runtime, CONSUMER_AUTH_MODE: "whatsapp",
+      TWILIO_CONSUMER_OTP_WHATSAPP_FROM: "whatsapp:+14155238886", TWILIO_MESSAGING_SERVICE_SID: `MG${"c".repeat(32)}`,
+    } });
+    await fails(h, "twilio_whatsapp_sandbox_forbidden", PHONE);
+    assert.equal(h.requests.length, 0);
   }
 });
 

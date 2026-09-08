@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { createHash } from "node:crypto";
 import { domainToASCII } from "node:url";
 import { getConsumerOtpTwilioStatusCallbackUrl } from "./consumer-otp-twilio-status";
+import { getConsumerOtpWhatsappFrom } from "./consumer-otp-twilio-config";
 
 export type OtpDeliveryPayload = {
   contact: string;
@@ -294,9 +295,12 @@ class TwilioOtpProvider implements ConsumerOtpProvider {
     if (isEmail(payload.contact)) throw new Error(`${this.channel}_phone_contact_required`);
     const accountSid = env("TWILIO_ACCOUNT_SID");
     const authToken = env("TWILIO_AUTH_TOKEN");
-    const messagingServiceSid = env("TWILIO_MESSAGING_SERVICE_SID");
+    // The dedicated OTP sender never changes shared campaign/SMS configuration
+    // and must take precedence over a shared Messaging Service sender pool.
+    const consumerWhatsappFrom = this.channel === "whatsapp" ? getConsumerOtpWhatsappFrom() : null;
+    const messagingServiceSid = consumerWhatsappFrom ? "" : env("TWILIO_MESSAGING_SERVICE_SID");
     const from = this.channel === "whatsapp"
-      ? env("TWILIO_WHATSAPP_FROM") || env("TWILIO_FROM_WHATSAPP")
+      ? consumerWhatsappFrom || env("TWILIO_WHATSAPP_FROM") || env("TWILIO_FROM_WHATSAPP")
       : env("TWILIO_FROM_NUMBER") || env("TWILIO_FROM");
     if (!accountSid || !authToken) throw new Error("twilio_credentials_missing");
     if (!messagingServiceSid && !from) throw new Error("twilio_sender_missing");

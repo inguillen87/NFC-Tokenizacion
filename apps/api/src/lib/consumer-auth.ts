@@ -68,7 +68,7 @@ function audit(event: string, payload: Record<string, unknown>) {
 
 function normalizeOtpDeliveryError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "");
-  const deliveryErrors = ["consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "consumer_auth_email_provider_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "twilio_content_sid_invalid", "twilio_status_callback_url_invalid", "twilio_whatsapp_sandbox_forbidden"];
+  const deliveryErrors = ["consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "consumer_auth_email_provider_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "twilio_content_sid_invalid", "twilio_status_callback_url_invalid", "twilio_whatsapp_sandbox_forbidden", "twilio_consumer_otp_whatsapp_from_invalid"];
   if (deliveryErrors.includes(message)) return message;
   if (message.includes("email_contact_required")) return "email_contact_required";
   if (message.includes("resend_api_key_missing")) return "resend_api_key_missing";
