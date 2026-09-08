@@ -32,23 +32,24 @@ test("cork analyzer is a disabled-by-default random UI simulation, not a diagnos
   assert.doesNotMatch(cork, /Analizar con IA|Diagn.stico de Guarda|Recomendaci.n Enol.gica|Apto para guarda|Consumir de inmediato|Corcho Seco|.ptimo/);
 });
 
-test("consumer home renders backend empty states and an explicit readiness checklist", () => {
-  assert.match(mePage, /savedProductProfiles\[0\]\?\.profile \|\| null/);
-  assert.match(mePage, /const readinessChecks = \[/);
-  assert.match(mePage, /hasReadinessData/);
-  assert.doesNotMatch(mePage, /42 \+ claimedProducts|Gran Reserva Premium Magnum|premium_magnum/);
-  assert.match(mePortal, /Todav.a no hay productos reportados/);
-  assert.match(mePortal, /Nombre no reportado/);
-  assert.match(mePortal, /Ownership no reportado/);
-  assert.doesNotMatch(mePortal, /Coleccionista Premium|Vino Premium|ownership_status \|\| "Reclamado"/);
+test("consumer home separates backend empty and unavailable states without arbitrary readiness scores", () => {
+  assert.match(mePage, /buildConsumerHomeModel/);
+  assert.match(mePage, /Promise\.all/);
+  assert.match(mePage, /requireConsumerSession/);
+  assert.doesNotMatch(mePage, /readinessChecks|passportReadiness|summarizeAssetReadiness|premium_magnum|asArray/);
+  assert.match(mePortal, /model\.products\.status === "unavailable"/);
+  assert.match(mePortal, /model\.taps\.status === "unavailable"/);
+  assert.match(mePortal, /model\.brands\.status === "unavailable"/);
+  assert.match(mePortal, /A.n no hay lecturas vinculadas/);
+  assert.match(mePortal, /Reintentar carga/);
+  assert.doesNotMatch(mePortal, /Coleccionista Premium|Vino Premium|ownership_status \|\| "Reclamado"|passportReadiness/);
 });
 
-test("commerce and wallet demos fail closed and never fabricate blockchain receipts", () => {
-  assert.match(mePortal, /NEXT_PUBLIC_ME_PORTAL_COMMERCE_DEMO_ENABLED/);
-  assert.match(mePortal, /DEMO COMERCIO SIMULADO/);
-  assert.match(mePortal, /const \[trades, setTrades\].*\(\[\]\)/);
-  assert.match(mePortal, /No se cre. una compra, orden, pago, reserva, escrow ni transacci.n on-chain/);
-  assert.doesNotMatch(mePortal, /Math\.random|setWeb3Address\("0x71C|amoy\.polygonscan\.com\/tx\/\$\{activeTxHash\}|Compra Exitosa|escrow inteligente/);
+test("home omits commerce simulators, preserves dedicated routes and wallet never fabricates blockchain receipts", () => {
+  assert.match(mePortal, /href="\/me\/marketplace"/);
+  assert.match(mePortal, /href="\/me\/wallet"/);
+  assert.doesNotMatch(mePortal, /NEXT_PUBLIC_ME_PORTAL_COMMERCE_DEMO_ENABLED|DEMO COMERCIO SIMULADO|setTrades|window\.ethereum|checkout/);
+  assert.doesNotMatch(mePortal, /Math\.random|setWeb3Address|activeTxHash|Compra Exitosa|escrow inteligente/);
 
   assert.match(wallet, /NEXT_PUBLIC_WALLET_TRANSFER_DEMO_ENABLED/);
   assert.match(wallet, /receipt confirmado por el backend/);

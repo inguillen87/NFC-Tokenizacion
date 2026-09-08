@@ -10,7 +10,7 @@ export type ConsumerContactDraft = {
 export type ConsumerContactPayload = { email: string } | { phone: string };
 
 const COUNTRY_OPTIONS = [
-  { label: "AR movil", code: "+549", example: "2613168608" },
+  { label: "AR móvil", code: "+549", example: "2612345678" },
   { label: "AR", code: "+54", example: "1123456789" },
   { label: "UY", code: "+598", example: "99123456" },
   { label: "CL", code: "+56", example: "912345678" },
@@ -136,8 +136,9 @@ export function ConsumerContactInput({
             key={channel}
             type="button"
             disabled={disabled}
+            aria-pressed={draft.channel === channel}
             onClick={() => onChange({ ...draft, channel: channel as ConsumerContactDraft["channel"] })}
-            title={channel === "whatsapp" ? "Enviar codigo por WhatsApp/SMS con prefijo separado." : "Enviar codigo al email del Passport."}
+            title={channel === "whatsapp" ? "Solicitar un código en el teléfono con prefijo de país." : "Solicitar un código por email."}
             className={`rounded-lg px-3 py-2 text-xs font-black uppercase tracking-[0.08em] transition ${
               draft.channel === channel
                 ? "bg-cyan-300 text-slate-950"
@@ -153,6 +154,8 @@ export function ConsumerContactInput({
         <input
           suppressHydrationWarning
           id={`${idPrefix}-email`}
+          aria-label="Correo electrónico"
+          type="email"
           value={activeDraft.email}
           onChange={(event) => onChange({ ...draft, email: event.target.value })}
           placeholder="tu@email.com"
@@ -167,6 +170,7 @@ export function ConsumerContactInput({
           <select
             suppressHydrationWarning
             id={`${idPrefix}-country`}
+            aria-label="Código de país"
             value={draft.countryCode}
             onChange={(event) => onChange({ ...draft, countryCode: event.target.value })}
             disabled={disabled}
@@ -182,6 +186,8 @@ export function ConsumerContactInput({
           <input
             suppressHydrationWarning
             id={`${idPrefix}-phone`}
+            aria-label="Número de teléfono sin código de país"
+            type="tel"
             value={draft.localPhone}
             onChange={(event) => {
               const value = event.target.value;
@@ -203,7 +209,7 @@ export function ConsumerContactInput({
 
       {activeDraft.channel === "whatsapp" ? (
         <p className="text-[11px] leading-4 text-slate-400">
-          Codigo pais separado + numero local. Se envia como <span className="font-mono text-cyan-100">{consumerContactDraftValue(activeDraft) || `${activeDraft.countryCode}${selectedOption.example}`}</span>.
+          {consumerContactDraftValue(activeDraft) ? <>Número completo: <span className="font-mono text-cyan-100">{consumerContactDraftValue(activeDraft)}</span>.</> : "Elegí el país e ingresá tu número local, sin el 0 inicial ni el 15."}
         </p>
       ) : null}
     </div>

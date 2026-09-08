@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
+import { consumerDeliveryIsSimulation, consumerDeliveryMessage } from "./consumer-login-delivery";
 import {
   ConsumerContactInput,
   consumerContactDraftFromValue,
   consumerContactDraftIsValid,
   consumerContactPayload,
   createEmptyConsumerContactDraft,
+  type ConsumerContactDraft,
 } from "../../components/consumer-contact-input";
 
 function authStartErrorMessage(error: unknown) {
@@ -21,8 +23,9 @@ function authStartErrorMessage(error: unknown) {
     return "No se pudo enviar el código por teléfono porque falta configurar Twilio.";
   }
   if (reason === "twilio_delivery_failed" || reason === "resend_delivery_failed" || reason === "smtp_delivery_failed") {
-    return "El proveedor de mensajes rechazó el envío. Revisá el email/teléfono o la configuración del tenant.";
+    return "No se pudo confirmar el envío. Revisá el contacto o probá el otro canal. Si se repite, contactá a soporte.";
   }
+  if (["otp_provider_unavailable", "consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout"].includes(reason)) return "Este canal no pudo confirmar el envío del código. Probá el otro medio de acceso. Si el mensaje llega más tarde, usá siempre el código más reciente.";
   return "No se pudo iniciar sesión.";
 }
 
@@ -45,8 +48,15 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
   const isTapReturn = safeNextPath.includes("fromTap=1") || safeNextPath.includes("eventId=");
   const tapReturnCopy = isTapReturn
-    ? "Validá email o teléfono para volver al producto. Garantía, ownership, wallet/NFT y puntos sensibles requieren compra validada, POS/PIN o política de la marca."
-    : "Ingresá con email o teléfono para abrir tu Pasaporte, marketplace contextual y beneficios opt-in.";
+    ? "Recibí un código y volvé al producto que estabas consultando. Tus beneficios mantienen las condiciones de la marca."
+    : "Elegí dónde recibir tu código para entrar a tus productos y beneficios. No necesitás una contraseña.";
+
+  function changeContact(nextDraft: ConsumerContactDraft) {
+    setContactDraft(nextDraft);
+    setStep("start");
+    setCode("");
+    setStatus("");
+  }
 
   useEffect(() => {
     if (!forceOtp) return;
@@ -116,7 +126,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     })
       .then((res) => res.json().catch(() => null))
       .catch(() => null);
-    return Boolean(session?.ok);
+    return Boolean(session?.ok && session?.authenticated);
   }
 
   async function start() {
@@ -142,12 +152,12 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       setStatus(authStartErrorMessage(payload?.error));
       return;
     }
+    if (consumerDeliveryIsSimulation(payload)) {
+      setStatus("El acceso respondió en modo de prueba y no envió un código real. Contactá a soporte para habilitar este canal.");
+      return;
+    }
     setStep("verify");
-    setStatus(payload.deliveryChannel === "both"
-      ? "Enviamos el mismo código a los canales configurados de tu cuenta. Podés validarlo desde cualquiera; esto no constituye MFA secuencial."
-      : isTapReturn
-        ? "Código enviado. Al validar volvemos al producto; cualquier claim queda sujeto a compra validada o POS/PIN."
-        : "Código enviado. Ingresá el código recibido para entrar a tu Pasaporte.");
+    setStatus(consumerDeliveryMessage(payload));
   }
 
   async function verify() {
@@ -185,12 +195,14 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Pasaporte nexID</p>
       <p className="mt-1 text-sm text-cyan-50/90">{tapReturnCopy}</p>
 
-      <div className="mt-3 grid gap-2">
-        <ConsumerContactInput draft={contactDraft} onChange={setContactDraft} disabled={pending} idPrefix="consumer-login" />
+      <form className="mt-3 grid gap-3" aria-busy={pending} onSubmit={(event) => { event.preventDefault(); if (!pending) void (step === "start" ? start() : verify()); }}>
+        <ConsumerContactInput draft={contactDraft} onChange={changeContact} disabled={pending} idPrefix="consumer-login" />
 
         {step === "verify" ? (
           <div className="grid gap-1.5">
+            <label htmlFor="consumer-access-code" className="text-sm font-semibold">Código de acceso</label>
             <input
+              id="consumer-access-code"
               suppressHydrationWarning
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -198,6 +210,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={8}
+              disabled={pending}
               className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500"
             />
             <p className="text-[11px] leading-4 text-slate-400">Por seguridad nexID no muestra ni completa el código por vos.</p>
@@ -207,27 +220,32 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         {step === "start" ? (
           <button
             suppressHydrationWarning
-            type="button"
+            type="submit"
             disabled={pending || !contactIsValid}
-            onClick={() => void start()}
-            className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60"
+            className="min-h-12 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60"
           >
-            Recibir código
+            {pending ? "Solicitando código…" : "Recibir código"}
           </button>
         ) : (
           <button
             suppressHydrationWarning
-            type="button"
+            type="submit"
             disabled={pending || !code.trim()}
-            onClick={() => void verify()}
-            className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60"
+            className="min-h-12 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60"
           >
-            {isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
+            {pending ? "Verificando…" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
           </button>
         )}
-      </div>
+        {step === "verify" ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button type="button" disabled={pending} onClick={() => void start()} className="min-h-11 rounded-xl border border-current/20 px-3 text-sm font-semibold disabled:opacity-60">Reenviar código</button>
+            <button type="button" disabled={pending} onClick={() => changeContact({ ...contactDraft, channel: contactDraft.channel === "email" ? "whatsapp" : "email" })} className="min-h-11 rounded-xl border border-current/20 px-3 text-sm font-semibold disabled:opacity-60">{contactDraft.channel === "email" ? "Probar con WhatsApp" : "Probar con email"}</button>
+            <p className="text-xs leading-5 text-slate-400 sm:col-span-2">Puede demorar unos instantes. En email, revisá también Spam. Si pedís otro código, usá el más reciente.</p>
+          </div>
+        ) : null}
+      </form>
 
-      {status ? <p className="mt-2 text-xs text-slate-300">{status}</p> : null}
+      {status ? <p role="status" aria-live="polite" className="mt-3 text-sm leading-6 text-slate-300">{status}</p> : null}
     </div>
   );
 }

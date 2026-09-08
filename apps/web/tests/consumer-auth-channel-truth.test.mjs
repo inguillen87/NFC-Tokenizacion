@@ -12,10 +12,11 @@ const [loginPanel, loginPage, securityPanel, securityPage, web3Bridge] = await P
   read("../src/app/api/consumer/auth/web3/route.ts"),
 ]);
 
-test("consumer login describes same-code multi-channel delivery without claiming MFA", () => {
-  assert.match(loginPanel, /payload\.deliveryChannel === "both"/);
-  assert.match(loginPanel, /mismo c.digo a los canales configurados/);
-  assert.match(loginPanel, /no constituye MFA secuencial/);
+test("consumer login describes same-code multi-channel delivery without claiming MFA", async () => {
+  const delivery = await read("../src/app/login/consumer-login-delivery.ts");
+  assert.match(delivery, /payload\.deliveryChannel === "both"/);
+  assert.match(delivery, /mismo c.digo a los canales configurados/);
+  assert.match(delivery, /no constituye MFA secuencial/);
   assert.doesNotMatch(loginPanel, /Doble factor activo/);
   assert.doesNotMatch(loginPage, /MFA-ready/);
 });

@@ -1,0 +1,146 @@
+.home {
+  --home-ink: #17342f;
+  --home-muted: #536d66;
+  --home-accent: #09685a;
+  --home-line: #cddfd8;
+  --home-card: #fffefa;
+  --home-soft: #eff7f2;
+  --home-mint: #ddf3e5;
+  --home-warn-bg: #fff7e9;
+  --home-warn-ink: #765115;
+  display: grid;
+  gap: 24px;
+  color: var(--home-ink);
+}
+
+:global(html[data-theme="dark"]) .home,
+:global(html.dark) .home {
+  --home-ink: #edf7f1;
+  --home-muted: #b0c9c0;
+  --home-accent: #8ce6c2;
+  --home-line: #35554b;
+  --home-card: #10251f;
+  --home-soft: #16332a;
+  --home-mint: #1b3e32;
+  --home-warn-bg: #342b17;
+  --home-warn-ink: #f0d39c;
+}
+
+.home :is(h2, h3, p) { margin: 0; }
+.home :is(h2, h3) { color: var(--home-ink); letter-spacing: -.025em; }
+.home :is(a, button) { -webkit-tap-highlight-color: transparent; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+.home a { color: var(--home-accent); text-decoration: none; }
+.home :is(a, button):focus-visible { outline: 3px solid var(--home-accent); outline-offset: 4px; }
+.home ul { padding: 0; margin: 0; list-style: none; }
+.home svg { flex-shrink: 0; }
+.welcome { display: grid; grid-template-columns: 1.08fr 1fr; gap: 32px; padding: clamp(24px, 3vw, 40px); border: 1px solid var(--home-line); border-radius: 28px; background: radial-gradient(ellipse at 15% 5%, var(--home-mint), transparent 70%), linear-gradient(125deg, var(--home-soft), var(--home-card)); overflow: hidden; }
+.welcomeCopy { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; justify-content: center; min-width: 0; }
+.eyebrow { color: var(--home-accent); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.welcomeCopy h2 { font-size: clamp(27px, 2.5vw, 38px); line-height: 1.14; overflow-wrap: anywhere; }
+.welcomeCopy p { max-width: 47ch; color: var(--home-muted); font-size: 15px; line-height: 1.65; }
+.home .primaryAction { min-height: 46px; display: inline-flex; justify-content: center; align-items: center; gap: 14px; padding: 11px 17px; border-radius: 13px; color: #fff; background: #106b54; font-size: 14px; font-weight: 750; box-shadow: 0 5px 16px #106b541a; }
+.home .primaryAction:hover { background: #0a533f; box-shadow: 0 5px 18px #106b5430; }
+.quickLinks { display: grid; gap: 10px; align-content: center; min-width: 0; }
+.quickLinks a { display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 12px 16px; border: 1px solid var(--home-line); border-radius: 17px; background: var(--home-card); }
+.quickLinks a:hover { background: var(--home-soft); border-color: var(--home-accent); }
+.quickLinks a > span:nth-child(2) { min-width: 0; flex: 1; }
+.quickLinks strong { display: block; color: var(--home-ink); font-size: 14px; line-height: 1.4; }
+.quickLinks small { display: block; margin-top: 4px; color: var(--home-muted); font-size: 12px; line-height: 1.4; }
+.quickIcon, .emptyIcon, .brandIcon, .tapIcon, .benefitIcon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--home-accent); border-radius: 13px; background: var(--home-soft); }
+.quickIcon { width: 44px; height: 44px; }
+.columns { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(290px, 1fr); gap: 24px; align-items: start; }
+.mainColumn, .sideColumn { display: grid; gap: 24px; min-width: 0; }
+.panel { min-width: 0; padding: 24px; border: 1px solid var(--home-line); border-radius: 23px; background: var(--home-card); box-shadow: 0 5px 22px #17342f05; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.sectionHeading h2 { font-size: 19px; line-height: 1.3; }
+.sectionHeading a { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 12px; font-weight: 750; }
+.sectionHeading a:hover, .textAction:hover, .brandFooter a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.productList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.productCard { display: flex; gap: 15px; align-items: flex-start; padding: 14px; border: 1px solid var(--home-line); border-radius: 17px; min-width: 0; }
+.productImage { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 74px; height: 92px; border-radius: 11px; background: var(--home-soft); color: var(--home-accent); overflow: hidden; }
+.productImage img { object-fit: contain; max-width: 100%; height: 100%; }
+.productContent { min-width: 0; flex: 1; }
+.itemEyebrow { display: block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--home-muted); overflow-wrap: anywhere; line-height: 1.5; }
+.productContent h3 { margin-top: 4px; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.metadata { font-size: 12px; color: var(--home-muted); line-height: 1.55; overflow-wrap: anywhere; }
+.productContent .metadata { margin-top: 5px; }
+.textAction { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; font-size: 12px; font-weight: 750; }
+.tapList li { display: flex; align-items: flex-start; gap: 14px; padding: 18px 0; border-top: 1px solid var(--home-line); }
+.tapList li:first-child { border-top: 0; padding-top: 2px; }
+.tapIcon { width: 40px; height: 40px; margin-top: 3px; }
+.tapContent { flex: 1; min-width: 0; }
+.tapContent h3 { margin: 3px 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.tapContent time { display: block; margin-top: 5px; font-size: 11px; line-height: 1.5; color: var(--home-muted); }
+.readingAction { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; gap: 5px; font-size: 12px; font-weight: 700; border: 1px solid var(--home-line); border-radius: 11px; padding: 8px 10px; }
+.readingAction:hover { background: var(--home-soft); }
+.footnote { padding-top: 14px; border-top: 1px solid var(--home-line); font-size: 11px; line-height: 1.6; color: var(--home-muted); }
+.empty { padding: 25px 18px; border-radius: 16px; background: var(--home-soft); }
+.empty strong, .unavailable strong { display: block; font-size: 15px; line-height: 1.5; }
+.empty p, .unavailable p { margin-top: 8px; color: var(--home-muted); font-size: 13px; line-height: 1.7; max-width: 56ch; }
+.emptyIcon { display: flex; width: 48px; height: 48px; margin-bottom: 15px; border: 1px solid var(--home-line); background: var(--home-card); }
+.unavailable { display: flex; gap: 12px; align-items: flex-start; background: var(--home-warn-bg); color: var(--home-warn-ink); padding: 18px; border-radius: 14px; }
+.unavailable p { color: inherit; }
+.unavailable svg { margin-top: 2px; }
+.loadNotice { display: flex; align-items: center; gap: 13px; padding: 16px 20px; border-radius: 16px; background: var(--home-warn-bg); color: var(--home-warn-ink); border: 1px solid var(--home-line); }
+.loadNotice p { flex: 1; font-size: 13px; line-height: 1.5; }
+.loadNotice button { cursor: pointer; min-height: 44px; border-radius: 11px; padding: 9px 14px; background: var(--home-card); color: var(--home-ink); border: 1px solid var(--home-line); font-size: 13px; font-weight: 750; }
+.loadNotice button:disabled { cursor: wait; opacity: .7; }
+.brandList li { border-top: 1px solid var(--home-line); padding: 17px 0; }
+.brandList li:first-child { border-top: 0; padding-top: 0; }
+.brandList li:last-child { padding-bottom: 0; }
+.brandTitle { display: flex; align-items: flex-start; gap: 10px; }
+.brandIcon { width: 38px; height: 38px; }
+.brandTitle h3 { font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+.brandTitle .metadata { margin-top: 3px; }
+.brandFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px 12px; margin-top: 8px; color: var(--home-muted); font-size: 11px; line-height: 1.6; }
+.brandFooter strong { color: var(--home-ink); font-size: 16px; }
+.brandFooter a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; font-size: 12px; font-weight: 750; }
+.benefitCard { display: flex; flex-direction: column; align-items: flex-start; gap: 13px; padding: 26px; border: 1px solid var(--home-line); border-radius: 23px; background: radial-gradient(ellipse at 100% 0%, var(--home-mint), transparent 80%), var(--home-soft); }
+.benefitIcon { width: 48px; height: 48px; background: var(--home-card); border: 1px solid var(--home-line); }
+.benefitCard h2 { font-size: 24px; line-height: 1.2; }
+.benefitCard p { font-size: 13px; color: var(--home-muted); line-height: 1.7; }
+.accountDetails { padding-bottom: 16px; }
+.accountEmail { display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; margin: 9px 0 5px !important; }
+.accountLinks { display: grid; border-top: 1px solid var(--home-line); padding-top: 8px; }
+.accountLinks a { display: flex; gap: 10px; align-items: center; min-height: 46px; font-size: 12px; font-weight: 700; border-radius: 9px; padding: 5px 0; }
+.accountLinks a:hover { background: var(--home-soft); }
+.accountLinks a span { flex: 1; }
+
+@media (max-width: 1180px) {
+  .productList { grid-template-columns: 1fr; }
+  .productImage { width: 86px; height: 92px; }
+}
+@media (max-width: 800px) {
+  .welcome { grid-template-columns: 1fr; gap: 24px; }
+  .columns { grid-template-columns: 1fr; }
+  .productList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .loadNotice { flex-wrap: wrap; align-items: flex-start; }
+  .loadNotice p { min-width: 0; flex-basis: calc(100% - 40px); }
+  .loadNotice button { margin-left: 33px; }
+}
+@media (max-width: 520px) {
+  .home, .columns, .mainColumn, .sideColumn { gap: 16px; }
+  .welcome { padding: 22px 18px; border-radius: 22px; }
+  .welcomeCopy { gap: 13px; }
+  .welcomeCopy p { font-size: 14px; }
+  .welcomeCopy .primaryAction { width: 100%; }
+  .quickLinks a { padding: 11px; gap: 10px; min-height: 72px; }
+  .quickLinks strong { font-size: 13px; }
+  .quickLinks small { font-size: 11px; }
+  .panel { padding: 18px 15px; border-radius: 20px; }
+  .sectionHeading { gap: 8px; }
+  .sectionHeading h2 { font-size: 18px; }
+  .sectionHeading a { font-size: 11px; gap: 3px; }
+  .productList { grid-template-columns: 1fr; }
+  .productCard { padding: 13px; }
+  .tapList li { gap: 10px; }
+  .tapIcon { width: 32px; height: 36px; border-radius: 10px; }
+  .readingAction { padding: 6px; }
+  .readingAction span { display: none; }
+  .empty { padding: 20px 15px; }
+  .benefitCard { padding: 23px 20px; }
+  .accountEmail { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home :is(a, button) { transition: none; }
+}
