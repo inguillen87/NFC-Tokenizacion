@@ -49,7 +49,7 @@
     "supplier:physical-evidence:validate": "node scripts/validate-physical-nfc-evidence-pack.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
     "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs tests/consumer-otp-twilio-status.test.mjs tests/consumer-otp-twilio-inbound.test.mjs",
-    "test:rewards": "node --test tests/reward-public-links-security.test.mjs",
+    "test:rewards": "node --import tsx --test tests/reward-public-links-security.test.mjs tests/consumer-reward-postgres-harness.test.mjs tests/consumer-rewards-read-model.test.mjs tests/consumer-rewards-read-postgres-harness.test.mjs",
     "test:sun": "node --import tsx --test tests/sun-*.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",
     "test:demo-corpus": "node --test tests/demo-corpus-smoke.test.mjs",
