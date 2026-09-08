@@ -82,6 +82,8 @@ El mismo comentario de soporte separa ambos números, pide el estado y los requi
 
 ## Fase 5: puntos por marca y cuenta de red separados
 
+- Publicación `372081d9`, release `2026.09.08-web.4`, deployment `dpl_Hrun6FLfsutAS57iecudpgK5Qntc`, URL inmutable `https://nexid-gvdk0vmma-marcelos-projects-c26aa499.vercel.app`. Build y TypeScript aprobados, inspección READY y promoción. Ambos dominios públicos devuelven `.4`.
+- QA autenticado productivo desde Más → Billetera: Bodega Balmec muestra saldo 540 y acumulados 540; red nexID no habilitada. No se modificaron registros ni se generaron puntos. Revisión de errores del deployment desde las 21:42 UTC sin resultados de error devueltos durante el QA.
 - Web `.4`: los puntos por marca pasan al comienzo de la billetera, con saldo y acumulados identificados por empresa. La cuenta de red nexID se presenta aparte; no suma ni reemplaza puntos entre empresas.
 - Se respeta el contrato real: una fila de cuenta de red puede omitir `enabled`; `enabled:false` identifica la cuenta no habilitada y sus ceros de reemplazo no son saldos confirmados. Ausencia, respuesta fallida, valores inválidos y cero explícito son estados distintos.
 - Se quitaron los rótulos engañosos «Canjeables en bodega» y «Acumulado total» de los puntos de red. No se modificaron los saldos, las reglas de canje, conexión de wallet, titularidad, NFT, transferencias ni API.
