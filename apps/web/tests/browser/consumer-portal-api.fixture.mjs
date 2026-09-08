@@ -11,7 +11,12 @@ const items = {
     { tap_event_id: 900003, created_at: null, verdict: "UNKNOWN", risk_level: null, tenant_slug: "qa-local", city: null, country: null },
   ],
   brands: [{ name: "Marca de prueba", slug: "qa-local", status: "active", points_balance: 120 }],
-  rewards: [],
+  rewards: [
+    { id: "qa-reward-1", title: "Cata de selección · prueba local", tenant_slug: "qa-local", tenant_name: "Marca de prueba", program_name: "Club de prueba", points_cost: 120, points_spent: 100, claim_id: "qa-claim-1", claim_status: "claimed", state: "claimed", claim_expires_at: "2026-09-10T18:00:00Z", redemption_code: "QA-NO-CANJE-001", can_claim: false },
+    { id: "qa-reward-2", title: "Visita al viñedo · prueba local", tenant_slug: "qa-local", tenant_name: "Marca de prueba", points_cost: 60, state: "reported", can_claim: false },
+    { id: "qa-reward-3", title: "Cupón vencido · prueba local", tenant_slug: "qa-local", tenant_name: "Marca de prueba", points_cost: 50, claim_id: "qa-claim-3", claim_status: "expired", state: "expired", claim_expires_at: "2026-09-07T18:00:00Z", redemption_code: null },
+    { id: "qa-reward-4", title: "Experiencia cancelada · prueba local", tenant_slug: "qa-other", tenant_name: "Otra marca de prueba", points_cost: null, claim_id: "qa-claim-4", claim_status: "cancelled", state: "cancelled", claim_expires_at: "2026-09-10T18:00:00Z", redemption_code: null },
+  ],
 };
 createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1:3323");
