@@ -1,6 +1,6 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.08-web.1",
-  "scope": "Consumer portal home, saved products, accessible mobile navigation and truthful OTP delivery with retry",
+  "version": "2026.09.08-web.2",
+  "scope": "Consumer portal and actionable email fallback for unavailable WhatsApp access",
   "physicalTapCertification": "not-included"
 }

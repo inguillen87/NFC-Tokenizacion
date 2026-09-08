@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
-import { consumerDeliveryIsSimulation, consumerDeliveryMessage } from "./consumer-login-delivery";
+import { authStartErrorMessage, consumerDeliveryIsSimulation, consumerDeliveryMessage } from "./consumer-login-delivery";
 import {
   ConsumerContactInput,
   consumerContactDraftFromValue,
@@ -12,22 +12,6 @@ import {
   createEmptyConsumerContactDraft,
   type ConsumerContactDraft,
 } from "../../components/consumer-contact-input";
-
-function authStartErrorMessage(error: unknown) {
-  const reason = String(error || "");
-  if (reason === "rate_limited") return "Demasiados intentos. Esperá unos minutos y probá de nuevo.";
-  if (reason === "resend_api_key_missing" || reason === "consumer_auth_from_email_missing" || reason === "smtp_credentials_missing") {
-    return "No se pudo enviar el email porque falta configurar el proveedor de correo en producción.";
-  }
-  if (reason === "twilio_credentials_missing" || reason === "twilio_sender_missing") {
-    return "No se pudo enviar el código por teléfono porque falta configurar Twilio.";
-  }
-  if (reason === "twilio_delivery_failed" || reason === "resend_delivery_failed" || reason === "smtp_delivery_failed") {
-    return "No se pudo confirmar el envío. Revisá el contacto o probá el otro canal. Si se repite, contactá a soporte.";
-  }
-  if (["otp_provider_unavailable", "consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout"].includes(reason)) return "Este canal no pudo confirmar el envío del código. Probá el otro medio de acceso. Si el mensaje llega más tarde, usá siempre el código más reciente.";
-  return "No se pudo iniciar sesión.";
-}
 
 async function logoutConsumerSession() {
   await fetch("/api/consumer/auth/logout", {
