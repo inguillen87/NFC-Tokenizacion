@@ -7,6 +7,12 @@
     "packages/*"
   ],
   "scripts": {
+    "build:release": "node --check scripts/nexid-release.mjs && node --check scripts/lib/release-manifest.mjs && node --check scripts/lib/release-git.mjs",
+    "test:release": "node --test scripts/tests/release-governance.test.mjs",
+    "release:collect": "node scripts/nexid-release.mjs collect",
+    "release:check": "node scripts/nexid-release.mjs check",
+    "release:preflight": "node scripts/nexid-release.mjs preflight",
+    "release:diff": "node scripts/nexid-release.mjs diff",
     "dev:web": "npm run dev --workspace=web",
     "dev:dashboard": "npm run dev --workspace=dashboard",
     "dev:api": "npm run dev --workspace=api",

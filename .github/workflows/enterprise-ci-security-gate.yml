@@ -39,6 +39,11 @@ jobs:
       - name: Verify this mandatory workflow contract
         run: node --test scripts/tests/enterprise-ci-security-workflow.test.mjs
 
+      - name: Validate release inventory and source preflight tooling (local only)
+        run: |
+          npm run build:release
+          npm run test:release
+
       - name: Scan tracked and untracked repository files for secrets
         run: |
           npm run check:secrets

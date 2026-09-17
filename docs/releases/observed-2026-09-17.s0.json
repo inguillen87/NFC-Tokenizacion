@@ -1,0 +1,336 @@
+{
+  "schemaVersion": "nexid.release-set/v1",
+  "releaseId": "observed-2026-09-17t23-23-25-075z",
+  "observedAt": "2026-09-17T23:23:25.075Z",
+  "repository": "inguillen87/NFC-Tokenizacion",
+  "environment": "production",
+  "status": "observed_not_certified",
+  "safety": {
+    "mode": "read_only",
+    "databaseQueries": 0,
+    "deploymentActions": 0,
+    "paidResourcesCreated": 0
+  },
+  "applications": [
+    {
+      "app": "api",
+      "projectId": "prj_r0dmVaKogGs8y4NAZ2njCWHhUgLk",
+      "projectName": "nexid-api",
+      "rootDirectory": "apps/api",
+      "deployment": {
+        "id": "dpl_76TRRjoH8xggAaq37aAJF8Cbs5eA",
+        "url": "https://nexid-bjnuubfy0-marcelos-projects-c26aa499.vercel.app",
+        "target": "production",
+        "state": "READY",
+        "createdAt": "2026-09-08T22:52:12.410Z"
+      },
+      "source": {
+        "commitSha": "29c4f6231bb6f4a47756905d9c533b02bce50c4d",
+        "ref": "codex/consumer-otp-delivery-2026-09-08",
+        "cleanliness": "unknown",
+        "origin": "provider_metadata_not_build_attestation",
+        "availableLocally": true,
+        "treeOid": "65e77c3caba541b7957de1e7a916a5895912ee09",
+        "componentTree": "77dd8a8857f8135debec674d0565fef8b7c89126",
+        "sharedPackagesTree": "b0fb0b14d73e57025d91cb8f8087a54f934a2357",
+        "lockfileSha256": "94fc632bc7c49f88453f9ea45e022f895cb1ad2dc01720049523240e89b65c59"
+      },
+      "artifact": {
+        "providerId": "dpl_76TRRjoH8xggAaq37aAJF8Cbs5eA",
+        "sha256": null,
+        "evidence": "provider_id_only"
+      },
+      "contracts": {
+        "openapi": {
+          "path": "apps/api/public/openapi/nexid-sdk-v1.json",
+          "sha256": "2b022da41cf3055a5df8e1a1b1bf000786f8f29b9e2660b1cdb4d1dbfd0d7130",
+          "version": "1.3.1"
+        },
+        "asyncapi": {
+          "path": "apps/api/public/asyncapi/nexid-webhooks-v1.json",
+          "sha256": "b88383b830b3cb33c05e49627e4027a56df9e71461db108df1bb1f8a0475202f",
+          "version": "1.1.0"
+        }
+      },
+      "migrations": [
+        {
+          "id": "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
+          "sha256": "ff22caaa9e8466c5888fdd6351df13b17c29a777a16250d38e7c109144b7964d"
+        },
+        {
+          "id": "20260726103000_0058_webhook_signature_v2.sql",
+          "sha256": "5f87e6a25420c97286cfb7acd8343e5b8599190f898b7934589ed7e318b8a713"
+        },
+        {
+          "id": "20260726120000_0058_marketplace_runtime_baseline.sql",
+          "sha256": "ff128db0f1ea9d1d0151b9ab32ca195e973f3f7c1edabfcfa90bab4dfc4fbdbf"
+        },
+        {
+          "id": "20260726135000_0059_marketplace_claim_truth_cleanup.sql",
+          "sha256": "ba8023c162aa16db9b28caff548a51ffc4d50cb4e38ab6b4eff69db913c11329"
+        },
+        {
+          "id": "20260726173000_0060_sdk_idempotency_operations.sql",
+          "sha256": "4cf06c866d2e85d790af75d481ec3de2c88ae99af3f2b1987076e8f47a7aee84"
+        },
+        {
+          "id": "20260726190000_0061_supplier_export_artifact_delivery.sql",
+          "sha256": "fd065d31903c308ada45028742c75f8e72e090d84ff88806fd5e22e84b8c4561"
+        },
+        {
+          "id": "20260728120000_0062_sun_atomic_persistence.sql",
+          "sha256": "b9422edcd7c8f8822e43de487e14aa068bc699c5554f497776c2d5b04508992b"
+        },
+        {
+          "id": "20260728143000_0063_supplier_packaging_governance.sql",
+          "sha256": "0832c76d1768fcd47cc5e57798aa962ffeccb3449c1e15a7b7e0bc0db0ab737d"
+        },
+        {
+          "id": "20260728160000_0064_webhook_lifecycle_governance.sql",
+          "sha256": "39e65e3cf2e27efdbae62613a3f188fbfe07ba913c6ac7eacefe92752bd8b8f9"
+        },
+        {
+          "id": "20260728173000_0065_event_incident_workflow.sql",
+          "sha256": "3589c2c85c178861138c596b103f4a3c2f8035545a6c3db00d2ee2e2b0c0b2b7"
+        },
+        {
+          "id": "20260728180000_0066_tag_lifecycle_governance.sql",
+          "sha256": "8035c0cead1b3520a7f7830b7cbbc65d37f518d5a428c8960e52462cae5aaddb"
+        },
+        {
+          "id": "20260728183000_0067_canonical_event_outbox.sql",
+          "sha256": "97ad6d1e30c676e1b5ab014e87acef88643b4135010d167543f348bd6933b8c9"
+        },
+        {
+          "id": "20260729110000_0068_epcis_event_type.sql",
+          "sha256": "5963900b3e266d6a4a68d2f4318d160ba0b86b9b72010a6fc85046a7a783174e"
+        },
+        {
+          "id": "20260729110500_0069_gs1_epcis_foundation.sql",
+          "sha256": "f400cab8e693d41055d3e2a2b2aa9d9a69222a2d4cd7351dbc49822a51dc844e"
+        },
+        {
+          "id": "20260729130000_0070_supplier_qa_atomic_receipts.sql",
+          "sha256": "198c53865f819979eaaaeb113c9403d589f139e55e523cabc1fee30fdebf6524"
+        },
+        {
+          "id": "20260729143000_0071_supplier_pack_purpose_governance.sql",
+          "sha256": "dafd9f2e2d06f557fa06ab1bc1d9737bec1f897bc6840d92e591f778c0c7375f"
+        },
+        {
+          "id": "20260729160000_0072_tokenization_marketplace_execution_governance.sql",
+          "sha256": "1c0ef720cb649e332d55ccb0ab0b2a5a838a5fb52a478617fb48c4cdf389e6f9"
+        },
+        {
+          "id": "20260730110000_0073_supplier_qa_verification_context_v2.sql",
+          "sha256": "f79d37a0f8d1e1889117112cea3d54404bffd7cc4d4a073d61ecab0bb97ad17c"
+        },
+        {
+          "id": "20260730150000_0074_supplier_key_rotation_atomic.sql",
+          "sha256": "b9ffa0cd536f10b643c6c146e5b550065c9f41159c21e3a6f1f2d8504a144de9"
+        },
+        {
+          "id": "20260801090000_0075_supplier_production_qa_acceptance.sql",
+          "sha256": "1395a9d2724911df62a3b20e93f48def3a3b275bc03c832c5669f92cadd6d610"
+        },
+        {
+          "id": "20260802090000_0076_supplier_production_activation_v2.sql",
+          "sha256": "0312c295de7b76757fdf2ddf5886b1c35ab36f0a7c59771eae3b2239a1d71928"
+        },
+        {
+          "id": "20260802113000_0077_tenant_api_key_lifecycle.sql",
+          "sha256": "a691e0abc5cbaf5b0b1e1898aae00025d21586e91c622e63c1177de888f4c010"
+        },
+        {
+          "id": "20260802130000_0078_webhook_destination_cutover.sql",
+          "sha256": "b6107c6712b9900ea1281216496ed46f7f282bbf80cbf96b477af19f02d91722"
+        },
+        {
+          "id": "20260802150000_0079_supplier_order_atomic_create.sql",
+          "sha256": "6272ea5fe8ac8a96db1d72f9b142557def1233b6cbbfb4704049e1ddc019919a"
+        },
+        {
+          "id": "20260802153000_0080_offline_scan_history_index.sql",
+          "sha256": "2f4aa597ad3ff386f5430f3dd8ceba7600401a6428e56dd19831911b1abc26df"
+        },
+        {
+          "id": "20260802160000_0081_supplier_manifest_atomic_import.sql",
+          "sha256": "7fbd8ebff3b0b9623e335ed299da764527b6ff265353e486b6dc32045e51891b"
+        },
+        {
+          "id": "20260802170000_0082_consumer_session_revocation.sql",
+          "sha256": "2b0292b93b72d83b40062c918f068bd2d7cb003396d3bf907e4308e6beaa8aee"
+        },
+        {
+          "id": "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
+          "sha256": "320deaa9bfcea4a37e79d6fcd7e12c3e868344e47b32d076126a18343ceb0a79"
+        },
+        {
+          "id": "20260802190000_0084_tenant_vault_audited_download.sql",
+          "sha256": "8d4bfef1449d26c9d89183c707db6e48e1fdb9f08185c8921004cf5ea1e1073d"
+        },
+        {
+          "id": "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
+          "sha256": "c760ea50b32fd49cbfcf8ec725c5229694cf2fb8e50015bedcea1a73e39c7079"
+        },
+        {
+          "id": "20260802210000_0086_supplier_order_lifecycle.sql",
+          "sha256": "7681f1587260d4298638b3665ba043a20c714bca27c5743eab4cbffe9e552000"
+        },
+        {
+          "id": "20260802220000_0087_packaging_lab_foundation.sql",
+          "sha256": "b4bbad47b75f6c1d2e7cf3d0862928f948778e4290baaba5754f8a234ecf2f15"
+        },
+        {
+          "id": "20260802230000_0088_enterprise_event_profile.sql",
+          "sha256": "8800679171b01139296852cdc15e826dd2e836d5c812e617d727c798d808e2e5"
+        },
+        {
+          "id": "20260802240000_0089_sun_carrier_trust_state.sql",
+          "sha256": "5bc527a3f65b2d5ac0d409bb11e0c5cfb38d021672edff5dfd8ec43afb8ae529"
+        },
+        {
+          "id": "20260802250000_0090_supplier_carrier_key_scope.sql",
+          "sha256": "b6e37e109723e9f367d00acbaedc37000980c6cfd2981673fad876b5688b87c2"
+        },
+        {
+          "id": "20260802260000_0091_supplier_keyless_qa_activation.sql",
+          "sha256": "ccdd31df75fe97337a592e7c5527f955cc2a20ca0dabfd92f0f37a6a01a84b0f"
+        },
+        {
+          "id": "20260802270000_0092_supplier_carrier_scope_integrity.sql",
+          "sha256": "da3fd75bb43ca54992309afe3d14ce9e13925e10ef60dea75de1c01abfc2aaf7"
+        },
+        {
+          "id": "20260802280000_0093_sun_tt_durable_truth_binding.sql",
+          "sha256": "2d66ce9f8b037704394c1689911ce00e6bb80b99e629b5787e297b1cf7d22614"
+        },
+        {
+          "id": "20260802290000_0094_sun_runtime_acl_boundary.sql",
+          "sha256": "af778a257ce7dda8cef9123c25680f00633dba89310d8a8e40d721ddf51300e5"
+        },
+        {
+          "id": "20260802300000_0095_sun_tt_conflict_target.sql",
+          "sha256": "f80ca8830a9b774ba6e940f3616429c824f9bedc63696484c61104bf0c2de1ce"
+        },
+        {
+          "id": "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+          "sha256": "adcf332021872ad1d5e8ec7629071523a9724c88d626d5adc53630f7ddf72017"
+        },
+        {
+          "id": "20260829120000_0097_public_location_privacy.sql",
+          "sha256": "fdf7449ed2182e8524ee0f3d16dfe3bc6a804ad4f875cd560914f7e7dbf68878"
+        },
+        {
+          "id": "20260830120000_0098_event_location_context.sql",
+          "sha256": "448f8414174ec5a1490d8186c5058ece7834889370575a53e9656a897f1c24c8"
+        },
+        {
+          "id": "20260831190000_0099_post_tap_location_observation.sql",
+          "sha256": "fc9433f79e299e20629d2314c363439df6b7d2bb0719163b7e2803347f7010d5"
+        },
+        {
+          "id": "20260903110000_0099_commercial_role_defaults.sql",
+          "sha256": "0418e72d7f072aca8d30d349fbd74df50bd390971dbe592d7c191a2179465eb2"
+        },
+        {
+          "id": "20260903120000_0100_event_incident_optimistic_concurrency.sql",
+          "sha256": "db331d7c0aad49d9b3a5356cc32ea89bd5437413256a72f096ac72a74b94ee2e"
+        },
+        {
+          "id": "20260903130000_0101_identified_unverified_event_taxonomy.sql",
+          "sha256": "6d6d67e4543bccad8944fee277c6189505bfcdc6ce22d31a19f9edb5b1ed468f"
+        },
+        {
+          "id": "20260906120000_0102_campaign_drafts.sql",
+          "sha256": "84ab1f85dc831440c7846c401001f8be50a6fad24aace7be1603bcb51dea1ab3"
+        }
+      ]
+    },
+    {
+      "app": "web",
+      "projectId": "prj_pQIhl6GMCfAaSBpxPmLNDuyKEk17",
+      "projectName": "nexid-web",
+      "rootDirectory": "apps/web",
+      "deployment": {
+        "id": "dpl_6G2bPMnoATxY9ySf5ZQufKNWbNp6",
+        "url": "https://nexid-bqxi2xw6q-marcelos-projects-c26aa499.vercel.app",
+        "target": "production",
+        "state": "READY",
+        "createdAt": "2026-09-08T22:52:12.479Z"
+      },
+      "source": {
+        "commitSha": "869ecdf00c05979d8d101f6a3ad1c400668cf0c0",
+        "ref": "codex/consumer-portal-ux-2026-09-08",
+        "cleanliness": "dirty",
+        "origin": "provider_metadata_not_build_attestation",
+        "availableLocally": true,
+        "treeOid": "be6022687c2a3df3ae9ec92878618d51f93cc0d7",
+        "componentTree": "9185a543cc3f79d607d59ed02c5a4dd347155a16",
+        "sharedPackagesTree": "b0fb0b14d73e57025d91cb8f8087a54f934a2357",
+        "lockfileSha256": "94fc632bc7c49f88453f9ea45e022f895cb1ad2dc01720049523240e89b65c59"
+      },
+      "artifact": {
+        "providerId": "dpl_6G2bPMnoATxY9ySf5ZQufKNWbNp6",
+        "sha256": null,
+        "evidence": "provider_id_only"
+      }
+    },
+    {
+      "app": "dashboard",
+      "projectId": "prj_dZCNO1mMbXKzVwu14qswAq0ZunLc",
+      "projectName": "nexid-dashboard",
+      "rootDirectory": "apps/dashboard",
+      "deployment": {
+        "id": "dpl_ECUCqweEA2Z37GsQK9tTVEVh83au",
+        "url": "https://nexid-dashboard-l1zk2gz8r-marcelos-projects-c26aa499.vercel.app",
+        "target": "production",
+        "state": "READY",
+        "createdAt": "2026-09-08T13:59:48.506Z"
+      },
+      "source": {
+        "commitSha": "76af8ac57406d4154aa60868df2d39c810cf79ff",
+        "ref": "codex/dashboard-tap-navigation-2026-09-05",
+        "cleanliness": "unknown",
+        "origin": "provider_metadata_not_build_attestation",
+        "availableLocally": true,
+        "treeOid": "83724339e317b9ba5a1667d9fe6275cba85ba0ed",
+        "componentTree": "0a77587efc9f0e97ca125926f8f8c90710586583",
+        "sharedPackagesTree": "b0fb0b14d73e57025d91cb8f8087a54f934a2357",
+        "lockfileSha256": "94fc632bc7c49f88453f9ea45e022f895cb1ad2dc01720049523240e89b65c59"
+      },
+      "artifact": {
+        "providerId": "dpl_ECUCqweEA2Z37GsQK9tTVEVh83au",
+        "sha256": null,
+        "evidence": "provider_id_only"
+      }
+    }
+  ],
+  "verification": {
+    "compatibility": "not_run",
+    "database": "not_queried",
+    "rollback": "not_rehearsed",
+    "physicalTap": "not_performed"
+  },
+  "rollback": {
+    "status": "reference_only_not_rehearsed",
+    "deployments": [
+      {
+        "app": "api",
+        "deploymentId": "dpl_76TRRjoH8xggAaq37aAJF8Cbs5eA"
+      },
+      {
+        "app": "web",
+        "deploymentId": "dpl_6G2bPMnoATxY9ySf5ZQufKNWbNp6"
+      },
+      {
+        "app": "dashboard",
+        "deploymentId": "dpl_ECUCqweEA2Z37GsQK9tTVEVh83au"
+      }
+    ]
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "91f27caa36ce28e7a580757f4af756a9a8fb49e559ca6fbe7c70c5d900804587"
+  }
+}
