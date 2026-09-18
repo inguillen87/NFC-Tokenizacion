@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.18-api-batches.1",
-  "scope": "existing-tenant-batch-read-dependency-repair",
-  "baseCommit": "40745006b5c1daefc26bc87e1803709d67f674cd",
+  "release": "2026.09.18-api-channels.1",
+  "scope": "batch-carrier-state-gs1-registration-and-registered-qr-export",
+  "baseCommit": "28946beed6cdd964c9249db5e8e8bfd9cc3f1fae",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -19,5 +19,6 @@
   ],
   "logisticsOperationProtocol": "nexid.logistics.v1",
   "passportStudioProtocol": "nexid.passport-studio.v1",
-  "receptionProtocol": "nexid.supplier-reception.v1"
+  "receptionProtocol": "nexid.supplier-reception.v1",
+  "channelProtocol": "nexid.batch-channels.v1"
 }

@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { canRepairRegisteredTagTamper } from "../../../../../lib/ttstatus-repair-policy";
 import { checkAdmin } from "../../../../../lib/auth";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
@@ -48,7 +49,7 @@ export async function POST(req: Request, context: { params: Promise<{ bid: strin
   if (!bid) return json({ ok: false, reason: "bid required" }, 400);
 
   const rows = await sql/*sql*/`
-    SELECT id, bid, sdm_config, status, created_at
+    SELECT id, bid, sdm_config, status, created_at, carrier_profile_code
     FROM batches
     WHERE bid = ${bid}
     ORDER BY created_at ASC, id ASC
@@ -70,6 +71,7 @@ export async function POST(req: Request, context: { params: Promise<{ bid: strin
     }, 409);
   }
 
+  if (!canRepairRegisteredTagTamper(batch.carrier_profile_code,batch.sdm_config)) return json({ok:false,reason:"ttstatus_repair_requires_registered_tagtamper"},409);
   const previousConfig = asConfig(batch.sdm_config);
   const nextConfig = { ...previousConfig, ...STANDARD_TTSTATUS_CONFIG };
   const diff = buildDiff(previousConfig, nextConfig);
