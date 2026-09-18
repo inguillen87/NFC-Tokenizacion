@@ -218,6 +218,8 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "Servicios de la marca", pt: "Serviços da marca", en: "Brand services" },
   { es: "¿Qué querés hacer con este producto?", pt: "O que você quer fazer com este produto?", en: "What would you like to do with this product?" },
   { es: "Cada acción es opcional y se procesa por separado de la lectura NFC.", pt: "Cada ação é opcional e processada separadamente da leitura NFC.", en: "Each action is optional and processed separately from the NFC read." },
+  { es: "Sin observaciones adicionales de la lectura", pt: "Sem observações adicionais da leitura", en: "No additional read observations" },
+  { es: "Este estado técnico no determina si el lote tiene un retiro o restricción comercial.", pt: "Este estado técnico não determina se o lote possui recolhimento ou restrição comercial.", en: "This technical status does not determine whether the batch has a recall or commercial restriction." },
   { es: "Sin alertas reportadas", pt: "Sem alertas informados", en: "No reported alerts" },
   { es: "Podés consultar los servicios que la marca habilitó para esta unidad.", pt: "Você pode consultar os serviços que a marca habilitou para esta unidade.", en: "You can view the services the brand enabled for this unit." },
   { es: "Lectura con observaciones", pt: "Leitura com observações", en: "Read with observations" },

@@ -1,7 +1,9 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.17-web.6",
-  "scope": "prominent-voluntary-phone-location-and-compact-tap-first-viewport",
-  "baseCommit": "869ecdf00c05979d8d101f6a3ad1c400668cf0c0",
-  "physicalTapCertification": "not-included"
+  "version": "2026.09.18-web-recalls.1",
+  "scope": "resolved-batch-product-notices-separate-from-nfc-authenticity",
+  "baseCommit": "ac9171b2e683c5d4ae766945f96acf8e3d2bdbc0",
+  "physicalTapCertification": "not-included",
+  "requiredApiRelease": "2026.09.18-api-recalls.1",
+  "productNoticesProtocol": "nexid.product-notices.v1"
 }

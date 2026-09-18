@@ -44,8 +44,8 @@ export type SunServicesHubProps = {
 
 const RISK_COPY: Record<SunServicesRiskState, { label: string; detail: string; className: string }> = {
   clear: {
-    label: "Sin alertas reportadas",
-    detail: "Podés consultar los servicios que la marca habilitó para esta unidad.",
+    label: "Sin observaciones adicionales de la lectura",
+    detail: "Este estado técnico no determina si el lote tiene un retiro o restricción comercial.",
     className: "border-emerald-300/20 bg-emerald-500/10 text-emerald-100",
   },
   observed: {

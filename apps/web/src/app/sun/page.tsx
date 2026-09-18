@@ -1,3 +1,4 @@
+import { ProductNotices } from "./product-notices";
 import { SunLocationQuickAction } from "./sun-location-quick-action";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -1633,6 +1634,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           livePillLabel={livePillLabel}
           pulseClass={pulseClass}
         />
+        <ProductNotices tenant={String(result.identity?.tenantSlug||"")} bid={String(result.identity?.bid||"")} enabled={!isDemoPreview && result.ok===true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}/>
 
         {demoLabReturnHref ? (
           <Link
