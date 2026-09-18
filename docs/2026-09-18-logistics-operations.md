@@ -26,8 +26,8 @@ Se conserva el mapa, Centro en Vivo, expediente del lote y los demás módulos.
 
 ## Pruebas
 
-Suite dashboard: 775 pruebas, 773 aprobadas, cero fallos y dos omitidas antes de
-publicar. Ocho pruebas nuevas de protocolo, alcance, recibos, contadores y permisos.
+Suite dashboard: 776 pruebas, 774 aprobadas, cero fallos y dos omitidas antes de
+publicar. Nueve pruebas nuevas de protocolo, alcance, recibos, contadores y permisos.
 Build y TypeScript aprobados. Chrome local: cuatro combinaciones escritorio/móvil,
 claro/oscuro; confirmación obligatoria, respuesta perdida, retry con la misma clave,
 un solo envío, ausencia de TT conservada, filtros sin nueva consulta y rol de lectura.
@@ -35,3 +35,8 @@ Cero errores JS no capturados ni incidencias axe serias/críticas en la superfic
 analizada. Las mutaciones fueron simuladas solo en loopback, no en clientes reales.
 Las garantías transaccionales se probaron además en PostgreSQL real local (21 casos)
 y se documentan en la release de API; no se infieren de la simulación del navegador.
+
+Revisión previa a promoción: el guardado protege también el identificador durante
+dos submits en el mismo turno de JavaScript. La prueba de navegador repite ese
+caso con respuesta incierta y comprueba que se recupera el mismo recibo sin otro
+envío. Cambiar de empresa reinicia el estado local de la operación.

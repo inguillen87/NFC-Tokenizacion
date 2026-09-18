@@ -14,5 +14,5 @@ export default async function LogisticsHubPage({searchParams}:{searchParams:Prom
     }catch{ /* Unavailable is not zero inventory. No secondary query or demo fallback. */ }
   }
   const canWrite=!session.isDemo&&["tenant-admin","super-admin"].includes(session.role)&&dashboardPermissionMatches(session.permissions,"logistics:write",session.deniedPermissions);
-  return <LogisticsWorkspace overview={overview} tenant={context.tenantSlug} canWrite={canWrite} canSupplier={dashboardSessionCanOpenDestination(session,"supplierBatches")} role={session.role}/>;
+  return <LogisticsWorkspace key={context.tenantSlug||"global"} overview={overview} tenant={context.tenantSlug} canWrite={canWrite} canSupplier={dashboardSessionCanOpenDestination(session,"supplierBatches")} role={session.role}/>;
 }

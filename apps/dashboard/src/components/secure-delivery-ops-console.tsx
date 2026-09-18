@@ -26,7 +26,7 @@ export function SecureDeliveryOpsConsole({tenantSlug,role,canWrite=false,shipmen
   const [created,setCreated]=useState<{id:string;code:string}|null>(null);
   const attempt=useRef<Attempt|null>(null),inflight=useRef<AbortController|null>(null),mounted=useRef(true);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;inflight.current?.abort();};},[]);
-  function changeOperation(next:Operation){if(pending||uncertain)return;setOperation(next);setConfirmed(false);setMessage("");setReceipt(null);attempt.current=null;}
+  function changeOperation(next:Operation){if(pending||uncertain||inflight.current)return;setOperation(next);setConfirmed(false);setMessage("");setReceipt(null);attempt.current=null;}
   async function send(current:Attempt){
     if(inflight.current||!canWrite)return;const controller=new AbortController();inflight.current=controller;
     const timeout=setTimeout(()=>controller.abort(),20000);setPending(true);setMessage("");
@@ -41,7 +41,7 @@ export function SecureDeliveryOpsConsole({tenantSlug,role,canWrite=false,shipmen
     finally{clearTimeout(timeout);inflight.current=null;if(mounted.current)setPending(false);}
   }
   function submit(event:React.FormEvent<HTMLFormElement>){
-    event.preventDefault();if(!canWrite||pending||uncertain||!confirmed||receipt)return;
+    event.preventDefault();if(!canWrite||pending||uncertain||!confirmed||receipt||inflight.current)return;
     const form=new FormData(event.currentTarget),get=(key:string)=>String(form.get(key)||"").trim();
     const tenant=tenantSlug||get("tenant_slug"),shipmentId=operation==="CREATE"?"":selected;
     if(!tenant){setMessage("Seleccioná la empresa del envío.");return;}

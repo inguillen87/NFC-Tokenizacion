@@ -25,7 +25,8 @@ try{
     await ops.getByRole('spinbutton',{name:'Cantidad',exact:true}).fill('2');
     assert.equal(await ops.getByRole('button',{name:'Confirmar creación',exact:true}).isDisabled(),true);
     await ops.getByRole('checkbox').check();await fetch(api+'/qa-fail-next',{method:'POST'});
-    await ops.getByRole('button',{name:'Confirmar creación',exact:true}).click();
+    // Local fixture only: two submissions in the same task must retain one request identity.
+    await ops.locator('form').evaluate(form=>{form.requestSubmit();form.requestSubmit();});
     await ops.getByRole('button',{name:'Reintentar el mismo intento identificado',exact:true}).waitFor();
     assert.equal((await state()).requests.length,1,'No automatic retry after uncertain response');
     assert.equal(await ops.getByRole('textbox',{name:'Producto o activo',exact:true}).isDisabled(),true);

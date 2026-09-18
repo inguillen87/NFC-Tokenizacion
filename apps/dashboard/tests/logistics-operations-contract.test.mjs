@@ -14,3 +14,9 @@ test('an idempotent replay retains its identity in the UI',()=>{const r=logistic
 test('human wording distinguishes state from contents or authenticity',()=>{assert.equal(logisticsStatus('DELIVERED_CLOSED'),'Recibido · cerrado reportado');assert.equal(logisticsStatus('unknown'),'Estado no reconocido');});
 test('BFF protects read and write requests with their own permission',()=>{assert.equal(requiredPermissionForAdminResource('GET','logistics/shipments'),'logistics:read');assert.equal(requiredPermissionForAdminResource('POST','logistics/scan'),'logistics:write');});
 test('UI does not guess closed TT or submit without explicit confirmation',async()=>{const s=await readFile(new URL('../src/components/secure-delivery-ops-console.tsx',import.meta.url),'utf8');assert.match(s,/tt_raw:get\("tt_raw"\)/);assert.doesNotMatch(s,/tt_raw:.*\|\|\s*"4343"|defaultValue="4343"/);assert.match(s,/!confirmed/);assert.match(s,/operation_key=crypto.randomUUID/);assert.match(s,/send\(attempt.current\)/);assert.doesNotMatch(s,/setInterval|EventSource|localStorage/);});
+
+test('in-flight UI operations keep their existing request identity',async()=>{
+  const code=await readFile(new URL('../src/components/secure-delivery-ops-console.tsx',import.meta.url),'utf8');
+  assert.match(code,/if\(!canWrite\|\|pending\|\|uncertain\|\|!confirmed\|\|receipt\|\|inflight.current\)return/);
+  assert.ok(code.indexOf('receipt||inflight.current')<code.indexOf('operation_key=crypto.randomUUID'));
+});
