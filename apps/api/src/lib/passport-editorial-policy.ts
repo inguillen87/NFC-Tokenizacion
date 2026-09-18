@@ -5,7 +5,7 @@ export const EDITORIAL_VERSION = "nexid.passport-editorial.v1" as const;
 export const EDITORIAL_MAX_BYTES = 65_536;
 export type EditorialTemplate = "general" | "agro";
 export type EditorialLocale = "es-AR" | "en" | "pt-BR";
-export type EditorialState = "draft" | "in_review" | "changes_requested" | "approved";
+export type EditorialState = "draft" | "in_review" | "changes_requested" | "approved" | "published";
 export type EditorialScope = Readonly<{ tenantId: string; batchId: string }>;
 export type EditorialAuthority = Readonly<{ actorId: string; canEdit: boolean; canReview: boolean }>;
 export type PublicIdentity = {
@@ -224,7 +224,7 @@ export function transitionEditorialDraft(current: EditorialDraft, command: {
 function checkCurrentDraft(current: EditorialDraft): EditorialDraft {
   record(current, ["id", "scope", "revision", "state", "document", "contentDigest", "basePublishedDigest", "createdBy", "lastEditorId", "submittedBy", "createdAt", "updatedAt", "approval"]);
   if (!current || !Number.isSafeInteger(current.revision) || current.revision < 1) return fail("editorial_revision_invalid");
-  if (!["draft", "in_review", "changes_requested", "approved"].includes(current.state)) return fail("editorial_state_invalid");
+  if (!["draft", "in_review", "changes_requested", "approved", "published"].includes(current.state)) return fail("editorial_state_invalid");
   const document = parseEditorialDocument(current.document), contentDigest = editorialContentDigest(document);
   if (current.contentDigest !== contentDigest) return fail("editorial_integrity_mismatch");
   const result = { ...current, id: id(current.id), scope: scope(current.scope), document, contentDigest,
@@ -232,11 +232,11 @@ function checkCurrentDraft(current: EditorialDraft): EditorialDraft {
     submittedBy: current.submittedBy === null ? null : actorId(current.submittedBy),
     createdAt: timestamp(current.createdAt), updatedAt: timestamp(current.updatedAt) };
   if (result.updatedAt < result.createdAt) return fail("editorial_time_invalid");
-  if ((result.state === "in_review" || result.state === "approved") && !result.submittedBy) return fail("editorial_state_invalid");
-  if (result.state === "approved") {
+  if ((result.state === "in_review" || result.state === "approved" || result.state === "published") && !result.submittedBy) return fail("editorial_state_invalid");
+  if (result.state === "approved" || result.state === "published") {
     const a = current.approval;
     if (a) record(a, ["actorId", "at", "contentDigest"]);
-    if (!a || a.contentDigest !== contentDigest || [result.createdBy, result.lastEditorId, result.submittedBy].includes(actorId(a.actorId)) || timestamp(a.at) !== result.updatedAt) return fail("editorial_approval_invalid");
+    if (!a || a.contentDigest !== contentDigest || [result.createdBy, result.lastEditorId, result.submittedBy].includes(actorId(a.actorId)) || (result.state === "approved" ? timestamp(a.at) !== result.updatedAt : timestamp(a.at) > result.updatedAt)) return fail("editorial_approval_invalid");
     result.approval = { actorId: actorId(a.actorId), at: timestamp(a.at), contentDigest };
   } else if (current.approval !== null) return fail("editorial_approval_invalid");
   return result;
@@ -258,4 +258,21 @@ export function planEditorialPublication(current: EditorialDraft, input: {
   return { applied: false as const, requiresAtomicCommit: true as const, scope: { ...checked.scope },
     draftId: checked.id, expectedRevision: checked.revision, contentDigest: checked.contentDigest,
     expectedPublishedDigest: checked.basePublishedDigest, patch };
+}
+
+export function completeEditorialPublication(current:EditorialDraft,input:{scope:EditorialScope;canPublish:boolean;expectedRevision:number;expectedContentDigest:string;currentPublishedDigest:string;at:string}):EditorialDraft {
+  planEditorialPublication(current,input);
+  const checked=checkCurrentDraft(current),at=timestamp(input.at);
+  if(at<checked.updatedAt||checked.revision>=Number.MAX_SAFE_INTEGER)fail("editorial_time_invalid");
+  return {...checked,state:"published",revision:checked.revision+1,updatedAt:at};
+}
+export function reopenEditorialDraft(current:EditorialDraft,input:{scope:EditorialScope;authority:EditorialAuthority;expectedRevision:number;expectedContentDigest:string;currentPublishedDigest:string;at:string}):EditorialDraft {
+  const checked=checkCurrentDraft(current),requested=scope(input.scope);
+  if(requested.tenantId!==checked.scope.tenantId||requested.batchId!==checked.scope.batchId)fail("editorial_scope_forbidden");
+  if(input.authority.canEdit!==true)fail("editorial_edit_forbidden");
+  if(!["approved","published"].includes(checked.state))fail("editorial_transition_invalid");
+  if(input.expectedRevision!==checked.revision||input.expectedContentDigest!==checked.contentDigest)fail("editorial_revision_conflict");
+  const at=timestamp(input.at),actor=actorId(input.authority.actorId);
+  if(at<checked.updatedAt||checked.revision>=Number.MAX_SAFE_INTEGER)fail("editorial_time_invalid");
+  return {...checked,state:"draft",revision:checked.revision+1,basePublishedDigest:digest(input.currentPublishedDigest),createdBy:actor,lastEditorId:actor,submittedBy:null,approval:null,createdAt:at,updatedAt:at};
 }

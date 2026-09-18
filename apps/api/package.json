@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3003",
     "prebuild": "npm run prisma:generate",
-    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && npm run test:sun && npm run test:supplier-security && npm run test:commercial-scope && npm run test:campaign-drafts && npm run test:polygon-transfer && npm run test:wallet-control && npm run test:proof && npm run test:webhooks && npm run test:gs1-epcis && npm run test:auth-security && npm run test:consumer-otp && npm run test:rate-limits && npm run test:logistics && next build",
+    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && npm run test:sun && npm run test:supplier-security && npm run test:commercial-scope && npm run test:campaign-drafts && npm run test:polygon-transfer && npm run test:wallet-control && npm run test:proof && npm run test:webhooks && npm run test:gs1-epcis && npm run test:auth-security && npm run test:consumer-otp && npm run test:rate-limits && npm run test:logistics && npm run test:passport && next build",
     "start": "next start -p 3003",
     "db:new": "node scripts/db-new-migration.mjs",
     "db:migrate": "node scripts/db-apply.mjs",
@@ -47,6 +47,7 @@
     "batch-keys:migrate-envelope-context": "node --import tsx scripts/migrate-batch-key-envelope-context.mjs",
     "webhooks:migrate-signing-secrets": "node --import tsx scripts/migrate-webhook-signing-secrets.mjs",
     "supplier:physical-evidence:validate": "node scripts/validate-physical-nfc-evidence-pack.mjs",
+    "test:passport": "node --import tsx --test tests/passport-editorial-policy.test.mjs tests/passport-studio-integration-contract.test.mjs",
     "test:logistics": "node --import tsx --test tests/secure-delivery.test.mjs tests/logistics-atomic-contract.test.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
     "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs tests/consumer-otp-twilio-status.test.mjs tests/consumer-otp-twilio-inbound.test.mjs",

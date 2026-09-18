@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {readFile} from 'node:fs/promises';
+import {validateStudioCommand,sourceEditorialDocument,studioFailure} from '../src/lib/passport-editorial-service.ts';
+import {roleMayUseEnterpriseCapability} from '../src/lib/enterprise-capability-policy.ts';
+const scope={tenantId:'10000000-0000-4000-8000-000000000001',batchId:'20000000-0000-4000-8000-000000000001'};
+const start={action:'start',operationId:'30000000-0000-4000-8000-000000000001',scope,template:'general',locale:'es-AR',expectedPublicDigest:'a'.repeat(64)};
+const source=p=>readFile(new URL(p,import.meta.url),'utf8');
+test('client commands cannot supply actors, role flags or approval',()=>{for(const field of ['actorId','canReview','approval','sdm_config'])assert.throws(()=>validateStudioCommand({...start,[field]:true}),/editorial_field_not_allowed/);});
+test('command action must match the authenticated endpoint',()=>{assert.throws(()=>validateStudioCommand(start,'publish'),/editorial_action_invalid/);assert.equal(validateStudioCommand(start,'start').action,'start');});
+test('unknown scope fields are rejected rather than forwarded',()=>{assert.throws(()=>validateStudioCommand({...start,scope:{...scope,canPublish:true}}),/editorial_scope_forbidden/);});
+test('review permission has an explicit enterprise role boundary',()=>{assert.equal(roleMayUseEnterpriseCapability('marketing-manager','batch.product.review'),false);assert.equal(roleMayUseEnterpriseCapability('tenant-admin','batch.product.review'),true);assert.equal(roleMayUseEnterpriseCapability('packaging-operator','batch.product.publish'),false);});
+test('raw source projection excludes arbitrary config and keys',()=>{const doc=sourceEditorialDocument({product_name:'QA',meta_key:'synthetic-only',sun:{security:{private:'synthetic-only'}}},'general','es-AR');assert.ok(!JSON.stringify(doc).includes('synthetic-only'));});
+test('known agro cannot be hidden behind a general template',()=>{assert.throws(()=>sourceEditorialDocument({product_name:'QA',agro_product_profile:{crop:'Maíz'}},'general','es-AR'),/editorial_template_mismatch/);});
+test('unknown database errors do not leak internal SQL',()=>{assert.deepEqual(studioFailure(new Error('SELECT secret FROM private')), {reason:'editorial_unavailable',status:503});});
+test('history and public updates are guarded in one SQL commit function',async()=>{const sql=await source('../db/migrations/20260918120000_0104_passport_editorial.sql');assert.match(sql,/FOR UPDATE/);assert.match(sql,/SECURITY INVOKER/);assert.match(sql,/editorial_independent_review_required/);assert.match(sql,/editorial_published_content_changed/);assert.match(sql,/INSERT INTO public.passport_editorial_receipts/);assert.match(sql,/convert_to\(\(p_command->'request'\)::text/);assert.match(sql,/jsonb_typeof\(p_command->'request'\) IS DISTINCT FROM 'object'/);});
+test('legacy write path blocks managed lots and checks old configuration',async()=>{const code=await source('../src/app/admin/batches/[bid]/product-config/route.ts');assert.match(code,/if\(batches\[0\]\.editorial_managed\)/);assert.match(code,/AND NOT editorial_managed AND sdm_config IS NOT DISTINCT FROM/);});

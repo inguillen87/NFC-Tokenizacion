@@ -41,6 +41,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
     SELECT
       b.id,
       b.bid,
+      b.editorial_managed,
       b.status,
       b.created_at,
       t.slug AS tenant_slug,

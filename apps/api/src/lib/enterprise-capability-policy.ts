@@ -55,6 +55,8 @@ const ENTERPRISE_CAPABILITY_ROLES = Object.freeze<Record<string, readonly string
   "batch.revoke": ["super-admin", "tenant-owner", "tenant-admin"],
   "batch.tamper.configure": ["super-admin", "tenant-owner", "tenant-admin", "security-operator"],
   "tag.tamper.override": ["super-admin", "tenant-owner", "tenant-admin", "security-operator"],
+  "batch.product.review": ["super-admin", "tenant-owner", "tenant-admin"],
+  "batch.product.publish": ["super-admin", "tenant-owner", "tenant-admin"],
   "batch.product.configure": ["super-admin", "tenant-owner", "tenant-admin", "marketing-manager"],
   "ownership.claim_policy.manage": ["super-admin", "tenant-owner", "tenant-admin"],
   "risk_rules.write": ["super-admin", "tenant-owner", "security-operator"],

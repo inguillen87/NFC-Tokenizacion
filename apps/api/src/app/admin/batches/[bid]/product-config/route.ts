@@ -47,14 +47,14 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
   const { forcedTenantSlug } = getAdminTenantAccess(req);
   const batches = forcedTenantSlug
     ? await sql/*sql*/`
-      SELECT b.id, b.status, b.created_at, b.sdm_config
+      SELECT b.id, b.status, b.created_at, b.sdm_config, b.editorial_managed
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
       ORDER BY b.created_at ASC, b.id ASC
     `
     : await sql/*sql*/`
-      SELECT id, status, created_at, sdm_config
+      SELECT id, status, created_at, sdm_config, editorial_managed
       FROM batches
       WHERE bid = ${bid}
       ORDER BY created_at ASC, id ASC
@@ -68,6 +68,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
       batches: batches.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
     }, 409);
   }
+
+  if(batches[0].editorial_managed)return json({ok:false,reason:"editorial_managed_use_studio",message:"Este lote utiliza revisión editorial. Continuá desde Passport Studio."},409);
 
   const existingConfig = (batches[0].sdm_config && typeof batches[0].sdm_config === "object")
     ? (batches[0].sdm_config as Record<string, any>)
@@ -164,9 +166,10 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
   const updated = await sql/*sql*/`
     UPDATE batches
     SET sdm_config = ${JSON.stringify(nextConfig)}::jsonb
-    WHERE id = ${batches[0].id}
+    WHERE id = ${batches[0].id} AND NOT editorial_managed AND sdm_config IS NOT DISTINCT FROM ${JSON.stringify(batches[0].sdm_config)}::jsonb
     RETURNING id, bid, sdm_config
   `;
 
+  if(!updated[0])return json({ok:false,reason:"product_configuration_changed"},409);
   return json({ ok: true, bid: updated[0].bid, sdm_config: updated[0].sdm_config });
 }
