@@ -108,6 +108,8 @@ export function dashboardPermissionMatches(
   if (!current) return true;
   if (dashboardPermissionDenied(denied, current)) return false;
   const canonical = canonicalPermission(current);
+  if(current==='recalls.write')return !dashboardPermissionDenied(denied,'incidents:write')&&['incidents:write','batch.lifecycle'].some(action=>dashboardPermissionMatches(granted,action,denied));
+  if(current==='recalls.read')return !dashboardPermissionDenied(denied,'incidents:read')&&['incidents:read','incidents:write','batch.lifecycle'].some(action=>dashboardPermissionMatches(granted,action,denied));
   if(current==='supplier_reception.read')return ['supplier_orders:read','supplier_order.create','manifest.import','packaging_lab.manage','qa.approve','qa.plan.approve','batch.activate'].some(action=>dashboardPermissionMatches(granted,action,denied));
 
   const grants = (Array.isArray(granted) ? granted : []).flatMap(expandedPermissions);
@@ -306,6 +308,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     return "supplier_orders:read";
   }
   if (/^batches\/[^/]+\/channels(?:\/qr)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'batches:read':'batch.product.configure';
+  if (/^batches\/[^/]+\/recalls(?:\/[^/]+)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'recalls.read':'recalls.write';
   if (normalizedPath === "supplier-reception") return "supplier_reception.read";
   if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
     return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";

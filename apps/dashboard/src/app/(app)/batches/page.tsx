@@ -1,3 +1,4 @@
+import {canReadRecallWorkspace} from '../../../lib/recall-workspace';
 import Link from 'next/link';
 import {requireDashboardSession} from '../../../lib/session';
 import {createAdminPageContext,fetchAdminPage} from '../../../lib/admin-page-access';
@@ -19,5 +20,5 @@ export default async function BatchesPage({searchParams}:{searchParams?:Promise<
   if(response.status===401||response.status===403)source={state:'forbidden',rows:null};
   else if(response.ok){if(response.headers.get('x-nexid-data-mode')==='demo')source={state:'invalid',rows:null};else source={state:'ready',rows:parseBatchWorkRows(await boundedDossierJson(response),context.tenantSlug)};}
  }catch{source={state:'unavailable',rows:null};}
- return <BatchWorkbench key={`${session.id}:${context.tenantSlug}`} source={source} scope={context.tenantSlug} global={context.isGlobal} accountLabel={session.label} canConfigure={dashboardHighImpactPermissionMatches(session.role,session.permissions,'batch.product.configure',session.deniedPermissions)} canImport={dashboardPermissionMatches(session.permissions,'manifest.import',session.deniedPermissions)} canOrder={dashboardSessionCanOpenDestination(session,'supplierBatches')}/>;
+ return <BatchWorkbench key={`${session.id}:${context.tenantSlug}`} canRecalls={canReadRecallWorkspace(session)} source={source} scope={context.tenantSlug} global={context.isGlobal} accountLabel={session.label} canConfigure={dashboardHighImpactPermissionMatches(session.role,session.permissions,'batch.product.configure',session.deniedPermissions)} canImport={dashboardPermissionMatches(session.permissions,'manifest.import',session.deniedPermissions)} canOrder={dashboardSessionCanOpenDestination(session,'supplierBatches')}/>;
 }

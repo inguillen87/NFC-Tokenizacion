@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.18-dashboard.14';
+export const DASHBOARD_RELEASE='2026.09.18-dashboard.15';
 export const DASHBOARD_RELEASE_DATE='2026-09-18';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "S5 · integración ejecutable",
-    "title": "El sistema del cliente ya tiene un punto de entrada.",
-    "summary": "Descargá el SDK privado empaquetado con un importador CSV de recepciones y un receptor webhook firmado. Se instala y prueba fuera del repositorio, sin credenciales productivas para las pruebas.",
-    "back": "Abrir API y SDK",
+    "eyebrow": "S6 · seguimiento de seguridad del producto",
+    "title": "Del aviso al cierre con evidencia.",
+    "summary": "Retiros y avisos de cuarentena por lote: borrador, revisión independiente, publicación en el pasaporte, acuses y cantidades documentadas.",
+    "back": "Abrir lotes",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Cómo empezar",
+    "guide": "Recorrido operativo",
     "steps": [
-      "Descargá el kit desde API y SDK con tu sesión autorizada.",
-      "Verificá el manifiesto, instalá el paquete local y ejecutá las pruebas incluidas.",
-      "Usá el perfil ERP / WMS · CSV para consultar productos y enviar recepciones declaradas.",
-      "Prepará la cola, revisá sus registros y confirmá la empresa antes del envío real."
+      "Abrí Retiro / cuarentena en el lote y prepará el aviso con responsables y cantidades declaradas.",
+      "Guardá el borrador y solicitá revisión. Otra cuenta autorizada debe publicar el aviso.",
+      "Registrá acuses, unidades devueltas o inmovilizadas y sus comprobantes.",
+      "Solicitá el cierre, hacé revisar su evidencia y descargá el informe del caso."
     ],
-    "boundary": "La descarga no crea API keys ni envía eventos. El adaptador CSV no es una integración nativa aceptada por un ERP concreto y no modifica precintos, autenticidad NFC ni estados logísticos.",
+    "boundary": "No se crean retiros ni envían mensajes automáticamente. El aviso no revoca etiquetas ni cambia su autenticidad. Cerrar el seguimiento conserva la advertencia; no libera el producto ni certifica físicamente las cantidades.",
     "cards": [
       {
-        "title": "Distribución privada",
-        "text": "Paquete SDK existente, contratos OpenAPI/AsyncAPI y scripts ejecutables en un artefacto con checksum. Sin publicación pública en npm.",
-        "tag": "SDK"
+        "title": "Aviso público separado del NFC",
+        "text": "La autenticidad de la etiqueta y las restricciones del lote son dimensiones distintas, visibles en el pasaporte.",
+        "tag": "Producto"
       },
       {
-        "title": "CSV con cola durable",
-        "text": "Plan local, ID comercial estable y recuperación de resultados inciertos sin duplicar deliberadamente el evento.",
-        "tag": "ERP / WMS"
+        "title": "Responsables y acuses",
+        "text": "Destinos, objetivos declarados y comprobantes sin confundirlos con un inventario físico o recepción automática.",
+        "tag": "Seguimiento"
       },
       {
-        "title": "Webhook firmado",
-        "text": "Receptor v2 que valida tenant y event ID antes de persistir una proyección local. Duplicados se reconocen sin repetirla.",
-        "tag": "Integración"
+        "title": "Revisión y cierre controlados",
+        "text": "Publicación y cierre requieren otra cuenta autorizada. Los cambios quedan versionados y los reintentos no duplican operaciones.",
+        "tag": "Integridad"
       },
       {
-        "title": "Permisos acotados",
-        "text": "El nuevo perfil elige sdk:products y sdk:events. No requiere claves NFC, permiso de activación ni acceso global.",
-        "tag": "Operación"
+        "title": "Informe del retiro",
+        "text": "Archivo HTML imprimible con cantidades, fuentes, revisión e historial. No es todavía el informe agregado de todo el piloto.",
+        "tag": "Evidencia"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "S5 · executable integration",
-    "title": "A runnable starting point for the customer system.",
-    "summary": "Download the private SDK with a durable receipt CSV adapter and signed webhook receiver. Install and test it outside the repository without production credentials.",
-    "back": "Open API and SDK",
+    "eyebrow": "S6 · product-safety follow-up",
+    "title": "From notice to evidence-based follow-up.",
+    "summary": "Batch recalls and quarantine notices with drafts, independent review, public passport warnings, acknowledgements and declared quantities.",
+    "back": "Open batches",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
-    "guide": "Get started",
+    "guide": "Workflow",
     "steps": [
-      "Download the kit with an authorized session.",
-      "Verify the manifest, install the local package and run its tests.",
-      "Choose the ERP / WMS CSV permission preset.",
-      "Prepare the queue and explicitly confirm the tenant before sending."
+      "Prepare the batch notice, destinations and declared quantities.",
+      "Save and request independent review before publishing.",
+      "Record acknowledgements, returned or held units and evidence references.",
+      "Request independent closure and download the case report."
     ],
-    "boundary": "Downloading does not create credentials or send events. This is a CSV reference adapter, not an accepted native ERP integration or physical NFC verification.",
+    "boundary": "No automatic recall or outbound messages. Closing follow-up does not remove the warning, release products or change NFC evidence.",
     "cards": [
       {
-        "title": "Private distribution",
-        "text": "Existing SDK, contracts and runnable scripts with artifact integrity checks. No public npm publication.",
-        "tag": "SDK"
+        "title": "Separate product warning",
+        "text": "Tag authenticity and product restrictions remain separate visible facts.",
+        "tag": "Product"
       },
       {
-        "title": "Durable CSV queue",
-        "text": "Local planning, stable business identifiers and bounded uncertain-result recovery.",
-        "tag": "ERP / WMS"
+        "title": "Assigned follow-up",
+        "text": "Declared targets and referenced acknowledgement evidence, not certified physical inventory.",
+        "tag": "Operations"
       },
       {
-        "title": "Signed callbacks",
-        "text": "V2 receiver checks tenant and event identity before durable local projection.",
-        "tag": "Webhook"
+        "title": "Controlled publication",
+        "text": "Another authorized identity reviews publication and closure; versioned commands reconcile retries.",
+        "tag": "Integrity"
       },
       {
-        "title": "Narrow permissions",
-        "text": "Only sdk:products and sdk:events for this adapter. No NFC key export or tag activation.",
-        "tag": "Access"
+        "title": "Case report",
+        "text": "Printable HTML with quantities and history, not yet the aggregated pilot report.",
+        "tag": "Evidence"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "S5 · integração executável",
-    "title": "Um ponto de entrada executável para o cliente.",
-    "summary": "Baixe o SDK privado com adaptador CSV de recebimentos e receptor webhook assinado. Instale e teste fora do repositório sem credenciais de produção.",
-    "back": "Abrir API e SDK",
+    "eyebrow": "S6 · acompanhamento do produto",
+    "title": "Do aviso ao acompanhamento com evidência.",
+    "summary": "Recolhimentos e avisos de quarentena por lote, com revisão independente, aviso no passaporte, acuses e quantidades declaradas.",
+    "back": "Abrir lotes",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Primeiros passos",
+    "guide": "Fluxo operacional",
     "steps": [
-      "Baixe o kit com uma sessão autorizada.",
-      "Verifique o manifesto, instale o pacote local e rode os testes.",
-      "Selecione o perfil ERP / WMS CSV de permissões.",
-      "Prepare a fila e confirme a empresa antes de enviar."
+      "Prepare o aviso e os destinos com responsáveis e quantidades declaradas.",
+      "Salve e solicite revisão independente para publicar.",
+      "Registre acuses, unidades devolvidas ou imobilizadas e comprovantes.",
+      "Solicite revisão do encerramento e baixe o relatório do caso."
     ],
-    "boundary": "Baixar não cria credenciais nem envia eventos. O adaptador CSV não é uma integração nativa validada em um ERP nem autenticação física NFC.",
+    "boundary": "Sem recolhimentos ou mensagens automáticas. Encerrar o acompanhamento mantém o aviso e não libera o produto nem altera a evidência NFC.",
     "cards": [
       {
-        "title": "Distribuição privada",
-        "text": "SDK existente, contratos e scripts com verificação de integridade. Sem publicação pública no npm.",
-        "tag": "SDK"
+        "title": "Aviso separado do NFC",
+        "text": "Autenticidade da etiqueta e restrições do lote são fatos distintos.",
+        "tag": "Produto"
       },
       {
-        "title": "Fila CSV persistente",
-        "text": "Planejamento local, identificadores estáveis e recuperação limitada de respostas incertas.",
-        "tag": "ERP / WMS"
+        "title": "Responsáveis e comprovantes",
+        "text": "Objetivos declarados e evidência referenciada, não inventário físico certificado.",
+        "tag": "Operação"
       },
       {
-        "title": "Webhook assinado",
-        "text": "Receptor v2 verifica empresa e evento antes de persistir a projeção local.",
-        "tag": "Webhook"
+        "title": "Revisão independente",
+        "text": "Outra conta autorizada revisa publicação e encerramento. Repetições não duplicam a operação.",
+        "tag": "Integridade"
       },
       {
-        "title": "Permissões limitadas",
-        "text": "Somente sdk:products e sdk:events. Não exporta chaves NFC nem ativa etiquetas.",
-        "tag": "Acesso"
+        "title": "Relatório do caso",
+        "text": "HTML imprimível com quantidades e histórico, sem prometer o relatório agregado do piloto.",
+        "tag": "Evidência"
       }
     ]
   }

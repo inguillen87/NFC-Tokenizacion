@@ -1,13 +1,15 @@
 {
-  "release": "2026.09.18-dashboard.14",
-  "scope": "s5-private-installable-sdk-csv-adapter-and-signed-webhook-starter",
+  "release": "2026.09.18-dashboard.15",
+  "scope": "batch-recall-follow-up-and-evidence",
   "realTapCertification": "not-included",
-  "baseCommit": "e1781821848548dc0cb5ac807415014a30eed582",
-  "requiredApiRelease": "2026.09.18-api-channels.1",
+  "baseCommit": "1793458ca3cda4da3677163f84cfc9aa472334ab",
+  "requiredApiRelease": "2026.09.18-api-recalls.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
-  "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d"
+  "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
+  "requiredWebRelease": "2026.09.18-web-recalls.1",
+  "requiredRecallMigration": "20260918180000_0106_batch_recall_workflow.sql"
 }

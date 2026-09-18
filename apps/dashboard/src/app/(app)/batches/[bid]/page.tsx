@@ -1,3 +1,4 @@
+import {canReadRecallWorkspace} from '../../../../lib/recall-workspace';
 import { RollProductIdentity } from "../../../../components/roll-product-identity";
 import { BatchDossierShell } from "../../../../components/batch-dossier-shell";
 import { BatchUnitEvidence } from "../../../../components/batch-unit-evidence";
@@ -187,6 +188,7 @@ export default async function BatchDetailPage({ params, searchParams }: { params
     supplier:dashboardSessionCanOpenDestination(session,"supplierBatches"), tags:dashboardSessionCanOpenDestination(session,"tags"),
   };
   const productPanel = <div className={styles.stack}>
+{canReadRecallWorkspace(session)&&<section className={styles.card}><h2>Seguimiento de seguridad del producto</h2><Link prefetch={false} className={styles.button} href={`/batches/${encodeURIComponent(bid)}/recalls?${new URLSearchParams({tenant:adminContext.tenantSlug})}`}>Retiros y cuarentenas del lote</Link></section>}
 <section className={styles.card}><h2>Etiqueta, estado y enlace público</h2><Link prefetch={false} className={`${styles.button} ${styles.primary}`} href={`/batches/${encodeURIComponent(bid)}/channels?${new URLSearchParams({tenant:adminContext.tenantSlug})}`}>Enlaces QR / estado NFC</Link></section>
     <section className={styles.card}><h2>Passport Studio</h2><p>{batchData.editorial_managed?"Este lote utiliza borradores, revisión y publicación con historial. Continuá desde el editor para conservar el control de versiones.":"Prepará la ficha con vista previa móvil y comparación de cambios. Iniciar el flujo es explícito; no cambia el contenido publicado."}</p><Link prefetch={false} className={`${styles.button} ${styles.primary}`} href={`/batches/${encodeURIComponent(bid)}/passport`}>Abrir Passport Studio</Link></section>
     <section id="roll-product-summary" className={styles.card}><h2>Ficha compartida por todas las unidades</h2><p>Identidad comercial declarada para el lote. No modifica la autenticidad del chip ni la evidencia de apertura.</p>
