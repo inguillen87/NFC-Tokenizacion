@@ -1,3 +1,4 @@
+import {pilotRequestScopeAllowed} from "../../../../lib/pilot-report-access";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -1103,6 +1104,10 @@ async function forward(req: Request, path: string[]) {
   if (dashboardSession && !scopedRole) {
     console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "unsupported_dashboard_role", method: req.method, path: normalizedPath }));
     return NextResponse.json({ ok: false, reason: "unsupported_dashboard_role" }, { status: 403 });
+  }
+
+  if (dashboardSession && (normalizedPath === "pilot-report" || normalizedPath === "pilot-report/options") && !pilotRequestScopeAllowed(dashboardSession,reqUrl.searchParams.get("tenant"))) {
+    return NextResponse.json({ok:false,reason:"pilot_tenant_forbidden"},{status:403,headers:{"cache-control":"private, no-store"}});
   }
 
   if (dashboardSession) {

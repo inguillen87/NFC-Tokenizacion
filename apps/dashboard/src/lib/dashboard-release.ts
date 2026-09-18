@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.18-dashboard.14';
+export const DASHBOARD_RELEASE='2026.09.18-dashboard.15';
 export const DASHBOARD_RELEASE_DATE='2026-09-18';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "S5 · integración ejecutable",
-    "title": "El sistema del cliente ya tiene un punto de entrada.",
-    "summary": "Descargá el SDK privado empaquetado con un importador CSV de recepciones y un receptor webhook firmado. Se instala y prueba fuera del repositorio, sin credenciales productivas para las pruebas.",
-    "back": "Abrir API y SDK",
+    "eyebrow": "S6 · evidencia útil para el cliente",
+    "title": "El piloto, con datos que se pueden compartir.",
+    "summary": "Generá un informe por empresa, lote y período: lecturas verificadas, visitas de identidad, estado de incidentes e inventario actual. Compartí el mismo corte como HTML, CSV o JSON.",
+    "back": "Abrir informe del piloto",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Cómo empezar",
+    "guide": "Cómo usarlo",
     "steps": [
-      "Descargá el kit desde API y SDK con tu sesión autorizada.",
-      "Verificá el manifiesto, instalá el paquete local y ejecutá las pruebas incluidas.",
-      "Usá el perfil ERP / WMS · CSV para consultar productos y enviar recepciones declaradas.",
-      "Prepará la cola, revisá sus registros y confirmá la empresa antes del envío real."
+      "Elegí empresa, lote opcional y fechas UTC.",
+      "Generá el informe: una consulta consistente, sin refresco constante.",
+      "Revisá fuentes, bases y límites de cada indicador.",
+      "Descargá HTML para compartir o imprimir, CSV de indicadores y JSON con integridad."
     ],
-    "boundary": "La descarga no crea API keys ni envía eventos. El adaptador CSV no es una integración nativa aceptada por un ERP concreto y no modifica precintos, autenticidad NFC ni estados logísticos.",
+    "boundary": "Inventario y estado de incidentes se observan al generar. Una lectura no es una venta, un incidente descartado no es una solución y el informe no certifica un retiro completo.",
     "cards": [
       {
-        "title": "Distribución privada",
-        "text": "Paquete SDK existente, contratos OpenAPI/AsyncAPI y scripts ejecutables en un artefacto con checksum. Sin publicación pública en npm.",
-        "tag": "SDK"
+        "title": "Una instantánea coherente",
+        "text": "Datos agregados de las tablas existentes, con fechas y vínculo real al tenant y lote.",
+        "tag": "Datos reales"
       },
       {
-        "title": "CSV con cola durable",
-        "text": "Plan local, ID comercial estable y recuperación de resultados inciertos sin duplicar deliberadamente el evento.",
-        "tag": "ERP / WMS"
+        "title": "Métricas sin confusiones",
+        "text": "NFC verificado separado de visitas de identidad, señales de replay y estado del precinto.",
+        "tag": "Evidencia"
       },
       {
-        "title": "Webhook firmado",
-        "text": "Receptor v2 que valida tenant y event ID antes de persistir una proyección local. Duplicados se reconocen sin repetirla.",
-        "tag": "Integración"
+        "title": "Tres formatos utilizables",
+        "text": "HTML autónomo imprimible, CSV con denominadores y JSON con checksum. Las descargas no vuelven a consultar la base.",
+        "tag": "Exportación"
       },
       {
-        "title": "Permisos acotados",
-        "text": "El nuevo perfil elige sdk:products y sdk:events. No requiere claves NFC, permiso de activación ni acceso global.",
+        "title": "Acceso y costo acotados",
+        "text": "Permisos existentes, límites de período/volumen y ninguna consulta periódica o servicio de pago nuevo.",
         "tag": "Operación"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "S5 · executable integration",
-    "title": "A runnable starting point for the customer system.",
-    "summary": "Download the private SDK with a durable receipt CSV adapter and signed webhook receiver. Install and test it outside the repository without production credentials.",
-    "back": "Open API and SDK",
+    "eyebrow": "S6 · useful pilot evidence",
+    "title": "A pilot report backed by scoped data.",
+    "summary": "Generate a company or batch report for a UTC date range. Compare verified reads, identity visits, incident status and current inventory, then export one consistent snapshot.",
+    "back": "Open pilot report",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
-    "guide": "Get started",
+    "guide": "Workflow",
     "steps": [
-      "Download the kit with an authorized session.",
-      "Verify the manifest, install the local package and run its tests.",
-      "Choose the ERP / WMS CSV permission preset.",
-      "Prepare the queue and explicitly confirm the tenant before sending."
+      "Select a company, optional batch and UTC dates.",
+      "Generate one consistent query without continuous polling.",
+      "Review every metric source and denominator.",
+      "Download standalone HTML, CSV or integrity-checked JSON."
     ],
-    "boundary": "Downloading does not create credentials or send events. This is a CSV reference adapter, not an accepted native ERP integration or physical NFC verification.",
+    "boundary": "Inventory and incident states are current snapshots. A read is not a sale, dismissal is not remediation and this report does not certify a complete recall.",
     "cards": [
       {
-        "title": "Private distribution",
-        "text": "Existing SDK, contracts and runnable scripts with artifact integrity checks. No public npm publication.",
-        "tag": "SDK"
+        "title": "Consistent snapshot",
+        "text": "Scoped aggregates over existing tables with explicit source and timeframe.",
+        "tag": "Evidence"
       },
       {
-        "title": "Durable CSV queue",
-        "text": "Local planning, stable business identifiers and bounded uncertain-result recovery.",
-        "tag": "ERP / WMS"
+        "title": "Separate dimensions",
+        "text": "Verified NFC, identity visits, replay signals and reported seal state remain distinct.",
+        "tag": "Metrics"
       },
       {
-        "title": "Signed callbacks",
-        "text": "V2 receiver checks tenant and event identity before durable local projection.",
-        "tag": "Webhook"
+        "title": "Usable exports",
+        "text": "Standalone printable HTML, CSV with denominators and JSON with checksum. No extra database calls on export.",
+        "tag": "Export"
       },
       {
-        "title": "Narrow permissions",
-        "text": "Only sdk:products and sdk:events for this adapter. No NFC key export or tag activation.",
-        "tag": "Access"
+        "title": "Bounded operation",
+        "text": "Existing permissions and query limits, without polling or new paid services.",
+        "tag": "Operations"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "S5 · integração executável",
-    "title": "Um ponto de entrada executável para o cliente.",
-    "summary": "Baixe o SDK privado com adaptador CSV de recebimentos e receptor webhook assinado. Instale e teste fora do repositório sem credenciais de produção.",
-    "back": "Abrir API e SDK",
+    "eyebrow": "S6 · evidência útil do piloto",
+    "title": "O piloto, com dados para compartilhar.",
+    "summary": "Gere um relatório por empresa, lote e período UTC. Separe leituras verificadas, visitas de identidade, incidentes e inventário atual.",
+    "back": "Abrir relatório do piloto",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Primeiros passos",
+    "guide": "Como usar",
     "steps": [
-      "Baixe o kit com uma sessão autorizada.",
-      "Verifique o manifesto, instale o pacote local e rode os testes.",
-      "Selecione o perfil ERP / WMS CSV de permissões.",
-      "Prepare a fila e confirme a empresa antes de enviar."
+      "Selecione empresa, lote opcional e datas UTC.",
+      "Gere uma consulta consistente, sem atualização contínua.",
+      "Confira fontes e denominadores de cada indicador.",
+      "Baixe HTML, CSV e JSON com integridade do mesmo corte."
     ],
-    "boundary": "Baixar não cria credenciais nem envia eventos. O adaptador CSV não é uma integração nativa validada em um ERP nem autenticação física NFC.",
+    "boundary": "Inventário e incidentes refletem o momento da consulta. Leitura não é venda, descarte não é solução e o relatório não certifica um recall completo.",
     "cards": [
       {
-        "title": "Distribuição privada",
-        "text": "SDK existente, contratos e scripts com verificação de integridade. Sem publicação pública no npm.",
-        "tag": "SDK"
+        "title": "Dados consistentes",
+        "text": "Agregações por empresa e lote com período e fonte definidos.",
+        "tag": "Evidência"
       },
       {
-        "title": "Fila CSV persistente",
-        "text": "Planejamento local, identificadores estáveis e recuperação limitada de respostas incertas.",
-        "tag": "ERP / WMS"
+        "title": "Dimensões distintas",
+        "text": "NFC verificado, identidade e estado relatado do lacre não se confundem.",
+        "tag": "Métricas"
       },
       {
-        "title": "Webhook assinado",
-        "text": "Receptor v2 verifica empresa e evento antes de persistir a projeção local.",
-        "tag": "Webhook"
+        "title": "Exportações utilizáveis",
+        "text": "HTML imprimível, CSV com denominadores e JSON com checksum sem novas consultas.",
+        "tag": "Exportação"
       },
       {
-        "title": "Permissões limitadas",
-        "text": "Somente sdk:products e sdk:events. Não exporta chaves NFC nem ativa etiquetas.",
-        "tag": "Acesso"
+        "title": "Operação limitada",
+        "text": "Permissões existentes e limites, sem polling ou serviço pago adicional.",
+        "tag": "Operação"
       }
     ]
   }

@@ -1,0 +1,108 @@
+{
+  "ok": true,
+  "report": {
+    "schemaVersion": "nexid.pilot-evidence.v1",
+    "reportId": "d8da9cef-8f50-4a62-91dc-ad53a76129b7",
+    "generatedAt": "2026-09-18T21:05:36.734Z",
+    "source": "persisted_database_snapshot",
+    "scope": {
+      "tenantId": "10000000-0000-4000-8000-000000000001",
+      "tenantSlug": "pilot-local",
+      "tenantName": "Empresa piloto QA",
+      "bid": null
+    },
+    "window": {
+      "from": "2026-09-01",
+      "to": "2026-09-03",
+      "start": "2026-09-01T00:00:00.000Z",
+      "endExclusive": "2026-09-04T00:00:00.000Z",
+      "days": 3,
+      "timeZone": "UTC",
+      "effectiveEnd": "2026-09-04T00:00:00.000Z"
+    },
+    "inventory": {
+      "basis": "current_snapshot",
+      "batches": 1,
+      "registered": 20,
+      "active": 10,
+      "inactive": 10,
+      "other": 0
+    },
+    "interactions": {
+      "basis": "period_persisted_real",
+      "events": 10,
+      "nfcAttempts": 8,
+      "verifiedNfc": 4,
+      "nfcUnconfirmed": 4,
+      "identityViews": 1,
+      "other": 1,
+      "replaySignals": 1,
+      "sealClosed": 2,
+      "sealOpened": 1,
+      "sealUnknown": 1,
+      "verifiedLinked": 3,
+      "verifiedUnits": 2
+    },
+    "incidents": {
+      "basis": "created_in_period_current_state",
+      "created": 4,
+      "resolved": 2,
+      "dismissed": 1,
+      "pending": 1,
+      "other": 0,
+      "timedResolved": 1,
+      "medianResolutionSeconds": 7200
+    },
+    "sdk": {
+      "basis": "period_logged_requests",
+      "requests": 4,
+      "success": 1,
+      "clientErrors": 1,
+      "serverErrors": 1,
+      "other": 1,
+      "latencySamples": 3,
+      "p95Ms": 29
+    },
+    "exclusions": {
+      "candidates": 16,
+      "nonReal": 3,
+      "automated": 1,
+      "unbound": 2
+    },
+    "daily": [
+      {
+        "day": "2026-09-01",
+        "events": 9,
+        "verified": 3,
+        "identity_views": 1
+      },
+      {
+        "day": "2026-09-02",
+        "events": 1,
+        "verified": 1,
+        "identity_views": 0
+      },
+      {
+        "day": "2026-09-03",
+        "events": 0,
+        "verified": 0,
+        "identity_views": 0
+      }
+    ],
+    "unavailable": [
+      "tap_uptime_before_persistence",
+      "historical_activation_count",
+      "sales_and_roi",
+      "person_identity_and_marketing_consent",
+      "document_usage_conversion",
+      "provider_invoice",
+      "completed_recall_workflow"
+    ],
+    "rowLimit": 100000
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "digest": "9bf5ab11c761bfeff2e86bd8dd786846d5f39ac7d010c17b2116aa4742695e2b",
+    "meaning": "content_integrity_not_digital_signature"
+  }
+}

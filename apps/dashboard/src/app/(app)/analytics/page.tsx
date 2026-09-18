@@ -1,3 +1,4 @@
+import {canReadPilotReport} from '../../../lib/pilot-report-access';
 import Link from "next/link";
 import room from "../../../components/control-room.module.css";
 import ws from "../../../components/operations-workspace.module.css";
@@ -211,7 +212,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className={`${ws.workspace} ${room.historical}`} data-testid="historical-analytics">
-      <header className={room.header}><div><h1>Analítica histórica</h1><p>Tendencias y resultados del período · sin seguimiento continuo</p></div><nav aria-label="Espacios de trabajo">{dashboardSessionCanOpenDestination(session,"map") && <Link prefetch={false} href={`/analytics/map${tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : ""}`}>Abrir mapa</Link>}<Link prefetch={false} href="/">Centro en vivo</Link></nav></header>
+      <header className={room.header}><div><h1>Analítica histórica</h1><p>Tendencias y resultados del período · sin seguimiento continuo</p></div><nav aria-label="Espacios de trabajo">{canReadPilotReport(session)&&<Link prefetch={false} href={`/analytics/pilot${tenantScope?`?tenant=${encodeURIComponent(tenantScope)}`:""}`}>Informe del piloto</Link>}{dashboardSessionCanOpenDestination(session,"map") && <Link prefetch={false} href={`/analytics/map${tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : ""}`}>Abrir mapa</Link>}<Link prefetch={false} href="/">Centro en vivo</Link></nav></header>
       <div id="analytics-active-scope" className="rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
         <span className="ml-2">Fuente confirmada: <b className="text-white">{confirmedSourceLabel}</b> · Filtro solicitado: <b className="text-white">{source}</b> · Rango: <b className="text-white">{range}</b> · Country: <b className="text-white">{country || "all"}</b>.</span>

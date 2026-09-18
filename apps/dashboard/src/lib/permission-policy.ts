@@ -306,6 +306,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     return "supplier_orders:read";
   }
   if (/^batches\/[^/]+\/channels(?:\/qr)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'batches:read':'batch.product.configure';
+  if (normalizedPath === 'pilot-report'||normalizedPath === 'pilot-report/options') return 'reports.export';
   if (normalizedPath === "supplier-reception") return "supplier_reception.read";
   if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
     return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";
