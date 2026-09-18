@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.18-api-channels.1",
-  "scope": "batch-carrier-state-gs1-registration-and-registered-qr-export",
-  "baseCommit": "28946beed6cdd964c9249db5e8e8bfd9cc3f1fae",
+  "release": "2026.09.18-api-pilot.1",
+  "scope": "s6-scoped-pilot-evidence-report",
+  "baseCommit": "16022a80ae7d45abad58f4e12c485d2f1382f2fe",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -20,5 +20,6 @@
   "logisticsOperationProtocol": "nexid.logistics.v1",
   "passportStudioProtocol": "nexid.passport-studio.v1",
   "receptionProtocol": "nexid.supplier-reception.v1",
-  "channelProtocol": "nexid.batch-channels.v1"
+  "channelProtocol": "nexid.batch-channels.v1",
+  "pilotReportProtocol": "nexid.pilot-evidence.v1"
 }
