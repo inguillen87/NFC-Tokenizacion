@@ -1,19 +1,20 @@
 {
-  "release": "2026.09.18-api-logistics.1",
-  "scope": "atomic-logistics-operations-and-durable-idempotency-receipts",
-  "baseCommit": "29c4f6231bb6f4a47756905d9c533b02bce50c4d",
+  "release": "2026.09.18-api-passport.1",
+  "scope": "opt-in-passport-editorial-drafts-independent-review-atomic-publication",
+  "baseCommit": "39dc0f40a62d6792e11c4b075d011db0c6a33af0",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
   "databaseMigrationsIncluded": true,
-  "requiredMigration": "20260918050000_0103_logistics_atomic_operations.sql",
+  "requiredMigration": "20260918120000_0104_passport_editorial.sql",
   "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
   "campaignDeliveryIncluded": false,
   "physicalLiveCertification": "not-included-in-this-release",
   "requiredMigrations": [
-    "20260906120000_0102_campaign_drafts.sql",
-    "20260918050000_0103_logistics_atomic_operations.sql"
+    "20260918050000_0103_logistics_atomic_operations.sql",
+    "20260918120000_0104_passport_editorial.sql"
   ],
-  "logisticsOperationProtocol": "nexid.logistics.v1"
+  "logisticsOperationProtocol": "nexid.logistics.v1",
+  "passportEditorialProtocol": "nexid.passport-studio.v1"
 }
