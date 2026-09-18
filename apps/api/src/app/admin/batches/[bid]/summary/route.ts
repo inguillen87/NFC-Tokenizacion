@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin, getAdminTenantAccess } from '../../../../../lib/auth';
+import { checkAdmin, checkAdminPermission, getAdminTenantAccess } from '../../../../../lib/auth';
 import { json } from '../../../../../lib/http';
 import { sql } from '../../../../../lib/db';
 import { ensureCarrierProfileSchema } from '../../../../../lib/commercial-runtime-schema';
@@ -9,6 +9,7 @@ import { ensureCarrierProfileSchema } from '../../../../../lib/commercial-runtim
 export async function GET(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const auth = await checkAdmin(req);
   if (auth) return auth;
+  const denied = checkAdminPermission(req,"batches:read"); if(denied)return denied;
 
   const { bid } = await params;
   const { forcedTenantSlug } = getAdminTenantAccess(req);

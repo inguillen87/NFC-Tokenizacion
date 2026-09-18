@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.18-api-reception.1",
-  "scope": "scoped-supplier-reception-visibility-and-platform-pack-boundary",
-  "baseCommit": "27b06f634ce1743cec8fe5a84747d3506816adf6",
+  "release": "2026.09.18-api-batches.1",
+  "scope": "existing-tenant-batch-read-dependency-repair",
+  "baseCommit": "40745006b5c1daefc26bc87e1803709d67f674cd",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },

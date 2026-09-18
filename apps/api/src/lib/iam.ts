@@ -1,3 +1,4 @@
+import { batchWorkbenchPermissions } from "./batch-workbench-permissions";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { ensureEnterpriseIamSchema } from "./commercial-runtime-schema";
 import { permissionDenied, permissionMatches } from "./permission-matcher.js";
@@ -328,10 +329,10 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
   })) return null;
   return {
     ...row,
-    permissions: [...new Set([
+    permissions: batchWorkbenchPermissions({role:String(row.role),permissions:[...new Set([
       ...parsePermissions((row as any).role_default_permissions),
       ...parsePermissions((row as any).permissions),
-    ])],
+    ])],deniedPermissions:parsePermissions((row as any).denied_permissions)}),
     deniedPermissions: parsePermissions((row as any).denied_permissions),
   };
 }
@@ -535,10 +536,10 @@ export async function resolveSession(
     role: normalizeRole(String(session.role)),
     tenantId: session.tenant_id ? String(session.tenant_id) : null,
     tenantSlug: session.tenant_slug ? String(session.tenant_slug) : null,
-    permissions: [...new Set([
+    permissions: batchWorkbenchPermissions({role:String(session.role),permissions:[...new Set([
       ...parsePermissions(session.role_default_permissions),
       ...parsePermissions(session.current_permissions),
-    ])],
+    ])],deniedPermissions:parsePermissions(session.current_denied_permissions)}),
     deniedPermissions: parsePermissions(session.current_denied_permissions),
     mfaVerified: Boolean(session.mfa_verified),
     rotatedCookieValue,

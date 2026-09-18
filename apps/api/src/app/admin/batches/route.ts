@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../lib/db";
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { ensureCarrierProfileSchema } from "../../../lib/commercial-runtime-schema";
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
@@ -10,6 +10,7 @@ import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 export async function GET(req: Request) {
   const auth = await checkAdmin(req);
   if (auth) return auth;
+  const denied = checkAdminPermission(req,"batches:read"); if(denied)return denied;
   await ensureCarrierProfileSchema();
 
   const { searchParams } = new URL(req.url);
@@ -23,6 +24,8 @@ export async function GET(req: Request) {
         b.bid,
         b.status,
         b.created_at,
+        b.editorial_managed,
+        b.supplier_order_id,
         t.slug AS tenant_slug,
         NULLIF(COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile'), '') AS batch_profile,
         NULLIF(b.sdm_config->>'sku', '') AS sku,
@@ -93,6 +96,8 @@ export async function GET(req: Request) {
         b.bid,
         b.status,
         b.created_at,
+        b.editorial_managed,
+        b.supplier_order_id,
         t.slug AS tenant_slug,
         NULLIF(COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile'), '') AS batch_profile,
         NULLIF(b.sdm_config->>'sku', '') AS sku,
