@@ -1,45 +1,45 @@
-/** Public interface release notes; never tenant data or availability certification. */
-export const DASHBOARD_RELEASE = "2026.09.17-dashboard.6";
-export const DASHBOARD_RELEASE_DATE = "2026-09-17";
+/** Public interface release notes. */
+export const DASHBOARD_RELEASE = "2026.09.18-dashboard.7";
+export const DASHBOARD_RELEASE_DATE = "2026-09-18";
 export const RELEASE_NOTES = {
   "es-AR": {
-    link:"Novedades y versión", eyebrow:"Operación, geografía y evidencia", title:"Un centro de control. Cada dato, en su lugar.",
-    summary:"Modo sala para monitores, mapas con procedencia explícita y Analítica histórica separada. Conservamos las herramientas del CRM y la configuración de rollos.",
-    back:"Abrir Centro en Vivo", site:"Sitio de nexID", label:"Versión de esta interfaz", changes:"Qué cambió", guide:"Cómo probar esta entrega",
-    steps:["Ingresá con tu cuenta y activá Modo sala en el Centro en Vivo.","En el mapa, alterná Teléfono y Red/IP: son evidencias diferentes.","Abrí Analítica para consultar tendencias sin cargar otra copia del mapa.","Hacé un TAP nuevo desde el celular. Compartir ubicación es opcional y requiere permiso."],
-    boundary:"Esta página identifica cambios de interfaz, no certifica disponibilidad. Los mapas muestran ubicaciones reportadas de lecturas, no seguimiento GPS continuo de productos, pallets o contenedores.",
+    link:"Novedades y versión",eyebrow:"Operación con evidencia",title:"Más control. Menos incertidumbre.",
+    summary:"Uso y estado reúne fuentes operativas, revisión por servicio y consumo SDK bajo demanda. El mapa, el Modo sala y la configuración de rollos se conservan.",
+    back:"Abrir Centro en Vivo",site:"Sitio de nexID",label:"Versión de esta interfaz",changes:"Qué cambió",guide:"Cómo probar esta entrega",
+    steps:["Desde tu perfil o el menú lateral, abrí Uso y estado.","Elegí empresa y ventana. Una fuente no disponible no se muestra como cero actividad.","Abrí un servicio para revisar su muestra, definición y guía de respuesta.","Consultá el uso SDK cuando lo necesites o descargá un resumen para soporte si tu rol lo permite."],
+    boundary:"Estas notas no certifican disponibilidad ni costos. El módulo usa agregados guardados: no mide todos los fallos anteriores a la base ni conecta facturas o límites monetarios del proveedor.",
     cards:[
-      {title:"Centro en Vivo · modo sala",text:"Indicadores compactos, mapa protagonista y últimos eventos en una misma vista. Conserva la fuente, la ventana y las advertencias; salir devuelve el CRM operativo.",tag:"Sala de control"},
-      {title:"Teléfono no es Red/IP",text:"Filtrá las ubicaciones compartidas por el teléfono y las estimaciones de conexión. Una IP puede indicar otra ciudad. No se inventan coordenadas ni se reubican lecturas anteriores.",tag:"Verdad geográfica"},
-      {title:"Analítica con una función propia",text:"Tendencias e indicadores históricos, sin otra copia del mapa ni solicitudes automáticas a IA. El centro geográfico conserva capas, filtros y evidencia.",tag:"Información ordenada"},
-      {title:"TAP móvil con una elección clara",text:"La acción de compartir ubicación aparece antes de los detalles técnicos. Es voluntaria, no impide consultar el producto y solo confirma el guardado tras recibir respuesta del servidor.",tag:"Experiencia móvil"},
+      {title:"Uso y estado por servicio",text:"Lecturas guardadas, integridad de eventos, webhooks, incidentes y colas. Cada resultado muestra su alcance; los datos desconocidos permanecen desconocidos.",tag:"Supervisión"},
+      {title:"Consultas deliberadas",text:"Los filtros locales no vuelven a consultar la base. El uso mensual SDK es opcional y se comprueba el permiso antes de cargarlo. No se añade actualización periódica.",tag:"Uso responsable"},
+      {title:"De la señal a la acción",text:"Filtros de prioridad, guías conservadas y accesos autorizados al módulo correspondiente. Los candidatos de alerta no se presentan como tickets o avisos enviados.",tag:"Respuesta"},
+      {title:"Evidencia para soporte",text:"Resumen descargable con ventana, métricas y limitaciones. No incluye credenciales, datos personales ni contenido de eventos; requiere permiso de exportación.",tag:"Trazabilidad"},
     ],
   },
-  en: {
-    link:"What's new and version",eyebrow:"Operations, geography and evidence",title:"One control center. Clearer evidence.",
-    summary:"A display mode for monitors, explicit location sources and separate historical analytics. Existing CRM and roll configuration tools remain available.",
-    back:"Open live control center",site:"nexID website",label:"This interface version",changes:"What's changed",guide:"Try this release",
-    steps:["Sign in and enable control-room mode in the live center.","Switch between Phone and Network/IP; they represent different evidence.","Open Analytics for historical trends without another map.","Make a new physical tap. Sharing phone location remains optional and requires permission."],
-    boundary:"These are interface release notes, not availability certification. Maps show reported reading locations, not continuous GPS tracking of products, pallets or containers.",
+  en:{
+    link:"What's new and version",eyebrow:"Evidence-led operations",title:"More control. Less uncertainty.",
+    summary:"Usage and service health brings together operational sources, service review and on-demand SDK usage. The map, control-room mode and roll configuration remain available.",
+    back:"Open live center",site:"nexID website",label:"This interface version",changes:"What's changed",guide:"Try this release",
+    steps:["Open Usage and service health from your profile or navigation.","Choose a company and time window. An unavailable source does not mean zero activity.","Open a service to review its sample, definition and response guide.","Request SDK usage when needed or export the support summary if your role allows it."],
+    boundary:"These notes do not certify availability or costs. Persisted aggregates do not cover all pre-database failures or connect provider invoices and monetary caps.",
     cards:[
-      {title:"A live control-room view",text:"Compact metrics, a prominent map and recent events. Source, time window and warnings remain visible. Exiting restores the operational CRM.",tag:"Control room"},
-      {title:"Phone is not Network/IP",text:"Separate phone-shared locations from connection estimates. IP location may point to another city. Existing events are not relocated and coordinates are never invented.",tag:"Location evidence"},
-      {title:"Historical analytics",text:"Trends and historical indicators without a duplicate map or automatic AI requests. The geographic workspace retains its layers and evidence.",tag:"Clear responsibilities"},
-      {title:"An explicit mobile choice",text:"Sharing location appears before technical details. It is optional and does not block the product; saving is confirmed only after the server response.",tag:"Mobile experience"},
+      {title:"Per-service operational state",text:"Recorded reads, event integrity, webhooks, incidents and queues. Every result retains its scope and unknown values remain unknown.",tag:"Supervision"},
+      {title:"Deliberate queries",text:"Local filters do not query the database again. Monthly SDK usage is optional and permission-checked. No periodic refresh is added.",tag:"Responsible usage"},
+      {title:"From signal to action",text:"Review filters, preserved runbooks and authorized module links. Alert candidates are not presented as delivered notifications or created tickets.",tag:"Response"},
+      {title:"Support evidence",text:"Export the time window, metrics and limitations without credentials, personal details or event contents. Export permission is required.",tag:"Traceability"},
     ],
   },
-  "pt-BR": {
-    link:"Novidades e versão",eyebrow:"Operação, geografia e evidência",title:"Um centro de controle. Evidência clara.",
-    summary:"Modo sala para monitores, fontes de localização explícitas e análises históricas separadas. O CRM e a configuração de rolos continuam disponíveis.",
+  "pt-BR":{
+    link:"Novidades e versão",eyebrow:"Operação com evidência",title:"Mais controle. Menos incerteza.",
+    summary:"Uso e estado reúne fontes operacionais, revisão por serviço e consumo SDK sob demanda. O mapa, o Modo sala e a configuração de rolos continuam disponíveis.",
     back:"Abrir centro ao vivo",site:"Site da nexID",label:"Versão desta interface",changes:"O que mudou",guide:"Como testar esta entrega",
-    steps:["Entre com sua conta e ative o Modo sala.","Alterne Telefone e Rede/IP; são evidências diferentes.","Abra as análises históricas sem carregar outro mapa.","Faça um novo TAP físico. Compartilhar localização é opcional e requer permissão."],
-    boundary:"Estas notas não certificam disponibilidade. Os mapas mostram locais reportados de leituras, não rastreamento GPS contínuo de produtos, pallets ou contêineres.",
+    steps:["Abra Uso e estado pelo perfil ou menu lateral.","Escolha empresa e período. Uma fonte indisponível não significa atividade zero.","Abra um serviço para revisar amostra, definição e guia de resposta.","Consulte o uso SDK quando necessário ou exporte o resumo se seu perfil permitir."],
+    boundary:"Estas notas não certificam disponibilidade ou custos. Os agregados persistidos não abrangem todas as falhas anteriores ao banco nem conectam faturas ou limites monetários do provedor.",
     cards:[
-      {title:"Centro ao vivo · modo sala",text:"Indicadores compactos, mapa em destaque e últimos eventos. Fonte, período e avisos continuam visíveis. Ao sair, o CRM operacional é restaurado.",tag:"Sala de controle"},
-      {title:"Telefone não é Rede/IP",text:"Separe a localização compartilhada do telefone da estimativa de rede, que pode indicar outra cidade. As leituras anteriores não são reposicionadas.",tag:"Evidência geográfica"},
-      {title:"Análises históricas separadas",text:"Tendências e indicadores sem duplicar o mapa ou fazer chamadas automáticas de IA. O centro geográfico mantém camadas e evidências.",tag:"Organização"},
-      {title:"Uma escolha clara no celular",text:"O botão de localização aparece antes dos detalhes técnicos. É opcional e não bloqueia o produto; a confirmação exige resposta do servidor.",tag:"Experiência móvel"},
+      {title:"Estado por serviço",text:"Leituras registradas, integridade dos eventos, webhooks, incidentes e filas. Cada resultado mantém seu escopo e dados desconhecidos não viram zero.",tag:"Supervisão"},
+      {title:"Consultas deliberadas",text:"Filtros locais não consultam novamente o banco. Uso mensal SDK é opcional, com permissão verificada. Sem atualização periódica adicional.",tag:"Uso responsável"},
+      {title:"Do sinal à ação",text:"Filtros de revisão, guias preservados e acessos autorizados. Candidatos de alerta não são apresentados como avisos enviados ou tickets criados.",tag:"Resposta"},
+      {title:"Evidência para suporte",text:"Exporte período, métricas e limitações sem credenciais, dados pessoais ou conteúdo de eventos. Requer permissão de exportação.",tag:"Rastreabilidade"},
     ],
   },
 } as const;
-export function releaseCopy(locale:string) { return RELEASE_NOTES[locale==="en"||locale==="pt-BR"?locale:"es-AR"]; }
+export function releaseCopy(locale:string){return RELEASE_NOTES[locale==="en"||locale==="pt-BR"?locale:"es-AR"];}

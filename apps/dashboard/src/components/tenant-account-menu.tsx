@@ -5,6 +5,7 @@ import { createPortal, flushSync } from "react-dom";
 import Link from "next/link";
 import { DASHBOARD_RELEASE } from "../lib/dashboard-release";
 import {
+  Activity,
   BookOpen,
   Building2,
   ChevronDown,
@@ -857,6 +858,7 @@ export function TenantAccountMenu({
       }
     : null;
   const primaryItemCandidates: AccountMenuItem[] = [
+    { destination: "serviceLevels", href: DASHBOARD_DESTINATIONS.serviceLevels.href, icon: <Activity className="h-4 w-4" />, label: "Uso y estado", meta: "Fuentes, medición y guías de respuesta" },
     { destination: "map", href: DASHBOARD_DESTINATIONS.map.href, icon: <Network className="h-4 w-4" />, label: "Mapa profesional", meta: "Capas, lecturas y cobertura geográfica" },
     { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, icon: <Building2 className="h-4 w-4" />, label: "Rollos y productos", meta: "Ficha, recepción de unidades y controles" },
     { href: "/novedades", icon: <BookOpen className="h-4 w-4" />, label: "Novedades y versión", meta: DASHBOARD_RELEASE },

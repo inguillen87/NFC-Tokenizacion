@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.17-dashboard.6",
-  "scope": "compact-live-control-room-geography-sources-historical-analytics",
+  "release": "2026.09.18-dashboard.7",
+  "scope": "usage-health-center-persisted-evidence-and-opt-in-sdk-usage",
   "realTapCertification": "not-included",
-  "baseCommit": "f79c055b920654ff0b4265807a1f4433d0f9bcee",
+  "baseCommit": "f99bddc48a6a4e9a06c92bca2598e9f3ec029e0b",
   "requiredApiRelease": "2026.09.06-api-campaigns.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
