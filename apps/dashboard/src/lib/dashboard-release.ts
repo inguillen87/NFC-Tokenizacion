@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.18-dashboard.15';
+export const DASHBOARD_RELEASE='2026.09.18-dashboard.16';
 export const DASHBOARD_RELEASE_DATE='2026-09-18';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "S6 · evidencia útil para el cliente",
-    "title": "El piloto, con datos que se pueden compartir.",
-    "summary": "Generá un informe por empresa, lote y período: lecturas verificadas, visitas de identidad, estado de incidentes e inventario actual. Compartí el mismo corte como HTML, CSV o JSON.",
-    "back": "Abrir informe del piloto",
+    "eyebrow": "S6 · seguimiento de seguridad del producto",
+    "title": "Del aviso al cierre con evidencia.",
+    "summary": "Retiros y avisos de cuarentena por lote: borrador, revisión independiente, publicación en el pasaporte, acuses y cantidades documentadas.",
+    "back": "Abrir lotes",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Cómo usarlo",
+    "guide": "Recorrido operativo",
     "steps": [
-      "Elegí empresa, lote opcional y fechas UTC.",
-      "Generá el informe: una consulta consistente, sin refresco constante.",
-      "Revisá fuentes, bases y límites de cada indicador.",
-      "Descargá HTML para compartir o imprimir, CSV de indicadores y JSON con integridad."
+      "Abrí Retiro / cuarentena en el lote y prepará el aviso con responsables y cantidades declaradas.",
+      "Guardá el borrador y solicitá revisión. Otra cuenta autorizada debe publicar el aviso.",
+      "Registrá acuses, unidades devueltas o inmovilizadas y sus comprobantes.",
+      "Solicitá el cierre, hacé revisar su evidencia y descargá el informe del caso."
     ],
-    "boundary": "Inventario y estado de incidentes se observan al generar. Una lectura no es una venta, un incidente descartado no es una solución y el informe no certifica un retiro completo.",
+    "boundary": "No se crean retiros ni envían mensajes automáticamente. El aviso no revoca etiquetas ni cambia su autenticidad. Cerrar el seguimiento conserva la advertencia; no libera el producto ni certifica físicamente las cantidades.",
     "cards": [
       {
-        "title": "Una instantánea coherente",
-        "text": "Datos agregados de las tablas existentes, con fechas y vínculo real al tenant y lote.",
-        "tag": "Datos reales"
+        "title": "Aviso público separado del NFC",
+        "text": "La autenticidad de la etiqueta y las restricciones del lote son dimensiones distintas, visibles en el pasaporte.",
+        "tag": "Producto"
       },
       {
-        "title": "Métricas sin confusiones",
-        "text": "NFC verificado separado de visitas de identidad, señales de replay y estado del precinto.",
+        "title": "Responsables y acuses",
+        "text": "Destinos, objetivos declarados y comprobantes sin confundirlos con un inventario físico o recepción automática.",
+        "tag": "Seguimiento"
+      },
+      {
+        "title": "Revisión y cierre controlados",
+        "text": "Publicación y cierre requieren otra cuenta autorizada. Los cambios quedan versionados y los reintentos no duplican operaciones.",
+        "tag": "Integridad"
+      },
+      {
+        "title": "Informe del retiro",
+        "text": "Archivo HTML imprimible con cantidades, fuentes, revisión e historial. Complementa el informe agregado del piloto, disponible en Analítica.",
         "tag": "Evidencia"
-      },
-      {
-        "title": "Tres formatos utilizables",
-        "text": "HTML autónomo imprimible, CSV con denominadores y JSON con checksum. Las descargas no vuelven a consultar la base.",
-        "tag": "Exportación"
-      },
-      {
-        "title": "Acceso y costo acotados",
-        "text": "Permisos existentes, límites de período/volumen y ninguna consulta periódica o servicio de pago nuevo.",
-        "tag": "Operación"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "S6 · useful pilot evidence",
-    "title": "A pilot report backed by scoped data.",
-    "summary": "Generate a company or batch report for a UTC date range. Compare verified reads, identity visits, incident status and current inventory, then export one consistent snapshot.",
-    "back": "Open pilot report",
+    "eyebrow": "S6 · product-safety follow-up",
+    "title": "From notice to evidence-based follow-up.",
+    "summary": "Batch recalls and quarantine notices with drafts, independent review, public passport warnings, acknowledgements and declared quantities.",
+    "back": "Open batches",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
     "guide": "Workflow",
     "steps": [
-      "Select a company, optional batch and UTC dates.",
-      "Generate one consistent query without continuous polling.",
-      "Review every metric source and denominator.",
-      "Download standalone HTML, CSV or integrity-checked JSON."
+      "Prepare the batch notice, destinations and declared quantities.",
+      "Save and request independent review before publishing.",
+      "Record acknowledgements, returned or held units and evidence references.",
+      "Request independent closure and download the case report."
     ],
-    "boundary": "Inventory and incident states are current snapshots. A read is not a sale, dismissal is not remediation and this report does not certify a complete recall.",
+    "boundary": "No automatic recall or outbound messages. Closing follow-up does not remove the warning, release products or change NFC evidence.",
     "cards": [
       {
-        "title": "Consistent snapshot",
-        "text": "Scoped aggregates over existing tables with explicit source and timeframe.",
-        "tag": "Evidence"
+        "title": "Separate product warning",
+        "text": "Tag authenticity and product restrictions remain separate visible facts.",
+        "tag": "Product"
       },
       {
-        "title": "Separate dimensions",
-        "text": "Verified NFC, identity visits, replay signals and reported seal state remain distinct.",
-        "tag": "Metrics"
-      },
-      {
-        "title": "Usable exports",
-        "text": "Standalone printable HTML, CSV with denominators and JSON with checksum. No extra database calls on export.",
-        "tag": "Export"
-      },
-      {
-        "title": "Bounded operation",
-        "text": "Existing permissions and query limits, without polling or new paid services.",
+        "title": "Assigned follow-up",
+        "text": "Declared targets and referenced acknowledgement evidence, not certified physical inventory.",
         "tag": "Operations"
+      },
+      {
+        "title": "Controlled publication",
+        "text": "Another authorized identity reviews publication and closure; versioned commands reconcile retries.",
+        "tag": "Integrity"
+      },
+      {
+        "title": "Case report",
+        "text": "Printable HTML with quantities and history, alongside the existing aggregated pilot report.",
+        "tag": "Evidence"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "S6 · evidência útil do piloto",
-    "title": "O piloto, com dados para compartilhar.",
-    "summary": "Gere um relatório por empresa, lote e período UTC. Separe leituras verificadas, visitas de identidade, incidentes e inventário atual.",
-    "back": "Abrir relatório do piloto",
+    "eyebrow": "S6 · acompanhamento do produto",
+    "title": "Do aviso ao acompanhamento com evidência.",
+    "summary": "Recolhimentos e avisos de quarentena por lote, com revisão independente, aviso no passaporte, acuses e quantidades declaradas.",
+    "back": "Abrir lotes",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Como usar",
+    "guide": "Fluxo operacional",
     "steps": [
-      "Selecione empresa, lote opcional e datas UTC.",
-      "Gere uma consulta consistente, sem atualização contínua.",
-      "Confira fontes e denominadores de cada indicador.",
-      "Baixe HTML, CSV e JSON com integridade do mesmo corte."
+      "Prepare o aviso e os destinos com responsáveis e quantidades declaradas.",
+      "Salve e solicite revisão independente para publicar.",
+      "Registre acuses, unidades devolvidas ou imobilizadas e comprovantes.",
+      "Solicite revisão do encerramento e baixe o relatório do caso."
     ],
-    "boundary": "Inventário e incidentes refletem o momento da consulta. Leitura não é venda, descarte não é solução e o relatório não certifica um recall completo.",
+    "boundary": "Sem recolhimentos ou mensagens automáticas. Encerrar o acompanhamento mantém o aviso e não libera o produto nem altera a evidência NFC.",
     "cards": [
       {
-        "title": "Dados consistentes",
-        "text": "Agregações por empresa e lote com período e fonte definidos.",
-        "tag": "Evidência"
+        "title": "Aviso separado do NFC",
+        "text": "Autenticidade da etiqueta e restrições do lote são fatos distintos.",
+        "tag": "Produto"
       },
       {
-        "title": "Dimensões distintas",
-        "text": "NFC verificado, identidade e estado relatado do lacre não se confundem.",
-        "tag": "Métricas"
-      },
-      {
-        "title": "Exportações utilizáveis",
-        "text": "HTML imprimível, CSV com denominadores e JSON com checksum sem novas consultas.",
-        "tag": "Exportação"
-      },
-      {
-        "title": "Operação limitada",
-        "text": "Permissões existentes e limites, sem polling ou serviço pago adicional.",
+        "title": "Responsáveis e comprovantes",
+        "text": "Objetivos declarados e evidência referenciada, não inventário físico certificado.",
         "tag": "Operação"
+      },
+      {
+        "title": "Revisão independente",
+        "text": "Outra conta autorizada revisa publicação e encerramento. Repetições não duplicam a operação.",
+        "tag": "Integridade"
+      },
+      {
+        "title": "Relatório do caso",
+        "text": "HTML imprimível com quantidades e histórico, junto ao relatório agregado existente do piloto.",
+        "tag": "Evidência"
       }
     ]
   }

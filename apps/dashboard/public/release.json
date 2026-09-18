@@ -1,13 +1,14 @@
 {
-  "release": "2026.09.18-dashboard.15",
-  "scope": "s6-pilot-evidence-snapshot-and-exports",
+  "release": "2026.09.18-dashboard.16",
+  "scope": "s6-recalls-and-pilot-evidence-integrated",
   "realTapCertification": "not-included",
-  "baseCommit": "1793458ca3cda4da3677163f84cfc9aa472334ab",
-  "requiredApiRelease": "2026.09.18-api-pilot.1",
+  "baseCommit": "6c32614c4b8cb96e192db2fee4a3691f82ffb551",
+  "requiredApiRelease": "2026.09.18-api-recalls.2",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
   "databaseMigrationsIncluded": false,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
-  "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d"
+  "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
+  "requiredWebRelease": "2026.09.18-web-recalls.2"
 }
