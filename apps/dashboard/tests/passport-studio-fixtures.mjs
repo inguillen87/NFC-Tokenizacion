@@ -1,0 +1,12 @@
+// Synthetic editorial content. Never import this fixture in application code.
+export const ids={tenant:'10000000-0000-4000-8000-000000000001',batch:'20000000-0000-4000-8000-000000000001',draft:'30000000-0000-4000-8000-000000000001'};
+export function studioDocument(){return {
+ schemaVersion:'nexid.passport-editorial.v1',template:'agro',locale:'es-AR',
+ identity:{product_name:'Semilla Andina',public_lot_label:'AND-26-041',sku:'SA-50',winery:'Andina · ejemplo de prueba',region:'Mendoza, Argentina',image_url:null},
+ agro_product_profile:{schemaVersion:'agro-dpp-v1',productName:'Semilla Andina',brand:'Andina · ejemplo de prueba',sku:'SA-50',gtin:null,crop:'Maíz',seedVariety:'Variedad declarada',productFamily:'Semillas',activeIngredient:null,formulation:null,registrationNumber:null,batchLot:'AND-26-041',productionDate:'2026-08-10',expirationDate:'2027-08-10',distributor:null,authorizedChannel:null,technicalSheetUrl:'https://example.invalid/ficha-tecnica.pdf',safetySheetUrl:'https://example.invalid/ficha-seguridad.pdf',ppe:{summary:'Consultar las indicaciones oficiales del fabricante.',items:[]},stewardship:{summary:null,items:[]},cropwiseUrl:null,trainingUrl:null,loyaltyUrl:null,recallStatusUrl:null,support:{label:'Soporte de producto',url:null,email:null,phone:null}}
+};}
+export function studioFixture(role='editor'){
+ const document=studioDocument(),published=structuredClone(document);published.identity.product_name='Semilla Andina · anterior';published.agro_product_profile.productName=published.identity.product_name;published.identity.public_lot_label='AND-25-009';published.agro_product_profile.batchLot='AND-25-009';
+ const reviewer=role==='reviewer',publisher=role==='publisher';
+ return {contract:'nexid.passport-studio.v1',scope:{tenantId:ids.tenant,batchId:ids.batch,bid:'LOTE-ANDINA-26',tenantLabel:'Empresa de prueba · datos sintéticos'},actorId:reviewer?'qa_reviewer':publisher?'qa_publisher':'qa_editor',capabilities:{edit:role==='editor',review:reviewer,publish:publisher},observedAt:'2026-09-18T12:00:00Z',published:{version:2,contentDigest:'b'.repeat(64),document:published},draft:{id:ids.draft,revision:3,state:reviewer?'in_review':publisher?'approved':'draft',contentDigest:'a'.repeat(64),createdBy:'qa_editor',lastEditorId:'qa_editor',submittedBy:reviewer||publisher?'qa_editor':null,document},history:[{id:'40000000-0000-4000-8000-000000000001',version:2,action:'publish',at:'2026-09-17T12:00:00Z',actorLabel:'Equipo de prueba · revisión anterior',document:published}]};
+}

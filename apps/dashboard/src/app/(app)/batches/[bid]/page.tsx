@@ -186,14 +186,15 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
     supplier:dashboardSessionCanOpenDestination(session,"supplierBatches"), tags:dashboardSessionCanOpenDestination(session,"tags"),
   };
   const productPanel = <div className={styles.stack}>
+    <section className={styles.card}><p className={styles.eyebrow}>Passport Studio · contenido con versiones</p><h2>Editar, revisar y publicar sin perder la historia.</h2><p>Una ficha del lote, revisión independiente y cambios publicados de forma controlada. El chip y el precinto quedan fuera de la edición comercial.</p><Link prefetch={false} className={`${styles.button} ${styles.primary}`} href={`/batches/${encodeURIComponent(bid)}/passport`}>Abrir Passport Studio</Link></section>
     <section id="roll-product-summary" className={styles.card}><h2>Ficha compartida por todas las unidades</h2><p>Identidad comercial declarada para el lote. No modifica la autenticidad del chip ni la evidencia de apertura.</p>
       <dl className={styles.facts}><Fact label="Producto" value={dossier.name}/><Fact label="Lote comercial visible" value={publicLotLabel || "No configurado"}/><Fact label="SKU" value={dossier.sku}/><Fact label="Marca / fabricante" value={dossier.brand}/><Fact label="Región declarada" value={dossier.region}/><Fact label="Mercado" value={product.target_market}/></dl>
     </section>
-    {canConfigureProduct ? <>
+    {canConfigureProduct && !batchData.editorial_managed ? <>
       <p className={styles.note}>Los cambios sin guardar se conservan al alternar secciones. Recargar o salir no los guarda: confirmá antes de hacerlo.</p>
       <RollProductIdentity bid={bid} initial={{product_name: initialFormData.product_name || "", public_lot_label: initialFormData.public_lot_label || "", sku: initialFormData.sku || "", winery: initialFormData.winery || "", region: initialFormData.region || "", image_url: initialFormData.image_url || ""}} />
       <details className={styles.card}><summary>Ficha específica de vinos y telemetría ilustrativa</summary><p className={styles.note}>Se conservan los campos propios de este rubro. Un valor ilustrativo no es una medición de un sensor.</p><BatchConfigFormClient key={JSON.stringify(initialFormData)} bid={bid} initialData={initialFormData}/></details>
-    </> : <p className={styles.notice}>Tu rol puede consultar la ficha, pero no editarla. El administrador gestiona el permiso batch.product.configure.</p>}
+    </> : <p className={styles.notice}>{batchData.editorial_managed ? "Este lote usa Passport Studio. Los cambios de contenido pasan por revisión y publicación; la edición directa anterior queda protegida." : "Tu rol puede consultar la ficha, pero no editarla. El administrador gestiona el permiso batch.product.configure."}</p>}
   </div>;
   const unitsPanel = <div className={styles.stack}>
     {dossier.imported===null?<p className={styles.notice}>La recepción está pausada en esta vista hasta confirmar el conteo de unidades del lote.</p>:<RollManifestIntake key={bid} bid={bid} canImport={access.import&&!access.demo} alreadyRegistered={dossier.imported>0}/>}
