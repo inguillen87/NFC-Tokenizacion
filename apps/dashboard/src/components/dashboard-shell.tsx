@@ -308,7 +308,7 @@ export function DashboardShellInner({
       : pathname.startsWith("/tokenization")
         ? { title: "Ownership Operations", subtitle: "Polygon and digital twins" }
         : pathname.startsWith("/logistics")
-          ? { title: "Secure Delivery", subtitle: "Custody and route control" }
+          ? { title: locale === "en" ? "Logistics" : locale === "pt-BR" ? "Logística" : "Logística", subtitle: locale === "en" ? "Shipments and declared evidence" : locale === "pt-BR" ? "Envios e evidência declarada" : "Envíos y evidencia declarada" }
           : { title, subtitle };
 
   type SidebarDestinationItem = {

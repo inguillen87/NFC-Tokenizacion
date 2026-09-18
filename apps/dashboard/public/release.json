@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.18-dashboard.8",
-  "scope": "batch-dossier-preserved-forms-bounded-reading-evidence",
+  "release": "2026.09.18-dashboard.9",
+  "scope": "logistics-workspace-explicit-operations-and-durable-receipts",
   "realTapCertification": "not-included",
-  "baseCommit": "13522969352638b1c698702b2e0291b9673bbfda",
-  "requiredApiRelease": "2026.09.06-api-campaigns.1",
+  "baseCommit": "4428c0e8493e99b02c0d0590b19096ee709d84d8",
+  "requiredApiRelease": "2026.09.18-api-logistics.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,

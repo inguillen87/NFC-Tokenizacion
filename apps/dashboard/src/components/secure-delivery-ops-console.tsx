@@ -1,310 +1,89 @@
 "use client";
-
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { Activity, CheckCircle2, PackagePlus, Radio, ShieldAlert, Truck } from "lucide-react";
-
-type ShipmentResult = {
-  id?: string;
-  shipmentCode?: string;
-  trackingNumber?: string | null;
-  status?: string;
-  tenantId?: string;
-  itemCount?: number;
+import Link from "next/link";
+import { CheckCircle2, FileCheck2, PackagePlus, Radio, RefreshCw, ShieldAlert } from "lucide-react";
+import { logisticsReceipt, logisticsStatus, type LogisticsReceipt, type LogisticsShipment } from "../lib/logistics-workspace-model";
+import styles from "./logistics-workspace.module.css";
+type Operation="CREATE"|"APPLY"|"HANDOFF"|"VERIFY";
+type Attempt={operation:Operation;tenant:string;shipmentId:string;endpoint:string;payload:Record<string,unknown>};
+const MESSAGES:Record<string,string>={
+  logistics_idempotency_conflict:"El identificador pertenece a otra solicitud. Revisá el envío antes de iniciar una operación nueva.",
+  logistics_reference_conflict:"La referencia del envío ya existe. Abrí su registro; no la vuelvas a crear.",
+  logistics_seal_already_assigned:"El precinto está asignado a otro envío.",
+  logistics_seal_unassigned:"El precinto todavía no está vinculado. Registrá primero su aplicación.",
+  logistics_shipment_not_found:"El envío no pertenece al alcance autorizado o no existe.",
+  logistics_seal_not_found:"El UID no está registrado en el inventario de esta empresa.",
+  logistics_carrier_not_found:"El transportista no está configurado para esta empresa.",
+  logistics_shipment_terminal:"El envío no admite nuevas asignaciones en su estado actual.",
+  logistics_seal_voided:"El precinto está anulado.",
+  logistics_items_invalid:"Revisá producto y cantidad: se requiere un entero entre 1 y 1.000.000.",
 };
-
-type Props = {
-  tenantSlug?: string | null;
-  role?: string;
-};
-
-function readText(formData: FormData, key: string) {
-  return String(formData.get(key) || "").trim();
-}
-
-function ResultPanel({ result }: { result: unknown }) {
-  if (!result) return null;
-  return (
-    <pre className="mt-4 max-h-56 overflow-auto rounded-2xl border border-cyan-500/20 bg-slate-950/80 p-4 text-xs leading-relaxed text-cyan-50">
-      {JSON.stringify(result, null, 2)}
-    </pre>
-  );
-}
-
-export function SecureDeliveryOpsConsole({ tenantSlug, role }: Props) {
-  const router = useRouter();
-  const [activeShipment, setActiveShipment] = useState<ShipmentResult | null>(null);
-  const [createResult, setCreateResult] = useState<unknown>(null);
-  const [scanResult, setScanResult] = useState<unknown>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState<"shipment" | "scan" | null>(null);
-  const [context, setContext] = useState<"APPLY" | "HANDOFF" | "VERIFY">("APPLY");
-
-  const tenantLocked = Boolean(tenantSlug);
-  const operatorLabel = useMemo(() => {
-    if (role === "tenant-admin" && tenantSlug) return `Tenant scope: ${tenantSlug}`;
-    if (role) return `Role: ${role}`;
-    return "Secure Delivery operator";
-  }, [role, tenantSlug]);
-
-  async function createShipment(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading("shipment");
-    setError("");
-    setCreateResult(null);
-    const formData = new FormData(event.currentTarget);
-    const tenant = tenantSlug || readText(formData, "tenant_slug");
-    const productName = readText(formData, "product_name");
-    const quantity = Math.max(1, Number(formData.get("quantity") || 1));
-
-    if (!tenant && !tenantLocked) {
-      setError("Tenant slug is required for global administrator workflows.");
-      setLoading(null);
-      return;
-    }
-    if (!productName) {
-      setError("Product or asset name is required.");
-      setLoading(null);
-      return;
-    }
-
-    const payload = {
-      tenant_slug: tenant,
-      shipment_code: readText(formData, "shipment_code"),
-      carrier_code: readText(formData, "carrier_code"),
-      tracking_number: readText(formData, "tracking_number"),
-      origin_address: readText(formData, "origin_address"),
-      destination_address: readText(formData, "destination_address"),
-      items: [{ productName, quantity }],
-    };
-
+export function SecureDeliveryOpsConsole({tenantSlug,role,canWrite=false,shipments=[]}:{tenantSlug?:string|null;role?:string;canWrite?:boolean;shipments?:LogisticsShipment[]}){
+  const router=useRouter();const [operation,setOperation]=useState<Operation>("CREATE"),[selected,setSelected]=useState("");
+  const [confirmed,setConfirmed]=useState(false),[pending,setPending]=useState(false),[uncertain,setUncertain]=useState(false),[message,setMessage]=useState("");
+  const [receipt,setReceipt]=useState<LogisticsReceipt|null>(null);
+  const [created,setCreated]=useState<{id:string;code:string}|null>(null);
+  const attempt=useRef<Attempt|null>(null),inflight=useRef<AbortController|null>(null),mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;inflight.current?.abort();};},[]);
+  function changeOperation(next:Operation){if(pending||uncertain)return;setOperation(next);setConfirmed(false);setMessage("");setReceipt(null);attempt.current=null;}
+  async function send(current:Attempt){
+    if(inflight.current||!canWrite)return;const controller=new AbortController();inflight.current=controller;
+    const timeout=setTimeout(()=>controller.abort(),20000);setPending(true);setMessage("");
     try {
-      const response = await fetch("/api/admin/logistics/shipments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.message || data.reason || "Shipment creation failed");
-      setActiveShipment(data.shipment || null);
-      setCreateResult(data);
-      router.refresh();
-    } catch (err: any) {
-      setError(err?.message || "Shipment creation failed");
-    } finally {
-      setLoading(null);
-    }
+      const response=await fetch(current.endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(current.payload),signal:controller.signal,cache:"no-store"});
+      const data=await response.json().catch(()=>null);if(!mounted.current)return;
+      if(!response.ok){setUncertain(response.status>=500);setMessage(response.status>=500?"No se pudo confirmar el resultado. Conservamos el mismo intento; no crees otro envío ni cambies los datos.":MESSAGES[String(data?.reason)]||"El servidor no aprobó la operación. Revisá permisos, datos y estado del envío.");if(response.status<500){attempt.current=null;setConfirmed(false);}return;}
+      const accepted=logisticsReceipt(data,current.operation,current.tenant,current.shipmentId);
+      if(!accepted){setUncertain(true);setMessage("La respuesta no contiene un comprobante válido de esta operación. Conservamos el intento para reconciliarlo.");return;}
+      setReceipt(accepted);if(current.operation==="CREATE")setCreated({id:accepted.shipmentId,code:accepted.shipmentCode});setUncertain(false);setConfirmed(false);setSelected(accepted.shipmentId);attempt.current=null;router.refresh();
+    }catch{if(mounted.current){setUncertain(true);setMessage("Conexión interrumpida: el resultado es incierto. Podés repetir el mismo intento identificado, sin generar otra operación.");}}
+    finally{clearTimeout(timeout);inflight.current=null;if(mounted.current)setPending(false);}
   }
-
-  async function runScan(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading("scan");
-    setError("");
-    setScanResult(null);
-    const formData = new FormData(event.currentTarget);
-    const shipmentId = readText(formData, "shipment_id") || activeShipment?.id || "";
-    const uidHex = readText(formData, "uid_hex");
-    const tenant = tenantSlug || readText(formData, "tenant_slug");
-
-    if (!uidHex) {
-      setError("Seal UID is required.");
-      setLoading(null);
-      return;
+  function submit(event:React.FormEvent<HTMLFormElement>){
+    event.preventDefault();if(!canWrite||pending||uncertain||!confirmed||receipt)return;
+    const form=new FormData(event.currentTarget),get=(key:string)=>String(form.get(key)||"").trim();
+    const tenant=tenantSlug||get("tenant_slug"),shipmentId=operation==="CREATE"?"":selected;
+    if(!tenant){setMessage("Seleccioná la empresa del envío.");return;}
+    const operation_key=crypto.randomUUID();let payload:Record<string,unknown>;
+    if(operation==="CREATE"){
+      const quantity=Number(get("quantity"));if(!Number.isSafeInteger(quantity)||quantity<1||quantity>1000000||!get("product_name")){setMessage("Indicá un producto y una cantidad entera válida.");return;}
+      payload={operation_key,tenant_slug:tenant,shipment_code:get("shipment_code"),carrier_code:get("carrier_code"),tracking_number:get("tracking_number"),origin_address:get("origin_address"),destination_address:get("destination_address"),items:[{productName:get("product_name"),quantity}]};
+    }else{
+      if(!/^[a-f0-9-]{36}$/i.test(shipmentId)||!/^[a-f0-9]{14}$/i.test(get("uid_hex"))){setMessage("Seleccioná el envío y revisá el UID NFC de 14 caracteres hexadecimales.");return;}
+      payload={operation_key,context:operation,tenant_slug:tenant,shipment_id:shipmentId,uid_hex:get("uid_hex").toUpperCase(),tt_raw:get("tt_raw"),location:get("location"),scanned_by:get("scanned_by"),recipient_name:get("recipient_name"),verification_method:"OPERATOR_DECLARATION"};
     }
-    if (context === "APPLY" && !shipmentId) {
-      setError("Shipment ID is required before applying a seal.");
-      setLoading(null);
-      return;
-    }
-
-    const payload = {
-      context,
-      tenant_slug: tenant,
-      shipment_id: shipmentId,
-      uid_hex: uidHex,
-      tt_raw: readText(formData, "tt_raw") || "4343",
-      location: readText(formData, "location"),
-      scanned_by: readText(formData, "scanned_by"),
-      recipient_name: readText(formData, "recipient_name"),
-      verification_method: readText(formData, "verification_method") || "NFC_TAP",
-    };
-
-    try {
-      const response = await fetch("/api/admin/logistics/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.message || data.reason || "Scan failed");
-      setScanResult(data);
-      router.refresh();
-    } catch (err: any) {
-      setError(err?.message || "Scan failed");
-    } finally {
-      setLoading(null);
-    }
+    const current={operation,tenant,shipmentId,endpoint:operation==="CREATE"?"/api/admin/logistics/shipments":"/api/admin/logistics/scan",payload};attempt.current=current;void send(current);
   }
-
-  return (
-    <section id="secure-delivery-ops" className="rounded-3xl border border-cyan-500/15 bg-slate-950/70 p-5 shadow-2xl shadow-cyan-950/20 md:p-7">
-      <div className="flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">Warehouse operation</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Create shipment, record seal assignment, check receipt</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-            The premium logistics workflow uses pre-encoded seal inventory, then binds a UID to a specific shipment at packing time. No CLI, no exposed admin key, no generic tracking theater.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-bold text-slate-300">
-          {operatorLabel}
-        </div>
-      </div>
-
-      {error ? (
-        <div className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm font-semibold text-rose-100">
-          {error}
-        </div>
-      ) : null}
-
-      <div className="mt-6 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <form onSubmit={createShipment} className="rounded-3xl border border-white/10 bg-slate-900/70 p-5">
-          <div className="flex items-center gap-3">
-            <span className="rounded-2xl bg-cyan-400/10 p-3 text-cyan-300"><PackagePlus className="h-5 w-5" /></span>
-            <div>
-              <h3 className="text-lg font-black text-white">1. Shipment registry</h3>
-              <p className="text-xs text-slate-400">Register the package or asset before the operator applies a physical seal.</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {!tenantLocked ? (
-              <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Tenant slug
-                <input name="tenant_slug" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="demobodega" />
-              </label>
-            ) : null}
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Shipment code
-              <input name="shipment_code" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="Auto if blank" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Tracking / order ID
-              <input name="tracking_number" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="IT-ONBOARD-7421" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Carrier code
-              <input name="carrier_code" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="private-courier" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Origin
-              <input name="origin_address" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="Warehouse AR" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Destination
-              <input name="destination_address" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="Employee / premium buyer" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Product / asset
-              <input name="product_name" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="MacBook Pro M4 sealed kit" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Quantity
-              <input name="quantity" type="number" min="1" defaultValue="1" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" />
-            </label>
-          </div>
-
-          <button disabled={loading === "shipment"} className="mt-5 rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-black uppercase tracking-wide text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60">
-            {loading === "shipment" ? "Creating..." : "Create secure shipment"}
-          </button>
-          <ResultPanel result={createResult} />
-        </form>
-
-        <form onSubmit={runScan} className="rounded-3xl border border-white/10 bg-slate-900/70 p-5">
-          <div className="flex items-center gap-3">
-            <span className="rounded-2xl bg-emerald-400/10 p-3 text-emerald-300"><Radio className="h-5 w-5" /></span>
-            <div>
-              <h3 className="text-lg font-black text-white">2. Seal operation</h3>
-              <p className="text-xs text-slate-400">Apply, handoff or recipient verification scan for the physical seal.</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/70 p-1">
-            {(["APPLY", "HANDOFF", "VERIFY"] as const).map((item) => (
-              <button key={item} type="button" onClick={() => setContext(item)} className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide transition ${context === item ? "bg-emerald-400 text-slate-950" : "text-slate-300 hover:bg-white/10"}`}>
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {!tenantLocked ? (
-              <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Tenant slug
-                <input name="tenant_slug" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="Optional if shipment ID resolves tenant" />
-              </label>
-            ) : null}
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Shipment ID
-              <input name="shipment_id" defaultValue={activeShipment?.id || ""} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="Created shipment UUID" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Seal UID
-              <input name="uid_hex" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm uppercase text-white outline-none focus:border-emerald-400" placeholder="04AABBCCDD1090" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              TTSTATUS
-              <select name="tt_raw" defaultValue="4343" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400">
-                <option value="4343">4343 - closed</option>
-                <option value="4F4F">4F4F - opened</option>
-                <option value="4F43">4F43 - opened previously</option>
-                <option value="4949">4949 - invalid</option>
-                <option value="">unknown / missing</option>
-              </select>
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Location
-              <input name="location" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="Packing bench / courier hub" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Operator
-              <input name="scanned_by" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="ops@nexid.lat" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Recipient
-              <input name="recipient_name" disabled={context !== "VERIFY"} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400 disabled:opacity-40" placeholder="Only for verify" />
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Verification method
-              <input name="verification_method" disabled={context !== "VERIFY"} defaultValue="NFC_TAP" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400 disabled:opacity-40" />
-            </label>
-          </div>
-
-          <button disabled={loading === "scan"} className="mt-5 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-black uppercase tracking-wide text-slate-950 transition hover:bg-emerald-300 disabled:opacity-60">
-            {loading === "scan" ? "Scanning..." : `Run ${context.toLowerCase()} scan`}
-          </button>
-          <ResultPanel result={scanResult} />
-        </form>
-      </div>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-4">
-        {[
-          { icon: PackagePlus, label: "Shipment created", body: "Declared order, carrier, origin and destination are recorded for audit." },
-          { icon: CheckCircle2, label: "Seal assignment", body: "An operator records the association between a pre-encoded UID and the declared package." },
-          { icon: Truck, label: "Courier handoff", body: "Operator-submitted transfer events make the recorded handling sequence reviewable." },
-          { icon: ShieldAlert, label: "Recipient check", body: "A TT-closed report plus recipient record supports review; TT-open triggers an exception. Neither proves contents by itself." },
-        ].map((item) => (
-          <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <item.icon className="h-5 w-5 text-cyan-300" />
-            <h4 className="mt-3 text-sm font-black text-white">{item.label}</h4>
-            <p className="mt-1 text-xs leading-5 text-slate-400">{item.body}</p>
-          </div>
-        ))}
-      </div>
-      <p className="mt-4 flex items-center gap-2 text-xs text-slate-500">
-        <Activity className="h-3.5 w-3.5 text-cyan-300" />
-        Seal UID must already exist in secure inventory from Supplier Ops. This console binds and audits, it does not expose factory keys.
-      </p>
-    </section>
-  );
+  const creation=operation==="CREATE";
+  return <section id="secure-delivery-ops" className={styles.card} data-testid="logistics-operations">
+    <div className={styles.sectionHead}><div><p className={styles.eyebrow}>Operación autorizada</p><h2>Registrar, vincular y recibir.</h2></div><span className={styles.badge}>{tenantSlug||"Empresa por seleccionar"}</span></div>
+    <div className={styles.actions} role="group" aria-label="Tipo de operación logística">{([["CREATE","Crear envío"],["APPLY","Aplicar precinto"],["HANDOFF","Traspaso"],["VERIFY","Recepción"]] as const).map(([key,label])=><button key={key} type="button" className={styles.button} aria-pressed={operation===key} disabled={pending||uncertain} onClick={()=>changeOperation(key)}>{label}</button>)}</div>
+    {!canWrite?<p className={styles.notice}>Esta sesión es de consulta o la fuente transaccional no está disponible. Las operaciones requieren un administrador autorizado con logistics:write; no se simulan escrituras.</p>:<form onSubmit={submit}>
+      <fieldset disabled={pending||uncertain||Boolean(receipt)} className={styles.formFields} onChange={()=>{setConfirmed(false);setMessage("");}}>
+        {!tenantSlug&&<label className={styles.field}>Empresa<input name="tenant_slug" required maxLength={120} placeholder="Identificador de empresa"/></label>}
+        {creation?<>
+          <label className={styles.field}>Producto o activo<input name="product_name" required maxLength={180} placeholder="Descripción del contenido declarado"/></label>
+          <label className={styles.field}>Cantidad<input name="quantity" type="number" required min={1} max={1000000} step={1} defaultValue={1}/></label>
+          <label className={styles.field}>Referencia del envío<input name="shipment_code" maxLength={120} placeholder="Se genera si está vacío"/></label>
+          <label className={styles.field}>Pedido / tracking<input name="tracking_number" maxLength={180}/></label>
+          <label className={styles.field}>Origen declarado<input name="origin_address" maxLength={500}/></label>
+          <label className={styles.field}>Destino declarado<input name="destination_address" maxLength={500}/></label>
+          <label className={styles.field}>Código del transportista configurado<input name="carrier_code" maxLength={100} placeholder="Opcional"/></label>
+        </>:<>
+          <label className={styles.field}>Envío<select value={selected} onChange={event=>setSelected(event.target.value)} required><option value="">Seleccionar envío</option>{created&&!shipments.some(row=>row.id===created.id)&&<option value={created.id}>{created.code||created.id}</option>}{shipments.map(row=><option key={row.id} value={row.id}>{row.code} · {logisticsStatus(row.status)}</option>)}</select></label>
+          <label className={styles.field}>UID del precinto<input name="uid_hex" required pattern="[a-fA-F0-9]{14}" maxLength={14} autoComplete="off" placeholder="14 caracteres hexadecimales"/></label>
+          <label className={styles.field}>Estado reportado del precinto<select name="tt_raw" defaultValue=""><option value="">Sin evidencia · requiere revisión</option><option value="4343">Cerrado reportado · 4343</option><option value="4F4F">Abierto reportado · 4F4F</option><option value="4F43">Apertura reportada · 4F43</option><option value="4949">Estado reportado · 4949</option></select></label>
+          <label className={styles.field}>Punto de control declarado<input name="location" maxLength={300} placeholder="No equivale a geolocalización GPS"/></label>
+          <label className={styles.field}>Operador<input name="scanned_by" maxLength={180}/></label>
+          {operation==="VERIFY"&&<label className={styles.field}>Receptor declarado<input name="recipient_name" maxLength={180}/></label>}
+        </>}
+      </fieldset>
+      {!receipt&&<label className={styles.confirm}><input type="checkbox" checked={confirmed} disabled={pending||uncertain} onChange={event=>setConfirmed(event.target.checked)}/><span>Confirmo los datos y la acción {creation?"de creación del envío":"sobre este precinto"}. Es una declaración operativa; no prueba por sí sola autenticidad, contenido o custodia física.</span></label>}
+      {!receipt&&!uncertain&&<button type="submit" className={`${styles.button} ${styles.primary}`} disabled={!confirmed||pending}>{creation?<PackagePlus size={16} aria-hidden="true"/>:<Radio size={16} aria-hidden="true"/>}{pending?"Confirmando operación…":creation?"Confirmar creación":"Confirmar declaración"}</button>}
+    </form>}
+    {message&&<p className={styles.notice} role="status"><ShieldAlert size={18} aria-hidden="true"/>{message}</p>}
+    {uncertain&&attempt.current&&<div className={styles.actions}><button type="button" className={styles.button} disabled={pending} onClick={()=>{if(attempt.current)void send(attempt.current);}}><RefreshCw size={16} aria-hidden="true"/>Reintentar el mismo intento identificado</button><Link href="/logistics/shipments" prefetch={false} className={styles.button}>Revisar registros antes de salir</Link></div>}
+    {receipt&&<div className={styles.receipt} role="status" data-testid="logistics-transaction-receipt"><CheckCircle2 size={22} aria-hidden="true"/><div><h3>{receipt.replayed?"Operación ya registrada · no se duplicó":"Operación guardada con comprobante"}</h3><p>{receipt.shipmentCode||receipt.shipmentId} · {logisticsStatus(receipt.status)}</p>{receipt.sealStatus&&<p>Precinto: {logisticsStatus(receipt.sealStatus)}. El estado del envío se calcula con todos sus precintos.</p>}<p className={styles.muted}>Comprobante: {receipt.id}. Describe la operación confirmada; el estado actual puede cambiar después.</p><div className={styles.actions}><Link prefetch={false} href={`/logistics/shipments/${encodeURIComponent(receipt.shipmentId)}`} className={styles.button}>Abrir expediente del envío</Link><button type="button" className={styles.button} onClick={()=>changeOperation(creation?"APPLY":operation)}>Preparar siguiente operación</button></div></div></div>}
+  </section>;
 }

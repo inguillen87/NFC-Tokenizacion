@@ -1,44 +1,38 @@
-/** Public release metadata, without tenant data or operational guarantees. */
-export const DASHBOARD_RELEASE="2026.09.18-dashboard.8";
+/** Public release notes; never a physical or infrastructure certification. */
+export const DASHBOARD_RELEASE="2026.09.18-dashboard.9";
 export const DASHBOARD_RELEASE_DATE="2026-09-18";
 export const RELEASE_NOTES={
   "es-AR":{
-    link:"Novedades y versión",eyebrow:"Del dato a la operación",title:"Un lote. Un expediente. Un recorrido claro.",
-    summary:"Producto, unidades, recepciones y lecturas reunidos en el detalle del lote. Menos desplazamiento, acciones según tu rol y consultas solo cuando las necesitás.",
-    back:"Abrir rollos y productos",site:"Sitio de nexID",label:"Versión de esta interfaz",changes:"Qué cambió",guide:"Cómo probar esta entrega",
-    steps:["Abrí Rollos y productos y seleccioná un lote existente.","Recorré Resumen, Producto, Unidades y recepción, Lecturas y Operación y calidad.","Editá la ficha y cambiá de pestaña: el formulario se conserva en esta página. Guardar requiere confirmación.","En Lecturas, solicitá la muestra del lote. Revisá la fuente y abrí su mapa sin perder el alcance."],
-    boundary:"Esta entrega reorganiza herramientas existentes y agrega consultas acotadas. No certifica aceptación industrial, custodia ni un historial completo de cambios. El estado activo no demuestra aprobación de calidad.",
+    link:"Novedades y versión",eyebrow:"Operación que conserva evidencia",title:"Logística clara. Operaciones consistentes.",summary:"Envíos, precintos y recepción en un espacio más simple. El guardado transaccional y los intentos identificados evitan cambios parciales y duplicaciones de la misma solicitud.",back:"Abrir Logística",site:"Sitio de nexID",label:"Versión de esta interfaz",changes:"Qué cambió",guide:"Cómo probar esta entrega",
+    steps:["Abrí Logística y revisá los envíos del alcance autorizado.","Usá Registrar operación para crear, aplicar un precinto, declarar un traspaso o recepción.","Revisá los datos y confirmá. El estado del precinto nunca se supone cerrado si falta información.","Si se pierde la respuesta, conservá el mismo intento identificado y revisá su comprobante antes de iniciar otro."],
+    boundary:"Son declaraciones operativas, no prueba criptográfica de contenido o custodia. La deduplicación requiere el mismo identificador, empresa, actor y datos. No se activa seguimiento GPS ni una integración nueva de pago.",
     cards:[
-      {title:"Expediente del lote",text:"Identidad, estado, conteos informados y próximos pasos en una vista compacta. Cada pestaña tiene una tarea y conserva los controles autorizados.",tag:"Operación clara"},
-      {title:"Formularios que no se pierden al cambiar de pestaña",text:"Las secciones conservan su estado mientras permanecés en la página. No hay guardado silencioso: recargar o salir requiere haber confirmado los cambios.",tag:"Edición controlada"},
-      {title:"Unidades y recepciones con contexto",text:"Muestra de hasta 12 unidades e importaciones recientes. Referencias de caja, pallet o contenedor solo cuando están declaradas; sin inventar custodia ni sensores activos.",tag:"Evidencia"},
-      {title:"Lecturas del lote, a demanda",text:"Hasta 20 lecturas por consulta, con ventana explícita y permisos verificados. Mensaje, precinto y procedencia de ubicación se presentan por separado.",tag:"Uso responsable"},
+      {title:"Un guardado completo",text:"Envío y partidas se guardan juntos. Las operaciones de precinto guardan estado, evento y recepción/revisión aplicable en una transacción.",tag:"Integridad"},
+      {title:"Reintentos identificados",text:"Repetir el mismo intento devuelve el comprobante original. No se reenvía automáticamente ni se cambia la identidad de una operación incierta.",tag:"Consistencia"},
+      {title:"Precintos sin supuestos",text:"La ausencia de evidencia no se transforma en cerrado. Un precinto reportado cerrado no oculta otro con apertura o revisión en el mismo envío.",tag:"Evidencia"},
+      {title:"Un centro logístico más limpio",text:"Listado, filtros locales y operaciones con confirmación. Cantidades agregadas sin multiplicarlas por los eventos asociados; sin mapas o rutas inventados.",tag:"UX operativa"},
     ],
   },
   en:{
-    link:"What's new and version",eyebrow:"From data to operations",title:"One batch. One dossier. A clear workflow.",
-    summary:"Product details, units, receipts and readings in the existing batch page. Less scrolling, role-based actions and on-demand queries.",
-    back:"Open rolls and products",site:"nexID website",label:"This interface version",changes:"What's changed",guide:"Try this release",
-    steps:["Open Rolls and products and choose an existing batch.","Explore Summary, Product, Units and intake, Readings, and Operations and quality.","Edit product details and switch tabs; the form stays in this page. Saving still requires confirmation.","Request a reading sample and inspect its location source or open the batch map."],
-    boundary:"This release organizes existing tools and adds bounded reads. It does not certify industrial acceptance, custody or a complete revision history. Active status does not prove quality approval.",
+    link:"What's new and version",eyebrow:"Evidence-led operations",title:"Clear logistics. Consistent operations.",summary:"Shipments, seals and receipt declarations in a simpler workspace, backed by transactions and identified retries.",back:"Open Logistics",site:"nexID website",label:"This interface version",changes:"What's changed",guide:"Try this release",
+    steps:["Open Logistics and review the authorized shipments.","Choose a shipment or seal operation.","Review and confirm; missing tamper evidence is never treated as closed.","When a response is lost, retain the same identified attempt and review its receipt before starting another."],
+    boundary:"Operator declarations do not prove physical custody or contents. Deduplication requires the same operation identity, tenant, actor and data. No continuous GPS or new paid integration is enabled.",
     cards:[
-      {title:"Batch dossier",text:"Identity, status, reported counts and next steps in a compact view. Each tab has a task and retains authorized controls.",tag:"Clear workflow"},
-      {title:"Forms survive tab switches",text:"Sections keep their state while you remain on the page. There is no silent save; confirm changes before reloading or leaving.",tag:"Controlled editing"},
-      {title:"Unit and intake evidence",text:"Up to 12 sampled units and recent import records. Box, pallet and container references appear only when declared; no invented custody or live sensors.",tag:"Evidence"},
-      {title:"Readings on demand",text:"Up to 20 readings per request with an explicit window and permissions. Message validation, seal state and location provenance remain distinct.",tag:"Responsible usage"},
+      {title:"Atomic persistence",text:"Shipment items and their header commit together. Seal changes, handling evidence and applicable recipient records commit in one transaction.",tag:"Integrity"},
+      {title:"Identified retries",text:"The same attempt returns its original receipt. Uncertain operations are not automatically resent under a new identity.",tag:"Consistency"},
+      {title:"No assumed closed seals",text:"Missing evidence remains unknown. One closed seal cannot conceal a second seal reported opened or requiring review.",tag:"Evidence"},
+      {title:"A focused workspace",text:"Local search, explicit confirmation and corrected quantities without join multiplication. No invented routes or shipment locations.",tag:"Operations UX"},
     ],
   },
   "pt-BR":{
-    link:"Novidades e versão",eyebrow:"Do dado à operação",title:"Um lote. Um dossiê. Um fluxo claro.",
-    summary:"Produto, unidades, recebimentos e leituras no detalhe do lote. Menos rolagem, ações por perfil e consultas sob demanda.",
-    back:"Abrir rolos e produtos",site:"Site da nexID",label:"Versão desta interface",changes:"O que mudou",guide:"Como testar esta entrega",
-    steps:["Abra Rolos e produtos e selecione um lote existente.","Navegue por Resumo, Produto, Unidades e recebimento, Leituras e Operação e qualidade.","Edite o produto e troque de aba; o formulário permanece nesta página. Salvar exige confirmação.","Solicite a amostra de leituras e confira sua fonte de localização ou abra o mapa do lote."],
-    boundary:"Esta entrega organiza ferramentas existentes e adiciona consultas limitadas. Não certifica aceitação industrial, custódia ou histórico completo de alterações. Um estado ativo não comprova aprovação de qualidade.",
+    link:"Novidades e versão",eyebrow:"Operação com evidência",title:"Logística clara. Operações consistentes.",summary:"Envios, lacres e recebimentos em um espaço mais simples, com transações e tentativas identificadas.",back:"Abrir Logística",site:"Site da nexID",label:"Versão desta interface",changes:"O que mudou",guide:"Como testar esta entrega",
+    steps:["Abra Logística e confira os envios autorizados.","Escolha criar, aplicar lacre, declarar transferência ou recebimento.","Revise e confirme. Sem evidência, o lacre não é considerado fechado.","Se perder a resposta, mantenha a mesma tentativa e confira o comprovante antes de iniciar outra."],
+    boundary:"Declarações operacionais não comprovam conteúdo ou custódia física. A deduplicação exige o mesmo identificador, empresa, ator e dados. Não ativa GPS contínuo nem integrações pagas.",
     cards:[
-      {title:"Dossiê do lote",text:"Identidade, estado, contagens informadas e próximos passos em uma visão compacta, com ações autorizadas por perfil.",tag:"Operação clara"},
-      {title:"Formulários preservados entre abas",text:"As seções mantêm seu estado enquanto você permanece na página. Não há salvamento automático; confirme antes de recarregar ou sair.",tag:"Edição controlada"},
-      {title:"Unidades e recebimentos",text:"Até 12 unidades de amostra e importações recentes. Referências logísticas aparecem apenas quando declaradas, sem inventar custódia ou sensores ativos.",tag:"Evidência"},
-      {title:"Leituras sob demanda",text:"Até 20 leituras por consulta, com período explícito e permissões. Validação da mensagem, lacre e fonte da localização são apresentados separadamente.",tag:"Uso responsável"},
+      {title:"Gravação completa",text:"Envio e itens são gravados juntos. Alterações de lacres, eventos e registros de recebimento aplicáveis usam uma transação.",tag:"Integridade"},
+      {title:"Tentativas identificadas",text:"Repetir a mesma tentativa devolve o comprovante original. Operações incertas não são reenviadas automaticamente com outra identidade.",tag:"Consistência"},
+      {title:"Lacres sem suposições",text:"A falta de evidência continua desconhecida. Um lacre fechado não oculta outro aberto ou que exige revisão no mesmo envio.",tag:"Evidência"},
+      {title:"Centro logístico organizado",text:"Pesquisa local, ações confirmadas e quantidades sem multiplicação por eventos. Sem inventar mapas ou rotas de envio.",tag:"UX operacional"},
     ],
   },
 } as const;

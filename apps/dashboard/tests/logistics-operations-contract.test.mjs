@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {readFile} from 'node:fs/promises';
+import {logisticsOverview,logisticsReceipt,logisticsStatus} from '../src/lib/logistics-workspace-model.ts';
+import {requiredPermissionForAdminResource} from '../src/lib/permission-policy.ts';
+const tenant='qa-company',id='10000000-0000-4000-8000-000000000001';
+const overview={ok:true,dataSource:'production',scope:{tenant,limit:100},operationProtocol:'nexid.logistics.v1',observedAt:'2026-09-18T06:00:00Z',stats:{total:1,in_transit:0,delivered:0,alerts:0},shipments:[{id,tenant_slug:tenant,shipment_code:'QA-1',status:'draft',item_count:1,item_quantity:2,seal_count:0,custody_event_count:0}]};
+const receipt={ok:true,tenant:{slug:tenant},shipment:{id,shipmentCode:'QA-1',status:'draft',receiptId:'20000000-0000-4000-8000-000000000001',replayed:false,protocol:'nexid.logistics.v1',idempotencyProvided:true,itemCount:1}};
+test('overview requires explicit production and matching scope',()=>{assert.equal(logisticsOverview(overview,tenant).ready,true);assert.equal(logisticsOverview({...overview,dataSource:undefined},tenant).ready,false);assert.equal(logisticsOverview(overview,'other').ready,false);assert.equal(logisticsOverview({...overview,demoMode:true},tenant).ready,false);});
+test('broken data is unavailable rather than zero',()=>{for(const p of [null,{}, {...overview,stats:{...overview.stats,total:null}},{...overview,stats:{...overview.stats,total:0}}]){const r=logisticsOverview(p,tenant);assert.equal(r.ready,false);assert.equal(r.stats,null);}});
+test('old operation protocol does not enable atomic writes',()=>{const r=logisticsOverview({...overview,operationProtocol:undefined},tenant);assert.equal(r.ready,true);assert.equal(r.protocolReady,false);});
+test('receipt cannot switch tenant or shipment',()=>{assert.ok(logisticsReceipt(receipt,'CREATE',tenant));assert.equal(logisticsReceipt(receipt,'CREATE','other'),null);assert.equal(logisticsReceipt({...receipt,shipment:{...receipt.shipment,idempotencyProvided:false}},'CREATE',tenant),null);});
+test('an idempotent replay retains its identity in the UI',()=>{const r=logisticsReceipt({...receipt,shipment:{...receipt.shipment,replayed:true}},'CREATE',tenant);assert.equal(r.replayed,true);assert.equal(r.id,receipt.shipment.receiptId);});
+test('human wording distinguishes state from contents or authenticity',()=>{assert.equal(logisticsStatus('DELIVERED_CLOSED'),'Recibido · cerrado reportado');assert.equal(logisticsStatus('unknown'),'Estado no reconocido');});
+test('BFF protects read and write requests with their own permission',()=>{assert.equal(requiredPermissionForAdminResource('GET','logistics/shipments'),'logistics:read');assert.equal(requiredPermissionForAdminResource('POST','logistics/scan'),'logistics:write');});
+test('UI does not guess closed TT or submit without explicit confirmation',async()=>{const s=await readFile(new URL('../src/components/secure-delivery-ops-console.tsx',import.meta.url),'utf8');assert.match(s,/tt_raw:get\("tt_raw"\)/);assert.doesNotMatch(s,/tt_raw:.*\|\|\s*"4343"|defaultValue="4343"/);assert.match(s,/!confirmed/);assert.match(s,/operation_key=crypto.randomUUID/);assert.match(s,/send\(attempt.current\)/);assert.doesNotMatch(s,/setInterval|EventSource|localStorage/);});

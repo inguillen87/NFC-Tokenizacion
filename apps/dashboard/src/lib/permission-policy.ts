@@ -297,6 +297,9 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     // may open the tenant-scoped supplier-order surface.
     return "supplier_orders:read";
   }
+  if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
+    return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";
+  }
   if (normalizedPath === "observability/service-levels") {
     return "analytics:read";
   }
