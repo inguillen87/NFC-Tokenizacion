@@ -1,0 +1,12 @@
+{
+  "filename": "nexid-integration-starter-1.0.0.tgz",
+  "version": "1.0.0",
+  "sdkVersion": "0.2.0",
+  "bytes": 77247,
+  "sha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
+  "runtime": "Node.js 24.14+",
+  "files": 18,
+  "apiOrigin": "https://api.nexid.lat",
+  "sourceDigest": "2cc1d25ae3a768ad8505c9953fc23708995606da88a7939f33356c3f36009be5",
+  "publicNpmPackage": false
+}

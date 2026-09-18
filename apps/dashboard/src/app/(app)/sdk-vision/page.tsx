@@ -1,3 +1,6 @@
+import {requireDashboardSession} from "../../../lib/session";
+import {canDownloadIntegrationKit} from "../../../lib/integration-kit-policy";
+import {IntegrationKitConsole} from "../../../components/integration-kit-console";
 import Link from "next/link";
 import { SectionHeading } from "@product/ui";
 import {
@@ -77,6 +80,7 @@ const carriers = [
 ];
 
 export default async function SdkVisionPage() {
+  const session = await requireDashboardSession();
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 
@@ -87,6 +91,8 @@ export default async function SdkVisionPage() {
         title={copy.pages.sdkVision.title}
         description="Contrato técnico y operativo para conectar productos físicos con nexID sin exponer secretos ni confundir una simulación con producción."
       />
+
+      <IntegrationKitConsole canDownload={canDownloadIntegrationKit(session)} tenant={session.tenantSlug||null}/>
 
       <section className={styles.hero} aria-labelledby="sdk-contract-title">
         <div className={styles.heroCopy}>

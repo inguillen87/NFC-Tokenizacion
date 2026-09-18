@@ -22,7 +22,7 @@ const consoleSource = await readFile(new URL("../src/components/sdk-admin-consol
 const pageSource = await readFile(new URL("../src/app/(app)/api-keys/page.tsx", import.meta.url), "utf8");
 
 test("integration profiles are least-privilege paths for pilot, commerce and enterprise", () => {
-  assert.deepEqual(SDK_INTEGRATION_PROFILES.map((profile) => profile.id), ["pilot", "commerce", "supply-chain"]);
+  assert.deepEqual(SDK_INTEGRATION_PROFILES.map((profile) => profile.id), ["pilot", "commerce", "supply-chain", "erp-csv"]);
   const allowedScopes = new Set(SDK_SCOPE_OPTIONS.map((scope) => scope.value));
 
   for (const profile of SDK_INTEGRATION_PROFILES) {

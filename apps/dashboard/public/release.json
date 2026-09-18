@@ -1,11 +1,13 @@
 {
-  "release": "2026.09.18-dashboard.13",
-  "scope": "batch-carrier-state-gs1-registration-and-registered-qr-export",
+  "release": "2026.09.18-dashboard.14",
+  "scope": "s5-private-installable-sdk-csv-adapter-and-signed-webhook-starter",
   "realTapCertification": "not-included",
-  "baseCommit": "366dc752c5181e722c098e12b980155052555204",
+  "baseCommit": "e1781821848548dc0cb5ac807415014a30eed582",
   "requiredApiRelease": "2026.09.18-api-channels.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
-  "productionDemoAccess": "requires-explicit-environment-opt-in"
+  "productionDemoAccess": "requires-explicit-environment-opt-in",
+  "integrationKitVersion": "1.0.0",
+  "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d"
 }

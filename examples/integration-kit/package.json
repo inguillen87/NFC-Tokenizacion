@@ -1,0 +1,17 @@
+{
+  "name": "nexid-integration-starter",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "start": "node src/cli.mjs",
+    "doctor": "node src/cli.mjs doctor"
+  },
+  "dependencies": {
+    "@product/nexid-server-sdk": "file:vendor/product-nexid-server-sdk-0.2.0.tgz"
+  }
+}

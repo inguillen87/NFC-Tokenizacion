@@ -5,6 +5,7 @@ import { Button, Card } from "@product/ui";
 import {
   buildWebhookVerificationQuickstart,
   buildVerifyQuickstart,
+  buildProductQuickstart,
   combineDeveloperDataModes,
   developerErrorMessage,
   developerMutationsAllowed,
@@ -110,12 +111,15 @@ export function SdkAdminConsole({
   canManageApiKeys,
   canManageClaimPolicy,
   mfaVerified,
+  initialProfileId = "pilot",
 }: {
   tenantSlug?: string | null;
   canManageApiKeys: boolean;
   canManageClaimPolicy: boolean;
   mfaVerified: boolean;
+  initialProfileId?: SdkIntegrationProfileId;
 }) {
+  const initialProfile = SDK_INTEGRATION_PROFILES.find(p=>p.id===initialProfileId)||SDK_INTEGRATION_PROFILES[0];
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
   const [tenantInput, setTenantInput] = useState(scopedTenant);
   const [tenant, setTenant] = useState(scopedTenant);
@@ -134,18 +138,18 @@ export function SdkAdminConsole({
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
   const [usage, setUsage] = useState({ monthRequests: 0, avgLatencyMs: 0 });
   const [dataMode, setDataMode] = useState<DeveloperDataMode>("unknown");
-  const [profileId, setProfileId] = useState<SdkIntegrationProfileId>("pilot");
-  const [keyName, setKeyName] = useState<string>(SDK_INTEGRATION_PROFILES[0].keyName);
+  const [profileId, setProfileId] = useState<SdkIntegrationProfileId>(initialProfile.id);
+  const [keyName, setKeyName] = useState<string>(initialProfile.keyName);
   const [keyExpiryDays, setKeyExpiryDays] = useState("90");
-  const [selectedScopes, setSelectedScopes] = useState<SdkApiKeyScope[]>([...SDK_INTEGRATION_PROFILES[0].scopes]);
-  const [bid, setBid] = useState("DEMO-2026-02");
+  const [selectedScopes, setSelectedScopes] = useState<SdkApiKeyScope[]>([...initialProfile.scopes]);
+  const [bid, setBid] = useState(initialProfile.id === "erp-csv" ? "" : "DEMO-2026-02");
   const [claimPin, setClaimPin] = useState("");
   const [activeSnippet, setActiveSnippet] = useState<SnippetId>("curl");
   const [webhookName, setWebhookName] = useState("production · nexID events");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookOneTimeSecret, setWebhookOneTimeSecret] = useState("");
   const [selectedWebhookEvents, setSelectedWebhookEvents] = useState<WebhookEventName[]>([
-    ...SDK_INTEGRATION_PROFILES[0].webhookEvents,
+    ...initialProfile.webhookEvents,
   ]);
 
   const clearOperationalData = useCallback(() => {
@@ -253,7 +257,7 @@ export function SdkAdminConsole({
     successfulDeliveries,
     dataMode,
   }), [activeKeys, dataMode, enabledWebhooks, successfulDeliveries, tenant, usage.monthRequests]);
-  const quickstart = useMemo(() => buildVerifyQuickstart({ tenantSlug: tenant, bid }), [bid, tenant]);
+  const quickstart = useMemo(() => profileId === "erp-csv" ? buildProductQuickstart({tenantSlug:tenant,bid}) : buildVerifyQuickstart({ tenantSlug: tenant, bid }), [bid, tenant, profileId]);
   const webhookVerifier = useMemo(() => buildWebhookVerificationQuickstart(), []);
   const mutationsAllowed = developerMutationsAllowed({ dataMode, loading });
   const apiKeyMutationsAllowed = mutationsAllowed && canManageApiKeys && mfaVerified;
@@ -619,8 +623,8 @@ export function SdkAdminConsole({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Quickstart server-side</p>
-              <h2 id="quickstart-title" className="mt-2 text-xl font-semibold text-white">Primera verificación en minutos</h2>
-              <p className="mt-1 text-sm text-slate-400">Usá valores reales del lector NFC. La API key nunca debe llegar al navegador o a la app móvil.</p>
+              <h2 id="quickstart-title" className="mt-2 text-xl font-semibold text-white">{profileId === "erp-csv" ? "Primera consulta del catálogo" : "Primera verificación en minutos"}</h2>
+              <p className="mt-1 text-sm text-slate-400">{profileId === "erp-csv" ? "Usá el BID registrado del cliente. Este perfil no necesita una lectura NFC ni permiso sdk:verify." : "Usá valores reales del lector NFC. La API key nunca debe llegar al navegador o a la app móvil."}</p>
             </div>
             <a href="https://nexid.lat/docs" target="_blank" rel="noreferrer" className="text-sm font-semibold text-cyan-200 underline-offset-4 hover:underline">Documentación ↗</a>
           </div>

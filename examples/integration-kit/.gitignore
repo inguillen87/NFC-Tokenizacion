@@ -1,0 +1,4 @@
+node_modules/
+.nexid-integration/
+.env
+*.sqlite*

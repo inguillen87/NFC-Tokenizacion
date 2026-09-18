@@ -1,3 +1,4 @@
+import {SDK_INTEGRATION_PROFILES} from "../../../lib/sdk-developer-experience";
 import { Card, SectionHeading } from "@product/ui";
 import { SdkAdminConsole } from "../../../components/sdk-admin-console";
 import { dashboardContent } from "../../../lib/dashboard-content";
@@ -6,11 +7,13 @@ import { requireDashboardSession } from "../../../lib/session";
 import { requireDashboardTenantScope } from "../../../lib/admin-page-access";
 import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 
-export default async function ApiKeysPage() {
+export default async function ApiKeysPage({searchParams}:{searchParams?:Promise<Record<string,string|string[]|undefined>>}) {
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const session = await requireDashboardSession();
-  const tenantSlug = requireDashboardTenantScope(session).tenantSlug;
+  const query=searchParams?await searchParams:{};
+  const tenantSlug = requireDashboardTenantScope(session,query.tenant).tenantSlug;
+  const initialProfile=SDK_INTEGRATION_PROFILES.find(p=>p.id===query.profile)||SDK_INTEGRATION_PROFILES[0];
   const canReadApiKeys = dashboardHighImpactPermissionMatches(
     session.role,
     session.permissions,
@@ -61,6 +64,8 @@ export default async function ApiKeysPage() {
         </div>
       </Card>
       <SdkAdminConsole
+        key={`${tenantSlug}:${initialProfile.id}`}
+        initialProfileId={initialProfile.id}
         tenantSlug={tenantSlug}
         canManageApiKeys={canManageApiKeys}
         canManageClaimPolicy={canManageClaimPolicy}

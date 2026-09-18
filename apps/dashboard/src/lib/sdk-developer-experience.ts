@@ -142,6 +142,15 @@ export const SDK_INTEGRATION_PROFILES = [
     keyName: "production · supply-chain service",
     webhookEvents: ["sdk.verify", "sdk.external_event"],
   },
+  {
+    id: "erp-csv",
+    label: "ERP / WMS · CSV",
+    title: "Recepciones declaradas y catálogo",
+    description: "El kit de integración consulta productos y registra recepciones externas. No verifica NFC, activa tags ni modifica precintos.",
+    scopes: ["sdk:products", "sdk:events"],
+    keyName: "production · ERP receipts",
+    webhookEvents: ["sdk.external_event"],
+  },
 ] as const satisfies readonly {
   id: string;
   label: string;
@@ -387,4 +396,20 @@ export function stringList(value: unknown): string[] {
     return value.split(",").map((item) => item.trim()).filter(Boolean);
   }
   return [];
+}
+
+/** Read-only bootstrap for the ERP CSV profile: no captured NFC values are required. */
+export function buildProductQuickstart(input:{tenantSlug:string;bid:string}) {
+ const tenant=safeTenantSlug(input.tenantSlug),bid=safeBatchId(input.bid);
+ return {
+  curl:`# PowerShell: NEXID_API_KEY ya debe estar en el entorno del servidor.
+
+curl.exe --fail-with-body --header "x-nexid-api-key: $env:NEXID_API_KEY" --header "x-nexid-tenant-slug: ${tenant}" "${NEXID_API_BASE_URL}/api/v1/sdk/products/${encodeURIComponent(bid)}"`,
+  node:`// Dentro del kit descargado, después de instalar el paquete local.
+import { NexIdClient } from "@product/nexid-server-sdk";
+const client = new NexIdClient({apiKey:process.env.NEXID_API_KEY,tenantSlug:"${tenant}",retry:false});
+const result = await client.getProduct("${bid}",{timeoutMs:8000,maxRetries:0});
+if (!result.ok || result.tenant.slug !== "${tenant}" || result.batch.bid !== "${bid}") throw new Error("product_scope_mismatch");
+console.log({ok:true,tenant:result.tenant.slug,bid:result.batch.bid});`,
+ };
 }
