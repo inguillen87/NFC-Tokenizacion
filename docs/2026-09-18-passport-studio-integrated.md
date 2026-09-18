@@ -82,3 +82,15 @@ commit is the reproducible integration source, not a claim that every earlier
 unpublished worktree had a compatible implementation.
 
 Final validation before commit: dashboard 843 tests, 841 passed, 2 skipped, zero failed. Editorial API suite: 47 passed. Project TypeScript and Next builds passed. Real PostgreSQL integration: 16 checks passed. Integrated browser: four visual cases plus the end-to-end save/review/publication workflow passed. These are pre-production test results, not customer TAP certification.
+
+## Concurrent migration reconciliation before promotion
+
+The existing 0104 migration was installed concurrently while this release was
+staged. Its exact function body was retrieved and compared; the difference was
+limited to canonical-request/null guards and column qualification. The original
+0104 source now records that observed body. Migration 0105 upgrades only that
+known SHA-256 to the locally tested target body, or no-ops if already identical;
+an unrelated change aborts instead of being overwritten. No editorial data is
+rewritten by the corrective migration. Fresh local install runs both migrations.
+The final integrated PostgreSQL suite passed 17 cases including missing-request
+envelope rejection. This reconciles the schema and release source explicitly.

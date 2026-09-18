@@ -56,15 +56,13 @@ DECLARE
 BEGIN
  IF p_tenant IS NULL OR p_batch IS NULL OR p_operation IS NULL OR coalesce(p_actor,'') !~ '^[A-Za-z0-9][A-Za-z0-9_:-]{0,179}$'
     OR action IS NULL OR action NOT IN ('start','save','submit','request_changes','approve','publish','reopen')
-    OR jsonb_typeof(p_command->'request') IS DISTINCT FROM 'object' OR p_command#>>'{request,action}' IS DISTINCT FROM action
-    OR p_command#>>'{request,operationId}' IS DISTINCT FROM p_operation::text
     OR p_next IS NULL OR next_revision IS NULL OR next_revision<1 OR next_state IS NULL OR expected IS NULL OR jsonb_typeof(p_next)<>'object' OR octet_length(p_next::text)>131072 THEN RAISE EXCEPTION 'editorial_request_invalid'; END IF;
  PERFORM set_config('lock_timeout','5s',true);
  PERFORM pg_advisory_xact_lock(hashtextextended('nexid:editorial:'||p_tenant::text||':'||p_batch::text||':'||p_actor||':'||p_operation::text,0));
  SELECT * INTO r FROM public.passport_editorial_receipts WHERE tenant_id=p_tenant AND batch_id=p_batch AND actor_id=p_actor AND operation_id=p_operation;
  IF FOUND THEN
    IF r.request_hash<>request_hash THEN RAISE EXCEPTION 'editorial_idempotency_conflict'; END IF;
-   SELECT coalesce(jsonb_agg(x ORDER BY x.revision DESC),'[]'::jsonb) INTO history FROM (SELECT eh.id,eh.revision,eh.action,eh.actor_label,eh.note,eh.document,eh.created_at FROM public.passport_editorial_history eh WHERE eh.tenant_id=p_tenant AND eh.batch_id=p_batch AND eh.revision<=(r.result#>>'{draft,revision}')::integer ORDER BY eh.revision DESC LIMIT 10) x;
+   SELECT coalesce(jsonb_agg(x ORDER BY x.revision DESC),'[]'::jsonb) INTO history FROM (SELECT e.id,e.revision,e.action,e.actor_label,e.note,e.document,e.created_at FROM public.passport_editorial_history e WHERE e.tenant_id=p_tenant AND e.batch_id=p_batch AND revision<=(r.result#>>'{draft,revision}')::integer ORDER BY revision DESC LIMIT 10) x;
    RETURN jsonb_build_object('result',r.result,'history',history,'receipt',jsonb_build_object('id',r.id,'operationId',p_operation,'action',action,'committed',true,'replayed',true));
  END IF;
  SELECT * INTO b FROM public.batches WHERE id=p_batch AND tenant_id=p_tenant FOR UPDATE;
@@ -76,7 +74,7 @@ BEGIN
     OR (p_next#>>'{document,schemaVersion}') IS DISTINCT FROM 'nexid.passport-editorial.v1' THEN RAISE EXCEPTION 'editorial_scope_forbidden'; END IF;
  IF action='start' THEN
    IF h.batch_id IS NOT NULL OR b.editorial_managed THEN RAISE EXCEPTION 'editorial_already_managed'; END IF;
-   IF next_revision IS DISTINCT FROM 1 OR next_state IS DISTINCT FROM 'draft' OR expected IS DISTINCT FROM 0 OR (p_next->>'createdBy')<>p_actor OR (p_next->>'lastEditorId')<>p_actor
+   IF next_revision<>1 OR next_state<>'draft' OR expected<>0 OR (p_next->>'createdBy')<>p_actor OR (p_next->>'lastEditorId')<>p_actor
       OR (p_next->>'basePublishedDigest')<>public_hash THEN RAISE EXCEPTION 'editorial_revision_conflict'; END IF;
    previous_public:=p_command->'baselineDocument';
    IF previous_public IS DISTINCT FROM p_next->'document' THEN RAISE EXCEPTION 'editorial_baseline_mismatch'; END IF;
@@ -126,7 +124,7 @@ BEGIN
  VALUES(p_tenant,p_batch,next_revision,action,p_actor,left(coalesce(p_command->>'actorLabel',p_actor),180),left(coalesce(p_command->>'note',''),800),p_next->'document',p_next->>'contentDigest');
  saved:=jsonb_build_object('draft',p_next,'published',next_public);
  INSERT INTO public.passport_editorial_receipts(id,tenant_id,batch_id,actor_id,operation_id,request_hash,action,result) VALUES(result_id,p_tenant,p_batch,p_actor,p_operation,request_hash,action,saved);
- SELECT coalesce(jsonb_agg(x ORDER BY x.revision DESC),'[]'::jsonb) INTO history FROM (SELECT eh.id,eh.revision,eh.action,eh.actor_label,eh.note,eh.document,eh.created_at FROM public.passport_editorial_history eh WHERE eh.tenant_id=p_tenant AND eh.batch_id=p_batch ORDER BY eh.revision DESC LIMIT 10) x;
+ SELECT coalesce(jsonb_agg(x ORDER BY x.revision DESC),'[]'::jsonb) INTO history FROM (SELECT e.id,e.revision,e.action,e.actor_label,e.note,e.document,e.created_at FROM public.passport_editorial_history e WHERE e.tenant_id=p_tenant AND e.batch_id=p_batch ORDER BY revision DESC LIMIT 10) x;
  RETURN jsonb_build_object('result',saved,'history',history,'receipt',jsonb_build_object('id',result_id,'operationId',p_operation,'action',action,'committed',true,'replayed',false));
 END;
 $commit$;

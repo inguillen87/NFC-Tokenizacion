@@ -14,6 +14,7 @@ await pool.query('INSERT INTO tenants VALUES($1,$2,$3)',[tenant,'qa-company','Em
 const seed={product_name:'Semilla Horizonte · QA',public_lot_label:'LOTE-QA-01',sku:'SEM-QA-01',winery:'Semillas de prueba',region:'Región declarada',meta_setting:'LOCAL_TEST_ONLY',sun:{product:{name:'Semilla Horizonte · QA'},security:{sentinel:true}},agro_product_profile:{schemaVersion:'agro-dpp-v1',crop:'Maíz',seedVariety:'Variedad de prueba',productName:'Semilla Horizonte · QA',brand:'Semillas de prueba',sku:'SEM-QA-01',batchLot:'LOTE-QA-01'}};
 await pool.query('INSERT INTO batches VALUES($1,$2,$3,$4)',[batch,tenant,bid,seed]);
 await pool.query(await readFile(new URL('../db/migrations/20260918120000_0104_passport_editorial.sql',import.meta.url),'utf8'));
+await pool.query(await readFile(new URL('../db/migrations/20260918123000_0105_passport_editorial_guards.sql',import.meta.url),'utf8'));
 const undo=installEphemeralE2eSqlExecutor(async(parts,...values)=>{let text='';for(let i=0;i<parts.length;i++){text+=parts[i];if(i<values.length)text+='$'+(i+1);}return (await pool.query(text,values)).rows;},{NODE_ENV:'test',VERCEL_ENV:'test',NEXID_E2E_CONFIRMATION:'I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE',NEXID_E2E_DATABASE_URL:'postgres://nexid_e2e:qa@127.0.0.1/nexid_e2e_browser'});
 let reads=0,writes=0,loseNext=false;const calls=[];
 const server=http.createServer(async(req,res)=>{
