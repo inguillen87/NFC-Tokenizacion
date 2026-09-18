@@ -5,6 +5,8 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { mkdir,writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE
   ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : "playwright-core");
@@ -20,13 +22,14 @@ const server = createServer((req, res) => {
   else if (req.url === "/fixture.css") { res.setHeader("Content-Type", "text/css"); res.end(css); }
   else if (req.method === "GET") {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.end('<!doctype html><html data-theme="light"><head><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="/fixture.css"><style>body{font:16px system-ui;margin:12px}button{min-height:48px;margin:10px}svg{max-width:24px}#summary{padding:16px;border:1px solid teal}</style></head><body><div id="root"></div><script src="/fixture.js"></script></body></html>');
+    res.end('<!doctype html><html data-theme="light"><head><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="/fixture.css"><style>body{font:16px system-ui;margin:12px}button{min-height:48px;margin:0}svg{max-width:24px}#summary{padding:16px;border:1px solid teal}</style></head><body><div id="root"></div><script src="/fixture.js"></script></body></html>');
   } else { res.writeHead(404); res.end(); }
 });
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe" });
 const results = [];
+if(process.env.QA_OUTPUT)await mkdir(process.env.QA_OUTPUT,{recursive:true});
 try {
   for (const scenario of ["success", "denied", "timeout", "uncertain", "upstream_unknown", "retryable", "disabled"]) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -77,6 +80,16 @@ try {
     }
     await page.waitForFunction(() => !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "No permission on mount");
+    if(scenario === "success") {
+      const quick=page.getByTestId("sun-location-quick-action");
+      await quick.getByRole("button",{name:"Ahora no",exact:true}).click();
+      assert.equal(await page.evaluate(()=>window.fixtureGeoCalls),0,"Declining never requests location");
+      await quick.getByRole("button",{name:"Compartir ubicación",exact:true}).click();
+      assert.equal(await page.evaluate(()=>window.fixtureGeoCalls),0,"Reopening is not consent");
+      const bounds=await firstButton.boundingBox();assert.ok(bounds && bounds.height>=44 && bounds.y+bounds.height<844,"Primary action visible in fixture viewport");
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),"No horizontal overflow");
+      if(process.env.QA_OUTPUT){await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-light.png"),fullPage:false});await page.evaluate(()=>document.documentElement.dataset.theme="dark");await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-dark.png"),fullPage:false});}
+    }
     await firstButton.click();
     await page.waitForFunction(() => window.fixtureGeoCalls === 1 && document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
     assert.equal(await firstButton.isDisabled(), true);
@@ -104,6 +117,7 @@ try {
       assert.equal(await page.locator('[data-sun-passport-map]').getAttribute("data-location-source"), "consented_browser");
       assert.match(await page.locator("#geo-trace").textContent(), /Mendoza, AR/);
       assert.equal(posts.length, 1);
+      if(process.env.QA_OUTPUT)await page.screenshot({path:join(process.env.QA_OUTPUT,"location-confirmed.png"),fullPage:false});
       await page.reload();
       await page.getByTestId("sun-summary-location-confirmed").waitFor();
       assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "Reload restores receipt, not permission");
@@ -128,6 +142,7 @@ try {
     results.push({ scenario, pass: true, permissionRequests: 1, submissions: posts.length });
     await context.close();
   }
+  if(process.env.QA_OUTPUT)await writeFile(join(process.env.QA_OUTPUT,"report.json"),JSON.stringify({localSynthetic:true,results},null,2));
   console.log(JSON.stringify({ evidence: "LOCAL simulated permission and API, real React components and Chromium; NOT physical certification", results }, null, 2));
 } finally {
   await browser.close();

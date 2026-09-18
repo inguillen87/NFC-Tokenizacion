@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {readFile} from 'node:fs/promises';
+const read=path=>readFile(new URL(path,import.meta.url),'utf8');
+const [page,quick,css,telemetry]=await Promise.all(['../src/app/sun/page.tsx','../src/app/sun/sun-location-quick-action.tsx','../src/app/sun/sun-location-quick-action.module.css','../src/app/sun/tap-precision-telemetry.tsx'].map(read));
+test('the optional phone action is before technical facts but after the NFC outcome',()=>{const start=page.indexOf('id="sun-summary"');const end=page.indexOf('</section>',start);const first=page.slice(start,end);assert.ok(first.indexOf('data-testid="sun-summary-status"')<first.indexOf('<SunLocationQuickAction'));assert.ok(first.indexOf('<SunLocationQuickAction')<first.indexOf('data-testid="sun-summary-facts"'));assert.match(first,/canRequestBrowserLocation && !hasConfirmedBrowserLocation/);});
+test('early entry uses the shared one-shot controller, never its own permission or POST',()=>{assert.match(quick,/<SunLocationRequestButton/);assert.match(quick,/useSunLocationController/);assert.doesNotMatch(quick,/getCurrentPosition|watchPosition|fetch\(|setInterval/);});
+test('declining and reopening remains a normal supported choice',()=>{assert.match(quick,/Ahora no/);assert.match(quick,/setDismissed\(true\)/);assert.match(quick,/setDismissed\(false\)/);assert.match(quick,/el producto sigue disponible sin permiso/);assert.doesNotMatch(quick,/localStorage|sessionStorage/);});
+test('network estimates and post-tap measurements are never presented as verified GPS',()=>{assert.match(quick,/estimación de red\/IP/);assert.match(quick,/después del TAP/);assert.match(quick,/aproximada, no seguimiento continuo/);assert.doesNotMatch(quick,/GPS exacto|ubicación exacta/);});
+test('confirmation keeps the current viewport and announces the outcome',()=>{assert.match(quick,/aria-live="polite"/);assert.match(quick,/focus\(\{preventScroll:true\}\)/);assert.match(telemetry,/successRef.current\?\.focus\(\{ preventScroll: true \}\)/);});
+test('primary and secondary actions are touch sized and reduced motion is respected',()=>{assert.match(css,/min-height:48px/);assert.match(css,/prefers-reduced-motion:reduce/);assert.match(css,/focus-visible/);assert.match(css,/theme-light/);});

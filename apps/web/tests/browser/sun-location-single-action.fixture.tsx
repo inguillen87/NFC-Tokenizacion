@@ -1,3 +1,4 @@
+import { SunLocationQuickAction } from "../../src/app/sun/sun-location-quick-action";
 // Local browser fixture: no real tag, capability or production endpoint.
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -14,10 +15,11 @@ function Fixture() {
         <p>PRUEBA LOCAL SIMULADA · sin datos ni validación productivos</p>
         <button id="next-tap" onClick={() => setEvent("local-fixture-2")}>Siguiente fixture</button>
         <SunLocationProvider key={event}>
+          <SunLocationQuickAction />
           <section id="summary">
             <SunLocationSummary>
               <strong>Buenos Aires, AR · estimación de red</strong>
-              <SunLocationRequestButton>Compartir ubicación aproximada del teléfono</SunLocationRequestButton>
+              <a href="#share-phone-location">Compartir ubicación del teléfono</a>
             </SunLocationSummary>
           </section>
           <SunLocationOriginHeading><h2>Origen y zona estimada por red</h2></SunLocationOriginHeading>

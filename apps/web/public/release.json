@@ -1,6 +1,7 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.08-web.5",
-  "scope": "Consumer benefits, own vouchers and per-brand points; new claim UI not enabled",
+  "version": "2026.09.17-web.6",
+  "scope": "prominent-voluntary-phone-location-and-compact-tap-first-viewport",
+  "baseCommit": "869ecdf00c05979d8d101f6a3ad1c400668cf0c0",
   "physicalTapCertification": "not-included"
 }

@@ -1,3 +1,4 @@
+import { SunLocationQuickAction } from "./sun-location-quick-action";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -1786,6 +1787,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </p>
             </div>
 
+            {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? <SunLocationQuickAction /> : null}
+
             <dl
               data-testid="sun-summary-facts"
               className="grid grid-cols-3 divide-x divide-white/[0.06] rounded-2xl border border-white/[0.07] bg-slate-950/35 px-1 py-2 text-center"
@@ -1831,12 +1834,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 </div>
               </div>
               {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? (
-                <SunLocationRequestButton
-                  className="mt-2.5 flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/30 bg-cyan-400/20 px-3 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-400/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-wait disabled:opacity-60"
-                >
-                  <span>Compartir ubicación aproximada del teléfono</span>
-                  <span className="rounded-full bg-slate-950/40 px-2 py-1 text-[8px] uppercase tracking-[0.1em] text-cyan-200">Opcional · con permiso</span>
-                </SunLocationRequestButton>
+                <a href="#share-phone-location" className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-300/20 px-3 py-2 text-sm font-bold text-cyan-100">Compartir ubicación del teléfono ↑</a>
               ) : null}
               <details className="sun-summary-location-details mt-2 border-t border-white/5 pt-2 text-[9px] text-slate-400">
                 <summary className="min-h-8 cursor-pointer list-none py-1.5 font-bold text-slate-300 marker:hidden">

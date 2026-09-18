@@ -1,0 +1,31 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { LocateFixed, CheckCircle2, ChevronDown } from "lucide-react";
+import { SunLocationRequestButton, useSunLocationController } from "./sun-location-controller";
+import { useSunLocale } from "./sun-locale-provider";
+import styles from "./sun-location-quick-action.module.css";
+const COPY = {
+  "es-AR": {title:"Ubicá esta lectura",body:"Compartí la zona del teléfono para mejorar la ubicación de este TAP.",cta:"Compartir ubicación",later:"Ahora no",optional:"Opcional · el producto sigue disponible sin permiso",saved:"Zona del teléfono guardada",savedBody:"Se actualizó esta lectura; no se registró otro TAP.",details:"Qué se comparte",privacy:"Una zona aproximada, no seguimiento continuo. La posición se mide después del TAP y solo se confirma al recibir el comprobante del servidor.",network:"Sin permiso, solo disponemos de una estimación de red/IP; puede estar en otra ciudad.",retry:"Reintentar",denied:"El navegador no permitió la ubicación. Podés habilitarla desde los permisos del sitio; el pasaporte sigue disponible.",timeout:"El teléfono no obtuvo ubicación a tiempo. Acercate a una zona con mejor señal y reintentá.",failed:"No se obtuvo una ubicación utilizable. Podés reintentar o continuar sin compartirla.",uncertain:"No se pudo confirmar el guardado. Revisá el estado de ubicación antes de repetir.",fresh:"Esta lectura ya no permite una nueva ubicación. Acercá otra vez el teléfono a la etiqueta.",unsupported:"Este navegador no admite ubicación. Abrí el pasaporte en un navegador compatible.",ready:"Preparando la lectura…"},
+  en:{title:"Locate this reading",body:"Share your phone's approximate area to improve this tap's location.",cta:"Share location",later:"Not now",optional:"Optional · the product remains available without permission",saved:"Phone area saved",savedBody:"This reading was updated; no new tap was created.",details:"What is shared",privacy:"An approximate area, not continuous tracking. It is measured after the tap and confirmed only by the server receipt.",network:"Without permission, only a network/IP estimate is available; it may be in another city.",retry:"Try again",denied:"Location permission was denied. You can change the site's permissions; the passport stays available.",timeout:"The phone did not obtain a location in time. Try again with a better signal.",failed:"No usable location was obtained. Try again or continue without sharing.",uncertain:"Saving could not be confirmed. Review the location status before repeating.",fresh:"A new tap is needed to share another location.",unsupported:"Location is unavailable in this browser.",ready:"Preparing this reading…"},
+  "pt-BR":{title:"Localize esta leitura",body:"Compartilhe a área aproximada do telefone para melhorar a localização deste TAP.",cta:"Compartilhar localização",later:"Agora não",optional:"Opcional · o produto permanece disponível sem permissão",saved:"Área do telefone salva",savedBody:"Esta leitura foi atualizada; nenhum novo TAP foi criado.",details:"O que é compartilhado",privacy:"Uma área aproximada, não rastreamento contínuo. É medida após o TAP e confirmada pelo comprovante do servidor.",network:"Sem permissão, há apenas uma estimativa de rede/IP; ela pode indicar outra cidade.",retry:"Tentar novamente",denied:"O navegador negou a localização. Você pode ajustar as permissões do site; o passaporte continua disponível.",timeout:"O telefone não obteve a localização a tempo. Tente novamente com melhor sinal.",failed:"Não foi possível obter uma localização utilizável. Tente novamente ou continue sem compartilhar.",uncertain:"Não foi possível confirmar o salvamento. Confira o estado antes de repetir.",fresh:"Faça um novo TAP para compartilhar outra localização.",unsupported:"Este navegador não oferece localização.",ready:"Preparando esta leitura…"},
+} as const;
+export function SunLocationQuickAction() {
+  const control=useSunLocationController(); const {locale}=useSunLocale();
+  const copy=COPY[locale==="en"||locale==="pt-BR"?locale:"es-AR"];
+  const initiatedHere=useRef(false); const savedRef=useRef<HTMLElement>(null);
+  const [dismissed,setDismissed]=useState(false);
+  const state=control?.state || "idle";
+  const busy=state==="requesting"||state==="saving";
+  const status=state==="denied"?copy.denied:state==="timeout"?copy.timeout:state==="uncertain"?copy.uncertain:state==="fresh_tap_required"?copy.fresh:state==="unsupported"?copy.unsupported:["invalid","stale","unavailable","retryable"].includes(state)?copy.failed:"";
+  useEffect(()=>{if(state==="updated" && initiatedHere.current)savedRef.current?.focus({preventScroll:true});},[state]);
+  if(state==="updated") return <section ref={savedRef} tabIndex={-1} className={`${styles.card} ${styles.success}`} id="share-phone-location" data-testid="sun-location-quick-action" data-state={state} aria-live="polite"><CheckCircle2 size={22}/><div><strong>{copy.saved}</strong><p>{copy.savedBody}</p></div></section>;
+  return <section onClickCapture={event=>{if(event.target instanceof Element && event.target.closest('[data-testid="sun-location-consent-cta"]'))initiatedHere.current=true;}} className={styles.card} id="share-phone-location" data-testid="sun-location-quick-action" data-state={state}>
+    <div className={styles.heading}><LocateFixed size={22} aria-hidden="true"/><div><h2>{copy.title}</h2>{!dismissed && <p>{copy.body}</p>}</div></div>
+    {dismissed ? <button type="button" className={styles.reopen} onClick={()=>setDismissed(false)}>{copy.cta}<ChevronDown size={16}/></button> : <>
+      <div className={styles.actions}><SunLocationRequestButton className={styles.primary}><LocateFixed size={19} aria-hidden="true"/><span>{copy.cta}</span></SunLocationRequestButton><button type="button" className={styles.secondary} disabled={busy} onClick={()=>setDismissed(true)}>{copy.later}</button></div>
+      <p className={styles.optional}>{!control?.ready ? copy.ready : copy.optional}</p>
+      {status && <p className={styles.feedback} role="status">{status}</p>}
+      <details className={styles.details}><summary>{copy.details}</summary><p>{copy.privacy}</p><p>{copy.network}</p></details>
+    </>}
+  </section>;
+}

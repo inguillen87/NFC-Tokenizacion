@@ -70,9 +70,10 @@ test("SUN location wraps and the two first actions are touch-safe", () => {
   assert.match(location, /Fuente \/ precisión:/);
   assert.match(location, /Hora del tap:/);
   assert.match(location, /summaryLocationFriendlyCopy/);
-  assert.match(location, /<SunLocationRequestButton/);
-  assert.match(location, /Compartir ubicación aproximada del teléfono/);
-  assert.match(location, />Opcional · con permiso</);
+  assert.match(summary, /<SunLocationQuickAction/);
+  assert.ok(summary.indexOf("<SunLocationQuickAction") < summary.indexOf('data-testid="sun-summary-facts"'));
+  assert.match(location, /href="#share-phone-location"/);
+  assert.match(summary, /canRequestBrowserLocation && !hasConfirmedBrowserLocation/);
   assert.match(location, /Ver fuente y horario/);
 
   assert.match(actions, /href="#product-info"[\s\S]*?Ver producto/);

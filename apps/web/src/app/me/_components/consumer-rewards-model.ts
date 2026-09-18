@@ -70,5 +70,5 @@ export function findRequestedVoucher(source: ConsumerRewardsSource, voucher: unk
 }
 export const REWARD_STATE_LABELS: Record<ConsumerReward["state"], string> = {
   claimed: "Voucher emitido", redeemed: "Canjeado", cancelled: "Cancelado", expired: "Vencido", out_of_stock: "Sin cupo",
-  upcoming: "Próximamente", inactive: "Finalizado", locked: "Requiere condiciones", reported: "Publicado por la marca", unknown: "Estado por confirmar",
+  upcoming: "No habilitado", inactive: "Finalizado", locked: "Requiere condiciones", reported: "Publicado por la marca", unknown: "Estado por confirmar",
 };

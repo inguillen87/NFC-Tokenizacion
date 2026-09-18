@@ -405,3 +405,16 @@
     font-size: 1.2rem !important;
   }
 }
+
+/* Readable first viewport: product + verification + optional location precede detail. */
+@media(max-width:640px){
+ .passport:global(.sun-tap-shell) :global(.sun-summary-product){padding:10px;gap:12px}
+ .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual){height:6.25rem!important}
+ .passport :global(.sun-summary-product__title){font-size:clamp(1.35rem,5.5vw,1.7rem)!important}
+ .passport :global(.sun-summary-status){padding:12px!important}
+ .passport :global(.sun-summary-status__headline){font-size:1.2rem!important}
+ .passport :global(.sun-summary-status__copy){font-size:12px!important;line-height:1.5!important;margin-top:7px!important}
+ .passport :global(.sun-summary-panel){gap:12px!important;padding:14px!important}
+ .passport :global(.sun-summary-facts){margin-top:8px}
+ .passport :global(.sun-main-body){padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+}

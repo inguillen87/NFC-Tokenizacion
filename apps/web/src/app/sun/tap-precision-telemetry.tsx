@@ -141,7 +141,7 @@ export function TapPrecisionTelemetry({
   useEffect(() => {
     if (state !== "updated" || !focusSuccessRef.current) return;
     focusSuccessRef.current = false;
-    successRef.current?.focus();
+    successRef.current?.focus({ preventScroll: true });
   }, [state]);
 
   async function send(payload: Record<string, unknown>) {

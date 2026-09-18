@@ -114,9 +114,9 @@ test("SUN summary exposes truthful location evidence before the origin map", () 
   assert.match(summary, /Fuente \/ precisión/);
   assert.match(summary, /Hora del tap/);
   assert.match(summary, /canRequestBrowserLocation && !hasConfirmedBrowserLocation/);
-  assert.match(summary, /<SunLocationRequestButton/);
+  assert.match(summary, /<SunLocationQuickAction/);
   assert.match(locationController, /data-testid="sun-location-consent-cta"/);
-  assert.match(summary, /Compartir ubicación aproximada del teléfono/);
+  assert.match(summary, /href="#share-phone-location"/);
   assert.match(page, /No es tu posición:[\s\S]*?puede ubicarte en otra ciudad/);
   assert.match(summary, /Este resultado corresponde únicamente a este tag y esta lectura/);
 });
