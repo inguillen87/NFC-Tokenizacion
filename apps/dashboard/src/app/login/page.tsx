@@ -12,6 +12,7 @@ import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 import { AuthThemeControl } from "../../components/auth-theme-control";
 import { dashboardAuthPath, normalizeDashboardReturnPath } from "../../lib/dashboard-return-path";
 import styles from "../../components/login-entry.module.css";
+import { ReleaseNotesLink } from "../../components/release-notes-link";
 
 type LoginPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -142,7 +143,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 <div><span><MapPinned aria-hidden="true" size={23} /></span><p><strong>Contexto en el mapa</strong><small>Ubicaciones reportadas y su precisión, sin confundirlas con el origen.</small></p></div>
                 <div><span><Layers3 aria-hidden="true" size={23} /></span><p><strong>El espacio de tu empresa</strong><small>Productos, CRM y equipo según tus permisos.</small></p></div>
               </div>
-              <p className={styles.scopeNote}>Tu cuenta define qué empresa y módulos podés consultar. La demo interactiva es un recorrido separado con datos ilustrativos.</p>
+              <ReleaseNotesLink locale={locale} />
+               <p className={styles.scopeNote}>Tu cuenta define qué empresa y módulos podés consultar. La demo interactiva es un recorrido separado con datos ilustrativos.</p>
             </section>
           </div>
         </Card>

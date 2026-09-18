@@ -4,7 +4,7 @@ import test from "node:test";
 import postcss from "postcss";
 
 const source = await readFile(new URL("../src/components/ops-command-center.tsx", import.meta.url), "utf8");
-const css = await readFile(new URL("../src/components/ops-command-center.module.css", import.meta.url), "utf8");
+const css = (await readFile(new URL("../src/components/ops-command-center.module.css", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 function contrast(a, b) {
   const luminance = (hex) => {

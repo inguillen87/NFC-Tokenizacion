@@ -18,6 +18,9 @@ import { TenantAccountMenu } from "./tenant-account-menu";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { motion, useReducedMotion } from "framer-motion";
 import headerStyles from "./dashboard-shell-header.module.css";
+import { dashboardTaskCopy, groupTaskNavigation, taskDestinationLabel } from "../lib/dashboard-task-navigation";
+import { useMobileNavigation } from "./use-mobile-navigation";
+import { ReleaseNotesLink } from "./release-notes-link";
 import {
   Compass,
   LayoutDashboard,
@@ -161,6 +164,11 @@ export function DashboardShellInner({
   const { mode, setMode } = useAudienceMode();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const shouldReduceMotion = useReducedMotion();
+  const taskCopy = dashboardTaskCopy(locale);
+  const navigationRef = useRef<HTMLElement>(null);
+  const navigationTriggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  useMobileNavigation(isMobileSidebarOpen, setIsMobileSidebarOpen, navigationRef, navigationTriggerRef, contentRef);
   const sessionLabel = sessionWorkspaceLabel({
     label: currentLabel,
     role: currentRole,
@@ -289,7 +297,7 @@ export function DashboardShellInner({
   );
 
   const filteredLinks = normalizedQuery
-    ? searchableLinks.filter((entry) => entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
+    ? searchableLinks.filter((entry) => taskDestinationLabel(entry, locale).toLowerCase().includes(normalizedQuery) || entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
     : [];
 
   const contextualHeader = pathname.startsWith("/demo-lab")
@@ -363,11 +371,17 @@ export function DashboardShellInner({
     settingsItems.unshift({ destination: "users", href: DASHBOARD_DESTINATIONS.users.href, label: "IAM Users", icon: Users });
   }
 
+  const taskGroups = groupTaskNavigation([
+    ...coreOpsItems, ...globalNetworkItems, ...loyaltyNetworkItems,
+    ...settingsItems.filter((item) => canOpenDestination(item.destination)),
+  ], locale);
+
   const renderNavLink = (item: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }) => {
     const isActive = isActiveRoute(item.href);
     const IconComponent = item.icon;
     return (
       <Link
+        prefetch={false}
         key={item.href}
         href={item.href}
         aria-current={isActive ? "page" : undefined}
@@ -418,16 +432,16 @@ export function DashboardShellInner({
         />
       )}
 
-      <aside id="dashboard-primary-navigation" className={`dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-80 lg:p-6 z-50 shadow-[4px_0_24px_rgba(0,0,0,0.4)] flex flex-col h-screen overflow-y-auto transition-transform duration-300 fixed inset-y-0 left-0 w-72 lg:static lg:translate-x-0 ${isMobileSidebarOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible lg:translate-x-0"}`}>
+      <aside ref={navigationRef} role={isMobileSidebarOpen ? "dialog" : undefined} aria-modal={isMobileSidebarOpen ? true : undefined} aria-label={taskCopy.navigation} id="dashboard-primary-navigation" className={`dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-80 lg:p-6 z-50 shadow-[4px_0_24px_rgba(0,0,0,0.4)] flex flex-col h-screen overflow-y-auto transition-transform duration-300 fixed inset-y-0 left-0 w-72 lg:static lg:translate-x-0 ${isMobileSidebarOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible lg:translate-x-0"}`}>
         <div className="flex items-center justify-between mb-8 shrink-0">
-          <Link href="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
+          <Link prefetch={false} href="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
             <BrandLockup size={40} variant="pulse" theme="dark" className="brand-surface-sidebar" />
           </Link>
           <button
             type="button"
             onClick={() => setIsMobileSidebarOpen(false)}
             className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-slate-900/50 text-slate-400 transition hover:border-cyan-300/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:hidden"
-            aria-label="Close navigation menu"
+            aria-label={taskCopy.close}
             title="Cerrar menú de navegación"
           >
             <X className="h-4 w-4" />
@@ -435,6 +449,7 @@ export function DashboardShellInner({
         </div>
 
         <Link
+        prefetch={false}
           href={DASHBOARD_DESTINATIONS.overview.href}
           aria-current={pathname === DASHBOARD_DESTINATIONS.overview.href ? "page" : undefined}
           className={`dashboard-control-return sticky top-0 z-20 mb-4 flex min-h-14 shrink-0 items-center gap-3 rounded-2xl border px-3 py-2.5 shadow-lg backdrop-blur-xl transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${
@@ -482,6 +497,7 @@ export function DashboardShellInner({
           <div className="relative">
             <input suppressHydrationWarning
               ref={searchRef}
+              aria-label={taskCopy.search}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
@@ -501,7 +517,7 @@ export function DashboardShellInner({
                 <div className="space-y-1">
                   {filteredLinks.slice(0, 4).map((entry) => (
                     <button suppressHydrationWarning key={entry.href} type="button" title={`Ir a ${entry.label}`} aria-label={`Ir a ${entry.label}`} onClick={() => { router.push(entry.href); setQuery(""); }} className="block w-full rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-left text-cyan-100 hover:bg-cyan-500/15">
-                      {entry.label}
+                      {taskDestinationLabel(entry, locale)}
                     </button>
                   ))}
                 </div>
@@ -512,47 +528,22 @@ export function DashboardShellInner({
           ) : null}
         </div>
 
-        <nav className="mt-8 space-y-6">
-          {/* Core Ops Group */}
-          <div>
-            <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Core Ops</p>
-            <div className="space-y-0.5">
-              {coreOpsItems.map(renderNavLink)}
-            </div>
-          </div>
-
-          {/* Global Network Group */}
-          {globalNetworkItems.length > 0 && (
-            <div>
-              <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Global Network</p>
-              <div className="space-y-0.5">
-                {globalNetworkItems.map(renderNavLink)}
-              </div>
-            </div>
-          )}
-
-          {/* Clientes & campañas Group */}
-          {loyaltyNetworkItems.length > 0 && (
-            <div>
-              <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Clientes & campañas</p>
-              <div className="space-y-0.5">
-                {loyaltyNetworkItems.map(renderNavLink)}
-              </div>
-            </div>
-          )}
-
-          {/* Settings Group */}
-          <div>
-            <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Settings</p>
-            <div className="space-y-0.5">
-              {settingsItems.map(renderNavLink)}
-            </div>
-          </div>
+        <nav className="mt-6 space-y-3" aria-label={taskCopy.navigation} data-testid="dashboard-task-navigation">
+          {taskGroups.map((group) => (
+            <details key={group.id} open={group.id !== "resources" || group.items.some((item) => isActiveRoute(item.href))} data-task-group={group.id} className="rounded-xl border border-white/5">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-3 text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
+                <span>{group.label}</span><span className="rounded-md bg-slate-900/70 px-1.5 py-0.5 text-[10px] tabular-nums" aria-hidden="true">{group.items.length}</span>
+              </summary>
+              <div className="space-y-0.5 px-1 pb-2">{group.items.map(renderNavLink)}</div>
+            </details>
+          ))}
         </nav>
+        <ReleaseNotesLink locale={locale} />
 
         {/* Neutral pointers until billing and realtime metrics are supplied by trusted props. */}
         {canOpenDestination("billing") ? (
           <Link
+        prefetch={false}
             href={DASHBOARD_DESTINATIONS.billing.href}
             className="mt-8 block rounded-2xl border border-white/5 bg-slate-950/60 p-4 text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
           >
@@ -563,6 +554,7 @@ export function DashboardShellInner({
 
         {canOpenDestination("analytics") ? (
           <Link
+        prefetch={false}
             href={DASHBOARD_DESTINATIONS.analytics.href}
             className="mt-4 flex items-center justify-between rounded-xl border border-white/5 bg-slate-950/60 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
           >
@@ -582,7 +574,7 @@ export function DashboardShellInner({
                Ops Tools
             </p>
             <div className="grid gap-2">
-              <Link href={DASHBOARD_DESTINATIONS.demoEncoder.href} className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors text-center">URL Encoder</Link>
+              <Link prefetch={false} href={DASHBOARD_DESTINATIONS.demoEncoder.href} className="dashboard-ops-tool-link rounded-lg border border-cyan-500/30 px-3 py-2 text-[11px] font-semibold text-cyan-100 transition-colors text-center">URL Encoder</Link>
               <div
                 aria-disabled="true"
                 className="rounded-lg border border-white/10 bg-slate-950/45 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-slate-400"
@@ -596,7 +588,7 @@ export function DashboardShellInner({
         ) : null}
       </aside>
 
-      <div className="dashboard-main min-w-0 flex-1 bg-slate-950/50">
+      <div ref={contentRef} className="dashboard-main min-w-0 flex-1 bg-slate-950/50">
         <header data-testid="dashboard-compact-header" className={`dashboard-header ${headerStyles.header} sticky top-0 z-30 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl`}>
           <div className={headerStyles.layout}>
             <div className={headerStyles.identity}>
@@ -604,7 +596,8 @@ export function DashboardShellInner({
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-900/50 text-slate-300 transition hover:border-cyan-300/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:hidden"
-                aria-label="Open navigation menu"
+                ref={navigationTriggerRef}
+                aria-label={taskCopy.open}
                 aria-expanded={isMobileSidebarOpen}
                 aria-controls="dashboard-primary-navigation"
                 title="Abrir menú de navegación"
@@ -664,7 +657,7 @@ export function DashboardShellInner({
                   </div>
                </div>
                <div className="flex gap-2">
-                  <Link href={DASHBOARD_DESTINATIONS.demoLab.href} className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors">Mission Control</Link>
+                  <Link prefetch={false} href={DASHBOARD_DESTINATIONS.demoLab.href} className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors">Mission Control</Link>
                </div>
             </div>
           ) : null}
@@ -697,8 +690,8 @@ export function DashboardShellInner({
               <h2 className="text-lg font-bold text-white mb-2">Access Denied</h2>
               <p className="text-sm text-rose-200/70 mb-6">Your current role does not have access to this module.</p>
               <div className="flex justify-center gap-3">
-                <Link href="/" className="rounded-xl border border-white/10 bg-slate-900 px-6 py-3 text-xs font-bold text-white transition hover:bg-slate-800 shadow-lg">Back to Overview</Link>
-                {canAccessDemoLab ? <Link href={DASHBOARD_DESTINATIONS.demoLab.href} className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-500/20">Open Demo Lab</Link> : null}
+                <Link prefetch={false} href="/" className="rounded-xl border border-white/10 bg-slate-900 px-6 py-3 text-xs font-bold text-white transition hover:bg-slate-800 shadow-lg">Back to Overview</Link>
+                {canAccessDemoLab ? <Link prefetch={false} href={DASHBOARD_DESTINATIONS.demoLab.href} className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-500/20">Open Demo Lab</Link> : null}
               </div>
             </div>
           ) : children}
@@ -711,6 +704,7 @@ export function DashboardShellInner({
               const IconComponent = item.icon;
               return (
                 <Link
+        prefetch={false}
                   key={item.href}
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}

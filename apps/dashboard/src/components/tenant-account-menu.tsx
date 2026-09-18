@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
 import Link from "next/link";
+import { DASHBOARD_RELEASE } from "../lib/dashboard-release";
 import {
   BookOpen,
   Building2,
@@ -856,6 +857,7 @@ export function TenantAccountMenu({
       }
     : null;
   const primaryItemCandidates: AccountMenuItem[] = [
+    { href: "/novedades", icon: <BookOpen className="h-4 w-4" />, label: "Novedades y versión", meta: DASHBOARD_RELEASE },
     {
       destination: "settings",
       href: DASHBOARD_DESTINATIONS.settings.href,

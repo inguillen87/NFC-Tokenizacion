@@ -1,10 +1,10 @@
 {
-  "release": "2026.09.08-dashboard.3",
-  "scope": "operational-navigation-risk-filter-and-physical-taps-light-dark-workspaces",
+  "release": "2026.09.17-dashboard.4",
+  "scope": "task-navigation-accessible-mobile-menu-and-public-release-notes",
   "realTapCertification": "not-included",
-  "baseCommit": "523e830376e91c7492f4d97efb890deab33fbf56",
+  "baseCommit": "76af8ac57406d4154aa60868df2d39c810cf79ff",
   "requiredApiRelease": "2026.09.06-api-campaigns.1",
-  "source": "isolated-committed-production-baseline",
+  "source": "isolated-production-baseline-with-committed-ui-changes",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
   "productionDemoAccess": "requires-explicit-environment-opt-in"

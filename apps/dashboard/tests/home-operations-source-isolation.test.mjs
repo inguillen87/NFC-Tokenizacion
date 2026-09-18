@@ -11,7 +11,7 @@ const componentsDirectory = fileURLToPath(new URL("../src/components/", import.m
 const componentSource = await readFile(componentUrl, "utf8");
 const serverSource = await readFile(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
 const operationsUrl = new URL("../src/components/ops-command-center.tsx", import.meta.url);
-const operationsSource = await readFile(operationsUrl, "utf8");
+const operationsSource = (await readFile(operationsUrl, "utf8")).replace(/\r\n/g, "\n");
 
 // Execute the actual home rendering branch offline. Only select the existing infra tab
 // and replace child surfaces with inert components; availability logic is not mocked.
