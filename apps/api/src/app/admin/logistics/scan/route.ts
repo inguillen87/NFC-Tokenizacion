@@ -1,15 +1,11 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { logAuditEvent } from "../../../../lib/audit-logger";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { processSealScan, type SecureDeliveryScanContext } from "../../../../lib/secure-delivery";
-import {
-  recipientVerificationStatusForSealStatus,
-  shouldCreateDeliveryClaimForStatus,
-} from "../../../../lib/secure-delivery-policy";
 import { ensureSecureDeliverySchema } from "../../../../lib/secure-delivery-schema";
 
 function firstString(...values: unknown[]) {
@@ -47,95 +43,27 @@ async function resolveTenantByShipment(shipmentId: string) {
   return rows[0] || null;
 }
 
-export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
-  if (auth) return auth;
-  await ensureSecureDeliverySchema();
-
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const context = normalizeContext(body.context || body.action || body.step);
-  if (!context) return json({ ok: false, reason: "invalid_scan_context" }, 400);
-
-  const uidHex = firstString(body.uidHex, body.uid_hex).toUpperCase();
-  if (!uidHex) return json({ ok: false, reason: "uidHex_required" }, 400);
-
-  const shipmentId = firstString(body.shipmentId, body.shipment_id);
-  const { forcedTenantSlug } = getAdminTenantScope(req);
-  const tenantInput = forcedTenantSlug || firstString(body.tenant_id, body.tenantId, body.tenant_slug, body.tenantSlug, body.tenant);
-  const tenant = tenantInput ? await resolveTenant(tenantInput) : await resolveTenantByShipment(shipmentId);
-  if (!tenant) return json({ ok: false, reason: "tenant_not_found" }, 404);
-
-  if (forcedTenantSlug && forcedTenantSlug !== tenant.slug) {
-    return json({ ok: false, reason: "tenant_scope_forbidden" }, 403);
-  }
-
-  const scannedBy = firstString(body.scannedBy, body.scanned_by, body.operator, body.recipientName);
-  const result = await processSealScan({
-    uidHex,
-    tenantId: String(tenant.id),
-    ttRaw: firstString(body.ttRaw, body.tt_raw) || null,
-    shipmentId: shipmentId || undefined,
-    location: firstString(body.location, body.checkpoint),
-    scannedBy,
-    context,
-  });
-
-  if (context === "VERIFY" && result.shipmentId) {
-    const verificationStatus = recipientVerificationStatusForSealStatus(result.newStatus);
-    await sql/*sql*/`
-      INSERT INTO recipient_verifications (tenant_id, shipment_id, recipient_name, verification_method, status, verified_at)
-      VALUES (
-        ${tenant.id},
-        ${result.shipmentId},
-        ${firstString(body.recipientName, body.recipient_name) || null},
-        ${firstString(body.verificationMethod, body.verification_method) || "NFC_TAP"},
-        ${verificationStatus},
-        now()
-      )
-    `;
-
-    if (shouldCreateDeliveryClaimForStatus(result.newStatus)) {
-      const issueType = result.newStatus === "DELIVERED_OPENED" ? "tamper_reported" : "seal_review_required";
-      await sql/*sql*/`
-        INSERT INTO delivery_claims (tenant_id, shipment_id, issue_type, description, status)
-        SELECT
-          ${tenant.id},
-          ${result.shipmentId},
-          ${issueType},
-          ${`Recipient verification moved shipment to ${result.newStatus}; tamper state ${result.tamperState}.`},
-          'open'
-        WHERE NOT EXISTS (
-          SELECT 1
-          FROM delivery_claims
-          WHERE shipment_id = ${result.shipmentId}
-            AND issue_type = ${issueType}
-            AND status = 'open'
-        )
-      `;
-    }
-  }
-
-  await logAuditEvent({
-    actorId: getAdminActor(req).id,
-    tenantId: String(tenant.id),
-    action: `secure_delivery_scan_${context.toLowerCase()}`,
-    resourceType: "shipment",
-    resourceId: result.shipmentId || shipmentId || null,
-    afterData: {
-      uid_hex: uidHex,
-      context,
-      tamper_state: result.tamperState,
-      new_status: result.newStatus,
-      location: firstString(body.location, body.checkpoint) || null,
-    },
-    userAgent: req.headers.get("user-agent"),
-    requestId: req.headers.get("x-request-id"),
-  });
-
-  return json({
-    ok: true,
-    tenant: { id: tenant.id, slug: tenant.slug, name: tenant.name },
-    context,
-    data: result,
-  });
+import { readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+import { logisticsFailure, logisticsOperationKey, logisticsText, LogisticsOperationError } from "../../../../lib/logistics-operation-policy";
+export async function POST(req:Request){
+  const auth=await checkAdmin(req,["super_admin","tenant_admin"]);if(auth)return auth;
+  const permission=checkAdminPermission(req,"logistics:write");if(permission)return permission;
+  try {
+    await ensureSecureDeliverySchema();
+    const body=await readBoundedJsonBody<Record<string,unknown>>(req,65536);
+    if(!body||typeof body!=="object"||Array.isArray(body))throw new LogisticsOperationError("logistics_input_invalid");
+    const context=normalizeContext(body.context||body.action||body.step);
+    if(!context)throw new LogisticsOperationError("logistics_input_invalid");
+    const uidHex=logisticsText(body.uidHex??body.uid_hex,14).toUpperCase();
+    const shipmentId=logisticsText(body.shipmentId??body.shipment_id,36);
+    const {forcedTenantSlug}=getAdminTenantScope(req);
+    const tenantInput=forcedTenantSlug||firstString(body.tenant_id,body.tenantId,body.tenant_slug,body.tenantSlug,body.tenant);
+    const tenant=tenantInput?await resolveTenant(tenantInput):await resolveTenantByShipment(shipmentId);
+    if(!tenant)return json({ok:false,reason:"tenant_not_found"},404);
+    if(forcedTenantSlug&&forcedTenantSlug!==tenant.slug)return json({ok:false,reason:"tenant_scope_forbidden"},403);
+    const actor=getAdminActor(req);
+    const result=await processSealScan({uidHex,tenantId:String(tenant.id),ttRaw:logisticsText(body.ttRaw??body.tt_raw,16)||null,shipmentId:shipmentId||undefined,location:logisticsText(body.location??body.checkpoint,300),scannedBy:logisticsText(body.scannedBy??body.scanned_by??body.operator,180),recipientName:logisticsText(body.recipientName??body.recipient_name,180),verificationMethod:logisticsText(body.verificationMethod??body.verification_method,80),context,operationKey:logisticsOperationKey(req,body),actorScope:`admin:${actor.id||actor.sessionId||"authorized"}`});
+    if(!result.replayed)await logAuditEvent({actorId:actor.id,tenantId:String(tenant.id),action:`secure_delivery_scan_${context.toLowerCase()}`,resourceType:"shipment",resourceId:result.shipmentId,afterData:{receipt_id:result.receiptId,context,new_status:result.newStatus},requestId:req.headers.get("x-request-id")});
+    return json({ok:true,tenant:{id:tenant.id,slug:tenant.slug,name:tenant.name},context,data:result},200,{"cache-control":"no-store"});
+  }catch(error){const failure=logisticsFailure(error);console.warn("[logistics_operation_failed]",failure.reason);return json({ok:false,reason:failure.reason},failure.status,{"cache-control":"no-store"});}
 }

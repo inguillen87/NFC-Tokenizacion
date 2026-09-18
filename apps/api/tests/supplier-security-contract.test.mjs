@@ -252,14 +252,18 @@ test("public proof and anchor input stay hash-only", () => {
 test("secure delivery recipient verification cannot hardcode a healthy delivery", () => {
   const adminSource = readWorkspaceFile("apps/api/src/app/admin/logistics/scan/route.ts");
   const publicSource = readWorkspaceFile("apps/api/src/app/api/v1/logistics/recipient-verify/route.ts");
+  const sharedSource = readWorkspaceFile("apps/api/src/app/api/v1/logistics/_atomic.ts");
   const policySource = readWorkspaceFile("apps/api/src/lib/secure-delivery-policy.ts");
-
+  const migration = readWorkspaceFile("apps/api/db/migrations/20260918050000_0103_logistics_atomic_operations.sql");
   assert.match(policySource, /recipientVerificationStatusForSealStatus/);
   assert.match(policySource, /shouldCreateDeliveryClaimForStatus/);
-  assert.match(adminSource, /recipientVerificationStatusForSealStatus\(result\.newStatus\)/);
-  assert.match(publicSource, /recipientVerificationStatusForSealStatus\(result\.newStatus\)/);
-  assert.match(adminSource, /INSERT INTO delivery_claims/);
-  assert.match(publicSource, /INSERT INTO delivery_claims/);
+  assert.match(adminSource, /processSealScan/);
+  assert.match(publicSource, /executeLogisticsScan\(req,"VERIFY"/);
+  assert.match(sharedSource, /processSealScan/);
+  assert.match(migration, /verification_status := CASE target_status WHEN 'DELIVERED_CLOSED' THEN 'verified' WHEN 'DELIVERED_OPENED' THEN 'tampered' ELSE 'review_required' END/);
+  assert.match(migration, /INSERT INTO public.delivery_claims/);
+  assert.match(migration, /INSERT INTO public.recipient_verifications/);
+  assert.doesNotMatch(adminSource, /INSERT INTO recipient_verifications|INSERT INTO delivery_claims/);
   assert.doesNotMatch(publicSource, /,\s*'verified',\s*now\(\)/);
 });
 

@@ -1,7 +1,9 @@
+import { readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+import { logisticsFailure, logisticsItems, logisticsOperationKey, logisticsText, LogisticsOperationError } from "../../../../lib/logistics-operation-policy";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { logAuditEvent } from "../../../../lib/audit-logger";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
@@ -16,24 +18,6 @@ function firstString(...values: unknown[]) {
   return "";
 }
 
-function positiveQuantity(value: unknown) {
-  const parsed = Math.trunc(Number(value || 0));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
-
-function normalizeItems(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
-      return {
-        productName: firstString(row.productName, row.product_name, row.name, row.sku),
-        quantity: positiveQuantity(row.quantity),
-      };
-    })
-    .filter((item) => item.productName);
-}
-
 async function resolveTenant(input: string) {
   const normalized = input.trim();
   if (!normalized) return null;
@@ -43,118 +27,24 @@ async function resolveTenant(input: string) {
   return rows[0] || null;
 }
 
-async function listShipments(tenantSlugOrId: string) {
-  const hasTenantFilter = Boolean(tenantSlugOrId);
-  const query = hasTenantFilter && /^[0-9a-f-]{36}$/i.test(tenantSlugOrId)
-    ? sql/*sql*/`
-        SELECT
-          s.id,
-          s.tenant_id,
-          t.slug AS tenant_slug,
-          s.shipment_code,
-          s.status,
-          s.tracking_number,
-          s.origin_address,
-          s.destination_address,
-          s.origin_address AS sender_name,
-          s.destination_address AS recipient_name,
-          ci.code AS courier_id,
-          ci.name AS carrier_name,
-          s.created_at,
-          s.updated_at,
-          COUNT(DISTINCT si_item.id)::int AS item_count,
-          COALESCE(SUM(si_item.quantity), 0)::int AS item_quantity,
-          COUNT(DISTINCT ps.seal_id)::int AS seal_count,
-          COUNT(DISTINCT ce.id)::int AS custody_event_count,
-          COUNT(DISTINCT rv.id)::int AS verification_count,
-          COUNT(DISTINCT dc.id)::int AS claim_count,
-          MAX(ce.created_at) AS last_custody_event_at
-        FROM shipments s
-        JOIN tenants t ON t.id = s.tenant_id
-        LEFT JOIN carrier_integrations ci ON ci.id = s.carrier_id
-        LEFT JOIN shipment_items si_item ON si_item.shipment_id = s.id
-        LEFT JOIN package_seals ps ON ps.shipment_id = s.id
-        LEFT JOIN custody_events ce ON ce.shipment_id = s.id
-        LEFT JOIN recipient_verifications rv ON rv.shipment_id = s.id
-        LEFT JOIN delivery_claims dc ON dc.shipment_id = s.id
-        WHERE s.tenant_id = ${tenantSlugOrId}::uuid
-        GROUP BY s.id, t.slug, ci.code, ci.name
-        ORDER BY s.created_at DESC
-        LIMIT 100
-      `
-    : hasTenantFilter
-      ? sql/*sql*/`
-          SELECT
-            s.id,
-            s.tenant_id,
-            t.slug AS tenant_slug,
-            s.shipment_code,
-            s.status,
-            s.tracking_number,
-            s.origin_address,
-            s.destination_address,
-            s.origin_address AS sender_name,
-            s.destination_address AS recipient_name,
-            ci.code AS courier_id,
-            ci.name AS carrier_name,
-            s.created_at,
-            s.updated_at,
-            COUNT(DISTINCT si_item.id)::int AS item_count,
-            COALESCE(SUM(si_item.quantity), 0)::int AS item_quantity,
-            COUNT(DISTINCT ps.seal_id)::int AS seal_count,
-            COUNT(DISTINCT ce.id)::int AS custody_event_count,
-            COUNT(DISTINCT rv.id)::int AS verification_count,
-            COUNT(DISTINCT dc.id)::int AS claim_count,
-            MAX(ce.created_at) AS last_custody_event_at
-          FROM shipments s
-          JOIN tenants t ON t.id = s.tenant_id
-          LEFT JOIN carrier_integrations ci ON ci.id = s.carrier_id
-          LEFT JOIN shipment_items si_item ON si_item.shipment_id = s.id
-          LEFT JOIN package_seals ps ON ps.shipment_id = s.id
-          LEFT JOIN custody_events ce ON ce.shipment_id = s.id
-          LEFT JOIN recipient_verifications rv ON rv.shipment_id = s.id
-          LEFT JOIN delivery_claims dc ON dc.shipment_id = s.id
-          WHERE t.slug = ${tenantSlugOrId.toLowerCase()}
-          GROUP BY s.id, t.slug, ci.code, ci.name
-          ORDER BY s.created_at DESC
-          LIMIT 100
-        `
-      : sql/*sql*/`
-          SELECT
-            s.id,
-            s.tenant_id,
-            t.slug AS tenant_slug,
-            s.shipment_code,
-            s.status,
-            s.tracking_number,
-            s.origin_address,
-            s.destination_address,
-            s.origin_address AS sender_name,
-            s.destination_address AS recipient_name,
-            ci.code AS courier_id,
-            ci.name AS carrier_name,
-            s.created_at,
-            s.updated_at,
-            COUNT(DISTINCT si_item.id)::int AS item_count,
-            COALESCE(SUM(si_item.quantity), 0)::int AS item_quantity,
-            COUNT(DISTINCT ps.seal_id)::int AS seal_count,
-            COUNT(DISTINCT ce.id)::int AS custody_event_count,
-            COUNT(DISTINCT rv.id)::int AS verification_count,
-            COUNT(DISTINCT dc.id)::int AS claim_count,
-            MAX(ce.created_at) AS last_custody_event_at
-          FROM shipments s
-          JOIN tenants t ON t.id = s.tenant_id
-          LEFT JOIN carrier_integrations ci ON ci.id = s.carrier_id
-          LEFT JOIN shipment_items si_item ON si_item.shipment_id = s.id
-          LEFT JOIN package_seals ps ON ps.shipment_id = s.id
-          LEFT JOIN custody_events ce ON ce.shipment_id = s.id
-          LEFT JOIN recipient_verifications rv ON rv.shipment_id = s.id
-          LEFT JOIN delivery_claims dc ON dc.shipment_id = s.id
-          GROUP BY s.id, t.slug, ci.code, ci.name
-          ORDER BY s.created_at DESC
-          LIMIT 100
-        `;
-  return query;
+async function listShipments(tenantSlugOrId:string){
+  const isId=/^[0-9a-f-]{36}$/i.test(tenantSlugOrId);
+  return sql`
+    SELECT s.id,s.tenant_id,t.slug AS tenant_slug,s.shipment_code,s.status,s.tracking_number,
+      s.origin_address,s.destination_address,s.origin_address AS sender_name,s.destination_address AS recipient_name,
+      ci.code AS courier_id,ci.name AS carrier_name,s.created_at,s.updated_at,
+      (SELECT count(*)::int FROM shipment_items i WHERE i.shipment_id=s.id) AS item_count,
+      (SELECT coalesce(sum(i.quantity),0)::int FROM shipment_items i WHERE i.shipment_id=s.id) AS item_quantity,
+      (SELECT count(*)::int FROM package_seals x WHERE x.shipment_id=s.id) AS seal_count,
+      (SELECT count(*)::int FROM custody_events x WHERE x.shipment_id=s.id) AS custody_event_count,
+      (SELECT count(*)::int FROM recipient_verifications x WHERE x.shipment_id=s.id) AS verification_count,
+      (SELECT count(*)::int FROM delivery_claims x WHERE x.shipment_id=s.id) AS claim_count,
+      (SELECT max(x.created_at) FROM custody_events x WHERE x.shipment_id=s.id) AS last_custody_event_at
+    FROM shipments s JOIN tenants t ON t.id=s.tenant_id
+    LEFT JOIN carrier_integrations ci ON ci.id=s.carrier_id AND ci.tenant_id=s.tenant_id
+    WHERE (${tenantSlugOrId}='' OR (${isId} AND s.tenant_id=${isId?tenantSlugOrId:null}::uuid) OR (NOT ${isId} AND t.slug=${tenantSlugOrId.toLowerCase()}))
+    ORDER BY s.created_at DESC,s.id DESC LIMIT 100
+  `;
 }
 
 async function getStats(tenantSlugOrId: string) {
@@ -200,6 +90,7 @@ async function getStats(tenantSlugOrId: string) {
 export async function GET(req: Request) {
   const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const permission=checkAdminPermission(req,"logistics:read");if(permission)return permission;
   await ensureSecureDeliverySchema();
 
   const { searchParams } = new URL(req.url);
@@ -208,64 +99,24 @@ export async function GET(req: Request) {
   const shipments = await listShipments(tenantFilter);
   const stats = await getStats(tenantFilter);
 
-  return json({ ok: true, shipments, stats });
+  return json({ ok:true, shipments, stats, dataSource:"production", observedAt:new Date().toISOString(), scope:{tenant:tenantFilter||null,limit:100}, operationProtocol:"nexid.logistics.v1" },200,{"cache-control":"no-store"});
 }
 
-export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
-  if (auth) return auth;
-  await ensureSecureDeliverySchema();
-
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const { forcedTenantSlug } = getAdminTenantScope(req);
-  const tenantInput = forcedTenantSlug || firstString(body.tenant_id, body.tenantId, body.tenant_slug, body.tenantSlug, body.tenant);
-  const tenant = await resolveTenant(tenantInput);
-  if (!tenant) return json({ ok: false, reason: "tenant_not_found" }, 404);
-
-  if (forcedTenantSlug && forcedTenantSlug !== tenant.slug) {
-    return json({ ok: false, reason: "tenant_scope_forbidden" }, 403);
-  }
-
-  const items = normalizeItems(body.items);
-  const singleProduct = firstString(body.product_name, body.productName, body.sku);
-  if (!items.length && singleProduct) {
-    items.push({ productName: singleProduct, quantity: positiveQuantity(body.quantity) });
-  }
-
-  if (!items.length) {
-    return json({ ok: false, reason: "shipment_item_required" }, 400);
-  }
-
+export async function POST(req:Request){
+  const auth=await checkAdmin(req,["super_admin","tenant_admin"]);if(auth)return auth;
+  const permission=checkAdminPermission(req,"logistics:write");if(permission)return permission;
   try {
-    const shipment = await createShipment({
-      tenantId: String(tenant.id),
-      shipmentCode: firstString(body.shipment_code, body.shipmentCode),
-      carrierCode: firstString(body.carrier_code, body.carrierCode, body.courier_id, body.courierId),
-      trackingNumber: firstString(body.tracking_number, body.trackingNumber),
-      originAddress: firstString(body.origin_address, body.originAddress, body.sender_name, body.senderName),
-      destinationAddress: firstString(body.destination_address, body.destinationAddress, body.recipient_name, body.recipientName),
-      items,
-    });
-
-    await logAuditEvent({
-      actorId: null,
-      tenantId: String(tenant.id),
-      action: "secure_delivery_shipment_created",
-      resourceType: "shipment",
-      resourceId: String(shipment.id),
-      afterData: {
-        shipment_code: shipment.shipmentCode,
-        tracking_number: shipment.trackingNumber,
-        item_count: shipment.itemCount,
-      },
-      userAgent: req.headers.get("user-agent"),
-      requestId: req.headers.get("x-request-id"),
-    });
-
-    return json({ ok: true, shipment }, 201);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "shipment_create_failed";
-    const status = /duplicate key|unique/i.test(message) ? 409 : 400;
-    return json({ ok: false, reason: "shipment_create_failed", message }, status);
-  }
+    await ensureSecureDeliverySchema();
+    const body=await readBoundedJsonBody<Record<string,unknown>>(req,65536);
+    if(!body||typeof body!=="object"||Array.isArray(body))throw new LogisticsOperationError("logistics_input_invalid");
+    const {forcedTenantSlug}=getAdminTenantScope(req);
+    const tenantInput=forcedTenantSlug||firstString(body.tenant_id,body.tenantId,body.tenant_slug,body.tenantSlug,body.tenant);
+    const tenant=await resolveTenant(tenantInput);if(!tenant)return json({ok:false,reason:"tenant_not_found"},404);
+    if(forcedTenantSlug&&forcedTenantSlug!==tenant.slug)return json({ok:false,reason:"tenant_scope_forbidden"},403);
+    const items=logisticsItems(body.items??[{productName:body.product_name??body.productName??body.sku,quantity:body.quantity??1}]);
+    const actor=getAdminActor(req);
+    const shipment=await createShipment({tenantId:String(tenant.id),shipmentCode:logisticsText(body.shipment_code??body.shipmentCode,120),carrierCode:logisticsText(body.carrier_code??body.carrierCode??body.courier_id??body.courierId,100),trackingNumber:logisticsText(body.tracking_number??body.trackingNumber,180),originAddress:logisticsText(body.origin_address??body.originAddress??body.sender_name??body.senderName,500),destinationAddress:logisticsText(body.destination_address??body.destinationAddress??body.recipient_name??body.recipientName,500),items,operationKey:logisticsOperationKey(req,body),actorScope:`admin:${actor.id||actor.sessionId||"authorized"}`});
+    if(!shipment.replayed)await logAuditEvent({actorId:actor.id,tenantId:String(tenant.id),action:"secure_delivery_shipment_created",resourceType:"shipment",resourceId:shipment.id,afterData:{receipt_id:shipment.receiptId,item_count:shipment.itemCount},requestId:req.headers.get("x-request-id")});
+    return json({ok:true,tenant:{slug:tenant.slug},shipment},shipment.replayed?200:201,{"cache-control":"no-store"});
+  }catch(error){const failure=logisticsFailure(error);console.warn("[logistics_create_failed]",failure.reason);return json({ok:false,reason:failure.reason},failure.status,{"cache-control":"no-store"});}
 }
