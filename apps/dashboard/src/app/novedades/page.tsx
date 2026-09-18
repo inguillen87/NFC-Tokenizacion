@@ -33,7 +33,7 @@ export default async function ReleaseNotesPage() {
       </section>
       <section className={styles.guide} aria-labelledby="release-guide"><h2 id="release-guide" className={styles.heading}>{copy.guide}</h2>
         <ol className={styles.steps}>{copy.steps.map((step) => <li key={step}>{step}</li>)}</ol>
-        <Link href="/logistics" prefetch={false} className={styles.cta}>{copy.back}<ArrowRight size={17} aria-hidden="true" /></Link>
+        <Link href="/batches" prefetch={false} className={styles.cta}>{copy.back}<ArrowRight size={17} aria-hidden="true" /></Link>
       </section>
       <p className={styles.boundary}>{copy.boundary}</p>
     </div>

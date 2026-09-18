@@ -228,6 +228,13 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (normalizedMethod === "POST" && normalizedPath === "tags/mark-opened") {
     return "tag.tamper.override";
   }
+  if (/^batches\/[^/]+\/passport-editorial(?:\/[^/]+)?$/.test(normalizedPath)) {
+    if(normalizedMethod==="GET")return "batches:read";
+    const action=normalizedPath.split("/").at(-1);
+    if(action==="publish")return "batch.product.publish";
+    if(action==="approve"||action==="request_changes")return "batch.product.review";
+    return "batch.product.configure";
+  }
   if (normalizedMethod === "PATCH" && /^batches\/[^/]+\/product-config$/.test(normalizedPath)) {
     return "batch.product.configure";
   }
