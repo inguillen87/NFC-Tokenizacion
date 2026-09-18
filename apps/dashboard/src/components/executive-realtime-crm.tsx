@@ -58,6 +58,7 @@ import {
   dashboardPermissionMatches,
 } from "../lib/permission-policy";
 import { DASHBOARD_DESTINATIONS } from "../lib/dashboard-destination-policy";
+import { dashboardCanOpenDestination } from "../lib/dashboard-destination-policy";
 import { dashboardRealtimeConsumerFellBehind, unreadDashboardRealtimeFrames } from "../lib/dashboard-realtime-buffer";
 import {
   incidentByEvent,
@@ -1125,7 +1126,7 @@ export function ExecutiveRealtimeCrm({
           </div>
         </div>
 
-        <nav className="nexid-crm-nav order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-4 sm:text-sm">
+        <nav className="nexid-crm-nav order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-3 sm:text-sm">
           <button type="button" aria-label="Volver al mapa y CRM" aria-pressed={activeView === "overview"} title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => selectActiveView("overview")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "overview" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
             <Activity className="h-4 w-4" /> CRM en vivo
           </button>
@@ -1138,6 +1139,8 @@ export function ExecutiveRealtimeCrm({
           <button type="button" title="Abrir segmentos, beneficios y campañas post-tap" onClick={() => onSectionChange("loyalty")} className="flex min-h-12 items-center justify-center gap-2 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300">
             <Users className="h-4 w-4" /> Clientes & campañas
           </button>
+          {dashboardCanOpenDestination("map", account) && <button type="button" onClick={() => router.push(`/analytics/map${tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : ""}`)} className="flex min-h-12 items-center justify-center gap-2 px-2 hover:bg-white/5" data-testid="crm-professional-map-link"><Globe className="h-4 w-4"/>Mapa profesional</button>}
+          {dashboardCanOpenDestination("batches", account) && <button type="button" onClick={() => router.push(DASHBOARD_DESTINATIONS.batches.href)} className="flex min-h-12 items-center justify-center gap-2 px-2 hover:bg-white/5" data-testid="crm-rolls-link"><Layers className="h-4 w-4"/>Rollos y productos</button>}
         </nav>
 
         <div className="nexid-crm-header-status order-2 ml-auto flex min-w-0 w-auto flex-wrap items-center justify-end gap-3 text-xs text-slate-300">

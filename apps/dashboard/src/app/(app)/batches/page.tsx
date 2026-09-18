@@ -1,3 +1,5 @@
+import { BatchRollPicker } from "../../../components/batch-roll-picker";
+import { dashboardSessionCanOpenDestination } from "../../../lib/dashboard-destination-guard";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { BatchSunValidator } from "../../../components/batch-sun-validator";
@@ -222,6 +224,7 @@ export default async function BatchesPage({
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.batches} title={copy.pages.batches.title} description={copy.pages.batches.description} />
+      <BatchRollPicker rows={Array.from(new Map(batchRows.filter(row => typeof row.bid === "string" && row.bid).map(row => [String(row.bid), {bid:String(row.bid),label:`${String(row.bid)} · ${String(row.product_name || "Producto pendiente")}`}])).values())} ready={batchesReady} canRegister={dashboardSessionCanOpenDestination(session,"supplierBatches")} />
       <Card className="p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
       </Card>

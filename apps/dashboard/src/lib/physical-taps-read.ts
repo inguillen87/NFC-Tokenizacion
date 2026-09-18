@@ -39,6 +39,9 @@ export async function readPhysicalTaps({
     }
     const payload = normalizePhysicalTapsPayload(await response.json().catch(() => null));
     if (!payload) return { availability: "invalid_payload", payload: null, detail: "physical_taps_contract_invalid", checkedAt };
+    if ((context.tenantSlug && (payload.scope.tenant !== context.tenantSlug || payload.rows.some(row => row.tenantSlug !== context.tenantSlug))) || (normalizedBid && (payload.scope.bid !== normalizedBid || payload.rows.some(row => row.bid !== normalizedBid)))) {
+      return { availability: "invalid_payload", payload: null, detail: "physical_taps_scope_mismatch", checkedAt };
+    }
     return { availability: "ready", payload, detail: "tenant_scoped_real_physical_taps", checkedAt };
   } catch {
     return { availability: "unreachable", payload: null, detail: "physical_taps_upstream_unreachable", checkedAt };

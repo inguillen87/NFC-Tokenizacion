@@ -857,6 +857,8 @@ export function TenantAccountMenu({
       }
     : null;
   const primaryItemCandidates: AccountMenuItem[] = [
+    { destination: "map", href: DASHBOARD_DESTINATIONS.map.href, icon: <Network className="h-4 w-4" />, label: "Mapa profesional", meta: "Capas, lecturas y cobertura geográfica" },
+    { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, icon: <Building2 className="h-4 w-4" />, label: "Rollos y productos", meta: "Ficha, recepción de unidades y controles" },
     { href: "/novedades", icon: <BookOpen className="h-4 w-4" />, label: "Novedades y versión", meta: DASHBOARD_RELEASE },
     {
       destination: "settings",

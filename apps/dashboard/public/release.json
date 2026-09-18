@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.17-dashboard.4",
-  "scope": "task-navigation-accessible-mobile-menu-and-public-release-notes",
+  "release": "2026.09.17-dashboard.5",
+  "scope": "professional-map-and-guided-roll-intake",
   "realTapCertification": "not-included",
-  "baseCommit": "76af8ac57406d4154aa60868df2d39c810cf79ff",
+  "baseCommit": "96ede1445da59661e821f8ffa800a0aca04609f0",
   "requiredApiRelease": "2026.09.06-api-campaigns.1",
   "source": "isolated-production-baseline-with-committed-ui-changes",
   "apiChangesIncluded": false,

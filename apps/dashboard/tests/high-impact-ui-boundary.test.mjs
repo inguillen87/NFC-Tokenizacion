@@ -42,7 +42,7 @@ test("high-impact mutation controls use separate capability gates", async () => 
   assert.match(forms, /\/tamper-config`[\s\S]*}, "PATCH"\)/);
   assert.match(forms, /"tag\.tamper\.override"[\s\S]*canOverrideTagTamper \? \(/);
   assert.match(forms, /"batch\.revoke"[\s\S]*canRevoke \? \(/);
-  assert.match(batchPage, /"batch\.product\.configure"[\s\S]*canConfigureProduct \? <BatchConfigFormClient/);
+  assert.match(batchPage, /"batch\.product\.configure"[\s\S]*canConfigureProduct \? <>[\s\S]*<RollProductIdentity[\s\S]*<BatchConfigFormClient/);
   assert.match(multirubro, /"alerts\.ack"[\s\S]*canAcknowledgeAlerts && item\.status/);
 });
 

@@ -1,3 +1,6 @@
+import { RollProductIdentity } from "../../../../components/roll-product-identity";
+import { BatchRollWorkspace } from "../../../../components/batch-roll-workspace";
+import { dashboardSessionCanOpenDestination } from "../../../../lib/dashboard-destination-guard";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
@@ -10,7 +13,7 @@ import {
 } from "../../../../lib/admin-resource-read";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
-import { dashboardHighImpactPermissionMatches } from "../../../../lib/permission-policy";
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../../../../lib/permission-policy";
 import { BatchConfigFormClient } from "./batch-config-form-client";
 import { BatchLifecycleControl } from "./batch-lifecycle-control";
 
@@ -96,6 +99,7 @@ async function getBatch(context: AdminPageContext, bid: string): Promise<AdminRe
     const result = await readAdminResourceResponse(response, selectBatch);
     if (result.availability !== "ready") return result;
 
+    if (String(result.data.bid || "") !== bid) return adminResourceFailure("scope_mismatch", result.status);
     const normalizedTenantScope = context.tenantSlug;
     const batchTenantSlug = String(result.data.tenant_slug || "").trim().toLowerCase();
     if (normalizedTenantScope && batchTenantSlug !== normalizedTenantScope) {
@@ -237,6 +241,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
         />
       ) : !batchData ? null : (
         <>
+          <BatchRollWorkspace bid={bid} productName={text(product.product_name || batchData.product_name, "")} tenantSlug={tenantSlug} imported={imported} active={active} expected={numberValue(batchData.requested_quantity)} canConfigure={canConfigureProduct} canImport={dashboardPermissionMatches(session.permissions,"manifest.import",session.deniedPermissions)} canSupplier={dashboardSessionCanOpenDestination(session,"supplierBatches")} canMap={dashboardSessionCanOpenDestination(session,"map")} isDemo={Boolean(session.isDemo)} />
           <div className="grid gap-3 md:grid-cols-4">
             <Metric label="Tenant" value={tenantSlug} detail="Scope comercial del lote." tone="neutral" />
             <Metric label="Tags importados" value={imported} detail={`${formatNumber(active)} activos ahora.`} tone={imported ? "good" : "warn"} />
@@ -244,7 +249,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
             <Metric label="IoT / sensores" value={unit.iot_metadata_rows || 0} detail="Humedad, temperatura, logger, shock." tone={numberValue(unit.iot_metadata_rows) ? "good" : "neutral"} />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div id="roll-product-summary" className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <Card className="p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -362,7 +367,10 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
             />
           ) : null}
 
-          {canConfigureProduct ? <BatchConfigFormClient bid={bid} initialData={initialFormData} /> : null}
+          {canConfigureProduct ? <>
+            <RollProductIdentity bid={bid} initial={{product_name: initialFormData.product_name || "", public_lot_label: initialFormData.public_lot_label || "", sku: initialFormData.sku || "", winery: initialFormData.winery || "", region: initialFormData.region || "", image_url: initialFormData.image_url || ""}} />
+            <details className="rounded-2xl border border-white/10 p-4"><summary className="min-h-11 cursor-pointer font-bold">Ficha avanzada de vinos y telemetría ilustrativa</summary><BatchConfigFormClient key={JSON.stringify(initialFormData)} bid={bid} initialData={initialFormData} /></details>
+          </> : null}
 
           <Card className="p-6">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ops next</p>
@@ -384,7 +392,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               {publicMobile ? <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100">Preview mobile del primer UID</a> : null}
             </div>
             <div className="mt-6">
-              <BatchSunValidator bid={bid} />
+              <div id="roll-physical-check" className="scroll-mt-28"><BatchSunValidator bid={bid} /></div>
             </div>
           </Card>
         </>

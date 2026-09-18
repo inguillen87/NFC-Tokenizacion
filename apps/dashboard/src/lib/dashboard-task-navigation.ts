@@ -5,7 +5,7 @@ export type TaskNavigationItem = { destination: DashboardDestinationKey; href: s
 const ORDER: readonly TaskGroupKey[] = ["operations", "products", "customers", "integrations", "administration", "resources"];
 const DESTINATIONS: Partial<Record<DashboardDestinationKey, TaskGroupKey>> = {
   overview: "operations", onboarding: "operations", events: "operations", logistics: "operations",
-  analytics: "operations", serviceLevels: "operations", riskAnalytics: "operations", leadsTickets: "operations",
+  map: "operations", analytics: "operations", serviceLevels: "operations", riskAnalytics: "operations", leadsTickets: "operations",
   batches: "products", supplierBatches: "products", tags: "products", proof: "products", tokenization: "products",
   loyaltyOverview: "customers", consumerOverview: "customers", rewards: "customers", experiences: "customers",
   campaigns: "customers", marketplace: "customers", offers: "customers", orderRequests: "customers",

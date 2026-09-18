@@ -211,6 +211,7 @@ export function DashboardShellInner({
   const canAccessDemoLab = canOpenDestination("demoLab");
   type DestinationLink = { destination: DashboardDestinationKey; href: string; label: string };
   const itemCandidates: DestinationLink[] = [
+    { destination: "map", href: DASHBOARD_DESTINATIONS.map.href, label: "Mapa profesional" },
     { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview },
     { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches },
     { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches },
@@ -236,7 +237,7 @@ export function DashboardShellInner({
     items.push({ destination: "apiKeys", href: DASHBOARD_DESTINATIONS.apiKeys.href, label: nav.apiKeys });
   }
 
-  const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isActiveRoute = (href: string) => pathname === href || (href !== "/analytics" && pathname.startsWith(`${href}/`));
   const normalizedQuery = query.trim().toLowerCase();
 
   const role = currentRole;
@@ -318,6 +319,7 @@ export function DashboardShellInner({
     badge?: string;
   };
   const coreOpsItemCandidates: SidebarDestinationItem[] = [
+    { destination: "map", href: DASHBOARD_DESTINATIONS.map.href, label: "Mapa profesional", icon: Compass },
     { destination: "onboarding", href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Onboarding Setup", icon: Compass },
     { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview, icon: LayoutDashboard },
     { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics, icon: Package, badge: "NUEVO" },

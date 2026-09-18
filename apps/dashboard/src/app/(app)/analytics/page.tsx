@@ -1,3 +1,6 @@
+import { PhysicalMapWorkspace } from "../../../components/physical-map-workspace";
+import { dashboardSessionCanOpenDestination } from "../../../lib/dashboard-destination-guard";
+import { mapRange } from "../../../lib/physical-map-workspace";
 import { SectionHeading } from "@product/ui";
 import { messages } from "@product/config";
 import { AnalyticsPanels } from "../../../components/analytics-panels";
@@ -201,7 +204,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     getAnalytics({ context: adminContext, source, range, country, allowDemoData }),
     readPhysicalTaps({
       context: adminContext,
-      range: "24h",
+      range: mapRange(query.range),
       isDemoSession: Boolean(session.isDemo),
     }),
   ]);
@@ -263,6 +266,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <button suppressHydrationWarning type="submit" className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Aplicar filtros</button>
         </form>
       </div>
+      {dashboardSessionCanOpenDestination(session,"map") && <PhysicalMapWorkspace result={physicalTapsResult} tenantSlug={tenantScope} country={country} />}
       <PhysicalTapsCommandCenter
         result={physicalTapsResult}
         tenantSlug={tenantScope}

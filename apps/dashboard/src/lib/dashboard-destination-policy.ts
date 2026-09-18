@@ -28,6 +28,7 @@ export const DASHBOARD_DESTINATIONS = Object.freeze({
   tags: { href: "/tags", requiredPermissions: ["tags:read"] },
   events: { href: "/events", highImpactCapability: "events.read_sensitive" },
   tokenization: { href: "/tokenization", requiredPermissions: ["tokenization:read"] },
+  map: { href: "/analytics/map", requiredPermissions: ["analytics:read"], highImpactCapability: "events.read_sensitive" },
   analytics: { href: "/analytics", requiredPermissions: ["analytics:read"] },
   serviceLevels: { href: "/service-levels", requiredPermissions: ["analytics:read"] },
   riskAnalytics: {
