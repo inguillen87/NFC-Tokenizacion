@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.18-dashboard.12",
-  "scope": "accessible-batch-workbench-and-direct-product-factory-actions",
+  "release": "2026.09.18-dashboard.13",
+  "scope": "batch-carrier-state-gs1-registration-and-registered-qr-export",
   "realTapCertification": "not-included",
-  "baseCommit": "ef99bc97245d2c4fa84533cce9dd12e439b30403",
-  "requiredApiRelease": "2026.09.18-api-batches.1",
+  "baseCommit": "366dc752c5181e722c098e12b980155052555204",
+  "requiredApiRelease": "2026.09.18-api-channels.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,

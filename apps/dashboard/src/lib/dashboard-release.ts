@@ -1,9 +1,125 @@
-/** Public release notes. No tenant secrets or implied QA certification. */
-export const DASHBOARD_RELEASE='2026.09.18-dashboard.12';
+export const DASHBOARD_RELEASE='2026.09.18-dashboard.13';
 export const DASHBOARD_RELEASE_DATE='2026-09-18';
 export const RELEASE_NOTES={
- 'es-AR':{link:'Novedades y versión',eyebrow:'De fábrica a la empresa, con responsables claros',title:'Lotes accesibles, acciones directas.',summary:'Corregimos el acceso del administrador de empresa a /batches. El listado abre la ficha real del producto, filtra lotes y conecta el pedido a fábrica con la empresa ya seleccionada.',back:'Abrir recepción de fábrica',site:'Sitio de nexID',label:'Versión de esta interfaz',changes:'Qué cambió',guide:'Cómo probar esta entrega',steps:['Ingresá con tu cuenta y abrí Recepción de fábrica.','Elegí una empresa si tu cuenta administra NexID; las cuentas de cliente quedan en su alcance.','Compará responsabilidades desde Roles y permisos. El comparador no cambia tu sesión.','Abrí un pedido para usar la consola existente de manifiesto, QA y activación, con sus controles.'],boundary:'Los permisos no sustituyen evidencia ni aceptación de calidad. El administrador global no representa la aprobación del cliente. Ningún lote, etiqueta, usuario o pedido fue creado o activado automáticamente por esta entrega.',cards:[{title:'Autoridad global coherente',text:'La interfaz reconoce al superadministrador confirmado por el servidor sin exigirle una colección incompleta de permisos heredados. Las denegaciones y límites de cada capacidad se conservan.',tag:'Acceso correcto'},{title:'Recepción por tarea',text:'Un permiso específico de recepción permite abrir su recorrido sin exigir batches:*. No concede edición, aprobación, exportación de claves ni acceso a otra empresa.',tag:'Mínimo privilegio'},{title:'Pedido e inventario separados',text:'Las etiquetas activas se distinguen de los registros inactivos. Un lote existente sin pedido industrial no aparece como una recepción aprobada.',tag:'Evidencia real'},{title:'Roles visibles, sin suplantación',text:'Compará el perfil configurado de administración, operaciones o recepción sin cambiar la cuenta. Abrir un pedido no carga claves ni consulta QA hasta solicitarlo.',tag:'UX operativa'}]},
- en:{link:'What is new and version',eyebrow:'From factory to customer, with clear responsibilities',title:'Accessible batches and direct actions.',summary:'Select a company, review orders and inventory, then operate using the signed-in account permissions. Active tags and historical records remain distinct.',back:'Open factory reception',site:'nexID website',label:'This interface version',changes:'Changes',guide:'Try this release',steps:['Sign in and open Factory reception.','Select a company with platform authority; client accounts stay tenant-bound.','Compare configured responsibilities without changing your identity.','Open an order to use its existing manifest, QA and activation controls.'],boundary:'Permissions do not replace quality evidence or customer approval. This release did not automatically create or activate any tenant, user, order or tag.',cards:[{title:'Consistent global authority',text:'The dashboard reflects the server-confirmed platform administrator role while preserving explicit denials and capability ceilings.',tag:'Access'},{title:'Task-level reception',text:'A specific reception permission opens the relevant workspace without broad batches:* access or unrelated write privileges.',tag:'Least privilege'},{title:'Orders and inventory',text:'Active tags, inactive history and factory orders are separate. Existing physical reads do not prove industrial acceptance.',tag:'Evidence'},{title:'Compare roles safely',text:'Configured role comparisons do not impersonate users or grant authority. QA reads are requested explicitly.',tag:'Operations UX'}]},
- 'pt-BR':{link:'Novidades e versão',eyebrow:'Da fábrica à empresa, com responsabilidades claras',title:'Lotes acessíveis e ações diretas.',summary:'Selecione a empresa, revise pedidos e inventário e opere com as permissões da conta conectada. Etiquetas ativas e registros históricos permanecem separados.',back:'Abrir recebimento de fábrica',site:'Site da nexID',label:'Versão desta interface',changes:'O que mudou',guide:'Como testar esta entrega',steps:['Entre com sua conta e abra Recebimento de fábrica.','Selecione uma empresa com autoridade global; contas de cliente ficam no seu escopo.','Compare responsabilidades sem alterar a sessão.','Abra o pedido e use os controles existentes de manifesto, QA e ativação.'],boundary:'Permissões não substituem evidência de qualidade ou aprovação do cliente. Nenhuma etiqueta, empresa, conta ou pedido foi criado ou ativado automaticamente.',cards:[{title:'Autoridade global coerente',text:'A interface reflete o superadministrador confirmado pelo servidor, mantendo negações explícitas e limites de cada capacidade.',tag:'Acesso'},{title:'Recebimento por tarefa',text:'Permissões específicas abrem o fluxo sem exigir batches:* ou conceder mutações não autorizadas.',tag:'Privilégio mínimo'},{title:'Inventário e pedidos',text:'Etiquetas ativas, histórico inativo e pedido industrial são distinguidos. Leituras existentes não aprovam uma recepção de fábrica.',tag:'Evidência'},{title:'Perfis sem impersonação',text:'Comparar perfis configurados não muda a conta nem concede permissões. A consulta de QA é explícita.',tag:'UX operacional'}]}
+  "es-AR": {
+    "link": "Novedades y versión",
+    "eyebrow": "Configuración por tipo de etiqueta",
+    "title": "QR utilizables. NFC sin alteraciones.",
+    "summary": "Desde cada lote: consultar TTStatus configurado, registrar GS1 Digital Link autorizado y generar el QR descargable del canal correspondiente.",
+    "back": "Abrir lotes",
+    "site": "Sitio de nexID",
+    "label": "Versión de esta interfaz",
+    "changes": "Qué cambió",
+    "guide": "Recorrido",
+    "steps": [
+      "Abrí Lotes y elegí Enlaces QR / estado NFC.",
+      "En TagTamper, consultá el mapeo existente sin cambiar claves ni contadores.",
+      "En un lote GS1, registrá GTIN, lote y serie con un prefijo autorizado de la empresa.",
+      "En QR o GS1 habilitado, generá el SVG para imprimir."
+    ],
+    "boundary": "No convierte una etiqueta NFC en QR ni inventa GTIN o autorizaciones GS1. Los códigos estáticos identifican contenido; no prueban autenticidad NFC ni estado del precinto.",
+    "cards": [
+      {
+        "title": "TagTamper conservado",
+        "text": "Fuente, longitud y valores TT existentes, sin atribuirles un estado físico nuevo.",
+        "tag": "NFC"
+      },
+      {
+        "title": "Registro GS1 conectado",
+        "text": "Identidades del lote con autorización de prefijo y control de repetición.",
+        "tag": "GS1"
+      },
+      {
+        "title": "QR descargable",
+        "text": "SVG generado por el servidor desde la identidad registrada, sin generadores externos.",
+        "tag": "Impresión"
+      },
+      {
+        "title": "Acceso directo al trabajo",
+        "text": "Enlaces desde la lista y la ficha de producto; sin cambiar permisos ni sesión.",
+        "tag": "UX"
+      }
+    ]
+  },
+  "en": {
+    "link": "What is new and version",
+    "eyebrow": "Carrier-specific configuration",
+    "title": "Usable QR codes. NFC preserved.",
+    "summary": "Inspect configured TTStatus, register authorized GS1 Digital Links and generate downloadable QR codes inside each batch.",
+    "back": "Open batches",
+    "site": "nexID website",
+    "label": "Interface version",
+    "changes": "Changes",
+    "guide": "Workflow",
+    "steps": [
+      "Open a batch and choose QR links / NFC state.",
+      "Review TagTamper settings without changing keys or counters.",
+      "Register GS1 identifiers using an authorized company prefix.",
+      "Generate SVG for an enabled QR or GS1 channel."
+    ],
+    "boundary": "No NFC conversion, invented GTINs or implied physical authentication. Static links identify registered content only.",
+    "cards": [
+      {
+        "title": "Preserved TagTamper",
+        "text": "Existing source, length and mappings without inventing physical seal state.",
+        "tag": "NFC"
+      },
+      {
+        "title": "Connected GS1 registry",
+        "text": "Scoped identifiers with prefix authorization and repeat checks.",
+        "tag": "GS1"
+      },
+      {
+        "title": "Downloadable QR",
+        "text": "Server-generated SVG from the registered destination.",
+        "tag": "Print"
+      },
+      {
+        "title": "Direct workflow",
+        "text": "Entry from the batch list and dossier without session changes.",
+        "tag": "UX"
+      }
+    ]
+  },
+  "pt-BR": {
+    "link": "Novidades e versão",
+    "eyebrow": "Configuração por tipo de etiqueta",
+    "title": "QR utilizável. NFC preservado.",
+    "summary": "Consulte TTStatus, registre GS1 Digital Link autorizado e gere QR para impressão no lote.",
+    "back": "Abrir lotes",
+    "site": "Site da nexID",
+    "label": "Versão da interface",
+    "changes": "Mudanças",
+    "guide": "Fluxo",
+    "steps": [
+      "Abra o lote e escolha Enlaces QR / estado NFC.",
+      "Consulte TagTamper sem alterar chaves ou contadores.",
+      "Registre identificadores GS1 com um prefixo autorizado da empresa.",
+      "Gere SVG de um canal QR ou GS1 habilitado."
+    ],
+    "boundary": "Não converte NFC nem inventa GTIN. Links estáticos não comprovam autenticidade física ou estado do lacre.",
+    "cards": [
+      {
+        "title": "TagTamper preservado",
+        "text": "Fonte, tamanho e valores existentes sem presumir estado físico.",
+        "tag": "NFC"
+      },
+      {
+        "title": "Registro GS1 conectado",
+        "text": "Identidades por lote com autorização e controle de repetição.",
+        "tag": "GS1"
+      },
+      {
+        "title": "QR para impressão",
+        "text": "SVG do destino registrado, gerado no servidor.",
+        "tag": "Impressão"
+      },
+      {
+        "title": "Acesso direto",
+        "text": "Entrada pela lista e pelo dossiê, sem alterar a sessão.",
+        "tag": "UX"
+      }
+    ]
+  }
 } as const;
 export function releaseCopy(locale:string){return RELEASE_NOTES[locale==='en'||locale==='pt-BR'?locale:'es-AR'];}

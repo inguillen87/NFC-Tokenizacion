@@ -305,6 +305,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     // may open the tenant-scoped supplier-order surface.
     return "supplier_orders:read";
   }
+  if (/^batches\/[^/]+\/channels(?:\/qr)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'batches:read':'batch.product.configure';
   if (normalizedPath === "supplier-reception") return "supplier_reception.read";
   if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
     return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";
