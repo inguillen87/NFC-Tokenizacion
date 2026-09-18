@@ -1,9 +1,9 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.18-web-recalls.1",
+  "version": "2026.09.18-web-recalls.2",
   "scope": "resolved-batch-product-notices-separate-from-nfc-authenticity",
   "baseCommit": "ac9171b2e683c5d4ae766945f96acf8e3d2bdbc0",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.09.18-api-recalls.1",
+  "requiredApiRelease": "2026.09.18-api-recalls.2",
   "productNoticesProtocol": "nexid.product-notices.v1"
 }
