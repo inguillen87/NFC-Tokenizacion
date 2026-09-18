@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import room from "./control-room.module.css";
+import { useControlRoom } from "./use-control-room";
+import { MapSourceControls } from "./map-source-controls";
+import { filterMapLocations, summarizeMapLocations, mapLocationDescription, type MapSourceFilter } from "../lib/map-location-evidence";
 import { ThemeToggle } from "@product/ui";
 import {
   Activity,
@@ -498,6 +502,8 @@ export function ExecutiveRealtimeCrm({
     account.deniedPermissions,
   );
   const eventsUnavailableReason = "Auditoría no habilitada: esta sesión no tiene events.read_sensitive.";
+  const controlRoom=useControlRoom();
+  const [locationFilter,setLocationFilter]=useState<MapSourceFilter>("all");
   const [activeView, setActiveView] = useState<ExecutiveCrmView>(initialView);
   const [activityPanelRequested, setActivityPanelRequested] = useState(false);
   const [mapPanelRequested, setMapPanelRequested] = useState(false);
@@ -1005,7 +1011,9 @@ export function ExecutiveRealtimeCrm({
     return buckets;
   }, [consoleTimezone, visibleEvents]);
 
-  const hotspots = useMemo(() => buildHotspots(visibleEvents), [visibleEvents]);
+  const mapLocations=useMemo(()=>filterMapLocations(visibleEvents,locationFilter),[visibleEvents,locationFilter]);
+  const mapLocationCounts=useMemo(()=>summarizeMapLocations(visibleEvents),[visibleEvents]);
+  const hotspots = useMemo(() => buildHotspots(mapLocations), [mapLocations]);
   const latestEvent = visibleEvents[0] || null;
   const todayLabel = useMemo(() => formatDateInZone(Date.now(), consoleTimezone), [consoleTimezone]);
   const lastUpdateMs = safeDate(lastUpdateAt);
@@ -1113,7 +1121,7 @@ export function ExecutiveRealtimeCrm({
   ];
 
   return (
-    <div className="nexid-crm-shell fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden">
+    <div ref={controlRoom.rootRef} data-display-mode={controlRoom.enabled ? "room" : "workspace"} className={`${room.roomShell} nexid-crm-shell fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden`}>
       <div className="nexid-crm-backdrop pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
       <header data-testid="crm-responsive-header" className="nexid-crm-header relative z-[640] flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:px-4">
         <div className="nexid-crm-identity order-1 flex min-w-0 flex-1 items-center gap-4 lg:gap-5">
@@ -1122,11 +1130,11 @@ export function ExecutiveRealtimeCrm({
           </div>
           <div className="min-w-0 border-l border-white/10 pl-4 lg:pl-5">
             <p className="text-xs text-slate-400">Admin enterprise</p>
-            <h1 className="text-[1.4rem] font-black leading-tight tracking-[-0.035em] text-white lg:text-[1.65rem]">CRM y trazabilidad</h1>
+            <h1 className="text-[1.4rem] font-black leading-tight tracking-[-0.035em] text-white lg:text-[1.65rem]">{controlRoom.enabled ? "Centro en Vivo" : "CRM y trazabilidad"}</h1>
           </div>
         </div>
 
-        <nav className="nexid-crm-nav order-3 grid min-h-12 w-full grid-cols-2 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300 sm:grid-cols-3 sm:text-sm">
+        <nav className="nexid-crm-nav order-3 flex min-h-10 w-full overflow-x-auto rounded-xl border border-white/8 bg-slate-950/45 text-xs font-bold text-slate-300">
           <button type="button" aria-label="Volver al mapa y CRM" aria-pressed={activeView === "overview"} title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => selectActiveView("overview")} className={`flex min-h-12 items-center justify-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-cyan-300 ${activeView === "overview" ? "border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200" : "hover:bg-white/5"}`}>
             <Activity className="h-4 w-4" /> CRM en vivo
           </button>
@@ -1148,6 +1156,7 @@ export function ExecutiveRealtimeCrm({
           <span data-testid="crm-source-badge" className={`rounded-full border px-2.5 py-1 font-semibold ${sourcePresentation.badge}`} title={sourcePresentation.detail}>Fuente: {sourcePresentation.label}</span>
           <span className="hidden items-center gap-2 2xl:flex" title={operationalTimeZone.isFallback ? "Zona no confirmada: horario mostrado en UTC" : `Zona informada para la operación: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="text-[10px] uppercase tracking-[0.08em] text-slate-500">{consoleTimezoneLabel}</span></span>
           <span className="hidden items-center gap-2 2xl:flex"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
+          <button ref={controlRoom.buttonRef} type="button" data-testid="control-room-toggle" aria-pressed={controlRoom.enabled} onClick={()=>void controlRoom.toggle()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-cyan-300/30 px-3 text-xs font-bold"><Expand className="h-4 w-4"/>{controlRoom.enabled ? "Salir de modo sala" : "Modo sala"}</button>
           <div className="nexid-crm-theme-control shrink-0" data-testid="crm-theme-control">
             <ThemeToggle locale="es-AR" />
           </div>
@@ -1169,6 +1178,7 @@ export function ExecutiveRealtimeCrm({
         </div>
       </header>
 
+      {controlRoom.notice && <p className={room.roomNotice} role="status">{controlRoom.notice}</p>}
       <aside className="nexid-crm-rail relative z-10 hidden w-24 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:flex">
         <div className="space-y-3">
           {railItems.map((item) => (
@@ -1220,7 +1230,11 @@ export function ExecutiveRealtimeCrm({
         </main>
       ) : (
       <main className="nexid-crm-main relative z-10 flex flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:gap-4 2xl:p-4">
-        <section className="nexid-crm-kpi-column order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 xl:w-96">
+        {controlRoom.enabled ? <section className={room.roomMetrics} aria-label="Indicadores de sala de control">
+          {[["Lecturas visibles",valuesUnavailable ? "—" : metrics.total],["Autenticaciones",valuesUnavailable ? "—" : metrics.authenticated],["Zona del teléfono",valuesUnavailable ? "—" : mapLocationCounts.phone],["Estimación Red/IP",valuesUnavailable ? "—" : mapLocationCounts.network],["Señales de riesgo",valuesUnavailable ? "—" : metrics.risk]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}
+          <p>{queryTenantDisplayName} · {TIME_RANGE_OPTIONS.find(option=>option.value===timeRange)?.label} · muestra de hasta 50 eventos · {sourcePresentation.label}. Ubicaciones de lecturas, no seguimiento continuo de activos.</p>
+        </section> : (
+        <section aria-label="Indicadores operativos de la ventana" className="nexid-crm-kpi-column order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 xl:w-96">
           <div className="flex items-start justify-between gap-3">
             <span>
               <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Lectura operativa</h2>
@@ -1229,7 +1243,7 @@ export function ExecutiveRealtimeCrm({
             <span className="flex items-center gap-2 text-xs text-slate-400" title={streamHealth.detail}><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> {streamHealth.label}</span>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="nexid-crm-metric-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
             <MetricCard icon={<Radio className="h-5 w-5" />} label="Eventos recientes visibles" value={valuesUnavailable ? "—" : recentEventSample.value} delta={valuesUnavailable ? "sin confirmar" : recentEventSample.detail} help={activeDataSource === "demo" ? "Muestra de hasta 50 eventos del recorrido demo aislado; no representa actividad productiva ni un total histórico." : "Muestra de hasta 50 eventos persistidos para el tenant y la ventana activos; no representa un total histórico."} tone="cyan" data={valuesUnavailable ? [] : velocitySeries} />
             <MetricCard icon={<BadgeCheck className="h-5 w-5" />} label="Producto reconocido" value={valuesUnavailable ? "—" : formatPercent(metrics.productRecognizedRate)} delta={valuesUnavailable ? "sin confirmar" : `${metrics.productRecognized} interacciones`} help="Producto, lote o unidad resuelto contra registros NexID. No identifica a una persona ni equivale a autenticación física." tone="blue" data={valuesUnavailable ? [] : velocitySeries} dataKey="productRecognized" />
             <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Autenticación verificada" value={valuesUnavailable ? "—" : formatPercent(metrics.authenticationRate)} delta={valuesUnavailable ? "sin confirmar" : `${metrics.authenticated} eventos`} help="Sólo mensajes SUN con verdict válido, CMAC correcto y UID allowlisted." tone="green" data={valuesUnavailable ? [] : velocitySeries} dataKey="authenticated" />
@@ -1289,9 +1303,11 @@ export function ExecutiveRealtimeCrm({
           </div>
         </section>
 
+        )}
+
         <section className="nexid-crm-workspace order-1 flex min-h-0 flex-col gap-4 lg:order-2 lg:min-w-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <div className="nexid-crm-map-stack flex min-h-0 shrink-0 flex-col">
-            <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="nexid-crm-scope-toolbar mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Mapa de eventos por capas</h2>
                 <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
@@ -1319,7 +1335,7 @@ export function ExecutiveRealtimeCrm({
 
             {(requestTransitionPending || streamDataUnconfirmed || !visibleEvents.length) ? (
               <div className="mb-3">
-                <EnterpriseOpsState
+                {controlRoom.enabled ? <details className={room.roomWarning}><summary>{requestTransitionPending ? "Sincronizando empresa" : streamDataUnconfirmed ? "Actividad sin confirmar · ver estado" : "Sin eventos en la ventana"}</summary><p>{streamHealth.detail} Última actualización: {timeAgo(lastUpdateAt)}. Una falla de la fuente no representa cero eventos.</p></details> : <EnterpriseOpsState
                   compact
                   variant={requestTransitionPending || streamDataUnconfirmed ? "warning" : "empty"}
                   title={requestTransitionPending ? "Sincronizando tenant…" : streamDataUnconfirmed ? "Actividad todavía no confirmada" : "Sin eventos en los filtros activos"}
@@ -1334,10 +1350,11 @@ export function ExecutiveRealtimeCrm({
                       ? ["Esperar reconexión o revisar la fuente antes de decidir", `Última actualización: ${timeAgo(lastUpdateAt)}`]
                       : ["Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
                   testId="crm-realtime-data-state"
-                />
+                />}
               </div>
             ) : null}
 
+            <MapSourceControls value={locationFilter} onChange={setLocationFilter} counts={mapLocationCounts} />
             <div id="live-tap-map" ref={mapPanelRef} data-map-fullscreen={isMapFullscreen ? "true" : "false"} data-map-evidence-state={mapEvidence.state} className={`nexid-crm-map-panel relative flex shrink-0 flex-col overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "rounded-2xl"}`}>
               <div className="nexid-crm-map-control-deck relative z-30 grid shrink-0 gap-3 border-b border-white/8 bg-slate-950/72 p-3 backdrop-blur-xl lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
                 <div role="group" aria-label="Acciones del mapa" className="nexid-crm-map-actions flex min-w-0 items-center gap-2 overflow-x-auto">
@@ -1374,7 +1391,8 @@ export function ExecutiveRealtimeCrm({
               </div>
 
               <div className={`nexid-crm-map-body grid min-h-0 ${isMapFullscreen ? "flex-1" : ""} 2xl:grid-cols-[minmax(0,1fr)_282px] 2xl:grid-rows-[auto_minmax(0,1fr)]`}>
-                <div tabIndex={0} role="region" aria-label="Leyenda y fuente del mapa" className="nexid-crm-map-legend relative z-20 m-3 mb-0 min-w-0 rounded-xl border border-white/10 bg-slate-950/72 p-3 text-xs text-slate-200 shadow-xl backdrop-blur 2xl:col-start-2 2xl:row-start-1 2xl:ml-0 2xl:max-w-none">
+                <details aria-label="Leyenda y fuente del mapa" className="nexid-crm-map-legend relative z-20 m-3 mb-0 min-w-0 rounded-xl border border-white/10 bg-slate-950/72 p-3 text-xs text-slate-200 shadow-xl backdrop-blur 2xl:col-start-2 2xl:row-start-1 2xl:ml-0 2xl:max-w-none">
+                  <summary>Cómo leer la capa y su evidencia</summary>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <p className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
                     <span data-testid="crm-map-data-mode" data-state={mapEvidence.state} className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.06em] ${mapEvidence.badge}`}>{mapEvidence.label}</span>
@@ -1394,10 +1412,10 @@ export function ExecutiveRealtimeCrm({
                 ) : (
                   <p className="flex items-center gap-2 text-[11px] font-medium text-slate-300"><i className="h-3 w-3 rounded-full border border-cyan-300/70 bg-cyan-300/10" /> Radio visual; no es geofencing</p>
                 )}
-                </div>
+                </details>
 
                 <div className={`nexid-crm-map-canvas-region ${isMapFullscreen ? "min-h-0 h-full" : "h-[460px] sm:h-[520px]"} min-w-0 w-full p-3 2xl:col-start-1 2xl:row-span-2 2xl:row-start-1`}>
-                  <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} dataState={mapEvidence.state} dataStateDetail={mapEvidence.detail} arrival={mapArrival} />
+                  <RealtimeMapLibreMap hotspots={hotspots} events={mapLocations} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} dataState={mapEvidence.state} dataStateDetail={mapEvidence.detail} arrival={mapArrival} />
                 </div>
 
                 <div tabIndex={0} role="region" aria-label="Últimos eventos visibles" data-incident-event-list className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">
@@ -1416,7 +1434,7 @@ export function ExecutiveRealtimeCrm({
                           <span className={`rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : authenticated ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${incidentStatusLabel(linkedIncident.status)}` : authenticated ? "Autenticación verificada" : recognized ? "Producto reconocido" : risk ? "Riesgo" : "Actividad"}</span>
                         </div>
                         <p className="mt-1.5 text-[15px] font-black tracking-[-0.015em] text-white">{event.productName?.trim() || "Lectura NFC"}</p>
-                        {event.city && event.locationSource ? <p className="mt-0.5 text-xs text-slate-300">{event.city}{event.country ? `, ${event.country}` : ""} · ubicación reportada</p> : null}
+                        {event.city && event.locationSource ? <p className="mt-0.5 text-xs text-slate-300">{event.city}{event.country ? `, ${event.country}` : ""} · {mapLocationDescription(event)}</p> : null}
                         <p className="mt-0.5 font-mono text-[11px] text-slate-400">UID: {event.uidMasked || "no disponible"}</p>
                         <p className="text-xs text-slate-400">{deviceSummary(event)}</p>
                         <p className="mt-1.5 text-[11px] font-bold text-cyan-300">Abrir evidencia y expediente →</p>

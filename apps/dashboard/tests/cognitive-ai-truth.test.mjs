@@ -47,8 +47,8 @@ test("both analytics copilot branches use the same truth state and no hardcoded 
   assert.equal((panels.match(/subtitle=\{summaryTruth\.subtitle\}/g) || []).length, 2);
   assert.equal((panels.match(/\{summaryTruth\.badge\}/g) || []).length, 2);
   assert.doesNotMatch(panels, /Hugging Face GLM-5\.2 en tiempo real/);
-  assert.match(panels, /resolveCognitiveSummaryDelivery\(payload\)/);
-  assert.match(panels, /setDynamicSummary\(delivery\.mode === "live_provider" \? delivery\.text : ""\)/);
+  assert.match(panels, /deterministicCognitiveSummary\("not_requested"\)/);
+  assert.doesNotMatch(panels, /fetch\("\/api\/cognitive-ai"/);
 });
 
 test("cognitive route confirms provider on success and logs expected 402 without provider body", () => {

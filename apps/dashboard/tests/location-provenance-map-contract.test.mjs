@@ -56,8 +56,8 @@ test("MapLibre renders provenance-specific heat and uncertainty layers with attr
 test("aggregated analytics propagates provenance and exposes an accessible source filter", () => {
   assert.match(analyticsPage, /coordinateSource\?: string/);
   assert.match(analyticsPage, /coordinateAccuracyMeters\?: number \| null/);
-  assert.match(analyticsPanels, /locationSource: point\.coordinateSource/);
-  assert.match(analyticsPanels, /locationAccuracyM: point\.coordinateAccuracyMeters/);
+  assert.match(analyticsPanels, /coordinateSource: point\.coordinateSource/);
+  assert.match(analyticsPanels, /coordinateAccuracyMeters: point\.coordinateAccuracyMeters/);
   assert.match(demoMap, /aria-label="Filtrar por procedencia geográfica"/);
   assert.doesNotMatch(demoMap, /if \(!String\(point\.locationSource \|\| ""\)\.trim\(\)\) return counts/);
   assert.match(demoMap, /GPS consentido: zona aproximada más acotada/);

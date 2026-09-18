@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { OpsPanel, StatCard, StatusChip } from "@product/ui";
 import { DemoOpsMap } from "./demo-ops-map";
 import { DeviceRiskMatrix } from "./charts/device-risk-matrix";
@@ -416,6 +417,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
   const tagJourney = data?.tagJourney || [];
   const devices = data?.devices;
   const commercialSignals = data?.commercialSignals;
+  const [showGeoExperiments,setShowGeoExperiments]=useState(false);
   const productByUid = useMemo(() => new Map(products.map((product) => [String(product.uidHex || "").toUpperCase(), product])), [products]);
   const cityLastSeenByKey = useMemo(
     () => new Map(cities.map((item) => [`${String(item.city || "").trim().toLowerCase()}|${String(item.country || "--").trim().toUpperCase()}`, item.lastSeen || ""])),
@@ -454,50 +456,10 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
 
   const metricText = `Taps totales: ${scansTotal}. Tasa de mensajes validos: ${validRate == null ? "N/D" : `${validRate.toFixed(1)}%`}. Tasa de resultados INVALID explicitos: ${invalidRate == null ? "N/D" : `${invalidRate.toFixed(1)}%`}. Duplicados/replay: ${api.duplicates ?? 0}. Senales TT/tamper reportadas: ${api.tamper ?? 0}. Regiones geograficas reportadas: ${api.geoRegions ?? 0}. Score de riesgo general: ${riskScore == null ? "N/D" : `${riskScore}/100`}.`;
 
+  // Viewing historical metrics never initiates paid AI or background requests.
   useEffect(() => {
-    if (!scansTotal) {
-      setDynamicSummary("");
-      setSummaryDelivery(deterministicCognitiveSummary("not_requested"));
-      setLoadingSummary(false);
-      return;
-    }
-    let cancelled = false;
-    setLoadingSummary(true);
-    setDynamicSummary("");
-    setSummaryDelivery(deterministicCognitiveSummary("provider_request_pending"));
-    fetch("/api/cognitive-ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: metricText,
-        tone: "executive-summary",
-      }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Status: " + res.status);
-        return res.json();
-      })
-      .then((payload) => {
-        if (cancelled) return;
-        const delivery = resolveCognitiveSummaryDelivery(payload);
-        setSummaryDelivery(delivery);
-        setDynamicSummary(delivery.mode === "live_provider" ? delivery.text : "");
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDynamicSummary("");
-          setSummaryDelivery(deterministicCognitiveSummary("provider_request_failed"));
-        }
-        console.info("[ops_copilot] provider unavailable; deterministic summary selected");
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingSummary(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [scansTotal, validRate, invalidRate, api.duplicates, api.tamper, api.geoRegions, riskScore]);
+    setDynamicSummary(""); setSummaryDelivery(deterministicCognitiveSummary("not_requested")); setLoadingSummary(false);
+  }, [scansTotal]);
 
   const riskRadar = [
     { label: "Replay / duplicates", value: Number(api.duplicates || 0), max: Math.max(scansTotal, 1) },
@@ -515,7 +477,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
   const sourceLabel = dataSource === "production" ? "Producción confirmada" : dataSource === "demo" ? "Demo identificada" : dataSource === "imported" ? "Importado identificado" : "Fuentes mixtas identificadas";
   const sourceTone = dataSource === "demo" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-cyan-300/25 bg-cyan-500/10 text-cyan-100";
   const sourceBanner = (
-    <div data-analytics-source={dataSource} className={`rounded-2xl border p-4 ${sourceTone}`}>
+    <div data-analytics-source={dataSource} className={`rounded-xl border px-3 py-2 ${sourceTone}`}>
       <p className="text-xs font-black uppercase tracking-[0.14em]">{sourceLabel}</p>
       <p className="mt-1 text-xs opacity-80">{sourceDetail}</p>
     </div>
@@ -644,15 +606,15 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
           <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
         </div>
 
-        <OpsPanel title="Control operativo" subtitle="KPIs del scope activo. Sin datos reales, no se inventa actividad.">
+        <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Definiciones y denominadores de los indicadores</summary><OpsPanel title="Control operativo" subtitle="KPIs del scope activo. Sin datos reales, no se inventa actividad.">
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Taps</p><p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p></div>
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Mensajes válidos</p><p className="mt-1 text-2xl font-semibold text-emerald-300">{scansTotal > 0 && validRate != null ? `${validRate.toFixed(1)}%` : "N/D"}</p></div>
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Riesgo</p><p className="mt-1 text-2xl font-semibold text-amber-200">{riskRate}</p></div>
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cobertura</p><p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage == null ? "sin base" : `${journeyCoverage.toFixed(1)}%`}</p></div>
           </div>
-        </OpsPanel>
-        <OpsPanel title="Ops Copilot (AI Summary)" subtitle={summaryTruth.subtitle}>
+        </OpsPanel></details>
+        <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Síntesis calculada del período · sin consultas a IA</summary><OpsPanel title="Síntesis del período" subtitle={summaryTruth.subtitle}>
           <p className={`mb-3 inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${summaryDelivery.mode === "live_provider" ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>
             {summaryTruth.badge}
           </p>
@@ -673,9 +635,9 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
           <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
             Exportar PDF (imprimir reporte)
           </button>
-        </OpsPanel>
+        </OpsPanel></details>
 
-        <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
+        <details className="rounded-xl border border-white/10 p-3" onToggle={event=>setShowGeoExperiments(event.currentTarget.open)}><summary className="min-h-9 cursor-pointer text-sm font-bold">Escenarios comerciales avanzados · simulación, no resultados</summary>{showGeoExperiments && <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />}</details>
 
         <OpsPanel title="Dataset vacío confirmado" subtitle={`No hay escaneos en ${sourceLabel.toLowerCase()} para el scope elegido.`}>
           <ul className="space-y-2 text-sm text-slate-300">
@@ -695,7 +657,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-white">Exportaciones</p>
-            <p className="mt-1 text-xs text-slate-400">KPIs, feed, productos y journeys del scope actual.</p>
+            <p className="mt-1 text-xs text-slate-400">KPIs y registros del período. No se inventan conversiones.</p>
           </div>
           <AnalyticsExportActions data={data} />
         </div>
@@ -711,7 +673,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
       </div>
 
-      <OpsPanel title="Control operativo" subtitle={`Resumen calculado exclusivamente sobre ${sourceLabel.toLowerCase()}.`}>
+      <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Definiciones y denominadores de los indicadores</summary><OpsPanel title="Control operativo" subtitle={`Resumen calculado exclusivamente sobre ${sourceLabel.toLowerCase()}.`}>
         <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Taps</p>
@@ -734,8 +696,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
             <p className="text-xs text-slate-400">UIDs con puntos inicial y final reportados; no implica una ruta.</p>
           </div>
         </div>
-      </OpsPanel>
-      <OpsPanel title="Ops Copilot (AI Summary)" subtitle={summaryTruth.subtitle}>
+      </OpsPanel></details>
+      <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Síntesis calculada del período · sin consultas a IA</summary><OpsPanel title="Síntesis del período" subtitle={summaryTruth.subtitle}>
         <p className={`mb-3 inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${summaryDelivery.mode === "live_provider" ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>
           {summaryTruth.badge}
         </p>
@@ -756,7 +718,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
           Exportar PDF (imprimir reporte)
         </button>
-      </OpsPanel>
+      </OpsPanel></details>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title={kpis.trendTitle} subtitle="Volumen y señales de riesgo en el rango seleccionado. Click en un punto para filtrar feed.">
@@ -788,7 +750,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <OpsPanel title="Geographic hotspots" subtitle="Países y ciudades con mayor actividad y riesgo.">
+        <OpsPanel title="Distribución geográfica declarada" subtitle="Agregados por red/IP o teléfono: no prueban presencia física en cada ciudad.">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">
               {(countries.length ? countries : [{ country: "--", scans: 0, risk: 0 }]).slice(0, 6).map((c) => <p key={c.country}>{c.country}: <b>{c.scans}</b> · risk <b>{c.risk}</b></p>)}
@@ -857,35 +819,12 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         </div>
       </OpsPanel>
 
-      <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
+      <details className="rounded-xl border border-white/10 p-3" onToggle={event=>setShowGeoExperiments(event.currentTarget.open)}><summary className="min-h-9 cursor-pointer text-sm font-bold">Escenarios comerciales avanzados · simulación, no resultados</summary>{showGeoExperiments && <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />}</details>
 
-      <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({
-        city: point.city,
-        country: point.country || "--",
-        lat: point.lat,
-        lng: point.lng,
-        scans: point.scans ?? 0,
-        risk: point.risk || 0,
-        lastSeen: cityLastSeenByKey.get(`${String(point.city || "").trim().toLowerCase()}|${String(point.country || "--").trim().toUpperCase()}`) || undefined,
-        locationSource: point.coordinateSource,
-        locationAccuracyM: point.coordinateAccuracyMeters,
-      }))} />
-      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Referencia inicial y ultimo tap reportado. Solo se dibuja un conector cuando originSource=product_passport_declared; first_observed_event no se presenta como ruta logistica.">
-        {journeyMapPoints.length ? (
-          <GlobalOpsMap
-            title="Conectores de eventos por UID"
-            subtitle="Origen declarado o primer tap reportado vs ultimo tap. Un conector requiere origen declarado; el conector visual no representa un recorrido físico."
-            mode={mapMode === "global" ? "global" : "tenant"}
-            points={journeyMapPoints}
-            routes={journeyRoutes}
-            playbackEnabled={false}
-            riskOnly={false}
-          />
-        ) : <p className="text-sm text-slate-400">Sin coordenadas suficientes para dibujar journeys todavía.</p>}
-      </OpsPanel>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm"><span>La exploración espacial tiene su propio centro geográfico.</span><Link prefetch={false} href="/analytics/map" className="font-bold text-cyan-300">Abrir mapa y fuentes →</Link></div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <OpsPanel title="Live tap feed" subtitle={`Actividad reciente del dataset ${sourceLabel.toLowerCase()}.`}>
+        <OpsPanel title="Muestra de eventos del período" subtitle={`Actividad reciente del dataset ${sourceLabel.toLowerCase()}.`}>
           <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-300">
             <p>Eventos recientes del tenant.</p>
             <label>

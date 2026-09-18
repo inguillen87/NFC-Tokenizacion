@@ -57,7 +57,7 @@ function parseAccuracy(value: CoordinateValue): number | null {
 }
 
 function reportedCoordinateLabel(source: string, accuracyM: number | null) {
-  if (source === "browser_gps_approximate_consent") {
+  if (["browser_gps_approximate_consent","browser_geolocation_approximate_consent","browser_approximate_consent"].includes(source)) {
     return accuracyM == null
       ? "Ubicacion aproximada compartida con consentimiento"
       : `Ubicacion aproximada compartida con consentimiento +/-${Math.round(accuracyM)} m`;
@@ -77,11 +77,14 @@ function reportedCoordinateLabel(source: string, accuracyM: number | null) {
 export function resolveEventMapCoordinate(input: EventCoordinateInput): ResolvedMapCoordinate | null {
   const reported = strictCoordinatePair(input.lat, input.lng);
   const originalSource = String(input.locationSource || "").trim().toLowerCase();
+  if (["tenant_default","tenant_origin","product_origin","declared_origin","product_passport_declared","default_location","fallback_city"].includes(originalSource)) return null;
   const accuracyM = parseAccuracy(input.locationAccuracyM);
 
   if (!reported) return null;
   const precision: MapCoordinatePrecision = [
     "browser_gps_approximate_consent",
+    "browser_geolocation_approximate_consent",
+    "browser_approximate_consent",
     "ip_geo",
     "ip_approx",
     "edge_ip_approx",

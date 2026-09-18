@@ -24,8 +24,8 @@ test("analytics withholds missing rates and does not infer map risk from tap vol
   assert.match(analytics, /validRate == null \? "N\/D"/);
   assert.match(analytics, /verdict: "REPORTED"/);
   assert.doesNotMatch(analytics, /item\.taps > 20 \? 0 : 1/);
-  assert.match(analytics, /el conector visual no representa un recorrido físico/);
-  assert.match(analytics, /playbackEnabled=\{false\}/);
+  assert.doesNotMatch(analytics, /<DemoOpsMap/);
+  assert.match(analytics, /isDeclaredProductOrigin\(item\.originSource\)/);
   assert.doesNotMatch(analytics, /Origen del producto, tap actual, distancia y ruta punteada/);
 });
 

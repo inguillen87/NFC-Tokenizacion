@@ -626,7 +626,7 @@ export function RealtimeMapLibreMap({
           .setHTML(`
             <div class="nexid-map-popup-card">
               <b>${escapeHtml(props.uid)}</b>
-              <span>${escapeHtml(props.city)}, ${escapeHtml(props.country)}</span>
+              <span>${props.locationClass === "network_approx" ? "Zona de red: " : "Zona reportada: "}${escapeHtml(props.city)}, ${escapeHtml(props.country)}</span>
               <small>${escapeHtml(props.verdict)} / ${escapeHtml(props.device)}</small>
               <small>${escapeHtml(props.locationLabel)}</small>
               <small>Fuente: ${escapeHtml(locationProvenanceLabel(props.locationSource))}</small>
@@ -769,27 +769,18 @@ export function RealtimeMapLibreMap({
     >
       <h3 id={mapTitleId} className="sr-only">Mapa operativo de lecturas con precisión geográfica declarada</h3>
       <div ref={containerRef} className="h-full w-full" />
-      <div id={mapSummaryId} className="nexid-map-status pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] rounded-xl border border-white/10 bg-slate-950/78 px-3.5 py-2.5 text-sm font-semibold text-slate-300 shadow-xl backdrop-blur sm:max-w-[32rem]">
-        <span data-testid="crm-maplibre-data-state" data-state={dataState} className={`nexid-map-data-badge mb-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${dataState === "real" ? "border-emerald-300/30 bg-emerald-400/12 text-emerald-100" : dataState === "demo" ? "border-violet-300/30 bg-violet-400/12 text-violet-100" : "border-amber-300/30 bg-amber-400/12 text-amber-100"}`}>
-          {dataState === "real" ? "Eventos reales confirmados" : dataState === "demo" ? "Eventos demo aislados" : "Capa de eventos sin confirmar"}
+      <div id={mapSummaryId} className="nexid-map-status absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] rounded-xl border border-white/10 bg-slate-950/90 px-3 py-2 text-xs font-semibold text-slate-300 shadow-xl backdrop-blur sm:max-w-[27rem]">
+        <span data-testid="crm-maplibre-data-state" data-state={dataState} className="nexid-map-data-badge text-[10px] font-black uppercase tracking-wide">
+          {dataState === "real" ? "Registros persistidos · ubicación según fuente" : dataState === "demo" ? "Eventos demo aislados" : "Capa de eventos sin confirmar"}
         </span>
-        <span className="nexid-map-status-summary block">
-          <b className="nexid-map-status-count text-base font-black text-cyan-200">{geojson.features.length}</b> ubicaciones mapeables <span aria-hidden="true">·</span> {hotspots.length} zonas <span aria-hidden="true">·</span> {mode === "tenant" ? "tenant" : "global"}
-        </span>
-        {dataState === "unavailable" ? (
-          <span className="nexid-map-status-detail mt-1 block text-[11px] font-medium leading-4 text-amber-100/90">{dataStateDetail}</span>
-        ) : (
-          <>
-            <span className="nexid-map-status-precision mt-1 block text-[11px] font-medium leading-4 text-slate-400">
-              {precisionSummary.reported} reportadas · {precisionSummary.approximate} aproximadas · sin coordenada persistida, el evento no se dibuja
-            </span>
-            <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold" aria-label="Procedencia de las ubicaciones visibles">
-              <span className="text-emerald-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />GPS consentido {sourceSummary.consented_gps}</span>
-              <span className="text-amber-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />Red/IP {sourceSummary.network_approx}</span>
-              <span className="text-violet-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-violet-400" aria-hidden="true" />Mixta/otra {sourceSummary.mixed_approx + sourceSummary.other_reported}</span>
-            </span>
-          </>
-        )}
+        <span className="nexid-map-status-summary mt-1 block"><b className="nexid-map-status-count text-cyan-200">{geojson.features.length}</b> coordenadas · Teléfono {sourceSummary.consented_gps} · Red/IP {sourceSummary.network_approx}</span>
+        <details className="nexid-map-precision-details mt-1">
+          <summary className="min-h-8 cursor-pointer py-1 text-[11px] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">Fuente, precisión y limitaciones</summary>
+          {dataState === "unavailable" ? <p className="nexid-map-status-detail py-1">{dataStateDetail}</p> : <>
+            <p className="nexid-map-status-precision py-1">{precisionSummary.reported} reportadas · {precisionSummary.approximate} aproximadas · {sourceSummary.mixed_approx + sourceSummary.other_reported} de fuente mixta u otra.</p>
+            <p className="py-1">Red/IP representa la conexión y puede situarse en otra ciudad. El teléfono comparte una zona aproximada con permiso, después del TAP. La verificación NFC no verifica coordenadas.</p>
+          </>}
+        </details>
       </div>
       {!loaded && !mapError ? (
         <div className="nexid-map-loading absolute inset-0 grid place-items-center bg-slate-950/70 text-center text-sm text-slate-300" role="status" aria-busy="true">
@@ -812,7 +803,7 @@ export function RealtimeMapLibreMap({
         <div data-testid="crm-map-empty-state" className="nexid-map-empty-state pointer-events-none absolute inset-x-3 top-1/2 z-10 flex -translate-y-1/2 justify-center text-center text-sm text-slate-300">
           <div className="nexid-map-empty-state-card max-w-md rounded-2xl border border-white/12 bg-slate-950/82 px-5 py-4 shadow-2xl backdrop-blur-xl">
             <b className="block text-white">{dataState === "unavailable" ? "Cartografía disponible · eventos sin confirmar" : dataState === "demo" ? "Demo sin ubicaciones utilizables" : "Sin ubicaciones utilizables en esta ventana"}</b>
-            <span className="mt-1 block leading-5">{dataState === "unavailable" ? "Podés explorar la base geográfica; los puntos aparecerán al confirmar tenant, ventana y fuente." : "Cambia tenant o rango temporal, o realiza un tap con ciudad o GPS informado."}</span>
+            <span className="mt-1 block leading-5">{dataState === "unavailable" ? "Podés explorar la base geográfica; los puntos aparecerán al confirmar tenant, ventana y fuente." : "Revisá fuente y período. Sin permiso de ubicación no hay coordenada del teléfono; las lecturas siguen disponibles en la tabla."}</span>
           </div>
         </div>
       ) : null}

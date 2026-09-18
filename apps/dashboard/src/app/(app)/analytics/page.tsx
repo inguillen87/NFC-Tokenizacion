@@ -1,18 +1,18 @@
-import { PhysicalMapWorkspace } from "../../../components/physical-map-workspace";
+import Link from "next/link";
+import room from "../../../components/control-room.module.css";
+import ws from "../../../components/operations-workspace.module.css";
+import { requireDashboardDestination } from "../../../lib/dashboard-destination-guard";
 import { dashboardSessionCanOpenDestination } from "../../../lib/dashboard-destination-guard";
 import { mapRange } from "../../../lib/physical-map-workspace";
 import { SectionHeading } from "@product/ui";
 import { messages } from "@product/config";
 import { AnalyticsPanels } from "../../../components/analytics-panels";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
-import { PhysicalTapsCommandCenter } from "../../../components/physical-taps-command-center";
 import { dashboardContent } from "../../../lib/dashboard-content";
-import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
 import { getDashboardI18n } from "../../../lib/locale";
 import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
-import { readPhysicalTaps } from "../../../lib/physical-taps-read";
 
 type CoordinateProvenance = {
   coordinateSource?: string;
@@ -186,13 +186,13 @@ async function getAnalytics({
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { locale } = await getDashboardI18n();
-  const session = await requireDashboardSession();
+  const session = await requireDashboardDestination("analytics");
   const query = await searchParams;
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
   const isTenantAdmin = !adminContext.canSelectTenant;
   const source = isTenantAdmin ? "real" : ((query.source || "all") as "real" | "demo" | "imported" | "all");
-  const range = (query.range || "30d") as "24h" | "7d" | "30d";
+  const range = mapRange(query.range || "30d");
   const country = (query.country || "").trim();
 
   const fallbackLocale = "es-AR" as const;
@@ -200,14 +200,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const translation = messages[locale] ?? messages[fallbackLocale];
   const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
   const allowDemoData = Boolean(session.isDemo || (adminContext.canSelectTenant && source === "demo"));
-  const [analyticsData, physicalTapsResult] = await Promise.all([
-    getAnalytics({ context: adminContext, source, range, country, allowDemoData }),
-    readPhysicalTaps({
-      context: adminContext,
-      range: mapRange(query.range),
-      isDemoSession: Boolean(session.isDemo),
-    }),
-  ]);
+  const analyticsData = await getAnalytics({ context: adminContext, source, range, country, allowDemoData });
   const mapMode = analyticsData.source === "demo" ? "demo" : isTenantAdmin ? "tenant" : "global";
   const confirmedSourceLabel = analyticsData.source === "production"
     ? "production"
@@ -217,9 +210,9 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     : copy.pages.analytics.description;
 
   return (
-    <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.analytics} title={copy.pages.analytics.title} description={analyticsDescription} />
-      <div id="analytics-active-scope" className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+    <main className={`${ws.workspace} ${room.historical}`} data-testid="historical-analytics">
+      <header className={room.header}><div><h1>Analítica histórica</h1><p>Tendencias y resultados del período · sin seguimiento continuo</p></div><nav aria-label="Espacios de trabajo">{dashboardSessionCanOpenDestination(session,"map") && <Link prefetch={false} href={`/analytics/map${tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : ""}`}>Abrir mapa</Link>}<Link prefetch={false} href="/">Centro en vivo</Link></nav></header>
+      <div id="analytics-active-scope" className="rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
         <span className="ml-2">Fuente confirmada: <b className="text-white">{confirmedSourceLabel}</b> · Filtro solicitado: <b className="text-white">{source}</b> · Rango: <b className="text-white">{range}</b> · Country: <b className="text-white">{country || "all"}</b>.</span>
         {analyticsData.meta.demoMode ? (
@@ -228,7 +221,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           </span>
         ) : null}
       </div>
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+      <div className="my-3 rounded-xl border border-white/10 bg-slate-900/40 p-3">
         <form aria-describedby="analytics-active-scope" aria-label="Filtros de analytics" className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-5">
           <label className="grid gap-1.5 text-xs font-bold text-slate-300">
             Ventana temporal
@@ -266,13 +259,6 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <button suppressHydrationWarning type="submit" className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Aplicar filtros</button>
         </form>
       </div>
-      {dashboardSessionCanOpenDestination(session,"map") && <PhysicalMapWorkspace result={physicalTapsResult} tenantSlug={tenantScope} country={country} />}
-      <PhysicalTapsCommandCenter
-        result={physicalTapsResult}
-        tenantSlug={tenantScope}
-        tenantDisplayName={tenantScope === "demobodega" ? "Bodega Balmec" : tenantScope || "tenant actual"}
-        clerkEnabled={isClerkConfiguredForRuntime()}
-      />
       {analyticsData.availability === "ready" && analyticsData.data ? (
         <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData.data} mapMode={mapMode} dataSource={analyticsData.source} sourceDetail={analyticsData.detail} />
       ) : (

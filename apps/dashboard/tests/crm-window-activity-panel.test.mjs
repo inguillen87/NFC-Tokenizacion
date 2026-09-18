@@ -111,7 +111,7 @@ test("new controls use the existing scoped drawer and authorized destinations on
 test("the rail names observed activity and obsolete recommendation-only code is gone", () => {
   assert.match(crm, /label: "Actividad", short: "DATOS", title: "Ver zonas, productos y eventos observados en esta ventana\."/);
   assert.match(crm, /getElementById\("window-activity-panel"\)/);
-  assert.match(crm, />CRM y trazabilidad<\/h1>/);
+  assert.match(crm, /controlRoom\.enabled \? "Centro en Vivo" : "CRM y trazabilidad"/);
   assert.doesNotMatch(crm, /COMMERCIAL_CONTEXTS|MarketOpportunity|commercialRecommendation|buildMarketOpportunities|offerReady|campaignDraft|const alerts =/);
   assert.match(panel, /<details className="nexid-crm-activity-method">[\s\S]*Apertura no equivale a riesgo/);
 });

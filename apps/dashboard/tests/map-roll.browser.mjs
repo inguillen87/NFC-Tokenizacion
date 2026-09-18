@@ -32,6 +32,10 @@ try {
   await page.screenshot({path:join(out,'map-mobile.png'),fullPage:true});
   report.map={loaded:true,rows:3,search:true,eventsLayer:true,mobileNoOverflow:true};
   await page.setViewportSize({width:1440,height:1000});
+  const mapBox=await page.locator('[data-testid="crm-maplibre-map"]:visible').boundingBox();
+  assert.ok(mapBox.y<=330, "Map first viewport top: "+mapBox.y);
+  report.map.top=mapBox.y;
+  await page.setViewportSize({width:1440,height:1000});
   response=await page.goto(base+'/batches/QA-ROLL-01',{waitUntil:'load',timeout:90000});assert.equal(response.status(),200);
   await page.waitForFunction(()=>document.querySelectorAll('[data-testid="batch-roll-workspace"]').length===1);
   await page.locator('[data-testid="batch-roll-workspace"]:visible').waitFor();
@@ -53,6 +57,19 @@ try {
   assert.ok(state.calls.filter(c=>c.path.endsWith('/import-manifest')).every(c=>c.activateImported===false));
   assert.deepEqual(state.calls.find(c=>c.path.endsWith('/product-config')).fields,['product_name']);
   report.roll={productSaved:true,onlyChangedFields:true,validationBeforeImport:true,explicitConfirmation:true,imports:1,activated:false};
+  await page.goto(base+'/analytics?range=7d',{waitUntil:'load',timeout:60000});
+  await page.locator('[data-testid="historical-analytics"]:visible').waitFor();
+  assert.equal(await page.locator('[data-testid="physical-map-workspace"]:visible').count(),0);
+  assert.equal(await page.locator('.maplibregl-canvas:visible').count(),0);
+  await page.screenshot({path:join(out,'analytics-historical.png'),fullPage:false});
+  report.analytics={separateHistoricalView:true,noMapMounted:true};
+  await page.goto(base+'/',{waitUntil:'load',timeout:60000});
+  const roomButton=page.getByRole('button',{name:'Modo sala',exact:true});await roomButton.waitFor();
+  await roomButton.click();await page.waitForFunction(()=>document.querySelector('[data-display-mode="room"]'));
+  await page.waitForTimeout(600);await page.screenshot({path:join(out,'control-room.png'),fullPage:false});
+  assert.equal(await page.locator('section[aria-label="Indicadores de sala de control"]:visible').count(),1);
+  await page.getByRole('button',{name:'Salir de modo sala',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-display-mode="workspace"]'));
+  report.controlRoom={enter:true,exit:true,sharedStream:true};
   assert.deepEqual(report.errors,[]);report.status='passed';
 } catch(e){report.status='failed';report.error=e.stack;await page.screenshot({path:join(out,'failure.png'),fullPage:true}).catch(()=>{});throw e;}
 finally {await writeFile(join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));await browser.close();}

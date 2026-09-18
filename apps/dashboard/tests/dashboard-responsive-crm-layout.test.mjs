@@ -41,7 +41,8 @@ test("the desktop shell allocates natural header and footer rows around both bou
 
 test("bounded map evidence regions remain available to keyboard scrolling and focus", () => {
   assert.match(crm, /tabIndex=\{0\} role="region" aria-label="Últimos eventos visibles" data-incident-event-list/);
-  assert.match(crm, /tabIndex=\{0\} role="region" aria-label="Leyenda y fuente del mapa"/);
+  assert.match(crm, /<details aria-label="Leyenda y fuente del mapa"/);
+  assert.match(crm, /<summary>Cómo leer la capa y su evidencia<\/summary>/);
   assert.match(globals, /\.nexid-crm-events-rail\s*\{[^}]*min-height: 0;[^}]*overscroll-behavior-y: contain;[^}]*scrollbar-gutter: stable/);
   assert.match(globals, /:is\(\.nexid-crm-events-rail, \.nexid-crm-map-legend\):focus-visible\s*\{[^}]*outline: 3px solid var\(--crm-accent\);[^}]*outline-offset: -4px/);
 });

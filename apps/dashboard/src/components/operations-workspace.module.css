@@ -51,3 +51,6 @@
 .scopeFilters summary { padding:14px 16px; min-height:46px; color:var(--ws-text); font-size:13px; font-weight:750; cursor:pointer; }
 .scopeFilters .toolbar { margin:0; border:0; }
 @media(max-width:640px) { .mapControls { flex-direction:column; align-items:stretch; } .mapControls .links { display:flex; flex-wrap:nowrap; } .mapControls .button { flex:1; min-width:0; padding:10px 8px; } .metrics { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; } .metric { padding:10px 8px; } .metric b { font-size:22px; } .metric span { font-size:10px; } }
+
+.compact .mapGrid{grid-template-columns:minmax(0,1fr) 235px}.compact .canvas{height:clamp(440px,calc(100dvh - 290px),1000px)}.compact .toolbar{padding:8px 10px;gap:10px;margin:0 0 8px;border-radius:12px}.compact .field input,.compact .field select{min-height:38px;padding:7px 10px}.compact .mapControls{padding:8px;gap:6px}.compact .button{min-height:38px;padding:8px 10px}.compact .side{padding:14px;max-height:72dvh}.compact .expanded .canvas{height:calc(100dvh - 65px)}
+@media(max-width:1100px){.compact .mapGrid{grid-template-columns:1fr}.compact .side{max-height:210px}}

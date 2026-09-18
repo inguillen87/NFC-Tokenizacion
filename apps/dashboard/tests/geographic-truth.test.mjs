@@ -128,9 +128,9 @@ test("aggregated analytics points never invent a route or current recency", () =
   assert.doesNotMatch(analyticsSource, /new Date\(\)\.toISOString\(\)/);
   assert.match(analyticsSource, /const cityLastSeenByKey = useMemo/);
   assert.match(analyticsSource, /lastSeen: cityLastSeenByKey\.get/);
-  assert.match(analyticsSource, /Referencia inicial y ultimo tap reportado/);
-  assert.match(analyticsSource, /originSource=product_passport_declared/);
-  assert.match(analyticsSource, /first_observed_event no se presenta como ruta logistica/);
+  assert.doesNotMatch(analyticsSource, /<DemoOpsMap/);
+  assert.match(analyticsSource, /isDeclaredProductOrigin\(item\.originSource\)/);
+  assert.match(analyticsSource, /sin distancia logistica/);
   assert.match(analyticsSource, /isDeclaredProductOrigin\(item\.originSource\)/);
   assert.match(analyticsSource, /Primer tap reportado/);
   assert.doesNotMatch(analyticsSource, /última ubicación verificada/);
