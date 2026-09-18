@@ -1,12 +1,12 @@
 {
-  "release": "2026.09.18-api-channels.1",
-  "scope": "batch-carrier-state-gs1-registration-and-registered-qr-export",
-  "baseCommit": "28946beed6cdd964c9249db5e8e8bfd9cc3f1fae",
+  "release": "2026.09.18-api-recalls.1",
+  "scope": "batch-recall-follow-up-and-public-product-notices",
+  "baseCommit": "16022a80ae7d45abad58f4e12c485d2f1382f2fe",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
-  "databaseMigrationsIncluded": false,
-  "requiredMigration": "20260918123000_0105_passport_editorial_guards.sql",
+  "databaseMigrationsIncluded": true,
+  "requiredMigration": "20260918180000_0106_batch_recall_workflow.sql",
   "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
   "campaignDeliveryIncluded": false,
@@ -15,10 +15,12 @@
     "20260906120000_0102_campaign_drafts.sql",
     "20260918050000_0103_logistics_atomic_operations.sql",
     "20260918120000_0104_passport_editorial.sql",
-    "20260918123000_0105_passport_editorial_guards.sql"
+    "20260918123000_0105_passport_editorial_guards.sql",
+    "20260918180000_0106_batch_recall_workflow.sql"
   ],
   "logisticsOperationProtocol": "nexid.logistics.v1",
   "passportStudioProtocol": "nexid.passport-studio.v1",
   "receptionProtocol": "nexid.supplier-reception.v1",
-  "channelProtocol": "nexid.batch-channels.v1"
+  "channelProtocol": "nexid.batch-channels.v1",
+  "recallProtocol": "nexid.batch-recalls.v1"
 }
