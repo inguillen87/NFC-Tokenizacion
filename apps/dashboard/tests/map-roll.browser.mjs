@@ -37,12 +37,14 @@ try {
   report.map.top=mapBox.y;
   await page.setViewportSize({width:1440,height:1000});
   response=await page.goto(base+'/batches/QA-ROLL-01',{waitUntil:'load',timeout:90000});assert.equal(response.status(),200);
-  await page.waitForFunction(()=>document.querySelectorAll('[data-testid="batch-roll-workspace"]').length===1);
-  await page.locator('[data-testid="batch-roll-workspace"]:visible').waitFor();
+  await page.waitForFunction(()=>document.querySelectorAll('[data-testid="batch-dossier"]').length===1);
+  await page.locator('[data-testid="batch-dossier"]:visible').waitFor();
+  await page.getByRole('tab',{name:'Producto',exact:true}).click();
   const editor=page.locator('[data-testid="roll-product-identity"]:visible');
   await editor.getByRole('textbox',{name:'Nombre del producto',exact:true}).fill('Producto editado LOCAL');
   await editor.getByRole('checkbox').check();await editor.getByRole('button',{name:'Guardar ficha del rollo'}).click();
   await editor.getByRole('status').filter({hasText:'Ficha guardada'}).waitFor();
+  await page.getByRole('tab',{name:'Unidades y recepción',exact:true}).click();
   const intake=page.locator('[data-testid="roll-manifest-intake"]:visible');
   await intake.locator('summary').click();
   await intake.locator('input[type="file"]').setInputFiles({name:'rollo-qa.csv',mimeType:'text/csv',buffer:Buffer.from('uid,bid\n04000000000001,QA-ROLL-01\n04000000000002,QA-ROLL-01')});

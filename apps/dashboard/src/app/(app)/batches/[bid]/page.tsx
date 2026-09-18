@@ -1,8 +1,13 @@
 import { RollProductIdentity } from "../../../../components/roll-product-identity";
-import { BatchRollWorkspace } from "../../../../components/batch-roll-workspace";
+import { BatchDossierShell } from "../../../../components/batch-dossier-shell";
+import { BatchUnitEvidence } from "../../../../components/batch-unit-evidence";
+import { BatchDossierReadings } from "../../../../components/batch-dossier-readings";
+import { RollManifestIntake } from "../../../../components/roll-manifest-intake";
+import { buildBatchDossier } from "../../../../lib/batch-dossier-model";
+import styles from "../../../../components/batch-dossier.module.css";
 import { dashboardSessionCanOpenDestination } from "../../../../lib/dashboard-destination-guard";
 import Link from "next/link";
-import { Card, SectionHeading } from "@product/ui";
+import { SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
 import { BatchSunValidator } from "../../../../components/batch-sun-validator";
 import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state";
@@ -51,15 +56,6 @@ function text(value: unknown, fallback = "-") {
   return output || fallback;
 }
 
-function numberValue(value: unknown) {
-  const parsed = Number(value || 0);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatNumber(value: unknown) {
-  return numberValue(value).toLocaleString("es-AR");
-}
-
 function formatCarrierAdminCopy(value: unknown) {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -70,18 +66,6 @@ function formatCarrierAdminCopy(value: unknown) {
     copy.bestFor ? `Ideal para: ${String(copy.bestFor)}` : "",
     copy.avoid ? `No prometer: ${String(copy.avoid)}` : "",
   ].filter(Boolean).join(" ");
-}
-
-function maskUid(uid: unknown) {
-  const raw = String(uid || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
-  if (!raw) return "-";
-  if (raw.length <= 8) return `${raw.slice(0, 4)}****`;
-  return `${raw.slice(0, 4)}****${raw.slice(-4)}`;
-}
-
-function objectEntries(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return [] as Array<[string, unknown]>;
-  return Object.entries(value as Record<string, unknown>).filter(([, entry]) => String(entry ?? "").trim() !== "");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -95,7 +79,7 @@ function selectBatch(payload: unknown): BatchSummary | null {
 
 async function getBatch(context: AdminPageContext, bid: string): Promise<AdminResourceReadResult<BatchSummary>> {
   try {
-    const response = await fetchAdminPage(context, `batches/${encodeURIComponent(bid)}/summary`);
+    const response = await fetchAdminPage(context, `batches/${encodeURIComponent(bid)}/summary`, {signal:AbortSignal.timeout(12000)});
     const result = await readAdminResourceResponse(response, selectBatch);
     if (result.availability !== "ready") return result;
 
@@ -105,36 +89,15 @@ async function getBatch(context: AdminPageContext, bid: string): Promise<AdminRe
     if (normalizedTenantScope && batchTenantSlug !== normalizedTenantScope) {
       return adminResourceFailure("scope_mismatch", result.status);
     }
+    if (!buildBatchDossier(result.data, bid, normalizedTenantScope, new Date().toISOString())) return adminResourceFailure("invalid_payload", result.status);
     return result;
   } catch {
     return adminResourceFailure("unreachable");
   }
 }
 
-function Fact({ label, value }: { label: string; value: unknown }) {
-  return (
-    <div>
-      <dt className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-semibold text-white">{text(value)}</dd>
-    </div>
-  );
-}
-
-function Metric({ label, value, detail, tone = "neutral" }: { label: string; value: unknown; detail: string; tone?: "good" | "warn" | "bad" | "neutral" }) {
-  const toneClass = tone === "good"
-    ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
-    : tone === "warn"
-      ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
-      : tone === "bad"
-        ? "border-rose-300/25 bg-rose-500/10 text-rose-100"
-        : "border-white/10 bg-slate-950/55 text-slate-200";
-  return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] opacity-75">{label}</p>
-      <p className="mt-2 text-2xl font-black text-white">{typeof value === "number" ? formatNumber(value) : text(value)}</p>
-      <p className="mt-1 text-xs leading-5 opacity-80">{detail}</p>
-    </div>
-  );
+function Fact({label,value}:{label:string;value:unknown}) {
+  return <div><dt>{label}</dt><dd>{text(value,"No informado")}</dd></div>;
 }
 
 export default async function BatchDetailPage({ params }: { params: Promise<{ bid: string }> }) {
@@ -164,16 +127,12 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
   const product = batchData?.product_identity || {};
   const unit = batchData?.unit_metadata || {};
   const samples = Array.isArray(unit.samples) ? unit.samples : [];
-  const manifests = Array.isArray(batchData?.manifests) ? batchData?.manifests || [] : [];
   const tenantSlug = text(batchData?.tenant_slug, "tenant");
   const firstUid = samples[0]?.uid_hex || "";
   const publicMobile = firstUid
     ? `${productUrls.web}/demo-lab/mobile/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(String(firstUid))}?pack=${encodeURIComponent(text(product.sku || batchData?.sku, "batch"))}&bid=${encodeURIComponent(bid)}&demoMode=consumer_tap`
     : "";
   const carrierAdminCopy = formatCarrierAdminCopy(batchData?.carrier_admin_copy);
-  const imported = numberValue(batchData?.imported_tags);
-  const active = numberValue(batchData?.active_tags);
-  const overrides = numberValue(unit.unit_product_overrides);
   const sdmConfig = (batchData?.sdm_config && typeof batchData.sdm_config === "object") ? (batchData.sdm_config as Record<string, any>) : {};
   const sunProduct = sdmConfig.sun?.product || {};
   const sunOrigin = sdmConfig.sun?.origin || {};
@@ -212,191 +171,44 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
     simulated_shock: sunTelemetry.simulatedShock || sunProduct.simulatedShock || "",
   };
 
-  return (
-    <main className="space-y-8">
-      <SectionHeading
-        eyebrow="Batch CRM"
-        title={bid}
-        description="Separacion operativa: la ficha del lote define el producto; el manifest define UID, seriales, sensores y excepciones por unidad."
-      />
-      {batch.availability === "not_found" ? (
-        <EnterpriseOpsState
-          variant="empty"
-          title="Batch no encontrado en este scope"
-          description="La API confirmó HTTP 404 para este BID y el alcance actual. Revisá el identificador o el tenant antes de registrar un lote nuevo."
-          action={<Link href="/batches" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Volver a batches</Link>}
-          testId="batch-detail-not-found"
-        />
-      ) : batch.availability !== "ready" ? (
-        <EnterpriseOpsState
-          variant="error"
-          title="No se pudo cargar el batch"
-          description="La fuente administrativa no entregó un resultado confiable. Este estado no significa que el BID no exista ni representa métricas en cero."
-          checklist={[
-            `Estado de lectura: ${batch.availability}`,
-            batch.status ? `Respuesta upstream: HTTP ${batch.status}` : "La fuente no respondió",
-          ]}
-          action={<Link href={`/batches/${encodeURIComponent(bid)}`} className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100">Reintentar lectura</Link>}
-          testId="batch-detail-source-unavailable"
-        />
-      ) : !batchData ? null : (
-        <>
-          <BatchRollWorkspace bid={bid} productName={text(product.product_name || batchData.product_name, "")} tenantSlug={tenantSlug} imported={imported} active={active} expected={numberValue(batchData.requested_quantity)} canConfigure={canConfigureProduct} canImport={dashboardPermissionMatches(session.permissions,"manifest.import",session.deniedPermissions)} canSupplier={dashboardSessionCanOpenDestination(session,"supplierBatches")} canMap={dashboardSessionCanOpenDestination(session,"map")} isDemo={Boolean(session.isDemo)} />
-          <div className="grid gap-3 md:grid-cols-4">
-            <Metric label="Tenant" value={tenantSlug} detail="Scope comercial del lote." tone="neutral" />
-            <Metric label="Tags importados" value={imported} detail={`${formatNumber(active)} activos ahora.`} tone={imported ? "good" : "warn"} />
-            <Metric label="Metadata unidad" value={unit.unit_metadata_rows || 0} detail="Seriales, botellas, cajas, pallets." tone={numberValue(unit.unit_metadata_rows) ? "good" : "neutral"} />
-            <Metric label="IoT / sensores" value={unit.iot_metadata_rows || 0} detail="Humedad, temperatura, logger, shock." tone={numberValue(unit.iot_metadata_rows) ? "good" : "neutral"} />
-          </div>
-
-          <div id="roll-product-summary" className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <Card className="p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ficha de lote / producto</p>
-                  <h2 className="mt-2 text-2xl font-black text-white">{text(product.product_name || batchData.product_name, "Producto pendiente")}</h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                    Esta ficha aplica a todos los UIDs del batch. Un UID solo cambia producto si existe un override explicito y auditado.
-                  </p>
-                </div>
-                <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-100">source: batch</span>
-              </div>
-              <dl className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <Fact label="Lote comercial visible" value={publicLotLabel || "No configurado"} />
-                <Fact label="SKU" value={product.sku || batchData.sku} />
-                <Fact label="Bodega / marca" value={product.winery} />
-                <Fact label="Region" value={product.region} />
-                <Fact label="Varietal" value={product.grape_varietal} />
-                <Fact label="Vintage" value={product.vintage} />
-                <Fact label="Mercado" value={product.target_market} />
-                <Fact label="Cosecha" value={product.harvest_year} />
-                <Fact label="Barrica" value={product.barrel_months ? `${text(product.barrel_months)} meses` : ""} />
-                <Fact label="Guarda" value={product.temperature_storage} />
-              </dl>
-              {overrides ? (
-                <p className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-100">
-                  Hay {formatNumber(overrides)} overrides de producto por UID. Usalos solo para excepciones comerciales, no para representar botellas normales del mismo lote.
-                </p>
-              ) : (
-                <p className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
-                  Sin overrides de producto por UID: arquitectura correcta para lotes de miles de botellas con una ficha comun.
-                </p>
-              )}
-            </Card>
-
-            <Card className="p-6">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Seguridad del lote</p>
-              <h2 className="mt-2 text-xl font-black text-white">{text(batchData.carrier_label || batchData.carrier_profile_code, "Carrier pendiente")}</h2>
-              <dl className="mt-5 space-y-4">
-                <Fact label="Status" value={batchData.status} />
-                <Fact label="Security level" value={batchData.carrier_security_level ? `L${text(batchData.carrier_security_level)}` : ""} />
-                <Fact label="Profile" value={batchData.batch_profile || "custom"} />
-                <Fact label="Chip model" value={batchData.chip_model || batchData.type} />
-                <Fact label="Cantidad planificada" value={formatNumber(batchData.requested_quantity)} />
-                <Fact label="Keys cargadas" value={batchData.has_meta_key || batchData.has_file_key ? "si" : "pendiente"} />
-              </dl>
-              {carrierAdminCopy ? (
-                <div className="mt-5 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-xs leading-5 text-cyan-100">
-                  {carrierAdminCopy}
-                </div>
-              ) : null}
-            </Card>
-          </div>
-
-          <Card className="p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Metadata de unidades / IoT / manifest</p>
-                <h2 className="mt-2 text-2xl font-black text-white">UIDs fisicos sin mezclar identidad comercial</h2>
-                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
-                  Aca vive lo variable por botella: UID, numero de etiqueta, caja, pallet, sensor logger, humedad, temperatura y archivo importado.
-                </p>
-              </div>
-              <Link href="/batches/supplier" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100">Importar manifest</Link>
-            </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-4">
-              <Metric label="Tag profiles" value={unit.tag_profile_rows || 0} detail="Filas con metadata adicional." tone={numberValue(unit.tag_profile_rows) ? "good" : "neutral"} />
-              <Metric label="Overrides producto" value={overrides} detail="Excepciones por UID." tone={overrides ? "warn" : "good"} />
-              <Metric label="Manifests" value={manifests.length} detail="Ultimas cargas auditadas." tone={manifests.length ? "good" : "neutral"} />
-              <Metric label="Pendientes" value={Math.max(imported - active, 0)} detail="Importadas no activas." tone={imported - active > 0 ? "warn" : "good"} />
-            </div>
-            <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
-              <div className="grid grid-cols-[1.1fr_0.8fr_1fr_1fr] gap-3 border-b border-white/10 bg-slate-950/70 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                <span>UID / estado</span>
-                <span>Unidad</span>
-                <span>IoT</span>
-                <span>Notas</span>
-              </div>
-              {samples.length ? samples.map((sample) => {
-                const unitEntries = objectEntries(sample.unit_metadata).slice(0, 3);
-                const iotEntries = objectEntries(sample.iot).slice(0, 3);
-                return (
-                  <div key={`${sample.uid_hex}-${sample.serial}`} className="grid grid-cols-[1.1fr_0.8fr_1fr_1fr] gap-3 border-b border-white/10 px-4 py-3 text-xs text-slate-300 last:border-b-0">
-                    <div>
-                      <b className="block font-mono text-white">{maskUid(sample.uid_hex)}</b>
-                      <span className="mt-1 block text-slate-500">{text(sample.status)} / {text(sample.carrier_profile_code, "carrier batch")}</span>
-                    </div>
-                    <div>
-                      <b className="block text-white">{text(sample.serial || sample.lot, "sin serial")}</b>
-                      {unitEntries.map(([key, value]) => <span key={key} className="block text-slate-500">{key}: {text(value)}</span>)}
-                    </div>
-                    <div>
-                      {iotEntries.length ? iotEntries.map(([key, value]) => <span key={key} className="block text-cyan-100">{key}: {text(value)}</span>) : <span className="text-slate-500">sin sensor</span>}
-                    </div>
-                    <div>
-                      {sample.product_override ? (
-                        <span className="rounded-full border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[10px] font-black text-amber-100">override: {text(sample.product_name || sample.sku)}</span>
-                      ) : (
-                        <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-100">usa ficha del lote</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              }) : (
-                <p className="px-4 py-6 text-sm text-slate-400">Sin muestras de UID todavia. Importa un manifest para ver seriales, IoT y excepciones.</p>
-              )}
-            </div>
-          </Card>
-          
-          {canManageLifecycle || canRevoke ? (
-            <BatchLifecycleControl
-              bid={bid}
-              currentState={text(batchData?.status, "draft")}
-              canManageLifecycle={canManageLifecycle}
-              canRevoke={canRevoke}
-            />
-          ) : null}
-
-          {canConfigureProduct ? <>
-            <RollProductIdentity bid={bid} initial={{product_name: initialFormData.product_name || "", public_lot_label: initialFormData.public_lot_label || "", sku: initialFormData.sku || "", winery: initialFormData.winery || "", region: initialFormData.region || "", image_url: initialFormData.image_url || ""}} />
-            <details className="rounded-2xl border border-white/10 p-4"><summary className="min-h-11 cursor-pointer font-bold">Ficha avanzada de vinos y telemetría ilustrativa</summary><BatchConfigFormClient key={JSON.stringify(initialFormData)} bid={bid} initialData={initialFormData} /></details>
-          </> : null}
-
-          <Card className="p-6">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ops next</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-4">
-              {[
-                "Completar ficha comercial del lote antes de importar miles de UIDs.",
-                "Importar manifest UID-only o con metadata unidad/IoT sin copiar producto por fila.",
-                "Activar tags y probar un tap fisico real del batch.",
-                "Revisar que claim/ownership solo se habilite con compra, POS, PIN o aprobacion.",
-              ].map((item) => (
-                <div key={item} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-sm leading-6 text-slate-300">{item}</div>
-              ))}
-            </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/batches" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Volver a batches</Link>
-              <Link href="/batches/supplier" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Abrir supplier flow</Link>
-              <Link href="/tags" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</Link>
-              <Link href="/events" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</Link>
-              {publicMobile ? <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100">Preview mobile del primer UID</a> : null}
-            </div>
-            <div className="mt-6">
-              <div id="roll-physical-check" className="scroll-mt-28"><BatchSunValidator bid={bid} /></div>
-            </div>
-          </Card>
-        </>
-      )}
-    </main>
-  );
+  if (batch.availability !== "ready" || !batchData) {
+    return <main className="space-y-6"><SectionHeading eyebrow="Expediente del lote" title={bid} description="La fuente debe confirmar este lote antes de mostrar datos o habilitar acciones." />
+      {batch.availability === "not_found" ? <EnterpriseOpsState variant="empty" title="Batch no encontrado en este scope" description="La API confirmó HTTP 404 para este BID y el alcance actual. Revisá el identificador antes de registrar otro lote." action={<Link prefetch={false} href="/batches">Volver a lotes</Link>} testId="batch-detail-not-found" />
+      : <EnterpriseOpsState variant="error" title="No se pudo cargar el lote" description="La fuente administrativa no entregó un resultado confiable. Este estado no significa que el BID no exista ni representa métricas en cero." checklist={[`Estado: ${batch.availability}`]} action={<Link prefetch={false} href={`/batches/${encodeURIComponent(bid)}`}>Reintentar lectura</Link>} testId="batch-detail-source-unavailable" />}
+    </main>;
+  }
+  const dossier = buildBatchDossier(batchData,bid,adminContext.tenantSlug,new Date().toISOString());
+  if (!dossier) return <EnterpriseOpsState variant="error" title="Expediente sin confirmar" description="La respuesta no confirmó un lote y una empresa coherentes." testId="batch-detail-source-unavailable" />;
+  const access = {
+    configure:canConfigureProduct, import:dashboardPermissionMatches(session.permissions,"manifest.import",session.deniedPermissions),
+    lifecycle:canManageLifecycle, revoke:canRevoke, demo:Boolean(session.isDemo),
+    events:dashboardSessionCanOpenDestination(session,"events"), map:dashboardSessionCanOpenDestination(session,"map"),
+    supplier:dashboardSessionCanOpenDestination(session,"supplierBatches"), tags:dashboardSessionCanOpenDestination(session,"tags"),
+  };
+  const productPanel = <div className={styles.stack}>
+    <section id="roll-product-summary" className={styles.card}><h2>Ficha compartida por todas las unidades</h2><p>Identidad comercial declarada para el lote. No modifica la autenticidad del chip ni la evidencia de apertura.</p>
+      <dl className={styles.facts}><Fact label="Producto" value={dossier.name}/><Fact label="Lote comercial visible" value={publicLotLabel || "No configurado"}/><Fact label="SKU" value={dossier.sku}/><Fact label="Marca / fabricante" value={dossier.brand}/><Fact label="Región declarada" value={dossier.region}/><Fact label="Mercado" value={product.target_market}/></dl>
+    </section>
+    {canConfigureProduct ? <>
+      <p className={styles.note}>Los cambios sin guardar se conservan al alternar secciones. Recargar o salir no los guarda: confirmá antes de hacerlo.</p>
+      <RollProductIdentity bid={bid} initial={{product_name: initialFormData.product_name || "", public_lot_label: initialFormData.public_lot_label || "", sku: initialFormData.sku || "", winery: initialFormData.winery || "", region: initialFormData.region || "", image_url: initialFormData.image_url || ""}} />
+      <details className={styles.card}><summary>Ficha específica de vinos y telemetría ilustrativa</summary><p className={styles.note}>Se conservan los campos propios de este rubro. Un valor ilustrativo no es una medición de un sensor.</p><BatchConfigFormClient key={JSON.stringify(initialFormData)} bid={bid} initialData={initialFormData}/></details>
+    </> : <p className={styles.notice}>Tu rol puede consultar la ficha, pero no editarla. El administrador gestiona el permiso batch.product.configure.</p>}
+  </div>;
+  const unitsPanel = <div className={styles.stack}>
+    {dossier.imported===null?<p className={styles.notice}>La recepción está pausada en esta vista hasta confirmar el conteo de unidades del lote.</p>:<RollManifestIntake key={bid} bid={bid} canImport={access.import&&!access.demo} alreadyRegistered={dossier.imported>0}/>}
+    <BatchUnitEvidence model={dossier}/>
+  </div>;
+  const operationsPanel = <div className={styles.stack}>
+    <section className={styles.card}><h2>Operación con permisos separados</h2><p>Consultar, editar producto, importar, cambiar estado y revocar son acciones diferentes. El backend conserva la autorización y los controles correspondientes.</p><dl className={styles.facts}><Fact label="Perfil NFC" value={dossier.carrier}/><Fact label="Estado informado" value={batchData.status}/><Fact label="Referencia Meta" value={dossier.hasMetaKey===null?"No informada":dossier.hasMetaKey?"Registrada":"No registrada"}/><Fact label="Referencia File" value={dossier.hasFileKey===null?"No informada":dossier.hasFileKey?"Registrada":"No registrada"}/></dl>{carrierAdminCopy&&<p className={styles.notice}>{carrierAdminCopy}</p>}</section>
+    {canManageLifecycle || canRevoke ? (dossier.status ? <BatchLifecycleControl bid={bid} currentState={dossier.status} canManageLifecycle={canManageLifecycle} canRevoke={canRevoke}/> : <p className={styles.notice}>La fuente no informó el estado actual. No se supone un borrador ni se habilita una transición a ciegas.</p>) : <p className={styles.notice}>Tu cuenta no tiene permisos para cambiar el estado o revocar este lote.</p>}
+    <section className={styles.card}><h2>Calidad, diagnóstico y continuidad</h2><p>La aceptación física requiere su protocolo y actores autorizados. Un TAP autenticado no aprueba automáticamente un rollo ni demuestra una transferencia de propiedad.</p><div className={styles.actions}>
+      {access.supplier&&<Link prefetch={false} className={styles.button} href="/batches/supplier#supplier-order-console">Abrir protocolo de calidad</Link>}
+      {access.tags&&<Link prefetch={false} className={styles.button} href="/tags">Inventario de etiquetas</Link>}
+      {access.events&&<Link prefetch={false} className={styles.button} href="/events">Auditoría de eventos</Link>}
+      {publicMobile&&<a className={styles.button} href={publicMobile} target="_blank" rel="noreferrer">Vista ilustrativa del producto · no es un TAP</a>}
+    </div></section>
+    <details id="roll-physical-check" className={styles.card}><summary>Verificador técnico SUN · uso autorizado</summary><p className={styles.note}>Usá una lectura nueva para el diagnóstico. Esta herramienta no sustituye el protocolo de calidad ni modifica claves.</p>{access.events ? <BatchSunValidator bid={bid} canRepair={false}/> : <p className={styles.notice}>La cuenta no tiene acceso al diagnóstico de eventos sensibles.</p>}</details>
+  </div>;
+  return <BatchDossierShell key={`${dossier.tenant}:${bid}`} model={dossier} access={access} product={productPanel} units={unitsPanel} readings={<BatchDossierReadings key={`${dossier.tenant}:${bid}`} bid={bid} tenant={dossier.tenant} allowed={access.events} canMap={access.map} demo={access.demo}/>} operations={operationsPanel}/>;
 }
