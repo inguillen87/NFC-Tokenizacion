@@ -36,12 +36,7 @@ test("consumer CRM reports partial sources and withholds false zero metrics and 
   assert.match(consumerOverview, /Fuente de taps no disponible; no es un cero confirmado/);
 });
 
-test("batch operations distinguish unavailable sources from confirmed empty inventory", () => {
-  assert.match(batches, /type SourceAvailability/);
-  assert.match(batches, /batches-source-unavailable/);
-  assert.match(batches, /no convierte una falla del backend en inventario cero/);
-  assert.match(batches, /batchesReady \? batchProductReady/);
-  assert.match(batches, /assetsReady \? realPhotoRows/);
-  assert.match(batches, /this is not a confirmed zero/);
-  assert.doesNotMatch(batches, /if \(!response\.ok\) return \[\]/);
+test("batch operations distinguish unavailable sources from confirmed empty inventory", async () => {
+ const view=await readFile(new URL("../src/components/batch-workbench.tsx",import.meta.url),"utf8");
+ assert.match(batches,/rows:null/);assert.match(batches,/parseBatchWorkRows/);assert.match(view,/batches-source-unavailable/);assert.match(view,/no es inventario cero/);assert.match(view,/batches-empty/);assert.doesNotMatch(batches,/product-assets/);
 });

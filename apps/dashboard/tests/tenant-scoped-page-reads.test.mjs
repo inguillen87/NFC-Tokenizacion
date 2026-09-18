@@ -36,7 +36,7 @@ test("each page requires its dashboard session before starting its read", () => 
 });
 
 test("batch and supplier detail payloads fail closed when tenant scope does not match", () => {
-  assert.match(batchSource, /const adminContext = await createAdminPageContext\(session\)/);
+  assert.match(batchSource, /const adminContext = await createAdminPageContext\(session,query\.tenant\)/);
   assert.match(batchSource, /batchTenantSlug !== normalizedTenantScope/);
   assert.match(batchSource, /const batch = await getBatch\(adminContext, bid\)/);
 

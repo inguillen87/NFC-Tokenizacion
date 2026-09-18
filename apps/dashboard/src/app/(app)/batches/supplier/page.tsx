@@ -8,5 +8,5 @@ export default async function SupplierBatchPage({searchParams}:{searchParams:Pro
  const query=await searchParams,context=await createAdminPageContext(session,query.tenant);
  let data:ReceptionData|null=null;
  if(!session.isDemo){try{const response=await fetchAdminPage(context,'supplier-reception',{signal:AbortSignal.timeout(12000)});if(response.ok&&response.headers.get('x-nexid-data-mode')!=='demo')data=parseReception(await boundedDossierJson(response),{role:session.role,tenantSlug:session.tenantSlug||null,requestedTenant:context.tenantSlug,isDemo:false});}catch{/* Failure stays unavailable; never a fabricated tenant or zero inventory. */}}
- return <SupplierReceptionWorkspace key={`${session.id}:${context.tenantSlug}`} initial={data} requestedTenant={context.tenantSlug} access={{role:session.role,label:session.label,tenantSlug:session.tenantSlug||null,permissions:session.permissions,deniedPermissions:session.deniedPermissions||[],isDemo:session.isDemo===true}}/>;
+ return <SupplierReceptionWorkspace key={`${session.id}:${context.tenantSlug}`} initial={data} requestedTenant={context.tenantSlug} prepareNew={query.intent==='new'} access={{role:session.role,label:session.label,tenantSlug:session.tenantSlug||null,permissions:session.permissions,deniedPermissions:session.deniedPermissions||[],isDemo:session.isDemo===true}}/>;
 }

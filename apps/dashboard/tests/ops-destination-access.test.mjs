@@ -248,7 +248,7 @@ test("zero or invalid readiness bases have explanatory text and no invented perc
 });
 
 test("every Ops caller forwards the validated server decisions with no role-based bypass or new request", async () => {
-  const paths = ["../src/app/(app)/page.tsx", "../src/app/(app)/batches/page.tsx", "../src/app/(app)/superadmin-network/page.tsx"];
+  const paths = ["../src/app/(app)/page.tsx", "../src/app/(app)/superadmin-network/page.tsx"];
   for (const path of paths) {
     const source = await readFile(new URL(path, import.meta.url), "utf8");
     assert.match(source, /const session = await requireDashboardSession\(/, path);

@@ -11,9 +11,10 @@ import styles from './supplier-reception-workspace.module.css';
 type Access={role:string;label:string;tenantSlug:string|null;permissions:string[];deniedPermissions:string[];isDemo:boolean};
 const ROLE_LABELS:Record<string,string>={'super-admin':'Superadministrador de NexID','tenant-owner':'Responsable de la empresa','tenant-admin':'Administrador de la empresa','operations-manager':'Responsable de operaciones','packaging-operator':'Operador de recepción','marketing-manager':'Editor comercial',viewer:'Solo consulta'};
 const when=(v:string|null)=>v?new Intl.DateTimeFormat('es-AR',{dateStyle:'medium',timeStyle:'short',timeZone:'UTC'}).format(new Date(v))+' UTC':'Sin fecha informada';
-export function SupplierReceptionWorkspace({initial,access,requestedTenant}:{initial:ReceptionData|null;access:Access;requestedTenant:string}){
+export function SupplierReceptionWorkspace({initial,access,requestedTenant,prepareNew=false}:{initial:ReceptionData|null;access:Access;requestedTenant:string;prepareNew?:boolean}){
+ const canPrepareInitially=prepareNew&&!access.isDemo&&!!initial?.tenant&&initial.actor.capabilities['supplier_order.create'];
  const [data,setData]=useState(initial),[options,setOptions]=useState(initial?.tenantOptions||[]),[tenant,setTenant]=useState(access.tenantSlug||requestedTenant),[pending,setPending]=useState(false),[error,setError]=useState(initial?'':'La fuente no confirmó esta consulta. No se presume inventario cero.');
- const [tab,setTab]=useState<'reception'|'roles'|'operations'>('reception'),[profile,setProfile]=useState('current'),[selection,setSelection]=useState<{tenant:string;order:ReceptionOrder|null}|null>(null);
+ const [tab,setTab]=useState<'reception'|'roles'|'operations'>(canPrepareInitially?'operations':'reception'),[profile,setProfile]=useState('current'),[selection,setSelection]=useState<{tenant:string;order:ReceptionOrder|null}|null>(canPrepareInitially?{tenant:initial!.tenant!.slug,order:null}:null);
  const flight=useRef<AbortController|null>(null),alive=useRef(true);
  useEffect(()=>{alive.current=true;if(window.location.hash==='#supplier-order-console')setTab('operations');return()=>{alive.current=false;flight.current?.abort();};},[]);
  async function refresh(){

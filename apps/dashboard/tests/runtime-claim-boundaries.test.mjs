@@ -88,7 +88,7 @@ test("runtime rates and visual scores withhold values without a denominator", ()
 
   assert.match(assetBank, /"Sin score"/);
   assert.doesNotMatch(assetBank, /profile\.assetScore \?\? 0/);
-  assert.match(batches, /assetsReady && assetScores\.length/);
+  assert.doesNotMatch(batches, /assetScores|averageAssetScore/);
   assert.match(pilot, /snapshot\.assetsAvailable && snapshot\.scoredAssetProfiles > 0/);
   assert.match(superadmin, /assetScores\.length \? [`'"]/);
   assert.match(opsCenter, /Number\.isFinite\(tenant\.scans\) && tenant\.scans > 0 && Number\.isFinite\(tenant\.riskScore\)/);

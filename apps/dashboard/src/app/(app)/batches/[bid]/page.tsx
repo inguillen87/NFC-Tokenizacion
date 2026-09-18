@@ -100,7 +100,7 @@ function Fact({label,value}:{label:string;value:unknown}) {
   return <div><dt>{label}</dt><dd>{text(value,"No informado")}</dd></div>;
 }
 
-export default async function BatchDetailPage({ params }: { params: Promise<{ bid: string }> }) {
+export default async function BatchDetailPage({ params, searchParams }: { params: Promise<{ bid: string }>; searchParams?:Promise<Record<string,string|string[]|undefined>> }) {
   const session = await requireDashboardSession("batches:read");
   const { bid } = await params;
   const canManageLifecycle = dashboardHighImpactPermissionMatches(
@@ -121,7 +121,8 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
     "batch.product.configure",
     session.deniedPermissions,
   );
-  const adminContext = await createAdminPageContext(session);
+  const query=searchParams?await searchParams:{};
+  const adminContext = await createAdminPageContext(session,query.tenant);
   const batch = await getBatch(adminContext, bid);
   const batchData = batch.data;
   const product = batchData?.product_identity || {};

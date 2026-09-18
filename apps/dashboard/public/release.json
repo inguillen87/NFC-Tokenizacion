@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.18-dashboard.11",
-  "scope": "factory-reception-workspace-session-authority-and-role-visibility",
+  "release": "2026.09.18-dashboard.12",
+  "scope": "accessible-batch-workbench-and-direct-product-factory-actions",
   "realTapCertification": "not-included",
-  "baseCommit": "604f05b911998faf742a58ddb87498f718742922",
-  "requiredApiRelease": "2026.09.18-api-reception.1",
+  "baseCommit": "ef99bc97245d2c4fa84533cce9dd12e439b30403",
+  "requiredApiRelease": "2026.09.18-api-batches.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
