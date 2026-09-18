@@ -7,7 +7,7 @@ const activity = await readFile(new URL("../src/components/crm-window-activity-p
 const home = await readFile(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
 const growth = await readFile(new URL("../src/components/customer-growth-command-center.tsx", import.meta.url), "utf8");
 const eventsPage = await readFile(new URL("../src/app/(app)/events/page.tsx", import.meta.url), "utf8");
-const supplierPage = await readFile(new URL("../src/app/(app)/batches/supplier/page.tsx", import.meta.url), "utf8");
+const supplierPage = await readFile(new URL("../src/components/supplier-reception-workspace.tsx", import.meta.url), "utf8");
 const supplierConsole = await readFile(new URL("../src/components/supplier-order-console.tsx", import.meta.url), "utf8");
 
 test("CRM treats UID as product activity and never exports an event as an audience recipient", () => {

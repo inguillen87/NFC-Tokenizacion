@@ -1,4 +1,5 @@
 "use client";
+import { parseReception } from "../lib/supplier-reception-contract";
 
 import { useMemo, useRef, useState } from "react";
 import { Button, Card } from "@product/ui";
@@ -24,9 +25,9 @@ type SupplierSubBatch = {
   bid: string;
   batch_id?: string;
   sequence_index?: number;
-  expected_quantity?: number;
+  expected_quantity?: number | null;
   manifest_status?: string;
-  manifest_count?: number;
+  manifest_count?: number | null;
   qa_status?: string;
   manufacturing_state?: string;
   key_export_count?: number;
@@ -37,7 +38,7 @@ type SupplierSubBatch = {
   status?: string;
 };
 
-type SupplierOrder = {
+export type SupplierOrder = {
   id: string;
   tenant_slug?: string;
   customer_slug?: string;
@@ -187,6 +188,7 @@ type SupplierOrderConsoleProps = {
   currentPermissions?: string[];
   currentDeniedPermissions?: string[];
   tenantSlug?: string | null;
+  initialOrder?: SupplierOrder;
 };
 
 const carrierProfiles = [
@@ -488,6 +490,7 @@ export function SupplierOrderConsole({
   currentPermissions = [],
   currentDeniedPermissions = [],
   tenantSlug: sessionTenantSlug = null,
+  initialOrder,
 }: SupplierOrderConsoleProps) {
   const normalizedRole = currentRole.replace(/_/g, "-");
   const isSuperAdmin = normalizedRole === "super-admin";
@@ -513,7 +516,7 @@ export function SupplierOrderConsole({
     "qa.approve",
     currentDeniedPermissions,
   );
-  const canExportPack = dashboardHighImpactPermissionMatches(
+  const canExportPack = isSuperAdmin && dashboardHighImpactPermissionMatches(
     currentRole,
     currentPermissions,
     "supplier_pack.export",
@@ -524,18 +527,16 @@ export function SupplierOrderConsole({
     "batch.activate",
     currentDeniedPermissions,
   );
-  const canUseActivationOverride = isSuperAdmin
-    || hasScopedPermission(currentPermissions, "supplier:activate_override");
-  const canClassifyLegacyTrial = isSuperAdmin
-    || hasScopedPermission(currentPermissions, "supplier:pack_purpose_classify_trial");
-  const canManageOfflineVerifier = isSuperAdmin || hasScopedPermission(currentPermissions, "supplier:offline_verifier");
+  const canUseActivationOverride = dashboardPermissionMatches(currentPermissions,"supplier:activate_override",currentDeniedPermissions);
+  const canClassifyLegacyTrial = dashboardPermissionMatches(currentPermissions,"supplier:pack_purpose_classify_trial",currentDeniedPermissions);
+  const canManageOfflineVerifier = isSuperAdmin && dashboardPermissionMatches(currentPermissions,"supplier:offline_verifier",currentDeniedPermissions);
 
   const [tenantSlug, setTenantSlug] = useState(sessionTenantSlug || "");
   const [customerSlug, setCustomerSlug] = useState("");
   const [orderName, setOrderName] = useState("");
   const [baseBatchId, setBaseBatchId] = useState("");
-  const [totalQuantity, setTotalQuantity] = useState("5000");
-  const [subBatchSize, setSubBatchSize] = useState("1000");
+  const [totalQuantity, setTotalQuantity] = useState("");
+  const [subBatchSize, setSubBatchSize] = useState("");
   const [chipModel, setChipModel] = useState("NTAG 424 DNA");
   const [carrierProfileCode, setCarrierProfileCode] = useState("ntag424_dna");
   const [packPurpose, setPackPurpose] = useState<SupplierPackPurpose>("");
@@ -543,11 +544,12 @@ export function SupplierOrderConsole({
   const [sku, setSku] = useState("");
   const [notes, setNotes] = useState("");
   const [pending, setPending] = useState(false);
+  const [qaPanelRequested,setQaPanelRequested]=useState(false);
   const [status, setStatus] = useState("Listo para crear un pedido industrial real. No pega llaves manuales ni expone la clave maestra de aplicación.");
   const [response, setResponse] = useState("{}");
-  const [created, setCreated] = useState<SupplierOrderResponse | null>(null);
+  const [created, setCreated] = useState<SupplierOrderResponse | null>(initialOrder?{ok:true,order:initialOrder,sub_batches:initialOrder.sub_batches||[]}:null);
   const [pack, setPack] = useState<SupplierPackResponse | null>(null);
-  const [qaBid, setQaBid] = useState("");
+  const [qaBid, setQaBid] = useState(initialOrder?.sub_batches?.[0]?.bid||"");
   const [qaSampleUrls, setQaSampleUrls] = useState("");
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [packPassword, setPackPassword] = useState("");
@@ -800,7 +802,7 @@ export function SupplierOrderConsole({
               ? "Trial validado para integración. Permanece NON_SELLABLE y no puede activarse."
               : normalStatus(selectedSubBatch.status).includes("activated")
                 ? "Sub-batch activo. Revisa Vault y evidencias."
-                : "Activacion habilitada: ejecuta activate-all o define un limite.";
+                : "Revisá la evidencia y solicitá activación. El servidor verifica todas las condiciones antes de liberar unidades.";
 
   async function run(path: string, init?: RequestInit) {
     const result = await fetch(path, {
@@ -911,9 +913,10 @@ export function SupplierOrderConsole({
     setPending(true);
     setStatus("Consultando pedidos industriales existentes...");
     try {
-      const data = await run("/api/admin/supplier-orders") as SupplierOrderResponse;
-      setOrders(data.orders || []);
-      setStatus(`${data.orders?.length || 0} pedidos cargados.`);
+      const raw = await run(`/api/admin/supplier-reception?tenant=${encodeURIComponent(tenantSlug)}`);
+      const data = parseReception(raw,{role:normalizedRole,tenantSlug:isSuperAdmin?null:sessionTenantSlug||null,requestedTenant:tenantSlug,isDemo:false});
+      setOrders(data.orders);
+      setStatus(`${data.orders.length} pedidos cargados en el alcance confirmado.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudieron cargar pedidos.");
     } finally {
@@ -1275,6 +1278,7 @@ export function SupplierOrderConsole({
   }
 
   function selectExistingOrder(order: SupplierOrder) {
+    setQaPanelRequested(false);
     const subBatchesFromOrder = Array.isArray(order.sub_batches) ? order.sub_batches : [];
     setCreated({ ok: true, order, sub_batches: subBatchesFromOrder });
     setPack(null);
@@ -1297,9 +1301,8 @@ export function SupplierOrderConsole({
     setOfflineDevices([]);
     resetLegacyTrialClassificationDraft();
     setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches. Contrato ${supplierPurposeContract(effectiveSupplierPackPurpose(order)).badge}.`);
-    void loadVaultArtifacts(order.id).catch((error) => {
-      setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault.");
-    });
+    // Selecting a received order does not prefetch protected vault artifacts.
+
   }
 
   return (
@@ -1328,7 +1331,7 @@ export function SupplierOrderConsole({
             </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Field label="Tenant slug" value={tenantSlug} onChange={setTenantSlug} placeholder="bodega-balmec o agro-enterprise-ar" />
+            <Field label="Empresa (identificador)" value={tenantSlug} onChange={setTenantSlug} placeholder="Seleccionar empresa desde recepción" disabled={Boolean(sessionTenantSlug)} />
             <Field label="Customer slug" value={customerSlug} onChange={setCustomerSlug} placeholder="opcional, por defecto tenant" />
             <Field label="Order name" value={orderName} onChange={setOrderName} placeholder="SYN-AR-2026-001" />
             <Field label="Base batch ID" value={baseBatchId} onChange={setBaseBatchId} placeholder="SYN-AR-2026-001" />
@@ -1547,13 +1550,16 @@ export function SupplierOrderConsole({
           ) : null}
 
           {selectedOrderId && selectedSubBatch && activePackPurpose === "production" ? (
-            <SupplierProductionAcceptancePanel
+            <section className="rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
+            <h3 className="text-sm font-bold text-cyan-100">Plan de calidad y recepción de producción</h3>
+            <p className="mt-2 text-xs leading-6 text-slate-300">La consulta del plan se carga al solicitarla. Abrir este pedido no aprueba QA ni activa unidades.</p>
+            {!qaPanelRequested ? <button type="button" className="mt-3 min-h-11 rounded-lg border border-cyan-300/30 px-4 py-2 text-sm text-cyan-100" disabled={pending} onClick={()=>setQaPanelRequested(true)}>Consultar plan y recepción</button> : <SupplierProductionAcceptancePanel
               key={`${selectedOrderId}:${selectedSubBatch.bid}`}
               orderId={selectedOrderId}
               bid={selectedSubBatch.bid}
               disabled={pending}
               onDecision={(qaStatus) => updateSubBatchStatus(selectedSubBatch.bid, { qa_status: qaStatus })}
-            />
+            />}</section>
           ) : null}
 
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
@@ -2027,11 +2033,11 @@ export function SupplierOrderConsole({
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
+function Field({ label, value, onChange, placeholder, disabled=false }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; disabled?:boolean }) {
   return (
     <label className="block">
       <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</span>
-      <input className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+      <input className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
     </label>
   );
 }

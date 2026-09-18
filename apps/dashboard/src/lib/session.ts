@@ -1,3 +1,4 @@
+import { verifiedSessionPermissions } from "./verified-session-permissions";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
@@ -145,9 +146,7 @@ export async function getDashboardSessionCredential(
           session: {
             ...data.session,
             role,
-            permissions: Array.isArray(data.session.permissions)
-              ? data.session.permissions.map((permission) => String(permission))
-              : [],
+            permissions: verifiedSessionPermissions({ ...data.session, role }),
             deniedPermissions: Array.isArray(data.session.deniedPermissions)
               ? data.session.deniedPermissions.map((permission) => String(permission))
               : [],
@@ -193,7 +192,7 @@ export async function requireDashboardSession(permission?: string) {
     throw error;
   }
   if (!session) redirect(dashboardAuthPath("/login", returnPath));
-  if (permission && session.role !== "super-admin" && !dashboardPermissionMatches(
+  if (permission && !dashboardPermissionMatches(
     session.permissions,
     permission,
     session.deniedPermissions,

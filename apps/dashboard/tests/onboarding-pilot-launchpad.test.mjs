@@ -11,7 +11,7 @@ const setupWizardStyles = await readFile(new URL("../src/components/onboarding-s
 const setupProxySource = await readFile(new URL("../src/app/api/tenant/setup/route.ts", import.meta.url), "utf8");
 const guardrailSource = await readFile(new URL("../src/components/supplier-legacy-intake-blocked.tsx", import.meta.url), "utf8");
 const guardrailStyles = await readFile(new URL("../src/components/supplier-legacy-intake-blocked.module.css", import.meta.url), "utf8");
-const supplierPageSource = await readFile(new URL("../src/app/(app)/batches/supplier/page.tsx", import.meta.url), "utf8");
+const supplierPageSource = await readFile(new URL("../src/components/supplier-reception-workspace.tsx", import.meta.url), "utf8");
 
 test("onboarding derives readiness from real tenant-scoped operational sources", () => {
   assert.match(pageSource, /fetchJson<Array<Record<string, unknown>>>\("batches", \[\], context\)/);

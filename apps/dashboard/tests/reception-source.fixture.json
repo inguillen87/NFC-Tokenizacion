@@ -1,0 +1,220 @@
+{
+  "ok": true,
+  "contract": "nexid.supplier-reception.v1",
+  "source": "database",
+  "observedAt": "2026-09-18T13:23:12.960Z",
+  "actor": {
+    "role": "super-admin",
+    "label": "Cuenta QA super-admin",
+    "scope": "global",
+    "tenantSlug": null,
+    "capabilities": {
+      "tenants:write": true,
+      "supplier_order.create": true,
+      "manifest.import": true,
+      "qa.approve": true,
+      "qa.plan.approve": false,
+      "batch.activate": true,
+      "batch.product.configure": true,
+      "users:manage": true
+    }
+  },
+  "tenantOptions": [
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "slug": "demo-client-qa",
+      "name": "Bodega QA local",
+      "type": "winery"
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "slug": "other-tenant-qa",
+      "name": "Otra empresa QA",
+      "type": "company"
+    }
+  ],
+  "tenant": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "slug": "demo-client-qa",
+    "name": "Bodega QA local",
+    "type": "winery",
+    "status": "active"
+  },
+  "inventory": {
+    "batches": 1,
+    "total": 20,
+    "active": 10,
+    "inactive": 10,
+    "other": 0,
+    "seen": 20,
+    "last_seen_at": "2026-09-18T13:12:52.545Z"
+  },
+  "batches": [
+    {
+      "id": "20000000-0000-4000-8000-000000000001",
+      "bid": "PILOT-LOCAL",
+      "status": "active",
+      "carrier_profile_code": "ntag424_dna_tt",
+      "qa_status": "pending",
+      "qa_acceptance_scope": null,
+      "supplier_order_id": null,
+      "editorial_managed": false,
+      "total": 20,
+      "active": 10,
+      "inactive": 10,
+      "last_seen_at": "2026-09-18T13:12:52.545Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "30000000-0000-4000-8000-000000000001",
+      "tenant_slug": "demo-client-qa",
+      "customer_slug": "demo-client-qa",
+      "order_name": "Pedido de fábrica QA",
+      "order_code": "FACTORY-QA-01",
+      "carrier_profile_code": "ntag424_dna_tt",
+      "chip_model": "NTAG424 DNA TT",
+      "total_quantity": 100,
+      "sub_batch_size": 100,
+      "status": "ordered",
+      "packaging_governance_status": "draft",
+      "packaging_spec_revision": 1,
+      "pack_purpose": "production",
+      "declared_pack_purpose": "production",
+      "effective_pack_purpose": "production",
+      "sub_batches": [
+        {
+          "id": "40000000-0000-4000-8000-000000000001",
+          "bid": "ROLL-LOCAL",
+          "status": "draft",
+          "batch_id": "20000000-0000-4000-8000-000000000001",
+          "qa_status": "pending",
+          "activated_at": null,
+          "active_count": 0,
+          "manifest_count": 0,
+          "sequence_index": 1,
+          "key_exported_at": null,
+          "manifest_status": "pending",
+          "key_export_count": 0,
+          "expected_quantity": 100,
+          "manufacturing_state": "planned",
+          "qa_acceptance_scope": null
+        }
+      ]
+    }
+  ],
+  "roleProfiles": [
+    {
+      "role": "marketing-manager",
+      "label": "marketing-manager",
+      "capabilities": {
+        "tenants:write": false,
+        "supplier_order.create": false,
+        "manifest.import": false,
+        "qa.approve": false,
+        "qa.plan.approve": false,
+        "batch.activate": false,
+        "batch.product.configure": true,
+        "users:manage": false
+      },
+      "basis": "configured_role_defaults"
+    },
+    {
+      "role": "operations-manager",
+      "label": "operations-manager",
+      "capabilities": {
+        "tenants:write": false,
+        "supplier_order.create": true,
+        "manifest.import": true,
+        "qa.approve": true,
+        "qa.plan.approve": false,
+        "batch.activate": true,
+        "batch.product.configure": false,
+        "users:manage": false
+      },
+      "basis": "configured_role_defaults"
+    },
+    {
+      "role": "packaging-operator",
+      "label": "packaging-operator",
+      "capabilities": {
+        "tenants:write": false,
+        "supplier_order.create": false,
+        "manifest.import": true,
+        "qa.approve": false,
+        "qa.plan.approve": false,
+        "batch.activate": false,
+        "batch.product.configure": false,
+        "users:manage": false
+      },
+      "basis": "configured_role_defaults"
+    },
+    {
+      "role": "super-admin",
+      "label": "super-admin",
+      "capabilities": {
+        "tenants:write": true,
+        "supplier_order.create": true,
+        "manifest.import": true,
+        "qa.approve": true,
+        "qa.plan.approve": false,
+        "batch.activate": true,
+        "batch.product.configure": true,
+        "users:manage": true
+      },
+      "basis": "configured_role_defaults"
+    },
+    {
+      "role": "tenant-admin",
+      "label": "tenant-admin",
+      "capabilities": {
+        "tenants:write": false,
+        "supplier_order.create": true,
+        "manifest.import": true,
+        "qa.approve": true,
+        "qa.plan.approve": true,
+        "batch.activate": true,
+        "batch.product.configure": true,
+        "users:manage": true
+      },
+      "basis": "configured_role_defaults"
+    },
+    {
+      "role": "tenant-owner",
+      "label": "tenant-owner",
+      "capabilities": {
+        "tenants:write": false,
+        "supplier_order.create": true,
+        "manifest.import": true,
+        "qa.approve": true,
+        "qa.plan.approve": true,
+        "batch.activate": true,
+        "batch.product.configure": true,
+        "users:manage": true
+      },
+      "basis": "configured_role_defaults"
+    },
+    {
+      "role": "viewer",
+      "label": "viewer",
+      "capabilities": {
+        "tenants:write": false,
+        "supplier_order.create": false,
+        "manifest.import": false,
+        "qa.approve": false,
+        "qa.plan.approve": false,
+        "batch.activate": false,
+        "batch.product.configure": false,
+        "users:manage": false
+      },
+      "basis": "configured_role_defaults"
+    }
+  ],
+  "limits": {
+    "tenants": 100,
+    "batches": 20,
+    "orders": 10,
+    "subBatchesPerOrder": 52
+  },
+  "readOnly": true
+}

@@ -103,11 +103,12 @@ export function dashboardPermissionMatches(
   granted: unknown,
   requested?: string | null,
   denied: unknown = [],
-) {
+): boolean {
   const current = String(requested || "").trim().toLowerCase();
   if (!current) return true;
   if (dashboardPermissionDenied(denied, current)) return false;
   const canonical = canonicalPermission(current);
+  if(current==='supplier_reception.read')return ['supplier_orders:read','supplier_order.create','manifest.import','packaging_lab.manage','qa.approve','qa.plan.approve','batch.activate'].some(action=>dashboardPermissionMatches(granted,action,denied));
 
   const grants = (Array.isArray(granted) ? granted : []).flatMap(expandedPermissions);
   if (grants.some((grant) => matchesOne(grant, current) || matchesOne(grant, canonical))) return true;
@@ -304,6 +305,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     // may open the tenant-scoped supplier-order surface.
     return "supplier_orders:read";
   }
+  if (normalizedPath === "supplier-reception") return "supplier_reception.read";
   if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
     return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";
   }
