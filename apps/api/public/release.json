@@ -1,11 +1,11 @@
 {
-  "release": "2026.09.18-api-passport.1",
-  "scope": "persisted-editorial-drafts-independent-review-atomic-publication",
-  "baseCommit": "39dc0f40a62d6792e11c4b075d011db0c6a33af0",
+  "release": "2026.09.18-api-reception.1",
+  "scope": "scoped-supplier-reception-visibility-and-platform-pack-boundary",
+  "baseCommit": "27b06f634ce1743cec8fe5a84747d3506816adf6",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
-  "databaseMigrationsIncluded": true,
+  "databaseMigrationsIncluded": false,
   "requiredMigration": "20260918123000_0105_passport_editorial_guards.sql",
   "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
@@ -18,5 +18,6 @@
     "20260918123000_0105_passport_editorial_guards.sql"
   ],
   "logisticsOperationProtocol": "nexid.logistics.v1",
-  "passportStudioProtocol": "nexid.passport-studio.v1"
+  "passportStudioProtocol": "nexid.passport-studio.v1",
+  "receptionProtocol": "nexid.supplier-reception.v1"
 }

@@ -85,6 +85,7 @@ type ApprovedProductionQaPlan = SupplierProductionQaPlanApproval & {
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string }> }) {
   const auth = await checkAdminWithPermission(req, "supplier_pack.export");
   if (auth) return auth;
+  if(getAdminPrincipal(req).scope!=="super_admin")return json({ok:false,reason:"factory_pack_requires_platform_admin"},403);
   if (!getAdminPrincipal(req).mfaVerified) {
     return json({ ok: false, reason: "supplier_pack_export_mfa_required" }, 403);
   }
