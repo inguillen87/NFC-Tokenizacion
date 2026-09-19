@@ -66,6 +66,7 @@ export function classifyFleetRateLimit(pathname: string, method: string): FleetR
     || path.includes("/wallet/challenge")
   ) return "auth";
   if (path === "/_rate-limit/sdk-auth") return "sdk_auth";
+  if (/^\/admin\/batches\/[^/]+\/epcis-intake(?:\/(preview|commit))?$/.test(path)) return path.endsWith('/commit')&&verb==='POST'?'sdk_epcis_capture':'observability_read';
   if (path === "/api/v1/sdk/epcis/capture" && verb === "POST") return "sdk_epcis_capture";
   if (path.startsWith("/api/v1/sdk/")) return verb === "GET" ? "sdk_read" : "sdk_write";
   if (path === "/sun") return "nfc";

@@ -280,12 +280,13 @@ function projectionFingerprint(input: {
     .digest("hex");
 }
 
-export async function captureEpcisDocument(input: {
-  tenantId: string;
-  apiKeyId: string;
-  idempotencyKey: string;
-  document: unknown;
-}): Promise<EpcisCaptureReceipt> {
+export async function captureEpcisDocument(input: {tenantId:string;apiKeyId:string;idempotencyKey:string;document:unknown}): Promise<EpcisCaptureReceipt> {
+ return executeEpcisCapture(input);
+}
+export async function captureEpcisOperatorDocument(input:{tenantId:string;actorUserId:string;idempotencyKey:string;document:unknown;operatorContext:Record<string,unknown>}):Promise<EpcisCaptureReceipt>{
+ return executeEpcisCapture({...input,apiKeyId:null});
+}
+async function executeEpcisCapture(input:{tenantId:string;apiKeyId:string|null;idempotencyKey:string;document:unknown;actorUserId?:string;operatorContext?:Record<string,unknown>}):Promise<EpcisCaptureReceipt>{
   const idempotencyKey = validateEpcisIdempotencyKey(input.idempotencyKey);
   const validated = validateEpcisDocument(input.document);
   const allIdentities = validated.events.flatMap((event) => event.identities);
@@ -316,6 +317,7 @@ export async function captureEpcisDocument(input: {
   const payload = {
     tenant_id: input.tenantId,
     api_key_id: input.apiKeyId,
+    ...(input.actorUserId?{actor_user_id:input.actorUserId,operator_context:input.operatorContext}:{}),
     idempotency_key: idempotencyKey,
     request_fingerprint: fingerprint,
     schema_version: EPCIS_VERSION,
@@ -344,7 +346,7 @@ export async function captureEpcisDocument(input: {
     tenantId: String(row?.tenant_id || ""),
     eventCount: Number(row?.event_count || 0),
     canonicalProjectionCount: Number(row?.canonical_projection_count || 0),
-    capturedAt: String(row?.captured_at || ""),
+    capturedAt: row?.captured_at instanceof Date ? row.captured_at.toISOString() : String(row?.captured_at || ""),
     replayed: Boolean(row?.replayed),
   };
   if (!UUID_RE.test(receipt.captureId) || !UUID_RE.test(receipt.documentRecordId)

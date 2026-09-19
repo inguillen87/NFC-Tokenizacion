@@ -1,12 +1,12 @@
 {
-  "release": "2026.09.19-api-trace.2",
-  "scope": "bounded-trace-pagination-identity-filtering-and-permission-revalidation",
-  "baseCommit": "514d3d578f8f6cd14386d6add56e2730d3b4ebf1",
+  "release": "2026.09.19-api-intake.1",
+  "scope": "operator-epcis-intake-on-existing-atomic-capture-engine",
+  "baseCommit": "dc104fe2e0d37134ed8c66cf947660b7a0a3ae34",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
-  "databaseMigrationsIncluded": false,
-  "requiredMigration": "20260919180000_0110_gs1_batch_import.sql",
+  "databaseMigrationsIncluded": true,
+  "requiredMigration": "20260919200000_0111_epcis_operator_intake.sql",
   "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
   "campaignDeliveryIncluded": false,
@@ -20,7 +20,8 @@
     "20260918210000_0107_campaign_launch_review.sql",
     "20260918224500_0108_recall_notice_reviews.sql",
     "20260919000000_0109_recall_assignee_tasks.sql",
-    "20260919180000_0110_gs1_batch_import.sql"
+    "20260919180000_0110_gs1_batch_import.sql",
+    "20260919200000_0111_epcis_operator_intake.sql"
   ],
   "logisticsOperationProtocol": "nexid.logistics.v1",
   "passportStudioProtocol": "nexid.passport-studio.v1",
@@ -34,5 +35,6 @@
   "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
   "labelProductionProtocol": "nexid.gs1-import.v1",
   "traceabilityProtocol": "nexid.batch-traceability.v1",
-  "tracePageProtocol": "nexid.trace-page.v1"
+  "tracePageProtocol": "nexid.trace-page.v1",
+  "intakeProtocol": "nexid.epcis-intake.v1"
 }
