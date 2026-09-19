@@ -1,11 +1,11 @@
 {
-  "release": "2026.09.19-api-labels.1",
-  "scope": "bounded-atomic-gs1-import-and-registered-qr-print-packs",
-  "baseCommit": "c27ab01f6716e312c001317618f8ac705f486817",
+  "release": "2026.09.19-api-trace.1",
+  "scope": "scoped-batch-epcis-relationships-and-seal-linked-shipment-read-model",
+  "baseCommit": "a39eaf32bc861ad4a0d073c5e1115b1c6efab80b",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
-  "databaseMigrationsIncluded": true,
+  "databaseMigrationsIncluded": false,
   "requiredMigration": "20260919180000_0110_gs1_batch_import.sql",
   "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
@@ -32,5 +32,6 @@
   "noticeReviewProtocol": "nexid.recall-notice-workspace.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
-  "labelProductionProtocol": "nexid.gs1-import.v1"
+  "labelProductionProtocol": "nexid.gs1-import.v1",
+  "batchTraceProtocol": "nexid.batch-trace.v1"
 }
