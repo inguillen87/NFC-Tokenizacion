@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.18-dashboard.17';
+export const DASHBOARD_RELEASE='2026.09.18-dashboard.18';
 export const DASHBOARD_RELEASE_DATE='2026-09-18';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "S7 · campañas con controles",
-    "title": "Del borrador al ensayo aprobado.",
-    "summary": "Conservá tu editor, definí presupuesto y destinatarios, pedí revisión independiente y simulá la audiencia consentida actual sin enviar mensajes.",
-    "back": "Abrir revisión de campañas",
+    "eyebrow": "S6 · avisos del producto con revisión",
+    "title": "Corregir un aviso sin perder su historia.",
+    "summary": "Rectificaciones y levantamientos conectados al retiro existente: comparación, otra persona autorizada, comprobante y resolución visible en el pasaporte.",
+    "back": "Abrir lotes y seguimientos",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Recorrido operativo",
+    "guide": "Recorrido de trabajo",
     "steps": [
-      "Elegí un borrador guardado desde Revisar y simular.",
-      "Definí moneda, costo de referencia, presupuesto y máximo de destinatarios.",
-      "Solicitá revisión por otra cuenta autorizada con MFA.",
-      "Simulá y descargá el resultado con motivos de exclusión y fuentes."
+      "Abrí un retiro publicado y elegí Revisar aviso publicado.",
+      "Prepará una rectificación; para un levantamiento primero se requiere el seguimiento cerrado.",
+      "Guardá y compará los cambios. Otra persona autorizada con MFA revisa su aplicación.",
+      "Consultá la versión pública, la resolución y el historial con sus referencias."
     ],
-    "boundary": "La aprobación habilita sólo una simulación. No dispara entregas ni reserva fondos. El consentimiento se vuelve a consultar y los importes son referencias del operador, no precios del proveedor.",
+    "boundary": "Levantar un aviso no libera existencias ni certifica calidad o autenticidad física. No se modifica el documento original, las cantidades ni el estado NFC de las etiquetas.",
     "cards": [
       {
-        "title": "Aprobación con versión",
-        "text": "Texto y límites quedan vinculados. Modificar el borrador invalida la aprobación para nuevos ensayos.",
-        "tag": "Gobierno"
+        "title": "Antes y después",
+        "text": "Texto vigente y propuesta comparados por campo, sin cambiar el pasaporte mientras se escribe.",
+        "tag": "Revisión visual"
       },
       {
-        "title": "Consentimiento actual",
-        "text": "Membresía activa, permiso del canal, contacto utilizable y destinos no duplicados, sin exportar datos personales.",
-        "tag": "Audiencia"
+        "title": "Aprobación independiente",
+        "text": "Todos los contribuyentes quedan fuera de la autoaprobación; se mantienen los permisos y MFA.",
+        "tag": "Responsabilidad"
       },
       {
-        "title": "Dos límites visibles",
-        "text": "Máximo de destinatarios y presupuesto de referencia acotan los candidatos simulados.",
-        "tag": "Control"
+        "title": "Un solo cambio confirmado",
+        "text": "Expediente, versión pública, propuesta y comprobantes se guardan juntos. Los reintentos recuperan el resultado.",
+        "tag": "Integridad"
       },
       {
-        "title": "Resultado trazable",
-        "text": "Informe HTML con momento, versión, fuentes y exclusiones. Envíos y cargos de mensajería del ensayo: cero.",
-        "tag": "Evidencia"
+        "title": "Resolución visible",
+        "text": "El consumidor ve el levantamiento revisado y puede abrir el aviso anterior; no una desaparición silenciosa.",
+        "tag": "Pasaporte"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "S7 · controlled campaign preparation",
-    "title": "From saved draft to reviewed simulation.",
-    "summary": "Keep the existing editor, configure reference limits, request independent review and simulate current consented audience without sending.",
-    "back": "Open campaign review",
+    "eyebrow": "S6 · reviewed product notices",
+    "title": "Correct a notice without losing its history.",
+    "summary": "Amendments and notice lifting connected to the existing recall: compare, review independently, commit and show the resolution on the passport.",
+    "back": "Open batches and follow-up",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
     "guide": "Workflow",
     "steps": [
-      "Choose a saved draft.",
-      "Set reference costs, budget and recipient cap.",
-      "Request another authorized reviewer with MFA.",
-      "Run the dry run and export the evidence."
+      "Open a published recall and choose notice review.",
+      "Prepare an amendment; lifting first requires closed follow-up.",
+      "Save and compare. A different authorized person with MFA approves.",
+      "Check the effective notice, resolution and referenced history."
     ],
-    "boundary": "Approval permits a simulation only, not dispatch or funds reservation. Contacts and consent are rechecked; reference costs are not provider prices.",
+    "boundary": "Lifting a notice does not release stock, certify quality or verify NFC authenticity. Original documents, quantities and tag states are retained.",
     "cards": [
       {
-        "title": "Versioned review",
-        "text": "Content changes invalidate the approval for new simulations.",
-        "tag": "Control"
+        "title": "Before and after",
+        "text": "Compare public text field by field while the current notice remains in effect.",
+        "tag": "Review"
       },
       {
-        "title": "Current consent",
-        "text": "Active membership, channel permission, usable contact syntax and distinct destinations.",
-        "tag": "Audience"
+        "title": "Independent approval",
+        "text": "Contributors cannot self-approve; permissions and MFA remain required.",
+        "tag": "Authority"
       },
       {
-        "title": "Bounded simulation",
-        "text": "Recipient and reference budget limits constrain candidate counts.",
-        "tag": "Limits"
+        "title": "One confirmed change",
+        "text": "Case version, public notice, proposal and receipts commit together with safe replay.",
+        "tag": "Integrity"
       },
       {
-        "title": "Traceable result",
-        "text": "Printable report with source, exclusions and timestamp; no paid delivery.",
-        "tag": "Evidence"
+        "title": "Visible resolution",
+        "text": "Consumers see the reviewed resolution and the previous notice, not a silent disappearance.",
+        "tag": "Passport"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "S7 · preparação controlada",
-    "title": "Do rascunho à simulação revisada.",
-    "summary": "Mantenha o editor, configure limites, solicite revisão independente e simule a audiência com consentimento atual, sem envio.",
-    "back": "Abrir revisão de campanhas",
+    "eyebrow": "S6 · avisos revisados",
+    "title": "Corrigir um aviso sem perder seu histórico.",
+    "summary": "Retificações e levantamento de avisos conectados ao recolhimento: comparação, revisão independente e resolução visível no passaporte.",
+    "back": "Abrir lotes e acompanhamentos",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Fluxo",
+    "guide": "Fluxo de trabalho",
     "steps": [
-      "Escolha um rascunho salvo.",
-      "Defina custos de referência, orçamento e limite de destinatários.",
-      "Solicite outra conta autorizada com MFA para revisar.",
-      "Simule e baixe o relatório com evidências."
+      "Abra um recolhimento publicado e escolha a revisão do aviso.",
+      "Prepare a retificação; o levantamento exige acompanhamento encerrado.",
+      "Salve e compare. Outra pessoa autorizada com MFA aprova.",
+      "Consulte a versão pública, a resolução e as referências do histórico."
     ],
-    "boundary": "A aprovação habilita apenas uma simulação. Não envia nem reserva valores. Consentimento é consultado novamente e os custos não são preços do provedor.",
+    "boundary": "Levantar o aviso não libera estoque, certifica qualidade ou autentica NFC. Documento original, quantidades e etiquetas são preservados.",
     "cards": [
       {
-        "title": "Revisão por versão",
-        "text": "Alterar conteúdo invalida a aprovação para novas simulações.",
-        "tag": "Controle"
+        "title": "Antes e depois",
+        "text": "Compare os campos públicos enquanto o aviso atual permanece vigente.",
+        "tag": "Revisão"
       },
       {
-        "title": "Consentimento atual",
-        "text": "Membresia ativa, permissão do canal e destinos não duplicados.",
-        "tag": "Audiência"
+        "title": "Aprovação independente",
+        "text": "Participantes não podem autoaprovar; permissões e MFA continuam obrigatórios.",
+        "tag": "Responsabilidade"
       },
       {
-        "title": "Limites claros",
-        "text": "Máximo de destinatários e orçamento de referência limitam candidatos.",
-        "tag": "Orçamento"
+        "title": "Mudança confirmada",
+        "text": "Expediente, aviso, proposta e comprovantes são gravados juntos, com repetição segura.",
+        "tag": "Integridade"
       },
       {
-        "title": "Resultado rastreável",
-        "text": "HTML com fontes, exclusões e data, sem entrega paga.",
-        "tag": "Evidência"
+        "title": "Resolução visível",
+        "text": "O consumidor vê a resolução revisada e o aviso anterior, sem remoção silenciosa.",
+        "tag": "Passaporte"
       }
     ]
   }

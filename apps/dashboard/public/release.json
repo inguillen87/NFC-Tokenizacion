@@ -1,16 +1,16 @@
 {
-  "release": "2026.09.18-dashboard.17",
-  "scope": "s7-campaign-consent-review-budget-and-dry-run-results",
+  "release": "2026.09.18-dashboard.18",
+  "scope": "reviewed-public-notice-comparison-correction-lifting-and-evidence",
   "realTapCertification": "not-included",
-  "baseCommit": "afbb2b1cd46d0d813d2adbe515320219fd8d91b6",
-  "requiredApiRelease": "2026.09.18-api-campaigns.1",
+  "baseCommit": "903d72628c89481a42a232c81b72957eef723b00",
+  "requiredApiRelease": "2026.09.18-api-notices.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
   "databaseMigrationsIncluded": true,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
   "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
-  "requiredWebRelease": "2026.09.18-web-recalls.2",
+  "requiredWebRelease": "2026.09.18-web-notices.1",
   "campaignDeliveryIncluded": false,
   "campaignLaunchProtocol": "nexid.campaign-launch.v1"
 }
