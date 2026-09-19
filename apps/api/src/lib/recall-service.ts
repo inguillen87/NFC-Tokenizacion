@@ -24,7 +24,7 @@ export async function recallDetail(tenant:string,bid:string,id:string,actor:Reca
  const rows=await sql`SELECT to_jsonb(c) AS record,
  (SELECT jsonb_build_object('version',h.notice_version,'state',h.state,'notice',h.notice,'resolutionMessage',h.resolution_message,'effectiveAt',h.effective_at) FROM product_recall_notice_heads h WHERE h.case_id=c.id AND h.tenant_id=c.tenant_id) AS effective_notice,
  (SELECT coalesce(jsonb_agg(h.data ORDER BY h.version),'[]'::jsonb) FROM (
- SELECT (o.result->>'version')::int AS version,jsonb_build_object('id',o.id,'at',o.created_at,'actorId',o.actor_id,'actorLabel',o.actor_label,'action',o.action,'version',(o.result->>'version')::int,'reason',o.command->>'reason','evidenceReference',o.command->>'evidenceReference','destinationId',o.command->>'destinationId','returnedUnits',o.command->'returnedUnits','heldUnits',o.command->'heldUnits') AS data
+ SELECT (o.result->>'version')::int AS version,jsonb_build_object('id',o.id,'at',o.created_at,'actorId',o.actor_id,'actorLabel',o.actor_label,'action',o.action,'version',(o.result->>'version')::int,'reason',o.command->>'reason','evidenceReference',o.command->>'evidenceReference','submissionSource',coalesce(o.command->>'submissionSource','management_record'),'destinationId',o.command->>'destinationId','returnedUnits',o.command->'returnedUnits','heldUnits',o.command->'heldUnits') AS data
  FROM product_recall_operations o WHERE o.case_id=c.id AND o.tenant_id=c.tenant_id ORDER BY (o.result->>'version')::int DESC LIMIT 500) h) AS history,
  (SELECT count(*)::int FROM product_recall_operations o WHERE o.case_id=c.id AND o.tenant_id=c.tenant_id) AS operation_count
  FROM product_recall_cases c WHERE id=${id}::uuid AND tenant_id=${b.tenant_id}::uuid AND batch_id=${b.id}::uuid LIMIT 1`;
