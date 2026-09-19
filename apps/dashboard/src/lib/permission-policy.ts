@@ -318,7 +318,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (/^batches\/[^/]+\/recalls(?:\/[^/]+)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'recalls.read':'recalls.write';
   if(normalizedPath==='recall-tasks'||normalizedPath.startsWith('recall-tasks/'))return normalizedMethod==='GET'?'recall_tasks:read':'recall_tasks:respond';
   if (/^batches\/[^/]+\/traceability(?:\/page)?$/.test(normalizedPath)) return "batches:read";
-  if (/^batches\/[^/]+\/epcis-intake(?:\/(preview|commit))?$/.test(normalizedPath))return normalizedPath.endsWith('/commit')?'logistics:write':'logistics:read';
+  if (/^batches\/[^/]+\/epcis-intake(?:\/(preview|commit|identities))?$/.test(normalizedPath))return normalizedPath.endsWith('/commit')?'logistics:write':'logistics:read';
   if (normalizedPath === "supplier-reception") return "supplier_reception.read";
   if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
     return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";
