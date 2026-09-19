@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Card, Badge, Button, SectionHeading } from "@product/ui";
@@ -1154,6 +1155,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
       data-tenant-scope={tenantScope || "unavailable"}
       data-demo-data-allowed={String(allowDemoData)}
     >
+      {!allowDemoData&&<Link prefetch={false} href={"/campaigns/review?"+new URLSearchParams(tenantScope?{tenant:tenantScope}:{})} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-300/40 bg-cyan-950 px-5 py-3 text-sm font-bold text-cyan-100">Revisión, audiencia y presupuesto →</Link>}
       <SectionHeading 
         eyebrow="IA Comercial" 
         title="Clientes & campañas" 
@@ -1916,7 +1918,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white">Redacción de Campaña</h3>
-                  <p className="text-xs text-slate-400">{allowDemoData ? "Simulación local; no se guarda en el servidor." : draftWorkspace.selected ? `Borrador ${draftWorkspace.selected.status === "archived" ? "archivado" : "guardado"} · versión ${draftWorkspace.selected.revision}.` : "Nuevo borrador; guardalo para recuperarlo al recargar."} Aprobación y envío no están conectados.</p>
+                  <p className="text-xs text-slate-400">{allowDemoData ? "Simulación local; no se guarda en el servidor." : draftWorkspace.selected ? `Borrador ${draftWorkspace.selected.status === "archived" ? "archivado" : "guardado"} · versión ${draftWorkspace.selected.revision}.` : "Nuevo borrador; guardalo para recuperarlo al recargar."} La revisión y la simulación se realizan desde «Revisar y simular». No hay envío automático.</p>
                 </div>
 
                 {/* AI provider settings */}

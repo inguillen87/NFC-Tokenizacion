@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -246,6 +247,7 @@ export function CampaignDraftListPanel({ workspace, canWrite, onEdit, onNew }: {
         <p className="line-clamp-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-600 dark:text-slate-300">{draft.message}</p>
         <p className="text-xs text-slate-600 dark:text-slate-300">{channelLabels[draft.channel]} · Marketing · actualizado {new Date(draft.updatedAt).toLocaleString("es-AR", { timeZone: "UTC" })} UTC{draft.updatedBy.label ? ` · ${draft.updatedBy.label}` : ""}</p>
         <div className="flex flex-wrap gap-2">
+          <Link prefetch={false} href={"/campaigns/review?"+new URLSearchParams({tenant:draft.tenant,draft:draft.id})} className={buttonClass}>Revisar y simular</Link>
           <button type="button" className={buttonClass} disabled={write.pending || workspace.reading || workspace.hasUnresolved} onClick={() => onEdit(draft)}>{draft.status === "archived" || !canWrite ? "Consultar texto" : "Editar borrador"}</button>
           {draft.status === "draft" && canWrite ? <button type="button" className={buttonClass} disabled={write.pending || workspace.hasUnresolved} onClick={() => void workspace.archive(draft)}>Archivar</button> : null}
           {draft.status === "archived" && canWrite ? <button type="button" className={buttonClass} disabled={write.pending || workspace.reading || workspace.hasUnresolved} onClick={() => void workspace.restore(draft)}>Restaurar borrador</button> : null}

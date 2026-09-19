@@ -173,6 +173,7 @@ export function dashboardCanReadSensitiveAlerts(
 
 export function requiredPermissionForAdminResource(method: string, normalizedPath: string) {
   const normalizedMethod = String(method || "").toUpperCase();
+  if (/^campaigns\/launch(?:\/[^/]+){0,2}$/.test(normalizedPath)) return normalizedMethod==='GET'?'campaigns:read':'campaigns:write';
   if (normalizedMethod === "GET" && normalizedPath === "engagement") {
     return "crm:read";
   }

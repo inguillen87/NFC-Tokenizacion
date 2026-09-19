@@ -48,8 +48,9 @@ test("public version marker agrees with the displayed release", async () => {
   const marker = JSON.parse(await source("../public/release.json"));
   assert.equal(marker.release, DASHBOARD_RELEASE);
   assert.equal(marker.apiChangesIncluded, true);
-  assert.equal(marker.requiredApiRelease, "2026.09.18-api-recalls.2");
-  assert.equal(marker.databaseMigrationsIncluded, false);
+  assert.equal(marker.requiredApiRelease, "2026.09.18-api-campaigns.1");
+  assert.equal(marker.databaseMigrationsIncluded, true);
+  assert.equal(marker.campaignDeliveryIncluded, false);
   assert.equal(marker.realTapCertification, "not-included");
 });
 test("release notes have no private API, database access or provider identifiers", async () => {
