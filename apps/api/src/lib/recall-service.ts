@@ -22,6 +22,7 @@ export async function recallDetail(tenant:string,bid:string,id:string,actor:Reca
  if(!actor.canRead||(exporting&&!actor.canExport))throw new RecallError('recall_read_forbidden',403);
  const b=await recallBatch(tenant,bid);recallId(id);
  const rows=await sql`SELECT to_jsonb(c) AS record,
+ (SELECT jsonb_build_object('version',h.notice_version,'state',h.state,'notice',h.notice,'resolutionMessage',h.resolution_message,'effectiveAt',h.effective_at) FROM product_recall_notice_heads h WHERE h.case_id=c.id AND h.tenant_id=c.tenant_id) AS effective_notice,
  (SELECT coalesce(jsonb_agg(h.data ORDER BY h.version),'[]'::jsonb) FROM (
  SELECT (o.result->>'version')::int AS version,jsonb_build_object('id',o.id,'at',o.created_at,'actorId',o.actor_id,'actorLabel',o.actor_label,'action',o.action,'version',(o.result->>'version')::int,'reason',o.command->>'reason','evidenceReference',o.command->>'evidenceReference','destinationId',o.command->>'destinationId','returnedUnits',o.command->'returnedUnits','heldUnits',o.command->'heldUnits') AS data
  FROM product_recall_operations o WHERE o.case_id=c.id AND o.tenant_id=c.tenant_id ORDER BY (o.result->>'version')::int DESC LIMIT 500) h) AS history,
@@ -29,7 +30,7 @@ export async function recallDetail(tenant:string,bid:string,id:string,actor:Reca
  FROM product_recall_cases c WHERE id=${id}::uuid AND tenant_id=${b.tenant_id}::uuid AND batch_id=${b.id}::uuid LIMIT 1`;
  if(!rows[0])throw new RecallError('recall_case_not_found',404);
  const r=rows[0] as any;
- return {ok:true,protocol:RECALL_PROTOCOL,source:'database',observedAt:new Date().toISOString(),scope:{tenantId:b.tenant_id,tenant:b.tenant_slug,batchId:b.id,bid:b.bid},product:b.product_name,tenantName:b.tenant_name,actor,case:recallCase(r.record),history:r.history,historyTruncated:r.operation_count>500,operationCount:r.operation_count,evidenceBasis:'operator_declared',scopeCoverage:'whole_batch_warning_with_declared_follow_up_targets'};
+ return {ok:true,protocol:RECALL_PROTOCOL,source:'database',observedAt:new Date().toISOString(),scope:{tenantId:b.tenant_id,tenant:b.tenant_slug,batchId:b.id,bid:b.bid},product:b.product_name,tenantName:b.tenant_name,actor,case:recallCase(r.record),effectiveNotice:r.effective_notice||null,history:r.history,historyTruncated:r.operation_count>500,operationCount:r.operation_count,evidenceBasis:'operator_declared',scopeCoverage:'whole_batch_warning_with_declared_follow_up_targets'};
 }
 export async function mutateRecall(tenant:string,bid:string,actor:RecallActor,action:RecallAction,body:unknown){
  requireRecallAction(actor,action);recallId(actor.id);const cmd=recallCommand(action,body),b=await recallBatch(tenant,bid);
@@ -42,8 +43,8 @@ export async function publicRecallNotices(tenant:string,bid:string){
  const rows=await sql`SELECT b.id,b.bid,t.slug,
  (SELECT count(*)::int FROM product_recall_cases c WHERE c.tenant_id=b.tenant_id AND c.batch_id=b.id AND c.published_at IS NOT NULL) AS total,
  (SELECT coalesce(jsonb_agg(n.notice ORDER BY n.published_at DESC),'[]'::jsonb) FROM (
- SELECT c.published_at,jsonb_build_object('id',c.id,'kind',c.document->>'kind','title',c.document->>'title','message',c.document->>'publicMessage','instructions',c.document->>'instructions','contact',c.document->>'contact','publishedAt',c.published_at,'trackingState',c.state) AS notice
- FROM product_recall_cases c WHERE c.tenant_id=b.tenant_id AND c.batch_id=b.id AND c.published_at IS NOT NULL ORDER BY c.published_at DESC,c.id LIMIT 20) n) AS notices
+ SELECT c.published_at,jsonb_build_object('id',c.id,'kind',c.document->>'kind','title',coalesce(h.notice->>'title',c.document->>'title'),'message',coalesce(h.notice->>'publicMessage',c.document->>'publicMessage'),'instructions',coalesce(h.notice->>'instructions',c.document->>'instructions'),'contact',coalesce(h.notice->>'contact',c.document->>'contact'),'publishedAt',c.published_at,'trackingState',c.state) AS notice
+ FROM product_recall_cases c LEFT JOIN product_recall_notice_heads h ON h.case_id=c.id AND h.tenant_id=c.tenant_id WHERE c.tenant_id=b.tenant_id AND c.batch_id=b.id AND c.published_at IS NOT NULL ORDER BY c.published_at DESC,c.id LIMIT 20) n) AS notices
  FROM batches b JOIN tenants t ON t.id=b.tenant_id WHERE b.bid=${bid} AND t.slug=${tenant} LIMIT 2`;
  if(rows.length!==1)throw new RecallError('recall_batch_not_found',404);
  const r=rows[0];return {ok:true,protocol:'nexid.product-notices.v1',scope:{tenant,bid},observedAt:new Date().toISOString(),notices:r.notices,total:r.total,hasMore:Number(r.total)>20,doesNotDetermineNfcAuthenticity:true,closureDoesNotReleaseProduct:true};

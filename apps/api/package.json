@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3003",
     "prebuild": "npm run prisma:generate",
-    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && npm run test:sun && npm run test:supplier-security && npm run test:commercial-scope && npm run test:campaign-drafts && npm run test:polygon-transfer && npm run test:wallet-control && npm run test:proof && npm run test:webhooks && npm run test:gs1-epcis && npm run test:auth-security && npm run test:consumer-otp && npm run test:rate-limits && npm run test:logistics && npm run test:passport && npm run test:reception && npm run test:batches-workbench && npm run test:batch-channels && npm run test:pilot-report && npm run test:recalls && npm run test:campaign-launch && next build",
+    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && npm run test:sun && npm run test:supplier-security && npm run test:commercial-scope && npm run test:campaign-drafts && npm run test:polygon-transfer && npm run test:wallet-control && npm run test:proof && npm run test:webhooks && npm run test:gs1-epcis && npm run test:auth-security && npm run test:consumer-otp && npm run test:rate-limits && npm run test:logistics && npm run test:passport && npm run test:reception && npm run test:batches-workbench && npm run test:batch-channels && npm run test:pilot-report && npm run test:recalls && npm run test:campaign-launch && npm run test:notice-reviews && next build",
     "start": "next start -p 3003",
     "db:new": "node scripts/db-new-migration.mjs",
     "db:migrate": "node scripts/db-apply.mjs",
@@ -77,7 +77,8 @@
     "test:batch-channels": "node --import tsx --test tests/batch-channels.test.mjs",
     "test:pilot-report": "node --import tsx --test tests/pilot-report.test.mjs",
     "test:recalls": "node --import tsx --test tests/recall-policy.test.mjs",
-    "test:campaign-launch": "node --import tsx --test tests/campaign-launch.test.mjs"
+    "test:campaign-launch": "node --import tsx --test tests/campaign-launch.test.mjs",
+    "test:notice-reviews": "node --test tests/recall-notice-review.test.mjs && node --import tsx --test tests/notice-review-integration.test.mjs"
   },
   "dependencies": {
     "@clerk/backend": "^3.13.1",

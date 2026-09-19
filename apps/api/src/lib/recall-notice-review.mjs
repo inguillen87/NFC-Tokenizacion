@@ -96,7 +96,7 @@ function source(raw) {
     caseVersion: version(value.caseVersion), noticeVersion: version(value.noticeVersion),
     trackingState: value.trackingState, publishedAt: instant(value.publishedAt), noticeState: value.noticeState, notice: publicText(value.notice) };
 }
-function authority(actor, current, action) {
+export function authorizeNoticeReview(actor, current, action) {
   if (!actor || !WRITE_ROLES.has(actor.role) || actor.canRead !== true || actor.canWrite !== true) fail('notice_review_forbidden', 403);
   const actorId = id(actor.id);
   if (actor.role === 'super-admin' && actor.tenantId !== null) fail('notice_review_tenant_forbidden', 403);
@@ -129,7 +129,7 @@ function fresh(current, command, review) {
  */
 export function planNoticeReview({ current: rawCurrent, review: stored = null, actor, action, body, now }) {
   const current = source(rawCurrent);
-  const actorId = authority(actor, current, action);
+  const actorId = authorizeNoticeReview(actor, current, action);
   const command = parseNoticeReviewCommand(action, body);
   const timestamp = instant(now);
   if (Date.parse(timestamp) < Date.parse(current.publishedAt)) fail('notice_review_invalid_time');
