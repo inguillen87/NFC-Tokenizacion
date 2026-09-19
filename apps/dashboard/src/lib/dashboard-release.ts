@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.19-dashboard.24';
+export const DASHBOARD_RELEASE='2026.09.19-dashboard.25';
 export const DASHBOARD_RELEASE_DATE='2026-09-19';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "S3/S5 · agrupaciones operativas sin JSON",
-    "title": "Unidades, cajas y pallets, en el formulario.",
-    "summary": "Elegí un contenedor identificado y sus unidades, revisá la relación y registrala con el motor EPCIS existente. La selección puede incluir otros lotes de la misma empresa sin copiar sus datos a mano.",
+    "eyebrow": "S4 · revisión editorial",
+    "title": "Cada cambio, con su contexto.",
+    "summary": "Passport Studio permite comparar contenido público, trabajo guardado, cambios locales y revisiones históricas antes de restaurar o publicar.",
     "back": "Abrir lotes",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Cómo empezar",
+    "guide": "Cómo usar esta entrega",
     "steps": [
-      "Abrí Registrar movimientos desde el recorrido del lote.",
-      "Elegí Unidades, cajas y pallets, la acción y la referencia estable.",
-      "Buscá identidades con serie, seleccioná contenedor/unidades y validá.",
-      "Revisá la representación y confirmá con los permisos y MFA requeridos."
+      "Abrí Passport Studio del lote y entrá a Cambios.",
+      "Elegí dos fuentes: contenido público, borrador guardado, trabajo local o revisión histórica.",
+      "Filtrá añadidos, modificaciones y retirados por sección o texto.",
+      "Revisá el efecto de recuperar contenido; guardar, revisar y publicar siguen siendo acciones distintas."
     ],
-    "boundary": "Registrar una agrupación es una declaración autenticada, no una prueba de lectura UHF o del contenido físico actual. Separar sólo afecta las identidades seleccionadas en el evento; no borra el historial ni altera tags.",
+    "boundary": "Comparar no escribe ni publica. Una revisión histórica no es una versión publicada; una URL distinta no prueba el contenido ni la vigencia del documento enlazado.",
     "cards": [
       {
-        "title": "Tres acciones claras",
-        "text": "Agrupar, separar identidades elegidas u observar un grupo sin declarar un alta/baja.",
+        "title": "Historial comparable",
+        "text": "Elegí revisiones recibidas del servidor y comparalas con el trabajo actual sin restaurarlas.",
+        "tag": "Versiones"
+      },
+      {
+        "title": "Diferencias claras",
+        "text": "Campos añadidos, modificados y retirados con fuentes explícitas y filtros locales.",
+        "tag": "Revisión"
+      },
+      {
+        "title": "Confirmaciones con contexto",
+        "text": "La restauración muestra los campos que reemplazará. Enviar, aprobar y publicar muestran el alcance sobre el contenido público.",
+        "tag": "Control"
+      },
+      {
+        "title": "Conflictos recuperables",
+        "text": "Releer versión guardada ahora pide confirmación antes de descartar cambios locales; Escape no reutiliza una confirmación anterior.",
         "tag": "Operación"
-      },
-      {
-        "title": "Selección registrada",
-        "text": "Búsqueda por lote, GTIN o serie con alcance de empresa y resultados acotados. No se crean números de serie ficticios.",
-        "tag": "Datos reales"
-      },
-      {
-        "title": "Revisión visual",
-        "text": "Contenedor y unidades se muestran antes de confirmar, contrastados con las identidades verificadas por el servicio.",
-        "tag": "UX"
-      },
-      {
-        "title": "Comprobante recuperable",
-        "text": "Conserva la captura transaccional, evita duplicar el reintento y ofrece preparar el próximo movimiento sin borrar registros.",
-        "tag": "Evidencia"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "S3/S5 · guided operational groupings",
-    "title": "Units, cases and pallets without hand-written JSON.",
-    "summary": "Select a registered container and serialized units, review the relationship and use the existing EPCIS capture engine.",
+    "eyebrow": "S4 · editorial review",
+    "title": "Every change in context.",
+    "summary": "Compare published content, saved work, local changes and historical revisions before restoring or publishing.",
     "back": "Open batches",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
     "guide": "Get started",
     "steps": [
-      "Open movement intake from a batch trace.",
-      "Choose units, cases and pallets, action and stable reference.",
-      "Search registered identities, choose container and units, then validate.",
-      "Review the relationship and confirm with required permissions and MFA."
+      "Open the batch Passport Studio and select Changes.",
+      "Choose public content, saved work, local work or a historical revision.",
+      "Filter added, changed and removed fields by section or text.",
+      "Review what restoring content would replace; saving, review and publication remain separate."
     ],
-    "boundary": "A registered grouping is an authenticated declaration, not physical UHF proof or current containment certification. Separation records selected identities without deleting history or altering tags.",
+    "boundary": "Comparison makes no writes. A historical revision is not a publication, and a different URL does not prove the content or validity of its linked document.",
     "cards": [
       {
-        "title": "Explicit actions",
-        "text": "Add, separate selected units, or observe without declaring membership changes.",
+        "title": "Comparable history",
+        "text": "Compare loaded historical revisions without restoring them.",
+        "tag": "Versions"
+      },
+      {
+        "title": "Visible differences",
+        "text": "Added, changed and removed fields keep explicit sources and local filters.",
+        "tag": "Review"
+      },
+      {
+        "title": "Contextual confirmation",
+        "text": "Restoring and publishing show the scope of the content changes before confirmation.",
+        "tag": "Control"
+      },
+      {
+        "title": "Recoverable conflicts",
+        "text": "Reloading a newer revision requires explicit local-discard confirmation. Escape never reuses a previous confirmation.",
         "tag": "Operations"
-      },
-      {
-        "title": "Registered selection",
-        "text": "Scoped batch, GTIN and serial search with bounded results; no invented serials.",
-        "tag": "Identity"
-      },
-      {
-        "title": "Visual review",
-        "text": "Container and units are checked against the service-validated identities before confirmation.",
-        "tag": "UX"
-      },
-      {
-        "title": "Recoverable receipts",
-        "text": "Existing atomic capture and retry recovery remain in place. Prepare another movement without deleting evidence.",
-        "tag": "Evidence"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "S3/S5 · agrupamentos operacionais guiados",
-    "title": "Unidades, caixas e pallets sem escrever JSON.",
-    "summary": "Selecione um contêiner identificado e suas unidades serializadas, revise a relação e registre pelo motor EPCIS existente.",
+    "eyebrow": "S4 · revisão editorial",
+    "title": "Cada mudança, com seu contexto.",
+    "summary": "Compare conteúdo público, trabalho salvo, alterações locais e revisões históricas antes de restaurar ou publicar.",
     "back": "Abrir lotes",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Primeiros passos",
+    "guide": "Como começar",
     "steps": [
-      "Abra o registro de movimentos no percurso do lote.",
-      "Escolha unidades, caixas e pallets, ação e referência estável.",
-      "Busque identidades registradas, selecione contêiner/unidades e valide.",
-      "Revise a relação e confirme com permissões e MFA exigidos."
+      "Abra o Passport Studio do lote e entre em Mudanças.",
+      "Escolha conteúdo público, trabalho salvo, alterações locais ou revisão histórica.",
+      "Filtre campos adicionados, alterados e retirados por seção ou texto.",
+      "Revise o efeito da restauração; salvar, revisar e publicar continuam separados."
     ],
-    "boundary": "O agrupamento registrado é uma declaração autenticada, não prova física UHF ou certificação de conteúdo atual. Separar não apaga histórico nem modifica tags.",
+    "boundary": "Comparar não escreve nem publica. Uma revisão histórica não é uma publicação; uma URL diferente não comprova o conteúdo ou a validade do documento externo.",
     "cards": [
       {
-        "title": "Ações explícitas",
-        "text": "Agrupar, separar unidades selecionadas ou observar sem declarar alta/baixa.",
+        "title": "Histórico comparável",
+        "text": "Compare revisões recebidas sem restaurá-las.",
+        "tag": "Versões"
+      },
+      {
+        "title": "Diferenças claras",
+        "text": "Campos adicionados, alterados e retirados com fontes e filtros locais.",
+        "tag": "Revisão"
+      },
+      {
+        "title": "Confirmação com contexto",
+        "text": "Restaurar e publicar mostram o alcance editorial antes da confirmação.",
+        "tag": "Controle"
+      },
+      {
+        "title": "Conflitos recuperáveis",
+        "text": "Reler a revisão salva exige confirmação antes de descartar o trabalho local. Escape não reutiliza uma confirmação anterior.",
         "tag": "Operação"
-      },
-      {
-        "title": "Identidades registradas",
-        "text": "Busca por lote, GTIN ou série com escopo da empresa e resultados limitados.",
-        "tag": "Identidade"
-      },
-      {
-        "title": "Revisão visual",
-        "text": "Contêiner e unidades são confrontados com as identidades validadas antes de confirmar.",
-        "tag": "UX"
-      },
-      {
-        "title": "Comprovante recuperável",
-        "text": "Captura atômica e recuperação do mesmo envio; iniciar outro movimento não apaga evidência.",
-        "tag": "Evidência"
       }
     ]
   }

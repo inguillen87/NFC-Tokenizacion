@@ -303,7 +303,9 @@ export function DashboardShellInner({
     ? searchableLinks.filter((entry) => taskDestinationLabel(entry, locale).toLowerCase().includes(normalizedQuery) || entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
     : [];
 
-  const contextualHeader = /^\/batches\/[^/]+\/traceability$/.test(pathname)
+  const contextualHeader = /^\/batches\/[^/]+\/passport$/.test(pathname)
+    ? { title: "Passport Studio", subtitle: locale === "en" ? "Editorial versions and review" : locale === "pt-BR" ? "Versões e revisão editorial" : "Versiones y revisión editorial" }
+    : /^\/batches\/[^/]+\/traceability$/.test(pathname)
     ? { title: locale === "en" ? "Batch journey" : locale === "pt-BR" ? "Percurso do lote" : "Recorrido del lote", subtitle: "Referencias y custodia registradas" }
     : /^\/batches\/[^/]+\/intake$/.test(pathname)
     ? { title: locale === "en" ? "Record movements" : locale === "pt-BR" ? "Registrar movimentos" : "Registrar movimientos", subtitle: "Preparación y registro de declaraciones EPCIS" }
