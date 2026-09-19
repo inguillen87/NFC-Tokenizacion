@@ -19,6 +19,7 @@ type DashboardDestinationPolicy = {
 export const DASHBOARD_DESTINATIONS = Object.freeze({
   overview: { href: "/" },
   onboarding: { href: "/onboarding" },
+  recallTasks: { href: "/tasks/recalls", requiredPermissions: ["recall_tasks:read"] },
   logistics: { href: "/logistics", requiredPermissions: ["logistics:read"] },
   demoLab: { href: "/demo-lab", requiredPermissions: ["demo:read"] },
   demoEncoder: { href: "/demo-lab/encode", requiredPermissions: ["demo:run"], demoOnly: true },

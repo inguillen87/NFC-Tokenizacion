@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.18-dashboard.18",
-  "scope": "reviewed-public-notice-comparison-correction-lifting-and-evidence",
+  "release": "2026.09.18-dashboard.19",
+  "scope": "assigned-recall-inbox-acknowledgements-cumulative-counts-and-own-evidence",
   "realTapCertification": "not-included",
-  "baseCommit": "903d72628c89481a42a232c81b72957eef723b00",
-  "requiredApiRelease": "2026.09.18-api-notices.1",
+  "baseCommit": "8cc69dd856547982cabbafa2709daf572e68e8f9",
+  "requiredApiRelease": "2026.09.18-api-tasks.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
   "databaseMigrationsIncluded": true,
@@ -12,5 +12,6 @@
   "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
   "requiredWebRelease": "2026.09.18-web-notices.1",
   "campaignDeliveryIncluded": false,
-  "campaignLaunchProtocol": "nexid.campaign-launch.v1"
+  "campaignLaunchProtocol": "nexid.campaign-launch.v1",
+  "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1"
 }

@@ -215,6 +215,7 @@ export function DashboardShellInner({
     { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview },
     { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches },
     { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches },
+    { destination: "recallTasks", href: DASHBOARD_DESTINATIONS.recallTasks.href, label: "Mis tareas de retiro" },
     { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics },
     { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Lab" },
     { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof },
@@ -270,6 +271,7 @@ export function DashboardShellInner({
     { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Mission Control" },
     ...items,
     { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches },
+    { destination: "recallTasks", href: DASHBOARD_DESTINATIONS.recallTasks.href, label: "Mis tareas de retiro" },
     { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics },
     { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof },
     { destination: "tokenization", href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Tokenization Queue" },
@@ -301,7 +303,9 @@ export function DashboardShellInner({
     ? searchableLinks.filter((entry) => taskDestinationLabel(entry, locale).toLowerCase().includes(normalizedQuery) || entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
     : [];
 
-  const contextualHeader = pathname.startsWith("/demo-lab")
+  const contextualHeader = pathname.startsWith("/tasks/recalls")
+    ? { title: locale === "en" ? "My recall tasks" : locale === "pt-BR" ? "Minhas tarefas de retirada" : "Mis tareas de retiro", subtitle: locale === "en" ? "Assigned responses and evidence" : locale === "pt-BR" ? "Respostas atribuídas e evidência" : "Respuestas asignadas y evidencia" }
+    : pathname.startsWith("/demo-lab")
     ? { title: "Demo Mission Control", subtitle: "Tenant demo operations" }
     : pathname.startsWith("/proof")
       ? { title: "Trust Operations", subtitle: "Evidence and anchors" }
@@ -319,6 +323,7 @@ export function DashboardShellInner({
     badge?: string;
   };
   const coreOpsItemCandidates: SidebarDestinationItem[] = [
+    { destination: "recallTasks", href: DASHBOARD_DESTINATIONS.recallTasks.href, label: "Mis tareas de retiro", icon: FileCheck2 },
     { destination: "map", href: DASHBOARD_DESTINATIONS.map.href, label: "Mapa profesional", icon: Compass },
     { destination: "onboarding", href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Onboarding Setup", icon: Compass },
     { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview, icon: LayoutDashboard },

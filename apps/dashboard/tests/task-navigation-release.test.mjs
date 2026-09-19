@@ -48,7 +48,7 @@ test("public version marker agrees with the displayed release", async () => {
   const marker = JSON.parse(await source("../public/release.json"));
   assert.equal(marker.release, DASHBOARD_RELEASE);
   assert.equal(marker.apiChangesIncluded, true);
-  assert.equal(marker.requiredApiRelease, "2026.09.18-api-notices.1");
+  assert.equal(marker.requiredApiRelease, "2026.09.18-api-tasks.1");
   assert.equal(marker.requiredWebRelease, "2026.09.18-web-notices.1");
   assert.equal(marker.databaseMigrationsIncluded, true);
   assert.equal(marker.campaignDeliveryIncluded, false);

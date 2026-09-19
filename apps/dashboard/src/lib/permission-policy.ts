@@ -115,6 +115,9 @@ export function dashboardPermissionMatches(
   const grants = (Array.isArray(granted) ? granted : []).flatMap(expandedPermissions);
   if (grants.some((grant) => matchesOne(grant, current) || matchesOne(grant, canonical))) return true;
 
+  if(current==='recall_tasks:read')return ['recall_tasks:respond','recalls.read'].some(p=>dashboardPermissionMatches(granted,p,denied));
+  if(current==='recall_tasks:respond')return dashboardPermissionMatches(granted,'recalls.write',denied);
+
   const requestedAliases = aliasesFor(canonical);
   if (requestedAliases.length > 0) {
     const aliasMatches = (target: string) => grants.some((grant) => matchesOne(grant, target));
@@ -312,6 +315,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (normalizedPath === 'pilot-report'||normalizedPath === 'pilot-report/options') return 'reports.export';
   if (/^batches\/[^/]+\/notice-reviews\/[^/]+(?:\/[^/]+)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'recalls.read':'recalls.write';
   if (/^batches\/[^/]+\/recalls(?:\/[^/]+)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'recalls.read':'recalls.write';
+  if(normalizedPath==='recall-tasks'||normalizedPath.startsWith('recall-tasks/'))return normalizedMethod==='GET'?'recall_tasks:read':'recall_tasks:respond';
   if (normalizedPath === "supplier-reception") return "supplier_reception.read";
   if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
     return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";
