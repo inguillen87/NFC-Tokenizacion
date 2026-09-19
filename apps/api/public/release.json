@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.19-api-trace.1",
-  "scope": "scoped-batch-event-relationships-custody-and-snapshot-exports",
-  "baseCommit": "a39eaf32bc861ad4a0d073c5e1115b1c6efab80b",
+  "release": "2026.09.19-api-trace.2",
+  "scope": "bounded-trace-pagination-identity-filtering-and-permission-revalidation",
+  "baseCommit": "514d3d578f8f6cd14386d6add56e2730d3b4ebf1",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -33,5 +33,6 @@
   "productNoticesProtocol": "nexid.product-notices.v2",
   "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
   "labelProductionProtocol": "nexid.gs1-import.v1",
-  "traceabilityProtocol": "nexid.batch-traceability.v1"
+  "traceabilityProtocol": "nexid.batch-traceability.v1",
+  "tracePageProtocol": "nexid.trace-page.v1"
 }
