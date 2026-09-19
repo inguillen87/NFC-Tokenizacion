@@ -1,8 +1,8 @@
-import {checkAdmin,checkAdminPermission,getAdminPrincipal,getAdminTenantAccess} from './auth';
+import {checkAdmin,checkAdminPermission,getAdminPrincipal,getAdminTenantAccess,type AdminSessionResolver} from './auth';
 import {permissionDenied} from './permission-matcher.js';
 import {ChannelError} from './batch-channel-service';
-export async function channelAccess(req:Request,write=false){
- const auth=await checkAdmin(req);if(auth)return {response:auth};
+export async function channelAccess(req:Request,write=false,sessionResolver?:AdminSessionResolver){
+ const auth=await checkAdmin(req,undefined,sessionResolver);if(auth)return {response:auth};
  const read=checkAdminPermission(req,'batches:read');if(read)return {response:read};
  const principal=getAdminPrincipal(req);
  const canWrite=!permissionDenied(principal.deniedPermissions,'gs1:write')&&(!checkAdminPermission(req,'gs1:write')||!checkAdminPermission(req,'batch.product.configure'));
