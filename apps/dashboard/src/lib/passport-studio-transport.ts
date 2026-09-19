@@ -21,7 +21,14 @@ export function validateStudioReply(raw:unknown,command:StudioCommand,actorId:st
  return {snapshot,receipt:{id:receipt.id,operationId:receipt.operationId,action:receipt.action,committed:true,replayed:receipt.replayed}};
 }
 /** Integration port. No endpoint is assumed or invented; caller supplies an existing, verified same-origin BFF path. */
-export function studioHTTPTransport(endpoint:string,actorId:string,fetcher:typeof fetch=fetch){
+export function studioRequestPath(endpoint:string,action:string,tenantSlug=''){
+ if(!endpoint.startsWith('/api/admin/')||endpoint.includes('..')||endpoint.startsWith('//')||/[?#]/.test(endpoint))throw new Error('studio_endpoint_invalid');
+ if(!['','start','save','submit','request_changes','approve','publish','reopen'].includes(action))throw new Error('studio_action_invalid');
+ if(tenantSlug&&!/^[a-z0-9][a-z0-9._-]{0,119}$/.test(tenantSlug))throw new Error('studio_tenant_invalid');
+ return endpoint+(action?'/'+action:'')+(tenantSlug?'?'+new URLSearchParams({tenant:tenantSlug}):'');
+}
+export function studioHTTPTransport(endpoint:string,actorId:string,fetcher:typeof fetch=fetch,tenantSlug=""){
+ studioRequestPath(endpoint,"",tenantSlug);
  if(!endpoint.startsWith('/api/admin/')||endpoint.includes('..')||endpoint.startsWith('//')||/[?#]/.test(endpoint))throw new Error('studio_endpoint_invalid');
  let inFlight=false;
  return async(command:StudioCommand,signal?:AbortSignal):Promise<StudioReply>=>{
@@ -31,7 +38,7 @@ export function studioHTTPTransport(endpoint:string,actorId:string,fetcher:typeo
   const cancel=()=>abort.abort();signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)abort.abort();
   try{
    if(!['save','submit','request_changes','approve','publish','reopen'].includes(command.action))throw new StudioRequestError('studio_action_invalid',false);
-   const response=await fetcher(`${endpoint}/${command.action}`,{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json','idempotency-key':command.operationId},body:JSON.stringify(command),signal:abort.signal});
+   const response=await fetcher(studioRequestPath(endpoint,command.action,tenantSlug),{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json','idempotency-key':command.operationId},body:JSON.stringify(command),signal:abort.signal});
    if(!response.ok){if(response.status===409)throw new StudioRequestError('studio_revision_conflict',false);if([401,403].includes(response.status))throw new StudioRequestError('studio_permission_denied',false);if([400,413,422].includes(response.status))throw new StudioRequestError('studio_validation_rejected',false);throw new StudioRequestError('studio_outcome_unknown',true);}
    return validateStudioReply(await boundedJSON(response),command,actorId);
   }catch(e){if(e instanceof StudioRequestError)throw e;throw new StudioRequestError('studio_outcome_unknown',true);}

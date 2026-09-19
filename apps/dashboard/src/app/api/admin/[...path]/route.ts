@@ -1110,6 +1110,7 @@ async function forward(req: Request, path: string[]) {
   if (dashboardSession && /^batches\/[^/]+\/traceability(?:\/page)?$/.test(normalizedPath) && (reqUrl.searchParams.getAll("tenant").length>1 || !traceRequestScopeAllowed(dashboardSession,reqUrl.searchParams.get("tenant")))) {
     return NextResponse.json({ok:false,reason:"trace_tenant_forbidden"},{status:403,headers:{"cache-control":"private, no-store"}});
   }
+  if (dashboardSession && normalizedPath === "passport-editorial/queue" && (reqUrl.searchParams.getAll("tenant").length>1 || !traceRequestScopeAllowed(dashboardSession,reqUrl.searchParams.get("tenant")))) return NextResponse.json({ok:false,reason:"editorial_queue_tenant_forbidden"},{status:403,headers:{"cache-control":"private, no-store"}});
   if (dashboardSession && (normalizedPath === "pilot-report" || normalizedPath === "pilot-report/options") && !pilotRequestScopeAllowed(dashboardSession,reqUrl.searchParams.get("tenant"))) {
     return NextResponse.json({ok:false,reason:"pilot_tenant_forbidden"},{status:403,headers:{"cache-control":"private, no-store"}});
   }

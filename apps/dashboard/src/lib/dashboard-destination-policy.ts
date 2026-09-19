@@ -24,6 +24,7 @@ export const DASHBOARD_DESTINATIONS = Object.freeze({
   demoLab: { href: "/demo-lab", requiredPermissions: ["demo:read"] },
   demoEncoder: { href: "/demo-lab/encode", requiredPermissions: ["demo:run"], demoOnly: true },
   proof: { href: "/proof", highImpactCapability: "proofs.read" },
+  editorialQueue: { href: "/passports/review", requiredPermissions: ["batches:read"] },
   batches: { href: "/batches", requiredPermissions: ["batches:read"] },
   supplierBatches: { href: "/batches/supplier", requiredPermissions: ["supplier_reception.read"] },
   tags: { href: "/tags", requiredPermissions: ["tags:read"] },

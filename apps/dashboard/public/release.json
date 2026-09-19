@@ -1,11 +1,11 @@
 {
-  "release": "2026.09.19-dashboard.25",
-  "scope": "passport-studio-historical-comparison-and-explicit-conflict-recovery",
+  "release": "2026.09.19-dashboard.26",
+  "scope": "editorial-work-queue-and-scoped-studio-continuation",
   "realTapCertification": "not-included",
-  "baseCommit": "375d5d2e15135dc62c95d0493dfbd7042b809072",
-  "requiredApiRelease": "2026.09.19-api-intake.2",
+  "baseCommit": "6e1575b30c897bb788cac25586b47850cc7708af",
+  "requiredApiRelease": "2026.09.19-api-editorial-queue.1",
   "source": "committed-interface-increment-on-production-baseline",
-  "apiChangesIncluded": false,
+  "apiChangesIncluded": true,
   "databaseMigrationsIncluded": false,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
@@ -17,5 +17,6 @@
   "labelProductionProtocol": "nexid.gs1-import.v1",
   "traceabilityProtocol": "nexid.batch-traceability.v1",
   "tracePageProtocol": "nexid.trace-page.v1",
-  "intakeProtocol": "nexid.epcis-intake.v1"
+  "intakeProtocol": "nexid.epcis-intake.v1",
+  "editorialQueueProtocol": "nexid.editorial-queue.v1"
 }

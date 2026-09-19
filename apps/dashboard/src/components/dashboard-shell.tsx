@@ -214,6 +214,7 @@ export function DashboardShellInner({
     { destination: "map", href: DASHBOARD_DESTINATIONS.map.href, label: "Mapa profesional" },
     { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview },
     { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches },
+    { destination: "editorialQueue", href: DASHBOARD_DESTINATIONS.editorialQueue.href, label: "Bandeja editorial" },
     { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches },
     { destination: "recallTasks", href: DASHBOARD_DESTINATIONS.recallTasks.href, label: "Mis tareas de retiro" },
     { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics },
@@ -270,6 +271,7 @@ export function DashboardShellInner({
     { destination: "onboarding", href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Onboarding Setup" },
     { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Mission Control" },
     ...items,
+    { destination: "editorialQueue", href: DASHBOARD_DESTINATIONS.editorialQueue.href, label: "Bandeja editorial" },
     { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches },
     { destination: "recallTasks", href: DASHBOARD_DESTINATIONS.recallTasks.href, label: "Mis tareas de retiro" },
     { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics },
@@ -303,7 +305,7 @@ export function DashboardShellInner({
     ? searchableLinks.filter((entry) => taskDestinationLabel(entry, locale).toLowerCase().includes(normalizedQuery) || entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
     : [];
 
-  const contextualHeader = /^\/batches\/[^/]+\/passport$/.test(pathname)
+  const contextualHeader = pathname === "/passports/review" ? {title: "Bandeja editorial", subtitle: "Contenido guardado, revisión y publicación"} : /^\/batches\/[^/]+\/passport$/.test(pathname)
     ? { title: "Passport Studio", subtitle: locale === "en" ? "Editorial versions and review" : locale === "pt-BR" ? "Versões e revisão editorial" : "Versiones y revisión editorial" }
     : /^\/batches\/[^/]+\/traceability$/.test(pathname)
     ? { title: locale === "en" ? "Batch journey" : locale === "pt-BR" ? "Percurso do lote" : "Recorrido del lote", subtitle: "Referencias y custodia registradas" }
@@ -337,6 +339,7 @@ export function DashboardShellInner({
     { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Mission Control", icon: FlaskConical, badge: "LAB" },
     { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof, icon: ShieldCheck, badge: "TRUST" },
     { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches, icon: Layers },
+    { destination: "editorialQueue", href: DASHBOARD_DESTINATIONS.editorialQueue.href, label: "Bandeja editorial", icon: FileCheck2 },
     { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches, icon: FileCheck2 },
     { destination: "tags", href: DASHBOARD_DESTINATIONS.tags.href, label: nav.tags, icon: Cpu },
     { destination: "events", href: DASHBOARD_DESTINATIONS.events.href, label: nav.events, icon: Activity },
