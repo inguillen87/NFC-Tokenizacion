@@ -1,11 +1,11 @@
 {
-  "release": "2026.09.19-api-intake.1",
-  "scope": "operator-epcis-intake-on-existing-atomic-capture-engine",
-  "baseCommit": "dc104fe2e0d37134ed8c66cf947660b7a0a3ae34",
+  "release": "2026.09.19-api-intake.2",
+  "scope": "guided-serialized-unit-aggregation-search-and-verified-intake-review",
+  "baseCommit": "e5af0bb044a7e9c5a912280eeb3663679ebf8abc",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
-  "databaseMigrationsIncluded": true,
+  "databaseMigrationsIncluded": false,
   "requiredMigration": "20260919200000_0111_epcis_operator_intake.sql",
   "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
@@ -36,5 +36,6 @@
   "labelProductionProtocol": "nexid.gs1-import.v1",
   "traceabilityProtocol": "nexid.batch-traceability.v1",
   "tracePageProtocol": "nexid.trace-page.v1",
-  "intakeProtocol": "nexid.epcis-intake.v1"
+  "intakeProtocol": "nexid.epcis-intake.v1",
+  "identityPickerProtocol": "nexid.epcis-identities.v1"
 }
