@@ -311,6 +311,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
     // may open the tenant-scoped supplier-order surface.
     return "supplier_orders:read";
   }
+  if (/^batches\/[^/]+\/production\/(preview|commit|print|history)$/.test(normalizedPath)) return normalizedPath.endsWith('/commit')?'batch.product.configure':'batches:read';
   if (/^batches\/[^/]+\/channels(?:\/qr)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'batches:read':'batch.product.configure';
   if (normalizedPath === 'pilot-report'||normalizedPath === 'pilot-report/options') return 'reports.export';
   if (/^batches\/[^/]+\/notice-reviews\/[^/]+(?:\/[^/]+)?$/.test(normalizedPath)) return normalizedMethod==='GET'?'recalls.read':'recalls.write';

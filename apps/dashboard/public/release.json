@@ -1,17 +1,18 @@
 {
-  "release": "2026.09.18-dashboard.19",
-  "scope": "assigned-recall-inbox-acknowledgements-cumulative-counts-and-own-evidence",
+  "release": "2026.09.19-dashboard.20",
+  "scope": "csv-label-production-preview-confirm-print-and-receipt-history",
   "realTapCertification": "not-included",
-  "baseCommit": "8cc69dd856547982cabbafa2709daf572e68e8f9",
-  "requiredApiRelease": "2026.09.18-api-tasks.1",
+  "baseCommit": "d7025b862fb1aed77b3e56e58d79212617c1ba4c",
+  "requiredApiRelease": "2026.09.19-api-labels.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
   "databaseMigrationsIncluded": true,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
   "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
-  "requiredWebRelease": "2026.09.18-web-notices.1",
+  "requiredWebRelease": "2026.09.19-web-consumer.1",
   "campaignDeliveryIncluded": false,
   "campaignLaunchProtocol": "nexid.campaign-launch.v1",
-  "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1"
+  "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
+  "labelProductionProtocol": "nexid.gs1-import.v1"
 }

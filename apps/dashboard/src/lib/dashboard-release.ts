@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.18-dashboard.19';
-export const DASHBOARD_RELEASE_DATE='2026-09-18';
+export const DASHBOARD_RELEASE='2026.09.19-dashboard.20';
+export const DASHBOARD_RELEASE_DATE='2026-09-19';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "S6 · la respuesta llega desde su responsable",
-    "title": "Tus tareas. Tu respuesta. Un solo expediente.",
-    "summary": "La cuenta asignada recibe una tarea de seguimiento, registra su acuse y declara cantidades con evidencia. Gestión ve esos mismos movimientos en el caso original.",
-    "back": "Abrir mis tareas de retiro",
+    "eyebrow": "Preparación industrial por archivo",
+    "title": "De la lista de identidades a la plancha de etiquetas.",
+    "summary": "Validá hasta 100 identidades GS1 por archivo, confirmá el registro completo y descargá la plancha. El QR básico permite preparar copias del enlace del lote sin inventar unidades.",
+    "back": "Abrir lotes",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Recorrido operativo",
+    "guide": "Cómo probar el recorrido",
     "steps": [
-      "El responsable de la empresa publica el caso con destinos y cuentas asignadas.",
-      "La cuenta autorizada abre Mis tareas de retiro o el enlace que comparte la gestión.",
-      "Consulta el aviso vigente y confirma el acuse con una referencia.",
-      "Informa totales acumulados y descarga su constancia. Gestión conserva la aprobación del cierre."
+      "Abrí un lote QR o GS1 y elegí Enlaces QR / estado NFC.",
+      "Entrá a Producción QR / GS1. Cargá el CSV y revisá los errores por fila.",
+      "Para GS1, validá los permisos y confirmá el archivo completo con su referencia.",
+      "Prepará la plancha, descargá el manifiesto y verificá una muestra física antes de fabricar."
     ],
-    "boundary": "Sólo cuentas activas de la empresa o administradores globales expresamente asignados. No hay acceso anónimo, invitaciones ni mensajes automáticos. La respuesta declara cantidades: no prueba devolución física ni libera productos.",
+    "boundary": "No convierte NFC ni certifica lectura física. Requiere perfil activo y, para GS1, el prefijo autorizado del cliente. No crea derechos GS1 ni habilita etiquetas automáticamente.",
     "cards": [
       {
-        "title": "Una bandeja propia",
-        "text": "Cada cuenta consulta sólo sus destinos, sin exponer otras empresas, destinatarios o el motivo interno del retiro.",
-        "tag": "Acceso acotado"
+        "title": "Validación antes de escribir",
+        "text": "GTIN, lote, serie, duplicados, autorización de prefijo y conflictos con identidades existentes. Las filas bloqueadas impiden el registro completo.",
+        "tag": "Control por fila"
       },
       {
-        "title": "Respuesta directa",
-        "text": "Acuses y cantidades se guardan en el expediente existente, con actor y origen diferenciados de una carga administrativa.",
-        "tag": "Operación real"
+        "title": "Una transacción por archivo",
+        "text": "Registro, auditoría y comprobante se confirman juntos. Repetir el mismo intento recupera el resultado, sin duplicar identidades.",
+        "tag": "Integridad"
       },
       {
-        "title": "Reintentos sin duplicación",
-        "text": "El intento se conserva ante una respuesta incierta; las revisiones y la asignación se verifican antes de guardar.",
-        "tag": "Consistencia"
+        "title": "Salida para impresión",
+        "text": "Plancha HTML autónoma, datos CSV y manifiesto JSON generados desde el estado actual del registro.",
+        "tag": "Imprenta"
       },
       {
-        "title": "Constancia del destino",
-        "text": "Informe HTML con aviso, cantidades e historial del destino, descargable sin otra consulta ni datos ajenos.",
-        "tag": "Evidencia"
+        "title": "Comprobantes recuperables",
+        "text": "Consultá las últimas importaciones del lote y prepará otra copia sin volver a registrar el archivo.",
+        "tag": "Continuidad"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "S6 · responses from the assignee",
-    "title": "Your task. Your response. One case.",
-    "summary": "Assigned accounts acknowledge notices and report cumulative quantities. The existing management case receives the same durable operations.",
-    "back": "Open my recall tasks",
+    "eyebrow": "Bounded label production",
+    "title": "From identifiers to a printable label sheet.",
+    "summary": "Validate up to 100 GS1 identities per file, commit the complete set and download the sheet. Basic QR prints repeat the registered batch link.",
+    "back": "Open batches",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
     "guide": "Workflow",
     "steps": [
-      "Management publishes a case with destinations and assigned accounts.",
-      "The authorized account opens its task inbox or a shared authenticated link.",
-      "Read the current notice and acknowledge with an evidence reference.",
-      "Report cumulative quantities and download a destination record. Management controls closure."
+      "Open a QR or GS1 batch and its channel configuration.",
+      "Upload a CSV and inspect row-level errors.",
+      "Confirm the authorized GS1 file with a business reference.",
+      "Download the sheet and manifest, then check a physical sample before production."
     ],
-    "boundary": "Requires an active authorized account and current assignment. No anonymous access or automatic invitations/messages. Declared quantities are not physical verification or product release.",
+    "boundary": "Does not convert NFC, grant GS1 rights or certify printed labels. The active channel and authorized company prefix are required.",
     "cards": [
       {
-        "title": "Assigned inbox",
-        "text": "Only the current account destinations are exposed, not other recipients or internal case reasons.",
-        "tag": "Scope"
+        "title": "Validate first",
+        "text": "Identifier syntax, duplicates, ownership entitlement and existing registry conflicts are checked before insertion.",
+        "tag": "Validation"
       },
       {
-        "title": "Direct response",
-        "text": "Acknowledgements and quantities update the existing case, with source and actor recorded.",
-        "tag": "Operation"
-      },
-      {
-        "title": "Durable retries",
-        "text": "Uncertain attempts retain their identity and revisions are checked before changes.",
+        "title": "Atomic registration",
+        "text": "Identities, audit and receipt commit together. Replaying the same operation does not duplicate the file.",
         "tag": "Integrity"
       },
       {
-        "title": "Destination evidence",
-        "text": "Download the confirmed notice, quantities and own destination history.",
-        "tag": "Evidence"
+        "title": "Printable outputs",
+        "text": "Self-contained HTML sheet, CSV and JSON manifest from current registered identities.",
+        "tag": "Print"
+      },
+      {
+        "title": "Recoverable receipts",
+        "text": "Retrieve recent batch imports and prepare another printout without registering again.",
+        "tag": "Continuity"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "S6 · resposta do responsável",
-    "title": "Sua tarefa. Sua resposta. Um só dossiê.",
-    "summary": "A conta designada acusa o recebimento e informa quantidades acumuladas. A gestão recebe os mesmos registros no caso existente.",
-    "back": "Abrir minhas tarefas de retirada",
+    "eyebrow": "Preparação de etiquetas por arquivo",
+    "title": "Das identidades à folha de impressão.",
+    "summary": "Valide até 100 identidades GS1, confirme o arquivo completo e baixe a folha. O QR básico repete o link registrado do lote.",
+    "back": "Abrir lotes",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Fluxo operacional",
+    "guide": "Fluxo",
     "steps": [
-      "A gestão publica o caso com destinos e contas responsáveis.",
-      "A conta autorizada abre sua tarefa ou o link autenticado compartilhado.",
-      "Consulta o aviso e confirma o recebimento com uma referência.",
-      "Informa totais acumulados e baixa o registro do destino. O fechamento fica com a gestão."
+      "Abra um lote QR ou GS1 e sua configuração de canais.",
+      "Carregue o CSV e revise os erros por linha.",
+      "Confirme o arquivo autorizado com uma referência operacional.",
+      "Baixe folha e manifesto e verifique uma amostra física antes de produzir."
     ],
-    "boundary": "Exige conta ativa autorizada e atribuição atual. Sem acesso anônimo ou convites/mensagens automáticos. Quantidades declaradas não comprovam devolução física nem liberam produto.",
+    "boundary": "Não converte NFC, concede direitos GS1 ou certifica a impressão. Requer canal ativo e prefixo autorizado da empresa.",
     "cards": [
       {
-        "title": "Caixa própria",
-        "text": "Mostra somente destinos atribuídos, sem outros destinatários ou motivos internos.",
-        "tag": "Escopo"
+        "title": "Validar antes de gravar",
+        "text": "Sintaxe, duplicatas, autorização do prefixo e conflitos existentes antes do registro.",
+        "tag": "Validação"
       },
       {
-        "title": "Resposta direta",
-        "text": "Acuses e quantidades são guardados no dossiê existente com autor e origem.",
-        "tag": "Operação"
+        "title": "Transação por arquivo",
+        "text": "Identidades, auditoria e comprovante são confirmados juntos, sem duplicar ao repetir a tentativa.",
+        "tag": "Integridade"
       },
       {
-        "title": "Repetição controlada",
-        "text": "Tentativas incertas mantêm o identificador e as revisões são verificadas antes de gravar.",
-        "tag": "Consistência"
+        "title": "Saída de impressão",
+        "text": "Folha HTML autônoma, CSV e manifesto JSON do registro atual.",
+        "tag": "Impressão"
       },
       {
-        "title": "Evidência do destino",
-        "text": "Baixe aviso, quantidades e histórico confirmado do destino.",
-        "tag": "Evidência"
+        "title": "Comprovantes recuperáveis",
+        "text": "Consulte importações recentes e prepare outra impressão sem registrar novamente.",
+        "tag": "Continuidade"
       }
     ]
   }
