@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.19-api-intake.2",
-  "scope": "guided-serialized-unit-aggregation-search-and-verified-intake-review",
-  "baseCommit": "e5af0bb044a7e9c5a912280eeb3663679ebf8abc",
+  "release": "2026.09.19-api-editorial-queue.1",
+  "scope": "tenant-scoped-editorial-work-queue-read-model",
+  "baseCommit": "5631b475c77fa5469191a0ce0ea5545f8bbb00ce",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -37,5 +37,6 @@
   "traceabilityProtocol": "nexid.batch-traceability.v1",
   "tracePageProtocol": "nexid.trace-page.v1",
   "intakeProtocol": "nexid.epcis-intake.v1",
-  "identityPickerProtocol": "nexid.epcis-identities.v1"
+  "identityPickerProtocol": "nexid.epcis-identities.v1",
+  "editorialQueueProtocol": "nexid.editorial-queue.v1"
 }
