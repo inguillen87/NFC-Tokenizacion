@@ -1107,7 +1107,7 @@ async function forward(req: Request, path: string[]) {
     return NextResponse.json({ ok: false, reason: "unsupported_dashboard_role" }, { status: 403 });
   }
 
-  if (dashboardSession && /^batches\/[^/]+\/traceability$/.test(normalizedPath) && (reqUrl.searchParams.getAll("tenant").length>1 || !traceRequestScopeAllowed(dashboardSession,reqUrl.searchParams.get("tenant")))) {
+  if (dashboardSession && /^batches\/[^/]+\/traceability(?:\/page)?$/.test(normalizedPath) && (reqUrl.searchParams.getAll("tenant").length>1 || !traceRequestScopeAllowed(dashboardSession,reqUrl.searchParams.get("tenant")))) {
     return NextResponse.json({ok:false,reason:"trace_tenant_forbidden"},{status:403,headers:{"cache-control":"private, no-store"}});
   }
   if (dashboardSession && (normalizedPath === "pilot-report" || normalizedPath === "pilot-report/options") && !pilotRequestScopeAllowed(dashboardSession,reqUrl.searchParams.get("tenant"))) {

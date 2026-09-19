@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.19-dashboard.21",
-  "scope": "scoped-batch-event-relationships-custody-and-snapshot-exports",
+  "release": "2026.09.19-dashboard.22",
+  "scope": "paged-trace-investigation-exact-identity-follow-and-page-evidence",
   "realTapCertification": "not-included",
-  "baseCommit": "210964916f3877666cb22b2e8b69c021f612964c",
-  "requiredApiRelease": "2026.09.19-api-trace.1",
+  "baseCommit": "757b3e71f00b6e844565e216dcc2f15b0650c5da",
+  "requiredApiRelease": "2026.09.19-api-trace.2",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
   "databaseMigrationsIncluded": false,
@@ -15,5 +15,6 @@
   "campaignLaunchProtocol": "nexid.campaign-launch.v1",
   "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
   "labelProductionProtocol": "nexid.gs1-import.v1",
-  "traceabilityProtocol": "nexid.batch-traceability.v1"
+  "traceabilityProtocol": "nexid.batch-traceability.v1",
+  "tracePageProtocol": "nexid.trace-page.v1"
 }

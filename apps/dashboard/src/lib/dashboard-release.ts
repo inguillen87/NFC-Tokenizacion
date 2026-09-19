@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.19-dashboard.21';
+export const DASHBOARD_RELEASE='2026.09.19-dashboard.22';
 export const DASHBOARD_RELEASE_DATE='2026-09-19';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "S3 / S5 · expediente operativo",
-    "title": "El recorrido del lote, con su evidencia.",
-    "summary": "Consultá eventos, agrupaciones, transformaciones y envíos desde el lote. Cada fuente conserva su alcance y sus fechas; no se infiere ubicación física ni autenticidad adicional.",
+    "eyebrow": "Investigar una identidad sin perder su historia",
+    "title": "Más allá de los primeros movimientos.",
+    "summary": "El recorrido del lote ahora navega por páginas y busca GTIN, lote, serie o tipo de evento en todo el período. Seguís una identidad exacta sin confundir declaraciones con evidencia física.",
     "back": "Abrir lotes",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Cómo usar esta entrega",
+    "guide": "Cómo probar esta entrega",
     "steps": [
-      "Abrí un lote y elegí Recorrido del lote.",
-      "Consultá un período de hasta 93 días completos en UTC.",
-      "Revisá el evento y sus referencias de agrupador, contenido, entradas o salidas.",
-      "Abrí el envío autorizado o descargá la misma consulta en HTML y JSON."
+      "Abrí un lote y entrá a Recorrido del lote.",
+      "Consultá el período y avanzá o retrocedé entre páginas de hasta 50 movimientos.",
+      "Filtrá por identidad o tipo; desde una referencia usá Seguir esta identidad.",
+      "Descargá el informe de la página con sus filtros, corte de registros y SHA-256."
     ],
-    "boundary": "Los eventos EPCIS son declaraciones persistidas; las relaciones son históricas, no un inventario actual del contenedor. No se crean movimientos, se simula un lector UHF ni se modifican etiquetas al consultar.",
+    "boundary": "La paginación consulta datos y permisos actuales bajo un corte de fecha de ingreso. No es una fotografía inmutable entre páginas, una topología vigente ni una lectura UHF física.",
     "cards": [
       {
-        "title": "Una consulta del expediente",
-        "text": "Eventos EPCIS y custodia vinculados al lote, sin duplicar tablas ni mezclar empresas.",
-        "tag": "Trazabilidad"
+        "title": "Páginas, no una muestra fija",
+        "text": "EPCIS y custodia autorizada se ordenan juntos. Fechas iguales y microsegundos mantienen el orden sin duplicar registros de fuentes distintas.",
+        "tag": "Historial"
       },
       {
-        "title": "Relaciones comprensibles",
-        "text": "Agrupar, observar, separar y transformar conservan su acción y momento. Una corrección se advierte, no se oculta.",
-        "tag": "Operación"
+        "title": "Encontrar la identidad correcta",
+        "text": "GTIN, lote y serie consultan la base dentro del período, no sólo las filas ya cargadas. Una referencia puede abrir su seguimiento exacto.",
+        "tag": "Investigación"
       },
       {
-        "title": "Permisos conservados",
-        "text": "El acceso al lote no concede logística. Los envíos se muestran sólo a una cuenta autorizada.",
-        "tag": "Acceso"
-      },
-      {
-        "title": "Evidencia exportable",
-        "text": "HTML autónomo y JSON del mismo resultado, con integridad verificable y sin consultar otra vez la base.",
+        "title": "Evidencia con alcance explícito",
+        "text": "HTML y JSON corresponden a la página consultada e incluyen filtros y corte. No se presentan como el historial completo.",
         "tag": "Informe"
+      },
+      {
+        "title": "Errores recuperables",
+        "text": "Una fuente caída retira el resultado anterior. La misma página puede reintentarse; cambios de permisos obligan a iniciar una consulta autorizada.",
+        "tag": "Operación"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "S3 / S5 · operational dossier",
-    "title": "The batch journey, backed by records.",
-    "summary": "Review events, grouping, transformations and linked shipments from the batch dossier. Source scope and timestamps remain explicit.",
+    "eyebrow": "Investigate an identity without losing its history",
+    "title": "Beyond the first movements.",
+    "summary": "Batch traceability now pages through history and queries GTIN, lot, serial or event type across the selected period.",
     "back": "Open batches",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
-    "guide": "Use this release",
+    "guide": "Try this release",
     "steps": [
-      "Open a batch and choose its journey.",
-      "Select up to 93 complete UTC days.",
-      "Review event-specific parent, child, input and output references.",
-      "Open an authorized shipment or export the query in HTML and JSON."
+      "Open a batch and its traceability view.",
+      "Select a period and navigate pages of up to 50 movements.",
+      "Filter an identity or use Follow this identity from a reference.",
+      "Export the loaded page with its filters, record cutoff and digest."
     ],
-    "boundary": "Recorded EPCIS declarations do not establish current physical containment or NFC authenticity. This read-only view does not simulate UHF hardware or write movements.",
+    "boundary": "Each page rechecks current permissions and data under a record-time boundary. This is not an immutable cross-page snapshot or a physical RFID certification.",
     "cards": [
       {
-        "title": "One batch view",
-        "text": "Linked EPCIS and custody records without a duplicate data store.",
-        "tag": "Traceability"
+        "title": "Paged history",
+        "text": "Authorized EPCIS and custody records share a deterministic order, including identical IDs across sources and microsecond timestamps.",
+        "tag": "History"
       },
       {
-        "title": "Clear relationships",
-        "text": "ADD, OBSERVE, DELETE and transformations retain their historical context.",
+        "title": "Scoped identity search",
+        "text": "Query the database by GTIN, lot or serial rather than searching only loaded rows.",
+        "tag": "Investigation"
+      },
+      {
+        "title": "Page-specific evidence",
+        "text": "HTML and JSON include page scope and filters instead of claiming complete historical coverage.",
+        "tag": "Evidence"
+      },
+      {
+        "title": "Recoverable failures",
+        "text": "Unconfirmed data is cleared; a failed read can retry its position and permission changes require a new query.",
         "tag": "Operations"
-      },
-      {
-        "title": "Scoped access",
-        "text": "Batch access does not grant logistics permission or reveal other tenants.",
-        "tag": "Access"
-      },
-      {
-        "title": "Exportable evidence",
-        "text": "Self-contained HTML and JSON use the same retrieved snapshot.",
-        "tag": "Report"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "S3 / S5 · dossiê operacional",
-    "title": "O percurso do lote, com evidências.",
-    "summary": "Consulte eventos, agrupamentos, transformações e envios vinculados ao lote, mantendo o escopo e as datas de cada fonte.",
+    "eyebrow": "Investigue uma identidade sem perder seu histórico",
+    "title": "Além dos primeiros movimentos.",
+    "summary": "O percurso do lote agora navega por páginas e consulta GTIN, lote, série e tipo de evento no período selecionado.",
     "back": "Abrir lotes",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Como usar",
+    "guide": "Como testar",
     "steps": [
-      "Abra o lote e seu percurso.",
-      "Selecione até 93 dias completos em UTC.",
-      "Consulte referências de agrupador, conteúdo, entradas e saídas por evento.",
-      "Abra o envio autorizado ou exporte a consulta em HTML e JSON."
+      "Abra um lote e seu percurso.",
+      "Consulte o período e navegue páginas de até 50 movimentos.",
+      "Filtre a identidade ou use Seguir esta identidade em uma referência.",
+      "Exporte a página com filtros, corte de registro e hash."
     ],
-    "boundary": "Declarações EPCIS não comprovam a composição física atual nem a autenticidade NFC. A consulta não simula leitores UHF ou cria movimentações.",
+    "boundary": "Cada página revalida dados e permissões sob um corte de registro. Não é uma fotografia imutável entre páginas nem comprovação física de RFID.",
     "cards": [
       {
-        "title": "Consulta do lote",
-        "text": "Eventos e custódia vinculados sem duplicar o armazenamento.",
-        "tag": "Rastreabilidade"
+        "title": "Histórico paginado",
+        "text": "EPCIS e custódia autorizados mantêm ordem determinística, incluindo microssegundos e IDs iguais em fontes diferentes.",
+        "tag": "Histórico"
       },
       {
-        "title": "Relações claras",
-        "text": "Agrupar, observar, separar e transformar mantêm seu contexto histórico.",
+        "title": "Busca por identidade",
+        "text": "GTIN, lote e série consultam o período no banco, não apenas as linhas visíveis.",
+        "tag": "Investigação"
+      },
+      {
+        "title": "Evidência por página",
+        "text": "HTML e JSON incluem filtros e limites explícitos sem declarar todo o histórico.",
+        "tag": "Evidência"
+      },
+      {
+        "title": "Falhas recuperáveis",
+        "text": "Dados não confirmados são retirados; a leitura pode ser repetida e mudanças de permissões exigem nova consulta.",
         "tag": "Operação"
-      },
-      {
-        "title": "Acesso delimitado",
-        "text": "Acesso ao lote não concede permissão logística nem acesso a outra empresa.",
-        "tag": "Acesso"
-      },
-      {
-        "title": "Evidência exportável",
-        "text": "HTML e JSON autônomos usam o mesmo resultado consultado.",
-        "tag": "Relatório"
       }
     ]
   }

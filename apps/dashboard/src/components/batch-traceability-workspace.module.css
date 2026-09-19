@@ -10,3 +10,18 @@
 
 .metricScope{font-size:10px;line-height:1.8;color:var(--tr-muted);margin:0 0 9px}.toolbar input{color-scheme:dark}:global(html.theme-light) .toolbar input,:global(html[data-theme="light"]) .toolbar input{color-scheme:light}
 @media(max-width:850px){.hero{padding:16px}.hero h1{font-size:26px}.metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.metrics>div{padding:10px 8px}.metrics svg{width:16px;height:16px;margin-bottom:5px}.metrics span{font-size:9px;min-height:29px;line-height:1.5}.metrics strong{font-size:24px}.metrics small{display:none}.metricScope{margin-top:6px;font-size:10px}.source{margin-bottom:12px}}
+
+/* Paged investigation uses the existing workbench tokens. */
+.queryPanel{border:1px solid var(--tr-line);border-radius:17px;background:var(--tr-bg);padding:17px;margin-bottom:12px}
+.toolbar select,.identityFields input,.identityFields select{width:100%;min-height:44px;padding:10px;border:1px solid var(--tr-line);border-radius:10px;background:var(--tr-bg);color:var(--tr-text);font:inherit;font-size:12px;min-width:0}
+.toolbar select{max-width:280px}.identityQuery{margin-top:13px;border-top:1px solid var(--tr-line);padding-top:7px}
+.identityQuery summary{display:flex;align-items:center;gap:8px;cursor:pointer;min-height:42px;color:var(--tr-accent);font-size:12px;font-weight:750}
+.identityFields{display:grid;grid-template-columns:1.15fr 1fr 1fr 1.35fr;gap:11px;margin:10px 0}.identityFields label{display:grid;gap:6px;font-size:11px;font-weight:700;color:var(--tr-muted);min-width:0}
+.identityQuery p{font-size:11px;line-height:1.8;color:var(--tr-muted);margin:10px 0 0}
+.filterState{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;font-size:11px;line-height:1.7;background:var(--tr-tint);border-radius:10px;padding:9px 12px;margin-top:12px}.filterState span{overflow-wrap:anywhere}.filterState button{font-size:11px;padding:6px 9px;min-height:36px}
+.pager{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:15px;border:1px solid var(--tr-line);border-radius:15px;background:var(--tr-bg);margin:0 0 10px}.pager>div:first-child{display:grid;gap:4px;min-width:140px}.pager strong{font-size:14px;line-height:1.6}.pager span{font-size:11px;line-height:1.8;color:var(--tr-muted)}
+.pagerButtons{display:flex;gap:7px}.pager .export{gap:7px}.pager .export button{font-size:11px;padding:10px}
+.cutoff{font-size:11px;line-height:1.8;color:var(--tr-muted);margin:0 2px 20px}.cutoff summary{cursor:pointer;min-height:36px;padding:7px 0}.cutoff p{margin:5px 0 12px;padding:12px;background:var(--tr-tint);border-radius:10px;border:1px solid var(--tr-line)}
+.pagedTimeline{max-height:710px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:4px}.root .inspect{display:flex;margin:10px 0 0;min-height:36px;padding:7px 9px;font-size:11px;color:var(--tr-accent)}
+@media(max-width:1050px){.pager .export{margin-left:0;flex-basis:100%}.pager .export button{flex:1}.identityFields{grid-template-columns:1fr 1fr}}
+@media(max-width:850px){.queryPanel{padding:13px}.toolbar select{max-width:100%}.identityFields{grid-template-columns:1fr 1fr}.identityFields label:last-child{grid-column:1/-1}.pager{gap:10px;padding:12px}.pager>div:first-child{flex:1}.pagerButtons button{font-size:11px;padding:9px 10px}.pager .export{margin-top:2px}.cutoff{font-size:10px}.pagedTimeline{max-height:450px}.detail{scroll-margin-top:135px}}
