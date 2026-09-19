@@ -1,3 +1,4 @@
+import {canUseEpcisIntake} from '../../../../../lib/epcis-intake-access';
 import {traceRequestScopeAllowed} from '../../../../../lib/batch-traceability-access';
 import {requireDashboardSession} from '../../../../../lib/session';
 import {createAdminPageContext,fetchAdminPage} from '../../../../../lib/admin-page-access';
@@ -10,5 +11,5 @@ export default async function TraceabilityPage({params,searchParams}:{params:Pro
  if(!traceRequestScopeAllowed(session,query.tenant))return <main><h1>Alcance no autorizado</h1><p>Este recorrido requiere la empresa de tu sesión o una selección autorizada de superadministración.</p></main>;
  const filters=new URLSearchParams();for(const k of ['from','to','source','type','gtin','lot','serial','exact'])if(typeof query[k]==='string')filters.set(k,query[k] as string);
  if(!session.isDemo)try{const response=await fetchAdminPage(context,`batches/${encodeURIComponent(bid)}/traceability/page?${filters}`,{signal:AbortSignal.timeout(14000)});if(response.ok&&response.headers.get('x-nexid-data-mode')!=='demo')data=parseTracePage(await readTraceJson(response),bid,context.tenantSlug);}catch{}
- return <BatchTraceabilityWorkspace key={`${session.id}:${context.tenantSlug}:${bid}`} initial={data} bid={bid} tenant={context.tenantSlug} canLogistics={dashboardSessionCanOpenDestination(session,'logistics')} enabled={!session.isDemo}/>;
+ return <BatchTraceabilityWorkspace key={`${session.id}:${context.tenantSlug}:${bid}`} initial={data} bid={bid} tenant={context.tenantSlug} canLogistics={dashboardSessionCanOpenDestination(session,'logistics')} enabled={!session.isDemo} canIntake={canUseEpcisIntake(session)}/>;
 }

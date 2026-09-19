@@ -12,7 +12,7 @@ const title=(e:TraceEvent|CustodyEvent)=>e.kind==='epcis'?(eventLabels[e.type]||
 const keyOf=(e:{kind:string;id:string})=>e.kind+':'+e.id;
 function save(content:string,name:string,type:string){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 type ReadAttempt={cursor:string|null;index:number;query:TraceQuery;from:string;to:string;cutoff?:string;batchId?:string};
-export function BatchTraceabilityWorkspace({initial,bid,tenant,canLogistics=false,enabled=true}:{initial:TracePage|null;bid:string;tenant:string;canLogistics?:boolean;enabled?:boolean}){
+export function BatchTraceabilityWorkspace({initial,bid,tenant,canLogistics=false,enabled=true,canIntake=false}:{initial:TracePage|null;bid:string;tenant:string;canLogistics?:boolean;enabled?:boolean;canIntake?:boolean}){
  const defaults=initial?.trace.window||defaultDates();
  const [page,setPage]=useState(initial),[from,setFrom]=useState(defaults.from),[to,setTo]=useState(defaults.to),[query,setQuery]=useState<TraceQuery>(initial?.query||emptyTraceQuery);
  const [filtersOpen,setFiltersOpen]=useState(false);
@@ -49,7 +49,7 @@ export function BatchTraceabilityWorkspace({initial,bid,tenant,canLogistics=fals
  async function exportData(which:'html'|'json'){if(!page||exporting)return;setExporting(true);try{const files=await tracePageExports(page);if(alive.current)save(files[which],`nexid-recorrido-${page.trace.window.from}-p${page.navigation.page}.${which}`,which==='html'?'text/html;charset=utf-8':'application/json');}catch{if(alive.current)setError('No se pudo preparar el informe de la página.');}finally{if(alive.current)setExporting(false);}}
  const qs=new URLSearchParams(tenant?{tenant}:{}),dossier=`/batches/${encodeURIComponent(bid)}?${qs}`;
  return <main className={styles.root} data-testid="batch-traceability">
-  <div className={styles.top}><Link prefetch={false} href={dossier}><ArrowLeft size={15} aria-hidden="true"/>Volver al expediente</Link><span>Investigación del historial · sin escrituras</span></div>
+  <div className={styles.top}><Link prefetch={false} href={dossier}><ArrowLeft size={15} aria-hidden="true"/>Volver al expediente</Link><span>Investigación del historial · sin escrituras</span>{canIntake&&<Link prefetch={false} className={styles.primary} href={`/batches/${encodeURIComponent(bid)}/intake?${qs}`}>Registrar movimiento<ArrowRight size={15} aria-hidden="true"/></Link>}</div>
   <header className={styles.hero}><div><p className={styles.eyebrow}>DE LA IDENTIDAD A SU HISTORIA</p><h1>Recorrido del lote</h1><p>{data?.product.name||bid} · {data?.scope.tenantName||tenant||'Empresa por confirmar'}</p></div><span className={styles.heroIcon}><GitBranch size={31} aria-hidden="true"/></span></header>
   <form className={styles.queryPanel} onSubmit={e=>{e.preventDefault();refresh();}}>
    <div className={styles.toolbar}><label>Desde · UTC<input aria-label="Desde UTC" type="date" value={from} disabled={busy||exporting} onChange={e=>{invalidate();setFrom(e.target.value);}}/></label><label>Hasta · inclusive UTC<input aria-label="Hasta UTC" type="date" value={to} disabled={busy||exporting} onChange={e=>{invalidate();setTo(e.target.value);}}/></label>

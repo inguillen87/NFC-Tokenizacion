@@ -1,12 +1,12 @@
 {
-  "release": "2026.09.19-dashboard.22",
-  "scope": "paged-trace-investigation-exact-identity-follow-and-page-evidence",
+  "release": "2026.09.19-dashboard.23",
+  "scope": "guided-and-file-movement-intake-with-validation-and-durable-receipts",
   "realTapCertification": "not-included",
-  "baseCommit": "757b3e71f00b6e844565e216dcc2f15b0650c5da",
-  "requiredApiRelease": "2026.09.19-api-trace.2",
+  "baseCommit": "f2c1934f328258abbbc012c83b77033f7f98a1cc",
+  "requiredApiRelease": "2026.09.19-api-intake.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
-  "databaseMigrationsIncluded": false,
+  "databaseMigrationsIncluded": true,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
   "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
@@ -16,5 +16,6 @@
   "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
   "labelProductionProtocol": "nexid.gs1-import.v1",
   "traceabilityProtocol": "nexid.batch-traceability.v1",
-  "tracePageProtocol": "nexid.trace-page.v1"
+  "tracePageProtocol": "nexid.trace-page.v1",
+  "intakeProtocol": "nexid.epcis-intake.v1"
 }

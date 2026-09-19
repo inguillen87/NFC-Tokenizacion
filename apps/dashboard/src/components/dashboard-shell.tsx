@@ -305,6 +305,8 @@ export function DashboardShellInner({
 
   const contextualHeader = /^\/batches\/[^/]+\/traceability$/.test(pathname)
     ? { title: locale === "en" ? "Batch journey" : locale === "pt-BR" ? "Percurso do lote" : "Recorrido del lote", subtitle: "Referencias y custodia registradas" }
+    : /^\/batches\/[^/]+\/intake$/.test(pathname)
+    ? { title: locale === "en" ? "Record movements" : locale === "pt-BR" ? "Registrar movimentos" : "Registrar movimientos", subtitle: "Preparación y registro de declaraciones EPCIS" }
     : pathname.startsWith("/tasks/recalls")
     ? { title: locale === "en" ? "My recall tasks" : locale === "pt-BR" ? "Minhas tarefas de retirada" : "Mis tareas de retiro", subtitle: locale === "en" ? "Assigned responses and evidence" : locale === "pt-BR" ? "Respostas atribuídas e evidência" : "Respuestas asignadas y evidencia" }
     : pathname.startsWith("/demo-lab")
