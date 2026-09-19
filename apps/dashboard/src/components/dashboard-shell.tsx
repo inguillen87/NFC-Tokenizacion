@@ -303,7 +303,9 @@ export function DashboardShellInner({
     ? searchableLinks.filter((entry) => taskDestinationLabel(entry, locale).toLowerCase().includes(normalizedQuery) || entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
     : [];
 
-  const contextualHeader = pathname.startsWith("/tasks/recalls")
+  const contextualHeader = /^\/batches\/[^/]+\/traceability$/.test(pathname)
+    ? { title: locale === "en" ? "Batch journey" : locale === "pt-BR" ? "Percurso do lote" : "Recorrido del lote", subtitle: "Referencias y custodia registradas" }
+    : pathname.startsWith("/tasks/recalls")
     ? { title: locale === "en" ? "My recall tasks" : locale === "pt-BR" ? "Minhas tarefas de retirada" : "Mis tareas de retiro", subtitle: locale === "en" ? "Assigned responses and evidence" : locale === "pt-BR" ? "Respostas atribuídas e evidência" : "Respuestas asignadas y evidencia" }
     : pathname.startsWith("/demo-lab")
     ? { title: "Demo Mission Control", subtitle: "Tenant demo operations" }

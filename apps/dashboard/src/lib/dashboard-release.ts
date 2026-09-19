@@ -1,123 +1,123 @@
-export const DASHBOARD_RELEASE='2026.09.19-dashboard.20';
+export const DASHBOARD_RELEASE='2026.09.19-dashboard.21';
 export const DASHBOARD_RELEASE_DATE='2026-09-19';
 export const RELEASE_NOTES={
   "es-AR": {
     "link": "Novedades y versión",
-    "eyebrow": "Preparación industrial por archivo",
-    "title": "De la lista de identidades a la plancha de etiquetas.",
-    "summary": "Validá hasta 100 identidades GS1 por archivo, confirmá el registro completo y descargá la plancha. El QR básico permite preparar copias del enlace del lote sin inventar unidades.",
+    "eyebrow": "S3 / S5 · expediente operativo",
+    "title": "El recorrido del lote, con su evidencia.",
+    "summary": "Consultá eventos, agrupaciones, transformaciones y envíos desde el lote. Cada fuente conserva su alcance y sus fechas; no se infiere ubicación física ni autenticidad adicional.",
     "back": "Abrir lotes",
     "site": "Sitio de nexID",
     "label": "Versión de esta interfaz",
     "changes": "Qué cambió",
-    "guide": "Cómo probar el recorrido",
+    "guide": "Cómo usar esta entrega",
     "steps": [
-      "Abrí un lote QR o GS1 y elegí Enlaces QR / estado NFC.",
-      "Entrá a Producción QR / GS1. Cargá el CSV y revisá los errores por fila.",
-      "Para GS1, validá los permisos y confirmá el archivo completo con su referencia.",
-      "Prepará la plancha, descargá el manifiesto y verificá una muestra física antes de fabricar."
+      "Abrí un lote y elegí Recorrido del lote.",
+      "Consultá un período de hasta 93 días completos en UTC.",
+      "Revisá el evento y sus referencias de agrupador, contenido, entradas o salidas.",
+      "Abrí el envío autorizado o descargá la misma consulta en HTML y JSON."
     ],
-    "boundary": "No convierte NFC ni certifica lectura física. Requiere perfil activo y, para GS1, el prefijo autorizado del cliente. No crea derechos GS1 ni habilita etiquetas automáticamente.",
+    "boundary": "Los eventos EPCIS son declaraciones persistidas; las relaciones son históricas, no un inventario actual del contenedor. No se crean movimientos, se simula un lector UHF ni se modifican etiquetas al consultar.",
     "cards": [
       {
-        "title": "Validación antes de escribir",
-        "text": "GTIN, lote, serie, duplicados, autorización de prefijo y conflictos con identidades existentes. Las filas bloqueadas impiden el registro completo.",
-        "tag": "Control por fila"
+        "title": "Una consulta del expediente",
+        "text": "Eventos EPCIS y custodia vinculados al lote, sin duplicar tablas ni mezclar empresas.",
+        "tag": "Trazabilidad"
       },
       {
-        "title": "Una transacción por archivo",
-        "text": "Registro, auditoría y comprobante se confirman juntos. Repetir el mismo intento recupera el resultado, sin duplicar identidades.",
-        "tag": "Integridad"
+        "title": "Relaciones comprensibles",
+        "text": "Agrupar, observar, separar y transformar conservan su acción y momento. Una corrección se advierte, no se oculta.",
+        "tag": "Operación"
       },
       {
-        "title": "Salida para impresión",
-        "text": "Plancha HTML autónoma, datos CSV y manifiesto JSON generados desde el estado actual del registro.",
-        "tag": "Imprenta"
+        "title": "Permisos conservados",
+        "text": "El acceso al lote no concede logística. Los envíos se muestran sólo a una cuenta autorizada.",
+        "tag": "Acceso"
       },
       {
-        "title": "Comprobantes recuperables",
-        "text": "Consultá las últimas importaciones del lote y prepará otra copia sin volver a registrar el archivo.",
-        "tag": "Continuidad"
+        "title": "Evidencia exportable",
+        "text": "HTML autónomo y JSON del mismo resultado, con integridad verificable y sin consultar otra vez la base.",
+        "tag": "Informe"
       }
     ]
   },
   "en": {
     "link": "What is new and version",
-    "eyebrow": "Bounded label production",
-    "title": "From identifiers to a printable label sheet.",
-    "summary": "Validate up to 100 GS1 identities per file, commit the complete set and download the sheet. Basic QR prints repeat the registered batch link.",
+    "eyebrow": "S3 / S5 · operational dossier",
+    "title": "The batch journey, backed by records.",
+    "summary": "Review events, grouping, transformations and linked shipments from the batch dossier. Source scope and timestamps remain explicit.",
     "back": "Open batches",
     "site": "nexID website",
     "label": "Interface version",
     "changes": "Changes",
-    "guide": "Workflow",
+    "guide": "Use this release",
     "steps": [
-      "Open a QR or GS1 batch and its channel configuration.",
-      "Upload a CSV and inspect row-level errors.",
-      "Confirm the authorized GS1 file with a business reference.",
-      "Download the sheet and manifest, then check a physical sample before production."
+      "Open a batch and choose its journey.",
+      "Select up to 93 complete UTC days.",
+      "Review event-specific parent, child, input and output references.",
+      "Open an authorized shipment or export the query in HTML and JSON."
     ],
-    "boundary": "Does not convert NFC, grant GS1 rights or certify printed labels. The active channel and authorized company prefix are required.",
+    "boundary": "Recorded EPCIS declarations do not establish current physical containment or NFC authenticity. This read-only view does not simulate UHF hardware or write movements.",
     "cards": [
       {
-        "title": "Validate first",
-        "text": "Identifier syntax, duplicates, ownership entitlement and existing registry conflicts are checked before insertion.",
-        "tag": "Validation"
+        "title": "One batch view",
+        "text": "Linked EPCIS and custody records without a duplicate data store.",
+        "tag": "Traceability"
       },
       {
-        "title": "Atomic registration",
-        "text": "Identities, audit and receipt commit together. Replaying the same operation does not duplicate the file.",
-        "tag": "Integrity"
+        "title": "Clear relationships",
+        "text": "ADD, OBSERVE, DELETE and transformations retain their historical context.",
+        "tag": "Operations"
       },
       {
-        "title": "Printable outputs",
-        "text": "Self-contained HTML sheet, CSV and JSON manifest from current registered identities.",
-        "tag": "Print"
+        "title": "Scoped access",
+        "text": "Batch access does not grant logistics permission or reveal other tenants.",
+        "tag": "Access"
       },
       {
-        "title": "Recoverable receipts",
-        "text": "Retrieve recent batch imports and prepare another printout without registering again.",
-        "tag": "Continuity"
+        "title": "Exportable evidence",
+        "text": "Self-contained HTML and JSON use the same retrieved snapshot.",
+        "tag": "Report"
       }
     ]
   },
   "pt-BR": {
     "link": "Novidades e versão",
-    "eyebrow": "Preparação de etiquetas por arquivo",
-    "title": "Das identidades à folha de impressão.",
-    "summary": "Valide até 100 identidades GS1, confirme o arquivo completo e baixe a folha. O QR básico repete o link registrado do lote.",
+    "eyebrow": "S3 / S5 · dossiê operacional",
+    "title": "O percurso do lote, com evidências.",
+    "summary": "Consulte eventos, agrupamentos, transformações e envios vinculados ao lote, mantendo o escopo e as datas de cada fonte.",
     "back": "Abrir lotes",
     "site": "Site da nexID",
     "label": "Versão da interface",
     "changes": "Mudanças",
-    "guide": "Fluxo",
+    "guide": "Como usar",
     "steps": [
-      "Abra um lote QR ou GS1 e sua configuração de canais.",
-      "Carregue o CSV e revise os erros por linha.",
-      "Confirme o arquivo autorizado com uma referência operacional.",
-      "Baixe folha e manifesto e verifique uma amostra física antes de produzir."
+      "Abra o lote e seu percurso.",
+      "Selecione até 93 dias completos em UTC.",
+      "Consulte referências de agrupador, conteúdo, entradas e saídas por evento.",
+      "Abra o envio autorizado ou exporte a consulta em HTML e JSON."
     ],
-    "boundary": "Não converte NFC, concede direitos GS1 ou certifica a impressão. Requer canal ativo e prefixo autorizado da empresa.",
+    "boundary": "Declarações EPCIS não comprovam a composição física atual nem a autenticidade NFC. A consulta não simula leitores UHF ou cria movimentações.",
     "cards": [
       {
-        "title": "Validar antes de gravar",
-        "text": "Sintaxe, duplicatas, autorização do prefixo e conflitos existentes antes do registro.",
-        "tag": "Validação"
+        "title": "Consulta do lote",
+        "text": "Eventos e custódia vinculados sem duplicar o armazenamento.",
+        "tag": "Rastreabilidade"
       },
       {
-        "title": "Transação por arquivo",
-        "text": "Identidades, auditoria e comprovante são confirmados juntos, sem duplicar ao repetir a tentativa.",
-        "tag": "Integridade"
+        "title": "Relações claras",
+        "text": "Agrupar, observar, separar e transformar mantêm seu contexto histórico.",
+        "tag": "Operação"
       },
       {
-        "title": "Saída de impressão",
-        "text": "Folha HTML autônoma, CSV e manifesto JSON do registro atual.",
-        "tag": "Impressão"
+        "title": "Acesso delimitado",
+        "text": "Acesso ao lote não concede permissão logística nem acesso a outra empresa.",
+        "tag": "Acesso"
       },
       {
-        "title": "Comprovantes recuperáveis",
-        "text": "Consulte importações recentes e prepare outra impressão sem registrar novamente.",
-        "tag": "Continuidade"
+        "title": "Evidência exportável",
+        "text": "HTML e JSON autônomos usam o mesmo resultado consultado.",
+        "tag": "Relatório"
       }
     ]
   }

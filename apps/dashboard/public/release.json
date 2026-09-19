@@ -1,12 +1,12 @@
 {
-  "release": "2026.09.19-dashboard.20",
-  "scope": "csv-label-production-preview-confirm-print-and-receipt-history",
+  "release": "2026.09.19-dashboard.21",
+  "scope": "scoped-batch-event-relationships-custody-and-snapshot-exports",
   "realTapCertification": "not-included",
-  "baseCommit": "d7025b862fb1aed77b3e56e58d79212617c1ba4c",
-  "requiredApiRelease": "2026.09.19-api-labels.1",
+  "baseCommit": "210964916f3877666cb22b2e8b69c021f612964c",
+  "requiredApiRelease": "2026.09.19-api-trace.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
-  "databaseMigrationsIncluded": true,
+  "databaseMigrationsIncluded": false,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
   "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
@@ -14,5 +14,6 @@
   "campaignDeliveryIncluded": false,
   "campaignLaunchProtocol": "nexid.campaign-launch.v1",
   "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
-  "labelProductionProtocol": "nexid.gs1-import.v1"
+  "labelProductionProtocol": "nexid.gs1-import.v1",
+  "traceabilityProtocol": "nexid.batch-traceability.v1"
 }
