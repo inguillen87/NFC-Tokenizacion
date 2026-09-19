@@ -208,6 +208,6 @@ test("remote SQL validation is pinned to an empty disposable Neon database", () 
   assert.match(disposableValidator, /sun_runtime_acl_boundary/);
   assert.match(disposableValidator, /sun_tt_conflict_target/);
   assert.match(disposableValidator, /enterprise_rbac_risk_truth/);
-  assert.equal(migrationIds.length, 117);
-  assert.equal(migrationIds.at(-1), "20260918180000_0106_batch_recall_workflow.sql");
+  assert.equal(migrationIds.length, 118);
+  assert.equal(migrationIds.at(-1), "20260918210000_0107_campaign_launch_review.sql");
 });
