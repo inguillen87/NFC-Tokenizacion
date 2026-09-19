@@ -63,7 +63,7 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
                 <ConsumerProductImage product={product} /><div className={styles.productContent}>
                   <span className={styles.itemEyebrow}>{product.brand || "Marca no informada"}</span><h3>{product.name}</h3>
                   {product.batch && <p className={styles.metadata}>Lote {product.batch}</p>}
-                  <Link className={styles.textAction} href={product.readingHref || "/me/products"}>{product.readingHref ? "Abrir lectura" : "Ver producto guardado"}<ArrowRight size={16} aria-hidden="true" /></Link>
+                  <Link prefetch={false} className={styles.textAction} href={product.eventId ? `/me/products?focus=${encodeURIComponent(product.eventId)}` : "/me/products"}>{product.eventId ? "Abrir ficha y avisos" : "Ver producto guardado"}<ArrowRight size={16} aria-hidden="true" /></Link>{product.readingHref&&<Link prefetch={false} className={styles.textAction} href={product.readingHref}>Abrir lectura<ArrowUpRight size={14} aria-hidden="true"/></Link>}
                 </div>
               </li>)}</ul>}
           </section>

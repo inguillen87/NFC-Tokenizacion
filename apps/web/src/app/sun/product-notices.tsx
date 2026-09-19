@@ -1,7 +1,8 @@
 "use client";
-import {useEffect,useState} from 'react';import {ShieldAlert,RefreshCw} from 'lucide-react';
+import {ShieldAlert,RefreshCw} from 'lucide-react';
 import {useSunLocale} from './sun-locale-provider';
-import {parseProductNoticesV2 as parseProductNotices,boundedNoticeJson,type ProductNoticesV2 as ProductNotices} from '../../lib/product-notices-v2';
+import {ProductNoticeProvider,useProductNotices,type NoticeResource} from '../../lib/product-notice-resource';
+import type {SunLocale} from './sun-locale';
 import styles from './product-notices.module.css';
 const resolutions={
  'es-AR':{lifted:'AVISO LEVANTADO',resolution:'Resolución de la empresa',previous:'Ver aviso anterior',boundary:'Se levantó este aviso mediante revisión. No constituye liberación del producto ni certificación de inocuidad.',version:'Versión',updated:'Actualizado'},
@@ -14,15 +15,21 @@ const labels={
  'pt-BR':{title:'Avisos do produto',loading:'Consultando avisos atuais do lote…',unknown:'Não foi possível consultar os avisos. A verificação NFC não determina se o produto tem restrições.',empty:'Nenhum aviso de recolhimento publicado nesta consulta.',recall:'RECOLHIMENTO DO LOTE',quarantine:'AVISO DE QUARENTENA',closed:'Acompanhamento encerrado. O aviso permanece; isso não libera o produto.',separate:'Aviso do produto, independente da autenticidade da etiqueta.',contact:'Contato da empresa',issued:'Publicado',checked:'Consultado',refresh:'Atualizar avisos',more:'Há mais avisos registrados. Consulte o responsável antes de utilizar o produto.'}
 } as const;
 export function ProductNotices({tenant,bid,enabled}:{tenant:string;bid:string;enabled:boolean}){
- const {locale}=useSunLocale(),copy=labels[locale],resolution=resolutions[locale], [state,setState]=useState<{value:ProductNotices|null;loading:boolean;failed:boolean}>({value:null,loading:true,failed:false}),[revision,setRevision]=useState(0);
- useEffect(()=>{if(!enabled)return;const controller=new AbortController();let current=true;setState(previous=>({value:previous.value?.scope.tenant===tenant&&previous.value.scope.bid===bid?previous.value:null,loading:true,failed:false}));const timer=setTimeout(()=>controller.abort(),8000);
- void (async()=>{try{const r=await fetch('/api/product-notices/v2?'+new URLSearchParams({tenant,bid}),{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const value=parseProductNotices(await boundedNoticeJson(r),tenant,bid);if(current)setState({value,loading:false,failed:false});}catch{if(current)setState(previous=>({value:previous.value?.scope.tenant===tenant&&previous.value.scope.bid===bid?previous.value:null,loading:false,failed:true}));}finally{clearTimeout(timer);}})();
- return()=>{current=false;controller.abort();clearTimeout(timer);};},[tenant,bid,enabled,revision]);
+ const {locale}=useSunLocale();
+ return <ProductNoticePanel tenant={tenant} bid={bid} enabled={enabled} locale={locale}/>;
+}
+export function ProductNoticePanel({tenant,bid,enabled,locale='es-AR'}:{tenant:string;bid:string;enabled:boolean;locale?:SunLocale}){
+ const shared=useProductNotices();
  if(!enabled)return null;
- const value=state.value?.scope.tenant===tenant&&state.value.scope.bid===bid?state.value:null;
+ if(shared?.tenant===tenant&&shared.bid===bid&&shared.enabled)return <NoticeContent state={shared} locale={locale}/>;
+ return <ProductNoticeProvider key={tenant+':'+bid} tenant={tenant} bid={bid} enabled={enabled}><NoticeConsumer locale={locale}/></ProductNoticeProvider>;
+}
+function NoticeConsumer({locale}:{locale:SunLocale}){const state=useProductNotices();return state?<NoticeContent state={state} locale={locale}/>:null;}
+function NoticeContent({state,locale}:{state:NoticeResource;locale:SunLocale}){
+ const copy=labels[locale],resolution=resolutions[locale],value=state.value;
  const notices=value?.notices||[],format=(s:string)=>new Intl.DateTimeFormat(locale,{dateStyle:'short',timeStyle:'short'}).format(new Date(s));
- return <section className={notices.length?styles.notice:styles.compact} aria-label={copy.title} data-testid="product-notices" data-sun-server-evidence="true" data-notice-state={state.loading?'loading':state.failed||!value?'unknown':notices.length?'published':'none'}>
+ return <section id="product-notices" className={notices.length?styles.notice:styles.compact} aria-label={copy.title} data-testid="product-notices" data-sun-server-evidence="true" data-notice-state={state.loading?'loading':state.failed||!value?'unknown':notices.length?'published':'none'}>
   {state.loading&&<p role="status">{copy.loading}</p>}{!state.loading&&(state.failed||!value)&&<p role="status">{copy.unknown}</p>}{notices.length?<>{notices.map(n=><article key={n.id} className={n.noticeState==='lifted'?styles.lifted:undefined} data-notice-status={n.noticeState}><div className={styles.type}><ShieldAlert size={18} aria-hidden="true"/><strong>{n.noticeState==='lifted'?resolution.lifted:n.kind==='recall'?copy.recall:copy.quarantine}</strong></div><h2>{n.title}</h2>{n.noticeState==='lifted'?<><p className={styles.instructions}><strong>{resolution.resolution}:</strong> {n.resolutionMessage}</p><p>{resolution.boundary}</p><details><summary>{resolution.previous}</summary><p>{n.message}</p><p>{n.instructions}</p><small>{copy.issued}: {format(n.publishedAt)}</small></details></>:<><p>{n.message}</p><p className={styles.instructions}>{n.instructions}</p>{n.trackingState==='closed'&&<p className={styles.closed}>{copy.closed}</p>}</>}<p><strong>{copy.contact}:</strong> {n.contact}</p><small>{resolution.version} {n.noticeVersion} · {resolution.updated}: {format(n.effectiveAt)}</small></article>)}{value?.hasMore&&<p>{copy.more}</p>}<p className={styles.boundary}>{copy.separate}</p></>:!state.loading&&!state.failed&&value?<p>{copy.empty}</p>:null}
-  <div className={styles.footer}>{value&&<small>{copy.checked}: {format(value.observedAt)}</small>}<button type="button" onClick={()=>setRevision(x=>x+1)} disabled={state.loading}><RefreshCw size={13} aria-hidden="true"/>{copy.refresh}</button></div>
+  <div className={styles.footer}>{value&&<small>{copy.checked}: {format(value.observedAt)}</small>}<button type="button" onClick={state.refresh} disabled={state.loading}><RefreshCw size={13} aria-hidden="true"/>{copy.refresh}</button></div>
  </section>;
 }

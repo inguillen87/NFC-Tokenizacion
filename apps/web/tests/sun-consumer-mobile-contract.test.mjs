@@ -19,7 +19,7 @@ test("the first mobile viewport is product-first and keeps the official image ea
   assert.match(page, /sun-summary-product__visual relative h-28/);
   assert.match(page, /fetchPriority="high"/);
   assert.match(page, /data-testid="sun-summary-status"/);
-  assert.match(page, /data-testid="sun-summary-facts"/);
+  assert.match(page, /<PassportEssentialSignals/);
   assert.match(page, /Perfil oficial del piloto/);
 });
 

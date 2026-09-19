@@ -128,6 +128,15 @@ export function homeVerdictLabel(verdict: string | null): string {
     case "VALID_CLOSED": return "Sello cerrado reportado";
     case "VALID_OPENED": return "Sello abierto reportado";
     case "VALID": return "Mensaje validado";
+    case "VALID_OPENED_PREVIOUSLY": return "Apertura anterior reportada";
+    case "VALID_UNKNOWN_TAMPER": return "Etiqueta verificada · precinto sin confirmar";
+    case "QR_VIEW": return "Consulta informativa por QR";
+    case "DECLARED_IDENTITY": return "Identidad informativa registrada";
+    case "DECLARED_LOGISTICS_EVENT": return "Evento logístico declarado";
+    case "REPLAY":
+    case "REPLAY_SUSPECT": return "Enlace repetido · requiere nueva lectura";
+    case "INVALID": return "Lectura no validada";
+    case "NOT_ACTIVE": return "Etiqueta no activa";
     default: return verdict || "Estado no informado";
   }
 }

@@ -418,3 +418,5 @@
  .passport :global(.sun-summary-facts){margin-top:8px}
  .passport :global(.sun-main-body){padding-bottom:calc(100px + env(safe-area-inset-bottom))}
 }
+
+:global(html.theme-light) .passport :global(.sun-account-entry),:global(html[data-theme="light"]) .passport :global(.sun-account-entry){color:#075869;background:#eefafd;border-color:#8db9c8}

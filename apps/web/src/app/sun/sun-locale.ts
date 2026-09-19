@@ -15,6 +15,7 @@ export const SUN_LOCALE_COOKIE = "locale";
  * the evidence returned by the server.
  */
 export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
+  { es: "Mis productos y avisos", pt: "Meus produtos e avisos", en: "My products and notices" },
   { es: "Pasaporte NFC", pt: "Passaporte NFC", en: "NFC passport" },
   { es: "Pasaporte QR", pt: "Passaporte QR", en: "QR passport" },
   { es: "Controles del pasaporte", pt: "Controles do passaporte", en: "Passport controls" },

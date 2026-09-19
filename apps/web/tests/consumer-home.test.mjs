@@ -237,11 +237,21 @@ test("home themes have readable text pairs, visible focus, touch targets and red
   assert.match(css, /prefers-reduced-motion: reduce/);
 });
 
+const libraryModel = compile(readFileSync(new URL('../products/product-library-model.ts',dir),'utf8'));
+const library = compile(readFileSync(new URL('../products/product-library.tsx',dir),'utf8'),{
+ '../_components/consumer-home-model':model,
+ '../_components/me-portal-interactive-client':client,
+ '../../sun/product-notices':{ProductNoticePanel:()=>null},
+ './product-library-model':libraryModel,
+ './product-library.module.css':{__esModule:true,default:styles},
+ 'next/link':{__esModule:true,default:({children,prefetch,...props})=>React.createElement('a',props,children)},
+});
 const productsSource = readFileSync(new URL("../products/page.tsx", dir), "utf8");
 const productsCss = readFileSync(new URL("../products/products.module.css", dir), "utf8");
 function loadProductsPage(payload, denied = false) {
   const calls = [];
   const page = compile(productsSource, {
+    "./product-library":library,
     "../_components/consumer-api": {
       buildConsumerNextPath: (path) => path,
       requireConsumerSession: async () => { calls.push("session"); if (denied) throw new Error("redirect-login"); },

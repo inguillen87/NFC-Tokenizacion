@@ -14,7 +14,8 @@ test("post tap preserves public certificates while authenticated product and wal
   assert.match(postTap, /Ver certificado digital/);
   assert.match(wallet, /homeReadingHref\(product\.latest_tap_event_id\)/);
   assert.match(wallet, /Abrir lectura/);
-  assert.match(productsPage, /product\.readingHref/);
+  const library=await readFile(new URL("../src/app/me/products/product-library.tsx",import.meta.url),"utf8");
+  assert.match(productsPage,/ConsumerProductLibrary/);assert.match(library,/p\.readingHref/);assert.doesNotMatch(library,/\/certificado\//);
   assert.match(homeModel, /\/me\/taps\//);
   assert.doesNotMatch(wallet, /\/certificado\//);
   assert.doesNotMatch(productsPage, /\/certificado\//);

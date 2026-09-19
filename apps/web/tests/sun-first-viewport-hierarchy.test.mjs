@@ -30,7 +30,7 @@ test("SUN first viewport presents product, result, facts, location and actions i
 
   let cursor = -1;
   for (const testId of orderedTestIds) {
-    const next = summary.indexOf(`data-testid="${testId}"`);
+    const next = summary.indexOf(testId === "sun-summary-facts" ? "<PassportEssentialSignals" : `data-testid="${testId}"`);
     assert.ok(next > cursor, `${testId} should follow the preceding first-viewport block`);
     cursor = next;
   }
@@ -50,7 +50,7 @@ test("SUN first viewport keeps the result compact and preserves every risk state
   assert.match(summary, /<ShieldAlert[^>]*h-5 w-5/);
   assert.match(summary, /consumerStatus\.tone === "closed"/);
   assert.match(summary, /consumerStatus\.tone === "opened"/);
-  assert.match(summary, /consumerStatus\.tone === "risk"/);
+  assert.match(summary, /tone=\{consumerStatus\.tone\}/);
   assert.match(summary, /\{consumerStatus\.label\}/);
   assert.match(summary, /\{consumerStatus\.headline\}/);
   assert.match(summary, /\{consumerStatus\.copy\}/);
@@ -71,7 +71,7 @@ test("SUN location wraps and the two first actions are touch-safe", () => {
   assert.match(location, /Hora del tap:/);
   assert.match(location, /summaryLocationFriendlyCopy/);
   assert.match(summary, /<SunLocationQuickAction/);
-  assert.ok(summary.indexOf("<SunLocationQuickAction") < summary.indexOf('data-testid="sun-summary-facts"'));
+  assert.ok(summary.indexOf("<SunLocationQuickAction") < summary.indexOf('<PassportEssentialSignals'));
   assert.match(location, /href="#share-phone-location"/);
   assert.match(summary, /canRequestBrowserLocation && !hasConfirmedBrowserLocation/);
   assert.match(location, /Ver fuente y horario/);
@@ -79,7 +79,7 @@ test("SUN location wraps and the two first actions are touch-safe", () => {
   assert.match(actions, /href="#product-info"[\s\S]*?Ver producto/);
   assert.match(actions, /!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic[\s\S]*?\? "#sun-condition"/);
   assert.match(actions, /"Entender apertura"[\s\S]*?"Ver origen y mapa"/);
-  assert.equal((actions.match(/min-h-11/g) || []).length, 2);
+  assert.equal((actions.slice(0,actions.indexOf("sun-account-entry")).match(/min-h-11/g) || []).length, 2);
 });
 
 test("SUN identity and state never wait for location permission and clear the bottom navigation", () => {

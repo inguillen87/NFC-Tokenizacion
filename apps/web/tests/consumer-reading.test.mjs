@@ -22,6 +22,7 @@ const styles = new Proxy({}, { get: (_, name) => String(name) });
 function page(payload, denied = false) {
   const calls = [];
   const Page = compile(source, {
+    "../../_components/reading-current-notices":{ReadingCurrentNotices:()=>null},
     "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
     "../../_components/consumer-api": { requireConsumerSession: async (next) => { calls.push(["auth", next]); if (denied) throw new Error("redirect-login"); }, fetchConsumerPath: async (path) => { calls.push(["fetch", path]); return payload; } },
     "../../_components/consumer-home-model": home,

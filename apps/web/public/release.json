@@ -1,9 +1,10 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.18-web-notices.1",
-  "scope": "versioned-product-notices-with-visible-review-resolution-and-preserved-history",
-  "baseCommit": "7a5c8b0dce589cbfb889a263bb158117e4650bf3",
+  "version": "2026.09.19-web-consumer.1",
+  "scope": "consumer-library-current-notices-and-three-signal-mobile-passport",
+  "baseCommit": "97200947244ceed362a3eafe5662c2d0a7031dd8",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.09.18-api-notices.1",
-  "productNoticesProtocol": "nexid.product-notices.v2"
+  "requiredApiRelease": "2026.09.18-api-tasks.1",
+  "productNoticesProtocol": "nexid.product-notices.v2",
+  "databaseMigrationsIncluded": false
 }

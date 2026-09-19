@@ -1,3 +1,5 @@
+import { ProductNoticeProvider } from "../../lib/product-notice-resource";
+import { PassportEssentialSignals } from "./passport-essential-signals";
 import { ProductNotices } from "./product-notices";
 import { SunLocationQuickAction } from "./sun-location-quick-action";
 import type { Metadata } from "next";
@@ -1593,6 +1595,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   return (
     <SunLocaleProvider initialLocale={locale}>
     <SunLocationProvider key={`${bid}:${eventId}:${telemetryReadCounter}`}>
+    <ProductNoticeProvider key={`${tenantSlug}:${bid}`} tenant={String(result.identity?.tenantSlug||"")} bid={String(result.identity?.bid||"")} enabled={!isDemoPreview && result.ok===true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}>
     <main className="sun-tap-experience relative flex min-h-screen flex-col items-center overflow-x-clip bg-[#060813] px-4 pb-[calc(env(safe-area-inset-bottom)+8.5rem)] pt-4 font-sans text-slate-100 sm:pt-8">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
       <WineExperienceEvents
@@ -1648,6 +1651,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
         <SunSectionNav variant={isAgroDpp ? "agro" : "default"} />
 
+        {isAgroDpp ? <PassportEssentialSignals identityLabel={consumerStatus.identityLabel} sealLabel={consumerStatus.sealLabel} tone={consumerStatus.tone} carrierCode={rawCarrierProfileCode} isQr={isQrScan} isDemo={isDemoPreview} isHistorical={isSnapshotView}/> : null}
         {isAgroDpp && agroProfile ? (
           <AgroDppExperience
             profile={agroProfile}
@@ -1791,23 +1795,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? <SunLocationQuickAction /> : null}
 
-            <dl
-              data-testid="sun-summary-facts"
-              className="grid grid-cols-3 divide-x divide-white/[0.06] rounded-2xl border border-white/[0.07] bg-slate-950/35 px-1 py-2 text-center"
-            >
-              <div className="min-w-0 px-1.5">
-                <dt className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Identidad</dt>
-                <dd className={`mt-0.5 break-words text-[10px] font-bold leading-4 ${consumerStatus.tone === "risk" ? "text-rose-200" : "text-emerald-300"}`}>{consumerStatus.identityLabel}</dd>
-              </div>
-              <div className="min-w-0 px-1.5">
-                <dt className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Sello</dt>
-                <dd className={`mt-0.5 break-words text-[10px] font-bold leading-4 ${consumerStatus.tone === "closed" ? "text-emerald-300" : consumerStatus.tone === "opened" || consumerStatus.tone === "review" ? "text-amber-200" : "text-slate-300"}`}>{consumerStatus.sealLabel}</dd>
-              </div>
-              <div className="min-w-0 px-1.5">
-                <dt className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Servicios</dt>
-                <dd className={`mt-0.5 break-words text-[10px] font-bold leading-4 ${isRiskBlocked || !isFreshCommercialTap ? "text-amber-200" : "text-cyan-200"}`}>{consumerServicesLabel}</dd>
-              </div>
-            </dl>
+            <PassportEssentialSignals identityLabel={consumerStatus.identityLabel} sealLabel={consumerStatus.sealLabel} tone={consumerStatus.tone} carrierCode={rawCarrierProfileCode} isQr={isQrScan} isDemo={isDemoPreview} isHistorical={isSnapshotView}/>
 
             <div
               data-testid="sun-summary-location"
@@ -1871,6 +1859,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
               </a>
             </div>
+            {!isDemoPreview&&<Link prefetch={false} href={withTapQuery("/me/products","products")} className="sun-account-entry flex min-h-11 items-center justify-between gap-3 rounded-xl border border-cyan-300/25 px-3 py-2 text-xs font-bold text-cyan-100"><span>Mis productos y avisos</span><ChevronRight size={16} aria-hidden="true"/></Link>}
           </div>
         </section>
 
@@ -2481,6 +2470,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       </div>
     </main>
+    </ProductNoticeProvider>
     </SunLocationProvider>
     </SunLocaleProvider>
   );
