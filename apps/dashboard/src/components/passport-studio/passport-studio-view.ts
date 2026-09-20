@@ -1,7 +1,9 @@
+import {preparePublishedReuse,reuseReference,type PublishedChoice} from '../../lib/passport-reuse';
+import type {ReuseRequest} from './published-reuse-dialog';
 import {comparisonSources,comparisonSource,compareEditorialDocuments,filterEditorialDifferences,COMPARISON_GROUPS,COMPARISON_KINDS} from '../../lib/passport-studio-comparison';
 import {STUDIO_FIELDS,canStudioAction,documentChanged,documentDiff,getField,parseStudioSnapshot,reviewIssues,studioStateLabel,updateField,type StudioAction,type StudioCommand,type StudioDocument,type StudioSnapshot} from '../../lib/passport-studio-contract';
 import {StudioRequestError,validateStudioReply,type StudioReply} from '../../lib/passport-studio-transport';
-export type StudioPort={initial:StudioSnapshot;send:(command:StudioCommand,signal?:AbortSignal)=>Promise<StudioReply>;onDirtyChange?:(dirty:boolean)=>void;onSnapshot?:(snapshot:StudioSnapshot)=>void};
+export type StudioPort={initial:StudioSnapshot;onReuse?:(request:ReuseRequest)=>void;send:(command:StudioCommand,signal?:AbortSignal)=>Promise<StudioReply>;onDirtyChange?:(dirty:boolean)=>void;onSnapshot?:(snapshot:StudioSnapshot)=>void};
 const icons:Record<string,string>={
  book:'M5 4h11l3 3v13H5z M15 4v5h4 M8 12h8 M8 16h5',
  leaf:'M19 4C8 3 3 8 5 15s12 6 14-11Z M5 19l10-10',
@@ -27,6 +29,7 @@ export function mountPassportStudio(host:HTMLElement,port:StudioPort){
  let compareBase='published',compareTarget='working',compareGroup='all',compareKind='all',compareSearch='';
  let group='identity',preview='draft',phoneOnly=false,busy=false,uncertain=false,conflict=false,disposed=false;
  let pending:StudioCommand|null=null,request:AbortController|null=null,restoreId:string|null=null,confirmAction:StudioAction|null=null;
+ let reuseNote='';
  let status='Sin cambios pendientes.',loadedImage='',reloadRequested=false;let announcedDirty=false;
  const controller=new AbortController();const {signal}=controller;const root=document.createElement('section');root.className='ps-root';host.replaceChildren(root);
  const dirty=()=>documentChanged(form,snapshot.draft.document);
@@ -35,7 +38,7 @@ export function mountPassportStudio(host:HTMLElement,port:StudioPort){
   const d=dirty();return `<button type="button" class="ps-btn ps-save" data-action="save" ${!canStudioAction(snapshot,'save',d)||busy||uncertain||conflict?'disabled':''}>${icon('save')}<span>${busy?'Procesando…':'Guardar borrador'}</span></button>`;
  };
  function chrome(){root.innerHTML=`
-  <header class="ps-head"><div class="ps-brand">${icon('book')}<div><span class="ps-kicker">PASAPORTES DIGITALES · EDITOR</span><h1>Passport <b>Studio</b></h1></div></div><div class="ps-head-right"><span class="ps-version">${esc(snapshot.scope.tenantLabel)}</span><button type="button" class="ps-btn ps-mobile-view" data-do="mobile">${icon('phone')}Vista previa</button><div data-slot="save"></div></div></header>
+  <header class="ps-head"><div class="ps-brand">${icon('book')}<div><span class="ps-kicker">PASAPORTES DIGITALES · EDITOR</span><h1>Passport <b>Studio</b></h1></div></div><div class="ps-head-right"><span class="ps-version">${esc(snapshot.scope.tenantLabel)}</span><button type="button" class="ps-btn ps-mobile-view" data-do="mobile">${icon('phone')}Vista previa</button>${port.onReuse?`<button type="button" class="ps-btn" data-do="reuse">${icon('files')}Reutilizar contenido</button>`:''}<div data-slot="save"></div></div></header>
   <div class="ps-context"><div><span class="ps-dot"></span><strong>${esc(snapshot.scope.bid)}</strong><span class="ps-separator">/</span><span data-slot="context-name"></span></div><div><span class="ps-chip">${form.template==='agro'?'Agro':'General'}</span><span class="ps-chip">${esc(form.locale)}</span><span class="ps-chip ps-stage" data-slot="stage"></span></div></div>
   <div class="ps-layout"><aside class="ps-rail"><div class="ps-rail-heading">CONTENIDO</div><nav aria-label="Secciones del editor">${[['identity','book','Identidad'],...(form.template==='agro'?[['agro','leaf','Producto agro'],['documents','files','Documentos']]:[]),['changes','changes','Cambios'],['history','history','Historial']].map(([id,ico,label])=>`<button type="button" data-group="${id}" aria-pressed="${group===id}" class="ps-nav">${icon(ico)}<span>${label}</span><span class="ps-nav-count" aria-hidden="true" data-count="${id}"></span></button>`).join('')}</nav><div class="ps-rail-note">${icon('lock')}<strong>Solo contenido editorial</strong><p>No modifica el chip, la autenticidad ni el estado del precinto.</p></div></aside>
   <div class="ps-editor"><div class="ps-editor-top"><div><span class="ps-kicker" data-slot="step"></span><h2 data-slot="section-title"></h2><p data-slot="section-subtitle"></p></div><span class="ps-revision" data-slot="revision"></span></div><div data-slot="validation"></div><div data-slot="fields"></div><div class="ps-editor-foot"><p data-slot="status" role="status" aria-live="polite"></p><div class="ps-actions" data-slot="actions"></div></div></div>
@@ -45,7 +48,7 @@ export function mountPassportStudio(host:HTMLElement,port:StudioPort){
  const el=(name:string)=>root.querySelector<HTMLElement>(`[data-slot="${name}"]`)!;
  function refresh(){
   const changed=dirty();if(changed!==announcedDirty){announcedDirty=changed;port.onDirtyChange?.(changed);}
-  el('save').innerHTML=buttons();el('stage').textContent=studioStateLabel[snapshot.draft.state];el('revision').textContent=`Revisión ${snapshot.draft.revision}`;
+  el('save').innerHTML=buttons();const reuseButton=root.querySelector<HTMLButtonElement>('[data-do="reuse"]');if(reuseButton)reuseButton.disabled=!editable();el('stage').textContent=studioStateLabel[snapshot.draft.state];el('revision').textContent=`Revisión ${snapshot.draft.revision}`;
   el('context-name').textContent=form.identity.product_name||'Producto sin nombre';el('footer-revision').textContent=`${changed?'Cambios sin guardar · ':''}${snapshot.published?snapshot.published.version>0?`Publicado v${snapshot.published.version}`:'Contenido inicial · sin revisión':'Aún sin versión publicada'}`;
   el('status').textContent=status;
   const issues=reviewIssues(form),errors=issues.filter(i=>i.severity==='error');
@@ -116,7 +119,7 @@ export function mountPassportStudio(host:HTMLElement,port:StudioPort){
    // Transport and presenter independently require a matching, committed response.
    const next=validateStudioReply({ok:true,snapshot:reply.snapshot,receipt:reply.receipt},command,snapshot.actorId).snapshot;
    if(!reply.receipt.committed||reply.receipt.operationId!==command.operationId||reply.receipt.action!==command.action||next.draft.revision!==command.expectedRevision+1||next.draft.id!==command.draftId||next.actorId!==snapshot.actorId)throw new StudioRequestError('studio_receipt_invalid',true);
-   snapshot=next;form=structuredClone(snapshot.draft.document);uncertain=false;conflict=false;pending=null;port.onSnapshot?.(structuredClone(snapshot));
+   snapshot=next;form=structuredClone(snapshot.draft.document);reuseNote='';uncertain=false;conflict=false;pending=null;port.onSnapshot?.(structuredClone(snapshot));
    status=command.action==='publish'?'Publicación confirmada por el servidor.':reply.receipt.replayed?'El servidor confirmó el intento anterior; no se duplicó.':command.action==='save'?'Borrador guardado. El pasaporte publicado no cambió.':`${actionText[command.action]}: operación confirmada.`;
   }catch(e){if(disposed)return;uncertain=!(e instanceof StudioRequestError)||e.uncertain;conflict=e instanceof StudioRequestError&&e.code==='studio_revision_conflict';status=conflict?'Conflicto de revisión. Conservamos tus cambios.':e instanceof StudioRequestError&&e.code==='studio_permission_denied'?'La sesión no tiene permiso. No se confirmó ningún cambio.':uncertain?'Resultado incierto. No mostramos un guardado que no fue confirmado.':'La fuente rechazó la operación. Revisá los datos.';}
   finally{busy=false;request=null;if(!disposed){renderSection();refresh();}}
@@ -145,6 +148,12 @@ export function mountPassportStudio(host:HTMLElement,port:StudioPort){
   if(target.dataset.historyCompare){compareBase='history:'+target.dataset.historyCompare;compareTarget='working';compareGroup='all';compareKind='all';compareSearch='';group='changes';renderSection();refresh();el('section-title').tabIndex=-1;el('section-title').focus({preventScroll:true});return;}
   if(target.dataset.do==='swap-comparison'){[compareBase,compareTarget]=[compareTarget,compareBase];renderComparison();root.querySelector<HTMLElement>('[data-do="swap-comparison"]')?.focus();return;}
   if(target.dataset.do==='clear-comparison-filters'){compareGroup='all';compareKind='all';compareSearch='';renderComparison();root.querySelector<HTMLElement>('[data-comparison-search]')?.focus();return;}
+  if(target.dataset.do==='reuse'&&editable()&&port.onReuse){
+   const before=JSON.stringify(form),revision=snapshot.draft.revision;port.onReuse({snapshot:structuredClone(snapshot),document:structuredClone(form),apply:(choice,paths)=>{
+    if(!editable()||snapshot.draft.revision!==revision||JSON.stringify(form)!==before||!choice.document)return false;
+    const next=preparePublishedReuse(form,choice.document,paths);form=next;reuseNote=reuseReference(choice,paths.length);status=`${paths.length} campos preparados desde ${choice.bid} v${choice.version}. Sin guardar: este lote conserva su propia revisión y publicación.`;compareBase='saved';compareTarget='working';compareGroup='all';compareKind='all';compareSearch='';group='changes';renderSection();refresh();return true;
+   }});return;
+  }
   if(target.dataset.group){group=target.dataset.group;renderSection();refresh();return;}
   if(target.dataset.preview){preview=target.dataset.preview;renderPreview();return;}
   if(target.dataset.action){openConfirm(target.dataset.action as StudioAction);return;}
@@ -164,11 +173,11 @@ export function mountPassportStudio(host:HTMLElement,port:StudioPort){
  root.querySelector('dialog')!.addEventListener('close',()=>{
   const dialog=root.querySelector<HTMLDialogElement>('dialog')!;if(dialog.returnValue!=='confirm'){confirmAction=null;restoreId=null;reloadRequested=false;return;}
    if(reloadRequested){controller.abort();window.location.reload();return;}
-  if(restoreId){const selected=snapshot.history.find(h=>h.id===restoreId);if(selected&&editable()&&selected.document.template===form.template&&selected.document.locale===form.locale){form=structuredClone(selected.document);status='Versión recuperada localmente. Revisá las diferencias antes de guardar.';compareBase='published';compareTarget='working';compareGroup='all';compareKind='all';compareSearch='';group='changes';renderSection();refresh();}else{status='No se puede recuperar una versión de otra plantilla o idioma en este borrador.';refresh();}restoreId=null;return;}
+  if(restoreId){const selected=snapshot.history.find(h=>h.id===restoreId);if(selected&&editable()&&selected.document.template===form.template&&selected.document.locale===form.locale){form=structuredClone(selected.document);reuseNote='';status='Versión recuperada localmente. Revisá las diferencias antes de guardar.';compareBase='published';compareTarget='working';compareGroup='all';compareKind='all';compareSearch='';group='changes';renderSection();refresh();}else{status='No se puede recuperar una versión de otra plantilla o idioma en este borrador.';refresh();}restoreId=null;return;}
   if(!confirmAction)return;const action=confirmAction;confirmAction=null;
   if(!canStudioAction(snapshot,action,dirty()))return;
   const command:StudioCommand={action,operationId:crypto.randomUUID(),draftId:snapshot.draft.id,expectedRevision:snapshot.draft.revision,expectedContentDigest:snapshot.draft.contentDigest,scope:{tenantId:snapshot.scope.tenantId,batchId:snapshot.scope.batchId}};
-  if(action==='save')command.document=structuredClone(form);if(action==='request_changes')command.note=root.querySelector<HTMLTextAreaElement>('[data-review-note]')!.value.trim();void run(command);
+  if(action==='save'){command.document=structuredClone(form);if(reuseNote)command.note=reuseNote;}if(action==='request_changes')command.note=root.querySelector<HTMLTextAreaElement>('[data-review-note]')!.value.trim();void run(command);
  },{signal});
  window.addEventListener('beforeunload',event=>{if(dirty()||busy||uncertain){event.preventDefault();event.returnValue='';}},{signal});
  return {destroy(){disposed=true;controller.abort();request?.abort();root.remove();},getState(){return {snapshot:structuredClone(snapshot),document:structuredClone(form),dirty:dirty(),busy,uncertain,conflict};}};

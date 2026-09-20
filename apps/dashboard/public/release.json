@@ -1,9 +1,9 @@
 {
-  "release": "2026.09.19-dashboard.26",
-  "scope": "editorial-work-queue-and-scoped-studio-continuation",
+  "release": "2026.09.20-dashboard.27",
+  "scope": "selective-published-content-reuse-in-existing-passport-studio",
   "realTapCertification": "not-included",
-  "baseCommit": "6e1575b30c897bb788cac25586b47850cc7708af",
-  "requiredApiRelease": "2026.09.19-api-editorial-queue.1",
+  "baseCommit": "fb3fec4dd00f7a31bfd17f460eff80e74b595c99",
+  "requiredApiRelease": "2026.09.20-api-library.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": true,
   "databaseMigrationsIncluded": false,

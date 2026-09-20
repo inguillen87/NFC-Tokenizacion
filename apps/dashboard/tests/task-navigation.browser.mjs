@@ -13,7 +13,7 @@ const out=resolve(process.env.QA_OUTPUT || 'artifacts/task-navigation-browser');
 await mkdir(out,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROME_PATH,headless:true});
 const report={base,checkedAt:new Date().toISOString(),publicCases:[],localNavigation:null,physicalTapTested:false};
-const expected='2026.09.19-dashboard.26';
+const expected='2026.09.20-dashboard.27';
 try {
   for(const [width,locale,theme] of [[1440,'es-AR','dark'],[1440,'es-AR','light'],[390,'es-AR','dark'],[390,'es-AR','light'],[390,'en','light'],[390,'pt-BR','light']]){
     const context=await browser.newContext({viewport:{width,height:960},deviceScaleFactor:1,reducedMotion:'reduce',serviceWorkers:'block'});

@@ -320,6 +320,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (/^batches\/[^/]+\/traceability(?:\/page)?$/.test(normalizedPath)) return "batches:read";
   if (/^batches\/[^/]+\/epcis-intake(?:\/(preview|commit|identities))?$/.test(normalizedPath))return normalizedPath.endsWith('/commit')?'logistics:write':'logistics:read';
   if (normalizedPath === 'passport-editorial/queue') return normalizedMethod==='GET'?'batches:read':null;
+  if (/^batches\/[^/]+\/passport-library$/.test(normalizedPath)) return normalizedMethod==='GET'?'batch.product.configure':null;
   if (normalizedPath === "supplier-reception") return "supplier_reception.read";
   if (normalizedPath === "logistics" || normalizedPath.startsWith("logistics/")) {
     return normalizedMethod === "GET" ? "logistics:read" : "logistics:write";
