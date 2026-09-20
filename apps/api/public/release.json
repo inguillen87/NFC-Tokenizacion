@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.19-api-editorial-queue.1",
-  "scope": "tenant-scoped-editorial-work-queue-read-model",
-  "baseCommit": "5631b475c77fa5469191a0ce0ea5545f8bbb00ce",
+  "release": "2026.09.20-api-library.1",
+  "scope": "tenant-bound-published-editorial-content-library",
+  "baseCommit": "19200f5dd466cb70420faeb72618ad2e26e236f3",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -38,5 +38,6 @@
   "tracePageProtocol": "nexid.trace-page.v1",
   "intakeProtocol": "nexid.epcis-intake.v1",
   "identityPickerProtocol": "nexid.epcis-identities.v1",
-  "editorialQueueProtocol": "nexid.editorial-queue.v1"
+  "editorialQueueProtocol": "nexid.editorial-queue.v1",
+  "passportLibraryProtocol": "nexid.passport-library.v1"
 }
