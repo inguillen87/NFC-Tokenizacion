@@ -1,17 +1,25 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import test from 'node:test';
+import {DASHBOARD_RELEASE,releaseCopy} from '../src/lib/dashboard-release.ts';
 const json=async(path)=>JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'));
 const candidate=()=>json('../../../docs/releases/2026-09-21-dashboard.28.candidate.json');
-test('S6 marker and candidate declare one dashboard-only release with compatible source versions',async()=>{
+test('S7a declares the immutable S6 candidate as its reconciliation base',async()=>{
  const [m,c]=await Promise.all([json('../public/release.json'),candidate()]);
- assert.equal(m.release,c.release);assert.equal(c.release,'2026.09.21-dashboard.28');
+ assert.equal(c.release,'2026.09.21-dashboard.28');
+ assert.equal(createHash('sha256').update(JSON.stringify(c)).digest('hex'),'9be2d2d515dfcd3e43780c713dc51b2fb4f56a8e3a7f33df0f17d41532e11259');
+ assert.equal(m.release,'2026.09.21-dashboard.29');
+ assert.equal(m.reconciliationBaseRelease,c.release);
+ assert.equal(m.baseCommit,'37697b45ae5de9ee157e23cd736f7bf1db47baec');
+ assert.equal(m.scope,'real-origin-physical-tap-stream');
+ assert.equal(m.realTapCertification,'not-included');
  assert.equal(m.requiredApiRelease,c.compatibleSources.api.release);
  assert.equal(m.requiredWebRelease,c.compatibleSources.web.release);
  assert.equal(m.apiChangesIncluded,false);assert.equal(m.databaseMigrationsIncluded,false);
  assert.equal(c.application,'dashboard');
 });
-test('passing CI and static images cannot be mislabeled as production promotion',async()=>{
+test('historical S6 review records no production promotion at capture time',async()=>{
  const c=await candidate();assert.equal(c.status,'candidate-not-deployed');
  assert.equal(c.deploymentId,null);assert.equal(c.currentProductionVerified,false);
  assert.ok(c.remainingGates.includes('explicit-promotion'));
@@ -19,7 +27,7 @@ test('passing CI and static images cannot be mislabeled as production promotion'
  assert.equal(c.runtimeAcceptance.syntheticData,true);
  assert.equal(c.included.physicalTapCertification,false);
 });
-test('review evidence is tied to the verified S6 source and four exact captures',async()=>{
+test('historical review evidence remains tied to the verified S6 source and four exact captures',async()=>{
  const c=await candidate();assert.equal(c.runtimeCandidate,'c60b233924db262a73e0ef0704501662642ff602');
  assert.equal(c.runtimeAcceptance.runId,35557122467);
  assert.equal(c.runtimeAcceptance.archiveSha256,'a1ca77beb6cb3be895da996c414c8021fbc6bd24ac7de2696d0fbb301448e372');
@@ -34,10 +42,19 @@ test('candidate does not request infrastructure spending or unrelated runtime ch
  assert.equal(c.compatibleSources.web.sha,'b6c054bcc59c4eb10ff01f1ff38aa2ad05c4df19');
  assert.ok(c.remainingGates.includes('reconfirm-production-api-web-dashboard-combination'));
 });
-test('public notes present the right release and preserve recall evidence boundaries',async()=>{
- const s=await readFile(new URL('../src/lib/dashboard-release.ts',import.meta.url),'utf8');
- assert.match(s,/DASHBOARD_RELEASE='2026.09.21-dashboard.28'/);
- assert.match(s,/no levanta el aviso/);
- assert.match(s,/otra cuenta autorizada/);
+test('current public notes match the marker and retain origin, cryptographic and recall boundaries in every locale',async()=>{
+ const [m,s]=await Promise.all([json('../public/release.json'),readFile(new URL('../src/lib/dashboard-release.ts',import.meta.url),'utf8')]);
+ assert.equal(DASHBOARD_RELEASE,m.release);
+ const requirements={
+  'es-AR':{origin:/origen real/,excluded:/importaciones/,results:/inválidos o repetidos/,crypto:/no certifica el soporte físico, el estado TT ni la autenticidad criptográfica/,recall:/no levanta el aviso/,review:/otra cuenta autorizada/},
+  en:{origin:/real-origin|origin is explicitly real/,excluded:/imports/i,results:/invalid or replayed/,crypto:/does not certify the physical carrier, TT state or cryptographic authenticity/,recall:/does not lift the product notice/,review:/another authorized account/},
+  'pt-BR':{origin:/origem real|origem é explicitamente real/,excluded:/importações/i,results:/inválidos ou repetidos/,crypto:/não certifica o suporte físico, o estado TT nem a autenticidade criptográfica/,recall:/não retira o aviso/,review:/outra conta autorizada/},
+ };
+ for(const [locale,patterns] of Object.entries(requirements)){
+  const copy=releaseCopy(locale),text=JSON.stringify(copy);
+  assert.equal(copy.cards.length,4);assert.equal(copy.steps.length,4);
+  for(const pattern of Object.values(patterns))assert.match(text,pattern,locale);
+  assert.match(text,/\.28/,locale);
+ }
  assert.doesNotMatch(s,/team_BV|VERCEL_TOKEN|DATABASE_URL|dpl_/);
 });

@@ -273,7 +273,7 @@ function isPhysicalTapStreamEvent(value: unknown, tenantSlug: string) {
   return eventTenant === tenantSlug.trim().toLowerCase()
     && PHYSICAL_TAP_EVENT_TYPES.has(eventType)
     && streamSource === "production"
-    && (eventSource === "real" || eventSource === "imported" || eventSource === "production");
+    && eventSource === "real";
 }
 
 export function PhysicalTapsCommandCenter({

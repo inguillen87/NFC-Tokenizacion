@@ -53,6 +53,14 @@ test("public version marker agrees with the displayed release", async () => {
   assert.equal(marker.databaseMigrationsIncluded, false);
   assert.equal(marker.campaignDeliveryIncluded, false);
   assert.equal(marker.realTapCertification, "not-included");
+  assert.equal(marker.scope, "real-origin-physical-tap-stream");
+  assert.equal(marker.reconciliationBaseRelease, "2026.09.21-dashboard.28");
+});
+
+test("browser release acceptance reads the committed marker instead of pinning an older release", async () => {
+  const browser = await source("./task-navigation.browser.mjs");
+  assert.match(browser, /new URL\('\.\.\/public\/release\.json',import\.meta\.url\)/);
+  assert.doesNotMatch(browser, /const expected=['"]\d{4}\.\d{2}\.\d{2}-dashboard\.\d+/);
 });
 test("release notes have no private API, database access or provider identifiers", async () => {
   const page = await source("../src/app/novedades/page.tsx");

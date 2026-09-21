@@ -300,6 +300,8 @@ function realtimeSealState(result: string): PhysicalTapState {
  * include the durable TT receipt. We therefore never fabricate receipt fields;
  * an existing row loaded from the physical-taps endpoint keeps its original
  * reading and receipt on dedupe. Location is a mutable server projection.
+ * The production transport also carries imports; only eventSource=real belongs
+ * in this reader. That origin alone does not certify the physical carrier.
  */
 export function physicalTapFromRealtimeProjection(value: unknown, tenantSlug: string): PhysicalTapRow | null {
   const input = record(value);
@@ -314,7 +316,7 @@ export function physicalTapFromRealtimeProjection(value: unknown, tenantSlug: st
     || eventTenant !== expectedTenant
     || !REALTIME_PHYSICAL_EVENT_TYPES.has(eventType)
     || source !== "production"
-    || !["real", "imported", "production"].includes(eventSource)
+    || eventSource !== "real"
   ) return null;
 
   const eventId = text(input.eventId || input.id);

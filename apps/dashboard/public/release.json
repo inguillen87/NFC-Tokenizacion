@@ -1,8 +1,9 @@
 {
-  "release": "2026.09.21-dashboard.28",
-  "scope": "recall-destination-reconciliation-and-guarded-closure",
+  "release": "2026.09.21-dashboard.29",
+  "scope": "real-origin-physical-tap-stream",
   "realTapCertification": "not-included",
-  "baseCommit": "14d62ca9a67e07f20eb939e79af32cc5f7d106c2",
+  "baseCommit": "37697b45ae5de9ee157e23cd736f7bf1db47baec",
+  "reconciliationBaseRelease": "2026.09.21-dashboard.28",
   "requiredApiRelease": "2026.09.20-api-consumer-history.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
