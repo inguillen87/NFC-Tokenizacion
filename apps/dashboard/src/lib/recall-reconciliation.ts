@@ -50,3 +50,12 @@ export function previewRecallQuantities(record:RecallRecord,destinationId:string
   if(r>10000000||h>10000000||r+h>row.assigned)return {ok:false,message:`La suma no puede superar las ${row.assigned} ${record.document.unitLabel} asignadas.`};
   return {ok:true,returned:r,held:h,pending:row.assigned-r-h,returnedDelta:r-row.returned,heldDelta:h-row.held,decreases:r<row.returned||h<row.held};
 }
+
+/** Identical text for SSR and browser, independent of ICU day-period spacing or host timezone. */
+export function formatRecallDate(value:string|null):string{
+  if(!value)return '—';
+  const instant=new Date(value);
+  if(!Number.isFinite(instant.getTime()))return 'Fecha sin confirmar';
+  const iso=instant.toISOString();
+  return `${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)} · ${iso.slice(11,16)} UTC`;
+}

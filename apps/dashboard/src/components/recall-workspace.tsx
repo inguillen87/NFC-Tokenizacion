@@ -7,10 +7,10 @@ import {taskLink} from '../lib/recall-assigned-tasks';
 import {parseRecallDetail,recallReceipt} from '../lib/recall-reconciliation-guards';
 import reviewStyles from './recall-workspace-review.module.css';
 import {RecallReconciliation} from './recall-reconciliation';
-import {closureReadiness,previewRecallQuantities} from '../lib/recall-reconciliation';
+import {closureReadiness,previewRecallQuantities,formatRecallDate} from '../lib/recall-reconciliation';
 const actions:Record<string,string>={notice_corrected:'Aviso público rectificado',notice_lifted:'Aviso levantado con resolución',submit:'Enviar a revisión',revise:'Solicitar correcciones',publish:'Publicar aviso del lote',cancel:'Cancelar borrador',acknowledge:'Registrar acuse',account:'Registrar cantidades',request_close:'Solicitar cierre',resume:'Volver al seguimiento',close:'Aprobar cierre'};
 function blank(actor:string):RecallDoc{return {kind:'recall',title:'',reason:'',publicMessage:'',instructions:'',contact:'',unitLabel:'unidades',destinations:[{id:crypto.randomUUID(),recipient:'',assigneeId:actor,units:0}]};}
-const date=(s:string|null)=>s?new Intl.DateTimeFormat('es-AR',{dateStyle:'short',timeStyle:'short'}).format(new Date(s)):'—';
+const date=formatRecallDate;
 function saveFile(body:string,type:string,name:string){const url=URL.createObjectURL(new Blob([body],{type})),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export function RecallWorkspace({initial,bid,tenant}:{initial:RecallBoard|null;bid:string;tenant:string}){
  const [showCases,setShowCases]=useState(false),[stale,setStale]=useState(false),[historyDestination,setHistoryDestination]=useState('');

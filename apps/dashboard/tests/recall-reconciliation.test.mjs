@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {reconciliationRows,filterReconciliation,closureReadiness,previewRecallQuantities} from '../src/lib/recall-reconciliation.ts';
+import {reconciliationRows,filterReconciliation,closureReadiness,previewRecallQuantities,formatRecallDate} from '../src/lib/recall-reconciliation.ts';
 import {parseRecallRecord,parseRecallDetail} from '../src/lib/recall-reconciliation-guards.ts';
 const id=n=>'10000000-0000-4000-8000-'+String(n).padStart(12,'0');
 const actor={id:id(1),label:'Responsable',canRead:true,canWrite:true,canPublish:true,canExport:true};
@@ -22,3 +22,6 @@ test('refresh/export cannot discard the unresolved operation, closure preflights
 test('no automatic communications, stock updates or added background reads in reconciliation',async()=>{const s=await readFile(new URL('../src/components/recall-reconciliation.tsx',import.meta.url),'utf8');assert.doesNotMatch(s,/fetch\(|setInterval|localStorage|sessionStorage|sendBeacon/);assert.match(s,/no levanta el aviso/);assert.match(s,/Declarado por operadores/);});
 test('read access revoked never gives a ready-to-write closure even with other stale flags',()=>{const r=complete();assert.equal(closureReadiness(r,{...actor,canRead:false}).canRequest,false);r.state='closing';r.close_requested_by=id(2);assert.equal(closureReadiness(r,{...actor,canRead:false}).canApprove,false);});
 test('a fresh full-case export updates the live record as well as the history',async()=>{const s=await readFile(new URL('../src/components/recall-workspace.tsx',import.meta.url),'utf8');const part=s.slice(s.indexOf('async function exportReport'),s.indexOf('const editable'));assert.match(part,/acceptDetail\(fresh\)/);assert.match(part,/if\(!alive.current\)return/);});
+
+test('timestamps are explicit UTC and stable across host timezone and day-period conventions',()=>{assert.equal(formatRecallDate('2026-09-21T00:12:30-03:00'),'21/09/2026 · 03:12 UTC');assert.equal(formatRecallDate('2026-09-21T03:12:30Z'),'21/09/2026 · 03:12 UTC');assert.equal(formatRecallDate(null),'—');assert.equal(formatRecallDate('invalid'),'Fecha sin confirmar');});
+test('SSR case rows use the same deterministic formatter as browser updates',async()=>{const s=await readFile(new URL('../src/components/recall-workspace.tsx',import.meta.url),'utf8');assert.match(s,/const date=formatRecallDate/);assert.doesNotMatch(s,/new Intl.DateTimeFormat/);});
