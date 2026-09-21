@@ -1,9 +1,10 @@
 name: S6 recall reconciliation acceptance
 on:
   push:
-    branches: [codex/nexid-recall-reconciliation-ui-20260920, codex/nexid-s6-production-20260921]
+    branches: [codex/nexid-recall-reconciliation-ui-20260920, codex/nexid-s6-production-20260921, codex/nexid-s7-live-provenance-20260921]
     paths:
       - apps/dashboard/**
+      - packages/core/**
       - scripts/qa/recall-*
       - .github/workflows/recall-reconciliation-qa.yml
 permissions:
@@ -49,7 +50,7 @@ jobs:
       - name: Checkout compatible API without modifying its runtime
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: a3e51ffdc324631640734b4b246f23c1ac1f5842
+          ref: 1aef6c3827459bb2ddbc2b4907ffc6dda239b30a
           path: .qa-api
           persist-credentials: false
       - name: Isolate API checkout from candidate and repository scanners
@@ -126,7 +127,7 @@ jobs:
           test "$ready" = 1
           node apps/dashboard/tests/recall-reconciliation.browser.mjs 2>&1 | tee "$evidence/browser.log"
           printf '%s\n' "$GITHUB_SHA" >"$evidence/candidate-sha.txt"
-          printf '%s\n' a3e51ffdc324631640734b4b246f23c1ac1f5842 >"$evidence/api-sha.txt"
+          printf '%s\n' 1aef6c3827459bb2ddbc2b4907ffc6dda239b30a >"$evidence/api-sha.txt"
           git diff --exit-code -- apps/dashboard/src packages package.json package-lock.json
       - name: Preserve bounded QA evidence, never environment files
         if: always()

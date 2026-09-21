@@ -48,12 +48,12 @@ test("public version marker agrees with the displayed release", async () => {
   const marker = JSON.parse(await source("../public/release.json"));
   assert.equal(marker.release, DASHBOARD_RELEASE);
   assert.equal(marker.apiChangesIncluded, false);
-  assert.equal(marker.requiredApiRelease, "2026.09.20-api-consumer-history.1");
+  assert.equal(marker.requiredApiRelease, "2026.09.21-api-s7-consistency.2");
   assert.equal(marker.requiredWebRelease, "2026.09.20-web-history.1");
   assert.equal(marker.databaseMigrationsIncluded, false);
   assert.equal(marker.campaignDeliveryIncluded, false);
   assert.equal(marker.realTapCertification, "not-included");
-  assert.equal(marker.scope, "real-origin-physical-tap-stream");
+  assert.equal(marker.scope, "operational-provenance-physical-tap-stream");
   assert.equal(marker.reconciliationBaseRelease, "2026.09.21-dashboard.28");
 });
 

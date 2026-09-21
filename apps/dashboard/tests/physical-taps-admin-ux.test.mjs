@@ -168,6 +168,7 @@ test("canonical realtime tap projections update the tenant snapshot without inve
     productName: "Gran Reserva 2022",
     source: "production",
     eventSource: "real",
+    dataProvenance: "operational_tap",
     authenticationVerified: true,
     lat: -34.6037,
     lng: -58.3816,
@@ -241,6 +242,7 @@ function realtimeProjection(overrides = {}) {
     source: "production",
     eventSource: "real",
     result: "VALID_CLOSED",
+    dataProvenance: "operational_tap",
     verdict: "valid",
     authenticationVerified: true,
     ...overrides,
@@ -288,6 +290,14 @@ test("real origin keeps failed authentication and replay visible without certify
   }
 });
 
+test("real source without explicit operational provenance cannot repopulate the physical reader", () => {
+  for (const dataProvenance of [undefined, null, "", "declared_demo", "imported", "legacy_unclassified", "mixed", "real", "OPERATIONAL_TAP", {}, true]) {
+    assert.equal(physicalTapFromRealtimeProjection(realtimeProjection({ dataProvenance }), "demobodega"), null);
+  }
+  assert.ok(physicalTapFromRealtimeProjection(realtimeProjection({ dataProvenance: undefined, data_provenance: "operational_tap" }), "demobodega"));
+  assert.equal(physicalTapFromRealtimeProjection(realtimeProjection({ dataProvenance: "legacy_unclassified", data_provenance: "operational_tap" }), "demobodega"), null);
+});
+
 test("mixed snapshots and later deltas cannot add imported TAPs or overwrite real location evidence", () => {
   const durable = timedRow("durable", "2026-09-05T15:00:00.000Z");
   const consume = (current, candidate) => {
@@ -300,6 +310,9 @@ test("mixed snapshots and later deltas cannot add imported TAPs or overwrite rea
     realtimeProjection({ eventId: "fixture-imported", eventSource: "imported" }),
     realtimeProjection({ eventId: "fixture-transport-only", eventSource: "production" }),
     realtimeProjection({ eventId: "fixture-unknown", eventSource: "unknown" }),
+    realtimeProjection({ eventId: "fixture-simulated-real", dataProvenance: "declared_demo" }),
+    realtimeProjection({ eventId: "fixture-legacy-real", dataProvenance: "legacy_unclassified" }),
+    realtimeProjection({ eventId: "fixture-old-frame", dataProvenance: undefined }),
   ];
   const snapshot = snapshotRows.reduce(consume, initial);
   assert.deepEqual(snapshot.payload.rows.map((item) => item.eventId), ["fixture-real", "durable"]);
@@ -312,6 +325,11 @@ test("mixed snapshots and later deltas cannot add imported TAPs or overwrite rea
     assert.equal(consume(snapshot, { ...delta, eventId: `new-${eventSource}` }), snapshot, "rejected origins cannot inflate the panel");
   }
   assert.equal(snapshot.payload.rows.find((item) => item.eventId === "durable"), durable);
+  for (const dataProvenance of [undefined, "legacy_unclassified", "declared_demo", "imported"]) {
+    const delta = realtimeProjection({ eventId: "durable", dataProvenance, lat: -32.9, lng: -68.8, locationSource: "edge_ip_approx" });
+    assert.equal(consume(snapshot, delta), snapshot, "unclassified deltas cannot replace consented location or durable TT evidence");
+    assert.equal(consume(snapshot, { ...delta, eventId: "new-legacy" }), snapshot, "unclassified deltas cannot inflate counts");
+  }
   assert.equal(initial.payload.summary.total, 1, "the confirmed input remains unchanged");
 });
 
@@ -413,7 +431,7 @@ test("invalid dates or undeclared physical ranges cannot broaden the recent coll
   }
   assert.equal(mergePhysicalTapRealtimeProjection(current, { ...incoming, tenantSlug: "other" }, WINDOW_NOW, WINDOW_NOW_MS), null);
   assert.equal(mergePhysicalTapRealtimeProjection(current, { ...incoming, bid: "other" }, WINDOW_NOW, WINDOW_NOW_MS), null);
-  const event = { eventId: "source-check", tenantSlug: "demobodega", eventType: "TAP_VALID", bid: "DEMO-2026-02", uidMasked: "TEST****01", occurredAt: WINDOW_NOW, source: "production", eventSource: "real" };
+  const event = { eventId: "source-check", tenantSlug: "demobodega", eventType: "TAP_VALID", bid: "DEMO-2026-02", uidMasked: "TEST****01", occurredAt: WINDOW_NOW, source: "production", eventSource: "real", dataProvenance: "operational_tap" };
   assert.ok(physicalTapFromRealtimeProjection(event, "demobodega"));
   assert.equal(physicalTapFromRealtimeProjection({ ...event, source: "demo" }, "demobodega"), null);
   assert.equal(physicalTapFromRealtimeProjection({ ...event, eventSource: "demo" }, "demobodega"), null);
@@ -462,7 +480,8 @@ test("Balmec physical TAP UX is wired into home and analytics without hardcoded 
   assert.match(component, /frame\.scopeKey !== realtime\.activeScopeKey/);
   assert.match(component, /isPhysicalTapStreamEvent\(frame\.data, tenantSlug\)/);
   assert.match(component, /streamSource === "production"/);
-  assert.match(component, /&& eventSource === "real";/);
+  assert.match(component, /&& eventSource === "real"/);
+  assert.match(component, /event\.dataProvenance \?\? event\.data_provenance\) === "operational_tap"/);
   assert.doesNotMatch(component, /eventSource === "imported"|eventSource === "production"/);
   assert.match(component, /snapshot\.scope\?\.tenant/);
   assert.match(component, /snapshot\.scope\?\.window/);
