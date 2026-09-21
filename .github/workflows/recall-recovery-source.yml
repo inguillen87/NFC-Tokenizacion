@@ -1,0 +1,47 @@
+name: S6 pinned source recovery
+on:
+  push:
+    branches:
+      - codex/nexid-recall-reconciliation-ui-20260920
+    paths:
+      - .github/workflows/recall-recovery-source.yml
+permissions:
+  contents: read
+concurrency:
+  group: nexid-s6-source-recovery
+  cancel-in-progress: false
+jobs:
+  source-bases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Read the tested dashboard base
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 14d62ca9a67e07f20eb939e79af32cc5f7d106c2
+          path: dashboard-base
+          persist-credentials: false
+      - name: Read the compatible API base
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: a3e51ffdc324631640734b4b246f23c1ac1f5842
+          path: api-base
+          persist-credentials: false
+      - name: Package tracked source only; no environment or credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir bases
+          test "$(git -C dashboard-base rev-parse HEAD)" = 14d62ca9a67e07f20eb939e79af32cc5f7d106c2
+          test "$(git -C api-base rev-parse HEAD)" = a3e51ffdc324631640734b4b246f23c1ac1f5842
+          git -C dashboard-base archive --format=tar.gz HEAD > bases/dashboard-base.tar.gz
+          git -C api-base archive --format=tar.gz HEAD > bases/api-base.tar.gz
+          sha256sum bases/*.tar.gz > bases/SHA256SUMS
+      - name: Preserve private source for this validation session
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nexid-s6-pinned-bases
+          path: bases/
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
