@@ -66,8 +66,7 @@ acceptance result. No NFC URL was replayed and no database row was changed.
 
 ## Validation and publication
 
-Publication results, immutable deployment identity and final checks are recorded
-below after completion. Local PostgreSQL fixtures use a disposable loopback-only
+Publication results and checks are recorded below. Local PostgreSQL fixtures use a disposable loopback-only
 `nexid_e2e_s7` database. Production credentials are excluded from the focal runner.
 The workflow preserves test/build logs bound to the candidate Git SHA.
 
@@ -88,3 +87,37 @@ Still separate: a new closed-label hardware read after the relevant deployment,
 authenticated visual acceptance of the live analytics screen, and business
 acceptance of a real recall case. Digital NFC verification does not certify
 product contents, origin, custody or ownership.
+
+## Published pair and verified results
+
+- API runtime `1aef6c3827459bb2ddbc2b4907ffc6dda239b30a` is active on
+  `api.nexid.lat` as `dpl_FW7iYAcxgmcobW6DWqJCfsUEisxZ`:
+  `https://nexid-lcuwo498q-marcelos-projects-c26aa499.vercel.app`.
+- Dashboard runtime `07d976c0cc5d007011aadc9f20ceef0f0e325aee` is active on
+  `app.nexid.lat` as `dpl_DLPj4Ziq6yZ37RTbGb1kFJLajHTj`:
+  `https://nexid-dashboard-4y43wy3x0-marcelos-projects-c26aa499.vercel.app`.
+- Both canonical alias identities and public release markers were checked after
+  promotion. The API healthcheck returned 200 / `process_liveness`; anonymous
+  analytics/physical reads and the dashboard session endpoint returned 401.
+  Direct staged API requests correctly remain blocked by the origin guard
+  (403 except health); no origin credential or policy was changed.
+- API CI [35666186951](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35666186951):
+  1,296 build-suite tests, 134 focal tests and 10 PostgreSQL tests passed without
+  skips. Local PostgreSQL was 17.10; CI used pinned 18.4. Artifact 10669642078:
+  SHA-256 `557c6b834b58b99e6ec40b9e11c106105b5efe005277b6ba98652a3f99777d52`.
+- Dashboard CI [35666309883](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35666309883):
+  972 unit/contract passes, two optional browser skips followed by a successful
+  explicit 6/6 physical-reader browser run; seven real-PostgreSQL recall workflow
+  checks and four light/dark desktop/mobile accessibility cases passed.
+  Artifact 10669367615: SHA-256
+  `13ee7a3ae7c121544cfa4e504c54fade7b51bcbafa0a8c04081f4dd200320352`.
+- Live public notes passed six browser cases (desktop/mobile, light/dark,
+  Spanish/English/Portuguese), without client errors, horizontal overflow or axe
+  violations. This does not claim access to the user's authenticated analytics.
+  Both deployment error-log reads returned no error entries in the checked window.
+
+Rollback baselines: API `dpl_9drfo3eYYH76sirXbQShxbXpENrQ` and dashboard
+`dpl_A2USGA9rTyrtWEeLCyZ2BaSqoKqW`. Roll back the dashboard first if the paired
+API must be reverted, since `.30` deliberately rejects older frames lacking
+operational provenance. Documentation commits after the runtime SHAs above do
+not represent rebuilt deployments.
