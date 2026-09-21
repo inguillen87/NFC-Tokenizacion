@@ -1,0 +1,128 @@
+name: S6 recall reconciliation acceptance
+on:
+  push:
+    branches: [codex/nexid-recall-reconciliation-ui-20260920]
+    paths:
+      - apps/dashboard/**
+      - scripts/qa/recall-*
+      - .github/workflows/recall-reconciliation-qa.yml
+permissions:
+  contents: read
+concurrency:
+  group: nexid-s6-reconciliation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    name: Exact candidate, PostgreSQL and browser acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+        env:
+          POSTGRES_USER: nexid_e2e
+          POSTGRES_PASSWORD: ephemeral-ci-password
+          POSTGRES_DB: nexid_e2e_recalls
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U nexid_e2e -d nexid_e2e_recalls"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout candidate without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check candidate source hashes
+        run: |
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          manifest=json.loads(pathlib.Path('scripts/qa/recall-source-hashes.json').read_text())
+          for rel,want in manifest['sha256'].items():
+              got=hashlib.sha256(pathlib.Path(rel).read_bytes()).hexdigest()
+              assert got==want, (rel,got,want)
+          print('Exact recovered runtime and test files match their reviewed source hashes.')
+          PY
+      - name: Checkout compatible API without modifying its runtime
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: a3e51ffdc324631640734b4b246f23c1ac1f5842
+          path: .qa-api
+          persist-credentials: false
+      - name: Isolate API checkout from candidate and repository scanners
+        run: mv .qa-api "$RUNNER_TEMP/nexid-api"
+      - name: Match the locally tested Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+          cache: npm
+      - name: Install exact application dependencies without lifecycle scripts
+        run: |
+          mkdir -p "$RUNNER_TEMP/nexid-s6-evidence"
+          npm ci --ignore-scripts --no-audit --no-fund
+          cd "$RUNNER_TEMP/nexid-api"
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: TypeScript and entire dashboard regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck --workspace dashboard 2>&1 | tee "$RUNNER_TEMP/nexid-s6-evidence/typecheck.log"
+          npm test --workspace dashboard 2>&1 | tee "$RUNNER_TEMP/nexid-s6-evidence/dashboard-tests.log"
+      - name: Full production build, static QA and secret custody gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:dashboard 2>&1 | tee "$RUNNER_TEMP/nexid-s6-evidence/dashboard-build.log"
+          npm run check:secrets 2>&1 | tee "$RUNNER_TEMP/nexid-s6-evidence/secrets.log"
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/nexid-qa-tools" --ignore-scripts --no-audit --no-fund --no-save playwright-core@1.55.1 axe-core@4.10.3
+          node "$RUNNER_TEMP/nexid-qa-tools/node_modules/playwright-core/cli.js" install --with-deps chromium
+      - name: Real PostgreSQL and browser workflow without production data
+        shell: bash
+        env:
+          NEXID_E2E_CONFIRMATION: I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE
+          NEXID_RECONCILIATION_QA_DATABASE_URL: postgresql://nexid_e2e:ephemeral-ci-password@127.0.0.1:5432/nexid_e2e_recalls
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/nexid-s6-evidence"
+          export NEXID_QA_API_ROOT="$RUNNER_TEMP/nexid-api"
+          export PLAYWRIGHT_MODULE="$RUNNER_TEMP/nexid-qa-tools/node_modules/playwright-core/index.mjs"
+          export AXE_MODULE_PATH="$RUNNER_TEMP/nexid-qa-tools/node_modules/axe-core/axe.min.js"
+          export QA_OUTPUT="$evidence/browser"
+          export NEXT_PUBLIC_API_URL=http://127.0.0.1:4681
+          export NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:4681
+          export DASHBOARD_BODEGA_DEMO_ACCESS=false DASHBOARD_ONE_CLICK_ACCESS=false DASHBOARD_AUTO_SESSION=false
+          guard="$GITHUB_WORKSPACE/scripts/qa/recall-loopback-only.cjs"
+          NODE_OPTIONS="--require $guard" node --import tsx apps/dashboard/tests/browser/recall-reconciliation-api.fixture.mjs --local-qa >"$evidence/fixture.log" 2>&1 &
+          api_pid=$!
+          NODE_OPTIONS="--require $guard" node node_modules/next/dist/bin/next dev apps/dashboard --hostname 127.0.0.1 --port 3481 >"$evidence/next.log" 2>&1 &
+          ui_pid=$!
+          cleanup() {
+            curl --max-time 10 -fsS -X POST http://127.0.0.1:4681/qa-stop >/dev/null || true
+            kill "$api_pid" "$ui_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --max-time 2 -fsS http://127.0.0.1:4681/qa-state >/dev/null; then ready=1; break; fi
+            kill -0 "$api_pid"
+            sleep 1
+          done
+          test "$ready" = 1
+          node apps/dashboard/tests/recall-reconciliation.browser.mjs 2>&1 | tee "$evidence/browser.log"
+          printf '%s\n' "$GITHUB_SHA" >"$evidence/candidate-sha.txt"
+          printf '%s\n' a3e51ffdc324631640734b4b246f23c1ac1f5842 >"$evidence/api-sha.txt"
+          git diff --exit-code -- apps/dashboard/src packages package.json package-lock.json
+      - name: Preserve bounded QA evidence, never environment files
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nexid-s6-reconciliation-evidence
+          path: ${{ runner.temp }}/nexid-s6-evidence/
+          if-no-files-found: warn
+          retention-days: 3

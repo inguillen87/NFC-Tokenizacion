@@ -1,0 +1,40 @@
+"use client";
+import {useMemo,useState} from 'react';
+import Link from 'next/link';
+import {CheckCircle2,ClipboardCheck,Filter,ShieldAlert,ArrowRight,FileText} from 'lucide-react';
+import type {RecallActor,RecallRecord} from '../lib/recall-workspace';
+import {reconciliationRows,filterReconciliation,closureReadiness,type ReconciliationFilter} from '../lib/recall-reconciliation';
+import {taskLink} from '../lib/recall-assigned-tasks';
+import styles from './recall-reconciliation.module.css';
+const labels={acknowledgement:'Acuse pendiente',quantities:'Cantidades pendientes',complete:'Destino conciliado'};
+const date=(v:string)=>new Intl.DateTimeFormat('es-AR',{dateStyle:'medium',timeStyle:'short',timeZone:'UTC'}).format(new Date(v))+' UTC';
+type Props={record:RecallRecord;actor:RecallActor;members:{id:string;label:string}[];blocked:boolean;onAction:(action:string,destinationId?:string)=>void;onClosure:(action:'request_close'|'close')=>void;onCopy:(id:string)=>void;onEvidence:(id:string)=>void};
+export function RecallReconciliation({record,actor,members,blocked,onAction,onClosure,onCopy,onEvidence}:Props){
+ const [state,setState]=useState<ReconciliationFilter>('all'),[assignee,setAssignee]=useState(''),[search,setSearch]=useState('');
+ const rows=useMemo(()=>reconciliationRows(record,members),[record,members]),ready=closureReadiness(record,actor);
+ const visible=filterReconciliation(rows,state,assignee,search),people=[...new Map(rows.map(r=>[r.assigneeId,r.assigneeLabel])).entries()];
+ const t=record.totals;
+ return <div className={styles.root} data-testid="recall-reconciliation">
+  <header className={styles.heading}><div><span className={styles.eyebrow}>DEL AVISO AL CIERRE DOCUMENTADO</span><h3>Conciliación de destinos</h3><p>Revisión {record.version} · {ready.completeDestinations} de {rows.length} destinos con acuse y cantidades completas.</p></div><span className={styles.basis}>Declarado por operadores</span></header>
+  <div className={styles.readiness} data-ready={ready.ready}>
+   <div className={styles.readinessTitle}>{ready.ready?<CheckCircle2 size={22} aria-hidden="true"/>:<ClipboardCheck size={22} aria-hidden="true"/>}<strong>{record.state==='closed'?'Seguimiento cerrado':record.state==='closing'?'Cierre pendiente de revisión':ready.ready?'Cantidades conciliadas para revisar':'Qué falta para solicitar el cierre'}</strong></div>
+   <div className={styles.checks}><button type="button" aria-pressed={state==='acknowledgement'} onClick={()=>setState('acknowledgement')}><span>Acuses por recibir</span><b>{ready.missingAcknowledgements}</b></button><button type="button" aria-pressed={state==='quantities'} onClick={()=>setState('quantities')}><span>Destinos con saldo después del acuse</span><b>{rows.filter(r=>r.status==='quantities').length}</b></button><div><span>Cantidad aún sin conciliar</span><b>{ready.pendingUnits}<small>{record.document.unitLabel}</small></b></div></div>
+   {ready.ready&&<p>La suma incluye {t.heldUnits} {record.document.unitLabel} inmovilizadas. Conciliar no significa que todas hayan sido devueltas.</p>}
+   {record.state==='active'&&actor.canWrite&&<button type="button" className={styles.primary} disabled={blocked||!ready.canRequest} onClick={()=>onClosure('request_close')}>Solicitar cierre<ArrowRight size={15} aria-hidden="true"/></button>}
+   {record.state==='active'&&!actor.canWrite&&<p>Podés revisar lo declarado. La solicitud de cierre requiere una cuenta autorizada para gestionar retiros.</p>}
+   {record.state==='closing'&&<><p>{record.close_reason}</p><p>{ready.independentRequired?'La cuenta que solicitó el cierre no puede aprobarlo. Debe intervenir otra cuenta autorizada.':'La aprobación requiere una cuenta distinta de quien solicitó el cierre y los permisos de publicación vigentes.'}</p><div className={styles.actions}><button type="button" className={styles.primary} disabled={blocked||!ready.canApprove} onClick={()=>onClosure('close')}>Aprobar cierre</button>{actor.canWrite&&<button type="button" disabled={blocked} onClick={()=>onAction('resume')}>Volver al seguimiento</button>}</div></>}
+   {record.state==='closed'&&record.closed_at&&<p>Cerrado el {date(record.closed_at)}. Los avisos públicos se administran por separado.</p>}
+  </div>
+  <div className={styles.filters}><label><span>Situación del destino</span><select value={state} onChange={e=>setState(e.target.value as ReconciliationFilter)}><option value="all">Todos los destinos</option>{Object.entries(labels).map(([k,v])=><option value={k} key={k}>{v}</option>)}</select></label><label><span>Responsable</span><select value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="">Todos los responsables</option>{people.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label className={styles.search}><span>Destino, responsable o comprobante</span><input type="search" maxLength={160} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar en el caso"/></label></div>
+  <p className={styles.summary} role="status">{visible.length} de {rows.length} destinos visibles. Los filtros no cambian el objetivo ni hacen consultas.</p>
+  <div className={styles.destinations}>{visible.map(row=><article key={row.id} className={styles.destination} data-destination={row.id} data-state={row.status}>
+   <header><div><h3>{row.recipient}</h3><p>{row.assigneeLabel}</p></div><span className={styles.badge}>{labels[row.status]}</span></header>
+   <div className={styles.numbers}>{[['Objetivo',row.assigned],['Devueltas',row.returned],['Inmovilizadas',row.held],['Pendientes',row.pending]].map(([label,n])=><div key={String(label)}><span>{label}</span><strong>{n}</strong></div>)}</div>
+   <div className={styles.bar} role="progressbar" aria-label={`Cantidades conciliadas de ${row.recipient}`} aria-valuemin={0} aria-valuemax={row.assigned} aria-valuenow={row.returned+row.held} aria-valuetext={`${row.returned} devueltas, ${row.held} inmovilizadas y ${row.pending} pendientes, de ${row.assigned} ${record.document.unitLabel}`}><span style={{width:`${row.returned/row.assigned*100}%`}}/><span className={styles.held} style={{width:`${row.held/row.assigned*100}%`}}/></div>
+   <details><summary>Comprobantes del destino</summary><dl><div><dt>Acuse</dt><dd>{row.acknowledgedAt?date(row.acknowledgedAt):'Sin acuse registrado'}</dd></div><div><dt>Referencia de acuse</dt><dd>{row.ackReference||'No disponible en esta consulta'}</dd></div><div><dt>Última referencia de cantidades</dt><dd>{row.accountReference||'No disponible en esta consulta'}</dd></div></dl><button type="button" disabled={blocked} onClick={()=>onEvidence(row.id)}><FileText size={15} aria-hidden="true"/>Ver movimientos de este destino</button></details>
+   <div className={styles.actions}>{record.state==='active'&&actor.canWrite&&<>{!row.acknowledgedAt&&<button type="button" disabled={blocked} onClick={()=>onAction('acknowledge',row.id)}>Registrar acuse</button>}<button type="button" disabled={blocked||!row.acknowledgedAt} onClick={()=>onAction('account',row.id)}>Registrar cantidades</button></>}{record.published_at&&<button type="button" disabled={blocked} onClick={()=>onCopy(row.id)}>Copiar enlace para el responsable</button>}{row.assigneeId===actor.id&&record.published_at&&!blocked&&<Link prefetch={false} href={taskLink({caseId:record.id,destinationId:row.id})}>Responder mi tarea →</Link>}</div>
+  </article>)}</div>
+  {!visible.length&&<div className={styles.empty}><Filter size={23} aria-hidden="true"/><p>No hay destinos que coincidan con estos filtros. El objetivo del caso no cambió.</p><button type="button" onClick={()=>{setState('all');setAssignee('');setSearch('');}}>Mostrar todos los destinos</button></div>}
+  <footer className={styles.boundary}><ShieldAlert size={19} aria-hidden="true"/><p>Solicitar o aprobar cierre no levanta el aviso, libera el producto ni certifica devoluciones físicas. Antes de confirmar se relee la revisión del caso; la API conserva el control final.</p></footer>
+ </div>;
+}
