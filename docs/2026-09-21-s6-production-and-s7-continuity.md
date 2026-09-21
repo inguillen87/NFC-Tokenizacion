@@ -91,6 +91,63 @@ Build de produccion, QA estatica y gate de secretos tambien aprobaron. Se
 corrigio ademas el enlace "Abrir lotes" de las novedades, que llevaba por error
 a la bandeja editorial: ahora abre `/batches`.
 
+## Publicacion .29 y evidencia del telefono
+
+El incremento S7a se publico desde `b5c942c9bb945d094af2d228c3e312c0cc44ab91`,
+con arbol limpio. La [aceptacion 35662131836](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35662131836)
+aprobo las 971 pruebas, PostgreSQL/recalls, las cuatro superficies de conciliacion
+y el paso adicional de navegador de TAP (6/6). Artefacto 10668165427, SHA-256
+`9f6847d6aa54fa5595b24faf56c6bcdb6972c4500d51bc1db68824491b8238f7`.
+
+Deployment `.29`: `dpl_A2USGA9rTyrtWEeLCyZ2BaSqoKqW`, URL inmutable
+`https://nexid-dashboard-pudymyo56-marcelos-projects-c26aa499.vercel.app`.
+Se construyo con `--prod --skip-domain`, se verifico mediante el acceso de
+automatizacion existente, y se promovio tras confirmar que `app.nexid.lat`
+seguia en `.28`. El alias canonico y release.json confirman `.29`.
+Rollback inmediato: `dpl_2h1T7z3Z9HYsfwkAoDLKw1W6CmpK`.
+
+La comprobacion posterior de las notas publicas paso las seis combinaciones
+1440/390, claro/oscuro y ES/EN/PT: cero errores JS, overflow e incidencias axe.
+El despliegue en prueba conserva redireccion al login para `/tasks/recalls` y
+401 para una sesion anonima. El escaneo inicial de runtime no devolvio errores.
+API y web conservan sus deployments anteriores.
+
+Regresion API adicional, independiente del incremento dashboard: 102 pruebas,
+101 aprobadas y una expectativa estatica preexistente fallida en
+`sdk-sensor-sun-source.test.mjs:176`. Espera una variable `mergedTimeline` que
+el runtime `a3e51ffd` ya no usa; entrega timeline y sensorTimeline por separado.
+Prueba y runtime coinciden con los bytes del baseline. No se altero esa prueba
+para simular un resultado verde ni se atribuye el fallo a `.29`.
+
+El usuario comunico dos TAP realizados con una etiqueta abierta. Se cruzaron
+logs Vercel con consultas SELECT de Neon (`nfc-token-api`, rama principal):
+
+| Evento | Hora persistida Argentina | Contador | Resultado | CMAC | Receipt TT |
+| --- | --- | --- | --- | --- | --- |
+| 713 | 21/09/2026 19:23:44.927 | 58 | VALID_OPENED | true | BOUND |
+| 714 | 21/09/2026 19:23:47.248 | 59 | VALID_OPENED | true | BOUND |
+
+Ambos son `source=real`, `TAP_VALID`, tenant `demobodega`, lote `DEMO-2026-02`,
+producto `Gran Reserva Malbec`, con tag asociado y tenant del evento igual al
+del lote. Los logs informan `sun_crypto`, descifrado SDM correcto, estado TT
+actual y permanente OPENED. Los receipts durables confirman `VALID_OPENED`,
+`status_source=enc_decrypted`, longitud 2, identidad y fecha exactas del evento.
+Estas lecturas ocurrieron con dashboard `.28` mientras `.29` se construia;
+la API y la web eran las mismas que se conservaron al publicar `.29`.
+
+Las ubicaciones de ambos eventos son `edge_ip_approx` / precision `ip`; no hay
+observacion post-TAP consentida. No se afirma GPS del telefono. Los logs muestran
+HTTP 200 para snapshots 510/511, pero la consulta adicional del enlace almacenado
+snapshot/evento no pudo completarse: el conector Neon devolvio 401 intermitente.
+No se deduce de ese error una perdida de los eventos: sus filas y receipts
+durables si fueron consultados correctamente. No se reemitieron URLs NFC.
+
+Esto acredita recepcion, autenticacion digital, deteccion de apertura y persistencia
+de esas dos lecturas, junto con la declaracion fisica del usuario. Sigue pendiente
+la matriz completa (incluido estado cerrado), geolocalizacion consentida y la
+aceptacion visual autenticada de dashboard/CRM. No demuestra autenticidad del
+contenido del producto, custodia ni propiedad.
+
 ## Pendientes reales y orden de continuacion
 
 1. S6: aceptacion autenticada del flujo con una cuenta de empresa y evidencia del
@@ -107,6 +164,6 @@ Se sigue el orden del traspaso del usuario; algunos documentos anteriores usan
 S7 para campanas. Esa etiqueta no autoriza envios ni sustituye la prioridad
 actual TAP real a tenant. No se enviaron mensajes ni se ejecutaron campanas.
 
-No hubo migraciones ni escrituras de datos productivos. No se modificaron
+No hubo migraciones ni escrituras administrativas de datos productivos. No se modificaron
 claves, contadores, TTStatus ni la configuracion del lote `DEMO-2026-02`.
 Tampoco se certifica su configuracion actual mediante una consulta nueva de DB.
