@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
+import { withConsumerNetworkEventProvenance } from "../src/lib/consumer-network-provenance.ts";
 
 import {
   REALTIME_STREAM_WINDOW_IDS,
@@ -32,7 +33,7 @@ function createCapturedSnapshotQuery() {
   };
   // Only the route's private query builder is evaluated. The injected SQL
   // executor records bindings and cannot connect to PostgreSQL or the broker.
-  const fetchRows = new Function("sql", `${compiledQueryBuilder}\nreturn fetchRows;`)(sql);
+  const fetchRows = new Function("sql", "withConsumerNetworkEventProvenance", `${compiledQueryBuilder}\nreturn fetchRows;`)(sql, withConsumerNetworkEventProvenance);
   return { fetchRows, calls };
 }
 

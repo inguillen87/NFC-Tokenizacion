@@ -63,6 +63,14 @@ export type NexidTapEvent = {
   isDemo: boolean;
 };
 
+export type EventDataProvenance = "operational_tap" | "declared_demo" | "imported" | "legacy_unclassified";
+
+/** Only an explicit persisted projection can assert operational provenance. */
+export function normalizeEventDataProvenance(value: unknown): EventDataProvenance {
+  return value === "operational_tap" || value === "declared_demo" || value === "imported"
+    ? value : "legacy_unclassified";
+}
+
 export type TenantTapRealtimeEvent = {
   eventId: string;
   tenantId: string | null;
@@ -101,6 +109,7 @@ export type TenantTapRealtimeEvent = {
   productName?: string | null;
   source: "production" | "demo" | "unknown";
   eventSource: string;
+  dataProvenance?: EventDataProvenance;
 };
 
 const WEIGHTS = {
@@ -539,6 +548,7 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
         ? "production"
         : "unknown",
     eventSource: normalized.source || "unknown",
+    dataProvenance: normalizeEventDataProvenance(row.data_provenance ?? row.dataProvenance),
   };
 }
 

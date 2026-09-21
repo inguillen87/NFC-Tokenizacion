@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
 import { normalizeTenantTapRealtimeEvent } from "../../../packages/core/src/event-contract.ts";
+import { withConsumerNetworkEventProvenance } from "../src/lib/consumer-network-provenance.ts";
 import { normalizeAdminPhysicalTap } from "../src/lib/admin-physical-taps.ts";
 import { postTapBrowserLocation, projectConsentedPostTapLocation } from "../src/lib/post-tap-location-projection.ts";
 import { minimizeRealtimePayloadForBroker } from "../src/lib/realtime-broker-payload.ts";
@@ -92,7 +93,7 @@ function createPublisher(readRow, order = []) {
   const frames = [];
   const queries = [];
   const loaded = functionsFrom(projectionSource, ["positiveEventId", "loadTenantTapRealtimeProjection", "publishTenantTapRealtimeProjection"], {
-    normalizeTenantTapRealtimeEvent, projectConsentedPostTapLocation,
+    normalizeTenantTapRealtimeEvent, projectConsentedPostTapLocation, withConsumerNetworkEventProvenance,
     sql: async (strings, ...values) => {
       const statement = strings.join("?");
       assert.match(statement, /WHERE e\.id = \?/);
@@ -141,7 +142,7 @@ test("both real SSE snapshot queries project the same observation as the post-co
   const expected = await createPublisher(() => row).loadTenantTapRealtimeProjection(42);
   for (const tenant of ["fixture-tenant", ""]) {
     const { fetchRows } = functionsFrom(streamSource, ["fetchRows"], {
-      projectConsentedPostTapLocation,
+      projectConsentedPostTapLocation, withConsumerNetworkEventProvenance,
       sql: async (strings, ...values) => {
         const statement = strings.join("?");
         assert.match(statement, /to_jsonb\(e\)->'post_tap_location_observation'/);

@@ -1,5 +1,5 @@
 {
-  "release": "2026.09.21-api-s7-consistency.1",
+  "release": "2026.09.21-api-s7-consistency.2",
   "scope": "operational-tap-provenance-and-consented-location-analytics",
   "baseCommit": "246e6a2b98f1a4c7a0d7934c2d8f67c226b47f00",
   "requiredDeploymentConfiguration": {
@@ -7,7 +7,7 @@
   },
   "databaseMigrationsIncluded": false,
   "requiredMigration": "20260919200000_0111_epcis_operator_intake.sql",
-  "realtimeChangesIncluded": false,
+  "realtimeChangesIncluded": true,
   "realtimeBrokerChanged": false,
   "campaignDeliveryIncluded": false,
   "physicalLiveCertification": "not-included-in-this-release",
@@ -42,5 +42,7 @@
   "passportLibraryProtocol": "nexid.passport-library.v1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "physicalTapProvenance": "consumer-network-operational-tap",
-  "analyticsLocation": "consented-approximate-observation-with-original-evidence-preserved"
+  "analyticsLocation": "consented-approximate-observation-with-original-evidence-preserved",
+  "realtimePayloadContract": "operational-provenance-additive/v1",
+  "requiredDashboardRelease": "2026.09.21-dashboard.30"
 }

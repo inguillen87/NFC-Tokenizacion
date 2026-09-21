@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { normalizeEventDataProvenance } from "@product/core";
 
 const OPAQUE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const TOKEN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/;
@@ -87,6 +88,8 @@ export function minimizeTapProjectionForBroker(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const source = value as Record<string, unknown>;
   const result: Record<string, unknown> = {};
+
+  result.dataProvenance = normalizeEventDataProvenance(source.dataProvenance);
 
   for (const key of ["eventId", "tenantId", "batchId", "bid", "tagId"] as const) {
     const id = opaqueId(source[key]);

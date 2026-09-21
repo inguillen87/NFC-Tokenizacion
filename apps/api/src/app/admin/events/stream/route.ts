@@ -6,6 +6,7 @@ export const maxDuration = 300;
 
 import { checkAdminPermission, checkAdminWithPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
+import { withConsumerNetworkEventProvenance } from "../../../../lib/consumer-network-provenance";
 import { REALTIME_DELIVERY_ID_PATTERN } from "../../../../lib/realtime-broker-payload";
 import { subscribeRealtimeEvent } from "../../../../lib/realtime-events";
 import { createBoundedRealtimeSseOutputQueue } from "../../../../lib/realtime-sse-output-queue";
@@ -105,8 +106,9 @@ async function fetchRows(
   const verdict = String(search.get("verdict") || "").trim().toUpperCase();
   const risk = String(search.get("risk") || "").trim().toUpperCase();
   const { interval } = realtimeWindow;
+  const read = withConsumerNetworkEventProvenance(sql, { event: "e", batch: "b", tag: "provenance_tag" });
   const rows = tenant
-    ? await sql/*sql*/`
+    ? await read/*sql*/`
         SELECT
           e.id,
           e.tenant_id,
@@ -190,11 +192,26 @@ async function fetchRows(
           e.meta,
           COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
           e.source,
+          CASE
+            WHEN e.source::text = 'real'
+              AND e.event_type::text IN ('TAP_VALID', 'TAP_INVALID', 'REPLAY_SUSPECT')
+              AND EXISTS (
+                SELECT 1 FROM events ambiguous_event
+                WHERE ambiguous_event.tenant_id = e.tenant_id
+                  AND ambiguous_event.id = e.id
+                  AND ambiguous_event.created_at <> e.created_at
+              ) THEN 'legacy_unclassified'
+            ELSE /* consumer-network-event-provenance */
+          END AS data_provenance,
           t.slug AS tenant_slug
         FROM events e
         JOIN batches b
           ON b.id = e.batch_id
          AND b.tenant_id = e.tenant_id
+        LEFT JOIN tags provenance_tag
+          ON provenance_tag.id::text = e.tag_id::text
+         AND provenance_tag.batch_id = e.batch_id
+         AND UPPER(provenance_tag.uid_hex) = UPPER(e.uid_hex)
         JOIN tenants t ON t.id = e.tenant_id
         WHERE t.slug = ${tenant}
           AND (
@@ -219,7 +236,7 @@ async function fetchRows(
         ORDER BY e.created_at DESC, e.id DESC
         LIMIT ${limit}
       `
-    : await sql/*sql*/`
+    : await read/*sql*/`
         SELECT
           e.id,
           e.tenant_id,
@@ -303,11 +320,26 @@ async function fetchRows(
           e.meta,
           COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
           e.source,
+          CASE
+            WHEN e.source::text = 'real'
+              AND e.event_type::text IN ('TAP_VALID', 'TAP_INVALID', 'REPLAY_SUSPECT')
+              AND EXISTS (
+                SELECT 1 FROM events ambiguous_event
+                WHERE ambiguous_event.tenant_id = e.tenant_id
+                  AND ambiguous_event.id = e.id
+                  AND ambiguous_event.created_at <> e.created_at
+              ) THEN 'legacy_unclassified'
+            ELSE /* consumer-network-event-provenance */
+          END AS data_provenance,
           t.slug AS tenant_slug
         FROM events e
         JOIN batches b
           ON b.id = e.batch_id
          AND b.tenant_id = e.tenant_id
+        LEFT JOIN tags provenance_tag
+          ON provenance_tag.id::text = e.tag_id::text
+         AND provenance_tag.batch_id = e.batch_id
+         AND UPPER(provenance_tag.uid_hex) = UPPER(e.uid_hex)
         JOIN tenants t ON t.id = e.tenant_id
         WHERE (
             ${sourceFilter} = 'all'

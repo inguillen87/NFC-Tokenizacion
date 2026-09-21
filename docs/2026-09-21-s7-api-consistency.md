@@ -3,7 +3,7 @@
 This increment starts from the independently published API history branch
 `246e6a2b98f1a4c7a0d7934c2d8f67c226b47f00` (runtime `a3e51ffd`). It does not
 replace the separately released dashboard or public website with this branch's
-older versions. The API release marker is `2026.09.21-api-s7-consistency.1`.
+older versions. The final API release marker is `2026.09.21-api-s7-consistency.2`.
 
 ## Behavior
 
@@ -14,6 +14,11 @@ older versions. The API release marker is `2026.09.21-api-s7-consistency.1`.
 - CRM and the physical reader share the event-provenance SQL classifier.
   Declared simulation, imports and unclassified history do not become physical
   operational activity. No consumer association or marketing consent is inferred.
+- Snapshot and push projections carry the same explicit provenance through the
+  closed broker payload allowlist. Old frames default to unclassified. The
+  paired dashboard `.30` requires `operational_tap` for physical-row admission;
+  mixed snapshots and later deltas cannot reintroduce excluded events or replace
+  their location. Generic security/history feeds retain all existing classes.
 - Analytics projects validated `post_tap_location_observation` geography at read
   time. It requires explicit boolean consent, an allowed approximate browser
   source, a WGS84 coordinate pair and accuracy between 150 and 50,000 metres.
@@ -65,6 +70,12 @@ Publication results, immutable deployment identity and final checks are recorded
 below after completion. Local PostgreSQL fixtures use a disposable loopback-only
 `nexid_e2e_s7` database. Production credentials are excluded from the focal runner.
 The workflow preserves test/build logs bound to the candidate Git SHA.
+
+Candidate `d88a30cc` passed CI run `35665354382` and was staged as
+`dpl_AkEPHgCKPiZDuzVMELUPxMojuNAj`, but was **not promoted**. Final review found
+that the prior SSE admission could reintroduce excluded source=real history.
+The additive provenance field and paired dashboard fix above address that path.
+The canonical API stayed on `dpl_9drfo3eYYH76sirXbQShxbXpENrQ` during this work.
 
 The SDK sensor regression now checks the actual public-contract arguments with
 the TypeScript parser instead of requiring a deleted intermediate variable.

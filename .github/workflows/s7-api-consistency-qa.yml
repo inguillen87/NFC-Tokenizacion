@@ -4,6 +4,7 @@ on:
     branches: [codex/nexid-s7-api-consistency-20260921]
     paths:
       - apps/api/**
+      - packages/core/**
       - scripts/qa/*s7*
       - .github/workflows/s7-api-consistency-qa.yml
 permissions:
@@ -54,7 +55,7 @@ jobs:
           NEXID_S7_QA_DATABASE_URL: postgresql://nexid_e2e:ephemeral-ci-password@127.0.0.1:5432/nexid_e2e_s7
         run: |
           set -euo pipefail
-          node --require ./scripts/qa/s7-loopback-only.cjs --import tsx --test --test-concurrency=1 apps/api/tests/admin-physical-taps-postgres.test.mjs apps/api/tests/analytics-location-postgres.test.mjs 2>&1 | tee "$RUNNER_TEMP/nexid-s7-evidence/postgres-tests.log"
+          node --require ./scripts/qa/s7-loopback-only.cjs --import tsx --test --test-concurrency=1 apps/api/tests/admin-physical-taps-postgres.test.mjs apps/api/tests/analytics-location-postgres.test.mjs apps/api/tests/realtime-operational-provenance-postgres.test.mjs 2>&1 | tee "$RUNNER_TEMP/nexid-s7-evidence/postgres-tests.log"
       - name: API production build and full build regression suites
         shell: bash
         run: |

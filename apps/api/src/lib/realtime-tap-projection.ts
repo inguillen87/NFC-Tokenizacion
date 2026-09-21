@@ -1,6 +1,7 @@
-import { normalizeTenantTapRealtimeEvent, type TenantTapRealtimeEvent } from "@product/core";
+import { normalizeTenantTapRealtimeEvent, normalizeEventDataProvenance, type TenantTapRealtimeEvent } from "@product/core";
 
-import { sql } from "./db";
+import { sql, type SqlExecutor } from "./db";
+import { withConsumerNetworkEventProvenance } from "./consumer-network-provenance";
 import { publishRealtimeEvent } from "./realtime-events";
 import { projectConsentedPostTapLocation } from "./post-tap-location-projection";
 
@@ -16,11 +17,13 @@ function positiveEventId(value: unknown) {
  */
 export async function loadTenantTapRealtimeProjection(
   eventIdInput: unknown,
+  execute: SqlExecutor = sql,
 ): Promise<TenantTapRealtimeEvent | null> {
   const eventId = positiveEventId(eventIdInput);
   if (!eventId) return null;
 
-  const rows = await sql/*sql*/`
+  const read = withConsumerNetworkEventProvenance(execute, { event: "e", batch: "b", tag: "provenance_tag" });
+  const rows = await read/*sql*/`
     SELECT
       e.id,
       e.tenant_id,
@@ -104,11 +107,26 @@ export async function loadTenantTapRealtimeProjection(
       e.meta,
       COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
       e.source,
+      CASE
+        WHEN e.source::text = 'real'
+          AND e.event_type::text IN ('TAP_VALID', 'TAP_INVALID', 'REPLAY_SUSPECT')
+          AND EXISTS (
+            SELECT 1 FROM events ambiguous_event
+            WHERE ambiguous_event.tenant_id = e.tenant_id
+              AND ambiguous_event.id = e.id
+              AND ambiguous_event.created_at <> e.created_at
+          ) THEN 'legacy_unclassified'
+        ELSE /* consumer-network-event-provenance */
+      END AS data_provenance,
       t.slug AS tenant_slug
     FROM events e
     JOIN batches b
       ON b.id = e.batch_id
      AND b.tenant_id = e.tenant_id
+    LEFT JOIN tags provenance_tag
+      ON provenance_tag.id::text = e.tag_id::text
+     AND provenance_tag.batch_id = e.batch_id
+     AND UPPER(provenance_tag.uid_hex) = UPPER(e.uid_hex)
     JOIN tenants t ON t.id = e.tenant_id
     WHERE e.id = ${eventId}
     LIMIT 1
@@ -132,7 +150,7 @@ export function readEmbeddedTenantTapProjection(value: unknown): TenantTapRealti
     || !projection.eventSource
     || !Array.isArray(projection.commercialConsentChannels)
   ) return null;
-  return projection as TenantTapRealtimeEvent;
+  return { ...projection, dataProvenance: normalizeEventDataProvenance(projection.dataProvenance) } as TenantTapRealtimeEvent;
 }
 
 export async function publishTenantTapRealtimeProjection(
