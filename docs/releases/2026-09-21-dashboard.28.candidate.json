@@ -1,0 +1,40 @@
+{
+  "schema": "nexid.s6-release-candidate.v1",
+  "release": "2026.09.21-dashboard.28",
+  "status": "candidate-not-deployed",
+  "application": "dashboard",
+  "runtimeCandidate": "c60b233924db262a73e0ef0704501662642ff602",
+  "dashboardBase": "14d62ca9a67e07f20eb939e79af32cc5f7d106c2",
+  "compatibleSources": {
+    "api": {"sha": "a3e51ffdc324631640734b4b246f23c1ac1f5842", "release": "2026.09.20-api-consumer-history.1"},
+    "web": {"sha": "b6c054bcc59c4eb10ff01f1ff38aa2ad05c4df19", "release": "2026.09.20-web-history.1"}
+  },
+  "deploymentId": null,
+  "previousKnownDeployment": "dpl_5TuNRtFqgjytpDXGUh1vceCE9Vfi",
+  "currentProductionVerified": false,
+  "runtimeAcceptance": {
+    "runId": 35557122467,
+    "artifactId": 10621022525,
+    "archiveSha256": "a1ca77beb6cb3be895da996c414c8021fbc6bd24ac7de2696d0fbb301448e372",
+    "passed": 962,
+    "failed": 0,
+    "skipped": 2,
+    "integratedChecks": 7,
+    "syntheticData": true,
+    "postgres": "ephemeral"
+  },
+  "visualReview": {
+    "date": "2026-09-21",
+    "status": "reviewed-saved-captures",
+    "captures": [
+      {"path": "browser/reconciliation-1440-dark.png", "sha256": "42dade6969afb707418a2b3acd019f9036d9534f5aaca7fed256442b7b9f3de3"},
+      {"path": "browser/reconciliation-1440-light.png", "sha256": "73ef0cb2ee0d3590d57fa14ba159f049ed563688ae008a4bfd7d6b7658ee5717"},
+      {"path": "browser/reconciliation-390-dark.png", "sha256": "4e40b40ca01a26a6a6c0b05ff3959645365719dfb8160fa88b10f9320cd48991"},
+      {"path": "browser/reconciliation-390-light.png", "sha256": "2b913f40609823200a4b675daf9c472bd67eec52bf9f6e2e53114746cb89b15b"}
+    ],
+    "scope": "Four saved synthetic workbench captures, not a live-device session or full accessibility certification."
+  },
+  "included": {"apiChanges": false,"databaseMigrations": false,"dependencies": false,"paidServices": false,"physicalTapCertification": false,"publicNoticeMutation": false},
+  "remainingGates": ["access-to-existing-vercel-team","reconfirm-production-api-web-dashboard-combination","exact-release-commit-staging-build","staging-route-and-session-smoke","explicit-promotion","canonical-domain-postchecks"],
+  "promotionPolicy": "No production deployment is inferred from a passing CI run or this manifest. Stop if any live baseline changed; never overwrite concurrent work."
+}

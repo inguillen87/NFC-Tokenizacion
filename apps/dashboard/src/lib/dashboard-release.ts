@@ -1,125 +1,41 @@
-export const DASHBOARD_RELEASE='2026.09.20-dashboard.27';
-export const DASHBOARD_RELEASE_DATE='2026-09-20';
+export const DASHBOARD_RELEASE='2026.09.21-dashboard.28';
+export const DASHBOARD_RELEASE_DATE='2026-09-21';
 export const RELEASE_NOTES={
-  "es-AR": {
-    "link": "Novedades y versión",
-    "eyebrow": "S4 · contenido publicado reutilizable",
-    "title": "Prepará el próximo lote sin empezar de cero.",
-    "summary": "Buscá una publicación de la misma empresa, compará sus campos con el trabajo actual y elegí qué reutilizar. El lote destino conserva su propia revisión y aprobación.",
-    "back": "Abrir lotes",
-    "site": "Sitio de nexID",
-    "label": "Versión de esta interfaz",
-    "changes": "Qué cambió",
-    "guide": "Recorrido",
-    "steps": [
-      "Abrí un borrador editable en Passport Studio y elegí Reutilizar contenido.",
-      "Buscá contenido ya publicado de la misma empresa, plantilla e idioma.",
-      "Seleccioná campos después de revisar ambos valores; no se marca ninguno automáticamente.",
-      "Aplicá la preparación local, guardá y seguí el circuito de revisión del lote destino."
-    ],
-    "boundary": "La biblioteca no inscribe ni publica lotes. No copia identificadores, fechas, avisos ni datos del chip. La referencia guardada con el borrador es una declaración del editor, no una aprobación transferida ni una sincronización automática.",
-    "cards": [
-      {
-        "title": "Fuentes publicadas",
-        "text": "Sólo publicaciones de otros lotes de la misma empresa. Un borrador nuevo no reemplaza el contenido publicado que se reutiliza.",
-        "tag": "Biblioteca"
-      },
-      {
-        "title": "Selección campo a campo",
-        "text": "Antes/después y selección explícita, con datos del lote protegidos. No se copia una configuración completa.",
-        "tag": "UX"
-      },
-      {
-        "title": "Origen revalidado",
-        "text": "Antes de aplicar se vuelve a leer la publicación y la revisión destino. Si cambiaron, no se modifica el trabajo local.",
-        "tag": "Control"
-      },
-      {
-        "title": "Revisión propia",
-        "text": "Guardar continúa usando la revisión, auditoría y respuesta recuperable existentes. El origen no aprueba el nuevo destino.",
-        "tag": "Gobernanza"
-      }
-    ]
-  },
-  "en": {
-    "link": "What is new and version",
-    "eyebrow": "S4 · reusable published content",
-    "title": "Prepare the next batch without starting over.",
-    "summary": "Select fields from a published passport in the same company and compare them with current work. The destination retains its own review and publication.",
-    "back": "Open batches",
-    "site": "nexID website",
-    "label": "Interface version",
-    "changes": "Changes",
-    "guide": "Workflow",
-    "steps": [
-      "Open an editable Passport Studio draft and choose Reuse content.",
-      "Search publications from the same company, template and language.",
-      "Review and explicitly select individual fields.",
-      "Apply locally, save and complete the destination review workflow."
-    ],
-    "boundary": "No enrollment, publication, identifier or NFC configuration change is automatic. The saved source reference is an editor declaration, not transferred approval or live synchronization.",
-    "cards": [
-      {
-        "title": "Published sources",
-        "text": "Only other batches within the company; newer draft work does not replace their publication.",
-        "tag": "Library"
-      },
-      {
-        "title": "Field selection",
-        "text": "Before/after values and no preselected fields. Batch-specific data stays untouched.",
-        "tag": "UX"
-      },
-      {
-        "title": "Revalidated source",
-        "text": "Publication and destination revision are checked again before local application.",
-        "tag": "Control"
-      },
-      {
-        "title": "Independent review",
-        "text": "Saving uses the existing durable revision and audit workflow. Source approval is not inherited.",
-        "tag": "Governance"
-      }
-    ]
-  },
-  "pt-BR": {
-    "link": "Novidades e versão",
-    "eyebrow": "S4 · conteúdo publicado reutilizável",
-    "title": "Prepare o próximo lote sem começar do zero.",
-    "summary": "Escolha campos de um passaporte publicado da mesma empresa e compare com o trabalho atual. O destino mantém sua revisão e publicação.",
-    "back": "Abrir lotes",
-    "site": "Site da nexID",
-    "label": "Versão da interface",
-    "changes": "Mudanças",
-    "guide": "Fluxo",
-    "steps": [
-      "Abra um rascunho editável no Passport Studio e selecione Reutilizar conteúdo.",
-      "Busque publicações da mesma empresa, modelo e idioma.",
-      "Revise e selecione explicitamente os campos.",
-      "Aplique localmente, salve e siga a revisão do lote destino."
-    ],
-    "boundary": "A biblioteca não publica nem inscreve lotes automaticamente. Identificadores, datas e dados NFC são preservados. A referência de origem é declarada pelo editor, não transfere aprovação nem cria sincronização.",
-    "cards": [
-      {
-        "title": "Fontes publicadas",
-        "text": "Somente outros lotes da mesma empresa; novos rascunhos não substituem o conteúdo publicado.",
-        "tag": "Biblioteca"
-      },
-      {
-        "title": "Escolha dos campos",
-        "text": "Valores antes/depois sem seleção automática. Dados específicos do lote ficam protegidos.",
-        "tag": "UX"
-      },
-      {
-        "title": "Fonte revalidada",
-        "text": "Publicação e revisão do destino são verificadas novamente antes da aplicação local.",
-        "tag": "Controle"
-      },
-      {
-        "title": "Revisão própria",
-        "text": "Salvar usa a revisão e auditoria existentes. A aprovação da origem não é herdada.",
-        "tag": "Governança"
-      }
-    ]
-  }
+'es-AR':{
+ link:'Novedades y versión',eyebrow:'S6 · conciliación de retiros',title:'Qué falta para cerrar, con evidencia.',
+ summary:'El seguimiento del retiro reúne acuses, cantidades, responsables y referencias por destino. Revisá las diferencias antes de guardar y la revisión actual antes de solicitar el cierre.',
+ back:'Abrir lotes',site:'Sitio de nexID',label:'Versión de esta interfaz',changes:'Qué cambió',guide:'Recorrido de trabajo',
+ steps:['Abrí el retiro del lote y entrá a Acuses y cantidades.','Filtrá destinos pendientes o buscá su responsable o comprobante.','Revisá los totales acumulados y la variación antes de registrar cantidades.','Consultá la revisión vigente para solicitar cierre; otra cuenta autorizada debe aprobarlo.'],
+ boundary:'Cerrar el seguimiento no levanta el aviso, libera producto ni certifica una devolución física. La conciliación usa las declaraciones y comprobantes del caso, no el número de TAP.',
+ cards:[
+  {title:'Pendientes por destino',text:'Acuses, devoluciones e inmovilizaciones separados, con filtros locales que no cambian el objetivo del caso.',tag:'Operación'},
+  {title:'Correcciones visibles',text:'Antes de guardar ves los totales acumulados, el saldo y cualquier disminución de una cantidad ya declarada.',tag:'Control'},
+  {title:'Intentos recuperables',text:'Una respuesta incierta conserva la misma operación. Actualizar o cambiar de caso no descarta su reconciliación.',tag:'Integridad'},
+  {title:'Cierre con revisión actual',text:'Se consulta de nuevo el caso antes de confirmar. Un cambio concurrente exige revisar; solicitar y aprobar son acciones distintas.',tag:'Evidencia'}]
+},
+'en':{
+ link:'What is new and version',eyebrow:'S6 · recall reconciliation',title:'Know what remains before closing.',
+ summary:'Review acknowledgements, quantities, assignees and references by destination. Check cumulative corrections and the current case revision before requesting closure.',
+ back:'Open batches',site:'nexID website',label:'Interface version',changes:'Changes',guide:'Workflow',
+ steps:['Open the batch recall and select Acknowledgements and quantities.','Filter pending destinations or search by assignee or reference.','Review cumulative totals and changes before recording quantities.','Recheck the latest revision before requesting closure; another authorized account must approve.'],
+ boundary:'Closing tracking does not lift the product notice, release stock or certify physical returns. Reconciliation uses recorded declarations, not TAP counts.',
+ cards:[
+  {title:'Destination blockers',text:'Acknowledgements, returned and held quantities remain distinct. Local filters never change the case target.',tag:'Operations'},
+  {title:'Visible corrections',text:'Review cumulative totals, remaining quantity and any decrease in an earlier declaration before saving.',tag:'Control'},
+  {title:'Recoverable attempts',text:'An uncertain response retains the same operation. Refresh and case switching cannot discard its recovery.',tag:'Integrity'},
+  {title:'Current closure review',text:'The case is read again before confirmation. Concurrent changes require review and closure approval remains independent.',tag:'Evidence'}]
+},
+'pt-BR':{
+ link:'Novidades e versão',eyebrow:'S6 · conciliação de recolhimentos',title:'O que falta para encerrar, com evidência.',
+ summary:'Acompanhe confirmações, quantidades, responsáveis e comprovantes por destino. Revise totais acumulados e a versão atual do caso antes de solicitar o encerramento.',
+ back:'Abrir lotes',site:'Site da nexID',label:'Versão da interface',changes:'Mudanças',guide:'Fluxo de trabalho',
+ steps:['Abra o recolhimento do lote e entre em Confirmações e quantidades.','Filtre destinos pendentes ou busque responsável ou comprovante.','Revise totais acumulados e diferenças antes de registrar quantidades.','Consulte a revisão atual para solicitar encerramento; outra conta autorizada deve aprovar.'],
+ boundary:'Encerrar o acompanhamento não retira o aviso, libera produtos nem certifica devoluções físicas. A conciliação usa declarações registradas, não a contagem de TAP.',
+ cards:[
+  {title:'Pendências por destino',text:'Confirmações, devoluções e quantidades retidas separadas. Filtros locais não alteram o objetivo do caso.',tag:'Operação'},
+  {title:'Correções visíveis',text:'Antes de salvar, veja totais acumulados, saldo e qualquer redução de uma quantidade já declarada.',tag:'Controle'},
+  {title:'Tentativas recuperáveis',text:'Uma resposta incerta mantém a mesma operação. Atualizar ou trocar de caso não descarta sua recuperação.',tag:'Integridade'},
+  {title:'Revisão atual do encerramento',text:'O caso é consultado novamente antes de confirmar. Mudanças concorrentes exigem revisão e a aprovação é independente.',tag:'Evidência'}]
+}
 } as const;
 export function releaseCopy(locale:string){return RELEASE_NOTES[locale==='en'||locale==='pt-BR'?locale:'es-AR'];}
