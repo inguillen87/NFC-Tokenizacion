@@ -31,5 +31,30 @@ changed.
 Acceptance combines actual PostgreSQL API tests, actual dashboard conversion
 tests for mixed snapshots/deltas and the retained recall/browser regressions.
 These are complementary tests, not a claim of end-to-end physical hardware and
-authenticated production-browser certification. Deployment provenance and final
-check results follow after promotion.
+authenticated production-browser certification.
+
+## Published and checked
+
+- Dashboard runtime `07d976c0cc5d007011aadc9f20ceef0f0e325aee`, deployment
+  `dpl_DLPj4Ziq6yZ37RTbGb1kFJLajHTj`, is active on `app.nexid.lat`.
+  Immutable URL: `https://nexid-dashboard-4y43wy3x0-marcelos-projects-c26aa499.vercel.app`.
+- Paired API deployment `dpl_FW7iYAcxgmcobW6DWqJCfsUEisxZ` is active on
+  `api.nexid.lat`, with the required `.2` release and runtime SHA above.
+  Both canonical aliases and served release markers were independently checked.
+- [Dashboard CI 35666309883](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35666309883)
+  passed: 972 unit/contract cases; the two optional browser skips were followed
+  by an explicit 6/6 browser run; real-PostgreSQL recall workflow 7/7 and four
+  desktop/mobile light/dark accessibility cases also passed. API CI 35666186951
+  passed 1,296 build-suite cases, 134 focal cases and 10 PostgreSQL cases.
+- Staged `.30` notes were inspected at desktop and 390px widths. Staged and
+  production anonymous session requests returned 401. Production public notes
+  passed all six browser cases in `artifacts/production-browser/report.json`,
+  with no client errors, horizontal overflow or axe violations.
+- Error-log checks for both deployments returned no error entries in the
+  checked window. Private analytics with the user's session and a new physical
+  scan on the final published pair remain separate acceptance steps.
+
+Dashboard rollback baseline: `dpl_A2USGA9rTyrtWEeLCyZ2BaSqoKqW` (.29).
+API rollback baseline: `dpl_9drfo3eYYH76sirXbQShxbXpENrQ`. Revert dashboard
+before API if reverting the pair; `.30` intentionally rejects legacy frames.
+Later documentation commits are not new runtime deployments.
