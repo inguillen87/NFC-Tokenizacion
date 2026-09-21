@@ -6,7 +6,7 @@ import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 import { maskConsumerEmail, resolveConsumerNetworkTenant, segmentConsumerNetworkMember } from "../../../../lib/consumer-network-metrics";
-import { consumerNetworkProvenanceFromRow } from "../../../../lib/consumer-network-provenance";
+import { consumerNetworkProvenanceFromRow, withConsumerNetworkEventProvenance } from "../../../../lib/consumer-network-provenance";
 
 const NO_STORE = { "cache-control": "private, no-store, max-age=0" };
 
@@ -24,7 +24,8 @@ export async function GET(req: Request) {
   await ensureConsumerPortalSchema();
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const tenant = resolveConsumerNetworkTenant({ forcedTenantSlug, requestedTenantSlug: new URL(req.url).searchParams.get("tenant") });
-  const rows = await sql/*sql*/`
+  const read = withConsumerNetworkEventProvenance(sql, { event: "e", batch: "provenance_batch", tag: "provenance_tag" });
+  const rows = await read/*sql*/`
     WITH tenant_scope AS (
       SELECT id, slug
       FROM tenants
@@ -37,44 +38,7 @@ export async function GET(req: Request) {
         e.created_at,
         e.tag_id,
         e.uid_hex,
-        CASE
-          WHEN LOWER(COALESCE(e.source::text, '')) = 'demo'
-            OR LOWER(COALESCE(e.meta->>'event_mode', '')) IN ('demo', 'simulated')
-            OR LOWER(COALESCE(e.meta->>'replay_execution_class', '')) = 'demo'
-            OR LOWER(COALESCE(e.meta->>'simulated', '')) = 'true'
-            OR LOWER(COALESCE(e.meta->>'demoEmitter', '')) = 'true'
-            OR (
-              LOWER(COALESCE(e.meta->>'seed', '')) = 'true'
-              AND LOWER(COALESCE(e.meta->>'corpus', '')) LIKE 'demo%'
-            )
-          THEN 'declared_demo'
-          WHEN LOWER(COALESCE(e.source::text, '')) = 'imported' THEN 'imported'
-          WHEN LOWER(COALESCE(e.source::text, '')) = 'real'
-            AND e.event_type::text IN ('TAP_VALID', 'TAP_INVALID', 'REPLAY_SUSPECT')
-            AND provenance_batch.id IS NOT NULL
-            AND provenance_tag.id IS NOT NULL
-            AND (
-              LOWER(COALESCE(e.meta->>'replay_execution_class', '')) = 'operational'
-              OR (
-                EXISTS (
-                  SELECT 1
-                  FROM canonical_event_operations canonical_operation
-                  WHERE canonical_operation.tenant_id = e.tenant_id
-                    AND canonical_operation.event_id = e.id
-                    AND canonical_operation.event_created_at = e.created_at
-                    AND canonical_operation.event_mode = 'live'
-                )
-                AND
-                LOWER(COALESCE(e.meta->>'canonical_event', '')) = 'true'
-                AND LOWER(COALESCE(e.meta->>'event_family', '')) = 'tap'
-                AND LOWER(COALESCE(e.meta->>'event_mode', '')) = 'live'
-                AND LOWER(COALESCE(e.meta->>'metric_scope', '')) = 'scan'
-                AND LOWER(COALESCE(e.meta->>'simulated', '')) = 'false'
-              )
-            )
-          THEN 'operational_tap'
-          ELSE 'legacy_unclassified'
-        END AS data_provenance
+        /* consumer-network-event-provenance */ AS data_provenance
       FROM events e
       JOIN tenant_scope scope ON scope.id = e.tenant_id
       LEFT JOIN batches provenance_batch

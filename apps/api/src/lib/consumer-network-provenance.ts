@@ -1,3 +1,5 @@
+import type { SqlExecutor } from "./db";
+
 export const CONSUMER_NETWORK_DATA_MODES = [
   "operational_tap",
   "declared_demo",
@@ -16,7 +18,7 @@ export type ConsumerNetworkProvenanceCounts = {
   mixed: number;
 };
 
-type EventEvidence = {
+export type ConsumerNetworkEventEvidence = {
   source?: unknown;
   eventType?: unknown;
   meta?: unknown;
@@ -66,7 +68,7 @@ function hasCurrentWriterOperationalEvidence(meta: Record<string, unknown>) {
  * Classifies only durable evidence. A bare source="real" is intentionally not
  * enough: that column was introduced with a real default for historical rows.
  */
-export function classifyConsumerNetworkEvent(input: EventEvidence): ConsumerNetworkDataMode {
+export function classifyConsumerNetworkEvent(input: ConsumerNetworkEventEvidence): ConsumerNetworkDataMode {
   const source = text(input.source).toLowerCase();
   const eventType = text(input.eventType).toUpperCase();
   const meta = record(input.meta);
@@ -90,6 +92,74 @@ export function classifyConsumerNetworkEvent(input: EventEvidence): ConsumerNetw
     )
   ) return "operational_tap";
   return "legacy_unclassified";
+}
+
+/**
+ * The same durable-evidence CASE used by the existing CRM queries. Aliases are
+ * code-owned SQL identifiers, never request fields. Cryptographic verdicts do
+ * not determine provenance: operational invalid/replay events remain visible.
+ */
+export function consumerNetworkEventProvenanceSql(aliases: {
+  event: string;
+  batch: string;
+  tag: string;
+}) {
+  for (const alias of [aliases?.event, aliases?.batch, aliases?.tag]) {
+    if (typeof alias !== "string" || !/^[a-z_][a-z0-9_]*$/.test(alias)) throw new Error("consumer_network_provenance_sql_alias_invalid");
+  }
+  const { event: e, batch: b, tag } = aliases;
+  // Match JavaScript String.trim(), including tabs and Unicode whitespace.
+  const whitespace = String.raw`U&'\0009\000A\000B\000C\000D\0020\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000\FEFF'`;
+  const normalized = (expression: string) => `LOWER(BTRIM(COALESCE(${expression}, ''), ${whitespace}))`;
+  return `CASE
+    WHEN ${normalized(`${e}.source::text`)} = 'demo'
+      OR ${normalized(`${e}.meta->>'event_mode'`)} IN ('demo', 'simulated')
+      OR ${normalized(`${e}.meta->>'replay_execution_class'`)} = 'demo'
+      OR ${normalized(`${e}.meta->>'simulated'`)} = 'true'
+      OR ${normalized(`${e}.meta->>'demoEmitter'`)} = 'true'
+      OR (${normalized(`${e}.meta->>'seed'`)} = 'true'
+          AND ${normalized(`${e}.meta->>'corpus'`)} LIKE 'demo%')
+    THEN 'declared_demo'
+    WHEN ${normalized(`${e}.source::text`)} = 'imported' THEN 'imported'
+    WHEN ${normalized(`${e}.source::text`)} = 'real'
+      AND ${normalized(`${e}.event_type::text`)} IN ('tap_valid', 'tap_invalid', 'replay_suspect')
+      AND ${b}.id IS NOT NULL AND ${tag}.id IS NOT NULL
+      AND (
+        ${normalized(`${e}.meta->>'replay_execution_class'`)} = 'operational'
+        OR (
+          EXISTS (
+            SELECT 1 FROM canonical_event_operations canonical_operation
+            WHERE canonical_operation.tenant_id = ${e}.tenant_id
+              AND canonical_operation.event_id = ${e}.id
+              AND canonical_operation.event_created_at = ${e}.created_at
+              AND canonical_operation.event_mode = 'live'
+          )
+          AND ${normalized(`${e}.meta->>'canonical_event'`)} = 'true'
+          AND ${normalized(`${e}.meta->>'event_family'`)} = 'tap'
+          AND ${normalized(`${e}.meta->>'event_mode'`)} = 'live'
+          AND ${normalized(`${e}.meta->>'metric_scope'`)} = 'scan'
+          AND ${normalized(`${e}.meta->>'simulated'`)} = 'false'
+        )
+      )
+    THEN 'operational_tap'
+    ELSE 'legacy_unclassified'
+  END`;
+}
+
+/** Expand one static marker, while keeping every interpolated value bound. */
+export function withConsumerNetworkEventProvenance(
+  execute: SqlExecutor,
+  aliases: Parameters<typeof consumerNetworkEventProvenanceSql>[0],
+): SqlExecutor {
+  const expression = consumerNetworkEventProvenanceSql(aliases);
+  const marker = "/* consumer-network-event-provenance */";
+  return (strings, ...values) => {
+    const count = strings.reduce((total, part) => total + part.split(marker).length - 1, 0);
+    if (count !== 1) throw new Error("consumer_network_provenance_sql_marker_required_once");
+    const expanded = strings.map((part) => part.replace(marker, expression));
+    const statement = Object.assign(expanded, { raw: [...expanded] }) as unknown as TemplateStringsArray;
+    return execute(statement, ...values);
+  };
 }
 
 export function readConsumerNetworkAggregateCount(value: unknown, key: string) {

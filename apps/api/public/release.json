@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.20-api-consumer-history.1",
-  "scope": "authenticated-consumer-history-pagination-and-saved-time-filters",
-  "baseCommit": "551fd24cc5cdd744d73c9a11f0b30a16071f82fa",
+  "release": "2026.09.21-api-s7-consistency.1",
+  "scope": "operational-tap-provenance-and-consented-location-analytics",
+  "baseCommit": "246e6a2b98f1a4c7a0d7934c2d8f67c226b47f00",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -40,5 +40,7 @@
   "identityPickerProtocol": "nexid.epcis-identities.v1",
   "editorialQueueProtocol": "nexid.editorial-queue.v1",
   "passportLibraryProtocol": "nexid.passport-library.v1",
-  "consumerHistoryProtocol": "nexid.consumer-history.v1"
+  "consumerHistoryProtocol": "nexid.consumer-history.v1",
+  "physicalTapProvenance": "consumer-network-operational-tap",
+  "analyticsLocation": "consented-approximate-observation-with-original-evidence-preserved"
 }

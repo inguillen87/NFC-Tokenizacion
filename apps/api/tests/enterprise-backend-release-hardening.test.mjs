@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const source = async (relative) => readFile(new URL(relative, import.meta.url), "utf8");
 const analytics = await source("../src/app/admin/analytics/route.ts");
+const analyticsLocation = await source("../src/lib/analytics-location-sql.ts");
 const alerts = await source("../src/app/admin/alerts/route.ts");
 const securityAlerts = await source("../src/app/admin/security-alerts/route.ts");
 const overview = await source("../src/app/admin/overview/route.ts");
@@ -65,7 +66,13 @@ test("analytics uses explicit taxonomy, real active filters and source-labelled 
   }
   assert.match(analytics, /lifecycleClassesExcludedFromRisk: \["unregistered", "inactive"\]/);
   assert.match(analytics, /originSource: hasProductOriginCoords \? "product_passport_declared" : "first_observed_event"/);
-  assert.match(analytics, /AVG\(CASE[\s\S]*?e\.lat BETWEEN -90 AND 90 AND e\.lng BETWEEN -180 AND 180/);
+  assert.match(analytics, /AVG\(event_location\.lat\)/);
+  assert.match(analytics, /AVG\(event_location\.lng\)/);
+  assert.match(analytics, /analyticsLocationSql\/\*sql\*\//);
+  assert.match(analyticsLocation, /e\.lat BETWEEN -90 AND 90 AND e\.lng BETWEEN -180 AND 180/);
+  assert.match(analyticsLocation, /e\.geo_lat BETWEEN -90 AND 90 AND e\.geo_lng BETWEEN -180 AND 180/);
+  assert.match(analyticsLocation, /analytics_measurement\.accuracy_m BETWEEN 150 AND 50000/);
+  assert.match(analyticsLocation, /observation->'consent' = 'true'::jsonb/);
   assert.match(analytics, /validCoordinatePair\(row\.lat, row\.lng\)/);
   assert.doesNotMatch(analytics, /AVG\(COALESCE\(e\.lat, e\.geo_lat\)\)/);
   assert.match(analytics, /WITH scoped_events AS \([\s\S]*?WHERE e\.uid_hex IS NOT NULL[\s\S]*?e\.created_at >= now\(\) - \$\{rangeSql\}::interval[\s\S]*?e\.source::text = \$\{source\}/);

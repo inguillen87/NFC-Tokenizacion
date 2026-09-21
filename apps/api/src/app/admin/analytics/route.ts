@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { checkAdminPermission, checkAdminWithPermission, getAdminTenantAccess } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
+import { analyticsLocationSql } from "../../../lib/analytics-location-sql";
 import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
 import { SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE } from "../../../lib/sun-automated-fetch";
@@ -202,7 +203,7 @@ export async function GET(req: Request) {
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       `,
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL)::int AS product_recognized,
@@ -222,17 +223,18 @@ export async function GET(req: Request) {
           COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
+        /* analytics_event_location */
         JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         GROUP BY 1
         ORDER BY min(e.created_at)
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.batch_id IS NOT NULL OR e.tag_id IS NOT NULL)::int AS product_recognized,
@@ -252,12 +254,13 @@ export async function GET(req: Request) {
           COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
+        /* analytics_event_location */
         JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         GROUP BY 1
         ORDER BY min(e.created_at)
       `,
@@ -275,31 +278,20 @@ export async function GET(req: Request) {
         GROUP BY b.status
       `,
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         SELECT
-          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
-          END)::float8 AS lat,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
-          END)::float8 AS lng,
+          COALESCE(event_location.city, 'Unknown') AS city,
+          COALESCE(event_location.country_code, '--') AS country,
+          AVG(event_location.lat)::float8 AS lat,
+          AVG(event_location.lng)::float8 AS lng,
           COUNT(e.id)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
-          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE
-            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE
-            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('ip_approx','edge_ip_approx') AND event_location.lat IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE event_location.lat IS NOT NULL AND event_location.lng IS NOT NULL)::int AS coordinate_count,
+          AVG(event_location.location_accuracy_m) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180 AND event_location.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
+        /* analytics_event_location */
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
@@ -309,31 +301,20 @@ export async function GET(req: Request) {
         ORDER BY scans DESC
         LIMIT 20
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         SELECT
-          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
-          END)::float8 AS lat,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
-          END)::float8 AS lng,
+          COALESCE(event_location.city, 'Unknown') AS city,
+          COALESCE(event_location.country_code, '--') AS country,
+          AVG(event_location.lat)::float8 AS lat,
+          AVG(event_location.lng)::float8 AS lng,
           COUNT(e.id)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
-          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE
-            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE
-            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('ip_approx','edge_ip_approx') AND event_location.lat IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE event_location.lat IS NOT NULL AND event_location.lng IS NOT NULL)::int AS coordinate_count,
+          AVG(event_location.location_accuracy_m) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180 AND event_location.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
+        /* analytics_event_location */
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -342,57 +323,49 @@ export async function GET(req: Request) {
         LIMIT 20
       `,
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         SELECT
           COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
           COUNT(*)::int AS scans,
-          COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
+          COUNT(DISTINCT COALESCE(event_location.country_code, '--'))::int AS countries,
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
+        /* analytics_event_location */
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         GROUP BY 1
         ORDER BY scans DESC
         LIMIT 8
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         SELECT
           COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
           COUNT(*)::int AS scans,
-          COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
+          COUNT(DISTINCT COALESCE(event_location.country_code, '--'))::int AS countries,
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID' OR e.result LIKE 'VALID_%')::int AS valid,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
+        /* analytics_event_location */
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         GROUP BY 1
         ORDER BY scans DESC
         LIMIT 8
       `,
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         WITH scoped_events AS (
-          SELECT
-            e.uid_hex,
-            e.created_at,
-            e.geo_city,
-            e.geo_country,
-            e.city,
-            e.country_code,
-            e.geo_lat,
-            e.geo_lng,
-            e.lat,
-            e.lng,
-            e.device_label,
-            e.user_agent
+          SELECT e.uid_hex, e.created_at, event_location.city, event_location.country_code,
+            event_location.lat, event_location.lng, e.device_label, e.user_agent
           FROM events e
+          /* analytics_event_location */
           JOIN tenants tn ON tn.id = e.tenant_id
           WHERE tn.slug = ${tenant}
             AND e.uid_hex IS NOT NULL
@@ -404,16 +377,10 @@ export async function GET(req: Request) {
           SELECT
             uid_hex,
             created_at,
-            COALESCE(NULLIF(geo_city, ''), NULLIF(city, ''), 'Unknown') AS city,
-            COALESCE(NULLIF(geo_country, ''), NULLIF(country_code, ''), '--') AS country,
-            CASE
-              WHEN lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180 THEN lat
-              WHEN geo_lat BETWEEN -90 AND 90 AND geo_lng BETWEEN -180 AND 180 THEN geo_lat
-            END AS lat,
-            CASE
-              WHEN lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180 THEN lng
-              WHEN geo_lat BETWEEN -90 AND 90 AND geo_lng BETWEEN -180 AND 180 THEN geo_lng
-            END AS lng,
+            COALESCE(NULLIF(city, ''), 'Unknown') AS city,
+            COALESCE(NULLIF(country_code, ''), '--') AS country,
+            lat,
+            lng,
             COALESCE(NULLIF(device_label, ''), split_part(COALESCE(user_agent, ''), ' ', 1), 'Unknown device') AS device,
             ROW_NUMBER() OVER (PARTITION BY uid_hex ORDER BY created_at ASC) AS rn_first,
             ROW_NUMBER() OVER (PARTITION BY uid_hex ORDER BY created_at DESC) AS rn_last
@@ -444,10 +411,12 @@ export async function GET(req: Request) {
         ORDER BY t.taps DESC, last_event.created_at DESC NULLS LAST
         LIMIT 12
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         WITH scoped_events AS (
-          SELECT *
+          SELECT e.uid_hex, e.created_at, event_location.city, event_location.country_code,
+            event_location.lat, event_location.lng, e.device_label, e.user_agent
           FROM events e
+          /* analytics_event_location */
           WHERE e.uid_hex IS NOT NULL
             AND e.created_at >= now() - ${rangeSql}::interval
             AND (${source} = '' OR e.source::text = ${source})
@@ -457,16 +426,10 @@ export async function GET(req: Request) {
           SELECT
             e.uid_hex,
             e.created_at,
-            COALESCE(NULLIF(e.geo_city, ''), NULLIF(e.city, ''), 'Unknown') AS city,
-            COALESCE(NULLIF(e.geo_country, ''), NULLIF(e.country_code, ''), '--') AS country,
-            CASE
-              WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
-              WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
-            END AS lat,
-            CASE
-              WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
-              WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
-            END AS lng,
+            COALESCE(NULLIF(e.city, ''), 'Unknown') AS city,
+            COALESCE(NULLIF(e.country_code, ''), '--') AS country,
+            e.lat,
+            e.lng,
             COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
             ROW_NUMBER() OVER (PARTITION BY e.uid_hex ORDER BY e.created_at ASC) AS rn_first,
             ROW_NUMBER() OVER (PARTITION BY e.uid_hex ORDER BY e.created_at DESC) AS rn_last
@@ -501,12 +464,13 @@ export async function GET(req: Request) {
 
   const [countryRows, cityRows, deviceOsRows, deviceBrowserRows, timezoneRows, mobileShareRows, feedRows, productRows] = await Promise.all([
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         SELECT
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
+          COALESCE(event_location.country_code, '--') AS country,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
+        /* analytics_event_location */
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
@@ -516,12 +480,13 @@ export async function GET(req: Request) {
         ORDER BY scans DESC
         LIMIT 12
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         SELECT
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
+          COALESCE(event_location.country_code, '--') AS country,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
+        /* analytics_event_location */
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
@@ -530,72 +495,50 @@ export async function GET(req: Request) {
         LIMIT 12
       `,
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         SELECT
-          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
-          END)::float8 AS lat,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
-          END)::float8 AS lng,
+          COALESCE(event_location.city, 'Unknown') AS city,
+          COALESCE(event_location.country_code, '--') AS country,
+          AVG(event_location.lat)::float8 AS lat,
+          AVG(event_location.lng)::float8 AS lng,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
           MAX(e.created_at)::text AS last_seen,
-          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE
-            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE
-            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('ip_approx','edge_ip_approx') AND event_location.lat IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE event_location.lat IS NOT NULL AND event_location.lng IS NOT NULL)::int AS coordinate_count,
+          AVG(event_location.location_accuracy_m) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180 AND event_location.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
+        /* analytics_event_location */
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         GROUP BY 1,2
         ORDER BY scans DESC
         LIMIT 20
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         SELECT
-          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
-          END)::float8 AS lat,
-          AVG(CASE
-            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
-            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
-          END)::float8 AS lng,
+          COALESCE(event_location.city, 'Unknown') AS city,
+          COALESCE(event_location.country_code, '--') AS country,
+          AVG(event_location.lat)::float8 AS lat,
+          AVG(event_location.lng)::float8 AS lng,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
           MAX(e.created_at)::text AS last_seen,
-          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE
-            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE
-            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
-            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
-          )::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE event_location.location_source IN ('ip_approx','edge_ip_approx') AND event_location.lat IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE event_location.lat IS NOT NULL AND event_location.lng IS NOT NULL)::int AS coordinate_count,
+          AVG(event_location.location_accuracy_m) FILTER (WHERE event_location.location_source IN ('browser_gps_reported','browser_gps_approximate_consent','browser_geolocation_approximate_consent') AND event_location.lat BETWEEN -90 AND 90 AND event_location.lng BETWEEN -180 AND 180 AND event_location.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
+        /* analytics_event_location */
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         GROUP BY 1,2
         ORDER BY scans DESC
         LIMIT 20
@@ -691,7 +634,7 @@ export async function GET(req: Request) {
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       `,
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         SELECT
           e.id,
           e.uid_hex,
@@ -703,22 +646,23 @@ export async function GET(req: Request) {
           e.cmac_ok,
           e.allowlisted,
           e.source,
-          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
+          COALESCE(event_location.city, 'Unknown') AS city,
+          COALESCE(event_location.country_code, '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
           e.created_at::text AS created_at
         FROM events e
+        /* analytics_event_location */
         JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         ORDER BY e.created_at DESC
         LIMIT 30
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         SELECT
           e.id,
           e.uid_hex,
@@ -730,21 +674,22 @@ export async function GET(req: Request) {
           e.cmac_ok,
           e.allowlisted,
           e.source,
-          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
-          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country_code,
+          COALESCE(event_location.city, 'Unknown') AS city,
+          COALESCE(event_location.country_code, '--') AS country_code,
           COALESCE(NULLIF(e.device_label, ''), NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS device,
           e.created_at::text AS created_at
         FROM events e
+        /* analytics_event_location */
         JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
           AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
-          AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
+          AND (${country} = '' OR event_location.country_code = ${country})
         ORDER BY e.created_at DESC
         LIMIT 30
       `,
     tenant
-      ? sql/*sql*/`
+      ? analyticsLocationSql/*sql*/`
         SELECT
           t.uid_hex,
           b.bid,
@@ -784,8 +729,9 @@ export async function GET(req: Request) {
             AND e.created_at >= now() - ${rangeSql}::interval
         ) operational_evt ON operational_evt.scan_count > 0
         LEFT JOIN LATERAL (
-          SELECT e.city, e.country_code, e.created_at
+          SELECT event_location.city, event_location.country_code, e.created_at
           FROM events e
+          /* analytics_event_location */
           WHERE e.batch_id = t.batch_id
             AND e.tenant_id = b.tenant_id
             AND e.uid_hex = t.uid_hex
@@ -806,7 +752,7 @@ export async function GET(req: Request) {
         ORDER BY operational_evt.last_seen_at DESC
         LIMIT 30
       `
-      : sql/*sql*/`
+      : analyticsLocationSql/*sql*/`
         SELECT
           t.uid_hex,
           b.bid,
@@ -845,8 +791,9 @@ export async function GET(req: Request) {
             AND e.created_at >= now() - ${rangeSql}::interval
         ) operational_evt ON operational_evt.scan_count > 0
         LEFT JOIN LATERAL (
-          SELECT e.city, e.country_code, e.created_at
+          SELECT event_location.city, event_location.country_code, e.created_at
           FROM events e
+          /* analytics_event_location */
           WHERE e.batch_id = t.batch_id
             AND e.tenant_id = b.tenant_id
             AND e.uid_hex = t.uid_hex

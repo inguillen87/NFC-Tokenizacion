@@ -1,6 +1,7 @@
 import { isVerifiedAuthenticationEvent, maskUid, normalizeEventVerdict, normalizeWgs84CoordinatePair, resolveEventLocalTime } from "@product/core";
-import { sql } from "./db";
+import { sql, type SqlExecutor } from "./db";
 import { CONSENTED_BROWSER_LOCATION_SOURCES, postTapBrowserLocation } from "./post-tap-location-projection";
+import { classifyConsumerNetworkEvent, withConsumerNetworkEventProvenance } from "./consumer-network-provenance";
 
 export type PhysicalTapSealState = "closed" | "opened" | "other";
 
@@ -103,6 +104,14 @@ function locationProjection(row: PhysicalTapRow) {
 }
 
 export function normalizeAdminPhysicalTap(row: PhysicalTapRow) {
+  const dataProvenance = classifyConsumerNetworkEvent({
+    source: row.source,
+    eventType: row.event_type,
+    meta: row.meta,
+    hasExactTenantAssetBinding: row.has_exact_tenant_asset_binding === true,
+    hasCanonicalOperation: row.has_canonical_operation === true,
+  });
+  const operational = dataProvenance === "operational_tap";
   const reportedState = canonicalReportedState(row);
   const sealState = classifyPhysicalTapSealState(reportedState);
   const messageValid = isAuthenticatedNfcMessage({
@@ -115,7 +124,7 @@ export function normalizeAdminPhysicalTap(row: PhysicalTapRow) {
   });
   const time = resolveEventLocalTime(row);
   const ttBindingStatus = text(row.tt_binding_status).toUpperCase();
-  const ttBound = ttBindingStatus === "BOUND";
+  const ttBound = operational && ttBindingStatus === "BOUND";
   const source = text(row.source).toLowerCase();
 
   return {
@@ -130,7 +139,8 @@ export function normalizeAdminPhysicalTap(row: PhysicalTapRow) {
     result: text(row.result).toUpperCase(),
     verdict: normalizeEventVerdict({ verdict: row.verdict, result: row.result, reason: row.reason }),
     source,
-    dataMode: source === "real" ? "physical_real" : "non_production",
+    dataProvenance,
+    dataMode: operational ? "physical_real" : "provenance_unconfirmed",
     readCounter: finiteNumber(row.read_counter),
     occurredAt: {
       utc: time.occurredAtUtc,
@@ -140,7 +150,7 @@ export function normalizeAdminPhysicalTap(row: PhysicalTapRow) {
     },
     location: locationProjection(row),
     evidence: {
-      kind: ttBound ? "physical_nfc_tt_evidenced" : "real_tap_event_carrier_unconfirmed",
+      kind: !operational ? "provenance_unconfirmed" : ttBound ? "physical_nfc_tt_evidenced" : "real_tap_event_carrier_unconfirmed",
       messageAuthentication: messageValid ? "validated" : "not_validated",
       ttStatusReported: ttBound,
       ttState: ttBound ? text(row.tt_canonical_product_state).toUpperCase() || null : null,
@@ -157,10 +167,11 @@ export function normalizeAdminPhysicalTap(row: PhysicalTapRow) {
 }
 
 export function summarizeAdminPhysicalTaps(rawRows: PhysicalTapRow[]) {
-  const rows = rawRows.map(normalizeAdminPhysicalTap);
+  const eligible = rawRows.filter((row) => normalizeAdminPhysicalTap(row).dataProvenance === "operational_tap");
+  const rows = eligible.map(normalizeAdminPhysicalTap);
   const closed = rows.filter((row) => row.sealState === "closed").length;
   const opened = rows.filter((row) => row.sealState === "opened").length;
-  const distinctUnits = new Set(rawRows.map((row) => text(row.uid_hex)).filter(Boolean)).size;
+  const distinctUnits = new Set(eligible.map((row) => text(row.uid_hex)).filter(Boolean)).size;
   const latestAt = rows
     .map((row) => row.occurredAt.utc)
     .filter(Boolean)
@@ -182,14 +193,17 @@ export async function listAdminPhysicalTaps(input: {
   bid?: string | null;
   limit?: number;
   rangeSql?: string;
-}) {
+}, execute: SqlExecutor = sql) {
   const tenantSlug = text(input.tenantSlug).toLowerCase();
   if (!tenantSlug) throw new Error("physical_taps_tenant_required");
   const bid = text(input.bid);
-  const limit = Math.min(Math.max(Number(input.limit || 20), 1), 100);
+  const requestedLimit = Number(input.limit ?? 20);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100) : 20;
   const rangeSql = text(input.rangeSql) || "30 days";
 
-  const rawRows = await sql/*sql*/`
+  const read = withConsumerNetworkEventProvenance(execute, { event: "e", batch: "b", tag: "event_tag" });
+  const candidates = await read/*sql*/`
+    WITH classified AS (
     SELECT
       e.id,
       e.tenant_id,
@@ -203,6 +217,16 @@ export async function listAdminPhysicalTaps(input: {
       e.allowlisted,
       e.read_counter,
       e.source,
+      e.meta,
+      true AS has_exact_tenant_asset_binding,
+      EXISTS (
+        SELECT 1 FROM canonical_event_operations operation
+        WHERE operation.tenant_id = e.tenant_id
+          AND operation.event_id = e.id
+          AND operation.event_created_at = e.created_at
+          AND operation.event_mode = 'live'
+      ) AS has_canonical_operation,
+      /* consumer-network-event-provenance */ AS data_provenance,
       e.created_at,
       e.city,
       e.country_code,
@@ -247,19 +271,44 @@ export async function listAdminPhysicalTaps(input: {
     LEFT JOIN sun_tt_truth_receipts tt
       ON tt.event_id = e.id
       AND tt.event_created_at = e.created_at
+      AND tt.tenant_id = e.tenant_id
+      AND tt.batch_id = e.batch_id
     WHERE tn.slug = ${tenantSlug}
       AND (${bid} = '' OR b.bid = ${bid})
-      AND LOWER(COALESCE(e.source::text, '')) = 'real'
       AND e.event_type::text IN ('TAP_VALID', 'TAP_INVALID', 'REPLAY_SUSPECT')
       AND e.created_at >= now() - ${rangeSql}::interval
-    ORDER BY e.created_at DESC, e.id DESC
-    LIMIT ${limit}
+      AND NOT EXISTS (
+        SELECT 1 FROM events ambiguous_event
+        WHERE ambiguous_event.tenant_id = e.tenant_id
+          AND ambiguous_event.id = e.id
+          AND ambiguous_event.created_at <> e.created_at
+      )
+    )
+    SELECT * FROM classified
+    WHERE data_provenance = 'operational_tap'
+    ORDER BY created_at DESC, id DESC
+    LIMIT ${limit + 1}
   `;
 
-  const rows = (rawRows as PhysicalTapRow[]).map(normalizeAdminPhysicalTap);
+  if (candidates.some((row) => normalizeAdminPhysicalTap(row).dataProvenance !== "operational_tap")) {
+    throw new Error("physical_taps_provenance_inconsistent");
+  }
+  const rawRows = candidates.slice(0, limit);
+  const rows = rawRows.map(normalizeAdminPhysicalTap);
   return {
     availability: "available" as const,
-    summary: summarizeAdminPhysicalTaps(rawRows as PhysicalTapRow[]),
+    summary: summarizeAdminPhysicalTaps(rawRows),
     rows,
+    provenance: {
+      contractVersion: "physical-taps-operational-provenance/v1" as const,
+      primaryScope: "operational_tap" as const,
+      countScope: "returned_rows_within_requested_range_and_limit" as const,
+      returnedRows: rows.length,
+      limit,
+      hasMore: candidates.length > limit,
+      excluded: ["declared_demo", "imported", "legacy_unclassified"] as const,
+      invalidAndReplayIncluded: true,
+      physicalPresenceClaim: "not_asserted" as const,
+    },
   };
 }

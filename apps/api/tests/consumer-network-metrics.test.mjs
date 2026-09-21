@@ -224,9 +224,14 @@ test("consumer overview counts activity and units without treating UID as a pers
   assert.match(route, /e\.data_provenance = 'operational_tap'/);
   assert.match(route, /provenance_declared_demo/);
   assert.match(route, /provenance_legacy_unclassified/);
-  assert.match(route, /meta->>'replay_execution_class'/);
-  assert.match(route, /canonical_event_operations canonical_operation/);
-  assert.match(route, /canonical_operation\.event_created_at = e\.created_at/);
+  assert.match(route, /withConsumerNetworkEventProvenance\(sql, \{ event: "e", batch: "provenance_batch", tag: "provenance_tag" \}\)/);
+  assert.match(route, /await read\/\*sql\*\//);
+  assert.match(route, /\/\* consumer-network-event-provenance \*\/ AS data_provenance/);
+  const { consumerNetworkEventProvenanceSql } = await import("../src/lib/consumer-network-provenance.ts");
+  const expression = consumerNetworkEventProvenanceSql({ event: "e", batch: "provenance_batch", tag: "provenance_tag" });
+  assert.match(expression, /meta->>'replay_execution_class'/);
+  assert.match(expression, /canonical_event_operations canonical_operation/);
+  assert.match(expression, /canonical_operation\.event_created_at = e\.created_at/);
   assert.match(route, /provenance_tag\.id::text = e\.tag_id::text/);
   assert.match(route, /WHERE e\.event_type::text IN \('TAP_VALID', 'TAP_INVALID', 'REPLAY_SUSPECT'\)/);
   assert.match(route, /actor_provenance/);
@@ -251,6 +256,19 @@ test("activity feed omits names while member data keeps its explicit PII permiss
   ]);
   assert.match(taps, /checkAdminWithPermission\(req, "crm:read"\)/);
   assert.match(taps, /data_provenance/);
+  assert.match(taps, /withConsumerNetworkEventProvenance\(sql, \{ event: "e", batch: "provenance_batch", tag: "provenance_tag" \}\)/);
+  assert.match(taps, /await read\/\*sql\*\//);
+  assert.match(taps, /\/\* consumer-network-event-provenance \*\/ AS data_provenance/);
+  for (const route of [members, products]) {
+    assert.match(route, /withConsumerNetworkEventProvenance\(sql, \{ event: "e", batch: "provenance_batch", tag: "provenance_tag" \}\)/);
+    assert.match(route, /await read\/\*sql\*\//);
+    assert.match(route, /\/\* consumer-network-event-provenance \*\/ AS data_provenance/);
+    assert.match(route, /provenance_batch\.tenant_id = e\.tenant_id/);
+    assert.match(route, /provenance_tag\.id::text = e\.tag_id::text/);
+    assert.match(route, /provenance_tag\.batch_id = e\.batch_id/);
+    assert.match(route, /UPPER\(provenance_tag\.uid_hex\) = UPPER\(e\.uid_hex\)/);
+    assert.match(route, /WHEN COUNT\(\*\) = 1 THEN MIN\(data_provenance\)/);
+  }
   assert.match(taps, /legacy_unclassified/);
   assert.doesNotMatch(taps, /consumer_display_name|JOIN consumers/);
   assert.match(products, /checkAdminWithPermission\(req, "crm:read"\)/);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import ts from "typescript";
 
 import {
   SDK_SENSOR_EVENT_SOURCE,
@@ -173,6 +174,20 @@ test("SUN consumes unit-bound SDK readings as sensor evidence without counting t
   assert.match(route, /listSdkSensorTimeline\(\{[\s\S]*tenantId: input\.tenantId,[\s\S]*bid: input\.bid,[\s\S]*uidHex: input\.uid/);
   assert.match(route, /const sensorEvidenceTimeline = \[\.\.\.params\.timeline, \.\.\.\(params\.sensorTimeline \|\| \[\]\)\]/);
   assert.match(route, /sensorTimeline: sdkSensorTimeline/);
-  assert.match(route, /const mergedTimeline = \[\.\.\.timeline, \.\.\.ctaTimeline\]/);
-  assert.doesNotMatch(route, /const mergedTimeline = \[[^\]]*sdkSensorTimeline/);
+  // Check the actual public-contract inputs rather than a removed intermediate
+  // variable. Sensor readings must remain a separate input from NFC history.
+  const source = ts.createSourceFile("sun-route.ts", route, ts.ScriptTarget.Latest, true);
+  const calls = [];
+  const visit = (node) => {
+    if (ts.isCallExpression(node) && node.expression.getText(source) === "buildPublicContract") calls.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  assert.equal(calls.length, 1);
+  const input = calls[0].arguments[0];
+  assert.ok(ts.isObjectLiteralExpression(input));
+  const properties = new Map(input.properties.map((property) => [property.name?.getText(source), property]));
+  assert.ok(ts.isShorthandPropertyAssignment(properties.get("timeline")), "canonical NFC timeline is passed unchanged");
+  assert.equal(properties.get("sensorTimeline")?.initializer?.getText(source), "sdkSensorTimeline");
+  assert.match(route, /const timelineLatest = params\.timeline\[0\]/, "latest NFC read must not come from sensor history");
 });

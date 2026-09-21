@@ -7,6 +7,7 @@ const {
   isAuthenticatedNfcMessage,
   normalizeAdminPhysicalTap,
   summarizeAdminPhysicalTaps,
+  listAdminPhysicalTaps,
 } = await import("../src/lib/admin-physical-taps.ts");
 
 const physicalEvents = [
@@ -23,6 +24,8 @@ const physicalEvents = [
     reason: "sun_ok",
     read_counter: 115,
     source: "real",
+    meta: { replay_execution_class: "operational" },
+    has_exact_tenant_asset_binding: true,
     created_at: "2026-08-31T07:37:10.000Z",
     city: "Palmira",
     country_code: "AR",
@@ -51,6 +54,8 @@ const physicalEvents = [
     reason: "sun_ok",
     read_counter: 98,
     source: "real",
+    meta: { replay_execution_class: "operational" },
+    has_exact_tenant_asset_binding: true,
     created_at: "2026-08-31T07:37:40.000Z",
     geo_city: "Palmira",
     geo_country: "AR",
@@ -220,7 +225,8 @@ test("physical tap route is dual-permission, tenant-bound, real-only and backed 
   assert.match(route, /checkAdminPermission\(req, "events\.read_sensitive"\)/);
   assert.match(route, /getAdminTenantAccess\(req, requestedTenant\)/);
   assert.match(route, /physical_taps_tenant_required/);
-  assert.match(helper, /LOWER\(COALESCE\(e\.source::text, ''\)\) = 'real'/);
+  assert.match(helper, /withConsumerNetworkEventProvenance/);
+  assert.match(helper, /WHERE data_provenance = 'operational_tap'/);
   assert.match(helper, /WHERE tn\.slug = \$\{tenantSlug\}/);
   assert.match(helper, /b\.id = e\.batch_id\s+AND b\.tenant_id = e\.tenant_id/);
   assert.match(helper, /JOIN tenants tn ON tn\.id = e\.tenant_id/);
@@ -229,10 +235,72 @@ test("physical tap route is dual-permission, tenant-bound, real-only and backed 
   assert.doesNotMatch(helper, /JOIN batches b ON b\.id = e\.batch_id\s+JOIN tenants tn ON tn\.id = b\.tenant_id/);
   assert.match(helper, /AND \(\$\{bid\} = '' OR b\.bid = \$\{bid\}\)/);
   assert.match(helper, /sun_tt_truth_receipts/);
+  assert.match(helper, /tt\.tenant_id = e\.tenant_id/);
+  assert.match(helper, /tt\.batch_id = e\.batch_id/);
   assert.match(helper, /e\.event_type,[\s\S]*e\.cmac_ok,[\s\S]*e\.allowlisted/);
   assert.match(helper, /to_jsonb\(e\)->'post_tap_location_observation' AS post_tap_location_observation/);
   assert.match(helper, /maskUid/);
   assert.doesNotMatch(route, /0474856A0B1090|0483826A0B1090/);
+});
+
+test("a real source alone never promotes imported, simulated or legacy evidence into physical counts", () => {
+  const uncertain = [
+    { ...physicalEvents[0], id: 700, meta: {} },
+    { ...physicalEvents[0], id: 701, meta: { replay_execution_class: "operational", simulated: true } },
+    { ...physicalEvents[0], id: 702, source: "imported" },
+    { ...physicalEvents[0], id: 703, has_exact_tenant_asset_binding: false },
+  ];
+  for (const event of uncertain) {
+    const row = normalizeAdminPhysicalTap(event);
+    assert.equal(row.dataMode, "provenance_unconfirmed");
+    assert.equal(row.evidence.kind, "provenance_unconfirmed");
+    assert.equal(row.evidence.ttEvidenceAuthority, "not_reported");
+  }
+  assert.deepEqual(summarizeAdminPhysicalTaps([...physicalEvents, ...uncertain]), summarizeAdminPhysicalTaps(physicalEvents));
+});
+
+test("operational invalid and replay events count without becoming authenticated or TT-certified", () => {
+  const rows = ["TAP_INVALID", "REPLAY_SUSPECT"].map((event_type, index) => ({
+    ...physicalEvents[0], id: 710 + index, event_type, result: event_type,
+    cmac_ok: false, allowlisted: false, verdict: "invalid", tt_binding_status: null,
+  }));
+  for (const event of rows) {
+    const row = normalizeAdminPhysicalTap(event);
+    assert.equal(row.dataProvenance, "operational_tap");
+    assert.equal(row.dataMode, "physical_real");
+    assert.equal(row.messageValid, false);
+    assert.equal(row.evidence.kind, "real_tap_event_carrier_unconfirmed");
+  }
+  assert.equal(summarizeAdminPhysicalTaps(rows).total, 2);
+  assert.equal(summarizeAdminPhysicalTaps(rows).other, 2);
+});
+
+test("physical read labels its bounded count and keeps request values as SQL parameters", async () => {
+  let statement, parameters;
+  const tenant = "tenant' OR true --";
+  const result = await listAdminPhysicalTaps({ tenantSlug: tenant, limit: 1 }, async (strings, ...values) => {
+    statement = strings.join("?"); parameters = values;
+    return physicalEvents;
+  });
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.summary.total, 1);
+  assert.equal(result.provenance.countScope, "returned_rows_within_requested_range_and_limit");
+  assert.equal(result.provenance.returnedRows, 1);
+  assert.equal(result.provenance.hasMore, true);
+  assert.equal(result.provenance.invalidAndReplayIncluded, true);
+  assert.equal(result.provenance.physicalPresenceClaim, "not_asserted");
+  assert.ok(parameters.includes(tenant.toLowerCase()));
+  assert.equal(parameters.at(-1), 2);
+  assert.ok(!statement.includes(tenant.toLowerCase()));
+  assert.ok(statement.indexOf("WHERE data_provenance = 'operational_tap'") < statement.indexOf("LIMIT ?"));
+  assert.ok(!JSON.stringify(result).includes("replay_execution_class"));
+});
+
+test("a inconsistent executor result fails closed instead of returning a false empty or promoted row", async () => {
+  await assert.rejects(
+    listAdminPhysicalTaps({ tenantSlug: "fixture" }, async () => [{ ...physicalEvents[0], meta: {} }]),
+    /physical_taps_provenance_inconsistent/,
+  );
 });
 
 test("admin analytics and event feeds separate authenticated message validity from seal condition", async () => {
