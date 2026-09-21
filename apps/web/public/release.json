@@ -1,10 +1,12 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.19-web-consumer.1",
-  "scope": "consumer-library-current-notices-and-three-signal-mobile-passport",
-  "baseCommit": "97200947244ceed362a3eafe5662c2d0a7031dd8",
+  "version": "2026.09.20-web-history.1",
+  "scope": "personal-reading-history-search-pagination-and-recoverable-states",
+  "baseCommit": "e94720e2519c28f0b2ce32db67bd04be0255a093",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.09.18-api-tasks.1",
+  "requiredApiRelease": "2026.09.20-api-consumer-history.1",
   "productNoticesProtocol": "nexid.product-notices.v2",
-  "databaseMigrationsIncluded": false
+  "databaseMigrationsIncluded": false,
+  "release": "2026.09.20-web-history.1",
+  "consumerHistoryProtocol": "nexid.consumer-history.v1"
 }
