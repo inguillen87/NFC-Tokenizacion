@@ -1,6 +1,6 @@
 # S8a/S9a — Evidencia consultable y acciones explícitas
 
-Release candidata: `2026.09.21-web-evidence-actions.1`.
+Release publicada: `2026.09.21-web-evidence-actions.1`.
 Base web productiva: `b6c054bcc59c4eb10ff01f1ff38aa2ad05c4df19`.
 API compatible: `1aef6c3827459bb2ddbc2b4907ffc6dda239b30a`,
 `2026.09.21-api-s7-consistency.2`. Se publica únicamente web.
@@ -91,6 +91,31 @@ No se utiliza para dar por aceptado el nuevo flujo de cuenta en el teléfono.
 Sin migraciones, cambios de claves, configuración NFC, contador ni TTStatus.
 Dashboard y API permanecen en sus releases existentes.
 
+### Evidencia de publicación
+
+Verificado el 22 de septiembre de 2026 a las 00:24 UTC (21 de septiembre en Argentina).
+
+- Commit ejecutado: `6cfd8bb451cef438786a623e336a187728a30f86`, árbol limpio.
+- CI: [35671393147](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35671393147),
+  exitosa sobre ese SHA; 638 pruebas web, build, secretos, 11 comprobaciones de
+  navegador y 8 vistas accesibles sin hallazgos en las superficies ensayadas.
+  Chromium de CI: `140.0.7339.186`. Artefacto: `nexid-consumer-evidence-actions`.
+- Despliegue web: `dpl_DiHkpj5eFdi3SYHpdhnzuLwMbGoj`, READY,
+  `meta.gitCommitSha` coincidente y `gitDirty=0`.
+- URL inmutable: https://nexid-9hyjgpqdf-marcelos-projects-c26aa499.vercel.app
+- Alias productivo: https://nexid.lat, comprobado apuntando al mismo despliegue.
+  `/release.json` entrega `2026.09.21-web-evidence-actions.1`.
+- Antes y después de promover: seis vistas remotas por instancia (ES/EN/PT,
+  390 claro y 1440 oscuro), cero errores JS, desbordes, hallazgos axe o intentos
+  de escritura. La consulta anónima sigue sin autenticar una cuenta. Estas
+  comprobaciones usan el pasaporte demo público, no una lectura física real.
+- Reportes locales ignorados: `artifacts/staged-consumer-release/report.json`,
+  `artifacts/production-consumer-release/report.json` y
+  `artifacts/ci-35671393147/browser/report.json`.
+
+La documentación posterior al despliegue puede tener otro SHA. El código que
+ejecuta producción es exclusivamente el commit indicado arriba.
+
 ## Continuación del plan
 
 S8 completo sigue pendiente: al reabrir snapshots, el API actual refresca parte
@@ -98,6 +123,26 @@ de la identidad pero puede conservar `product.agro` histórico. Por eso estos
 enlaces no se anuncian como documentos actualizados o certificados. Queda por
 proyectar contenido editorial vigente con fuente/versión y distinguir datos no
 publicados, sin sobreescribir la evidencia de lectura.
+
+Próximo incremento S8b: agregar una proyección `currentEditorial` al lector
+`getSunDiagnosticSnapshot` en `apps/api/app/lib/sun-diagnostics.ts`, separada
+de `product.agro` histórico. Reutilizar la publicación de
+`passport_editorial_heads.published`, el historial de publicación y
+`parseEditorialDocument`/`editorialContentDigest`. Resolver la identidad por
+`events.tenant_id + events.batch_id`, nunca por BID solamente. El HEAD documental
+del worktree API es `07fffb0513694854dff36cc35beaa071883fd929`; el código API
+productivo compatible sigue en `1aef6c3827459bb2ddbc2b4907ffc6dda239b30a`.
+
+Criterios de aceptación del siguiente incremento:
+
+1. Lectura con versión 1, publicación 2 y borrador 3: mostrar la publicación 2
+   con versión, digest y fecha; conservar fecha/TT/resultado históricos y no
+   exponer el borrador.
+2. Dos tenants con igual BID: cada evento sólo consulta su publicación y su
+   historial de versión correspondiente.
+3. Publicación ausente, legado sin versión, integridad inválida y fuente caída
+   tienen estados distintos. Nunca etiquetar documentos históricos como vigentes
+   ni renovar permisos al reabrir la lectura.
 
 S9 completo también incluye garantía, soporte y otros servicios según política.
 La ruta móvil de reporte requiere converger con la persistencia vinculada a
