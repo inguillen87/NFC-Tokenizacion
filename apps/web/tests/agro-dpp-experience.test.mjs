@@ -74,8 +74,10 @@ test("mobile Agro DPP implements the ten ordered surfaces and all structured eve
   for (const eventType of [
     "PRODUCT_VIEWED", "TECHNICAL_SHEET_VIEWED", "SAFETY_SHEET_VIEWED", "PPE_CONTENT_VIEWED",
     "STEWARDSHIP_CONFIRMED", "CROPWISE_CTA_CLICKED", "ADVISOR_CONTACT_REQUESTED",
-    "LOYALTY_OFFER_VIEWED", "TRAINING_STARTED", "PROBLEM_REPORTED",
+    "LOYALTY_OFFER_VIEWED", "TRAINING_STARTED",
   ]) assert.match(component, new RegExp(eventType));
+  assert.match(component, /href="#report-problem"/);
+  assert.doesNotMatch(component, /eventType: "PROBLEM_REPORTED"|Se registró el pedido de revisión/);
   assert.deepEqual(AGRO_EXPERIENCE_EVENT_TYPES, [
     "PRODUCT_VIEWED", "TECHNICAL_SHEET_VIEWED", "SAFETY_SHEET_VIEWED", "PPE_CONTENT_VIEWED",
     "STEWARDSHIP_CONFIRMED", "CROPWISE_CTA_CLICKED", "ADVISOR_CONTACT_REQUESTED", "LOYALTY_OFFER_VIEWED", "LOYALTY_JOINED",

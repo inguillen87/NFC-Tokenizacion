@@ -263,7 +263,7 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
       <section className="rounded-3xl border border-white/10 bg-slate-950/80 p-5">
         <div className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="text-cyan-300" size={20} /><h2 className="font-black text-white">Procedencia y eventos</h2></div>
         {props.timeline.length ? <ol className="mt-4 space-y-3">{props.timeline.slice(0, 6).map((item, index) => <li key={`${item.at || "event"}-${index}`} className="border-l border-cyan-300/30 pl-4"><strong className="block text-sm text-slate-100">{visible(item.result, "Evento registrado")}</strong><span className="text-xs text-slate-500">{item.at ? formatSunDateTime(item.at, locale, null) : "Fecha no disponible"}{item.city || item.country ? ` · ${[item.city, item.country].filter(Boolean).join(", ")}` : ""}</span></li>)}</ol> : <p className="mt-3 text-sm text-slate-500">No hay eventos públicos adicionales para mostrar.</p>}
-        <button type="button" onClick={() => void runRecordedAction({ eventType: "PROBLEM_REPORTED", placement: "problem_report", doneMessage: "Se registró el pedido de revisión." })} className="mt-4 min-h-11 w-full rounded-2xl border border-rose-300/20 bg-rose-300/[0.07] px-4 text-sm font-black text-rose-100">Reportar un problema</button>
+        <a href="#report-problem" className="mt-4 flex min-h-11 w-full items-center justify-center rounded-2xl border border-rose-300/20 bg-rose-300/[0.07] px-4 text-sm font-black text-rose-100">Reportar un problema</a>
       </section>
 
       <details className="group rounded-3xl border border-white/10 bg-slate-950/70 p-5">

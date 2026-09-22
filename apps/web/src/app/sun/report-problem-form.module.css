@@ -1,0 +1,62 @@
+.root {
+  --rp-bg: #0d1c2b;
+  --rp-card: #142638;
+  --rp-line: #486074;
+  --rp-text: #ecf5fb;
+  --rp-muted: #bacbd9;
+  --rp-accent: #91e6e0;
+  --rp-accent-text: #102c3c;
+  --rp-error: #ffd0cb;
+  margin: 16px 0;
+  min-width: 0;
+  border: 1px solid var(--rp-line);
+  border-radius: 18px;
+  background: var(--rp-bg);
+  color: var(--rp-text);
+  scroll-margin-top: 90px;
+}
+:global(html.theme-light) .root, :global(html[data-theme="light"]) .root {
+  --rp-bg: #fff;
+  --rp-card: #f3f8fb;
+  --rp-line: #718897;
+  --rp-text: #19354b;
+  --rp-muted: #496173;
+  --rp-accent: #08716b;
+  --rp-accent-text: #fff;
+  --rp-error: #a52825;
+}
+.summary { padding: 16px; min-height: 58px; cursor: pointer; list-style: none; border-radius: 16px; }
+.summary::-webkit-details-marker { display: none; }
+.summary h2 { display: flex; align-items: center; gap: 9px; margin: 0; color: var(--rp-text); font-size: 16px; line-height: 1.6; font-weight: 750; }
+.summary h2 span { flex: 1; }
+.summary svg { flex-shrink: 0; color: var(--rp-accent); }
+.details[open] .summary svg:last-child { transform: rotate(180deg); }
+.summary:focus-visible, .root button:focus-visible, .field textarea:focus-visible, .field input:focus-visible, .field select:focus-visible { outline: 3px solid var(--rp-accent); outline-offset: 3px; }
+.content { padding: 0 18px 18px; }
+.note, .privacy { color: var(--rp-muted); font-size: 13px; line-height: 1.75; margin: 0 0 18px; }
+.privacy { padding: 12px 0; margin-bottom: 12px; border-top: 1px solid var(--rp-line); font-size: 12px; }
+.field { display: block; margin: 18px 0 6px; }
+.field > span { display: block; font-weight: 700; font-size: 14px; line-height: 1.6; margin-bottom: 7px; }
+.field textarea, .field input, .field select { display: block; width: 100%; min-height: 48px; border: 1px solid var(--rp-line); border-radius: 10px; padding: 11px 12px; background: var(--rp-card); color: var(--rp-text); font: inherit; font-size: 16px; line-height: 1.65; }
+.field textarea { resize: vertical; min-height: 150px; }
+.help { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 12px; color: var(--rp-muted); font-size: 12px; line-height: 1.6; }
+.help span { white-space: nowrap; }
+.error, .fieldError { color: var(--rp-error); font-size: 13px; line-height: 1.7; }
+.error { border: 1px solid currentColor; border-radius: 12px; padding: 12px; margin: 12px 0 18px; }
+.fieldError { margin: 6px 0 12px; }
+.review h3 { margin: 18px 0; color: var(--rp-text); font-size: 17px; line-height: 1.6; font-weight: 750; }
+.context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0 0 18px; padding: 14px; background: var(--rp-card); border-radius: 12px; }
+.context dt, .detailsText dt, .receipt dt { color: var(--rp-muted); font-size: 12px; line-height: 1.6; }
+.context dd, .detailsText dd, .receipt dd { margin: 3px 0 0; color: var(--rp-text); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.detailsText { display: grid; gap: 16px; margin: 0 0 20px; }
+.detailsText dd { white-space: pre-wrap; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.primary, .secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 18px; border-radius: 12px; font-size: 14px; font-weight: 750; line-height: 1.6; cursor: pointer; }
+.primary { border: 1px solid var(--rp-accent); background: var(--rp-accent); color: var(--rp-accent-text); }
+.secondary { border: 1px solid var(--rp-line); background: var(--rp-card); color: var(--rp-text); }
+.primary:disabled, .secondary:disabled { opacity: .6; cursor: default; }
+.receipt > svg { color: var(--rp-accent); }
+.receipt h3 { color: var(--rp-text); font-size: 18px; line-height: 1.5; margin: 9px 0; }
+.receipt p { color: var(--rp-muted); font-size: 13px; line-height: 1.75; }
+.receipt dl { display: grid; gap: 14px; padding: 14px; background: var(--rp-card); border-radius: 12px; margin: 16px 0; }
+@media (max-width: 520px) { .context { grid-template-columns: minmax(0, 1fr); } .actions { flex-direction: column; } .primary, .secondary { width: 100%; } }

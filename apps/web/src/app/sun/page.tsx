@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowDown, ArrowLeft, ChevronRight, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { CtaActions } from "./cta-actions";
+import { ReportProblemForm } from "./report-problem-form";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
@@ -107,6 +108,7 @@ type SunCarrierFields = {
 type SunContract = {
   ok?: boolean;
   currentEditorial?: unknown;
+  supportReport?: { token?: string; eventId?: string; expiresAt?: string } | null;
   eventId?: string | null;
   certificate?: { shareToken?: string | null; url?: string | null };
   status?: SunCarrierFields & {
@@ -935,7 +937,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           : trustScore != null
             ? "Score bajo reportado"
             : "Sin score reportado";
-  const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
+  const reportProblemHref = "#report-problem";
   const productSectionHref = isAgroDpp ? "#agro-dpp" : "#product-info";
   const consumerActionHref = isAgroDpp ? "#agro-dpp" : "#consumer-choice";
   const recommendedAction = isFreshCommercialTap
@@ -2260,6 +2262,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
         {/* 4. Services: one clear menu, with protected flows disclosed on demand. */}
         <section id="sun-services" className="scroll-mt-24 space-y-3" aria-label="Servicios y beneficios del producto">
+            <ReportProblemForm
+              bid={bid}
+              eventId={eventId}
+              supportToken={result.supportReport?.eventId === eventId ? result.supportReport.token || "" : ""}
+              productName={productDisplayName}
+              locale={locale}
+              isDemoPreview={isDemoPreview}
+            />
             <div id="consumer-choice" className="scroll-mt-24">
               <SunServicesHub
                 eventId={eventId}

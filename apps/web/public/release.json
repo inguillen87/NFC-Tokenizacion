@@ -1,13 +1,14 @@
 {
   "application": "nexid-web",
-  "version": "2026.09.21-web-current-editorial.1",
-  "scope": "current-published-editorial-separate-from-historical-reading-evidence",
-  "baseCommit": "6cfd8bb451cef438786a623e336a187728a30f86",
+  "version": "2026.09.21-web-support.1",
+  "scope": "explicit-support-report-review-confirmation-and-durable-reference",
+  "baseCommit": "28adbe3db5ff1d56662f8dfc777afa1f3d19cebb",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.09.21-api-current-editorial.1",
+  "requiredApiRelease": "2026.09.21-api-support.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.09.21-web-current-editorial.1",
-  "consumerHistoryProtocol": "nexid.consumer-history.v1"
+  "release": "2026.09.21-web-support.1",
+  "consumerHistoryProtocol": "nexid.consumer-history.v1",
+  "supportReportProtocol": "nexid.support-report.v1"
 }

@@ -561,6 +561,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
+    if (actionKey === "report") {
+      window.location.hash = "report-problem";
+      return;
+    }
     if (actionStates[actionKey] === "loading") return;
     if (!policyAllowsAction(actionKey)) {
       setActionError("La politica de este producto no habilita esta accion. Revisa las opciones disponibles para este lote.");
@@ -592,15 +596,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           receiptFileName: receiptFileName || null,
           receiptFileData: receiptFileData || null,
           pin: securityPin || null,
-        };
-      } else if (actionKey === "report") {
-        extraPayload = {
-          category: isOpenedConsumerFlow ? "seal_opened" : "tap_review",
-          description: isManualOpenedConsumerFlow
-            ? "La persona solicitó revisar una apertura declarada por un operador."
-            : isSensorOpenedConsumerFlow
-            ? "La persona informó que no reconoce la apertura indicada por la etiqueta digital."
-            : "La persona solicitó revisar esta lectura.",
         };
       }
       const data = await call(path, method, basePayload(extraPayload));
@@ -841,14 +836,13 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           <button
             suppressHydrationWarning
             type="button"
-            disabled={isActionDisabled("report")}
             onClick={() => void trigger("/api/public-cta/report-problem", "POST", "report")}
             data-sun-experience-event="PROBLEM_REPORTED"
             data-sun-experience-placement="protected_actions"
             data-sun-experience-interaction="report_started"
             className="mt-3 min-h-12 w-full rounded-xl border border-amber-200/50 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {getButtonLabel("Enviar aviso para revisión", "report")}
+            Describir el problema
           </button>
           {actionStates.report === "success" ? (
             <p className="mt-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { checkSupportReports } from './support-report.browser.mjs';
 const base = 'http://localhost:3188', api = 'http://127.0.0.1:4288', out = process.env.QA_OUTPUT;
 assert.ok(out);
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
@@ -152,6 +153,7 @@ try {
   assert.equal(actions(await state()).length, beforeEditorial);
   report.checks.push('Current publication version, date and documents stay separate from the old reading in three languages; missing, unpublished, legacy, inactive and invalid states never revive a removed current link');
   const before = actions(await state()).length;
+  await checkSupportReports({ page, base, state, mode, assess, report });
   const issued = await fresh(page);
   assert.equal(actions(await state()).length, before, 'Entering the portal does not execute any action');
   const cookies = (await context.cookies()).filter(x => x.name.includes('nexid_tap_'));

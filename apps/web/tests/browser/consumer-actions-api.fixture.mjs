@@ -1,9 +1,10 @@
 // Loopback-only browser adapter. Product/session/SUN/action responses are
 // synthetic; this suite validates the real web/BFF, not production persistence.
 import http from 'node:http';
-import { randomBytes, createHmac } from 'node:crypto';
+import { randomBytes, createHmac, randomUUID } from 'node:crypto';
 if (process.argv[2] !== '--local-qa') throw Error('Explicit local QA required');
 const key = randomBytes(32), calls = [], consumed = new Set();
+const supportTickets = new Map();
 let mode = 'normal', sequence = 900100;
 const port = 4288, origin = `http://127.0.0.1:${port}`;
 const sign = body => createHmac('sha256', key).update(body).digest('base64url');
@@ -15,6 +16,10 @@ function capability(eventId) {
 }
 function valid(token, eventId) {
   try { const [body, signature] = token.split('.'), p = JSON.parse(Buffer.from(body, 'base64url')); return signature === sign(body) && p.eventId === eventId && p.exp > Date.now() / 1000; } catch { return false; }
+}
+function supportCapability(eventId) {
+  const body = Buffer.from(JSON.stringify({ purpose: 'support-report-qa-only', eventId, exp: Math.floor(Date.now() / 1000) + 900 })).toString('base64url');
+  return body + '.' + sign(body);
 }
 function editorial(trace) {
   if (trace === 'agro-absent') return undefined;
@@ -34,6 +39,7 @@ function contract(u) {
   const fresh = !qr && valid(token || '', eventId);
   return { ok: true, verdict: qr ? 'identified' : 'valid', status: { code: qr ? 'IDENTIFIED' : 'VALID_CLOSED', productState: qr ? 'NOT_REGISTERED' : 'VALID_CLOSED', tone: 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
     ...(qr ? {} : { currentEditorial: editorial(trace) }),
+    supportReport: trace === 'no-support' ? null : { token: supportCapability(eventId), eventId, expiresAt: new Date(Date.now() + 900000).toISOString() },
     identity: { bid: 'QA-ONLY', tenantSlug: 'qa-brand', eventId, tagStatus: 'active' },
     product: { name: agro ? 'Producto agro QA' : 'Vino de ensayo local', winery: 'Empresa QA', category: agro ? 'Agro' : 'Vino', vertical: agro ? 'agro' : 'vino', region: 'Origen declarado QA', ...(agro ? { agro: { productName: 'Producto agro QA', technicalSheetUrl: 'https://documents.example.invalid/technical.pdf', safetySheetUrl: 'https://documents.example.invalid/safety.pdf' } } : {}) },
     tag_tamper: { available: !qr, status: qr ? 'not_available' : 'closed', raw: qr ? null : '4343' }, technical: { tt: { raw: '4343', source: 'enc_decrypted', length: 2 } },
@@ -51,12 +57,25 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname === '/qa-state') return reply(200, { localOnly: true, syntheticApi: true, calls, mode });
   if (u.pathname === '/qa-mode') { mode = u.searchParams.get('value') || 'normal'; return reply(200, { ok: true }); }
   if (u.pathname === '/qa-issue') { const eventId = String(++sequence); return reply(200, { eventId, token: capability(eventId) }); }
-  calls.push({ method: req.method, path: u.pathname, hasCapability: Boolean(body.fresh_token), leakedCookie: String(req.headers.cookie || '').includes('nexid_tap_'), keys: Object.keys(body) });
+  calls.push({ method: req.method, path: u.pathname, hasCapability: Boolean(body.fresh_token), leakedCookie: String(req.headers.cookie || '').includes('nexid_tap_'), keys: Object.keys(body), ...(u.pathname.endsWith('/report-problem') ? { requestId: body.request_id, eventId: body.event_id, hasSupport: Boolean(body.support_token), hasShare: u.searchParams.has('share'), forwardedSession: Boolean(req.headers.cookie || req.headers.authorization) } : {}) });
   if (u.pathname === '/sun') return reply(200, contract(u));
   if (u.pathname.startsWith('/sun/snapshot/')) return reply(200, { contract: contract(u) });
   if (u.pathname === '/public/product-notices/v2') return reply(200, { ok: true, protocol: 'nexid.product-notices.v2', scope: { tenant: 'qa-brand', bid: 'QA-ONLY' }, observedAt: new Date().toISOString(), notices: [], total: 0, hasMore: false, doesNotDetermineNfcAuthenticity: true, closureDoesNotReleaseProduct: true, liftingNoticeDoesNotReleaseProduct: true });
   if (u.pathname.startsWith('/public/certificates/')) return reply(403, { ok: false, error: 'share_token_expired' });
   if (u.pathname === '/public/cta/experience-event') return reply(200, { ok: true, qaOnly: true });
+  if (u.pathname === '/public/cta/report-problem') {
+    const allowed = ['bid', 'event_id', 'support_token', 'request_id', 'category', 'description', 'contact', 'locale'];
+    if (Object.keys(body).some(key => !allowed.includes(key))) return reply(400, { ok: false, reason: 'report_field_not_allowed' });
+    if (mode === 'report-expired' || !valid(body.support_token || '', body.event_id)) return reply(403, { ok: false, reason: 'support_capability_required' });
+    if (mode === 'report-invalid') return reply(200, { ok: true });
+    if (mode === 'report-conflict') return reply(409, { ok: false, reason: 'report_idempotency_conflict' });
+    const existing = supportTickets.get(body.request_id);
+    const ticket = existing || { id: randomUUID(), status: 'open', tenant_assigned: true, created_at: new Date().toISOString() };
+    supportTickets.set(body.request_id, ticket);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    if (mode === 'report-lost-response' && !existing) return reply(503, { ok: false, reason: 'qa_response_lost_after_commit' });
+    return reply(existing ? 200 : 201, { ok: true, ticket_created: true, outcome: existing ? 'ticket_existing' : 'ticket_created', ticket, eventId: body.event_id, bid: body.bid });
+  }
   const authenticated = String(req.headers.cookie || '').includes('consumer_qa=local');
   if (u.pathname === '/consumer/session') return reply(200, { ok: true, authenticated });
   if (u.pathname.startsWith('/consumer/')) {

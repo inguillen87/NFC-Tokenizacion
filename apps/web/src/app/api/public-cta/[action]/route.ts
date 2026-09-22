@@ -88,13 +88,18 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
   if (!BID_RE.test(bid)) return NextResponse.json({ ok: false, reason: "invalid bid format", trace_id: trace }, { status: 400 });
   if (!UID_OR_EVENT_RE.test(shareUid)) return NextResponse.json({ ok: false, reason: "invalid uid/event format", trace_id: trace }, { status: 400 });
 
-  const share = safeBuildShare(bid, shareUid);
-  const shareToken = "token" in share && typeof share.token === "string" ? share.token : "";
-  if (!shareToken) {
-    return NextResponse.json({ ok: false, reason: "share_token_unavailable", trace_id: trace }, { status: 503 });
-  }
   const url = new URL(`${productUrls.api}/public/cta/${action}`);
-  url.searchParams.set("share", shareToken);
+  if (action === "report-problem") {
+    if (method !== "POST") return errorResponse("method_not_allowed", 405, trace);
+    // The API issues this capability when a passport is read. A BFF-generated
+    // share token cannot authorize a report about a client-supplied event.
+    if (!eventId || !clean(payload?.support_token)) return errorResponse("support_capability_required", 403, trace);
+  } else {
+    const share = safeBuildShare(bid, shareUid);
+    const shareToken = "token" in share && typeof share.token === "string" ? share.token : "";
+    if (!shareToken) return errorResponse("share_token_unavailable", 503, trace);
+    url.searchParams.set("share", shareToken);
+  }
   if (method === "GET") {
     url.searchParams.set("bid", bid);
     url.searchParams.set("uid", uid);
@@ -105,14 +110,16 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
   const outboundPayload = {
     ...(payload || {}),
     bid,
-    uid,
+    ...(action === "report-problem" ? {} : { uid }),
     event_id: eventId || payloadEventId,
   };
   let response: Response;
   try {
     response = await fetch(url.toString(), {
       method,
-      headers: buildForwardHeaders(req, trace),
+      headers: action === "report-problem"
+        ? { "Content-Type": "application/json", "x-nexid-trace-id": trace }
+        : buildForwardHeaders(req, trace),
       body: method === "POST" ? JSON.stringify(outboundPayload) : undefined,
       cache: "no-store",
     });
@@ -126,9 +133,12 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
     headers: {
       "Content-Type": response.headers.get("content-type") || "application/json",
       "x-nexid-trace-id": trace,
+      "Cache-Control": "private, no-store",
+      "Referrer-Policy": "no-referrer",
+      ...(response.headers.get("retry-after") ? { "Retry-After": response.headers.get("retry-after")! } : {}),
     },
   });
-  for (const cookie of getSetCookies(response)) {
+  for (const cookie of action === "report-problem" ? [] : getSetCookies(response)) {
     next.headers.append("set-cookie", rewriteApiCookie(cookie, req));
   }
   return next;
