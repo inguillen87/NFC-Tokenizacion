@@ -5,16 +5,16 @@ import test from 'node:test';
 import {DASHBOARD_RELEASE,releaseCopy} from '../src/lib/dashboard-release.ts';
 const json=async(path)=>JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'));
 const candidate=()=>json('../../../docs/releases/2026-09-21-dashboard.28.candidate.json');
-test('S9 support retains immutable S6 evidence and identifies its paired report API',async()=>{
+test('S9 ticket lookup retains immutable S6 evidence and identifies its paired API',async()=>{
  const [m,c]=await Promise.all([json('../public/release.json'),candidate()]);
  assert.equal(c.release,'2026.09.21-dashboard.28');
  assert.equal(createHash('sha256').update(JSON.stringify(c)).digest('hex'),'9be2d2d515dfcd3e43780c713dc51b2fb4f56a8e3a7f33df0f17d41532e11259');
- assert.equal(m.release,'2026.09.21-dashboard.31');
+ assert.equal(m.release,'2026.09.21-dashboard.32');
  assert.equal(m.reconciliationBaseRelease,c.release);
- assert.equal(m.baseCommit,'07d976c0cc5d007011aadc9f20ceef0f0e325aee');
- assert.equal(m.scope,'searchable-support-reference-and-readable-ticket-details');
+ assert.equal(m.baseCommit,'e999f3fed614da8a7ec209dbc07c12718a57d3ea');
+ assert.equal(m.scope,'tenant-scoped-historical-ticket-reference-lookup');
  assert.equal(m.realTapCertification,'not-included');
- assert.equal(m.requiredApiRelease,'2026.09.21-api-support.1');
+ assert.equal(m.requiredApiRelease,'2026.09.21-api-support-lookup.1');
  assert.equal(m.requiredWebRelease,'2026.09.21-web-support.1');
  assert.equal(m.apiChangesIncluded,false);assert.equal(m.databaseMigrationsIncluded,false);
  assert.equal(c.application,'dashboard');

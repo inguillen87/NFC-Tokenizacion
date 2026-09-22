@@ -5,6 +5,9 @@ import { Badge, Card } from "@product/ui";
 import { CustomerMemberTimeline } from "../../../components/customer-member-timeline";
 import { CustomerSignalTimeline } from "../../../components/customer-signal-timeline";
 import { DataTable } from "../../../components/data-table";
+import { TicketReferenceLookup } from "../../../components/ticket-reference-lookup";
+import type { TicketLookupLocale } from "../../../lib/ticket-reference-lookup";
+import { ticketLookupCopy } from "../../../lib/ticket-reference-lookup-copy";
 import { SUPPORT_TICKET_COLUMNS, supportTicketTableRow, supportTicketRowMatchesQuery } from "../../../lib/support-ticket-projection";
 import type {
   CustomerMember,
@@ -180,6 +183,8 @@ interface LeadsTicketsClientProps {
   copy: any;
   labels: any;
   demoMode: boolean;
+  locale?: TicketLookupLocale;
+  canLookupTickets?: boolean;
   leadsSource: "production" | "demo" | "unavailable";
   signalCollections: CustomerSignalCollections;
   members: CustomerMember[];
@@ -199,6 +204,8 @@ export default function LeadsTicketsClient({
   copy,
   labels,
   demoMode,
+  locale = "es-AR",
+  canLookupTickets = false,
   leadsSource,
   signalCollections,
   members,
@@ -463,7 +470,7 @@ export default function LeadsTicketsClient({
       {activeTab === "tickets" || activeTab === "signals" ? (
         <p className="px-2 text-xs leading-5 text-slate-400">
           {activeTab === "tickets"
-            ? "Busca entre los tickets cargados. Esta vista no consulta el historial completo."
+            ? ticketLookupCopy[locale].recentHint
             : "La búsqueda filtra las señales cargadas, hasta las 80 más recientes."}
         </p>
       ) : null}
@@ -556,6 +563,8 @@ export default function LeadsTicketsClient({
         )}
 
         {activeTab === "tickets" && (
+          <div className="space-y-6">
+          <TicketReferenceLookup key={`${tenantScope}|${demoMode}|${canLookupTickets}`} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets} />
           <DataTable
             title="Bandeja de Tickets y Consultas Técnicas"
             columns={SUPPORT_TICKET_COLUMNS}
@@ -570,6 +579,7 @@ export default function LeadsTicketsClient({
             refreshLabel={copy.shell.refresh}
             statusMap={copy.statuses}
           />
+          </div>
         )}
 
         {activeTab === "orders" && (

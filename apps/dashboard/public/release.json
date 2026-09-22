@@ -1,10 +1,10 @@
 {
-  "release": "2026.09.21-dashboard.31",
-  "scope": "searchable-support-reference-and-readable-ticket-details",
+  "release": "2026.09.21-dashboard.32",
+  "scope": "tenant-scoped-historical-ticket-reference-lookup",
   "realTapCertification": "not-included",
-  "baseCommit": "07d976c0cc5d007011aadc9f20ceef0f0e325aee",
+  "baseCommit": "e999f3fed614da8a7ec209dbc07c12718a57d3ea",
   "reconciliationBaseRelease": "2026.09.21-dashboard.28",
-  "requiredApiRelease": "2026.09.21-api-support.1",
+  "requiredApiRelease": "2026.09.21-api-support-lookup.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
@@ -20,5 +20,6 @@
   "tracePageProtocol": "nexid.trace-page.v1",
   "intakeProtocol": "nexid.epcis-intake.v1",
   "editorialQueueProtocol": "nexid.editorial-queue.v1",
-  "supportReportProtocol": "nexid.support-report.v1"
+  "supportReportProtocol": "nexid.support-report.v1",
+  "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1"
 }

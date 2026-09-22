@@ -284,6 +284,8 @@ export default async function LeadsTicketsPage({
         copy={copy}
         labels={labels}
         demoMode={allowDemoData}
+        locale={locale}
+        canLookupTickets={canManageLeads}
         leadsSource={leadsResult.source}
         signalCollections={{
           leads: { availability: leadsResult.availability, source: leadsResult.source },

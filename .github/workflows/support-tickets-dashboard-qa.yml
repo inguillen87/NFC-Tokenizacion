@@ -1,7 +1,7 @@
 name: Support ticket references and readable details
 on:
   push:
-    branches: [codex/nexid-s9-support-dashboard-20260921]
+    branches: [codex/nexid-s9-support-dashboard-20260921, codex/nexid-s9-ticket-lookup-dashboard-20260921]
     paths:
       - apps/dashboard/**
       - packages/**

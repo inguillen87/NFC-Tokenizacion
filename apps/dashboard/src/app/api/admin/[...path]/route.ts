@@ -1102,6 +1102,15 @@ async function forward(req: Request, path: string[]) {
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || (demoSession && !isProduction);
 
+  if (req.method === "GET" && /^tickets\/[^/]+$/.test(normalizedPath)) {
+    if (demoSession || forceSandbox) return NextResponse.json({ ok: false, reason: "ticket_lookup_demo_unavailable" }, { status: 403 });
+    if (reqUrl.searchParams.getAll("tenant").length > 1) return NextResponse.json({ ok: false, reason: "ticket_tenant_invalid" }, { status: 400 });
+    const requested = (reqUrl.searchParams.get("tenant") || "").trim().toLowerCase();
+    if (dashboardSession && dashboardSession.role !== "super-admin" && requested && requested !== String(dashboardSession.tenantSlug || "").trim().toLowerCase()) {
+      return NextResponse.json({ ok: false, reason: "ticket_not_found" }, { status: 404, headers: { "x-nexid-data-mode": "production" } });
+    }
+  }
+
   if (dashboardSession && !scopedRole) {
     console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "unsupported_dashboard_role", method: req.method, path: normalizedPath }));
     return NextResponse.json({ ok: false, reason: "unsupported_dashboard_role" }, { status: 403 });
@@ -1402,7 +1411,15 @@ async function forward(req: Request, path: string[]) {
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const p = await params;
-  return forward(req, p.path || []);
+  const path = p.path || [];
+  if (!/^tickets\/[^/]+$/.test(path.join("/"))) return forward(req, path);
+  let response: Response;
+  try { response = await forward(req, path); }
+  catch { response = NextResponse.json({ ok: false, reason: "ticket_lookup_unavailable" }, { status: 503 }); }
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "private, no-store, max-age=0");
+  headers.set("referrer-policy", "no-referrer");
+  return new NextResponse(response.body, { status: response.status, headers });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
