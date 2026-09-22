@@ -1,0 +1,61 @@
+name: Support ticket references and readable details
+on:
+  push:
+    branches: [codex/nexid-s9-support-dashboard-20260921]
+    paths:
+      - apps/dashboard/**
+      - packages/**
+      - .github/workflows/support-tickets-dashboard-qa.yml
+permissions:
+  contents: read
+concurrency:
+  group: nexid-support-dashboard-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+          cache: npm
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Dashboard regressions, production build and custody gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/nexid-support-dashboard"
+          npm run typecheck --workspace dashboard 2>&1 | tee "$RUNNER_TEMP/nexid-support-dashboard/typecheck.log"
+          npm test --workspace dashboard 2>&1 | tee "$RUNNER_TEMP/nexid-support-dashboard/tests.log"
+          npm run build:dashboard 2>&1 | tee "$RUNNER_TEMP/nexid-support-dashboard/build.log"
+          npm run check:secrets 2>&1 | tee "$RUNNER_TEMP/nexid-support-dashboard/secrets.log"
+          git diff --exit-code -- apps packages package.json package-lock.json
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/nexid-support-dashboard/commit.txt"
+      - name: Install isolated browser tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/nexid-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
+          node "$RUNNER_TEMP/nexid-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
+      - name: Real support components with explicitly synthetic ticket data
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/nexid-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/nexid-browser/node_modules/axe-core/axe.min.js
+          QA_OUTPUT: ${{ runner.temp }}/nexid-support-dashboard/browser
+        run: node apps/dashboard/tests/support-tickets.browser.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: nexid-support-dashboard
+          path: ${{ runner.temp }}/nexid-support-dashboard/
+          if-no-files-found: error
+          retention-days: 3

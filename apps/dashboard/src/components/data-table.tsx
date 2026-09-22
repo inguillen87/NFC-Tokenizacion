@@ -70,8 +70,8 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
           <p className="mt-1 text-xs text-slate-400">{filtered.length} / {rows.length} rows visible</p>
         </div>
         <div className="data-table-toolbar flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
-          <input suppressHydrationWarning placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm sm:w-48" />
-          <select suppressHydrationWarning value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
+          <input suppressHydrationWarning aria-label={searchPlaceholder} placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm sm:w-48" />
+          <select suppressHydrationWarning aria-label="Filtrar por estado" value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
             <option value="all">{allFilterLabel}</option>
             {statuses.map((item) => <option key={item} value={item}>{statusMap?.[item] ?? item}</option>)}
           </select>
@@ -87,7 +87,7 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
       {!isPending && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
 
       {!isPending && filtered.length > 0 ? (
-        <div className="data-table-shell overflow-x-auto rounded-2xl border border-white/10">
+        <div className="data-table-shell overflow-x-auto rounded-2xl border border-white/10" role="region" aria-label={title} tabIndex={0}>
           <table className="w-full text-left text-sm">
             <thead className="border-b border-white/10 bg-slate-950/60 text-slate-400">
               <tr>{columns.map((col) => <th key={col.key} className="px-4 py-3">{col.label}</th>)}</tr>

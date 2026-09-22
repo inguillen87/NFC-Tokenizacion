@@ -5,6 +5,7 @@ import { Badge, Card } from "@product/ui";
 import { CustomerMemberTimeline } from "../../../components/customer-member-timeline";
 import { CustomerSignalTimeline } from "../../../components/customer-signal-timeline";
 import { DataTable } from "../../../components/data-table";
+import { SUPPORT_TICKET_COLUMNS, supportTicketTableRow, supportTicketRowMatchesQuery } from "../../../lib/support-ticket-projection";
 import type {
   CustomerMember,
   CustomerMemberDirectoryState,
@@ -451,13 +452,21 @@ export default function LeadsTicketsClient({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar contacto, empresa o notas..."
+            aria-label="Buscar señales por referencia, contacto o detalle"
+            placeholder="Buscar referencia, contacto o detalle..."
             className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-white/10 bg-slate-900/60 text-xs text-white outline-none focus:border-cyan-500/40"
           />
         </div>
       </div>
 
       {/* Tab Contents */}
+      {activeTab === "tickets" || activeTab === "signals" ? (
+        <p className="px-2 text-xs leading-5 text-slate-400">
+          {activeTab === "tickets"
+            ? "Busca entre los tickets cargados. Esta vista no consulta el historial completo."
+            : "La búsqueda filtra las señales cargadas, hasta las 80 más recientes."}
+        </p>
+      ) : null}
       <div className="animate-in fade-in slide-in-from-top-1 duration-200">
         {activeTab === "signals" && (
           <div className="space-y-6">
@@ -549,29 +558,14 @@ export default function LeadsTicketsClient({
         {activeTab === "tickets" && (
           <DataTable
             title="Bandeja de Tickets y Consultas Técnicas"
-            columns={[
-              { key: "created_at", label: "Creado" },
-              { key: "title", label: "Título" },
-              { key: "detail", label: "Detalle" },
-              { key: "contact", label: "Contacto" },
-              { key: "status", label: "Estado" }
-            ]}
+            columns={SUPPORT_TICKET_COLUMNS}
             rows={initialTickets
-              .filter(t => {
-                const searchStr = `${t.title || ""} ${t.detail || ""} ${t.contact || ""}`.toLowerCase();
-                return searchStr.includes(searchTerm.toLowerCase());
-              })
-              .map((item) => ({
-                created_at: item.created_at.slice(0, 10),
-                title: item.title,
-                detail: item.detail || "-",
-                contact: item.contact,
-                status: String(item.status || "open").toUpperCase(),
-              }))}
+              .map(supportTicketTableRow)
+              .filter(row => supportTicketRowMatchesQuery(row, searchTerm))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
-            emptyLabel="No hay tickets de soporte activos"
-            searchPlaceholder="Filtrar..."
+            emptyLabel="No hay tickets de soporte para este filtro"
+            searchPlaceholder="Referencia, lote o detalle"
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
             statusMap={copy.statuses}

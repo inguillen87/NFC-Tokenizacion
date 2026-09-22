@@ -1,17 +1,17 @@
 {
-  "release": "2026.09.21-dashboard.30",
-  "scope": "operational-provenance-physical-tap-stream",
+  "release": "2026.09.21-dashboard.31",
+  "scope": "searchable-support-reference-and-readable-ticket-details",
   "realTapCertification": "not-included",
-  "baseCommit": "74022b957a2f458ebe4930dba748d870ee220602",
+  "baseCommit": "07d976c0cc5d007011aadc9f20ceef0f0e325aee",
   "reconciliationBaseRelease": "2026.09.21-dashboard.28",
-  "requiredApiRelease": "2026.09.21-api-s7-consistency.2",
+  "requiredApiRelease": "2026.09.21-api-support.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
   "productionDemoAccess": "requires-explicit-environment-opt-in",
   "integrationKitVersion": "1.0.0",
   "integrationKitSha256": "e0d4b327e50a635d638abd73921df460bcdc4450bb2fb7e2aa22d0818f7c679d",
-  "requiredWebRelease": "2026.09.20-web-history.1",
+  "requiredWebRelease": "2026.09.21-web-support.1",
   "campaignDeliveryIncluded": false,
   "campaignLaunchProtocol": "nexid.campaign-launch.v1",
   "assignedTaskProtocol": "nexid.recall-assigned-tasks.v1",
@@ -19,5 +19,6 @@
   "traceabilityProtocol": "nexid.batch-traceability.v1",
   "tracePageProtocol": "nexid.trace-page.v1",
   "intakeProtocol": "nexid.epcis-intake.v1",
-  "editorialQueueProtocol": "nexid.editorial-queue.v1"
+  "editorialQueueProtocol": "nexid.editorial-queue.v1",
+  "supportReportProtocol": "nexid.support-report.v1"
 }

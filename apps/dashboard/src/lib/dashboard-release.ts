@@ -1,40 +1,40 @@
-export const DASHBOARD_RELEASE='2026.09.21-dashboard.30';
+export const DASHBOARD_RELEASE='2026.09.21-dashboard.31';
 export const DASHBOARD_RELEASE_DATE='2026-09-21';
 export const RELEASE_NOTES={
 'es-AR':{
- link:'Novedades y versión',eyebrow:'S7b · lecturas y ubicación',title:'Un mismo criterio para las lecturas reales.',
- summary:'El lector y el CRM comparten evidencia de empresa, lote y etiqueta para identificar las lecturas de origen real. Ese criterio se mantiene al recibir actualizaciones en vivo. Las importaciones, simulaciones e históricos sin evidencia suficiente quedan fuera del panel físico; los resultados inválidos o repetidos siguen disponibles para su revisión.',
- back:'Abrir lotes',site:'Sitio de nexID',label:'Versión de esta interfaz',changes:'Qué cambió',guide:'Recorrido de trabajo',
- steps:['Abrí el lector de TAP en tu espacio de trabajo.','Consultá los eventos de origen real y separá su origen del resultado criptográfico.','Revisá también los resultados inválidos o repetidos; el origen real no los convierte en válidos.','Para cerrar un retiro, conciliá declaraciones y comprobantes; otra cuenta autorizada debe aprobarlo.'],
+ link:'Novedades y versión',eyebrow:'Soporte por producto',title:'Del reporte a una referencia para atenderlo.',
+ summary:'La persona puede describir un problema desde el pasaporte y revisar lo que enviará. La empresa ve la referencia del ticket, el lote, la lectura y el detalle informado. Registrar un reporte no significa que una persona ya lo haya revisado.',
+ back:'Abrir atención al cliente',site:'Sitio de nexID',label:'Versión de esta interfaz',changes:'Qué cambió',guide:'Recorrido de trabajo',
+ steps:['En el pasaporte, describí el problema y revisá el reporte antes de confirmar.','Conservá la referencia que aparece cuando el ticket queda registrado.','En Tickets o Señales, buscá esa referencia entre los últimos 300 tickets cargados y leé el detalle.','Si el caso implica cerrar un retiro, otra cuenta autorizada debe revisar y aprobar ese cierre.'],
  boundary:'El origen real no certifica el soporte físico, el estado TT ni la autenticidad criptográfica. Cerrar el seguimiento no levanta el aviso, libera producto ni certifica una devolución física. La conciliación usa declaraciones y comprobantes, no el número de TAP.',
  cards:[
-  {title:'Lecturas con evidencia',text:'El lector exige origen real y evidencia de registro vinculada a la empresa, lote y etiqueta. Recargar o recibir una actualización aplica el mismo criterio.',tag:'Lecturas'},
-  {title:'Ubicación compartida',text:'Analítica incorpora la ubicación aproximada compartida con consentimiento. Conserva la evidencia original y distingue esta ubicación de la aproximación por IP.',tag:'Mapa'},
-  {title:'Resultados para investigar',text:'Un evento real puede tener resultado inválido o repetido. Se conserva esa evidencia sin presentarla como autenticación válida.',tag:'Evidencia'},
+  {title:'Confirmación con referencia',text:'Abrir el formulario no envía nada. La confirmación muestra la referencia del ticket guardado; reintentar el mismo envío recupera esa referencia.',tag:'Reporte'},
+  {title:'Problemas legibles',text:'La descripción aparece separada del lote y la lectura. La referencia se puede buscar entre los registros cargados y se conserva al exportar.',tag:'Atención'},
+  {title:'Evidencia conservada',text:'El lector sigue exigiendo origen real: las importaciones no se convierten en lecturas físicas. Los resultados inválidos o repetidos conservan su clasificación.',tag:'Lecturas'},
   {title:'Conciliación conservada',text:'Se mantienen los acuses, cantidades, comprobantes y reintentos de la versión .28. Solicitar cierre y aprobarlo siguen siendo acciones independientes.',tag:'Retiros'}]
 },
 'en':{
- link:'What is new and version',eyebrow:'S7b · readings and location',title:'One consistent rule for real readings.',
- summary:'The reader and CRM share tenant, batch and tag evidence for events whose origin is explicitly real. Live updates keep that rule. Imports, simulations and historical records without sufficient evidence stay outside the physical panel; invalid or replayed results remain available for review.',
- back:'Open batches',site:'nexID website',label:'Interface version',changes:'Changes',guide:'Workflow',
- steps:['Open the TAP reader in your workspace.','Review real-origin events separately from their cryptographic result.','Investigate invalid or replayed results too; real origin does not make them valid.','To close a recall, reconcile declarations and references; another authorized account must approve.'],
+ link:'What is new and version',eyebrow:'Product support',title:'A report with a reference for follow-up.',
+ summary:'People can describe a problem from the passport and review what they will send. The company sees the ticket reference, batch, reading and reported details. Recording a report does not mean a person has reviewed it.',
+ back:'Open customer support',site:'nexID website',label:'Interface version',changes:'Changes',guide:'Workflow',
+ steps:['Describe the problem in the passport and review the report before confirming.','Keep the reference displayed when the ticket is recorded.','In Tickets or Signals, search that reference among the latest 300 loaded tickets and read the details.','If the case involves closing a recall, another authorized account must review and approve that closure.'],
  boundary:'Real origin does not certify the physical carrier, TT state or cryptographic authenticity. Closing tracking does not lift the product notice, release stock or certify physical returns. Reconciliation uses declarations and references, not TAP counts.',
  cards:[
-  {title:'Evidence-backed readings',text:'The reader requires real origin and recorded evidence bound to the tenant, batch and tag. Reloads and live updates apply the same rule.',tag:'Readings'},
-  {title:'Shared location',text:'Analytics uses approximate location shared with consent. Original evidence is preserved and browser location stays distinct from the IP approximation.',tag:'Map'},
-  {title:'Results to investigate',text:'A real event can have an invalid or replayed result. That evidence is retained without presenting it as valid authentication.',tag:'Evidence'},
+  {title:'Confirmation with a reference',text:'Opening the form sends nothing. Confirmation shows the saved ticket reference; retrying the same submission retrieves that reference.',tag:'Report'},
+  {title:'Readable problems',text:'The description appears separately from the batch and reading. References can be searched among loaded records and are retained in exports.',tag:'Support'},
+  {title:'Evidence retained',text:'The reader still requires real-origin evidence: imports do not become physical readings. Results marked invalid or replayed retain their classification.',tag:'Readings'},
   {title:'Reconciliation retained',text:'Acknowledgements, quantities, references and retries from version .28 remain available. Requesting closure and approving it remain independent actions.',tag:'Recalls'}]
 },
 'pt-BR':{
- link:'Novidades e versão',eyebrow:'S7b · leituras e localização',title:'Um mesmo critério para as leituras reais.',
- summary:'O leitor e o CRM compartilham evidências de empresa, lote e etiqueta para eventos cuja origem é explicitamente real. As atualizações ao vivo mantêm esse critério. Importações, simulações e históricos sem evidência suficiente ficam fora do painel físico; resultados inválidos ou repetidos continuam disponíveis para análise.',
- back:'Abrir lotes',site:'Site da nexID',label:'Versão da interface',changes:'Mudanças',guide:'Fluxo de trabalho',
- steps:['Abra o leitor de TAP no seu espaço de trabalho.','Consulte eventos de origem real separadamente do resultado criptográfico.','Analise também resultados inválidos ou repetidos; a origem real não os torna válidos.','Para encerrar um recolhimento, concilie declarações e comprovantes; outra conta autorizada deve aprovar.'],
+ link:'Novidades e versão',eyebrow:'Suporte ao produto',title:'Um relato com referência para atendimento.',
+ summary:'A pessoa pode descrever um problema no passaporte e revisar o que será enviado. A empresa vê a referência do chamado, o lote, a leitura e os detalhes informados. Registrar um relato não significa que alguém já o analisou.',
+ back:'Abrir atendimento ao cliente',site:'Site da nexID',label:'Versão da interface',changes:'Mudanças',guide:'Fluxo de trabalho',
+ steps:['Descreva o problema no passaporte e revise o relato antes de confirmar.','Guarde a referência exibida quando o chamado for registrado.','Em Chamados ou Sinais, busque essa referência entre os últimos 300 chamados carregados e leia os detalhes.','Se o caso envolver encerrar um recolhimento, outra conta autorizada deve revisar e aprovar esse encerramento.'],
  boundary:'A origem real não certifica o suporte físico, o estado TT nem a autenticidade criptográfica. Encerrar o acompanhamento não retira o aviso, libera produtos nem certifica devoluções físicas. A conciliação usa declarações e comprovantes, não a contagem de TAP.',
  cards:[
-  {title:'Leituras com evidência',text:'O leitor exige origem real e evidência de registro vinculada à empresa, lote e etiqueta. Recarregar e receber atualizações aplica o mesmo critério.',tag:'Leituras'},
-  {title:'Localização compartilhada',text:'A análise incorpora a localização aproximada compartilhada com consentimento. Preserva a evidência original e distingue essa localização da aproximação por IP.',tag:'Mapa'},
-  {title:'Resultados para investigar',text:'Um evento real pode ter resultado inválido ou repetido. Essa evidência é mantida sem apresentá-la como autenticação válida.',tag:'Evidência'},
+  {title:'Confirmação com referência',text:'Abrir o formulário não envia nada. A confirmação mostra a referência do chamado salvo; repetir o mesmo envio recupera essa referência.',tag:'Relato'},
+  {title:'Problemas legíveis',text:'A descrição aparece separada do lote e da leitura. A referência pode ser buscada nos registros carregados e é preservada nas exportações.',tag:'Atendimento'},
+  {title:'Evidência preservada',text:'O leitor continua exigindo origem real: importações não se tornam leituras físicas. Resultados inválidos ou repetidos mantêm sua classificação.',tag:'Leituras'},
   {title:'Conciliação preservada',text:'Confirmações, quantidades, comprovantes e novas tentativas da versão .28 continuam disponíveis. Solicitar encerramento e aprová-lo continuam sendo ações independentes.',tag:'Recolhimentos'}]
 }
 } as const;

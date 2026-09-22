@@ -17,6 +17,8 @@ import type {
   CustomerSignalCollections,
   CustomerSignalKind,
 } from "../lib/customer-signal-timeline";
+import { customerSignalMatchesQuery } from "../lib/customer-signal-timeline";
+import { SupportTicketDetails } from "./support-ticket-details";
 
 type CustomerSignalTimelineProps = {
   signals: CustomerSignal[];
@@ -67,20 +69,7 @@ export function CustomerSignalTimeline({ signals, collections, query = "" }: Cus
 
   const filteredSignals = useMemo(() => signals.filter((signal) => {
     if (kindFilter !== "all" && signal.kind !== kindFilter) return false;
-    if (!normalizedQuery) return true;
-    return [
-      signal.subject,
-      signal.title,
-      signal.summary,
-      signal.contact,
-      signal.company,
-      signal.status,
-      signal.channel,
-      signal.product,
-      signal.owner,
-      signal.objective,
-      signal.nextAction,
-    ].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(normalizedQuery);
+    return customerSignalMatchesQuery(signal, normalizedQuery);
   }), [kindFilter, normalizedQuery, signals]);
 
   const counts = useMemo(() => signals.reduce<Record<CustomerSignalKind, number>>((result, signal) => {
@@ -188,7 +177,7 @@ export function CustomerSignalTimeline({ signals, collections, query = "" }: Cus
                   <div className="absolute left-0 top-4 z-10 grid h-10 w-10 place-items-center rounded-xl border border-cyan-300/30 bg-slate-950 text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
                     <Icon className="h-4 w-4" />
                   </div>
-                  <article className="rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+                  <article className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/70 p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">{kind.label}</span>
                       <span className={signal.source === "demo" ? "rounded-full border border-violet-300/25 bg-violet-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-violet-200" : "rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-200"}>
@@ -201,7 +190,7 @@ export function CustomerSignalTimeline({ signals, collections, query = "" }: Cus
                       <UserRound className="h-4 w-4 text-slate-500" />
                       {signal.subject}
                     </p>
-                    {signal.summary ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-400">{signal.summary}</p> : null}
+                    {signal.ticket ? <SupportTicketDetails ticket={signal.ticket} /> : signal.summary ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-400">{signal.summary}</p> : null}
                     <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
                       <time dateTime={signal.occurredAt || undefined}>{formatMoment(signal.occurredAt)}</time>
                       {signal.company && signal.company !== signal.subject ? <span>Empresa: {signal.company}</span> : null}

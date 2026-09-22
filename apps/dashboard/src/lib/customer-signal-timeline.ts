@@ -1,3 +1,5 @@
+import { projectSupportTicket, type SupportTicketProjection } from "./support-ticket-projection";
+
 export type CustomerSignalAvailability =
   | "ready"
   | "upstream_error"
@@ -61,6 +63,9 @@ export type CustomerTicketRecord = CustomerSignalRecord & {
   contact: string;
   source?: string;
   created_at: string;
+  bid?: string;
+  tap_event_id?: string | number;
+  category?: string;
 };
 
 export type CustomerOrderRecord = CustomerSignalRecord & {
@@ -92,6 +97,7 @@ export type CustomerSignal = {
   objectiveLabel: string;
   nextAction: string | null;
   source: Exclude<CustomerSignalSource, "unavailable">;
+  ticket?: SupportTicketProjection;
 };
 
 type CustomerSignalTimelineInput = {
@@ -172,25 +178,27 @@ function buildSignal(
   }
 
   if (kind === "ticket") {
+    const ticket = projectSupportTicket(row);
     const ticketTitle = text(row.title, row.category);
     return {
       id: text(row.id) || `ticket-${index}`,
       kind,
       occurredAt,
       timestamp: Number.isFinite(parsedTime) ? parsedTime : 0,
-      subject: text(contact, company) || "Identidad no informada",
+      subject: text(ticket.contact, row.company) || "Contacto no informado",
       title: ticketTitle || "Ticket registrado",
-      summary: text(row.detail),
-      contact,
+      summary: ticket.description,
+      contact: ticket.contact,
       company,
       status: text(row.status),
       channel: text(row.source),
       product,
       owner,
-      objective: explicitObjective || ticketTitle,
+      objective: explicitObjective || ticket.category || ticketTitle,
       objectiveLabel: explicitObjective ? "Objetivo informado" : "Motivo del ticket",
       nextAction,
       source,
+      ticket,
     };
   }
 
@@ -213,6 +221,16 @@ function buildSignal(
     nextAction,
     source,
   };
+}
+
+export function customerSignalMatchesQuery(signal: CustomerSignal, query: string): boolean {
+  const normalizedQuery = query.trim().toLocaleLowerCase("es");
+  return !normalizedQuery || [
+    signal.id, signal.subject, signal.title, signal.summary, signal.contact,
+    signal.company, signal.status, signal.channel, signal.product, signal.owner,
+    signal.objective, signal.nextAction, signal.ticket?.reference,
+    signal.ticket?.batch, signal.ticket?.event,
+  ].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(normalizedQuery);
 }
 
 function buildCollectionSignals(
