@@ -5,7 +5,7 @@ export const RELEASE_NOTES={
  link:'Novedades y versión',eyebrow:'Soporte por producto',title:'Del reporte a una referencia para atenderlo.',
  summary:'La persona puede describir un problema desde el pasaporte y revisar lo que enviará. La empresa ve la referencia del ticket, el lote, la lectura y el detalle informado. Registrar un reporte no significa que una persona ya lo haya revisado.',
  back:'Abrir atención al cliente',site:'Sitio de nexID',label:'Versión de esta interfaz',changes:'Qué cambió',guide:'Recorrido de trabajo',
- steps:['En el pasaporte, describí el problema y revisá el reporte antes de confirmar.','Conservá la referencia que aparece cuando el ticket queda registrado.','En Tickets o Señales, buscá esa referencia entre los últimos 300 tickets cargados y leé el detalle.','Si el caso implica cerrar un retiro, otra cuenta autorizada debe revisar y aprobar ese cierre.'],
+ steps:['En el pasaporte, describí el problema y revisá el reporte antes de confirmar.','Conservá la referencia que aparece cuando el ticket queda registrado.','En Tickets o Señales, buscá esa referencia entre los registros cargados y leé el detalle.','Si el caso implica cerrar un retiro, otra cuenta autorizada debe revisar y aprobar ese cierre.'],
  boundary:'El origen real no certifica el soporte físico, el estado TT ni la autenticidad criptográfica. Cerrar el seguimiento no levanta el aviso, libera producto ni certifica una devolución física. La conciliación usa declaraciones y comprobantes, no el número de TAP.',
  cards:[
   {title:'Confirmación con referencia',text:'Abrir el formulario no envía nada. La confirmación muestra la referencia del ticket guardado; reintentar el mismo envío recupera esa referencia.',tag:'Reporte'},
@@ -17,7 +17,7 @@ export const RELEASE_NOTES={
  link:'What is new and version',eyebrow:'Product support',title:'A report with a reference for follow-up.',
  summary:'People can describe a problem from the passport and review what they will send. The company sees the ticket reference, batch, reading and reported details. Recording a report does not mean a person has reviewed it.',
  back:'Open customer support',site:'nexID website',label:'Interface version',changes:'Changes',guide:'Workflow',
- steps:['Describe the problem in the passport and review the report before confirming.','Keep the reference displayed when the ticket is recorded.','In Tickets or Signals, search that reference among the latest 300 loaded tickets and read the details.','If the case involves closing a recall, another authorized account must review and approve that closure.'],
+ steps:['Describe the problem in the passport and review the report before confirming.','Keep the reference displayed when the ticket is recorded.','In Tickets or Signals, search that reference among loaded records and read the details.','If the case involves closing a recall, another authorized account must review and approve that closure.'],
  boundary:'Real origin does not certify the physical carrier, TT state or cryptographic authenticity. Closing tracking does not lift the product notice, release stock or certify physical returns. Reconciliation uses declarations and references, not TAP counts.',
  cards:[
   {title:'Confirmation with a reference',text:'Opening the form sends nothing. Confirmation shows the saved ticket reference; retrying the same submission retrieves that reference.',tag:'Report'},
@@ -29,7 +29,7 @@ export const RELEASE_NOTES={
  link:'Novidades e versão',eyebrow:'Suporte ao produto',title:'Um relato com referência para atendimento.',
  summary:'A pessoa pode descrever um problema no passaporte e revisar o que será enviado. A empresa vê a referência do chamado, o lote, a leitura e os detalhes informados. Registrar um relato não significa que alguém já o analisou.',
  back:'Abrir atendimento ao cliente',site:'Site da nexID',label:'Versão da interface',changes:'Mudanças',guide:'Fluxo de trabalho',
- steps:['Descreva o problema no passaporte e revise o relato antes de confirmar.','Guarde a referência exibida quando o chamado for registrado.','Em Chamados ou Sinais, busque essa referência entre os últimos 300 chamados carregados e leia os detalhes.','Se o caso envolver encerrar um recolhimento, outra conta autorizada deve revisar e aprovar esse encerramento.'],
+ steps:['Descreva o problema no passaporte e revise o relato antes de confirmar.','Guarde a referência exibida quando o chamado for registrado.','Em Chamados ou Sinais, busque essa referência entre os registros carregados e leia os detalhes.','Se o caso envolver encerrar um recolhimento, outra conta autorizada deve revisar e aprovar esse encerramento.'],
  boundary:'A origem real não certifica o suporte físico, o estado TT nem a autenticidade criptográfica. Encerrar o acompanhamento não retira o aviso, libera produtos nem certifica devoluções físicas. A conciliação usa declarações e comprovantes, não a contagem de TAP.',
  cards:[
   {title:'Confirmação com referência',text:'Abrir o formulário não envia nada. A confirmação mostra a referência do chamado salvo; repetir o mesmo envio recupera essa referência.',tag:'Relato'},
