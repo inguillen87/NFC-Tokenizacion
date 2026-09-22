@@ -121,18 +121,18 @@ export default async function PublicCertificatePage({
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,.16),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,.16),transparent_34%),linear-gradient(180deg,rgba(15,23,42,.2),#070b14_72%)]" />
         <section className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-5xl items-center gap-5 lg:grid-cols-[1fr_.8fr]">
           <div className="rounded-[2rem] border border-amber-300/25 bg-slate-950/88 p-6 shadow-[0_30px_90px_rgba(0,0,0,.35)] backdrop-blur-xl">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Certificado no encontrado</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Certificado no disponible</p>
             <h1 className="mt-3 text-4xl font-black leading-tight text-slate-50 sm:text-6xl" style={{ color: "#f8fafc" }}>
-              No encontramos el certificado #{eventId}.
+              No pudimos consultar el certificado #{eventId}.
             </h1>
             <p className="mt-4 text-sm leading-6 text-slate-100/90">
-              Esto suele pasar cuando se abre un evento viejo, inexistente o una URL copiada antes de completar el tap. No te redirigimos en loop:
-              usa el ultimo producto guardado, la wallet o vuelve a tocar fisicamente la etiqueta para generar un certificado vigente.
+              El enlace puede haber vencido, el registro puede no estar disponible o el servicio puede estar temporalmente sin respuesta.
+              Reintentá la consulta o abrí tus lecturas guardadas. Esta pantalla no confirma ni descarta la autenticidad de la etiqueta.
             </p>
             <div className="mt-6 grid gap-2 sm:grid-cols-3">
-              <Link href="/sun" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-cyan-200/40 bg-cyan-500/25 px-4 text-sm font-black text-cyan-50" style={{ color: "#ecfeff" }}>
-                Tocar de nuevo
-              </Link>
+              <a href={`/certificado/${encodeURIComponent(eventId)}${shareToken ? `?share=${encodeURIComponent(shareToken)}` : ""}`} className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-cyan-200/40 bg-cyan-500/25 px-4 text-sm font-black text-cyan-50" style={{ color: "#ecfeff" }}>
+                Reintentar consulta
+              </a>
               <Link href="/me/products" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-emerald-100 px-4 text-sm font-black" style={{ background: "rgba(236,253,245,.94)", color: "#052e16" }}>
                 Mis productos
               </Link>
@@ -146,10 +146,9 @@ export default async function PublicCertificatePage({
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Como recuperarlo</p>
             <ol className="mt-4 space-y-3 text-sm">
               {[
-                ["1", "Abrir Wallet", "Si ya reclamaste el producto, el certificado correcto aparece en Wallet."],
-                ["2", "Ver productos", "El portal lista el ultimo tap valido y evita IDs viejos."],
-                ["3", "Tap fresco", "Si venis desde una etiqueta, toca de nuevo para generar un evento vigente."],
-                ["4", "Blockchain", "Polygon solo aparece cuando la tokenizacion esta solicitada o anclada."],
+                ["1", "Reintentar", "Vuelve a consultar el mismo enlace; no genera otra lectura NFC."],
+                ["2", "Ver productos", "Si guardaste el producto en tu cuenta, podés consultar allí su lectura privada."],
+                ["3", "Nueva lectura", "Para obtener un registro nuevo, acercá tu teléfono NFC a la etiqueta física y abrí el enlace que aparezca."],
               ].map(([step, title, body]) => (
                 <li key={step} className="grid grid-cols-[auto_1fr] gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                   <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-xs font-black text-cyan-100">{step}</span>

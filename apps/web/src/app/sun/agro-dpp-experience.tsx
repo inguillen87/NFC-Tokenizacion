@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   BookOpenCheck,
@@ -50,6 +50,7 @@ type AgroDppExperienceProps = {
   isQr: boolean;
   isFreshTap: boolean;
   timeline: TimelineItem[];
+  resources?: ReactNode;
 };
 
 type ActionState = { kind: "idle" | "working" | "done" | "error"; message?: string };
@@ -215,6 +216,8 @@ export function AgroDppExperience(props: AgroDppExperienceProps) {
           </div>
         </div>
       </section>
+
+      {props.resources}
 
       <section className="rounded-3xl border border-white/10 bg-slate-950/80 p-5">
         <div className="flex items-center gap-2"><PackageCheck aria-hidden="true" className="text-cyan-300" size={20} /><h2 className="font-black text-white">Lote, registro y canal</h2></div>

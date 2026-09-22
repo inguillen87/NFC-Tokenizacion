@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
+import { stripConsumerTapCapabilityCookies } from "./consumer-tap-handoff";
 
 function correlationIdFrom(req: Request) {
   return req.headers.get("x-correlation-id") || crypto.randomUUID();
@@ -8,7 +9,7 @@ function correlationIdFrom(req: Request) {
 function buildProxyHeaders(req: Request, correlationId: string) {
   const headers: Record<string, string> = {
     "content-type": req.headers.get("content-type") || "application/json",
-    cookie: req.headers.get("cookie") || "",
+    cookie: stripConsumerTapCapabilityCookies(req.headers.get("cookie")),
     "x-correlation-id": correlationId,
   };
 

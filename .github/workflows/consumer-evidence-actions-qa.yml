@@ -1,0 +1,60 @@
+name: Consumer evidence and explicit actions
+on:
+  push:
+    branches: [codex/nexid-s8-s9-consumer-20260921]
+    paths:
+      - apps/web/**
+      - packages/**
+      - scripts/qa/run-consumer-actions-browser.mjs
+      - .github/workflows/consumer-evidence-actions-qa.yml
+permissions:
+  contents: read
+concurrency:
+  group: nexid-consumer-actions-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+          cache: npm
+      - name: Install exact application dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Web contracts, production build and secret gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/consumer-evidence-ci
+          npm test --workspace=web 2>&1 | tee artifacts/consumer-evidence-ci/tests.log
+          npm run build:web 2>&1 | tee artifacts/consumer-evidence-ci/build.log
+          npm run check:secrets 2>&1 | tee artifacts/consumer-evidence-ci/secrets.log
+          git diff --exit-code -- apps packages package.json package-lock.json
+          node -e 'require("fs").writeFileSync("artifacts/consumer-evidence-ci/commit.txt",process.env.GITHUB_SHA)'
+      - name: Install isolated browser tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/nexid-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
+          node "$RUNNER_TEMP/nexid-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
+      - name: Actual Next and BFF with explicitly synthetic local API responses
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/nexid-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/nexid-browser/node_modules/axe-core/axe.min.js
+          QA_OUTPUT: artifacts/consumer-evidence-ci/browser
+        run: node scripts/qa/run-consumer-actions-browser.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: nexid-consumer-evidence-actions
+          path: artifacts/consumer-evidence-ci/
+          if-no-files-found: error
+          retention-days: 3

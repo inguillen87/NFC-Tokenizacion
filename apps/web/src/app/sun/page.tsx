@@ -1,5 +1,7 @@
 import { ProductNoticeProvider } from "../../lib/product-notice-resource";
 import { PassportEssentialSignals } from "./passport-essential-signals";
+import { PassportEvidenceResources } from "./passport-evidence-resources";
+import { ConsumerPassportLink } from "./consumer-passport-link";
 import { ProductNotices } from "./product-notices";
 import { SunLocationQuickAction } from "./sun-location-quick-action";
 import type { Metadata } from "next";
@@ -1051,7 +1053,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
   const tapMarketplaceHref = localizeHref(result.cta?.marketplaceUrl) || withTapQuery(marketplaceHref, "marketplace");
   const certificateShareToken = String(result.certificate?.shareToken || "").trim();
-  const certificateHref = !isQrScan && /^\d+$/.test(eventId)
+  const certificateHref = !isDemoPreview && !isQrScan && certificateShareToken && /^\d+$/.test(eventId)
     ? `/certificado/${encodeURIComponent(eventId)}${certificateShareToken ? `?share=${encodeURIComponent(certificateShareToken)}` : ""}`
     : "";
   const declaredPromotion = result.engagement?.promotions?.find((promotion) => String(promotion?.title || "").trim());
@@ -1576,21 +1578,32 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     {
       label: "Declaró",
       title: result.product?.region || result.provenance?.origin || "Origen no declarado",
-      body: "La marca cargó el origen declarado, el lote, el producto y sus reglas antes de salir al canal.",
+      body: "La ficha reúne los datos declarados por la empresa. Su publicación no acredita el origen físico ni una fecha de producción.",
     },
     tapLocationStoryStep,
     {
       label: isDemoPreview ? SUN_DEMO_COPY.passportEventLabel : isQrScan ? "Se consultó" : "Se analizó",
       title: isDemoPreview ? SUN_DEMO_COPY.passportEventTitle : isQrScan ? "Ficha QR abierta" : isTechnicallyAuthentic ? "Identidad NFC validada" : "Lectura en revisión",
-      body: isDemoPreview ? SUN_DEMO_COPY.passportEventBody : isQrScan ? "La marca recibe telemetría, ubicación aproximada y señales de interés sin exigir registro." : isTechnicallyAuthentic ? "El mensaje del chip y la política del tenant sostienen el resultado técnico; no certifican el contenido físico." : "El sistema conserva evidencia, pero protege acciones sensibles.",
+      body: isDemoPreview ? SUN_DEMO_COPY.passportEventBody : isQrScan ? "La consulta permite leer la ficha publicada. Compartir ubicación o datos de contacto requiere una acción separada." : isTechnicallyAuthentic ? "El mensaje del chip y la política del tenant sostienen el resultado técnico; no certifican el contenido físico." : "El sistema conserva evidencia, pero protege acciones sensibles.",
     },
     {
       label: "Ahora",
       title: isDemoPreview ? SUN_DEMO_COPY.passportNowTitle : isQrScan ? "Siguiente paso opcional" : isFreshCommercialTap ? "Ficha publica abierta" : "Acciones protegidas",
-      body: isDemoPreview ? SUN_DEMO_COPY.passportNowBody : isQrScan ? "Si la persona compró, puede validar la compra o usar el NFC seguro. Si sólo está mirando en góndola, puede informarse sin reclamar nada." : isFreshCommercialTap ? "El lector puede informarse sin registrarse. Si compró, activa garantía o beneficios mediante una validación separada." : "Repetí el tap físico para activar garantía, beneficios o certificado.",
+      body: isDemoPreview ? SUN_DEMO_COPY.passportNowBody : isQrScan ? "Si la persona compró, puede validar la compra o usar el NFC seguro. Si sólo está mirando en góndola, puede informarse sin reclamar nada." : isFreshCommercialTap ? "El lector puede informarse sin registrarse. Si compró, activa garantía o beneficios mediante una validación separada." : "Podés consultar la evidencia disponible. Las acciones protegidas requieren una lectura NFC nueva y sus validaciones correspondientes.",
     },
   ];
 
+  const evidenceResources = <PassportEvidenceResources
+    mode={isDemoPreview ? "demo" : isQrScan ? "qr" : isSnapshotView ? "historical" : isFreshCommercialTap ? "fresh" : "unknown"}
+    carrierCode={rawCarrierProfileCode}
+    occurredAt={result.tapContext?.utcTime}
+    eventReference={eventId}
+    statusLabel={consumerStatus.identityLabel}
+    certificateHref={certificateHref}
+    technicalSheetHref={agroProfile?.technicalSheetUrl}
+    safetySheetHref={agroProfile?.safetySheetUrl}
+    showProductNotices={!isDemoPreview && result.ok === true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}
+  />;
 
   return (
     <SunLocaleProvider initialLocale={locale}>
@@ -1669,6 +1682,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             isQr={isQrScan}
             isFreshTap={isFreshCommercialTap}
             timeline={result.provenance?.timelineSummary || []}
+            resources={evidenceResources}
           />
         ) : null}
 
@@ -1859,9 +1873,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
               </a>
             </div>
-            {!isDemoPreview&&<Link prefetch={false} href={withTapQuery("/me/products","products")} className="sun-account-entry flex min-h-11 items-center justify-between gap-3 rounded-xl border border-cyan-300/25 px-3 py-2 text-xs font-bold text-cyan-100"><span>Mis productos y avisos</span><ChevronRight size={16} aria-hidden="true"/></Link>}
+            {!isDemoPreview && <ConsumerPassportLink href={isFreshCommercialTap && freshToken ? withTapQuery("/me/products","products") : "/me/products"} eventId={eventId} freshToken={isFreshCommercialTap ? freshToken : ""} />}
           </div>
         </section>
+
+        {evidenceResources}
 
         {/* 2. Premium Product Profile Card */}
         <section id="product-info" aria-labelledby="sun-product-title" className={`${passportStyles.productProfile} rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden`}>
@@ -2227,7 +2243,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           {/* Timeline points list */}
           <div className="space-y-3 pt-2">
-            <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Bitácora de Eventos</span>
+            <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Cómo leer este pasaporte</span>
             <div className="relative pl-4 space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-[2px] before:bg-slate-800">
               {passportStorySteps.map((step, idx) => (
                 <div key={`${step.label}-${step.title}`} className="relative text-xs">
@@ -2244,6 +2260,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         <section id="sun-services" className="scroll-mt-24 space-y-3" aria-label="Servicios y beneficios del producto">
             <div id="consumer-choice" className="scroll-mt-24">
               <SunServicesHub
+                eventId={eventId}
+                freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                 promotion={publishedPromotion}
                 purchaseHref={tapMarketplaceHref}
                 subscribeHref={canSubscribeToBrand ? (showEngagementSuite ? "#qr-engagement" : "#sun-updates-opt-in") : null}
@@ -2289,6 +2307,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </summary>
               <div className="pt-2">
                 <PostTapNextStep
+                  eventId={eventId}
+                  freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                   vertical={`${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`}
                   productName={productDisplayName}
                   isFreshTap={isFreshCommercialTap}

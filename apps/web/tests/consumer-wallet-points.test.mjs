@@ -5,6 +5,7 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -16,7 +17,7 @@ function compile(source, overrides = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText;
   const loaded = { exports: {} };
-  const localRequire = (name) => Object.hasOwn(overrides, name) ? overrides[name] : require(name);
+  const localRequire = (name) => Object.hasOwn(overrides, name) ? overrides[name] : name === "../../api/_lib/consumer-tap-handoff" ? tapHandoff : require(name);
   new Function("require", "module", "exports", compiled)(localRequire, loaded, loaded.exports);
   return loaded.exports;
 }

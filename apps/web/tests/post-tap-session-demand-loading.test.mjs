@@ -26,5 +26,6 @@ test("the on-demand session check distinguishes anonymous visitors from real fai
 test("protected consumer portal links are not prefetched for anonymous visitors", () => {
   assert.match(nextStepSource, /function isProtectedConsumerPortalHref\(href: string\)/);
   assert.ok(nextStepSource.includes("return /^\\/me(?:[/?#]|$)/.test(href);"));
-  assert.match(nextStepSource, /prefetch=\{isProtectedConsumerPortalHref\(action\.href\) \? false : undefined\}/);
+  assert.match(nextStepSource, /if \(isProtectedConsumerPortalHref\(action\.href\)\) return/);
+  assert.match(nextStepSource, /<ConsumerTapLink href=\{action\.href\}/);
 });

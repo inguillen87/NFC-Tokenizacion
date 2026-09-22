@@ -8,6 +8,7 @@ const demoPage = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx",
 const demoClient = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 const stack = await readFile(new URL("../src/app/stack/page.tsx", import.meta.url), "utf8");
 const tapAssociation = await readFile(new URL("../src/app/me/_components/tap-association-banner.tsx", import.meta.url), "utf8");
+const tapAssociationCopy = await readFile(new URL("../src/app/me/_components/tap-association-copy.ts", import.meta.url), "utf8");
 const marketplace = await readFile(new URL("../src/app/me/marketplace/marketplace-grid-client.tsx", import.meta.url), "utf8");
 const motionPack = await readFile(new URL("../src/app/(public)/demo-lab/motion-pack/page.tsx", import.meta.url), "utf8");
 const postTapNextStep = await readFile(new URL("../src/app/sun/post-tap-next-step.tsx", import.meta.url), "utf8");
@@ -110,10 +111,12 @@ test("webhook analytics does not promise end-to-end real-time delivery", () => {
   assert.doesNotMatch(demoClient, /land in CRM and dashboards in real time/);
 });
 
-test("tap association names the validated NFC message and states its physical boundary", () => {
-  assert.match(tapAssociation, />Mensaje NFC validado<\/p>/);
-  assert.match(tapAssociation, /La validación del mensaje no autentica por sí sola el producto físico/);
-  assert.match(tapAssociation, /El mensaje NFC fue validado, pero las acciones comerciales quedaron protegidas/);
+test("tap association treats the query as a reference and reports only server-confirmed grants", () => {
+  assert.match(tapAssociationCopy, /La referencia del enlace no confirma autenticidad ni permisos/);
+  assert.match(tapAssociationCopy, /Cada acción se valida con tu sesión y la política de la empresa/);
+  assert.match(tapAssociationCopy, /No se ejecutó una transferencia NFT ni se activó garantía/);
+  assert.match(tapAssociationCopy, /Esta respuesta no creó una solicitud de revisión ni registró titularidad/);
+  assert.doesNotMatch(tapAssociation, /Mensaje NFC validado|logout|forceOtp|verifyAndAssociate/);
   assert.doesNotMatch(tapAssociation, /Tap físico verificado|El tap fue verificado/);
 });
 

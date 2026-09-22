@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
+import { stripConsumerTapCapabilityCookies } from "../../_lib/consumer-tap-handoff";
 import { createDemoShareToken } from "../../../../lib/demo-share";
 import {
   consumePublicApiRateLimit,
@@ -30,7 +31,7 @@ function buildForwardHeaders(req: Request, trace: string) {
     "x-nexid-trace-id": trace,
   };
 
-  const cookie = req.headers.get("cookie");
+  const cookie = stripConsumerTapCapabilityCookies(req.headers.get("cookie"));
   const userAgent = req.headers.get("user-agent");
   const authorization = req.headers.get("authorization");
   if (cookie) headers.cookie = cookie;

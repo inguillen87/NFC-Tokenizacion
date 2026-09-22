@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { shouldRedirectToConsumerAuth } from "./consumer-portal-model";
+import { stripConsumerTapCapabilityCookies } from "../../api/_lib/consumer-tap-handoff";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -8,7 +9,7 @@ type JsonMap = Record<string, unknown>;
 
 async function fetchJson(path: string) {
   const incomingHeaders = await headers();
-  const cookie = incomingHeaders.get("cookie") || "";
+  const cookie = stripConsumerTapCapabilityCookies(incomingHeaders.get("cookie"));
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
     headers: {

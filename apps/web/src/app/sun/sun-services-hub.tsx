@@ -20,6 +20,7 @@ import {
   type SunServicesRiskState,
 } from "./sun-services-hub-model";
 import { useSunLocale } from "./sun-locale-provider";
+import { ConsumerTapLink } from "./consumer-passport-link";
 
 export type SunPublishedPromotion = {
   title: string;
@@ -40,6 +41,8 @@ export type SunServicesHubProps = {
   policyAvailability: SunServicesPolicyAvailability;
   locale: AppLocale;
   demoIntent?: DemoExperienceAction | null;
+  eventId?: string;
+  freshToken?: string;
 };
 
 const RISK_COPY: Record<SunServicesRiskState, { label: string; detail: string; className: string }> = {
@@ -182,6 +185,8 @@ export function SunServicesHub({
   policyAvailability,
   locale,
   demoIntent,
+  eventId = "",
+  freshToken = "",
 }: SunServicesHubProps) {
   const { locale: activeLocale, text } = useSunLocale();
   const isDemo = freshnessState === "demo";
@@ -344,8 +349,7 @@ export function SunServicesHub({
         <nav className="mt-4 grid gap-2 sm:grid-cols-2" aria-label="Servicios disponibles para este producto">
           {liveActions.map((action) => {
             const Icon = action.icon;
-            return (
-              <a key={action.key} href={action.href} className={ACTION_CLASS_NAME}>
+            const content = <>
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">
                   <Icon className="h-4 w-4" aria-hidden="true" />
                 </span>
@@ -354,8 +358,10 @@ export function SunServicesHub({
                   <small className="mt-1 block text-[10px] font-medium leading-4 text-slate-400">{action.detail}</small>
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-cyan-200" aria-hidden="true" />
-              </a>
-            );
+            </>;
+            return /^\/me(?:[/?#]|$)/.test(action.href)
+              ? <ConsumerTapLink key={action.key} href={action.href} eventId={eventId} freshToken={freshnessState === "fresh" && riskState !== "blocked" ? freshToken : ""} className={`${ACTION_CLASS_NAME} w-full`}>{content}</ConsumerTapLink>
+              : <a key={action.key} href={action.href} className={ACTION_CLASS_NAME}>{content}</a>;
           })}
         </nav>
       ) : (

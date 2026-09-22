@@ -11,6 +11,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { resolvePostTapQuickActionAvailability } from "./post-tap-policy";
+import { ConsumerTapLink } from "./consumer-passport-link";
 
 function isProtectedConsumerPortalHref(href: string) {
   return /^\/me(?:[/?#]|$)/.test(href);
@@ -43,6 +44,8 @@ type PostTapNextStepProps = {
   sealState?: "closed" | "opened" | "unknown";
   allowedActions?: string[];
   blockedActions?: string[];
+  eventId?: string;
+  freshToken?: string;
 };
 
 const JOURNEY_COPY: Record<JourneyKind, JourneyCopy> = {
@@ -122,6 +125,8 @@ export function PostTapNextStep({
   sealState = "unknown",
   allowedActions = [],
   blockedActions = [],
+  eventId = "",
+  freshToken = "",
 }: PostTapNextStepProps) {
   const journeyKind = resolveJourneyKind(vertical, productName);
   const copy = JOURNEY_COPY[journeyKind];
@@ -244,29 +249,50 @@ export function PostTapNextStep({
   ];
   const featuredSecondaryActions = secondaryActions.slice(0, 2);
   const additionalSecondaryActions = secondaryActions.slice(2);
+  const navigationFreshToken = isFreshTap && !isSnapshotView ? freshToken : "";
 
   const renderSecondaryAction = (action: (typeof secondaryActions)[number]) => {
     const Icon = action.icon;
+    const content = <>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span>
+        <strong className="block text-xs font-black leading-4">{action.label}</strong>
+        <small className="mt-0.5 block text-[10px] leading-4 text-slate-400">{action.help}</small>
+      </span>
+    </>;
+    const className = "flex min-h-16 w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-left text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+    const tracking = {
+      "data-sun-experience-event": "experienceEvent" in action ? action.experienceEvent : undefined,
+      "data-sun-experience-placement": "experiencePlacement" in action ? action.experiencePlacement : undefined,
+      "data-sun-experience-interaction": "experienceEvent" in action ? `${action.key}_opened` : undefined,
+    };
+    if (isProtectedConsumerPortalHref(action.href)) return <div key={action.key} className="contents" {...tracking}>
+      <ConsumerTapLink href={action.href} eventId={eventId} freshToken={navigationFreshToken} className={className}>{content}</ConsumerTapLink>
+    </div>;
     return (
       <Link
         key={action.key}
         href={action.href}
-        prefetch={isProtectedConsumerPortalHref(action.href) ? false : undefined}
-        data-sun-experience-event={"experienceEvent" in action ? action.experienceEvent : undefined}
-        data-sun-experience-placement={"experiencePlacement" in action ? action.experiencePlacement : undefined}
-        data-sun-experience-interaction={"experienceEvent" in action ? `${action.key}_opened` : undefined}
-        className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        {...tracking}
+        className={className}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </span>
-        <span>
-          <strong className="block text-xs font-black leading-4">{action.label}</strong>
-          <small className="mt-0.5 block text-[10px] leading-4 text-slate-400">{action.help}</small>
-        </span>
+        {content}
       </Link>
     );
   };
+  const primaryClassName = `mt-4 flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl p-4 text-slate-950 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${isOpenedSeal ? "bg-amber-300 shadow-[0_0_22px_rgba(252,211,77,0.18)] hover:bg-amber-200" : "bg-emerald-300 shadow-[0_0_22px_rgba(110,231,183,0.18)] hover:bg-emerald-200"}`;
+  const primaryContent = <>
+    <span className="flex items-center gap-3">
+      <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <span className="text-left">
+        <strong className="block text-sm font-black leading-tight">{guidedPrimary}</strong>
+        <small className="mt-1 block text-[10px] font-semibold leading-4 text-slate-800">{guidedPrimaryHelp}</small>
+      </span>
+    </span>
+    <ChevronRight className="h-5 w-5 shrink-0" aria-hidden="true" />
+  </>;
 
   return (
     <section data-testid="post-tap-next-step" className={`rounded-3xl border p-5 shadow-xl ${isOpenedSeal ? "border-amber-300/30 bg-gradient-to-br from-amber-500/12 via-slate-950/85 to-orange-500/10" : "border-emerald-300/20 bg-gradient-to-br from-emerald-500/10 via-slate-950/85 to-cyan-500/10"}`} aria-labelledby="post-tap-next-step-title">
@@ -295,16 +321,9 @@ export function PostTapNextStep({
       </ol>
 
       {available.primary ? (
-        <Link href={primaryActionHref} className={`mt-4 flex min-h-16 items-center justify-between gap-3 rounded-2xl p-4 text-slate-950 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${isOpenedSeal ? "bg-amber-300 shadow-[0_0_22px_rgba(252,211,77,0.18)] hover:bg-amber-200" : "bg-emerald-300 shadow-[0_0_22px_rgba(110,231,183,0.18)] hover:bg-emerald-200"}`}>
-          <span className="flex items-center gap-3">
-            <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="text-left">
-              <strong className="block text-sm font-black leading-tight">{guidedPrimary}</strong>
-              <small className="mt-1 block text-[10px] font-semibold leading-4 text-slate-800">{guidedPrimaryHelp}</small>
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0" aria-hidden="true" />
-        </Link>
+        isProtectedConsumerPortalHref(primaryActionHref)
+          ? <ConsumerTapLink href={primaryActionHref} eventId={eventId} freshToken={navigationFreshToken} className={primaryClassName}>{primaryContent}</ConsumerTapLink>
+          : <Link href={primaryActionHref} className={primaryClassName}>{primaryContent}</Link>
       ) : null}
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">

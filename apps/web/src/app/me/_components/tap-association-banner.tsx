@@ -1,340 +1,110 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  ConsumerContactInput,
-  type ConsumerContactPayload,
-  consumerContactDraftIsValid,
-  consumerContactPayload,
-  createEmptyConsumerContactDraft,
-} from "../../../components/consumer-contact-input";
+import { associationCopy, associationLocale, type AssociationLocale } from "./tap-association-copy";
+import { createTapAssociationRunner, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
+  type TapAssociationAction, type TapAssociationContext, type TapAssociationState, type TapAssociationSession } from "./tap-association-model";
+import styles from "./tap-association-banner.module.css";
 
-type Step = "idle" | "code" | "done";
-type SessionState = "checking" | "active" | "none";
-
-type AssociationResult = {
-  action: "join" | "save" | "claim" | "rewards";
-  ok: boolean;
-  status: number;
-  error?: string;
-};
-
-function parseBoolean(value: string | null) {
-  if (!value) return false;
-  return ["1", "true", "yes"].includes(value.toLowerCase());
+async function actionTransport(path: string, body: Record<string, unknown>, signal: AbortSignal) {
+  const response = await fetch(path, { method: "POST", credentials: "include", signal,
+    headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  return { status: response.status, payload: await response.json().catch(() => null) };
 }
 
-function maskId(value: string | null) {
-  const text = String(value || "");
-  if (text.length <= 8) return text || "evento NFC";
-  return `${text.slice(0, 4)}...${text.slice(-4)}`;
-}
+function AssociationCard({ context }: { context: TapAssociationContext }) {
+  const [locale, setLocale] = useState<AssociationLocale>("es-AR");
+  const [selected, setSelected] = useState<TapAssociationAction | null>(context.preferred);
+  const [session, setSession] = useState<TapAssociationSession>("checking");
+  const [sessionRevision, setSessionRevision] = useState(0);
+  const [state, setState] = useState<TapAssociationState>({ pending: null, results: {} });
+  const runner = useRef<ReturnType<typeof createTapAssociationRunner> | null>(null);
+  const resultFocus = useRef<HTMLHeadingElement>(null);
+  const copy = associationCopy[locale];
 
-function summarizeAssociation(results: AssociationResult[]) {
-  const success = results.filter((item) => item.ok).map((item) => item.action);
-  const blocked = results.filter((item) => !item.ok && ["tap_not_claimable", "blocked_replay", "revoked", "snapshot_blocked"].includes(String(item.error || "")));
-  const unauthorized = results.some((item) => item.status === 401);
-  if (unauthorized) return "La sesión no quedó activa. Validá tu email o celular para terminar la asociación.";
-  if (success.includes("claim")) return "Producto asociado, titularidad registrada y beneficios habilitados.";
-  if (success.includes("save") || success.includes("join")) return "Producto guardado y club habilitado. Titularidad o tokenización pueden requerir validación del comercio.";
-  if (blocked.length) return "El mensaje NFC fue validado, pero las acciones comerciales quedaron protegidas por política de seguridad.";
-  return "No se pudo completar la asociación. Reintentá desde un tap físico fresco.";
-}
+  useEffect(() => {
+    const update = () => setLocale(associationLocale(document.documentElement.lang));
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+    return () => observer.disconnect();
+  }, []);
 
-async function logoutConsumerSession() {
-  await fetch("/api/consumer/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  }).catch(() => null);
-}
+  useEffect(() => {
+    // A fresh runner for every effect setup also supports React StrictMode.
+    const current = createTapAssociationRunner(context, actionTransport);
+    runner.current = current;
+    const unsubscribe = current.subscribe(setState);
+    return () => { unsubscribe(); current.dispose(); if (runner.current === current) runner.current = null; };
+    // The parent keys this card by the complete context, so unrelated renders
+    // cannot reset completed actions and allow them to be submitted twice.
+  }, [context.key]);
 
-async function hasConsumerSession() {
-  const response = await fetch("/api/consumer/session", {
-    cache: "no-store",
-    credentials: "include",
-  }).catch(() => null);
-  const payload = await response?.json().catch(() => null);
-  return Boolean(response?.ok && payload?.ok);
-}
+  useEffect(() => {
+    const controller = new AbortController();
+    let current = true;
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    setSession("checking");
+    void fetch("/api/consumer/session", { cache: "no-store", credentials: "include", signal: controller.signal })
+      .then(async response => {
+        const value = await response.json().catch(() => null);
+        if (current) setSession(tapAssociationSession(response.status, value));
+      }).catch(() => { if (current) setSession("unavailable"); })
+      .finally(() => clearTimeout(timeout));
+    return () => { current = false; clearTimeout(timeout); controller.abort(); };
+  }, [sessionRevision]);
 
-function buildTapNextPath(eventId: string | null, tenant: string | null, bid: string | null, preferredAction: string) {
-  const next = new URLSearchParams();
-  next.set("fromTap", "1");
-  if (eventId) next.set("eventId", eventId);
-  if (tenant) next.set("tenant", tenant);
-  if (bid) next.set("bid", bid);
-  if (preferredAction) next.set("action", preferredAction);
-  return `/me?${next.toString()}`;
+  useEffect(() => {
+    if (!state.pending && Object.keys(state.results).length) resultFocus.current?.focus();
+  }, [state]);
+
+  async function confirm() {
+    const current = runner.current;
+    if (!current || !selected || session !== "active") return;
+    const result = await current.run(selected, locale);
+    if (!result || runner.current !== current) return;
+    if (result.outcome === "session_required") setSession("none");
+  }
+
+  const selectedResult = selected ? state.results[selected] : null;
+  const hasResults = Object.keys(state.results).length > 0;
+  const loginHref = tapAssociationLoginHref({ ...context, preferred: selected });
+  return <section className={styles.panel} data-testid="tap-association" aria-labelledby="tap-association-title" lang={locale}>
+    <header><span className={styles.eyebrow}>{copy.eyebrow}</span><h2 id="tap-association-title">{copy.title}</h2>
+      <p>{copy.intro}</p><p className={styles.reference}>{copy.reference}: <span>{context.eventId}</span></p></header>
+    <fieldset className={styles.choices} disabled={Boolean(state.pending)}>
+      <legend>{copy.choose}</legend>
+      {TAP_ASSOCIATION_ACTIONS.map(action => <label key={action} className={styles.choice} data-selected={selected === action}>
+        <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => setSelected(action)} />
+        <span><strong>{copy.actions[action].label}</strong><small>{copy.actions[action].detail}</small></span>
+      </label>)}
+    </fieldset>
+    <div className={styles.confirmation}>
+      <p role="status">{session === "checking" ? copy.checking : session === "active" ? copy.active : session === "none" ? copy.loginNeeded : copy.checkError}</p>
+      {session === "none" ? <Link className={styles.primary} href={loginHref} data-testid="tap-association-login" prefetch={false}>{copy.login}</Link> : null}
+      {session === "unavailable" ? <button type="button" className={styles.secondary} onClick={() => setSessionRevision(value => value + 1)}>{copy.checkAgain}</button> : null}
+      {session === "active" && selected ? <button type="button" className={styles.primary} disabled={Boolean(state.pending) || selectedResult?.retryable === false}
+        onClick={() => void confirm()} data-testid="tap-association-confirm">
+        {state.pending ? copy.sending : selectedResult?.retryable === false ? copy.done : selectedResult ? `${copy.retry}: ${copy.actions[selected].label}` : copy.actions[selected].button}
+      </button> : null}
+      <p className={styles.help}>{copy.freshHelp}</p>
+    </div>
+    {hasResults ? <section className={styles.results} aria-labelledby="tap-association-results">
+      <h3 id="tap-association-results" tabIndex={-1} ref={resultFocus}>{copy.results}</h3>
+      <ul aria-live="polite">{TAP_ASSOCIATION_ACTIONS.map(action => state.results[action] ? <li key={action} data-testid={`tap-association-result-${action}`} data-outcome={state.results[action]?.outcome}>
+        <strong>{copy.actions[action].label}</strong><p>{copy.outcomes[state.results[action]!.outcome]}</p>
+      </li> : null)}</ul>
+      <Link href="/me/products" prefetch={false}>{copy.products}</Link>
+    </section> : null}
+  </section>;
 }
 
 export function TapAssociationBanner() {
   const params = useSearchParams();
-  const eventId = params.get("eventId");
-  const tenant = params.get("tenant");
-  const bid = params.get("bid");
-  const fromTap = parseBoolean(params.get("fromTap"));
-  const preferredAction = params.get("action") || "portal";
-  const [step, setStep] = useState<Step>("idle");
-  const [sessionState, setSessionState] = useState<SessionState>("checking");
-  const [contactDraft, setContactDraft] = useState(() => createEmptyConsumerContactDraft());
-  const [code, setCode] = useState("");
-  const [pending, setPending] = useState(false);
-  const [status, setStatus] = useState("");
-
-  const visible = useMemo(() => Boolean(fromTap && eventId), [fromTap, eventId]);
-  const contactIsValid = useMemo(() => consumerContactDraftIsValid(contactDraft), [contactDraft]);
-  const nextPath = useMemo(() => buildTapNextPath(eventId, tenant, bid, preferredAction), [bid, eventId, preferredAction, tenant]);
-
-  useEffect(() => {
-    if (!visible) return;
-    let cancelled = false;
-    setSessionState("checking");
-    void hasConsumerSession().then((active) => {
-      if (cancelled) return;
-      setSessionState(active ? "active" : "none");
-      setStatus(active
-        ? "Hay una sesión activa en este navegador. Para una presentación limpia, reiniciá y pedí un código nuevo."
-        : "Validá WhatsApp, celular o email para asociar este evento NFC a tu Passport.");
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [visible]);
-
-  async function postAssociationAction(action: AssociationResult["action"], path: string, body?: Record<string, unknown>) {
-    const response = await fetch(path, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body || {}),
-    }).catch(() => null);
-    const payload = await response?.json().catch(() => null);
-    return {
-      action,
-      ok: Boolean(response?.ok && payload?.ok !== false),
-      status: response?.status || 0,
-      error: payload?.error || payload?.reason || undefined,
-    } satisfies AssociationResult;
-  }
-
-  async function associate(action: string, contactPayload?: ConsumerContactPayload | null) {
-    if (!eventId) return { ok: false, results: [] as AssociationResult[] };
-    const payload = {
-      ...(tenant ? { tenantSlug: tenant } : {}),
-      ...(bid ? { bid } : {}),
-    };
-    const encodedEventId = encodeURIComponent(eventId);
-    const results: AssociationResult[] = [];
-    results.push(await postAssociationAction("join", `/api/mobile/passport/${encodedEventId}/consumer/join-tenant`, payload));
-    results.push(await postAssociationAction("save", `/api/mobile/passport/${encodedEventId}/consumer/save-product`, payload));
-    results.push(await postAssociationAction("claim", `/api/mobile/passport/${encodedEventId}/consumer/claim`, payload));
-    if (action === "rewards" && contactPayload) {
-      results.push(await postAssociationAction("rewards", `/api/mobile/passport/${encodedEventId}/loyalty/enroll`, contactPayload));
-    }
-    return { ok: results.some((item) => item.ok), results };
-  }
-
-  async function continueWithCurrentSession() {
-    if (!eventId || pending) return;
-    setPending(true);
-    setStatus("Asociando el evento con mensaje NFC validado a la sesión actual...");
-    try {
-      const ready = await hasConsumerSession();
-      if (!ready) {
-        setSessionState("none");
-        setStatus("No hay una sesión consumer activa. Pedí un código para continuar.");
-        return;
-      }
-      const association = await associate(preferredAction);
-      setStatus(summarizeAssociation(association.results));
-      if (association.ok) setStep("done");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function resetPresentation() {
-    setPending(true);
-    setStatus("Reiniciando sesión local para pedir un código real...");
-    try {
-      await logoutConsumerSession();
-      setSessionState("none");
-      setStep("idle");
-      setCode("");
-      setStatus("Sesión local reiniciada. Ingresá WhatsApp, celular o email y nexID enviará un código real.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function openCleanLogin() {
-    setPending(true);
-    try {
-      await logoutConsumerSession();
-      window.location.href = `/login?consumer=1&forceOtp=1&next=${encodeURIComponent(nextPath)}`;
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function sendCode() {
-    const contactPayload = consumerContactPayload(contactDraft);
-    if (!contactPayload) {
-      setStatus("Ingresá un email válido o WhatsApp con prefijo y número local.");
-      return;
-    }
-    setPending(true);
-    setStatus("Enviando código real...");
-    try {
-      await logoutConsumerSession();
-      setSessionState("none");
-      const start = await fetch("/api/consumer/auth/start", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(contactPayload),
-      }).then((res) => res.json()).catch(() => null);
-      if (!start?.ok) {
-        setStatus("No se pudo iniciar verificación. Probá con otro email o teléfono.");
-        return;
-      }
-      setCode("");
-      setStep("code");
-      setStatus("Código enviado. Validá para asociar el evento NFC, guardar el producto y habilitar beneficios.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function verifyAndAssociate() {
-    const contactPayload = consumerContactPayload(contactDraft);
-    if (!contactPayload || !code.trim()) {
-      setStatus("Revisá el contacto y el código.");
-      return;
-    }
-    setPending(true);
-    setStatus("Verificando identidad y asociando el evento NFC...");
-    try {
-      const verify = await fetch("/api/consumer/auth/verify", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...contactPayload, code: code.trim() }),
-      }).then((res) => res.json()).catch(() => null);
-      if (!verify?.ok) {
-        setStatus("Código inválido o expirado. Pedí uno nuevo si el anterior ya fue usado.");
-        return;
-      }
-      setSessionState("active");
-      const association = await associate(preferredAction, contactPayload);
-      setStatus(summarizeAssociation(association.results));
-      if (association.ok) setStep("done");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  if (!visible) return null;
-
-  return (
-    <section className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Mensaje NFC validado</p>
-      <h2 className="mt-1 text-lg font-semibold text-white">Activá tu Passport antes de recibir beneficios</h2>
-      <p className="mt-1 text-sm text-cyan-50/90">
-        Evidencia digital: <span className="font-mono">{maskId(eventId)}</span>
-      </p>
-      <p className="mt-2 text-sm text-slate-200">
-        La validación del mensaje no autentica por sí sola el producto físico. nexID no emite voucher, ownership ni claim antes de validar identidad. Usá WhatsApp, celular o email para que el flujo sea auditable.
-      </p>
-
-      {step !== "done" ? (
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          <button
-            suppressHydrationWarning
-            type="button"
-            disabled={pending}
-            onClick={() => void openCleanLogin()}
-            title="Cierra la sesión consumer local y abre el login con pedido de código real."
-            className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60"
-          >
-            Presentación limpia con código
-          </button>
-          <button
-            suppressHydrationWarning
-            type="button"
-            disabled={pending}
-            onClick={() => void resetPresentation()}
-            title="Limpia la sesión guardada para que este navegador vuelva a pedir OTP."
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 disabled:opacity-60"
-          >
-            Reiniciar sesión local
-          </button>
-
-          <div className="md:col-span-1">
-            <ConsumerContactInput draft={contactDraft} onChange={setContactDraft} disabled={pending} idPrefix="tap-association" compact />
-          </div>
-          {step === "idle" ? (
-            <button
-              suppressHydrationWarning
-              type="button"
-              disabled={pending || !contactIsValid}
-              onClick={() => void sendCode()}
-              title="Envía un código OTP real por el canal configurado."
-              className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60"
-            >
-              Enviar código real
-            </button>
-          ) : (
-            <>
-              <input
-                suppressHydrationWarning
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                placeholder="Código recibido"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={8}
-                className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
-              />
-              <button
-                suppressHydrationWarning
-                type="button"
-                disabled={pending || !code.trim()}
-                onClick={() => void verifyAndAssociate()}
-                title="Valida identidad y recién ahí asocia el tap al Passport."
-                className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100 disabled:opacity-60"
-              >
-                Verificar y asociar
-              </button>
-            </>
-          )}
-
-          {sessionState === "active" ? (
-            <button
-              suppressHydrationWarning
-              type="button"
-              disabled={pending}
-              onClick={() => void continueWithCurrentSession()}
-              title="Usa la sesión consumer actual. Para una presentación limpia, elegí el botón de código."
-              className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 disabled:opacity-60 md:col-span-2"
-            >
-              Usar sesión actual de este navegador
-            </button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="mt-3 grid gap-2 sm:grid-cols-5">
-          <Link href={`/me?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-slate-100">Mi portal</Link>
-          <Link href={`/me/marketplace?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-center text-sm text-cyan-100">Marketplace</Link>
-          <Link href={`/me/wallet?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-100">Wallet/NFT</Link>
-          <Link href={`/me/experiences?tenant=${encodeURIComponent(tenant || "")}&eventId=${encodeURIComponent(eventId || "")}`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100">Experiencia</Link>
-          <Link href={`/me/rewards?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-sm text-violet-100">Promos</Link>
-        </div>
-      )}
-      {!contactIsValid && (contactDraft.email.trim() || contactDraft.localPhone.trim()) ? <p className="mt-2 text-xs text-amber-200">Usá un email válido o WhatsApp con prefijo y número local.</p> : null}
-      {status ? <p className="mt-2 text-xs text-slate-200">{status}</p> : null}
-    </section>
-  );
+  const context = tapAssociationContext(new URLSearchParams(params.toString()));
+  // Changing context unmounts the old runner and clears results before paint.
+  // Query parameters select UI; they never grant authenticity or permissions.
+  return context ? <AssociationCard key={context.key} context={context} /> : null;
 }

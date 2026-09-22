@@ -15,6 +15,10 @@ export const SUN_LOCALE_COOKIE = "locale";
  * the evidence returned by the server.
  */
 export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
+  { es: "Cómo leer este pasaporte", pt: "Como ler este passaporte", en: "How to read this passport" },
+  { es: "La ficha reúne los datos declarados por la empresa. Su publicación no acredita el origen físico ni una fecha de producción.", pt: "A ficha reúne os dados declarados pela empresa. Sua publicação não comprova a origem física nem uma data de produção.", en: "This record brings together company-declared data. Publication does not establish physical origin or a production date." },
+  { es: "La consulta permite leer la ficha publicada. Compartir ubicación o datos de contacto requiere una acción separada.", pt: "A consulta permite ler a ficha publicada. Compartilhar localização ou dados de contato exige uma ação separada.", en: "This view provides the published product record. Sharing location or contact details requires a separate action." },
+  { es: "Podés consultar la evidencia disponible. Las acciones protegidas requieren una lectura NFC nueva y sus validaciones correspondientes.", pt: "Você pode consultar as evidências disponíveis. As ações protegidas exigem uma nova leitura NFC e suas validações correspondentes.", en: "You can consult the available evidence. Protected actions require a new NFC reading and the corresponding checks." },
   { es: "Mis productos y avisos", pt: "Meus produtos e avisos", en: "My products and notices" },
   { es: "Pasaporte NFC", pt: "Passaporte NFC", en: "NFC passport" },
   { es: "Pasaporte QR", pt: "Passaporte QR", en: "QR passport" },
