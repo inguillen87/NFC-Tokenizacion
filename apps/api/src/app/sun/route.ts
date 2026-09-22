@@ -15,6 +15,7 @@ import {
 } from '../../lib/tokenization-schema';
 import { listDemoCta } from '../../lib/demo-cta';
 import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
+import { readCurrentPassportEditorial } from '../../lib/current-passport-editorial';
 import { mapVerdictAndRisk, resolveActionMatrix, resolveRightsPolicy } from '../../lib/sun-passport-policy';
 import { resolveSunTenantProfile } from '../../lib/sun-tenant-profile';
 import { ensureSunTenantProfilesSchema } from '../../lib/sun-tenant-profile-schema';
@@ -1253,7 +1254,7 @@ async function handleQrScan(input: {
     },
   };
 
-  const response = json(contract, 200);
+  const response = json({ ...contract, currentEditorial: await readCurrentPassportEditorial(Number.isSafeInteger(eventId) ? String(eventId) : null) }, 200);
   response.headers.set("x-nexid-trace-id", input.traceId);
   response.headers.set("x-request-id", input.traceId);
   if (eventId) response.headers.set("x-nexid-event-id", String(eventId));
@@ -3545,7 +3546,9 @@ export async function GET(req: Request): Promise<Response> {
     });
   }
 
-  const response = json(contract, result.status);
+  // Read current editorial only after the physical scan and diagnostic have
+  // been persisted. Never store this mutable projection as tap evidence.
+  const response = json({ ...contract, currentEditorial: await readCurrentPassportEditorial(Number.isSafeInteger(eventId) ? String(eventId) : null) }, result.status);
   response.headers.set("x-nexid-trace-id", traceId);
   response.headers.set("x-request-id", traceId);
   if (diagnosticId) response.headers.set("x-nexid-diagnostic-id", String(diagnosticId));

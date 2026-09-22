@@ -4,6 +4,7 @@ import { createPublicCertificateShareToken } from './public-certificate-share';
 import { normalizeCoordinatePair, redactSensitiveQueryValues, sanitizePublicLocationProjection } from './approximate-location';
 import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from './sun-sensor-evidence';
 import { resolvePublicLotLabel } from './public-lot-label';
+import { readCurrentPassportEditorial } from './current-passport-editorial';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -925,11 +926,12 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const createdAt = row.created_at || null;
   const snapshotIdentity = asRecord(asRecord(result.contract).identity);
   const currentTapEventId = String(asRecord(result.contract).eventId || snapshotIdentity.eventId || "").trim();
-  const [currentIdentity, currentTap] = await Promise.all([
+  const [currentIdentity, currentTap, currentEditorial] = await Promise.all([
     resolveCurrentSnapshotIdentity({ bid: row.bid, uidHex: row.uid_hex, uidMasked: row.uid_masked }),
     currentTapEventId
       ? resolveCurrentSnapshotTapLocation({ eventId: currentTapEventId, bid: row.bid, uidHex: row.uid_hex })
       : Promise.resolve(null),
+    readCurrentPassportEditorial(currentTapEventId),
   ]);
   const identityNormalizedContract = normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity);
   const sanitizedStoredContract = sanitizeSnapshotPublicCoordinates(identityNormalizedContract);
@@ -950,6 +952,8 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
     ? markFreshHandoffContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt, expiresAt: freshExpiresAt })
     : markHistoricalSnapshotContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt });
   const publicContract = withContractSummaryFields(snapshotContract);
+  // Publication metadata is current, separate from the stored reading evidence.
+  publicContract.currentEditorial = currentEditorial;
   if (tokenizationEventId) {
     try {
       publicContract.certificate = {

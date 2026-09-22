@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.21-api-s7-consistency.2",
-  "scope": "operational-tap-provenance-and-consented-location-analytics",
-  "baseCommit": "246e6a2b98f1a4c7a0d7934c2d8f67c226b47f00",
+  "release": "2026.09.21-api-current-editorial.1",
+  "scope": "current-published-editorial-separated-from-historical-reading",
+  "baseCommit": "1aef6c3827459bb2ddbc2b4907ffc6dda239b30a",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -44,5 +44,6 @@
   "physicalTapProvenance": "consumer-network-operational-tap",
   "analyticsLocation": "consented-approximate-observation-with-original-evidence-preserved",
   "realtimePayloadContract": "operational-provenance-additive/v1",
-  "requiredDashboardRelease": "2026.09.21-dashboard.30"
+  "requiredDashboardRelease": "2026.09.21-dashboard.30",
+  "currentEditorialProtocol": "nexid.current-editorial.v1"
 }
