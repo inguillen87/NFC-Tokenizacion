@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.21-api-support.1",
-  "scope": "authorized-event-scoped-idempotent-support-reports",
-  "baseCommit": "df6b0f14b70c5237bb94e2d31b5ec175f7ad0e26",
+  "release": "2026.09.21-api-support-lookup.1",
+  "scope": "authorized-exact-ticket-reference-lookup-with-tenant-isolation",
+  "baseCommit": "37527be00adf2c6a86d05dab1799e9d9a92e2896",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -46,5 +46,6 @@
   "realtimePayloadContract": "operational-provenance-additive/v1",
   "requiredDashboardRelease": "2026.09.21-dashboard.30",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
-  "supportReportProtocol": "nexid.support-report.v1"
+  "supportReportProtocol": "nexid.support-report.v1",
+  "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1"
 }
