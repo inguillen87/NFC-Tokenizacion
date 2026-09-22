@@ -20,13 +20,20 @@ function load(path, bindings = {}) {
 const summary = load("lib/passport-evidence-summary.ts");
 const modelModule = load("app/sun/passport-evidence-resources-model.ts", { "../../lib/passport-evidence-summary": summary });
 const { passportEvidenceResourcesModel: model } = modelModule;
+const currentModel = load("app/sun/current-editorial-resources-model.ts");
 const base = { mode: "historical", carrierCode: "ntag424_dna_tt", occurredAt: "2026-09-20T17:15:00Z", eventReference: "713",
   statusLabel: "Mensaje validado", certificateHref: "/certificado/713?share=v1.fixture_signature" };
 function markup(props = {}, locale = "es-AR") {
+  const currentComponent = load("app/sun/current-editorial-resources.tsx", {
+    "./current-editorial-resources-model": currentModel,
+    "./sun-locale-provider": { useSunLocale: () => ({ locale, text: value => value }) },
+    "./current-editorial-resources.module.css": { __esModule: true, default: styles },
+  });
   const component = load("app/sun/passport-evidence-resources.tsx", {
     "./passport-evidence-resources-model": modelModule,
     "./sun-locale-provider": { useSunLocale: () => ({ locale, text: value => value }) },
     "./passport-evidence-resources.module.css": { __esModule: true, default: styles },
+    "./current-editorial-resources": currentComponent,
   }).PassportEvidenceResources;
   return renderToStaticMarkup(React.createElement(component, { ...base, ...props }));
 }
@@ -108,16 +115,28 @@ test("documents remain declared snapshot links without an invented date or valid
   const view = model({ ...base, ...props });
   assert.deepEqual(view.resources.map(r => r.kind), ["certificate", "technical", "safety", "notices"]);
   assert.equal(view.resources[3].href, "#product-notices");
-  assert.equal(view.resources[1].detail, "Enlace publicado en esta ficha · docs.example.test");
-  assert.equal(view.resources[2].detail, "Enlace publicado en esta ficha · docs.example.test");
+  assert.equal(view.resources[1].detail, "Enlace conservado en esta lectura · docs.example.test");
+  assert.equal(view.resources[2].detail, "Enlace conservado en esta lectura · docs.example.test");
   const html = markup(props);
   assert.match(html, /información presentada en esta ficha, separada de la evidencia NFC/);
   for (const mode of ["qr", "unknown"]) assert.doesNotMatch(markup({ ...props, mode }), /por la marca/);
-  assert.match(html, /Fecha de publicación y vigencia no disponibles/);
+  assert.match(html, /No confirman la versión vigente ni la fecha de revisión/);
   assert.match(html.replace(/href="[^"]*"/g, ""), /docs\.example\.test/);
   assert.match(html, /rel="noopener noreferrer"/);
   assert.match(html, /referrerPolicy="no-referrer"/i);
   assert.doesNotMatch(html, /Documento verificado|Actualizado hoy|Sin recall|Producto seguro/);
+});
+
+test("historical documents remain in their reading block and never fill the current publication", () => {
+  const html = markup({ technicalSheetHref: "https://old.example.test/old.pdf", currentEditorial: {
+    protocol: "nexid.current-editorial.v1", source: "passport_studio", state: "legacy", observedAt: null,
+  } });
+  const currentIndex = html.indexOf('id="current-editorial-resources"');
+  assert.ok(currentIndex > html.indexOf('id="passport-evidence-resources"'));
+  assert.match(html.slice(0, currentIndex), /old\.example\.test\/old\.pdf/);
+  assert.doesNotMatch(html.slice(currentIndex), /old\.example\.test|<a /);
+  assert.match(html.slice(currentIndex), /data-editorial-state="legacy"/);
+  assert.doesNotMatch(markup({ mode: "demo" }), /current-editorial-resources/);
 });
 
 test("resource links reject unsafe protocols, credentials and dynamic tag proof", () => {

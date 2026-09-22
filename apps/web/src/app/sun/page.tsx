@@ -106,6 +106,7 @@ type SunCarrierFields = {
 
 type SunContract = {
   ok?: boolean;
+  currentEditorial?: unknown;
   eventId?: string | null;
   certificate?: { shareToken?: string | null; url?: string | null };
   status?: SunCarrierFields & {
@@ -1602,6 +1603,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     certificateHref={certificateHref}
     technicalSheetHref={agroProfile?.technicalSheetUrl}
     safetySheetHref={agroProfile?.safetySheetUrl}
+    currentEditorial={result.currentEditorial}
     showProductNotices={!isDemoPreview && result.ok === true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}
   />;
 

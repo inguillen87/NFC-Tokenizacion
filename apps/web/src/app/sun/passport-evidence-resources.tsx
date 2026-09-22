@@ -2,6 +2,7 @@
 
 import { ArrowUpRight, FileText, ScanLine } from "lucide-react";
 import { useSunLocale } from "./sun-locale-provider";
+import { CurrentEditorialResources } from "./current-editorial-resources";
 import { passportEvidenceCopy, passportEvidenceResourcesModel, type PassportEvidenceResourcesProps } from "./passport-evidence-resources-model";
 import styles from "./passport-evidence-resources.module.css";
 
@@ -12,7 +13,7 @@ export function PassportEvidenceResources(props: PassportEvidenceResourcesProps)
   const copy = passportEvidenceCopy[locale];
   const view = passportEvidenceResourcesModel(props, locale);
 
-  return <section id="passport-evidence-resources" className={styles.root} aria-labelledby="passport-evidence-title" data-testid="passport-evidence-resources" data-evidence-mode={view.mode} data-sun-server-evidence="true">
+  return <><section id="passport-evidence-resources" className={styles.root} aria-labelledby="passport-evidence-title" data-testid="passport-evidence-resources" data-evidence-mode={view.mode} data-sun-server-evidence="true">
     <header className={styles.header}><FileText size={17} aria-hidden="true" /><h2 id="passport-evidence-title">{copy.title}</h2></header>
     <div className={styles.record}>
       <div className={styles.reading}>
@@ -31,6 +32,7 @@ export function PassportEvidenceResources(props: PassportEvidenceResourcesProps)
         <span><strong>{resource.label}</strong><small>{resource.detail}{resource.external ? ` · ${copy.external}` : ""}</small></span><ArrowUpRight size={17} aria-hidden="true" />
       </a></li>)}
     </ul></nav> : <p className={styles.empty}>{copy.empty}</p>}
-    {view.hasDocuments ? <p className={styles.boundary}>{copy.documentBoundary}</p> : null}
-  </section>;
+    {view.hasDocuments ? <p className={styles.boundary}>{view.documentBoundary}</p> : null}
+  </section>
+  {view.mode !== "demo" ? <CurrentEditorialResources currentEditorial={props.currentEditorial} /> : null}</>;
 }

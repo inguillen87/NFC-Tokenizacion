@@ -12,6 +12,7 @@ export type PassportEvidenceResourcesProps = {
   technicalSheetHref?: string | null;
   safetySheetHref?: string | null;
   showProductNotices?: boolean;
+  currentEditorial?: unknown;
 };
 
 export const passportEvidenceCopy = {
@@ -29,6 +30,8 @@ export const passportEvidenceCopy = {
     informational: "Sin autenticación NFC", unknownCarrier: "Tecnología no informada",
     informationalHelp: "El registro aporta información del producto, sin verificar un mensaje NFC seguro.",
     documentBoundary: "Los enlaces son los aportados en esta ficha. Fecha de publicación y vigencia no disponibles.",
+    historicalDocumentHelp: "Enlace conservado en esta lectura",
+    historicalDocumentBoundary: "Enlaces conservados en esta lectura. No confirman la versión vigente ni la fecha de revisión de los documentos.",
     resources: "Recursos disponibles", certificate: "Ver certificado de la lectura", certificateHelp: "Evidencia digital; no certifica el producto físico.",
     technical: "Ficha técnica", safety: "Ficha de seguridad", documentHelp: "Enlace publicado en esta ficha", external: "Sitio externo",
     notices: "Avisos del producto", noticesHelp: "Consultar el estado actual del lote", empty: "Esta ficha no incluye recursos adicionales.",
@@ -47,6 +50,8 @@ export const passportEvidenceCopy = {
     informational: "No NFC authentication", unknownCarrier: "Technology not reported",
     informationalHelp: "The record provides product information without verifying a secure NFC message.",
     documentBoundary: "These links were supplied in this passport. Publication date and current validity are unavailable.",
+    historicalDocumentHelp: "Link preserved with this reading",
+    historicalDocumentBoundary: "Links preserved with this reading. They do not confirm the current version or the document review date.",
     resources: "Available resources", certificate: "View reading certificate", certificateHelp: "Digital evidence; it does not certify the physical product.",
     technical: "Technical sheet", safety: "Safety sheet", documentHelp: "Link published in this passport", external: "External site",
     notices: "Product notices", noticesHelp: "Check the current batch notice status", empty: "This passport includes no additional resources.",
@@ -65,6 +70,8 @@ export const passportEvidenceCopy = {
     informational: "Sem autenticação NFC", unknownCarrier: "Tecnologia não informada",
     informationalHelp: "O registro fornece informações do produto sem verificar uma mensagem NFC segura.",
     documentBoundary: "Os links foram fornecidos nesta ficha. Data de publicação e validade atual indisponíveis.",
+    historicalDocumentHelp: "Link preservado nesta leitura",
+    historicalDocumentBoundary: "Links preservados nesta leitura. Não confirmam a versão vigente nem a data de revisão dos documentos.",
     resources: "Recursos disponíveis", certificate: "Ver certificado da leitura", certificateHelp: "Evidência digital; não certifica o produto físico.",
     technical: "Ficha técnica", safety: "Ficha de segurança", documentHelp: "Link publicado nesta ficha", external: "Site externo",
     notices: "Avisos do produto", noticesHelp: "Consultar o estado atual dos avisos do lote", empty: "Esta ficha não inclui recursos adicionais.",
@@ -127,7 +134,7 @@ export function passportEvidenceResourcesModel(input: PassportEvidenceResourcesP
   if (mode !== "demo") {
     for (const [kind, value] of [["technical", input.technicalSheetHref], ["safety", input.safetySheetHref]] as const) {
       const href = documentLink(value);
-      if (href) resources.push({ kind, href, label: copy[kind], detail: `${copy.documentHelp} · ${new URL(href).hostname}`, external: true });
+      if (href) resources.push({ kind, href, label: copy[kind], detail: `${mode === "historical" ? copy.historicalDocumentHelp : copy.documentHelp} · ${new URL(href).hostname}`, external: true });
     }
     if (input.showProductNotices === true) resources.push({ kind: "notices", href: "#product-notices", label: copy.notices, detail: copy.noticesHelp, external: false });
   }
@@ -139,5 +146,6 @@ export function passportEvidenceResourcesModel(input: PassportEvidenceResourcesP
       : copy[`${mode}Help`],
     statusLabel: reading ? cryptographic ? boundedText(input.statusLabel, 160) || copy.missingStatus : carrier === "unknown" ? copy.unknownCarrier : copy.informational : null,
     resources, hasDocuments: resources.some(resource => resource.kind === "technical" || resource.kind === "safety"),
+    documentBoundary: mode === "historical" ? copy.historicalDocumentBoundary : copy.documentBoundary,
   };
 }

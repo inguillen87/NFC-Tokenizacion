@@ -16,11 +16,24 @@ function capability(eventId) {
 function valid(token, eventId) {
   try { const [body, signature] = token.split('.'), p = JSON.parse(Buffer.from(body, 'base64url')); return signature === sign(body) && p.eventId === eventId && p.exp > Date.now() / 1000; } catch { return false; }
 }
+function editorial(trace) {
+  if (trace === 'agro-absent') return undefined;
+  const base = { protocol: 'nexid.current-editorial.v1', source: 'passport_studio', observedAt: '2026-09-22T00:00:00.000Z' };
+  const state = trace.startsWith('agro-') ? trace.slice(5) : trace === 'agro' ? 'published' : 'legacy';
+  if (!['published', 'removed'].includes(state)) return { ...base, state };
+  return { ...base, state: 'published', version: state === 'removed' ? 3 : 2, publishedAt: '2026-09-21T23:00:00.000Z', contentDigest: 'a'.repeat(64),
+    document: { schemaVersion: 'nexid.passport-editorial.v1', template: 'agro', locale: 'es-AR',
+      identity: { product_name: 'Producto publicado versión 2', public_lot_label: 'Lote QA', sku: 'QA-PUBLIC', winery: 'Empresa QA', region: 'Origen declarado QA', image_url: null },
+      agro_product_profile: { schemaVersion: 'agro-dpp-v1', productName: 'Producto publicado versión 2', technicalSheetUrl: state === 'removed' ? null : 'https://documents.example.invalid/current-v2-technical.pdf', safetySheetUrl: 'https://documents.example.invalid/current-v2-safety.pdf' },
+    } };
+}
 function contract(u) {
   const eventId = /^\/sun\/snapshot\/(\d+)$/.exec(u.pathname)?.[1] || '900001';
-  const qr = u.searchParams.get('qr') === '1', agro = u.searchParams.get('trace') === 'agro', token = u.searchParams.get('fresh');
+  const trace = u.searchParams.get('trace') || '';
+  const qr = u.searchParams.get('qr') === '1', agro = trace.startsWith('agro'), token = u.searchParams.get('fresh');
   const fresh = !qr && valid(token || '', eventId);
   return { ok: true, verdict: qr ? 'identified' : 'valid', status: { code: qr ? 'IDENTIFIED' : 'VALID_CLOSED', productState: qr ? 'NOT_REGISTERED' : 'VALID_CLOSED', tone: 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
+    ...(qr ? {} : { currentEditorial: editorial(trace) }),
     identity: { bid: 'QA-ONLY', tenantSlug: 'qa-brand', eventId, tagStatus: 'active' },
     product: { name: agro ? 'Producto agro QA' : 'Vino de ensayo local', winery: 'Empresa QA', category: agro ? 'Agro' : 'Vino', vertical: agro ? 'agro' : 'vino', region: 'Origen declarado QA', ...(agro ? { agro: { productName: 'Producto agro QA', technicalSheetUrl: 'https://documents.example.invalid/technical.pdf', safetySheetUrl: 'https://documents.example.invalid/safety.pdf' } } : {}) },
     tag_tamper: { available: !qr, status: qr ? 'not_available' : 'closed', raw: qr ? null : '4343' }, technical: { tt: { raw: '4343', source: 'enc_decrypted', length: 2 } },

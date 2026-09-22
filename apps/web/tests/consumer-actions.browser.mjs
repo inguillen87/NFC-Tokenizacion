@@ -113,6 +113,44 @@ try {
   assert.equal(await evidence.locator('[data-resource-kind="safety"]').count(), 1);
   assert.match(await page.locator('body').innerText(), /22:42 UTC/);
   report.checks.push('Agro resources disclose the external document host without claiming publication date or validity');
+  const current = page.getByTestId('current-editorial-resources');
+  assert.equal(await current.getAttribute('data-editorial-state'), 'published');
+  await current.getByTestId('current-editorial-summary').click();
+  assert.match(await current.innerText(), /Versión 2/);
+  assert.match(await current.innerText(), /Producto publicado versión 2/);
+  assert.equal(await current.locator('[data-current-resource-kind="technical"]').getAttribute('href'), 'https://documents.example.invalid/current-v2-technical.pdf');
+  assert.equal(await evidence.locator('[data-resource-kind="technical"]').getAttribute('href'), 'https://documents.example.invalid/technical.pdf');
+  assert.match(await evidence.innerText(), /22:42 UTC/);
+  assert.match(await current.innerText(), /23:00 UTC/);
+  for (const [width, theme] of [[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']]) await assess(page, '[data-testid="current-editorial-resources"]', 'current-editorial', width, theme);
+  const beforeEditorial = actions(await state()).length;
+  const stateCopy = new Set();
+  for (const editorialState of ['unpublished', 'legacy', 'withdrawn', 'invalid', 'unavailable']) {
+    await page.goto(base + `/sun?snapshot=900001&trace=agro-${editorialState}&access=qa-only`, { waitUntil: 'load' });
+    await current.waitFor(); assert.equal(await current.getAttribute('data-editorial-state'), editorialState);
+    assert.equal(await current.locator('a').count(), 0);
+    assert.equal(await evidence.locator('[data-resource-kind="certificate"]').count(), 1);
+    stateCopy.add(await current.innerText());
+  }
+  assert.equal(stateCopy.size, 5);
+  await page.goto(base + '/sun?snapshot=900001&trace=agro-absent&access=qa-only', { waitUntil: 'load' });
+  await current.waitFor(); assert.equal(await current.getAttribute('data-editorial-state'), 'unavailable');
+  assert.equal(await current.locator('a').count(), 0);
+  await page.goto(base + '/sun?snapshot=900001&trace=agro-removed&access=qa-only', { waitUntil: 'load' });
+  await current.getByTestId('current-editorial-summary').click();
+  assert.match(await current.innerText(), /Versión 3/);
+  assert.equal(await current.locator('[data-current-resource-kind="technical"]').count(), 0);
+  assert.equal(await current.locator('[data-current-resource-kind="safety"]').count(), 1);
+  assert.equal(await evidence.locator('[data-resource-kind="technical"]').count(), 1);
+  for (const [lang, title] of [['en', 'Current editorial passport'], ['pt-BR', 'Ficha editorial vigente'], ['es-AR', 'Ficha editorial vigente']]) {
+    await page.goto(base + `/sun?snapshot=900001&trace=agro-published&access=qa-only&lang=${lang}`, { waitUntil: 'load' });
+    await current.getByRole('heading', { name: title, exact: true }).waitFor();
+    await current.getByTestId('current-editorial-summary').click();
+    assert.equal(await current.locator('dd[lang="es-AR"]').filter({ hasText: 'Producto publicado versión 2' }).count(), 1);
+    assert.equal(await current.locator('[data-current-resource-kind="technical"]').count(), 1);
+  }
+  assert.equal(actions(await state()).length, beforeEditorial);
+  report.checks.push('Current publication version, date and documents stay separate from the old reading in three languages; missing, unpublished, legacy, inactive and invalid states never revive a removed current link');
   const before = actions(await state()).length;
   const issued = await fresh(page);
   assert.equal(actions(await state()).length, before, 'Entering the portal does not execute any action');

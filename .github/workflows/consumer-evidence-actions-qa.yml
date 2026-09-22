@@ -1,7 +1,7 @@
 name: Consumer evidence and explicit actions
 on:
   push:
-    branches: [codex/nexid-s8-s9-consumer-20260921]
+    branches: [codex/nexid-s8-s9-consumer-20260921, codex/nexid-s8-current-editorial-web-20260921]
     paths:
       - apps/web/**
       - packages/**
