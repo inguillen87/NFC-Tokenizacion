@@ -1,5 +1,7 @@
 "use client";
 
+import { configureMapLibreWorker } from "@product/ui/maplibre-worker";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as MapLibreMap, Marker, Popup, StyleSpecification } from "maplibre-gl";
 import { resolveTrustMapSource } from "@product/ui/trust-map-source";
@@ -251,6 +253,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
 
       try {
         const maplibre = await import("maplibre-gl");
+      configureMapLibreWorker(maplibre);
         if (disposed || !mapContainerRef.current) return;
 
         const map = new maplibre.Map({

@@ -1,3 +1,6 @@
+import { prepareMapLibreAssets } from '../../scripts/prepare-maplibre-assets.mjs';
+await prepareMapLibreAssets('dashboard');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),

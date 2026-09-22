@@ -1,5 +1,7 @@
 "use client";
 
+import { configureMapLibreWorker } from "@product/ui/maplibre-worker";
+
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Popup } from "maplibre-gl";
 import { resolveTrustMapSource } from "@product/ui/trust-map-source";
@@ -573,6 +575,7 @@ export function RealtimeMapLibreMap({
     const boot = async () => {
       setMapError(null);
       const maplibre = await import("maplibre-gl");
+      configureMapLibreWorker(maplibre);
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       maplibreRef.current = maplibre;

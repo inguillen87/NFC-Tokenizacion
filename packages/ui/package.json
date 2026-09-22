@@ -12,7 +12,8 @@
     "./world-map-realtime": "./src/world-map-realtime.tsx",
     "./world-map-placeholder": "./src/world-map-placeholder.tsx",
     "./theme-preference": "./src/theme-preference.ts",
-    "./trust-map-source": "./src/trust-map-source.ts"
+    "./trust-map-source": "./src/trust-map-source.ts",
+    "./maplibre-worker": "./src/maplibre-worker.ts"
   },
   "peerDependencies": {
     "react": "^18.2.0"
@@ -22,7 +23,7 @@
   "dependencies": {
     "@types/three": "^0.184.1",
     "framer-motion": "^11.11.17",
-    "maplibre-gl": "^5.24.0",
+    "maplibre-gl": "6.4.1",
     "react-globe.gl": "^2.38.0",
     "three": "0.184.0"
   }

@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.22-dashboard.33",
-  "scope": "audited-support-ticket-status-workflow",
+  "release": "2026.09.22-dashboard.34",
+  "scope": "source-backed-crm-bounded-tickets-and-dependency-maintenance",
   "realTapCertification": "not-included",
-  "baseCommit": "f5b546e86cf8652401f43041d3d4181eb11eb689",
+  "baseCommit": "d2758dce665ef0c320e08df3808d529b574b94ce",
   "reconciliationBaseRelease": "2026.09.21-dashboard.28",
   "requiredApiRelease": "2026.09.22-api-support-workflow.1",
   "source": "committed-interface-increment-on-production-baseline",

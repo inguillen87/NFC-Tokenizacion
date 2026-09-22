@@ -165,7 +165,7 @@ test("shared MapLibre map resolves white-first before boot and exposes its inter
   assert.match(source, /const canvas = map\.getCanvas\(\)/);
   assert.match(source, /canvas\.setAttribute\("aria-label", mapCanvasLabel\)/);
   assert.match(source, /canvas\.setAttribute\("aria-describedby", summaryId\)/);
-  assert.equal(webPackage.dependencies["maplibre-gl"], "^5.24.0");
+  assert.equal(webPackage.dependencies["maplibre-gl"], "6.4.1");
 });
 
 test("shared maps use no-key OpenFreeMap vector styles and reject key-required providers", async () => {

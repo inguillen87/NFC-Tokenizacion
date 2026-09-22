@@ -1,5 +1,7 @@
 "use client";
 
+import { configureMapLibreWorker } from "./maplibre-worker";
+
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Popup } from "maplibre-gl";
 import type {
@@ -592,6 +594,7 @@ export function RealGeographicMap({
 
     const boot = async () => {
       const maplibre = await import("maplibre-gl");
+      configureMapLibreWorker(maplibre);
       if (cancelled || !containerRef.current) return;
       maplibreRef.current = maplibre;
       const baseStyle = !externalTiles

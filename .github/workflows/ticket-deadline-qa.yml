@@ -34,6 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          node scripts/enterprise-dependency-audit.mjs
           npm run typecheck --workspace dashboard
           npm test --workspace dashboard
           npm run build:dashboard
@@ -53,6 +54,12 @@ jobs:
         run: |
           node apps/dashboard/tests/support-tickets.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-customer-activity/browser" node apps/dashboard/tests/customer-activity-summary.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-dependency-map/browser" node apps/dashboard/tests/dependency-map.browser.mjs
+          node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$RUNNER_TEMP/nexid-map-next.log" 2>&1 &
+          map_server=$!
+          trap 'kill "$map_server" 2>/dev/null || true' EXIT
+          node --input-type=module -e 'let ready=false; for(let i=0;i<30;i++){try{const r=await fetch("http://127.0.0.1:33982/vendor/maplibre-gl/6.4.1/maplibre-gl-worker.mjs");if(r.ok){ready=true;break}}catch{} await new Promise(r=>setTimeout(r,500))} if(!ready)process.exit(1)'
+          NEXT_QA_ORIGIN=http://127.0.0.1:33982 QA_OUTPUT="$RUNNER_TEMP/nexid-next-map/browser" node apps/dashboard/tests/dependency-map.browser.mjs
       - name: Record verification identity
         if: always()
         env:

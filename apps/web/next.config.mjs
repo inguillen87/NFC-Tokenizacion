@@ -1,3 +1,6 @@
+import { prepareMapLibreAssets } from '../../scripts/prepare-maplibre-assets.mjs';
+await prepareMapLibreAssets('web');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
