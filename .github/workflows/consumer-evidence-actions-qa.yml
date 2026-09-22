@@ -6,6 +6,7 @@ on:
       - apps/web/**
       - packages/**
       - scripts/qa/run-consumer-actions-browser.mjs
+      - scripts/qa/check-consumer-build-tree.mjs
       - .github/workflows/consumer-evidence-actions-qa.yml
 permissions:
   contents: read
@@ -37,7 +38,7 @@ jobs:
           npm test --workspace=web 2>&1 | tee artifacts/consumer-evidence-ci/tests.log
           npm run build:web 2>&1 | tee artifacts/consumer-evidence-ci/build.log
           npm run check:secrets 2>&1 | tee artifacts/consumer-evidence-ci/secrets.log
-          git diff --exit-code -- apps packages package.json package-lock.json
+          node scripts/qa/check-consumer-build-tree.mjs
           node -e 'require("fs").writeFileSync("artifacts/consumer-evidence-ci/commit.txt",process.env.GITHUB_SHA)'
       - name: Install isolated browser tools
         shell: bash
