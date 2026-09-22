@@ -111,7 +111,8 @@ test("documents remain declared snapshot links without an invented date or valid
   assert.equal(view.resources[1].detail, "Enlace publicado en esta ficha · docs.example.test");
   assert.equal(view.resources[2].detail, "Enlace publicado en esta ficha · docs.example.test");
   const html = markup(props);
-  assert.match(html, /información declarada por la marca/);
+  assert.match(html, /información presentada en esta ficha, separada de la evidencia NFC/);
+  for (const mode of ["qr", "unknown"]) assert.doesNotMatch(markup({ ...props, mode }), /por la marca/);
   assert.match(html, /Fecha de publicación y vigencia no disponibles/);
   assert.match(html.replace(/href="[^"]*"/g, ""), /docs\.example\.test/);
   assert.match(html, /rel="noopener noreferrer"/);

@@ -70,8 +70,15 @@ capacidad. No certifica persistencia productiva, OTP real ni lectura física.
 La CI dedicada conserva resultados, build, controles de secretos, SHA y capturas.
 Los datos de prueba no llegan a producción.
 
-Validación local final: 636 pruebas web, cero fallidas u omitidas; build de
-producción y control de secretos correctos. Diez comprobaciones integradas de
+La CI detectó una diferencia de espacios de ICU entre Node y Chromium en la
+fecha del mapa, que rompía la hidratación y perdía el primer clic. El formato
+compartido usa 24 horas y espacios normales; el timeline agro usa zona UTC
+explícita. Los accesos que preparan permisos esperan la hidratación. Una prueba
+retiene los scripts, comprueba el botón deshabilitado y después exige un único
+POST de preparación al liberarlos, sin ejecutar acciones de negocio.
+
+Validación local final: 638 pruebas web, cero fallidas u omitidas; build de
+producción y control de secretos correctos. Once comprobaciones integradas de
 navegador y ocho vistas 1440/390, claro/oscuro, sin errores JS, desbordes ni
 hallazgos axe en las superficies cambiadas. Se comprobó también el acceso
 secundario a beneficios y la recuperación de un certificado no disponible.

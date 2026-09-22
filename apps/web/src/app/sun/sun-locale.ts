@@ -590,6 +590,7 @@ export function formatSunDateTime(
     dateStyle: "medium",
     timeStyle: "short",
     timeZone,
-  }).format(date);
+    hourCycle: "h23",
+  }).format(date).replace(/[\u00a0\u202f]/g, " ");
   return timeZone === "UTC" && candidate !== "UTC" ? `${formatted} UTC` : formatted;
 }

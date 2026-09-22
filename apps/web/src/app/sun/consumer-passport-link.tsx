@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { useSunLocale } from "./sun-locale-provider";
 
@@ -20,10 +20,12 @@ export function ConsumerTapLink({ href, eventId, freshToken, children, className
   const labels = copy[locale];
   const router = useRouter();
   const inFlight = useRef(false);
+  const [ready, setReady] = useState(false);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  useEffect(() => { setReady(true); }, []);
   async function prepare() {
-    if (inFlight.current) return;
+    if (!ready || inFlight.current) return;
     inFlight.current = true;
     setPending(true);
     setFailed(false);
@@ -48,7 +50,7 @@ export function ConsumerTapLink({ href, eventId, freshToken, children, className
   }
   if (!freshToken || !/^\/me(?:[/?#]|$)/.test(href)) return <Link prefetch={false} href={href} className={className}>{children}</Link>;
   return <div data-testid="consumer-passport-handoff">
-    <button type="button" className={className} onClick={() => void prepare()} disabled={pending} aria-busy={pending}>{pending ? labels.preparing : children}</button>
+    <button type="button" className={className} onClick={() => void prepare()} disabled={!ready || pending} aria-busy={!ready || pending}>{pending ? labels.preparing : children}</button>
     {failed && <div role="alert" className="mt-2 text-sm"><p>{labels.failed}</p><Link prefetch={false} href="/me/products" className="sun-account-entry inline-flex min-h-11 items-center underline">{labels.readOnly}</Link></div>}
   </div>;
 }

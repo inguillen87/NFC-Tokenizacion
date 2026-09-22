@@ -28,7 +28,7 @@ function contract(u) {
     tapSecurity: { actionability: fresh ? 'fresh_handoff' : 'read_only', freshTap: fresh, snapshot: !fresh },
     certificate: u.searchParams.get('trace') === 'no-certificate' ? {} : { shareToken: 'qa-only-public-share' },
     allowedActions: fresh ? ['claim', 'save', 'join', 'rewards', 'provenance'] : ['provenance'], blockedActions: fresh ? [] : ['claim', 'warranty', 'tokenization', 'rewards'],
-    cta: { claimOwnership: fresh, registerWarranty: false, tokenize: false, provenance: true }, provenance: { origin: 'Declarado por empresa QA', timelineSummary: [] }, tapContext: { utcTime: '2026-09-21T22:42:23.856Z' } };
+    cta: { claimOwnership: fresh, registerWarranty: false, tokenize: false, provenance: true }, provenance: { origin: 'Declarado por empresa QA', timelineSummary: agro ? [{ at: "2026-09-21T22:42:23.856Z", result: "Evento QA histórico" }] : [] }, tapContext: { utcTime: '2026-09-21T22:42:23.856Z' } };
 }
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, origin);

@@ -46,6 +46,21 @@ test("SUN timestamps stay deterministic between the server and the phone", () =>
   assert.match(formatSunDateTime(observedAt, "es-AR", null), /UTC$/);
   assert.doesNotMatch(formatSunDateTime(observedAt, "es-AR", "America\/Argentina\/Buenos_Aires"), /UTC$/);
   assert.match(formatSunDateTime(observedAt, "en", "not-a-time-zone"), /UTC$/);
+  for (const locale of ["es-AR", "en", "pt-BR"]) {
+    const label = formatSunDateTime("2026-09-21T22:42:23.856Z", locale, null);
+    assert.match(label, /22:42/);
+    assert.doesNotMatch(label, /[\u00a0\u202f]/);
+  }
+});
+
+test("SUN timestamp spacing is stable across ICU versions", (t) => {
+  for (const separator of [" ", "\u00a0", "\u202f"]) {
+    const mocked = t.mock.method(Intl, "DateTimeFormat", function () {
+      return { format: () => `21${separator}sept${separator}2026, 22:42` };
+    });
+    assert.equal(formatSunDateTime("2026-09-21T22:42:23.856Z", "es-AR", null), "21 sept 2026, 22:42 UTC");
+    mocked.mock.restore();
+  }
 });
 
 test("SUN selector persists server-side, changes in place and cannot revalidate or reload the tap", async () => {

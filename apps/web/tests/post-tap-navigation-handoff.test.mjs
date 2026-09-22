@@ -54,6 +54,12 @@ const serviceBase = {
 };
 const services = (props = {}) => render("sun-services-hub.tsx", "SunServicesHub", { ...serviceBase, ...props });
 
+test("server-rendered handoff buttons wait for hydration before accepting a click", () => {
+  const html = renderToStaticMarkup(React.createElement(consumerLink, { href: "/me/products", eventId, freshToken }, "Mis productos"));
+  assert.match(html, /<button[^>]*disabled=""[^>]*aria-busy="true"/);
+  assert.doesNotMatch(html, /private-fixture-capability/);
+});
+
 test("secondary consumer links prepare the same event only on click and preserve ordinary destinations", () => {
   const { html, seen } = nextStep({ sealState: "opened" });
   assert.deepEqual(seen.map(link => link.href), [base.rewardsHref, base.marketplaceHref, base.walletHref]);

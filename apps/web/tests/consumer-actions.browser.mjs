@@ -52,6 +52,30 @@ async function confirm(page, outcome) {
   await page.locator(`[data-testid="tap-association"] [data-outcome="${outcome}"]`).waitFor();
 }
 try {
+  // Hold application scripts to reproduce a slow phone before React hydration.
+  // The rendered control must not accept a click which has no handler yet.
+  const delayed = await open();
+  let releaseScripts;
+  const scriptsReady = new Promise(resolve => { releaseScripts = resolve; });
+  const heldScripts = '**/_next/static/**/*.js*';
+  let handoffs = 0;
+  delayed.page.on('request', request => { if (new URL(request.url()).pathname === '/api/consumer/tap-handoff' && request.method() === 'POST') handoffs++; });
+  await delayed.page.route(heldScripts, async route => { await scriptsReady; await route.continue(); });
+  const slow = await (await fetch(api + '/qa-issue')).json();
+  const beforeSlow = actions(await state()).length;
+  try {
+    await delayed.page.goto(`${base}/sun?snapshot=${slow.eventId}&trace=qa-only&access=qa-only&fresh=${encodeURIComponent(slow.token)}`, { waitUntil: 'commit', timeout: 90000 });
+    const button = delayed.page.getByTestId('consumer-passport-primary').getByRole('button');
+    await button.waitFor({ state: 'visible' });
+    assert.equal(await button.isDisabled(), true);
+    assert.equal(handoffs, 0);
+    releaseScripts();
+    await button.click();
+    await delayed.page.waitForURL(u => u.pathname === '/me/products', { timeout: 60000 });
+    assert.equal(handoffs, 1);
+    assert.equal(actions(await state()).length, beforeSlow);
+    report.checks.push('Slow hydration keeps the handoff disabled until ready, then one click navigates without a business mutation');
+  } finally { releaseScripts(); await delayed.context.close(); }
   const { context, page } = await open();
   await page.goto(base + '/sun?snapshot=900001&trace=qa-only&access=qa-only', { waitUntil: 'load', timeout: 90000 });
   const evidence = page.getByTestId('passport-evidence-resources');
@@ -87,6 +111,7 @@ try {
   assert.equal(await evidence.locator('[data-resource-kind="technical"]').getAttribute('href'), 'https://documents.example.invalid/technical.pdf');
   assert.match(await evidence.innerText(), /documents\.example\.invalid/);
   assert.equal(await evidence.locator('[data-resource-kind="safety"]').count(), 1);
+  assert.match(await page.locator('body').innerText(), /22:42 UTC/);
   report.checks.push('Agro resources disclose the external document host without claiming publication date or validity');
   const before = actions(await state()).length;
   const issued = await fresh(page);
