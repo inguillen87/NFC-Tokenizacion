@@ -103,20 +103,21 @@ test('existing dotted and long tenant slugs are supported and unavailable detail
   }
 });
 
-test('actual GET route delegates its reference to the authenticated reader and exposes no mutation', async () => {
+test('actual GET route preserves authenticated lookup and PATCH delegates only to the workflow', async () => {
   const source = await readFile(new URL('../src/app/admin/tickets/[id]/route.ts', import.meta.url), 'utf8');
   const ast = ts.createSourceFile('route.ts', source, ts.ScriptTarget.Latest, true), node = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'GET');
   const js = ts.transpileModule(node.getText(ast).replace(/^export\s+/, ''), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   let called; const route = new Function('handleAdminTicketLookup', js + ';return GET;')((req, reference) => { called = { req, reference }; return Response.json({ ok: true }); });
   const req = request(); assert.equal((await route(req, { params: Promise.resolve({ id }) })).status, 200); assert.deepEqual(called, { req, reference: id });
-  assert.doesNotMatch(source, /export async function (?:POST|PUT|PATCH|DELETE)|ensureTicketsSchema/);
+  assert.doesNotMatch(source, /export async function (?:POST|PUT|DELETE)|ensureTicketsSchema/);
+  assert.match(source, /return handleAdminTicketWorkflowTransition\(req, id\)/);
 });
 
-test('release advertises the additive lookup contract without requiring a new dashboard or migration', async () => {
+test('release preserves the additive lookup and support contracts alongside the workflow', async () => {
   const release = JSON.parse(await readFile(new URL('../public/release.json', import.meta.url), 'utf8'));
-  assert.equal(release.release, '2026.09.21-api-support-lookup.1');
+  assert.equal(release.release, '2026.09.22-api-support-workflow.1');
   assert.equal(release.supportTicketLookupProtocol, 'nexid.support-ticket-lookup.v1');
   assert.equal(release.supportReportProtocol, 'nexid.support-report.v1');
   assert.equal(release.requiredDashboardRelease, '2026.09.21-dashboard.30');
-  assert.equal(release.databaseMigrationsIncluded, false);
+  assert.equal(release.databaseMigrationsIncluded, true);
 });

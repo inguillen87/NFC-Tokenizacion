@@ -1,12 +1,12 @@
 {
-  "release": "2026.09.21-api-support-lookup.1",
-  "scope": "authorized-exact-ticket-reference-lookup-with-tenant-isolation",
-  "baseCommit": "37527be00adf2c6a86d05dab1799e9d9a92e2896",
+  "release": "2026.09.22-api-support-workflow.1",
+  "scope": "atomic-audited-support-ticket-status-transitions-and-history",
+  "baseCommit": "8f9494b21b7b4667b41a9d031ca03896fc8e7124",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
-  "databaseMigrationsIncluded": false,
-  "requiredMigration": "20260919200000_0111_epcis_operator_intake.sql",
+  "databaseMigrationsIncluded": true,
+  "requiredMigration": "20260922100000_0112_support_ticket_workflow.sql",
   "realtimeChangesIncluded": true,
   "realtimeBrokerChanged": false,
   "campaignDeliveryIncluded": false,
@@ -21,7 +21,8 @@
     "20260918224500_0108_recall_notice_reviews.sql",
     "20260919000000_0109_recall_assignee_tasks.sql",
     "20260919180000_0110_gs1_batch_import.sql",
-    "20260919200000_0111_epcis_operator_intake.sql"
+    "20260919200000_0111_epcis_operator_intake.sql",
+    "20260922100000_0112_support_ticket_workflow.sql"
   ],
   "logisticsOperationProtocol": "nexid.logistics.v1",
   "passportStudioProtocol": "nexid.passport-studio.v1",
@@ -47,5 +48,6 @@
   "requiredDashboardRelease": "2026.09.21-dashboard.30",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "supportReportProtocol": "nexid.support-report.v1",
-  "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1"
+  "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
+  "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1"
 }
