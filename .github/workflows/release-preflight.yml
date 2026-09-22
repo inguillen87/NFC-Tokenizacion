@@ -1,0 +1,43 @@
+name: Release preflight - read only, not deployment
+on:
+  push:
+    branches: [codex/nexid-s9-ticket-deadline-20260922]
+    paths:
+      - scripts/release-preflight.mjs
+      - scripts/tests/release-preflight.test.mjs
+      - docs/releases/2026-09-22-support-crm-candidate.json
+      - .github/workflows/release-preflight.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: nexid-release-preflight-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  inspect:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Test read-only release checks without providers
+        run: node --test scripts/tests/release-preflight.test.mjs
+      - name: Verify previously accepted runtime is unchanged
+        run: |
+          git diff --exit-code d2758dce665ef0c320e08df3808d529b574b94ce HEAD -- apps/dashboard packages package.json package-lock.json
+      - name: Read exact CI and Vercel candidate metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node scripts/release-preflight.mjs
+      - name: Record scope of this check
+        if: always()
+        run: |
+          printf 'Read-only preflight: no builds, deployments, migrations or promotions were requested.\n' >> "$GITHUB_STEP_SUMMARY"
+          printf 'A missing credential or release prerequisite is a blocker, never deployment success.\n' >> "$GITHUB_STEP_SUMMARY"

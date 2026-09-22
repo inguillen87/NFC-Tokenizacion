@@ -1,0 +1,26 @@
+{
+  "schema": "nexid.release-preflight.v1",
+  "repository": "inguillen87/NFC-Tokenizacion",
+  "teamId": "team_BV1xuY6BnEzGanfok8GAyjZv",
+  "components": [
+    {
+      "surface": "api",
+      "sourceSha": "e00c2dd1d497570cfff709e0aa359c0637a9cde1",
+      "branch": "codex/nexid-s9-ticket-workflow-api-20260922",
+      "runId": 35683108028,
+      "workflowPath": ".github/workflows/support-ticket-workflow-api-qa.yml",
+      "deploymentId": "dpl_9aEr4qT4dppQcdgCZDjB88jnTrGj"
+    },
+    {
+      "surface": "dashboard",
+      "sourceSha": "d2758dce665ef0c320e08df3808d529b574b94ce",
+      "branch": "codex/nexid-s9-ticket-deadline-20260922",
+      "runId": 35786823244,
+      "workflowPath": ".github/workflows/ticket-deadline-qa.yml",
+      "deploymentId": null
+    }
+  ],
+  "requiredMigrations": ["20260922100000_0112_support_ticket_workflow.sql"],
+  "unchangedSurfaces": ["web", "executor"],
+  "notes": "Candidate inventory, not a deployed-release manifest. The older dashboard .33 deployment does not contain the deadline or CRM corrections. CI is application-specific, not whole-enterprise certification."
+}
