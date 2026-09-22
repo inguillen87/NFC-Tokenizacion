@@ -27,6 +27,14 @@ function historicalPayload(id, tenant = 'qa-only') {
       created_at: '2025-01-02T12:30:00.000Z', bid: 'QA-HISTORICAL-ONLY', tap_event_id: '700', source: 'sun_public_report', category: 'other', locale: 'es-AR',
       tenant_id: '10000000-0000-4000-8000-000000000001', tenant_slug: tenant, tenant_name: 'Organización sintética QA' } };
 }
+const workflowTenant = '10000000-0000-4000-8000-000000000001';
+const workflowActor = '81000000-0000-4000-8000-000000000052';
+function workflowEnvelope(id, tenant, state) {
+  return { ok: true, protocol: 'nexid.support-ticket-workflow.v1', scope: { mode: 'tenant', tenantId: workflowTenant, tenantSlug: tenant }, current: state.current };
+}
+function initialWorkflow(id, tenant) {
+  return { current: { ticketId: id, tenantId: workflowTenant, tenantSlug: tenant, status: 'pending', revision: 'a'.repeat(64), updatedAt: '2026-09-22T03:00:00.000Z', canUpdate: true, blockedReason: null }, items: [], receipts: new Map() };
+}
 const fingerprint = 'a'.repeat(64);
 const description = 'Reporte sintético: el precinto llegó abierto y solicito revisión del lote de prueba.';
 const legacyDescription = 'Consulta histórica sintética escrita antes del formato de reportes actual.';
@@ -84,10 +92,17 @@ const server = createServer((req, res) => {
   res.setHeader('content-type', 'text/html;charset=utf-8');
   res.end(`<!doctype html><html lang="es-AR" class="theme-${theme}" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tickets de soporte · QA sintética local</title><style>${css}</style></head><body><div id="root"></div><script src="/fixture.js"></script></body></html>`);
 });
-await new Promise(done => server.listen(0, '127.0.0.1', done));
+// Some Windows hosts allocate port 0 within Chromium's blocked IRC range.
+// Bind a bounded high-port range without changing browser security settings.
+for (let port = 32785; ; port++) {
+  try {
+    await new Promise((done, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', done); });
+    server.removeAllListeners('error'); break;
+  } catch (error) { server.removeAllListeners('error'); if (error.code !== 'EADDRINUSE' || port >= 32794) throw error; }
+}
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH });
-const report = { localOnly: true, syntheticData: true, actualComponents: ['LeadsTicketsClient', 'DataTable', 'CustomerSignalTimeline', 'CustomerMemberTimeline', 'TicketReferenceLookup'], lookupApiMocked: true, navigationStubbed: true, realNextServer: false, realDatabase: false, productionTested: false, checks: [], views: [], clientErrors: [], blockedRequests: [] };
+const report = { localOnly: true, syntheticData: true, actualComponents: ['LeadsTicketsClient', 'DataTable', 'CustomerSignalTimeline', 'CustomerMemberTimeline', 'TicketReferenceLookup', 'TicketWorkflow'], lookupApiMocked: true, workflowApiMocked: true, navigationStubbed: true, realNextServer: false, realDatabase: false, productionTested: false, checks: [], views: [], clientErrors: [], blockedRequests: [] };
 function check(condition, description) { report.checks.push({ description, passed: Boolean(condition) }); }
 async function inspect(page, name, width, theme, target) {
   await page.addScriptTag({ content: axe });
@@ -114,10 +129,48 @@ try {
     page.on('pageerror', error => report.clientErrors.push({ width, theme, message: error.message, stack: error.stack }));
     const lookupCalls = [];
     const delayed = [];
+    const workflowStates = new Map();
+    const workflowWrites = [];
+    const historyReads = [];
+    const delayedWorkflowPatches = [];
+    let workflowMode = 'normal';
     let retryCount = 0;
     await page.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
-      if (url.origin !== origin || request.method() !== 'GET') { report.blockedRequests.push({ method: request.method(), url: url.origin + url.pathname }); return route.abort(); }
+      const workflowPatch = request.method() === 'PATCH' && /^\/api\/admin\/tickets\/[0-9a-f-]{36}$/.test(url.pathname);
+      if (url.origin !== origin || (request.method() !== 'GET' && !workflowPatch)) { report.blockedRequests.push({ method: request.method(), url: url.origin + url.pathname }); return route.abort(); }
+      if (workflowPatch || url.pathname.endsWith('/history')) {
+        const id = url.pathname.split('/').at(workflowPatch ? -1 : -2), tenant = url.searchParams.get('tenant');
+        if (!workflowStates.has(id)) workflowStates.set(id, initialWorkflow(id, tenant));
+        const state = workflowStates.get(id);
+        const reply = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'x-nexid-data-mode': 'production', 'cache-control': 'private, no-store' }, body: JSON.stringify(body) });
+        if (!workflowPatch) {
+          historyReads.push({ id, cursor: url.searchParams.get('cursor') });
+          if (workflowMode === 'history_error') return reply({ ok: false, reason: 'ticket_workflow_unavailable' }, 503);
+          if (workflowMode === 'blocked') state.current = { ...state.current, canUpdate: false, blockedReason: 'incident_managed' };
+          if (workflowMode.startsWith('pagination')) {
+            const makeItem = sequence => ({ operationId: lookupId(1000 + sequence), requestId: lookupId(2000 + sequence), sequence: String(sequence), fromStatus: 'open', toStatus: 'pending', reason: `Cambio sintético anterior ${sequence}`, actor: { id: workflowActor, label: null }, createdAt: '2026-09-22T02:30:00.000Z', revision: 'a'.repeat(64) });
+            const older = url.searchParams.get('cursor') === '2';
+            return reply({ ...workflowEnvelope(id, tenant, state), items: older ? [makeItem(1)] : [makeItem(3), makeItem(2)], page: { hasMore: !older, nextCursor: older ? null : '2' } });
+          }
+          return reply({ ...workflowEnvelope(id, tenant, state), items: state.items, page: { hasMore: false, nextCursor: null } });
+        }
+        const command = request.postDataJSON();
+        workflowWrites.push({ id, body: request.postData(), command, key: request.headers()['idempotency-key'] });
+        if (workflowMode === 'forbidden') return reply({ ok: false, reason: 'forbidden' }, 403);
+        if (workflowMode === 'conflict') {
+          state.current = { ...state.current, status: 'open', revision: 'd'.repeat(64) };
+          workflowMode = 'normal';
+          return reply({ ok: false, reason: 'ticket_workflow_conflict' }, 409);
+        }
+        if (state.receipts.has(command.request_id)) return reply({ ...workflowEnvelope(id, tenant, state), receipt: state.receipts.get(command.request_id), outcome: 'replayed' });
+        const receipt = { operationId: lookupId(100 + workflowWrites.length), requestId: command.request_id, sequence: String(state.items.length + 1), fromStatus: state.current.status, toStatus: command.status, reason: command.reason, actor: { id: workflowActor, label: 'Operadora sintética QA' }, createdAt: '2026-09-22T03:30:00.000Z', revision: 'b'.repeat(64) };
+        state.receipts.set(command.request_id, receipt); state.items.unshift(receipt);
+        state.current = { ...state.current, status: command.status, revision: receipt.revision, updatedAt: receipt.createdAt };
+        if (workflowMode.startsWith('pagination_hold')) await new Promise(resolve => delayedWorkflowPatches.push(resolve));
+        if (workflowMode === 'uncertain' || workflowMode === 'pagination_hold_uncertain') return reply({ ok: false, reason: 'ticket_workflow_unavailable' }, 503);
+        return reply({ ...workflowEnvelope(id, tenant, state), receipt, outcome: 'updated' });
+      }
       if (url.pathname.startsWith('/api/admin/tickets/')) {
         const id = url.pathname.split('/').at(-1), tenant = url.searchParams.get('tenant');
         lookupCalls.push({ id, tenant });
@@ -208,6 +261,80 @@ try {
     await recentDownload.saveAs(recentPath);
     check(!(await readFile(recentPath, 'utf8')).includes(historicalId), `${width} ${theme}: historical result stays outside recent CSV exports`);
     await inspect(page, 'historical-ticket-found', width, theme, '[data-testid="ticket-reference-lookup"]');
+    const workflow = page.getByTestId('ticket-workflow');
+    check(historyReads.length === 0 && workflowWrites.length === 0, `${width} ${theme}: workflow stays folded without reads or writes until requested`);
+    await workflow.locator('summary').click();
+    await workflow.locator('[data-history-state="ready"]').waitFor({ state: 'attached' });
+    check((await workflow.innerText()).includes('Todavía no hay cambios de estado registrados'), `${width} ${theme}: confirmed empty workflow history is explicit`);
+    await workflow.getByLabel('Nuevo estado', { exact: true }).selectOption('closed');
+    const reasonInput = workflow.getByLabel('Motivo del cambio', { exact: true });
+    await reasonInput.fill('Revisión sintética finalizada <script>texto literal</script>');
+    await workflow.getByRole('button', { name: 'Revisar cambio', exact: true }).click();
+    check(workflowWrites.length === 0 && (await workflow.getByTestId('ticket-workflow-review').innerText()).includes(historicalId), `${width} ${theme}: review shows exact reference and never writes automatically`);
+    await inspect(page, 'ticket-workflow-review', width, theme, '[data-testid="ticket-workflow"]');
+    await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).evaluate(button => { button.click(); button.click(); });
+    await workflow.locator('[data-workflow-state="saved"]').waitFor();
+    check(workflowWrites.length === 1 && workflowWrites[0].key === workflowWrites[0].command.request_id, `${width} ${theme}: double confirmation sends one command with stable operation key`);
+    check((await workflow.getByTestId('workflow-current-status').innerText()) === 'Cerrado' && (await workflow.getByTestId('ticket-workflow-history').innerText()).includes('Operadora sintética QA'), `${width} ${theme}: saved current status and authenticated actor/history are visible`);
+    check(await workflow.locator('script').count() === 0 && (await workflow.innerText()).includes('<script>texto literal</script>'), `${width} ${theme}: review and history render reasons as literal text`);
+    check((await page.locator('table').innerText()).includes('Abierto') || (await page.locator('table').innerText()).includes('ABIERTO'), `${width} ${theme}: state change does not silently rewrite the recent snapshot`);
+    await inspect(page, 'ticket-workflow-saved', width, theme, '[data-testid="ticket-workflow"]');
+
+    const openWorkflow = async (id, mode = 'normal') => {
+      workflowMode = mode; await submitLookup(id); await lookupState('found'); await workflow.locator('summary').click();
+      await workflow.locator(`[data-history-state="${mode === 'history_error' ? 'unavailable' : 'ready'}"]`).waitFor({ state: 'attached' });
+    };
+    const reviewWorkflow = async reason => {
+      await workflow.getByLabel('Nuevo estado', { exact: true }).selectOption('closed');
+      await workflow.getByLabel('Motivo del cambio', { exact: true }).fill(reason);
+      await workflow.getByRole('button', { name: 'Revisar cambio', exact: true }).click();
+    };
+    await openWorkflow(lookupId(21), 'uncertain'); await reviewWorkflow('Motivo sintético que se conserva');
+    await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click();
+    await workflow.locator('[data-workflow-state="uncertain"]').waitFor();
+    const uncertainCommand = workflowWrites.at(-1).body;
+    check(await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled() && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Pendiente', `${width} ${theme}: uncertain write freezes details and does not falsely close ticket`);
+    workflowMode = 'forbidden'; await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click();
+    await workflow.locator('[data-workflow-state="forbidden"]').waitFor();
+    check(await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled(), `${width} ${theme}: later auth failure does not unlock an uncertain command`);
+    workflowMode = 'normal'; workflowStates.get(lookupId(21)).current = { ...workflowStates.get(lookupId(21)).current, status: 'open', revision: 'c'.repeat(64) };
+    await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click(); await workflow.locator('[data-workflow-state="saved"]').waitFor();
+    check(workflowWrites.slice(-3).every(entry => entry.body === uncertainCommand) && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Abierto', `${width} ${theme}: retries are byte-identical and replay uses authoritative current status rather than old receipt`);
+    await openWorkflow(lookupId(22), 'conflict'); await reviewWorkflow('Motivo preservado ante cambio ajeno');
+    await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click(); await workflow.locator('[data-workflow-state="conflict"]').waitFor();
+    check(await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled(), `${width} ${theme}: conflict requires fresh evidence before editing`);
+    await workflow.getByRole('button', { name: 'Consultar el estado antes de continuar', exact: true }).click();
+    await workflow.locator('[data-workflow-state="draft"]').waitFor({ state: 'attached' });
+    check(await workflow.getByLabel('Motivo del cambio', { exact: true }).inputValue() === 'Motivo preservado ante cambio ajeno' && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Abierto', `${width} ${theme}: conflict reload preserves draft and confirms changed status`);
+    await openWorkflow(lookupId(23), 'history_error');
+    check(await workflow.locator('textarea').count() === 0 && !(await workflow.innerText()).includes('Todavía no hay cambios'), `${width} ${theme}: failed history never enables mutation or claims empty history`);
+    await openWorkflow(lookupId(24), 'blocked');
+    check(await workflow.locator('textarea').count() === 0 && (await workflow.innerText()).includes('incidente vinculado'), `${width} ${theme}: incident-managed ticket stays read-only`);
+    await openWorkflow(lookupId(25), 'pagination');
+    check(await workflow.getByTestId('ticket-workflow-history').locator('li').count() === 2, `${width} ${theme}: first history page is bounded`);
+    await workflow.getByRole('button', { name: 'Cargar cambios anteriores', exact: true }).click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="ticket-workflow-history"] li').length === 3);
+    check(historyReads.at(-1).cursor === '2' && (await workflow.getByTestId('ticket-workflow-history').innerText()).includes(workflowActor), `${width} ${theme}: earlier history uses cursor and displays actor reference when label is missing`);
+    for (const [suffix, mode, outcome] of [[26, 'pagination_hold_saved', 'saved'], [27, 'pagination_hold_uncertain', 'uncertain']]) {
+      await openWorkflow(lookupId(suffix), mode); await reviewWorkflow('Motivo conservado durante lectura cancelada');
+      // Queue a history load and confirmation in the same event turn, before
+      // React hides the review for the read. The canceled load must not strand
+      // readState=loading while the PATCH response is deliberately held.
+      await workflow.evaluate(element => {
+        const buttons = [...element.querySelectorAll('button')];
+        const older = buttons.find(button => button.textContent === 'Cargar cambios anteriores');
+        const confirm = buttons.find(button => button.textContent === 'Confirmar cambio de estado');
+        older.click(); confirm.click();
+      });
+      await workflow.locator('[data-workflow-state="submitting"]').waitFor();
+      check(await workflow.locator('[data-history-state="ready"]').count() === 1 && await workflow.getByTestId('ticket-workflow-history').isVisible(), `${width} ${theme}: canceled concurrent history keeps snapshot visible during ${outcome} PATCH`);
+      while (!delayedWorkflowPatches.length) await new Promise(resolve => setTimeout(resolve, 10));
+      delayedWorkflowPatches.splice(0).forEach(resolve => resolve());
+      await workflow.locator(`[data-workflow-state="${outcome}"]`).waitFor();
+      check(await workflow.locator('[data-history-state="ready"]').count() === 1 && await workflow.getByTestId('ticket-workflow-history').isVisible(), `${width} ${theme}: canceled read cannot strand history spinner after ${outcome}`);
+      check(outcome === 'saved' ? (await workflow.getByTestId('workflow-current-status').innerText()) === 'Cerrado' : await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).isVisible(), `${width} ${theme}: ${outcome} exposes confirmed status or exact retry after canceled read`);
+    }
+    workflowMode = 'normal';
     await referenceInput.fill(lookupId(10));
     check(await result.count() === 0, `${width} ${theme}: editing reference immediately hides prior ticket`);
     await lookup.getByRole('button', { name: 'Buscar ticket', exact: true }).click(); await lookupState('not_found');
@@ -245,8 +372,8 @@ try {
     await context.close();
   }
   for (const variant of [
-    { locale: 'en', theme: 'light', width: 390, label: 'Complete ticket reference', submit: 'Find ticket', status: 'Current status', reference: 'Ticket reference', reason: 'Other reason' },
-    { locale: 'pt-BR', theme: 'dark', width: 1440, label: 'Referência completa do ticket', submit: 'Buscar ticket', status: 'Estado atual', reference: 'Referência do ticket', reason: 'Outro motivo' },
+    { locale: 'en', theme: 'light', width: 390, label: 'Complete ticket reference', submit: 'Find ticket', status: 'Current status', reference: 'Ticket reference', reason: 'Other reason', workflowTarget: 'New status', workflowReason: 'Reason for the change', workflowReview: 'Review change', workflowConfirm: 'Confirm status change' },
+    { locale: 'pt-BR', theme: 'dark', width: 1440, label: 'Referência completa do ticket', submit: 'Buscar ticket', status: 'Estado atual', reference: 'Referência do ticket', reason: 'Outro motivo', workflowTarget: 'Novo estado', workflowReason: 'Motivo da alteração', workflowReview: 'Revisar alteração', workflowConfirm: 'Confirmar alteração de estado' },
   ]) {
     const context = await browser.newContext({ viewport: { width: variant.width, height: 960 }, reducedMotion: 'reduce', serviceWorkers: 'block', locale: variant.locale });
     const page = await context.newPage();
@@ -254,6 +381,7 @@ try {
     await page.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
       if (url.origin !== origin || request.method() !== 'GET') { report.blockedRequests.push({ method: request.method(), url: url.origin + url.pathname }); return route.abort(); }
+      if (url.pathname.endsWith('/history')) return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'x-nexid-data-mode': 'production' }, body: JSON.stringify({ ...workflowEnvelope(historicalId, 'qa-only', initialWorkflow(historicalId, 'qa-only')), items: [], page: { hasMore: false, nextCursor: null } }) });
       if (url.pathname.startsWith('/api/admin/tickets/')) return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'x-nexid-data-mode': 'production' }, body: JSON.stringify(historicalPayload(historicalId)) });
       return route.continue();
     });
@@ -267,6 +395,14 @@ try {
     check(text.includes(variant.status) && text.includes(variant.reference) && text.includes(variant.reason), `${variant.locale}: lookup labels, reason and status are localized`);
     check(text.includes(historicalDescription) && text.includes('UTC'), `${variant.locale}: customer text remains original and time explicitly UTC`);
     await inspect(page, `historical-ticket-${variant.locale}`, variant.width, variant.theme, '[data-testid="ticket-reference-lookup"]');
+    const workflow = page.getByTestId('ticket-workflow');
+    await workflow.locator('summary').click();
+    await workflow.locator('[data-history-state="ready"]').waitFor({ state: 'attached' });
+    await workflow.getByLabel(variant.workflowTarget, { exact: true }).selectOption('closed');
+    await workflow.getByLabel(variant.workflowReason, { exact: true }).fill('Motivo sintético original\nSegunda línea');
+    await workflow.getByRole('button', { name: variant.workflowReview, exact: true }).click();
+    check(await workflow.getByRole('button', { name: variant.workflowConfirm, exact: true }).count() === 1 && (await workflow.getByTestId('ticket-workflow-review').innerText()).includes('Motivo sintético original Segunda línea'), `${variant.locale}: workflow labels are localized and review shows normalized original reason`);
+    await inspect(page, `ticket-workflow-review-${variant.locale}`, variant.width, variant.theme, '[data-testid="ticket-workflow"]');
     await context.close();
   }
   assert.deepEqual(report.clientErrors, [], 'No client exceptions');

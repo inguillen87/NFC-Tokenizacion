@@ -1,10 +1,10 @@
 {
-  "release": "2026.09.21-dashboard.32",
-  "scope": "tenant-scoped-historical-ticket-reference-lookup",
+  "release": "2026.09.22-dashboard.33",
+  "scope": "audited-support-ticket-status-workflow",
   "realTapCertification": "not-included",
-  "baseCommit": "e999f3fed614da8a7ec209dbc07c12718a57d3ea",
+  "baseCommit": "f5b546e86cf8652401f43041d3d4181eb11eb689",
   "reconciliationBaseRelease": "2026.09.21-dashboard.28",
-  "requiredApiRelease": "2026.09.21-api-support-lookup.1",
+  "requiredApiRelease": "2026.09.22-api-support-workflow.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
@@ -21,5 +21,7 @@
   "intakeProtocol": "nexid.epcis-intake.v1",
   "editorialQueueProtocol": "nexid.editorial-queue.v1",
   "supportReportProtocol": "nexid.support-report.v1",
-  "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1"
+  "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
+  "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1",
+  "requiredApiMigration": "20260922100000_0112_support_ticket_workflow.sql"
 }

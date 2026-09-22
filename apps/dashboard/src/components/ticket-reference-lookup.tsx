@@ -5,6 +5,7 @@ import { canonicalTicketReference, createTicketLookupRunner, type TicketLookupLo
 import { ticketLookupCopy } from "../lib/ticket-reference-lookup-copy";
 import { projectSupportTicket } from "../lib/support-ticket-projection";
 import { SupportTicketDetails } from "./support-ticket-details";
+import { TicketWorkflow } from "./ticket-workflow";
 
 export function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = false, canLookup = false }: {
   tenantScope: string; locale?: TicketLookupLocale; isDemo?: boolean; canLookup?: boolean;
@@ -69,6 +70,10 @@ export function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = 
             {category ? <div><dt className="font-semibold">{copy.category}</dt><dd>{category}</dd></div> : null}
             <div><dt className="font-semibold">{copy.contact}</dt><dd className="break-all">{projection.contact || copy.noContact}</dd></div>
           </dl>
+          {!isDemo && canLookup ? <TicketWorkflow key={`${context}|${ticket.id}`} ticket={ticket} tenantScope={tenantScope} locale={locale} onCurrent={current => {
+            setResult(previous => previous.context === context && previous.status === "found" && previous.ticket?.id === current.ticketId
+              ? { ...previous, ticket: { ...previous.ticket, status: current.status } } : previous);
+          }} /> : null}
         </article>
       ) : null}
     </section>

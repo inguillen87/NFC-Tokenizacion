@@ -9,12 +9,12 @@ test('S9 ticket lookup retains immutable S6 evidence and identifies its paired A
  const [m,c]=await Promise.all([json('../public/release.json'),candidate()]);
  assert.equal(c.release,'2026.09.21-dashboard.28');
  assert.equal(createHash('sha256').update(JSON.stringify(c)).digest('hex'),'9be2d2d515dfcd3e43780c713dc51b2fb4f56a8e3a7f33df0f17d41532e11259');
- assert.equal(m.release,'2026.09.21-dashboard.32');
+ assert.equal(m.release,'2026.09.22-dashboard.33');
  assert.equal(m.reconciliationBaseRelease,c.release);
- assert.equal(m.baseCommit,'e999f3fed614da8a7ec209dbc07c12718a57d3ea');
- assert.equal(m.scope,'tenant-scoped-historical-ticket-reference-lookup');
+ assert.equal(m.baseCommit,'f5b546e86cf8652401f43041d3d4181eb11eb689');
+ assert.equal(m.scope,'audited-support-ticket-status-workflow');
  assert.equal(m.realTapCertification,'not-included');
- assert.equal(m.requiredApiRelease,'2026.09.21-api-support-lookup.1');
+ assert.equal(m.requiredApiRelease,'2026.09.22-api-support-workflow.1');
  assert.equal(m.requiredWebRelease,'2026.09.21-web-support.1');
  assert.equal(m.apiChangesIncluded,false);assert.equal(m.databaseMigrationsIncluded,false);
  assert.equal(c.application,'dashboard');

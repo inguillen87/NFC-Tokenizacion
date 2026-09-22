@@ -140,13 +140,13 @@ function safeParseJson(text: string) {
   }
 }
 
-async function readBoundedAdminProxyBody(req: Request) {
+async function readBoundedAdminProxyBody(req: Request, maximumBytes = MAX_ADMIN_PROXY_BODY_BYTES) {
   if (req.method === "GET" || req.method === "HEAD") {
     return { ok: true as const, body: undefined };
   }
 
   const declared = Number(req.headers.get("content-length") || "0");
-  if (Number.isFinite(declared) && declared > MAX_ADMIN_PROXY_BODY_BYTES) {
+  if (Number.isFinite(declared) && declared > maximumBytes) {
     return {
       ok: false as const,
       response: NextResponse.json(
@@ -167,7 +167,7 @@ async function readBoundedAdminProxyBody(req: Request) {
       if (done) break;
       if (!value) continue;
       total += value.byteLength;
-      if (total > MAX_ADMIN_PROXY_BODY_BYTES) {
+      if (total > maximumBytes) {
         await reader.cancel("admin_proxy_request_too_large").catch(() => undefined);
         return {
           ok: false as const,
@@ -1073,6 +1073,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
 async function forward(req: Request, path: string[]) {
   const normalizedPath = path.join("/");
+  const ticketPatch = req.method === "PATCH" && /^tickets\/[^/]+$/.test(normalizedPath);
   const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "sun/physical-taps" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests" || normalizedPath === "polygon/wallet");
   const reqUrl = new URL(req.url);
   const forceSandbox = ["1", "true", "sandbox"].includes(String(reqUrl.searchParams.get("sandbox") || reqUrl.searchParams.get("demoFallback") || "").toLowerCase());
@@ -1102,7 +1103,13 @@ async function forward(req: Request, path: string[]) {
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || (demoSession && !isProduction);
 
-  if (req.method === "GET" && /^tickets\/[^/]+$/.test(normalizedPath)) {
+  if ((req.method === "GET" && /^tickets\/[^/]+(?:\/history)?$/.test(normalizedPath)) || ticketPatch) {
+    if (ticketPatch && (req.headers.get("origin") !== reqUrl.origin || (req.headers.has("sec-fetch-site") && req.headers.get("sec-fetch-site") !== "same-origin"))) {
+      return NextResponse.json({ ok: false, reason: "ticket_transition_origin_forbidden" }, { status: 403 });
+    }
+    if (ticketPatch && !/^application\/json(?:\s*;|$)/i.test(req.headers.get("content-type") || "")) {
+      return NextResponse.json({ ok: false, reason: "ticket_transition_json_required" }, { status: 415 });
+    }
     if (demoSession || forceSandbox) return NextResponse.json({ ok: false, reason: "ticket_lookup_demo_unavailable" }, { status: 403 });
     if (reqUrl.searchParams.getAll("tenant").length > 1) return NextResponse.json({ ok: false, reason: "ticket_tenant_invalid" }, { status: 400 });
     const requested = (reqUrl.searchParams.get("tenant") || "").trim().toLowerCase();
@@ -1247,9 +1254,13 @@ async function forward(req: Request, path: string[]) {
     );
   }
 
-  const bodyResult = await readBoundedAdminProxyBody(req);
+  const bodyResult = await readBoundedAdminProxyBody(req, ticketPatch ? 16 * 1024 : MAX_ADMIN_PROXY_BODY_BYTES);
   if (!bodyResult.ok) return bodyResult.response;
   const body = bodyResult.body;
+  if (ticketPatch) {
+    const parsed = safeParseJson(body || "");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return NextResponse.json({ ok: false, reason: "ticket_transition_invalid" }, { status: 400 });
+  }
 
   if (
     isSupplierManifestQuantityOverrideRequest(req.method, normalizedPath, body || "")
@@ -1409,10 +1420,7 @@ async function forward(req: Request, path: string[]) {
   return new NextResponse(responseBody, { status: response.status, headers });
 }
 
-export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
-  const p = await params;
-  const path = p.path || [];
-  if (!/^tickets\/[^/]+$/.test(path.join("/"))) return forward(req, path);
+async function forwardPrivateTicketRequest(req: Request, path: string[]) {
   let response: Response;
   try { response = await forward(req, path); }
   catch { response = NextResponse.json({ ok: false, reason: "ticket_lookup_unavailable" }, { status: 503 }); }
@@ -1422,6 +1430,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ path: st
   return new NextResponse(response.body, { status: response.status, headers });
 }
 
+export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
+  const p = await params;
+  const path = p.path || [];
+  return /^tickets\/[^/]+(?:\/history)?$/.test(path.join("/")) ? forwardPrivateTicketRequest(req, path) : forward(req, path);
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const p = await params;
   return forward(req, p.path || []);
@@ -1429,7 +1443,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ path: s
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const p = await params;
-  return forward(req, p.path || []);
+  const path = p.path || [];
+  return /^tickets\/[^/]+(?:\/history)?$/.test(path.join("/")) ? forwardPrivateTicketRequest(req, path) : forward(req, path);
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
