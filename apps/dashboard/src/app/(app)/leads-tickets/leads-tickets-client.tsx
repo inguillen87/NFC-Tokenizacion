@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useRef, useState } from "react";
 import { Badge, Card } from "@product/ui";
+import { customerActivityCopy } from "../../../lib/customer-activity-copy";
+import { CustomerActivitySummary } from "../../../components/customer-activity-summary";
+import { buildCustomerActivitySummary, customerActivityDestination, type CustomerActivityKind } from "../../../lib/customer-activity-summary";
 import { CustomerMemberTimeline } from "../../../components/customer-member-timeline";
 import { CustomerSignalTimeline } from "../../../components/customer-signal-timeline";
 import { DataTable } from "../../../components/data-table";
@@ -23,14 +26,8 @@ import {
   type CustomerTicketRecord,
 } from "../../../lib/customer-signal-timeline";
 import {
-  Inbox,
-  TrendingUp,
-  MessageSquare,
-  Package,
-  Calendar,
   Sparkles,
   Search,
-  Compass,
   Bot,
   BrainCircuit,
   Radio,
@@ -215,6 +212,19 @@ export default function LeadsTicketsClient({
 }: LeadsTicketsClientProps) {
   const [activeTab, setActiveTab] = useState<"signals" | "opportunities" | "prospects" | "tickets" | "orders" | "ai_queries">("signals");
   const [searchTerm, setSearchTerm] = useState("");
+  const contentId = useId();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const activitySummary = useMemo(() => buildCustomerActivitySummary({
+    leads: initialLeads, tickets: initialTickets, orders: initialOrders,
+    collections: signalCollections, tenantScope, demoMode,
+  }), [initialLeads, initialTickets, initialOrders, signalCollections, tenantScope, demoMode]);
+  function openActivity(kind: CustomerActivityKind) {
+    if (activitySummary.cards.find(card => card.kind === kind)?.count == null) return;
+    setSearchTerm("");
+    setActiveTab(customerActivityDestination(kind));
+    // Focus stays within the existing workspace. No URL, fetch, or write is needed.
+    contentRef.current?.focus();
+  }
 
   const customerSignals = useMemo(() => buildCustomerSignalTimeline({
     leads: initialLeads,
@@ -295,31 +305,6 @@ export default function LeadsTicketsClient({
   const aiLiveCount = filteredAiQueries.filter((query) => query.source === "production" && /respondido|procesando|live|nuevo/i.test(query.status)).length;
   const aiDemoCount = filteredAiQueries.filter((query) => query.source === "demo").length;
 
-  // Pipeline count computations
-  const pipelineStages = [
-    { label: "Nuevo", count: initialLeads.filter((l) => l.status === "new").length + initialOrders.filter((o) => o.status === "new").length, color: "text-blue-400" },
-    { label: "Calificado", count: initialLeads.filter((l) => l.status === "contacted").length, color: "text-amber-400" },
-    { label: "Demo Lab", count: initialLeads.filter((l) => l.status === "demo_lab" || l.source === "demo_lab").length, color: "text-cyan-400" },
-    { label: "Enviado / Pruebas", count: initialOrders.filter((o) => o.status === "processing" || o.status === "shipped").length, color: "text-indigo-400" },
-    { label: "Cerrado / Ganado", count: initialLeads.filter((l) => l.status === "converted" || l.status === "closed").length + initialOrders.filter((o) => o.status === "completed").length, color: "text-emerald-400" }
-  ];
-
-  // Source distribution
-  const allSources = [...initialLeads, ...initialTickets].reduce<Record<string, number>>((acc, curr) => {
-    const src = curr.source || "web_bot";
-    acc[src] = (acc[src] || 0) + 1;
-    return acc;
-  }, {});
-
-  const totalSourcesCount = Object.values(allSources).reduce((a, b) => a + b, 0);
-
-  const sourceColors: Record<string, string> = {
-    assistant: "bg-cyan-500",
-    demo_lab: "bg-purple-500",
-    sales: "bg-emerald-500",
-    web_bot: "bg-indigo-500"
-  };
-
   const tabClass = (tab: typeof activeTab) =>
     `flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border ${
       activeTab === tab
@@ -329,106 +314,7 @@ export default function LeadsTicketsClient({
 
   return (
     <div className="space-y-6">
-      {/* Top HUD Cards */}
-      <section className="grid gap-4 grid-cols-2 md:grid-cols-5">
-        {[
-          { label: labels.leads, value: initialLeads.length, icon: Inbox, color: "text-blue-400" },
-          { label: labels.tickets, value: initialTickets.length, icon: MessageSquare, color: "text-amber-400" },
-          { label: "Reuniones", value: [...initialLeads, ...initialTickets].filter(item => /meeting|reunion|private|call|llamada/.test(String(('notes' in item ? item.notes : '') || ('message' in item ? item.message : '') || ('detail' in item ? item.detail : '') || ""))).length, icon: Calendar, color: "text-purple-400" },
-          { label: labels.orders, value: initialOrders.length, icon: Package, color: "text-indigo-400" },
-          { label: labels.hot, value: filteredOpportunities.length, icon: TrendingUp, color: "text-emerald-400", highlight: true }
-        ].map((stat, i) => (
-          <div
-            key={i}
-            className={`rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-0.5 ${
-              stat.highlight
-                ? "bg-cyan-500/10 border-cyan-400/25 shadow-[0_4px_20px_rgba(6,182,212,0.05)]"
-                : "bg-slate-950/40 border-white/10"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{stat.label}</p>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </div>
-            <p className="mt-2 text-2xl font-black text-white">{stat.value}</p>
-          </div>
-        ))}
-      </section>
-
-      {/* CRM Pipeline Visual Funnel */}
-      <Card className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-cyan-400 animate-pulse" />
-            CRM Pipeline & Funnel Comercial nexID
-          </h2>
-          <Badge tone="cyan">Operaciones Consolidadas</Badge>
-        </div>
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
-          {pipelineStages.map((stage, idx) => (
-            <div key={idx} className="relative rounded-xl border border-white/5 bg-slate-900/30 p-3 flex flex-col justify-between min-h-24 hover:bg-slate-900/50 transition-colors">
-              <div>
-                <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">Etapa {idx + 1}</span>
-                <p className="text-xs font-black text-white mt-1">{stage.label}</p>
-              </div>
-              <p className={`text-xl font-black mt-2 text-right ${stage.color}`}>{stage.count}</p>
-              
-              {/* Connector line for large screens */}
-              {idx < 4 && (
-                <div className="hidden md:block absolute top-1/2 -right-2 transform -translate-y-1/2 w-4 h-px bg-white/10 z-10" />
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Grid: Sources Performance & Overview */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="p-5 md:col-span-2">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200 mb-3 flex items-center gap-2">
-            <Compass className="h-4 w-4 text-purple-400" />
-            Distribución de Canales de Adquisición
-          </h2>
-          <div className="space-y-4">
-            {Object.entries(allSources).map(([source, count]) => {
-              const pct = totalSourcesCount ? Math.round((count / totalSourcesCount) * 100) : 0;
-              const barColor = sourceColors[source] || "bg-slate-500";
-              return (
-                <div key={source} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-white capitalize">{source.replace("_", " ")}</span>
-                    <span className="text-slate-400">{count} leads ({pct}%)</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-slate-900 overflow-hidden border border-white/5">
-                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-            {!Object.keys(allSources).length && (
-              <p className="text-xs text-slate-500 text-center py-4">No hay datos de distribución todavía.</p>
-            )}
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200 mb-3 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-400" />
-            Control Comercial Lite
-          </h2>
-          <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
-            <p>
-              • <b>Leads / Prospectos:</b> Registran la demanda por industria, volumen estimado e interés en tags seguros o básicos.
-            </p>
-            <p>
-              • <b>Tickets de Soporte:</b> Canal directo para cotizaciones, solicitudes de demo o reuniones de integración privada.
-            </p>
-            <p>
-              • <b>Pedidos de Muestras:</b> Estado de importación física de tags de prueba y kits de onboarding comercial.
-            </p>
-          </div>
-        </Card>
-      </div>
+      <CustomerActivitySummary summary={activitySummary} locale={locale} onOpen={openActivity} controls={contentId} />
 
       {/* Tab Navigation and Search */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-2 rounded-2xl bg-slate-950/70 border border-white/5">
@@ -474,7 +360,7 @@ export default function LeadsTicketsClient({
             : "La búsqueda filtra las señales cargadas, hasta las 80 más recientes."}
         </p>
       ) : null}
-      <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+      <div id={contentId} ref={contentRef} role="region" aria-label={customerActivityCopy[locale].workspace} tabIndex={-1} className="animate-in fade-in slide-in-from-top-1 duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500">
         {activeTab === "signals" && (
           <div className="space-y-6">
             <CustomerMemberTimeline

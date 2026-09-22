@@ -1,4 +1,4 @@
-name: Ticket deadline regression and dashboard acceptance
+name: Dashboard ticket and CRM acceptance
 on:
   push:
     branches: [codex/nexid-s9-ticket-deadline-20260922]
@@ -45,12 +45,14 @@ jobs:
           set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/nexid-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
           node "$RUNNER_TEMP/nexid-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
-      - name: Actual support components with synthetic transport
+      - name: Actual support and CRM components with synthetic transport
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/nexid-browser/node_modules/playwright-core/index.mjs
           AXE_MODULE_PATH: ${{ runner.temp }}/nexid-browser/node_modules/axe-core/axe.min.js
           QA_OUTPUT: ${{ runner.temp }}/nexid-ticket-deadline/browser
-        run: node apps/dashboard/tests/support-tickets.browser.mjs
+        run: |
+          node apps/dashboard/tests/support-tickets.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-customer-activity/browser" node apps/dashboard/tests/customer-activity-summary.browser.mjs
       - name: Record verification identity
         if: always()
         env:
