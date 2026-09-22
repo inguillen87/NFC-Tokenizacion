@@ -61,6 +61,30 @@ artifact upload and no persistent cache. It skips execution if the repository
 is private, preserving the current no-new-spending constraint. It does not
 modify the application's existing acceptance workflows or security gates.
 
+## Verified execution result
+
+Tooling commit: `f4f05c40974b5d159704f4b74b999812ca1c40c1`.
+Actions run: [35788731984](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35788731984).
+Job: `106951813597`. Logs were read after completion on September 22, 2026.
+
+- Unit checks: 31 passed, zero failed, canceled or skipped, on Node 24.15.0.
+- Runtime comparison with accepted dashboard `d2758dc`: passed. No new full
+  application build was run or claimed for this release-tooling-only change.
+- Actual GitHub API reads reconfirmed exact-candidate CI for API `e00c2dd`
+  (run `35683108028`) and dashboard `d2758dc` (run `35786823244`).
+- `VERCEL_TOKEN` was unavailable to this workflow. The read-only check made no
+  Vercel request without that credential and reported `credential_unavailable`.
+  This is not proof that no other account, environment or machine has a token.
+- The new dashboard deployment remains unrecorded in the inventory; no old
+  deployment was substituted. Report: `status: blocked`, `productionChanged:
+  false`, `promotionAuthorized: false`, process exit 2.
+
+The overall preflight workflow is therefore FAILED/BLOCKED at the external
+prerequisite step, while its tests and runtime-preservation step passed.
+Do not report this run as a successful publication or override it to green.
+No migration, deployment, promotion or paid resource was requested by the run.
+This documentation-only result addendum does not change the tested tooling.
+
 ## Remaining production sequence
 
 1. Restore authorized Vercel access for the existing team, not a new project.
@@ -76,6 +100,6 @@ modify the application's existing acceptance workflows or security gates.
 
 Provider references used for the implementation:
 - https://vercel.com/docs/rest-api
-- https://vercel.com/docs/rest-api/reference/endpoints/deployments/get-a-deployment-by-id-or-url
+- https://vercel.com/docs/integrations/create-integration/deployment-integration-action
 - https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run
 - https://docs.github.com/en/billing/concepts/product-billing/github-actions
