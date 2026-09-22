@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.21-api-current-editorial.1",
-  "scope": "current-published-editorial-separated-from-historical-reading",
-  "baseCommit": "1aef6c3827459bb2ddbc2b4907ffc6dda239b30a",
+  "release": "2026.09.21-api-support.1",
+  "scope": "authorized-event-scoped-idempotent-support-reports",
+  "baseCommit": "df6b0f14b70c5237bb94e2d31b5ec175f7ad0e26",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -45,5 +45,6 @@
   "analyticsLocation": "consented-approximate-observation-with-original-evidence-preserved",
   "realtimePayloadContract": "operational-provenance-additive/v1",
   "requiredDashboardRelease": "2026.09.21-dashboard.30",
-  "currentEditorialProtocol": "nexid.current-editorial.v1"
+  "currentEditorialProtocol": "nexid.current-editorial.v1",
+  "supportReportProtocol": "nexid.support-report.v1"
 }

@@ -5,6 +5,7 @@ import { normalizeCoordinatePair, redactSensitiveQueryValues, sanitizePublicLoca
 import { buildSunSensorEvidence, declaredStaticSensorFromLocaleData } from './sun-sensor-evidence';
 import { resolvePublicLotLabel } from './public-lot-label';
 import { readCurrentPassportEditorial } from './current-passport-editorial';
+import { createSupportReportCapability } from './support-report-capability';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -954,6 +955,7 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const publicContract = withContractSummaryFields(snapshotContract);
   // Publication metadata is current, separate from the stored reading evidence.
   publicContract.currentEditorial = currentEditorial;
+  publicContract.supportReport = await createSupportReportCapability(currentTapEventId);
   if (tokenizationEventId) {
     try {
       publicContract.certificate = {

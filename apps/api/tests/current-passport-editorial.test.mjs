@@ -92,6 +92,7 @@ test('actual snapshot reader adds current projection without changing historical
     sql: async () => [{ id: 510, trace_id: 'trace', created_at: '2026-09-19T00:00:00Z', bid: 'QA', uid_hex: 'QA_ONLY', result_json: { contract: structuredClone(historical) } }],
     ensureTable: async () => {}, asRecord: value => value || {}, resolveCurrentSnapshotIdentity: async () => null, resolveCurrentSnapshotTapLocation: async () => null,
     readCurrentPassportEditorial: async eventId => { lookups.push(eventId); return { ...editorial }; },
+    createSupportReportCapability: async () => null,
     normalizeSnapshotContractFromCurrentIdentity: value => value, sanitizeSnapshotPublicCoordinates: value => value,
     normalizeSunProfileMismatchContract: value => value, normalizeSnapshotContractFromCurrentTap: value => value,
     verifySunFreshHandoffToken: () => fresh ? { ok: true, payload: { exp: 1790100000 } } : { ok: false },

@@ -4,6 +4,8 @@ import test from "node:test";
 
 const registerWarranty = await readFile(new URL("../src/app/public/cta/register-warranty/route.ts", import.meta.url), "utf8");
 const reportProblem = await readFile(new URL("../src/app/public/cta/report-problem/route.ts", import.meta.url), "utf8");
+const reportWriter = await readFile(new URL("../src/lib/support-report-service.ts", import.meta.url), "utf8");
+const reportHandler = await readFile(new URL("../src/lib/support-report-http.ts", import.meta.url), "utf8");
 const provenance = await readFile(new URL("../src/app/public/cta/provenance/route.ts", import.meta.url), "utf8");
 const demoCta = await readFile(new URL("../src/lib/demo-cta.ts", import.meta.url), "utf8");
 const sun = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
@@ -26,16 +28,16 @@ test("warranty CTA records a tenant-policy review request and never confirms cov
 });
 
 test("problem report creates a real support ticket before confirming the user action", () => {
-  assert.match(reportProblem, /recordDemoCta\("problem_report_request"/);
-  assert.match(reportProblem, /INSERT INTO tickets/);
-  assert.match(reportProblem, /tenant_id, bid, uid_hex, tap_event_id, category/);
-  assert.match(reportProblem, /tenant_assigned: Boolean\(ticket\?\.tenant_id\)/);
-  assert.match(reportProblem, /tenant_id: target\.tenantId \|\| undefined/);
-  assert.match(reportProblem, /source\)\s*[\s\S]*'sun_public_report'/);
-  assert.match(reportProblem, /reason: "ticket_persistence_unavailable"/);
-  assert.match(reportProblem, /outcome: "ticket_created"/);
-  assert.match(reportProblem, /ticket_created: true/);
-  assert.match(reportProblem, /real_ticket_service: true/);
+  assert.match(reportProblem, /handleSupportReport\(req\)/);
+  assert.match(reportHandler, /recordDemoCta\("problem_report_request"/);
+  assert.match(reportWriter, /INSERT INTO tickets\(id,tenant_id,bid,uid_hex,tap_event_id,category/);
+  assert.match(reportWriter, /tenant_assigned: true/);
+  assert.match(reportWriter, /ON CONFLICT\(id\) DO NOTHING/);
+  assert.match(reportHandler, /verifySupportReportCapability/);
+  assert.match(reportWriter, /ticket_persistence_unavailable/);
+  assert.match(reportWriter, /"ticket_created"[\s\S]*"ticket_existing"/);
+  assert.match(reportWriter, /ticket_created: true/);
+  assert.match(reportWriter, /real_ticket_service: true/);
   assert.match(ticketMigration, /ADD COLUMN IF NOT EXISTS bid text/);
   assert.match(ticketMigration, /idx_tickets_sun_identity/);
   assert.doesNotMatch(reportProblem, /recordDemoCta\("report_problem"/);
