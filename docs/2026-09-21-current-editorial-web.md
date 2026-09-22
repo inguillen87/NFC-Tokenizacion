@@ -1,6 +1,6 @@
 # S8b: ficha vigente y evidencia histórica
 
-Candidato web `2026.09.21-web-current-editorial.1`, sobre el código productivo
+Web publicada `2026.09.21-web-current-editorial.1`, sobre el código productivo
 `6cfd8bb451cef438786a623e336a187728a30f86` y documentación `cd27d15a`.
 Requiere API `2026.09.21-api-current-editorial.1` para la proyección
 `nexid.current-editorial.v1`; con API anterior muestra disponibilidad desconocida.
@@ -49,7 +49,27 @@ Publicar primero la API compatible desde su árbol; luego esta web. Dashboard
 conserva `2026.09.21-dashboard.30`. Sin cambios de claves, NFC, TT, migraciones,
 despacho de mensajes ni acciones de negocio automáticas.
 Reversa web: `dpl_DiHkpj5eFdi3SYHpdhnzuLwMbGoj`.
-Pendiente registrar SHAs, CI, despliegues y comprobaciones remotas finales.
+
+Publicación verificada el 22/09/2026, 01:01 UTC (21/09 en Argentina):
+
+- SHA ejecutado: `28adbe3db5ff1d56662f8dfc777afa1f3d19cebb`, árbol limpio.
+- CI [35673632474](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35673632474):
+  654 pruebas web, build, secretos, 12 comprobaciones integradas y 12 vistas
+  con cero errores JS/hallazgos axe en las superficies comprobadas.
+- Despliegue `dpl_8oEj6dWFyfoarbU5ENxMPK3NDyAG`, READY; URL inmutable
+  https://nexid-kd753z72j-marcelos-projects-c26aa499.vercel.app.
+- https://nexid.lat apunta a ese despliegue y entrega el marcador correcto.
+  Antes y después de promover: seis vistas públicas ES/EN/PT, 390 claro y 1440
+  oscuro, sin errores JS, desbordes, hallazgos axe o intentos de escritura.
+  La demo no anuncia una publicación real; sesión anónima sin autenticación.
+- API publicada primero: `dpl_9izrWMLF7AHeHTFdyeDyjAgJnDD4`,
+  SHA `df6b0f14b70c5237bb94e2d31b5ec175f7ad0e26`, CI
+  [35673529062](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35673529062).
+- Dashboard continúa `2026.09.21-dashboard.30`.
+
+Reportes locales ignorados: `artifacts/s8-web-ci-35673632474/`,
+`artifacts/s8-staged-web/report.json`, `artifacts/s8-production-web/report.json`.
+La documentación posterior no cambia el SHA que ejecuta producción.
 
 S8 sigue teniendo trabajo: primera publicación de negocio revisada con contenido
 real; fuentes/versiones para mantenimiento y sostenibilidad donde corresponda;
