@@ -72,6 +72,29 @@ transport are explicitly synthetic and Next navigation is stubbed. CI results
 must be verified against the exact new commit before claiming a pass. Automated
 browser checks do not certify a production session or a manual accessibility audit.
 
+## Verified CI result
+
+Exact runtime source: `d2758dce665ef0c320e08df3808d529b574b94ce`.
+GitHub Actions run [35786823244](https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/35786823244),
+job `106945541588`, completed successfully on its first attempt on September 22,
+2026. The run result was read after completion; counts below came from its logs.
+
+- Dashboard: 1,078 tests total, 1,076 passed, zero failures/cancellations and two
+  pre-existing optional browser skips. The 27 new tests are included, not added
+  on top of that total.
+- Dashboard typecheck, static QA, production build and secret custody gate passed.
+- Existing support browser harness: 296 checks in 24 views, no failures.
+- New actual-workspace CRM harness: 547 checks in 36 locale/theme/viewport
+  combinations, no recorded page errors. Its scoped axe and overflow assertions
+  passed. Real parent keyboard navigation, search clearing, retained scope and
+  no business requests were checked.
+
+The harness used synthetic data and stubbed Next navigation. It did not certify
+an authenticated production session, backend integration, physical NFC, the
+whole enterprise gate suite or a manual visual/accessibility audit. Screenshots
+were generated on the ephemeral runner, not manually inspected or uploaded.
+This documentation-only addendum does not alter the runtime source above.
+
 ## Next plan blocks and boundaries
 
 1. Recheck current migration and provider authorization gates before a coordinated
