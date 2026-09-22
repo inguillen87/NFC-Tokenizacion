@@ -1,0 +1,30 @@
+{
+  "schema": "nexid.dashboard-candidate-evidence.v1",
+  "release": "2026.09.22-dashboard.34",
+  "status": "staged-not-promoted",
+  "sourceSha": "702829269506758dbf1f969d0627a71083a80c87",
+  "sourceBranch": "codex/nexid-s9-ticket-deadline-20260922",
+  "ci": { "runId": 35796306175, "jobId": 106976286736, "conclusion": "success", "tests": 1099, "passed": 1097, "failed": 0, "skipped": 2 },
+  "deployment": {
+    "id": "dpl_Dg4e2MbGoLiG6FjPxLGRYuYxqwrt",
+    "url": "https://nexid-dashboard-nt7v089g4-marcelos-projects-c26aa499.vercel.app",
+    "readyState": "READY",
+    "sourceEvidence": "provider-native-git-sha",
+    "autoAssignCustomDomains": false,
+    "releaseMarkerRead": "2026.09.22-dashboard.34"
+  },
+  "workerAssets": {
+    "maplibre-gl-worker.mjs": "ce4957017fe705ac2f9ebef206cca966d08d8621756c39326a78cf09757e7d75",
+    "maplibre-gl-shared.mjs": "fcf4d81450df235da0aea74897cc23926774b5228d38ae1de6a7d701c5905785"
+  },
+  "assetBytesMatchLockedPackage": true,
+  "productionDomainChanged": false,
+  "productionMigrationApplied": false,
+  "productionDashboardBefore": "dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q",
+  "productionApiBefore": "dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V",
+  "physicalTapCertified": false,
+  "authenticatedTenantBusinessAcceptance": false,
+  "requiredMigration": "20260922100000_0112_support_ticket_workflow.sql",
+  "remainingGates": ["specific-migration-confirmation-and-application", "independent-api-security-patch-and-acceptance", "paired-authenticated-acceptance", "coordinated-promotion-and-canonical-smoke"],
+  "excludedOlderDashboardCandidate": "dpl_2wKFyHZHCMUKUCAH9xmWKNUcsXXA"
+}

@@ -83,3 +83,27 @@ tenant authority, business messages or domain promotion was changed here.
 A Vercel candidate is not a promotion receipt. CI and the final deployment must
 identify the exact committed .34 source. The earlier d2758dc candidate lacks
 these security fixes and must not be substituted for this release.
+
+## Verified GitHub and Vercel result
+
+Runtime source `702829269506758dbf1f969d0627a71083a80c87` was pushed by a normal
+fast-forward to the existing continuation branch. GitHub Actions run
+`35796306175`, job `106976286736`, completed successfully on its first attempt.
+Logs reconfirm 1,097 passed / 0 failed / 2 optional skips, the dependency gate,
+typecheck/build, secret custody, support 296/24, CRM 547/36 and both map runs
+29/4. One map run used a real Next production server for worker/shared assets.
+The local full audit additionally reports eight low-severity findings, zero
+moderate/high/critical. They are not claimed resolved by this maintenance.
+
+Vercel deployment `dpl_Dg4e2MbGoLiG6FjPxLGRYuYxqwrt` reached READY with the exact
+native Git SHA above and `autoAssignCustomDomains: false`. An authenticated
+Vercel CLI read returned the committed .34 release marker. Both deployed worker
+files were downloaded and matched the locked-package SHA-256 digests recorded
+in `releases/2026-09-22-dashboard.34.candidate.json`.
+
+The project production targets remained the prior API and Dashboard deployments.
+The production migration ledger was rechecked and still has zero 0112 rows.
+No promotion or database completion operation was called. The .34 manifest is
+the current dashboard candidate record; the earlier support/CRM preflight
+inventory is historical and must not substitute d2758dc or .33 for this source.
+The private local QA Next server was stopped after its tests completed.
