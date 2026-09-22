@@ -1,3 +1,4 @@
+import { readTicketResponse } from "./ticket-request-deadline";
 import { canonicalTicketReference } from "./ticket-reference-lookup";
 
 export type TicketStatus = "open" | "pending" | "closed";
@@ -64,21 +65,18 @@ export function createTicketWorkflowReader(reference: string, tenant: string, fe
       const ownGeneration = generation;
       controller = new AbortController();
       const ownController = controller;
-      const timer = setTimeout(() => ownController.abort(), 15_000);
       try {
         const query = new URLSearchParams();
         if (tenant) query.set("tenant", tenant);
         if (cursor) query.set("cursor", cursor);
-        const response = await fetcher(`/api/admin/tickets/${reference}/history${query.size ? `?${query}` : ""}`, {
+        const { response, body } = await readTicketResponse(fetcher, `/api/admin/tickets/${reference}/history${query.size ? `?${query}` : ""}`, {
           method: "GET", cache: "no-store", credentials: "same-origin", redirect: "error", signal: ownController.signal, headers: { Accept: "application/json" },
-        });
-        const body = await response.json().catch(() => null);
+        }, ownController);
         if (generation !== ownGeneration) return null;
         if (response.status === 401 || response.status === 403) return { status: "forbidden" };
         const history = response.ok && response.headers.get("x-nexid-data-mode") === "production" ? parseWorkflowHistory(body, reference, tenant) : null;
         return history ? { status: "ready", history } : { status: "unavailable" };
       } catch { return generation === ownGeneration ? { status: "unavailable" } : null; }
-      finally { clearTimeout(timer); }
     },
   };
 }
@@ -129,15 +127,13 @@ export function createTicketWorkflowWriter(reference: string, tenant: string, fe
       const frozen = attempt;
       controller = new AbortController();
       const ownController = controller;
-      const timer = setTimeout(() => ownController.abort(), 15_000);
       try {
         const query = tenant ? `?${new URLSearchParams({ tenant })}` : "";
-        const response = await fetcher(`/api/admin/tickets/${reference}${query}`, {
+        const { response, body } = await readTicketResponse(fetcher, `/api/admin/tickets/${reference}${query}`, {
           method: "PATCH", cache: "no-store", credentials: "same-origin", redirect: "error", signal: ownController.signal,
           headers: { "Content-Type": "application/json", Accept: "application/json", "Idempotency-Key": frozen.command.request_id },
           body: JSON.stringify(frozen.command),
-        });
-        const body = await response.json().catch(() => null);
+        }, ownController);
         if (generation !== ownGeneration) return null;
         const outcome = parseWorkflowOutcome(response.status, body, reference, tenant, frozen.command, frozen.fromStatus, response.headers.get("x-nexid-data-mode"));
         if (outcome.status === "saved") unresolved = false;
@@ -147,7 +143,7 @@ export function createTicketWorkflowWriter(reference: string, tenant: string, fe
         if (generation !== ownGeneration) return null;
         unresolved = true;
         return { status: "uncertain" };
-      } finally { clearTimeout(timer); if (generation === ownGeneration) busy = false; }
+      } finally { if (generation === ownGeneration) busy = false; }
     },
   };
 }

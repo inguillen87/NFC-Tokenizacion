@@ -1,3 +1,4 @@
+import { readTicketResponse } from "./ticket-request-deadline";
 export type TicketLookupLocale = "es-AR" | "en" | "pt-BR";
 export type TicketLookupState = {
   status: "idle" | "loading" | "invalid" | "found" | "not_found" | "forbidden" | "unconfirmed";
@@ -58,18 +59,16 @@ export function createTicketLookupRunner(fetcher: typeof fetch = fetch) {
       const ownController = controller;
       const query = new URLSearchParams();
       if (tenant) query.set("tenant", tenant);
-      const timer = setTimeout(() => ownController.abort(), 15_000);
       try {
-        const response = await fetcher(`/api/admin/tickets/${reference}${query.size ? `?${query}` : ""}`, {
+        const { response, body } = await readTicketResponse(fetcher, `/api/admin/tickets/${reference}${query.size ? `?${query}` : ""}`, {
           method: "GET", cache: "no-store", credentials: "same-origin", redirect: "error", signal: ownController.signal,
           headers: { Accept: "application/json" },
-        });
-        const body = await response.json().catch(() => null);
+        }, ownController);
         if (generation !== ownGeneration) return null;
         return parseTicketLookupResponse(response.status, body, reference, tenant, response.headers.get("x-nexid-data-mode"));
       } catch {
         return generation === ownGeneration ? { status: "unconfirmed", reference } : null;
-      } finally { clearTimeout(timer); }
+      }
     },
   };
 }
