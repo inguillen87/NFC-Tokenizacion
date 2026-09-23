@@ -90,3 +90,33 @@ El recibo de publicación registra por separado las pruebas locales, el CI del
 commit, la identidad de Vercel y la lectura autenticada. El harness de navegador
 monta el componente real con sesión y transporte sintéticos: no certifica una
 orden real, una escritura productiva ni las muestras físicas del proveedor.
+
+## Publicación verificada
+
+Commit de ejecución `86a2b9cef1378f05584800c27e302b9a7ba27e95`; GitHub Actions
+`35873798944` aprobado, incluyendo las mismas 805 comprobaciones del alta guiada
+y las regresiones de soporte, CRM, historial, navegación de lotes y mapas.
+Vercel `dpl_6XdGUzxB7XTi4Gq7i2wmKrpdjy5m` se construyó desde ese SHA nativo y se
+promovió después del CI. El alias `app.nexid.lat` y los bytes de `/release.json`
+coinciden con el despliegue y el archivo de Git. API y web conservaron sus alias.
+
+La sesión real confirmó .39, empresa fija, los siete perfiles, aplicación local
+de TagTamper, bloqueo por falta de permiso de claves y modelo UHF inicialmente
+vacío. Se revisó visualmente el formulario servido. No se envió ningún POST de
+creación ni se generaron pedidos o claves para esta comprobación. El recibo está
+en `releases/2026-09-23-dashboard.39.candidate.json` (estado `promoted`).
+
+## Trabajo que sigue abierto
+
+La preparación actual vive en la página y la creación NFC aprovisiona claves.
+Para que una empresa sin permisos criptográficos pueda solicitar etiquetas y
+retomar su trabajo después, el siguiente incremento debe separar un borrador
+comercial persistente de la provisión técnica. Requiere contrato de API, permisos
+y auditoría propios; no se debe simular guardado local ni ampliar permisos como
+atajo. La cotización, confirmación del material y aprobación de muestras deben
+seguir siendo decisiones explícitas con evidencia.
+
+También siguen pendientes una importación guiada del manifiesto real del
+proveedor sobre los contratos existentes y la aceptación de un primer conector
+ERP/WMS con una empresa elegida. Los ejemplos ejecutables del kit S5 y las pruebas
+sintéticas de esta entrega no cierran esas integraciones.
