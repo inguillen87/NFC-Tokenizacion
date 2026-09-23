@@ -99,7 +99,7 @@ export function EnterpriseRolePresetSummary({ role }: { role?: EnterpriseRoleCat
     <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/5 p-3 text-xs" data-testid="enterprise-role-preset">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <b className="text-cyan-50">{role.displayName}</b>
-        <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300">{role.tenantBound ? "tenant-bound" : "global"}</span>
+        <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300">{role.code === "supplier_operator" ? "Interno · sólo asignadas" : role.tenantBound ? "tenant-bound" : "global"}</span>
       </div>
       <p className="mt-2 leading-5 text-slate-300">{role.description}</p>
       <p className="mt-3 font-black uppercase tracking-[0.12em] text-slate-500">Preset autoritativo</p>

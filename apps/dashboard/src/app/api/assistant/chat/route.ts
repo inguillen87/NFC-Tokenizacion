@@ -38,6 +38,7 @@ export async function POST(req: Request) {
   if (!sameOrigin(req)) return NextResponse.json({ error: "same_origin_required" }, { status: 403 });
   const session = await getDashboardSession();
   if (!session) return NextResponse.json({ error: "dashboard_session_required" }, { status: 401 });
+  if (session.role === "supplier-operator") return NextResponse.json({ ok: false, reason: "supplier_operator_route_forbidden" }, { status: 403, headers: { "cache-control": "private, no-store", "referrer-policy": "no-referrer", Vary: "Cookie" } });
   if (session.isDemo) return NextResponse.json({ error: "demo_session_live_ai_disabled" }, { status: 403 });
   const retryAfter = consumeRateLimit(session.id);
   if (retryAfter > 0) return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: { "retry-after": String(retryAfter) } });

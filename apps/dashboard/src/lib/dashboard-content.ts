@@ -111,6 +111,7 @@ export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> 
   "marketing-manager": ["overview", "analytics", "leadsTickets", "loyalty", "experiences", "campaigns", "sdkVision"],
   "reseller-admin": ["overview", "batches", "analytics", "leadsTickets", "loyalty", "subscriptions", "sdkVision"],
   "api-integration": [],
+  "supplier-operator": [],
   "security-operator": ["overview", "tags", "analytics", "events", "sdkVision"],
   reseller: ["overview", "batches", "analytics", "loyalty", "subscriptions", "sdkVision"],
   viewer: ["overview", "analytics", "sdkVision"],
@@ -181,7 +182,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       category: "Categoria",
       noQueries: "No hay consultas registradas",
     },
-    roles: { "tenant-owner": "Propietario del tenant", "tenant-admin": "Admin del tenant", "security-analyst": "Analista de seguridad", "operations-manager": "Responsable de operaciones", "packaging-operator": "Operador de packaging", "marketing-manager": "Responsable de marketing", viewer: "Viewer", "reseller-admin": "Admin reseller", "api-integration": "Integración API", "super-admin": "Super Admin", "security-operator": "Operador de seguridad", reseller: "Reseller" },
+    roles: { "tenant-owner": "Propietario del tenant", "tenant-admin": "Admin del tenant", "security-analyst": "Analista de seguridad", "operations-manager": "Responsable de operaciones", "packaging-operator": "Operador de packaging", "marketing-manager": "Responsable de marketing", viewer: "Viewer", "reseller-admin": "Admin reseller", "api-integration": "Integración API", "super-admin": "Super Admin", "supplier-operator": "Operador de solicitudes NexID", "security-operator": "Operador de seguridad", reseller: "Reseller" },
     statuses: { active: "Activo", pending: "Pendiente", revoked: "Revocado", healthy: "Sano", risk: "Riesgo", draft: "Borrador", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "No registrado", NOT_ACTIVE: "No activo", REPLAY_SUSPECT: "Replay sospechoso", VALID: "Válido" },
   },
   "pt-BR": {
@@ -248,7 +249,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       category: "Categoria",
       noQueries: "Nao ha consultas registradas",
     },
-    roles: { "tenant-owner": "Proprietário do tenant", "tenant-admin": "Admin do tenant", "security-analyst": "Analista de segurança", "operations-manager": "Gerente de operações", "packaging-operator": "Operador de embalagem", "marketing-manager": "Gerente de marketing", viewer: "Viewer", "reseller-admin": "Admin revendedor", "api-integration": "Integração API", "super-admin": "Super Admin", "security-operator": "Operador de segurança", reseller: "Revendedor" },
+    roles: { "tenant-owner": "Proprietário do tenant", "tenant-admin": "Admin do tenant", "security-analyst": "Analista de segurança", "operations-manager": "Gerente de operações", "packaging-operator": "Operador de embalagem", "marketing-manager": "Gerente de marketing", viewer: "Viewer", "reseller-admin": "Admin revendedor", "api-integration": "Integração API", "super-admin": "Super Admin", "supplier-operator": "Operador de solicitudes NexID", "security-operator": "Operador de segurança", reseller: "Revendedor" },
     statuses: { active: "Ativo", pending: "Pendente", revoked: "Revogado", healthy: "Saudável", risk: "Risco", draft: "Rascunho", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "Não registrado", NOT_ACTIVE: "Não ativo", REPLAY_SUSPECT: "Replay suspeito", VALID: "Válido" },
   },
   en: {
@@ -315,7 +316,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       category: "Category",
       noQueries: "No AI queries registered",
     },
-    roles: { "tenant-owner": "Tenant Owner", "tenant-admin": "Tenant Admin", "security-analyst": "Security Analyst", "operations-manager": "Operations Manager", "packaging-operator": "Packaging Operator", "marketing-manager": "Marketing Manager", viewer: "Viewer", "reseller-admin": "Reseller Admin", "api-integration": "API Integration", "super-admin": "Super Admin", "security-operator": "Security Operator", reseller: "Reseller" },
+    roles: { "tenant-owner": "Tenant Owner", "tenant-admin": "Tenant Admin", "security-analyst": "Security Analyst", "operations-manager": "Operations Manager", "packaging-operator": "Packaging Operator", "marketing-manager": "Marketing Manager", viewer: "Viewer", "reseller-admin": "Reseller Admin", "api-integration": "API Integration", "super-admin": "Super Admin", "supplier-operator": "Operador de solicitudes NexID", "security-operator": "Security Operator", reseller: "Reseller" },
     statuses: { active: "Active", pending: "Pending", revoked: "Revoked", healthy: "Healthy", risk: "Risk", draft: "Draft", valid: "Valid", duplicate: "Duplicate", tamper: "Tamper", INVALID: "Invalid", NOT_REGISTERED: "Not registered", NOT_ACTIVE: "Not active", REPLAY_SUSPECT: "Replay suspect", VALID: "Valid" },
   },
 };

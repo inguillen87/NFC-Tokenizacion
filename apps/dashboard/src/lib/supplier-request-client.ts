@@ -26,7 +26,7 @@ function scopeOf(payload: unknown, tenant: string) {
   if (tenant ? scope.mode !== "tenant" || scope.tenant_slug !== tenant || !SUPPLIER_REQUEST_UUID.test(scope.tenant_id) : scope.mode !== "global" || scope.tenant_id !== null || scope.tenant_slug !== null) return invalid();
   return { envelope, scope };
 }
-function parseItem(raw: unknown, tenant: string): SupplierRequest {
+export function parseSupplierRequestRecord(raw: unknown, tenant = ""): SupplierRequest {
   const item = object(raw);
   if (!item || typeof item.id !== "string" || !SUPPLIER_REQUEST_UUID.test(item.id) || typeof item.tenant_id !== "string" || !SUPPLIER_REQUEST_UUID.test(item.tenant_id) || typeof item.tenant_slug !== "string" || !tenantPattern.test(item.tenant_slug) || (tenant && item.tenant_slug !== tenant)
     || !["draft", "submitted", "provisioned"].includes(item.status) || !revision(item.revision) || typeof item.title !== "string" || !item.title.trim() || item.title.length > 200 || typeof item.notes !== "string" || item.notes.length > 4000
@@ -45,7 +45,7 @@ export function filterSupplierRequestInbox(items: SupplierRequest[], query: stri
   return items.filter(item => (filter === "all" || supplierRequestManagementState(item) === filter) && (!search || [item.title, item.tenant_slug, item.id, item.construction_id].some(value => value.toLocaleLowerCase("es").includes(search))));
 }
 export function parseSupplierRequestEnvelope(payload: unknown, tenant: string, requestId?: string): SupplierRequestEnvelope {
-  const { envelope, scope } = scopeOf(payload, tenant), request = parseItem(envelope.request, tenant);
+  const { envelope, scope } = scopeOf(payload, tenant), request = parseSupplierRequestRecord(envelope.request, tenant);
   if ((requestId && request.id !== requestId) || (tenant && request.tenant_id !== scope.tenant_id)) return invalid();
   const raw = object(envelope.receipt);
   if (!raw) return { request };
@@ -55,7 +55,7 @@ export function parseSupplierRequestEnvelope(payload: unknown, tenant: string, r
 export function parseSupplierRequestList(payload: unknown, tenant: string) {
   const { envelope, scope } = scopeOf(payload, tenant);
   if (!Array.isArray(envelope.items) || envelope.items.length > 100 || envelope.count !== envelope.items.length || typeof envelope.truncated !== "boolean") return invalid();
-  const items = envelope.items.map(item => parseItem(item, tenant));
+  const items = envelope.items.map(item => parseSupplierRequestRecord(item, tenant));
   if (new Set(items.map(item => item.id)).size !== items.length || items.some(item => tenant ? item.tenant_id !== scope.tenant_id : item.status === "draft")) return invalid();
   return { items, truncated: envelope.truncated as boolean };
 }

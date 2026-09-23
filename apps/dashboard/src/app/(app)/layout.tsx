@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { locale, locales, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const session = await requireDashboardSession();
-  requireDashboardTenantScope(session);
+  if (session.role !== "supplier-operator") requireDashboardTenantScope(session);
 
   return (
     <DashboardShell

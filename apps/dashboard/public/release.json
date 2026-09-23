@@ -1,10 +1,10 @@
 {
-  "release": "2026.09.23-dashboard.41",
-  "scope": "supplier-request-clarifications-and-actionable-inbox",
+  "release": "2026.09.23-dashboard.42",
+  "scope": "supplier-request-assignment-and-limited-operator",
   "realTapCertification": "not-included",
-  "baseCommit": "eca50e873cd5bcb063178f3ff9545a24a98a7ae8",
+  "baseCommit": "71b3248dcd3d6d40d8eb6668c30ee5442b64195b",
   "reconciliationBaseRelease": "2026.09.21-dashboard.28",
-  "requiredApiRelease": "2026.09.23-api-supplier-requests.2",
+  "requiredApiRelease": "2026.09.23-api-supplier-requests.3",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
@@ -23,7 +23,8 @@
   "supportReportProtocol": "nexid.support-report.v1",
   "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
   "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1",
-  "requiredApiMigration": "20260923150000_0114_supplier_request_reviews.sql",
+  "requiredApiMigration": "20260923180100_0116_supplier_request_assignments.sql",
   "supplierRequestProtocol": "nexid.supplier-request.v1",
-  "supplierRequestReviewProtocol": "nexid.supplier-request-review.v1"
+  "supplierRequestReviewProtocol": "nexid.supplier-request-review.v1",
+  "supplierRequestAssignmentProtocol": "nexid.supplier-request-assignment.v1"
 }

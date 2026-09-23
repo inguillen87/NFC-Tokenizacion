@@ -1,5 +1,6 @@
 import { getDashboardSessionCredential, type DashboardSessionCredential } from "./session";
-import { dashboardHighImpactPermissionMatches } from "./permission-policy";
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches, dashboardPermissionDenied } from "./permission-policy";
+import { supplierOperatorCan } from "./supplier-operator-access";
 import { dashboardFetch } from "./dashboard-fetch";
 import { productUrls } from "@product/config";
 
@@ -10,22 +11,32 @@ function result(body: unknown, status: number) { return new Response(JSON.string
 export async function forwardSupplierRequest(req: Request, segments: string[] = [], dependencies: Dependencies = { credential: () => getDashboardSessionCredential({ persistRotation: true }), fetcher: dashboardFetch, apiBase: productUrls.api }) {
   const deny = (reason: string, status: number) => result({ ok: false, reason }, status);
   const url = new URL(req.url), write = req.method !== "GET";
-  const review = segments.length === 2 && segments[1] === "review";
-  if (segments.length > 2 || (segments.length && !UUID.test(segments[0])) || (segments.length === 2 && !["submit", "review"].includes(segments[1])) || !(review ? ["GET", "POST"].includes(req.method) : segments.length === 2 ? req.method === "POST" : segments.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method))) return deny("supplier_request_method_invalid", 405);
+  const assigned = segments[0] === "assigned", operators = segments.length === 1 && segments[0] === "operators";
+  const resource = assigned ? segments.slice(1) : segments;
+  const review = resource.length === 2 && resource[1] === "review", assignment = !assigned && resource.length === 2 && resource[1] === "assignment";
+  const validResource = resource.length <= 2 && (!resource.length || UUID.test(resource[0])) && (resource.length !== 2 || (assigned ? review : ["submit", "review", "assignment"].includes(resource[1])));
+  const methodAllowed = operators ? req.method === "GET" : assigned ? review ? ["GET", "POST"].includes(req.method) : req.method === "GET" : review || assignment ? ["GET", "POST"].includes(req.method) : resource.length === 2 ? req.method === "POST" : resource.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method);
+  if ((!operators && !validResource) || !methodAllowed) return deny("supplier_request_method_invalid", 405);
   const before = url.searchParams.get("before_revision");
-  if (url.searchParams.getAll("tenant").length > 1 || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => key !== "tenant" && !(review && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);
+  if (url.searchParams.getAll("tenant").length > 1 || ((assigned || operators) && url.searchParams.has("tenant")) || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => !(key === "tenant" && !operators && !assigned) && !((review || assignment) && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);
   if (write && (req.headers.get("origin") !== url.origin || (req.headers.has("sec-fetch-site") && req.headers.get("sec-fetch-site") !== "same-origin"))) return deny("supplier_request_origin_forbidden", 403);
   if (write && (!/^application\/json(?:\s*;|$)/i.test(req.headers.get("content-type") || "") || !UUID.test(req.headers.get("idempotency-key") || ""))) return deny("supplier_request_body_invalid", 400);
   try {
     const credential = await dependencies.credential(), session = credential?.session;
     if (!session || !credential?.bearerToken) return deny("supplier_request_session_required", 401);
-    if (session.isDemo || !dashboardHighImpactPermissionMatches(session.role, session.permissions, "supplier_order.create", session.deniedPermissions)) return deny("supplier_request_scope_forbidden", 403);
+    if (session.isDemo) return deny("supplier_request_scope_forbidden", 403);
+    if (assigned) {
+      if (!supplierOperatorCan(session, "supplier_request.assigned.read") || (write && !supplierOperatorCan(session, "supplier_request.assigned.review"))) return deny("supplier_request_scope_forbidden", 403);
+    } else if (session.role === "supplier-operator") return deny("supplier_request_scope_forbidden", 403);
+    else if (assignment || operators) {
+      if (session.role !== "super-admin" || !dashboardPermissionMatches(session.permissions, "supplier_request.assign", session.deniedPermissions) || dashboardPermissionDenied(session.deniedPermissions, "supplier_requests:assign")) return deny("supplier_request_scope_forbidden", 403);
+    } else if (!dashboardHighImpactPermissionMatches(session.role, session.permissions, "supplier_order.create", session.deniedPermissions)) return deny("supplier_request_scope_forbidden", 403);
     const requested = (url.searchParams.get("tenant") || "").trim().toLowerCase(), bound = (session.tenantSlug || "").trim().toLowerCase();
     if (requested && !SLUG.test(requested)) return deny("supplier_request_scope_forbidden", 400);
-    if (session.role !== "super-admin" && (!bound || (requested && requested !== bound))) return deny("supplier_request_scope_forbidden", 403);
-    const tenant = session.role === "super-admin" ? requested : bound;
+    if (!assigned && session.role !== "super-admin" && (!bound || (requested && requested !== bound))) return deny("supplier_request_scope_forbidden", 403);
+    const tenant = assigned || operators ? "" : session.role === "super-admin" ? requested : bound;
     if (tenant && !SLUG.test(tenant)) return deny("supplier_request_scope_forbidden", 400);
-    if ((write || segments.length) && !tenant) return deny("supplier_request_scope_forbidden", 400);
+    if (!assigned && !operators && (write || segments.length) && !tenant) return deny("supplier_request_scope_forbidden", 400);
     let body: string | undefined;
     if (write) {
       const reader = req.body?.getReader(); if (!reader) return deny("supplier_request_body_invalid", 400);
@@ -38,10 +49,11 @@ export async function forwardSupplierRequest(req: Request, segments: string[] = 
       if (review) {
         const action = (parsed as Record<string, unknown>).action;
         if (!["request_information", "respond"].includes(String(action))) return deny("supplier_request_body_invalid", 400);
-        if (session.role === "super-admin" ? action !== "request_information" : action !== "respond") return deny("supplier_request_scope_forbidden", 403);
+        if (assigned || session.role === "super-admin" ? action !== "request_information" : action !== "respond") return deny("supplier_request_scope_forbidden", 403);
       }
     }
-    const target = `${dependencies.apiBase}/admin/supplier-requests${segments.length ? `/${segments.join("/")}` : ""}${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ""}${before !== null ? `&before_revision=${before}` : ""}`;
+    const query = new URLSearchParams(); if (tenant) query.set("tenant", tenant); if (before !== null) query.set("before_revision", before);
+    const target = `${dependencies.apiBase}/admin/supplier-requests${segments.length ? `/${segments.join("/")}` : ""}${query.size ? `?${query}` : ""}`;
     const upstream = await dependencies.fetcher(target, { method: req.method, cache: "no-store", headers: { authorization: `Bearer ${credential.bearerToken}`, Accept: "application/json", ...(write ? { "Content-Type": "application/json", "Idempotency-Key": req.headers.get("idempotency-key")! } : {}) }, body, signal: req.signal });
     const headers = new Headers({ "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "private, no-store, max-age=0", "referrer-policy": "no-referrer", Vary: "Cookie", "x-nexid-data-mode": "production" });
     if (upstream.headers.has("retry-after")) headers.set("retry-after", upstream.headers.get("retry-after")!);

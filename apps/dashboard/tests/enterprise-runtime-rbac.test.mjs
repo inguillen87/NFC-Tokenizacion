@@ -34,11 +34,15 @@ const EXPECTED_ROLE_SCOPES = Object.freeze({
   "reseller-admin": "reseller",
   "api-integration": null,
   "super-admin": "super_admin",
+  "supplier-operator": "supplier_operator",
   "security-operator": "tenant_operator",
   reseller: "reseller",
 });
 
 const EXPECTED_PERMISSION_ALIASES = Object.freeze({
+  "supplier_request.assigned.read": ["supplier_requests:assigned_read"],
+  "supplier_request.assigned.review": ["supplier_requests:assigned_review"],
+  "supplier_request.assign": ["supplier_requests:assign"],
   "supplier_order.create": ["supplier_orders:write"],
   "batch.keys.generate": ["supplier:batch_keys_generate"],
   "supplier_pack.export": ["supplier:pack_export"],
@@ -63,6 +67,7 @@ const EXPECTED_PERMISSION_ALIASES = Object.freeze({
 });
 
 const ROLE_DEFAULTS = Object.freeze({
+  "supplier-operator": ["supplier_request.assigned.read", "supplier_request.assigned.review"],
   "tenant-owner": ["users:manage", "supplier_order.create", "batch.keys.generate", "supplier_pack.export", "manifest.import", "packaging_lab.manage", "qa.approve", "qa.plan.approve", "batch.activate", "batch.lifecycle", "batch.revoke", "batch.tamper.configure", "tag.tamper.override", "batch.product.configure", "alerts.ack", "risk_rules.write", "webhooks.manage", "proofs.read", "proofs.anchor", "ownership.claim_policy.manage", "api_keys.read", "api_keys.manage", "audit.read", "events.read_sensitive", "consumer_experiences.read_pii", "consumer_experiences.moderate", "consumers.read_pii", "leads.manage", "reports.export"],
   "tenant-admin": ["users:manage", "supplier_order.create", "manifest.import", "packaging_lab.manage", "qa.approve", "qa.plan.approve", "batch.activate", "batch.lifecycle", "batch.revoke", "batch.tamper.configure", "tag.tamper.override", "batch.product.configure", "alerts.ack", "webhooks.manage", "proofs.read", "ownership.claim_policy.manage", "api_keys.read", "api_keys.manage", "audit.read", "events.read_sensitive", "consumer_experiences.read_pii", "consumer_experiences.moderate", "consumers.read_pii", "leads.manage", "reports.export"],
   "security-analyst": ["proofs.read", "audit.read", "events.read_sensitive", "reports.export"],
@@ -77,9 +82,9 @@ const ROLE_DEFAULTS = Object.freeze({
   reseller: [],
 });
 
-test("dashboard runtime recognizes all 12 backend roles and maps their scopes without fallback escalation", () => {
+test("dashboard runtime recognizes all 13 backend roles and maps their scopes without fallback escalation", () => {
   assert.deepEqual(DASHBOARD_ENTERPRISE_ROLES, Object.keys(EXPECTED_ROLE_SCOPES));
-  assert.equal(DASHBOARD_HUMAN_ENTERPRISE_ROLES.length, 11);
+  assert.equal(DASHBOARD_HUMAN_ENTERPRISE_ROLES.length, 12);
 
   for (const [role, scope] of Object.entries(EXPECTED_ROLE_SCOPES)) {
     assert.equal(normalizeDashboardEnterpriseRole(role.replaceAll("-", "_")), role);
@@ -133,6 +138,7 @@ test("every enterprise role receives only the UI capabilities implied by its aut
     analytics: "analytics:read",
   };
   const expected = {
+    "supplier-operator":  [0, 0, 0, 0, 0, 0, 0, 0],
     "tenant-owner":       [1, 1, 1, 1, 1, 1, 1, 1],
     "tenant-admin":       [1, 1, 1, 1, 0, 1, 0, 1],
     "security-analyst":   [0, 0, 0, 0, 0, 0, 0, 1],

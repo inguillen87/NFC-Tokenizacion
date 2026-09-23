@@ -27,7 +27,7 @@ function isAlreadySignedIn(error: unknown) {
 
 export function ClerkGoogleSuperAdminButton({
   className,
-  label = "Entrar con Google como Super Admin",
+  label = "Entrar con Google a NexID",
   compact,
   nextPath = "/",
   resetSessionOnStart = false,
@@ -75,7 +75,7 @@ export function ClerkGoogleSuperAdminButton({
       <div id="clerk-captcha" className="empty:hidden" />
       <button
         type="button"
-        title="Entrar como Super Admin con Google, Clerk y allowlist server-side de nexID."
+        title="Entrar con Google. NexID verifica el perfil autorizado; este acceso no crea permisos ni asignaciones."
         onClick={() => void startGoogleOauth()}
         disabled={!isLoaded || pending}
         className={

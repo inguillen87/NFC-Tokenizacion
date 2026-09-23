@@ -52,7 +52,7 @@ function authNoticeForCode(code?: string) {
     case "session_expired":
       return "Tu sesión venció o dejó de ser válida. Volvé a ingresar para continuar de forma segura.";
     case "clerk_super_admin_not_allowed":
-      return "Ese Google no esta allowlisted como Super Admin de nexID.";
+      return "Esa cuenta Google no tiene un perfil interno activo autorizado para este acceso a NexID.";
     case "clerk_sync_failed":
       return "Clerk autenticó, pero nexID no pudo crear la sesión interna.";
     default:

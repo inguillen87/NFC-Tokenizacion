@@ -4,6 +4,7 @@ import { isClerkConfiguredForRuntime } from "../../../../lib/clerk-env";
 import { DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE, type DashboardSession } from "../../../../lib/session";
 import { normalizeDashboardReturnPath } from "../../../../lib/dashboard-return-path";
 import { dashboardFetch } from "../../../../lib/dashboard-fetch";
+import { supplierOperatorPermissions, supplierOperatorPageAllowed, SUPPLIER_OPERATOR_HOME } from "../../../../lib/supplier-operator-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -122,22 +123,24 @@ export async function GET(req: Request) {
     return redirectToLogin(req, error, nextPath);
   }
 
-  if (data.role !== "super-admin") return redirectToLogin(req, "clerk_sync_failed", nextPath);
+  if (data.role !== "super-admin" && data.role !== "supplier-operator") return redirectToLogin(req, "clerk_sync_failed", nextPath);
+  if (data.role === "supplier-operator" && (data.tenantId || data.tenantSlug)) return redirectToLogin(req, "clerk_sync_failed", nextPath);
 
   const sessionPayload: DashboardSession = {
     id: data.sessionToken.split(".")[0] || `clerk-super-admin-${email}`,
     email: data.email || email,
-    role: "super-admin",
+    role: data.role,
     tenantId: data.tenantId || null,
     tenantSlug: data.tenantSlug || null,
-    label: data.label || clerkUser?.fullName || "Super Admin",
-    permissions: Array.isArray(data.permissions) ? data.permissions : [],
+    label: data.label || clerkUser?.fullName || (data.role === "supplier-operator" ? "Operador de solicitudes NexID" : "Super Admin"),
+    permissions: data.role === "supplier-operator" ? supplierOperatorPermissions(data.permissions) : Array.isArray(data.permissions) ? data.permissions : [],
     mfaVerified: false,
     setupCompleted: true,
     expiresAt: data.expiresAt,
   };
 
-  const response = NextResponse.redirect(new URL(nextPath, req.url), 303);
+  const destination = data.role === "supplier-operator" && !supplierOperatorPageAllowed(nextPath) ? SUPPLIER_OPERATOR_HOME : nextPath;
+  const response = NextResponse.redirect(new URL(destination, req.url), 303);
   response.cookies.set(DASHBOARD_SESSION_COOKIE, data.sessionToken, {
     httpOnly: true,
     sameSite: "lax",

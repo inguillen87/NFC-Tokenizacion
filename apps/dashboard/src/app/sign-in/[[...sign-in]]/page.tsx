@@ -32,13 +32,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           <Link href={loginPath} aria-label="Volver a nexID CRM" className="inline-flex items-center">
             <BrandLockup size={72} variant="ripple" theme="dark" />
           </Link>
-          <p className="mt-8 text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Super Admin fundador</p>
+          <p className="mt-8 text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Acceso interno autorizado</p>
           <h1 className="mt-3 max-w-2xl text-4xl font-black leading-tight md:text-6xl">
             Google verifica identidad. nexID decide el acceso.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
-            El correo fundador entra por Google/Clerk y después pasa por la allowlist de nexID. Tenants, empleados y
-            demos comerciales siguen separados para no mezclar operaciones enterprise con el portal consumidor.
+            El fundador accede mediante su autorización de Super Admin. Un operador interno sólo entra si NexID ya habilitó su perfil, con acceso limitado a sus solicitudes asignadas. Iniciar sesión no crea permisos ni asignaciones.
           </p>
           <div data-testid="sign-in-auth-status" className="mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
             <div data-state={clerkEnabled ? "ready" : "attention"} className={`dashboard-auth-status-card rounded-2xl border p-4 ${clerkEnabled ? "border-emerald-300/20 bg-emerald-400/10" : "border-amber-300/25 bg-amber-400/10"}`}>
@@ -96,30 +95,30 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </section>
         <section className="dashboard-auth-card rounded-3xl border border-white/10 p-4 shadow-[0_30px_100px_rgba(6,182,212,0.16)] backdrop-blur">
           <div className="dashboard-auth-panel dashboard-auth-panel--soft mb-4 rounded-2xl border border-white/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Ingreso Google allowlisted</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Ingreso Google autorizado</p>
             <p className="mt-2 text-sm leading-5 text-slate-300">
-              Google prueba que sos el titular del correo. nexID solo crea sesión Super Admin si ese correo está aprobado.
+              Google verifica tu identidad. NexID conserva el perfil aprobado para tu cuenta: administración global o gestión limitada de solicitudes asignadas.
             </p>
           </div>
           {clerkEnabled ? (
             <div data-testid="sign-in-clerk-live-panel" className="grid gap-4">
               {reauth ? (
                 <p className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
-                  La sesión anterior quedó cerrada. Continuá con el Google fundador autorizado.
+                  La sesión anterior quedó cerrada. Continuá con tu cuenta Google autorizada.
                 </p>
               ) : null}
               <ClerkGoogleSuperAdminButton
-                label="Continuar con Google allowlisted"
+                label="Continuar con Google autorizado"
                 nextPath={nextPath}
                 className="dashboard-auth-oauth-button dashboard-auth-oauth-button--solid flex w-full items-center justify-center gap-3 rounded-2xl border border-cyan-300/45 px-5 py-4 text-sm font-black shadow-[0_22px_55px_rgba(34,211,238,0.22)] transition disabled:cursor-wait disabled:opacity-70"
               />
               <div data-testid="sign-in-google-only-boundary" className="dashboard-auth-panel dashboard-auth-panel--inset rounded-2xl border border-white/10 p-4">
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200">
-                  Único acceso global habilitado
+                  Perfiles internos separados
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
                   Esta pantalla no ofrece Facebook, wallet ni contraseña. El rol Super Admin exige Google verificado,
-                  email fundador aprobado y una sesión interna emitida por nexID.
+                  email fundador aprobado y una sesión interna emitida por nexID. El operador sólo puede consultar y pedir aclaraciones sobre sus solicitudes asignadas.
                 </p>
               </div>
             </div>

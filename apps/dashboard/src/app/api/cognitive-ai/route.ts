@@ -143,6 +143,7 @@ function tokenBudgetFor(model: string) {
 export async function GET() {
   const session = await getDashboardSession();
   if (!session) return NextResponse.json({ ok: false, reason: "dashboard_session_required" }, { status: 401 });
+  if (session.role === "supplier-operator") return NextResponse.json({ ok: false, reason: "supplier_operator_route_forbidden" }, { status: 403, headers: { "cache-control": "private, no-store", "referrer-policy": "no-referrer", Vary: "Cookie" } });
   const configured = Boolean(process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY);
   return NextResponse.json({
     ok: true,
@@ -159,6 +160,7 @@ export async function POST(req: Request) {
     if (!sameOrigin(req)) return NextResponse.json({ error: "same_origin_required" }, { status: 403 });
     const session = await getDashboardSession();
     if (!session) return NextResponse.json({ error: "dashboard_session_required" }, { status: 401 });
+    if (session.role === "supplier-operator") return NextResponse.json({ ok: false, reason: "supplier_operator_route_forbidden" }, { status: 403, headers: { "cache-control": "private, no-store", "referrer-policy": "no-referrer", Vary: "Cookie" } });
     const retryAfter = consumeRateLimit(session.id);
     if (retryAfter > 0) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: { "retry-after": String(retryAfter) } });

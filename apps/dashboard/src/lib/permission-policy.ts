@@ -5,6 +5,9 @@ import {
 } from "./enterprise-runtime-rbac";
 
 export const ENTERPRISE_PERMISSION_ALIASES = Object.freeze({
+  "supplier_request.assigned.read": ["supplier_requests:assigned_read"],
+  "supplier_request.assigned.review": ["supplier_requests:assigned_review"],
+  "supplier_request.assign": ["supplier_requests:assign"],
   "supplier_order.create": ["supplier_orders:write"],
   "batch.keys.generate": ["supplier:batch_keys_generate"],
   "supplier_pack.export": ["supplier:pack_export"],

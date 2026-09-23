@@ -18,6 +18,7 @@ type DashboardDestinationPolicy = {
 
 export const DASHBOARD_DESTINATIONS = Object.freeze({
   overview: { href: "/" },
+  supplierRequests: { href: "/supplier-orders/requests" },
   onboarding: { href: "/onboarding" },
   recallTasks: { href: "/tasks/recalls", requiredPermissions: ["recall_tasks:read"] },
   logistics: { href: "/logistics", requiredPermissions: ["logistics:read"] },
@@ -84,6 +85,9 @@ export function dashboardCanOpenDestination(
   const deniedPermissions = access.deniedPermissions || [];
 
   if (!role) return false;
+  if (role === "supplier-operator") return destination === "supplierRequests" && access.isDemo !== true
+    && permissions.includes("supplier_request.assigned.read")
+    && dashboardPermissionMatches(permissions, "supplier_request.assigned.read", deniedPermissions);
   if (policy.roles && !policy.roles.includes(role)) return false;
   if (policy.demoOnly && access.isDemo !== true) return false;
   if (policy.highImpactCapability && !dashboardHighImpactPermissionMatches(

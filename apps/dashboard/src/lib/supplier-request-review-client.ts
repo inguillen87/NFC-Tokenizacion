@@ -3,15 +3,16 @@ import { parseSupplierRequestReviewSummary, SUPPLIER_REQUEST_UUID, SupplierReque
 export type SupplierRequestReviewAction = "request_information" | "respond";
 export type SupplierRequestReviewEvent = { id: string; revision: number; request_revision: number; action: SupplierRequestReviewAction; message: string; actor_id: string; created_at: string };
 export type SupplierRequestReviewEnvelope = { request_id: string; request_revision: number; review: SupplierRequestReviewSummary; history: SupplierRequestReviewEvent[]; count: number; truncated: boolean; next_before_revision: number | null; receipt?: { idempotency_key: string; action: SupplierRequestReviewAction; revision: number }; idempotent_replay?: boolean };
-export type SupplierRequestReviewCommand = Readonly<{ tenant: string; id: string; key: string; body: Readonly<{ action: SupplierRequestReviewAction; message: string; expected_revision: number; expected_request_revision: number }> }>;
-type Binding = { tenant: string; tenantId: string; id: string; beforeRevision?: number };
+export type SupplierRequestReviewCommand = Readonly<{ tenant: string; id: string; key: string; operatorId?: string; body: Readonly<{ action: SupplierRequestReviewAction; message: string; expected_revision: number; expected_request_revision: number }> }>;
+type Binding = { tenant: string; tenantId: string; id: string; beforeRevision?: number; operatorId?: string };
 const record = (value: unknown): Record<string, any> | null => value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : null;
 const integer = (value: unknown, minimum = 1): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum && value <= 2_147_483_646;
 const date = (value: unknown) => typeof value === "string" && !!value && Number.isFinite(Date.parse(value));
 const invalid = (): never => { throw new SupplierRequestError("contract_invalid"); };
 export function parseSupplierRequestReviewEnvelope(payload: unknown, binding: Binding): SupplierRequestReviewEnvelope {
   const data = record(payload), scope = record(data?.scope);
-  if (!data || data.ok !== true || data.protocol !== "nexid.supplier-request-review.v1" || data.demo === true || data.demoMode === true || data.dataSource === "demo" || !scope || scope.mode !== "tenant" || scope.tenant_slug !== binding.tenant || scope.tenant_id !== binding.tenantId || data.request_id !== binding.id || !integer(data.request_revision)) return invalid();
+  if (!data || data.ok !== true || data.protocol !== "nexid.supplier-request-review.v1" || data.demo === true || data.demoMode === true || data.dataSource === "demo" || !scope || data.request_id !== binding.id || !integer(data.request_revision)) return invalid();
+  if (binding.operatorId ? !SUPPLIER_REQUEST_UUID.test(binding.operatorId) || scope.mode !== "assigned" || scope.operator_id !== binding.operatorId : scope.mode !== "tenant" || scope.tenant_slug !== binding.tenant || scope.tenant_id !== binding.tenantId) return invalid();
   const review = parseSupplierRequestReviewSummary(data.review);
   if (!integer(review.revision, 0) || !Array.isArray(data.history) || data.history.length > 100 || data.count !== data.history.length || typeof data.truncated !== "boolean") return invalid();
   let previous = 0;
@@ -41,12 +42,14 @@ export function parseSupplierRequestReviewEnvelope(payload: unknown, binding: Bi
 }
 export async function supplierRequestReviewCall(input: Binding & { command?: SupplierRequestReviewCommand; signal?: AbortSignal }, fetcher: typeof fetch = fetch): Promise<SupplierRequestReviewEnvelope> {
   const command = input.command;
+  if ((input.operatorId && !SUPPLIER_REQUEST_UUID.test(input.operatorId)) || (command && (command.operatorId !== input.operatorId || (input.operatorId && command.body.action !== "request_information")))) throw new SupplierRequestError("scope_invalid");
   if (!/^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/.test(input.tenant) || !SUPPLIER_REQUEST_UUID.test(input.tenantId) || !SUPPLIER_REQUEST_UUID.test(input.id) || (input.beforeRevision !== undefined && (!integer(input.beforeRevision) || command)) || (command && (command.tenant !== input.tenant || command.id !== input.id || !SUPPLIER_REQUEST_UUID.test(command.key) || !integer(command.body.expected_revision, 0) || !integer(command.body.expected_request_revision) || !["request_information", "respond"].includes(command.body.action) || !command.body.message.trim() || command.body.message.length > 2000))) throw new SupplierRequestError("scope_invalid");
   const controller = new AbortController(), abort = () => controller.abort();
   if (input.signal?.aborted) abort(); else input.signal?.addEventListener("abort", abort, { once: true });
   const timer = setTimeout(abort, 20_000);
   try {
-    const response = await fetcher(`/api/admin/supplier-requests/${input.id}/review?tenant=${encodeURIComponent(input.tenant)}${input.beforeRevision !== undefined ? `&before_revision=${input.beforeRevision}` : ""}`, { method: command ? "POST" : "GET", cache: "no-store", credentials: "same-origin", signal: controller.signal, headers: { Accept: "application/json", ...(command ? { "Content-Type": "application/json", "Idempotency-Key": command.key } : {}) }, ...(command ? { body: JSON.stringify(command.body) } : {}) });
+    const query = new URLSearchParams(); if (!input.operatorId) query.set("tenant", input.tenant); if (input.beforeRevision !== undefined) query.set("before_revision", String(input.beforeRevision));
+    const response = await fetcher(`/api/admin/supplier-requests/${input.operatorId ? "assigned/" : ""}${input.id}/review${query.size ? `?${query}` : ""}`, { method: command ? "POST" : "GET", cache: "no-store", credentials: "same-origin", signal: controller.signal, headers: { Accept: "application/json", ...(command ? { "Content-Type": "application/json", "Idempotency-Key": command.key } : {}) }, ...(command ? { body: JSON.stringify(command.body) } : {}) });
     const text = await response.text(); let data: any = null;
     if (new TextEncoder().encode(text).byteLength <= 100 * 16 * 1024) { try { data = JSON.parse(text); } catch {} }
     if (!response.ok) {

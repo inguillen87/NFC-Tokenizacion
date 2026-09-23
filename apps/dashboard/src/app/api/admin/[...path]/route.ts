@@ -1101,6 +1101,7 @@ async function forward(req: Request, path: string[]) {
     throw error;
   }
   const dashboardSession = credential?.session || null;
+  if (dashboardSession?.role === "supplier-operator") return NextResponse.json({ ok: false, reason: "supplier_operator_route_forbidden" }, { status: 403, headers: { "cache-control": "private, no-store", "referrer-policy": "no-referrer", Vary: "Cookie" } });
   const demoSession = Boolean(dashboardSession?.isDemo) || isDemoSession(req);
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || (demoSession && !isProduction);

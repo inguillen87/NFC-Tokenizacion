@@ -21,6 +21,7 @@ import headerStyles from "./dashboard-shell-header.module.css";
 import { dashboardTaskCopy, groupTaskNavigation, taskDestinationLabel } from "../lib/dashboard-task-navigation";
 import { useMobileNavigation } from "./use-mobile-navigation";
 import { ReleaseNotesLink } from "./release-notes-link";
+import { SupplierOperatorShell } from "./supplier-operator-shell";
 import {
   Compass,
   LayoutDashboard,
@@ -741,6 +742,7 @@ export function DashboardShellInner({
 
 
 export function DashboardShell(props: Parameters<typeof DashboardShellInner>[0]) {
+  if (props.currentRole === "supplier-operator") return <SupplierOperatorShell label={props.currentLabel} clerkEnabled={props.clerkEnabled}>{props.children}</SupplierOperatorShell>;
   const realtimeEnabled = dashboardCanOpenDestination("events", {
     role: props.currentRole,
     permissions: props.currentPermissions || [],

@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
-import { dashboardHighImpactPermissionMatches } from '../src/lib/permission-policy.ts';
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches, dashboardPermissionDenied } from '../src/lib/permission-policy.ts';
+import { supplierOperatorCan } from '../src/lib/supplier-operator-access.ts';
 
 // Execute the actual HTTP forwarder with its three injectable boundaries. No
 // Next server, remote credential resolver or provider is contacted by this test.
 const source=await readFile(new URL('../src/lib/supplier-request-proxy.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source.replace(/^import .*;\r?$/gm,''),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const exports={};new Function('exports','dashboardHighImpactPermissionMatches','getDashboardSessionCredential','dashboardFetch','productUrls',compiled)(exports,dashboardHighImpactPermissionMatches,()=>{throw Error('Unexpected real resolver');},()=>{throw Error('Unexpected real transport');},{api:'http://unexpected.invalid'});
+const exports={};new Function('exports','dashboardHighImpactPermissionMatches','dashboardPermissionMatches','dashboardPermissionDenied','supplierOperatorCan','getDashboardSessionCredential','dashboardFetch','productUrls',compiled)(exports,dashboardHighImpactPermissionMatches,dashboardPermissionMatches,dashboardPermissionDenied,supplierOperatorCan,()=>{throw Error('Unexpected real resolver');},()=>{throw Error('Unexpected real transport');},{api:'http://unexpected.invalid'});
 const {forwardSupplierRequest}=exports;
 const id='40000000-0000-4000-8000-000000000001',key='50000000-0000-4000-8000-000000000001';
 const session=(patch={})=>({id:'20000000-0000-4000-8000-000000000001',role:'operations-manager',tenantSlug:'qa-only',permissions:['supplier_order.create'],deniedPermissions:[],isDemo:false,...patch});
@@ -59,4 +60,23 @@ test('review routes keep private tenant scope and only allow each party to perfo
 test('review history cursor is bounded, exclusive query authority and GET only',async()=>{
   const d=deps();assert.equal((await run(req('GET','?tenant=qa-only&before_revision=13'),[id,'review'],d)).status,200);assert.ok(d.calls[0].url.endsWith('/review?tenant=qa-only&before_revision=13'));assert.equal(d.calls[0].init.method,'GET');
   for(const [method,query,segments] of [['GET','?before_revision=0',[id,'review']],['GET','?before_revision=abc',[id,'review']],['GET','?before_revision=2&before_revision=2',[id,'review']],['POST','?before_revision=2',[id,'review']],['GET','?before_revision=2',[id]],['PATCH','',[id,'review']],['DELETE','',[id,'review']],['GET','',[id,'reviews']]]){const d=deps();assert.ok([400,405].includes((await run(req(method,query),segments,d)).status));assert.equal(d.calls.length,0);}
+});
+
+const operator=()=>({role:'supplier-operator',userId:'20000000-0000-4000-8000-000000000001',tenantId:null,tenantSlug:null,permissions:['supplier_request.assigned.read','supplier_request.assigned.review','*']});
+test('assigned namespace admits only the current limited operator without a tenant selector',async()=>{
+  for(const segments of [['assigned'],['assigned',id],['assigned',id,'review']]){const d=deps(operator());assert.equal((await run(req('GET'),segments,d)).status,200);assert.equal(d.calls[0].url,`http://synthetic-api.invalid/admin/supplier-requests/${segments.join('/')}`);}
+  const d=deps(operator());assert.equal((await run(req('POST','',{},{action:'request_information',message:'Question',expected_revision:0,expected_request_revision:2}),['assigned',id,'review'],d)).status,200);assert.equal(d.calls[0].init.headers['Idempotency-Key'],key);
+  for(const patch of [{userId:undefined},{tenantSlug:'qa-only'},{tenantId:id},{role:'super-admin'},{isDemo:true},{permissions:['*']},{deniedPermissions:['supplier_request.assigned.read']}]){const d=deps({...operator(),...patch});assert.equal((await run(req(),['assigned'],d)).status,403);assert.equal(d.calls.length,0);}
+  for(const segments of [[],[id],[id,'review'],[id,'assignment'],['operators']]){const d=deps(operator());assert.equal((await run(req('GET','?tenant=qa-only'),segments,d)).status===200,false);assert.equal(d.calls.length,0);}
+  for(const query of ['?tenant=qa-only','?tenant=','?operator_id='+operator().userId]){const d=deps(operator());assert.equal((await run(req('GET',query),['assigned'],d)).status,400);assert.equal(d.calls.length,0);}
+  for(const [method,segments]of [['POST',['assigned']],['PATCH',['assigned',id]],['POST',['assigned',id,'submit']],['GET',['assigned',id,'assignment']]]){const d=deps(operator());assert.equal((await run(req(method),segments,d)).status,405);assert.equal(d.calls.length,0);}
+});
+test('assignment administration requires SA and its independent assign capability, never inherited tenant create authority',async()=>{
+  for(const patch of [{role:'super-admin',permissions:['supplier_order.create']},{role:'operations-manager',permissions:['*']},{role:'super-admin',permissions:['*'],deniedPermissions:['supplier_requests:assign']},{role:'super-admin',permissions:['*'],deniedPermissions:['supplier_request.assign']}]){const d=deps(patch);assert.equal((await run(req('GET','?tenant=qa-only'),[id,'assignment'],d)).status,403);assert.equal(d.calls.length,0);}
+  for(const permission of ['supplier_request.assign','supplier_requests:assign','*']){const d=deps({role:'super-admin',tenantSlug:null,permissions:[permission]});assert.equal((await run(req('GET'),['operators'],d)).status,200);assert.equal(d.calls[0].url,'http://synthetic-api.invalid/admin/supplier-requests/operators');}
+  const d=deps({role:'super-admin',permissions:['supplier_request.assign']});const body={operator_id:operator().userId,expected_revision:0,expected_request_revision:2};assert.equal((await run(req('POST','?tenant=qa-only',{},body),[id,'assignment'],d)).status,200);assert.deepEqual(JSON.parse(d.calls[0].init.body),body);
+});
+test('operator review never becomes a company response and separate denied review permission blocks writes',async()=>{
+  for(const patch of [{permissions:['supplier_request.assigned.read']},{deniedPermissions:['supplier_request.assigned.review']}]){const d=deps({...operator(),...patch});assert.equal((await run(req('POST','',{},{action:'request_information'}),['assigned',id,'review'],d)).status,403);assert.equal(d.calls.length,0);}
+  const d=deps(operator());assert.equal((await run(req('POST','',{},{action:'respond'}),['assigned',id,'review'],d)).status,403);assert.equal(d.calls.length,0);
 });

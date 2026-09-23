@@ -1,0 +1,65 @@
+{
+  "release": "2026.09.23-dashboard.42",
+  "application": "dashboard",
+  "status": "local-verified-awaiting-ci",
+  "scope": "supplier-request-assignment-and-limited-operator",
+  "runtimeCandidate": null,
+  "deploymentId": null,
+  "projectId": "prj_dZCNO1mMbXKzVwu14qswAq0ZunLc",
+  "currentProductionVerified": false,
+  "canonicalDomain": "app.nexid.lat",
+  "pairedApiRelease": "2026.09.23-api-supplier-requests.3",
+  "requiredApiMigration": "20260923180100_0116_supplier_request_assignments.sql",
+  "protocol": "nexid.supplier-request-assignment.v1",
+  "previousProductionDeployment": "dpl_CBfjoZHptvzNdVkhxdJPz7UzTZdh",
+  "implementationDocument": "docs/2026-09-23-supplier-request-assignments.md",
+  "localValidation": {
+    "unitPassed": 1248,
+    "unitSkipped": 2,
+    "unitFailed": 0,
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "dependencyAudit": "passed",
+    "secretCustodyGate": "passed",
+    "assignmentBrowserChecks": 147,
+    "assignmentBrowserViews": 18,
+    "supplierRequestBrowserChecks": 287,
+    "supplierRequestBrowserViews": 33,
+    "legacySupplierBrowserChecks": 805,
+    "legacySupplierBrowserViews": 41,
+    "axeViolations": 0,
+    "overflows": 0,
+    "clientErrors": 0,
+    "unexpectedRequests": 0,
+    "actualComponents": true,
+    "httpAndSession": "synthetic",
+    "nextNavigation": "stubbed",
+    "independentReview": "no open P1 or P2"
+  },
+  "visualReview": {
+    "scope": "actual components; synthetic local session and records",
+    "reviewed": true,
+    "viewports": [390, 1440],
+    "themes": ["light", "dark"],
+    "captures": [
+      "artifacts/supplier-request-assignments-browser/superadmin-assignment-confirmation-390-light.png",
+      "artifacts/supplier-request-assignments-browser/operator-inbox-1440-dark.png"
+    ]
+  },
+  "continuousIntegration": null,
+  "productionReadOnly": {
+    "authenticatedSessionAvailable": false,
+    "reason": "existing real session expired; no employee accounts or grants created for QA",
+    "operatorSsoWithRealAccount": false,
+    "businessWrites": false
+  },
+  "boundaries": {
+    "productionBusinessWrites": false,
+    "realEmployeeAccountsOrGrantsCreated": false,
+    "supplierDispatch": false,
+    "commercialApproval": false,
+    "physicalTagCertification": false
+  },
+  "remainingReleaseGates": ["exact-commit CI", "paired API and migrations", "staged build", "promotion and canonical readback"],
+  "notCertifiedByThisRelease": ["real employee SSO and assigned commercial exchange", "supplier dispatch", "physical tags"]
+}

@@ -9,6 +9,7 @@ export const DASHBOARD_ENTERPRISE_ROLES = [
   "reseller-admin",
   "api-integration",
   "super-admin",
+  "supplier-operator",
   "security-operator",
   "reseller",
 ] as const;
@@ -38,6 +39,7 @@ export type DashboardHighImpactCapability =
   | "proofs.anchor";
 export type DashboardAdminScope =
   | "super_admin"
+  | "supplier_operator"
   | "tenant_admin"
   | "tenant_operator"
   | "reseller"
@@ -83,6 +85,7 @@ const ROLE_SCOPE = Object.freeze({
   "reseller-admin": "reseller",
   "api-integration": null,
   "super-admin": "super_admin",
+  "supplier-operator": "supplier_operator",
   "security-operator": "tenant_operator",
   reseller: "reseller",
 } satisfies Readonly<Record<DashboardEnterpriseRole, DashboardAdminScope | null>>);
@@ -98,6 +101,7 @@ const ROLE_LABEL = Object.freeze({
   "reseller-admin": "Reseller Admin",
   "api-integration": "API Integration",
   "super-admin": "Super Admin",
+  "supplier-operator": "Operador de solicitudes NexID",
   "security-operator": "Security Operator",
   reseller: "Reseller",
 } satisfies Readonly<Record<DashboardEnterpriseRole, string>>);
@@ -113,6 +117,7 @@ const ROLE_INITIALS = Object.freeze({
   "reseller-admin": "RA",
   "api-integration": "AI",
   "super-admin": "SA",
+  "supplier-operator": "NS",
   "security-operator": "SO",
   reseller: "RS",
 } satisfies Readonly<Record<DashboardEnterpriseRole, string>>);
@@ -163,6 +168,7 @@ export function dashboardRoleDescription(value: unknown, mode: "tenant" | "globa
   const role = normalizeDashboardEnterpriseRole(value);
   if (!role) return "Rol no reconocido; el acceso permanece bloqueado.";
   if (role === "super-admin") return "Control global de tenants, seguridad, red comercial y plataforma.";
+  if (role === "supplier-operator") return "Consulta y pide aclaraciones sólo en las solicitudes que tiene asignadas. Sin administración ni preparación técnica.";
   if (role === "tenant-owner") return "Gobierno del tenant y delegación de su operación autorizada.";
   if (role === "tenant-admin") return mode === "tenant"
     ? "Administra la operación diaria autorizada del tenant."

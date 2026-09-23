@@ -1,12 +1,14 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SUPPLIER_CONSTRUCTIONS } from "../lib/supplier-order-draft";
-import { dashboardHighImpactPermissionMatches } from "../lib/permission-policy";
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../lib/permission-policy";
 import { filterSupplierRequestInbox, supplierRequestManagementState, supplierRequestCall, supplierRequestErrorCopy, SupplierRequestError, type SupplierRequest, type SupplierRequestCommand, type SupplierRequestContent, type SupplierRequestEnvelope, type SupplierRequestInboxFilter, type SupplierRequestReviewSummary } from "../lib/supplier-request-client";
 import { SupplierRequestReview, type SupplierRequestReviewGuard } from "./supplier-request-review";
+import { SupplierAssignedRequestWorkspace } from "./supplier-assigned-request-workspace";
+import { SupplierRequestAssignment } from "./supplier-request-assignment";
 import styles from "./supplier-request-workspace.module.css";
 
-export type SupplierRequestAccess = { id: string; role: string; tenantSlug: string | null; permissions: string[]; deniedPermissions?: string[]; isDemo: boolean };
+export type SupplierRequestAccess = { id: string; userId?: string; role: string; tenantId?: string | null; tenantSlug: string | null; permissions: string[]; deniedPermissions?: string[]; isDemo: boolean };
 type Props = { access: SupplierRequestAccess; initialTenant?: string; initialRequestId?: string };
 type Fields = { title: string; construction_id: string; quantity: string; pack_purpose: string; notes: string };
 const empty = (): Fields => ({ title: "", construction_id: "", quantity: "", pack_purpose: "", notes: "" });
@@ -16,12 +18,14 @@ const managementLabels = { draft: "Borrador de la empresa", pending: "Revisión 
 const activityTime = (item: SupplierRequest) => item.review_summary?.updated_at || item.updated_at;
 export function SupplierRequestWorkspace(props: Props) {
   // A new mounted instance is required for every authenticated scope transition, including A → B → A.
-  const context = JSON.stringify([props.access.id, props.access.role, props.access.tenantSlug, props.access.permissions, props.access.deniedPermissions, props.access.isDemo, props.initialTenant, props.initialRequestId]);
+  const context = JSON.stringify([props.access.id, props.access.userId, props.access.role, props.access.tenantId, props.access.tenantSlug, props.access.permissions, props.access.deniedPermissions, props.access.isDemo, props.initialTenant, props.initialRequestId]);
+  if (props.access.role === "supplier-operator") return <SupplierAssignedRequestWorkspace key={context} access={props.access} initialRequestId={props.initialRequestId} />;
   return <RequestWorkspace key={context} {...props} />;
 }
 function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }: Props) {
   const allowed = !access.isDemo && dashboardHighImpactPermissionMatches(access.role, access.permissions, "supplier_order.create", access.deniedPermissions);
   const isNexid = access.role === "super-admin";
+  const canAssign = isNexid && dashboardPermissionMatches(access.permissions, "supplier_request.assign", access.deniedPermissions);
   const [tenant, setTenant] = useState(access.tenantSlug || initialTenant);
   const [tenantInput, setTenantInput] = useState(access.tenantSlug || initialTenant);
   const [items, setItems] = useState<SupplierRequest[] | null>(null), [truncated, setTruncated] = useState(false);
@@ -38,15 +42,19 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   const readSequence = useRef(0), listSequence = useRef(0), initialOpened = useRef(false);
   const reads = useRef<AbortController | null>(null), writes = useRef<AbortController | null>(null);
   const reviewGuard = useRef<SupplierRequestReviewGuard>({ dirty: false, locked: false });
+  const assignmentGuard = useRef<SupplierRequestReviewGuard>({ dirty: false, locked: false });
   const [reviewBlocked, setReviewBlocked] = useState(false);
+  const [assignmentBlocked, setAssignmentBlocked] = useState(false);
   const updateReviewGuard = useCallback((value: SupplierRequestReviewGuard) => { reviewGuard.current = value; setReviewBlocked(value.locked); }, []);
+  const updateAssignmentGuard = useCallback((value: SupplierRequestReviewGuard) => { assignmentGuard.current = value; setAssignmentBlocked(value.locked); }, []);
   const updateReview = useCallback((summary: SupplierRequestReviewSummary) => {
     setSelected(current => current && current.id === selected?.id && current.tenant_id === selected.tenant_id ? { ...current, review_summary: summary } : current);
     if (selected) setItems(current => current ? current.map(item => item.id === selected.id && item.tenant_id === selected.tenant_id ? { ...item, review_summary: summary } : item).sort((a, b) => activityTime(b).localeCompare(activityTime(a))) : current);
   }, [selected?.id, selected?.tenant_id]);
-  const canReviewInteract = useCallback(() => !reads.current && !locked.current, []);
+  const canReviewInteract = useCallback(() => !reads.current && !locked.current && !assignmentGuard.current.locked, []);
+  const canAssignmentInteract = useCallback(() => !reads.current && !locked.current && !reviewGuard.current.locked, []);
   const dirty = JSON.stringify(fields) !== JSON.stringify(selected ? fromItem(selected) : empty());
-  const immutable = Boolean(selected && selected.status !== "draft"), blocked = phase === "saving" || phase === "uncertain" || unresolved.current || reviewBlocked;
+  const immutable = Boolean(selected && selected.status !== "draft"), blocked = phase === "saving" || phase === "uncertain" || unresolved.current || reviewBlocked || assignmentBlocked;
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; epoch.current++; reads.current?.abort(); writes.current?.abort(); }; }, []);
   useEffect(() => {
@@ -55,7 +63,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     detailHeading.current?.scrollIntoView({ block: "start", behavior: "auto" });
   }, [selectionVersion]);
   useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => { if (dirty || locked.current || reviewGuard.current.dirty || reviewGuard.current.locked) { event.preventDefault(); event.returnValue = ""; } };
+    const warn = (event: BeforeUnloadEvent) => { if (dirty || locked.current || reviewGuard.current.dirty || reviewGuard.current.locked || assignmentGuard.current.dirty || assignmentGuard.current.locked) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
@@ -68,7 +76,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   }, [tenant, allowed]);
 
   async function loadList(scope: string) {
-    if (locked.current || reviewGuard.current.locked) return;
+    if (locked.current || reviewGuard.current.locked || assignmentGuard.current.locked) return;
     const generation = epoch.current, sequence = ++listSequence.current;
     setItems(null); setListError(""); setListReading(true);
     try {
@@ -80,10 +88,10 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     finally { if (alive.current && generation === epoch.current && sequence === listSequence.current) setListReading(false); }
   }
   function canLeave() {
-    if (locked.current || reviewGuard.current.locked) return false;
-    return !(dirty || reviewGuard.current.dirty) || window.confirm("Hay cambios sin guardar. ¿Descartarlos y continuar?");
+    if (locked.current || reviewGuard.current.locked || assignmentGuard.current.locked) return false;
+    return !(dirty || reviewGuard.current.dirty || assignmentGuard.current.dirty) || window.confirm("Hay cambios sin guardar. ¿Descartarlos y continuar?");
   }
-  function resetEditor() { updateReviewGuard({ dirty: false, locked: false }); setSelected(null); setFields(empty()); setComparison(null); setPhase("idle"); setError(""); setConfirmedRevision(null); setReviewing(false); setRequestReading(false); operation.current = null; }
+  function resetEditor() { updateReviewGuard({ dirty: false, locked: false }); updateAssignmentGuard({ dirty: false, locked: false }); setSelected(null); setFields(empty()); setComparison(null); setPhase("idle"); setError(""); setConfirmedRevision(null); setReviewing(false); setRequestReading(false); operation.current = null; }
   function changeTenant() {
     if (!canLeave()) return;
     const next = tenantInput.trim().toLowerCase();
@@ -92,7 +100,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     if (next === tenant) void loadList(next); else setTenant(next);
   }
   async function openRequest(id: string, scope: string, initial = false, compare = false) {
-    if (!allowed || reviewGuard.current.locked || (!initial && !compare && !canLeave()) || busy.current || (locked.current && !compare)) return;
+    if (!allowed || reviewGuard.current.locked || assignmentGuard.current.locked || (!initial && !compare && !canLeave()) || busy.current || (locked.current && !compare)) return;
     if (!scope) { setError("Abrí la solicitud desde la empresa indicada en la bandeja."); return; }
     const generation = epoch.current, sequence = ++readSequence.current;
     reads.current?.abort(); const controller = new AbortController(); reads.current = controller;
@@ -102,7 +110,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
       if (!alive.current || generation !== epoch.current || sequence !== readSequence.current) return;
       if (!("request" in result)) throw new SupplierRequestError("contract_invalid");
       if (compare) setComparison(result.request);
-      else { updateReviewGuard({ dirty: false, locked: false }); setSelectionVersion(current => current + 1); setSelected(result.request); setFields(fromItem(result.request)); setComparison(null); setPhase("idle"); setConfirmedRevision(null); setReviewing(false); }
+      else { updateReviewGuard({ dirty: false, locked: false }); updateAssignmentGuard({ dirty: false, locked: false }); setSelectionVersion(current => current + 1); setSelected(result.request); setFields(fromItem(result.request)); setComparison(null); setPhase("idle"); setConfirmedRevision(null); setReviewing(false); }
     } catch (issue) { if (alive.current && generation === epoch.current && sequence === readSequence.current) setError(supplierRequestErrorCopy(issue instanceof SupplierRequestError ? issue : new SupplierRequestError("unavailable"))); }
     finally { if (reads.current === controller) reads.current = null; if (alive.current && generation === epoch.current && sequence === readSequence.current) setRequestReading(false); }
   }
@@ -170,7 +178,8 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
         {phase === "uncertain" ? <button className={styles.button} data-testid="supplier-request-retry" type="button" onClick={() => { if (operation.current && !busy.current) void execute(operation.current); }}>Comprobar el mismo guardado</button> : null}
         {phase === "conflict" && selected ? <div data-testid="supplier-request-conflict"><p>Tu texto permanece sin guardar. Consultá la versión actual; no se sobrescribe automáticamente.</p><button type="button" className={styles.button} disabled={reading} onClick={() => void openRequest(selected.id, selected.tenant_slug, false, true)}>Consultar versión actual</button></div> : null}
         {comparison ? <div className={styles.notice}><h3>Versión actual del servidor: {comparison.revision}</h3><p>{comparison.title} · {statusLabel(comparison.status)} · {comparison.quantity ?? "cantidad pendiente"}</p><p className={styles.pre}>{comparison.notes || "Sin notas"}</p><button className={styles.button} type="button" onClick={() => { if (locked.current || !window.confirm("¿Reemplazar los cambios locales por esta versión guardada?")) return; setSelected(comparison); setFields(fromItem(comparison)); setComparison(null); setConfirmedRevision(null); setError(""); setPhase("idle"); }}>Cargar esta versión y descartar mis cambios</button></div> : null}
-        {selected && immutable ? <SupplierRequestReview key={`${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={requestReading} canInteract={canReviewInteract} onGuard={updateReviewGuard} onReview={updateReview} /> : null}
+        {selected && immutable && canAssign ? <SupplierRequestAssignment key={`assignment:${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} canManageUsers={dashboardPermissionMatches(access.permissions, "users:manage", access.deniedPermissions)} suspended={requestReading || reviewBlocked} canInteract={canAssignmentInteract} onGuard={updateAssignmentGuard} /> : null}
+        {selected && immutable ? <SupplierRequestReview key={`${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={requestReading || assignmentBlocked} canInteract={canReviewInteract} onGuard={updateReviewGuard} onReview={updateReview} /> : null}
         <details className={styles.commercial} open={!immutable}><summary>{immutable ? "Consultar los datos comerciales enviados" : "Completar los datos de la solicitud"}</summary>
         <form onSubmit={event => { event.preventDefault(); save(); }}>
           <fieldset disabled={blocked || immutable || reading} className={styles.fields}><div className={styles.grid}>

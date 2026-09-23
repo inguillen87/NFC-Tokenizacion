@@ -153,7 +153,7 @@ export function UserManagementPanel() {
                   <div>
                     <p className="font-medium text-white">{user.label}</p>
                     <p className="text-xs text-cyan-200">{user.email}</p>
-                    <p className="mt-1 text-xs text-slate-400">tenant {user.tenant_slug || "global"} · {user.mfa_enabled ? "MFA legacy detectado" : "TOTP no habilitado"}</p>
+                    <p className="mt-1 text-xs text-slate-400">{normalizeEnterpriseRoleCode(user.role) === "supplier_operator" ? "Interno NexID · sólo solicitudes asignadas" : `tenant ${user.tenant_slug || "global"}`} · {user.mfa_enabled ? "MFA legacy detectado" : "TOTP no habilitado"}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button className="px-3 py-2 text-xs" onClick={() => issueReset(user.id)}>Iniciar restablecimiento</Button>
@@ -172,7 +172,7 @@ export function UserManagementPanel() {
                     <input
                       suppressHydrationWarning
                       className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder={selectedRole?.tenantBound ? "tenant slug" : "Rol global"}
+                      placeholder={selectedRole?.code === "supplier_operator" ? "Sin empresa · acceso por asignación" : selectedRole?.tenantBound ? "tenant slug" : "Rol global"}
                       value={editor.tenantSlug}
                       disabled={!selectedRole?.tenantBound}
                       onChange={(event) => setEditors((current) => ({ ...current, [user.id]: { ...editor, tenantSlug: event.target.value } }))}
@@ -183,7 +183,7 @@ export function UserManagementPanel() {
                 <div className="mt-3"><EnterpriseRolePresetSummary role={selectedRole} /></div>
                 {(Array.isArray(user.permissions) && user.permissions.length > 0)
                   || (Array.isArray(user.denied_permissions) && user.denied_permissions.length > 0)
-                  ? <p className="mt-3 text-xs text-slate-500">Este usuario conserva {user.permissions.length} permiso(s) directo(s) y {user.denied_permissions?.length || 0} denegación(es). Guardar el rol no elimina esas excepciones.</p>
+                  ? <p className="mt-3 text-xs text-slate-500">Este usuario conserva {user.permissions.length} permiso(s) directo(s) y {user.denied_permissions?.length || 0} denegación(es). Guardar el rol no elimina esas excepciones. {selectedRole?.code === "supplier_operator" ? "El perfil de operador limita siempre el acceso a lectura y aclaraciones asignadas, aunque existan permisos anteriores más amplios." : ""}</p>
                   : null}
               </div>
             );
@@ -220,13 +220,14 @@ export function UserManagementPanel() {
             <input
               suppressHydrationWarning
               className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder={selectedFormRole?.tenantBound ? "tenant slug" : "Rol global"}
+              placeholder={selectedFormRole?.code === "supplier_operator" ? "Sin empresa · acceso por asignación" : selectedFormRole?.tenantBound ? "tenant slug" : "Rol global"}
               value={form.tenantSlug}
               disabled={!selectedFormRole?.tenantBound}
               onChange={(event) => setForm((current) => ({ ...current, tenantSlug: event.target.value }))}
             />
           </label>
           <EnterpriseRolePresetSummary role={selectedFormRole} />
+          {selectedFormRole?.code === "supplier_operator" ? <p className="text-xs leading-relaxed text-slate-400">Crear este perfil no asigna solicitudes ni envía una invitación. El superadministrador elige después qué solicitudes puede gestionar.</p> : null}
           <Button disabled={catalog.status !== "ready" || !selectedFormRole} className="w-full" onClick={createUser}>Guardar usuario</Button>
           {status ? <p className="text-xs text-cyan-200" aria-live="polite">{status}</p> : null}
         </div>

@@ -7,6 +7,7 @@ import { normalizeDashboardHumanSessionRole } from "./enterprise-runtime-rbac";
 import { dashboardPermissionMatches } from "./permission-policy";
 import { DASHBOARD_RETURN_PATH_HEADER, dashboardAuthPath, normalizeDashboardReturnPath } from "./dashboard-return-path";
 import { dashboardFetch } from "./dashboard-fetch";
+import { isSupplierOperator, supplierOperatorPageAllowed, SUPPLIER_OPERATOR_HOME } from "./supplier-operator-access";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
@@ -192,6 +193,7 @@ export async function requireDashboardSession(permission?: string) {
     throw error;
   }
   if (!session) redirect(dashboardAuthPath("/login", returnPath));
+  if (isSupplierOperator(session.role) && !supplierOperatorPageAllowed(returnPath)) redirect(SUPPLIER_OPERATOR_HOME);
   if (permission && !dashboardPermissionMatches(
     session.permissions,
     permission,
