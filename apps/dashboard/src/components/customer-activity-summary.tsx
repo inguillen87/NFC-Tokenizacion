@@ -5,9 +5,10 @@ import type { CustomerActivityKind, CustomerActivitySummary as Summary } from ".
 import { customerActivityCopy } from "../lib/customer-activity-copy";
 import styles from "./customer-activity-summary.module.css";
 
-export function CustomerActivitySummary({ summary, locale, onOpen, controls }: {
+export function CustomerActivitySummary({ summary, locale, onOpen, controls, disabled = false }: {
   summary: Summary; locale: keyof typeof customerActivityCopy;
   onOpen: (kind: CustomerActivityKind) => void; controls: string;
+  disabled?: boolean;
 }) {
   const copy = customerActivityCopy[locale];
   const id = useId();
@@ -30,7 +31,7 @@ export function CustomerActivitySummary({ summary, locale, onOpen, controls }: {
           <p className={styles.caption}>{copy.literal}</p>
           <dl tabIndex={0} aria-label={copy.statuses}>{card.statuses.map(bucket => <div key={JSON.stringify(bucket.value)}><dt>{bucket.value ?? copy.missing}</dt><dd>{format.format(bucket.count)}</dd></div>)}</dl>
         </details> : null}
-        <button type="button" className={styles.action} disabled={card.count === null} aria-controls={controls} onClick={() => onOpen(card.kind)}>
+        <button type="button" className={styles.action} disabled={disabled || card.count === null} aria-controls={controls} onClick={() => { if (!disabled && card.count !== null) onOpen(card.kind); }}>
           {card.kind === "leads" ? copy.openLeads : card.kind === "tickets" ? copy.openTickets : copy.openOrders}
         </button>
       </article>)}

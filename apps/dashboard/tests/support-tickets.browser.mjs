@@ -197,6 +197,7 @@ try {
     check(await signals.locator('ol > li').count() === 1, `${width} ${theme}: Signals searches complete UUID`);
     check((await signals.innerText()).includes(description), `${width} ${theme}: Signals shows the confirmed readable description`);
     check(!(await signals.innerText()).includes(fingerprint), `${width} ${theme}: Signals never displays fingerprint`);
+    check(await signals.getByTestId('ticket-entry-signal').count() === 0, `${width} ${theme}: demo signals never expose real ticket lookup actions`);
     await inspect(page, 'signals-reference', width, theme, '[data-testid="customer-signal-timeline"]');
     await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).click();
     await page.locator('table').waitFor();
@@ -204,6 +205,7 @@ try {
     check((await page.locator('table').innerText()).includes(ticketId), `${width} ${theme}: Tickets exposes the complete reference`);
     check((await page.locator('table').innerText()).includes(description), `${width} ${theme}: Tickets projects the readable description`);
     check((await page.locator('table').innerText()).includes('QA-SUPPORT-ONLY') && (await page.locator('table').innerText()).includes('715'), `${width} ${theme}: Tickets retains batch and event context`);
+    check(await page.getByTestId('ticket-entry-row').count() === 0, `${width} ${theme}: demo rows never expose real ticket lookup actions`);
     const downloadReady = page.waitForEvent('download');
     await page.getByRole('button', { name: 'CSV', exact: true }).click();
     const download = await downloadReady, csvPath = join(out, `tickets-${width}-${theme}.csv`);
@@ -250,8 +252,32 @@ try {
     const submitLookup = async id => { await referenceInput.fill(id); await lookup.getByRole('button', { name: /Buscar ticket|Reintentar búsqueda/ }).click(); };
     const lookupState = status => lookup.locator(`[data-lookup-state="${status}"]`).waitFor({ state: 'attached' });
     check(lookupCalls.length === 0, `${width} ${theme}: historical lookup never runs automatically`);
+    const rowEntry = page.locator('tbody tr').filter({ hasText: ticketId }).getByTestId('ticket-entry-row');
+    check(await rowEntry.innerText() === 'Abrir ticket', `${width} ${theme}: recent ticket provides a clearly named open action`);
+    await rowEntry.hover();
+    check(lookupCalls.length === 0 && historyReads.length === 0 && workflowWrites.length === 0, `${width} ${theme}: hovering a row action never prefetches ticket data`);
+    await rowEntry.click(); await lookupState('found');
+    await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'ticket-reference-lookup');
+    check(lookupCalls.length === 1 && lookupCalls[0].id === ticketId && lookupCalls[0].tenant === 'qa-only', `${width} ${theme}: row open explicitly fetches the exact reference within the selected tenant`);
+    check(await referenceInput.inputValue() === ticketId && await lookup.evaluate(element => document.activeElement === element), `${width} ${theme}: row open moves keyboard focus to the selected ticket region`);
+    check(historyReads.length === 0 && workflowWrites.length === 0, `${width} ${theme}: row navigation does not read history or change status`);
+    if ((width === 390 && theme === 'light') || (width === 1440 && theme === 'dark')) await inspect(page, 'ticket-open-from-row', width, theme, '[data-testid="ticket-reference-lookup"]');
+
+    await page.getByRole('tab', { name: /^Señales de cliente/ }).click();
+    const signalEntry = signals.locator('ol > li').filter({ hasText: legacyId }).getByTestId('ticket-entry-signal');
+    await signalEntry.focus();
+    check(lookupCalls.length === 1 && historyReads.length === 0 && workflowWrites.length === 0, `${width} ${theme}: focusing a signal action does not read ticket data`);
+    await page.keyboard.press('Enter'); await lookupState('found');
+    await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'ticket-reference-lookup');
+    check(lookupCalls.length === 2 && lookupCalls.at(-1).id === legacyId && lookupCalls.at(-1).tenant === 'qa-only', `${width} ${theme}: keyboard activation from a signal fetches only its authoritative ticket reference`);
+    check(await referenceInput.inputValue() === legacyId && await lookup.evaluate(element => document.activeElement === element), `${width} ${theme}: signal open selects Tickets and moves focus to the ticket region`);
+    check(await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).getAttribute('aria-selected') === 'true' && historyReads.length === 0 && workflowWrites.length === 0, `${width} ${theme}: switching to the ticket preserves read-only navigation without automatic history or PATCH`);
+    check(await page.locator('tbody tr').count() === 3, `${width} ${theme}: opening a loaded ticket never changes the recent collection`);
+    if ((width === 390 && theme === 'light') || (width === 1440 && theme === 'dark')) await inspect(page, 'ticket-open-from-signal', width, theme, '[data-testid="ticket-reference-lookup"]');
+
+    const beforeInvalidReference = lookupCalls.length;
     await submitLookup('not-a-reference'); await lookupState('invalid');
-    check(lookupCalls.length === 0, `${width} ${theme}: invalid reference never requests API`);
+    check(lookupCalls.length === beforeInvalidReference, `${width} ${theme}: invalid reference never requests API`);
     await submitLookup(historicalId.toUpperCase()); await lookupState('found');
     const result = page.getByTestId('ticket-lookup-result');
     check((await result.innerText()).includes(historicalId) && (await result.innerText()).includes(historicalDescription), `${width} ${theme}: historical UUID outside recent list shows full reference and literal description`);
@@ -262,7 +288,9 @@ try {
     await page.getByRole('button', { name: 'CSV', exact: true }).click();
     const recentDownload = await recentDownloadReady, recentPath = join(out, `after-lookup-${width}-${theme}.csv`);
     await recentDownload.saveAs(recentPath);
-    check(!(await readFile(recentPath, 'utf8')).includes(historicalId), `${width} ${theme}: historical result stays outside recent CSV exports`);
+    const recentCsv = await readFile(recentPath, 'utf8');
+    check(!recentCsv.includes(historicalId), `${width} ${theme}: historical result stays outside recent CSV exports`);
+    check(!recentCsv.includes('Abrir ticket'), `${width} ${theme}: navigation actions never become exported ticket data`);
     await inspect(page, 'historical-ticket-found', width, theme, '[data-testid="ticket-reference-lookup"]');
     const workflow = page.getByTestId('ticket-workflow');
     check(historyReads.length === 0 && workflowWrites.length === 0, `${width} ${theme}: workflow stays folded without reads or writes until requested`);
@@ -292,11 +320,28 @@ try {
       await workflow.getByLabel('Motivo del cambio', { exact: true }).fill(reason);
       await workflow.getByRole('button', { name: 'Revisar cambio', exact: true }).click();
     };
+    const checkEntryLocked = async (id, phase) => {
+      const before = { lookups: lookupCalls.length, history: historyReads.length, writes: workflowWrites.length };
+      check(await referenceInput.isDisabled() && await lookup.getByRole('button', { name: 'Buscar ticket', exact: true }).isDisabled(), `${width} ${theme}: ${phase} disables reference editing and lookup submission`);
+      check(await page.getByTestId('ticket-entry-lock-notice').isVisible(), `${width} ${theme}: ${phase} explains why selecting another ticket is blocked`);
+      // Attempt the same in-workspace navigation controls even when their native
+      // disabled affordance prevents a pointer click; no handler may discard the
+      // unresolved command or cause an additional request.
+      await page.locator('tbody tr').filter({ hasText: ticketId }).getByTestId('ticket-entry-row').evaluate(button => button.click());
+      await page.getByRole('tab', { name: /^Señales de cliente/ }).evaluate(button => button.click());
+      await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).evaluate(button => button.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })));
+      await page.getByTestId('customer-activity-summary').locator('[data-activity-kind="orders"] button').evaluate(button => button.click());
+      check(await referenceInput.inputValue() === id && await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).getAttribute('aria-selected') === 'true', `${width} ${theme}: ${phase} blocks row, tab, keyboard and summary navigation without changing selected reference`);
+      check(lookupCalls.length === before.lookups && historyReads.length === before.history && workflowWrites.length === before.writes, `${width} ${theme}: ${phase} navigation attempts cause no lookup, history request or PATCH`);
+      check(await workflow.getByLabel('Motivo del cambio', { exact: true }).inputValue() !== '', `${width} ${theme}: ${phase} keeps the existing reason and workflow mounted`);
+    };
     await openWorkflow(lookupId(21), 'uncertain'); await reviewWorkflow('Motivo sintético que se conserva');
     await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click();
     await workflow.locator('[data-workflow-state="uncertain"]').waitFor();
     const uncertainCommand = workflowWrites.at(-1).body;
     check(await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled() && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Pendiente', `${width} ${theme}: uncertain write freezes details and does not falsely close ticket`);
+    await checkEntryLocked(lookupId(21), 'uncertain');
+    if ((width === 390 && theme === 'light') || (width === 1440 && theme === 'dark')) await inspect(page, 'ticket-open-blocked-uncertain', width, theme, '[data-testid="ticket-reference-lookup"]');
     workflowMode = 'forbidden'; await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click();
     await workflow.locator('[data-workflow-state="forbidden"]').waitFor();
     check(await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled(), `${width} ${theme}: later auth failure does not unlock an uncertain command`);
@@ -320,6 +365,7 @@ try {
     check(historyReads.at(-1).cursor === '2' && (await workflow.getByTestId('ticket-workflow-history').innerText()).includes(workflowActor), `${width} ${theme}: earlier history uses cursor and displays actor reference when label is missing`);
     for (const [suffix, mode, outcome] of [[26, 'pagination_hold_saved', 'saved'], [27, 'pagination_hold_uncertain', 'uncertain']]) {
       await openWorkflow(lookupId(suffix), mode); await reviewWorkflow('Motivo conservado durante lectura cancelada');
+      const lookupCountBeforeConfirmation = lookupCalls.length;
       // Queue a history load and confirmation in the same event turn, before
       // React hides the review for the read. The canceled load must not strand
       // readState=loading while the PATCH response is deliberately held.
@@ -328,14 +374,26 @@ try {
         const older = buttons.find(button => button.textContent === 'Cargar cambios anteriores');
         const confirm = buttons.find(button => button.textContent === 'Confirmar cambio de estado');
         older.click(); confirm.click();
+        // This happens before React can render disabled controls. The synchronous
+        // write guard must already reject opening a different loaded ticket.
+        document.querySelector('[data-testid="ticket-entry-row"]')?.click();
       });
       await workflow.locator('[data-workflow-state="submitting"]').waitFor();
       check(await workflow.locator('[data-history-state="ready"]').count() === 1 && await workflow.getByTestId('ticket-workflow-history').isVisible(), `${width} ${theme}: canceled concurrent history keeps snapshot visible during ${outcome} PATCH`);
+      check(lookupCalls.length === lookupCountBeforeConfirmation && await referenceInput.inputValue() === lookupId(suffix), `${width} ${theme}: same-turn confirmation and row navigation cannot discard the pending change`);
+      await checkEntryLocked(lookupId(suffix), 'submitting');
       while (!delayedWorkflowPatches.length) await new Promise(resolve => setTimeout(resolve, 10));
       delayedWorkflowPatches.splice(0).forEach(resolve => resolve());
       await workflow.locator(`[data-workflow-state="${outcome}"]`).waitFor();
       check(await workflow.locator('[data-history-state="ready"]').count() === 1 && await workflow.getByTestId('ticket-workflow-history').isVisible(), `${width} ${theme}: canceled read cannot strand history spinner after ${outcome}`);
       check(outcome === 'saved' ? (await workflow.getByTestId('workflow-current-status').innerText()) === 'Cerrado' : await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).isVisible(), `${width} ${theme}: ${outcome} exposes confirmed status or exact retry after canceled read`);
+      if (outcome === 'uncertain') {
+        const frozenCommand = workflowWrites.at(-1).body;
+        workflowMode = 'normal';
+        await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click();
+        await workflow.locator('[data-workflow-state="saved"]').waitFor();
+        check(workflowWrites.at(-1).body === frozenCommand && !await referenceInput.isDisabled(), `${width} ${theme}: an exact retry reconciles the pending command and restores ticket navigation`);
+      }
     }
     workflowMode = 'normal';
     await referenceInput.fill(lookupId(10));
@@ -372,11 +430,14 @@ try {
     await page.evaluate(() => window.__qaSetLookupContext({ tenant: 'qa-second', demo: false, canLookup: false }));
     await lookup.getByText('Tu rol no tiene permiso para buscar tickets por referencia.', { exact: true }).waitFor();
     check(await lookup.locator('input').count() === 0 && lookupCalls.length === beforeRestrictions, `${width} ${theme}: missing capability never triggers lookup`);
+    check(await page.getByTestId('ticket-entry-row').count() === 0, `${width} ${theme}: missing capability removes loaded-ticket lookup actions`);
+    await page.getByRole('tab', { name: /^Señales de cliente/ }).click();
+    check(await page.getByTestId('ticket-entry-signal').count() === 0, `${width} ${theme}: missing capability also removes signal lookup actions`);
     await context.close();
   }
   for (const variant of [
-    { locale: 'en', theme: 'light', width: 390, label: 'Complete ticket reference', submit: 'Find ticket', status: 'Current status', reference: 'Ticket reference', reason: 'Other reason', workflowTarget: 'New status', workflowReason: 'Reason for the change', workflowReview: 'Review change', workflowConfirm: 'Confirm status change' },
-    { locale: 'pt-BR', theme: 'dark', width: 1440, label: 'Referência completa do ticket', submit: 'Buscar ticket', status: 'Estado atual', reference: 'Referência do ticket', reason: 'Outro motivo', workflowTarget: 'Novo estado', workflowReason: 'Motivo da alteração', workflowReview: 'Revisar alteração', workflowConfirm: 'Confirmar alteração de estado' },
+    { locale: 'en', theme: 'light', width: 390, open: 'Open ticket', label: 'Complete ticket reference', submit: 'Find ticket', status: 'Current status', reference: 'Ticket reference', reason: 'Other reason', workflowTarget: 'New status', workflowReason: 'Reason for the change', workflowReview: 'Review change', workflowConfirm: 'Confirm status change' },
+    { locale: 'pt-BR', theme: 'dark', width: 1440, open: 'Abrir ticket', label: 'Referência completa do ticket', submit: 'Buscar ticket', status: 'Estado atual', reference: 'Referência do ticket', reason: 'Outro motivo', workflowTarget: 'Novo estado', workflowReason: 'Motivo da alteração', workflowReview: 'Revisar alteração', workflowConfirm: 'Confirmar alteração de estado' },
   ]) {
     const context = await browser.newContext({ viewport: { width: variant.width, height: 960 }, reducedMotion: 'reduce', serviceWorkers: 'block', locale: variant.locale });
     const page = await context.newPage();
@@ -391,7 +452,10 @@ try {
     await page.goto(`${origin}/?theme=${variant.theme}&locale=${variant.locale}`);
     await page.getByRole('tablist').waitFor();
     await page.evaluate(() => window.__qaSetLookupContext({tenant:'qa-only',demo:false,canLookup:true}));
+    await page.getByTestId('ticket-entry-signal').first().waitFor();
+    check(await page.getByTestId('ticket-entry-signal').first().innerText() === variant.open, `${variant.locale}: signal ticket action is localized`);
     await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).click();
+    check(await page.getByTestId('ticket-entry-row').first().innerText() === variant.open, `${variant.locale}: loaded ticket action is localized`);
     const lookup = page.getByTestId('ticket-reference-lookup');
     await lookup.getByLabel(variant.label).fill(historicalId);
     await lookup.getByRole('button', { name: variant.submit, exact: true }).click();

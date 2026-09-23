@@ -158,7 +158,7 @@ test('real workspace removes inferred meetings, the mixed funnel and invented ac
 test('summary exposes no fetch, browser storage, external links or business mutations', async () => {
   const source = await readFile(new URL('../src/components/customer-activity-summary.tsx', import.meta.url), 'utf8');
   assert.ok(!/\bfetch\(|localStorage|sessionStorage|setInterval|dangerouslySetInnerHTML|href=/.test(source));
-  assert.match(source, /disabled=\{card.count === null\}/);
+  assert.match(source, /disabled=\{disabled \|\| card.count === null\}/);
   assert.match(source, /aria-controls=\{controls\}/);
   assert.match(source, /bucket.value \?\? copy.missing/);
 });

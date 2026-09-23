@@ -13,7 +13,8 @@ import { buildCustomerActivitySummary, customerActivityDestination, type Custome
 import { CustomerMemberTimeline } from "../../../components/customer-member-timeline";
 import { CustomerSignalTimeline } from "../../../components/customer-signal-timeline";
 import { DataTable } from "../../../components/data-table";
-import { TicketReferenceLookup } from "../../../components/ticket-reference-lookup";
+import { TicketReferenceLookup, type TicketReferenceLookupHandle } from "../../../components/ticket-reference-lookup";
+import { ticketEntryReference, ticketEntryCopy } from "../../../lib/ticket-entry";
 import type { TicketLookupLocale } from "../../../lib/ticket-reference-lookup";
 import { SUPPORT_TICKET_COLUMNS, supportTicketTableRow, supportTicketRowMatchesQuery } from "../../../lib/support-ticket-projection";
 import type {
@@ -80,10 +81,16 @@ export default function LeadsTicketsClient({
   const [searchTerm, setSearchTerm] = useState("");
   const contentId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
+  const ticketLookup = useRef<TicketReferenceLookupHandle>(null);
+  const ticketContext = JSON.stringify([tenantScope, demoMode, canLookupTickets]);
+  const [ticketLock, setTicketLock] = useState({ context: ticketContext, locked: false });
+  const ticketNavigationLocked = ticketLock.context === ticketContext && ticketLock.locked;
+  const entryCopy = ticketEntryCopy[locale];
+  const navigationBlocked = () => ticketLookup.current?.isNavigationLocked() === true;
   const ui = customerInboxCopy[locale];
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
-  const retry = () => startRefresh(() => router.refresh());
+  const retry = () => { if (!navigationBlocked()) startRefresh(() => router.refresh()); };
   const context = useMemo(() => ({ tenantScope, demoMode }), [tenantScope, demoMode]);
   const inboxes = useMemo(() => ({
     leads: confirmCustomerInbox<Lead>("leads", leadsInput, inputCollections.leads.availability !== "ready" || inputCollections.leads.source === leadsSource ? inputCollections.leads : { availability: "invalid_payload", source: "unavailable" }, context),
@@ -92,6 +99,12 @@ export default function LeadsTicketsClient({
   }), [leadsInput, ticketsInput, ordersInput, inputCollections, leadsSource, context]);
   const initialLeads = inboxes.leads.rows, initialTickets = inboxes.tickets.rows, initialOrders = inboxes.orders.rows;
   const signalCollections = inboxes;
+  const entryReference = (value: unknown) => ticketEntryReference(value, inboxes.tickets, tenantScope, demoMode, canLookupTickets);
+  function openTicket(value: string) {
+    const reference = entryReference(value);
+    if (!reference || navigationBlocked() || !ticketLookup.current?.open(reference)) return;
+    setActiveTab("tickets");
+  }
   const filteredOpportunities = useMemo(() => {
     const valid = new Map(initialLeads.map(row => [JSON.stringify([authoritativeLeadTenant(row), row.id]), row]));
     return opportunitiesInput.flatMap(item => {
@@ -107,6 +120,7 @@ export default function LeadsTicketsClient({
     collections: signalCollections, tenantScope, demoMode,
   }), [initialLeads, initialTickets, initialOrders, signalCollections, tenantScope, demoMode]);
   function openActivity(kind: CustomerActivityKind) {
+    if (navigationBlocked()) return;
     if (activitySummary.cards.find(card => card.kind === kind)?.count == null) return;
     setSearchTerm("");
     setActiveTab(customerActivityDestination(kind));
@@ -129,6 +143,7 @@ export default function LeadsTicketsClient({
     return state.availability === "ready" ? (tab === "opportunities" ? filteredOpportunities.length : state.rows.length) : null;
   };
   const tabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tab: typeof activeTab) => {
+    if (navigationBlocked()) { event.preventDefault(); return; }
     const index = tabs.indexOf(tab);
     const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length
       : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
@@ -139,13 +154,13 @@ export default function LeadsTicketsClient({
 
   return (
     <div className="space-y-6">
-      <CustomerActivitySummary summary={activitySummary} locale={locale} onOpen={openActivity} controls={contentId} />
+      <CustomerActivitySummary summary={activitySummary} locale={locale} onOpen={openActivity} controls={contentId} disabled={ticketNavigationLocked} />
 
       <div className={`${inboxStyles.root} ${inboxStyles.navigation}`}>
         <div className={inboxStyles.tabs} role="tablist" aria-label={ui.tabs}>
           {tabs.map(tab => <button key={tab} id={`${contentId}-${tab}`} type="button" role="tab"
             aria-selected={activeTab === tab} aria-controls={contentId} tabIndex={activeTab === tab ? 0 : -1}
-            className={inboxStyles.tab} onClick={() => setActiveTab(tab)} onKeyDown={event => tabKeyDown(event, tab)}>
+            disabled={ticketNavigationLocked && activeTab !== tab} className={inboxStyles.tab} onClick={() => { if (!navigationBlocked()) setActiveTab(tab); }} onKeyDown={event => tabKeyDown(event, tab)}>
             {ui[tab]} <span aria-label={countFor(tab) === null ? ui.unknownCount : undefined}>({countFor(tab) ?? "—"})</span>
           </button>)}
         </div>
@@ -155,6 +170,7 @@ export default function LeadsTicketsClient({
             aria-label={ui.search} placeholder={ui.searchPlaceholder} />
         </label>
       </div>
+      {ticketNavigationLocked ? <p role="status" data-testid="ticket-entry-lock-notice" className="rounded-xl border border-amber-300/30 bg-amber-400/10 p-4 text-sm leading-6 text-slate-200">{entryCopy.locked}</p> : null}
 
       {/* Tab Contents */}
       {activeTab === "tickets" || activeTab === "signals" ? (
@@ -181,6 +197,7 @@ export default function LeadsTicketsClient({
               signals={customerSignals}
               collections={signalCollections}
               query={searchTerm}
+              ticketEntry={{ label: entryCopy.open, available: value => Boolean(entryReference(value)), disabled: ticketNavigationLocked, onOpen: openTicket }}
             />
           </div>
         )}
@@ -255,10 +272,10 @@ export default function LeadsTicketsClient({
           />
         )}
 
-        {activeTab === "tickets" && (
-          <div className="space-y-6">
-          <TicketReferenceLookup key={`${tenantScope}|${demoMode}|${canLookupTickets}`} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets} />
-          {inboxes.tickets.availability !== "ready" ? <CustomerInboxNotice state={inboxes.tickets} locale={locale} onRetry={retry} pending={refreshing} /> : <DataTable
+          <div hidden={activeTab !== "tickets"} className="space-y-6">
+          <TicketReferenceLookup key={ticketContext} ref={ticketLookup} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets}
+            onNavigationLockChange={locked => setTicketLock({ context: ticketContext, locked })} />
+          {activeTab === "tickets" && (inboxes.tickets.availability !== "ready" ? <CustomerInboxNotice state={inboxes.tickets} locale={locale} onRetry={retry} pending={refreshing} /> : <DataTable
             title={ui.tickets}
             columns={SUPPORT_TICKET_COLUMNS}
             rows={initialTickets
@@ -271,9 +288,10 @@ export default function LeadsTicketsClient({
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
             statusMap={copy.statuses}
-          />}
+            refreshDisabled={ticketNavigationLocked}
+            rowAction={{ label: entryCopy.open, heading: entryCopy.actions, testId: "ticket-entry-row", available: row => Boolean(entryReference(row.reference)), disabled: ticketNavigationLocked, onClick: row => openTicket(row.reference) }}
+          />)}
           </div>
-        )}
 
         {activeTab === "orders" && inboxes.orders.availability === "ready" && (
           <DataTable

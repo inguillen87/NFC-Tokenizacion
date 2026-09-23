@@ -6,6 +6,7 @@ import { Badge, BrandDot, BrandLockup, Button, Card } from "@product/ui";
 import { escapeSpreadsheetCsvCell, escapeSpreadsheetHtmlCell } from "../lib/export-utils";
 
 type Row = Record<string, string>;
+type RowAction = { label: string; heading: string; testId?: string; available: (row: Row) => boolean; disabled?: boolean; onClick: (row: Row) => void };
 
 function downloadBlob(filename: string, type: string, content: string) {
   const blob = new Blob([content], { type });
@@ -47,7 +48,7 @@ function resolveTone(value: string) {
   return "default" as const;
 }
 
-export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = "Search", allFilterLabel = "All", refreshLabel = "Refresh", statusMap }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; statusMap?: Record<string, string> }) {
+export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = "Search", allFilterLabel = "All", refreshLabel = "Refresh", statusMap, rowAction, refreshDisabled = false }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; statusMap?: Record<string, string>; rowAction?: RowAction; refreshDisabled?: boolean }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -75,7 +76,7 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
             <option value="all">{allFilterLabel}</option>
             {statuses.map((item) => <option key={item} value={item}>{statusMap?.[item] ?? item}</option>)}
           </select>
-          <Button variant="secondary" onClick={() => startTransition(() => router.refresh())}>{refreshLabel}</Button>
+          <Button variant="secondary" disabled={refreshDisabled} onClick={() => { if (!refreshDisabled) startTransition(() => router.refresh()); }}>{refreshLabel}</Button>
           <button suppressHydrationWarning type="button" className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100" onClick={() => downloadBlob(`${exportBase}.csv`, "text/csv;charset=utf-8", buildCsv(columns, filtered))}>CSV</button>
           <button suppressHydrationWarning type="button" className="rounded-lg border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100" onClick={() => downloadBlob(`${exportBase}.xls`, "application/vnd.ms-excel;charset=utf-8", buildExcelHtml(title, columns, filtered))}>Excel</button>
           <button suppressHydrationWarning type="button" className="rounded-lg border border-violet-300/25 bg-violet-500/10 px-3 py-2 text-sm font-semibold text-violet-100" onClick={() => window.print()}>PDF</button>
@@ -90,11 +91,14 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
         <div className="data-table-shell overflow-x-auto rounded-2xl border border-white/10" role="region" aria-label={title} tabIndex={0}>
           <table className="w-full text-left text-sm">
             <thead className="border-b border-white/10 bg-slate-950/60 text-slate-400">
-              <tr>{columns.map((col) => <th key={col.key} className="px-4 py-3">{col.label}</th>)}</tr>
+              <tr>{rowAction ? <th className="px-4 py-3 print:hidden">{rowAction.heading}</th> : null}{columns.map((col) => <th key={col.key} className="px-4 py-3">{col.label}</th>)}</tr>
             </thead>
             <tbody>
               {filtered.map((row, idx) => (
                 <tr key={`${idx}-${row[columns[0].key]}`} className="border-b border-white/5">
+                  {rowAction ? <td className="px-4 py-3 print:hidden">{rowAction.available(row) ? <button type="button" data-testid={rowAction.testId} disabled={rowAction.disabled}
+                    className="min-h-11 rounded-xl border border-cyan-300/30 px-4 py-2 font-semibold text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 disabled:opacity-50"
+                    onClick={() => { if (!rowAction.disabled && rowAction.available(row)) rowAction.onClick(row); }}>{rowAction.label}</button> : null}</td> : null}
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 text-slate-200 whitespace-pre-line max-w-[480px]">
                       {col.key === filterKey ? (

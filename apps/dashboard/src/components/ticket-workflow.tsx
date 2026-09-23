@@ -9,8 +9,9 @@ const buttonClass = "min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/1
 const inputClass = "min-h-11 w-full rounded-xl border border-white/20 bg-slate-950 px-3 py-2 text-sm text-white disabled:opacity-70";
 type Phase = "draft" | "review" | "submitting" | "invalid" | WorkflowOutcome["status"];
 
-export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent }: {
+export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent, onNavigationLockChange }: {
   ticket: Record<string, unknown>; tenantScope: string; locale: TicketLookupLocale; onCurrent: (current: WorkflowCurrent) => void;
+  onNavigationLockChange?: (locked: boolean) => void;
 }) {
   const copy = ticketWorkflowCopy[locale];
   const reference = String(ticket.id);
@@ -20,6 +21,7 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent }: {
   if (!reader.current) reader.current = createTicketWorkflowReader(reference, tenantScope);
   if (!writer.current) writer.current = createTicketWorkflowWriter(reference, tenantScope);
   const onCurrentRef = useRef(onCurrent); onCurrentRef.current = onCurrent;
+  const navigationLockRef = useRef(onNavigationLockChange); navigationLockRef.current = onNavigationLockChange;
   const [history, setHistory] = useState<WorkflowHistory | null>(null);
   const [readState, setReadState] = useState<"idle" | "loading" | "ready" | "unavailable" | "forbidden">("idle");
   const [target, setTarget] = useState("");
@@ -44,6 +46,7 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent }: {
     } : nextHistory);
     onCurrentRef.current(nextHistory.current);
     const matched = writer.current!.reconcile(nextHistory);
+    navigationLockRef.current?.(writer.current!.isBusy() || writer.current!.isUnresolved());
     if (matched) setPhase("saved");
     else if (afterConflict && writer.current!.canEdit()) { writer.current!.clear(); setCommand(null); setPhase("draft"); setReloadNotice(true); }
   }
@@ -63,9 +66,12 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent }: {
     // visible while the write is pending and when its outcome arrives.
     setReadState("ready");
     const pending = writer.current!.submit();
+    // Notify before yielding: a second click must not unmount this attempt.
+    navigationLockRef.current?.(writer.current!.isBusy() || writer.current!.isUnresolved());
     setPhase("submitting");
     const result = await pending;
     if (!result) return;
+    navigationLockRef.current?.(writer.current!.isBusy() || writer.current!.isUnresolved());
     setPhase(result.status);
     if (result.status === "saved") {
       onCurrentRef.current(result.current);

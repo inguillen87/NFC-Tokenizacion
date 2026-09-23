@@ -24,6 +24,7 @@ type CustomerSignalTimelineProps = {
   signals: CustomerSignal[];
   collections: CustomerSignalCollections;
   query?: string;
+  ticketEntry?: { label: string; available: (reference: unknown) => boolean; disabled: boolean; onOpen: (reference: string) => void };
 };
 
 const KIND_COPY: Record<CustomerSignalKind, { label: string; plural: string; icon: typeof Inbox }> = {
@@ -61,7 +62,7 @@ function availabilityCopy(
   return { label: count ? `Producción · ${count}` : "Vacío confirmado", tone: "emerald" };
 }
 
-export function CustomerSignalTimeline({ signals, collections, query = "" }: CustomerSignalTimelineProps) {
+export function CustomerSignalTimeline({ signals, collections, query = "", ticketEntry }: CustomerSignalTimelineProps) {
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
   const [kindFilter, setKindFilter] = useState<"all" | CustomerSignalKind>("all");
@@ -191,6 +192,11 @@ export function CustomerSignalTimeline({ signals, collections, query = "" }: Cus
                       {signal.subject}
                     </p>
                     {signal.ticket ? <SupportTicketDetails ticket={signal.ticket} /> : signal.summary ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-400">{signal.summary}</p> : null}
+                    {signal.kind === "ticket" && signal.source === "production" && signal.ticket?.reference && ticketEntry?.available(signal.ticket.reference) ? (
+                      <button type="button" data-testid="ticket-entry-signal" disabled={ticketEntry.disabled}
+                        className="mt-4 min-h-11 rounded-xl border border-cyan-300/30 px-4 py-2 text-sm font-semibold text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 disabled:opacity-50"
+                        onClick={() => { if (!ticketEntry.disabled && ticketEntry.available(signal.ticket!.reference)) ticketEntry.onOpen(signal.ticket!.reference!); }}>{ticketEntry.label}</button>
+                    ) : null}
                     <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
                       <time dateTime={signal.occurredAt || undefined}>{formatMoment(signal.occurredAt)}</time>
                       {signal.company && signal.company !== signal.subject ? <span>Empresa: {signal.company}</span> : null}

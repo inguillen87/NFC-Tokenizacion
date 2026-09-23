@@ -1,38 +1,36 @@
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
-import { canonicalTicketReference, createTicketLookupRunner, type TicketLookupLocale, type TicketLookupState } from "../lib/ticket-reference-lookup";
+import React, { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
+import type { TicketLookupLocale } from "../lib/ticket-reference-lookup";
+import { useTicketReferenceLookup } from "../lib/use-ticket-reference-lookup";
 import { ticketLookupCopy } from "../lib/ticket-reference-lookup-copy";
 import { projectSupportTicket } from "../lib/support-ticket-projection";
 import { SupportTicketDetails } from "./support-ticket-details";
 import { TicketWorkflow } from "./ticket-workflow";
 
-export function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = false, canLookup = false }: {
-  tenantScope: string; locale?: TicketLookupLocale; isDemo?: boolean; canLookup?: boolean;
-}) {
+export type TicketReferenceLookupHandle = { open: (reference: string) => boolean; isNavigationLocked: () => boolean };
+
+export const TicketReferenceLookup = forwardRef<TicketReferenceLookupHandle, {
+  tenantScope: string; locale?: TicketLookupLocale; isDemo?: boolean; canLookup?: boolean; onNavigationLockChange?: (locked: boolean) => void;
+}>(function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = false, canLookup = false, onNavigationLockChange }, ref) {
   const copy = ticketLookupCopy[locale];
   const inputId = useId();
-  const runner = useRef<ReturnType<typeof createTicketLookupRunner> | null>(null);
-  if (!runner.current) runner.current = createTicketLookupRunner();
-  const [reference, setReference] = useState("");
-  const context = `${tenantScope}|${isDemo}|${canLookup}`;
-  const [result, setResult] = useState<TicketLookupState & { context: string }>({ status: "idle", context });
-  const state: TicketLookupState = result.context === context ? result : { status: "idle" };
-  useEffect(() => {
-    runner.current?.cancel();
-    setResult({ status: "idle", context });
-    return () => runner.current?.cancel();
-  }, [context]);
-  function reset() { runner.current?.cancel(); setResult({ status: "idle", context }); }
-  async function search(event: React.FormEvent) {
+  const lookup = useTicketReferenceLookup(tenantScope, isDemo, canLookup, onNavigationLockChange);
+  const { context, reference, state, locked } = lookup;
+  const section = useRef<HTMLElement>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
+  useImperativeHandle(ref, () => ({
+    open(value) {
+      if (!lookup.open(value, true)) return false;
+      setFocusRequest(value => value + 1);
+      return true;
+    },
+    isNavigationLocked: lookup.isLocked,
+  }));
+  useEffect(() => { if (focusRequest) section.current?.focus(); }, [focusRequest]);
+  function search(event: React.FormEvent) {
     event.preventDefault();
-    if (isDemo || !canLookup) return;
-    const canonical = canonicalTicketReference(reference);
-    if (!canonical) { reset(); setResult({ status: "invalid", context }); return; }
-    setReference(canonical);
-    setResult({ status: "loading", reference: canonical, context });
-    const next = await runner.current!.search(canonical, tenantScope);
-    if (next) setResult({ ...next, context });
+    lookup.open(reference);
   }
   const ticket = state.status === "found" ? state.ticket : null;
   const projection = ticket ? projectSupportTicket(ticket) : null;
@@ -40,7 +38,7 @@ export function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = 
   const statusLabel = ticket && ["open", "pending", "closed"].includes(String(ticket.status)) ? copy[ticket.status as "open"]
     : ticket && typeof ticket.status === "string" && ticket.status.trim() ? ticket.status : copy.unknownStatus;
   return (
-    <section className="rounded-2xl border border-white/10 bg-slate-900/70 p-5 sm:p-6" data-testid="ticket-reference-lookup" aria-labelledby={`${inputId}-heading`}>
+    <section ref={section} tabIndex={-1} className="rounded-2xl border border-white/10 bg-slate-900/70 p-5 sm:p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500" data-testid="ticket-reference-lookup" aria-labelledby={`${inputId}-heading`}>
       <h3 id={`${inputId}-heading`} className="text-lg font-bold text-white">{copy.title}</h3>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{copy.hint}</p>
       <p className="mt-2 break-words text-xs text-slate-400">{tenantScope ? `${copy.scope}: ${tenantScope}` : copy.global}</p>
@@ -48,9 +46,9 @@ export function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = 
         <form onSubmit={search} className="mt-5 space-y-3">
           <label htmlFor={inputId} className="block text-sm font-semibold text-slate-200">{copy.label}</label>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <input id={inputId} value={reference} maxLength={64} autoComplete="off" spellCheck={false} autoCapitalize="none" aria-invalid={state.status === "invalid"} aria-describedby={`${inputId}-result`} onChange={event => { reset(); setReference(event.target.value); }} className="min-h-11 w-full min-w-0 rounded-xl border border-white/20 bg-slate-950 px-3 py-2 font-mono text-sm text-white sm:flex-1" />
-            <button type="submit" disabled={state.status === "loading"} className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-5 py-2 font-semibold text-cyan-100 disabled:opacity-60">{state.status === "unconfirmed" ? copy.retry : copy.search}</button>
-            {state.status === "loading" ? <button type="button" onClick={reset} className="min-h-11 rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-200">{copy.cancel}</button> : null}
+            <input id={inputId} value={reference} disabled={locked} maxLength={64} autoComplete="off" spellCheck={false} autoCapitalize="none" aria-invalid={state.status === "invalid"} aria-describedby={`${inputId}-result`} onChange={event => lookup.edit(event.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-white/20 bg-slate-950 px-3 py-2 font-mono text-sm text-white sm:flex-1 disabled:opacity-60" />
+            <button type="submit" disabled={locked || state.status === "loading"} className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-5 py-2 font-semibold text-cyan-100 disabled:opacity-60">{state.status === "unconfirmed" ? copy.retry : copy.search}</button>
+            {state.status === "loading" ? <button type="button" onClick={() => lookup.reset()} className="min-h-11 rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-200">{copy.cancel}</button> : null}
           </div>
         </form>
       )}
@@ -70,12 +68,10 @@ export function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = 
             {category ? <div><dt className="font-semibold">{copy.category}</dt><dd>{category}</dd></div> : null}
             <div><dt className="font-semibold">{copy.contact}</dt><dd className="break-all">{projection.contact || copy.noContact}</dd></div>
           </dl>
-          {!isDemo && canLookup ? <TicketWorkflow key={`${context}|${ticket.id}`} ticket={ticket} tenantScope={tenantScope} locale={locale} onCurrent={current => {
-            setResult(previous => previous.context === context && previous.status === "found" && previous.ticket?.id === current.ticketId
-              ? { ...previous, ticket: { ...previous.ticket, status: current.status } } : previous);
-          }} /> : null}
+          {!isDemo && canLookup ? <TicketWorkflow key={`${context}|${ticket.id}`} ticket={ticket} tenantScope={tenantScope} locale={locale}
+            onNavigationLockChange={lookup.setLocked} onCurrent={current => lookup.updateStatus(current.ticketId, current.status)} /> : null}
         </article>
       ) : null}
     </section>
   );
-}
+});
