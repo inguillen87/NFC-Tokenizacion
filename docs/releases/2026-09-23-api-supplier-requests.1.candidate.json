@@ -1,0 +1,71 @@
+{
+  "schema": "nexid.api-candidate-evidence.v1",
+  "release": "2026.09.23-api-supplier-requests.1",
+  "status": "promoted",
+  "sourceSha": "5adf44c76f4bc27d5220ab775397f6eb23101e1f",
+  "sourceBranch": "codex/nexid-s9-ticket-workflow-api-20260922",
+  "ci": {
+    "runId": 35878872188,
+    "jobId": 107241821455,
+    "conclusion": "success",
+    "focalTests": 245,
+    "postgresTestsAcrossFourSuites": 49,
+    "failed": 0,
+    "skipped": 0,
+    "productionBuildAndRegressionSuites": "passed",
+    "secretCustodyGate": "passed"
+  },
+  "local": {
+    "requestContractTests": 11,
+    "requestPostgresTests": 14,
+    "postgresVersion": "17.10",
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "independentReview": "no-open-P1-P2",
+    "postgresClusterStopped": true,
+    "postgresSchemasAndDataDirectoryRemoved": true
+  },
+  "migration": {
+    "file": "20260923120000_0113_supplier_requests.sql",
+    "sha256LF": "e5f992b91bb8f28c2343e09aef8ce843c0a1c9ea812cf3dbe3cf5fb372c49ed0",
+    "schemaOnlyNeonBranch": "br-autumn-lab-ainnwzhl",
+    "schemaOnlyBranchExpiresLocal": "2026-09-24T11:46:59-03:00",
+    "schemaOnlyBranchTenantRows": 0,
+    "branchAndProductionTransactionConfirmed": true,
+    "productionBranch": "br-jolly-butterfly-aivukyzq",
+    "ledgerRows": 1,
+    "functions": 7,
+    "securityDefinerOrPublicExecuteFunctions": 0,
+    "immutableGuards": 2,
+    "productionRequestsAtPostcheck": 0,
+    "productionReceiptsAtPostcheck": 0
+  },
+  "deployment": {
+    "id": "dpl_HP9mNdhTxoaYP7pW6oiiHhP7sjoN",
+    "projectId": "prj_r0dmVaKogGs8y4NAZ2njCWHhUgLk",
+    "url": "nexid-ifk00dood-marcelos-projects-c26aa499.vercel.app",
+    "readyState": "READY",
+    "target": "production",
+    "nativeGitSourceSha": "5adf44c76f4bc27d5220ab775397f6eb23101e1f",
+    "autoAssignCustomDomainsAtCreation": false,
+    "stagedProcessHealthHttpStatus": 200,
+    "stagedReleaseMarkerHttpStatus": 403,
+    "stagedReleaseMarkerReason": "expected-edge-origin-guard",
+    "edgeGuardWeakened": false,
+    "canonicalAlias": "api.nexid.lat",
+    "canonicalAliasVerified": true,
+    "canonicalMarkerEqualsCommittedFile": true,
+    "canonicalMarkerSha256": "cbaa3b147fe36b7273ee3141fae5dc3fb3e926090919453400acac54f9d64e8d",
+    "canonicalProcessHealthHttpStatus": 200
+  },
+  "previousApiDeployment": "dpl_3U3zPRtqEbb7iyo9sRRRAQFXADf2",
+  "rollback": "Restore prior API and Dashboard deployments; retain additive tables and business records.",
+  "limits": {
+    "postgresConversionCore": "controlled-core-fixture; actual wrapper and capability function",
+    "productionRequestWritesTested": false,
+    "realKeysGeneratedForTesting": false,
+    "supplierMessagesSent": false,
+    "physicalAcceptanceIncluded": false,
+    "technicalEmployeeRoleProvisioned": false
+  }
+}
