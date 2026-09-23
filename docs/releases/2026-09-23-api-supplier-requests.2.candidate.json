@@ -1,0 +1,49 @@
+{
+  "release": "2026.09.23-api-supplier-requests.2",
+  "application": "api",
+  "status": "candidate-not-deployed",
+  "scope": "supplier-request-clarifications-and-atomic-preparation-gate",
+  "runtimeCandidate": null,
+  "deploymentId": null,
+  "currentProductionVerified": false,
+  "pairedDashboardRelease": "2026.09.23-dashboard.41",
+  "requiredMigration": "20260923150000_0114_supplier_request_reviews.sql",
+  "protocol": "nexid.supplier-request-review.v1",
+  "previousProductionDeployment": "dpl_HP9mNdhTxoaYP7pW6oiiHhP7sjoN",
+  "migrationEvidence": {
+    "sha256Lf": "755bd19e6271e8b0dc9960d5b16d59d46f04a40956d7ab3aa8db9cda09f4764b",
+    "bytesLf": 20279,
+    "branch": "br-autumn-lab-ainnwzhl",
+    "branchName": "qa-supplier-requests-20260923",
+    "schemaOnly": true,
+    "tenantRows": 0,
+    "requestRows": 0,
+    "branchApplied": true,
+    "ledgerRows": 1,
+    "reviewRows": 0,
+    "eventRows": 0,
+    "reviewFunctions": 7,
+    "unsafeFunctions": 0,
+    "reviewGuards": 3,
+    "preparationGatePresent": true,
+    "productionApplied": false
+  },
+  "localValidation": {
+    "supplierUnitPassed": 20,
+    "focalRegressionPassed": 254,
+    "typecheck": "passed",
+    "postgresSupplierPassed": 24,
+    "postgresSkipped": 0,
+    "postgresEngine": "17.10",
+    "postgresFixture": "real migrations and IAM capability contract; supplier-order core is a controlled fixture",
+    "secretCustodyGate": "passed"
+  },
+  "boundaries": {
+    "productionBusinessWrites": false,
+    "newIdentityRolesOrGrants": false,
+    "supplierDispatch": false,
+    "commercialApproval": false,
+    "physicalTagCertification": false
+  },
+  "remainingGates": ["independent-review", "exact-sha-ci", "production-migration", "staged-artifact", "canonical-domain-postchecks"]
+}

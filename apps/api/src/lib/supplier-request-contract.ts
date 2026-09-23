@@ -1,4 +1,5 @@
 import { auditFreeformContainsSecret } from "./audit-freeform-secret-policy";
+import { supplierRequestReviewSummary, type SupplierRequestReviewSummary } from "./supplier-request-review-contract";
 
 export const SUPPLIER_REQUEST_PROTOCOL = "nexid.supplier-request.v1";
 export const SUPPLIER_REQUEST_MAX_BODY_BYTES = 32 * 1024;
@@ -23,6 +24,7 @@ export type SupplierRequestItem = SupplierRequestContent & {
   id: string; tenant_id: string; tenant_slug: string; status: SupplierRequestStatus; revision: number;
   created_by: string; updated_by: string; submitted_by: string | null;
   created_at: string; updated_at: string; submitted_at: string | null; order_id: string | null;
+  review_summary: SupplierRequestReviewSummary;
 };
 export class SupplierRequestError extends Error {
   constructor(reason: string, public status = 400, public details: { current_revision?: number; order_id?: string } = {}) { super(reason); }
@@ -105,7 +107,8 @@ function parseSupplierRequestRow(row: Record<string, unknown>): SupplierRequestI
     revision: Number(row.revision), created_by: parseSupplierRequestId(row.created_by), updated_by: parseSupplierRequestId(row.updated_by),
     submitted_by: row.submitted_by === null ? null : parseSupplierRequestId(row.submitted_by),
     created_at: timestamp(row.created_at)!, updated_at: timestamp(row.updated_at)!, submitted_at: timestamp(row.submitted_at, true),
-    order_id: row.order_id === null ? null : parseSupplierRequestId(row.order_id) };
+    order_id: row.order_id === null ? null : parseSupplierRequestId(row.order_id),
+    review_summary: supplierRequestReviewSummary(row.review_summary) };
 }
 export function supplierRequestFromRow(row: Record<string, unknown>): SupplierRequestItem {
   try { return parseSupplierRequestRow(row); }

@@ -11,7 +11,7 @@ const actorId = '20000000-0000-4000-8000-000000000001', sessionId = '30000000-00
 const id = '40000000-0000-4000-8000-000000000001', key = '50000000-0000-4000-8000-000000000001', orderId = '60000000-0000-4000-8000-000000000001';
 const content = { title: 'Solicitud sintética', construction_id: '', quantity: null, pack_purpose: null, notes: 'Borrador parcial\nSin cantidad confirmada' };
 const complete = { ...content, construction_id: 'tt_bridge', quantity: 125, pack_purpose: 'trial_integration' };
-function row(patch = {}) { return { ...content, id, tenant_id: tenantId, tenant_slug: 'qa-a', status: 'draft', revision: 1, created_by: actorId, updated_by: actorId, submitted_by: null, created_at: '2026-09-23T12:00:00.000Z', updated_at: '2026-09-23T12:00:00.000Z', submitted_at: null, order_id: null, ...patch }; }
+function row(patch = {}) { return { ...content, id, tenant_id: tenantId, tenant_slug: 'qa-a', status: 'draft', revision: 1, created_by: actorId, updated_by: actorId, submitted_by: null, created_at: '2026-09-23T12:00:00.000Z', updated_at: '2026-09-23T12:00:00.000Z', submitted_at: null, order_id: null, review_summary: { state: 'pending', revision: 0, updated_at: null }, ...patch }; }
 function session(patch = {}) { return { id: sessionId, userId: actorId, email: 'qa@example.invalid', label: 'Synthetic operator', role: 'operations-manager', tenantId, tenantSlug: 'qa-a', permissions: ['supplier_order.create'], deniedPermissions: [], mfaVerified: false, expiresAt: new Date(Date.now() + 60000).toISOString(), rotatedCookieValue: null, setupCompleted: true, ...patch }; }
 function request(action, body, query = '?tenant=qa-a', headers = {}) {
   const method = action === 'patch' ? 'PATCH' : ['create', 'submit'].includes(action) ? 'POST' : 'GET';
@@ -127,12 +127,12 @@ test('write validation and provider failures cannot become success or expose unt
 });
 
 test('row projection rejects impossible lifecycle claims and strips unknown metadata', () => {
-  assert.deepEqual(supplierRequestFromRow({ ...row(), fingerprint: 'PRIVATE' }), row());
+  assert.deepEqual(supplierRequestFromRow({ ...row(), fingerprint: 'PRIVATE' }), { ...row(), review_summary: { state: 'pending', revision: 0, updated_at: null } });
   for (const patch of [{ status: 'invented' }, { status: 'submitted' }, { status: 'provisioned' }, { order_id: orderId }, { submitted_at: '2026-09-23T12:00:00.000Z' }, { revision: 0 }, { updated_at: 'bad-date' }]) assert.throws(() => supplierRequestFromRow(row(patch)));
 });
 
 test('malformed post-commit readback is unavailable, never a confirmed input rejection that permits a new create', async () => {
-  for (const patch of [{ title: '' }, { quantity: -1 }, { notes: null }, { construction_id: 'unknown' }, { pack_purpose: 'unknown' }, { updated_at: 'bad-date' }]) {
+  for (const patch of [{ title: '' }, { quantity: -1 }, { notes: null }, { construction_id: 'unknown' }, { pack_purpose: 'unknown' }, { updated_at: 'bad-date' }, { review_summary: undefined }]) {
     const deps = dependencies('create', {}, { result: { ok: true, request: row(patch), idempotent_replay: false, receipt: { idempotency_key: key, action: 'create', revision: 1 } } });
     const result = await call(deps, 'create');
     assert.equal(result.status, 503, JSON.stringify(patch));

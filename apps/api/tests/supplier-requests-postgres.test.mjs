@@ -18,7 +18,7 @@ test('supplier request PostgreSQL harness rejects remote, production and unappro
   for (const target of [null, 'postgres://nexid_e2e@remote.invalid/nexid_e2e_s9', 'postgres://postgres@localhost/nexid_e2e_s9', 'postgres://nexid_e2e@localhost/production', 'postgres://nexid_e2e@localhost/nexid_e2e_s9?options=x']) assert.throws(() => qaTarget(target));
 });
 
-test('actual 0113 commercial request migration is scoped, atomic and safe under concurrent writes', {
+test('actual 0113 and 0114 commercial request migrations are scoped, atomic and safe under concurrent writes', {
   skip: !process.env.NEXID_S9_QA_DATABASE_URL, timeout: 90000,
 }, async t => {
   const connectionString = qaTarget(process.env.NEXID_S9_QA_DATABASE_URL), schema = `qa_supplier_requests_${randomUUID().replaceAll('-', '')}`;
@@ -61,6 +61,15 @@ test('actual 0113 commercial request migration is scoped, atomic and safe under 
   async function convert(request, input = technical(request), client = observer, revision = request.revision) {
     return (await client.query(`SELECT * FROM ${schema}.nexid_convert_supplier_request_v1($1::uuid,$2::integer,$3::jsonb)`, [request.id, revision, JSON.stringify(input)])).rows[0];
   }
+  function reviewCommand(request, action = 'request_information', revision = 0, changes = {}) {
+    return { tenant_id: tenantA, actor_id: action === 'respond' ? actorA : globalActor, auth_session_id: action === 'respond' ? sessionA : globalSession,
+      request_id: request.id, action, message: action === 'respond' ? 'La instalación será en la tapa.' : '¿Dónde se instalará la etiqueta?', expected_revision: revision,
+      expected_request_revision: request.revision, idempotency_key: randomUUID(), ...changes };
+  }
+  async function reviewWrite(input, client = observer) { return (await client.query(`SELECT ${schema}.nexid_mutate_supplier_request_review_v1($1::jsonb) AS result`, [JSON.stringify(input)])).rows[0].result; }
+  async function reviewRead(id, before = null) { return (await observer.query(`SELECT ${schema}.nexid_supplier_request_review_current_v1($1::uuid,$2::uuid,$3::integer) AS result`, [id, tenantA, before])).rows[0].result; }
+  async function reviewCounts(id) { return (await observer.query(`SELECT (SELECT count(*)::integer FROM supplier_request_reviews WHERE request_id=$1) AS reviews,
+    (SELECT count(*)::integer FROM supplier_request_review_events WHERE request_id=$1) AS events,(SELECT count(*)::integer FROM audit_logs WHERE resource_type='supplier_request_review' AND resource_id=$1::text) AS audits`, [id])).rows[0]; }
   async function counts(id) {
     return (await observer.query(`SELECT (SELECT count(*)::integer FROM supplier_request_operations WHERE request_id=$1) AS operations,
       (SELECT count(*)::integer FROM audit_logs WHERE resource_id=$1::text) AS audits`, [id])).rows[0];
@@ -221,7 +230,114 @@ test('actual 0113 commercial request migration is scoped, atomic and safe under 
       await assert.rejects(convert(request), /supplier_request_already_provisioned/);
       assert.deepEqual(await graphCounts(), after);
     });
-    await t.test('the actual list store excludes internal drafts from global inbox and filters tenant queries', async () => {
+    await observer.query(scoped(await readFile(new URL('../db/migrations/20260923150000_0114_supplier_request_reviews.sql', import.meta.url), 'utf8')));
+    await t.test('0114 functions are invokers, PUBLIC cannot use them, and commercial defaults remain unchanged', async () => {
+      const functions = (await observer.query(`SELECT p.proname,p.prosecdef,p.proconfig,p.proacl FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname LIKE 'nexid_%supplier_request%review%'`, [schema])).rows;
+      assert.equal(functions.length, 7);
+      for (const fn of functions) { assert.equal(fn.prosecdef, false); assert.ok(fn.proconfig.some(value => value === `search_path=pg_catalog, ${schema}`)); assert.doesNotMatch(JSON.stringify(fn.proacl), /"=/); }
+      assert.equal((await observer.query("SELECT count(*)::int AS count FROM enterprise_role_profiles")).rows[0].count, 2);
+    });
+    await t.test('clarification is a separate immutable public history and never changes submitted commercial input', async () => {
+      const request = await prepared(), graph = await graphCounts(), initial = await read(request.id);
+      const empty = await reviewRead(request.id); assert.deepEqual(empty.review, { state: 'pending', revision: 0, updated_at: null }); assert.deepEqual(empty.history, []);
+      const ask = reviewCommand(request), question = await reviewWrite(ask);
+      assert.equal(question.ok, true); assert.equal(question.review.state, 'needs_information'); assert.equal(question.request_revision, 2);
+      assert.equal(question.history[0].actor_id, globalActor); assert.doesNotMatch(JSON.stringify(question), /auth_session_id|fingerprint|audit_id/);
+      await assert.rejects(convert(request), /supplier_request_information_required/);
+      const reply = await reviewWrite(reviewCommand(request, 'respond', 1)); assert.equal(reply.review.state, 'answered'); assert.equal(reply.review.revision, 2);
+      const saved = await read(request.id); assert.deepEqual({ ...saved, review_summary: initial.review_summary }, initial);
+      assert.deepEqual(saved.review_summary, reply.review); assert.deepEqual(await graphCounts(), graph);
+      assert.deepEqual(await reviewCounts(request.id), { reviews: 1, events: 2, audits: 2 });
+      const replay = await reviewWrite(ask); assert.equal(replay.idempotent_replay, true); assert.equal(replay.review.revision, 2); assert.equal(replay.receipt.revision, 1);
+      await convert(request); const after = await reviewWrite(ask); assert.equal(after.idempotent_replay, true); assert.equal(after.request_revision, 3);
+      assert.equal((await reviewWrite(reviewCommand(request, 'request_information', 2))).reason, 'supplier_request_not_submitted');
+      const createReceipt = (await observer.query("SELECT idempotency_key FROM supplier_request_operations WHERE request_id=$1 AND action='create'", [request.id])).rows[0];
+      const oldReplay = await mutate(command('create', { content: complete, idempotency_key: createReceipt.idempotency_key }));
+      assert.equal(oldReplay.idempotent_replay, true); assert.equal(oldReplay.request.review_summary.state, 'answered');
+    });
+    await t.test('review action, scope, live membership, deny and revocable session gates apply before replay', async () => {
+      const request = await prepared(), ask = reviewCommand(request); assert.equal((await reviewWrite(ask)).ok, true);
+      for (const input of [reviewCommand(request, 'request_information', 1, { actor_id: actorA, auth_session_id: sessionA }), reviewCommand(request, 'respond', 1, { actor_id: globalActor, auth_session_id: globalSession }), reviewCommand(request, 'respond', 1, { tenant_id: tenantB }), reviewCommand(request, 'respond', 1, { actor_id: actorA, auth_session_id: sessionB })]) assert.equal((await reviewWrite(input)).reason, 'supplier_request_review_scope_forbidden');
+      await observer.query('UPDATE auth_sessions SET revoked_at=now() WHERE id=$1', [globalSession]);
+      try { assert.equal((await reviewWrite(ask)).reason, 'supplier_request_review_scope_forbidden'); } finally { await observer.query('UPDATE auth_sessions SET revoked_at=NULL WHERE id=$1', [globalSession]); }
+      await observer.query("INSERT INTO resource_permissions(user_id,tenant_id,resource,action,effect) VALUES($1,NULL,'supplier_orders','write','deny')", [globalActor]);
+      try { assert.equal((await reviewWrite(ask)).reason, 'supplier_request_review_scope_forbidden'); } finally { await observer.query('DELETE FROM resource_permissions WHERE user_id=$1', [globalActor]); }
+      await observer.query('DELETE FROM memberships WHERE user_id=$1', [actorA]);
+      try { assert.equal((await reviewWrite(reviewCommand(request, 'respond', 1))).reason, 'supplier_request_review_scope_forbidden'); }
+      finally { await observer.query("INSERT INTO memberships(user_id,tenant_id,role) VALUES($1,$2,'operations_manager')", [actorA,tenantA]); }
+      assert.deepEqual(await reviewCounts(request.id), { reviews: 1, events: 1, audits: 1 });
+    });
+    await t.test('drafts have no reviews, dual CAS is strict, and receipt actor or body collisions do not mutate history', async () => {
+      const draft = (await mutate(command())).request; assert.equal(await reviewRead(draft.id), null);
+      assert.equal((await reviewWrite(reviewCommand(draft))).reason, 'supplier_request_not_submitted');
+      const request = await prepared();
+      assert.equal((await reviewWrite(reviewCommand(request, 'respond', 0))).reason, 'supplier_request_review_transition_invalid');
+      assert.equal((await reviewWrite(reviewCommand(request, 'request_information', 0, { expected_request_revision: 1 }))).reason, 'supplier_request_revision_conflict');
+      assert.equal((await reviewWrite(reviewCommand(request, 'request_information', 1))).reason, 'supplier_request_review_revision_conflict');
+      const ask = reviewCommand(request); await reviewWrite(ask);
+      assert.equal((await reviewWrite({ ...ask, message: 'Una pregunta diferente.' })).reason, 'supplier_request_review_idempotency_conflict');
+      assert.equal((await reviewWrite(reviewCommand(request, 'request_information', 1))).reason, 'supplier_request_review_transition_invalid');
+      const response = reviewCommand(request, 'respond', 1); await reviewWrite(response);
+      assert.equal((await reviewWrite({ ...response, actor_id: actorB, auth_session_id: sessionB })).reason, 'supplier_request_review_idempotency_conflict');
+      assert.deepEqual(await reviewCounts(request.id), { reviews: 1, events: 2, audits: 2 });
+    });
+    await t.test('secrets, controls, invalid transitions and direct writes cannot bypass review or history integrity', async () => {
+      const request = await prepared();
+      for (const message of ['', ' ', 'x'.repeat(2001), 'bad\u0001text', 'api_key=synthetic-confidential-value', 'PACK_PASSWORD', 'https://user:password@example.invalid', 'abcdef1234567890abcdef1234567890abcd', 'AbCdEfGhIjKlMnOpQrStUvWxYz1234567890']) await assert.rejects(reviewWrite(reviewCommand(request, 'request_information', 0, { message })), /supplier_request_review_input_invalid/);
+      await assert.rejects(observer.query("INSERT INTO supplier_request_reviews(tenant_id,request_id,state,revision,updated_at) VALUES($1,$2,'needs_information',1,now())", [tenantA,request.id]), /supplier_request_review_event_required/);
+      await reviewWrite(reviewCommand(request));
+      for (const statement of ["DELETE FROM supplier_request_reviews WHERE request_id=$1", "UPDATE supplier_request_reviews SET state='answered',revision=revision+1 WHERE request_id=$1", "DELETE FROM supplier_request_review_events WHERE request_id=$1", "UPDATE supplier_request_review_events SET message='forged' WHERE request_id=$1"]) await assert.rejects(observer.query(statement, [request.id]), /immutable|event_required|append_only/);
+      assert.deepEqual(await reviewCounts(request.id), { reviews: 1, events: 1, audits: 1 });
+    });
+    await t.test('audit and event insertion failures roll back the aggregate and preserve the reusable command', async () => {
+      const request = await prepared(), input = reviewCommand(request);
+      for (const [table, predicate] of [['audit_logs', `resource_id<>'${request.id}'`], ['supplier_request_review_events', `request_id<>'${request.id}'::uuid`]]) {
+        await observer.query(`ALTER TABLE ${table} ADD CONSTRAINT injected_review_failure CHECK(${predicate}) NOT VALID`);
+        try { await assert.rejects(reviewWrite(input), error => error.code === '23514'); }
+        finally { await observer.query(`ALTER TABLE ${table} DROP CONSTRAINT injected_review_failure`); }
+        assert.deepEqual(await reviewCounts(request.id), { reviews: 0, events: 0, audits: 0 });
+      }
+      assert.equal((await reviewWrite(input)).ok, true);
+    });
+    await t.test('concurrent same-key review retries replay once and different keys have one CAS winner', async () => {
+      const request = await prepared(), input = reviewCommand(request);
+      await first.query('BEGIN'); await reviewWrite(input, first);
+      const pending = settle(reviewWrite(input, second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const replay = await pending; assert.ifError(replay.error); assert.equal(replay.value.idempotent_replay, true);
+      const reply = reviewCommand(request, 'respond', 1); await first.query('BEGIN'); await reviewWrite(reply, first);
+      const losing = settle(reviewWrite({ ...reply, idempotency_key: randomUUID() }, second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const loser = await losing; assert.ifError(loser.error); assert.equal(loser.value.reason, 'supplier_request_review_revision_conflict');
+      assert.deepEqual(await reviewCounts(request.id), { reviews: 1, events: 2, audits: 2 });
+    });
+    await t.test('question and conversion serialize in both orders, with no stale eligibility or late review', async () => {
+      const request = await prepared(), before = await graphCounts();
+      await first.query('BEGIN'); await reviewWrite(reviewCommand(request), first);
+      const converting = settle(convert(request, technical(request), second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      assert.match((await converting).error?.message || '', /supplier_request_information_required/); assert.deepEqual(await graphCounts(), before);
+      const next = await prepared(); await first.query('BEGIN'); const order = await convert(next, technical(next), first);
+      const questioning = settle(reviewWrite(reviewCommand(next), second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const refused = await questioning; assert.ifError(refused.error); assert.equal(refused.value.reason, 'supplier_request_not_submitted');
+      assert.equal((await read(next.id)).order_id, order.supplier_order.id); assert.deepEqual(await reviewCounts(next.id), { reviews: 0, events: 0, audits: 0 });
+    });
+    await t.test('reply and conversion serialize, and blocked conversion cannot consume a pending company response', async () => {
+      const request = await prepared(); await reviewWrite(reviewCommand(request));
+      await first.query('BEGIN'); await reviewWrite(reviewCommand(request, 'respond', 1), first);
+      const converting = settle(convert(request, technical(request), second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const success = await converting; assert.ifError(success.error); assert.equal((await read(request.id)).order_id, success.value.supplier_order.id);
+      const next = await prepared(); await reviewWrite(reviewCommand(next));
+      await first.query('BEGIN'); await first.query('SELECT id FROM supplier_requests WHERE id=$1 FOR UPDATE', [next.id]);
+      const responding = settle(reviewWrite(reviewCommand(next, 'respond', 1), second)); await waitForLock(second);
+      try { await assert.rejects(convert(next, technical(next), first), /supplier_request_information_required/); } finally { await first.query('ROLLBACK'); }
+      const reply = await responding; assert.ifError(reply.error); assert.equal(reply.value.review.state, 'answered'); assert.equal((await read(next.id)).order_id, null);
+    });
+    await t.test('review history pages are bounded, chronological and explicitly truncated while current state remains current', async () => {
+      const request = await prepared();
+      for (let revision=0;revision<103;revision++) assert.equal((await reviewWrite(reviewCommand(request, revision%2===0 ? 'request_information' : 'respond', revision))).ok, true);
+      const current = await reviewRead(request.id); assert.equal(current.count, 100); assert.equal(current.history[0].revision, 4); assert.equal(current.truncated, true); assert.equal(current.next_before_revision, 4);
+      const earlier = await reviewRead(request.id, current.next_before_revision); assert.deepEqual(earlier.history.map(event => event.revision), [1,2,3]); assert.equal(earlier.truncated, false); assert.equal(earlier.next_before_revision, null); assert.deepEqual(earlier.review, current.review);
+      const { supplierRequestReviewFromRow } = await import('../src/lib/supplier-request-review-contract.ts'); assert.equal(supplierRequestReviewFromRow(current).history[0].action, 'respond'); assert.equal(supplierRequestReviewFromRow(earlier,4).review.revision, 103);
+    });
+    await t.test('the actual list store excludes internal drafts, scopes tenants, and orders by the latest clarification activity', async () => {
       const { listSupplierRequests } = await import('../src/lib/supplier-request-store.ts');
       const query = async (strings, ...values) => { let text = ''; for (let i = 0; i < strings.length; i++) text += strings[i] + (i < values.length ? `$${i+1}` : ''); return (await observer.query(scoped(text), values)).rows; };
       const global = await listSupplierRequests({ mode: 'global', tenant_id: null, tenant_slug: null }, { limit: 100, status: 'all' }, query);
@@ -229,6 +345,10 @@ test('actual 0113 commercial request migration is scoped, atomic and safe under 
       const company = await listSupplierRequests({ mode: 'tenant', tenant_id: tenantA, tenant_slug: 'qa-a' }, { limit: 2, status: 'all' }, query);
       assert.equal(company.count, 2); assert.equal(company.truncated, true); assert.ok(company.items.every(item => item.tenant_id === tenantA));
       const absent = await listSupplierRequests({ mode: 'tenant', tenant_id: tenantB, tenant_slug: 'qa-b' }, { limit: 100, status: 'all' }, query); assert.deepEqual(absent.items, []);
+      const old = (await observer.query("SELECT id,revision FROM supplier_requests WHERE status='submitted' AND id NOT IN (SELECT request_id FROM supplier_request_reviews) ORDER BY updated_at ASC LIMIT 1")).rows[0];
+      await reviewWrite(reviewCommand(old));
+      const latest = await listSupplierRequests({ mode: 'global', tenant_id: null, tenant_slug: null }, { limit: 1, status: 'all' }, query);
+      assert.equal(latest.items[0].id, old.id); assert.equal(latest.items[0].review_summary.state, 'needs_information');
     });
   } finally {
     for (const client of clients) await client.query('ROLLBACK').catch(() => {});

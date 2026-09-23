@@ -15,20 +15,25 @@ export async function resolveSupplierRequestScope(requested: string | null, prin
   return { mode: "tenant", tenant_id: tenant.id.toLowerCase(), tenant_slug: slug };
 }
 export async function listSupplierRequests(scope: SupplierRequestScope, options: { limit: number; status: string }, query: SqlExecutor) {
-  const rows = await query`SELECT request.*, tenant.slug AS tenant_slug
+  const rows = await query`SELECT request.*, tenant.slug AS tenant_slug,
+    jsonb_build_object('state',COALESCE(review.state,'pending'),'revision',COALESCE(review.revision,0),'updated_at',review.updated_at) AS review_summary
     FROM public.supplier_requests request JOIN public.tenants tenant ON tenant.id=request.tenant_id
+    LEFT JOIN public.supplier_request_reviews review ON review.tenant_id=request.tenant_id AND review.request_id=request.id
     WHERE (${scope.tenant_id}::uuid IS NULL OR request.tenant_id=${scope.tenant_id}::uuid)
       AND (${scope.tenant_id}::uuid IS NOT NULL OR request.status IN ('submitted','provisioned'))
       AND (${options.status}='all' OR request.status=${options.status})
-    ORDER BY request.updated_at DESC, request.id DESC LIMIT ${options.limit + 1}`;
+    ORDER BY GREATEST(request.updated_at,review.updated_at) DESC, request.id DESC LIMIT ${options.limit + 1}`;
   const items = rows.slice(0, options.limit).map(supplierRequestFromRow);
   if (items.some(item => scope.mode === "tenant" ? item.tenant_id !== scope.tenant_id || item.tenant_slug !== scope.tenant_slug : item.status === "draft")) throw new Error("supplier_request_scope_invalid");
   return { items, count: items.length, truncated: rows.length > options.limit };
 }
 export async function getSupplierRequest(scope: SupplierRequestScope, id: string, query: SqlExecutor = sql) {
   if (scope.mode !== "tenant") throw new SupplierRequestError("supplier_request_tenant_required");
-  const [row] = await query`SELECT request.*, tenant.slug AS tenant_slug FROM public.supplier_requests request
-    JOIN public.tenants tenant ON tenant.id=request.tenant_id WHERE request.id=${id}::uuid AND request.tenant_id=${scope.tenant_id}::uuid LIMIT 1`;
+  const [row] = await query`SELECT request.*, tenant.slug AS tenant_slug,
+    jsonb_build_object('state',COALESCE(review.state,'pending'),'revision',COALESCE(review.revision,0),'updated_at',review.updated_at) AS review_summary
+    FROM public.supplier_requests request JOIN public.tenants tenant ON tenant.id=request.tenant_id
+    LEFT JOIN public.supplier_request_reviews review ON review.tenant_id=request.tenant_id AND review.request_id=request.id
+    WHERE request.id=${id}::uuid AND request.tenant_id=${scope.tenant_id}::uuid LIMIT 1`;
   if (!row) throw new SupplierRequestError("supplier_request_not_found", 404);
   const item = supplierRequestFromRow(row);
   if (item.tenant_id !== scope.tenant_id || item.tenant_slug !== scope.tenant_slug) throw new Error("supplier_request_scope_invalid");
@@ -69,7 +74,8 @@ export function supplierRequestConversionError(error: unknown) {
   if (error instanceof SupplierRequestError) return error;
   const message = error instanceof Error ? error.message : "";
   const reasons: Record<string, number> = { supplier_request_operator_required: 403, supplier_request_not_found: 404, supplier_request_source_invalid: 400,
-    supplier_request_already_provisioned: 409, supplier_request_not_submitted: 409, supplier_request_revision_conflict: 409, supplier_request_order_mismatch: 409 };
+    supplier_request_already_provisioned: 409, supplier_request_not_submitted: 409, supplier_request_revision_conflict: 409, supplier_request_order_mismatch: 409,
+    supplier_request_information_required: 409 };
   for (const [reason, status] of Object.entries(reasons)) if (message.includes(reason)) return new SupplierRequestError(reason, status);
   return null;
 }
@@ -80,6 +86,7 @@ export async function validateSupplierRequestConversion(source: { id: string; re
   if (request.status === "provisioned") throw new SupplierRequestError("supplier_request_already_provisioned", 409, { order_id: request.order_id! });
   if (request.status !== "submitted") throw new SupplierRequestError("supplier_request_not_submitted", 409);
   if (request.revision !== source.revision) throw new SupplierRequestError("supplier_request_revision_conflict", 409, { current_revision: request.revision });
+  if (request.review_summary.state === "needs_information") throw new SupplierRequestError("supplier_request_information_required", 409);
   const construction = request.construction_id ? SUPPLIER_REQUEST_CONSTRUCTIONS[request.construction_id] : null;
   if (!construction || technical.quantity !== request.quantity || technical.purpose !== request.pack_purpose || technical.carrier !== construction.carrier || technical.material !== construction.material
     || (construction.chip ? technical.chip !== construction.chip : !technical.chip || /NTAG/i.test(technical.chip))) throw new SupplierRequestError("supplier_request_order_mismatch", 409);
