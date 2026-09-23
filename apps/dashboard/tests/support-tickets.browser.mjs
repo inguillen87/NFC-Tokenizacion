@@ -348,6 +348,32 @@ try {
     workflowMode = 'normal'; workflowStates.get(lookupId(21)).current = { ...workflowStates.get(lookupId(21)).current, status: 'open', revision: 'c'.repeat(64) };
     await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click(); await workflow.locator('[data-workflow-state="saved"]').waitFor();
     check(workflowWrites.slice(-3).every(entry => entry.body === uncertainCommand) && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Abierto', `${width} ${theme}: retries are byte-identical and replay uses authoritative current status rather than old receipt`);
+    for (const [suffix, boundary, nextContext] of [
+      [28, 'permission revocation', { tenant: 'qa-only', demo: false, canLookup: false }],
+      [29, 'tenant change', { tenant: 'qa-second', demo: false, canLookup: true }],
+    ]) {
+      await openWorkflow(lookupId(suffix), 'uncertain'); await reviewWorkflow('Motivo sintético del contexto anterior');
+      await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click();
+      await workflow.locator('[data-workflow-state="uncertain"]').waitFor();
+      check(await page.getByTestId('ticket-entry-lock-notice').isVisible(), `${width} ${theme}: uncertain command is locked before ${boundary}`);
+      const beforeContextReset = { lookups: lookupCalls.length, history: historyReads.length, writes: workflowWrites.length };
+      // Fixture.setContext rerenders the same LeadsTicketsClient instance. In
+      // particular, this must not mask A→B→A lock resurrection by remounting it.
+      await page.evaluate(value => window.__qaSetLookupContext(value), nextContext);
+      await lookupState('idle');
+      check(await result.count() === 0 && await workflow.count() === 0 && await page.getByTestId('ticket-entry-lock-notice').count() === 0, `${width} ${theme}: ${boundary} removes the old private result, workflow and navigation lock`);
+      if (!nextContext.canLookup) check(await lookup.locator('input').count() === 0 && await page.getByTestId('ticket-entry-row').count() === 0, `${width} ${theme}: revoked permission removes both manual and row ticket actions`);
+      await page.evaluate(() => window.__qaSetLookupContext({ tenant: 'qa-only', demo: false, canLookup: true }));
+      await lookupState('idle'); await rowEntry.waitFor();
+      check(await result.count() === 0 && await workflow.count() === 0 && await referenceInput.inputValue() === '', `${width} ${theme}: returning from ${boundary} never resurrects the old ticket or reference`);
+      check(await page.getByTestId('ticket-entry-lock-notice').count() === 0 && !await referenceInput.isDisabled() && !await rowEntry.isDisabled(), `${width} ${theme}: returning from ${boundary} does not resurrect disabled controls or the stale parent lock`);
+      check(lookupCalls.length === beforeContextReset.lookups && historyReads.length === beforeContextReset.history && workflowWrites.length === beforeContextReset.writes, `${width} ${theme}: changing and restoring ${boundary} never sends automatic requests or retries`);
+      workflowMode = 'normal';
+      await rowEntry.click(); await lookupState('found');
+      await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'ticket-reference-lookup');
+      check(lookupCalls.length === beforeContextReset.lookups + 1 && lookupCalls.at(-1).id === ticketId && lookupCalls.at(-1).tenant === 'qa-only' && await referenceInput.inputValue() === ticketId, `${width} ${theme}: restored ${boundary} accepts a new explicit authorized ticket lookup`);
+      check(historyReads.length === beforeContextReset.history && workflowWrites.length === beforeContextReset.writes, `${width} ${theme}: restored lookup never replays the discarded context's uncertain command`);
+    }
     await openWorkflow(lookupId(22), 'conflict'); await reviewWorkflow('Motivo preservado ante cambio ajeno');
     await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click(); await workflow.locator('[data-workflow-state="conflict"]').waitFor();
     check(await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled(), `${width} ${theme}: conflict requires fresh evidence before editing`);

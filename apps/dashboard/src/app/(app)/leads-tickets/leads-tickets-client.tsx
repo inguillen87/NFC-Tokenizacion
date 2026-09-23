@@ -82,7 +82,9 @@ export default function LeadsTicketsClient({
   const contentId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const ticketLookup = useRef<TicketReferenceLookupHandle>(null);
-  const ticketContext = JSON.stringify([tenantScope, demoMode, canLookupTickets]);
+  const ticketContextKey = JSON.stringify([tenantScope, demoMode, canLookupTickets]);
+  // Returning to the same scope is a new visit, not the old workflow's lock.
+  const ticketContext = useMemo(() => ({ key: ticketContextKey }), [ticketContextKey]);
   const [ticketLock, setTicketLock] = useState({ context: ticketContext, locked: false });
   const ticketNavigationLocked = ticketLock.context === ticketContext && ticketLock.locked;
   const entryCopy = ticketEntryCopy[locale];
@@ -273,7 +275,7 @@ export default function LeadsTicketsClient({
         )}
 
           <div hidden={activeTab !== "tickets"} className="space-y-6">
-          <TicketReferenceLookup key={ticketContext} ref={ticketLookup} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets}
+          <TicketReferenceLookup key={ticketContext.key} ref={ticketLookup} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets}
             onNavigationLockChange={locked => setTicketLock({ context: ticketContext, locked })} />
           {activeTab === "tickets" && (inboxes.tickets.availability !== "ready" ? <CustomerInboxNotice state={inboxes.tickets} locale={locale} onRetry={retry} pending={refreshing} /> : <DataTable
             title={ui.tickets}

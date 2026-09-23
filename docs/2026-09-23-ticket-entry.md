@@ -10,7 +10,9 @@ the reference, refreshing the inbox, and changing internal tabs are blocked
 synchronously while a status write is pending or unresolved. The original command
 and idempotency UUID remain available to retry. This also covers a second click
 before React has rendered the disabled controls. A scope or permission change
-still clears the prior scope; this is not persistence across a page reload.
+still clears the prior scope; returning to an earlier organization or permission
+state cannot restore a stale navigation lock. This is not persistence across a
+page reload.
 
 The action is absent for demo, unavailable, duplicate, foreign-tenant or invalid
 rows and sessions without the existing lookup permission. No read runs on mount,
@@ -19,15 +21,16 @@ automatically. Counts and exports retain the original confirmed sample.
 
 ## Validation
 
-- Dashboard unit suite: 1,195 passed, zero failed, two existing optional skips.
+- Dashboard unit suite: 1,198 passed, zero failed, two existing optional skips.
 - Focal suite: 139 passed (overlaps the complete suite).
 - TypeScript passed.
-- Browser: 444 checks in 30 views; zero axe findings, overflow, browser errors,
+- Browser: 504 checks in 30 views; zero axe findings, overflow, browser errors,
   unexpected requests or external connections. Mobile light and desktop dark
   captures were inspected. Spanish, English and Portuguese entry controls passed.
 - Browser uses actual components and Chromium with synthetic records/transport
   and stubbed Next navigation. It is not production ticket-write acceptance.
-- Build, exact-commit CI and deployment receipts are recorded separately after
+- Production build, dependency audit and secret custody gate passed locally.
+  Exact-commit CI and deployment receipts are recorded separately after
   completion; none is implied by the counts above.
 
 No API, database, NFC configuration, TTStatus, notification or new service is

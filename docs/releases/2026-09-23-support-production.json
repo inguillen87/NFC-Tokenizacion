@@ -15,7 +15,8 @@
     "postcheck": { "ledgerRows": 1, "operationsRows": 0, "functions": 6, "securityDefinerOrPublicExecutableFunctions": 0, "appendOnlyTriggers": 1 },
     "existingTicketRowsModified": false,
     "temporaryBranchId": "br-cool-flower-ai0kmuhm",
-    "temporaryBranchDeleted": false,
+    "temporaryBranchDeleted": true,
+    "cleanupVerification": "Neon branch list returned eight branches, temporary branch absent, main still default",
     "connectorLimitation": "read and completion tool schemas omit required project_id; local Neon OAuth expired; console session was valid"
   },
   "api": {

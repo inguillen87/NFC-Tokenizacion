@@ -131,3 +131,62 @@ test("fresh status updates only the matching loaded ticket, while unrelated call
   hook.updateStatus(OTHER, "closed"); assert.equal(h.render().state.ticket.status, "open");
   hook.updateStatus(ID, "pending"); assert.equal(h.render().state.ticket.status, "pending"); h.unmount();
 });
+
+// Run the actual parent render with its real projections. Child components are
+// represented as elements here; the browser suite renders them with real React.
+const parentSource = await readFile(new URL("../src/app/(app)/leads-tickets/leads-tickets-client.tsx", import.meta.url), "utf8");
+const parentCompiled = ts.transpileModule(parentSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
+const parentLibraries = {};
+for (const [, specifier] of parentCompiled.matchAll(/require\("([^"]+)"\)/g)) {
+  if (specifier.includes("/lib/")) parentLibraries[specifier] = await import(new URL(`../src/lib/${specifier.split("/").at(-1)}.ts`, import.meta.url));
+}
+function parentHarness() {
+  const slots = []; let cursor = 0;
+  const react = {
+    useRef(value) { const index = cursor++; return slots[index] ??= { current: value }; },
+    useState(value) { const index = cursor++; const slot = slots[index] ??= { value }; return [slot.value, next => { slot.value = typeof next === "function" ? next(slot.value) : next; }]; },
+    useMemo(factory, deps) { const index = cursor++; const previous = slots[index]; if (!previous || previous.deps.length !== deps.length || previous.deps.some((value, offset) => !Object.is(value, deps[offset]))) slots[index] = { value: factory(), deps }; return slots[index].value; },
+    useId() { return react.useRef(`qa-${cursor}`).current; }, useTransition() { return [false, callback => callback()]; },
+  };
+  const element = (type, props) => ({ type, props });
+  const children = new Proxy({}, { get: (_, key) => key });
+  const module = { exports: {} };
+  new Function("require", "module", "exports", parentCompiled)(name => {
+    if (Object.hasOwn(parentLibraries, name)) return parentLibraries[name];
+    if (name === "react") return react;
+    if (name === "react/jsx-runtime") return { jsx: element, jsxs: element };
+    if (name === "next/navigation") return { useRouter: () => ({ refresh() { throw new Error("Unexpected refresh"); } }) };
+    if (name.endsWith(".module.css")) return { default: {} };
+    if (name.includes("/components/") || name === "lucide-react") return children;
+    throw new Error(`Unexpected parent dependency ${name}`);
+  }, module, module.exports);
+  const collection = { availability: "ready", source: "production" };
+  const base = { initialLeads: [], initialTickets: [row()], initialOrders: [], filteredOpportunities: [],
+    tenantScope: "qa-only", sessionFilter: "", tenantFilter: "qa-only", locale: "es-AR", canLookupTickets: true,
+    copy: { shell: { loading: "Loading", all: "All", refresh: "Refresh" }, statuses: {} }, labels: {}, demoMode: false, leadsSource: "production",
+    signalCollections: { leads: collection, tickets: collection, orders: collection }, members: [], memberDirectory: collection,
+    selectedMemberId: "", memberTimeline: { availability: "not_selected", items: [], partial: false, sourceErrors: [], hasMore: false, nextCursor: null } };
+  return patch => { cursor = 0; return module.exports.default({ ...base, ...patch }); };
+}
+function nodes(root) {
+  if (!root || typeof root !== "object") return [];
+  if (Array.isArray(root)) return root.flatMap(nodes);
+  return [root, ...nodes(root.props?.children)];
+}
+const parentLookup = tree => nodes(tree).find(node => node.type === "TicketReferenceLookup");
+const parentLocked = tree => nodes(tree).some(node => node.props?.["data-testid"] === "ticket-entry-lock-notice");
+
+for (const [name, intermediate] of [["permission", { canLookupTickets: false }], ["tenant", { tenantScope: "another-company" }], ["demo", { demoMode: true }]]) {
+  test(`actual parent does not revive an uncertain lock after ${name} context A to B to A`, () => {
+    const render = parentHarness(); let tree = render(); const firstLookup = parentLookup(tree);
+    firstLookup.props.onNavigationLockChange(true); tree = render(); assert.equal(parentLocked(tree), true);
+    assert.equal(nodes(tree).find(node => node.type === "CustomerActivitySummary").props.disabled, true);
+    tree = render(intermediate); assert.equal(parentLocked(tree), false);
+    tree = render(); assert.equal(parentLocked(tree), false);
+    assert.equal(nodes(tree).find(node => node.type === "CustomerActivitySummary").props.disabled, false);
+    assert.ok(nodes(tree).filter(node => node.props?.role === "tab").every(node => !node.props.disabled));
+    // An old workflow notification must not become authority in the new visit.
+    firstLookup.props.onNavigationLockChange(true); tree = render(); assert.equal(parentLocked(tree), false);
+    parentLookup(tree).props.onNavigationLockChange(true); assert.equal(parentLocked(render()), true);
+  });
+}
