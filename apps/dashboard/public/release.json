@@ -1,8 +1,8 @@
 {
-  "release": "2026.09.23-dashboard.38",
-  "scope": "direct-ticket-entry-with-pending-command-preservation",
+  "release": "2026.09.23-dashboard.39",
+  "scope": "guided-supplier-order-preparation",
   "realTapCertification": "not-included",
-  "baseCommit": "d9efee842e0c652f451e432f0e68e45b03b7476c",
+  "baseCommit": "6c37248dd48a7edff8712b25071772cb5f75e97d",
   "reconciliationBaseRelease": "2026.09.21-dashboard.28",
   "requiredApiRelease": "2026.09.22-api-support-workflow.2",
   "source": "committed-interface-increment-on-production-baseline",

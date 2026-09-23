@@ -57,6 +57,7 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-member-history/browser" node apps/dashboard/tests/member-timeline-continuity.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-batch-navigation/browser" node apps/dashboard/tests/batch-workspace-navigation.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-dependency-map/browser" node apps/dashboard/tests/dependency-map.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-supplier-order-draft/browser" node apps/dashboard/tests/supplier-order-draft.browser.mjs
           node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$RUNNER_TEMP/nexid-map-next.log" 2>&1 &
           map_server=$!
           trap 'kill "$map_server" 2>/dev/null || true' EXIT
