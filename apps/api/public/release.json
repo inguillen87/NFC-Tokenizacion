@@ -1,5 +1,5 @@
 {
-  "release": "2026.09.22-api-support-workflow.1",
+  "release": "2026.09.22-api-support-workflow.2",
   "scope": "atomic-audited-support-ticket-status-transitions-and-history",
   "baseCommit": "8f9494b21b7b4667b41a9d031ca03896fc8e7124",
   "requiredDeploymentConfiguration": {
@@ -49,5 +49,7 @@
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "supportReportProtocol": "nexid.support-report.v1",
   "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
-  "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1"
+  "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1",
+  "dependencyMaintenance": true,
+  "compatibleApiProtocolRelease": "2026.09.22-api-support-workflow.1"
 }
