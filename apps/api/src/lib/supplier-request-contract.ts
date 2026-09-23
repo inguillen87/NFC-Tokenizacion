@@ -92,7 +92,7 @@ function timestamp(value: unknown, nullable = false): string | null {
   if (!result || !Number.isFinite(result.getTime())) throw new Error("supplier_request_record_invalid");
   return result.toISOString();
 }
-export function supplierRequestFromRow(row: Record<string, unknown>): SupplierRequestItem {
+function parseSupplierRequestRow(row: Record<string, unknown>): SupplierRequestItem {
   const content = parseSupplierRequestCreate(Object.fromEntries(FIELDS.map(key => [key, row[key]])));
   const id = parseSupplierRequestId(row.id), tenantId = parseSupplierRequestId(row.tenant_id);
   if (typeof row.tenant_slug !== "string" || !SUPPLIER_REQUEST_TENANT_SLUG.test(row.tenant_slug)
@@ -106,4 +106,8 @@ export function supplierRequestFromRow(row: Record<string, unknown>): SupplierRe
     submitted_by: row.submitted_by === null ? null : parseSupplierRequestId(row.submitted_by),
     created_at: timestamp(row.created_at)!, updated_at: timestamp(row.updated_at)!, submitted_at: timestamp(row.submitted_at, true),
     order_id: row.order_id === null ? null : parseSupplierRequestId(row.order_id) };
+}
+export function supplierRequestFromRow(row: Record<string, unknown>): SupplierRequestItem {
+  try { return parseSupplierRequestRow(row); }
+  catch { throw new Error("supplier_request_record_invalid"); }
 }

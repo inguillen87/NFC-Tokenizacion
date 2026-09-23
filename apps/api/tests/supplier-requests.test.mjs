@@ -131,6 +131,16 @@ test('row projection rejects impossible lifecycle claims and strips unknown meta
   for (const patch of [{ status: 'invented' }, { status: 'submitted' }, { status: 'provisioned' }, { order_id: orderId }, { submitted_at: '2026-09-23T12:00:00.000Z' }, { revision: 0 }, { updated_at: 'bad-date' }]) assert.throws(() => supplierRequestFromRow(row(patch)));
 });
 
+test('malformed post-commit readback is unavailable, never a confirmed input rejection that permits a new create', async () => {
+  for (const patch of [{ title: '' }, { quantity: -1 }, { notes: null }, { construction_id: 'unknown' }, { pack_purpose: 'unknown' }, { updated_at: 'bad-date' }]) {
+    const deps = dependencies('create', {}, { result: { ok: true, request: row(patch), idempotent_replay: false, receipt: { idempotency_key: key, action: 'create', revision: 1 } } });
+    const result = await call(deps, 'create');
+    assert.equal(result.status, 503, JSON.stringify(patch));
+    assert.equal(result.body.ok, false);
+    assert.equal(deps.queries.filter(query => /nexid_mutate_supplier_request_v1/.test(query.statement)).length, 1);
+  }
+});
+
 test('conversion preflight requires superadmin, submitted revision and exact commercial-to-technical binding', async () => {
   assert.equal(parseSupplierRequestSource({}), null);
   assert.deepEqual(parseSupplierRequestSource({ source_request_id: id, source_request_revision: 2 }), { id, revision: 2 });
@@ -153,4 +163,3 @@ test('routes expose only the intended read/create/patch/submit handlers', async 
     assert.doesNotMatch(source, /ensureSchema|generateBatch|createSupplierOrder|manifestImport/);
   }
 });
-
