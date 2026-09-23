@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {BatchWorkspaceNavigationServer} from "../../../../components/batch-workspace-navigation-server";
 import {canReadRecallWorkspace} from '../../../../lib/recall-workspace';
 import { RollProductIdentity } from "../../../../components/roll-product-identity";
@@ -202,7 +203,7 @@ export default async function BatchDetailPage({ params, searchParams }: { params
     </> : <p className={styles.notice}>{batchData.editorial_managed?"La edición directa está bloqueada: este lote conserva sus cambios mediante Passport Studio.":"Tu rol puede consultar la ficha, pero no editarla. El administrador gestiona batch.product.configure."}</p>}
   </div>;
   const unitsPanel = <div className={styles.stack}>
-    {dossier.imported===null?<p className={styles.notice}>La recepción está pausada en esta vista hasta confirmar el conteo de unidades del lote.</p>:<RollManifestIntake key={bid} bid={bid} canImport={access.import&&!access.demo} alreadyRegistered={dossier.imported>0}/>}
+    {dossier.imported===null?<p className={styles.notice}>La recepción está pausada en esta vista hasta confirmar el conteo de unidades del lote.</p>:<RollManifestIntake key={bid} scopeKey={createHash("sha256").update(JSON.stringify([session.id, session.role, session.tenantId, session.tenantSlug, session.permissions, session.deniedPermissions, session.isDemo, dossier.tenant])).digest("hex")} bid={bid} canImport={access.import&&!access.demo} alreadyRegistered={dossier.imported>0}/>}
     <BatchUnitEvidence model={dossier}/>
   </div>;
   const operationsPanel = <div className={styles.stack}>
