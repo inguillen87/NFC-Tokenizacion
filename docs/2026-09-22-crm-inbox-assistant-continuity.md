@@ -99,3 +99,36 @@ to continue development are not recorded as that migration approval.
 Next coherent block: continue the existing task-oriented DPP/consumer/support
 acceptance with real authenticated sessions once the release prerequisites are
 satisfied; keep physical TAP evidence and business-event evidence distinct.
+
+## Verified GitHub and Vercel results
+
+Runtime `183ff4173a545edd39e7afe3902f5e99bdfb6078` was pushed by normal
+fast-forward to the same remote continuation branch. Actions run `35809985570`,
+job `107019173089`, passed on its first attempt at 2026-09-23T02:24:36Z
+(September 22 in Argentina). Completed logs were read: 1,130 passed, zero
+failed/canceled, two existing optional skips; typecheck/build, dependency audit,
+secret custody, support 296/24, CRM 1,021/36, and two map runs of 29/4 passed.
+One map run used assets served by a real Next production server. All browser
+records and transports were synthetic; this does not certify a real tenant login.
+
+Vercel built one new .35 candidate on the existing dashboard project:
+`dpl_6aYY1fSwaBtBLwvB7gAJiYHqoQjH`, READY, with native Git source equal to the
+exact runtime above and `autoAssignCustomDomains: false`. An authorized Vercel
+CLI read returned `/release.json` identical to the committed marker and fetched
+`/novedades` with .35 and the new source/assistant cards. Those are HTTP checks,
+not a full authenticated application browser acceptance.
+
+The local mobile/light and desktop/dark assistant captures were inspected after
+the final layout adjustment. Support fixture scope was corrected before the
+single successful CI run; no guard or failing assertion was disabled.
+
+Final provider reads retained production API `dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V`
+and Dashboard `dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q`. No migration or promotion was
+requested. API, Web, packages, dependencies and Actions definitions stayed
+unchanged. The three ticket contract modules remain byte-equivalent to .34,
+which was the independently validated API .2 paired-model input. This does not
+claim that a new authenticated combined release ceremony has been completed.
+
+The .35 candidate manifest records this evidence; prior .34/API .2 records are
+not overwritten. A documentation-only follow-up records the results without
+changing the tested application or causing another application build.

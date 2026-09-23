@@ -1,0 +1,55 @@
+{
+  "schema": "nexid.dashboard-candidate-evidence.v1",
+  "release": "2026.09.22-dashboard.35",
+  "status": "staged-not-promoted",
+  "sourceSha": "183ff4173a545edd39e7afe3902f5e99bdfb6078",
+  "sourceBranch": "codex/nexid-s9-ticket-deadline-20260922",
+  "ci": {
+    "runId": 35809985570,
+    "jobId": 107019173089,
+    "conclusion": "success",
+    "attempt": 1,
+    "tests": 1132,
+    "passed": 1130,
+    "failed": 0,
+    "skipped": 2,
+    "newTestsIncluded": 33
+  },
+  "browser": {
+    "crmChecks": 1021,
+    "crmViews": 36,
+    "supportChecks": 296,
+    "supportViews": 24,
+    "mapChecksPerRun": 29,
+    "mapViewsPerRun": 4,
+    "mapRuns": 2,
+    "oneMapRunUsedNextServer": true,
+    "syntheticRecords": true,
+    "nextNavigationStubbed": true,
+    "authenticatedBusinessAcceptance": false
+  },
+  "deployment": {
+    "id": "dpl_6aYY1fSwaBtBLwvB7gAJiYHqoQjH",
+    "url": "https://nexid-dashboard-je2kg7i6t-marcelos-projects-c26aa499.vercel.app",
+    "readyState": "READY",
+    "sourceEvidence": "provider-native-git-sha",
+    "autoAssignCustomDomains": false,
+    "releaseMarkerRead": "2026.09.22-dashboard.35",
+    "markerEqualsCommittedFile": true,
+    "releaseNotesRead": true
+  },
+  "requiredApiRelease": "2026.09.22-api-support-workflow.2",
+  "requiredMigration": "20260922100000_0112_support_ticket_workflow.sql",
+  "migrationAppliedByThisIncrement": false,
+  "productionDomainChanged": false,
+  "productionPointersAfter": {
+    "nexid-api": "dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V",
+    "nexid-dashboard": "dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q"
+  },
+  "physicalTapCertified": false,
+  "remainingGates": [
+    "specific-migration-0112-confirmation-and-application",
+    "coordinated-authenticated-acceptance",
+    "production-promotion-and-canonical-smoke"
+  ]
+}
