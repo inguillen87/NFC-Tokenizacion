@@ -1,0 +1,42 @@
+{
+  "release": "2026.09.23-dashboard.41",
+  "application": "dashboard",
+  "status": "candidate-not-deployed",
+  "scope": "supplier-request-clarifications-and-actionable-inbox",
+  "runtimeCandidate": null,
+  "deploymentId": null,
+  "currentProductionVerified": false,
+  "pairedApiRelease": "2026.09.23-api-supplier-requests.2",
+  "requiredApiMigration": "20260923150000_0114_supplier_request_reviews.sql",
+  "protocol": "nexid.supplier-request-review.v1",
+  "previousProductionDeployment": "dpl_5AARyp3AAd8cRm6PjzwMM12PoRF4",
+  "implementationDocument": "docs/2026-09-23-supplier-request-clarifications.md",
+  "localValidation": {
+    "unitPassed": 1233,
+    "unitSkipped": 2,
+    "unitFailed": 0,
+    "typecheck": "passed",
+    "dependencyAudit": "passed",
+    "secretCustodyGate": "passed",
+    "supplierRequestBrowserChecks": 287,
+    "supplierRequestBrowserViews": 33,
+    "legacySupplierBrowserChecks": 805,
+    "legacySupplierBrowserViews": 41,
+    "axeViolations": 0,
+    "overflows": 0,
+    "clientErrors": 0,
+    "unexpectedRequests": 0,
+    "actualComponents": true,
+    "httpAndSession": "synthetic",
+    "nextNavigation": "stubbed",
+    "independentReview": "no open P1 or P2"
+  },
+  "boundaries": {
+    "productionBusinessWrites": false,
+    "newIdentityRolesOrGrants": false,
+    "supplierDispatch": false,
+    "commercialApproval": false,
+    "physicalTagCertification": false
+  },
+  "remainingGates": ["exact-sha-ci", "paired-api-and-migration", "staged-artifact", "canonical-domain-postchecks"]
+}

@@ -1,7 +1,8 @@
 import { SUPPLIER_CONSTRUCTIONS } from "./supplier-order-draft";
 
 export type SupplierRequestContent = { title: string; construction_id: string; quantity: number | null; pack_purpose: "trial_integration" | "production" | null; notes: string };
-export type SupplierRequest = SupplierRequestContent & { id: string; tenant_id: string; tenant_slug: string; status: "draft" | "submitted" | "provisioned"; revision: number; created_at: string; updated_at: string; submitted_at: string | null; order_id: string | null };
+export type SupplierRequestReviewSummary = { state: "pending" | "needs_information" | "answered"; revision: number; updated_at: string | null };
+export type SupplierRequest = SupplierRequestContent & { id: string; tenant_id: string; tenant_slug: string; status: "draft" | "submitted" | "provisioned"; revision: number; created_at: string; updated_at: string; submitted_at: string | null; order_id: string | null; review_summary?: SupplierRequestReviewSummary };
 export type SupplierRequestReceipt = { idempotency_key: string; action: "create" | "patch" | "submit"; revision: number };
 export type SupplierRequestEnvelope = { request: SupplierRequest; receipt?: SupplierRequestReceipt; idempotent_replay?: boolean };
 export type SupplierRequestCommand = Readonly<{ tenant: string; id?: string; action: "create" | "patch" | "submit"; key: string; body: SupplierRequestContent | (SupplierRequestContent & { expected_revision: number }) | { expected_revision: number } }>;
@@ -14,6 +15,11 @@ export class SupplierRequestError extends Error {
   constructor(readonly code: string, readonly status = 0, readonly uncertain = false) { super(code); }
 }
 function invalid(): never { throw new SupplierRequestError("contract_invalid"); }
+export function parseSupplierRequestReviewSummary(value: unknown): SupplierRequestReviewSummary {
+  const item = object(value);
+  if (!item || !["pending", "needs_information", "answered"].includes(item.state) || !Number.isSafeInteger(item.revision) || item.revision < 0 || (item.revision === 0 ? item.state !== "pending" || item.updated_at !== null : item.state === "pending" || !date(item.updated_at))) return invalid();
+  return { state: item.state, revision: item.revision, updated_at: item.updated_at };
+}
 function scopeOf(payload: unknown, tenant: string) {
   const envelope = object(payload), scope = object(envelope?.scope);
   if (!envelope || envelope.ok !== true || envelope.protocol !== "nexid.supplier-request.v1" || envelope.demoMode === true || envelope.demo === true || envelope.dataSource === "demo" || !scope) return invalid();
@@ -28,7 +34,15 @@ function parseItem(raw: unknown, tenant: string): SupplierRequest {
     || !date(item.created_at) || !date(item.updated_at) || !(item.submitted_at === null || date(item.submitted_at)) || !(item.order_id === null || (typeof item.order_id === "string" && SUPPLIER_REQUEST_UUID.test(item.order_id)))) return invalid();
   if (item.status !== "draft" && (!item.construction_id || !item.quantity || !item.pack_purpose || !item.submitted_at)) return invalid();
   if ((item.status === "provisioned") !== Boolean(item.order_id) || (item.status === "draft" && item.submitted_at !== null)) return invalid();
-  return { id: item.id, tenant_id: item.tenant_id, tenant_slug: item.tenant_slug, status: item.status, revision: item.revision, title: item.title, construction_id: item.construction_id, quantity: item.quantity, pack_purpose: item.pack_purpose, notes: item.notes, created_at: item.created_at, updated_at: item.updated_at, submitted_at: item.submitted_at, order_id: item.order_id };
+  return { id: item.id, tenant_id: item.tenant_id, tenant_slug: item.tenant_slug, status: item.status, revision: item.revision, title: item.title, construction_id: item.construction_id, quantity: item.quantity, pack_purpose: item.pack_purpose, notes: item.notes, created_at: item.created_at, updated_at: item.updated_at, submitted_at: item.submitted_at, order_id: item.order_id, ...(item.review_summary === undefined ? {} : { review_summary: parseSupplierRequestReviewSummary(item.review_summary) }) };
+}
+export type SupplierRequestInboxFilter = "all" | "draft" | "pending" | "needs_information" | "answered" | "provisioned" | "unknown";
+export function supplierRequestManagementState(item: SupplierRequest): Exclude<SupplierRequestInboxFilter, "all"> {
+  return item.status === "submitted" ? item.review_summary?.state || "unknown" : item.status;
+}
+export function filterSupplierRequestInbox(items: SupplierRequest[], query: string, filter: SupplierRequestInboxFilter) {
+  const search = query.trim().toLocaleLowerCase("es");
+  return items.filter(item => (filter === "all" || supplierRequestManagementState(item) === filter) && (!search || [item.title, item.tenant_slug, item.id, item.construction_id].some(value => value.toLocaleLowerCase("es").includes(search))));
 }
 export function parseSupplierRequestEnvelope(payload: unknown, tenant: string, requestId?: string): SupplierRequestEnvelope {
   const { envelope, scope } = scopeOf(payload, tenant), request = parseItem(envelope.request, tenant);

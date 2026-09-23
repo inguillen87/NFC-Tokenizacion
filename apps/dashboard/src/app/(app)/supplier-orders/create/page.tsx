@@ -73,6 +73,11 @@ function SupplierOrderForm({ sourceRequired, sourceId, sourceTenant, sourceInval
             return;
           }
           const request = result.request;
+          if (!request.review_summary || request.review_summary.state === "needs_information") {
+            setCanCreateSupplierOrder(false);
+            setError(request.review_summary?.state === "needs_information" ? "La preparación está bloqueada hasta que la empresa responda la aclaración de NexID. Volvé a la solicitud para consultar el historial." : "No se confirmó la revisión de NexID. Volvé a consultar la solicitud antes de preparar el pedido.");
+            return;
+          }
           setSourceRequest(request);
           setSessionTenantSlug(request.tenant_slug);
           setDraft({ ...applySupplierConstruction(emptySupplierOrderDraft(), request.construction_id), tenant_slug: request.tenant_slug, order_name: request.title, total_quantity: String(request.quantity), notes: request.notes });
@@ -112,7 +117,7 @@ function SupplierOrderForm({ sourceRequired, sourceId, sourceTenant, sourceInval
       setError("Necesitás una sesión verificada con permiso para crear pedidos.");
       return;
     }
-    if (sourceRequired && (!sourceRequest || sourceRequest.status !== "submitted")) { setError("La fuente no confirmó una solicitud pendiente para este pedido."); return; }
+    if (sourceRequired && (!sourceRequest || sourceRequest.status !== "submitted" || !sourceRequest.review_summary || sourceRequest.review_summary.state === "needs_information")) { setError("La fuente no confirmó una solicitud pendiente y sin aclaraciones por responder para este pedido."); return; }
     const exactPurpose = parseSupplierOrderCreationPurpose(packPurpose);
     if (!exactPurpose) {
       setError("Elegí expresamente si el pedido es para ensayo o para producción.");

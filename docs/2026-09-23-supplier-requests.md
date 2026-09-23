@@ -64,6 +64,12 @@ anteriores y conservar las tablas aditivas y sus registros; no borrar solicitude
 
 ## Próximas etapas
 
+El incremento siguiente desarrolla primero el circuito de aclaraciones de la
+etapa 2, según [su contrato y alcance](2026-09-23-supplier-request-clarifications.md).
+La auditoría del modelo de identidad confirmó que el perfil de operaciones de
+una empresa no puede representar a un técnico global de NexID. Esa delegación
+necesita un incremento propio; no se amplían permisos por conveniencia de UX.
+
 1. Rol técnico de NexID con alcance explícito y asignación de responsable.
 2. Cotización/revisión, pedido de aclaraciones y cancelación con historial.
 3. Proveedor asignado, versión de especificación y comprobante de envío manual.
@@ -71,7 +77,7 @@ anteriores y conservar las tablas aditivas y sus registros; no borrar solicitude
 5. Aviso por WhatsApp autorizado con enlace de acceso temporal. Sin claves
    maestras ni material secreto en el texto del mensaje.
 
-Estas etapas no se presentan como implementadas. El envío automático exige
+Las partes restantes no se presentan como implementadas. El envío automático exige
 proveedor/canal configurados, autorización del envío, control de reintentos y
 recibos verificables. Un mensaje enviado nunca equivale a fabricación aceptada.
 

@@ -10,8 +10,10 @@ function result(body: unknown, status: number) { return new Response(JSON.string
 export async function forwardSupplierRequest(req: Request, segments: string[] = [], dependencies: Dependencies = { credential: () => getDashboardSessionCredential({ persistRotation: true }), fetcher: dashboardFetch, apiBase: productUrls.api }) {
   const deny = (reason: string, status: number) => result({ ok: false, reason }, status);
   const url = new URL(req.url), write = req.method !== "GET";
-  if (segments.length > 2 || (segments.length && !UUID.test(segments[0])) || (segments.length === 2 && segments[1] !== "submit") || !(segments.length === 2 ? req.method === "POST" : segments.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method))) return deny("supplier_request_method_invalid", 405);
-  if (url.searchParams.getAll("tenant").length > 1 || [...url.searchParams.keys()].some(key => key !== "tenant")) return deny("supplier_request_scope_forbidden", 400);
+  const review = segments.length === 2 && segments[1] === "review";
+  if (segments.length > 2 || (segments.length && !UUID.test(segments[0])) || (segments.length === 2 && !["submit", "review"].includes(segments[1])) || !(review ? ["GET", "POST"].includes(req.method) : segments.length === 2 ? req.method === "POST" : segments.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method))) return deny("supplier_request_method_invalid", 405);
+  const before = url.searchParams.get("before_revision");
+  if (url.searchParams.getAll("tenant").length > 1 || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => key !== "tenant" && !(review && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);
   if (write && (req.headers.get("origin") !== url.origin || (req.headers.has("sec-fetch-site") && req.headers.get("sec-fetch-site") !== "same-origin"))) return deny("supplier_request_origin_forbidden", 403);
   if (write && (!/^application\/json(?:\s*;|$)/i.test(req.headers.get("content-type") || "") || !UUID.test(req.headers.get("idempotency-key") || ""))) return deny("supplier_request_body_invalid", 400);
   try {
@@ -33,8 +35,13 @@ export async function forwardSupplierRequest(req: Request, segments: string[] = 
       body = new TextDecoder().decode(bytes);
       let parsed: unknown; try { parsed = JSON.parse(body); } catch { return deny("supplier_request_body_invalid", 400); }
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return deny("supplier_request_body_invalid", 400);
+      if (review) {
+        const action = (parsed as Record<string, unknown>).action;
+        if (!["request_information", "respond"].includes(String(action))) return deny("supplier_request_body_invalid", 400);
+        if (session.role === "super-admin" ? action !== "request_information" : action !== "respond") return deny("supplier_request_scope_forbidden", 403);
+      }
     }
-    const target = `${dependencies.apiBase}/admin/supplier-requests${segments.length ? `/${segments.join("/")}` : ""}${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ""}`;
+    const target = `${dependencies.apiBase}/admin/supplier-requests${segments.length ? `/${segments.join("/")}` : ""}${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ""}${before !== null ? `&before_revision=${before}` : ""}`;
     const upstream = await dependencies.fetcher(target, { method: req.method, cache: "no-store", headers: { authorization: `Bearer ${credential.bearerToken}`, Accept: "application/json", ...(write ? { "Content-Type": "application/json", "Idempotency-Key": req.headers.get("idempotency-key")! } : {}) }, body, signal: req.signal });
     const headers = new Headers({ "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "private, no-store, max-age=0", "referrer-policy": "no-referrer", Vary: "Cookie", "x-nexid-data-mode": "production" });
     if (upstream.headers.has("retry-after")) headers.set("retry-after", upstream.headers.get("retry-after")!);

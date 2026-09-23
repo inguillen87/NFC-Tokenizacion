@@ -47,3 +47,16 @@ test('oversized or malformed bodies fail closed and backend failures remain expl
   for(const status of [400,401,403,409,503]){const d=deps({}, {status,body:{ok:false,reason:'synthetic_rejection'}});const result=await run(req('POST'),[],d);assert.equal(result.status,status);assert.equal(result.body.ok,false);}
   const result=await run(req('POST'),[],deps({}, {throwFetch:true}));assert.equal(result.status,503);assert.doesNotMatch(JSON.stringify(result.body),/PRIVATE/);
 });
+
+test('review routes keep private tenant scope and only allow each party to perform its own action',async()=>{
+  for(const [role,action] of [['operations-manager','respond'],['super-admin','request_information']]){
+    const d=deps({role});const body={action,message:'Aclaración sintética',expected_revision:1,expected_request_revision:3};const result=await run(req('POST','?tenant=qa-only',{},body),[id,'review'],d);assert.equal(result.status,200);assert.equal(d.calls.length,1);assert.ok(d.calls[0].url.endsWith(`/${id}/review?tenant=qa-only`));assert.deepEqual(JSON.parse(d.calls[0].init.body),body);assert.equal(d.calls[0].init.headers['Idempotency-Key'],key);
+    const wrong=deps({role});assert.equal((await run(req('POST','?tenant=qa-only',{},{...body,action:action==='respond'?'request_information':'respond'}),[id,'review'],wrong)).status,403);assert.equal(wrong.calls.length,0);
+  }
+  for(const patch of [{isDemo:true},{permissions:[]},{deniedPermissions:['supplier_order.create']},{tenantSlug:'foreign'}]){const d=deps(patch);assert.equal((await run(req('GET','?tenant=qa-only'),[id,'review'],d)).status,403);assert.equal(d.calls.length,0);}
+});
+
+test('review history cursor is bounded, exclusive query authority and GET only',async()=>{
+  const d=deps();assert.equal((await run(req('GET','?tenant=qa-only&before_revision=13'),[id,'review'],d)).status,200);assert.ok(d.calls[0].url.endsWith('/review?tenant=qa-only&before_revision=13'));assert.equal(d.calls[0].init.method,'GET');
+  for(const [method,query,segments] of [['GET','?before_revision=0',[id,'review']],['GET','?before_revision=abc',[id,'review']],['GET','?before_revision=2&before_revision=2',[id,'review']],['POST','?before_revision=2',[id,'review']],['GET','?before_revision=2',[id]],['PATCH','',[id,'review']],['DELETE','',[id,'review']],['GET','',[id,'reviews']]]){const d=deps();assert.ok([400,405].includes((await run(req(method,query),segments,d)).status));assert.equal(d.calls.length,0);}
+});
