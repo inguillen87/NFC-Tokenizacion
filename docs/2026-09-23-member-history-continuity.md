@@ -88,3 +88,33 @@ The earlier .36 and API .2 candidate evidence is historical and is not rewritten
 No production promotion or SQL operation is performed by this increment.
 Migration 0112 confirmation, paired authenticated acceptance and canonical
 promotion checks remain separate outstanding release requirements.
+
+## Verified GitHub and Vercel result
+
+Runtime `d9efee842e0c652f451e432f0e68e45b03b7476c` was pushed by normal
+fast-forward to the same dashboard continuation branch. CI run `35816169955`,
+job `107038044040`, passed on its first attempt, completed at
+2026-09-23T03:58:16Z. Completed logs were read. They confirm 1,188 total tests,
+1,186 passed, zero failures/cancellations and two existing optional skips;
+typecheck/build, dependency audit and secret custody all passed.
+
+Existing support 296/24, CRM 1,021/36, batch navigation 1,298/168 (144 route
+hops), the new member history 313/8, and both map 29/4 runs passed. One map run
+used assets served by a real Next server. The member browser uses the actual
+component with deliberately noncooperative synthetic transports and stubbed
+Next navigation. It does not replace a real signed-in production user test.
+Both final light/mobile and dark/desktop captures were inspected.
+
+After CI passed, one native Git-source candidate was created on the existing
+Dashboard project: `dpl_5V4ffDa7E6TEfaLDDm4tKc2nhaLA`. The provider returned
+READY with that exact runtime SHA and `autoAssignCustomDomains: false`.
+Authorized CLI HTTP reads returned the .37 release marker byte-equivalent as
+JSON to the committed file and the new history-recovery release notes.
+
+Final project reads confirmed the original production deployments unchanged:
+API `dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V` and Dashboard
+`dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q`. No domain promotion or SQL migration was
+performed. The migration ledger was not reread; the separate 0112 gate was not
+assumed satisfied. Earlier .36 and API .2 candidate records remain intact.
+The documentation-only evidence update does not change the tested application
+or trigger another application build.
