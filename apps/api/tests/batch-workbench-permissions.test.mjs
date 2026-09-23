@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';import test from 'node:test';import {readFile} from 'node:fs/promises';
 import {batchWorkbenchPermissions} from '../src/lib/batch-workbench-permissions.ts';
+import {currentRolePermissions} from '../src/lib/iam.ts';
 import {checkAdminWithPermission} from '../src/lib/auth.ts';
 const p=(role,permissions,deniedPermissions=[])=>({role,permissions,deniedPermissions});
 test('a persisted tenant administrator with product duties can read the workbench',()=>{assert.deepEqual(batchWorkbenchPermissions(p('tenant_admin',['batch.product.configure'])),['batch.product.configure','batches:read']);});
@@ -8,5 +9,12 @@ test('explicit read and source-task denials prevent inferred access',()=>{assert
 test('a forged specialized grant does not bypass role restrictions',()=>{assert.deepEqual(batchWorkbenchPermissions(p('viewer',['batch.product.configure'])),['batch.product.configure']);assert.deepEqual(batchWorkbenchPermissions(p('marketing-manager',['qa.approve'])),['qa.approve']);});
 test('read-only grants never imply the inverse write permission',()=>{assert.deepEqual(batchWorkbenchPermissions(p('tenant-admin',['batches:read'])),['batches:read']);assert.deepEqual(batchWorkbenchPermissions(p('viewer',[])),[]);});
 test('API guard accepts only the correctly resolved tenant administrator read permission',async()=>{const session={id:'test-session',userId:'test-user',email:'local@example.invalid',label:'Local',role:'tenant-admin',tenantId:'10000000-0000-4000-8000-000000000001',tenantSlug:'tenant-qa',permissions:batchWorkbenchPermissions(p('tenant-admin',['manifest.import'])),deniedPermissions:[],mfaVerified:false,expiresAt:'2030-01-01T00:00:00Z',rotatedCookieValue:null};const req=new Request('http://localhost/admin/batches',{headers:{authorization:'Bearer test-opaque-session'}});assert.equal(await checkAdminWithPermission(req,'batches:read',async()=>session),null);const denied=await checkAdminWithPermission(new Request(req),'batch.activate',async()=>session);assert.equal(denied.status,403);});
-test('both login and existing-session revalidation derive read dependencies',async()=>{const code=await readFile(new URL('../src/lib/iam.ts',import.meta.url),'utf8');assert.equal((code.match(/permissions: batchWorkbenchPermissions/g)||[]).length,2);assert.match(code,/session.current_denied_permissions/);});
+test('both login and existing-session revalidation preserve tenant read dependencies through the role boundary',async()=>{
+  const code=await readFile(new URL('../src/lib/iam.ts',import.meta.url),'utf8');
+  assert.equal((code.match(/permissions: currentRolePermissions/g)||[]).length,2);
+  assert.match(code,/session.current_denied_permissions/);
+  assert.deepEqual(currentRolePermissions(p('tenant_admin',['batch.product.configure'])),['batch.product.configure','batches:read']);
+  assert.deepEqual(currentRolePermissions(p('tenant_admin',['manifest.import'],['batches:read'])),['manifest.import']);
+  assert.deepEqual(currentRolePermissions(p('supplier_operator',['*','batch.product.configure','supplier_request.assigned.read'])),['supplier_request.assigned.read']);
+});
 test('list and dossier still scope reads and check the explicit permission',async()=>{for(const path of ['../src/app/admin/batches/route.ts','../src/app/admin/batches/[bid]/summary/route.ts']){const code=await readFile(new URL(path,import.meta.url),'utf8');assert.match(code,/await checkAdmin\(req\)/);assert.match(code,/checkAdminPermission\(req,"batches:read"\)/);assert.match(code,/tenantSlug|forcedTenantSlug/);}});

@@ -37,7 +37,7 @@ function maskUrl(value: string) {
 
 function walletJson(req: Request, payload: Record<string, unknown>) {
   const principal = getAdminPrincipal(req);
-  if (principal.scope === "tenant_operator") {
+  if (principal.scope === "tenant_operator" || principal.scope === "supplier_operator") {
     return json({ ok: false, reason: "polygon_wallet_operator_scope_forbidden" }, 403, { "cache-control": "no-store" });
   }
   return json(polygonWalletViewForViewer(payload, {

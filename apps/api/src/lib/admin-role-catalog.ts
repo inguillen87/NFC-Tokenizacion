@@ -28,6 +28,7 @@ const ROLE_DESCRIPTIONS: Readonly<Record<string, string>> = Object.freeze({
   reseller_admin: "Gestiona pedidos y manifiestos autorizados del canal reseller dentro de su tenant.",
   api_integration: "Identidad no humana reservada para API keys; no puede recibir una sesión de usuario.",
   super_admin: "Control global de nexID. Debe permanecer fuera de tenants y exige los controles reforzados de la plataforma.",
+  supplier_operator: "Operador interno de NexID: consulta y pide aclaraciones sólo en solicitudes asignadas. Sin claves, conversión ni administración de empresas.",
   security_operator: "Opera reglas de riesgo, webhooks, proofs y auditoría cuando el delegante posee esas capacidades.",
 });
 const ENTERPRISE_CAPABILITY_RE = /^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9][a-z0-9_-]*)+$/;
@@ -67,7 +68,7 @@ function roleProfileDecision(
 ): AdminUserDelegationDecision {
   const role = normalizedRole(row.code);
   const defaults = normalizedDefaultPermissions(row.default_permissions);
-  const tenantBindingValid = role === "super_admin" ? row.tenant_bound === false : row.tenant_bound === true;
+  const tenantBindingValid = role === "super_admin" || role === "supplier_operator" ? row.tenant_bound === false : row.tenant_bound === true;
   if (!defaults || !row.human_session_allowed || !ROLE_DESCRIPTIONS[role]
     || !String(row.display_name || "").trim() || !tenantBindingValid) {
     return { ok: false, status: 400, reason: "enterprise_role_profile_invalid" };

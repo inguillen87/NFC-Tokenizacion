@@ -11,6 +11,7 @@ import { isClerkSuperAdminEmailAllowed, redactAllowlistForLogs } from '../../../
 import { RequestBodyTooLargeError, readBoundedJsonBody } from '../../../lib/bounded-request-body';
 import { enforceCriticalRateLimit } from '../../../lib/critical-rate-limit';
 import { resolveVerifiedClerkAdminIdentity } from '../../../lib/clerk-admin-auth';
+import { resolveClerkSupplierOperator } from '../../../lib/clerk-supplier-operator';
 
 export async function POST(req: Request) {
   const clerkAuth = await resolveVerifiedClerkAdminIdentity(req);
@@ -39,6 +40,34 @@ export async function POST(req: Request) {
 
   const email = clerkAuth.identity.email;
   const fullName = clerkAuth.identity.fullName;
+  await ensureEnterpriseIamSchema();
+  let existingOperator;
+  try {
+    existingOperator = await resolveClerkSupplierOperator(sql as any, email);
+  } catch {
+    return json({ ok: false, reason: 'clerk_operator_resolution_unavailable' }, 503, {
+      'cache-control': 'private, no-store', 'retry-after': '5',
+    });
+  }
+  if (existingOperator.kind === 'denied') {
+    return json({ ok: false, reason: existingOperator.reason }, existingOperator.status, {
+      'cache-control': 'private, no-store',
+    });
+  }
+  if (existingOperator.kind === 'operator') {
+    const user = existingOperator.user;
+    const meta = getRequestMeta(req);
+    const session = await createSession(sql as any, { user, ...meta, mfaVerified: false });
+    await auditAuthEvent(sql as any, {
+      email, eventName: 'clerk_login', ok: true, role: user.role, ...meta,
+      meta: { source: 'dashboard', mfaVerified: false, clerkUserId: clerkAuth.identity.externalUserId },
+    }).catch(() => null);
+    return json({
+      ok: true, email: user.email, role: normalizeRole(user.role), label: user.label,
+      permissions: user.permissions, mfaRequired: false,
+      sessionToken: `${session.id}.${session.secret}`, expiresAt: session.expiresAt,
+    }, 200, { 'cache-control': 'private, no-store' });
+  }
   const isSuperAdmin = isClerkSuperAdminEmailAllowed(email);
 
   if (!isSuperAdmin) {
@@ -54,7 +83,6 @@ export async function POST(req: Request) {
     }, 403);
   }
 
-  await ensureEnterpriseIamSchema();
   await ensureSunTenantProfilesSchema();
 
   const meta = getRequestMeta(req);

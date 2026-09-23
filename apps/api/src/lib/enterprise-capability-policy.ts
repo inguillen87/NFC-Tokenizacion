@@ -9,6 +9,9 @@
  * their historical behavior until they are deliberately added to this map.
  */
 const REQUESTED_PERMISSION_CANONICAL = Object.freeze<Record<string, string>>({
+  "supplier_requests:assigned_read": "supplier_request.assigned.read",
+  "supplier_requests:assigned_review": "supplier_request.assigned.review",
+  "supplier_requests:assign": "supplier_request.assign",
   "supplier_orders:write": "supplier_order.create",
   "supplier:batch_keys_generate": "batch.keys.generate",
   "supplier:pack_export": "supplier_pack.export",
@@ -36,6 +39,9 @@ const REQUESTED_PERMISSION_CANONICAL = Object.freeze<Record<string, string>>({
 });
 
 const ENTERPRISE_CAPABILITY_ROLES = Object.freeze<Record<string, readonly string[]>>({
+  "supplier_request.assigned.read": ["supplier-operator"],
+  "supplier_request.assigned.review": ["supplier-operator"],
+  "supplier_request.assign": ["super-admin"],
   "supplier_order.create": ["super-admin", "tenant-owner", "tenant-admin", "operations-manager", "reseller-admin"],
   "batch.keys.generate": ["super-admin", "tenant-owner"],
   "supplier_pack.export": ["super-admin", "tenant-owner"],
@@ -108,6 +114,7 @@ export function canonicalEnterpriseCapability(value: unknown) {
 
 export function roleMayUseEnterpriseCapability(role: unknown, requestedPermission: unknown) {
   const canonical = canonicalEnterpriseCapability(requestedPermission);
+  if (normalizeRole(role) === "supplier-operator") return canonical === "supplier_request.assigned.read" || canonical === "supplier_request.assigned.review";
   const allowlist = ENTERPRISE_CAPABILITY_ROLES[canonical];
   if (!allowlist) {
     const namespace = canonical.split(":", 1)[0];

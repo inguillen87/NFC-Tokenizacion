@@ -88,7 +88,7 @@
     "test:editorial-queue": "node --import tsx --test tests/editorial-queue.test.mjs",
     "test:passport-library": "node --import tsx --test tests/passport-library.test.mjs",
     "test:consumer-history": "node --import tsx --test tests/consumer-history.test.mjs",
-    "test:supplier-requests": "node --import tsx --test tests/supplier-requests.test.mjs tests/supplier-request-reviews.test.mjs"
+    "test:supplier-requests": "node --import tsx --test tests/supplier-requests.test.mjs tests/supplier-request-reviews.test.mjs tests/supplier-request-assignments.test.mjs tests/supplier-operator-identity.test.mjs tests/clerk-supplier-operator.test.mjs"
   },
   "dependencies": {
     "@clerk/backend": "^3.13.1",

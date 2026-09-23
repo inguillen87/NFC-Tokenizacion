@@ -15,14 +15,14 @@ type Sql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any[
 export const ENTERPRISE_USER_ROLES = [
   "tenant_owner", "tenant_admin", "security_analyst", "operations_manager",
   "packaging_operator", "marketing_manager", "viewer", "reseller_admin",
-  "api_integration", "super_admin", "security_operator", "reseller",
+  "api_integration", "super_admin", "security_operator", "reseller", "supplier_operator",
 ] as const;
 
 export type UserRole = (typeof ENTERPRISE_USER_ROLES)[number];
 export type SessionRole =
   | "tenant-owner" | "tenant-admin" | "security-analyst" | "operations-manager"
   | "packaging-operator" | "marketing-manager" | "viewer" | "reseller-admin"
-  | "api-integration" | "super-admin" | "security-operator" | "reseller";
+  | "api-integration" | "super-admin" | "security-operator" | "reseller" | "supplier-operator";
 
 const USER_ROLE_SET = new Set<string>(ENTERPRISE_USER_ROLES);
 const HUMAN_SESSION_ROLES = new Set<UserRole>(ENTERPRISE_USER_ROLES.filter((role) => role !== "api_integration"));
@@ -169,7 +169,7 @@ export function isUuidString(value: string | undefined | null) {
 export function roleTenantBindingValid(role: string, tenantId: unknown) {
   const normalized = String(role || "").trim().toLowerCase().replaceAll("-", "_");
   if (!USER_ROLE_SET.has(normalized)) return false;
-  if (normalized === "super_admin") return tenantId === null;
+  if (normalized === "super_admin" || normalized === "supplier_operator") return tenantId === null;
   return isUuidString(typeof tenantId === "string" ? tenantId : null);
 }
 
@@ -180,7 +180,7 @@ export function isEnterpriseRoleProfileTenantBindingValid(profile: {
 }) {
   const normalized = String(profile.role || "").trim().toLowerCase().replaceAll("-", "_");
   if (!USER_ROLE_SET.has(normalized)) return false;
-  const expectedTenantBound = normalized !== "super_admin";
+  const expectedTenantBound = normalized !== "super_admin" && normalized !== "supplier_operator";
   return profile.role_profile_tenant_bound === expectedTenantBound
     && roleTenantBindingValid(normalized, profile.tenant_id);
 }
@@ -211,6 +211,12 @@ async function hasEnterpriseRoleProfiles(sql: Sql) {
     SELECT to_regclass('public.enterprise_role_profiles') IS NOT NULL AS ready
   `;
   return rows[0]?.ready === true;
+}
+
+export function currentRolePermissions(input: { role: string; permissions: string[]; deniedPermissions?: string[] }) {
+  if (input.role.replaceAll("_", "-") !== "supplier-operator") return batchWorkbenchPermissions(input);
+  return ["supplier_request.assigned.read", "supplier_request.assigned.review"].filter(cap =>
+    permissionMatches(input.permissions.filter(value => roleMayUseEnterpriseCapability(input.role, value)), cap, input.deniedPermissions));
 }
 
 export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthUser | null> {
@@ -319,6 +325,7 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
   `;
   const row = rows[0] as AuthUser | undefined;
   if (!row) return null;
+  if (row.role === "supplier_operator" && !roleProfilesReady) return null;
   if (!roleTenantBindingValid(row.role, row.tenant_id)) return null;
   if (roleProfilesReady && !isActiveHumanEnterpriseRoleProfile(row as AuthUser & {
     role_profile_active?: unknown;
@@ -329,7 +336,7 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
   })) return null;
   return {
     ...row,
-    permissions: batchWorkbenchPermissions({role:String(row.role),permissions:[...new Set([
+    permissions: currentRolePermissions({role:String(row.role),permissions:[...new Set([
       ...parsePermissions((row as any).role_default_permissions),
       ...parsePermissions((row as any).permissions),
     ])],deniedPermissions:parsePermissions((row as any).denied_permissions)}),
@@ -536,7 +543,7 @@ export async function resolveSession(
     role: normalizeRole(String(session.role)),
     tenantId: session.tenant_id ? String(session.tenant_id) : null,
     tenantSlug: session.tenant_slug ? String(session.tenant_slug) : null,
-    permissions: batchWorkbenchPermissions({role:String(session.role),permissions:[...new Set([
+    permissions: currentRolePermissions({role:String(session.role),permissions:[...new Set([
       ...parsePermissions(session.role_default_permissions),
       ...parsePermissions(session.current_permissions),
     ])],deniedPermissions:parsePermissions(session.current_denied_permissions)}),
@@ -565,7 +572,7 @@ export function isSessionPrincipalCurrent(
     && session.membership_current === true
     && session.membership_scope_unambiguous === true
     && roleTenantBindingValid(String(session.role || ""), session.tenant_id)
-    && (!requireEnterpriseRoleProfile || (
+    && (!(requireEnterpriseRoleProfile || String(session.role).replaceAll("-", "_") === "supplier_operator") || (
       isActiveHumanEnterpriseRoleProfile(session)
       && isEnterpriseRoleProfileTenantBindingValid(session)
     ));

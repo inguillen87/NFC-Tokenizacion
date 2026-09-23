@@ -3,7 +3,7 @@ import { resolveSession, type SessionRecord } from "./iam";
 import { permissionDenied, permissionMatches } from "./permission-matcher.js";
 import { roleMayUseEnterpriseCapability } from "./enterprise-capability-policy";
 
-export type AdminScope = "super_admin" | "tenant_admin" | "tenant_operator" | "reseller" | "readonly_demo";
+export type AdminScope = "super_admin" | "tenant_admin" | "tenant_operator" | "reseller" | "readonly_demo" | "supplier_operator";
 
 export type AdminPrincipal = {
   authenticationType: "human_session";
@@ -40,6 +40,7 @@ function adminSessionResolutionUnavailable() {
 
 function scopeForSession(session: SessionRecord): AdminScope | null {
   if (session.role === "super-admin") return "super_admin";
+  if (session.role === "supplier-operator") return "supplier_operator";
   if (session.role === "tenant-admin" || session.role === "tenant-owner") return "tenant_admin";
   if (session.role === "reseller" || session.role === "reseller-admin") return "reseller";
   if ([
@@ -64,7 +65,7 @@ function principalFromSession(session: SessionRecord): AdminPrincipal | null {
   if (!scope) return null;
   const tenantId = session.tenantId ? String(session.tenantId) : null;
   const tenantSlug = session.tenantSlug ? String(session.tenantSlug).trim().toLowerCase() : null;
-  if (scope === "super_admin") {
+  if (scope === "super_admin" || scope === "supplier_operator") {
     if (tenantId || tenantSlug) return null;
   } else if (!tenantId || !tenantSlug) {
     return null;

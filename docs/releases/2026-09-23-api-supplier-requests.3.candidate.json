@@ -1,0 +1,54 @@
+{
+  "release": "2026.09.23-api-supplier-requests.3",
+  "application": "api",
+  "status": "local-and-schema-only-qa-verified-awaiting-ci",
+  "scope": "supplier-request-assignment-and-limited-operator",
+  "runtimeCandidate": null,
+  "deploymentId": null,
+  "projectId": "prj_r0dmVaKogGs8y4NAZ2njCWHhUgLk",
+  "currentProductionVerified": false,
+  "canonicalDomain": "api.nexid.lat",
+  "pairedDashboardRelease": "2026.09.23-dashboard.42",
+  "protocol": "nexid.supplier-request-assignment.v1",
+  "previousProductionDeployment": "dpl_Dnb3sULdRMybnmSPxVb4iEYsfVcj",
+  "migrationEvidence": {
+    "files": [
+      { "id": "20260923180000_0115_supplier_operator_role_enum.sql", "sha256Lf": "f14af6086c764587dbaed97ac1f0eb67cad83598288c0934fffa13bb3ed277d2", "bytesLf": 235 },
+      { "id": "20260923180100_0116_supplier_request_assignments.sql", "sha256Lf": "8ab45fb77c13f36f11c333993f51aadcaa0cd392ec6fcc87d57e9381718473e0", "bytesLf": 37199 }
+    ],
+    "branch": "br-autumn-lab-ainnwzhl",
+    "branchName": "qa-supplier-requests-20260923",
+    "schemaOnly": true,
+    "branchApplied": true,
+    "ledgerRows": 2,
+    "fullSchemaSmoke": "passed: assignment, clarification, receipt replay, revocation, real deferred IAM and audit guards; rolled back",
+    "smokeFixture": "empty branch; synthetic users, sessions, tenant and missing baseline superadmin catalog row; no usable credentials; all rolled back",
+    "postcheck": "users, tenants, requests, assignments, events, operator memberships and synthetic admin profiles all zero",
+    "productionApplied": false,
+    "transaction": "0115 enum committed independently; 0116 and its ledger committed together"
+  },
+  "localValidation": {
+    "focalRegressionPassed": 276,
+    "focalSkipped": 0,
+    "buildRegressionPassed": 1338,
+    "buildSkipped": 0,
+    "productionBuild": "passed",
+    "typecheck": "passed",
+    "postgresSupplierPassed": 39,
+    "postgresSkipped": 0,
+    "postgresEngine": "17.10",
+    "postgresFixture": "real migrations and IAM scope guards; technical supplier-order core uses an explicit fixture",
+    "secretCustodyGate": "passed"
+  },
+  "continuousIntegration": null,
+  "boundaries": {
+    "productionBusinessWrites": false,
+    "realEmployeeAccountsOrGrantsCreated": false,
+    "supplierDispatch": false,
+    "commercialApproval": false,
+    "physicalTagCertification": false
+  },
+  "remainingReleaseGates": ["exact-commit CI", "production additive migrations", "staged build", "promotion and canonical readback"],
+  "notCertifiedByThisRelease": ["real employee SSO and assigned commercial exchange", "real-key provisioning", "physical tags"],
+  "rollback": "restore previous deployment; retain additive role and assignment history; never erase records or reopen revoked access"
+}

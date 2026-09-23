@@ -4,7 +4,7 @@ import { roleMayUseEnterpriseCapability } from "./enterprise-capability-policy";
 export type ManagedAdminRole =
   | "tenant_owner" | "tenant_admin" | "security_analyst" | "operations_manager"
   | "packaging_operator" | "marketing_manager" | "viewer" | "reseller_admin"
-  | "api_integration" | "super_admin" | "security_operator" | "reseller";
+  | "api_integration" | "super_admin" | "security_operator" | "reseller" | "supplier_operator";
 
 export type AdminUserManagementSession = {
   role: string;
@@ -29,7 +29,7 @@ export type AdminUserPermissionOverridesDecision =
 const MANAGED_ROLES = new Set<ManagedAdminRole>([
   "tenant_owner", "tenant_admin", "security_analyst", "operations_manager",
   "packaging_operator", "marketing_manager", "viewer", "reseller_admin",
-  "api_integration", "super_admin", "security_operator", "reseller",
+  "api_integration", "super_admin", "security_operator", "reseller", "supplier_operator",
 ]);
 const TENANT_DELEGABLE_ROLES = new Set<ManagedAdminRole>([
   "tenant_admin", "security_analyst", "operations_manager", "packaging_operator",

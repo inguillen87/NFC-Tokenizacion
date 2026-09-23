@@ -1,12 +1,12 @@
 {
-  "release": "2026.09.23-api-supplier-requests.2",
-  "scope": "supplier-request-clarifications-and-atomic-preparation-gate",
-  "baseCommit": "5adf44c76f4bc27d5220ab775397f6eb23101e1f",
+  "release": "2026.09.23-api-supplier-requests.3",
+  "scope": "supplier-request-assignment-and-limited-operator",
+  "baseCommit": "fca60584bbbcc8ab18e1f06e578f0286723204ef",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
   "databaseMigrationsIncluded": true,
-  "requiredMigration": "20260923150000_0114_supplier_request_reviews.sql",
+  "requiredMigration": "20260923180100_0116_supplier_request_assignments.sql",
   "realtimeChangesIncluded": true,
   "realtimeBrokerChanged": false,
   "campaignDeliveryIncluded": false,
@@ -24,7 +24,9 @@
     "20260919200000_0111_epcis_operator_intake.sql",
     "20260922100000_0112_support_ticket_workflow.sql",
     "20260923120000_0113_supplier_requests.sql",
-    "20260923150000_0114_supplier_request_reviews.sql"
+    "20260923150000_0114_supplier_request_reviews.sql",
+    "20260923180000_0115_supplier_operator_role_enum.sql",
+    "20260923180100_0116_supplier_request_assignments.sql"
   ],
   "logisticsOperationProtocol": "nexid.logistics.v1",
   "passportStudioProtocol": "nexid.passport-studio.v1",
@@ -47,7 +49,7 @@
   "physicalTapProvenance": "consumer-network-operational-tap",
   "analyticsLocation": "consented-approximate-observation-with-original-evidence-preserved",
   "realtimePayloadContract": "operational-provenance-additive/v1",
-  "requiredDashboardRelease": "2026.09.23-dashboard.41",
+  "requiredDashboardRelease": "2026.09.23-dashboard.42",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "supportReportProtocol": "nexid.support-report.v1",
   "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
@@ -56,5 +58,6 @@
   "compatibleApiProtocolRelease": "2026.09.22-api-support-workflow.1",
   "supplierRequestProtocol": "nexid.supplier-request.v1",
   "supplierRequestReviewProtocol": "nexid.supplier-request-review.v1",
-  "supplierDispatchIncluded": false
+  "supplierDispatchIncluded": false,
+  "supplierRequestAssignmentProtocol": "nexid.supplier-request-assignment.v1"
 }

@@ -18,8 +18,8 @@ test('supplier request PostgreSQL harness rejects remote, production and unappro
   for (const target of [null, 'postgres://nexid_e2e@remote.invalid/nexid_e2e_s9', 'postgres://postgres@localhost/nexid_e2e_s9', 'postgres://nexid_e2e@localhost/production', 'postgres://nexid_e2e@localhost/nexid_e2e_s9?options=x']) assert.throws(() => qaTarget(target));
 });
 
-test('actual 0113 and 0114 commercial request migrations are scoped, atomic and safe under concurrent writes', {
-  skip: !process.env.NEXID_S9_QA_DATABASE_URL, timeout: 90000,
+test('actual supplier request migrations are scoped, atomic and safe under concurrent writes', {
+  skip: !process.env.NEXID_S9_QA_DATABASE_URL, timeout: 120000,
 }, async t => {
   const connectionString = qaTarget(process.env.NEXID_S9_QA_DATABASE_URL), schema = `qa_supplier_requests_${randomUUID().replaceAll('-', '')}`;
   assert.match(schema, /^qa_supplier_requests_[a-f0-9]{32}$/);
@@ -91,11 +91,12 @@ test('actual 0113 and 0114 commercial request migrations are scoped, atomic and 
     }
     await observer.query(`CREATE SCHEMA "${schema}"`); createdSchema = true;
     for (const client of clients) await client.query(`SET search_path TO "${schema}",pg_catalog`);
-    await observer.query(`CREATE TABLE tenants(id uuid PRIMARY KEY,slug text UNIQUE NOT NULL);
-      CREATE TABLE users(id uuid PRIMARY KEY,admin_status text NOT NULL DEFAULT 'active');
-      CREATE TABLE memberships(user_id uuid REFERENCES users(id),tenant_id uuid REFERENCES tenants(id),role text NOT NULL);
-      CREATE TABLE auth_sessions(id uuid PRIMARY KEY,user_id uuid REFERENCES users(id),tenant_id uuid REFERENCES tenants(id),role text NOT NULL,revoked_at timestamptz,expires_at timestamptz NOT NULL DEFAULT now()+interval '1 day');
-      CREATE TABLE enterprise_role_profiles(code text PRIMARY KEY,active boolean NOT NULL,human_session_allowed boolean NOT NULL,tenant_bound boolean NOT NULL,default_permissions jsonb NOT NULL);
+    await observer.query(`CREATE TYPE membership_role AS ENUM ('super_admin','tenant_admin','reseller','viewer','tenant_owner','security_analyst','operations_manager','packaging_operator','marketing_manager','reseller_admin','api_integration','security_operator');
+      CREATE TABLE tenants(id uuid PRIMARY KEY,slug text UNIQUE NOT NULL);
+      CREATE TABLE users(id uuid PRIMARY KEY,admin_status text NOT NULL DEFAULT 'active',full_name text);
+      CREATE TABLE memberships(user_id uuid REFERENCES users(id),tenant_id uuid REFERENCES tenants(id),role membership_role NOT NULL);
+      CREATE TABLE auth_sessions(id uuid PRIMARY KEY,user_id uuid REFERENCES users(id),tenant_id uuid REFERENCES tenants(id),role membership_role NOT NULL,revoked_at timestamptz,expires_at timestamptz NOT NULL DEFAULT now()+interval '1 day');
+      CREATE TABLE enterprise_role_profiles(code text PRIMARY KEY,active boolean NOT NULL,human_session_allowed boolean NOT NULL,tenant_bound boolean NOT NULL,default_permissions jsonb NOT NULL,display_name text NOT NULL DEFAULT 'Synthetic role',created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
       CREATE TABLE resource_permissions(user_id uuid,tenant_id uuid,resource text,action text,effect text);
       CREATE TABLE supplier_orders(id uuid PRIMARY KEY,tenant_id uuid NOT NULL REFERENCES tenants(id),pack_purpose text NOT NULL);
       CREATE TABLE batches(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_id uuid NOT NULL REFERENCES supplier_orders(id),status text NOT NULL DEFAULT 'draft');
@@ -105,7 +106,7 @@ test('actual 0113 and 0114 commercial request migrations are scoped, atomic and 
     await observer.query('INSERT INTO users(id) VALUES($1),($2),($3)', [actorA, actorB, globalActor]);
     await observer.query("INSERT INTO memberships VALUES($1,$2,'operations_manager'),($3,$2,'operations_manager'),($4,NULL,'super_admin')", [actorA, tenantA, actorB, globalActor]);
     await observer.query("INSERT INTO auth_sessions(id,user_id,tenant_id,role) VALUES($1,$2,$3,'operations_manager'),($4,$5,$3,'operations_manager'),($6,$7,NULL,'super_admin')", [sessionA, actorA, tenantA, sessionB, actorB, globalSession, globalActor]);
-    await observer.query(`INSERT INTO enterprise_role_profiles VALUES('operations_manager',true,true,true,'["supplier_order.create"]'),('super_admin',true,true,false,'["supplier_order.create","batch.keys.generate"]')`);
+    await observer.query(`INSERT INTO enterprise_role_profiles(code,active,human_session_allowed,tenant_bound,default_permissions) VALUES('operations_manager',true,true,true,'["supplier_order.create"]'),('super_admin',true,true,false,'["supplier_order.create","batch.keys.generate"]')`);
     const rbac = await readFile(new URL('../db/migrations/20260802310000_0096_enterprise_rbac_risk_truth.sql', import.meta.url), 'utf8');
     const helper = rbac.match(/CREATE OR REPLACE FUNCTION public\.nexid_actor_has_enterprise_capability_v1\([\s\S]*?\$enterprise_capability\$;/)?.[0];
     assert.ok(helper, 'Use the actual 0096 capability function, not a permission stub'); await observer.query(scoped(helper));
@@ -349,6 +350,200 @@ test('actual 0113 and 0114 commercial request migrations are scoped, atomic and 
       await reviewWrite(reviewCommand(old));
       const latest = await listSupplierRequests({ mode: 'global', tenant_id: null, tenant_slug: null }, { limit: 1, status: 'all' }, query);
       assert.equal(latest.items[0].id, old.id); assert.equal(latest.items[0].review_summary.state, 'needs_information');
+    });
+    await t.test('0115 adds the real enum value only after a separate committed migration', async () => {
+      const migration = scoped(await readFile(new URL('../db/migrations/20260923180000_0115_supplier_operator_role_enum.sql', import.meta.url), 'utf8'));
+      await observer.query('BEGIN');
+      try {
+        await observer.query(migration);
+        await assert.rejects(observer.query(`SELECT 'supplier_operator'::${schema}.membership_role`), error => error.code === '55P04');
+      } finally { await observer.query('ROLLBACK'); }
+      await observer.query('BEGIN');
+      try { await observer.query(migration); await observer.query('COMMIT'); }
+      catch (error) { await observer.query('ROLLBACK'); throw error; }
+      assert.equal((await observer.query(`SELECT 'supplier_operator'::${schema}.membership_role AS role`)).rows[0].role, 'supplier_operator');
+    });
+    const beforeRoleRows = (await observer.query('SELECT (SELECT count(*)::integer FROM users) AS users,(SELECT count(*)::integer FROM memberships) AS memberships,(SELECT count(*)::integer FROM auth_sessions) AS sessions,(SELECT count(*)::integer FROM resource_permissions) AS grants')).rows[0];
+    await observer.query(scoped(await readFile(new URL('../db/migrations/20260923180100_0116_supplier_request_assignments.sql', import.meta.url), 'utf8')));
+    const authorityStart = rbac.indexOf('CREATE TABLE IF NOT EXISTS public.enterprise_authority_scope_locks');
+    const authorityEnd = rbac.indexOf('CREATE OR REPLACE FUNCTION public.nexid_validate_resource_permission_scope_v1');
+    assert.ok(authorityStart >= 0 && authorityEnd > authorityStart, 'Load the real 0096 authority serialization functions and triggers');
+    await observer.query(scoped(rbac.slice(authorityStart,authorityEnd)));
+    const afterRoleRows = (await observer.query('SELECT (SELECT count(*)::integer FROM users) AS users,(SELECT count(*)::integer FROM memberships) AS memberships,(SELECT count(*)::integer FROM auth_sessions) AS sessions,(SELECT count(*)::integer FROM resource_permissions) AS grants')).rows[0];
+    const operatorA = randomUUID(), operatorB = randomUUID(), operatorSessionA = randomUUID(), operatorSessionB = randomUUID(), otherGlobal = randomUUID(), otherGlobalSession = randomUUID();
+    const foreignActor = randomUUID(), foreignSession = randomUUID();
+    await observer.query("INSERT INTO users(id,full_name) VALUES($1,'Operador sintético A'),($2,'Operador sintético B'),($3,'Administrador sintético'),($4,'Empresa sintética B')", [operatorA,operatorB,otherGlobal,foreignActor]);
+    await observer.query("INSERT INTO memberships(user_id,tenant_id,role) VALUES($1,NULL,'supplier_operator'),($2,NULL,'supplier_operator'),($3,NULL,'super_admin'),($4,$5,'operations_manager')", [operatorA,operatorB,otherGlobal,foreignActor,tenantB]);
+    await observer.query("INSERT INTO auth_sessions(id,user_id,tenant_id,role) VALUES($1,$2,NULL,'supplier_operator'),($3,$4,NULL,'supplier_operator'),($5,$6,NULL,'super_admin'),($7,$8,$9,'operations_manager')", [operatorSessionA,operatorA,operatorSessionB,operatorB,otherGlobalSession,otherGlobal,foreignSession,foreignActor,tenantB]);
+    const assignCommand = (request, revision = 0, changes = {}) => ({ tenant_id: request.tenant_id || tenantA, request_id: request.id, actor_id: globalActor, auth_session_id: globalSession,
+      idempotency_key: randomUUID(), operator_id: operatorA, expected_revision: revision, expected_request_revision: request.revision, ...changes });
+    const assign = async (input, client = observer) => (await client.query(`SELECT ${schema}.nexid_mutate_supplier_request_assignment_v1($1::jsonb) AS result`, [JSON.stringify(input)])).rows[0].result;
+    const assignmentRead = async (request, before = null) => (await observer.query(`SELECT ${schema}.nexid_supplier_request_assignment_current_v1($1::uuid,$2::uuid,$3::integer) AS result`, [request.id,request.tenant_id || tenantA,before])).rows[0].result;
+    const assignedRead = async (id, actor = operatorA, session = operatorSessionA, client = observer) => (await client.query(`SELECT ${schema}.nexid_supplier_request_assigned_current_v1($1::uuid,$2::uuid,$3::uuid) AS result`, [id,actor,session])).rows[0].result;
+    const assignedReview = async (id, actor = operatorA, session = operatorSessionA, client = observer) => (await client.query(`SELECT ${schema}.nexid_supplier_request_assigned_review_v1($1::uuid,$2::uuid,$3::uuid,NULL) AS result`, [id,actor,session])).rows[0].result;
+    const assignedList = async (actor = operatorA, session = operatorSessionA, limit = 100, client = observer) => (await client.query(`SELECT ${schema}.nexid_supplier_requests_assigned_v1($1::uuid,$2::uuid,$3::integer) AS result`, [actor,session,limit])).rows[0].result;
+    const operatorQuestion = (request, revision = 0, changes = {}) => reviewCommand(request, 'request_information', revision, { actor_id: operatorA, auth_session_id: operatorSessionA, ...changes });
+    const assignmentCounts = async id => (await observer.query(`SELECT (SELECT count(*)::integer FROM supplier_request_assignments WHERE request_id=$1) AS assignments,
+      (SELECT count(*)::integer FROM supplier_request_assignment_events WHERE request_id=$1) AS events,(SELECT count(*)::integer FROM audit_logs WHERE resource_type='supplier_request_assignment' AND resource_id=$1::text) AS audits`, [id])).rows[0];
+    await t.test('0116 adds no identity or grant, keeps fixed invoker ACLs, and supplier role has only terminal assigned capabilities', async () => {
+      assert.deepEqual(afterRoleRows, beforeRoleRows, 'Schema migration does not create users, sessions, memberships or permission grants');
+      const profile = (await observer.query("SELECT tenant_bound,human_session_allowed,default_permissions FROM enterprise_role_profiles WHERE code='supplier_operator'")).rows[0];
+      assert.deepEqual(profile, { tenant_bound: false, human_session_allowed: true, default_permissions: ['supplier_request.assigned.read','supplier_request.assigned.review'] });
+      for (const capability of ['supplier_request.assigned.read','supplier_request.assigned.review','supplier_request.assign','supplier_order.create','batch.keys.generate','supplier_pack.export','manifest.import','leads.manage','consumers.read_pii','users:manage','audit.read','unknown.future']) {
+        const result = (await observer.query(`SELECT ${schema}.nexid_actor_has_enterprise_capability_v1($1,NULL,'supplier_operator',$2) AS allowed`, [operatorA,capability])).rows[0].allowed;
+        assert.equal(result, ['supplier_request.assigned.read','supplier_request.assigned.review'].includes(capability), capability);
+      }
+      await observer.query("INSERT INTO resource_permissions VALUES($1,NULL,'*','*','allow')", [operatorA]);
+      try { assert.equal((await observer.query(`SELECT ${schema}.nexid_actor_has_enterprise_capability_v1($1,NULL,'supplier_operator','supplier_order.create') AS allowed`, [operatorA])).rows[0].allowed, false); }
+      finally { await observer.query("DELETE FROM resource_permissions WHERE user_id=$1", [operatorA]); }
+      for (const table of ['memberships','auth_sessions']) {
+        const statement = table === 'memberships' ? "INSERT INTO memberships(user_id,tenant_id,role) VALUES($1,$2,'supplier_operator')" : "INSERT INTO auth_sessions(id,user_id,tenant_id,role) VALUES(gen_random_uuid(),$1,$2,'supplier_operator')";
+        await assert.rejects(observer.query(statement,[operatorA,tenantA]), error => error.code === '23514');
+      }
+      const functions = (await observer.query(`SELECT p.proname,p.prosecdef,p.proconfig,EXISTS(SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE') AS public_execute FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND (p.proname LIKE '%assignment%' OR p.proname LIKE '%assigned%' OR p.proname LIKE 'nexid_supplier_operator_%')`,[schema])).rows;
+      assert.ok(functions.length >= 11); for (const fn of functions) { assert.equal(fn.prosecdef,false,fn.proname); assert.equal(fn.public_execute,false,fn.proname); assert.ok(fn.proconfig.some(setting => setting.startsWith('search_path=')),fn.proname); }
+    });
+    await t.test('assignment preserves submitted commercial data, exposes only assigned cross-tenant rows, and creates no order or keys', async () => {
+      const request = await prepared(), original = await read(request.id), graph = await graphCounts();
+      assert.equal((await assignmentRead(request)).assignment.revision,0);
+      assert.equal(await assignedRead(request.id),null); assert.equal(await assignedReview(request.id),null);
+      const result = await assign(assignCommand(request)); assert.equal(result.ok,true); assert.equal(result.assignment.operator_id,operatorA); assert.equal(result.assignment.revision,1);
+      assert.equal((await assignedRead(request.id)).id,request.id); assert.equal((await assignedRead(request.id)).assignment.operator_id,operatorA);
+      assert.equal(await assignedRead(request.id,operatorB,operatorSessionB),null); assert.equal(await assignedRead(randomUUID()),null);
+      const foreignCreate = await mutate(command('create',{tenant_id:tenantB,actor_id:foreignActor,auth_session_id:foreignSession,content:complete}));
+      const foreign = (await mutate(command('submit',{tenant_id:tenantB,actor_id:foreignActor,auth_session_id:foreignSession,request_id:foreignCreate.request.id,expected_revision:1,content:null}))).request;
+      await assign(assignCommand(foreign));
+      const list = await assignedList(); assert.ok(list.items.some(item => item.id === request.id)); assert.ok(list.items.some(item => item.id === foreign.id && item.tenant_id === tenantB)); assert.ok(list.items.every(item => item.assignment.operator_id === operatorA && item.status !== 'draft'));
+      assert.deepEqual((await assignedList(operatorB,operatorSessionB)).items,[]);
+      assert.deepEqual(await read(request.id),original); assert.deepEqual(await graphCounts(),graph);
+      const limited = await assignedList(operatorA,operatorSessionA,1); assert.equal(limited.count,1); assert.equal(limited.truncated,true);
+      for (const limit of [null,0,101]) await assert.rejects(assignedList(operatorA,operatorSessionA,limit),/supplier_request_limit_invalid/);
+    });
+    await t.test('only live superadmin may assign; tenant, operator, draft, wrong tenant and invalid target fail closed', async () => {
+      const request = await prepared(), input = assignCommand(request);
+      for (const actor of [{actor_id:actorA,auth_session_id:sessionA},{actor_id:operatorA,auth_session_id:operatorSessionA},{actor_id:globalActor,auth_session_id:operatorSessionA}]) assert.equal((await assign({...input,...actor})).reason,'supplier_request_assignment_scope_forbidden');
+      assert.equal((await assign({...input,tenant_id:tenantB})).reason,'supplier_request_not_found');
+      assert.equal((await assign({...input,operator_id:actorA})).reason,'supplier_request_assignment_operator_invalid');
+      assert.equal((await assign({...input,operator_id:null})).reason,'supplier_request_assignment_transition_invalid');
+      const draft = (await mutate(command())).request; assert.equal((await assign(assignCommand(draft))).reason,'supplier_request_not_submitted');
+      assert.deepEqual(await assignmentCounts(request.id),{assignments:0,events:0,audits:0});
+      await assign(input);
+      await observer.query("INSERT INTO resource_permissions VALUES($1,NULL,'supplier_requests','assign','deny')",[globalActor]);
+      try { assert.equal((await assign(input)).reason,'supplier_request_assignment_scope_forbidden'); }
+      finally { await observer.query('DELETE FROM resource_permissions WHERE user_id=$1',[globalActor]); }
+      await observer.query('UPDATE auth_sessions SET revoked_at=now() WHERE id=$1',[globalSession]);
+      try { assert.equal((await assign(input)).reason,'supplier_request_assignment_scope_forbidden'); }
+      finally { await observer.query('UPDATE auth_sessions SET revoked_at=NULL WHERE id=$1',[globalSession]); }
+      assert.deepEqual(await assignmentCounts(request.id),{assignments:1,events:1,audits:1});
+    });
+    await t.test('assignment retry preserves its receipt while current assignment advances; changed actor, target or revision conflicts', async () => {
+      const request = await prepared(), input = assignCommand(request); await assign(input);
+      for (const changed of [{operator_id:operatorB},{actor_id:otherGlobal,auth_session_id:otherGlobalSession},{expected_revision:1},{expected_request_revision:request.revision+1}]) assert.equal((await assign({...input,...changed})).reason,'supplier_request_assignment_idempotency_conflict');
+      const next = await assign(assignCommand(request,1,{operator_id:operatorB})); assert.equal(next.assignment.revision,2);
+      const replay = await assign(input); assert.equal(replay.idempotent_replay,true); assert.equal(replay.receipt.revision,1); assert.equal(replay.assignment.operator_id,operatorB); assert.equal(replay.assignment.revision,2);
+      assert.equal(await assignedRead(request.id),null); assert.equal((await assignedRead(request.id,operatorB,operatorSessionB)).id,request.id);
+      assert.deepEqual(await assignmentCounts(request.id),{assignments:1,events:2,audits:2});
+    });
+    await t.test('assignment audit or receipt failure rolls back aggregate and the exact request remains reusable', async () => {
+      const request = await prepared(), input = assignCommand(request);
+      for (const [table,predicate] of [['audit_logs',`resource_id<>'${request.id}'`],['supplier_request_assignment_events',`request_id<>'${request.id}'::uuid`]]) {
+        await observer.query(`ALTER TABLE ${table} ADD CONSTRAINT injected_assignment_failure CHECK(${predicate}) NOT VALID`);
+        try { await assert.rejects(assign(input),error => error.code === '23514'); }
+        finally { await observer.query(`ALTER TABLE ${table} DROP CONSTRAINT injected_assignment_failure`); }
+        assert.deepEqual(await assignmentCounts(request.id),{assignments:0,events:0,audits:0});
+      }
+      assert.equal((await assign(input)).ok,true);
+      for (const sql of ["DELETE FROM supplier_request_assignment_events WHERE request_id=$1","UPDATE supplier_request_assignment_events SET operator_id=NULL WHERE request_id=$1","DELETE FROM supplier_request_assignments WHERE request_id=$1"]) await assert.rejects(observer.query(sql,[request.id]),/append_only|immutable/);
+      await assert.rejects(observer.query('UPDATE supplier_request_assignments SET operator_id=$2,revision=revision+1 WHERE request_id=$1',[request.id,operatorB]),/event_required/);
+      assert.equal((await assignmentRead(request)).assignment.operator_id,operatorA);
+    });
+    await t.test('simultaneous assignment retries commit once and competing CAS targets cannot overwrite the winner', async () => {
+      const request = await prepared(), input = assignCommand(request);
+      await first.query('BEGIN'); await assign(input,first); const pending = settle(assign(input,second));
+      try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const replay = await pending; assert.ifError(replay.error); assert.equal(replay.value.idempotent_replay,true);
+      const target = assignCommand(request,1,{operator_id:operatorB}); await first.query('BEGIN'); await assign(target,first);
+      const conflict = settle(assign(assignCommand(request,1,{operator_id:null}),second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const lost = await conflict; assert.ifError(lost.error); assert.equal(lost.value.reason,'supplier_request_assignment_revision_conflict');
+      assert.equal((await assignmentRead(request)).assignment.operator_id,operatorB); assert.deepEqual(await assignmentCounts(request.id),{assignments:1,events:2,audits:2});
+    });
+    await t.test('assignment revocation blocks every operator read and an already committed clarification replay', async () => {
+      const request = await prepared(); await assign(assignCommand(request)); const question = operatorQuestion(request);
+      assert.equal((await reviewWrite(question)).ok,true); assert.equal((await reviewWrite(question)).idempotent_replay,true);
+      await assign(assignCommand(request,1,{operator_id:null})); const before = await reviewCounts(request.id);
+      assert.equal(await assignedRead(request.id),null); assert.equal(await assignedReview(request.id),null); assert.ok(!(await assignedList()).items.some(row => row.id === request.id));
+      assert.equal((await reviewWrite(question)).reason,'supplier_request_review_scope_forbidden'); assert.deepEqual(await reviewCounts(request.id),before);
+      assert.equal((await reviewWrite(operatorQuestion(request,1,{action:'respond'}))).reason,'supplier_request_review_scope_forbidden');
+      assert.equal((await mutate(command('create',{actor_id:operatorA,auth_session_id:operatorSessionA}))).reason,'supplier_request_scope_forbidden');
+      await assert.rejects(convert(request,technical(request,{actor_id:operatorA,auth_session_id:operatorSessionA})),/supplier_request_operator_required/);
+    });
+    await t.test('operator session, membership, profile and explicit denies apply to reads and review replay', async () => {
+      const request = await prepared(); await assign(assignCommand(request)); const question = operatorQuestion(request); await reviewWrite(question);
+      const changes = [
+        ["UPDATE auth_sessions SET revoked_at=now() WHERE id=$1","UPDATE auth_sessions SET revoked_at=NULL WHERE id=$1",[operatorSessionA]],
+        ["UPDATE auth_sessions SET expires_at=now()-interval '1 second' WHERE id=$1","UPDATE auth_sessions SET expires_at=now()+interval '1 day' WHERE id=$1",[operatorSessionA]],
+        ["UPDATE users SET admin_status='disabled' WHERE id=$1","UPDATE users SET admin_status='active' WHERE id=$1",[operatorA]],
+        ["UPDATE enterprise_role_profiles SET active=false WHERE code='supplier_operator'","UPDATE enterprise_role_profiles SET active=true WHERE code='supplier_operator'",[]],
+        ["INSERT INTO resource_permissions VALUES($1,NULL,'*','*','deny')","DELETE FROM resource_permissions WHERE user_id=$1",[operatorA]],
+        ["INSERT INTO memberships(user_id,tenant_id,role) VALUES($1,NULL,'super_admin')","DELETE FROM memberships WHERE user_id=$1 AND role='super_admin'",[operatorA]],
+      ];
+      for (const [apply,restore,values] of changes) {
+        await observer.query(apply,values);
+        try { assert.equal(await assignedRead(request.id),null); assert.equal(await assignedReview(request.id),null); assert.equal(await assignedList(),null); assert.equal((await reviewWrite(question)).reason,'supplier_request_review_scope_forbidden'); }
+        finally { await observer.query(restore,values); }
+      }
+      assert.equal((await reviewWrite(question)).idempotent_replay,true);
+    });
+    await t.test('revoke-first makes a waiting operator clarification fail; clarification-first commits before revocation', async () => {
+      const request = await prepared(); await assign(assignCommand(request));
+      await first.query('BEGIN'); await assign(assignCommand(request,1,{operator_id:null}),first);
+      const waiting = settle(reviewWrite(operatorQuestion(request),second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const denied = await waiting; assert.ifError(denied.error); assert.equal(denied.value.reason,'supplier_request_review_scope_forbidden'); assert.deepEqual(await reviewCounts(request.id),{reviews:0,events:0,audits:0});
+      const next = await prepared(); await assign(assignCommand(next)); const question = operatorQuestion(next);
+      await first.query('BEGIN'); await reviewWrite(question,first);
+      const revoking = settle(assign(assignCommand(next,1,{operator_id:null}),second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const revoked = await revoking; assert.ifError(revoked.error); assert.equal(revoked.value.ok,true);
+      assert.equal((await reviewWrite(question)).reason,'supplier_request_review_scope_forbidden'); assert.deepEqual(await reviewCounts(next.id),{reviews:1,events:1,audits:1});
+    });
+    await t.test('assigned detail and history serialize against revocation and never return a revoked row after waiting', async () => {
+      for (const reader of [assignedRead,assignedReview]) {
+        const request = await prepared(); await assign(assignCommand(request));
+        await first.query('BEGIN'); await assign(assignCommand(request,1,{operator_id:null}),first);
+        const reading = settle(reader(request.id,operatorA,operatorSessionA,second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+        const result = await reading; assert.ifError(result.error); assert.equal(result.value,null);
+      }
+    });
+    await t.test('revoked session lock is rechecked before a waiting operator can publish a question', async () => {
+      const request = await prepared(); await assign(assignCommand(request));
+      await first.query('BEGIN'); await first.query('UPDATE auth_sessions SET revoked_at=now() WHERE id=$1',[operatorSessionA]);
+      const waiting = settle(reviewWrite(operatorQuestion(request),second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      try { const result = await waiting; assert.ifError(result.error); assert.equal(result.value.reason,'supplier_request_review_scope_forbidden'); assert.deepEqual(await reviewCounts(request.id),{reviews:0,events:0,audits:0}); }
+      finally { await observer.query('UPDATE auth_sessions SET revoked_at=NULL WHERE id=$1',[operatorSessionA]); }
+    });
+    await t.test('actual0096 permission-trigger locks serialize a new deny before reads and before committed review replay', async () => {
+      const request = await prepared(); await assign(assignCommand(request)); const question = operatorQuestion(request); await reviewWrite(question);
+      for (const operation of [() => assignedRead(request.id,operatorA,operatorSessionA,second),() => reviewWrite(question,second)]) {
+        await first.query('BEGIN'); await first.query("INSERT INTO resource_permissions VALUES($1,NULL,'*','*','deny')",[operatorA]);
+        const waiting = settle(operation()); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+        try { const result = await waiting; assert.ifError(result.error); assert.ok(result.value === null || result.value.reason === 'supplier_request_review_scope_forbidden'); }
+        finally { await observer.query('DELETE FROM resource_permissions WHERE user_id=$1',[operatorA]); }
+      }
+      assert.deepEqual(await reviewCounts(request.id),{reviews:1,events:1,audits:1});
+    });
+    await t.test('conversion shares the assignment lock: no late assignment, but a provisioned assignment can be revoked', async () => {
+      const request = await prepared(); await first.query('BEGIN'); const order = await convert(request,technical(request),first);
+      const waiting = settle(assign(assignCommand(request),second)); try { await waitForLock(second); } finally { await first.query('COMMIT'); }
+      const refused = await waiting; assert.ifError(refused.error); assert.equal(refused.value.reason,'supplier_request_not_submitted'); assert.equal((await read(request.id)).order_id,order.supplier_order.id);
+      const next = await prepared(); await assign(assignCommand(next)); await convert(next);
+      const current = await read(next.id); assert.equal((await assignedRead(next.id)).status,'provisioned');
+      assert.equal((await assign(assignCommand(current,1,{operator_id:null}))).ok,true); assert.equal(await assignedRead(next.id),null);
+    });
+    await t.test('assignment history over100 has exact exclusive cursors without leaking receipt hashes or session IDs', async () => {
+      const request = await prepared();
+      for (let revision=0;revision<103;revision++) assert.equal((await assign(assignCommand(request,revision,{operator_id:revision%2 ? operatorB : operatorA}))).ok,true);
+      const current = await assignmentRead(request); assert.equal(current.history.length,100); assert.equal(current.history[0].revision,4); assert.equal(current.next_before_revision,4); assert.equal(current.truncated,true);
+      const older = await assignmentRead(request,4); assert.deepEqual(older.history.map(row=>row.revision),[1,2,3]); assert.equal(older.next_before_revision,null); assert.equal(older.truncated,false); assert.deepEqual(older.assignment,current.assignment);
+      assert.doesNotMatch(JSON.stringify(current),/fingerprint|auth_session|idempotency_key|audit_id|email/);
     });
   } finally {
     for (const client of clients) await client.query('ROLLBACK').catch(() => {});

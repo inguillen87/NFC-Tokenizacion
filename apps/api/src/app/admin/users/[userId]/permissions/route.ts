@@ -109,8 +109,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ userId:
   let tenantId: string | null = null;
   if (session.role === 'super-admin') {
     const tenantSlug = body.tenantSlug ? String(body.tenantSlug).trim().toLowerCase() : null;
-    if (delegation.role === 'super_admin') {
-      if (tenantSlug) return json({ ok: false, reason: 'super_admin_must_be_global' }, 400);
+    if (delegation.role === 'super_admin' || delegation.role === 'supplier_operator') {
+      if (tenantSlug) return json({ ok: false, reason: delegation.role === 'super_admin' ? 'super_admin_must_be_global' : 'supplier_operator_must_be_global' }, 400);
     } else {
       if (!tenantSlug) return json({ ok: false, reason: 'tenant_required' }, 400);
       tenantId = (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0]?.id || null;
