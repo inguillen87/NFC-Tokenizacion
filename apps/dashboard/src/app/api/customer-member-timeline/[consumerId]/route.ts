@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { readTicketResponse } from "../../../../lib/ticket-request-deadline";
 import { productUrls } from "@product/config";
 import {
   DashboardTenantScopeError,
@@ -113,22 +114,22 @@ export async function GET(
   upstream.searchParams.set("tenant", tenantScope.tenantSlug);
   if (cursor) upstream.searchParams.set("cursor", cursor);
 
-  const response = await fetch(upstream, {
-    headers: {
-      authorization: `Bearer ${credential.bearerToken}`,
-      accept: "application/json",
-    },
-    cache: "no-store",
-  }).catch(() => null);
-  if (!response) {
-    return json({ ok: false, reason: "customer_timeline_unavailable" }, 503);
-  }
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  if (request.signal.aborted) cancel();
+  else request.signal.addEventListener("abort", cancel, { once: true });
+  const read = await readTicketResponse(fetch, upstream.toString(), {
+    method: "GET",
+    headers: { authorization: `Bearer ${credential.bearerToken}`, accept: "application/json" },
+    cache: "no-store", redirect: "error",
+  }, controller).catch(() => null).finally(() => request.signal.removeEventListener("abort", cancel));
+  if (!read) return json({ ok: false, reason: "customer_timeline_unavailable" }, 503);
+  const { response, body: payload } = read;
   if (!response.ok) {
     const safe = safeUpstreamStatus(response.status);
     return json({ ok: false, reason: safe.reason }, safe.status);
   }
 
-  const payload = await response.json().catch(() => null);
   const parsed = parseCustomerMemberTimelinePayload(payload, {
     tenant: tenantScope.tenantSlug,
     consumerId,

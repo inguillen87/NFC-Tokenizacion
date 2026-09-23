@@ -220,7 +220,9 @@ test("member pagination BFF enforces both permissions, tenant scope and sanitize
   assert.match(route, /resolveDashboardTenantScope\(session, requestedTenant\)/);
   assert.match(route, /tenantScope\.tenantSlug !== requestedTenant/);
   assert.match(route, /parseCustomerMemberTimelinePayload\(payload, \{[\s\S]*?tenant: tenantScope\.tenantSlug,[\s\S]*?consumerId/);
-  assert.match(component, /\/api\/customer-member-timeline\/\$\{encodeURIComponent\(selectedMemberId\)\}/);
+  const reader = await readFile(new URL("../src/lib/customer-member-timeline-reader.ts", import.meta.url), "utf8");
+  assert.match(reader, /\/api\/customer-member-timeline\/\$\{encodeURIComponent\(consumerId\)\}/);
+  assert.match(component, /await reader.read\(requestedCursor\)/);
   assert.match(component, /aria-busy=\{pageLoadState === "loading"\}/);
   assert.match(component, /paginación manual, no tiempo real/);
 });

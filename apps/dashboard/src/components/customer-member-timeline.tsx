@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -15,12 +15,13 @@ import {
 } from "lucide-react";
 import {
   appendCustomerMemberTimelinePage,
-  parseCustomerMemberTimelinePayload,
   type CustomerMember,
   type CustomerMemberDirectoryState,
   type CustomerMemberTimelineEntry,
   type CustomerMemberTimelineState,
 } from "../lib/customer-member-timeline";
+
+import { createMemberTimelineReader } from "../lib/customer-member-timeline-reader";
 
 type CustomerMemberTimelineProps = {
   tenantScope: string;
@@ -33,6 +34,7 @@ type CustomerMemberTimelineProps = {
 type TimelinePageLoadState =
   | "idle"
   | "loading"
+  | "canceled"
   | "access_denied"
   | "member_not_found"
   | "invalid_payload"
@@ -110,7 +112,8 @@ function timelineStateCopy(state: CustomerMemberTimelineState["availability"]) {
 }
 
 function pageLoadStateCopy(state: TimelinePageLoadState) {
-  if (state === "loading") return "Cargando actividad anterior desde el historial durable.";
+  if (state === "loading") return "Cargando actividad anterior desde el historial durable. Podés cancelar sin perder lo ya confirmado.";
+  if (state === "canceled") return "Carga cancelada. La actividad confirmada y la página solicitada se conservan.";
   if (state === "access_denied") return "La sesión ya no tiene acceso a la siguiente página del historial.";
   if (state === "member_not_found") return "El miembro ya no está disponible dentro de este tenant.";
   if (state === "invalid_payload") return "La siguiente página no superó la validación de tenant, miembro o cursor.";
@@ -118,85 +121,71 @@ function pageLoadStateCopy(state: TimelinePageLoadState) {
   return "";
 }
 
+function emptyTimeline(availability: CustomerMemberTimelineState["availability"]): CustomerMemberTimelineState {
+  return { availability, items: [], partial: false, sourceErrors: [], hasMore: false, nextCursor: null };
+}
+
 export function CustomerMemberTimeline({ tenantScope, members, directory, selectedMemberId, timeline }: CustomerMemberTimelineProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isNavigating, startNavigation] = useTransition();
-  const [visibleTimeline, setVisibleTimeline] = useState(timeline);
-  const [pageLoadState, setPageLoadState] = useState<TimelinePageLoadState>("idle");
-  const loadRequestRef = useRef<AbortController | null>(null);
-  const activeScopeRef = useRef(`${tenantScope}:${selectedMemberId}`);
   const selectedMember = members.find((member) => member.id === selectedMemberId) || null;
+  const pageButtonRef = useRef<HTMLButtonElement>(null);
+  const seed = useMemo(() => {
+    if (directory.availability !== "ready") return emptyTimeline(directory.availability);
+    if (directory.source !== "production") return emptyTimeline("access_denied");
+    if (timeline.availability === "ready" && (!selectedMember || timeline.items.some(item =>
+      item.correlation.consumerId.toLowerCase() !== selectedMemberId.toLowerCase()))) return emptyTimeline("invalid_payload");
+    if (timeline.availability === "ready" && (timeline.partial || timeline.sourceErrors.length)) return { ...timeline, partial: true, hasMore: false, nextCursor: null };
+    return timeline;
+  }, [directory.availability, directory.source, timeline, selectedMember, selectedMemberId]);
+  const reader = useMemo(() => createMemberTimelineReader({ tenant: tenantScope, consumerId: selectedMemberId }),
+    [tenantScope, selectedMemberId, seed]);
+  const [view, setView] = useState<{ owner: typeof reader; timeline: CustomerMemberTimelineState; loading: TimelinePageLoadState }>(
+    () => ({ owner: reader, timeline: seed, loading: "idle" }));
+  // Identity and source-refresh changes invalidate the visible snapshot during render,
+  // not one effect later. An old completion cannot relabel old activity as a new member.
+  const visibleTimeline = view.owner === reader ? view.timeline : seed;
+  const pageLoadState = view.owner === reader ? view.loading : "idle";
   const stateMessage = timelineStateCopy(visibleTimeline.availability);
-
-  useEffect(() => {
-    loadRequestRef.current?.abort();
-    loadRequestRef.current = null;
-    activeScopeRef.current = `${tenantScope}:${selectedMemberId}`;
-    setVisibleTimeline(timeline);
-    setPageLoadState("idle");
-    return () => loadRequestRef.current?.abort();
-  }, [selectedMemberId, tenantScope, timeline]);
+  const showMembers = directory.availability === "ready" && directory.source === "production"
+    && visibleTimeline.availability !== "access_denied";
+  useEffect(() => () => reader.cancel(), [reader]);
 
   const loadEarlierActivity = async () => {
-    if (
-      pageLoadState === "loading"
-      || visibleTimeline.availability !== "ready"
-      || !visibleTimeline.hasMore
-      || !visibleTimeline.nextCursor
-      || !selectedMemberId
-      || !tenantScope
-    ) return;
-
+    if (reader.isBusy() || visibleTimeline.availability !== "ready" || visibleTimeline.partial
+      || !visibleTimeline.hasMore || !visibleTimeline.nextCursor || !selectedMemberId || !tenantScope || !showMembers) return;
     const requestedCursor = visibleTimeline.nextCursor;
-    const requestedScope = `${tenantScope}:${selectedMemberId}`;
-    const controller = new AbortController();
-    loadRequestRef.current?.abort();
-    loadRequestRef.current = controller;
-    setPageLoadState("loading");
-    try {
-      const params = new URLSearchParams({ tenant: tenantScope, cursor: requestedCursor });
-      const response = await fetch(
-        `/api/customer-member-timeline/${encodeURIComponent(selectedMemberId)}?${params.toString()}`,
-        { cache: "no-store", signal: controller.signal },
-      );
-      if (!response.ok) {
-        if (activeScopeRef.current !== requestedScope || controller.signal.aborted) return;
-        setPageLoadState(
-          response.status === 401 || response.status === 403
-            ? "access_denied"
-            : response.status === 404
-              ? "member_not_found"
-              : response.status === 400 || response.status === 422 || response.status === 502
-                ? "invalid_payload"
-                : "unavailable",
-        );
-        return;
-      }
-      const payload = await response.json().catch(() => null);
-      const parsed = parseCustomerMemberTimelinePayload(payload, {
-        tenant: tenantScope,
-        consumerId: selectedMemberId,
-      });
-      if (!parsed || (parsed.hasMore && parsed.nextCursor === requestedCursor)) {
-        if (activeScopeRef.current === requestedScope && !controller.signal.aborted) {
-          setPageLoadState("invalid_payload");
-        }
-        return;
-      }
-      if (activeScopeRef.current !== requestedScope || controller.signal.aborted) return;
-      setVisibleTimeline((current) => appendCustomerMemberTimelinePage(current, parsed));
-      setPageLoadState("idle");
-    } catch {
-      if (controller.signal.aborted || activeScopeRef.current !== requestedScope) return;
-      setPageLoadState("unavailable");
-    } finally {
-      if (loadRequestRef.current === controller) loadRequestRef.current = null;
-    }
+    setView({ owner: reader, timeline: visibleTimeline, loading: "loading" });
+    const result = await reader.read(requestedCursor);
+    if (!result) return;
+    setView(current => {
+      if (current.owner !== reader || current.loading !== "loading") return current;
+      if (result.status === "ready") return { owner: reader, timeline: appendCustomerMemberTimelinePage(current.timeline, result.page), loading: "idle" };
+      // Authorization loss or disappearance must clear visible personal history.
+      const next = result.status === "access_denied" || result.status === "member_not_found"
+        ? emptyTimeline(result.status) : current.timeline;
+      return { owner: reader, timeline: next, loading: result.status };
+    });
   };
 
+  const cancelPage = () => {
+    reader.cancel();
+    setView(current => current.owner === reader ? { ...current, loading: "canceled" } : current);
+    requestAnimationFrame(() => pageButtonRef.current?.focus());
+  };
+  const refreshHistory = () => {
+    reader.cancel();
+    setView(current => current.owner === reader ? { ...current, loading: "idle" } : current);
+    startNavigation(() => router.refresh());
+  };
+  const mayRefreshHistory = showMembers && Boolean(selectedMemberId && tenantScope)
+    && (visibleTimeline.partial || pageLoadState === "invalid_payload" || ["unreachable", "upstream_error", "invalid_payload"].includes(visibleTimeline.availability));
+
   const selectMember = (consumerId: string) => {
+    reader.cancel();
+    setView(current => current.owner === reader ? { ...current, loading: "idle" } : current);
     const params = new URLSearchParams(searchParams.toString());
     if (consumerId) params.set("consumer", consumerId);
     else params.delete("consumer");
@@ -204,7 +193,7 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
     startNavigation(() => router.push(nextUrl, { scroll: false }));
   };
 
-  const directoryLabel = directory.availability === "access_denied"
+  const directoryLabel = visibleTimeline.availability === "access_denied" || directory.availability === "access_denied"
     ? "Sin permiso"
     : directory.availability !== "ready"
       ? "Directorio no disponible"
@@ -232,13 +221,13 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
               <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <select
                 id="customer-member-selector"
-                value={selectedMemberId}
+                value={showMembers ? selectedMemberId : ""}
                 onChange={(event) => selectMember(event.target.value)}
-                disabled={directory.availability !== "ready" || !members.length || isNavigating}
+                disabled={!showMembers || !members.length || isNavigating}
                 className="min-h-12 w-full appearance-none rounded-xl border border-white/10 bg-slate-950/70 py-2 pl-10 pr-10 text-sm font-bold text-white outline-none transition focus:border-emerald-300/40 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="">{members.length ? "Elegí un miembro" : "Sin miembros disponibles"}</option>
-                {members.map((member) => <option key={member.id} value={member.id}>{memberLabel(member)}</option>)}
+                {(showMembers ? members : []).map((member) => <option key={member.id} value={member.id}>{memberLabel(member)}</option>)}
               </select>
               {isNavigating ? <RefreshCw className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald-300" /> : null}
             </div>
@@ -247,6 +236,12 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
       </header>
 
       <div className="px-5 py-6 sm:px-7">
+        {mayRefreshHistory ? <div className="mb-5 flex flex-wrap items-center gap-3" data-testid="member-history-recovery">
+          <button type="button" onClick={refreshHistory} disabled={isNavigating} aria-busy={isNavigating}
+            className="min-h-11 rounded-xl border border-cyan-300/30 px-4 py-2 text-sm font-bold text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
+            {isNavigating ? "Reconsultando historial…" : "Reconsultar historial"}
+          </button><p className="text-xs leading-5 text-slate-400">Nueva consulta desde el inicio para este miembro y empresa. No modifica su actividad.</p>
+        </div> : null}
         {visibleTimeline.partial ? (
           <div className="mb-5 rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-sm text-amber-100" role="status">
             <div className="flex gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><p>Historial parcial: una o más fuentes no pudieron responder. Los eventos visibles sí fueron confirmados, pero no representan la actividad completa.</p></div>
@@ -266,7 +261,7 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
                 <p className="text-sm font-black text-white">{selectedMember ? memberLabel(selectedMember) : "Miembro seleccionado"}</p>
                 <p className="mt-1 text-xs text-slate-500">{visibleTimeline.items.length} eventos durables cargados · paginación manual, no tiempo real</p>
               </div>
-              {visibleTimeline.hasMore ? <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">Hay actividad anterior</span> : <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200">Historial cargado</span>}
+              {visibleTimeline.hasMore ? <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">Hay actividad anterior</span> : <span className={visibleTimeline.partial ? "rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100" : "rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200"}>{visibleTimeline.partial ? "Cobertura parcial" : "Historial cargado"}</span>}
             </div>
             <ol className="relative space-y-3 before:absolute before:bottom-5 before:left-[19px] before:top-5 before:w-px before:bg-gradient-to-b before:from-emerald-300/70 before:via-cyan-300/35 before:to-transparent">
               {visibleTimeline.items.map((event) => {
@@ -299,11 +294,14 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
               <p id="customer-member-timeline-page-status" className="max-w-2xl text-xs leading-5 text-slate-400" aria-live="polite">
                 {pageLoadStateCopy(pageLoadState) || (visibleTimeline.hasMore
                   ? "La próxima página usa el cursor confirmado por la fuente y conserva este tenant y miembro."
-                  : "No quedan páginas anteriores informadas por la fuente.")}
+                  : visibleTimeline.partial ? "La paginación se detuvo por fuentes incompletas. Reconsultá el historial desde el inicio." : "No quedan páginas anteriores informadas por la fuente.")}
               </p>
-              {visibleTimeline.hasMore ? (
+              {pageLoadState === "loading" ? <button type="button" onClick={cancelPage}
+                className="min-h-11 rounded-xl border border-slate-400/40 px-4 py-2 text-sm font-bold text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">Cancelar carga</button> : null}
+              {visibleTimeline.hasMore && !visibleTimeline.partial ? (
                 <button
                   type="button"
+                  ref={pageButtonRef}
                   onClick={loadEarlierActivity}
                   disabled={pageLoadState === "loading"}
                   aria-busy={pageLoadState === "loading"}
@@ -311,16 +309,16 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-400/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-wait disabled:opacity-60"
                 >
                   <RefreshCw className={pageLoadState === "loading" ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-                  {pageLoadState === "loading" ? "Cargando…" : pageLoadState === "idle" ? "Cargar actividad anterior" : "Reintentar carga"}
+                  {pageLoadState === "loading" ? "Cargando…" : (pageLoadState === "idle" || pageLoadState === "canceled") ? "Cargar actividad anterior" : "Reintentar carga"}
                 </button>
               ) : null}
             </div>
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-white/20 bg-slate-900/70 px-5 py-10 text-center" role="status">
-            <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-300" />
-            <p className="mt-3 text-base font-black text-white">Sin actividad durable registrada para este miembro.</p>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">El vacío fue confirmado por el endpoint del historial; no se agregaron ejemplos ni correlaciones por contacto.</p>
+            {visibleTimeline.partial ? <AlertTriangle className="mx-auto h-8 w-8 text-amber-300" aria-hidden="true" /> : <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-300" aria-hidden="true" />}
+            <p className="mt-3 text-base font-black text-white">{visibleTimeline.partial ? "Ninguna actividad confirmada en las fuentes disponibles." : "Sin actividad durable registrada para este miembro."}</p>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">{visibleTimeline.partial ? "Una fuente incompleta no confirma ausencia de actividad. Reconsultá el historial." : "El vacío fue confirmado por el endpoint del historial; no se agregaron ejemplos ni correlaciones por contacto."}</p>
           </div>
         )}
       </div>

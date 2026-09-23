@@ -81,16 +81,17 @@ async function adminMemberTimelineGet(
   consumerId: string,
 ): Promise<CustomerMemberTimelineState> {
   try {
-    const response = await fetchAdminPage(
-      context,
-      `/admin/consumer-network/member/${encodeURIComponent(consumerId)}/timeline`,
+    const path = `/admin/consumer-network/member/${encodeURIComponent(consumerId)}/timeline`;
+    const { response, body: payload } = await readTicketResponse(
+      async (_url, init) => fetchAdminPage(context, path, init), path,
+      { method: "GET", cache: "no-store", redirect: "error" }, new AbortController(),
     );
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) return unavailableMemberTimeline("access_denied");
       if (response.status === 404) return unavailableMemberTimeline("member_not_found");
       return unavailableMemberTimeline(response.status >= 500 ? "upstream_error" : "invalid_payload");
     }
-    const payload = await response.json().catch(() => null);
+    if (response.headers.get("x-nexid-data-mode") !== "production") return unavailableMemberTimeline("invalid_payload");
     const parsed = parseCustomerMemberTimelinePayload(payload, {
       tenant: context.tenantSlug,
       consumerId,
@@ -167,7 +168,7 @@ export default async function LeadsTicketsPage({
   const selectedMember = members.find((member) => member.id.toLowerCase() === requestedConsumer) || null;
   const memberTimeline = !tenantScope
     ? unavailableMemberTimeline("tenant_required")
-    : !canReadMemberTimeline
+    : !canReadMemberTimeline || allowDemoData
       ? unavailableMemberTimeline("access_denied")
       : !requestedConsumer
         ? unavailableMemberTimeline("not_selected")
