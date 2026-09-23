@@ -42,3 +42,30 @@ Before merging/promoting, require complete dashboard typecheck, unit suite, buil
 Production Clerk/operator identity, Neon migration state and a real authenticated technician scenario remain separately unverified here. Do not mark the existing .42 migration/release gates resolved on the strength of these UI tests. Do not change production release metadata, apply SQL, deploy production or grant broader permissions as part of this candidate.
 
 Next implementation block remains the separately authorized technical-preparation workflow. It must not be silently enabled for scoped technicians by UI alone; preserve the distinction between commercial request, technical order, inventory reservation, physical programming and cryptographic proof.
+
+## Desktop Commander continuation — 2026-09-23
+
+The candidate was checked out in an independent Windows worktree at `9ecefe0`. No other Codex worktree or production schema was modified.
+
+### Additional implementation and regression proof
+
+A new browser test reproduced a stale-detail defect: a successful list refresh removed a revoked assignment from the inbox but left its selected commercial detail visible. Refresh now independently reauthorizes the selected record in the assigned namespace, using the same abort/identity guard. A record-level denial closes the detail without dropping other authorized assignments. A truncated list does not imply revocation: a separately authorized off-page detail and its unsent draft remain intact. Revalidation performs no business write.
+
+The browser suite now also exercises metric filters, accent-insensitive cross-field search, stable activity ordering, keyboard activation, empty-search recovery, and list-level 401/403/404 without invented zero counters. Four additional views include 320 px and light/dark desktop layouts.
+
+The general CI blockers were reproduced and corrected without relaxing policy: the supplier security assertion now requires BOTH superadmin and `supplier_pack.export`, while public web tests explicitly load the existing `tsx` dependency on Node 20 as well as Node 24. Workflow bootstrap assertions now normalize Windows/Unix line endings; both forms are tested.
+
+### Confirmed local validation
+
+- Node 24.15.0, exact lockfile installation with lifecycle scripts disabled.
+- Dashboard: typecheck and production build passed; 1,286 unit tests passed, zero failed, two existing skips.
+- Public web: 433 unit tests passed, zero failed; production build passed.
+- API: complete `build:api`, including its security suites, passed. SDK check/build/package-consumer smoke passed. Executor build and 106 tests passed.
+- Focal supplier-security and workflow-bootstrap run: 26 passed, zero failed.
+- Actual-component browser suite: 195 checks, 22 views, passed. The new revocation case failed before the runtime correction and passed after it.
+- Reviewed the 320 px light and 1,440 px dark workbench captures. All browser identities and HTTP responses are synthetic; no physical tags or real employee sessions are certified.
+- Dependency audit and secret custody checks passed. Generated API/SDK build outputs are excluded from this change.
+
+### Release boundary
+
+Canonical readback in this session still reported dashboard `.41` and API `supplier-requests.2`; neither advertises the assignment protocol. The paired API `.3` candidate documents additive migrations 0115/0116 as tested on a schema-only branch, not applied to production. These remain separate release gates, not outcomes of the UI tests above. New exact-commit CI and any staged deployment must be recorded in PR #375 before claiming integration or publication. No production release marker is advanced here.

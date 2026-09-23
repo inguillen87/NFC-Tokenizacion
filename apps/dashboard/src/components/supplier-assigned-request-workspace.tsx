@@ -76,19 +76,31 @@ export function SupplierAssignedRequestWorkspace({ access, initialRequestId = ""
   async function refresh(): Promise<"confirmed" | "denied" | "unavailable" | "ignored"> {
     if (!allowed || guard.current.locked || reads.current.pending()) return "ignored";
     const ticket = reads.current.begin("list");
+    let denialKind: AssignedReadKind = "list", denialId: string | undefined;
     setListLoading(true); setListError(""); setItems(null);
     try {
       const result = await supplierAssignedRequestCall({ operatorId: access.userId!, signal: ticket.controller.signal });
       if (!alive.current || !reads.current.isCurrent(ticket)) return "ignored";
       if (!("items" in result)) throw Error();
       setItems(result.items); setTruncated(result.truncated);
+      if (selected && !revoked) {
+        // A successful or truncated list is not proof of access to the open record.
+        // Reauthorize independently without remounting the review or discarding its draft.
+        denialKind = "detail"; denialId = selected.id;
+        const detail = await supplierAssignedRequestCall({ operatorId: access.userId!, id: selected.id, signal: ticket.controller.signal });
+        if (!alive.current || !reads.current.isCurrent(ticket)) return "ignored";
+        if (!("request" in detail)) throw new SupplierRequestError("contract_invalid");
+      }
       return "confirmed";
     } catch (issue) {
       if (alive.current && reads.current.isCurrent(ticket)) {
         const status = issue instanceof SupplierRequestError ? issue.status : 0;
-        denyRead(status, "list");
-        setListError(assignedReadDenialScope(status, "list") ? "No se confirmó acceso a tu bandeja. Revisá tu sesión o consultá al administrador de NexID." : "No se confirmó tu bandeja. Esto no significa que no tengas solicitudes asignadas.");
-        return assignedReadDenialScope(status, "list") ? "denied" : "unavailable";
+        const denial = assignedReadDenialScope(status, denialKind);
+        denyRead(status, denialKind, denialId);
+        setListError(denialKind === "detail"
+          ? denial ? "La solicitud abierta ya no está disponible con tu acceso actual. No se envió ningún mensaje." : "La bandeja se actualizó, pero no se pudo volver a confirmar la solicitud abierta. Sus datos anteriores no se actualizaron."
+          : denial ? "No se confirmó acceso a tu bandeja. Revisá tu sesión o consultá al administrador de NexID." : "No se confirmó tu bandeja. Esto no significa que no tengas solicitudes asignadas.");
+        return denial ? "denied" : "unavailable";
       }
       return "ignored";
     } finally { if (reads.current.finish(ticket) && alive.current) setListLoading(false); }

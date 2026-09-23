@@ -270,7 +270,9 @@ test("dashboard supplier console keeps pack password client-side only", () => {
   assert.match(source, /body:\s*JSON\.stringify\(\{\s*password:\s*effectivePassword\s*\}\)/);
   assert.match(source, /currentRole/);
   assert.match(source, /const canCreateOrder = dashboardHighImpactPermissionMatches\([\s\S]*"supplier_order\.create"/);
-  assert.match(source, /const canExportPack = dashboardHighImpactPermissionMatches\([\s\S]*"supplier_pack\.export"/);
+  assert.match(source, /const isSuperAdmin = normalizedRole === "super-admin";/);
+  assert.match(source, /const canExportPack = isSuperAdmin && dashboardHighImpactPermissionMatches\([\s\S]*"supplier_pack\.export"/);
+  assert.match(source, /async function exportPack\(\) \{\s*if \(!canExportPack\)/);
   assert.doesNotMatch(source, /hasScopedPermission\(currentPermissions, "supplier:export_pack"\)/);
   assert.match(source, /currentDeniedPermissions/);
   assert.doesNotMatch(source, /security-operator/);
