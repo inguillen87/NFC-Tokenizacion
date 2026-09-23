@@ -28,7 +28,8 @@ test("server and client tenant filters use only the authoritative projection", a
 
   assert.match(page, /leadBelongsToTenant\(lead, tenantScope\)/);
   assert.match(page, /authoritativeLeadTenant\(lead\)/);
-  assert.match(client, /authoritativeLeadTenant\(l\)/);
+  assert.match(client, /authoritativeLeadTenant\(row\)/);
+  assert.match(client, /confirmCustomerInbox<Lead>\("leads", leadsInput,/);
   assert.doesNotMatch(page, /parseMeta\(lead\.(?:message|notes), "tenant"\)/);
   assert.doesNotMatch(client, /tenant=\(\[\^/);
 });

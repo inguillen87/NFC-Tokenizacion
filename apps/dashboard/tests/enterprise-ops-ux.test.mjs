@@ -70,6 +70,6 @@ test("commercial CRM reports partial upstream availability instead of silent emp
   assert.match(leadsSource, /availability: "upstream_error"/);
   assert.match(leadsSource, /availability: "invalid_payload"/);
   assert.match(leadsSource, /CRM parcialmente disponible/);
-  assert.match(leadsSource, /no deben interpretarse como cero actividad comercial/);
+  assert.match(leadsSource, /no muestran registros ni conteos confirmados/);
   assert.match(leadsSource, /href=\{retryHref\}/);
 });

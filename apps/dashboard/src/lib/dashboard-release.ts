@@ -1,4 +1,4 @@
-export const DASHBOARD_RELEASE='2026.09.22-dashboard.34';
+export const DASHBOARD_RELEASE='2026.09.22-dashboard.35';
 export const DASHBOARD_RELEASE_DATE='2026-09-22';
 export const RELEASE_NOTES={
 'es-AR':{
@@ -8,8 +8,8 @@ export const RELEASE_NOTES={
  steps:['En Atención al cliente, abrí Tickets y buscá el caso por su referencia completa.','Abrí la gestión del ticket para consultar el estado actual y su historial.','Elegí el nuevo estado, explicá el motivo y revisá el cambio antes de confirmar.','Si el caso implica cerrar un retiro, otra cuenta autorizada debe revisar y aprobar ese cierre.'],
  boundary:'El origen real no certifica el soporte físico, el estado TT ni la autenticidad criptográfica. Cerrar el seguimiento no levanta el aviso, libera producto ni certifica una devolución física. La conciliación usa declaraciones y comprobantes, no el número de TAP.',
  cards:[
-  {title:'Actividad sin inferencias',text:'Prospectos, tickets y pedidos muestran sus propios registros cargados. Una fuente no disponible no se presenta como cero; cerrar un registro no lo convierte en una venta ganada.',tag:'CRM'},
-  {title:'Espera limitada',text:'Las consultas y escrituras dejan de esperar al vencer el plazo. Un cambio sin confirmar conserva el mismo comando para consultar o reintentar, sin inventar un guardado.',tag:'Soporte'},
+  {title:'Fuentes y permisos visibles',text:'Cada bandeja distingue datos confirmados, fuente vacía, falta de permiso y error. El reintento conserva la empresa y la sesión; no cambia registros.',tag:'CRM'},
+  {title:'Registros del asistente',text:'Las preguntas y notas conservan su significado. Un prospecto no se presenta como conversación respondida; la bandeja no inventa una respuesta de IA ni confirma su entrega.',tag:'Asistente'},
   {title:'Cambios con motivo',text:'Los tickets de soporte pueden pasar a abierto, pendiente o cerrado. Cada cambio conserva la cuenta que lo realizó, el momento y el motivo. Los casos vinculados a incidentes mantienen su gestión específica.',tag:'Seguimiento'},
   {title:'Trabajo compartido',text:'Si otra persona modificó el caso, podés revisar su estado actualizado antes de continuar. Un reintento del mismo envío recupera su confirmación sin duplicar el cambio.',tag:'Equipo'},
   {title:'Evidencia conservada',text:'El lector sigue exigiendo origen real: las importaciones no se convierten en lecturas físicas. Los resultados inválidos o repetidos conservan su clasificación.',tag:'Lecturas'},
@@ -22,8 +22,8 @@ export const RELEASE_NOTES={
  steps:['In Customer support, open Tickets and find the case using its complete reference.','Open ticket management to read its current status and history.','Choose the new status, explain the reason and review the change before confirming.','If the case involves closing a recall, another authorized account must review and approve that closure.'],
  boundary:'Real origin does not certify the physical carrier, TT state or cryptographic authenticity. Closing tracking does not lift the product notice, release stock or certify physical returns. Reconciliation uses declarations and references, not TAP counts.',
  cards:[
-  {title:'Activity without assumptions',text:'Prospects, tickets and orders show their own loaded records. An unavailable source is not zero, and closing a record does not turn it into a won sale.',tag:'CRM'},
-  {title:'Bounded waiting',text:'Reads and writes stop waiting at the deadline. An unconfirmed change retains the same command for reconciliation or retry without inventing a saved result.',tag:'Support'},
+  {title:'Source and permission states',text:'Each inbox distinguishes confirmed records, empty sources, denied access and errors. Retry keeps the company and session without changing records.',tag:'CRM'},
+  {title:'Assistant records',text:'Questions and notes keep their original meaning. A prospect is not shown as an answered conversation; this inbox does not invent an AI answer or confirm delivery.',tag:'Assistant'},
   {title:'Changes with a reason',text:'Support tickets can move to open, pending or closed. Every change retains the account, time and reason. Cases linked to incidents keep their dedicated workflow.',tag:'Follow-up'},
   {title:'Shared work',text:'If someone else changed the case, review its updated status before continuing. Retrying the same submission retrieves its confirmation without duplicating the change.',tag:'Team'},
   {title:'Evidence retained',text:'The reader still requires real-origin evidence: imports do not become physical readings. Results marked invalid or replayed retain their classification.',tag:'Readings'},
@@ -36,8 +36,8 @@ export const RELEASE_NOTES={
  steps:['Em Atendimento ao cliente, abra Chamados e busque o caso pela referência completa.','Abra a gestão do chamado para consultar seu estado atual e histórico.','Escolha o novo estado, explique o motivo e revise a mudança antes de confirmar.','Se o caso envolver encerrar um recolhimento, outra conta autorizada deve revisar e aprovar esse encerramento.'],
  boundary:'A origem real não certifica o suporte físico, o estado TT nem a autenticidade criptográfica. Encerrar o acompanhamento não retira o aviso, libera produtos nem certifica devoluções físicas. A conciliação usa declarações e comprovantes, não a contagem de TAP.',
  cards:[
-  {title:'Atividade sem inferências',text:'Prospectos, tickets e pedidos mostram seus próprios registros carregados. Uma fonte indisponível não é zero, e encerrar um registro não significa uma venda ganha.',tag:'CRM'},
-  {title:'Espera limitada',text:'Consultas e alterações param de esperar ao atingir o prazo. Uma alteração não confirmada mantém o mesmo comando para conciliação ou nova tentativa, sem inventar um salvamento.',tag:'Suporte'},
+  {title:'Fontes e permissões visíveis',text:'Cada caixa distingue registros confirmados, fonte vazia, falta de permissão e erro. A nova tentativa conserva a empresa e a sessão; não altera registros.',tag:'CRM'},
+  {title:'Registros do assistente',text:'Perguntas e notas mantêm seu significado. Um prospecto não representa uma conversa respondida; a caixa não inventa uma resposta de IA nem confirma sua entrega.',tag:'Assistente'},
   {title:'Mudanças com motivo',text:'Chamados de suporte podem passar para aberto, pendente ou fechado. Cada mudança preserva a conta, o momento e o motivo. Casos vinculados a incidentes mantêm sua gestão específica.',tag:'Acompanhamento'},
   {title:'Trabalho compartilhado',text:'Se outra pessoa alterou o caso, consulte o estado atualizado antes de continuar. Repetir o mesmo envio recupera sua confirmação sem duplicar a mudança.',tag:'Equipe'},
   {title:'Evidência preservada',text:'O leitor continua exigindo origem real: importações não se tornam leituras físicas. Resultados inválidos ou repetidos mantêm sua classificação.',tag:'Leituras'},

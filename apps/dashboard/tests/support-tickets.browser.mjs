@@ -48,18 +48,18 @@ const fixture = `
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import LeadsTicketsClient from './src/app/(app)/leads-tickets/leads-tickets-client';
-const tickets=${JSON.stringify(fixtureTickets)};
-const demo={availability:'ready',source:'demo'};
+const tickets=${JSON.stringify(fixtureTickets)}.map(row=>({...row,tenant_slug:'qa-only'}));
 function Fixture() {
-const [context,setContext]=React.useState({tenant:'qa-only',demo:false,canLookup:true});
+const [context,setContext]=React.useState({tenant:'qa-only',demo:true,canLookup:true});
+const collection={availability:'ready',source:context.demo?'demo':'production'};
 window.__qaSetLookupContext=setContext;
 const locale=new URLSearchParams(location.search).get('locale')||'es-AR';
 return <main className="dashboard-main mx-auto w-full max-w-7xl min-w-0 space-y-6 p-4 md:p-8">
   <header><h1 className="text-2xl font-bold">Prueba local de tickets de soporte</h1><p className="mt-2 text-sm">Datos sintéticos: esta pantalla no demuestra tickets, clientes ni actividad productiva.</p></header>
   <LeadsTicketsClient initialLeads={[]} initialTickets={tickets} initialOrders={[]} filteredOpportunities={[]} tenantScope={context.tenant} sessionFilter="" tenantFilter={context.tenant} locale={locale} canLookupTickets={context.canLookup}
     copy={{shell:{loading:'Cargando',all:'Todos',refresh:'Actualizar'},statuses:{OPEN:'Abierto',PENDING:'Pendiente',CLOSED:'Cerrado'}}}
-    labels={{leads:'Prospectos',tickets:'Tickets',orders:'Pedidos',hot:'Oportunidades',aiQueries:'Consultas IA'}} demoMode={context.demo} leadsSource="demo"
-    signalCollections={{leads:demo,tickets:demo,orders:demo}} members={[]} memberDirectory={demo} selectedMemberId=""
+    labels={{leads:'Prospectos',tickets:'Tickets',orders:'Pedidos',hot:'Oportunidades',aiQueries:'Consultas IA'}} demoMode={context.demo} leadsSource={collection.source}
+    signalCollections={{leads:collection,tickets:collection,orders:collection}} members={[]} memberDirectory={collection} selectedMemberId=""
     memberTimeline={{availability:'not_selected',items:[],partial:false,sourceErrors:[],hasMore:false,nextCursor:null}} />
 </main>;
 }
@@ -198,7 +198,7 @@ try {
     check((await signals.innerText()).includes(description), `${width} ${theme}: Signals shows the confirmed readable description`);
     check(!(await signals.innerText()).includes(fingerprint), `${width} ${theme}: Signals never displays fingerprint`);
     await inspect(page, 'signals-reference', width, theme, '[data-testid="customer-signal-timeline"]');
-    await page.getByRole('button', { name: /^Tickets de Soporte/ }).click();
+    await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).click();
     await page.locator('table').waitFor();
     check(await page.locator('tbody tr').count() === 1, `${width} ${theme}: tab change preserves reference search`);
     check((await page.locator('table').innerText()).includes(ticketId), `${width} ${theme}: Tickets exposes the complete reference`);
@@ -230,7 +230,7 @@ try {
     await search.fill(legacyId);
     await page.waitForFunction(() => document.querySelectorAll('tbody tr').length === 1);
     check((await page.locator('table').innerText()).includes(legacyDescription), `${width} ${theme}: legacy UUID search works`);
-    await page.getByRole('button', { name: /^Señales de cliente/ }).click();
+    await page.getByRole('tab', { name: /^Señales de cliente/ }).click();
     await signals.waitFor();
     check(await signals.locator('ol > li').count() === 1 && (await signals.innerText()).includes(legacyDescription), `${width} ${theme}: Tickets to Signals preserves legacy reference search`);
     await search.fill(legacyJsonId);
@@ -240,8 +240,11 @@ try {
     await page.getByText('No hay señales que coincidan con este filtro.', { exact: true }).waitFor();
     check(await signals.locator('ol > li').count() === 0, `${width} ${theme}: unmatched reference is empty without fallback rows`);
 
+    // The list demonstration used explicit demo provenance. Lookup now exercises
+    // a consistent simulated operational session with mocked, not live, API responses.
+    await page.evaluate(() => window.__qaSetLookupContext({tenant:'qa-only',demo:false,canLookup:true}));
     await search.fill('');
-    await page.getByRole('button', { name: /^Tickets de Soporte/ }).click();
+    await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).click();
     const lookup = page.getByTestId('ticket-reference-lookup');
     const referenceInput = lookup.getByLabel('Referencia completa del ticket');
     const submitLookup = async id => { await referenceInput.fill(id); await lookup.getByRole('button', { name: /Buscar ticket|Reintentar búsqueda/ }).click(); };
@@ -386,7 +389,9 @@ try {
       return route.continue();
     });
     await page.goto(`${origin}/?theme=${variant.theme}&locale=${variant.locale}`);
-    await page.getByRole('button', { name: /^Tickets de Soporte/ }).click();
+    await page.getByRole('tablist').waitFor();
+    await page.evaluate(() => window.__qaSetLookupContext({tenant:'qa-only',demo:false,canLookup:true}));
+    await page.getByRole('tab', { name: /^(Tickets de soporte|Support tickets|Tickets de suporte)/ }).click();
     const lookup = page.getByTestId('ticket-reference-lookup');
     await lookup.getByLabel(variant.label).fill(historicalId);
     await lookup.getByRole('button', { name: variant.submit, exact: true }).click();

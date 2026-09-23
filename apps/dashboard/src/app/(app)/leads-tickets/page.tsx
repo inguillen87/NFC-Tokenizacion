@@ -20,6 +20,8 @@ import type {
   CustomerTicketRecord,
 } from "../../../lib/customer-signal-timeline";
 import { authoritativeLeadTenant, leadBelongsToTenant } from "../../../lib/customer-signal-timeline";
+import { parseCustomerInboxPayload } from "../../../lib/customer-inbox-state";
+import { readTicketResponse } from "../../../lib/ticket-request-deadline";
 import LeadsTicketsClient from "./leads-tickets-client";
 
 type AdminCollectionResult<T extends CustomerSignalRecord = CustomerSignalRecord> = {
@@ -38,23 +40,30 @@ async function adminGet<T extends CustomerSignalRecord>(
   allowDemoData: boolean,
 ): Promise<AdminCollectionResult<T>> {
   try {
-    const response = await fetchAdminPage(context, path);
+    const { response, body: payload } = await readTicketResponse(
+      async (_url, init) => fetchAdminPage(context, path, init), path,
+      { cache: "no-store", redirect: "error" }, new AbortController(),
+    );
     const meta = readDemoDataMetaFromResponse(response);
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) return accessDeniedCollection<T>();
       return { rows: [], availability: "upstream_error", source: "unavailable" };
     }
-    const payload = await response.json().catch(() => null);
+    const kind = path === "/admin/leads" ? "leads" : path === "/admin/tickets" ? "tickets"
+      : path === "/admin/consumer-portal/order-requests" ? "orders" : null;
+    if (kind) return parseCustomerInboxPayload<T>(kind, payload, response.headers.get("x-nexid-data-mode"), {
+      tenantScope: context.tenantSlug, demoMode: allowDemoData,
+    });
     const payloadRows = Array.isArray(payload)
       ? payload
       : payload && typeof payload === "object" && Array.isArray((payload as Record<string, unknown>).items)
         ? (payload as Record<string, unknown>).items as unknown[]
         : null;
-    if (!payloadRows || (meta.demoMode && !allowDemoData)) {
+    if (!payloadRows || payloadRows.some(row => !row || typeof row !== "object" || Array.isArray(row)) || (meta.demoMode && !allowDemoData)) {
       return { rows: [], availability: "invalid_payload", source: "unavailable" };
     }
     return {
-      rows: payloadRows.filter((row): row is CustomerSignalRecord => Boolean(row) && typeof row === "object" && !Array.isArray(row)) as T[],
+      rows: payloadRows as T[],
       availability: "ready",
       source: meta.demoMode ? "demo" : "production",
     };
@@ -262,7 +271,7 @@ export default async function LeadsTicketsPage({
         <EnterpriseOpsState
           variant="warning"
           title={unavailableSources.length === 3 ? "CRM sin confirmación de upstream" : "CRM parcialmente disponible"}
-          description="Una o más fuentes no pudieron confirmar su estado. Las colecciones afectadas se muestran vacías, pero no deben interpretarse como cero actividad comercial."
+          description="Una o más fuentes no pudieron confirmar su estado. Las fuentes afectadas no muestran registros ni conteos confirmados; las demás conservan su disponibilidad independiente."
           checklist={unavailableSources.map((source) => `${source.label}: ${source.availability.replaceAll("_", " ")}`)}
           action={(
             <a href={retryHref} className="rounded-xl border border-amber-200/30 bg-amber-300/10 px-4 py-2 text-sm font-black text-amber-100 hover:bg-amber-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">

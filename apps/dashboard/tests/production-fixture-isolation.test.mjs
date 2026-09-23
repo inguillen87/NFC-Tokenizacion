@@ -14,12 +14,10 @@ test("production CRM rejects demo BFF payloads and never appends fixture convers
   assert.match(crmPage, /demoMode=\{allowDemoData\}/);
   assert.match(crmPage, /leadsSource=\{leadsResult\.source\}/);
 
-  assert.match(crmClient, /const demoAiQueries = useMemo<AiQuery\[\]>\(\(\) => demoMode/);
-  assert.match(crmClient, /:\s*\[\], \[demoMode, tenantScope\]\)/);
-  assert.match(crmClient, /const allAiQueries = useMemo<AiQuery\[\]>\(\(\) => \[\s*\.\.\.demoAiQueries,\s*\.\.\.parsedDbQueries/s);
-  assert.match(crmClient, /data-ai-query-source=\{item\.source\}/);
-  assert.match(crmClient, /item\.source === "demo" \? "DEMO" : "API"/);
-  assert.doesNotMatch(crmClient, /const allAiQueries[\s\S]{0,240}\.\.\.DEFAULT_AI_QUERIES/);
+  assert.match(crmClient, /buildAssistantLedger\(initialLeads, inboxes.leads, context\)/);
+  assert.match(crmClient, /<AssistantRecords key=/);
+  assert.doesNotMatch(crmClient, /DEFAULT_AI_QUERIES|demoAiQueries|recordedAnswer|aiLiveCount/);
+
 });
 
 test("consumer CRM and its heatmap accept fixture rows only for an explicit demo session", () => {

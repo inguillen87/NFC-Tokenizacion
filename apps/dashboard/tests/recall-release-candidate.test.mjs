@@ -9,12 +9,12 @@ test('S9 ticket lookup retains immutable S6 evidence and identifies its paired A
  const [m,c]=await Promise.all([json('../public/release.json'),candidate()]);
  assert.equal(c.release,'2026.09.21-dashboard.28');
  assert.equal(createHash('sha256').update(JSON.stringify(c)).digest('hex'),'9be2d2d515dfcd3e43780c713dc51b2fb4f56a8e3a7f33df0f17d41532e11259');
- assert.equal(m.release,'2026.09.22-dashboard.34');
+ assert.equal(m.release,'2026.09.22-dashboard.35');
  assert.equal(m.reconciliationBaseRelease,c.release);
- assert.equal(m.baseCommit,'d2758dce665ef0c320e08df3808d529b574b94ce');
- assert.equal(m.scope,'source-backed-crm-bounded-tickets-and-dependency-maintenance');
+ assert.equal(m.baseCommit,'702829269506758dbf1f969d0627a71083a80c87');
+ assert.equal(m.scope,'source-confirmed-crm-inboxes-and-assistant-records');
  assert.equal(m.realTapCertification,'not-included');
- assert.equal(m.requiredApiRelease,'2026.09.22-api-support-workflow.1');
+ assert.equal(m.requiredApiRelease,'2026.09.22-api-support-workflow.2');
  assert.equal(m.requiredWebRelease,'2026.09.21-web-support.1');
  assert.equal(m.apiChangesIncluded,false);assert.equal(m.databaseMigrationsIncluded,false);
  assert.equal(c.application,'dashboard');

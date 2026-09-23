@@ -1,8 +1,13 @@
 "use client";
 
-import React, { useId, useMemo, useRef, useState } from "react";
-import { Badge, Card } from "@product/ui";
-import { customerActivityCopy } from "../../../lib/customer-activity-copy";
+import React, { useId, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { AssistantRecords } from "../../../components/assistant-records";
+import { CustomerInboxNotice } from "../../../components/customer-inbox-notice";
+import { buildAssistantLedger } from "../../../lib/assistant-records";
+import { confirmCustomerInbox, customerRecordText, customerRecordDate, customerRecordQuantity } from "../../../lib/customer-inbox-state";
+import { customerInboxCopy } from "../../../lib/customer-inbox-copy";
+import inboxStyles from "../../../components/customer-inbox.module.css";
 import { CustomerActivitySummary } from "../../../components/customer-activity-summary";
 import { buildCustomerActivitySummary, customerActivityDestination, type CustomerActivityKind } from "../../../lib/customer-activity-summary";
 import { CustomerMemberTimeline } from "../../../components/customer-member-timeline";
@@ -10,7 +15,6 @@ import { CustomerSignalTimeline } from "../../../components/customer-signal-time
 import { DataTable } from "../../../components/data-table";
 import { TicketReferenceLookup } from "../../../components/ticket-reference-lookup";
 import type { TicketLookupLocale } from "../../../lib/ticket-reference-lookup";
-import { ticketLookupCopy } from "../../../lib/ticket-reference-lookup-copy";
 import { SUPPORT_TICKET_COLUMNS, supportTicketTableRow, supportTicketRowMatchesQuery } from "../../../lib/support-ticket-projection";
 import type {
   CustomerMember,
@@ -25,149 +29,11 @@ import {
   type CustomerSignalCollections,
   type CustomerTicketRecord,
 } from "../../../lib/customer-signal-timeline";
-import {
-  Sparkles,
-  Search,
-  Bot,
-  BrainCircuit,
-  Radio,
-  Network,
-  Tags
-} from "lucide-react";
+import { Search } from "lucide-react";
 
 type Lead = CustomerLeadRecord;
 type Ticket = CustomerTicketRecord;
 type Order = CustomerOrderRecord;
-
-type AiQuery = {
-  id: string;
-  contact: string;
-  vertical: string;
-  company: string;
-  query: string;
-  answer: string;
-  tag: string;
-  created_at: string;
-  status: string;
-  source: "production" | "demo";
-};
-
-const AI_QUERY_HIGHLIGHTS = [
-  "Sephora",
-  "Catena Zapata",
-  "Juleriaque",
-  "Rutini",
-  "Pergamino",
-  "Santa Fe",
-  "Aura",
-  "Sommelier",
-  "nexID",
-  "NFT",
-  "B2B",
-  "Latam"
-];
-
-const AI_QUERY_CATEGORY_FALLBACKS = [
-  "Venta Directa/Cruzada",
-  "Soporte Tecnico",
-  "Convenios / Alianzas",
-  "Uso de Producto"
-];
-
-const DEFAULT_AI_QUERIES = [
-  {
-    id: "q-b1",
-    contact: "juan.perez@cava.com",
-    vertical: "wine",
-    company: "Restaurante El Faro",
-    query: "Tengo una cena con carne asada y quiero quedar bien. ¿Este blend de Mendoza va bien o me recomiendan el Cabernet Sauvignon de su bodega?",
-    answer: "Sí, este Gran Blend 2026 marida de forma excepcional con carnes rojas a la brasa. Si querés una alternativa más estructurada, nuestro Cabernet Sauvignon Reserva es una excelente opción. Además, por convenio, podés adquirirlo con 15% off en el club.",
-    tag: "Venta Directa",
-    created_at: "2026-06-13",
-    status: "RESPONDIDO"
-  },
-  {
-    id: "q-b2",
-    contact: "marta.gomez@vinos.cl",
-    vertical: "wine",
-    company: "Distribuidora Los Andes",
-    query: "¿Tienen convenios o alianzas con otras bodegas como Catena Zapata o Rutini para visitas guiadas en Luján de Cuyo?",
-    answer: "Sin un convenio cargado por contrato, nexID no afirma alianzas con terceros. La marca puede ofrecer beneficios propios o habilitar una red autorizada donde cada bodega aprueba descuento, cupo y vigencia antes de publicarlo.",
-    tag: "Alianza B2B",
-    created_at: "2026-06-13",
-    status: "RESPONDIDO"
-  },
-  {
-    id: "q-c1",
-    contact: "sofia.beauty@gmail.com",
-    vertical: "cosmetics",
-    company: "Estética Integral",
-    query: "¿Qué otros productos parecidos recomiendan si tengo piel extremadamente seca y sensible?",
-    answer: "Para piel seca, recomendamos complementar Elysian Elixir con nuestra Crema Facial Hidratante Aura con ácido hialurónico. El escaneo de este frasco te otorga un cupón de 10% de descuento para esa compra.",
-    tag: "Venta Cruzada",
-    created_at: "2026-06-13",
-    status: "RESPONDIDO"
-  },
-  {
-    id: "q-c2",
-    contact: "compras@juleriaque.com.ar",
-    vertical: "cosmetics",
-    company: "Perfumerías Juleriaque",
-    query: "¿Tienen convenios de distribución o alianzas exclusivas con cadenas como Sephora o Juleriaque en Latam?",
-    answer: "Sin contrato cargado, nexID no presenta a ninguna cadena como distribuidor oficial. El tenant puede cargar retailers autorizados y beneficios por sucursal; el CRM valida stock, puntos y permisos antes de mostrarlos al consumidor.",
-    tag: "Distribución",
-    created_at: "2026-06-13",
-    status: "RESPONDIDO"
-  },
-  {
-    id: "q-a1",
-    contact: "ing.agro@pergamino.com",
-    vertical: "agro",
-    company: "Establecimiento Don Luis",
-    query: "Si llueve en unas dos horas, ¿el BioGuard Max 500 resiste el lavado o pierdo la aplicación en el cultivo?",
-    answer: "La ficha tecnica cargada por el tenant puede mostrar ventana de secado, recomendaciones de etiqueta, lote y canal autorizado. nexID no calcula eficacia agronomica por clima en tiempo real; registra la consulta y deriva a la documentacion aprobada o al asesor tecnico.",
-    tag: "Soporte Técnico",
-    created_at: "2026-06-13",
-    status: "RESPONDIDO"
-  },
-  {
-    id: "q-a2",
-    contact: "cooperativa@pergamino.org",
-    vertical: "agro",
-    company: "Cooperativa Agrícola Pergamino",
-    query: "¿Tienen convenios con cooperativas locales en Pergamino o Santa Fe para compras a granel de este lote?",
-    answer: "Las compras a granel y convenios cooperativos se publican solo si el tenant los carga como canales autorizados. nexID valida lote, zona, stock y condiciones antes de mostrar la oferta al productor.",
-    tag: "B2B Lead",
-    created_at: "2026-06-13",
-    status: "RESPONDIDO"
-  }
-];
-
-function normalizeAiQueryCategory(tag: string, query: string, answer: string) {
-  const text = `${tag} ${query} ${answer}`.toLowerCase();
-  if (/venta|cruzada|compra|marida|cupon|descuento|stock|club/.test(text)) return "Venta Directa/Cruzada";
-  if (/soporte|tecnico|dosis|lluvia|resiste|aplicacion|calidad|uso/.test(text)) return "Soporte Tecnico";
-  if (/convenio|alianza|distribu|cadena|sephora|catena|rutini|cooperativa|partner/.test(text)) return "Convenios / Alianzas";
-  if (/producto|piel|fragancia|lote|origen|autentic|recomend/.test(text)) return "Uso de Producto";
-  return tag || "General";
-}
-
-function renderHighlightedText(text: string) {
-  if (!text) return "-";
-  const escapedTerms = AI_QUERY_HIGHLIGHTS.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const regex = new RegExp(`(${escapedTerms.join("|")})`, "gi");
-  const parts = text.split(regex);
-  return parts.map((part, index) => {
-    const match = AI_QUERY_HIGHLIGHTS.some((term) => term.toLowerCase() === part.toLowerCase());
-    return match ? (
-      <mark key={`${part}-${index}`} className="rounded-md bg-cyan-400/15 px-1 py-0.5 font-black text-cyan-100 ring-1 ring-cyan-300/20">
-        {part}
-      </mark>
-    ) : (
-      <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
-    );
-  });
-}
 
 interface LeadsTicketsClientProps {
   initialLeads: Lead[];
@@ -191,10 +57,10 @@ interface LeadsTicketsClientProps {
 }
 
 export default function LeadsTicketsClient({
-  initialLeads,
-  initialTickets,
-  initialOrders,
-  filteredOpportunities,
+  initialLeads: leadsInput,
+  initialTickets: ticketsInput,
+  initialOrders: ordersInput,
+  filteredOpportunities: opportunitiesInput,
   tenantScope,
   sessionFilter,
   tenantFilter,
@@ -204,7 +70,7 @@ export default function LeadsTicketsClient({
   locale = "es-AR",
   canLookupTickets = false,
   leadsSource,
-  signalCollections,
+  signalCollections: inputCollections,
   members,
   memberDirectory,
   selectedMemberId,
@@ -214,6 +80,28 @@ export default function LeadsTicketsClient({
   const [searchTerm, setSearchTerm] = useState("");
   const contentId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
+  const ui = customerInboxCopy[locale];
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
+  const retry = () => startRefresh(() => router.refresh());
+  const context = useMemo(() => ({ tenantScope, demoMode }), [tenantScope, demoMode]);
+  const inboxes = useMemo(() => ({
+    leads: confirmCustomerInbox<Lead>("leads", leadsInput, inputCollections.leads.availability !== "ready" || inputCollections.leads.source === leadsSource ? inputCollections.leads : { availability: "invalid_payload", source: "unavailable" }, context),
+    tickets: confirmCustomerInbox<Ticket>("tickets", ticketsInput, inputCollections.tickets, context),
+    orders: confirmCustomerInbox<Order>("orders", ordersInput, inputCollections.orders, context),
+  }), [leadsInput, ticketsInput, ordersInput, inputCollections, leadsSource, context]);
+  const initialLeads = inboxes.leads.rows, initialTickets = inboxes.tickets.rows, initialOrders = inboxes.orders.rows;
+  const signalCollections = inboxes;
+  const filteredOpportunities = useMemo(() => {
+    const valid = new Map(initialLeads.map(row => [JSON.stringify([authoritativeLeadTenant(row), row.id]), row]));
+    return opportunitiesInput.flatMap(item => {
+      if (!item?.lead || typeof item.lead.id !== "string") return [];
+      const lead = valid.get(JSON.stringify([authoritativeLeadTenant(item.lead), item.lead.id]));
+      return lead ? [{ ...item, lead }] : [];
+    });
+  }, [initialLeads, opportunitiesInput]);
+  const ledger = useMemo(() => buildAssistantLedger(initialLeads, inboxes.leads, context), [initialLeads, inboxes.leads, context]);
+
   const activitySummary = useMemo(() => buildCustomerActivitySummary({
     leads: initialLeads, tickets: initialTickets, orders: initialOrders,
     collections: signalCollections, tenantScope, demoMode,
@@ -233,134 +121,53 @@ export default function LeadsTicketsClient({
     collections: signalCollections,
   }), [initialLeads, initialOrders, initialTickets, signalCollections]);
 
-  const parsedDbQueries = useMemo<AiQuery[]>(() => initialLeads
-    .filter(l => {
-      const isAiSource = l.source === "sales_chat_widget" || l.source === "assistant" || String(l.notes).toLowerCase().includes("assistant");
-      if (!isAiSource) return false;
-      if (tenantScope) {
-        const slug = authoritativeLeadTenant(l);
-        return slug === tenantScope;
-      }
-      return true;
-    })
-    .map((l, index) => {
-      const cleanNotes = String(l.notes || "");
-      const recordedAnswer = cleanNotes.replace("assistant_mode=web_widget", "").trim();
-      return {
-        id: l.id || `q-db-${index}`,
-        contact: l.contact || l.email || l.phone || "-",
-        vertical: l.vertical || "other",
-        company: l.company || "-",
-        query: l.message || "Consulta general",
-        answer: recordedAnswer || "Sin respuesta registrada por la fuente.",
-        tag: String(l.role_interest || "General").toUpperCase(),
-        created_at: l.created_at.slice(0, 10),
-        status: String(l.status || (recordedAnswer ? "RESPUESTA REGISTRADA" : "SIN RESPUESTA REGISTRADA")).toUpperCase(),
-        source: leadsSource === "demo" ? "demo" : "production",
-      };
-    }), [initialLeads, leadsSource, tenantScope]);
-
-  const demoAiQueries = useMemo<AiQuery[]>(() => demoMode
-    ? DEFAULT_AI_QUERIES.filter(q => {
-        if (tenantScope) {
-          const matchesScope =
-            (tenantScope === "bodegas" && q.vertical === "wine") ||
-            (tenantScope === "cosmetica" && q.vertical === "cosmetics") ||
-            (tenantScope === "agro" && q.vertical === "agro");
-          return matchesScope;
-        }
-        return true;
-      }).map((query) => ({ ...query, status: String(query.status || "RESPONDIDO"), source: "demo" }))
-    : [], [demoMode, tenantScope]);
-
-  const allAiQueries = useMemo<AiQuery[]>(() => [
-    ...demoAiQueries,
-    ...parsedDbQueries
-  ], [demoAiQueries, parsedDbQueries]);
-
-  const filteredAiQueries = useMemo(() => allAiQueries.filter(q => {
-    const searchStr = `${q.contact || ""} ${q.company || ""} ${q.query || ""} ${q.answer || ""} ${q.tag || ""}`.toLowerCase();
-    return searchStr.includes(searchTerm.toLowerCase());
-  }), [allAiQueries, searchTerm]);
-
-  const aiCategoryStats = useMemo(() => {
-    const counts = filteredAiQueries.reduce<Record<string, number>>((acc, item) => {
-      const category = normalizeAiQueryCategory(item.tag, item.query, item.answer);
-      acc[category] = (acc[category] || 0) + 1;
-      return acc;
-    }, {});
-    AI_QUERY_CATEGORY_FALLBACKS.forEach((category) => {
-      counts[category] = counts[category] || 0;
-    });
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
-      .map(([category, count]) => ({
-        category,
-        count,
-        pct: filteredAiQueries.length ? Math.round((count / filteredAiQueries.length) * 100) : 0
-      }));
-  }, [filteredAiQueries]);
-
-  const aiLiveCount = filteredAiQueries.filter((query) => query.source === "production" && /respondido|procesando|live|nuevo/i.test(query.status)).length;
-  const aiDemoCount = filteredAiQueries.filter((query) => query.source === "demo").length;
-
-  const tabClass = (tab: typeof activeTab) =>
-    `flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border ${
-      activeTab === tab
-        ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-300 shadow-[0_4px_15px_rgba(6,182,212,0.1)]"
-        : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10"
-    }`;
+  const tabs = ["signals", "opportunities", "prospects", "tickets", "orders", "ai_queries"] as const;
+  const countFor = (tab: typeof activeTab): number | null => {
+    if (tab === "ai_queries") return ledger.loadedCount;
+    if (tab === "signals") return Object.values(inboxes).every(state => state.availability === "ready") ? customerSignals.length : null;
+    const state = tab === "tickets" ? inboxes.tickets : tab === "orders" ? inboxes.orders : inboxes.leads;
+    return state.availability === "ready" ? (tab === "opportunities" ? filteredOpportunities.length : state.rows.length) : null;
+  };
+  const tabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tab: typeof activeTab) => {
+    const index = tabs.indexOf(tab);
+    const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length
+      : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
+    if (next === null) return;
+    event.preventDefault(); setActiveTab(tabs[next]);
+    document.getElementById(`${contentId}-${tabs[next]}`)?.focus();
+  };
 
   return (
     <div className="space-y-6">
       <CustomerActivitySummary summary={activitySummary} locale={locale} onOpen={openActivity} controls={contentId} />
 
-      {/* Tab Navigation and Search */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-2 rounded-2xl bg-slate-950/70 border border-white/5">
-        <div className="flex flex-wrap gap-1.5">
-          <button onClick={() => setActiveTab("signals")} className={tabClass("signals")}>
-            Señales de cliente ({customerSignals.length})
-          </button>
-          <button onClick={() => setActiveTab("opportunities")} className={tabClass("opportunities")}>
-            Oportunidades ({filteredOpportunities.length})
-          </button>
-          <button onClick={() => setActiveTab("prospects")} className={tabClass("prospects")}>
-            Bandeja de Prospectos ({initialLeads.length})
-          </button>
-          <button onClick={() => setActiveTab("tickets")} className={tabClass("tickets")}>
-            Tickets de Soporte ({initialTickets.length})
-          </button>
-          <button onClick={() => setActiveTab("orders")} className={tabClass("orders")}>
-            Órdenes / Muestras ({initialOrders.length})
-          </button>
-          <button onClick={() => setActiveTab("ai_queries")} className={tabClass("ai_queries")}>
-            {labels.aiQueries} ({allAiQueries.length})
-          </button>
+      <div className={`${inboxStyles.root} ${inboxStyles.navigation}`}>
+        <div className={inboxStyles.tabs} role="tablist" aria-label={ui.tabs}>
+          {tabs.map(tab => <button key={tab} id={`${contentId}-${tab}`} type="button" role="tab"
+            aria-selected={activeTab === tab} aria-controls={contentId} tabIndex={activeTab === tab ? 0 : -1}
+            className={inboxStyles.tab} onClick={() => setActiveTab(tab)} onKeyDown={event => tabKeyDown(event, tab)}>
+            {ui[tab]} <span aria-label={countFor(tab) === null ? ui.unknownCount : undefined}>({countFor(tab) ?? "—"})</span>
+          </button>)}
         </div>
-
-        <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Buscar señales por referencia, contacto o detalle"
-            placeholder="Buscar referencia, contacto o detalle..."
-            className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-white/10 bg-slate-900/60 text-xs text-white outline-none focus:border-cyan-500/40"
-          />
-        </div>
+        <label className={inboxStyles.search}>
+          <Search aria-hidden="true" size={16} />
+          <input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)}
+            aria-label={ui.search} placeholder={ui.searchPlaceholder} />
+        </label>
       </div>
 
       {/* Tab Contents */}
       {activeTab === "tickets" || activeTab === "signals" ? (
         <p className="px-2 text-xs leading-5 text-slate-400">
           {activeTab === "tickets"
-            ? ticketLookupCopy[locale].recentHint
-            : "La búsqueda filtra las señales cargadas, hasta las 80 más recientes."}
+            ? ui.ticketHint
+            : ui.signalHint}
         </p>
       ) : null}
-      <div id={contentId} ref={contentRef} role="region" aria-label={customerActivityCopy[locale].workspace} tabIndex={-1} className="animate-in fade-in slide-in-from-top-1 duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500">
+      <div id={contentId} ref={contentRef} role="tabpanel" aria-labelledby={`${contentId}-${activeTab}`} tabIndex={-1} className="animate-in fade-in slide-in-from-top-1 duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500">
+        {((activeTab === "opportunities" || activeTab === "prospects") && inboxes.leads.availability !== "ready") || (activeTab === "orders" && inboxes.orders.availability !== "ready") ? (
+          <CustomerInboxNotice state={activeTab === "orders" ? inboxes.orders : inboxes.leads} locale={locale} onRetry={retry} pending={refreshing} />
+        ) : null}
         {activeTab === "signals" && (
           <div className="space-y-6">
             <CustomerMemberTimeline
@@ -378,9 +185,9 @@ export default function LeadsTicketsClient({
           </div>
         )}
 
-        {activeTab === "opportunities" && (
+        {activeTab === "opportunities" && inboxes.leads.availability === "ready" && (
           <DataTable
-            title="Oportunidades Comerciales Activas"
+            title={ui.opportunities}
             columns={[
               { key: "created_at", label: "Fecha" },
               { key: "tenant", label: "Tenant" },
@@ -395,12 +202,12 @@ export default function LeadsTicketsClient({
                 return searchStr.includes(searchTerm.toLowerCase());
               })
               .map((item) => ({
-                created_at: item.lead.created_at.slice(0, 10),
+                created_at: customerRecordDate(item.lead.created_at, ui.missing),
                 tenant: item.tenant || "-",
                 session: item.session || "-",
                 interest: item.interest || "-",
                 source: item.source,
-                status: String(item.lead.status || "new").toUpperCase(),
+                status: customerRecordText(item.lead.status, ui.missing),
               }))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
@@ -412,9 +219,9 @@ export default function LeadsTicketsClient({
           />
         )}
 
-        {activeTab === "prospects" && (
+        {activeTab === "prospects" && inboxes.leads.availability === "ready" && (
           <DataTable
-            title="Bandeja General de Prospectos (CRM)"
+            title={ui.prospects}
             columns={[
               { key: "name", label: "Nombre" },
               { key: "contact", label: "Contacto" },
@@ -434,8 +241,8 @@ export default function LeadsTicketsClient({
                 contact: item.contact || item.email || item.phone || "-",
                 company: item.company || "-",
                 vertical: item.vertical || "-",
-                status: String(item.status || "new").toUpperCase(),
-                source: item.source || "assistant",
+                status: customerRecordText(item.status, ui.missing),
+                source: customerRecordText(item.source, ui.missing),
                 estimated: item.estimated_volume || "-",
               }))}
             filterKey="status"
@@ -451,8 +258,8 @@ export default function LeadsTicketsClient({
         {activeTab === "tickets" && (
           <div className="space-y-6">
           <TicketReferenceLookup key={`${tenantScope}|${demoMode}|${canLookupTickets}`} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets} />
-          <DataTable
-            title="Bandeja de Tickets y Consultas Técnicas"
+          {inboxes.tickets.availability !== "ready" ? <CustomerInboxNotice state={inboxes.tickets} locale={locale} onRetry={retry} pending={refreshing} /> : <DataTable
+            title={ui.tickets}
             columns={SUPPORT_TICKET_COLUMNS}
             rows={initialTickets
               .map(supportTicketTableRow)
@@ -464,13 +271,13 @@ export default function LeadsTicketsClient({
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
             statusMap={copy.statuses}
-          />
+          />}
           </div>
         )}
 
-        {activeTab === "orders" && (
+        {activeTab === "orders" && inboxes.orders.availability === "ready" && (
           <DataTable
-            title="Pedidos de Kits de Muestras B2B"
+            title={ui.orders}
             columns={[
               { key: "created_at", label: "Fecha" },
               { key: "contact", label: "Contacto" },
@@ -485,12 +292,12 @@ export default function LeadsTicketsClient({
                 return searchStr.includes(searchTerm.toLowerCase());
               })
               .map((item) => ({
-                created_at: item.created_at.slice(0, 10),
+                created_at: customerRecordDate(item.created_at, ui.missing),
                 contact: item.contact,
                 company: item.company || "-",
                 tag_type: item.tag_type || "-",
-                volume: String(item.volume || 0),
-                status: String(item.status || "new").toUpperCase(),
+                volume: customerRecordQuantity(item.volume, ui.missing),
+                status: customerRecordText(item.status, ui.missing),
               }))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
@@ -503,172 +310,8 @@ export default function LeadsTicketsClient({
         )}
 
         {activeTab === "ai_queries" && (
-          <div className="space-y-5">
-            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-              <Card className="relative overflow-hidden border-cyan-300/20 bg-slate-950/85 p-5">
-                <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.16),transparent_62%)]" />
-                <div className="relative flex items-start justify-between gap-4">
-                  <div>
-                    <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
-                      <Radio className="h-4 w-4 text-cyan-300" />
-                      {demoMode ? "Consultas demo" : labels.liveQueries}
-                    </p>
-                    <p className="mt-3 text-4xl font-black text-white">{demoMode ? aiDemoCount : aiLiveCount}</p>
-                    <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-400">
-                      {demoMode
-                        ? "Escenario de demostracion aislado. Estas consultas no representan conversaciones, clientes ni actividad productiva."
-                        : "Consultas confirmadas por la fuente de leads: assistant, sales_chat_widget y notas de modo asistente. Si la API no informa filas, la bandeja queda vacia."}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-75" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-300" />
-                    </span>
-                    {demoMode ? "DEMO" : labels.liveBeacon}
-                  </div>
-                </div>
-                <div className="relative mt-5 grid grid-cols-3 gap-2">
-                  {[
-                    { label: labels.queryRadar, value: filteredAiQueries.length, icon: BrainCircuit },
-                    { label: "DB", value: parsedDbQueries.length, icon: Network },
-                    { label: "Demo", value: aiDemoCount, icon: Bot }
-                  ].map((metric) => (
-                    <div key={metric.label} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-                      <metric.icon className="mb-2 h-4 w-4 text-cyan-300" />
-                      <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{metric.label}</p>
-                      <p className="mt-1 text-lg font-black text-white">{metric.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              <Card className="p-5">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
-                    <Tags className="h-4 w-4 text-amber-300" />
-                    {labels.intentDistribution}
-                  </h2>
-                  <Badge tone="cyan">{labels.aiQueries}</Badge>
-                </div>
-                <div className="space-y-3">
-                  {aiCategoryStats.map((item) => (
-                    <div key={item.category} className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-bold text-slate-200">{item.category}</span>
-                        <span className="font-mono text-slate-400">{item.count} / {item.pct}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full border border-white/5 bg-slate-900">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-amber-300 shadow-[0_0_18px_rgba(34,211,238,0.22)]"
-                          style={{ width: `${item.pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-
-            <Card className="overflow-hidden p-0">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/75 px-5 py-4">
-                <div>
-                  <h2 className="text-sm font-black text-white">{labels.aiQueriesTitle}</h2>
-                  <p className="mt-1 text-xs text-slate-400">{labels.assistantLedger}</p>
-                </div>
-                <Badge tone="cyan">{filteredAiQueries.length} registros</Badge>
-              </div>
-
-              <div className="hidden grid-cols-[0.75fr_1.15fr_1.2fr_0.45fr] gap-4 border-b border-white/10 bg-slate-900/45 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 lg:grid">
-                <span>Cliente</span>
-                <span>Consulta</span>
-                <span>{labels.generatedAnswer}</span>
-                <span>Estado</span>
-              </div>
-
-              <div className="divide-y divide-white/10">
-                {filteredAiQueries.length ? filteredAiQueries.map((item) => {
-                  const category = normalizeAiQueryCategory(item.tag, item.query, item.answer);
-                  return (
-                    <article key={item.id} data-ai-query-source={item.source} className="grid gap-4 px-5 py-4 transition-colors hover:bg-cyan-400/[0.035] lg:grid-cols-[0.75fr_1.15fr_1.2fr_0.45fr]">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black text-white">{item.company || "-"}</p>
-                        <p className="mt-1 truncate text-xs text-slate-400">{item.contact}</p>
-                        <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{item.created_at}</p>
-                      </div>
-
-                      <div className="rounded-xl border border-cyan-300/15 bg-cyan-400/5 p-3">
-                        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">{labels.category}: {category}</p>
-                        <p className="text-sm leading-relaxed text-slate-100">{item.query}</p>
-                      </div>
-
-                      <div className="rounded-xl border border-violet-300/15 bg-violet-400/5 p-3">
-                        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-violet-200">
-                          <Sparkles className="h-3.5 w-3.5" />
-                          {labels.aiAnswerHeader}
-                        </p>
-                        <p className="text-sm leading-relaxed text-slate-100">{renderHighlightedText(item.answer)}</p>
-                      </div>
-
-                      <div className="flex flex-col items-start gap-2 lg:items-end">
-                        <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200">
-                          {item.status}
-                        </span>
-                        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                          {item.vertical}
-                        </span>
-                        <span className={item.source === "demo"
-                          ? "rounded-full border border-amber-300/25 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-100"
-                          : "rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-100"}
-                        >
-                          {item.source === "demo" ? "DEMO" : "API"}
-                        </span>
-                      </div>
-                    </article>
-                  );
-                }) : (
-                  <div className="px-5 py-12 text-center">
-                    <Bot className="mx-auto h-8 w-8 text-slate-600" />
-                    <p className="mt-3 text-sm font-bold text-slate-300">{labels.noQueries}</p>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {false && activeTab === "ai_queries" && (
-          <DataTable
-            title={labels.aiQueriesTitle}
-            columns={[
-              { key: "created_at", label: "Fecha" },
-              { key: "contact", label: "Contacto" },
-              { key: "company", label: "Empresa" },
-              { key: "query", label: "Consulta / Pregunta" },
-              { key: "tag", label: "Categoría" },
-              { key: "status", label: "Estado" }
-            ]}
-            rows={allAiQueries
-              .filter(q => {
-                const searchStr = `${q.contact || ""} ${q.company || ""} ${q.query || ""} ${q.tag || ""}`.toLowerCase();
-                return searchStr.includes(searchTerm.toLowerCase());
-              })
-              .map((item) => ({
-                created_at: item.created_at,
-                contact: item.contact,
-                company: item.company,
-                query: `💬 ${item.query}\n\n🤖 ${labels.aiAnswerHeader}:\n${item.answer}`,
-                tag: item.tag,
-                status: item.status,
-              }))}
-            filterKey="status"
-            loadingLabel={copy.shell.loading}
-            emptyLabel="No hay consultas registradas"
-            searchPlaceholder="Filtrar..."
-            allFilterLabel={copy.shell.all}
-            refreshLabel={copy.shell.refresh}
-            statusMap={copy.statuses}
-          />
+          <AssistantRecords key={`${tenantScope}|${demoMode}`} ledger={ledger} query={searchTerm} locale={locale}
+            onRetry={retry} pending={refreshing} onClear={() => setSearchTerm("")} />
         )}
       </div>
     </div>
