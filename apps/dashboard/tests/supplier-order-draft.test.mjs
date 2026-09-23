@@ -6,6 +6,25 @@ import { SUPPLIER_CONSTRUCTIONS, emptySupplierOrderDraft, applySupplierConstruct
 const draft = () => ({ ...applySupplierConstruction(emptySupplierOrderDraft(), 'pet_wet'), tenant_slug: 'qa-only', order_name: 'Construcción sintética', base_batch_id: 'QA-ONLY', total_quantity: '100', notes: 'Conservar esta nota' });
 const valid = (value = draft(), purpose = 'trial_integration') => validateSupplierOrderDraft(value, purpose);
 
+test('technical names and notes respect core UTF-8 byte limits without truncating the commercial text', () => {
+  const commercial = Object.freeze({ title: 'á'.repeat(200), notes: 'ñ'.repeat(4000) });
+  const oversized = { ...draft(), order_name: commercial.title, notes: commercial.notes };
+  assert.equal(valid(oversized).ok, false);
+  assert.match(valid(oversized).error, /200 bytes UTF-8/);
+  const named = { ...oversized, order_name: 'Pedido técnico abreviado' };
+  assert.equal(valid(named).ok, false);
+  assert.match(valid(named).error, /4000 bytes UTF-8/);
+  const corrected = { ...named, notes: 'Resumen técnico; consultar la solicitud comercial original.' };
+  assert.equal(valid(corrected).ok, true);
+  assert.equal(commercial.title, 'á'.repeat(200));
+  assert.equal(commercial.notes, 'ñ'.repeat(4000));
+  assert.equal(oversized.order_name, commercial.title);
+  assert.equal(oversized.notes, commercial.notes);
+  assert.equal(valid({ ...draft(), order_name: 'á'.repeat(100), notes: 'ñ'.repeat(2000) }).ok, true);
+  assert.equal(valid({ ...draft(), order_name: 'á'.repeat(101) }).ok, false);
+  assert.equal(valid({ ...draft(), notes: 'ñ'.repeat(2001) }).ok, false);
+});
+
 test('applying any construction preserves the operator work and leaves purpose outside the template', () => {
   const before = Object.freeze({ ...draft(), customer_slug: 'qa-customer', sub_batch_size: '50', pack_purpose: 'production' });
   for (const profile of SUPPLIER_CONSTRUCTIONS) {

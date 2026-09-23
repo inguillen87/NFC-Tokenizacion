@@ -46,7 +46,7 @@ test("standalone supplier order creation starts unclassified and fails closed be
   assert.match(pageSource, /const exactPurpose = parseSupplierOrderCreationPurpose\(packPurpose\)/);
   assert.match(pageSource, /if \(!exactPurpose\) \{[\s\S]*?return;[\s\S]*?\}/);
   assert.match(pageSource, /validateSupplierOrderDraft\(draft, exactPurpose\)/);
-  assert.match(pageSource, /body: JSON\.stringify\(validated\.payload\)/);
+  assert.match(pageSource, /body: JSON\.stringify\(\{ \.\.\.validated\.payload/);
   assert.match(pageSource, /disabled=\{frozen \|\| !accessResolved \|\| !canCreateSupplierOrder \|\| secureAccessMissing \|\| !parseSupplierOrderCreationPurpose\(packPurpose\)\}/);
 
   const validationIndex = pageSource.indexOf(

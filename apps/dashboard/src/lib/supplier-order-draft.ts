@@ -53,6 +53,8 @@ export function validateSupplierOrderDraft(draft: SupplierOrderDraft, purpose: u
   const tenant = draft.tenant_slug.trim().toLowerCase();
   if (!tenant) return fail("Indicá la empresa del pedido.");
   if (!draft.order_name.trim()) return fail("Dale un nombre al pedido para encontrarlo después.");
+  if (new TextEncoder().encode(draft.order_name.trim()).byteLength > 200) return fail("El nombre del pedido técnico supera 200 bytes UTF-8. Abrevialo antes de crear; el texto no fue modificado.");
+  if (new TextEncoder().encode(draft.notes.trim()).byteLength > 4000) return fail("Las notas del pedido técnico superan 4000 bytes UTF-8. Resumilas antes de crear; el texto no fue modificado.");
   // Match the API's normalization without silently changing a supplier's reference.
   const bid = draft.base_batch_id.trim();
   if (!/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(bid)) return fail("La referencia del lote debe usar mayúsculas, números y guiones entre palabras.");

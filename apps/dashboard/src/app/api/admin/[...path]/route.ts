@@ -1,5 +1,6 @@
 import {traceRequestScopeAllowed} from "../../../../lib/batch-traceability-access";
 import {pilotRequestScopeAllowed} from "../../../../lib/pilot-report-access";
+import { forwardSupplierRequest } from "../../../../lib/supplier-request-proxy";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -1073,6 +1074,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
 async function forward(req: Request, path: string[]) {
   const normalizedPath = path.join("/");
+  if (normalizedPath === "supplier-requests" || normalizedPath.startsWith("supplier-requests/")) return forwardSupplierRequest(req, path.slice(1));
   const ticketPatch = req.method === "PATCH" && /^tickets\/[^/]+$/.test(normalizedPath);
   const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "sun/physical-taps" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests" || normalizedPath === "polygon/wallet");
   const reqUrl = new URL(req.url);

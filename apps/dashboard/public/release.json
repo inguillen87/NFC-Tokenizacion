@@ -1,10 +1,10 @@
 {
-  "release": "2026.09.23-dashboard.39",
-  "scope": "guided-supplier-order-preparation",
+  "release": "2026.09.23-dashboard.40",
+  "scope": "tenant-label-requests-and-nexid-preparation",
   "realTapCertification": "not-included",
-  "baseCommit": "6c37248dd48a7edff8712b25071772cb5f75e97d",
+  "baseCommit": "86a2b9cef1378f05584800c27e302b9a7ba27e95",
   "reconciliationBaseRelease": "2026.09.21-dashboard.28",
-  "requiredApiRelease": "2026.09.22-api-support-workflow.2",
+  "requiredApiRelease": "2026.09.23-api-supplier-requests.1",
   "source": "committed-interface-increment-on-production-baseline",
   "apiChangesIncluded": false,
   "databaseMigrationsIncluded": false,
@@ -23,5 +23,6 @@
   "supportReportProtocol": "nexid.support-report.v1",
   "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
   "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1",
-  "requiredApiMigration": "20260922100000_0112_support_ticket_workflow.sql"
+  "requiredApiMigration": "20260923120000_0113_supplier_requests.sql",
+  "supplierRequestProtocol": "nexid.supplier-request.v1"
 }
