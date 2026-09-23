@@ -55,7 +55,7 @@ jobs:
           NEXID_S9_QA_DATABASE_URL: postgresql://nexid_e2e:ephemeral-ci-password@127.0.0.1:5432/nexid_e2e_s9
         run: |
           set -euo pipefail
-          node --require ./scripts/qa/s7-loopback-only.cjs --import tsx --test --test-concurrency=1 apps/api/tests/support-report-postgres.test.mjs apps/api/tests/admin-ticket-lookup-postgres.test.mjs apps/api/tests/admin-ticket-workflow-postgres.test.mjs 2>&1 | tee "$RUNNER_TEMP/nexid-s9-evidence/postgres-tests.log"
+          node --require ./scripts/qa/s7-loopback-only.cjs --import tsx --test --test-concurrency=1 apps/api/tests/support-report-postgres.test.mjs apps/api/tests/admin-ticket-lookup-postgres.test.mjs apps/api/tests/admin-ticket-workflow-postgres.test.mjs apps/api/tests/supplier-requests-postgres.test.mjs 2>&1 | tee "$RUNNER_TEMP/nexid-s9-evidence/postgres-tests.log"
       - name: API production build and full build regression suites
         shell: bash
         run: |

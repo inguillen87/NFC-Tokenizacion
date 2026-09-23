@@ -43,6 +43,8 @@ export type SupplierOrderCreateInput = {
   requestId: string | null;
   userAgent: string | null;
   subBatches: SupplierOrderCreateSubBatchInput[];
+  sourceRequestId?: string;
+  sourceRequestRevision?: number;
 };
 
 export type SupplierOrderCreateResult = {
@@ -128,7 +130,9 @@ export async function createSupplierOrderV2(
       sdm_config: item.sdmConfig,
     })),
   };
-  const rows = await query/*sql*/`
+  const rows = input.sourceRequestId ? await query/*sql*/`
+    SELECT * FROM public.nexid_convert_supplier_request_v1(${input.sourceRequestId}::uuid, ${input.sourceRequestRevision}::integer, ${JSON.stringify(payload)}::jsonb)
+  ` : await query/*sql*/`
     SELECT *
     FROM public.nexid_create_supplier_order_v2(${JSON.stringify(payload)}::jsonb)
   `;

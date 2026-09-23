@@ -24,6 +24,8 @@ import {
   type SupplierOrderCreateSubBatchInput,
 } from "../../../lib/supplier-order-create";
 import { resolveSupplierPublicTagOrigin } from "../../../lib/supplier-public-tag-origin";
+import { SupplierRequestError } from "../../../lib/supplier-request-contract";
+import { parseSupplierRequestSource, validateSupplierRequestConversion, hasSupplierRequestConversion, supplierRequestConversionError, getSupplierRequest } from "../../../lib/supplier-request-store";
 
 const MAX_SUPPLIER_ORDER_BODY_BYTES = 64 * 1024;
 const MAX_SUPPLIER_ORDER_QUANTITY = 100_000_000;
@@ -224,6 +226,14 @@ export async function POST(req: Request) {
       ...(error instanceof RequestBodyTooLargeError ? { max_bytes: MAX_SUPPLIER_ORDER_BODY_BYTES } : {}),
     }, error instanceof RequestBodyTooLargeError ? 413 : 400);
   }
+  let sourceRequest: ReturnType<typeof parseSupplierRequestSource> = null;
+  try {
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ ok: false, reason: "invalid_json_body" }, 400);
+    sourceRequest = parseSupplierRequestSource(body);
+    if (sourceRequest && getAdminPrincipal(req).scope !== "super_admin") return json({ ok: false, reason: "supplier_request_operator_required" }, 403);
+  } catch (error) {
+    return json({ ok: false, reason: error instanceof SupplierRequestError ? error.message : "supplier_request_source_invalid" }, 400);
+  }
   await ensureCarrierProfileSchema();
   await ensureSupplierOpsSchema();
   const tenantInput = firstString(body.tenant_id, body.tenantId, body.tenant_slug, body.tenantSlug, body.tenant);
@@ -282,6 +292,13 @@ export async function POST(req: Request) {
         allowed: ["trial_integration", "production"],
         message: "Choose the pack purpose explicitly. Trial packs are non-sellable; production remains blocked until a tenant-approved production QA plan exists.",
       }, 400);
+    }
+    if (sourceRequest) {
+      await validateSupplierRequestConversion(sourceRequest, getAdminPrincipal(req), { id: String(tenant.id), slug: String(tenant.slug) }, {
+        quantity: totalQuantity, purpose: packPurpose, carrier: carrierProfileCode, chip: chipModel,
+        material: firstString(body.material_type, body.materialType),
+      });
+      if (!await hasSupplierRequestConversion()) return json({ ok: false, reason: "supplier_requests_migration_required", required_migration: "20260923120000_0113_supplier_requests.sql" }, 503);
     }
     const secureSunProfile = requiresSecureSunEncoding(carrierProfileCode);
 
@@ -437,6 +454,7 @@ export async function POST(req: Request) {
       requestId: req.headers.get("x-request-id"),
       userAgent: req.headers.get("user-agent"),
       subBatches: preparedSubBatches,
+      ...(sourceRequest ? { sourceRequestId: sourceRequest.id, sourceRequestRevision: sourceRequest.revision } : {}),
     });
     const order = created.order;
     const subBatches = created.subBatches;
@@ -457,6 +475,14 @@ export async function POST(req: Request) {
         : "This carrier is provisioned without K_META_BATCH/K_FILE_BATCH or batch-key records. Atomic provisioning leaves packaging legacy_unverified; approve its packaging specification before exporting the keyless factory pack.",
     }, 201);
   } catch (error) {
+    const requestError = supplierRequestConversionError(error);
+    if (requestError) {
+      if (sourceRequest && requestError.message === "supplier_request_already_provisioned" && !requestError.details.order_id) {
+        const linked = await getSupplierRequest({ mode: "tenant", tenant_id: String(tenant.id), tenant_slug: String(tenant.slug) }, sourceRequest.id).catch(() => null);
+        if (linked?.status === "provisioned" && linked.order_id) requestError.details.order_id = linked.order_id;
+      }
+      return json({ ok: false, reason: requestError.message, ...requestError.details }, requestError.status);
+    }
     const mapped = supplierOrderCreateError(error);
     return json({
       ok: false,
