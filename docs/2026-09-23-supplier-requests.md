@@ -74,3 +74,24 @@ anteriores y conservar las tablas aditivas y sus registros; no borrar solicitude
 Estas etapas no se presentan como implementadas. El envío automático exige
 proveedor/canal configurados, autorización del envío, control de reintentos y
 recibos verificables. Un mensaje enviado nunca equivale a fabricación aceptada.
+
+## Publicación confirmada
+
+Dashboard .40 (`eca50e87`) y API supplier-requests.1 (`5adf44c7`) quedaron
+publicados en sus dominios canónicos. La migración 0113 se validó primero sobre
+una rama de Neon con esquema y sin datos de clientes, y después se aplicó en
+Producción con su registro de migración dentro de la misma transacción.
+
+GitHub confirmó 1.224 pruebas de Dashboard aprobadas y dos omisiones existentes;
+245 regresiones focales de API y 49 pruebas entre las cuatro suites PostgreSQL.
+Las dos suites de navegador de proveedores completaron 969 comprobaciones en
+60 vistas con componentes reales y transporte sintético. El wrapper de
+conversión se probó con un core de pedidos controlado; no certifica generación
+real de claves ni aprovisionamiento físico.
+
+La comprobación autenticada en Producción confirmó la versión visible, la
+empresa de la sesión, la consulta real de su bandeja vacía y el formulario.
+No creó solicitudes ni pedidos comerciales. La bandeja global y la conversión
+real en Producción no se presentan como aceptadas por este chequeo de lectura.
+Identidades de despliegue y límites completos en
+`releases/2026-09-23-dashboard.40.candidate.json`.
