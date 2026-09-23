@@ -1,0 +1,93 @@
+{
+  "schema": "nexid.dashboard-candidate-evidence.v1",
+  "release": "2026.09.23-dashboard.38",
+  "status": "promoted",
+  "sourceSha": "6c37248dd48a7edff8712b25071772cb5f75e97d",
+  "sourceBranch": "codex/nexid-s9-ticket-deadline-20260922",
+  "ci": {
+    "runId": 35819212821,
+    "jobId": 107047261149,
+    "conclusion": "success",
+    "attempt": 1,
+    "tests": 1200,
+    "passed": 1198,
+    "failed": 0,
+    "skipped": 2
+  },
+  "browser": {
+    "localSupportChecks": 504,
+    "ciSupportChecks": 506,
+    "supportViews": 30,
+    "crmChecks": 1021,
+    "crmViews": 36,
+    "memberChecks": 313,
+    "memberViews": 8,
+    "navigationChecks": 1298,
+    "navigationViews": 168,
+    "navigationRouteHops": 144,
+    "mapChecksPerRun": 29,
+    "mapViewsPerRun": 4,
+    "mapRuns": 2,
+    "oneMapRunUsedNextServer": true,
+    "syntheticRecords": true,
+    "nextNavigationStubbed": true,
+    "authenticatedBusinessAcceptance": false,
+    "manualMobileLightAndDesktopDarkReview": true,
+    "axeFindings": 0,
+    "overflowFindings": 0
+  },
+  "deployment": {
+    "id": "dpl_MQzHkHGoNQW3kGmp95XQkwB2j6DS",
+    "url": "nexid-dashboard-9i0p5ie6n-marcelos-projects-c26aa499.vercel.app",
+    "projectId": "prj_dZCNO1mMbXKzVwu14qswAq0ZunLc",
+    "readyState": "READY",
+    "target": "production",
+    "autoAssignCustomDomainsAtCreation": false,
+    "gitSource": {
+      "type": "github",
+      "repoId": 1172096383,
+      "ref": "6c37248dd48a7edff8712b25071772cb5f75e97d",
+      "sha": "6c37248dd48a7edff8712b25071772cb5f75e97d"
+    },
+    "sourceEvidence": "provider-native-git-sha",
+    "markerEqualsCommittedFile": true,
+    "releaseMarkerSha256": "bbaab804b793e96dc4f441d70588835523ae1501520dd49395a48e40840ba16a",
+    "stagedNotesRead": true,
+    "canonicalMarkerAndNotesHttpStatus": 200,
+    "canonicalMarkerEqualsCommittedFile": true,
+    "canonicalAliasVerified": true
+  },
+  "productionPointersAfter": {
+    "nexid-api": "dpl_3U3zPRtqEbb7iyo9sRRRAQFXADf2",
+    "nexid-dashboard": "dpl_MQzHkHGoNQW3kGmp95XQkwB2j6DS"
+  },
+  "previousDashboardDeployment": "dpl_5V4ffDa7E6TEfaLDDm4tKc2nhaLA",
+  "productionDomainChanged": true,
+  "requiredApiRelease": "2026.09.22-api-support-workflow.2",
+  "requiredMigration": "20260922100000_0112_support_ticket_workflow.sql",
+  "migrationReceipt": "2026-09-23-support-production.json",
+  "limitedAuthenticatedCanonicalSmoke": {
+    "normalExistingTenantSession": true,
+    "releaseVisible": true,
+    "crmRead": true,
+    "confirmedEmptyTicketSource": true,
+    "memberDirectoryPermissionDenialVisible": true,
+    "missingReferenceLookup": "confirmed-not-found through actual authenticated UI",
+    "businessRowsWrittenForQa": false,
+    "realTicketStatusWriteAccepted": false,
+    "populatedMemberHistoryAccepted": false
+  },
+  "physicalTapCertified": false,
+  "supersededUnpromotedCandidate": {
+    "sourceSha": "8fc16e8e77fb5611b7b5624440302ddd912b0a9b",
+    "deploymentId": "dpl_6fqDjXLndMSGmuoXdZ9A9QYoLiHH",
+    "ciRunId": 35818882716,
+    "ciConclusion": "failure",
+    "ciReason": "four stale release-version, scope and note-count expectations; corrected in final source",
+    "additionalReviewFix": "returning to a previous scope must not revive an old navigation lock"
+  },
+  "remainingAcceptance": [
+    "real-ticket-status-transition-and-receipt-in-an-authorized-operational-case",
+    "populated-member-history-with-the-required-existing-permission"
+  ]
+}
