@@ -76,3 +76,38 @@ baselines, then record actual deployment and promotion receipts separately.
 
 The isolated test schemas were removed by the test harness and its local server
 was stopped after validation. No remote PostgreSQL test target was used.
+
+## Verified GitHub and Vercel result
+
+Runtime source: `ebdc5bbc405ca17595d28928d1980a6d1b994282`.
+Normal fast-forward push to `codex/nexid-s9-ticket-workflow-api-20260922`.
+Actions run `35800339954`, job `106989006421`, completed successfully on the
+first attempt at 2026-09-23T00:05:37Z (September 22 in Argentina).
+Logs confirm 234 focal tests, 35 PostgreSQL 18.4 tests, and 1,296 build-suite
+test executions, all passing with zero failures/skips in those commands.
+The separate 57 dependency/IO and 46 local PostgreSQL checks above were not
+executed by this unchanged workflow. The full local npm audit reports eight
+low-severity findings and zero moderate/high/critical findings.
+
+New API deployment `dpl_3U3zPRtqEbb7iyo9sRRRAQFXADf2` reached READY on the
+existing `nexid-api` project, whose configured root was rechecked as `apps/api`.
+Vercel native Git source matches the exact runtime SHA and
+`autoAssignCustomDomains` is false. Its protected staging health endpoint
+returned HTTP 200 through the authorized Vercel CLI.
+
+The staged `/release.json` read returned HTTP 403 `origin_not_allowed`, also
+with the declared client Origin. The application origin boundary was preserved,
+not disabled. Therefore release-marker HTTP and authenticated business-route
+acceptance remain unverified; READY and health do not replace those checks.
+
+Final provider reads preserved production API `dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V`
+and Dashboard `dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q`. The independent Dashboard .34
+candidate `dpl_Dg4e2MbGoLiG6FjPxLGRYuYxqwrt` remains READY on its exact source.
+The production database still reports zero migration-0112 rows and no workflow
+operations table. No migration completion or promotion was performed.
+
+The specific migration confirmation remains pending. Subsequent release work
+must use the prepared 0112 payload, perform coordinated API/Dashboard acceptance,
+and record actual canonical-domain promotion and smoke-test receipts. Do not
+substitute the older unpatched API candidate or claim the local injected session
+represents a real signed-in customer.

@@ -1,0 +1,42 @@
+{
+  "schema": "nexid.api-candidate-evidence.v1",
+  "release": "2026.09.22-api-support-workflow.2",
+  "status": "staged-not-promoted",
+  "sourceSha": "ebdc5bbc405ca17595d28928d1980a6d1b994282",
+  "sourceBranch": "codex/nexid-s9-ticket-workflow-api-20260922",
+  "ci": {
+    "runId": 35800339954, "jobId": 106989006421,
+    "conclusion": "success", "attempt": 1,
+    "focalPassed": 234, "postgresPassed": 35,
+    "buildSuiteExecutionsPassed": 1296, "failed": 0, "skipped": 0
+  },
+  "localAcceptance": {
+    "dependencyAndIoPassed": 57, "postgresIncludingPairedPassed": 46,
+    "failed": 0, "skipped": 0, "postgresVersion": "17.11",
+    "npmAudit": { "low": 8, "moderate": 0, "high": 0, "critical": 0 },
+    "separateCommandsMayOverlap": true,
+    "pairedDashboardSha": "702829269506758dbf1f969d0627a71083a80c87",
+    "sessionResolverInjected": true, "bffHeaderSimulated": true
+  },
+  "deployment": {
+    "id": "dpl_3U3zPRtqEbb7iyo9sRRRAQFXADf2",
+    "url": "https://nexid-egsqcrnmw-marcelos-projects-c26aa499.vercel.app",
+    "readyState": "READY", "sourceEvidence": "provider-native-git-sha",
+    "autoAssignCustomDomains": false, "healthHttpStatus": 200,
+    "releaseMarkerRead": false, "releaseHttpStatus": 403,
+    "releaseReadReason": "origin_not_allowed"
+  },
+  "productionDomainChanged": false,
+  "productionMigrationApplied": false,
+  "productionApiBefore": "dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V",
+  "productionDashboardBefore": "dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q",
+  "compatibleApiProtocolRelease": "2026.09.22-api-support-workflow.1",
+  "requiredMigration": "20260922100000_0112_support_ticket_workflow.sql",
+  "authenticatedTenantBusinessAcceptance": false,
+  "physicalTapCertified": false,
+  "remainingGates": [
+    "specific-migration-confirmation-and-application",
+    "coordinated-authenticated-api-dashboard-acceptance",
+    "promotion-and-canonical-domain-smoke"
+  ]
+}
