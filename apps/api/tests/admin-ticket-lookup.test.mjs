@@ -118,6 +118,6 @@ test('release preserves the additive lookup and support contracts alongside the 
   assert.equal(release.release, '2026.09.23-api-supplier-requests.1');
   assert.equal(release.supportTicketLookupProtocol, 'nexid.support-ticket-lookup.v1');
   assert.equal(release.supportReportProtocol, 'nexid.support-report.v1');
-  assert.equal(release.requiredDashboardRelease, '2026.09.21-dashboard.30');
+  assert.equal(release.requiredDashboardRelease, '2026.09.23-dashboard.40');
   assert.equal(release.databaseMigrationsIncluded, true);
 });
