@@ -1,11 +1,18 @@
 {
   "release": "2026.09.23-api-supplier-requests.2",
   "application": "api",
-  "status": "candidate-not-deployed",
+  "status": "production-promoted-and-canonical-readback-verified",
   "scope": "supplier-request-clarifications-and-atomic-preparation-gate",
-  "runtimeCandidate": null,
-  "deploymentId": null,
-  "currentProductionVerified": false,
+  "runtimeCandidate": "fca60584bbbcc8ab18e1f06e578f0286723204ef",
+  "deploymentId": "dpl_Dnb3sULdRMybnmSPxVb4iEYsfVcj",
+  "deploymentUrl": "https://nexid-5cq43h3qm-marcelos-projects-c26aa499.vercel.app",
+  "projectId": "prj_r0dmVaKogGs8y4NAZ2njCWHhUgLk",
+  "currentProductionVerified": true,
+  "canonicalDomain": "api.nexid.lat",
+  "canonicalMarkerSha256": "0b1c3608e4abdb6b1e334caa560c87d093551327896cdda8941889eeaed431d5",
+  "canonicalMarkerMatchesGitBlob": true,
+  "healthStatus": 200,
+  "healthScope": "process_liveness_only",
   "pairedDashboardRelease": "2026.09.23-dashboard.41",
   "requiredMigration": "20260923150000_0114_supplier_request_reviews.sql",
   "protocol": "nexid.supplier-request-review.v1",
@@ -26,7 +33,10 @@
     "unsafeFunctions": 0,
     "reviewGuards": 3,
     "preparationGatePresent": true,
-    "productionApplied": false
+    "productionApplied": true,
+    "productionBranch": "br-jolly-butterfly-aivukyzq",
+    "productionPostcheck": "ledger 1; review/event rows 0; functions 7; unsafe functions 0; guards 3; preparation gate present",
+    "transaction": "migration and ledger committed together after branch-first validation"
   },
   "localValidation": {
     "supplierUnitPassed": 20,
@@ -38,6 +48,17 @@
     "postgresFixture": "real migrations and IAM capability contract; supplier-order core is a controlled fixture",
     "secretCustodyGate": "passed"
   },
+  "continuousIntegration": {
+    "runId": 35883519787,
+    "jobId": 107257701912,
+    "headSha": "fca60584bbbcc8ab18e1f06e578f0286723204ef",
+    "conclusion": "success",
+    "focalPassed": 254,
+    "postgresPassed": 59,
+    "postgresSkipped": 0,
+    "productionBuild": "passed",
+    "secretCustodyGate": "passed"
+  },
   "boundaries": {
     "productionBusinessWrites": false,
     "newIdentityRolesOrGrants": false,
@@ -45,5 +66,7 @@
     "commercialApproval": false,
     "physicalTagCertification": false
   },
-  "remainingGates": ["independent-review", "exact-sha-ci", "production-migration", "staged-artifact", "canonical-domain-postchecks"]
+  "remainingReleaseGates": [],
+  "notCertifiedByThisRelease": ["real commercial clarification exchange", "supplier provisioning engine with real keys", "physical tags"],
+  "rollback": "restore previous deployment; retain additive tables and history; unanswered questions remain blocked in PostgreSQL"
 }
