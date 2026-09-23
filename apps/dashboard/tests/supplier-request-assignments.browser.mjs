@@ -264,4 +264,3 @@ try {
   report.status = 'passed';
 } catch (error) { report.status = 'failed'; report.error = String(error.stack || error); throw error; }
 finally { await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2)); await browser.close(); await new Promise(done => server.close(done)); console.log(JSON.stringify({ status: report.status, checks: report.checks.length, views: report.views.length, output }, null, 2)); }
-
