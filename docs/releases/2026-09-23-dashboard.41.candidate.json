@@ -1,11 +1,17 @@
 {
   "release": "2026.09.23-dashboard.41",
   "application": "dashboard",
-  "status": "candidate-not-deployed",
+  "status": "production-promoted-and-authenticated-readback-verified",
   "scope": "supplier-request-clarifications-and-actionable-inbox",
-  "runtimeCandidate": null,
-  "deploymentId": null,
-  "currentProductionVerified": false,
+  "runtimeCandidate": "71b3248dcd3d6d40d8eb6668c30ee5442b64195b",
+  "deploymentId": "dpl_CBfjoZHptvzNdVkhxdJPz7UzTZdh",
+  "deploymentUrl": "https://nexid-dashboard-eogxi3awy-marcelos-projects-c26aa499.vercel.app",
+  "projectId": "prj_dZCNO1mMbXKzVwu14qswAq0ZunLc",
+  "currentProductionVerified": true,
+  "canonicalDomain": "app.nexid.lat",
+  "canonicalMarkerSha256": "d2fccade43793f78e9748d6aae1bc7423c5a3e1b71b9c11d5ec3993125defe92",
+  "canonicalMarkerMatchesGitBlob": true,
+  "canonicalNotesStatus": 200,
   "pairedApiRelease": "2026.09.23-api-supplier-requests.2",
   "requiredApiMigration": "20260923150000_0114_supplier_request_reviews.sql",
   "protocol": "nexid.supplier-request-review.v1",
@@ -31,6 +37,46 @@
     "nextNavigation": "stubbed",
     "independentReview": "no open P1 or P2"
   },
+  "visualReview": {
+    "scope": "actual components; synthetic local session and records",
+    "reviewed": true,
+    "captures": [
+      { "path": "artifacts/supplier-requests-browser/clarification-requested-390-light.png", "sha256": "e464f58b2d7e017c8e775dd307dc5be6743dd7ad9859a0d7329c74451e9b35fa" },
+      { "path": "artifacts/supplier-requests-browser/clarification-answered-1440-dark.png", "sha256": "887cf29cab785377c1e0dd14746386ee7d97ff326537a6e046c47f8b3b14dfa1" }
+    ]
+  },
+  "continuousIntegration": {
+    "runId": 35883692986,
+    "jobId": 107258292729,
+    "headSha": "71b3248dcd3d6d40d8eb6668c30ee5442b64195b",
+    "conclusion": "success",
+    "productionBuild": "passed",
+    "completeDashboardSuite": "passed",
+    "browserSuites": "passed"
+  },
+  "productionReadOnly": {
+    "authenticatedTenantAdmin": true,
+    "tenantSlug": "demobodega",
+    "visibleRelease": "2026.09.23-dashboard.41",
+    "realInbox": "confirmed empty",
+    "filtersAndLoadedRecordCountVisible": true,
+    "actualServedUiVisuallyReviewed": true,
+    "viewportWidth": 1745,
+    "documentWidth": 1732,
+    "clippedControls": 0,
+    "businessWrites": false,
+    "clarificationRoundTripWithRealRecords": false
+  },
+  "pairedApi": {
+    "sha": "fca60584bbbcc8ab18e1f06e578f0286723204ef",
+    "deploymentId": "dpl_Dnb3sULdRMybnmSPxVb4iEYsfVcj",
+    "canonicalDomainVerified": true,
+    "migrationApplied": true
+  },
+  "webUnchanged": {
+    "release": "2026.09.21-web-support.1",
+    "deploymentId": "dpl_ABfbegDKHtgTgmZTcX9VZPu155FY"
+  },
   "boundaries": {
     "productionBusinessWrites": false,
     "newIdentityRolesOrGrants": false,
@@ -38,5 +84,6 @@
     "commercialApproval": false,
     "physicalTagCertification": false
   },
-  "remainingGates": ["exact-sha-ci", "paired-api-and-migration", "staged-artifact", "canonical-domain-postchecks"]
+  "remainingReleaseGates": [],
+  "notCertifiedByThisRelease": ["real commercial clarification exchange", "new technical operator role", "supplier dispatch", "physical tags"]
 }

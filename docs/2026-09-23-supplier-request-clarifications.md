@@ -63,6 +63,26 @@ validación se registran en sus archivos de candidato una vez comprobados.
 Las pruebas locales y de CI usan datos sintéticos. No equivalen a intercambios
 comerciales reales, provisión de claves ni validación física de etiquetas.
 
+### Publicación confirmada
+
+Dashboard .41 (`71b3248d`) y API supplier-requests.2 (`fca60584`) están publicados
+en sus dominios canónicos. Los identificadores de despliegue, CI y hashes de los
+marcadores están registrados en los archivos de candidato. La migración 0114
+se aplicó primero en una rama sin datos de clientes y luego en la base principal;
+en ambos casos, migración y registro de versión se confirmaron juntos.
+
+CI aprobó las 1.233 pruebas de Dashboard (dos omisiones existentes), las 254
+regresiones focales de API y 59 casos PostgreSQL. Las dos suites de proveedores
+completaron 1.092 comprobaciones sobre 74 vistas de componentes reales con
+transporte sintético, sin incidencias de accesibilidad, desbordamientos ni
+errores de cliente. La regresión incluye foco al abrir una solicitud y recuperar
+correctamente una página de historial tras un fallo transitorio.
+
+La sesión real de Balmec confirmó .41, su alcance de empresa, la consulta de la
+bandeja vacía y los filtros nuevos. No se crearon solicitudes, conversaciones,
+pedidos ni claves en Producción. La ida y vuelta con registros comerciales reales
+queda fuera de esta comprobación de lectura.
+
 ## Continuidad del plan
 
 El rol técnico interno de NexID queda como un incremento de identidad separado.
