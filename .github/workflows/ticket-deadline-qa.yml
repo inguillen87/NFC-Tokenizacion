@@ -1,7 +1,7 @@
 name: Dashboard ticket and CRM acceptance
 on:
   push:
-    branches: [codex/nexid-s9-ticket-deadline-20260922]
+    branches: [codex/nexid-s9-ticket-deadline-20260922, codex/nexid-operator-workbench-20260923]
     paths:
       - apps/dashboard/**
       - packages/**

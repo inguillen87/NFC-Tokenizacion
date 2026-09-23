@@ -37,7 +37,7 @@ jobs:
           cache: npm
 
       - name: Verify this mandatory workflow contract
-        run: node --test scripts/tests/enterprise-ci-security-workflow.test.mjs
+        run: node --test scripts/tests/enterprise-ci-security-workflow.test.mjs scripts/tests/enterprise-ci-dependency-bootstrap.test.mjs
 
       - name: Scan tracked and untracked repository files for secrets
         run: |
@@ -46,6 +46,9 @@ jobs:
 
       - name: Fail on unapproved high or critical dependencies
         run: node scripts/enterprise-dependency-audit.mjs
+
+      - name: Install audited lockfile dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Validate migration safety and gate contracts
         run: |

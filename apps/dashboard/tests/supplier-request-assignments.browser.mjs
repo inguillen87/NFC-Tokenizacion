@@ -143,7 +143,8 @@ async function scenario(width = 390, theme = 'light', options = {}) {
       }
       if (assigned && request.method() === 'GET') {
         if (state.readMode === '503') return send(route, 503, { ok: false, reason: 'synthetic_unavailable' });
-        const rows = [...state.rows.values()].filter(canRead), row = id ? state.rows.get(id) : null;
+        if (!id && state.listAuthStatus) return send(route, state.listAuthStatus, { ok: false, reason: 'supplier_request_scope_forbidden' });
+        const rows = [...state.rows.values()].filter(canRead).filter(item => item.id !== state.listExcludedId), row = id ? state.rows.get(id) : null;
         if (id && !canRead(row)) return send(route, 404, { ok: false, reason: 'supplier_request_not_found' });
         const result = { ok: true, protocol: 'nexid.supplier-request.v1', scope: assignedScope(), ...(id ? { request: structuredClone(row) } : { items: structuredClone(rows), count: rows.length, truncated: state.truncated }) };
         if (state.readMode === 'foreign-scope') result.scope.operator_id = otherOperatorId;
@@ -179,6 +180,54 @@ async function assignmentReady(page) { await page.getByTestId('supplier-request-
 async function inspectAssignment(page,id) { await page.getByTestId('supplier-request-assignment-select').selectOption(id || ''); await page.getByTestId('supplier-request-assignment-inspect').click(); await page.getByTestId('supplier-request-assignment-confirm').waitFor(); }
 async function assignmentSaved(page,revision) { await page.getByTestId('supplier-request-assignment-panel').getByRole('status').filter({hasText:`Cambio confirmado · revisión ${revision}`}).waitFor(); }
 try {
+
+  // Regressions for the workbench, against actual components and synthetic transport only.
+  const removedRow=requestItem({title:'Withdrawn selected request',notes:'Previously authorized commercial detail'}), keptRow=requestItem({title:'Still assigned request'});
+  const removed=await scenario(390,'light',{rows:[removedRow,keptRow],id:removedRow.id});await ready(removed.page);
+  await removed.page.getByTestId('supplier-request-review-message').fill('Local draft before revocation');
+  removed.state.rows.get(removedRow.id).assignment.operator_id=null;
+  await removed.page.getByRole('button',{name:'Actualizar mis asignaciones'}).click();
+  await removed.page.waitForFunction(()=>[...document.querySelectorAll('button')].some(node=>node.textContent==='Actualizar mis asignaciones'&&!node.disabled));await tick(removed.page);
+  check(await removed.page.getByTestId('supplier-request-detail-heading').count()===0,'A successful refreshed list revalidates and withdraws a selected record whose assignment was revoked');
+  check(!(await removed.page.locator('main').textContent()).includes(removedRow.id)&&!(await removed.page.locator('main').textContent()).includes(removedRow.notes),'Revoked selected record leaves no cached commercial detail or reference after list success');
+  check(await removed.page.getByTestId('supplier-request-open').count()===1&&removed.state.reviewWrites.length===0,'Record withdrawal preserves other authorized assignments and sends no message');await removed.context.close();
+  const outsideRow=requestItem({title:'Authorized outside this page'}),insideRow=requestItem({title:'Loaded record'});
+  const outside=await scenario(390,'light',{rows:[outsideRow,insideRow],id:outsideRow.id});await ready(outside.page);
+  await outside.page.getByTestId('supplier-request-review-message').fill('Keep this unsent draft');outside.state.truncated=true;outside.state.listExcludedId=outsideRow.id;
+  const priorDetailReads=outside.state.reads.filter(path=>path.endsWith('/assigned/'+outsideRow.id)).length;
+  await outside.page.getByRole('button',{name:'Actualizar mis asignaciones'}).click();
+  await outside.page.waitForFunction(()=>[...document.querySelectorAll('button')].some(node=>node.textContent==='Actualizar mis asignaciones'&&!node.disabled));await tick(outside.page);
+  check(outside.state.reads.filter(path=>path.endsWith('/assigned/'+outsideRow.id)).length===priorDetailReads+1,'Truncation is not a revocation: selected record is independently reauthorized');
+  check(await outside.page.getByTestId('supplier-request-detail-heading').count()===1&&await outside.page.getByTestId('supplier-request-review-message').inputValue()==='Keep this unsent draft','Successful access revalidation preserves the selected panel and unsent text');
+  check((await outside.page.getByTestId('supplier-request-inbox-count').innerText()).includes('1 de 1')&&outside.state.reviewWrites.length===0,'Revalidating an off-page detail does not inflate the loaded denominator or write');await outside.context.close();
+  for(const status of [401,403,404]){
+    const row=requestItem({title:'Private cached '+status}),test=await scenario(390,'light',{rows:[row],id:row.id});await ready(test.page);test.state.listAuthStatus=status;
+    await test.page.getByRole('button',{name:'Actualizar mis asignaciones'}).click();await test.page.getByRole('status').filter({hasText:'No se confirmó acceso a tu bandeja'}).waitFor();
+    check(await test.page.getByTestId('supplier-request-detail-heading').count()===0&&await test.page.getByTestId('supplier-request-open').count()===0,'List denial '+status+' clears both cached detail and inbox');
+    check(!await test.page.getByRole('group',{name:'Filtrar solicitudes por próximo paso'}).count()&&test.state.reviewWrites.length===0,'List denial '+status+' does not render zero-valued successful metrics or perform writes');await test.context.close();
+  }
+  for(const [width,theme] of [[320,'light'],[390,'dark'],[1440,'light'],[1440,'dark']]){
+    const pending=requestItem({title:'Edición Única',tenant_slug:'mendoza',submitted_at:'2026-09-20T10:00:00.000Z'});
+    const answered=requestItem({title:'Empresa respondió',review_summary:{state:'answered',revision:2,updated_at:'2026-09-23T12:04:00.000Z'}});
+    const waiting=requestItem({title:'Aclaración pendiente',review_summary:{state:'needs_information',revision:1,updated_at:'2026-09-22T12:04:00.000Z'}});
+    const prepared=requestItem({title:'Pedido preparado',status:'provisioned',order_id:randomUUID()});
+    const test=await scenario(width,theme,{rows:[pending,prepared,waiting,answered]});
+    const metrics=test.page.getByRole('group',{name:'Filtrar solicitudes por próximo paso'});
+    check(await metrics.getByRole('button').count()===4&&(await test.page.getByTestId('supplier-request-open').first().getAttribute('aria-label')).includes(answered.title),'Workbench exposes four scoped metric filters and reviews company responses first');
+    await metrics.getByRole('button',{name:'Para revisión de NexID: 2. Filtrar bandeja',exact:true}).click();
+    check(await test.page.getByTestId('supplier-request-open').count()===2,'Actionable metric filters pending and answered records only');
+    await test.page.getByTestId('supplier-request-inbox-search').fill('mendoza edicion');
+    check(await test.page.getByTestId('supplier-request-open').count()===1&&(await metrics.innerText()).includes('4'),'Accent-insensitive multi-term search spans title and tenant while loaded counters remain unchanged');
+    await test.page.getByTestId('supplier-request-inbox-search').fill('not-a-loaded-record');await test.page.getByRole('button',{name:'Limpiar búsqueda y filtros'}).click();
+    check(await test.page.getByTestId('supplier-request-open').count()===4&&await test.page.getByTestId('supplier-request-inbox-filter').inputValue()==='all','Empty-search recovery resets both query and management filter');
+    await test.page.getByTestId('supplier-assigned-sort').selectOption('oldest_activity');
+    check((await test.page.getByTestId('supplier-request-open').first().getAttribute('aria-label')).includes(pending.id),'Oldest activity sort uses the submission/review time and full reference');
+    const waitingMetric=metrics.getByRole('button',{name:'Esperando a la empresa: 1. Filtrar bandeja',exact:true});await waitingMetric.focus();await test.page.keyboard.press('Enter');
+    check(await waitingMetric.getAttribute('aria-pressed')==='true'&&await test.page.getByTestId('supplier-request-open').count()===1,'Metric filter operates by keyboard and announces its pressed state');
+    await metrics.getByRole('button',{name:'Solicitudes cargadas: 4. Filtrar bandeja',exact:true}).click();
+    check(test.state.reviewWrites.length===0&&test.state.assignmentWrites.length===0&&test.state.writes.length===0,'Workbench presentation controls never create business writes');
+    await inspect(test.page,'operator-workbench',width,theme);await test.context.close();
+  }
   for (const theme of ['light', 'dark']) for (const width of [390, 1440]) {
     const first = requestItem(), foreign = requestItem({ title: 'Sólo otro operador', assignment: { operator_id: otherOperatorId, revision: 1, updated_at: '2026-09-23T12:02:00.000Z' } });
     const otherCompany = requestItem({ title: 'Segunda empresa asignada', tenant_id: otherTenantId, tenant_slug: 'qa-other' });
