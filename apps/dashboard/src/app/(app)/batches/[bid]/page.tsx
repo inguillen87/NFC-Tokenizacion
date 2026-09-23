@@ -1,3 +1,4 @@
+import {BatchWorkspaceNavigationServer} from "../../../../components/batch-workspace-navigation-server";
 import {canReadRecallWorkspace} from '../../../../lib/recall-workspace';
 import { RollProductIdentity } from "../../../../components/roll-product-identity";
 import { BatchDossierShell } from "../../../../components/batch-dossier-shell";
@@ -175,8 +176,8 @@ export default async function BatchDetailPage({ params, searchParams }: { params
 
   if (batch.availability !== "ready" || !batchData) {
     return <main className="space-y-6"><SectionHeading eyebrow="Expediente del lote" title={bid} description="La fuente debe confirmar este lote antes de mostrar datos o habilitar acciones." />
-      {batch.availability === "not_found" ? <EnterpriseOpsState variant="empty" title="Batch no encontrado en este scope" description="La API confirmó HTTP 404 para este BID y el alcance actual. Revisá el identificador antes de registrar otro lote." action={<Link prefetch={false} href="/batches">Volver a lotes</Link>} testId="batch-detail-not-found" />
-      : <EnterpriseOpsState variant="error" title="No se pudo cargar el lote" description="La fuente administrativa no entregó un resultado confiable. Este estado no significa que el BID no exista ni representa métricas en cero." checklist={[`Estado: ${batch.availability}`]} action={<Link prefetch={false} href={`/batches/${encodeURIComponent(bid)}`}>Reintentar lectura</Link>} testId="batch-detail-source-unavailable" />}
+      {batch.availability === "not_found" ? <EnterpriseOpsState variant="empty" title="Batch no encontrado en este scope" description="La API confirmó HTTP 404 para este BID y el alcance actual. Revisá el identificador antes de registrar otro lote." action={<Link prefetch={false} href={`/batches?${new URLSearchParams(adminContext.tenantSlug?{tenant:adminContext.tenantSlug}:{})}`}>Volver a lotes</Link>} testId="batch-detail-not-found" />
+      : <EnterpriseOpsState variant="error" title="No se pudo cargar el lote" description="La fuente administrativa no entregó un resultado confiable. Este estado no significa que el BID no exista ni representa métricas en cero." checklist={[`Estado: ${batch.availability}`]} action={<Link prefetch={false} href={`/batches/${encodeURIComponent(bid)}?${new URLSearchParams(adminContext.tenantSlug?{tenant:adminContext.tenantSlug}:{})}`}>Reintentar lectura</Link>} testId="batch-detail-source-unavailable" />}
     </main>;
   }
   const dossier = buildBatchDossier(batchData,bid,adminContext.tenantSlug,new Date().toISOString());
@@ -188,9 +189,9 @@ export default async function BatchDetailPage({ params, searchParams }: { params
     supplier:dashboardSessionCanOpenDestination(session,"supplierBatches"), tags:dashboardSessionCanOpenDestination(session,"tags"),
   };
   const productPanel = <div className={styles.stack}>
-{canReadRecallWorkspace(session)&&<section className={styles.card}><h2>Seguimiento de seguridad del producto</h2><Link prefetch={false} className={styles.button} href={`/batches/${encodeURIComponent(bid)}/recalls?${new URLSearchParams({tenant:adminContext.tenantSlug})}`}>Retiros y cuarentenas del lote</Link></section>}
-<section className={styles.card}><h2>Etiqueta, estado y enlace público</h2><Link prefetch={false} className={`${styles.button} ${styles.primary}`} href={`/batches/${encodeURIComponent(bid)}/channels?${new URLSearchParams({tenant:adminContext.tenantSlug})}`}>Enlaces QR / estado NFC</Link></section>
-    <section className={styles.card}><h2>Passport Studio</h2><p>{batchData.editorial_managed?"Este lote utiliza borradores, revisión y publicación con historial. Continuá desde el editor para conservar el control de versiones.":"Prepará la ficha con vista previa móvil y comparación de cambios. Iniciar el flujo es explícito; no cambia el contenido publicado."}</p><Link prefetch={false} className={`${styles.button} ${styles.primary}`} href={`/batches/${encodeURIComponent(bid)}/passport`}>Abrir Passport Studio</Link></section>
+{canReadRecallWorkspace(session)&&<section className={styles.card}><h2>Seguimiento de seguridad del producto</h2><Link prefetch={false} className={styles.button} href={`/batches/${encodeURIComponent(bid)}/recalls?${new URLSearchParams({tenant:dossier.tenant})}`}>Retiros y cuarentenas del lote</Link></section>}
+<section className={styles.card}><h2>Etiqueta, estado y enlace público</h2><Link prefetch={false} className={`${styles.button} ${styles.primary}`} href={`/batches/${encodeURIComponent(bid)}/channels?${new URLSearchParams({tenant:dossier.tenant})}`}>Enlaces QR / estado NFC</Link></section>
+    <section className={styles.card}><h2>Passport Studio</h2><p>{batchData.editorial_managed?"Este lote utiliza borradores, revisión y publicación con historial. Continuá desde el editor para conservar el control de versiones.":"Prepará la ficha con vista previa móvil y comparación de cambios. Iniciar el flujo es explícito; no cambia el contenido publicado."}</p><Link prefetch={false} className={`${styles.button} ${styles.primary}`} href={`/batches/${encodeURIComponent(bid)}/passport?${new URLSearchParams({tenant:dossier.tenant})}`}>Abrir Passport Studio</Link></section>
     <section id="roll-product-summary" className={styles.card}><h2>Ficha compartida por todas las unidades</h2><p>Identidad comercial declarada para el lote. No modifica la autenticidad del chip ni la evidencia de apertura.</p>
       <dl className={styles.facts}><Fact label="Producto" value={dossier.name}/><Fact label="Lote comercial visible" value={publicLotLabel || "No configurado"}/><Fact label="SKU" value={dossier.sku}/><Fact label="Marca / fabricante" value={dossier.brand}/><Fact label="Región declarada" value={dossier.region}/><Fact label="Mercado" value={product.target_market}/></dl>
     </section>
@@ -215,5 +216,5 @@ export default async function BatchDetailPage({ params, searchParams }: { params
     </div></section>
     <details id="roll-physical-check" className={styles.card}><summary>Verificador técnico SUN · uso autorizado</summary><p className={styles.note}>Usá una lectura nueva para el diagnóstico. Esta herramienta no sustituye el protocolo de calidad ni modifica claves.</p>{access.events ? <BatchSunValidator bid={bid} canRepair={false}/> : <p className={styles.notice}>La cuenta no tiene acceso al diagnóstico de eventos sensibles.</p>}</details>
   </div>;
-  return <BatchDossierShell key={`${dossier.tenant}:${bid}`} model={dossier} access={access} product={productPanel} units={unitsPanel} readings={<BatchDossierReadings key={`${dossier.tenant}:${bid}`} bid={bid} tenant={dossier.tenant} allowed={access.events} canMap={access.map} demo={access.demo}/>} operations={operationsPanel}/>;
+  return <BatchDossierShell key={`${dossier.tenant}:${bid}`} model={dossier} access={access} navigation={<BatchWorkspaceNavigationServer bid={bid} tenant={dossier.tenant} current="overview" session={session}/>} product={productPanel} units={unitsPanel} readings={<BatchDossierReadings key={`${dossier.tenant}:${bid}`} bid={bid} tenant={dossier.tenant} allowed={access.events} canMap={access.map} demo={access.demo}/>} operations={operationsPanel}/>;
 }

@@ -9,10 +9,10 @@ test('S9 ticket lookup retains immutable S6 evidence and identifies its paired A
  const [m,c]=await Promise.all([json('../public/release.json'),candidate()]);
  assert.equal(c.release,'2026.09.21-dashboard.28');
  assert.equal(createHash('sha256').update(JSON.stringify(c)).digest('hex'),'9be2d2d515dfcd3e43780c713dc51b2fb4f56a8e3a7f33df0f17d41532e11259');
- assert.equal(m.release,'2026.09.22-dashboard.35');
+ assert.equal(m.release,'2026.09.23-dashboard.36');
  assert.equal(m.reconciliationBaseRelease,c.release);
- assert.equal(m.baseCommit,'702829269506758dbf1f969d0627a71083a80c87');
- assert.equal(m.scope,'source-confirmed-crm-inboxes-and-assistant-records');
+ assert.equal(m.baseCommit,'183ff4173a545edd39e7afe3902f5e99bdfb6078');
+ assert.equal(m.scope,'scope-preserving-batch-workspace-navigation');
  assert.equal(m.realTapCertification,'not-included');
  assert.equal(m.requiredApiRelease,'2026.09.22-api-support-workflow.2');
  assert.equal(m.requiredWebRelease,'2026.09.21-web-support.1');
@@ -52,7 +52,7 @@ test('current public notes match the marker and retain origin, cryptographic and
  };
  for(const [locale,patterns] of Object.entries(requirements)){
   const copy=releaseCopy(locale),text=JSON.stringify(copy);
-  assert.equal(copy.cards.length,6);assert.equal(copy.steps.length,4);
+  assert.equal(copy.cards.length,7);assert.equal(copy.steps.length,4);
   for(const pattern of Object.values(patterns))assert.match(text,pattern,locale);
   assert.match(text,/\.28/,locale);
  }

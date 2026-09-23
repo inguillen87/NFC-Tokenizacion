@@ -13,8 +13,8 @@ const TABS = [
 ] as const;
 export function dossierNumber(value:number|null) { return value===null?"—":value.toLocaleString("es-AR"); }
 export function dossierDate(value:string|null) { return value?new Intl.DateTimeFormat("es-AR",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"}).format(new Date(value))+" UTC":"No informado"; }
-type Props = {model:BatchDossier;access:DossierAccess;product:ReactNode;units:ReactNode;readings:ReactNode;operations:ReactNode};
-export function BatchDossierShell({model,access,product,units,readings,operations}:Props) {
+type Props = {navigation?:ReactNode;model:BatchDossier;access:DossierAccess;product:ReactNode;units:ReactNode;readings:ReactNode;operations:ReactNode};
+export function BatchDossierShell({model,access,product,units,readings,operations,navigation}:Props) {
   const [active,setActive]=useState<DossierTab>("overview");
   const [focused,setFocused]=useState<DossierTab>("overview");
   const buttons=useRef<Partial<Record<DossierTab,HTMLButtonElement|null>>>({});
@@ -37,7 +37,8 @@ export function BatchDossierShell({model,access,product,units,readings,operation
   const metrics=[["Registradas",model.imported,"Conteo informado por el lote"],["Activas",model.active,"No certifica aceptación de calidad"],["No activas",model.pending,"No equivale a incidencias"],["Solicitadas",model.expected,"Declarada en la configuración"]] as const;
   const panels={overview:<Overview model={model} access={access} select={tab=>select(tab,true)} />,product,units,readings,operations};
   return <main className={styles.root} data-testid="batch-dossier" onClickCapture={followLocalAction}>
-    <div className={styles.topline}>{!access.demo&&<Link href={`/batches/${encodeURIComponent(model.bid)}/traceability?${new URLSearchParams({tenant:model.tenant})}`} prefetch={false}>Recorrido del lote<ArrowUpRight size={14} aria-hidden="true"/></Link>}<Link href={`/batches/${encodeURIComponent(model.bid)}/passport`} prefetch={false}>Passport Studio <ArrowUpRight size={14} aria-hidden="true"/></Link><Link href="/batches" prefetch={false}><ArrowLeft size={14} aria-hidden="true"/>Rollos y productos</Link><span>Consultado: {dossierDate(model.checkedAt)} · sin actualización automática</span></div>
+    {navigation}
+    <div className={styles.topline}>{!navigation&&<>{!access.demo&&<Link href={`/batches/${encodeURIComponent(model.bid)}/traceability?${new URLSearchParams({tenant:model.tenant})}`} prefetch={false}>Recorrido del lote<ArrowUpRight size={14} aria-hidden="true"/></Link>}<Link href={`/batches/${encodeURIComponent(model.bid)}/passport?${new URLSearchParams({tenant:model.tenant})}`} prefetch={false}>Passport Studio <ArrowUpRight size={14} aria-hidden="true"/></Link><Link href={`/batches?${new URLSearchParams({tenant:model.tenant})}`} prefetch={false}><ArrowLeft size={14} aria-hidden="true"/>Rollos y productos</Link></>}<span>Consultado: {dossierDate(model.checkedAt)} · sin actualización automática</span></div>
     <div className={styles.hero}>
       <span className={styles.mark}><Boxes size={26} aria-hidden="true"/></span>
       <div className={styles.heroCopy}><p className={styles.eyebrow}>Expediente del lote · {access.demo?"entorno de demostración":model.tenant}</p><h1 className={styles.title}>{model.name || "Producto por completar"}</h1><p className={styles.meta}><span>BID <code>{model.bid}</code></span><span>SKU: {model.sku||"No configurado"}</span><span>Lote comercial: {model.publicLot||"No configurado"}</span></p></div>

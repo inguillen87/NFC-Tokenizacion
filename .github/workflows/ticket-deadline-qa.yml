@@ -54,6 +54,7 @@ jobs:
         run: |
           node apps/dashboard/tests/support-tickets.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-customer-activity/browser" node apps/dashboard/tests/customer-activity-summary.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-batch-navigation/browser" node apps/dashboard/tests/batch-workspace-navigation.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-dependency-map/browser" node apps/dashboard/tests/dependency-map.browser.mjs
           node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$RUNNER_TEMP/nexid-map-next.log" 2>&1 &
           map_server=$!

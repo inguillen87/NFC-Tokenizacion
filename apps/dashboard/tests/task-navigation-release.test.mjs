@@ -37,7 +37,7 @@ test("demos and commercial presentations are separated from operations", () => {
 test("navigation labels and notes exist in all supported locales", () => {
   for (const locale of ["es-AR", "en", "pt-BR"]) {
     assert.ok(dashboardTaskCopy(locale).navigation);
-    assert.equal(releaseCopy(locale).cards.length, 6);
+    assert.equal(releaseCopy(locale).cards.length, 7);
     assert.equal(releaseCopy(locale).steps.length, 4);
     assert.ok(taskDestinationLabel({ destination: "serviceLevels", href: "/service-levels", label: "SLO" }, locale));
   }
@@ -55,7 +55,7 @@ test("public version marker agrees with the displayed release", async () => {
   assert.equal(marker.databaseMigrationsIncluded, false);
   assert.equal(marker.campaignDeliveryIncluded, false);
   assert.equal(marker.realTapCertification, "not-included");
-  assert.equal(marker.scope, "source-confirmed-crm-inboxes-and-assistant-records");
+  assert.equal(marker.scope, "scope-preserving-batch-workspace-navigation");
   assert.equal(marker.reconciliationBaseRelease, "2026.09.21-dashboard.28");
 });
 
