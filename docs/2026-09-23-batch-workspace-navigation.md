@@ -76,3 +76,33 @@ READY result is not a promotion or authenticated production acceptance receipt.
 Implementation references consulted: Next.js Link documentation (prefetch=false)
 and W3C APG navigation/current-page guidance. Automated checks do not constitute
 an accessibility certification or a manual screen-reader evaluation.
+
+## Verified GitHub and Vercel result
+
+Runtime source `940b15cbdc06d5baca25eb4867925ebb3ab23633` was pushed by normal
+fast-forward to the existing dashboard continuation branch. GitHub Actions run
+`35813808933`, job `107030918369`, passed on its first attempt, completed at
+2026-09-23T03:23:05Z. Logs were read after completion. They confirm 1,157 passed,
+zero failed/canceled and two existing optional skips in the 1,159-test suite,
+typecheck/build, dependency audit and secret custody. Existing support 296/24,
+CRM 1,021/36, new navigation 1,298/168 (144 route hops), and both map 29/4 runs
+passed. One map run used worker assets served by a real Next production server.
+
+The navigation browser tests use actual component/policy modules with synthetic
+sessions and destination bodies, and a native-anchor substitute for Next Link.
+These are navigation checks, not seven authenticated end-to-end business flows.
+The local mobile/light and desktop/dark navigation captures were inspected.
+
+Vercel candidate `dpl_96R5zEUVmJiaexg4pMgd87p34nhy` reached READY on the existing
+Dashboard project with native Git SHA equal to the exact runtime above and
+`autoAssignCustomDomains: false`. Authorized CLI HTTP reads returned the .36
+release marker identical to the committed JSON and `/novedades` with the new
+context-preserving navigation card. These are not tenant-business acceptance.
+
+Final provider reads retained production API `dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V`
+and Dashboard `dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q`. No promotion or SQL migration
+was called. The migration ledger was not reread in this increment; its prior
+0112 gate is retained, not silently considered satisfied. Existing .35 and API
+.2 candidate records remain untouched. This documentation-only addendum and
+new .36 evidence manifest do not change the validated application or cause a
+new application build.

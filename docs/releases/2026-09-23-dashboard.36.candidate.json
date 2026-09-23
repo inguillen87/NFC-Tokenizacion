@@ -1,0 +1,61 @@
+{
+  "schema": "nexid.dashboard-candidate-evidence.v1",
+  "release": "2026.09.23-dashboard.36",
+  "status": "staged-not-promoted",
+  "sourceSha": "940b15cbdc06d5baca25eb4867925ebb3ab23633",
+  "sourceBranch": "codex/nexid-s9-ticket-deadline-20260922",
+  "ci": {
+    "runId": 35813808933,
+    "jobId": 107030918369,
+    "conclusion": "success",
+    "attempt": 1,
+    "completedAt": "2026-09-23T03:23:05Z",
+    "tests": 1159,
+    "passed": 1157,
+    "failed": 0,
+    "skipped": 2,
+    "newTestsIncluded": 27
+  },
+  "browser": {
+    "navigationChecks": 1298,
+    "navigationViews": 168,
+    "routeHops": 144,
+    "actualNavigationComponent": true,
+    "nextLinkSubstitutedByNativeAnchor": true,
+    "destinationBodiesSynthetic": true,
+    "sessionFixturesSynthetic": true,
+    "crmChecks": 1021,
+    "crmViews": 36,
+    "supportChecks": 296,
+    "supportViews": 24,
+    "mapChecksPerRun": 29,
+    "mapViewsPerRun": 4,
+    "mapRuns": 2,
+    "oneMapRunUsedNextServer": true,
+    "authenticatedBusinessAcceptance": false
+  },
+  "deployment": {
+    "id": "dpl_96R5zEUVmJiaexg4pMgd87p34nhy",
+    "url": "https://nexid-dashboard-qsh8b37lw-marcelos-projects-c26aa499.vercel.app",
+    "readyState": "READY",
+    "sourceEvidence": "provider-native-git-sha",
+    "autoAssignCustomDomains": false,
+    "releaseMarkerRead": "2026.09.23-dashboard.36",
+    "markerEqualsCommittedFile": true,
+    "releaseNotesRead": true
+  },
+  "productionPointersAfter": {
+    "nexid-api": "dpl_E5e8m2EwWMa1Z86WVJr9Bpd8kD5V",
+    "nexid-dashboard": "dpl_8787xNe8nXJCUX4Yva2cNiHYbA3q"
+  },
+  "productionDomainChanged": false,
+  "migrationAppliedByThisIncrement": false,
+  "physicalTapCertified": false,
+  "requiredApiRelease": "2026.09.22-api-support-workflow.2",
+  "requiredMigration": "20260922100000_0112_support_ticket_workflow.sql",
+  "remainingGates": [
+    "specific-migration-0112-confirmation-and-application",
+    "coordinated-authenticated-acceptance",
+    "production-promotion-and-canonical-smoke"
+  ]
+}
