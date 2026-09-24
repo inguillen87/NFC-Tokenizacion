@@ -126,4 +126,7 @@ export async function runBindingPostgresTests(t,c){
   const functions=(await observer.query("SELECT p.proname,p.prosecdef,p.proconfig,EXISTS(SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner)))a WHERE a.grantee=0 AND a.privilege_type='EXECUTE')public_execute FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname LIKE '%supplier_binding%'",[schema])).rows;
   assert.equal(functions.length,7);for(const f of functions){assert.equal(f.prosecdef,false);assert.equal(f.public_execute,false);assert.ok(f.proconfig.some(x=>x.startsWith('search_path=')));}
  });
+ const {runDeliveryAckPostgresTests}=await import('./supplier-delivery-ack.postgres.mjs');
+ await runDeliveryAckPostgresTests(t,{...c,ready,approve,bindingSave:save,bindingCommand:cmd,dispatch});
+
 }
