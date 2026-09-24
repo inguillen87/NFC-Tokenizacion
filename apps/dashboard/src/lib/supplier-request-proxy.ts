@@ -15,11 +15,12 @@ export async function forwardSupplierRequest(req: Request, segments: string[] = 
   const resource = assigned ? segments.slice(1) : segments;
   const review = resource.length === 2 && resource[1] === "review", assignment = !assigned && resource.length === 2 && resource[1] === "assignment";
   const cancellation = !assigned && resource.length === 2 && resource[1] === "cancellation";
-  const validResource = resource.length <= 2 && (!resource.length || UUID.test(resource[0])) && (resource.length !== 2 || (assigned ? review : ["submit", "review", "assignment", "cancellation"].includes(resource[1])));
-  const methodAllowed = operators ? req.method === "GET" : assigned ? review ? ["GET", "POST"].includes(req.method) : req.method === "GET" : review || assignment || cancellation ? ["GET", "POST"].includes(req.method) : resource.length === 2 ? req.method === "POST" : resource.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method);
+  const quotation = !assigned && resource.length === 2 && resource[1] === "quotation";
+  const validResource = resource.length <= 2 && (!resource.length || UUID.test(resource[0])) && (resource.length !== 2 || (assigned ? review : ["submit", "review", "assignment", "cancellation", "quotation"].includes(resource[1])));
+  const methodAllowed = operators ? req.method === "GET" : assigned ? review ? ["GET", "POST"].includes(req.method) : req.method === "GET" : review || assignment || cancellation || quotation ? ["GET", "POST"].includes(req.method) : resource.length === 2 ? req.method === "POST" : resource.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method);
   if ((!operators && !validResource) || !methodAllowed) return deny("supplier_request_method_invalid", 405);
   const before = url.searchParams.get("before_revision");
-  if (url.searchParams.getAll("tenant").length > 1 || ((assigned || operators) && url.searchParams.has("tenant")) || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => !(key === "tenant" && !operators && !assigned) && !((review || assignment) && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);
+  if (url.searchParams.getAll("tenant").length > 1 || ((assigned || operators) && url.searchParams.has("tenant")) || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => !(key === "tenant" && !operators && !assigned) && !((review || assignment || quotation) && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);
   if (write && (req.headers.get("origin") !== url.origin || (req.headers.has("sec-fetch-site") && req.headers.get("sec-fetch-site") !== "same-origin"))) return deny("supplier_request_origin_forbidden", 403);
   if (write && (!/^application\/json(?:\s*;|$)/i.test(req.headers.get("content-type") || "") || !UUID.test(req.headers.get("idempotency-key") || ""))) return deny("supplier_request_body_invalid", 400);
   try {
@@ -47,6 +48,11 @@ export async function forwardSupplierRequest(req: Request, segments: string[] = 
       body = new TextDecoder().decode(bytes);
       let parsed: unknown; try { parsed = JSON.parse(body); } catch { return deny("supplier_request_body_invalid", 400); }
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return deny("supplier_request_body_invalid", 400);
+      if (quotation) {
+        const action=(parsed as Record<string,unknown>).action;
+        if(!["issue","accept","reject","withdraw"].includes(String(action)))return deny("supplier_quote_input_invalid",400);
+        if(["issue","withdraw"].includes(String(action))!==(session.role==="super-admin"))return deny("supplier_quote_scope_forbidden",403);
+      }
       if (review) {
         const action = (parsed as Record<string, unknown>).action;
         if (!["request_information", "respond"].includes(String(action))) return deny("supplier_request_body_invalid", 400);

@@ -1,4 +1,5 @@
 "use client";
+import {supplierQuoteCall} from "../../../../lib/supplier-request-quote-client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -77,6 +78,15 @@ function SupplierOrderForm({ sourceRequired, sourceId, sourceTenant, sourceInval
             setCanCreateSupplierOrder(false);
             setError(request.review_summary?.state === "needs_information" ? "La preparación está bloqueada hasta que la empresa responda la aclaración de NexID. Volvé a la solicitud para consultar el historial." : "No se confirmó la revisión de NexID. Volvé a consultar la solicitud antes de preparar el pedido.");
             return;
+          }
+          if ((request.quotation_revision || 0)>0) {
+            const quote=await supplierQuoteCall({tenant:request.tenant_slug,tenantId:request.tenant_id,id:request.id,signal:controller.signal});
+            if(!active)return;
+            if(quote.request.revision!==request.revision || quote.current?.state!=="accepted") {
+              setCanCreateSupplierOrder(false);
+              setError("La solicitud tiene una cotización sin aceptación vigente de la empresa, o cambió desde la consulta. Volvé al expediente y verificá la versión antes de preparar el pedido.");
+              return;
+            }
           }
           setSourceRequest(request);
           setSessionTenantSlug(request.tenant_slug);

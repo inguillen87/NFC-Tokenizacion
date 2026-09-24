@@ -87,3 +87,13 @@ test('cancellation BFF exposes only GET/POST with authenticated tenant and same-
  for(const [request,segments]of [[req('DELETE'),[id,'cancellation']],[req('PATCH'),[id,'cancellation']],[req('GET','?before_revision=1'),[id,'cancellation']],[req('POST','',{origin:'http://foreign.invalid'}),[id,'cancellation']],[req('POST'),['assigned',id,'cancellation']]]){const d=deps();assert.ok([400,403,405].includes((await run(request,segments,d)).status));assert.equal(d.calls.length,0);}
  for(const patch of [{...operator()},{role:'viewer'},{isDemo:true},{deniedPermissions:['supplier_order.create']}]){const d=deps(patch);assert.equal((await run(req('POST'),[id,'cancellation'],d)).status,403);assert.equal(d.calls.length,0);}
 });
+
+test('quotation BFF isolates issuer and buyer actions and accepts history cursor only for reads',async()=>{
+ for(const [role,action]of [['super-admin','issue'],['super-admin','withdraw'],['operations-manager','accept'],['operations-manager','reject']]){
+  const d=deps({role}),body={action,expected_revision:0,expected_request_revision:2,expected_review_revision:0,offer:null,reason:'QA'};const result=await run(req('POST','?tenant=qa-only',{},body),[id,'quotation'],d);assert.equal(result.status,200);assert.equal(d.calls[0].url,'http://synthetic-api.invalid/admin/supplier-requests/'+id+'/quotation?tenant=qa-only');assert.deepEqual(JSON.parse(d.calls[0].init.body),body);
+ }
+ for(const [role,action]of [['super-admin','accept'],['super-admin','reject'],['operations-manager','issue'],['operations-manager','withdraw']]){const d=deps({role});assert.equal((await run(req('POST','?tenant=qa-only',{},{action}),[id,'quotation'],d)).status,403);assert.equal(d.calls.length,0);}
+ const history=deps();assert.equal((await run(req('GET','?before_revision=3'),[id,'quotation'],history)).status,200);assert.ok(history.calls[0].url.endsWith('/quotation?tenant=qa-only&before_revision=3'));
+ for(const [request,segments]of [[req('POST','?before_revision=3'),[id,'quotation']],[req('PATCH'),[id,'quotation']],[req('GET'),['assigned',id,'quotation']],[req('POST','',{origin:'http://foreign.invalid'},{action:'accept'}),[id,'quotation']]]){const d=deps();assert.ok([400,403,405].includes((await run(request,segments,d)).status));assert.equal(d.calls.length,0);}
+ for(const patch of [{...operator()},{role:'viewer'},{isDemo:true},{deniedPermissions:['supplier_order.create']}]){const d=deps(patch);assert.equal((await run(req('GET'),[id,'quotation'],d)).status,403);assert.equal(d.calls.length,0);}
+});
