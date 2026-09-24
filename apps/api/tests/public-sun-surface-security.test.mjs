@@ -28,7 +28,11 @@ test("snapshot access is signed, scoped, expiring and rejects tampering", () => 
   process.env.SUN_HANDOFF_SECRET = "test-only-snapshot-secret-with-more-than-32-bytes";
   process.env.NODE_ENV = "test";
   try {
-    const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(originalDateNow() / 1000);
+    // This test exercises +60/+61-second boundaries. Crossing a wall-clock second
+    // during assertions must not turn a future +61 case into an allowed +60 case.
+    // The existing finally restores the real clock; production expiry is unchanged.
+    Date.now = () => now * 1000;
     const freshToken = createSunFreshHandoffToken({
       bid: "SAFE-BATCH",
       eventId: "42",

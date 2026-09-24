@@ -47,3 +47,7 @@ Los tests HTTP nuevos están incluidos en test:supplier-security y en el runner 
 Rollback operativo: desactivar nuevas cancelaciones con el flag y conservar el esquema aditivo, recibos e historial. No restaurar clientes que rechacen el nuevo estado una vez que exista. No reabrir registros cancelados, borrar auditoría ni intentar cancelar una orden técnica para revertir el despliegue.
 
 Fuera de alcance: cotización/precio, impuestos, compra, cancelación de pagos, fabricación, stock, expedición, notificaciones externas y certificación física de etiquetas.
+
+## Hallazgo del CI del primer candidato
+
+El run 35953745137 aprobó la regresión focal y PostgreSQL 18.4, pero encontró una prueba preexistente no determinista de expiración SUN: el caso futuro +61 segundos podía pasar a +60 si cruzaba el segundo real durante el test. Se fijó el reloj desde el inicio de ese test y se conservó su restauración en finally. No se modificó la duración, tolerancia, firma ni lógica de expiración de producción. La corrección no consiste en omitir ni relajar la aserción; el CI debe repetirse sobre el commit corregido.
