@@ -1,4 +1,5 @@
-import { sql } from "./db";
+import { sql, runtimeSchemaIsMigrationManaged } from "./db";
+import { requireRuntimeLedgerCatalog } from "./runtime-reference-catalog";
 
 let supplierOpsSchemaReady: Promise<void> | null = null;
 
@@ -22,6 +23,7 @@ async function ensureBatchStatusValues() {
 export async function ensureSupplierOpsSchema() {
   if (!supplierOpsSchemaReady) {
     supplierOpsSchemaReady = (async () => {
+      if (runtimeSchemaIsMigrationManaged()) { await requireRuntimeLedgerCatalog(); return; }
       await ensureUuidExtensions();
       await ensureBatchStatusValues();
 

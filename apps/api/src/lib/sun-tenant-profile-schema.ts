@@ -1,8 +1,15 @@
-import { sql } from "./db";
+import { sql, runtimeSchemaIsMigrationManaged } from "./db";
 
 let schemaReady: Promise<void> | null = null;
 
 async function migrateSunTenantProfilesSchema() {
+  if (runtimeSchemaIsMigrationManaged()) {
+    const [state] = await sql`SELECT to_regclass('public.tenant_sun_profiles') IS NOT NULL
+      AND to_regclass('public.tag_profiles') IS NOT NULL
+      AND to_regclass('public.tenant_manifests') IS NOT NULL AS ready`;
+    if (state?.ready !== true) throw new Error('runtime_sun_profile_schema_incomplete');
+    return;
+  }
   await sql/*sql*/`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
   await sql/*sql*/`

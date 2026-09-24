@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - codex/nexid-supplier-chain-acceptance-api-20260924
+      - codex/nexid-supplier-runtime-acceptance-api-20260924
   merge_group:
   workflow_dispatch:
 

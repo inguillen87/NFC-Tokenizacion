@@ -1,4 +1,5 @@
-import { sql } from "./db";
+import { sql, runtimeSchemaIsMigrationManaged } from "./db";
+import { requireRuntimeCarrierCatalog } from "./runtime-reference-catalog";
 import { ensureLoyaltySchema } from "./loyalty-schema";
 import { CARRIER_PROFILES } from "./carrier-profiles";
 
@@ -301,6 +302,7 @@ export async function ensureCrmOpsSchema() {
 export async function ensureCarrierProfileSchema() {
   if (!carrierProfilesSchemaReady) {
     carrierProfilesSchemaReady = cacheSchemaInit(async () => {
+      if (runtimeSchemaIsMigrationManaged()) { await requireRuntimeCarrierCatalog(CARRIER_PROFILES.map(profile => profile.code)); return; }
       await ensureUuidExtensions();
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS carrier_profiles (

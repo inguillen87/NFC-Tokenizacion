@@ -51,7 +51,7 @@ export async function runSupplierChainAcceptance(c) {
   current=(await call('request read after clarification',path+query)).request;
   const issued=await call('versioned quotation issued',path+'/quotation'+query,{method:'POST',body:{action:'issue',expected_revision:0,expected_request_revision:current.revision,expected_review_revision:current.review_summary.revision,offer:{currency:'USD',net_minor:10000,tax_minor:0,shipping_minor:0,valid_until:new Date(Date.now()+3600000).toISOString(),conditions:'Synthetic amount; no purchase, payment, tax advice or external delivery.'},reason:'Software acceptance quotation only.'}});
   current=issued.request;
-  const technical=()=>({tenant:tenantSlug,customer_slug:tenantSlug,order_name:'Ephemeral integrated trial',base_batch_id:'E2E-SUPPLIER-CHAIN-001',total_quantity:4,sub_batch_size:4,chip_model:'NTAG424_DNA',carrier_profile_code:'ntag424_dna',pack_purpose:'trial_integration',material_type:'transparent_pet_wet_inlay',notes:'Synthetic local trial, not manufactured.',source_request_id:id,source_request_revision:current.revision});
+  const technical=()=>({tenant:tenantSlug,customer_slug:tenantSlug,order_name:'Ephemeral integrated trial',base_batch_id:c.baseBatchId||'E2E-SUPPLIER-CHAIN-001',total_quantity:4,sub_batch_size:4,chip_model:'NTAG424_DNA',carrier_profile_code:'ntag424_dna',pack_purpose:'trial_integration',material_type:'transparent_pet_wet_inlay',notes:'Synthetic local trial, not manufactured.',source_request_id:id,source_request_revision:current.revision});
   const notAccepted=await call('technical conversion blocked before buyer acceptance','/admin/supplier-orders',{method:'POST',body:technical(),status:409});
   check(notAccepted.reason==='supplier_request_quote_acceptance_required','quotation is an actual server-side conversion gate');
   const accepted=await call('buyer acceptance persisted',path+'/quotation'+query,{method:'POST',headers:adminHeaders,body:{action:'accept',expected_revision:issued.revision,expected_request_revision:current.revision,expected_review_revision:current.review_summary.revision,offer:null,reason:'Accepted for the isolated software test.'}});
@@ -126,7 +126,7 @@ export async function runSupplierChainAcceptance(c) {
   await call('foreign tenant cannot read support history',ticketPath+'/history'+query,{headers:otherTenantAdminHeaders,status:404});
   const type=(await client.query("SELECT udt_name FROM information_schema.columns WHERE table_schema='public' AND table_name='tickets' AND column_name='status'")).rows[0]?.udt_name;
   check(type==='ticket_status','full schema retains its original enum; no column coercion or permissive replacement');
-  return {status:'passed',checks,counts:graph,request_conversion:'real_function',packaging_decisions:'real_routes_distinct_identities',encrypted_export:'real_exporter_and_memory_only_decrypt',ticket_status_type:type,external_supplier_contact:false,physical_evidence:'synthetic_declared_test_input',database_role:'dedicated_ephemeral_owner_not_production_role'};
+  return {status:'passed',checks,counts:graph,request_conversion:'real_function',packaging_decisions:'real_routes_distinct_identities',encrypted_export:'real_exporter_and_memory_only_decrypt',ticket_status_type:type,external_supplier_contact:false,physical_evidence:'synthetic_declared_test_input',database_role:c.databaseRole||'dedicated_ephemeral_owner_not_production_role'};
  } finally {
   for(const [key,value] of previous) {if(value===undefined)delete process.env[key];else process.env[key]=value;}
  }

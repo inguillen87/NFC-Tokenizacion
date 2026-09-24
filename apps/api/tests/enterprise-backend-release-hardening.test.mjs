@@ -208,7 +208,8 @@ test("ownership claims are explicit off-chain title records and never imply an N
 
 test("production request paths skip runtime DDL and require the latest migration watermark", () => {
   assert.match(dbRuntime, /isRuntimeDdlStatement/);
-  assert.match(dbRuntime, /isProductionRuntime\(\) && isRuntimeDdlStatement/);
+  assert.match(dbRuntime, /runtimeSchemaIsMigrationManaged\(\) && isRuntimeDdlStatement/);
+  assert.match(dbRuntime, /return isProductionRuntime\(\) \|\| Boolean\(ephemeralSqlExecutor\(\)/);
   assert.match(dbRuntime, /required_schema_migration_not_applied/);
   assert.match(dbRuntime, /20260729130000_0070_supplier_qa_atomic_receipts\.sql/);
   assert.match(dbRuntime, /20260729143000_0071_supplier_pack_purpose_governance\.sql/);

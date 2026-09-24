@@ -1,0 +1,547 @@
+{
+    "status":  "local-candidate-verified-not-deployed",
+    "recordedAt":  "2026-09-24T22:45:24.6729985Z",
+    "sourceBase":  "bcf3af5d9b67ee28351c74fb655386d9adb487f1",
+    "branch":  "codex/nexid-supplier-runtime-acceptance-api-20260924",
+    "migrations":  {
+                       "expected":  132,
+                       "applied":  132
+                   },
+    "runtime":  {
+                    "harness":  "supplier_runtime_worker_v1",
+                    "ok":  true,
+                    "application_identity":  {
+                                                 "database":  "nexid_e2e_supplier_runtime",
+                                                 "current_user_is_fresh_runtime":  true,
+                                                 "session_user_is_same_runtime":  true,
+                                                 "owner_session_available":  false,
+                                                 "superuser":  false,
+                                                 "bypass_rls":  false,
+                                                 "create_schema":  false,
+                                                 "create_temp":  false,
+                                                 "role_memberships":  0
+                                             },
+                    "denied":  [
+                                   "SET ROLE migration owner",
+                                   "CREATE public table",
+                                   "CREATE temporary table",
+                                   "change carrier reference catalog",
+                                   "change ledger provider settings",
+                                   "seed SUN tenant profiles",
+                                   "tamper encrypted artifact payload",
+                                   "change artifact metadata",
+                                   "rewrite migration ledger",
+                                   "disable audit trigger",
+                                   "UPDATE append-only audit_logs",
+                                   "DELETE append-only audit_logs",
+                                   "TRUNCATE audit_logs",
+                                   "UPDATE append-only supplier_manufacturing_state_transitions",
+                                   "DELETE append-only supplier_manufacturing_state_transitions",
+                                   "TRUNCATE supplier_manufacturing_state_transitions",
+                                   "UPDATE append-only evidence_events",
+                                   "DELETE append-only evidence_events",
+                                   "TRUNCATE evidence_events",
+                                   "UPDATE append-only supplier_request_operations",
+                                   "DELETE append-only supplier_request_operations",
+                                   "TRUNCATE supplier_request_operations",
+                                   "UPDATE append-only supplier_request_review_events",
+                                   "DELETE append-only supplier_request_review_events",
+                                   "TRUNCATE supplier_request_review_events",
+                                   "UPDATE append-only supplier_request_quote_events",
+                                   "DELETE append-only supplier_request_quote_events",
+                                   "TRUNCATE supplier_request_quote_events",
+                                   "UPDATE append-only supplier_request_binding_events",
+                                   "DELETE append-only supplier_request_binding_events",
+                                   "TRUNCATE supplier_request_binding_events",
+                                   "UPDATE append-only supplier_order_lifecycle_receipts",
+                                   "DELETE append-only supplier_order_lifecycle_receipts",
+                                   "TRUNCATE supplier_order_lifecycle_receipts",
+                                   "UPDATE append-only supplier_delivery_ack_events",
+                                   "DELETE append-only supplier_delivery_ack_events",
+                                   "TRUNCATE supplier_delivery_ack_events",
+                                   "UPDATE append-only support_ticket_workflow_operations",
+                                   "DELETE append-only support_ticket_workflow_operations",
+                                   "TRUNCATE support_ticket_workflow_operations"
+                               ],
+                    "query_count":  189,
+                    "query_policy":  "shared_migration_managed_db_policy",
+                    "external_effects":  false,
+                    "owned_database_objects":  {
+                                                   "relations":  0,
+                                                   "schemas":  0,
+                                                   "routines":  0
+                                               },
+                    "effective_acl":  {
+                                          "tables_checked":  37,
+                                          "columns_checked":  595,
+                                          "functions_checked":  43,
+                                          "unexpected_privileges":  0
+                                      },
+                    "migrations_verified":  132,
+                    "internal_function_boundary":  true,
+                    "supplier_chain":  {
+                                           "status":  "passed",
+                                           "checks":  [
+                                                          "request draft persisted",
+                                                          "explicit request submission",
+                                                          "foreign company denied before private request disclosure",
+                                                          "clarification registered by NexID",
+                                                          "company clarification response",
+                                                          "request read after clarification",
+                                                          "versioned quotation issued",
+                                                          "technical conversion blocked before buyer acceptance",
+                                                          "quotation is an actual server-side conversion gate",
+                                                          "buyer acceptance persisted",
+                                                          "real atomic request-to-order conversion",
+                                                          "provisioned request bound to technical order",
+                                                          "request and technical order agree",
+                                                          "one real technical sub-batch, not a fixture function",
+                                                          "duplicate conversion rejected",
+                                                          "packaging draft through real route",
+                                                          "packaging submitted through real route",
+                                                          "packaging approved by separate identity",
+                                                          "approved specification reconstructed from real decision",
+                                                          "specification matches immutable approval receipt",
+                                                          "supplier bound to exact approved specification",
+                                                          "dispatch forbidden before export exists",
+                                                          "tenant cannot export factory key material",
+                                                          "actual encrypted package export",
+                                                          "exported envelope bytes match their hash",
+                                                          "generated password is absent from API response",
+                                                          "real AES-GCM envelope decrypts to a ZIP in test memory",
+                                                          "decrypted archive matches export digest",
+                                                          "export persists one recoverable encrypted artifact",
+                                                          "second export blocked by one-time gate",
+                                                          "wrong supplier recipient cannot be dispatched",
+                                                          "actual lifecycle dispatch creates receipt",
+                                                          "documentary acknowledgement reads real export",
+                                                          "dispatch and acknowledgement link same supplier binding",
+                                                          "acknowledgement selects the actual encrypted export",
+                                                          "company cannot write documentary acknowledgement",
+                                                          "documentary acknowledgement persisted",
+                                                          "lost-response retry returns original acknowledgement",
+                                                          "retry commits no second acknowledgement",
+                                                          "software evidence never claims physical or authenticated supplier receipt",
+                                                          "reassignment closed after dispatch",
+                                                          "ack write switch disables changes",
+                                                          "history remains readable with writes disabled",
+                                                          "disabled rollout preserves truthful history",
+                                                          "entire durable graph agrees without duplicated keys, orders or receipts",
+                                                          "enum-backed ticket history read",
+                                                          "enum-backed ticket update committed",
+                                                          "typed status transition agrees with immutable receipt",
+                                                          "enum-backed ticket retry returns original receipt",
+                                                          "support retry does not duplicate an enum-backed transition",
+                                                          "foreign tenant cannot read support history",
+                                                          "full schema retains its original enum; no column coercion or permissive replacement"
+                                                      ],
+                                           "counts":  {
+                                                          "orders":  1,
+                                                          "dispatches":  1,
+                                                          "acknowledgements":  1,
+                                                          "quotations":  2,
+                                                          "clarifications":  2,
+                                                          "one_time_export":  true
+                                                      },
+                                           "request_conversion":  "real_function",
+                                           "packaging_decisions":  "real_routes_distinct_identities",
+                                           "encrypted_export":  "real_exporter_and_memory_only_decrypt",
+                                           "ticket_status_type":  "ticket_status",
+                                           "external_supplier_contact":  false,
+                                           "physical_evidence":  "synthetic_declared_test_input",
+                                           "database_role":  "isolated_restricted_login"
+                                       },
+                    "reference_catalogs_unchanged":  true,
+                    "profile":  "nexid.supplier-runtime-acceptance.v1",
+                    "grants":  {
+                                   "tables":  [
+                                                  {
+                                                      "name":  "schema_migrations",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "tenants",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "users",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "memberships",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "enterprise_role_profiles",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "resource_permissions",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "auth_sessions",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "tenant_sun_profiles",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "carrier_profiles",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "ledger_providers",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_orders",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_sub_batches",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "tags",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "tag_profiles",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "batches",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "batch_keys",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "batch_key_material",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_pack_purpose_decisions",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_production_qa_plans",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_production_qa_plan_decisions",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "evidence_events",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_manufacturing_state_transitions",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "vault_artifacts",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "audit_logs",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_packaging_governance_decisions",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_requests",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_request_operations",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_request_reviews",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_request_review_events",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_request_assignments",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_request_quote_events",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_request_binding_events",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_order_lifecycle_receipts",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "supplier_delivery_ack_events",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "tickets",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT",
+                                                                         "UPDATE"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "event_incidents",
+                                                      "privileges":  [
+                                                                         "SELECT"
+                                                                     ]
+                                                  },
+                                                  {
+                                                      "name":  "support_ticket_workflow_operations",
+                                                      "privileges":  [
+                                                                         "SELECT",
+                                                                         "INSERT"
+                                                                     ]
+                                                  }
+                                              ],
+                                   "functions":  [
+                                                     "nexid_actor_has_enterprise_capability_v1(uuid,uuid,text,text)",
+                                                     "nexid_audit_freeform_is_safe_v1(text)",
+                                                     "nexid_packaging_evidence_ref_present(jsonb,text)",
+                                                     "nexid_supplier_request_actor_v1(uuid,uuid,uuid,boolean)",
+                                                     "nexid_supplier_request_content_valid_v1(jsonb)",
+                                                     "nexid_supplier_request_current_v1(uuid,uuid)",
+                                                     "nexid_mutate_supplier_request_v1(jsonb)",
+                                                     "nexid_supplier_request_review_message_valid_v1(text)",
+                                                     "nexid_supplier_request_review_actor_v1(uuid,uuid,uuid,text)",
+                                                     "nexid_supplier_request_review_actor_v2(uuid,uuid,uuid,uuid,text)",
+                                                     "nexid_mutate_supplier_request_review_v1(jsonb)",
+                                                     "nexid_supplier_request_review_current_v1(uuid,uuid,integer)",
+                                                     "nexid_supplier_operator_authorized_v1(uuid,uuid,text)",
+                                                     "nexid_supplier_request_assigned_actor_v1(uuid,uuid,uuid,text)",
+                                                     "nexid_supplier_request_cancellation_actor_v1(uuid,uuid,uuid)",
+                                                     "nexid_supplier_quote_actor_v1(uuid,uuid,uuid,text)",
+                                                     "nexid_supplier_quote_read_v1(uuid,uuid,uuid,uuid,integer)",
+                                                     "nexid_supplier_quote_current_v1(uuid,uuid,integer)",
+                                                     "nexid_supplier_quote_public_event_v1(supplier_request_quote_events)",
+                                                     "nexid_mutate_supplier_quote_v1(jsonb)",
+                                                     "nexid_convert_supplier_request_v1(uuid,integer,jsonb)",
+                                                     "nexid_supplier_order_create_v2_capability()",
+                                                     "nexid_create_supplier_order_v2(jsonb)",
+                                                     "nexid_record_supplier_packaging_decision_v1(jsonb)",
+                                                     "nexid_effective_supplier_pack_purpose_v1(uuid)",
+                                                     "nexid_supplier_binding_spec_v1(uuid,uuid)",
+                                                     "nexid_supplier_binding_public_v1(supplier_request_binding_events)",
+                                                     "nexid_supplier_binding_current_v1(uuid,uuid,integer)",
+                                                     "nexid_supplier_binding_read_v1(uuid,uuid,uuid,uuid,integer)",
+                                                     "nexid_mutate_supplier_binding_v1(jsonb)",
+                                                     "nexid_supplier_delivery_source_v1(uuid,uuid)",
+                                                     "nexid_supplier_delivery_artifacts_v1(uuid,uuid)",
+                                                     "nexid_supplier_delivery_ack_public_v1(supplier_delivery_ack_events)",
+                                                     "nexid_supplier_delivery_ack_current_v1(uuid,uuid,integer)",
+                                                     "nexid_supplier_delivery_ack_read_v1(uuid,uuid,uuid,uuid,integer)",
+                                                     "nexid_mutate_supplier_delivery_ack_v1(jsonb)",
+                                                     "nexid_supplier_order_lifecycle_v1_capability()",
+                                                     "nexid_transition_supplier_order_v1(jsonb)",
+                                                     "nexid_support_ticket_revision_v1(uuid,uuid,text,timestamp with time zone,text)",
+                                                     "nexid_support_ticket_receipt_v1(support_ticket_workflow_operations)",
+                                                     "nexid_support_ticket_current_v1(uuid,uuid,text)",
+                                                     "nexid_read_support_ticket_workflow_v1(uuid,uuid,text,bigint)",
+                                                     "nexid_transition_support_ticket_v1(uuid,uuid,text,uuid,text,text,text,text,uuid)"
+                                                 ],
+                                   "sequences":  [
+                                                     "supplier_manufacturing_state_transitions_id_seq",
+                                                     "support_ticket_workflow_operations_sequence_seq"
+                                                 ],
+                                   "lockColumns":  {
+                                                       "vault_artifacts":  [
+                                                                               "id"
+                                                                           ],
+                                                       "supplier_packaging_governance_decisions":  [
+                                                                                                       "id"
+                                                                                                   ],
+                                                       "supplier_production_qa_plans":  [
+                                                                                            "id"
+                                                                                        ],
+                                                       "supplier_production_qa_plan_decisions":  [
+                                                                                                     "id"
+                                                                                                 ],
+                                                       "tenants":  [
+                                                                       "id"
+                                                                   ],
+                                                       "users":  [
+                                                                     "id"
+                                                                 ],
+                                                       "memberships":  [
+                                                                           "user_id"
+                                                                       ],
+                                                       "enterprise_role_profiles":  [
+                                                                                        "code"
+                                                                                    ],
+                                                       "auth_sessions":  [
+                                                                             "last_seen_at",
+                                                                             "expires_at",
+                                                                             "revoked_at",
+                                                                             "session_token_hash"
+                                                                         ]
+                                                   }
+                               },
+                    "production_role_modified":  false,
+                    "cleanup":  {
+                                    "runtime_connections_closed":  true,
+                                    "temporary_role_dropped":  true,
+                                    "production_role_modified":  false
+                                }
+                },
+    "localTests":  {
+                       "newTests":  36,
+                       "safety":  62,
+                       "build":  "complete-passed",
+                       "focal":  470
+                   },
+    "engine":  "PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit",
+    "cleanup":  {
+                    "remainingSchemas":  [
+
+                                         ],
+                    "dataDirectoryPresent":  false,
+                    "clusterStopped":  true,
+                    "productionUsed":  false
+                },
+    "productionObserved":  [
+                               {
+                                   "release":  "2026.09.23-dashboard.41",
+                                   "checkedAt":  "2026-09-24T22:45:24.3402534Z",
+                                   "origin":  "https://app.nexid.lat"
+                               },
+                               {
+                                   "release":  "2026.09.23-api-supplier-requests.2",
+                                   "checkedAt":  "2026-09-24T22:45:24.5110435Z",
+                                   "origin":  "https://api.nexid.lat"
+                               },
+                               {
+                                   "release":  "2026.09.21-web-support.1",
+                                   "checkedAt":  "2026-09-24T22:45:24.6729985Z",
+                                   "origin":  "https://nexid.lat"
+                               }
+                           ],
+    "ci":  {
+               "engines":  [
+                               "16.4",
+                               "18.4"
+                           ],
+               "status":  "verify-exact-commit-after-push"
+           },
+    "boundaries":  {
+                       "externalSupplierContact":  false,
+                       "tenantIsolatedSqlLogin":  false,
+                       "nextMiddlewareTlsExercised":  false,
+                       "managedKmsCertified":  false,
+                       "physicalNfcCertification":  false,
+                       "productionRoleModified":  false,
+                       "productionDeployment":  false,
+                       "remoteDatabaseMigration":  false
+                   }
+}

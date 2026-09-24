@@ -6,11 +6,13 @@ export type SqlExecutor = (
 ) => Promise<Array<Record<string, unknown>>>;
 
 const EPHEMERAL_E2E_SQL_EXECUTOR = Symbol.for("nexid.ephemeral-e2e.sql-executor");
+const EPHEMERAL_E2E_SCHEMA_POLICY = Symbol.for("nexid.ephemeral-e2e.migration-managed");
 const EPHEMERAL_E2E_CONFIRMATION = "I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE";
 const LOOPBACK_DATABASE_HOSTS = new Set(["127.0.0.1", "::1", "[::1]", "localhost"]);
 
 type EphemeralSqlStore = typeof globalThis & {
   [EPHEMERAL_E2E_SQL_EXECUTOR]?: SqlExecutor;
+  [EPHEMERAL_E2E_SCHEMA_POLICY]?: boolean;
 };
 
 function ephemeralSqlExecutor() {
@@ -23,7 +25,7 @@ function ephemeralSqlExecutor() {
  * must provide an explicit loopback URL whose database and role are both
  * named for the isolated nexid_e2e fixture.
  */
-export function installEphemeralE2eSqlExecutor(executor: SqlExecutor, env = process.env) {
+export function installEphemeralE2eSqlExecutor(executor: SqlExecutor, env = process.env, options: { migrationManaged?: boolean } = {}) {
   const nodeEnvironment = String(env.NODE_ENV || "").trim().toLowerCase();
   const vercelEnvironment = String(env.VERCEL_ENV || "").trim().toLowerCase();
   if (nodeEnvironment !== "test" || vercelEnvironment !== "test") {
@@ -58,10 +60,15 @@ export function installEphemeralE2eSqlExecutor(executor: SqlExecutor, env = proc
   if (store[EPHEMERAL_E2E_SQL_EXECUTOR]) {
     throw new Error("ephemeral_e2e_sql_executor_already_installed");
   }
+  if (Object.keys(options).some(key => key !== "migrationManaged") || (options.migrationManaged !== undefined && typeof options.migrationManaged !== "boolean")) throw new Error("ephemeral_e2e_sql_policy_invalid");
+  productionWatermarkCheck = null;
+  store[EPHEMERAL_E2E_SCHEMA_POLICY] = options.migrationManaged === true;
   store[EPHEMERAL_E2E_SQL_EXECUTOR] = executor;
   return () => {
     if (store[EPHEMERAL_E2E_SQL_EXECUTOR] === executor) {
       delete store[EPHEMERAL_E2E_SQL_EXECUTOR];
+      delete store[EPHEMERAL_E2E_SCHEMA_POLICY];
+      productionWatermarkCheck = null;
     }
   };
 }
@@ -199,8 +206,14 @@ function isProductionRuntime() {
   return String(process.env.NODE_ENV || "").trim().toLowerCase() === "production";
 }
 
+/** Production is always migration-managed. The same query policy can only be
+ * enabled inside an explicitly authorized process-local test executor. */
+export function runtimeSchemaIsMigrationManaged() {
+  return isProductionRuntime() || Boolean(ephemeralSqlExecutor() && (globalThis as EphemeralSqlStore)[EPHEMERAL_E2E_SCHEMA_POLICY]);
+}
+
 async function requireProductionSchemaWatermark() {
-  if (!isProductionRuntime()) return;
+  if (!runtimeSchemaIsMigrationManaged()) return;
   if (!productionWatermarkCheck) {
     productionWatermarkCheck = (async () => {
       const configured = [
@@ -214,7 +227,7 @@ async function requireProductionSchemaWatermark() {
       if (required.some((id) => !/^\d{14}_\d{4}_[a-z0-9_]+\.sql$/.test(id))) {
         throw new Error("required_schema_migration_id_invalid");
       }
-      const query = getSql();
+      const query = ephemeralSqlExecutor() || getSql();
       const rows = await query/*sql*/`
         SELECT id
         FROM schema_migrations
@@ -236,15 +249,15 @@ async function requireProductionSchemaWatermark() {
 
 export async function sql(strings: TemplateStringsArray, ...values: unknown[]) {
   const staticStatement = strings.join("?");
-  if (isProductionRuntime() && isRuntimeDdlStatement(staticStatement)) {
+  if (runtimeSchemaIsMigrationManaged() && isRuntimeDdlStatement(staticStatement)) {
     // Production schema ownership belongs exclusively to the migration runner.
     // Existing ensure*Schema calls become no-op compatibility guards rather
     // than request-path DDL. The first business query verifies the watermark.
     return [];
   }
   const testExecutor = ephemeralSqlExecutor();
-  if (testExecutor) return testExecutor(strings, ...values);
   await requireProductionSchemaWatermark();
+  if (testExecutor) return testExecutor(strings, ...values);
   return getSql()(strings, ...values);
 }
 
@@ -255,10 +268,10 @@ export async function sql(strings: TemplateStringsArray, ...values: unknown[]) {
  */
 export async function sqlSerializable(strings: TemplateStringsArray, ...values: unknown[]) {
   const staticStatement = strings.join("?");
-  if (isProductionRuntime() && isRuntimeDdlStatement(staticStatement)) return [];
+  if (runtimeSchemaIsMigrationManaged() && isRuntimeDdlStatement(staticStatement)) return [];
   const testExecutor = ephemeralSqlExecutor();
-  if (testExecutor) return testExecutor(strings, ...values);
   await requireProductionSchemaWatermark();
+  if (testExecutor) return testExecutor(strings, ...values);
   const query = getSql();
   const results = await query.transaction(
     (transaction) => [transaction(strings, ...values)],

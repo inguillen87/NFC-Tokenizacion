@@ -12,6 +12,7 @@ import {
 } from "./lib/enterprise-ephemeral-e2e-safety.mjs";
 import { startEnterpriseEphemeralHttpHarness } from "./lib/enterprise-ephemeral-http.mjs";
 
+import {runSupplierRuntimeAcceptance} from "./lib/supplier-runtime-acceptance.mjs";
 import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -1572,6 +1573,8 @@ async function run() {
       superAdminHeaders,packagingApproverHeaders,packagingSpec,packagingEvidenceRefs,
     });
 
+    const supplierRuntimeEvidence=await runSupplierRuntimeAcceptance({client,config,context:{tenantId,tenantSlug,adminHeaders,otherTenantAdminHeaders,superAdminHeaders,packagingApproverHeaders,packagingSpec,packagingEvidenceRefs}});
+
     // Exercise the real admin API-key lifecycle against the disposable
     // database. The tenant in the request body is deliberately forged: the
     // verified tenant-admin principal must remain authoritative.
@@ -2210,6 +2213,7 @@ async function run() {
       },
       bootstrap_prerequisites: bootstrapPrerequisites,
       supplier_chain_acceptance: supplierChainEvidence,
+      supplier_runtime_acceptance: supplierRuntimeEvidence,
       consumer_network_query_plans: consumerNetworkExplainEvidence,
       external_effects: false,
       webhook_delivery_transport: "in_process_signature_verified_no_network",
