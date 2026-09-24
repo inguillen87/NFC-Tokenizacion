@@ -107,3 +107,12 @@ test('supplier binding BFF keeps company read-only and supervisor writes scoped 
  for(const patch of [{...operator()},{role:'viewer'},{role:'super-admin',isDemo:true},{role:'super-admin',deniedPermissions:['supplier_order.create']}]){const d=deps(patch);assert.equal((await run(req('GET','?tenant=qa-only'),[id,'supplier-binding'],d)).status,403);assert.equal(d.calls.length,0);}
  const page=deps();assert.equal((await run(req('GET','?before_revision=13'),[id,'supplier-binding'],page)).status,200);assert.ok(page.calls[0].url.endsWith('before_revision=13'));
 });
+
+test('delivery acuses are source-bound, GET/POST only, read-only for companies and unavailable to limited operators',async()=>{
+ const admin={role:'super-admin',tenantSlug:null,permissions:['supplier_order.create']};
+ for(const method of ['GET','POST']){const d=deps(admin);assert.equal((await run(req(method,'?tenant=qa-only'),[id,'delivery-ack'],d)).status,200);assert.ok(d.calls[0].url.endsWith('/delivery-ack?tenant=qa-only'));}
+ const company=deps();assert.equal((await run(req('GET'),[id,'delivery-ack'],company)).status,200);const writer=deps();const denied=await run(req('POST'),[id,'delivery-ack'],writer);assert.equal(denied.status,403);assert.equal(denied.body.reason,'supplier_delivery_ack_scope_forbidden');assert.equal(writer.calls.length,0);
+ for(const [method,segments]of [['PATCH',[id,'delivery-ack']],['DELETE',[id,'delivery-ack']],['POST',['assigned',id,'delivery-ack']]]){const d=deps(admin);assert.equal((await run(req(method,'?tenant=qa-only'),segments,d)).status,405);assert.equal(d.calls.length,0);}
+ for(const patch of [operator(),{...admin,isDemo:true},{...admin,deniedPermissions:['supplier_order.create']}]){const d=deps(patch);assert.equal((await run(req('GET','?tenant=qa-only'),[id,'delivery-ack'],d)).status,403);assert.equal(d.calls.length,0);}
+ const d=deps(admin);assert.equal((await run(req('GET','?tenant=qa-only&before_revision=4'),[id,'delivery-ack'],d)).status,200);assert.ok(d.calls[0].url.endsWith('before_revision=4'));
+});

@@ -17,17 +17,18 @@ export async function forwardSupplierRequest(req: Request, segments: string[] = 
   const cancellation = !assigned && resource.length === 2 && resource[1] === "cancellation";
   const quotation = !assigned && resource.length === 2 && resource[1] === "quotation";
   const binding = !assigned && resource.length === 2 && resource[1] === "supplier-binding";
-  const validResource = resource.length <= 2 && (!resource.length || UUID.test(resource[0])) && (resource.length !== 2 || (assigned ? review : ["submit", "review", "assignment", "cancellation", "quotation", "supplier-binding"].includes(resource[1])));
-  const methodAllowed = operators ? req.method === "GET" : assigned ? review ? ["GET", "POST"].includes(req.method) : req.method === "GET" : review || assignment || cancellation || quotation || binding ? ["GET", "POST"].includes(req.method) : resource.length === 2 ? req.method === "POST" : resource.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method);
+  const deliveryAck = !assigned && resource.length === 2 && resource[1] === "delivery-ack";
+  const validResource = resource.length <= 2 && (!resource.length || UUID.test(resource[0])) && (resource.length !== 2 || (assigned ? review : ["submit", "review", "assignment", "cancellation", "quotation", "supplier-binding", "delivery-ack"].includes(resource[1])));
+  const methodAllowed = operators ? req.method === "GET" : assigned ? review ? ["GET", "POST"].includes(req.method) : req.method === "GET" : review || assignment || cancellation || quotation || binding || deliveryAck ? ["GET", "POST"].includes(req.method) : resource.length === 2 ? req.method === "POST" : resource.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method);
   if ((!operators && !validResource) || !methodAllowed) return deny("supplier_request_method_invalid", 405);
   const before = url.searchParams.get("before_revision");
-  if (url.searchParams.getAll("tenant").length > 1 || ((assigned || operators) && url.searchParams.has("tenant")) || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => !(key === "tenant" && !operators && !assigned) && !((review || assignment || quotation || binding) && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);
+  if (url.searchParams.getAll("tenant").length > 1 || ((assigned || operators) && url.searchParams.has("tenant")) || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => !(key === "tenant" && !operators && !assigned) && !((review || assignment || quotation || binding || deliveryAck) && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);
   if (write && (req.headers.get("origin") !== url.origin || (req.headers.has("sec-fetch-site") && req.headers.get("sec-fetch-site") !== "same-origin"))) return deny("supplier_request_origin_forbidden", 403);
   if (write && (!/^application\/json(?:\s*;|$)/i.test(req.headers.get("content-type") || "") || !UUID.test(req.headers.get("idempotency-key") || ""))) return deny("supplier_request_body_invalid", 400);
   try {
     const credential = await dependencies.credential(), session = credential?.session;
     if (!session || !credential?.bearerToken) return deny("supplier_request_session_required", 401);
-    if (binding && write && session.role !== "super-admin") return deny("supplier_binding_scope_forbidden", 403);
+    if ((binding || deliveryAck) && write && session.role !== "super-admin") return deny(deliveryAck ? "supplier_delivery_ack_scope_forbidden" : "supplier_binding_scope_forbidden", 403);
     if (session.isDemo) return deny("supplier_request_scope_forbidden", 403);
     if (assigned) {
       if (!supplierOperatorCan(session, "supplier_request.assigned.read") || (write && !supplierOperatorCan(session, "supplier_request.assigned.review"))) return deny("supplier_request_scope_forbidden", 403);

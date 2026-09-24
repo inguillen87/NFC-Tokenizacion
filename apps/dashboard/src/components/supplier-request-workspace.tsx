@@ -5,6 +5,7 @@ import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from
 import { filterSupplierRequestInbox, supplierRequestManagementState, supplierRequestCall, supplierRequestErrorCopy, SupplierRequestError, type SupplierRequest, type SupplierRequestCommand, type SupplierRequestContent, type SupplierRequestEnvelope, type SupplierRequestInboxFilter, type SupplierRequestReviewSummary } from "../lib/supplier-request-client";
 import { SupplierRequestReview, type SupplierRequestReviewGuard } from "./supplier-request-review";
 import { SupplierAssignedRequestWorkspace } from "./supplier-assigned-request-workspace";
+import { SupplierRequestDeliveryAck } from "./supplier-request-delivery-ack";
 import { SupplierRequestBinding } from "./supplier-request-binding";
 import { SupplierRequestQuotation } from "./supplier-request-quotation";
 import { SupplierRequestCancellation } from "./supplier-request-cancellation";
@@ -46,6 +47,9 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   const reads = useRef<AbortController | null>(null), writes = useRef<AbortController | null>(null);
   const reviewGuard = useRef<SupplierRequestReviewGuard>({ dirty: false, locked: false });
   const assignmentGuard = useRef<SupplierRequestReviewGuard>({ dirty: false, locked: false });
+  const deliveryGuard=useRef<SupplierRequestReviewGuard>({dirty:false,locked:false});
+  const [deliveryBlocked,setDeliveryBlocked]=useState(false),[deliveryAccessLost,setDeliveryAccessLost]=useState(false);
+  const updateDeliveryGuard=useCallback((value:SupplierRequestReviewGuard)=>{deliveryGuard.current=value;setDeliveryBlocked(value.locked);},[]);
   const bindingGuard = useRef<SupplierRequestReviewGuard>({dirty:false,locked:false});
   const [bindingBlocked,setBindingBlocked]=useState(false),[bindingAccessLost,setBindingAccessLost]=useState(false);
   const updateBindingGuard=useCallback((value:SupplierRequestReviewGuard)=>{bindingGuard.current=value;setBindingBlocked(value.locked);},[]);
@@ -63,10 +67,10 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     setSelected(current => current && current.id === selected?.id && current.tenant_id === selected.tenant_id ? { ...current, review_summary: summary } : current);
     if (selected) setItems(current => current ? current.map(item => item.id === selected.id && item.tenant_id === selected.tenant_id ? { ...item, review_summary: summary } : item).sort((a, b) => activityTime(b).localeCompare(activityTime(a))) : current);
   }, [selected?.id, selected?.tenant_id]);
-  const canReviewInteract = useCallback(() => !reads.current && !locked.current && !assignmentGuard.current.locked && !cancellationGuard.current.locked && !quotationGuard.current.locked && !bindingGuard.current.locked, []);
-  const canAssignmentInteract = useCallback(() => !reads.current && !locked.current && !reviewGuard.current.locked && !cancellationGuard.current.locked && !quotationGuard.current.locked && !bindingGuard.current.locked, []);
+  const canReviewInteract = useCallback(() => !reads.current && !locked.current && !assignmentGuard.current.locked && !cancellationGuard.current.locked && !quotationGuard.current.locked && !bindingGuard.current.locked && !deliveryGuard.current.locked, []);
+  const canAssignmentInteract = useCallback(() => !reads.current && !locked.current && !reviewGuard.current.locked && !cancellationGuard.current.locked && !quotationGuard.current.locked && !bindingGuard.current.locked && !deliveryGuard.current.locked, []);
   const dirty = JSON.stringify(fields) !== JSON.stringify(selected ? fromItem(selected) : empty());
-  const immutable = Boolean(selected && selected.status !== "draft"), blocked = phase === "saving" || phase === "uncertain" || unresolved.current || reviewBlocked || assignmentBlocked || cancellationBlocked || quotationBlocked || quotationAccessLost || bindingBlocked || bindingAccessLost;
+  const immutable = Boolean(selected && selected.status !== "draft"), blocked = phase === "saving" || phase === "uncertain" || unresolved.current || reviewBlocked || assignmentBlocked || cancellationBlocked || quotationBlocked || quotationAccessLost || bindingBlocked || bindingAccessLost || deliveryBlocked || deliveryAccessLost;
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; epoch.current++; reads.current?.abort(); writes.current?.abort(); }; }, []);
   useEffect(() => {
@@ -75,7 +79,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     detailHeading.current?.scrollIntoView({ block: "start", behavior: "auto" });
   }, [selectionVersion]);
   useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => { if (dirty || locked.current || reviewGuard.current.dirty || reviewGuard.current.locked || assignmentGuard.current.dirty || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked) { event.preventDefault(); event.returnValue = ""; } };
+    const warn = (event: BeforeUnloadEvent) => { if (dirty || locked.current || reviewGuard.current.dirty || reviewGuard.current.locked || assignmentGuard.current.dirty || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked || deliveryGuard.current.locked) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
@@ -88,7 +92,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   }, [tenant, allowed]);
 
   async function loadList(scope: string) {
-    if (locked.current || reviewGuard.current.locked || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked) return;
+    if (locked.current || reviewGuard.current.locked || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked || deliveryGuard.current.locked) return;
     const generation = epoch.current, sequence = ++listSequence.current;
     setItems(null); setListError(""); setListReading(true);
     try {
@@ -100,10 +104,10 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     finally { if (alive.current && generation === epoch.current && sequence === listSequence.current) setListReading(false); }
   }
   function canLeave() {
-    if (locked.current || reviewGuard.current.locked || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked) return false;
+    if (locked.current || reviewGuard.current.locked || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked || deliveryGuard.current.locked) return false;
     return !(dirty || reviewGuard.current.dirty || assignmentGuard.current.dirty) || window.confirm("Hay cambios sin guardar. ¿Descartarlos y continuar?");
   }
-  function resetEditor() { updateBindingGuard({dirty:false,locked:false}); setBindingAccessLost(false); updateQuotationGuard({dirty:false,locked:false});setQuotationAccessLost(false); updateCancellationGuard({ dirty: false, locked: false }); updateReviewGuard({ dirty: false, locked: false }); updateAssignmentGuard({ dirty: false, locked: false }); setSelected(null); setFields(empty()); setComparison(null); setPhase("idle"); setError(""); setConfirmedRevision(null); setReviewing(false); setRequestReading(false); operation.current = null; }
+  function resetEditor() { updateDeliveryGuard({dirty:false,locked:false}); setDeliveryAccessLost(false); updateBindingGuard({dirty:false,locked:false}); setBindingAccessLost(false); updateQuotationGuard({dirty:false,locked:false});setQuotationAccessLost(false); updateCancellationGuard({ dirty: false, locked: false }); updateReviewGuard({ dirty: false, locked: false }); updateAssignmentGuard({ dirty: false, locked: false }); setSelected(null); setFields(empty()); setComparison(null); setPhase("idle"); setError(""); setConfirmedRevision(null); setReviewing(false); setRequestReading(false); operation.current = null; }
   function changeTenant() {
     if (!canLeave()) return;
     const next = tenantInput.trim().toLowerCase();
@@ -112,7 +116,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     if (next === tenant) void loadList(next); else setTenant(next);
   }
   async function openRequest(id: string, scope: string, initial = false, compare = false) {
-    if (!allowed || reviewGuard.current.locked || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked || (!initial && !compare && !canLeave()) || busy.current || (locked.current && !compare)) return;
+    if (!allowed || reviewGuard.current.locked || assignmentGuard.current.locked || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked || deliveryGuard.current.locked || (!initial && !compare && !canLeave()) || busy.current || (locked.current && !compare)) return;
     if (!scope) { setError("Abrí la solicitud desde la empresa indicada en la bandeja."); return; }
     const generation = epoch.current, sequence = ++readSequence.current;
     reads.current?.abort(); const controller = new AbortController(); reads.current = controller;
@@ -134,7 +138,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     return { title, notes, quantity, construction_id: fields.construction_id, pack_purpose: fields.pack_purpose === "trial_integration" || fields.pack_purpose === "production" ? fields.pack_purpose : null };
   }
   async function execute(command: SupplierRequestCommand) {
-    if (!allowed || busy.current || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked) return;
+    if (!allowed || busy.current || cancellationGuard.current.locked || quotationGuard.current.locked || bindingGuard.current.locked || deliveryGuard.current.locked) return;
     busy.current = true; locked.current = true; operation.current = command;
     const generation = epoch.current, controller = new AbortController(); writes.current = controller;
     setPhase("saving"); setError(""); setReviewing(false);
@@ -184,28 +188,32 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
         {truncated && items ? <p className={styles.notice}>Se muestran las solicitudes más recientes; hay más registros fuera de esta respuesta.</p> : null}
       </section>
       {(tenant || selected) ? <section className={styles.card} aria-labelledby="supplier-request-editor">
-        {!quotationAccessLost && !bindingAccessLost ? <>
+        {!quotationAccessLost && !bindingAccessLost && !deliveryAccessLost ? <>
         <div className={styles.heading}><div><h2 id="supplier-request-editor" ref={detailHeading} tabIndex={-1} data-testid="supplier-request-detail-heading">{selected ? selected.title : "Nueva solicitud"}</h2><p className={styles.muted}>{currentTenant}{selected ? ` · ${statusLabel(selected.status)} · ${selected.id}` : " · todavía sin guardar"}</p></div></div>
         <p role="status" data-testid="supplier-request-status" className={styles.notice}>{phase === "saving" ? "Guardando en el servidor…" : phase === "uncertain" ? "Resultado sin confirmar. Conservamos la misma operación." : confirmedRevision ? `Guardado confirmado · versión ${confirmedRevision}${selected && selected.revision > confirmedRevision ? `; la fuente ya está en la versión ${selected.revision}` : ""}${dirty ? " · cambios nuevos sin guardar" : ""}` : selected ? `Versión ${selected.revision}${dirty ? " · cambios sin guardar" : " · sin cambios"}` : "Borrador nuevo: aún no está guardado en el servidor."}</p>
         {error ? <p role="alert" className={styles.error}>{error}</p> : null}
         {phase === "uncertain" ? <button className={styles.button} data-testid="supplier-request-retry" type="button" onClick={() => { if (operation.current && !busy.current) void execute(operation.current); }}>Comprobar el mismo guardado</button> : null}
         {phase === "conflict" && selected ? <div data-testid="supplier-request-conflict"><p>Tu texto permanece sin guardar. Consultá la versión actual; no se sobrescribe automáticamente.</p><button type="button" className={styles.button} disabled={reading} onClick={() => void openRequest(selected.id, selected.tenant_slug, false, true)}>Consultar versión actual</button></div> : null}
         {comparison ? <div className={styles.notice}><h3>Versión actual del servidor: {comparison.revision}</h3><p>{comparison.title} · {statusLabel(comparison.status)} · {comparison.quantity ?? "cantidad pendiente"}</p><p className={styles.pre}>{comparison.notes || "Sin notas"}</p><button className={styles.button} type="button" onClick={() => { if (locked.current || !window.confirm("¿Reemplazar los cambios locales por esta versión guardada?")) return; setSelected(comparison); setFields(fromItem(comparison)); setComparison(null); setConfirmedRevision(null); setError(""); setPhase("idle"); }}>Cargar esta versión y descartar mis cambios</button></div> : null}
-        {selected && immutable && selected.status !== "cancelled" && canAssign ? <SupplierRequestAssignment key={`assignment:${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} canManageUsers={dashboardPermissionMatches(access.permissions, "users:manage", access.deniedPermissions)} suspended={requestReading || reviewBlocked || cancellationBlocked || quotationBlocked || bindingBlocked} canInteract={canAssignmentInteract} onGuard={updateAssignmentGuard} /> : null}
-        {selected && immutable ? <SupplierRequestReview key={`${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={requestReading || assignmentBlocked || cancellationBlocked || quotationBlocked || bindingBlocked} canInteract={canReviewInteract} onGuard={updateReviewGuard} onReview={updateReview} /> : null}
+        {selected && immutable && selected.status !== "cancelled" && canAssign ? <SupplierRequestAssignment key={`assignment:${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} canManageUsers={dashboardPermissionMatches(access.permissions, "users:manage", access.deniedPermissions)} suspended={requestReading || reviewBlocked || cancellationBlocked || quotationBlocked || bindingBlocked || deliveryBlocked} canInteract={canAssignmentInteract} onGuard={updateAssignmentGuard} /> : null}
+        {selected && immutable ? <SupplierRequestReview key={`${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={requestReading || assignmentBlocked || cancellationBlocked || quotationBlocked || bindingBlocked || deliveryBlocked} canInteract={canReviewInteract} onGuard={updateReviewGuard} onReview={updateReview} /> : null}
         </> : <h2 id="supplier-request-editor">Acceso a la solicitud no disponible</h2>}
-        {selected && immutable && !bindingAccessLost ? <SupplierRequestQuotation key={`quote:${selected.id}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={reading||blocked}
-          canInteract={()=>!reads.current&&!locked.current&&!reviewGuard.current.locked&&!reviewGuard.current.dirty&&!assignmentGuard.current.locked&&!assignmentGuard.current.dirty&&!cancellationGuard.current.locked&&!bindingGuard.current.locked}
+        {selected && immutable && !bindingAccessLost && !deliveryAccessLost ? <SupplierRequestQuotation key={`quote:${selected.id}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={reading||blocked}
+          canInteract={()=>!reads.current&&!locked.current&&!reviewGuard.current.locked&&!reviewGuard.current.dirty&&!assignmentGuard.current.locked&&!assignmentGuard.current.dirty&&!cancellationGuard.current.locked&&!bindingGuard.current.locked && !deliveryGuard.current.locked}
           onGuard={updateQuotationGuard}
           onCurrent={item=>{if(item.id!==selected.id||item.tenant_id!==selected.tenant_id)return;setQuotationAccessLost(false);setSelected(item);setFields(fromItem(item));setConfirmedRevision(null);setItems(rows=>rows?.map(row=>row.id===item.id&&row.tenant_id===item.tenant_id?item:row)||rows);}}
           onAccessUnavailable={()=>{reads.current?.abort();readSequence.current++;listSequence.current++;setListReading(false);setRequestReading(false);setItems(null);setQuotationAccessLost(true);}}
           onExit={()=>{resetEditor();void loadList(tenant);}}/> : null}
-        {selected?.status === "provisioned" && !quotationAccessLost ? <SupplierRequestBinding key={`binding:${selected.id}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={reading||blocked}
-          canInteract={()=>!reads.current&&!locked.current&&!listReading&&!reviewGuard.current.locked&&!reviewGuard.current.dirty&&!assignmentGuard.current.locked&&!assignmentGuard.current.dirty&&!cancellationGuard.current.locked&&!quotationGuard.current.locked}
+        {selected?.status === "provisioned" && !quotationAccessLost && !deliveryAccessLost ? <SupplierRequestBinding key={`binding:${selected.id}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={reading||blocked}
+          canInteract={()=>!reads.current&&!locked.current&&!listReading&&!reviewGuard.current.locked&&!reviewGuard.current.dirty&&!assignmentGuard.current.locked&&!assignmentGuard.current.dirty&&!cancellationGuard.current.locked&&!quotationGuard.current.locked&&!deliveryGuard.current.locked}
           onGuard={updateBindingGuard} onAccessUnavailable={()=>{reads.current?.abort();readSequence.current++;listSequence.current++;setListReading(false);setRequestReading(false);setItems(null);setBindingAccessLost(true);}}
           onExit={()=>{resetEditor();void loadList(tenant);}}/> : null}
-        {!quotationAccessLost && !bindingAccessLost ? <>
-        {selected?.status === "submitted" ? <SupplierRequestCancellation key={`cancel:${selected.id}:${selected.revision}:${selectionVersion}`} request={selected} suspended={reading || blocked} canInteract={() => !reads.current && !locked.current && !reviewGuard.current.locked && !reviewGuard.current.dirty && !assignmentGuard.current.locked && !assignmentGuard.current.dirty && !quotationGuard.current.locked && !bindingGuard.current.locked} onGuard={updateCancellationGuard} onUncertainExit={() => { resetEditor(); void loadList(tenant); }} onCurrent={item => { if (item.id !== selected.id || item.tenant_id !== selected.tenant_id) return; updateCancellationGuard({ dirty: false, locked: false }); updateReviewGuard({ dirty: false, locked: false }); updateAssignmentGuard({ dirty: false, locked: false }); setSelected(item); setFields(fromItem(item)); setSelectionVersion(value => value + 1); setItems(current => current?.map(row => row.id === item.id && row.tenant_id === item.tenant_id ? item : row) || current); }} /> : null}
+        {selected?.status === "provisioned" && !quotationAccessLost && !bindingAccessLost ? <SupplierRequestDeliveryAck key={`ack:${selected.id}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={reading||blocked}
+          canInteract={()=>!reads.current&&!locked.current&&!listReading&&!reviewGuard.current.locked&&!reviewGuard.current.dirty&&!assignmentGuard.current.locked&&!assignmentGuard.current.dirty&&!cancellationGuard.current.locked&&!quotationGuard.current.locked&&!bindingGuard.current.locked}
+          onGuard={updateDeliveryGuard} onAccessRestored={()=>setDeliveryAccessLost(false)} onAccessUnavailable={()=>{reads.current?.abort();readSequence.current++;listSequence.current++;setListReading(false);setRequestReading(false);setItems(null);setDeliveryAccessLost(true);}}
+          onExit={()=>{resetEditor();void loadList(tenant);}}/> : null}
+        {!quotationAccessLost && !bindingAccessLost && !deliveryAccessLost ? <>
+        {selected?.status === "submitted" ? <SupplierRequestCancellation key={`cancel:${selected.id}:${selected.revision}:${selectionVersion}`} request={selected} suspended={reading || blocked} canInteract={() => !reads.current && !locked.current && !reviewGuard.current.locked && !reviewGuard.current.dirty && !assignmentGuard.current.locked && !assignmentGuard.current.dirty && !quotationGuard.current.locked && !bindingGuard.current.locked && !deliveryGuard.current.locked} onGuard={updateCancellationGuard} onUncertainExit={() => { resetEditor(); void loadList(tenant); }} onCurrent={item => { if (item.id !== selected.id || item.tenant_id !== selected.tenant_id) return; updateCancellationGuard({ dirty: false, locked: false }); updateReviewGuard({ dirty: false, locked: false }); updateAssignmentGuard({ dirty: false, locked: false }); setSelected(item); setFields(fromItem(item)); setSelectionVersion(value => value + 1); setItems(current => current?.map(row => row.id === item.id && row.tenant_id === item.tenant_id ? item : row) || current); }} /> : null}
         {selected?.status === "cancelled" ? <section className={styles.notice} data-testid="supplier-cancel-receipt"><h3>Solicitud cancelada · versión {selected.revision}</h3><p className={styles.pre}>{selected.cancellation_reason}</p><p>Registrada: {selected.cancelled_at?.slice(0, 16).replace("T", " ")} UTC<br />Responsable (ID): {selected.cancelled_by}</p><p>La preparación de esta solicitud está cerrada. Los datos y las aclaraciones se conservan; no es un comprobante de anulación de compra, pago o fabricación.</p></section> : null}
         <details className={styles.commercial} open={!immutable}><summary>{immutable ? "Consultar los datos comerciales enviados" : "Completar los datos de la solicitud"}</summary>
         <form onSubmit={event => { event.preventDefault(); save(); }}>
