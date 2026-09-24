@@ -91,7 +91,7 @@ test('global inbox is superadmin-only, bounded, excludes drafts and returns no i
   const global = dependencies('list', { role: 'super-admin', permissions: [], tenantId: null, tenantSlug: null }, { rows: [submitted] });
   const result = await call(global, 'list', content, ''); assert.equal(result.status, 200);
   assert.deepEqual(result.body.scope, { mode: 'global', tenant_id: null, tenant_slug: null }); assert.equal(result.body.items.length, 1);
-  assert.equal(global.queries.length, 1); assert.match(global.queries[0].statement, /status IN \('submitted','provisioned'\)/);
+  assert.equal(global.queries.length, 1); assert.match(global.queries[0].statement, /status IN \('submitted','provisioned','cancelled'\)/);
   assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
   const polluted = dependencies('list', { role: 'super-admin', permissions: [], tenantId: null, tenantSlug: null }); assert.equal((await call(polluted, 'list', content, '')).status, 503);
   for (const query of ['?tenant=qa-a&limit=0', '?tenant=qa-a&limit=101', '?tenant=qa-a&status=unknown']) assert.equal((await call(dependencies('list'), 'list', content, query)).status, 400);

@@ -545,6 +545,9 @@ test('actual supplier request migrations are scoped, atomic and safe under concu
       const older = await assignmentRead(request,4); assert.deepEqual(older.history.map(row=>row.revision),[1,2,3]); assert.equal(older.next_before_revision,null); assert.equal(older.truncated,false); assert.deepEqual(older.assignment,current.assignment);
       assert.doesNotMatch(JSON.stringify(current),/fingerprint|auth_session|idempotency_key|audit_id|email/);
     });
+    await observer.query(scoped(await readFile(new URL('../db/migrations/20260924010000_0117_supplier_request_cancellation.sql', import.meta.url), 'utf8')));
+    const { runCancellationTests } = await import('./supplier-request-cancellation.postgres.mjs');
+    await runCancellationTests(t, {schema,observer,first,second,tenantA,tenantB,actorA,actorB,sessionA,sessionB,globalActor,globalSession,operatorA,operatorB,operatorSessionA,prepared,command,mutate,read,counts,graphCounts,assignCommand,assign,assignedRead,assignedList,assignmentRead,technical,convert,reviewCommand,reviewWrite,reviewRead,waitForLock,settle});
   } finally {
     for (const client of clients) await client.query('ROLLBACK').catch(() => {});
     if (createdSchema) { assert.match(schema, /^qa_supplier_requests_[a-f0-9]{32}$/); await observer.query(`DROP SCHEMA "${schema}" CASCADE`); }

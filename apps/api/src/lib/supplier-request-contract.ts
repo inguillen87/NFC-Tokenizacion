@@ -19,12 +19,13 @@ export type SupplierRequestContent = {
   pack_purpose: "trial_integration" | "production" | null;
   notes: string;
 };
-export type SupplierRequestStatus = "draft" | "submitted" | "provisioned";
+export type SupplierRequestStatus = "draft" | "submitted" | "provisioned" | "cancelled";
 export type SupplierRequestItem = SupplierRequestContent & {
   id: string; tenant_id: string; tenant_slug: string; status: SupplierRequestStatus; revision: number;
   created_by: string; updated_by: string; submitted_by: string | null;
   created_at: string; updated_at: string; submitted_at: string | null; order_id: string | null;
   review_summary: SupplierRequestReviewSummary;
+  cancellation_reason?: string; cancelled_by?: string; cancelled_at?: string;
 };
 export class SupplierRequestError extends Error {
   constructor(reason: string, public status = 400, public details: { current_revision?: number; order_id?: string } = {}) { super(reason); }
@@ -80,7 +81,7 @@ export function parseSupplierRequestList(params: URLSearchParams) {
   const limit = raw === null ? 50 : Number(raw);
   if (limit > 100) return invalid("limit");
   const status = params.get("status") ?? "all";
-  if (!["all", "draft", "submitted", "provisioned"].includes(status)) return invalid("status");
+  if (!["all", "draft", "submitted", "provisioned", "cancelled"].includes(status)) return invalid("status");
   return { limit, status };
 }
 export function parseSupplierRequestQuery(params: URLSearchParams, list: boolean) {
@@ -98,12 +99,19 @@ function parseSupplierRequestRow(row: Record<string, unknown>): SupplierRequestI
   const content = parseSupplierRequestCreate(Object.fromEntries(FIELDS.map(key => [key, row[key]])));
   const id = parseSupplierRequestId(row.id), tenantId = parseSupplierRequestId(row.tenant_id);
   if (typeof row.tenant_slug !== "string" || !SUPPLIER_REQUEST_TENANT_SLUG.test(row.tenant_slug)
-    || !["draft", "submitted", "provisioned"].includes(String(row.status)) || !Number.isSafeInteger(row.revision) || Number(row.revision) < 1) throw new Error("supplier_request_record_invalid");
+    || !["draft", "submitted", "provisioned", "cancelled"].includes(String(row.status)) || !Number.isSafeInteger(row.revision) || Number(row.revision) < 1) throw new Error("supplier_request_record_invalid");
   const submitted = row.status !== "draft";
   if (submitted && (!content.construction_id || content.quantity === null || content.pack_purpose === null || !row.submitted_at || !row.submitted_by)) throw new Error("supplier_request_record_invalid");
   if ((row.status === "provisioned") !== (row.order_id !== null)) throw new Error("supplier_request_record_invalid");
   if (!submitted && (row.submitted_at !== null || row.submitted_by !== null)) throw new Error("supplier_request_record_invalid");
-  return { ...content, id, tenant_id: tenantId, tenant_slug: row.tenant_slug, status: row.status as SupplierRequestStatus,
+  let cancellation = {};
+  if (row.status === "cancelled") {
+    const reason = plain(row.cancellation_reason, "cancellation_reason", 2000, true);
+    const actor = parseSupplierRequestId(row.cancelled_by), at = timestamp(row.cancelled_at)!;
+    if (actor !== row.updated_by || at !== timestamp(row.updated_at) || Date.parse(at) < Date.parse(timestamp(row.submitted_at)!)) throw Error("supplier_request_record_invalid");
+    cancellation = { cancellation_reason: reason, cancelled_by: actor, cancelled_at: at };
+  } else if ([row.cancellation_reason, row.cancelled_by, row.cancelled_at].some(value => value !== undefined && value !== null)) throw Error("supplier_request_record_invalid");
+  return { ...content, ...cancellation, id, tenant_id: tenantId, tenant_slug: row.tenant_slug, status: row.status as SupplierRequestStatus,
     revision: Number(row.revision), created_by: parseSupplierRequestId(row.created_by), updated_by: parseSupplierRequestId(row.updated_by),
     submitted_by: row.submitted_by === null ? null : parseSupplierRequestId(row.submitted_by),
     created_at: timestamp(row.created_at)!, updated_at: timestamp(row.updated_at)!, submitted_at: timestamp(row.submitted_at, true),

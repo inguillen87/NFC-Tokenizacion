@@ -20,7 +20,7 @@ export async function listSupplierRequests(scope: SupplierRequestScope, options:
     FROM public.supplier_requests request JOIN public.tenants tenant ON tenant.id=request.tenant_id
     LEFT JOIN public.supplier_request_reviews review ON review.tenant_id=request.tenant_id AND review.request_id=request.id
     WHERE (${scope.tenant_id}::uuid IS NULL OR request.tenant_id=${scope.tenant_id}::uuid)
-      AND (${scope.tenant_id}::uuid IS NOT NULL OR request.status IN ('submitted','provisioned'))
+      AND (${scope.tenant_id}::uuid IS NOT NULL OR request.status IN ('submitted','provisioned','cancelled'))
       AND (${options.status}='all' OR request.status=${options.status})
     ORDER BY GREATEST(request.updated_at,review.updated_at) DESC, request.id DESC LIMIT ${options.limit + 1}`;
   const items = rows.slice(0, options.limit).map(supplierRequestFromRow);
