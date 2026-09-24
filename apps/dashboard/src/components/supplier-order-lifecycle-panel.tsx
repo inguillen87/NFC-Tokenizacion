@@ -40,6 +40,13 @@ const EMPTY_DRAFT: LifecycleDraft = {
   reason: "",
 };
 
+const supplierBindingReasons: Record<string,string> = {
+  "supplier_binding_required": "Este pedido requiere un proveedor vinculado. Revisá el vínculo en la solicitud antes de registrar el envío.",
+  "supplier_binding_spec_changed": "La especificación cambió o no tiene aprobación coincidente. Revisá el pedido y actualizá el vínculo antes del envío.",
+  "supplier_binding_recipient_mismatch": "El destinatario no coincide con la referencia del proveedor vinculado. Usá la referencia exacta del expediente.",
+  "supplier_binding_receipt_invalid": "No se confirmó la relación entre pedido, proveedor y comprobante. Consultá el expediente antes de reintentar."
+};
+
 function normalized(value: unknown) {
   return String(value || "").trim().toLowerCase();
 }
@@ -158,7 +165,7 @@ export function SupplierOrderLifecyclePanel({
         receipt?: { to_status?: string; created_at?: string; idempotent_replay?: boolean };
       };
       if (!response.ok || data.ok !== true || !data.receipt) {
-        throw new Error(data.message || data.reason || "supplier_order_lifecycle_failed");
+        throw new Error(supplierBindingReasons[data.reason || ""] || data.message || data.reason || "supplier_order_lifecycle_failed");
       }
       attempts.current.delete(signature);
       setLocalStatus(normalized(data.receipt.to_status));
