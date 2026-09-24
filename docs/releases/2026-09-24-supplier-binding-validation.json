@@ -1,0 +1,118 @@
+{
+  "scope": "supplier-specification-binding",
+  "status": "candidate-verified-not-deployed",
+  "recordedAt": "2026-09-24T14:18:24.1381553Z",
+  "ci": {
+    "api": {
+      "conclusion": "success",
+      "databaseId": 36010215723,
+      "headSha": "66d188bf79ef9f8ed097af6dc81a05fdef134da9",
+      "status": "completed",
+      "url": "https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/36010215723"
+    },
+    "dashboard": {
+      "conclusion": "success",
+      "databaseId": 36010221895,
+      "headSha": "2aa5933e227ec20625b22cf61dc97651ad49440b",
+      "status": "completed",
+      "url": "https://github.com/inguillen87/NFC-Tokenizacion/actions/runs/36010221895"
+    }
+  },
+  "local": {
+    "apiFocalPassed": 382,
+    "dashboardPassed": 1463,
+    "dashboardSkipped": 2,
+    "postgresPassed": 86,
+    "newBindingBrowserChecks": 141,
+    "newBindingBrowserViews": 14,
+    "regressionBrowserChecks": 920,
+    "regressionBrowserViews": 99
+  },
+  "proof": {
+    "policySha256": "20d7ba9bfdf7a977a76d5fb084a108559e20db4bae5c91b8b5cc9929a8d53388",
+    "migrationSha256": "acc00b268f6c2c110e62ce82dc234de9b0a0bd456fd00c4795606869ba37edc2",
+    "browser": [
+      {
+        "name": "supplier-request-binding",
+        "checks": 141,
+        "views": 14,
+        "axe": 0,
+        "clientErrors": 0,
+        "unexpected": 0
+      },
+      {
+        "name": "supplier-request-quotes",
+        "checks": 162,
+        "views": 18,
+        "axe": 0,
+        "clientErrors": 0,
+        "unexpected": 0
+      },
+      {
+        "name": "supplier-request-cancellation",
+        "checks": 135,
+        "views": 12,
+        "axe": 0,
+        "clientErrors": 0,
+        "unexpected": 0
+      },
+      {
+        "name": "supplier-requests",
+        "checks": 287,
+        "views": 33,
+        "axe": 0,
+        "clientErrors": 0,
+        "unexpected": 0
+      },
+      {
+        "name": "supplier-request-assignments",
+        "checks": 195,
+        "views": 22,
+        "axe": 0,
+        "clientErrors": 0,
+        "unexpected": 0
+      }
+    ],
+    "postgres": {
+      "engine": "PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit",
+      "clusterStopped": true,
+      "remainingSchemas": [],
+      "productionUsed": false,
+      "exitCode": 0
+    }
+  },
+  "productionObserved": [
+    {
+      "origin": "https://app.nexid.lat",
+      "release": "2026.09.23-dashboard.41",
+      "checkedAt": "2026-09-24T14:02:03.4477687Z"
+    },
+    {
+      "origin": "https://api.nexid.lat",
+      "release": "2026.09.23-api-supplier-requests.2",
+      "checkedAt": "2026-09-24T14:02:04.8009253Z"
+    },
+    {
+      "origin": "https://nexid.lat",
+      "release": "2026.09.21-web-support.1",
+      "checkedAt": "2026-09-24T14:02:06.4677010Z"
+    }
+  ],
+  "boundaries": {
+    "productionDeployment": false,
+    "productionMigration": false,
+    "realSupplierContact": false,
+    "realCustomerWrite": false,
+    "fullIndustrialSchemaAcceptance": false,
+    "packagingAndLifecycleSubstrates": "Explicit narrow fixtures in the isolated PostgreSQL harness",
+    "browserSessionsAndTransport": "Synthetic",
+    "externalProviderDeliveryOrAcknowledgement": false
+  },
+  "migration": {
+    "file": "20260924110000_0119_supplier_request_binding.sql",
+    "appliedToProduction": false
+  },
+  "rolloutFlag": "SUPPLIER_REQUEST_SUPPLIER_BINDINGS_ENABLED",
+  "writesEnabledByDefault": false,
+  "identityNote": "CI belongs to the exact application source commits above; later evidence-only commits do not change those tested runtime files."
+}
