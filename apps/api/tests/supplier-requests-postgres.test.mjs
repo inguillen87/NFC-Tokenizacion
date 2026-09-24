@@ -548,6 +548,9 @@ test('actual supplier request migrations are scoped, atomic and safe under concu
     await observer.query(scoped(await readFile(new URL('../db/migrations/20260924010000_0117_supplier_request_cancellation.sql', import.meta.url), 'utf8')));
     const { runCancellationTests } = await import('./supplier-request-cancellation.postgres.mjs');
     await runCancellationTests(t, {schema,observer,first,second,tenantA,tenantB,actorA,actorB,sessionA,sessionB,globalActor,globalSession,operatorA,operatorB,operatorSessionA,prepared,command,mutate,read,counts,graphCounts,assignCommand,assign,assignedRead,assignedList,assignmentRead,technical,convert,reviewCommand,reviewWrite,reviewRead,waitForLock,settle});
+    await observer.query(scoped(await readFile(new URL('../db/migrations/20260924050000_0118_supplier_request_quotes.sql', import.meta.url), 'utf8')));
+    const { runQuotePostgresTests } = await import('./supplier-request-quotes.postgres.mjs');
+    await runQuotePostgresTests(t,{schema,observer,first,second,tenantA,tenantB,actorA,actorB,sessionA,sessionB,globalActor,globalSession,operatorA,operatorSessionA,prepared,command,mutate,read,graphCounts,technical,convert,reviewCommand,reviewWrite,reviewRead,waitForLock,settle});
   } finally {
     for (const client of clients) await client.query('ROLLBACK').catch(() => {});
     if (createdSchema) { assert.match(schema, /^qa_supplier_requests_[a-f0-9]{32}$/); await observer.query(`DROP SCHEMA "${schema}" CASCADE`); }

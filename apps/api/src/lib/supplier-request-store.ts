@@ -75,7 +75,7 @@ export function supplierRequestConversionError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   const reasons: Record<string, number> = { supplier_request_operator_required: 403, supplier_request_not_found: 404, supplier_request_source_invalid: 400,
     supplier_request_already_provisioned: 409, supplier_request_not_submitted: 409, supplier_request_revision_conflict: 409, supplier_request_order_mismatch: 409,
-    supplier_request_information_required: 409 };
+    supplier_request_information_required: 409, supplier_request_quote_acceptance_required: 409 };
   for (const [reason, status] of Object.entries(reasons)) if (message.includes(reason)) return new SupplierRequestError(reason, status);
   return null;
 }
@@ -87,6 +87,10 @@ export async function validateSupplierRequestConversion(source: { id: string; re
   if (request.status !== "submitted") throw new SupplierRequestError("supplier_request_not_submitted", 409);
   if (request.revision !== source.revision) throw new SupplierRequestError("supplier_request_revision_conflict", 409, { current_revision: request.revision });
   if (request.review_summary.state === "needs_information") throw new SupplierRequestError("supplier_request_information_required", 409);
+  if((request.quotation_revision||0)>0){
+    const [quote]=await query`SELECT state,revision FROM public.supplier_request_quote_events WHERE tenant_id=${tenant.id}::uuid AND request_id=${source.id}::uuid ORDER BY revision DESC LIMIT 1`;
+    if(quote?.state!=="accepted"||quote.revision!==request.quotation_revision)throw new SupplierRequestError("supplier_request_quote_acceptance_required",409);
+  }
   const construction = request.construction_id ? SUPPLIER_REQUEST_CONSTRUCTIONS[request.construction_id] : null;
   if (!construction || technical.quantity !== request.quantity || technical.purpose !== request.pack_purpose || technical.carrier !== construction.carrier || technical.material !== construction.material
     || (construction.chip ? technical.chip !== construction.chip : !technical.chip || /NTAG/i.test(technical.chip))) throw new SupplierRequestError("supplier_request_order_mismatch", 409);

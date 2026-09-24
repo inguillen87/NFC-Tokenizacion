@@ -25,7 +25,7 @@ export type SupplierRequestItem = SupplierRequestContent & {
   created_by: string; updated_by: string; submitted_by: string | null;
   created_at: string; updated_at: string; submitted_at: string | null; order_id: string | null;
   review_summary: SupplierRequestReviewSummary;
-  cancellation_reason?: string; cancelled_by?: string; cancelled_at?: string;
+  quotation_revision?: number; quotation_state?: "offered" | "accepted" | "rejected" | "withdrawn" | null; cancellation_reason?: string; cancelled_by?: string; cancelled_at?: string;
 };
 export class SupplierRequestError extends Error {
   constructor(reason: string, public status = 400, public details: { current_revision?: number; order_id?: string } = {}) { super(reason); }
@@ -104,6 +104,10 @@ function parseSupplierRequestRow(row: Record<string, unknown>): SupplierRequestI
   if (submitted && (!content.construction_id || content.quantity === null || content.pack_purpose === null || !row.submitted_at || !row.submitted_by)) throw new Error("supplier_request_record_invalid");
   if ((row.status === "provisioned") !== (row.order_id !== null)) throw new Error("supplier_request_record_invalid");
   if (!submitted && (row.submitted_at !== null || row.submitted_by !== null)) throw new Error("supplier_request_record_invalid");
+  const quoteRevision = row.quotation_revision;
+  if(quoteRevision!==undefined&&(!Number.isSafeInteger(quoteRevision)||Number(quoteRevision)<0||Number(quoteRevision)>=Number(row.revision)))throw Error("supplier_request_record_invalid");
+  if(quoteRevision!==undefined && (Number(quoteRevision)>0 ? !["offered","accepted","rejected","withdrawn"].includes(String(row.quotation_state)) : row.quotation_state!==null))throw Error("supplier_request_record_invalid");
+  const quoteMetadata=quoteRevision===undefined?{}:{quotation_revision:Number(quoteRevision),quotation_state:row.quotation_state as SupplierRequestItem["quotation_state"]};
   let cancellation = {};
   if (row.status === "cancelled") {
     const reason = plain(row.cancellation_reason, "cancellation_reason", 2000, true);
@@ -111,7 +115,7 @@ function parseSupplierRequestRow(row: Record<string, unknown>): SupplierRequestI
     if (actor !== row.updated_by || at !== timestamp(row.updated_at) || Date.parse(at) < Date.parse(timestamp(row.submitted_at)!)) throw Error("supplier_request_record_invalid");
     cancellation = { cancellation_reason: reason, cancelled_by: actor, cancelled_at: at };
   } else if ([row.cancellation_reason, row.cancelled_by, row.cancelled_at].some(value => value !== undefined && value !== null)) throw Error("supplier_request_record_invalid");
-  return { ...content, ...cancellation, id, tenant_id: tenantId, tenant_slug: row.tenant_slug, status: row.status as SupplierRequestStatus,
+  return { ...content, ...cancellation, ...quoteMetadata, id, tenant_id: tenantId, tenant_slug: row.tenant_slug, status: row.status as SupplierRequestStatus,
     revision: Number(row.revision), created_by: parseSupplierRequestId(row.created_by), updated_by: parseSupplierRequestId(row.updated_by),
     submitted_by: row.submitted_by === null ? null : parseSupplierRequestId(row.submitted_by),
     created_at: timestamp(row.created_at)!, updated_at: timestamp(row.updated_at)!, submitted_at: timestamp(row.submitted_at, true),
