@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - codex/nexid-supplier-chain-acceptance-api-20260924
   merge_group:
   workflow_dispatch:
 

@@ -1,51 +1,9 @@
--- Additive ticket workflow. No existing ticket or audit row is changed here.
--- Runtime uses one VOLATILE invoker call: status, audit and receipt commit together.
-CREATE TABLE public.support_ticket_workflow_operations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  sequence bigint GENERATED ALWAYS AS IDENTITY UNIQUE NOT NULL,
-  ticket_id uuid NOT NULL REFERENCES public.tickets(id) ON DELETE RESTRICT,
-  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE RESTRICT,
-  request_id uuid NOT NULL,
-  actor_id uuid NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
-  actor_label text CHECK (actor_label IS NULL OR char_length(actor_label) <= 320),
-  from_status text NOT NULL CHECK (from_status IN ('open','pending','closed')),
-  to_status text NOT NULL CHECK (to_status IN ('open','pending','closed') AND to_status <> from_status),
-  reason text NOT NULL CHECK (char_length(reason) BETWEEN 1 AND 1000 AND reason = btrim(reason)),
-  expected_revision text NOT NULL CHECK (expected_revision ~ '^[0-9a-f]{64}$'),
-  revision text NOT NULL CHECK (revision ~ '^[0-9a-f]{64}$'),
-  fingerprint text NOT NULL CHECK (fingerprint ~ '^[0-9a-f]{64}$'),
-  audit_id uuid NOT NULL UNIQUE REFERENCES public.audit_logs(id) ON DELETE RESTRICT,
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  UNIQUE (ticket_id,request_id)
-);
-CREATE INDEX support_ticket_workflow_history_idx ON public.support_ticket_workflow_operations (tenant_id,ticket_id,sequence DESC);
+-- Forward repair for already-installed 0112 functions. Supports enum or text
+-- ticket status without rewriting the column, rows, receipts or audit history.
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
 
-CREATE FUNCTION public.nexid_reject_support_ticket_workflow_mutation_v1()
-RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,public AS $$
-BEGIN
-  RAISE EXCEPTION USING ERRCODE='55000',MESSAGE='support_ticket_workflow_append_only';
-END;
-$$;
-CREATE TRIGGER support_ticket_workflow_append_only BEFORE UPDATE OR DELETE
-ON public.support_ticket_workflow_operations FOR EACH ROW
-EXECUTE FUNCTION public.nexid_reject_support_ticket_workflow_mutation_v1();
-
--- Epoch preserves all timestamp precision independent of the connection timezone.
--- xmin detects external updates even if a writer preserves updated_at.
-CREATE FUNCTION public.nexid_support_ticket_revision_v1(p_id uuid,p_tenant_id uuid,p_status text,p_updated_at timestamptz,p_xmin text)
-RETURNS text LANGUAGE sql IMMUTABLE STRICT SECURITY INVOKER SET search_path=pg_catalog,public AS $$
-  SELECT encode(sha256(convert_to(jsonb_build_array(p_id,p_tenant_id,p_status,extract(epoch FROM p_updated_at),p_xmin)::text,'UTF8')),'hex');
-$$;
-
-CREATE FUNCTION public.nexid_support_ticket_receipt_v1(p_operation public.support_ticket_workflow_operations)
-RETURNS jsonb LANGUAGE sql STABLE STRICT SECURITY INVOKER SET search_path=pg_catalog,public AS $$
-  SELECT jsonb_build_object('operationId',p_operation.id,'requestId',p_operation.request_id,
-    'sequence',p_operation.sequence::text,'fromStatus',p_operation.from_status,'toStatus',p_operation.to_status,
-    'reason',p_operation.reason,'actor',jsonb_build_object('id',p_operation.actor_id,'label',p_operation.actor_label),
-    'createdAt',p_operation.created_at,'revision',p_operation.revision);
-$$;
-
-CREATE FUNCTION public.nexid_support_ticket_current_v1(p_ticket_id uuid,p_tenant_id uuid,p_tenant_slug text)
+CREATE OR REPLACE FUNCTION public.nexid_support_ticket_current_v1(p_ticket_id uuid,p_tenant_id uuid,p_tenant_slug text)
 RETURNS jsonb LANGUAGE sql VOLATILE SECURITY INVOKER SET search_path=pg_catalog,public AS $$
   SELECT jsonb_build_object('ticketId',t.id,'tenantId',t.tenant_id,'tenantSlug',tenant.slug,
     'status',t.status,'updatedAt',t.updated_at,
@@ -61,7 +19,7 @@ RETURNS jsonb LANGUAGE sql VOLATILE SECURITY INVOKER SET search_path=pg_catalog,
     AND (p_tenant_slug IS NULL OR tenant.slug=p_tenant_slug);
 $$;
 
-CREATE FUNCTION public.nexid_read_support_ticket_workflow_v1(p_ticket_id uuid,p_tenant_id uuid,p_tenant_slug text,p_cursor bigint)
+CREATE OR REPLACE FUNCTION public.nexid_read_support_ticket_workflow_v1(p_ticket_id uuid,p_tenant_id uuid,p_tenant_slug text,p_cursor bigint)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=pg_catalog,public AS $$
   -- One MVCC snapshot for the current ticket, incident binding and full page.
   WITH current_ticket AS (
@@ -90,7 +48,7 @@ RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=pg_catalog,pu
       'page',jsonb_build_object('hasMore',has_more,'nextCursor',CASE WHEN has_more THEN items->49->>'sequence' ELSE NULL END)) END FROM history;
 $$;
 
-CREATE FUNCTION public.nexid_transition_support_ticket_v1(
+CREATE OR REPLACE FUNCTION public.nexid_transition_support_ticket_v1(
   p_ticket_id uuid,p_tenant_id uuid,p_tenant_slug text,p_actor_id uuid,p_actor_label text,
   p_expected_revision text,p_to_status text,p_reason text,p_request_id uuid)
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=pg_catalog,public SET lock_timeout='5s' AS $$
@@ -160,11 +118,6 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON public.support_ticket_workflow_operations FROM PUBLIC;
-REVOKE ALL ON SEQUENCE public.support_ticket_workflow_operations_sequence_seq FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.nexid_reject_support_ticket_workflow_mutation_v1() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.nexid_support_ticket_revision_v1(uuid,uuid,text,timestamptz,text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.nexid_support_ticket_receipt_v1(public.support_ticket_workflow_operations) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexid_support_ticket_current_v1(uuid,uuid,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexid_read_support_ticket_workflow_v1(uuid,uuid,text,bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexid_transition_support_ticket_v1(uuid,uuid,text,uuid,text,text,text,text,uuid) FROM PUBLIC;

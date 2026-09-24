@@ -12,6 +12,8 @@ import {
 } from "./lib/enterprise-ephemeral-e2e-safety.mjs";
 import { startEnterpriseEphemeralHttpHarness } from "./lib/enterprise-ephemeral-http.mjs";
 
+import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
+
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { Client, Pool } = pg;
 let config = null;
@@ -55,8 +57,16 @@ function applyMigrations() {
     // The child output can contain driver diagnostics. Keep it out of CI logs
     // because this harness never needs a connection string to diagnose which
     // fail-closed boundary stopped the run.
-    throw new Error("ephemeral_e2e_migrations_failed");
+    const last = [...String(result.stdout || "").matchAll(/Applying ([0-9A-Za-z_-]+\.sql)\.\.\./g)].at(-1)?.[1] || "before_first_migration";
+    const code = String(result.stderr || "").match(/code: ['"]([A-Z0-9_]+)['"]/)?.[1] || "no_driver_code";
+    const relation = String(result.stderr || "").match(/(?:constraint|routine): ['"]([A-Za-z0-9_]+)['"]/)?.[1] || "no_constraint";
+    throw new Error(`ephemeral_e2e_migrations_failed:${last}:${code}:${relation}`);
   }
+  return String(result.stdout || "").split(/\r?\n/).filter(line=>line.startsWith('{"bootstrap_prerequisite":')).map(line=>{
+    const item=JSON.parse(line).bootstrap_prerequisite;
+    assert.equal(item.id,'secure-delivery-v1');assert.match(item.sha256,/^[a-f0-9]{64}$/);
+    assert.equal(item.source,'db/bootstrap/secure-delivery-v1.sql');return item;
+  });
 }
 
 class SseProbe {
@@ -125,7 +135,7 @@ class SseProbe {
 async function run() {
   config = readEnterpriseEphemeralE2eConfig(process.env);
   const emptyTarget = await assertDatabaseStartsEmpty();
-  applyMigrations();
+  const bootstrapPrerequisites = applyMigrations();
 
   process.env.NODE_ENV = "test";
   process.env.VERCEL_ENV = "test";
@@ -1056,6 +1066,7 @@ async function run() {
     };
     httpHarness = await startEnterpriseEphemeralHttpHarness({
       routes: [
+        ...(await supplierChainRoutes()),
         { method: "GET", match: exact("/sun"), handle: readPublicSun },
         { method: "GET", match: exact("/admin/supplier-orders"), handle: listSupplierOrders },
         { method: "POST", match: exact("/admin/supplier-orders"), handle: createSupplierOrder },
@@ -1555,6 +1566,11 @@ async function run() {
     const listedSupplierPayload = await listedSupplierOrders.json();
     assert.ok(listedSupplierPayload.orders.some((order) => String(order.id) === httpSupplierOrderId));
     assert.equal(listedSupplierPayload.orders.some((order) => String(order.tenant_id) === otherTenantId), false);
+
+    const supplierChainEvidence = await runSupplierChainAcceptance({
+      client,httpHarness,tenantId,tenantSlug,adminHeaders,otherTenantAdminHeaders,
+      superAdminHeaders,packagingApproverHeaders,packagingSpec,packagingEvidenceRefs,
+    });
 
     // Exercise the real admin API-key lifecycle against the disposable
     // database. The tenant in the request body is deliberately forged: the
@@ -2192,6 +2208,8 @@ async function run() {
         consumer_network_fixture_events: consumerNetworkEvents.length,
         consumer_network_routes: Object.keys(consumerNetworkPayloads).length,
       },
+      bootstrap_prerequisites: bootstrapPrerequisites,
+      supplier_chain_acceptance: supplierChainEvidence,
       consumer_network_query_plans: consumerNetworkExplainEvidence,
       external_effects: false,
       webhook_delivery_transport: "in_process_signature_verified_no_network",

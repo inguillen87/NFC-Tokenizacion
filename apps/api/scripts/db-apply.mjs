@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import pg from "pg";
+import { prepareEnterpriseBootstrapPrerequisite } from "./lib/enterprise-bootstrap-prerequisites.mjs";
+import { canonicalMigrationSql } from "./lib/migration-source.mjs";
 
 import { assertSafeDbApplyStart, DbApplySafetyError } from "./lib/db-apply-safety.mjs";
 import {
@@ -93,7 +95,7 @@ try {
 
   const pending = (only ? [only] : files).filter((file) => !applied.has(file));
   for (const file of pending) {
-    const body = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+    const body = canonicalMigrationSql(fs.readFileSync(path.join(migrationsDir, file), "utf8"));
     if (containsExplicitTransactionControl(body)) {
       throw new Error(
         `Migration ${file} contains explicit transaction control. `
@@ -108,6 +110,10 @@ try {
       await client.query("SELECT pg_advisory_xact_lock(487421337)");
       const concurrent = await client.query("SELECT 1 FROM schema_migrations WHERE id = $1", [file]);
       if (!concurrent.rowCount) {
+        if (cleanBootstrapConfig) {
+          const prerequisite = await prepareEnterpriseBootstrapPrerequisite(client,file,{emptyLocalBootstrap:true});
+          if(prerequisite) console.log(JSON.stringify({bootstrap_prerequisite:prerequisite}));
+        }
         await client.query(body);
         await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [file]);
       }

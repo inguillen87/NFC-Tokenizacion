@@ -537,3 +537,14 @@ test("ephemeral E2E CI pins every external action and service image", async () =
   assert.match(workflow, /\n\s{2}merge_group:\s*\n/);
   assert.doesNotMatch(workflow, /\n\s+paths:/);
 });
+
+// The Windows QA host carries this exact installed build. Keep all other target
+// checks (loopback, role, confirmation, empty database) intact.
+test('local PostgreSQL 17.10 is accepted only at its exact server version',async()=>{
+ const config=readEnterpriseEphemeralE2eConfig({...validEnvironment,NEXID_E2E_EXPECTED_POSTGRES_VERSION:'17.10'});
+ assert.equal(config.expectedServerVersionNumber,170010);
+ for(const version of [170009,170011,180004]){
+  const db={async query(){return{rows:[{database_name:'nexid_e2e',database_role:'nexid_e2e',neon_endpoint_id:null,transaction_read_only:'off',server_version_number:version}]};}};
+  await assert.rejects(()=>assertEmptyEnterpriseE2eDatabase(db,config),/postgres_version_mismatch/);
+ }
+});

@@ -1,0 +1,135 @@
+{
+  "status": "local-candidate-verified-not-deployed",
+  "recordedAt": "2026-09-24T16:20:18.647Z",
+  "migrations": {
+    "expected": 132,
+    "applied": 132
+  },
+  "bootstrapPrerequisites": [
+    {
+      "id": "secure-delivery-v1",
+      "sha256": "90e1e2eb9c883d5bd880e4dcff5c7f90e1062b6041e14755ac4643f650df0898",
+      "source": "db/bootstrap/secure-delivery-v1.sql"
+    }
+  ],
+  "supplierChain": {
+    "status": "passed",
+    "checks": [
+      "request draft persisted",
+      "explicit request submission",
+      "foreign company denied before private request disclosure",
+      "clarification registered by NexID",
+      "company clarification response",
+      "request read after clarification",
+      "versioned quotation issued",
+      "technical conversion blocked before buyer acceptance",
+      "quotation is an actual server-side conversion gate",
+      "buyer acceptance persisted",
+      "real atomic request-to-order conversion",
+      "provisioned request bound to technical order",
+      "request and technical order agree",
+      "one real technical sub-batch, not a fixture function",
+      "duplicate conversion rejected",
+      "packaging draft through real route",
+      "packaging submitted through real route",
+      "packaging approved by separate identity",
+      "approved specification reconstructed from real decision",
+      "specification matches immutable approval receipt",
+      "supplier bound to exact approved specification",
+      "dispatch forbidden before export exists",
+      "tenant cannot export factory key material",
+      "actual encrypted package export",
+      "exported envelope bytes match their hash",
+      "generated password is absent from API response",
+      "real AES-GCM envelope decrypts to a ZIP in test memory",
+      "decrypted archive matches export digest",
+      "export persists one recoverable encrypted artifact",
+      "second export blocked by one-time gate",
+      "wrong supplier recipient cannot be dispatched",
+      "actual lifecycle dispatch creates receipt",
+      "documentary acknowledgement reads real export",
+      "dispatch and acknowledgement link same supplier binding",
+      "acknowledgement selects the actual encrypted export",
+      "company cannot write documentary acknowledgement",
+      "documentary acknowledgement persisted",
+      "lost-response retry returns original acknowledgement",
+      "retry commits no second acknowledgement",
+      "software evidence never claims physical or authenticated supplier receipt",
+      "reassignment closed after dispatch",
+      "ack write switch disables changes",
+      "history remains readable with writes disabled",
+      "disabled rollout preserves truthful history",
+      "entire durable graph agrees without duplicated keys, orders or receipts",
+      "enum-backed ticket history read",
+      "enum-backed ticket update committed",
+      "typed status transition agrees with immutable receipt",
+      "enum-backed ticket retry returns original receipt",
+      "support retry does not duplicate an enum-backed transition",
+      "foreign tenant cannot read support history",
+      "full schema retains its original enum; no column coercion or permissive replacement"
+    ],
+    "counts": {
+      "orders": 1,
+      "dispatches": 1,
+      "acknowledgements": 1,
+      "quotations": 2,
+      "clarifications": 2,
+      "one_time_export": true
+    },
+    "request_conversion": "real_function",
+    "packaging_decisions": "real_routes_distinct_identities",
+    "encrypted_export": "real_exporter_and_memory_only_decrypt",
+    "ticket_status_type": "ticket_status",
+    "external_supplier_contact": false,
+    "physical_evidence": "synthetic_declared_test_input",
+    "database_role": "dedicated_ephemeral_owner_not_production_role"
+  },
+  "localCounts": {
+    "safety": 26,
+    "apiFocal": 434,
+    "postgresRegression": 154,
+    "ticketTypeMatrix": 35
+  },
+  "engine": "PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit",
+  "cleanup": {
+    "clusterStopped": true,
+    "dataDirectoryPresent": false,
+    "productionUsed": false
+  },
+  "hashes": {
+    "cleanInstall0112": "76b8bb2bd0c1df30ff80f6e8f23a4d17f58d26f92d440a5494ddd9b22620fd0b",
+    "forward0121": "9dabc6b9dc8b13b542cced05f9dff66f528bdc37f1ec4772026e9f6f9de60b1f"
+  },
+  "productionObserved": [
+    {
+      "origin": "https://app.nexid.lat",
+      "release": "2026.09.23-dashboard.41",
+      "checkedAt": "2026-09-24T16:20:17.118Z"
+    },
+    {
+      "origin": "https://api.nexid.lat",
+      "release": "2026.09.23-api-supplier-requests.2",
+      "checkedAt": "2026-09-24T16:20:17.867Z"
+    },
+    {
+      "origin": "https://nexid.lat",
+      "release": "2026.09.21-web-support.1",
+      "checkedAt": "2026-09-24T16:20:18.647Z"
+    }
+  ],
+  "ci": {
+    "status": "verify-exact-commit-after-push",
+    "engines": [
+      "16.4",
+      "18.4"
+    ]
+  },
+  "boundaries": {
+    "productionDeployment": false,
+    "remoteDatabaseMigration": false,
+    "externalSupplierContact": false,
+    "physicalNfcCertification": false,
+    "nextMiddlewareTlsExercised": false,
+    "productionRuntimeDatabaseRoleCertified": false
+  }
+}

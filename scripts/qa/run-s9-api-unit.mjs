@@ -8,6 +8,7 @@ const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
   /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|TMPDIR|HOME|USERPROFILE|APPDATA|LOCALAPPDATA|CI)$/i.test(key)));
 Object.assign(env, { NODE_ENV: 'test', VERCEL_ENV: 'test', NEXT_TELEMETRY_DISABLED: '1' });
 const files = [
+  'migration-source', 'enterprise-bootstrap-prerequisites', 'supplier-chain-acceptance',
   'supplier-delivery-ack-policy', 'supplier-request-delivery-ack', 'supplier-requests', 'supplier-request-reviews', 'supplier-request-assignments', 'supplier-request-cancellation', 'supplier-binding-policy', 'supplier-request-binding', 'supplier-quote-policy', 'supplier-request-quotes',
   'supplier-operator-identity', 'clerk-supplier-operator',
   'support-report', 'support-report-routes', 'admin-ticket-lookup', 'admin-ticket-workflow', 'public-cta-request-truth', 'sun-fresh-handoff', 'admin-tickets-rbac-contract', 'admin-resource-tenant-isolation',

@@ -6,6 +6,7 @@ const EPHEMERAL_DATABASE_RE = /^nexid_e2e(?:_[a-z0-9][a-z0-9_-]{0,48})?$/;
 const SUPPORTED_POSTGRES_VERSION_NUMBERS = new Map([
   ["16.4", 160004],
   ["18.4", 180004],
+  ["17.10", 170010], // Exact local QA binary; not a wildcard or remote-target exception.
 ]);
 
 function required(env, name) {

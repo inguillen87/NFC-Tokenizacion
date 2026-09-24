@@ -19,7 +19,8 @@ test('ticket workflow PostgreSQL harness rejects remote, production and unapprov
   for (const target of [null, 'postgres://nexid_e2e@remote.invalid/nexid_e2e_s9', 'postgres://postgres@localhost/nexid_e2e_s9', 'postgres://nexid_e2e@localhost/production', 'postgres://nexid_e2e@localhost/nexid_e2e_s9?options=x']) assert.throws(() => qaTarget(target));
 });
 
-test('actual 0112 ticket workflow is scoped, atomic, append-only and safe under concurrent retries', {
+for(const statusType of ['text','ticket_status']) {
+test(`actual ticket workflow with ${statusType} is scoped, atomic, append-only and safe under concurrent retries`, {
   skip: !process.env.NEXID_S9_QA_DATABASE_URL, timeout: 60000,
 }, async t => {
   const connectionString = qaTarget(process.env.NEXID_S9_QA_DATABASE_URL);
@@ -70,10 +71,11 @@ test('actual 0112 ticket workflow is scoped, atomic, append-only and safe under 
     }
     await observer.query(`CREATE SCHEMA "${schema}"`); schemaCreated = true;
     for (const client of clients) await client.query(`SET search_path TO "${schema}",pg_catalog`);
+    if(statusType==='ticket_status')await observer.query("CREATE TYPE ticket_status AS ENUM ('open','pending','closed')");
     await observer.query(`CREATE TABLE tenants(id uuid PRIMARY KEY,slug text NOT NULL UNIQUE);
       CREATE TABLE users(id uuid PRIMARY KEY,admin_status text NOT NULL DEFAULT 'active');
       CREATE TABLE memberships(user_id uuid NOT NULL REFERENCES users(id),tenant_id uuid REFERENCES tenants(id),role text NOT NULL);
-      CREATE TABLE tickets(id uuid PRIMARY KEY,tenant_id uuid REFERENCES tenants(id),status text NOT NULL,source text NOT NULL,updated_at timestamptz NOT NULL,title text);
+      CREATE TABLE tickets(id uuid PRIMARY KEY,tenant_id uuid REFERENCES tenants(id),status ${statusType} NOT NULL,source text NOT NULL,updated_at timestamptz NOT NULL,title text);
       CREATE TABLE event_incidents(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),ticket_id uuid NOT NULL UNIQUE REFERENCES tickets(id));
       CREATE TABLE audit_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),actor_id uuid REFERENCES users(id),tenant_id uuid REFERENCES tenants(id),action text NOT NULL,resource_type text NOT NULL,resource_id text,before_hash text,after_hash text,ip_address inet,user_agent text,request_id text,created_at timestamptz NOT NULL DEFAULT now());`);
     await observer.query("INSERT INTO tenants VALUES($1,'qa-a'),($2,'qa-b');", [tenantA, tenantB]);
@@ -146,10 +148,10 @@ test('actual 0112 ticket workflow is scoped, atomic, append-only and safe under 
     });
 
     await t.test('legacy, unassigned and incident-managed tickets stay read-only without invented workflow states', async () => {
-      const cases = [[{ status: 'legacy_review' }, 'legacy_status'], [{ tenantId: null }, 'tenant_unassigned'], [{ source: 'event_incident' }, 'incident_managed'], [{}, 'incident_managed']];
+      const cases = [...(statusType==='text'?[[{ status: 'legacy_review' }, 'legacy_status']]:[]), [{ tenantId: null }, 'tenant_unassigned'], [{ source: 'event_incident' }, 'incident_managed'], [{}, 'incident_managed']];
       for (let index = 0; index < cases.length; index++) {
         const [patch, reason] = cases[index], id = await createTicket(patch);
-        if (index === 3) await observer.query('INSERT INTO event_incidents(ticket_id) VALUES($1)', [id]);
+        if (index === cases.length-1) await observer.query('INSERT INTO event_incidents(ticket_id) VALUES($1)', [id]);
         const scope = patch.tenantId === null ? { tenantId: null, tenantSlug: null } : {};
         const current = (await read(id, scope)).current;
         assert.equal(current.canUpdate, false); assert.equal(current.blockedReason, reason);
@@ -263,9 +265,22 @@ test('actual 0112 ticket workflow is scoped, atomic, append-only and safe under 
       await assert.rejects(observer.query(`DELETE FROM ${operationTable} WHERE id=$1`, [items[0].operationId]), error => error.code === '55000');
       assert.deepEqual(await counts(id), { operations: 53, audits: 53 });
     });
+    await t.test('0121 forward repair preserves pre-existing rows, receipts, revisions, sequence and type',async()=>{
+      const id=await createTicket(),initial=await read(id),key=randomUUID();await mutate(id,initial.current.revision,{requestId:key});
+      const before=await read(id),countBefore=await counts(id);
+      const source=await readFile(new URL('../db/migrations/20260924163000_0121_support_ticket_status_type_compatibility.sql',import.meta.url),'utf8');
+      const repair=source.replace(/\bpublic\./g,schema+'.').replace(/pg_catalog\s*,\s*public/g,'pg_catalog,'+schema);
+      await observer.query('BEGIN');try{await observer.query(repair);await observer.query('COMMIT');}catch(error){await observer.query('ROLLBACK');throw error;}
+      assert.deepEqual(await read(id),before);assert.deepEqual(await counts(id),countBefore);
+      const replay=await mutate(id,initial.current.revision,{requestId:key});assert.equal(replay.outcome,'replayed');assert.equal(replay.receipt.operationId,before.items[0].operationId);
+      const result=await mutate(id,before.current.revision,{status:'closed'});assert.equal(result.current.status,'closed');
+      const actual=(await observer.query("SELECT udt_name FROM information_schema.columns WHERE table_schema=$1 AND table_name='tickets' AND column_name='status'",[schema])).rows[0].udt_name;assert.equal(actual,statusType);
+    });
   } finally {
     for (const client of [first, second]) { await client.query('ROLLBACK').catch(() => {}); await client.end().catch(() => {}); }
     if (schemaCreated) await observer.query(`DROP SCHEMA "${schema}" CASCADE`);
     await observer.end().catch(() => {});
   }
 });
+
+}
