@@ -1,0 +1,187 @@
+{
+  "protocol": "nexid.supplier-schema-observation.v1",
+  "status": "blocked_on_schema_or_definition",
+  "promotionAllowed": false,
+  "atomicSnapshot": false,
+  "retrievedDatabaseCredentials": false,
+  "deploymentSecretValuesRead": false,
+  "businessRowsRead": false,
+  "remoteSqlExecuted": false,
+  "schemaHashes": {
+    "json": "72bff0fcf8a42eee7f1f25b027ecb9f9cae10a9c150391f948e1dd9cf0f1b926",
+    "sql": "9a8be5aeeab9c7c60c0c77a678d88f3a63f8ddf8afc6dfce1c9ba95e0b299fac"
+  },
+  "features": [
+    {
+      "id": "assignments",
+      "migrationSuffix": "0116_supplier_request_assignments.sql",
+      "structurePresent": true,
+      "missingTables": [],
+      "missingColumns": [],
+      "missingFunctions": [],
+      "bodyComparison": "matches",
+      "differentBodies": [],
+      "unverifiedBodies": [],
+      "ledgerApplied": "unverified"
+    },
+    {
+      "id": "cancellation",
+      "migrationSuffix": "0117_supplier_request_cancellation.sql",
+      "structurePresent": false,
+      "missingTables": [],
+      "missingColumns": [
+        "supplier_requests.cancellation_reason",
+        "supplier_requests.cancelled_by",
+        "supplier_requests.cancelled_at"
+      ],
+      "missingFunctions": [
+        "nexid_cancel_supplier_request_v1"
+      ],
+      "bodyComparison": "unverified",
+      "differentBodies": [],
+      "unverifiedBodies": [],
+      "ledgerApplied": "unverified"
+    },
+    {
+      "id": "quotations",
+      "migrationSuffix": "0118_supplier_request_quotes.sql",
+      "structurePresent": false,
+      "missingTables": [
+        "supplier_request_quote_events"
+      ],
+      "missingColumns": [],
+      "missingFunctions": [
+        "nexid_mutate_supplier_quote_v1",
+        "nexid_supplier_quote_read_v1"
+      ],
+      "bodyComparison": "unverified",
+      "differentBodies": [],
+      "unverifiedBodies": [],
+      "ledgerApplied": "unverified"
+    },
+    {
+      "id": "supplier_binding",
+      "migrationSuffix": "0119_supplier_request_binding.sql",
+      "structurePresent": false,
+      "missingTables": [
+        "supplier_request_binding_events"
+      ],
+      "missingColumns": [],
+      "missingFunctions": [
+        "nexid_mutate_supplier_binding_v1",
+        "nexid_supplier_binding_read_v1"
+      ],
+      "bodyComparison": "unverified",
+      "differentBodies": [],
+      "unverifiedBodies": [],
+      "ledgerApplied": "unverified"
+    },
+    {
+      "id": "documentary_ack",
+      "migrationSuffix": "0120_supplier_delivery_ack.sql",
+      "structurePresent": false,
+      "missingTables": [
+        "supplier_delivery_ack_events"
+      ],
+      "missingColumns": [],
+      "missingFunctions": [
+        "nexid_mutate_supplier_delivery_ack_v1",
+        "nexid_supplier_delivery_ack_read_v1"
+      ],
+      "bodyComparison": "unverified",
+      "differentBodies": [],
+      "unverifiedBodies": [],
+      "ledgerApplied": "unverified"
+    },
+    {
+      "id": "ticket_type_compatibility",
+      "migrationSuffix": "0121_support_ticket_status_type_compatibility.sql",
+      "structurePresent": true,
+      "missingTables": [],
+      "missingColumns": [],
+      "missingFunctions": [],
+      "bodyComparison": "different",
+      "differentBodies": [
+        "nexid_support_ticket_current_v1",
+        "nexid_read_support_ticket_workflow_v1",
+        "nexid_transition_support_ticket_v1"
+      ],
+      "unverifiedBodies": [],
+      "ledgerApplied": "unverified"
+    }
+  ],
+  "ticketStatusType": "text",
+  "unverified": [
+    "deployment_database_binding",
+    "migration_ledger",
+    "routine_signatures_and_security_attributes",
+    "column_constraints_and_types",
+    "catalog_values",
+    "actual_runtime_role",
+    "effective_database_acl",
+    "runtime_feature_flags",
+    "authenticated_end_to_end_acceptance"
+  ],
+  "nextActions": [
+    "Bind the chosen Neon branch to the exact deployment before authorizing any database action.",
+    "Reconcile the migration ledger; structure presence is not permission to rerun a migration.",
+    "Validate missing definitions on an isolated schema before any production change.",
+    "Verify real runtime privileges and catalog values with an approved read-only database connection.",
+    "Coordinate compatible API/BFF/dashboard releases; leave new writes disabled until acceptance."
+  ],
+  "collection": {
+    "method": "three_explicit_control_plane_GETs",
+    "durationMs": 11797,
+    "branchIdentityVerified": true,
+    "exportPairTransactionallyConsistent": false,
+    "finishedAt": "2026-09-24T23:30:14.519Z"
+  },
+  "expectedSource": {
+    "migrationFiles": [
+      "20260922100000_0112_support_ticket_workflow.sql",
+      "20260923120000_0113_supplier_requests.sql",
+      "20260923150000_0114_supplier_request_reviews.sql",
+      "20260923180000_0115_supplier_operator_role_enum.sql",
+      "20260923180100_0116_supplier_request_assignments.sql",
+      "20260924010000_0117_supplier_request_cancellation.sql",
+      "20260924050000_0118_supplier_request_quotes.sql",
+      "20260924110000_0119_supplier_request_binding.sql",
+      "20260924150000_0120_supplier_delivery_ack.sql",
+      "20260924163000_0121_support_ticket_status_type_compatibility.sql"
+    ]
+  },
+  "source": {
+    "provider": "neon-control-plane",
+    "method": "GET",
+    "observedAt": "2026-09-24T23:30:02.722Z",
+    "identityFingerprint": "fe83f36013dea0c10376c8a982f8bd8a9ba52eb6d5b2ae8ac27655535efe58f1",
+    "identityDetails": "kept_in_local_report_not_committed"
+  },
+  "deploymentObservations": [
+    {
+      "canonicalDomain": "api.nexid.lat",
+      "release": "2026.09.23-api-supplier-requests.2",
+      "commit": "fca60584bbbcc8ab18e1f06e578f0286723204ef",
+      "target": "production",
+      "readyState": "READY",
+      "observedAt": "2026-09-24T23:30:26.7417143Z"
+    },
+    {
+      "canonicalDomain": "app.nexid.lat",
+      "release": "2026.09.23-dashboard.41",
+      "commit": "71b3248dcd3d6d40d8eb6668c30ee5442b64195b",
+      "target": "production",
+      "readyState": "READY",
+      "observedAt": "2026-09-24T23:30:33.8641742Z"
+    }
+  ],
+  "validation": {
+    "newUnitTests": 33,
+    "apiFocalPassed": 503,
+    "harnessSafetyPassed": 95,
+    "buildPassed": true,
+    "buildCompletedAt": "2026-09-24T23:33:10.5886444Z"
+  },
+  "candidateBase": "c8b25d55e26fef19d53bf9b38db9f56be30b4113",
+  "scope": "read_only_control_plane_schema_comparison_not_deployment_authorization"
+}
