@@ -25,6 +25,8 @@ export async function supplierChainRoutes() {
   const pattern=new RegExp('^/admin/tickets/([a-f0-9-]{36})'+suffix+'$','i');
   routes.push({method,match:u=>{const m=pattern.exec(u.pathname);return m?{id:m[1]}:null;},handle:(req,p)=>module[method](req,{params:Promise.resolve(p)})});
  }
+ const readiness=await import('../../src/app/admin/diagnostics/runtime-readiness/route.ts');
+ routes.push({method:'GET',match:u=>u.pathname==='/admin/diagnostics/runtime-readiness',handle:readiness.GET});
  return routes;
 }
 
@@ -42,6 +44,21 @@ export async function runSupplierChainAcceptance(c) {
  const previous=new Map(flags.map(k=>[k,process.env[k]]));
  for(const k of flags)process.env[k]='true';
  try {
+  const route='/admin/diagnostics/runtime-readiness';
+  await call('runtime diagnostics reject an anonymous caller',route,{headers:{},status:401});
+  await call('tenant audit does not grant global runtime visibility',route,{headers:adminHeaders,status:403});
+  await call('runtime diagnostics reject scope selectors',route+'?tenant=other',{status:400});
+  const readiness=await call('runtime diagnostics query the actual connected database',route);
+  const identity=(await client.query('SELECT current_database() AS name,current_user::text AS role')).rows[0];
+  check(readiness.database.name===identity.name&&readiness.database.sessionRole===identity.role,'runtime diagnostic identity agrees with its SQL login');
+  check(readiness.requirements.every(x=>!x.missingMigrations.length&&!x.missingFunctions.length),'migrated schema contains the named definitions and recorded migrations');
+  const runtimeLimited=c.databaseRole==='isolated_restricted_login';
+  if(runtimeLimited){
+    check(readiness.requirements.some(x=>x.status==='execute_privilege_missing'),'diagnostics expose ungranted functions instead of widening the restricted role');
+    check(!readiness.privilegedConnection,'restricted SQL diagnostics do not claim owner privileges');
+  }else{check(readiness.requirements.every(x=>x.status==='named_prerequisites_present'),'owner execution rights are reported separately from restricted runtime rights');}
+  check(readiness.promotionAllowed===false&&readiness.migrationExecutionAllowed===false,'diagnostics never authorize promotion or migration');
+  check(readiness.customerRowsRead===false&&readiness.catalogs.valuesOrPricesReturned===false,'diagnostics are limited to reference metadata');
   const create=await call('request draft persisted','/admin/supplier-requests?tenant='+tenantSlug,{method:'POST',headers:adminHeaders,status:201,body:{title:'Ephemeral integrated supplier chain',construction_id:'pet_wet',quantity:4,pack_purpose:'trial_integration',notes:'Synthetic commercial request; no physical order or purchase.'}});
   const id=create.request.id,path='/admin/supplier-requests/'+id,query='?tenant='+tenantSlug;
   let current=(await call('explicit request submission',path+'/submit'+query,{method:'POST',headers:adminHeaders,body:{expected_revision:create.request.revision}})).request;
