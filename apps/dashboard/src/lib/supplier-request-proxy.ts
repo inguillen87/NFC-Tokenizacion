@@ -14,8 +14,9 @@ export async function forwardSupplierRequest(req: Request, segments: string[] = 
   const assigned = segments[0] === "assigned", operators = segments.length === 1 && segments[0] === "operators";
   const resource = assigned ? segments.slice(1) : segments;
   const review = resource.length === 2 && resource[1] === "review", assignment = !assigned && resource.length === 2 && resource[1] === "assignment";
-  const validResource = resource.length <= 2 && (!resource.length || UUID.test(resource[0])) && (resource.length !== 2 || (assigned ? review : ["submit", "review", "assignment"].includes(resource[1])));
-  const methodAllowed = operators ? req.method === "GET" : assigned ? review ? ["GET", "POST"].includes(req.method) : req.method === "GET" : review || assignment ? ["GET", "POST"].includes(req.method) : resource.length === 2 ? req.method === "POST" : resource.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method);
+  const cancellation = !assigned && resource.length === 2 && resource[1] === "cancellation";
+  const validResource = resource.length <= 2 && (!resource.length || UUID.test(resource[0])) && (resource.length !== 2 || (assigned ? review : ["submit", "review", "assignment", "cancellation"].includes(resource[1])));
+  const methodAllowed = operators ? req.method === "GET" : assigned ? review ? ["GET", "POST"].includes(req.method) : req.method === "GET" : review || assignment || cancellation ? ["GET", "POST"].includes(req.method) : resource.length === 2 ? req.method === "POST" : resource.length === 1 ? ["GET", "PATCH"].includes(req.method) : ["GET", "POST"].includes(req.method);
   if ((!operators && !validResource) || !methodAllowed) return deny("supplier_request_method_invalid", 405);
   const before = url.searchParams.get("before_revision");
   if (url.searchParams.getAll("tenant").length > 1 || ((assigned || operators) && url.searchParams.has("tenant")) || url.searchParams.getAll("before_revision").length > 1 || [...url.searchParams.keys()].some(key => !(key === "tenant" && !operators && !assigned) && !((review || assignment) && !write && key === "before_revision")) || (before !== null && (!/^[1-9]\d*$/.test(before) || !Number.isSafeInteger(Number(before)) || Number(before) > 2_147_483_646))) return deny("supplier_request_scope_forbidden", 400);

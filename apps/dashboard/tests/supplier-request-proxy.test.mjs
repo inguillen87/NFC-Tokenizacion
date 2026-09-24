@@ -80,3 +80,10 @@ test('operator review never becomes a company response and separate denied revie
   for(const patch of [{permissions:['supplier_request.assigned.read']},{deniedPermissions:['supplier_request.assigned.review']}]){const d=deps({...operator(),...patch});assert.equal((await run(req('POST','',{},{action:'request_information'}),['assigned',id,'review'],d)).status,403);assert.equal(d.calls.length,0);}
   const d=deps(operator());assert.equal((await run(req('POST','',{},{action:'respond'}),['assigned',id,'review'],d)).status,403);assert.equal(d.calls.length,0);
 });
+
+test('cancellation BFF exposes only GET/POST with authenticated tenant and same-origin command',async()=>{
+ const body={expected_revision:2,expected_review_revision:0,reason:'Proyecto suspendido.'};
+ for(const method of ['GET','POST']){const d=deps();assert.equal((await run(req(method,'',{},body),[id,'cancellation'],d)).status,200);assert.equal(d.calls[0].url,'http://synthetic-api.invalid/admin/supplier-requests/'+id+'/cancellation?tenant=qa-only');if(method==='POST')assert.deepEqual(JSON.parse(d.calls[0].init.body),body);}
+ for(const [request,segments]of [[req('DELETE'),[id,'cancellation']],[req('PATCH'),[id,'cancellation']],[req('GET','?before_revision=1'),[id,'cancellation']],[req('POST','',{origin:'http://foreign.invalid'}),[id,'cancellation']],[req('POST'),['assigned',id,'cancellation']]]){const d=deps();assert.ok([400,403,405].includes((await run(request,segments,d)).status));assert.equal(d.calls.length,0);}
+ for(const patch of [{...operator()},{role:'viewer'},{isDemo:true},{deniedPermissions:['supplier_order.create']}]){const d=deps(patch);assert.equal((await run(req('POST'),[id,'cancellation'],d)).status,403);assert.equal(d.calls.length,0);}
+});

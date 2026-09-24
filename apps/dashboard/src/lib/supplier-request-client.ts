@@ -2,7 +2,7 @@ import { SUPPLIER_CONSTRUCTIONS } from "./supplier-order-draft";
 
 export type SupplierRequestContent = { title: string; construction_id: string; quantity: number | null; pack_purpose: "trial_integration" | "production" | null; notes: string };
 export type SupplierRequestReviewSummary = { state: "pending" | "needs_information" | "answered"; revision: number; updated_at: string | null };
-export type SupplierRequest = SupplierRequestContent & { id: string; tenant_id: string; tenant_slug: string; status: "draft" | "submitted" | "provisioned"; revision: number; created_at: string; updated_at: string; submitted_at: string | null; order_id: string | null; review_summary?: SupplierRequestReviewSummary };
+export type SupplierRequest = SupplierRequestContent & { id: string; tenant_id: string; tenant_slug: string; status: "draft" | "submitted" | "provisioned" | "cancelled"; revision: number; created_at: string; updated_at: string; submitted_at: string | null; order_id: string | null; cancellation_reason?: string; cancelled_by?: string; cancelled_at?: string; review_summary?: SupplierRequestReviewSummary };
 export type SupplierRequestReceipt = { idempotency_key: string; action: "create" | "patch" | "submit"; revision: number };
 export type SupplierRequestEnvelope = { request: SupplierRequest; receipt?: SupplierRequestReceipt; idempotent_replay?: boolean };
 export type SupplierRequestCommand = Readonly<{ tenant: string; id?: string; action: "create" | "patch" | "submit"; key: string; body: SupplierRequestContent | (SupplierRequestContent & { expected_revision: number }) | { expected_revision: number } }>;
@@ -29,14 +29,21 @@ function scopeOf(payload: unknown, tenant: string) {
 export function parseSupplierRequestRecord(raw: unknown, tenant = ""): SupplierRequest {
   const item = object(raw);
   if (!item || typeof item.id !== "string" || !SUPPLIER_REQUEST_UUID.test(item.id) || typeof item.tenant_id !== "string" || !SUPPLIER_REQUEST_UUID.test(item.tenant_id) || typeof item.tenant_slug !== "string" || !tenantPattern.test(item.tenant_slug) || (tenant && item.tenant_slug !== tenant)
-    || !["draft", "submitted", "provisioned"].includes(item.status) || !revision(item.revision) || typeof item.title !== "string" || !item.title.trim() || item.title.length > 200 || typeof item.notes !== "string" || item.notes.length > 4000
+    || !["draft", "submitted", "provisioned", "cancelled"].includes(item.status) || !revision(item.revision) || typeof item.title !== "string" || !item.title.trim() || item.title.length > 200 || typeof item.notes !== "string" || item.notes.length > 4000
     || !(item.construction_id === "" || SUPPLIER_CONSTRUCTIONS.some(profile => profile.id === item.construction_id)) || !(item.quantity === null || (Number.isSafeInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 100_000_000)) || ![null, "trial_integration", "production"].includes(item.pack_purpose)
     || !date(item.created_at) || !date(item.updated_at) || !(item.submitted_at === null || date(item.submitted_at)) || !(item.order_id === null || (typeof item.order_id === "string" && SUPPLIER_REQUEST_UUID.test(item.order_id)))) return invalid();
   if (item.status !== "draft" && (!item.construction_id || !item.quantity || !item.pack_purpose || !item.submitted_at)) return invalid();
   if ((item.status === "provisioned") !== Boolean(item.order_id) || (item.status === "draft" && item.submitted_at !== null)) return invalid();
-  return { id: item.id, tenant_id: item.tenant_id, tenant_slug: item.tenant_slug, status: item.status, revision: item.revision, title: item.title, construction_id: item.construction_id, quantity: item.quantity, pack_purpose: item.pack_purpose, notes: item.notes, created_at: item.created_at, updated_at: item.updated_at, submitted_at: item.submitted_at, order_id: item.order_id, ...(item.review_summary === undefined ? {} : { review_summary: parseSupplierRequestReviewSummary(item.review_summary) }) };
+  let cancellation = {};
+  if (item.status === "cancelled") {
+    if (typeof item.cancellation_reason !== "string" || !item.cancellation_reason.trim() || item.cancellation_reason.length > 2000
+      || typeof item.cancelled_by !== "string" || !SUPPLIER_REQUEST_UUID.test(item.cancelled_by) || !date(item.cancelled_at)
+      || Date.parse(item.cancelled_at) !== Date.parse(item.updated_at) || Date.parse(item.cancelled_at) < Date.parse(item.submitted_at)) return invalid();
+    cancellation = { cancellation_reason: item.cancellation_reason, cancelled_by: item.cancelled_by, cancelled_at: item.cancelled_at };
+  } else if ([item.cancellation_reason, item.cancelled_by, item.cancelled_at].some(value => value !== undefined && value !== null)) return invalid();
+  return { ...cancellation, id: item.id, tenant_id: item.tenant_id, tenant_slug: item.tenant_slug, status: item.status, revision: item.revision, title: item.title, construction_id: item.construction_id, quantity: item.quantity, pack_purpose: item.pack_purpose, notes: item.notes, created_at: item.created_at, updated_at: item.updated_at, submitted_at: item.submitted_at, order_id: item.order_id, ...(item.review_summary === undefined ? {} : { review_summary: parseSupplierRequestReviewSummary(item.review_summary) }) };
 }
-export type SupplierRequestInboxFilter = "all" | "draft" | "pending" | "needs_information" | "answered" | "provisioned" | "unknown";
+export type SupplierRequestInboxFilter = "all" | "draft" | "pending" | "needs_information" | "answered" | "provisioned" | "cancelled" | "unknown";
 export function supplierRequestManagementState(item: SupplierRequest): Exclude<SupplierRequestInboxFilter, "all"> {
   return item.status === "submitted" ? item.review_summary?.state || "unknown" : item.status;
 }

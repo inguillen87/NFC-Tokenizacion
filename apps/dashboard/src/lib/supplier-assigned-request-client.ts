@@ -7,7 +7,7 @@ export function parseSupplierAssignedRequests(payload: unknown, operatorId: stri
   if (!SUPPLIER_REQUEST_UUID.test(operatorId) || !data || data.ok !== true || data.protocol !== "nexid.supplier-request.v1" || data.demo === true || data.demoMode === true || data.dataSource === "demo" || !scope || scope.mode !== "assigned" || scope.operator_id !== operatorId) return invalid();
   function parse(raw: unknown): SupplierAssignedRequest {
     const item = parseSupplierRequestRecord(raw), assignment = object(object(raw)?.assignment);
-    if (item.status === "draft" || !item.review_summary || !assignment || assignment.operator_id !== operatorId || !Number.isSafeInteger(assignment.revision) || assignment.revision < 1 || typeof assignment.updated_at !== "string" || !Number.isFinite(Date.parse(assignment.updated_at))) return invalid();
+    if (item.status === "draft" || item.status === "cancelled" || !item.review_summary || !assignment || assignment.operator_id !== operatorId || !Number.isSafeInteger(assignment.revision) || assignment.revision < 1 || typeof assignment.updated_at !== "string" || !Number.isFinite(Date.parse(assignment.updated_at))) return invalid();
     return { ...item, assignment: { operator_id: operatorId, revision: assignment.revision, updated_at: assignment.updated_at } };
   }
   if (id) { const request = parse(data.request); if (request.id !== id) return invalid(); return { request }; }
