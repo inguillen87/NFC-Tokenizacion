@@ -108,6 +108,10 @@ const BAD_INPUT_REASONS = [
 ];
 
 const CONFLICT_REASONS = [
+  "supplier_binding_required",
+  "supplier_binding_spec_changed",
+  "supplier_binding_recipient_mismatch",
+  "supplier_binding_receipt_invalid",
   "supplier_order_lifecycle_idempotency_conflict",
   "supplier_order_lifecycle_transition_already_recorded",
   "supplier_order_lifecycle_pack_purpose_invalid",

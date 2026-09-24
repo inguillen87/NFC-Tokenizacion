@@ -1,7 +1,7 @@
 name: Audited support ticket status changes
 on:
   push:
-    branches: [codex/nexid-s9-ticket-workflow-api-20260922, codex/nexid-request-cancellation-api-20260924, codex/nexid-request-quotes-api-20260924]
+    branches: [codex/nexid-s9-ticket-workflow-api-20260922, codex/nexid-request-cancellation-api-20260924, codex/nexid-request-quotes-api-20260924, codex/nexid-supplier-binding-api-20260924]
     paths:
       - apps/api/**
       - packages/core/**
