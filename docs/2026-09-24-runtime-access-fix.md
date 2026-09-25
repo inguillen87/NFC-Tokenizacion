@@ -29,3 +29,27 @@ La inspección visual encontró que el estilo compartido coloreaba el enlace pri
 El test de preservación sigue fijando 439 archivos fuente de la base publicada. Se excluyeron de forma explícita únicamente los dos archivos de cabecera/campana que se revisan en este hotfix; no se eliminó el control. El código API, las dependencias, los contratos de negocio .41 y el BFF del diagnóstico permanecen intactos. Auditoría de dependencias, control de secretos y diff check aprobados.
 
 La publicación requiere verificar CI del commit exacto, preparar ese mismo código con configuración de producción y comprobar el artefacto antes de promover. No se incluyen las ramas comerciales ni migraciones pendientes. El cierre de publicación y cualquier prueba con sesión real se registrarán aparte; este documento no afirma todavía ese resultado.
+
+## Cierre: corrección publicada y comprobada
+
+Código publicado: `cb2a845d8220d32716faa2a925ab7a03fe37908f`, árbol `ce35c4cc517096348bf02ced4791b7c0d592402d`. El workflow `36088657673` terminó aprobado sobre ese commit, incluidas todas sus pruebas de navegador y compilación. Se verificó además localmente que el árbol revisado no cambiara durante unitarias, tipos, build y ambos navegadores.
+
+El dominio `app.nexid.lat` ya resuelve al despliegue READY `dpl_9T1NYietjqJRFZFPt266SJReEzB8`, con ese mismo código y entorno de producción. Se construyó sin asignación automática de dominios y se comprobó el artefacto antes de publicar. Un intento concurrente de promoción recibió 409 porque ya había una promoción en curso; no se forzó ni se sustituyó otro despliegue. La comprobación posterior confirmó el destino exacto esperado.
+
+Ocho comprobaciones públicas posteriores pasaron: contratos de negocio preservados, inicio de sesión requerido, rechazo de identidades aportadas por el llamador, rechazo de selectores, ausencia de métodos de escritura y protección de la pantalla de solicitudes. La API, su autorización, los permisos de cuentas y las migraciones no cambiaron.
+
+La corrección no da acceso global a la sesión de Balmec. Una sesión de empresa recibe el aviso explicativo y deja de montar la campana global; una sesión global autorizada conserva el diagnóstico. Los escenarios de empresa y superadministrador fueron probados con sesiones sintéticas; no se extrajo una cookie ni se realizó una consulta positiva con la sesión real del usuario.
+
+Evidencia de revisión independiente: `docs/releases/2026-09-25-runtime-access-hotfix-review.json`. Los avisos de extensiones/preload no se declaran resueltos por este cambio. Antes de una futura publicación del circuito comercial avanzado deberá integrarse esta corrección y repetirse su aceptación, sin reintroducir el comportamiento de la base anterior.
+
+## Cierre publicado — 25/09/2026
+
+Código `cb2a845d8220d32716faa2a925ab7a03fe37908f`. GitHub Actions `36088657673` aprobó todos los controles del dashboard y las suites de navegador sobre ese mismo SHA. El artefacto se construyó con configuración de producción, inicialmente sin asignar dominios, y superó siete comprobaciones HTTP previas.
+
+El dominio canónico app.nexid.lat fue verificado con despliegue `dpl_9T1NYietjqJRFZFPt266SJReEzB8`, estado READY, target production y el SHA corregido. Ocho comprobaciones HTTP posteriores aprobaron la preservación del contrato .41, login requerido, rechazo de identidades falsas, rechazo de selectores, ausencia de métodos de escritura y protección de solicitudes. La publicación se certifica por la identidad canónica y los sondeos HTTP, no por un código de salida supuesto de la CLI de promoción.
+
+Las pruebas de Tenant Admin y de la campana usaron identidades sintéticas. No se extrajeron cookies ni se cambió la cuenta del usuario para validar un acceso positivo; tampoco se declara validada la lectura global del diagnóstico con su sesión real. Al recargar, una sesión de empresa debe recibir el aviso de acceso restringido y no iniciar consultas de notificaciones globales. Una cuenta global autorizada conserva el diagnóstico.
+
+No se alteraron API, permisos, base de datos ni flags. La candidata avanzada se mantuvo intacta: esta corrección debe conservarse al integrar la siguiente publicación comercial, sin sustituirla por el baseline .41.
+
+Evidencia: `docs/releases/2026-09-25-runtime-access-hotfix.json`. El commit posterior de documentación no cambia el código publicado.

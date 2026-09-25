@@ -1,0 +1,55 @@
+{
+    "protocol":  "nexid.runtime-access-hotfix-review.v1",
+    "sourceCommit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+    "sourceTree":  "ce35c4cc517096348bf02ced4791b7c0d592402d",
+    "priorCommit":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+    "deployment":  {
+                       "commit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+                       "target":  "production",
+                       "id":  "dpl_9T1NYietjqJRFZFPt266SJReEzB8",
+                       "verifiedAt":  "2026-09-25T03:12:18.4809041Z",
+                       "state":  "READY"
+                   },
+    "ci":  {
+               "run":  36088657673,
+               "result":  "success",
+               "commit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f"
+           },
+    "unit":  {
+                 "existingSkipped":  2,
+                 "newTests":  34,
+                 "failed":  0,
+                 "passed":  1324
+             },
+    "browser":  {
+                    "priorConsoleChecks":  100,
+                    "syntheticTransport":  true,
+                    "hotfixChecks":  62,
+                    "syntheticSessions":  true,
+                    "hotfixViews":  6,
+                    "priorConsoleViews":  12
+                },
+    "canonicalHttp":  {
+                          "ok":  true,
+                          "origin":  "https://app.nexid.lat",
+                          "sourceCommit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+                          "checks":  [
+                                         "Full business release contract remains unchanged",
+                                         "New page exists and returns unauthenticated callers to login",
+                                         "BFF rejects anonymous without diagnostic disclosure",
+                                         "BFF rejects forged headers without diagnostic disclosure",
+                                         "BFF rejects local token without diagnostic disclosure",
+                                         "No caller-selected tenant or SQL target",
+                                         "No mutation handler exists",
+                                         "Existing requests page retains its login protection"
+                                     ],
+                          "authenticatedPositiveRead":  false,
+                          "businessWrites":  false,
+                          "observedAt":  "2026-09-25T03:11:04.728Z"
+                      },
+    "permissionsChanged":  false,
+    "backendChanged":  false,
+    "databaseMigrationsApplied":  false,
+    "commercialCandidatesPromoted":  false,
+    "positiveRealApplicationSessionTested":  false
+}
