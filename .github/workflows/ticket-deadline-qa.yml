@@ -1,7 +1,7 @@
 name: Dashboard ticket and CRM acceptance
 on:
   push:
-    branches: [codex/nexid-s9-ticket-deadline-20260922]
+    branches: [codex/nexid-s9-ticket-deadline-20260922, codex/nexid-runtime-console-ui-20260924]
     paths:
       - apps/dashboard/**
       - packages/**
@@ -59,6 +59,7 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-dependency-map/browser" node apps/dashboard/tests/dependency-map.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-supplier-order-draft/browser" node apps/dashboard/tests/supplier-order-draft.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-supplier-requests/browser" node apps/dashboard/tests/supplier-requests.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-runtime-console/browser" node apps/dashboard/tests/runtime-console.browser.mjs
           node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$RUNNER_TEMP/nexid-map-next.log" 2>&1 &
           map_server=$!
           trap 'kill "$map_server" 2>/dev/null || true' EXIT
