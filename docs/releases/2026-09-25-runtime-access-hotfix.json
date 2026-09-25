@@ -1,0 +1,65 @@
+{
+    "protocol":  "nexid.runtime-access-hotfix.v1",
+    "codeCommit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+    "baseline":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+    "ci":  {
+               "conclusion":  "success",
+               "sourceCommit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+               "runId":  36088657673
+           },
+    "newUnitTests":  34,
+    "dashboardUnitPassed":  1324,
+    "existingUnitSkips":  2,
+    "typecheckPassed":  true,
+    "buildPassed":  true,
+    "browser":  {
+                    "totalViews":  18,
+                    "syntheticTransport":  true,
+                    "hotfixChecks":  62,
+                    "syntheticSessions":  true,
+                    "primaryLinkContrastVerified":  true,
+                    "runtimeRegressionChecks":  100,
+                    "axeViolations":  0
+                },
+    "deployed":  {
+                     "id":  "dpl_9T1NYietjqJRFZFPt266SJReEzB8",
+                     "state":  "READY",
+                     "observedAt":  "2026-09-25T03:11:36.1753645Z",
+                     "target":  "production",
+                     "promotionConfirmedByCanonicalLookup":  true,
+                     "previousDeployment":  "dpl_4zaqgavAqv8ZXghjudwLhTTpFFmL",
+                     "commit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+                     "canonicalDomain":  "app.nexid.lat"
+                 },
+    "stagedHttpChecks":  7,
+    "canonicalHttp":  {
+                          "ok":  true,
+                          "origin":  "https://app.nexid.lat",
+                          "sourceCommit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+                          "checks":  [
+                                         "Full business release contract remains unchanged",
+                                         "New page exists and returns unauthenticated callers to login",
+                                         "BFF rejects anonymous without diagnostic disclosure",
+                                         "BFF rejects forged headers without diagnostic disclosure",
+                                         "BFF rejects local token without diagnostic disclosure",
+                                         "No caller-selected tenant or SQL target",
+                                         "No mutation handler exists",
+                                         "Existing requests page retains its login protection"
+                                     ],
+                          "authenticatedPositiveRead":  false,
+                          "businessWrites":  false,
+                          "observedAt":  "2026-09-25T03:11:38.299Z"
+                      },
+    "productionPublished":  true,
+    "promotionConfirmation":  "canonical_provider_identity_and_live_http_checks",
+    "cliPromotionExitObserved":  false,
+    "authenticatedUserUiVerified":  false,
+    "runtimeGlobalPositiveReadVerified":  false,
+    "apiModified":  false,
+    "databaseMigrationsApplied":  false,
+    "permissionsChanged":  false,
+    "featureFlagsChanged":  false,
+    "businessRelease":  "2026.09.23-dashboard.41",
+    "advancedCandidateOverwritten":  false,
+    "recordedAt":  "2026-09-25T03:12:45.0767697Z"
+}
