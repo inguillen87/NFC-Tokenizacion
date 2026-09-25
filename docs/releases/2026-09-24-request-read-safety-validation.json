@@ -1,0 +1,95 @@
+{
+  "protocol": "nexid.request-read-safety-validation.v1",
+  "sourceCommit": "6e03bb786626b8dfa524fd7acc88b8805ba25538",
+  "baseCommit": "20e26247baf2cf9c80d9019ca03686fb39d32842",
+  "branch": "codex/nexid-request-read-safety-20260924",
+  "scope": "frontend request reads and visible-data withdrawal",
+  "baselineRegression": {
+    "reproducedBeforeFix": true,
+    "failedAssertions": 1,
+    "javascriptErrors": 0,
+    "condition": "A denied inbox refresh retained the previously loaded request detail"
+  },
+  "local": {
+    "newUnitTests": 15,
+    "dashboardPassed": 1597,
+    "dashboardFailed": 0,
+    "existingSkipped": 2,
+    "typecheckPassed": true,
+    "buildPassed": true,
+    "secretGatePassed": true,
+    "dependencyAuditPassed": true,
+    "browser": {
+      "selectedSuites": [
+        {"suite": "request-read-safety", "checks": 124, "views": 7, "axeViolations": 0},
+        {"suite": "supplier-requests", "checks": 287, "views": 33, "axeViolations": 0},
+        {"suite": "supplier-service-status", "checks": 89, "views": 12, "axeViolations": 0}
+      ],
+      "checks": 500,
+      "views": 52,
+      "actualComponents": true,
+      "syntheticSessions": true,
+      "syntheticTransport": true,
+      "productionDataTested": false
+    }
+  },
+  "ci": {
+    "runId": 36087414068,
+    "sourceCommit": "6e03bb786626b8dfa524fd7acc88b8805ba25538",
+    "status": "completed",
+    "conclusion": "success",
+    "verifiedAt": "2026-09-25T02:57:32.0157962Z",
+    "allConfiguredDashboardBrowserSuitesPassed": true
+  },
+  "boundaries": {
+    "apiChanged": false,
+    "sqlChanged": false,
+    "receiptContractsChanged": false,
+    "dependencyLockChanged": false,
+    "productionPromoted": false,
+    "productionMigrationsApplied": false,
+    "productionPermissionsChanged": false,
+    "productionFeatureFlagsChanged": false,
+    "customerRowsRead": false
+  },
+  "canonicalObservation": [
+    {
+      "domain": "app.nexid.lat",
+      "commit": "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+      "release": "2026.09.23-dashboard.41",
+      "state": "READY",
+      "observedAt": "2026-09-25T02:49:40.1461529Z"
+    },
+    {
+      "domain": "api.nexid.lat",
+      "commit": "c21a0a776247d5109706e52db5895e817ea42cb9",
+      "release": "2026.09.24-api-runtime-diagnostics.1",
+      "state": "READY",
+      "observedAt": "2026-09-25T02:49:42.9491727Z"
+    }
+  ],
+  "browserDiagnosticObservation": {
+    "method": "Visible JSON in the user's Chrome on the same-origin diagnostic URL",
+    "ok": false,
+    "reason": "runtime_console_forbidden",
+    "positiveAuthenticatedRead": false,
+    "roleInferred": false,
+    "httpStatusCaptured": false,
+    "credentialsExtracted": false,
+    "permissionsChanged": false
+  },
+  "concurrentWork": {
+    "observedLocalBranch": "codex/nexid-runtime-access-fix-20260924",
+    "uncommittedChangesWerePresent": true,
+    "checkoutOrResetPerformedAfterDetection": false,
+    "concurrentChangesOverwritten": false,
+    "thisEvidenceAddedDirectlyThroughGitHub": true
+  },
+  "limits": [
+    "This candidate is not a production deployment or a backport to the published .41 baseline.",
+    "Transient read failures preserve drafts; an authorization denial withdraws the former record rather than claiming it remains authorized.",
+    "The local browser counts cover three selected suites; the CI result covers all configured dashboard suites.",
+    "The live browser error does not identify which role or authorization check denied the request.",
+    "Positive production application acceptance and the coordinated supplier rollout remain separate gates."
+  ]
+}
