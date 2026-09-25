@@ -81,5 +81,13 @@
     "buildPassed":  true,
     "productionDatabaseUsed":  false,
     "productionExecutionAllowed":  false,
-    "recordedAt":  "2026-09-25T01:29:07.9488348Z"
+    "recordedAt":  "2026-09-25T01:29:07.9488348Z",
+    "ci":  {
+               "runId":  36082325786,
+               "sourceCommit":  "4d80fb68de46b8001864de70e83bcb8f683b5d84",
+               "postgresVersion":  "18.4",
+               "completedAt":  "2026-09-25T01:32:29.3316691Z",
+               "conclusion":  "success",
+               "upgradeStepPassed":  true
+           }
 }

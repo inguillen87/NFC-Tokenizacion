@@ -53,3 +53,9 @@ El workflow de API se habilita para la rama candidata y agrega el upgrade sobre 
 Esta prueba demuestra preservación sobre un baseline reconstruido y un patrón de ledger conocido. Todavía falta cotejar ese baseline con la estructura efectiva del endpoint usado por la API productiva. No habilita por sí sola las migraciones de Neon ni las funciones comerciales.
 
 Antes de ejecutar remotamente: lectura autenticada de la conexión real, comparación del esquema/dependencias y hashes del delta, prueba aislada de esa combinación, autorización de las migraciones nominadas y publicación de API/panel compatibles con escrituras inicialmente apagadas. No ejecutar todas las diferencias históricas ni registrar migraciones como aplicadas sin evidencia.
+
+## Resultado remoto confirmado
+
+Código probado: `4d80fb68de46b8001864de70e83bcb8f683b5d84`. El workflow `36082325786` terminó aprobado sobre ese mismo commit: regresiones focales, las suites PostgreSQL existentes, la actualización de expedientes previos con sólo el delta revisado, compilación completa, escaneo de secretos y limpieza.
+
+El nuevo paso pasó también en PostgreSQL 18.4 de GitHub, además del 17.10 local. No se utilizó Neon ni se cambió el runner productivo. La evidencia JSON registra ambos alcances y no autoriza por sí misma una ejecución remota. Este agregado de documentación no altera el código validado.
