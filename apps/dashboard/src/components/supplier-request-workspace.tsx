@@ -2,7 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SUPPLIER_CONSTRUCTIONS } from "../lib/supplier-order-draft";
 import { dashboardHighImpactPermissionMatches } from "../lib/permission-policy";
-import { filterSupplierRequestInbox, supplierRequestManagementState, supplierRequestCall, supplierRequestErrorCopy, SupplierRequestError, type SupplierRequest, type SupplierRequestCommand, type SupplierRequestContent, type SupplierRequestEnvelope, type SupplierRequestInboxFilter, type SupplierRequestReviewSummary } from "../lib/supplier-request-client";
+import { supplierRequestCall, supplierRequestErrorCopy, SupplierRequestError, type SupplierRequest, type SupplierRequestCommand, type SupplierRequestContent, type SupplierRequestEnvelope, type SupplierRequestReviewSummary } from "../lib/supplier-request-client";
+import { SupplierRequestInbox } from "./supplier-request-inbox";
+import { supplierReadDenial, type SupplierReadKind } from "../lib/supplier-request-read-policy";
 import { SupplierRequestReview, type SupplierRequestReviewGuard } from "./supplier-request-review";
 import styles from "./supplier-request-workspace.module.css";
 import { SupplierRequestDraftGuide } from './supplier-request-draft-guide';
@@ -15,7 +17,6 @@ type Fields = { title: string; construction_id: string; quantity: string; pack_p
 const empty = (): Fields => ({ title: "", construction_id: "", quantity: "", pack_purpose: "", notes: "" });
 const fromItem = (item: SupplierRequest): Fields => ({ title: item.title, construction_id: item.construction_id, quantity: item.quantity === null ? "" : String(item.quantity), pack_purpose: item.pack_purpose || "", notes: item.notes });
 const statusLabel = (status: SupplierRequest["status"]) => status === "draft" ? "Borrador de la empresa" : status === "submitted" ? "Enviada a NexID" : "Pedido técnico preparado";
-const managementLabels = { draft: "Borrador de la empresa", pending: "Revisión de NexID pendiente", needs_information: "Esperando respuesta de la empresa", answered: "Respuesta recibida · revisión de NexID", provisioned: "Pedido técnico preparado", unknown: "Revisión sin confirmar" };
 const activityTime = (item: SupplierRequest) => item.review_summary?.updated_at || item.updated_at;
 export function SupplierRequestWorkspace(props: Props) {
   // A new mounted instance is required for every authenticated scope transition, including A → B → A.
@@ -28,7 +29,8 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   const [tenant, setTenant] = useState(access.tenantSlug || initialTenant);
   const [tenantInput, setTenantInput] = useState(access.tenantSlug || initialTenant);
   const [items, setItems] = useState<SupplierRequest[] | null>(null), [truncated, setTruncated] = useState(false);
-  const [inboxSearch, setInboxSearch] = useState(""), [inboxFilter, setInboxFilter] = useState<SupplierRequestInboxFilter>("all");
+  const [readAccessLost,setReadAccessLost]=useState<'all'|'record'|null>(null),[readNotice,setReadNotice]=useState('');
+  const readWithdrawn=useRef(false),bootstrap=useRef(0),focusInbox=useRef(false),inboxRefresh=useRef<HTMLButtonElement|null>(null);
   const [listError, setListError] = useState(""), [listReading, setListReading] = useState(false), [requestReading, setRequestReading] = useState(false);
   const reading = listReading || requestReading;
   const [selected, setSelected] = useState<SupplierRequest | null>(null), [fields, setFields] = useState<Fields>(empty);
@@ -58,7 +60,8 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   const dirty = JSON.stringify(fields) !== JSON.stringify(selected ? fromItem(selected) : empty());
   const immutable = Boolean(selected && selected.status !== "draft"), blocked = phase === "saving" || phase === "uncertain" || unresolved.current || reviewBlocked;
 
-  useEffect(() => { alive.current = true; return () => { alive.current = false; epoch.current++; reads.current?.abort(); writes.current?.abort(); }; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; epoch.current++; bootstrap.current++; readSequence.current++; listSequence.current++; const pending=reads.current; reads.current=null; pending?.abort(); writes.current?.abort(); }; }, []);
+  useEffect(()=>{if(!reading&&focusInbox.current){focusInbox.current=false;inboxRefresh.current?.focus();}},[reading,readNotice]);
   useEffect(() => {
     if (!selectionVersion) return;
     detailHeading.current?.focus({ preventScroll: true });
@@ -71,49 +74,83 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   }, [dirty]);
   useEffect(() => {
     if (!allowed) return;
-    void loadList(tenant);
-    if (initialRequestId && !initialOpened.current) { initialOpened.current = true; void openRequest(initialRequestId, tenant, true); }
-    // Initial request belongs to the keyed, authenticated context above.
+    const version=++bootstrap.current,generation=epoch.current;
+    void loadList(tenant).then(outcome=>{
+      if(alive.current&&version===bootstrap.current&&generation===epoch.current&&initialRequestId&&!initialOpened.current&&outcome!=='denied'&&outcome!=='ignored'){
+        initialOpened.current=true;void openRequest(initialRequestId,tenant,true);
+      }
+    });
+    return()=>{bootstrap.current++;};
+    // The keyed authenticated context owns this bootstrap; never overlap its reads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenant, allowed]);
 
-  async function loadList(scope: string) {
-    if (locked.current || reviewGuard.current.locked) return;
-    const generation = epoch.current, sequence = ++listSequence.current;
-    setItems(null); setListError(""); setListReading(true);
+  function invalidateReads(){const pending=reads.current;reads.current=null;readSequence.current++;listSequence.current++;pending?.abort();setListReading(false);setRequestReading(false);}
+  function withdrawRead(status:number,kind:SupplierReadKind,id?:string,list?:SupplierRequest[],listTruncated?:boolean){
+    const scope=supplierReadDenial(status,kind);if(!scope)return false;
+    // Reads cannot start during an unresolved mutation. No write command is lost here.
+    invalidateReads();resetEditor();readWithdrawn.current=true;setReadAccessLost(scope);
+    setItems(current=>scope==='all'?null:(list||current||[]).filter(item=>item.id!==id));
+    setTruncated(scope==='all'?false:listTruncated??truncated);setReadNotice('El acceso cambió. Se retiró el expediente anterior; esta consulta no guardó ni reintentó operaciones.');
+    return true;
+  }
+  function cancelRead(){if(!reads.current)return;invalidateReads();focusInbox.current=true;setReadNotice('Consulta cancelada. Tus cambios locales permanecen; no se envió ninguna operación.');}
+  async function loadList(scope: string):Promise<'confirmed'|'denied'|'unavailable'|'ignored'> {
+    if (!allowed || reads.current || locked.current || reviewGuard.current.locked) return 'ignored';
+    const generation=epoch.current,sequence=++listSequence.current,controller=new AbortController(),open=selected;
+    reads.current=controller;setItems(null);setListError('');setReadNotice('');setListReading(true);
+    const current=()=>alive.current&&generation===epoch.current&&sequence===listSequence.current&&reads.current===controller;
     try {
-      const result = await supplierRequestCall({ tenant: scope });
-      if (!alive.current || generation !== epoch.current || sequence !== listSequence.current) return;
-      if (!("items" in result)) throw new SupplierRequestError("contract_invalid");
-      setItems(result.items); setTruncated(result.truncated);
-    } catch { if (alive.current && generation === epoch.current && sequence === listSequence.current) setListError("No se confirmó la bandeja. Esto no significa que no existan solicitudes."); }
-    finally { if (alive.current && generation === epoch.current && sequence === listSequence.current) setListReading(false); }
+      const result=await supplierRequestCall({tenant:scope,signal:controller.signal});
+      if(!current())return 'ignored';if(!('items' in result))throw new SupplierRequestError('contract_invalid');
+      if(open){
+        // A bounded/global list may omit an accessible record. Recheck that record;
+        // absence from a page is never itself a revocation or a discarded draft.
+        try{
+          const detail=await supplierRequestCall({tenant:open.tenant_slug,id:open.id,signal:controller.signal});
+          if(!current())return 'ignored';if(!('request' in detail))throw new SupplierRequestError('contract_invalid');
+          if(detail.request.revision!==open.revision)setReadNotice('El expediente sigue accesible, pero cambió su versión. Tu edición permanece; abrí la versión actual antes de decidir qué conservar.');
+        }catch(issue){
+          if(!current())return 'ignored';const status=issue instanceof SupplierRequestError?issue.status:0;
+          if(withdrawRead(status,'record',open.id,result.items,result.truncated))return 'denied';
+          setReadNotice('La bandeja se actualizó, pero no se confirmó el expediente abierto. Tu edición permanece; cualquier operación volverá a verificar el acceso.');
+        }
+      }
+      if(!current())return 'ignored';setItems(result.items);setTruncated(result.truncated);readWithdrawn.current=false;setReadAccessLost(null);return 'confirmed';
+    }catch(issue){
+      if(!current())return 'ignored';const denied=withdrawRead(issue instanceof SupplierRequestError?issue.status:0,'list');
+      setListError(denied?'No se confirmó la bandeja por un cambio de acceso. Actualizá tu sesión antes de volver a consultar.':'No se confirmó la bandeja. Esto no significa que no existan solicitudes.');
+      return denied?'denied':'unavailable';
+    }finally{if(reads.current===controller){reads.current=null;if(alive.current)setListReading(false);}}
   }
   function canLeave() {
-    if (locked.current || reviewGuard.current.locked) return false;
+    if (reads.current || locked.current || reviewGuard.current.locked) return false;
     return !(dirty || reviewGuard.current.dirty) || window.confirm("Hay cambios sin guardar. ¿Descartarlos y continuar?");
   }
-  function resetEditor() { setValidationAttempted(false); updateReviewGuard({ dirty: false, locked: false }); setSelected(null); setFields(empty()); setComparison(null); setPhase("idle"); setError(""); setConfirmedRevision(null); setReviewing(false); setRequestReading(false); operation.current = null; }
+  function resetEditor() { readWithdrawn.current=false;setReadAccessLost(null);setReadNotice(''); setValidationAttempted(false); updateReviewGuard({ dirty: false, locked: false }); setSelected(null); setFields(empty()); setComparison(null); setPhase("idle"); setError(""); setConfirmedRevision(null); setReviewing(false); setRequestReading(false); operation.current = null; }
   function changeTenant() {
     if (!canLeave()) return;
     const next = tenantInput.trim().toLowerCase();
     if (next && !/^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/.test(next)) { setError("Revisá el identificador de la empresa."); return; }
-    epoch.current++; reads.current?.abort(); resetEditor(); setItems(null);
+    epoch.current++; invalidateReads(); resetEditor(); setItems(null);
     if (next === tenant) void loadList(next); else setTenant(next);
   }
   async function openRequest(id: string, scope: string, initial = false, compare = false) {
-    if (!allowed || reviewGuard.current.locked || (!initial && !compare && !canLeave()) || busy.current || (locked.current && !compare)) return;
+    if (!allowed || reads.current || reviewGuard.current.locked || (!initial && !compare && !canLeave()) || busy.current || (locked.current && !compare)) return;
     if (!scope) { setError("Abrí la solicitud desde la empresa indicada en la bandeja."); return; }
     const generation = epoch.current, sequence = ++readSequence.current;
-    reads.current?.abort(); const controller = new AbortController(); reads.current = controller;
-    setRequestReading(true); setError("");
+    const controller = new AbortController(); reads.current = controller;
+    setRequestReading(true); setError("");setReadNotice("");
     try {
       const result = await supplierRequestCall({ tenant: scope, id, signal: controller.signal });
       if (!alive.current || generation !== epoch.current || sequence !== readSequence.current) return;
       if (!("request" in result)) throw new SupplierRequestError("contract_invalid");
+      readWithdrawn.current=false;setReadAccessLost(null);
       if (compare) setComparison(result.request);
       else { updateReviewGuard({ dirty: false, locked: false }); setValidationAttempted(false); setSelectionVersion(current => current + 1); setSelected(result.request); setFields(fromItem(result.request)); setComparison(null); setPhase("idle"); setConfirmedRevision(null); setReviewing(false); }
-    } catch (issue) { if (alive.current && generation === epoch.current && sequence === readSequence.current) setError(supplierRequestErrorCopy(issue instanceof SupplierRequestError ? issue : new SupplierRequestError("unavailable"))); }
+    } catch (issue) { if (alive.current && generation === epoch.current && sequence === readSequence.current) {
+      if(!withdrawRead(issue instanceof SupplierRequestError?issue.status:0,'record',id))setError(supplierRequestErrorCopy(issue instanceof SupplierRequestError ? issue : new SupplierRequestError("unavailable")));
+    } }
     finally { if (reads.current === controller) reads.current = null; if (alive.current && generation === epoch.current && sequence === readSequence.current) setRequestReading(false); }
   }
   function content(): SupplierRequestContent | null {
@@ -122,7 +159,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     return checked.content;
   }
   async function execute(command: SupplierRequestCommand) {
-    if (!allowed || busy.current) return;
+    if (!allowed || reads.current || readWithdrawn.current || busy.current) return;
     busy.current = true; locked.current = true; operation.current = command;
     const generation = epoch.current, controller = new AbortController(); writes.current = controller;
     setPhase("saving"); setError(""); setReviewing(false);
@@ -144,41 +181,38 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     } finally { busy.current = false; if (writes.current === controller) writes.current = null; }
   }
   function save() {
-    if (!allowed || locked.current || reads.current || reading || immutable || !tenant && !selected) return;
+    if (!allowed || readWithdrawn.current || locked.current || reads.current || reading || immutable || !tenant && !selected) return;
     const value = content(); if (!value) return;
     const scope = selected?.tenant_slug || tenant;
     const command: SupplierRequestCommand = Object.freeze({ tenant: scope, ...(selected ? { id: selected.id } : {}), action: selected ? "patch" : "create", key: crypto.randomUUID(), body: Object.freeze({ ...value, ...(selected ? { expected_revision: selected.revision } : {}) }) });
     void execute(command);
   }
   function submit() {
-    if (reads.current || reading || reviewGuard.current.locked || !reviewing || !selected || dirty || selected.status !== "draft" || locked.current || !allowed) return;
+    if (reads.current || readWithdrawn.current || reading || reviewGuard.current.locked || !reviewing || !selected || dirty || selected.status !== "draft" || locked.current || !allowed) return;
     void execute(Object.freeze({ tenant: selected.tenant_slug, id: selected.id, action: "submit", key: crypto.randomUUID(), body: Object.freeze({ expected_revision: selected.revision }) }));
   }
   function edit(field: keyof Fields, value: string) { if (locked.current || reads.current || immutable) return; setFields(current => ({ ...current, [field]: value })); setReviewing(false); }
   const complete = Boolean(selected?.construction_id && selected.quantity && selected.pack_purpose);
   const currentTenant = selected?.tenant_slug || tenant;
-  const visibleItems = filterSupplierRequestInbox(items || [], inboxSearch, inboxFilter);
 
   return <main className={styles.root} data-testid="supplier-request-workspace">
     <header className={styles.hero}><div><p className={styles.eyebrow}>Empresa → NexID</p><h1>Solicitudes de etiquetas</h1><p>La empresa describe lo que necesita. NexID recibe la solicitud y prepara la orden técnica. Guardar o enviar aquí no genera llaves ni envía un pedido a fábrica.</p></div><a href="/batches/supplier" className={styles.button} onClick={event => { if (!canLeave()) event.preventDefault(); }}>Recepción y pedidos</a></header>
     {!allowed ? <p role="alert" className={styles.notice}>Tu sesión no tiene permiso para gestionar solicitudes. No se consultaron ni guardaron datos.</p> : <>
       {isNexid ? <div className={styles.toolbar}><label>Empresa (vacía: bandeja de NexID)<input data-testid="supplier-request-tenant" value={tenantInput} disabled={blocked} onChange={event => setTenantInput(event.target.value)} /></label><button type="button" className={styles.button} disabled={blocked || reading} onClick={changeTenant}>Consultar empresa</button></div> : <p className={styles.notice}>Empresa: <strong>{tenant}</strong>. La solicitud se guarda únicamente para esta empresa.</p>}
-      <section className={styles.card} aria-labelledby="supplier-requests-inbox"><div className={styles.heading}><h2 id="supplier-requests-inbox">{isNexid && !tenant ? "Bandeja de NexID" : "Solicitudes de la empresa"}</h2><div className={styles.actions}><button className={styles.button} type="button" disabled={blocked || reading} onClick={() => { if (!locked.current) void loadList(tenant); }}>Actualizar bandeja</button><button className={styles.button} type="button" disabled={blocked || !tenant} onClick={() => { if (canLeave()) { epoch.current++; reads.current?.abort(); resetEditor(); setSelectionVersion(current=>current+1); } }}>Nueva solicitud</button></div></div>
+      <section className={styles.card} aria-labelledby="supplier-requests-inbox"><div className={styles.heading}><h2 id="supplier-requests-inbox">{isNexid && !tenant ? "Bandeja de NexID" : "Solicitudes de la empresa"}</h2><div className={styles.actions}><button className={styles.button} type="button" ref={inboxRefresh} disabled={blocked || reading} onClick={() => { if (!locked.current) void loadList(tenant); }}>Actualizar bandeja</button><button className={styles.button} type="button" disabled={blocked || reading || !tenant || readAccessLost==='all'} onClick={() => { if (canLeave()) { epoch.current++; reads.current?.abort(); resetEditor(); setSelectionVersion(current=>current+1); } }}>Nueva solicitud</button></div></div>
         <p className={styles.muted}>{isNexid && !tenant ? "Sólo solicitudes enviadas y pedidos preparados. Los borradores internos no aparecen en la bandeja global." : "Los borradores siguen pendientes de envío; guardarlos no informa a NexID."}</p>
-        <div className={styles.toolbar}><label>Buscar entre las solicitudes cargadas<input data-testid="supplier-request-inbox-search" type="search" value={inboxSearch} onChange={event => setInboxSearch(event.target.value)} placeholder="Producto, empresa o referencia" /></label><label>Estado de gestión<select data-testid="supplier-request-inbox-filter" value={inboxFilter} onChange={event => setInboxFilter(event.target.value as SupplierRequestInboxFilter)}><option value="all">Todos los estados</option>{Object.entries(managementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
-        <p role="status">{listError || (listReading && items === null ? "Consultando la fuente…" : items?.length === 0 ? "La fuente no encontró solicitudes en este alcance." : items && visibleItems.length === 0 ? "No hay coincidencias entre las solicitudes cargadas. Probá otro filtro o búsqueda." : "")}</p>
-        {items ? <p className={styles.muted} data-testid="supplier-request-inbox-count">{visibleItems.length} de {items.length} solicitudes cargadas{truncated ? "; no es el total del historial" : ""}. Los filtros se aplican sólo a esta respuesta.</p> : null}
-        {visibleItems.length ? <ul className={styles.list}>{visibleItems.map(item => <li key={item.id}><div><strong>{item.title}</strong><span>{item.tenant_slug} · {managementLabels[supplierRequestManagementState(item)]} · versión {item.revision}</span><span>Última actividad: <time dateTime={activityTime(item)}>{activityTime(item).slice(0, 10)} · {activityTime(item).slice(11, 16)} UTC</time></span><code>{item.id}</code></div><button className={styles.button} data-testid="supplier-request-open" type="button" disabled={blocked || reading} onClick={() => void openRequest(item.id, item.tenant_slug)}>Ver solicitud</button></li>)}</ul> : null}
-        {truncated && items ? <p className={styles.notice}>Se muestran las solicitudes más recientes; hay más registros fuera de esta respuesta.</p> : null}
+        <SupplierRequestInbox key={tenant+':'+(readAccessLost||'authorized')} items={items} truncated={truncated} loading={listReading} error={listError} disabled={blocked||reading} selectedId={selected?.id} isNexid={isNexid} onOpen={item=>void openRequest(item.id,item.tenant_slug)}/>
       </section>
-      {(tenant || selected) ? <section className={styles.card} aria-labelledby="supplier-request-editor">
+      {readNotice?<p role="status" className={styles.notice} data-testid="supplier-request-read-notice">{readNotice}</p>:null}
+      {reading?<button type="button" className={styles.button} data-testid="supplier-request-read-cancel" onClick={cancelRead}>Cancelar consulta</button>:null}
+      {readAccessLost?<section className={styles.card} role="alert" data-testid="supplier-request-read-denied"><h2>Acceso a la solicitud no disponible</h2><p>El contenido anterior se ocultó. Volvé a consultar con una sesión autorizada; no se ejecutó ningún guardado.</p></section>:(tenant || selected) ? <section className={styles.card} aria-labelledby="supplier-request-editor">
         <div className={styles.heading}><div><h2 id="supplier-request-editor" ref={detailHeading} tabIndex={-1} data-testid="supplier-request-detail-heading">{selected ? selected.title : "Nueva solicitud"}</h2><p className={styles.muted}>{currentTenant}{selected ? ` · ${statusLabel(selected.status)} · ${selected.id}` : " · todavía sin guardar"}</p></div></div>
         <p role="status" data-testid="supplier-request-status" className={styles.notice}>{phase === "saving" ? "Guardando en el servidor…" : phase === "uncertain" ? "Resultado sin confirmar. Conservamos la misma operación." : confirmedRevision ? `Guardado confirmado · versión ${confirmedRevision}${selected && selected.revision > confirmedRevision ? `; la fuente ya está en la versión ${selected.revision}` : ""}${dirty ? " · cambios nuevos sin guardar" : ""}` : selected ? `Versión ${selected.revision}${dirty ? " · cambios sin guardar" : " · sin cambios"}` : "Borrador nuevo: aún no está guardado en el servidor."}</p>
         {error ? <p role="alert" className={styles.error}>{error}</p> : null}
         {phase === "uncertain" ? <button className={styles.button} data-testid="supplier-request-retry" type="button" onClick={() => { if (operation.current && !busy.current) void execute(operation.current); }}>Comprobar el mismo guardado</button> : null}
         {phase === "conflict" && selected ? <div data-testid="supplier-request-conflict"><p>Tu texto permanece sin guardar. Consultá la versión actual; no se sobrescribe automáticamente.</p><button type="button" className={styles.button} disabled={reading} onClick={() => void openRequest(selected.id, selected.tenant_slug, false, true)}>Consultar versión actual</button></div> : null}
         {comparison ? <div className={styles.notice}><h3>Versión actual del servidor: {comparison.revision}</h3><p>{comparison.title} · {statusLabel(comparison.status)} · {comparison.quantity ?? "cantidad pendiente"}</p><p className={styles.pre}>{comparison.notes || "Sin notas"}</p><button className={styles.button} type="button" onClick={() => { if (locked.current || !window.confirm("¿Reemplazar los cambios locales por esta versión guardada?")) return; setSelected(comparison); setFields(fromItem(comparison)); setComparison(null); setConfirmedRevision(null); setError(""); setPhase("idle"); }}>Cargar esta versión y descartar mis cambios</button></div> : null}
-        {selected && immutable ? <SupplierRequestReview key={`${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={requestReading} canInteract={canReviewInteract} onGuard={updateReviewGuard} onReview={updateReview} /> : null}
+        {selected && immutable ? <SupplierRequestReview key={`${selected.id}:${selected.revision}:${selected.status}:${selectionVersion}`} request={selected} isNexid={isNexid} suspended={reading} canInteract={canReviewInteract} onGuard={updateReviewGuard} onReview={updateReview} /> : null}
         {!immutable?<SupplierRequestDraftGuide fields={fields} saved={Boolean(selected)} dirty={dirty} waiting={reading||blocked&&phase!=='uncertain'} uncertain={phase==='uncertain'} conflict={phase==='conflict'} reviewing={reviewing} onField={focusDraftField}/>:null}
         <details className={styles.commercial} open={!immutable}><summary>{immutable ? "Consultar los datos comerciales enviados" : "Completar los datos de la solicitud"}</summary>
         <form ref={formElement} noValidate onSubmit={event => { event.preventDefault(); save(); }}>
