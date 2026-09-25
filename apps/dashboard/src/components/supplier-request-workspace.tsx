@@ -18,6 +18,8 @@ import styles from "./supplier-request-workspace.module.css";
 import { SupplierRequestDraftGuide } from './supplier-request-draft-guide';
 import { validateSupplierDraft, type SupplierDraftField } from '../lib/supplier-request-draft-guidance';
 import draftStyles from './supplier-request-draft-guide.module.css';
+import { SupplierDraftComparison } from './supplier-draft-comparison';
+import { prepareDraftComparison, resolveDraftComparison, type DraftChoices } from '../lib/supplier-draft-comparison';
 
 export type SupplierRequestAccess = { id: string; userId?: string; role: string; tenantId?: string | null; tenantSlug: string | null; permissions: string[]; deniedPermissions?: string[]; isDemo: boolean };
 type Props = { access: SupplierRequestAccess; initialTenant?: string; initialRequestId?: string };
@@ -52,6 +54,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   function focusDraftField(field:SupplierDraftField){const form=formElement.current;if(!form)return;const details=form.closest('details');if(details)details.open=true;const control=form.elements.namedItem(field);if(control instanceof HTMLElement){control.focus();control.scrollIntoView({block:'center',behavior:'auto'});}}
   const detailHeading = useRef<HTMLHeadingElement | null>(null);
   const [comparison, setComparison] = useState<SupplierRequest | null>(null);
+  const compareButton=useRef<HTMLButtonElement|null>(null),returnCompareFocus=useRef(false);
   const [phase, setPhase] = useState<"idle" | "saving" | "saved" | "uncertain" | "conflict" | "error">("idle");
   const [error, setError] = useState(""), [confirmedRevision, setConfirmedRevision] = useState<number | null>(null), [reviewing, setReviewing] = useState(false);
   const alive = useRef(true), epoch = useRef(0), busy = useRef(false), locked = useRef(false), unresolved = useRef(false), operation = useRef<SupplierRequestCommand | null>(null);
@@ -172,19 +175,34 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     if (!scope) { setError("Abrí la solicitud desde la empresa indicada en la bandeja."); return; }
     const generation = epoch.current, sequence = ++readSequence.current;
     const controller = new AbortController(); reads.current = controller;
-    setRequestReading(true); setError("");setReadNotice("");
+    setRequestReading(true); setError("");setReadNotice("");if(compare)setComparison(null);
     try {
       const result = await supplierRequestCall({ tenant: scope, id, signal: controller.signal });
       if (!alive.current || generation !== epoch.current || sequence !== readSequence.current) return;
       if (!("request" in result)) throw new SupplierRequestError("contract_invalid");
       readWithdrawn.current=false;setReadAccessLost(null);
-      if (compare) setComparison(result.request);
+      if (compare) { if(!selected)throw new SupplierRequestError("contract_invalid");prepareDraftComparison(selected,result.request,fields);setComparison(result.request); }
       else { updateReviewGuard({ dirty: false, locked: false }); updateAssignmentGuard({ dirty: false, locked: false }); setValidationAttempted(false); setSelectionVersion(current => current + 1); setSelected(result.request); setFields(fromItem(result.request)); setComparison(null); setPhase("idle"); setConfirmedRevision(null); setReviewing(false); }
     } catch (issue) { if (alive.current && generation === epoch.current && sequence === readSequence.current) {
       if(!withdrawRead(issue instanceof SupplierRequestError?issue.status:0,'record',id))setError(supplierRequestErrorCopy(issue instanceof SupplierRequestError ? issue : new SupplierRequestError("unavailable")));
     } }
     finally { if (reads.current === controller) reads.current = null; if (alive.current && generation === epoch.current && sequence === readSequence.current) setRequestReading(false); }
   }
+  useEffect(()=>{if(!comparison&&returnCompareFocus.current){returnCompareFocus.current=false;compareButton.current?.focus();}},[comparison]);
+  function canReconcile(){return allowed&&!reads.current&&!locked.current&&!unresolved.current&&!busy.current&&!readWithdrawn.current&&!reviewGuard.current.locked&&!assignmentGuard.current.locked&&!cancellationGuard.current.locked&&!quotationGuard.current.locked&&!bindingGuard.current.locked&&!deliveryGuard.current.locked&&!serviceGuard.current.locked;}
+  function applyComparison(token:string,choices?:DraftChoices){
+    if(!canReconcile()||!selected||!comparison)return;
+    try{
+      const plan=prepareDraftComparison(selected,comparison,fields);if(plan.token!==token)return;
+      const resolution=choices?resolveDraftComparison(selected,comparison,fields,choices):null;
+      if(choices&&(!resolution||!resolution.ok))return;
+      if(!choices&&!window.confirm('¿Reemplazar los cambios locales por esta versión guardada?'))return;
+      const merged=resolution?.ok?resolution.fields:fromItem(comparison);
+      setSelected(comparison);setFields(merged);setComparison(null);setConfirmedRevision(null);setValidationAttempted(false);setError('');setPhase('idle');setReviewing(false);setSelectionVersion(v=>v+1);
+      setReadNotice(resolution?.ok?'Selección preparada en el borrador. Todavía no se guardó ni se envió; revisá los campos antes de guardar.':'Se cargó la versión consultada. No se envió ningún guardado.');
+    }catch{setError('No se pudo vincular la comparación con este borrador. Tu texto permanece; consultá nuevamente la versión actual.');}
+  }
+  function closeComparison(){if(!canReconcile())return;returnCompareFocus.current=true;setComparison(null);}
   function content(): SupplierRequestContent | null {
     setValidationAttempted(true);const checked=validateSupplierDraft(fields);
     if(!checked.content){const first=Object.keys(checked.errors)[0] as SupplierDraftField;focusDraftField(first);return null;}
@@ -213,14 +231,14 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     } finally { busy.current = false; if (writes.current === controller) writes.current = null; }
   }
   function save() {
-    if (!allowed || readWithdrawn.current || locked.current || reads.current || reading || immutable || !tenant && !selected) return;
+    if (!allowed || phase==='conflict' || comparison || readWithdrawn.current || locked.current || reads.current || reading || immutable || !tenant && !selected) return;
     const value = content(); if (!value) return;
     const scope = selected?.tenant_slug || tenant;
     const command: SupplierRequestCommand = Object.freeze({ tenant: scope, ...(selected ? { id: selected.id } : {}), action: selected ? "patch" : "create", key: crypto.randomUUID(), body: Object.freeze({ ...value, ...(selected ? { expected_revision: selected.revision } : {}) }) });
     void execute(command);
   }
   function submit() {
-    if (reads.current || reading || reviewGuard.current.locked || readWithdrawn.current || !reviewing || !selected || dirty || selected.status !== "draft" || locked.current || !allowed) return;
+    if (phase==='conflict' || comparison || reads.current || reading || reviewGuard.current.locked || readWithdrawn.current || !reviewing || !selected || dirty || selected.status !== "draft" || locked.current || !allowed) return;
     void execute(Object.freeze({ tenant: selected.tenant_slug, id: selected.id, action: "submit", key: crypto.randomUUID(), body: Object.freeze({ expected_revision: selected.revision }) }));
   }
   function edit(field: keyof Fields, value: string) { if (locked.current || reads.current || immutable) return; setFields(current => ({ ...current, [field]: value })); setReviewing(false); }
@@ -243,8 +261,8 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
         <p role="status" data-testid="supplier-request-status" className={styles.notice}>{phase === "saving" ? "Guardando en el servidor…" : phase === "uncertain" ? "Resultado sin confirmar. Conservamos la misma operación." : confirmedRevision ? `Guardado confirmado · versión ${confirmedRevision}${selected && selected.revision > confirmedRevision ? `; la fuente ya está en la versión ${selected.revision}` : ""}${dirty ? " · cambios nuevos sin guardar" : ""}` : selected ? `Versión ${selected.revision}${dirty ? " · cambios sin guardar" : " · sin cambios"}` : "Borrador nuevo: aún no está guardado en el servidor."}</p>
         {error ? <p role="alert" className={styles.error}>{error}</p> : null}
         {phase === "uncertain" ? <button className={styles.button} data-testid="supplier-request-retry" type="button" onClick={() => { if (operation.current && !busy.current) void execute(operation.current); }}>Comprobar el mismo guardado</button> : null}
-        {phase === "conflict" && selected ? <div data-testid="supplier-request-conflict"><p>Tu texto permanece sin guardar. Consultá la versión actual; no se sobrescribe automáticamente.</p><button type="button" className={styles.button} disabled={reading} onClick={() => void openRequest(selected.id, selected.tenant_slug, false, true)}>Consultar versión actual</button></div> : null}
-        {comparison ? <div className={styles.notice}><h3>Versión actual del servidor: {comparison.revision}</h3><p>{comparison.title} · {statusLabel(comparison.status)} · {comparison.quantity ?? "cantidad pendiente"}</p><p className={styles.pre}>{comparison.notes || "Sin notas"}</p><button className={styles.button} type="button" onClick={() => { if (locked.current || !window.confirm("¿Reemplazar los cambios locales por esta versión guardada?")) return; setSelected(comparison); setFields(fromItem(comparison)); setComparison(null); setConfirmedRevision(null); setError(""); setPhase("idle"); }}>Cargar esta versión y descartar mis cambios</button></div> : null}
+        {phase === "conflict" && selected ? <div data-testid="supplier-request-conflict"><p>Tu texto permanece sin guardar. Consultá la versión actual; no se sobrescribe automáticamente.</p><button type="button" className={styles.button} ref={compareButton} disabled={reading||blocked} onClick={() => void openRequest(selected.id, selected.tenant_slug, false, true)}>Consultar versión actual</button></div> : null}
+        {comparison&&selected ? <SupplierDraftComparison base={selected} server={comparison} local={fields} disabled={reading||blocked} canInteract={canReconcile} onApply={applyComparison} onLoadServer={token=>applyComparison(token)} onClose={closeComparison}/> : null}
         {selected&&immutable?<SupplierServiceStatus key={serviceKey} tenant={selected.tenant_slug} tenantId={selected.tenant_id} suspended={reading||blocked}
           canInteract={()=>!reads.current&&!locked.current&&!listReading&&!dirty&&!reviewGuard.current.dirty&&!reviewGuard.current.locked&&!assignmentGuard.current.dirty&&!assignmentGuard.current.locked&&!cancellationGuard.current.locked&&!quotationGuard.current.locked&&!bindingGuard.current.locked&&!deliveryGuard.current.locked}
           onGuard={updateServiceGuard} onSnapshot={snapshot=>setServiceStatus(snapshot?{key:serviceKey,snapshot}:null)}
@@ -279,7 +297,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
             <label>Cantidad solicitada<input name="quantity" aria-invalid={Boolean(fieldErrors.quantity)} aria-describedby={fieldErrors.quantity?'supplier-draft-error-quantity':'supplier-draft-hint-quantity'} data-testid="supplier-request-quantity" type="text" inputMode="numeric" spellCheck={false} value={fields.quantity} onChange={event => edit("quantity", event.target.value)} /><span id="supplier-draft-hint-quantity" className={draftStyles.fieldHint}>Cantidad de etiquetas; sin separadores. Podés dejarla pendiente en el borrador.</span>{fieldErrors.quantity?<span id="supplier-draft-error-quantity" className={draftStyles.fieldError}>{fieldErrors.quantity}</span>:null}</label>
             <label>Destino del pedido<select name="pack_purpose" aria-invalid={Boolean(fieldErrors.pack_purpose)} aria-describedby={fieldErrors.pack_purpose?'supplier-draft-error-pack_purpose':'supplier-draft-hint-pack_purpose'} data-testid="supplier-request-purpose" value={fields.pack_purpose} onChange={event => edit("pack_purpose", event.target.value)}><option value="">Sin elegir</option><option value="trial_integration">Ensayo de integración · no vendible</option><option value="production">Producción · requiere aprobación de calidad</option></select><span id="supplier-draft-hint-pack_purpose" className={draftStyles.fieldHint}>Ensayo no vendible o producción sujeta a aprobación.</span>{fieldErrors.pack_purpose?<span id="supplier-draft-error-pack_purpose" className={draftStyles.fieldError}>{fieldErrors.pack_purpose}</span>:null}</label>
           </div>{!immutable&&fields.construction_id?<aside className={draftStyles.construction} data-testid="supplier-draft-construction-help"><strong>{SUPPLIER_CONSTRUCTIONS.find(c=>c.id===fields.construction_id)?.label}</strong><p>{SUPPLIER_CONSTRUCTIONS.find(c=>c.id===fields.construction_id)?.description}</p><ul>{SUPPLIER_CONSTRUCTIONS.find(c=>c.id===fields.construction_id)?.checks.map(text=><li key={text}>{text}</li>)}</ul></aside>:null}<label>Necesidades y notas<textarea name="notes" aria-invalid={Boolean(fieldErrors.notes)} aria-describedby={fieldErrors.notes?'supplier-draft-error-notes':'supplier-draft-hint-notes'} data-testid="supplier-request-notes" rows={4} maxLength={4000} value={fields.notes} onChange={event => edit("notes", event.target.value)} /><span id="supplier-draft-hint-notes" className={draftStyles.fieldHint}>Opcional. Hasta 4.000 caracteres; no incluyas llaves, tokens ni secretos.</span>{fieldErrors.notes?<span id="supplier-draft-error-notes" className={draftStyles.fieldError}>{fieldErrors.notes}</span>:null}</label><p className={styles.muted}>No incluyas llaves ni secretos. Construcción, cantidad y destino pueden quedar pendientes en el borrador; el nombre permite encontrarlo después.</p></fieldset>
-          {!immutable ? <div className={styles.actions}><button className={styles.primary} data-testid="supplier-request-save" type="submit" disabled={blocked || reading}>Guardar borrador</button><button className={styles.button} ref={reviewButton} aria-describedby="supplier-draft-next-step" data-testid="supplier-request-review" type="button" disabled={blocked || reading || !selected || dirty || !complete} onClick={() => { if (!locked.current && !reads.current && !reading && !reviewGuard.current.locked && selected && !dirty && complete) setReviewing(true); }}>Revisar envío a NexID</button></div> : null}
+          {!immutable ? <div className={styles.actions}><button className={styles.primary} data-testid="supplier-request-save" type="submit" disabled={blocked || reading || phase==='conflict' || Boolean(comparison)}>Guardar borrador</button><button className={styles.button} ref={reviewButton} aria-describedby="supplier-draft-next-step" data-testid="supplier-request-review" type="button" disabled={blocked || reading || phase==='conflict' || Boolean(comparison) || !selected || dirty || !complete} onClick={() => { if (!locked.current && !reads.current && !reading && !reviewGuard.current.locked && selected && !dirty && complete) setReviewing(true); }}>Revisar envío a NexID</button></div> : null}
         </form>
         </details>
         {!immutable && selected && dirty ? <p className={styles.muted}>Guardá los cambios antes de revisar el envío.</p> : null}
