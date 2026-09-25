@@ -11,3 +11,11 @@ Validación local: 1.709 pruebas aprobadas, cero fallos y dos omisiones existent
 Los controles de lectura incorporados al panel productivo ya existían en esta candidata: aquí se conservan, no se duplican ni se cuentan como desarrollo nuevo. Las 21 pruebas de bandeja son las mismas del incremento compartido; esta integración añade una prueba propia.
 
 Esta rama no se promueve a producción ni ejecuta el delta 0117–0121. La publicación del bloque compatible de bandeja se hace desde su rama productiva separada. El CI del commit exacto y la promoción canónica se documentan al terminar, sin convertir pruebas sintéticas en aceptación de una sesión real.
+
+## Cierre verificado
+
+Publicado el bloque compatible de bandeja: `5919edb8375d894df27523046fc6c83d254d4880`, READY en el dominio canónico después de CI 36142093667 y seis comprobaciones HTTP. La API sigue en `c21a0a776247d5109706e52db5895e817ea42cb9`, sin modificaciones. El contrato de negocio .41 permanece intacto.
+
+La candidata avanzada integrada `3d58dec553ba6513967b2cbac1cb42023a68e87d` también terminó con CI 36142936439 aprobado, sin promoverla. Las tres fuentes de la bandeja coinciden entre ambas líneas. Las pruebas locales integradas suman 266 comprobaciones en 20 vistas; las productivas, 786 en 71. La validación con cuenta real permanece separada: las sesiones y transportes del navegador fueron sintéticos.
+
+Evidencia por SHA: docs/releases/2026-09-25-request-inbox-validation.json. No se aplicaron migraciones ni cambiaron permisos o flags. El siguiente commit registra sólo este cierre, no modifica el código probado o desplegado.

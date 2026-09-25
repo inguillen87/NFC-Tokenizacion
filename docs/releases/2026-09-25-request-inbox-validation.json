@@ -1,0 +1,120 @@
+{
+  "protocol": "nexid.request-inbox-ux-release.v1",
+  "productionCode": "5919edb8375d894df27523046fc6c83d254d4880",
+  "integratedCode": "3d58dec553ba6513967b2cbac1cb42023a68e87d",
+  "production": {
+    "id": "dpl_3YND1v1eVJ1WdZ49e8kotEEfQj6j",
+    "previousCommit": "ca437bfb477b5dfb0dacd07ddedbe8eddd342daf",
+    "commit": "5919edb8375d894df27523046fc6c83d254d4880",
+    "ciRun": 36142093667,
+    "observedAt": "2026-09-25T13:47:58.6443655Z",
+    "state": "READY",
+    "ci": "success"
+  },
+  "canonicalHttp": {
+    "ok": true,
+    "sourceCommit": "5919edb8375d894df27523046fc6c83d254d4880",
+    "scope": "canonical",
+    "checks": [
+      "Existing business release contract unchanged",
+      "/supplier-orders/requests requires application login",
+      "/settings/runtime requires application login",
+      "Requests API retains authorization",
+      "Global diagnostic stays private",
+      "Diagnostic cannot select another scope"
+    ],
+    "realAuthenticatedInboxTested": false,
+    "businessWrites": false,
+    "observedAt": "2026-09-25T13:48:00.969Z"
+  },
+  "integratedCi": {
+    "commit": "3d58dec553ba6513967b2cbac1cb42023a68e87d",
+    "exitCode": 0,
+    "runId": 36142936439,
+    "conclusion": "success",
+    "status": "completed",
+    "checkedAt": "2026-09-25T14:00:27.6841613Z"
+  },
+  "apiObserved": {
+    "unchanged": true,
+    "observedAt": "2026-09-25T13:49:51.2846568Z",
+    "commit": "c21a0a776247d5109706e52db5895e817ea42cb9",
+    "ready": "READY"
+  },
+  "unit": {
+    "newInbox": 21,
+    "transferredReadPolicy": 15,
+    "newIntegration": 1,
+    "productionPassed": 1394,
+    "integratedPassed": 1709,
+    "existingSkipped": 2
+  },
+  "browser": [
+    {
+      "name": "inbox-final",
+      "checks": 142,
+      "views": 13,
+      "violations": 0
+    },
+    {
+      "name": "supplier-request-read-safety",
+      "checks": 124,
+      "views": 7,
+      "violations": 0
+    },
+    {
+      "name": "supplier-request-draft-ux",
+      "checks": 171,
+      "views": 12,
+      "violations": 0
+    },
+    {
+      "name": "supplier-requests",
+      "checks": 287,
+      "views": 33,
+      "violations": 0
+    },
+    {
+      "name": "runtime-access-hotfix",
+      "checks": 62,
+      "views": 6,
+      "violations": 0
+    },
+    {
+      "name": "integrated-supplier-request-inbox",
+      "checks": 142,
+      "views": 13,
+      "violations": 0
+    },
+    {
+      "name": "integrated-supplier-request-read-safety",
+      "checks": 124,
+      "views": 7,
+      "violations": 0
+    }
+  ],
+  "typecheckAndBuildPassed": true,
+  "sharedSources": [
+    {
+      "path": "apps/dashboard/src/lib/supplier-request-inbox.ts",
+      "sha256Lf": "533fb5c07acd3a3cdc408f3c620e3c6591df29eb444168d3b48cf1d9439dbf1e"
+    },
+    {
+      "path": "apps/dashboard/src/components/supplier-request-inbox.tsx",
+      "sha256Lf": "e7e0e3f42b160b2bd2f39eb3c8ffd5463d142997cb386e134eae27b3e6e7bfaa"
+    },
+    {
+      "path": "apps/dashboard/src/components/supplier-request-inbox.module.css",
+      "sha256Lf": "1ee83f201e99e6ac31a38e56c50313fe15c157a9349a3f8c35820bfa9fe81f34"
+    }
+  ],
+  "productionPromoted": true,
+  "advancedPromoted": false,
+  "apiModified": false,
+  "databaseMigrationsApplied": false,
+  "flagsChanged": false,
+  "permissionsChanged": false,
+  "realAuthenticatedInboxTested": false,
+  "downloadsModified": false,
+  "recordedAt": "2026-09-25T14:01:38.122Z"
+}

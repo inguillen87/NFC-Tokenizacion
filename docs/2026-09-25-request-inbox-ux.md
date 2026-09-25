@@ -40,3 +40,11 @@ El manifiesto de runtime continúa comprobando las mismas fuentes inalteradas. E
 El workflow incorpora la nueva bandeja y los controles de lectura, manteniendo las suites anteriores. Antes de promover se debe comprobar el CI del commit exacto y el artefacto con configuración productiva, sin asignar dominios automáticamente.
 
 La candidata comercial avanzada debe recibir esta misma bandeja sin reemplazar sus controles de cancelación, cotización, proveedor, acuse o disponibilidad. El cierre de integración y su CI quedan consignados por separado. Esta publicación no ejecuta migraciones, modifica permisos ni habilita flags.
+
+## Cierre verificado
+
+Publicado el bloque compatible de bandeja: `5919edb8375d894df27523046fc6c83d254d4880`, READY en el dominio canónico después de CI 36142093667 y seis comprobaciones HTTP. La API sigue en `c21a0a776247d5109706e52db5895e817ea42cb9`, sin modificaciones. El contrato de negocio .41 permanece intacto.
+
+La candidata avanzada integrada `3d58dec553ba6513967b2cbac1cb42023a68e87d` también terminó con CI 36142936439 aprobado, sin promoverla. Las tres fuentes de la bandeja coinciden entre ambas líneas. Las pruebas locales integradas suman 266 comprobaciones en 20 vistas; las productivas, 786 en 71. La validación con cuenta real permanece separada: las sesiones y transportes del navegador fueron sintéticos.
+
+Evidencia por SHA: docs/releases/2026-09-25-request-inbox-validation.json. No se aplicaron migraciones ni cambiaron permisos o flags. El siguiente commit registra sólo este cierre, no modifica el código probado o desplegado.
