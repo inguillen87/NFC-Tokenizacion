@@ -7,6 +7,8 @@ import {randomBytes, randomUUID, createHash} from 'node:crypto';
  */
 export async function supplierChainRoutes() {
  const routes=[];
+ const availability=await import('../../src/app/admin/supplier-requests/service-status/route.ts');
+ routes.push({method:'GET',match:u=>u.pathname==='/admin/supplier-requests/service-status',handle:availability.GET});
  const root=await import('../../src/app/admin/supplier-requests/route.ts');
  for(const method of ['GET','POST']) routes.push({method,match:u=>u.pathname==='/admin/supplier-requests',handle:root[method]});
  for(const suffix of ['', '/submit','/review','/quotation','/supplier-binding','/delivery-ack','/cancellation']) {
@@ -59,6 +61,17 @@ export async function runSupplierChainAcceptance(c) {
   }else{check(readiness.requirements.every(x=>x.status==='named_prerequisites_present'),'owner execution rights are reported separately from restricted runtime rights');}
   check(readiness.promotionAllowed===false&&readiness.migrationExecutionAllowed===false,'diagnostics never authorize promotion or migration');
   check(readiness.customerRowsRead===false&&readiness.catalogs.valuesOrPricesReturned===false,'diagnostics are limited to reference metadata');
+  const availablePath='/admin/supplier-requests/service-status?tenant='+tenantSlug;
+  await call('service status rejects anonymous',availablePath,{headers:{},status:401});
+  await call('service status rejects other tenant session',availablePath,{headers:otherTenantAdminHeaders,status:403});
+  const beforeCounts=(await client.query('SELECT (SELECT count(*)::int FROM public.supplier_requests) requests,(SELECT count(*)::int FROM public.supplier_request_operations) operations')).rows[0];
+  const available=await call('company reads actual deployment service metadata',availablePath,{headers:adminHeaders});
+  check(available.services.filter(s=>['quotation','supplier_binding','delivery_ack'].includes(s.id)).every(s=>s.state==='workflow_available'),'enabled advanced routes match real SQL entry points');
+  check(available.operationAuthorized===false&&available.recordAccessVerified===false,'metadata does not grant any operation or record access');
+  process.env.SUPPLIER_REQUEST_QUOTES_ENABLED='false';
+  try{const readOnly=await call('disabled quote writes retain historical query eligibility',availablePath,{headers:adminHeaders});check(readOnly.services.find(s=>s.id==='quotation').state==='read_only','quote module separates history and writes');}finally{process.env.SUPPLIER_REQUEST_QUOTES_ENABLED='true';}
+  const afterCounts=(await client.query('SELECT (SELECT count(*)::int FROM public.supplier_requests) requests,(SELECT count(*)::int FROM public.supplier_request_operations) operations')).rows[0];
+  check(JSON.stringify(beforeCounts)===JSON.stringify(afterCounts),'service metadata lookup performs no commercial writes');
   const create=await call('request draft persisted','/admin/supplier-requests?tenant='+tenantSlug,{method:'POST',headers:adminHeaders,status:201,body:{title:'Ephemeral integrated supplier chain',construction_id:'pet_wet',quantity:4,pack_purpose:'trial_integration',notes:'Synthetic commercial request; no physical order or purchase.'}});
   const id=create.request.id,path='/admin/supplier-requests/'+id,query='?tenant='+tenantSlug;
   let current=(await call('explicit request submission',path+'/submit'+query,{method:'POST',headers:adminHeaders,body:{expected_revision:create.request.revision}})).request;
