@@ -16,6 +16,7 @@ import { SupplierRequestCancellation } from "./supplier-request-cancellation";
 import { SupplierRequestAssignment } from "./supplier-request-assignment";
 import styles from "./supplier-request-workspace.module.css";
 import { SupplierRequestDraftGuide } from './supplier-request-draft-guide';
+import { SupplierRequestCaseSummary } from './supplier-request-case-summary';
 import { validateSupplierDraft, type SupplierDraftField } from '../lib/supplier-request-draft-guidance';
 import draftStyles from './supplier-request-draft-guide.module.css';
 import { SupplierDraftComparison } from './supplier-draft-comparison';
@@ -260,6 +261,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
         <div className={styles.heading}><div><h2 id="supplier-request-editor" ref={detailHeading} tabIndex={-1} data-testid="supplier-request-detail-heading">{selected ? selected.title : "Nueva solicitud"}</h2><p className={styles.muted}>{currentTenant}{selected ? ` · ${statusLabel(selected.status)} · ${selected.id}` : " · todavía sin guardar"}</p></div></div>
         <p role="status" data-testid="supplier-request-status" className={styles.notice}>{phase === "saving" ? "Guardando en el servidor…" : phase === "uncertain" ? "Resultado sin confirmar. Conservamos la misma operación." : confirmedRevision ? `Guardado confirmado · versión ${confirmedRevision}${selected && selected.revision > confirmedRevision ? `; la fuente ya está en la versión ${selected.revision}` : ""}${dirty ? " · cambios nuevos sin guardar" : ""}` : selected ? `Versión ${selected.revision}${dirty ? " · cambios sin guardar" : " · sin cambios"}` : "Borrador nuevo: aún no está guardado en el servidor."}</p>
         {error ? <p role="alert" className={styles.error}>{error}</p> : null}
+        {selected ? <SupplierRequestCaseSummary request={selected} isNexid={isNexid} /> : null}
         {phase === "uncertain" ? <button className={styles.button} data-testid="supplier-request-retry" type="button" onClick={() => { if (operation.current && !busy.current) void execute(operation.current); }}>Comprobar el mismo guardado</button> : null}
         {phase === "conflict" && selected ? <div data-testid="supplier-request-conflict"><p>Tu texto permanece sin guardar. Consultá la versión actual; no se sobrescribe automáticamente.</p><button type="button" className={styles.button} ref={compareButton} disabled={reading||blocked} onClick={() => void openRequest(selected.id, selected.tenant_slug, false, true)}>Consultar versión actual</button></div> : null}
         {comparison&&selected ? <SupplierDraftComparison base={selected} server={comparison} local={fields} disabled={reading||blocked} canInteract={canReconcile} onApply={applyComparison} onLoadServer={token=>applyComparison(token)} onClose={closeComparison}/> : null}

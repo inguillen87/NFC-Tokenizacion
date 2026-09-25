@@ -70,6 +70,7 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-service-status/browser" node apps/dashboard/tests/supplier-service-status.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-request-read-safety/browser" node apps/dashboard/tests/supplier-request-read-safety.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-request-form/browser" node apps/dashboard/tests/supplier-request-draft-ux.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-case-summary/browser" node apps/dashboard/tests/supplier-request-case-summary.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-inbox/browser" node apps/dashboard/tests/supplier-request-inbox.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-draft-reconcile/browser" node apps/dashboard/tests/supplier-draft-comparison.browser.mjs
           node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$RUNNER_TEMP/nexid-map-next.log" 2>&1 &
