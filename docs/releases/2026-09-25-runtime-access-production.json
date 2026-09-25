@@ -1,0 +1,94 @@
+{
+  "protocol": "nexid.runtime-access-production.v1",
+  "sourceCommit": "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+  "baseCommit": "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+  "branch": "codex/nexid-runtime-access-fix-20260924",
+  "incident": {
+    "runtimePage": "An authenticated company session reached notFound() on the existing global diagnostic page.",
+    "notifications": "The header attempted to read a superadmin-only notifications endpoint with a company session.",
+    "uploadedLogs": "Repeated GET /api/admin/notifications 403 responses are visible in the user-provided logs.",
+    "contentScriptWarnings": "Not established as the cause of the runtime route denial; no browser extension or listener limits were modified."
+  },
+  "fix": {
+    "companyPage": "Spanish access explanation with safe links back to settings or the panel; no diagnostic request.",
+    "globalDiagnostic": "Existing global-superadmin and audit-denial checks remain unchanged.",
+    "notificationGate": "Only non-demo, unbound global superadmin context can mount the global notification reader.",
+    "revokedNotifications": "401/403 clears counters and suppresses visibility/realtime retries until a new keyed context.",
+    "responses": "Bounded, validated counters; unavailable responses do not become a confirmed zero."
+  },
+  "validation": {
+    "newUnitTests": 34,
+    "dashboardPassed": 1324,
+    "dashboardFailed": 0,
+    "existingSkipped": 2,
+    "typecheckPassed": true,
+    "buildPassed": true,
+    "preservedBaselineSourceFiles": 439,
+    "newBrowserSuite": {
+      "checks": 62,
+      "views": 6,
+      "axeViolations": 0,
+      "widths": [320, 390, 1440],
+      "themes": ["light", "dark"],
+      "syntheticSessions": true,
+      "syntheticTransport": true,
+      "minimumPrimaryLinkContrast": 4.5
+    },
+    "priorRuntimeConsoleRegression": {"checks": 100, "views": 12, "passed": true},
+    "ci": {
+      "runId": 36088657673,
+      "headSha": "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-09-25T03:09:14Z"
+    },
+    "stageHttpChecks": 7,
+    "productionHttpChecks": 7,
+    "httpApplicationLoginUsed": false,
+    "httpPlatformAccess": "Existing authorized Vercel CLI"
+  },
+  "rollout": {
+    "productionPromoted": true,
+    "deploymentId": "dpl_9T1NYietjqJRFZFPt266SJReEzB8",
+    "projectId": "prj_dZCNO1mMbXKzVwu14qswAq0ZunLc",
+    "canonicalDomain": "app.nexid.lat",
+    "sourceCommit": "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+    "readyState": "READY",
+    "target": "production",
+    "preparedWithProductionConfiguration": true,
+    "promotedExistingTestedArtifactWithoutRebuild": true,
+    "previousDeploymentId": "dpl_4zaqgavAqv8ZXghjudwLhTTpFFmL",
+    "businessReleaseContractsPreserved": "2026.09.23-dashboard.41",
+    "verifiedAt": "2026-09-25T03:09:54.765Z"
+  },
+  "realBrowserObservation": {
+    "method": "Visible accessibility-tree labels in the user Chrome document after opening the canonical runtime page",
+    "observedAt": "2026-09-25T03:10:49.6882427Z",
+    "globalAccessRequiredHeadingVisible": true,
+    "companySpaceExplanationVisible": true,
+    "notFound404LabelVisible": false,
+    "diagnosticQueryButtonVisible": false,
+    "inputValuesRead": false,
+    "cookiesRead": false,
+    "credentialsRead": false,
+    "rolesChanged": false,
+    "authenticatedGlobalDiagnosticRead": false,
+    "liveNotificationNetworkCountMeasured": false,
+    "note": "Positive observation of the restricted company-page rendering, not proof of access to global diagnostics. Notification request suppression was tested separately with real components and synthetic transport."
+  },
+  "boundaries": {
+    "apiDeploymentUnchanged": "dpl_ZvYYYQABuvjC3uTr88tcnYaTuUpr",
+    "apiSourceUnchanged": "c21a0a776247d5109706e52db5895e817ea42cb9",
+    "productionDatabaseMigrationsApplied": false,
+    "productionPermissionsChanged": false,
+    "productionFeatureFlagsChanged": false,
+    "advancedCommercialCandidatePromoted": false,
+    "repositoryVisibilityChanged": false,
+    "browserExtensionsChanged": false
+  },
+  "continuity": [
+    "Carry this production hotfix into the advanced integrated candidate before its next release; do not restore the old 404 or tenant-global notification requests.",
+    "Positive global diagnostic access and API-to-database endpoint acceptance remain separate from this company-role UX fix.",
+    "The production hotfix does not apply the pending commercial migration delta."
+  ]
+}
