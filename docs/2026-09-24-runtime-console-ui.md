@@ -62,3 +62,17 @@ La autorización usada para esas comprobaciones fue la sesión existente de Verc
 Producción se volvió a comprobar al 25/09/2026 01:10 UTC: API `2026.09.24-api-runtime-diagnostics.1` y dashboard `2026.09.23-dashboard.41`, con sus commits anteriores y estado READY. No hubo promoción, migración, cambio de permisos o de flags en esta sesión.
 
 Evidencia durable: `docs/releases/2026-09-24-runtime-console-validation.json`. El commit posterior de documentación no modifica ni sustituye el código probado/desplegado en la vista previa.
+
+## Actualización: consola publicada en el dominio canónico
+
+El 24/09/2026 a las 22:25 de Argentina se promovió el código `cbeae033294da57b22eaa0603fc68cbbec3086cf` tras compilarlo con la configuración productiva, inicialmente sin asignar dominios. El alias anterior se verificó antes de promover y quedó registrado para reversión. No se promovió el artefacto de preview con variables de otro entorno.
+
+La consola ya está en `https://app.nexid.lat/settings/runtime`, mediante Configuración → Estado operativo. El contrato de negocio continúa identificado como `.41`; esta publicación no incorpora las ramas comerciales posteriores ni anuncia una `.42` completa.
+
+Se confirmaron ID, commit y estado READY del despliegue canónico. Pasaron siete verificaciones HTTP sobre el artefacto previo y ocho sobre el dominio canónico: contrato previo preservado, inicio de sesión requerido, tres rechazos de identidades no válidas, rechazo de selectores, ausencia de métodos de escritura y protección de la pantalla existente de solicitudes.
+
+El primer sondeo de staging se interrumpió por una salida anormal de la CLI local de Vercel. El sondeo posterior terminó completo; no se relajaron las aserciones ni las protecciones para publicarlo.
+
+La aceptación positiva con una sesión real de superadministrador y la correspondencia API→rama de Neon siguen pendientes. Las verificaciones no extrajeron cookies, contraseñas ni datos privados y no crearon cuentas. El código de API continúa en runtime-diagnostics.1, sin cambios de esquema, roles ni flags.
+
+Evidencia: `docs/releases/2026-09-24-runtime-console-production.json`. Las pruebas anteriores y el CI corresponden exactamente al código promovido; este agregado de documentación no cambia el artefacto.

@@ -1,0 +1,50 @@
+{
+    "protocol":  "nexid.runtime-console-production.v1",
+    "sourceCommit":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+    "ciRun":  36080116184,
+    "priorBusinessRelease":  "2026.09.23-dashboard.41",
+    "businessReleaseContractPreserved":  true,
+    "deployment":  {
+                       "commit":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+                       "target":  "production",
+                       "observedAt":  "2026-09-25T01:27:51.9568061Z",
+                       "id":  "dpl_4zaqgavAqv8ZXghjudwLhTTpFFmL",
+                       "state":  "READY"
+                   },
+    "promotionCompleted":  "2026-09-25T01:25:53.2756103Z",
+    "canonical":  {
+                      "ok":  true,
+                      "origin":  "https://app.nexid.lat",
+                      "sourceCommit":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+                      "checks":  [
+                                     "Full business release contract remains unchanged",
+                                     "New page exists and returns unauthenticated callers to login",
+                                     "BFF rejects anonymous without diagnostic disclosure",
+                                     "BFF rejects forged headers without diagnostic disclosure",
+                                     "BFF rejects local token without diagnostic disclosure",
+                                     "No caller-selected tenant or SQL target",
+                                     "No mutation handler exists",
+                                     "Existing requests page retains its login protection"
+                                 ],
+                      "authenticatedPositiveRead":  false,
+                      "businessWrites":  false,
+                      "observedAt":  "2026-09-25T01:27:54.598Z"
+                  },
+    "stagedChecks":  [
+                         "Preview retains the base release contracts; candidate identified separately by SHA",
+                         "Protected page requires application login",
+                         "Dedicated BFF rejects missing application session and caller-supplied identity",
+                         "Dedicated BFF rejects missing application session and caller-supplied identity",
+                         "Dedicated BFF rejects missing application session and caller-supplied identity",
+                         "Selectors cannot redirect a diagnostic",
+                         "No mutation handler is deployed for diagnostics"
+                     ],
+    "rollbackReference":  "prior_production_deployment_recorded_locally",
+    "apiReleaseUnchanged":  "2026.09.24-api-runtime-diagnostics.1",
+    "databaseMigrationsApplied":  false,
+    "featureFlagsChanged":  false,
+    "permissionsChanged":  false,
+    "newBusinessHandlersPublished":  false,
+    "positiveAuthenticatedAcceptance":  "pending",
+    "recordedAt":  "2026-09-25T01:29:43.7386713Z"
+}
