@@ -1,0 +1,85 @@
+{
+    "protocol":  "nexid.supplier-upgrade-validation.v1",
+    "baselineCode":  "4eeb1fef5c89b5faa0a1e7b8cadbec738ba44b65",
+    "acceptance":  {
+                       "harness":  "nexid.supplier-upgrade-acceptance.v1",
+                       "ok":  true,
+                       "localOnly":  true,
+                       "liveSchemaCopied":  false,
+                       "productionDatabaseUsed":  false,
+                       "syntheticPreexistingRecords":  true,
+                       "observedLedgerUsedOnlyAsFixture":  true,
+                       "checks":  [
+                                      "Complete reconstructed schema stops before 0117",
+                                      "Observed 79-entry ledger pattern and 48 historic gaps reproduced only in local fixture",
+                                      "Legacy draft, submitted request, clarification, assignment and ticket exist before migration",
+                                      "Unscoped canonical runner refuses the historic gaps instead of replaying them",
+                                      "Rejected blanket migration leaves both data and ledger unchanged",
+                                      "Already-recorded 0115/0116 produce no migration execution",
+                                      "Injected ledger failure rejects 0117 after its DDL, testing the actual runner transaction",
+                                      "Failed ledger write rolls back added columns and function changes",
+                                      "Only the five nominated migrations ran, preserving all baseline business and identity records after each step",
+                                      "The local observed-ledger fixture advances from 79 to 84, not to 132",
+                                      "Historic gaps remain documented rather than falsely ledgered as repaired",
+                                      "Repeating the approved delta is a ledger no-op with unchanged existing records",
+                                      "New fields on legacy requests start with no quotation or cancellation claims",
+                                      "Applying migrations does not invent commercial events",
+                                      "Old submission receipt remains recoverable after schema upgrade",
+                                      "Old draft creation receipt is preserved",
+                                      "Existing limited technician assignment stays readable after upgrade",
+                                      "New cancellation works against the pre-existing submitted request, not only newly created records",
+                                      "Cancellation removes technician access without deleting earlier assignment history",
+                                      "Original clarification event remains after cancellation"
+                                  ],
+                       "sourceMigrations":  132,
+                       "reconstructedBaseline":  127,
+                       "fixtureLedgerBefore":  79,
+                       "fixtureLedgerAfter":  84,
+                       "historicalGapsLeft":  48,
+                       "executed":  [
+                                        "20260924010000_0117_supplier_request_cancellation.sql",
+                                        "20260924050000_0118_supplier_request_quotes.sql",
+                                        "20260924110000_0119_supplier_request_binding.sql",
+                                        "20260924150000_0120_supplier_delivery_ack.sql",
+                                        "20260924163000_0121_support_ticket_status_type_compatibility.sql"
+                                    ],
+                       "sources":  [
+                                       {
+                                           "id":  "20260924010000_0117_supplier_request_cancellation.sql",
+                                           "sha256":  "be81286a20d58815b290b0781947c1a4f1a899b0a4a6d008f1901f3b43bbf581"
+                                       },
+                                       {
+                                           "id":  "20260924050000_0118_supplier_request_quotes.sql",
+                                           "sha256":  "c04a7794f7b12bf07f232b63b42c53d7f3192684b0e9cc16b3ac96f00c9e17f7"
+                                       },
+                                       {
+                                           "id":  "20260924110000_0119_supplier_request_binding.sql",
+                                           "sha256":  "acc00b268f6c2c110e62ce82dc234de9b0a0bd456fd00c4795606869ba37edc2"
+                                       },
+                                       {
+                                           "id":  "20260924150000_0120_supplier_delivery_ack.sql",
+                                           "sha256":  "08df6a1380a12782bd1551d1cc67253a969bff0b978dacc46abb5148155f061b"
+                                       },
+                                       {
+                                           "id":  "20260924163000_0121_support_ticket_status_type_compatibility.sql",
+                                           "sha256":  "9dabc6b9dc8b13b542cced05f9dff66f528bdc37f1ec4772026e9f6f9de60b1f"
+                                       }
+                                   ],
+                       "baselineTablesCompared":  14,
+                       "liveProductionSchemaVerified":  false,
+                       "productionExecutionAllowed":  false,
+                       "temporarySourceRemoved":  true,
+                       "connectionsClosed":  true
+                   },
+    "localEngine":  "PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit",
+    "localClusterStopped":  true,
+    "localDataDirectoryRemoved":  true,
+    "priorSqlHarnessOrderVerified":  true,
+    "newUnitTests":  28,
+    "focalTests":  568,
+    "safetyTests":  123,
+    "buildPassed":  true,
+    "productionDatabaseUsed":  false,
+    "productionExecutionAllowed":  false,
+    "recordedAt":  "2026-09-25T01:29:07.9488348Z"
+}

@@ -8,6 +8,7 @@ const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
   /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|TMPDIR|HOME|USERPROFILE|APPDATA|LOCALAPPDATA|CI)$/i.test(key)));
 Object.assign(env, { NODE_ENV: 'test', VERCEL_ENV: 'test', NEXT_TELEMETRY_DISABLED: '1' });
 const files = [
+  'supplier-upgrade-plan',
   'runtime-readiness',
   'supplier-schema-observation',
   'runtime-managed-reference-catalog', 'supplier-runtime-acceptance-safety', 'supplier-runtime-effective-acl',

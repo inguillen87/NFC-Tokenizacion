@@ -1,7 +1,7 @@
 name: Audited support ticket status changes
 on:
   push:
-    branches: [codex/nexid-s9-ticket-workflow-api-20260922, codex/nexid-request-cancellation-api-20260924, codex/nexid-request-quotes-api-20260924, codex/nexid-supplier-binding-api-20260924, codex/nexid-delivery-ack-api-20260924, codex/nexid-supplier-chain-acceptance-api-20260924, codex/nexid-supplier-runtime-acceptance-api-20260924, codex/nexid-release-readiness-20260924, codex/nexid-runtime-readiness-20260924]
+    branches: [codex/nexid-s9-ticket-workflow-api-20260922, codex/nexid-request-cancellation-api-20260924, codex/nexid-request-quotes-api-20260924, codex/nexid-supplier-binding-api-20260924, codex/nexid-delivery-ack-api-20260924, codex/nexid-supplier-chain-acceptance-api-20260924, codex/nexid-supplier-runtime-acceptance-api-20260924, codex/nexid-release-readiness-20260924, codex/nexid-runtime-readiness-20260924, codex/nexid-supplier-upgrade-acceptance-20260924]
     paths:
       - apps/api/**
       - packages/core/**
@@ -56,6 +56,17 @@ jobs:
         run: |
           set -euo pipefail
           node --require ./scripts/qa/s7-loopback-only.cjs --import tsx --test --test-concurrency=1 apps/api/tests/support-report-postgres.test.mjs apps/api/tests/admin-ticket-lookup-postgres.test.mjs apps/api/tests/admin-ticket-workflow-postgres.test.mjs apps/api/tests/supplier-requests-postgres.test.mjs 2>&1 | tee "$RUNNER_TEMP/nexid-s9-evidence/postgres-tests.log"
+      - name: Upgrade persisted records using only the reviewed supplier delta
+        env:
+          NODE_ENV: test
+          VERCEL_ENV: test
+          NEXID_E2E_CONFIRMATION: I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE
+          NEXID_E2E_DATABASE_URL: postgresql://nexid_e2e:ephemeral-ci-password@127.0.0.1:5432/nexid_e2e_s9
+          NEXID_E2E_EXPECTED_POSTGRES_VERSION: '18.4'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --require ./scripts/qa/s7-loopback-only.cjs apps/api/scripts/supplier-upgrade-acceptance.mjs 2>&1 | tee "$RUNNER_TEMP/nexid-s9-evidence/supplier-upgrade.log"
       - name: API production build and full build regression suites
         shell: bash
         run: |
