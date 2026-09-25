@@ -48,3 +48,17 @@ La interfaz se puede revisar en una vista previa sin cambiar producción. No nec
 Antes de promover: revisar el artefacto y la sesión real, y contar con autorización de publicación. No integrar incidentalmente las funciones pendientes de migraciones. Al trasladar este panel a la rama avanzada, actualizar deliberadamente el test de preservación para esa base y repetir sus pruebas.
 
 Siguiente cierre del plan: comprobar API→endpoint desde una sesión real; validar el delta 0117–0121 contra el baseline observado en un entorno aislado autorizado; publicar API/panel compatibles y activar escrituras sólo después de aceptar sus controles. Este panel no convierte un acuse manual en recepción autenticada del proveedor.
+
+## Cierre de este candidato: CI y vista previa verificados
+
+Código: `cbeae033294da57b22eaa0603fc68cbbec3086cf`. GitHub Actions `36080116184` terminó aprobado sobre ese SHA: chequeos completos del dashboard, compilación, secretos y todas las suites de navegador del workflow, incluida la consola nueva.
+
+La vista previa de Vercel está READY y usa el mismo commit. No es un despliegue de producción y no se asignaron dominios productivos. Acceso de revisión: https://nexid-dashboard-ef0yoo4on-marcelos-projects-c26aa499.vercel.app/settings/runtime . Mantiene la protección de la plataforma y el inicio de sesión de la aplicación; no se generó una URL pública que omita esos controles.
+
+Siete comprobaciones HTTP en la vista previa aprobaron: contratos de release preservados, página protegida por inicio de sesión, tres rechazos de acceso al BFF sin sesión válida/con identidad aportada por el llamador, rechazo de selectores y ausencia de POST. Next devuelve la redirección de la página como respuesta transmitida HTTP 200 con NEXT_REDIRECT hacia login y retorno a /settings/runtime, sin el contenido protegido. La comprobación verifica ese destino, no trata cualquier HTTP 200 como acceso correcto.
+
+La autorización usada para esas comprobaciones fue la sesión existente de Vercel CLI. **No es una sesión de NexID y no demuestra aceptación positiva del diagnóstico autenticado.** Esa comprobación sigue pendiente; no se leyeron cookies, contraseñas o perfiles del navegador ni se crearon cuentas.
+
+Producción se volvió a comprobar al 25/09/2026 01:10 UTC: API `2026.09.24-api-runtime-diagnostics.1` y dashboard `2026.09.23-dashboard.41`, con sus commits anteriores y estado READY. No hubo promoción, migración, cambio de permisos o de flags en esta sesión.
+
+Evidencia durable: `docs/releases/2026-09-24-runtime-console-validation.json`. El commit posterior de documentación no modifica ni sustituye el código probado/desplegado en la vista previa.

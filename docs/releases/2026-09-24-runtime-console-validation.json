@@ -1,0 +1,78 @@
+{
+    "protocol":  "nexid.runtime-console-validation.v1",
+    "sourceCommit":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+    "baselineCommit":  "71b3248dcd3d6d40d8eb6668c30ee5442b64195b",
+    "branch":  "codex/nexid-runtime-console-ui-20260924",
+    "sourceFilesPreserved":  441,
+    "newUnitTests":  57,
+    "dashboardUnit":  {
+                          "existingSkipped":  2,
+                          "failed":  0,
+                          "passed":  1290
+                      },
+    "typecheckPassed":  true,
+    "buildPassed":  true,
+    "browser":  {
+                    "syntheticTransport":  true,
+                    "checks":  100,
+                    "syntheticSessions":  true,
+                    "actualComponent":  true,
+                    "authenticatedNextServer":  false,
+                    "views":  12,
+                    "axeViolations":  0
+                },
+    "ci":  {
+               "commit":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+               "conclusion":  "success",
+               "completed":  true,
+               "runId":  36080116184,
+               "verifiedAt":  "2026-09-25T01:09:11.0835702Z"
+           },
+    "preview":  {
+                    "url":  "https://nexid-dashboard-ef0yoo4on-marcelos-projects-c26aa499.vercel.app/settings/runtime",
+                    "authenticatedApplicationSuccess":  false,
+                    "sourceCommit":  "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+                    "state":  "READY",
+                    "httpChecks":  [
+                                       "Preview retains the base release contracts; candidate identified separately by SHA",
+                                       "Protected page requires application login",
+                                       "Dedicated BFF rejects missing application session and caller-supplied identity",
+                                       "Dedicated BFF rejects missing application session and caller-supplied identity",
+                                       "Dedicated BFF rejects missing application session and caller-supplied identity",
+                                       "Selectors cannot redirect a diagnostic",
+                                       "No mutation handler is deployed for diagnostics"
+                                   ],
+                    "observedAt":  "2026-09-25T01:05:44.918Z",
+                    "platformAccess":  "existing_authorized_vercel_cli",
+                    "productionTarget":  false,
+                    "customDomainsAssigned":  false
+                },
+    "canonical":  {
+                      "value":  [
+                                    {
+                                        "domain":  "api.nexid.lat",
+                                        "commit":  "c21a0a776247d5109706e52db5895e817ea42cb9",
+                                        "release":  "2026.09.24-api-runtime-diagnostics.1",
+                                        "ready":  true,
+                                        "unchanged":  true,
+                                        "checkedAt":  "2026-09-25T01:10:30.4406437Z"
+                                    },
+                                    {
+                                        "domain":  "app.nexid.lat",
+                                        "commit":  "71b3248dcd3d6d40d8eb6668c30ee5442b64195b",
+                                        "release":  "2026.09.23-dashboard.41",
+                                        "ready":  true,
+                                        "unchanged":  true,
+                                        "checkedAt":  "2026-09-25T01:10:33.4356662Z"
+                                    }
+                                ],
+                      "Count":  2
+                  },
+    "productionPromoted":  false,
+    "databaseMigrationsApplied":  false,
+    "businessMutations":  false,
+    "featureFlagsChanged":  false,
+    "repoVisibilityChanged":  false,
+    "positiveAuthenticatedAcceptance":  "pending",
+    "recordedAt":  "2026-09-25T01:10:49.3996275Z"
+}
