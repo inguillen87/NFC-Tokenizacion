@@ -1,7 +1,7 @@
 {
-  "release": "2026.09.23-api-supplier-requests.2",
-  "scope": "supplier-request-clarifications-and-atomic-preparation-gate",
-  "baseCommit": "5adf44c76f4bc27d5220ab775397f6eb23101e1f",
+  "release": "2026.09.24-api-runtime-diagnostics.1",
+  "scope": "additive-superadmin-runtime-diagnostics",
+  "baseCommit": "fca60584bbbcc8ab18e1f06e578f0286723204ef",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -56,5 +56,8 @@
   "compatibleApiProtocolRelease": "2026.09.22-api-support-workflow.1",
   "supplierRequestProtocol": "nexid.supplier-request.v1",
   "supplierRequestReviewProtocol": "nexid.supplier-request-review.v1",
-  "supplierDispatchIncluded": false
+  "supplierDispatchIncluded": false,
+  "diagnosticOnlyIncrement": true,
+  "incrementalDatabaseMigrationsIncluded": false,
+  "runtimeReadinessProtocol": "nexid.runtime-readiness.v1"
 }
