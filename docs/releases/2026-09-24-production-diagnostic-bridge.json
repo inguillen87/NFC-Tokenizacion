@@ -1,0 +1,60 @@
+{
+    "canonicalCommitVerified":  true,
+    "authenticated":  {
+                          "verified":  false,
+                          "browserResponse":  "Dashboard session required for admin proxy access.",
+                          "cookiesOrPasswordsRead":  false,
+                          "previousTabRestored":  true,
+                          "diagnosticTabLeftOpen":  true
+                      },
+    "previousDeploymentReference":  "recorded_locally",
+    "sourceExistingFilesPreserved":  549,
+    "featureFlagsChanged":  false,
+    "checkedAt":  "2026-09-25T00:24:53.2983104Z",
+    "deployedSourceCommit":  "c21a0a776247d5109706e52db5895e817ea42cb9",
+    "dashboardRelease":  "2026.09.23-dashboard.41",
+    "databaseMigrationsApplied":  false,
+    "deploymentReady":  true,
+    "protocol":  "nexid.production-diagnostic-bridge-evidence.v1",
+    "sourceChanges":  "three_additive_diagnostic_files_only",
+    "rollbackRequired":  false,
+    "productionApiRelease":  "2026.09.24-api-runtime-diagnostics.1",
+    "externalPackageDelivery":  false,
+    "ci":  {
+               "status":  "completed",
+               "conclusion":  "success",
+               "runId":  36076352787,
+               "sha":  "c21a0a776247d5109706e52db5895e817ea42cb9"
+           },
+    "canonical":  {
+                      "checks":  [
+                                     "exact release and .41 compatibility contracts",
+                                     "process liveness",
+                                     "diagnostic rejects anonymous",
+                                     "diagnostic rejects forged-scope",
+                                     "diagnostic rejects local-token",
+                                     "diagnostic rejects demo-token",
+                                     "diagnostic has no mutation handler",
+                                     "existing requests endpoint remains protected"
+                                 ],
+                      "observedAt":  "2026-09-25T00:21:54.915Z"
+                  },
+    "local":  {
+                  "focalPassed":  294,
+                  "focalFailed":  0,
+                  "baselineIntegrityTests":  3,
+                  "buildExit":  0,
+                  "diagnosticTests":  37
+              },
+    "businessWrites":  false,
+    "stage":  {
+                  "protectedOriginRetained":  true,
+                  "checks":  [
+                                 "staged process liveness through authorized Vercel access",
+                                 "unchanged trusted-edge boundary rejects direct /release.json",
+                                 "unchanged trusted-edge boundary rejects direct /admin/diagnostics/runtime-readiness",
+                                 "unchanged trusted-edge boundary rejects direct /admin/supplier-requests"
+                             ],
+                  "applicationHandlerTested":  false
+              }
+}
