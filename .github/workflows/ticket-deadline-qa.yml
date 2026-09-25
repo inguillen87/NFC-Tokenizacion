@@ -62,6 +62,7 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-runtime-console/browser" node apps/dashboard/tests/runtime-console.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-runtime-access/browser" node apps/dashboard/tests/runtime-access-hotfix.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-request-form/browser" node apps/dashboard/tests/supplier-request-draft-ux.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-case-summary/browser" node apps/dashboard/tests/supplier-request-case-summary.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-inbox/browser" node apps/dashboard/tests/supplier-request-inbox.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-read-safety/browser" node apps/dashboard/tests/supplier-request-read-safety.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-draft-reconcile/browser" node apps/dashboard/tests/supplier-draft-comparison.browser.mjs
