@@ -1,0 +1,139 @@
+{
+    "protocol":  "nexid.release-convergence-validation.v1",
+    "sourceCommit":  "e439c716f9fb093233ff048f44c3955c504f1792",
+    "branch":  "codex/nexid-release-convergence-20260925",
+    "parents":  [
+                    "7e3b7f9db153266dd7763d70111e93784c47bb1d",
+                    "95e54eae57cfcbd21cce7af9066956e5cbd1f757"
+                ],
+    "pairedApiCode":  "52ffff7714801d93d12dede02a387adf9a4f0de0",
+    "sourcePreservation":  {
+                               "baselineSourceFiles":  487,
+                               "unchanged":  484,
+                               "replaced":  2,
+                               "combinedHeader":  1,
+                               "added":  2,
+                               "finalSources":  489
+                           },
+    "unit":  {
+                 "passed":  1652,
+                 "failed":  0,
+                 "existingSkipped":  2,
+                 "newConvergenceTests":  21,
+                 "previousHotfixTestsRetained":  34
+             },
+    "typecheckPassed":  true,
+    "buildPassed":  true,
+    "browser":  {
+                    "suites":  [
+                                   {
+                                       "name":  "runtime-access-hotfix",
+                                       "checks":  62,
+                                       "views":  6,
+                                       "axeViolations":  0,
+                                       "syntheticSessions":  true,
+                                       "syntheticTransport":  true
+                                   },
+                                   {
+                                       "name":  "runtime-console",
+                                       "checks":  100,
+                                       "views":  12,
+                                       "axeViolations":  0,
+                                       "syntheticSessions":  true,
+                                       "syntheticTransport":  true
+                                   },
+                                   {
+                                       "name":  "supplier-request-read-safety",
+                                       "checks":  124,
+                                       "views":  7,
+                                       "axeViolations":  0,
+                                       "syntheticSessions":  true,
+                                       "syntheticTransport":  true
+                                   },
+                                   {
+                                       "name":  "supplier-service-status",
+                                       "checks":  89,
+                                       "views":  12,
+                                       "axeViolations":  0,
+                                       "syntheticSessions":  true,
+                                       "syntheticTransport":  true
+                                   }
+                               ],
+                    "totalChecks":  375,
+                    "totalViews":  37,
+                    "positiveProductionSessionTested":  false
+                },
+    "ci":  {
+               "runId":  36103871015,
+               "sha":  "e439c716f9fb093233ff048f44c3955c504f1792",
+               "status":  "completed",
+               "conclusion":  "success",
+               "jobs":  [
+                            {
+                                "id":  107972012093,
+                                "name":  "validate",
+                                "conclusion":  "success",
+                                "completedAt":  "2026-09-25T06:51:22Z"
+                            }
+                        ],
+               "browserInvocations":  18,
+               "distinctComponentSuites":  17
+           },
+    "canonical":  [
+                      {
+                          "domain":  "app.nexid.lat",
+                          "id":  "dpl_9T1NYietjqJRFZFPt266SJReEzB8",
+                          "sha":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+                          "state":  "READY",
+                          "unchanged":  true,
+                          "observedAt":  "2026-09-25T06:51:34.830Z"
+                      },
+                      {
+                          "domain":  "api.nexid.lat",
+                          "id":  "dpl_ZvYYYQABuvjC3uTr88tcnYaTuUpr",
+                          "sha":  "c21a0a776247d5109706e52db5895e817ea42cb9",
+                          "state":  "READY",
+                          "unchanged":  true,
+                          "observedAt":  "2026-09-25T06:51:36.912Z"
+                      }
+                  ],
+    "productionPromoted":  false,
+    "databaseMigrationsApplied":  false,
+    "permissionsChanged":  false,
+    "featureFlagsChanged":  false,
+    "apiCodeChanged":  false,
+    "dependencyChanges":  false,
+    "deploymentCreationRequested":  false,
+    "branchesRewritten":  false,
+    "globalDiagnosticPositiveRead":  false,
+    "recordedAt":  "2026-09-25T06:51:36.912Z",
+    "sharedPolicyAlignment":  {
+                                  "api":  "52ffff7714801d93d12dede02a387adf9a4f0de0",
+                                  "dashboard":  "e439c716f9fb093233ff048f44c3955c504f1792",
+                                  "policies":  [
+                                                   {
+                                                       "name":  "supplier-binding-policy.ts",
+                                                       "sha256LF":  "20d7ba9bfdf7a977a76d5fb084a108559e20db4bae5c91b8b5cc9929a8d53388",
+                                                       "identical":  true
+                                                   },
+                                                   {
+                                                       "name":  "supplier-delivery-ack-policy.ts",
+                                                       "sha256LF":  "118c4262145fbdec348cfea1ef59fa02cd52977282d4e8bb7f0cf913f977fe38",
+                                                       "identical":  true
+                                                   },
+                                                   {
+                                                       "name":  "supplier-quote-policy.ts",
+                                                       "sha256LF":  "7ab226ed40c220b7454d86eec0471a98b3f57235a2899b794fa95f6c67e8c7fa",
+                                                       "identical":  true
+                                                   },
+                                                   {
+                                                       "name":  "supplier-service-contract.ts",
+                                                       "sha256LF":  "d7faa98ddf15c2cfcee72ed2f9dcab4522cd01d16016c7d67f878ac234cb11a9",
+                                                       "identical":  true
+                                                   }
+                                               ],
+                                  "comparison":  "immutable_commit_source_normalized_LF",
+                                  "deploymentCompatibilityFullyCertified":  false,
+                                  "observedAt":  "2026-09-25T06:50:56.139Z"
+                              }
+}

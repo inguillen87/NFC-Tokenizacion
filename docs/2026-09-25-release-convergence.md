@@ -55,3 +55,17 @@ La corrección productiva de runtime y las consultas fallidas históricas del na
 Las cuatro suites locales aprobaron 375 comprobaciones en 37 vistas: acceso/notificaciones 62/6, consola 100/12, seguridad de lecturas 124/7 y disponibilidad 89/12. No se detectaron infracciones de axe ni errores de cliente o solicitudes inesperadas en esos reportes. Se inspeccionó visualmente la pantalla restringida en móvil claro dentro de esta nueva compilación de pruebas.
 
 La auditoría de dependencias, custodia de secretos y controles de formato aprobaron. La comprobación de diff confirmó que API, packages, manifiestos de dependencias, public/release.json y dashboard-release.ts no cambiaron respecto del padre avanzado. El workflow unificado conserva 17 suites de componentes distintas y la aceptación adicional del mapa con servidor Next real (18 invocaciones de navegador en total).
+
+## Cierre verificado en GitHub
+
+Código integrado: `e439c716f9fb093233ff048f44c3955c504f1792`. El commit conserva como padres `7e3b7f9d` y `95e54eae`; no se volvió a desarrollar ni publicar el hotfix anterior como si fuera un incremento nuevo.
+
+GitHub Actions `36103871015`, job `107972012093`, terminó aprobado el 25/09/2026 a las 06:51:22 UTC sobre ese SHA. Incluye checks completos, compilación y las 18 invocaciones de navegador del workflow unido. No hubo omisión de suites para resolver el merge.
+
+Se compararon además, desde ambos commits inmutables, las políticas compartidas de cotización, proveedor, acuse y disponibilidad. Las cuatro coinciden exactamente tras normalizar LF entre el panel `e439c716` y la API candidata `52ffff77`. Esto confirma alineación de esas políticas; no certifica por sí solo toda la compatibilidad de despliegue ni la base productiva.
+
+Las comprobaciones de control de despliegue posteriores al CI confirmaron que producción continúa en panel `cb2a845d` y API `c21a0a77`, ambos READY. No se solicitaron despliegues, no se aplicaron migraciones y no se cambiaron permisos o flags en este sprint.
+
+También se inspeccionó visualmente la captura móvil oscura del borrador conservado tras una bandeja parcial, además del aviso de acceso en móvil claro. Son resultados de componentes con datos sintéticos, no capturas de un cliente productivo.
+
+Evidencia: `docs/releases/2026-09-25-release-convergence-validation.json`. El siguiente commit registra sólo documentación; no sustituye el SHA de código comprobado por el CI. La unificación del panel queda cerrada; la aceptación de la conexión y del delta productivo sigue siendo una puerta independiente.
