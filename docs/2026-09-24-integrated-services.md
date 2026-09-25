@@ -48,3 +48,19 @@ El test de preservación se recalculó deliberadamente contra la rama avanzada: 
 Esto es una pareja de candidatas, no una publicación productiva. La consola ya publicada y los protocolos actuales permanecen sin cambios en el dominio real. No se aplicó 0117–0121 en Neon ni se habilitaron flags. La API avanzada todavía requiere conciliar y aplicar el delta autorizado; que compile no demuestra que el esquema vivo sea compatible.
 
 Orden pendiente: confirmar conexión API→endpoint con sesión real; aceptar el delta sobre ese baseline; publicar API y panel compatibles con escrituras desactivadas; validar cada flujo y habilitarlo de forma explícita. No ejecutar las 48 diferencias históricas ni tratar disponibilidad técnica como permiso. CI se debe comprobar por SHA antes de certificar las candidatas.
+
+## Cierre verificado de las candidatas
+
+Código API: `52ffff7714801d93d12dede02a387adf9a4f0de0`.
+Código integrado del panel: `e1045dc9ac8faca0ad021aad2d730603b3b10aa8`.
+El panel es un merge con ambos padres conservados, no una sustitución del circuito avanzado por la consola publicada.
+
+GitHub terminó aprobado sobre esos commits: API `36084382323` (incluye upgrade selectivo de expedientes existentes), integración completa `36084382320` con PostgreSQL 16.4 y 18.4, y dashboard `36084670126` con todas sus suites de navegador. No se relajaron las puertas de aprobación para integrar las ramas.
+
+Las ocho suites locales suman 1.215 comprobaciones y 135 vistas, con cero infracciones detectadas por axe. Incluyen disponibilidad, consola, proveedor, cotización, cancelación, acuse, solicitudes y asignaciones. Sus transportes y sesiones de navegador son sintéticos. Las comprobaciones SQL/HTTP con esquema reconstruido completo y login restringido son una aceptación separada, no datos de clientes.
+
+Se verificó nuevamente que producción conserva API `c21a0a77` (runtime-diagnostics.1) y panel `cbeae033` (contratos .41). Las candidatas de esta integración no fueron promovidas, no aplicaron migraciones de Neon ni habilitaron flags. La consola productiva anterior continúa disponible.
+
+La lectura positiva del diagnóstico con una sesión real y su correspondencia API→endpoint siguen pendientes. El siguiente cierre es aceptar ese baseline y el delta autorizado antes de publicar el circuito comercial. No se sustituye esa comprobación por el éxito de pruebas sintéticas.
+
+Evidencia durable: `docs/releases/2026-09-24-integrated-services-validation.json`, igual en ambas ramas. Los commits posteriores de documentación no cambian los SHAs de código probados.
