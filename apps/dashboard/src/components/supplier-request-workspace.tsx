@@ -2,10 +2,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SUPPLIER_CONSTRUCTIONS } from "../lib/supplier-order-draft";
 import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../lib/permission-policy";
-import { filterSupplierRequestInbox, supplierRequestManagementState, supplierRequestCall, supplierRequestErrorCopy, SupplierRequestError, type SupplierRequest, type SupplierRequestCommand, type SupplierRequestContent, type SupplierRequestEnvelope, type SupplierRequestInboxFilter, type SupplierRequestReviewSummary } from "../lib/supplier-request-client";
+import { supplierRequestCall, supplierRequestErrorCopy, SupplierRequestError, type SupplierRequest, type SupplierRequestCommand, type SupplierRequestContent, type SupplierRequestEnvelope, type SupplierRequestReviewSummary } from "../lib/supplier-request-client";
 import { supplierReadDenial, type SupplierReadKind } from "../lib/supplier-request-read-policy";
 import { SupplierServiceStatus } from "./supplier-service-status";
 import type { SupplierServiceSnapshot, SupplierServiceId } from "../lib/supplier-service-contract";
+import { SupplierRequestInbox } from "./supplier-request-inbox";
 import { SupplierRequestReview, type SupplierRequestReviewGuard } from "./supplier-request-review";
 import { SupplierAssignedRequestWorkspace } from "./supplier-assigned-request-workspace";
 import { SupplierRequestDeliveryAck } from "./supplier-request-delivery-ack";
@@ -24,7 +25,6 @@ type Fields = { title: string; construction_id: string; quantity: string; pack_p
 const empty = (): Fields => ({ title: "", construction_id: "", quantity: "", pack_purpose: "", notes: "" });
 const fromItem = (item: SupplierRequest): Fields => ({ title: item.title, construction_id: item.construction_id, quantity: item.quantity === null ? "" : String(item.quantity), pack_purpose: item.pack_purpose || "", notes: item.notes });
 const statusLabel = (status: SupplierRequest["status"]) => status === "draft" ? "Borrador de la empresa" : status === "submitted" ? "Enviada a NexID" : status === "cancelled" ? "Solicitud cancelada" : "Pedido técnico preparado";
-const managementLabels = { draft: "Borrador de la empresa", pending: "Revisión de NexID pendiente", needs_information: "Esperando respuesta de la empresa", answered: "Respuesta recibida · revisión de NexID", provisioned: "Pedido técnico preparado", cancelled: "Solicitud cancelada", unknown: "Revisión sin confirmar" };
 const activityTime = (item: SupplierRequest) => item.status === "cancelled" ? item.cancelled_at || item.updated_at : item.review_summary?.updated_at || item.updated_at;
 export function SupplierRequestWorkspace(props: Props) {
   // A new mounted instance is required for every authenticated scope transition, including A → B → A.
@@ -39,7 +39,6 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   const [tenant, setTenant] = useState(access.tenantSlug || initialTenant);
   const [tenantInput, setTenantInput] = useState(access.tenantSlug || initialTenant);
   const [items, setItems] = useState<SupplierRequest[] | null>(null), [truncated, setTruncated] = useState(false);
-  const [inboxSearch, setInboxSearch] = useState(""), [inboxFilter, setInboxFilter] = useState<SupplierRequestInboxFilter>("all");
   const [readAccessLost,setReadAccessLost]=useState<'all'|'record'|null>(null),[readNotice,setReadNotice]=useState('');
   const readWithdrawn=useRef(false),bootstrap=useRef(0),focusInbox=useRef(false),inboxRefresh=useRef<HTMLButtonElement|null>(null);
   const [listError, setListError] = useState(""), [listReading, setListReading] = useState(false), [requestReading, setRequestReading] = useState(false);
@@ -124,7 +123,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
     // Reads cannot start during an unresolved mutation. No write command is lost here.
     invalidateReads();resetEditor();readWithdrawn.current=true;setReadAccessLost(scope);
     setItems(current=>scope==='all'?null:(list||current||[]).filter(item=>item.id!==id));
-    setTruncated(scope==='all'?false:listTruncated??truncated);setInboxSearch('');setReadNotice('El acceso cambió. Se retiró el expediente anterior; esta consulta no guardó ni reintentó operaciones.');
+    setTruncated(scope==='all'?false:listTruncated??truncated);setReadNotice('El acceso cambió. Se retiró el expediente anterior; esta consulta no guardó ni reintentó operaciones.');
     return true;
   }
   function cancelRead(){if(!reads.current)return;invalidateReads();focusInbox.current=true;setReadNotice('Consulta cancelada. Tus cambios locales permanecen; no se envió ninguna operación.');}
@@ -227,7 +226,6 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
   function edit(field: keyof Fields, value: string) { if (locked.current || reads.current || immutable) return; setFields(current => ({ ...current, [field]: value })); setReviewing(false); }
   const complete = Boolean(selected?.construction_id && selected.quantity && selected.pack_purpose);
   const currentTenant = selected?.tenant_slug || tenant;
-  const visibleItems = filterSupplierRequestInbox(items || [], inboxSearch, inboxFilter);
 
   return <main className={styles.root} data-testid="supplier-request-workspace">
     <header className={styles.hero}><div><p className={styles.eyebrow}>Empresa → NexID</p><h1>Solicitudes de etiquetas</h1><p>La empresa describe lo que necesita. NexID recibe la solicitud y prepara la orden técnica. Guardar o enviar aquí no genera llaves ni envía un pedido a fábrica.</p></div><a href="/batches/supplier" className={styles.button} onClick={event => { if (!canLeave()) event.preventDefault(); }}>Recepción y pedidos</a></header>
@@ -235,11 +233,7 @@ function RequestWorkspace({ access, initialTenant = "", initialRequestId = "" }:
       {isNexid ? <div className={styles.toolbar}><label>Empresa (vacía: bandeja de NexID)<input data-testid="supplier-request-tenant" value={tenantInput} disabled={blocked} onChange={event => setTenantInput(event.target.value)} /></label><button type="button" className={styles.button} disabled={blocked || reading} onClick={changeTenant}>Consultar empresa</button></div> : <p className={styles.notice}>Empresa: <strong>{tenant}</strong>. La solicitud se guarda únicamente para esta empresa.</p>}
       <section className={styles.card} aria-labelledby="supplier-requests-inbox"><div className={styles.heading}><h2 id="supplier-requests-inbox">{isNexid && !tenant ? "Bandeja de NexID" : "Solicitudes de la empresa"}</h2><div className={styles.actions}><button className={styles.button} type="button" ref={inboxRefresh} disabled={blocked || reading} onClick={() => { if (!locked.current) void loadList(tenant); }}>Actualizar bandeja</button><button className={styles.button} type="button" disabled={blocked || reading || !tenant || readAccessLost==='all'} onClick={() => { if (canLeave()) { epoch.current++; invalidateReads(); resetEditor(); setSelectionVersion(current=>current+1); } }}>Nueva solicitud</button></div></div>
         <p className={styles.muted}>{isNexid && !tenant ? "Solicitudes enviadas, canceladas y pedidos preparados. Los borradores internos no aparecen en la bandeja global." : "Los borradores siguen pendientes de envío; guardarlos no informa a NexID."}</p>
-        <div className={styles.toolbar}><label>Buscar entre las solicitudes cargadas<input data-testid="supplier-request-inbox-search" type="search" value={inboxSearch} onChange={event => setInboxSearch(event.target.value)} placeholder="Producto, empresa o referencia" /></label><label>Estado de gestión<select data-testid="supplier-request-inbox-filter" value={inboxFilter} onChange={event => setInboxFilter(event.target.value as SupplierRequestInboxFilter)}><option value="all">Todos los estados</option>{Object.entries(managementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
-        <p role="status">{listError || (listReading && items === null ? "Consultando la fuente…" : items?.length === 0 ? "La fuente no encontró solicitudes en este alcance." : items && visibleItems.length === 0 ? "No hay coincidencias entre las solicitudes cargadas. Probá otro filtro o búsqueda." : "")}</p>
-        {items ? <p className={styles.muted} data-testid="supplier-request-inbox-count">{visibleItems.length} de {items.length} solicitudes cargadas{truncated ? "; no es el total del historial" : ""}. Los filtros se aplican sólo a esta respuesta.</p> : null}
-        {visibleItems.length ? <ul className={styles.list}>{visibleItems.map(item => <li key={item.id}><div><strong>{item.title}</strong><span>{item.tenant_slug} · {managementLabels[supplierRequestManagementState(item)]} · versión {item.revision}</span><span>Última actividad: <time dateTime={activityTime(item)}>{activityTime(item).slice(0, 10)} · {activityTime(item).slice(11, 16)} UTC</time></span><code>{item.id}</code></div><button className={styles.button} data-testid="supplier-request-open" type="button" disabled={blocked || reading} onClick={() => void openRequest(item.id, item.tenant_slug)}>Ver solicitud</button></li>)}</ul> : null}
-        {truncated && items ? <p className={styles.notice}>Se muestran las solicitudes más recientes; hay más registros fuera de esta respuesta.</p> : null}
+        <SupplierRequestInbox key={tenant+':'+(readAccessLost||'authorized')} items={items} truncated={truncated} loading={listReading} error={listError} disabled={blocked||reading} selectedId={selected?.id} isNexid={isNexid} includeCancelled onOpen={item=>void openRequest(item.id,item.tenant_slug)}/>
       </section>
       {readNotice?<p role="status" className={styles.notice} data-testid="supplier-request-read-notice">{readNotice}</p>:null}
       {reading?<button type="button" className={styles.button} data-testid="supplier-request-read-cancel" onClick={cancelRead}>Cancelar consulta</button>:null}

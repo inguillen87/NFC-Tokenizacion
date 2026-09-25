@@ -344,7 +344,7 @@
     "apps/dashboard/src/components/supplier-request-quotation.tsx": "881c116d2f04029ee7f1a2e6801b04b7583bfb54adfc771eae4ca78eae3bab3c",
     "apps/dashboard/src/components/supplier-request-review.tsx": "fb5323d1e25cee9a16c13ec8e4420d97551694f97c4313a7ddeaad9023f5ce42",
     "apps/dashboard/src/components/supplier-request-workspace.module.css": "a4f032654e4fee57bb493e738f670f316b4cc19917ec51c0c3e77ae240239079",
-    "apps/dashboard/src/components/supplier-request-workspace.tsx": "d79c5b93d754ab3e36a649507504e595d1368d5de7f5aaaa7a6a26011532be9d",
+    "apps/dashboard/src/components/supplier-request-workspace.tsx": "71a648c09e4dc6c54ac48d034336c647146620afe17036b64818a1d66b95db84",
     "apps/dashboard/src/components/supplier-service-status.tsx": "f933dbd36827d6462d9ead5aacc6a899c6fe84e57b6f3a881bfb76e350d44dfc",
     "apps/dashboard/src/components/support-ticket-details.tsx": "c864215a0c6044de42611124c889ae5824c830c5716df92715f5fd520b527d01",
     "apps/dashboard/src/components/tenant-account-menu.tsx": "63639d37bacd90e9f74c0f17f530254b8b33c1310b12ecce320efaf8535ea038",
@@ -512,7 +512,10 @@
     "apps/dashboard/src/proxy.ts": "544ba8fe48bda17ee5dfbf1a4e38f31e0eeb84f2824001c3b21a7f81b2d62850",
     "apps/dashboard/src/components/supplier-request-draft-guide.tsx": "1d0b41c3db77ba6abe399afdf40accbd47575af30d333d670aba6cddb02a5ef5",
     "apps/dashboard/src/components/supplier-request-draft-guide.module.css": "6a3ea6259f5f0aa321e5188f98d056fe87f4c44d8a83bf723fe410c2926f348b",
-    "apps/dashboard/src/lib/supplier-request-draft-guidance.ts": "4cd675662ac4d64ed7428f2358203378c2e599820c7aa6386f18a1f24aff1cb3"
+    "apps/dashboard/src/lib/supplier-request-draft-guidance.ts": "4cd675662ac4d64ed7428f2358203378c2e599820c7aa6386f18a1f24aff1cb3",
+    "apps/dashboard/src/lib/supplier-request-inbox.ts": "533fb5c07acd3a3cdc408f3c620e3c6591df29eb444168d3b48cf1d9439dbf1e",
+    "apps/dashboard/src/components/supplier-request-inbox.tsx": "e7e0e3f42b160b2bd2f39eb3c8ffd5463d142997cb386e134eae27b3e6e7bfaa",
+    "apps/dashboard/src/components/supplier-request-inbox.module.css": "1ee83f201e99e6ac31a38e56c50313fe15c157a9349a3f8c35820bfa9fe81f34"
   },
   "draftGuidance": {
     "base": "f076212a",
@@ -524,5 +527,17 @@
       "apps/dashboard/src/components/supplier-request-draft-guide.module.css",
       "apps/dashboard/src/lib/supplier-request-draft-guidance.ts"
     ]
+  },
+  "inbox": {
+    "base": "37675a98",
+    "feature": "5919edb8375d894df27523046fc6c83d254d4880",
+    "workspaceBefore": "d79c5b93d754ab3e36a649507504e595d1368d5de7f5aaaa7a6a26011532be9d",
+    "workspaceAfter": "71a648c09e4dc6c54ac48d034336c647146620afe17036b64818a1d66b95db84",
+    "added": [
+      "apps/dashboard/src/lib/supplier-request-inbox.ts",
+      "apps/dashboard/src/components/supplier-request-inbox.tsx",
+      "apps/dashboard/src/components/supplier-request-inbox.module.css"
+    ],
+    "policy": "Retain all advanced behaviors; replace only local inbox presentation."
   }
 }
