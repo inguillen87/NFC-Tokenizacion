@@ -1,0 +1,65 @@
+{
+    "protocol":  "nexid.request-draft-ux-release.v1",
+    "productionCode":  "ca437bfb477b5dfb0dacd07ddedbe8eddd342daf",
+    "integratedCode":  "b95eed1b4d349374a4a43e4131723f283c6d873a",
+    "production":  {
+                       "id":  "dpl_AUmFW4SM5RFnnSpysEp7bMST1o2d",
+                       "previousCommit":  "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+                       "commit":  "ca437bfb477b5dfb0dacd07ddedbe8eddd342daf",
+                       "ciRun":  36131413736,
+                       "observedAt":  "2026-09-25T11:57:53.7184315Z",
+                       "state":  "READY",
+                       "ci":  "success"
+                   },
+    "productionHttp":  {
+                           "ok":  true,
+                           "sourceCommit":  "ca437bfb477b5dfb0dacd07ddedbe8eddd342daf",
+                           "scope":  "canonical",
+                           "checks":  [
+                                          "Existing business release contract unchanged",
+                                          "/supplier-orders/requests requires application login",
+                                          "/settings/runtime requires application login",
+                                          "Requests API retains authorization",
+                                          "Global diagnostic stays private",
+                                          "Diagnostic cannot select another scope"
+                                      ],
+                           "realAuthenticatedFormTested":  false,
+                           "businessWrites":  false,
+                           "observedAt":  "2026-09-25T11:57:56.341Z"
+                       },
+    "integratedCi":  {
+                         "commit":  "b95eed1b4d349374a4a43e4131723f283c6d873a",
+                         "observedAt":  "2026-09-25T12:08:34.9280075Z",
+                         "exitCode":  0,
+                         "runId":  36131893722,
+                         "conclusion":  "success",
+                         "status":  "completed"
+                     },
+    "apiObserved":  {
+                        "state":  "READY",
+                        "unchanged":  true,
+                        "observedAt":  "2026-09-25T11:59:19.5027618Z",
+                        "sha":  "c21a0a776247d5109706e52db5895e817ea42cb9"
+                    },
+    "unit":  {
+                 "existingSkipped":  2,
+                 "integratedPassed":  1687,
+                 "newShared":  34,
+                 "productionPassed":  1358,
+                 "newIntegration":  1
+             },
+    "browser":  {
+                    "newFormViews":  12,
+                    "syntheticTransport":  true,
+                    "syntheticSessions":  true,
+                    "realAuthenticatedFormTested":  false,
+                    "axeViolations":  0,
+                    "newFormChecks":  171
+                },
+    "typecheckAndBuildPassed":  true,
+    "apiModified":  false,
+    "databaseMigrationsApplied":  false,
+    "flagsChanged":  false,
+    "downloadsModified":  false,
+    "recordedAt":  "2026-09-25T12:12:05.5226616Z"
+}

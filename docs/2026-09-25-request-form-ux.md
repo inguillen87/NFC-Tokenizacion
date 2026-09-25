@@ -24,3 +24,13 @@ El manifiesto previo mantiene 438 fuentes inalteradas; se excluye únicamente el
 ## Publicación
 
 Antes de promover: CI del mismo commit, artefacto preparado sin asignación automática del dominio y comprobaciones HTTP. Hasta que exista evidencia canónica de promoción, este documento no declara el incremento publicado. La aceptación positiva en una sesión real y las operaciones físicas siguen siendo comprobaciones separadas.
+
+## Cierre publicado y verificado
+
+El formulario se publicÃ³ en producciÃ³n con cÃ³digo ca437bfb477b5dfb0dacd07ddedbe8eddd342daf, despuÃ©s de aprobar GitHub Actions 36131413736. Se comprobÃ³ el despliegue canÃ³nico y seis consultas HTTP del dominio. No se probaron envÃ­os reales con la cuenta del cliente ni se generaron solicitudes de negocio para QA.
+
+La misma guÃ­a queda incorporada en b95eed1b4d349374a4a43e4131723f283c6d873a, con GitHub Actions 36131893722 aprobado sobre ese commit. La candidata avanzada no fue promovida. Ambas compilaciones mantienen sus protocolos y las correcciones de acceso anteriores. Los navegadores completos del workflow pasaron; no se omitieron para el merge.
+
+Resultado de la guÃ­a: 171 comprobaciones y 12 vistas, sin infracciones detectadas por axe. Unidades: 1358 en el panel publicado y 1687 en el integrado; dos omisiones previas en cada suite. No se suman esos totales porque comparten pruebas.
+
+Evidencia: docs/releases/2026-09-25-request-form-ux-validation.json. API c21a0a77 observada sin cambios; no se aplicaron migraciones ni se modificaron flags. La entrega de UX queda cerrada sin confundirla con la activaciÃ³n del circuito comercial pendiente.
