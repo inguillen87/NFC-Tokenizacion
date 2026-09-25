@@ -1,7 +1,7 @@
 name: Dashboard ticket and CRM acceptance
 on:
   push:
-    branches: [codex/nexid-s9-ticket-deadline-20260922, codex/nexid-operator-workbench-20260923, codex/nexid-roll-intake-20260923, codex/nexid-request-cancellation-ui-20260924, codex/nexid-request-quotes-ui-20260924, codex/nexid-supplier-binding-ui-20260924, codex/nexid-delivery-ack-ui-20260924]
+    branches: [codex/nexid-s9-ticket-deadline-20260922, codex/nexid-operator-workbench-20260923, codex/nexid-roll-intake-20260923, codex/nexid-request-cancellation-ui-20260924, codex/nexid-request-quotes-ui-20260924, codex/nexid-supplier-binding-ui-20260924, codex/nexid-delivery-ack-ui-20260924, codex/nexid-runtime-console-ui-20260924, codex/nexid-integrated-services-ui-20260924]
     paths:
       - apps/dashboard/**
       - packages/**
@@ -65,6 +65,8 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-request-quotes/browser" node apps/dashboard/tests/supplier-request-quotes.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-supplier-binding/browser" node apps/dashboard/tests/supplier-request-binding.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-delivery-ack/browser" node apps/dashboard/tests/supplier-delivery-ack.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-runtime-console/browser" node apps/dashboard/tests/runtime-console.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-service-status/browser" node apps/dashboard/tests/supplier-service-status.browser.mjs
           node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$RUNNER_TEMP/nexid-map-next.log" 2>&1 &
           map_server=$!
           trap 'kill "$map_server" 2>/dev/null || true' EXIT

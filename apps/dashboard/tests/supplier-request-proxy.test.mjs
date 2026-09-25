@@ -116,3 +116,11 @@ test('delivery acuses are source-bound, GET/POST only, read-only for companies a
  for(const patch of [operator(),{...admin,isDemo:true},{...admin,deniedPermissions:['supplier_order.create']}]){const d=deps(patch);assert.equal((await run(req('GET','?tenant=qa-only'),[id,'delivery-ack'],d)).status,403);assert.equal(d.calls.length,0);}
  const d=deps(admin);assert.equal((await run(req('GET','?tenant=qa-only&before_revision=4'),[id,'delivery-ack'],d)).status,200);assert.ok(d.calls[0].url.endsWith('before_revision=4'));
 });
+
+test('service status BFF keeps tenant authority and can forward no mutation or custom selector',async()=>{
+ const d=deps();assert.equal((await run(req('GET'),['service-status'],d)).status,200);assert.ok(d.calls[0].url.endsWith('/service-status?tenant=qa-only'));assert.equal(d.calls[0].init.method,'GET');assert.doesNotMatch(JSON.stringify(d.calls[0].init),/DO_NOT_FORWARD|foreign/);
+ for(const query of ['?tenant=foreign','?tenant=qa-only&url=other','?tenant=qa-only&before_revision=1']){const dep=deps();assert.ok([400,403].includes((await run(req('GET',query),['service-status'],dep)).status));assert.equal(dep.calls.length,0);}
+ for(const method of ['POST','PUT','PATCH','DELETE','HEAD']){const dep=deps();assert.equal((await run(method==='HEAD'?new Request('http://localhost/api/admin/supplier-requests/service-status',{method:'HEAD'}):req(method),['service-status'],dep)).status,405);assert.equal(dep.calls.length,0);}
+ for(const patch of [operator(),{isDemo:true},{permissions:[]},{deniedPermissions:['supplier_order.create']}]){const dep=deps(patch);assert.equal((await run(req('GET'),['service-status'],dep)).status,403);assert.equal(dep.calls.length,0);}
+ const global=deps({role:'super-admin',tenantSlug:null});assert.equal((await run(req('GET'),['service-status'],global)).status,400);assert.equal(global.calls.length,0);
+});

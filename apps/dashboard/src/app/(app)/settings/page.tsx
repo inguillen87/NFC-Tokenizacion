@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { canReadRuntimeConsole } from "../../../lib/runtime-readiness-access";
 import type { ReactNode } from "react";
 import {
   ArrowRight,
@@ -106,6 +107,7 @@ export default async function SettingsPage() {
       : { href: DASHBOARD_DESTINATIONS.overview.href, label: "Volver al dashboard", meta: "La sesión no tiene un tenant navegable asociado" };
 
   const allTiles: SettingsTile[] = [
+    ...(canReadRuntimeConsole(session) ? [{href: "/settings/runtime", label: "Estado operativo", eyebrow: "Operación NexID", body: "Conexión real de la API, requisitos y bloqueos de publicación en una consulta de sólo lectura.", proof: "Sólo superadministrador; no ejecuta migraciones ni cambia permisos.", tone: "cyan" as const, icon: <Terminal className="h-5 w-5" />}]: []),
     {
       destination: "proof",
       href: DASHBOARD_DESTINATIONS.proof.href,
