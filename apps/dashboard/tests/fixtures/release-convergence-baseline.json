@@ -344,7 +344,7 @@
     "apps/dashboard/src/components/supplier-request-quotation.tsx": "881c116d2f04029ee7f1a2e6801b04b7583bfb54adfc771eae4ca78eae3bab3c",
     "apps/dashboard/src/components/supplier-request-review.tsx": "fb5323d1e25cee9a16c13ec8e4420d97551694f97c4313a7ddeaad9023f5ce42",
     "apps/dashboard/src/components/supplier-request-workspace.module.css": "a4f032654e4fee57bb493e738f670f316b4cc19917ec51c0c3e77ae240239079",
-    "apps/dashboard/src/components/supplier-request-workspace.tsx": "c1b9d4e97b379ab57ebdafc40a273ec1402934762a1ce4beab3711d34b39ddbf",
+    "apps/dashboard/src/components/supplier-request-workspace.tsx": "d79c5b93d754ab3e36a649507504e595d1368d5de7f5aaaa7a6a26011532be9d",
     "apps/dashboard/src/components/supplier-service-status.tsx": "f933dbd36827d6462d9ead5aacc6a899c6fe84e57b6f3a881bfb76e350d44dfc",
     "apps/dashboard/src/components/support-ticket-details.tsx": "c864215a0c6044de42611124c889ae5824c830c5716df92715f5fd520b527d01",
     "apps/dashboard/src/components/tenant-account-menu.tsx": "63639d37bacd90e9f74c0f17f530254b8b33c1310b12ecce320efaf8535ea038",
@@ -509,6 +509,20 @@
     "apps/dashboard/src/lib/usage-health-runbooks.ts": "d3c5768e549c94e946de6bd6b5bbb488a49bf242a449fe1e1df6bd616bc2c515",
     "apps/dashboard/src/lib/use-ticket-reference-lookup.ts": "014c06ead7c3abaa36064958109c062d493072d0db8da3a77cea6da7616ada52",
     "apps/dashboard/src/lib/verified-session-permissions.ts": "51c304f70d7ef16fc9845970042f94e2d1a45210e9ce2b18a9e4ce93fb13ec98",
-    "apps/dashboard/src/proxy.ts": "544ba8fe48bda17ee5dfbf1a4e38f31e0eeb84f2824001c3b21a7f81b2d62850"
+    "apps/dashboard/src/proxy.ts": "544ba8fe48bda17ee5dfbf1a4e38f31e0eeb84f2824001c3b21a7f81b2d62850",
+    "apps/dashboard/src/components/supplier-request-draft-guide.tsx": "1d0b41c3db77ba6abe399afdf40accbd47575af30d333d670aba6cddb02a5ef5",
+    "apps/dashboard/src/components/supplier-request-draft-guide.module.css": "6a3ea6259f5f0aa321e5188f98d056fe87f4c44d8a83bf723fe410c2926f348b",
+    "apps/dashboard/src/lib/supplier-request-draft-guidance.ts": "4cd675662ac4d64ed7428f2358203378c2e599820c7aa6386f18a1f24aff1cb3"
+  },
+  "draftGuidance": {
+    "base": "f076212a",
+    "feature": "ca437bfb477b5dfb0dacd07ddedbe8eddd342daf",
+    "workspaceBefore": "c1b9d4e97b379ab57ebdafc40a273ec1402934762a1ce4beab3711d34b39ddbf",
+    "workspaceAfter": "d79c5b93d754ab3e36a649507504e595d1368d5de7f5aaaa7a6a26011532be9d",
+    "added": [
+      "apps/dashboard/src/components/supplier-request-draft-guide.tsx",
+      "apps/dashboard/src/components/supplier-request-draft-guide.module.css",
+      "apps/dashboard/src/lib/supplier-request-draft-guidance.ts"
+    ]
   }
 }

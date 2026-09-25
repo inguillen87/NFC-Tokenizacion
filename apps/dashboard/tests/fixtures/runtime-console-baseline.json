@@ -1,7 +1,7 @@
 {
   "base": "7e3b7f9db153266dd7763d70111e93784c47bb1d",
-  "sourceCount": 484,
-  "digest": "9050faa36ed75e714bc0d7f10cff6621354be92bf345fad7ef508ac30fcd1688",
+  "sourceCount": 483,
+  "digest": "ceccf87752da71448aae629d1102f6d5cc12405882ee0a367741925a5e45811a",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -322,7 +322,6 @@
     "apps/dashboard/src/components/supplier-request-quotation.tsx",
     "apps/dashboard/src/components/supplier-request-review.tsx",
     "apps/dashboard/src/components/supplier-request-workspace.module.css",
-    "apps/dashboard/src/components/supplier-request-workspace.tsx",
     "apps/dashboard/src/components/supplier-service-status.tsx",
     "apps/dashboard/src/components/support-ticket-details.tsx",
     "apps/dashboard/src/components/tenant-account-menu.tsx",
@@ -487,5 +486,10 @@
     "apps/dashboard/src/lib/use-ticket-reference-lookup.ts",
     "apps/dashboard/src/lib/verified-session-permissions.ts",
     "apps/dashboard/src/proxy.ts"
-  ]
+  ],
+  "draftGuideOverlay": {
+    "base": "f076212a",
+    "feature": "ca437bfb477b5dfb0dacd07ddedbe8eddd342daf",
+    "reviewedFile": "apps/dashboard/src/components/supplier-request-workspace.tsx"
+  }
 }
