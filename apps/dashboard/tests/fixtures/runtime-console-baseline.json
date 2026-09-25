@@ -1,7 +1,7 @@
 {
   "base": "cbeae033294da57b22eaa0603fc68cbbec3086cf",
-  "sourceCount": 439,
-  "digest": "26c2ffe07738336ab60d393b0b8bfd156ea2568189fb79aaff8c7b94d2c5d118",
+  "sourceCount": 438,
+  "digest": "3d4012ef93158760677df80fcc09b11f6a619ba1354727d1b5f022e52a860d52",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -297,7 +297,6 @@
     "apps/dashboard/src/components/supplier-reception-workspace.tsx",
     "apps/dashboard/src/components/supplier-request-review.tsx",
     "apps/dashboard/src/components/supplier-request-workspace.module.css",
-    "apps/dashboard/src/components/supplier-request-workspace.tsx",
     "apps/dashboard/src/components/support-ticket-details.tsx",
     "apps/dashboard/src/components/tenant-account-menu.tsx",
     "apps/dashboard/src/components/tenant-engagement-panel.module.css",
@@ -446,5 +445,10 @@
   "reviewedHotfixFiles": [
     "apps/dashboard/src/components/admin-notification-bell.tsx",
     "apps/dashboard/src/components/dashboard-shell.tsx"
-  ]
+  ],
+  "reviewedChange": {
+    "base": "cb2a845d8220d32716faa2a925ab7a03fe37908f",
+    "file": "apps/dashboard/src/components/supplier-request-workspace.tsx",
+    "reason": "Explicit draft field guidance and keyboard confirmation; all other preserved paths retained"
+  }
 }
