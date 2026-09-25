@@ -1,0 +1,121 @@
+{
+  "protocol": "nexid.draft-reconciliation-release.v1",
+  "productionCode": "bf80ccc04fa73108f8d103ebcc597a8fb833d423",
+  "integratedCode": "fee434d7cc114e64381edaa0f75f4d4c40a86b90",
+  "production": {
+    "id": "dpl_Gr3eg2EGMrZ6mRhVZ3QtwcuTtr1Y",
+    "previousCommit": "5919edb8375d894df27523046fc6c83d254d4880",
+    "commit": "bf80ccc04fa73108f8d103ebcc597a8fb833d423",
+    "ciRun": 36160686876,
+    "observedAt": "2026-09-25T16:36:36.4315677Z",
+    "state": "READY",
+    "ci": "success"
+  },
+  "canonicalHttp": {
+    "ok": true,
+    "sourceCommit": "bf80ccc04fa73108f8d103ebcc597a8fb833d423",
+    "scope": "canonical",
+    "checks": [
+      "Existing business release contract unchanged",
+      "/supplier-orders/requests requires application login",
+      "/settings/runtime requires application login",
+      "Requests API retains authorization",
+      "Global diagnostic stays private",
+      "Diagnostic cannot select another scope"
+    ],
+    "realAuthenticatedComparisonTested": false,
+    "businessWrites": false,
+    "observedAt": "2026-09-25T16:36:41.208Z"
+  },
+  "integratedCi": {
+    "commit": "fee434d7cc114e64381edaa0f75f4d4c40a86b90",
+    "exitCode": 0,
+    "runId": 36161566804,
+    "conclusion": "success",
+    "status": "completed",
+    "checkedAt": "2026-09-25T16:49:06.3850921Z"
+  },
+  "apiObserved": {
+    "domain": "api.nexid.lat",
+    "unchanged": true,
+    "commit": "c21a0a776247d5109706e52db5895e817ea42cb9",
+    "observedAt": "2026-09-25T16:50:49.4626106Z",
+    "state": "READY"
+  },
+  "unit": {
+    "newShared": 44,
+    "newIntegration": 1,
+    "production": {
+      "passed": 1438,
+      "existingSkipped": 2
+    },
+    "integrated": {
+      "passed": 1754,
+      "existingSkipped": 2
+    }
+  },
+  "browser": [
+    {
+      "name": "comparison-certified",
+      "checks": 120,
+      "views": 13,
+      "violations": 0
+    },
+    {
+      "name": "supplier-request-read-safety",
+      "checks": 124,
+      "views": 7,
+      "violations": 0
+    },
+    {
+      "name": "supplier-request-draft-ux",
+      "checks": 171,
+      "views": 12,
+      "violations": 0
+    },
+    {
+      "name": "supplier-requests",
+      "checks": 287,
+      "views": 33,
+      "violations": 0
+    },
+    {
+      "name": "integrated-supplier-draft-comparison",
+      "checks": 120,
+      "views": 13,
+      "violations": 0
+    },
+    {
+      "name": "integrated-supplier-request-read-safety",
+      "checks": 124,
+      "views": 7,
+      "violations": 0
+    }
+  ],
+  "sharedSources": [
+    {
+      "path": "apps/dashboard/src/lib/supplier-draft-comparison.ts",
+      "sha256Lf": "43eebaf5e08ca961dd398e5ef790ab3e6391d8bf3a0b3d25c066213946608f92"
+    },
+    {
+      "path": "apps/dashboard/src/components/supplier-draft-comparison.tsx",
+      "sha256Lf": "18ac07c43e9a7bce954530b461a26cd43deaf2a7775c78a817009f8160444b83"
+    },
+    {
+      "path": "apps/dashboard/src/components/supplier-draft-comparison.module.css",
+      "sha256Lf": "8c0e2d566ba8d19bf82b40b4a454d030e1383d819705d3667297d1e1a5687e78"
+    }
+  ],
+  "typecheckAndBuildPassed": true,
+  "syntheticSessions": true,
+  "syntheticTransport": true,
+  "realAuthenticatedComparisonTested": false,
+  "productionPromoted": true,
+  "advancedPromoted": false,
+  "apiModified": false,
+  "databaseMigrationsApplied": false,
+  "flagsChanged": false,
+  "permissionsChanged": false,
+  "downloadsModified": false,
+  "recordedAt": "2026-09-25T16:50:49.730Z"
+}
