@@ -1,7 +1,7 @@
 {
-  "base": "71b3248dcd3d6d40d8eb6668c30ee5442b64195b",
-  "sourceCount": 441,
-  "digest": "c7f08b5ed80e1f4aefe0cc0ecc78a1c11d382b17263e281675391145cbab9a62",
+  "base": "cbeae033294da57b22eaa0603fc68cbbec3086cf",
+  "sourceCount": 439,
+  "digest": "26c2ffe07738336ab60d393b0b8bfd156ea2568189fb79aaff8c7b94d2c5d118",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -163,7 +163,6 @@
     "apps/dashboard/src/app/sso-callback/page.tsx",
     "apps/dashboard/src/app/twitter-image.tsx",
     "apps/dashboard/src/components/admin-action-forms.tsx",
-    "apps/dashboard/src/components/admin-notification-bell.tsx",
     "apps/dashboard/src/components/analytics-panels.tsx",
     "apps/dashboard/src/components/assistant-records.tsx",
     "apps/dashboard/src/components/audience-mode-switcher.tsx",
@@ -211,7 +210,6 @@
     "apps/dashboard/src/components/dashboard-layout-shell.tsx",
     "apps/dashboard/src/components/dashboard-realtime-provider.tsx",
     "apps/dashboard/src/components/dashboard-shell-header.module.css",
-    "apps/dashboard/src/components/dashboard-shell.tsx",
     "apps/dashboard/src/components/data-table.tsx",
     "apps/dashboard/src/components/demo-control-center.tsx",
     "apps/dashboard/src/components/demo-lab.tsx",
@@ -444,5 +442,9 @@
     "apps/dashboard/src/lib/use-ticket-reference-lookup.ts",
     "apps/dashboard/src/lib/verified-session-permissions.ts",
     "apps/dashboard/src/proxy.ts"
+  ],
+  "reviewedHotfixFiles": [
+    "apps/dashboard/src/components/admin-notification-bell.tsx",
+    "apps/dashboard/src/components/dashboard-shell.tsx"
   ]
 }

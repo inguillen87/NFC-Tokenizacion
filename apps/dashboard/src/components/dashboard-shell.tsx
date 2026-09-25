@@ -12,6 +12,7 @@ import {
   type DashboardDestinationKey,
 } from "../lib/dashboard-destination-policy";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
+import { canReadGlobalNotifications } from "../lib/admin-notification-access";
 import { AdminNotificationBell } from "./admin-notification-bell";
 import { DashboardRealtimeProvider } from "./dashboard-realtime-provider";
 import { TenantAccountMenu } from "./tenant-account-menu";
@@ -629,7 +630,9 @@ export function DashboardShellInner({
             </div>
             <div className={headerStyles.controls} role="group" aria-label="Controles del workspace">
               {canOpenDestination("leadsTickets") ? (
-                <AdminNotificationBell canReadSensitiveEvents={canReadSensitiveEvents} />
+                <AdminNotificationBell canReadSensitiveEvents={canReadSensitiveEvents}
+                  canReadNotifications={canReadGlobalNotifications({role:currentRole,tenantSlug:currentTenantSlug,isDemo:currentIsDemo})}
+                  scopeKey={JSON.stringify([currentEmail,currentRole,currentTenantSlug,currentIsDemo,currentPermissions,currentDeniedPermissions])} />
               ) : null}
               <span id="dashboard-header-audience" className={headerStyles.secondaryContext}>
                 <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
