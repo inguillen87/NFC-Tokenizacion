@@ -1,0 +1,37 @@
+{
+  "schema": "nexid.commercial-activation.v1",
+  "observedAt": "2026-09-28T19:10:07.966Z",
+  "sourceCommit": "607fe4057458e4436982df2c08785e233b30b86f",
+  "deploymentId": "dpl_AbMAX2Kui9sfa1jF6Nvet1h4bhs5",
+  "rollbackDeploymentId": "dpl_AeK6btA8zGm8ktygPTSk7BXkXCwk",
+  "enabled": [
+    "quotations",
+    "cancellation"
+  ],
+  "disabled": [
+    "supplier_binding",
+    "documentary_ack"
+  ],
+  "projectConfigurationConfirmed": true,
+  "authenticatedRuntimeConfirmed": true,
+  "ledgerCount": 84,
+  "namedPrerequisitesPresent": 8,
+  "enabledWithoutPrerequisites": 0,
+  "originProtectionPreserved": true,
+  "unrelatedConfigurationUnchanged": true,
+  "dashboardAndWebUnchanged": true,
+  "stagedLivenessAndProtectionChecks": 9,
+  "canonicalHttpChecks": 9,
+  "authenticatedDashboardList": "passed",
+  "existingBusinessRequestAvailableForAcceptance": false,
+  "customerBusinessWrites": false,
+  "databaseChanges": false,
+  "permissionsChanged": false,
+  "originSecretRetrieved": false,
+  "runtimeErrors": {
+    "lookback": "10m",
+    "returned": 0,
+    "limit": 50
+  },
+  "rollbackDocumentedNotExecuted": true
+}
