@@ -22,6 +22,9 @@ import { POST as reactivateWebhook } from "../src/app/admin/webhooks/[id]/reacti
 import { GET as listWebhookDeliveries } from "../src/app/admin/webhook-deliveries/route.ts";
 import { installEphemeralE2eSqlExecutor } from "../src/lib/db.ts";
 import { processClaimedWebhookDelivery } from "../src/lib/sdk-webhooks.ts";
+import { SUPPLIER_UPGRADE_DELTA } from "../scripts/lib/supplier-upgrade-plan.mjs";
+// Synthetic schema evidence, not the production database or an implicit bypass.
+const webhookTestLedger = [...JSON.parse(readFileSync(new URL("./fixtures/supplier-upgrade-ledger.json", import.meta.url), "utf8")).ledgerIds, ...SUPPLIER_UPGRADE_DELTA].sort();
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const listRoute = read("../src/app/admin/webhooks/route.ts");
@@ -259,9 +262,13 @@ test("pre-egress destination rejection atomically appends the claimed attempt re
 
 test("disabled endpoint terminalization records a receipt and performs zero network I/O", async () => {
   const statements = [];
-  let transportCalls = 0;
+  let transportCalls = 0, watermarkReads = 0;
   const uninstall = installEphemeralE2eSqlExecutor(async (strings, ...values) => {
     const statement = strings.join("?");
+    if (statement.replace(/\s+/g, ' ').trim() === 'SELECT id FROM schema_migrations ORDER BY id ASC') {
+      watermarkReads++;
+      return webhookTestLedger.map(id => ({ id }));
+    }
     statements.push({ statement, values });
     if (/SET locked_at = now\(\)/.test(statement)) return [];
     if (/terminal_attempt AS/.test(statement)) {
@@ -273,7 +280,7 @@ test("disabled endpoint terminalization records a receipt and performs zero netw
     VERCEL_ENV: "test",
     NEXID_E2E_CONFIRMATION: "I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE",
     NEXID_E2E_DATABASE_URL: "postgresql://nexid_e2e:test-only@127.0.0.1/nexid_e2e_webhook_receipt",
-  });
+  }, { migrationManaged: true });
   const claimed = {
     id: "101",
     endpoint_id: "7b395637-1f56-4df7-9f11-96a6e0794218",
@@ -297,6 +304,7 @@ test("disabled endpoint terminalization records a receipt and performs zero netw
         return { statusCode: 204 };
       },
     });
+    assert.equal(watermarkReads, 1, "The actual schema gate must verify the synthetic ledger");
     assert.equal(transportCalls, 0);
     assert.equal(result.status, "dead_letter");
     assert.equal(result.reason, "webhook_endpoint_disabled");
@@ -313,9 +321,13 @@ test("disabled endpoint terminalization records a receipt and performs zero netw
 
 test("a lost claim appends one tenant-derived lease-loss receipt without secret material", async () => {
   const statements = [];
-  let transportCalls = 0;
+  let transportCalls = 0, watermarkReads = 0;
   const uninstall = installEphemeralE2eSqlExecutor(async (strings, ...values) => {
     const statement = strings.join("?");
+    if (statement.replace(/\s+/g, ' ').trim() === 'SELECT id FROM schema_migrations ORDER BY id ASC') {
+      watermarkReads++;
+      return webhookTestLedger.map(id => ({ id }));
+    }
     statements.push({ statement, values });
     if (/SET locked_at = now\(\)/.test(statement)) return [];
     if (/terminal_attempt AS/.test(statement)) return [];
@@ -326,7 +338,7 @@ test("a lost claim appends one tenant-derived lease-loss receipt without secret 
     VERCEL_ENV: "test",
     NEXID_E2E_CONFIRMATION: "I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE",
     NEXID_E2E_DATABASE_URL: "postgresql://nexid_e2e:test-only@localhost/nexid_e2e_webhook_lease_loss",
-  });
+  }, { migrationManaged: true });
   const claimed = {
     id: "102",
     endpoint_id: "7b395637-1f56-4df7-9f11-96a6e0794218",
@@ -350,6 +362,7 @@ test("a lost claim appends one tenant-derived lease-loss receipt without secret 
         return { statusCode: 204 };
       },
     });
+    assert.equal(watermarkReads, 1, "The actual schema gate must verify the synthetic ledger");
     assert.equal(transportCalls, 0);
     assert.equal(result.status, "lease_lost");
     assert.equal(result.reason, "webhook_delivery_lease_lost");

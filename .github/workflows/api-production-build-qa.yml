@@ -1,0 +1,32 @@
+name: API production-environment build acceptance
+on:
+  push:
+    branches: [codex/nexid-production-build-fix-20260928]
+permissions:
+  contents: read
+concurrency:
+  group: nexid-production-build-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build with production runtime policy and synthetic test executors
+        env:
+          NODE_ENV: production
+          VERCEL_ENV: production
+          NEXID_REQUIRED_SCHEMA_MIGRATION: 20260924163000_0121_support_ticket_status_type_compatibility.sql
+        run: npm run build:api
+      - run: npm run check:secrets
+      - run: git diff --exit-code -- apps packages package.json package-lock.json
