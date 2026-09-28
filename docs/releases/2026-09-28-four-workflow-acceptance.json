@@ -1,0 +1,37 @@
+{
+  "schema": "nexid.four-workflow-acceptance.v1",
+  "baselineCommit": "69c8bfad6d5a3f2417b9f98a6e39d4b39b02bed7",
+  "sourceRuntimeUnchanged": true,
+  "ownerChecks": 174,
+  "restrictedRuntimeChecks": 175,
+  "migrations": {
+    "expected": 132,
+    "applied": 132
+  },
+  "runtimeProfile": "nexid.supplier-runtime-acceptance.v2",
+  "acl": {
+    "tables_checked": 37,
+    "columns_checked": 595,
+    "functions_checked": 44,
+    "unexpected_privileges": 0
+  },
+  "rejectedSqlOperations": 40,
+  "referenceCatalogsUnchanged": true,
+  "cleanup": {
+    "runtime_connections_closed": true,
+    "temporary_role_dropped": true,
+    "production_role_modified": false
+  },
+  "clusterStopped": true,
+  "temporaryDataRemoved": true,
+  "safetyTests": {
+    "passed": 144,
+    "failed": 0,
+    "skipped": 0
+  },
+  "productionWrites": false,
+  "productionFeatureSwitchesChanged": false,
+  "externalSupplierContact": false,
+  "nextRouterMiddlewareCovered": false,
+  "physicalNfcCovered": false
+}

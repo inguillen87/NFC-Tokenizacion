@@ -24,3 +24,7 @@ test('worker cleanup waits for close and rejects duplicate completion receipts',
  assert.match(source,/child\.on\('close'/);assert.doesNotMatch(source,/child\.on\('exit'/);
  assert.match(source,/lines\.length!==1/);assert.match(source,/stderr is counted but never printed/);assert.match(source,/child\.kill\('SIGKILL'\)/);
 });
+
+test("17.11 local acceptance requires its exact engine number",()=>{const settings={...env,NEXID_E2E_EXPECTED_POSTGRES_VERSION:"17.11"};assert.equal(parseSupplierRuntimeWorkerInput({...input(),expectedServerVersion:170011},settings).serverVersion,170011);for(const version of [170010,170012,170000])assert.throws(()=>parseSupplierRuntimeWorkerInput({...input(),expectedServerVersion:version},settings));});
+
+test("four-workflow QA profile names cancellation explicitly, retaining read-only catalogs",()=>{assert.ok(SUPPLIER_RUNTIME_FUNCTION_NAMES.includes("nexid_cancel_supplier_request_v1"));assert.equal(SUPPLIER_RUNTIME_FUNCTION_NAMES.length,44);assert.deepEqual(SUPPLIER_RUNTIME_TABLES.schema_migrations,["SELECT"]);assert.deepEqual(SUPPLIER_RUNTIME_TABLES.carrier_profiles,["SELECT"]);});

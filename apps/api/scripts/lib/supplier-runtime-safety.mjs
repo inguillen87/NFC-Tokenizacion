@@ -1,6 +1,6 @@
 import {SUPPLIER_RUNTIME_ROLE_RE} from './supplier-runtime-profile.mjs';
 const CONFIRMATION='I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE';
-const VERSIONS=new Map([['16.4',160004],['17.10',170010],['18.4',180004]]);
+const VERSIONS=new Map([['16.4',160004],['17.10',170010],['17.11',170011],['18.4',180004]]);
 const fail=()=>{throw Error('supplier_runtime_worker_target_invalid');};
 export function parseSupplierRuntimeWorkerInput(input,env=process.env){
   if(env.NODE_ENV!=='test'||env.VERCEL_ENV!=='test'||env.NEXID_E2E_CONFIRMATION!==CONFIRMATION)return fail();
