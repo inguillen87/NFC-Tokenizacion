@@ -29,3 +29,6 @@ El primer lanzador local usaba la representación textual CIDR de inet_server_ad
 
 ## Límite productivo y continuación
 No se aplicó el delta a Neon ni se activaron flags. La consulta administrativa comprueba la identidad de la rama inspeccionada; todavía no certifica la conexión ni el rol efectivo del deployment API. Sigue pendiente obtener el diagnóstico con la sesión autorizada, cotejar esa identidad y autorizar específicamente la aplicación de 0117–0121 antes del despliegue coordinado con nuevas escrituras desactivadas.
+
+## Continuidad del CI
+El primer gate enterprise falló porque esta rama API conservaba el orden antiguo: ejecutaba pruebas que importan pg antes de instalar dependencias. Se incorporó la corrección ya revisada en #375, manteniendo la auditoría previa y la instalación exacta sin lifecycle scripts. Se preservó también su carga explícita de tsx para pruebas web y compatibilidad CRLF/LF. No se trasladaron pantallas ni handlers entre ramas; los cambios web afectan sólo el comando de pruebas. La suite de API vuelve a ejecutarse también ante estos cambios de infraestructura de tests. Las 44 comprobaciones locales del bootstrap, migraciones y contrato de seguridad aprobaron.

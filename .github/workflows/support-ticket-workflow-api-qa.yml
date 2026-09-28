@@ -7,6 +7,9 @@ on:
       - packages/core/**
       - scripts/qa/*s9*
       - .github/workflows/support-ticket-workflow-api-qa.yml
+      - .github/workflows/enterprise-ci-security-gate.yml
+      - scripts/tests/enterprise-ci-dependency-bootstrap.test.mjs
+      - apps/web/package.json
 permissions:
   contents: read
 concurrency:
