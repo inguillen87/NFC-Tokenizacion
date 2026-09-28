@@ -9,7 +9,7 @@ La página anterior consultaba cinco fuentes y deducía etapas completas a parti
 La nueva entrada no marca etapas completas ni inventa un denominador. Prioriza el pasaporte digital y permite abrir identidad/expediente, etiquetas/códigos, trazabilidad y excepciones. Los enlaces reutilizan la política de navegación del lote y conservan su empresa y BID exactos. Los módulos restringidos explican su indisponibilidad sin enlace activo.
 
 ## Datos y UX
-La empresa global debe elegirse explícitamente. Una cuenta vinculada no puede cambiarla mediante URL. Las consultas con selectores duplicados, permisos insuficientes o sesión demo no buscan lotes. Los resultados de otra empresa, duplicados, datos demo, cantidades inválidas y respuestas incompletas se rechazan enteros.
+La empresa global debe elegirse explícitamente. Una cuenta vinculada por slug o ID no puede cambiarla mediante URL. Las consultas con selectores duplicados, permisos insuficientes o sesión demo no buscan lotes. Los resultados de otra empresa, duplicados, datos demo, cantidades inválidas y respuestas incompletas se rechazan enteros.
 
 Se realiza una sola consulta GET de lotes cuando el alcance está resuelto, en lugar de cinco fuentes. No hay consultas de activos, pedidos, anclajes ni tokenización. La respuesta exige procedencia productiva y JSON válido, hasta 256 KiB y 300 filas; un único plazo de 12 segundos cubre cabeceras y cuerpo incluso si el transporte no coopera. Vacío confirmado, error, indisponibilidad, denegación y timeout permanecen distintos.
 
@@ -18,7 +18,7 @@ La búsqueda local admite tildes y SKU; no introduce llamadas. El lote no se pre
 Los únicos contadores visibles son filas cargadas y cantidades registradas del lote seleccionado. No se interpretan como QA, publicación del pasaporte, recepción física ni aceptación del piloto. La configuración inicial del tenant conserva el wizard y sus límites de autorización anteriores. Informe y consumo permanecen como herramientas de empresa, sin fingir que un informe global está acotado automáticamente al lote.
 
 ## Validación local terminada
-Dashboard: 1.838 pruebas aprobadas, cero fallos, dos omisiones preexistentes. TypeScript y custodia de secretos aprobados. Se agregaron pruebas del modelo, transporte y página real con dependencias sustituidas, incluyendo que la página no consulte fuentes cuando el alcance no lo permite.
+Dashboard: 1.839 pruebas aprobadas, cero fallos, dos omisiones preexistentes. TypeScript y custodia de secretos aprobados. Se agregaron pruebas del modelo, transporte y página real con dependencias sustituidas, incluyendo que la página no consulte fuentes cuando el alcance no lo permite.
 
 Navegador: 156 comprobaciones y 19 vistas aprobadas; anchos 320/375/430/768/1024/1440, claro/oscuro, teclado, datos largos, estados vacíos/degradados, cambios de empresa y permisos. Sin infracciones detectadas por axe ni desbordamiento horizontal en las vistas comprobadas. Los datos/sesiones son sintéticos y Link está sustituido; no es aceptación autenticada productiva ni certificación integral de accesibilidad.
 

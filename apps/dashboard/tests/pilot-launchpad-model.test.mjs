@@ -45,3 +45,5 @@ test('foreign preprojected source fails closed and local search does not alter s
  const model=buildPilotLaunchpad(root,resolvePilotScope(root,'qa-company'),ready());const before=structuredClone(model.batches);
  assert.equal(filterPilotBatches(model.batches,'ambar sku').length,1);assert.equal(filterPilotBatches(model.batches,'missing').length,0);assert.deepEqual(model.batches,before);
 });
+
+test("tenant ID binding cannot select global or foreign scope",()=>{for(const q of [undefined,"qa-company","foreign"])assert.equal(resolvePilotScope({...root,tenantId:"bound-id"},q).state,"forbidden");assert.deepEqual(resolvePilotScope({...root,tenantId:"bound-id",tenantSlug:"qa-company"}),{state:"selected",tenant:"qa-company",canSelect:false});});

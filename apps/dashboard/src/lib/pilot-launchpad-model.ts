@@ -3,7 +3,7 @@ import { dashboardCanOpenDestination, DASHBOARD_DESTINATIONS } from './dashboard
 import { buildBatchWorkspaceNavigation, batchWorkspaceHref, type BatchWorkspaceView } from './batch-workspace-navigation';
 import { canReadPilotReport } from './pilot-report-access';
 import { parseBatchWorkRows, type BatchWorkRow } from './batch-workbench';
-export type PilotAccess = Pick<DashboardSession, 'role' | 'permissions' | 'deniedPermissions' | 'tenantSlug' | 'isDemo'>;
+export type PilotAccess = Pick<DashboardSession, 'role' | 'permissions' | 'deniedPermissions' | 'tenantSlug' | 'tenantId' | 'isDemo'>;
 export type PilotScope = { state: 'selected' | 'tenant_required' | 'forbidden' | 'demo' | 'invalid'; tenant: string; canSelect: boolean };
 export type PilotSource = { state: 'ready'; rows: BatchWorkRow[]; checkedAt: string } | { state: 'unavailable' | 'forbidden' | 'invalid' | 'timeout'; rows: null; checkedAt: string };
 export type PilotTask = { view: BatchWorkspaceView; title: string; description: string; href: string | null };
@@ -14,7 +14,7 @@ export type PilotLaunchpadModel = {
 };
 const slug = (v: unknown): v is string => typeof v === 'string' && /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/.test(v);
 export function resolvePilotScope(access: PilotAccess, requested?: unknown): PilotScope {
- const global = access.role === 'super-admin' && !access.tenantSlug;
+ const global = access.role === 'super-admin' && !access.tenantSlug && !access.tenantId;
  const result = (state: PilotScope['state'], tenant = ''): PilotScope => ({ state, tenant, canSelect: global });
  if (!dashboardCanOpenDestination('onboarding', access) || !dashboardCanOpenDestination('batches', access)) return result('forbidden');
  if (access.isDemo) return result('demo');
