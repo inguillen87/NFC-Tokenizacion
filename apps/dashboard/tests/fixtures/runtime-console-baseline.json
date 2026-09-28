@@ -1,7 +1,7 @@
 {
   "base": "7e3b7f9db153266dd7763d70111e93784c47bb1d",
   "sourceCount": 483,
-  "digest": "ba86208dd2b7725280dd153852a92bda82df54c5b82ebc96553240c5c5593747",
+  "digest": "4b9fe9c9b9cf9c5daf98ddc36ec754affef788f814c8f79979780fdef344cda5",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -511,6 +511,20 @@
         "apps/dashboard/src/components/pilot-launchpad.tsx"
       ],
       "reason": "Replace aggregate completion heuristics with exact tenant/batch task navigation."
+    },
+    {
+      "base": "ce0e3535ce3916099454561efe8587d5c605a367",
+      "files": [
+        "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx"
+      ],
+      "reason": "Review passport enrollment, preserve operation identity and isolate authenticated context changes."
+    },
+    {
+      "base": "e17823e9b86f2d746f5d8d6545f7b761fc78a130",
+      "files": [
+        "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx"
+      ],
+      "reason": "Retain access withdrawal through later outages; only a valid receipt or a new context can restore content."
     }
   ]
 }

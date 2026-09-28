@@ -10,8 +10,8 @@ try{
  await fetch(api+'/qa-reset',{method:'POST'});
  const editor=await pageFor('editor');const p=editor.page;
  await p.getByRole('heading',{name:'Prepará hoy. Publicá con confianza.'}).waitFor();
- assert.equal((await state()).history,0);assert.equal(await p.getByRole('button',{name:'Iniciar Passport Studio'}).isDisabled(),true);
- await p.getByRole('checkbox').check();await p.getByRole('button',{name:'Iniciar Passport Studio'}).click();
+ assert.equal((await state()).history,0);assert.equal(await p.getByRole('button',{name:'Revisar inicio editorial'}).isDisabled(),true);
+ await p.getByRole('checkbox').check();await p.getByRole('button',{name:'Revisar inicio editorial'}).click();assert.equal((await state()).history,0);await p.getByTestId('enrollment-confirm').click();
  await p.getByRole('heading',{name:'Passport Studio',exact:true}).waitFor();assert.equal((await state()).history,1);report.steps.push('explicit_enrollment_no_live_content_change');
  await p.getByRole('textbox',{name:'Nombre del producto',exact:false}).fill('Semilla publicada QA');
  const before=await state();await p.getByRole('button',{name:'Cambios',exact:true}).click();await p.getByRole('button',{name:'Identidad',exact:true}).click();assert.equal(await p.getByRole('textbox',{name:'Nombre del producto',exact:false}).inputValue(),'Semilla publicada QA');assert.equal((await state()).history,before.history);
