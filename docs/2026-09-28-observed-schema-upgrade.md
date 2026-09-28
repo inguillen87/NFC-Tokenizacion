@@ -32,3 +32,5 @@ No se aplicó el delta a Neon ni se activaron flags. La consulta administrativa 
 
 ## Continuidad del CI
 El primer gate enterprise falló porque esta rama API conservaba el orden antiguo: ejecutaba pruebas que importan pg antes de instalar dependencias. Se incorporó la corrección ya revisada en #375, manteniendo la auditoría previa y la instalación exacta sin lifecycle scripts. Se preservó también su carga explícita de tsx para pruebas web y compatibilidad CRLF/LF. No se trasladaron pantallas ni handlers entre ramas; los cambios web afectan sólo el comando de pruebas. La suite de API vuelve a ejecutarse también ante estos cambios de infraestructura de tests. Las 44 comprobaciones locales del bootstrap, migraciones y contrato de seguridad aprobaron.
+
+La ejecución completa también detectó una expectativa antigua de MapLibre ^5.24.0 en un test de mapa, aunque el manifiesto ya exige 6.4.1. Se alineó esa aserción con la versión instalada sin actualizar dependencias ni retirar los controles de tema, foco o accesibilidad del mapa.

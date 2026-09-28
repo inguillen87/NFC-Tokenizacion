@@ -44,7 +44,7 @@ jobs:
           cache: npm
       - name: Install exact dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Focal API regressions without production credentials or network
+      - name: Observed-schema input gates and focal API regressions
         shell: bash
         run: |
           set -euo pipefail
