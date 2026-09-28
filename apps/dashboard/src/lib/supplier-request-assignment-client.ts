@@ -39,6 +39,11 @@ async function call(path: string, command: SupplierAssignmentCommand | undefined
   const controller = new AbortController(), abort = () => controller.abort(); if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true }); const timer = setTimeout(abort, 20_000);
   try {
     const response = await fetcher(path, { method: command ? "POST" : "GET", cache: "no-store", credentials: "same-origin", signal: controller.signal, headers: { Accept: "application/json", ...(command ? { "Content-Type": "application/json", "Idempotency-Key": command.key } : {}) }, ...(command ? { body: JSON.stringify(command.body) } : {}) });
+    // GET denial does not depend on an error body; POST uncertainty is unchanged.
+    if (!command && [401, 403, 404].includes(response.status)) {
+      void response.body?.cancel().catch(() => {});
+      throw new SupplierRequestError("supplier_assignment_read_denied", response.status);
+    }
     const text = await response.text(); let body: any = null; if (new TextEncoder().encode(text).byteLength <= 512 * 1024) { try { body = JSON.parse(text); } catch {} }
     if (!response.ok) { const certain = response.status < 500 && response.status !== 408 && object(body)?.ok === false && typeof body.reason === "string"; throw new SupplierRequestError(certain ? body.reason : "unavailable", response.status, Boolean(command && !certain)); }
     if (response.headers.get("x-nexid-data-mode") !== "production") throw new SupplierRequestError("contract_invalid", response.status, Boolean(command)); return body;

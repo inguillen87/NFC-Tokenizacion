@@ -50,6 +50,12 @@ export async function supplierRequestReviewCall(input: Binding & { command?: Sup
   try {
     const query = new URLSearchParams(); if (!input.operatorId) query.set("tenant", input.tenant); if (input.beforeRevision !== undefined) query.set("before_revision", String(input.beforeRevision));
     const response = await fetcher(`/api/admin/supplier-requests/${input.operatorId ? "assigned/" : ""}${input.id}/review${query.size ? `?${query}` : ""}`, { method: command ? "POST" : "GET", cache: "no-store", credentials: "same-origin", signal: controller.signal, headers: { Accept: "application/json", ...(command ? { "Content-Type": "application/json", "Idempotency-Key": command.key } : {}) }, ...(command ? { body: JSON.stringify(command.body) } : {}) });
+    // A denied read is authoritative without consuming its error body.
+    // Writes retain the original receipt and uncertainty contract.
+    if (!command && [401, 403, 404].includes(response.status)) {
+      void response.body?.cancel().catch(() => {});
+      throw new SupplierRequestError("supplier_request_read_denied", response.status);
+    }
     const text = await response.text(); let data: any = null;
     if (new TextEncoder().encode(text).byteLength <= 100 * 16 * 1024) { try { data = JSON.parse(text); } catch {} }
     if (!response.ok) {

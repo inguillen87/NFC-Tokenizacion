@@ -1,7 +1,7 @@
 {
   "base": "7e3b7f9db153266dd7763d70111e93784c47bb1d",
   "sourceCount": 483,
-  "digest": "ceccf87752da71448aae629d1102f6d5cc12405882ee0a367741925a5e45811a",
+  "digest": "310069a8d4a9f16e6d73210622f304716e731c77dc186548f5e2cd94e98103fc",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -491,5 +491,17 @@
     "base": "f076212a",
     "feature": "ca437bfb477b5dfb0dacd07ddedbe8eddd342daf",
     "reviewedFile": "apps/dashboard/src/components/supplier-request-workspace.tsx"
-  }
+  },
+  "reviewedChanges": [
+    {
+      "base": "bbf5f39445aacbd4086f900ed7426a3596952937",
+      "files": [
+        "apps/dashboard/src/components/supplier-request-assignment.tsx",
+        "apps/dashboard/src/components/supplier-request-review.tsx",
+        "apps/dashboard/src/lib/supplier-request-assignment-client.ts",
+        "apps/dashboard/src/lib/supplier-request-review-client.ts"
+      ],
+      "reason": "Integrate PR 378 without removing operator/quotation/cancellation contracts. Coordinate review and assignment reads with sibling steps, cancel explicitly, and withdraw denied reads. Other fingerprinted sources unchanged."
+    }
+  ]
 }

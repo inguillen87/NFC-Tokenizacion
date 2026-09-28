@@ -4,23 +4,38 @@ import { SupplierRequestError, type SupplierRequest } from "../lib/supplier-requ
 import { supplierAssignmentCall, supplierOperatorsCall, type SupplierAssignmentCommand, type SupplierAssignmentEnvelope } from "../lib/supplier-request-assignment-client";
 import type { SupplierRequestReviewGuard } from "./supplier-request-review";
 import styles from "./supplier-request-workspace.module.css";
-type Props = { request: SupplierRequest; canManageUsers?: boolean; suspended: boolean; canInteract: () => boolean; onGuard: (value: SupplierRequestReviewGuard) => void };
-export function SupplierRequestAssignment({ request, canManageUsers = false, suspended, canInteract, onGuard }: Props) {
+import { supplierReadDenial } from "../lib/supplier-request-read-policy";
+type Props = { request: SupplierRequest; canManageUsers?: boolean; suspended: boolean; canInteract: () => boolean; onGuard: (value: SupplierRequestReviewGuard) => void; onReadDenied?: (status: number) => void };
+export function SupplierRequestAssignment({ request, canManageUsers = false, suspended, canInteract, onGuard, onReadDenied }: Props) {
   const [data, setData] = useState<SupplierAssignmentEnvelope | null>(null), [operators, setOperators] = useState<Array<{ id: string; display_name: string }> | null>(null), [truncatedOperators, setTruncatedOperators] = useState(false);
   const [choice, setChoice] = useState(""), [loading, setLoading] = useState(false), [confirming, setConfirming] = useState(false), [phase, setPhase] = useState<"idle" | "saving" | "uncertain" | "error" | "conflict" | "saved">("idle"), [error, setError] = useState(""), [candidatesError, setCandidatesError] = useState(""), [receiptRevision, setReceiptRevision] = useState<number | null>(null);
   const alive = useRef(true), read = useRef<AbortController | null>(null), write = useRef<AbortController | null>(null), busy = useRef(false), unresolved = useRef(false), operation = useRef<SupplierAssignmentCommand | null>(null), choiceRef = useRef(""), dirty = useRef(false);
+  const initialReadStarted = useRef(false), refreshButton = useRef<HTMLButtonElement | null>(null), returnReadFocus = useRef(false);
+  const [readNotice, setReadNotice] = useState("");
   const blocked = suspended || phase === "saving" || phase === "uncertain";
   const current = Boolean(data && data.request_revision === request.revision);
   const changed = Boolean(data && choice !== (data.assignment.operator_id || ""));
   const eligible = !choice || Boolean(operators?.some(item => item.id === choice));
   const canSave = current && changed && eligible && (request.status === "submitted" || (request.status === "provisioned" && !choice));
   const operatorName = (id: string | null) => !id ? "Sin responsable asignado" : operators?.find(item => item.id === id)?.display_name || `Operador ${id} · fuera del catálogo cargado`;
-  const signalGuard = () => onGuard({ dirty: dirty.current, locked: busy.current || unresolved.current });
-  useEffect(() => { alive.current = true; void refresh(); return () => { alive.current = false; read.current?.abort(); write.current?.abort(); }; /* Parent keys authenticated request context. */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  const signalGuard = () => onGuard({ dirty: dirty.current, locked: busy.current || unresolved.current || Boolean(read.current) });
+  useEffect(() => { alive.current = true; void refresh(); return () => { alive.current = false; const pending = read.current; read.current = null; initialReadStarted.current = false; pending?.abort(); write.current?.abort(); signalGuard(); }; /* Parent keys authenticated request context. */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    if (!suspended && !initialReadStarted.current) void refresh();
+    // Only a first read deferred by a sibling is resumed, never an automatic retry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suspended]);
+  useEffect(() => { if (!loading && returnReadFocus.current) { returnReadFocus.current = false; refreshButton.current?.focus(); } }, [loading]);
+  function cancelRead() {
+    const pending = read.current; if (!pending) return;
+    read.current = null; pending.abort(); signalGuard(); returnReadFocus.current = true;
+    setLoading(false); setConfirming(false); setPhase("error"); setError("");
+    setReadNotice("Consulta cancelada. Tu selección permanece sin guardar; consultá la asignación actual antes de continuar.");
+  }
   async function refresh(older = false) {
-    if (!canInteract() || read.current || busy.current || unresolved.current || (older && !data?.next_before_revision)) return;
-    const controller = new AbortController(); read.current = controller; setLoading(true); setError(""); setConfirming(false);
+    if (suspended || !canInteract() || read.current || busy.current || unresolved.current || (older && !data?.next_before_revision)) return;
+    const controller = new AbortController(); read.current = controller; initialReadStarted.current = true; signalGuard(); setLoading(true); setError(""); setReadNotice(""); setConfirming(false);
     try {
       const [result, candidates] = await Promise.all([supplierAssignmentCall({ tenant: request.tenant_slug, tenantId: request.tenant_id, id: request.id, ...(older ? { beforeRevision: data!.next_before_revision! } : {}), signal: controller.signal }), older ? Promise.resolve(null) : supplierOperatorsCall(controller.signal).then(value => ({ value }), () => ({ value: null }))]);
       if (!alive.current || read.current !== controller) return;
@@ -35,8 +50,15 @@ export function SupplierRequestAssignment({ request, canManageUsers = false, sus
         else { setOperators(null); setCandidatesError("No se confirmó el catálogo de operadores habilitados. No se pueden asignar nuevos responsables."); }
       }
       setPhase("idle");
-    } catch { if (alive.current) { setPhase("error"); setError("No se confirmó la asignación actual. Conservamos tu selección; consultá otra vez antes de continuar."); } }
-    finally { if (read.current === controller) read.current = null; if (alive.current) setLoading(false); }
+    } catch (issue) {
+      if (!alive.current || read.current !== controller) return;
+      const status = issue instanceof SupplierRequestError ? issue.status : 0;
+      if (supplierReadDenial(status, "record")) {
+        setData(null); setOperators(null); setChoice(""); choiceRef.current = ""; dirty.current = false; setReceiptRevision(null); setConfirming(false); signalGuard(); onReadDenied?.(status);
+      } else { setPhase("error"); setError("No se confirmó la asignación actual. Conservamos tu selección; consultá otra vez antes de continuar."); }
+    } finally {
+      if (read.current === controller) { read.current = null; if (alive.current) { setLoading(false); signalGuard(); } }
+    }
   }
   async function execute(command: SupplierAssignmentCommand) {
     if (!canInteract() || read.current || busy.current) return;
@@ -58,7 +80,9 @@ export function SupplierRequestAssignment({ request, canManageUsers = false, sus
     if (!canInteract() || !confirming || !canSave || !data || read.current || busy.current || unresolved.current || phase === "error" || phase === "conflict") return;
     void execute(Object.freeze({ tenant: request.tenant_slug, id: request.id, key: crypto.randomUUID(), body: Object.freeze({ operator_id: choiceRef.current || null, expected_revision: data.assignment.revision, expected_request_revision: request.revision }) }));
   }
-  return <section className={styles.reviewPanel} data-testid="supplier-request-assignment-panel" aria-labelledby="supplier-assignment-heading"><div className={styles.heading}><div><h3 id="supplier-assignment-heading">Responsable interno de NexID</h3><p className={styles.muted}>La asignación habilita la consulta y las aclaraciones de esta solicitud. No concede acceso general a la empresa ni permite preparar pedidos.</p></div><button className={styles.button} data-testid="supplier-request-assignment-refresh" disabled={blocked || loading} onClick={() => void refresh()}>Consultar asignación</button></div>
+  return <section className={styles.reviewPanel} data-testid="supplier-request-assignment-panel" aria-labelledby="supplier-assignment-heading"><div className={styles.heading}><div><h3 id="supplier-assignment-heading">Responsable interno de NexID</h3><p className={styles.muted}>La asignación habilita la consulta y las aclaraciones de esta solicitud. No concede acceso general a la empresa ni permite preparar pedidos.</p></div><button className={styles.button} ref={refreshButton} data-testid="supplier-request-assignment-refresh" disabled={blocked || loading} onClick={() => void refresh()}>Consultar asignación</button></div>
+    {loading ? <button type="button" className={styles.button} data-testid="supplier-request-assignment-cancel-read" onClick={cancelRead}>Cancelar consulta de responsables</button> : null}
+    {readNotice ? <p role="status" className={styles.notice} data-testid="supplier-request-assignment-read-notice">{readNotice}</p> : null}
     <p role="status" className={styles.notice}>{loading ? "Consultando responsable e historial…" : phase === "saving" ? "Guardando asignación…" : phase === "uncertain" ? "Asignación sin confirmar; conservamos la misma operación." : data ? `${operatorName(data.assignment.operator_id)} · revisión ${data.assignment.revision}${!current ? ". La solicitud cambió: volvé a abrir su versión actual." : ""}` : "Asignación todavía sin confirmar."}</p>
     {receiptRevision ? <p role="status">Cambio confirmado · revisión {receiptRevision}{data && data.assignment.revision > receiptRevision ? `; la asignación actual ya está en ${data.assignment.revision}` : ""}.</p> : null}{error ? <p role="alert" className={styles.error}>{error}</p> : null}{candidatesError ? <p role="alert" className={styles.error}>{candidatesError}</p> : null}
     {operators?.length === 0 ? <p className={styles.notice} data-testid="supplier-request-operators-empty">No hay operadores habilitados en el catálogo confirmado. {canManageUsers ? <a href="/users" onClick={event => { if (!canInteract() || busy.current || unresolved.current || (dirty.current && !window.confirm("Hay una selección sin guardar. ¿Descartarla y abrir Usuarios?"))) event.preventDefault(); }}>Administrar el perfil Operador de solicitudes en Usuarios</a> : "Pedí a un administrador con permiso de gestión de usuarios que habilite un Operador de solicitudes."} Crear el perfil no asigna solicitudes automáticamente.</p> : null}
