@@ -1,6 +1,6 @@
 // Explicit candidate ACL for the supplier-chain acceptance worker, not a
 // production grant script. No wildcards, default privileges or grant-on-error.
-export const SUPPLIER_RUNTIME_PROFILE = 'nexid.supplier-runtime-acceptance.v1';
+export const SUPPLIER_RUNTIME_PROFILE = 'nexid.supplier-runtime-acceptance.v2';
 export const SUPPLIER_RUNTIME_ROLE_RE = /^nexid_e2e_supplier_[a-f0-9]{16}$/;
 const freezeLists = value => Object.freeze(Object.fromEntries(Object.entries(value).map(([name,list])=>[name,Object.freeze([...list])])));
 export const SUPPLIER_RUNTIME_TABLES = freezeLists({
@@ -48,6 +48,9 @@ export const SUPPLIER_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'nexid_supplier_request_review_actor_v2','nexid_mutate_supplier_request_review_v1',
   'nexid_supplier_request_review_current_v1','nexid_supplier_operator_authorized_v1',
   'nexid_supplier_request_assigned_actor_v1','nexid_supplier_request_cancellation_actor_v1',
+  // Explicit cancellation entry point for the four-workflow QA profile.
+  // No table/column grant changes and no production role changes.
+  'nexid_cancel_supplier_request_v1',
   'nexid_supplier_quote_actor_v1','nexid_supplier_quote_read_v1',
   'nexid_supplier_quote_current_v1','nexid_supplier_quote_public_event_v1','nexid_mutate_supplier_quote_v1',
   'nexid_convert_supplier_request_v1','nexid_supplier_order_create_v2_capability',
