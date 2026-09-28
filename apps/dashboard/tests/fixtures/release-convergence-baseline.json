@@ -336,15 +336,15 @@
     "apps/dashboard/src/components/supplier-production-acceptance-panel.tsx": "2405e64fbbefb9d2a5540ffbd0cc214c404d6359abdf9e02742bc57d9b27f50c",
     "apps/dashboard/src/components/supplier-reception-workspace.module.css": "a741678e0b352afdf93fd9052f2ea8edd7a5570da0d5daee9a6f6635ec7a3cfc",
     "apps/dashboard/src/components/supplier-reception-workspace.tsx": "08ebd239724e8c2b2ec9cc90f5b6e4c42079aff83e9a359c72599c796728294c",
-    "apps/dashboard/src/components/supplier-request-assignment.tsx": "7ed9ced5d0fe7eda0e4991534bb9f49b21f6042c52bbe77308dcf48cc97b203a",
+    "apps/dashboard/src/components/supplier-request-assignment.tsx": "bd46fdc5084c541aad970fc7e061909f8c9a19230ae8aad83e3c262ce1074997",
     "apps/dashboard/src/components/supplier-request-binding.module.css": "829116321efe166d1dff4f7930f15a6b791282859449fac813e6f3c2c11ff284",
     "apps/dashboard/src/components/supplier-request-binding.tsx": "545ee5e1c134abbf3aa7fe95f518ca7bc323a2f48c87a7941248513d12506d13",
     "apps/dashboard/src/components/supplier-request-cancellation.tsx": "c8e110ceba79e8256090c1506655eed7578d28b7a1564a2da8e6368f5251e956",
     "apps/dashboard/src/components/supplier-request-delivery-ack.tsx": "594a4e815d4cd062e33f2ac750dbb56cd1cf1e947cdb52ef04cc894d6f39d8d4",
     "apps/dashboard/src/components/supplier-request-quotation.tsx": "881c116d2f04029ee7f1a2e6801b04b7583bfb54adfc771eae4ca78eae3bab3c",
-    "apps/dashboard/src/components/supplier-request-review.tsx": "fb5323d1e25cee9a16c13ec8e4420d97551694f97c4313a7ddeaad9023f5ce42",
+    "apps/dashboard/src/components/supplier-request-review.tsx": "ebd3dd7b6688cc81abddce07b0df7b569561c2bae4b376471dfa3721c0066678",
     "apps/dashboard/src/components/supplier-request-workspace.module.css": "a4f032654e4fee57bb493e738f670f316b4cc19917ec51c0c3e77ae240239079",
-    "apps/dashboard/src/components/supplier-request-workspace.tsx": "787e02815d22b8b338d81d32ec31b020dbd836a80f3f7fe9225f0364f2bb8ba7",
+    "apps/dashboard/src/components/supplier-request-workspace.tsx": "8f7b698b23c3b01e6cacb63f8d9004135e687473bd93dbef03adb198bb8cc89d",
     "apps/dashboard/src/components/supplier-service-status.tsx": "f933dbd36827d6462d9ead5aacc6a899c6fe84e57b6f3a881bfb76e350d44dfc",
     "apps/dashboard/src/components/support-ticket-details.tsx": "c864215a0c6044de42611124c889ae5824c830c5716df92715f5fd520b527d01",
     "apps/dashboard/src/components/tenant-account-menu.tsx": "63639d37bacd90e9f74c0f17f530254b8b33c1310b12ecce320efaf8535ea038",
@@ -479,7 +479,7 @@
     "apps/dashboard/src/lib/supplier-pack-purpose-policy.ts": "804c68abfabe6e6ccc69576bd28ae0cd7693052fd98ff2827aa00f5a45d23f8a",
     "apps/dashboard/src/lib/supplier-quote-policy.ts": "7ab226ed40c220b7454d86eec0471a98b3f57235a2899b794fa95f6c67e8c7fa",
     "apps/dashboard/src/lib/supplier-reception-contract.ts": "ec20997cbab8675dc780656193ecf659ce445efe1625e35ca55fd465c252e2b3",
-    "apps/dashboard/src/lib/supplier-request-assignment-client.ts": "4eb02da7826f1caedf0ba22b863a47f03703397b79452f6b6e078ec5f6a461c4",
+    "apps/dashboard/src/lib/supplier-request-assignment-client.ts": "88a40ffb795d0f92daae34cedffcc7f24e1b3cad98c58cb0764f5e17ff6f010a",
     "apps/dashboard/src/lib/supplier-request-binding-client.ts": "dcfeb1e31797ab44cab6968f1b54e057b09b17987385449677369532c9ecb154",
     "apps/dashboard/src/lib/supplier-request-cancellation-client.ts": "cac597c663630c373121ab3d8f73fc5aa50da0a21ae4904671b8e837654022c3",
     "apps/dashboard/src/lib/supplier-request-client.ts": "c9abbeaf227a8ab4d39dde7cf0abea2b80a5cd519a0fd5ddb0c45aa498123bda",
@@ -487,7 +487,7 @@
     "apps/dashboard/src/lib/supplier-request-proxy.ts": "9848ce8ce9d462d79695b042d5710993477ba40d0fd05f15a27c5275b171b938",
     "apps/dashboard/src/lib/supplier-request-quote-client.ts": "cd9faa6cdae8e679f6fa9f95a1ae89d436149abaddfec4a87485b3b3d446fd61",
     "apps/dashboard/src/lib/supplier-request-read-policy.ts": "9a82f34c950a741d148268dde7fa74449820507884f6ef05f766614fa7d96ef0",
-    "apps/dashboard/src/lib/supplier-request-review-client.ts": "fef6939f6eacebc880a1c1c5b92eafa4e74912c7be1a494ae7f05317ec979d42",
+    "apps/dashboard/src/lib/supplier-request-review-client.ts": "1b060423b09248444ad4fcd0840b21edc465ba188006d456bd1816f783dd9aff",
     "apps/dashboard/src/lib/supplier-service-client.ts": "00f1bcdd5c6baf08b7cd53b8cc9fa533602b13f0a86506606eee535261603d83",
     "apps/dashboard/src/lib/supplier-service-contract.ts": "d7faa98ddf15c2cfcee72ed2f9dcab4522cd01d16016c7d67f878ac234cb11a9",
     "apps/dashboard/src/lib/support-ticket-projection.ts": "5556a24c38e8d830290d38917cda9d459b7b6228b7a1ac6a4985be73b8357135",
@@ -567,5 +567,38 @@
       "apps/dashboard/src/components/supplier-request-case-summary.tsx",
       "apps/dashboard/src/components/supplier-request-case-summary.module.css"
     ]
+  },
+  "advancedContinuity": {
+    "base": "bbf5f39445aacbd4086f900ed7426a3596952937",
+    "importedFeature": "46db77b5c5793ea31ee8807b83925151150b5dbc",
+    "changes": [
+      {
+        "path": "apps/dashboard/src/components/supplier-request-assignment.tsx",
+        "before": "7ed9ced5d0fe7eda0e4991534bb9f49b21f6042c52bbe77308dcf48cc97b203a",
+        "after": "bd46fdc5084c541aad970fc7e061909f8c9a19230ae8aad83e3c262ce1074997"
+      },
+      {
+        "path": "apps/dashboard/src/components/supplier-request-review.tsx",
+        "before": "fb5323d1e25cee9a16c13ec8e4420d97551694f97c4313a7ddeaad9023f5ce42",
+        "after": "ebd3dd7b6688cc81abddce07b0df7b569561c2bae4b376471dfa3721c0066678"
+      },
+      {
+        "path": "apps/dashboard/src/components/supplier-request-workspace.tsx",
+        "before": "787e02815d22b8b338d81d32ec31b020dbd836a80f3f7fe9225f0364f2bb8ba7",
+        "after": "8f7b698b23c3b01e6cacb63f8d9004135e687473bd93dbef03adb198bb8cc89d"
+      },
+      {
+        "path": "apps/dashboard/src/lib/supplier-request-assignment-client.ts",
+        "before": "4eb02da7826f1caedf0ba22b863a47f03703397b79452f6b6e078ec5f6a461c4",
+        "after": "88a40ffb795d0f92daae34cedffcc7f24e1b3cad98c58cb0764f5e17ff6f010a"
+      },
+      {
+        "path": "apps/dashboard/src/lib/supplier-request-review-client.ts",
+        "before": "fef6939f6eacebc880a1c1c5b92eafa4e74912c7be1a494ae7f05317ec979d42",
+        "after": "1b060423b09248444ad4fcd0840b21edc465ba188006d456bd1816f783dd9aff"
+      }
+    ],
+    "newSourceFiles": [],
+    "purpose": "Retain operator authority and commercial gates while coordinating read locks, revocation and explicit read cancellation."
   }
 }
