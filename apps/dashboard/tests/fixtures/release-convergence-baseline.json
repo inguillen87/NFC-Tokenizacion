@@ -84,7 +84,7 @@
     "apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx": "a30a8a28b0341cc679dd01c1ddb00f4c16b513a7937732251ad26d405f8a2c18",
     "apps/dashboard/src/app/(app)/mfa/page.tsx": "ce2ed8c31f1af03de2b7d78455427014771e5b9ac6f3853bf47af6276f9ff991",
     "apps/dashboard/src/app/(app)/offline/page.tsx": "4fd5021236673bc68ac7281648d399ca5fa11cf9f6a5f4240b8cfffca43f20a9",
-    "apps/dashboard/src/app/(app)/onboarding/page.tsx": "f73377aea1716903d7e2164c48a1e99c343cfa785455375cd66a15a3352b4a4e",
+    "apps/dashboard/src/app/(app)/onboarding/page.tsx": "bd3bc258b8e25a294b0596fb195786f2e3a2e7f85d4e20b952fcd4bfb6b12084",
     "apps/dashboard/src/app/(app)/page.tsx": "9a27a81b5f0edaaadd910ac6bc6cb7223791dcafb40c9159a4393bfe1e891d77",
     "apps/dashboard/src/app/(app)/passports/review/page.tsx": "72467ee3e9bc1a2680d037a34ad3c88931b9acbb2b22834bc6a5f3fdd40e607c",
     "apps/dashboard/src/app/(app)/proof/anchor/page.module.css": "ba75d549a03077032517322ae71644e7e9ab9637e3e8bb3e96d9349ab61155b4",
@@ -293,8 +293,8 @@
     "apps/dashboard/src/components/physical-map-workspace.tsx": "3b4bbdaef9ae5eeb2243c1376b749c19ca9cab9f4021693602ca327c0e02ff2c",
     "apps/dashboard/src/components/physical-taps-command-center.module.css": "5423df2628c384a7fb77711e39ff6bb8839ba57598a3e87e672a8024440ede40",
     "apps/dashboard/src/components/physical-taps-command-center.tsx": "189ecc9db526a2e96540ff9d5f42f2aba14044cbda7fb22be197fc3bbb194d58",
-    "apps/dashboard/src/components/pilot-launchpad.module.css": "b01553abe698334a075207a45d786eac521f0d1902b564783d8dbfcc744545a9",
-    "apps/dashboard/src/components/pilot-launchpad.tsx": "9b007a569558d2a4015913e4b81b63eb847dd40e3c4fa88e206d06e5b450c380",
+    "apps/dashboard/src/components/pilot-launchpad.module.css": "aca0b24faaa994c670a58b9509fa6f79729a94d0cb49b2e33e41a8ab262fafa4",
+    "apps/dashboard/src/components/pilot-launchpad.tsx": "77c685d06bed0ee2e1be32343c43345f40ea09e2449c9a1b9bfe899cac76ca35",
     "apps/dashboard/src/components/pilot-report.module.css": "3ead96799abebb3ec8590093cd386ea07f75c36c34ea6c61fcd0bfb16604581d",
     "apps/dashboard/src/components/pilot-report.tsx": "f83f0ec8952f0e830dfa0c1a6dcd55e7ed578bcda468faa3d4ccf1810bfcfe2c",
     "apps/dashboard/src/components/product-asset-bank-panel.tsx": "d9f5300393486eaacfd112d2d75584691de07e6e1d78474e02582ed4fde1d0db",
@@ -521,7 +521,9 @@
     "apps/dashboard/src/components/supplier-draft-comparison.module.css": "8c0e2d566ba8d19bf82b40b4a454d030e1383d819705d3667297d1e1a5687e78",
     "apps/dashboard/src/lib/supplier-request-case-summary.ts": "42041ce3ea5451763ee23cd44e2762ae94e1f4108e7f6a8b437ad418c925ed16",
     "apps/dashboard/src/components/supplier-request-case-summary.tsx": "bdaeff3d91b5f2943b225480f824eca63ee9161d9810ee060723f133161241ab",
-    "apps/dashboard/src/components/supplier-request-case-summary.module.css": "aa694482eb344913ab21e8b54b947d48f8135b167414c29caa1322c43cb45995"
+    "apps/dashboard/src/components/supplier-request-case-summary.module.css": "aa694482eb344913ab21e8b54b947d48f8135b167414c29caa1322c43cb45995",
+    "apps/dashboard/src/lib/pilot-launchpad-read.ts": "406bc07708ea69bded6c30b86d2f6a79cea41350eb3c3ffa553f422097903857",
+    "apps/dashboard/src/lib/pilot-launchpad-model.ts": "40cc25eae997ed58b9458cca23f44ea154ff6214fafdc2254e9babf5c40f910f"
   },
   "draftGuidance": {
     "base": "f076212a",
@@ -600,5 +602,30 @@
     ],
     "newSourceFiles": [],
     "purpose": "Retain operator authority and commercial gates while coordinating read locks, revocation and explicit read cancellation."
+  },
+  "pilotLaunchpad": {
+    "base": "e905333d93fef3152439446d1f5b7644325e529e",
+    "changed": [
+      {
+        "path": "apps/dashboard/src/app/(app)/onboarding/page.tsx",
+        "before": "f73377aea1716903d7e2164c48a1e99c343cfa785455375cd66a15a3352b4a4e",
+        "after": "bd3bc258b8e25a294b0596fb195786f2e3a2e7f85d4e20b952fcd4bfb6b12084"
+      },
+      {
+        "path": "apps/dashboard/src/components/pilot-launchpad.module.css",
+        "before": "b01553abe698334a075207a45d786eac521f0d1902b564783d8dbfcc744545a9",
+        "after": "aca0b24faaa994c670a58b9509fa6f79729a94d0cb49b2e33e41a8ab262fafa4"
+      },
+      {
+        "path": "apps/dashboard/src/components/pilot-launchpad.tsx",
+        "before": "9b007a569558d2a4015913e4b81b63eb847dd40e3c4fa88e206d06e5b450c380",
+        "after": "77c685d06bed0ee2e1be32343c43345f40ea09e2449c9a1b9bfe899cac76ca35"
+      }
+    ],
+    "added": [
+      "apps/dashboard/src/lib/pilot-launchpad-model.ts",
+      "apps/dashboard/src/lib/pilot-launchpad-read.ts"
+    ],
+    "scope": "DPP-first scoped onboarding, no pilot completion inference"
   }
 }
