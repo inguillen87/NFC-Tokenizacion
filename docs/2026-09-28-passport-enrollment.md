@@ -22,8 +22,11 @@ Si el resultado es incierto, los errores posteriores no eliminan la misma clave/
 ## Validación local realizada
 Dashboard: 1.892 pruebas aprobadas, cero fallos y dos omisiones preexistentes; incluye 53 nuevas pruebas de contrato, transporte, plazos y recuperación. TypeScript y custodia de secretos aprobados.
 
-Nueva aceptación de navegador: 169 comprobaciones en 21 vistas, todas aprobadas, con StrictMode, 320/390/768/1440 px, temas claro/oscuro, teclado, recibo perdido, conflicto, denegación, cambio de contexto y textos largos. Sin infracciones de axe, excepciones o red externa inesperada en las vistas evaluadas. Se revisaron visualmente confirmación móvil clara y escritorio oscuro.
+Nueva aceptación de navegador: 170 comprobaciones en 21 vistas, todas aprobadas, con StrictMode, 320/390/768/1440 px, temas claro/oscuro, teclado, recibo perdido, conflicto, denegación, cambio de contexto y textos largos. Sin infracciones de axe, excepciones o red externa inesperada en las vistas evaluadas. Se revisaron visualmente confirmación móvil clara y escritorio oscuro.
 
 Regresión existente de puesta en marcha: 156 comprobaciones en 19 vistas aprobadas. La aceptación DOM existente de Passport Studio también aprobó. El harness PostgreSQL/browser integrado actualiza los selectores y la nueva confirmación, pero no se ejecutó en este bloque; no se presenta como una aceptación física o productiva.
 
 Las huellas anteriores de convergencia y las 483 rutas preservadas se contrastaron contra la base. Se actualizó sólo la entrada modificada y se incorporaron las dos fuentes nuevas al manifiesto completo, sin retirar pruebas. CI y publicación se registran por commit en la PR cuando terminan.
+
+## Ajuste previo a publicaci?n
+Antes de promover, una regresi?n adicional comprob? que una denegaci?n seguida de una ca?da del servicio pod?a volver a mostrar el producto anterior. Se conserva el retiro de acceso hasta recibir un resultado v?lido o cambiar de contexto; un error posterior no restaura esos datos. Se detuvo la publicaci?n del primer candidato y se valida el nuevo commit completo.

@@ -284,7 +284,7 @@
     "apps/dashboard/src/components/operations-workspace.module.css": "5ea48f89b0868f46c18a883c5377b50413ea7fb25f82298fe9e649d71db4814c",
     "apps/dashboard/src/components/ops-command-center.module.css": "2b0e4f87b4635f571ea5d3a0f4db3c270cf478f8fb8170a4333abf77e112f285",
     "apps/dashboard/src/components/ops-command-center.tsx": "f0e8d859ac2e880b2629ba173770344dbd42a11910c1b7c52571cca0ed42ce99",
-    "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx": "90640ee508f362014bf9bfe27a509a741b242ae35e266e0b55011f37701f381f",
+    "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx": "a628c2d85a340ab6749588a35516a1a7ecbff8f6b9786db271ed15b99df0e559",
     "apps/dashboard/src/components/passport-studio/passport-studio-view.ts": "41d7dfd393fa7a1dc9d2bb28a9fa8bc09c02e4926d390e2dba1dd9ef7ec5c93a",
     "apps/dashboard/src/components/passport-studio/passport-studio.css": "615b3fdc8fd17f12be7c93da9ea5ff6b13b2924c27d5f5fdf5ea1d67f7d063e9",
     "apps/dashboard/src/components/passport-studio/passport-studio.tsx": "e152c7005123e1df39c20630823ddb2cd7da9aebb8753e1b8df00feb0687a977",
@@ -644,5 +644,17 @@
       "apps/dashboard/src/lib/passport-enrollment.ts"
     ],
     "scope": "Scoped two-step editorial enrollment with preserved uncertain operation"
+  },
+  "passportEnrollmentAccessRecovery": {
+    "base": "e17823e9b86f2d746f5d8d6545f7b761fc78a130",
+    "changed": [
+      {
+        "path": "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx",
+        "before": "90640ee508f362014bf9bfe27a509a741b242ae35e266e0b55011f37701f381f",
+        "after": "a628c2d85a340ab6749588a35516a1a7ecbff8f6b9786db271ed15b99df0e559"
+      }
+    ],
+    "added": [],
+    "scope": "Keep denied content withdrawn after a subsequent service failure"
   }
 }
