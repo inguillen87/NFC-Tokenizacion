@@ -1,0 +1,64 @@
+{
+  "schema": "nexid.ui-publication-close.v1",
+  "observedAt": "2026-09-28T02:17:38.508Z",
+  "sourceCommit": "e9079e8b3e45ca9ec741d2348a13eaa3f7d55890",
+  "productionBaseline": "bf80ccc04fa73108f8d103ebcc597a8fb833d423",
+  "scope": "request-case-summary-only",
+  "deploymentId": "dpl_4n4sQwD94bnMHABmGAvgz3PV2NDo",
+  "rollbackDeploymentId": "dpl_Gr3eg2EGMrZ6mRhVZ3QtwcuTtr1Y",
+  "canonicalDomain": "app.nexid.lat",
+  "businessReleaseContract": "2026.09.23-dashboard.41",
+  "reusedExistingStagedDeployment": true,
+  "newBuildsRequested": 0,
+  "dashboardTests": {
+    "passed": 1449,
+    "failed": 0,
+    "skipped": 2
+  },
+  "typecheck": "passed",
+  "browser": [
+    {
+      "name": "supplier-request-case-summary",
+      "checks": 44,
+      "views": 8,
+      "status": "passed"
+    },
+    {
+      "name": "supplier-request-inbox",
+      "checks": 142,
+      "views": 13,
+      "status": "passed"
+    },
+    {
+      "name": "supplier-requests",
+      "checks": 287,
+      "views": 33,
+      "status": "passed"
+    },
+    {
+      "name": "runtime-access-hotfix",
+      "checks": 62,
+      "views": 6,
+      "status": "passed"
+    }
+  ],
+  "stagedHttpChecks": 6,
+  "canonicalHttpChecks": 6,
+  "candidateCi": {
+    "runId": 36177433147,
+    "sha": "e9079e8b3e45ca9ec741d2348a13eaa3f7d55890",
+    "conclusion": "success"
+  },
+  "advancedCandidateCi": {
+    "runId": 36177489429,
+    "sha": "bbf5f39445aacbd4086f900ed7426a3596952937",
+    "conclusion": "success",
+    "executedThisSession": false,
+    "promoted": false
+  },
+  "companionDeploymentsUnchanged": true,
+  "databaseMigrationsApplied": false,
+  "businessWrites": false,
+  "realAuthenticatedCaseAcceptance": false,
+  "physicalTapAcceptance": false
+}
