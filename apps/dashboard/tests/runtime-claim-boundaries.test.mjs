@@ -89,7 +89,7 @@ test("runtime rates and visual scores withhold values without a denominator", ()
   assert.match(assetBank, /"Sin score"/);
   assert.doesNotMatch(assetBank, /profile\.assetScore \?\? 0/);
   assert.doesNotMatch(batches, /assetScores|averageAssetScore/);
-  assert.match(pilot, /snapshot\.assetsAvailable && snapshot\.scoredAssetProfiles > 0/);
+  assert.doesNotMatch(pilot, /averageAssetScore|scoredAssetProfiles|progressbar/);
   assert.match(superadmin, /assetScores\.length \? [`'"]/);
   assert.match(opsCenter, /Number\.isFinite\(tenant\.scans\) && tenant\.scans > 0 && Number\.isFinite\(tenant\.riskScore\)/);
   assert.match(opsCenter, /hasRiskBase \? `\$\{tenant\.riskScore\}\/100` : "Sin base"/);
@@ -174,7 +174,7 @@ test("realtime, growth and onboarding copy require source-backed NFC events", ()
   assert.doesNotMatch(customerGrowth, /UIDs con eventos reportados|segmento para evaluar club|UIDs con evidencia real|tap físico listos/);
 
   assert.match(loyaltyExperiences, /Mensaje NFC fresco con veredicto válido/);
-  assert.match(onboardingPage, /recorrido operativo con fuente visible/);
+  assert.match(onboardingPage, /readPilotSource/); assert.doesNotMatch(onboardingPage, /qaPassed|confirmedAnchors|tokenizedAssets/);
   assert.match(salesPlaybook, /mensaje criptográfico NFC fresco/);
   assert.doesNotMatch(`${loyaltyExperiences}\n${salesPlaybook}`, /Tap físico fresco|tap físico fresco/);
 });

@@ -13,51 +13,19 @@ const guardrailSource = await readFile(new URL("../src/components/supplier-legac
 const guardrailStyles = await readFile(new URL("../src/components/supplier-legacy-intake-blocked.module.css", import.meta.url), "utf8");
 const supplierPageSource = await readFile(new URL("../src/components/supplier-reception-workspace.tsx", import.meta.url), "utf8");
 
-test("onboarding derives readiness from real tenant-scoped operational sources", () => {
-  assert.match(pageSource, /fetchJson<Array<Record<string, unknown>>>\("batches", \[\], context\)/);
-  assert.match(pageSource, /fetchJson<\{ items\?: ProductAssetItem\[\] \}>\("product-assets\?limit=80"/);
-  assert.match(pageSource, /fetchJson<\{ orders\?: SupplierOrder\[\] \}>\("supplier-orders"/);
-  assert.match(pageSource, /fetchJson<\{ anchors\?: ProofAnchor\[\] \}>\("proof\/anchors"/);
-  assert.match(pageSource, /fetchJson<\{ rows\?: TokenizationRequest\[\] \}>\("tokenization\/requests\?limit=80"/);
-  assert.match(pageSource, /const requestContext = await createAdminPageContext\(session\)/);
-  assert.match(pageSource, /const response = await fetchAdminPage\(context, path\)/);
-  assert.match(pageSource, /response\.headers\.get\("x-nexid-data-mode"\) === "demo"/);
-  assert.match(pageSource, /value\.ok === false/);
-  assert.match(pageSource, /setupComplete: setupCompleted === true/);
-  assert.match(pageSource, /dataState: hasDemoSource \? "demo" : availableSources === 5 \? "live"/);
-  assert.doesNotMatch(pageSource, /demobodega|Bodega Balmec|BALMEC-2026/);
+test("launchpad uses a scoped lot source, without inferred pilot readiness",()=>{
+ assert.match(pageSource,/resolvePilotScope/);assert.match(pageSource,/readPilotSource/);
+ assert.doesNotMatch(pageSource,/assetScore|qaPassed|tokenizationResult|anchorsResult/);
+ assert.match(launchpadSource,/Del lote al pasaporte digital/);
+ assert.doesNotMatch(launchpadSource,/progressbar|etapas listas|prueba vendible|buildStages/);
 });
-
-test("pilot launchpad exposes one evidence-backed next action and five connected stages", () => {
-  assert.match(launchpadSource, /data-testid="pilot-launchpad"/);
-  assert.match(launchpadSource, /data-testid="pilot-primary-action"/);
-  assert.match(launchpadSource, /aria-current=\{stage\.status === "current" \? "step"/);
-  assert.match(launchpadSource, /role="progressbar"/);
-  assert.match(launchpadSource, /Configurar identidad y politica/);
-  assert.match(launchpadSource, /Preparar pedido y lote seguro/);
-  assert.match(launchpadSource, /Cargar manifest e identidad visual/);
-  assert.match(launchpadSource, /Validar muestra fisica/);
-  assert.match(launchpadSource, /Abrir prueba y salida comercial/);
-  assert.match(launchpadSource, /IOTA verifica integridad de evidencia; Polygon registra titularidad digital/);
-  assert.match(launchpadSource, /snapshot\.scoredAssetProfiles > 0/);
-  assert.match(pageSource, /scoredAssetProfiles: assetScores\.length/);
-  assert.match(launchpadSource, /Accion limitada al tenant de la sesion/);
-  assert.match(launchpadSource, /Sandbox de solo lectura: explora el flujo sin escribir sobre datos productivos/);
-  assert.match(launchpadSource, /Explorar pedidos seguros/);
-  assert.match(launchpadSource, /Explorar centro de Proof/);
-  assert.match(launchpadSource, /stage\.status === "blocked"/);
-  assert.match(launchpadSource, /aria-disabled="true"/);
-  assert.match(launchpadSource, /const productionEvidence = snapshot\.dataState !== "demo"/);
-  assert.doesNotMatch(launchpadSource, /supplierOrderCount > 0 \|\| snapshot\.batchCount > 0/);
+test("launchpad keeps permissions, explicit selection and bounded counts",()=>{
+ assert.match(launchpadSource,/task.href/);assert.match(launchpadSource,/No disponible con los permisos actuales/);
+ assert.match(launchpadSource,/no es un total histórico/);assert.match(launchpadSource,/No se abre automáticamente el primer lote/);
 });
-
-test("pilot launchpad supports explicit light mode and compact mobile workflow", () => {
-  assert.match(launchpadStyles, /:global\(html\.theme-light\) \.launchpad/);
-  assert.match(launchpadStyles, /:global\(html\[data-theme="light"\]\) \.launchpad/);
-  assert.match(launchpadStyles, /@media \(max-width: 760px\)/);
-  assert.match(launchpadStyles, /\.stage\s*\{[\s\S]*grid-template-columns: 2\.5rem minmax\(0, 1fr\)/);
-  assert.match(launchpadStyles, /\.primaryAction,[\s\S]*min-height: 2\.75rem/);
-  assert.doesNotMatch(launchpadStyles, /overflow-x:\s*auto/);
+test("launchpad retains mobile layout, local themes and keyboard focus",()=>{
+ assert.match(launchpadStyles,/theme-light/);assert.match(launchpadStyles,/max-width:760px/);
+ assert.match(launchpadStyles,/min-height:44px/);assert.match(launchpadStyles,/:focus-visible/);assert.match(launchpadStyles,/prefers-reduced-motion/);
 });
 
 test("tenant setup mutation remains server-scoped", () => {

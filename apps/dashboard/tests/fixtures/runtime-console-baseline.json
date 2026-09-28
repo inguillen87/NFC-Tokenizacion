@@ -1,7 +1,7 @@
 {
   "base": "7e3b7f9db153266dd7763d70111e93784c47bb1d",
   "sourceCount": 483,
-  "digest": "310069a8d4a9f16e6d73210622f304716e731c77dc186548f5e2cd94e98103fc",
+  "digest": "ba86208dd2b7725280dd153852a92bda82df54c5b82ebc96553240c5c5593747",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -502,6 +502,15 @@
         "apps/dashboard/src/lib/supplier-request-review-client.ts"
       ],
       "reason": "Integrate PR 378 without removing operator/quotation/cancellation contracts. Coordinate review and assignment reads with sibling steps, cancel explicitly, and withdraw denied reads. Other fingerprinted sources unchanged."
+    },
+    {
+      "base": "e905333d93fef3152439446d1f5b7644325e529e",
+      "files": [
+        "apps/dashboard/src/app/(app)/onboarding/page.tsx",
+        "apps/dashboard/src/components/pilot-launchpad.module.css",
+        "apps/dashboard/src/components/pilot-launchpad.tsx"
+      ],
+      "reason": "Replace aggregate completion heuristics with exact tenant/batch task navigation."
     }
   ]
 }

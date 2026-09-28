@@ -1,352 +1,85 @@
-import Link from "next/link";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Boxes,
-  CircleAlert,
-  CircleCheck,
-  ClipboardCheck,
-  DatabaseZap,
-  ExternalLink,
-  Fingerprint,
-  ImagePlus,
-  RadioTower,
-  Settings2,
-  ShieldCheck,
-} from "lucide-react";
-import styles from "./pilot-launchpad.module.css";
-
-export type PilotSnapshot = {
-  tenantScope: string;
-  setupComplete: boolean;
-  dataState: "live" | "demo" | "partial" | "unavailable";
-  availableSources: number;
-  batchesAvailable: boolean;
-  assetsAvailable: boolean;
-  ordersAvailable: boolean;
-  anchorsAvailable: boolean;
-  tokenizationAvailable: boolean;
-  batchCount: number;
-  secureBatches: number;
-  supplierManagedBatches: number;
-  supplierOrderCount: number;
-  supplierPlannedUnits: number;
-  importedManifests: number;
-  qaPassed: number;
-  plannedTags: number;
-  importedTags: number;
-  activeTags: number;
-  assetProfiles: number;
-  readyAssets: number;
-  scoredAssetProfiles: number;
-  averageAssetScore: number;
-  proofAnchorCount: number;
-  confirmedAnchors: number;
-  tokenizationRequestCount: number;
-  tokenizedAssets: number;
-};
-
-type PilotStageStatus = "complete" | "current" | "blocked" | "explore";
-
-type PilotStage = {
-  key: string;
-  number: string;
-  title: string;
-  summary: string;
-  status: PilotStageStatus;
-  href: string;
-  action: string;
-  evidence: Array<{ label: string; value: string }>;
-};
-
-const stageIcons = {
-  workspace: Settings2,
-  supply: Boxes,
-  identity: ImagePlus,
-  validation: Fingerprint,
-  proof: ShieldCheck,
+"use client";
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, FileCheck2, Layers3, Search } from 'lucide-react';
+import { filterPilotBatches, type PilotLaunchpadModel } from '../lib/pilot-launchpad-model';
+import styles from './pilot-launchpad.module.css';
+const copy = {
+ tenant_required: ['Elegí una empresa para comenzar', 'La vista global no mezcla lotes de empresas distintas. Consultá una empresa concreta para abrir su recorrido.'],
+ forbidden: ['No se confirmó acceso a los lotes', 'La sesión o los permisos actuales no permiten esta consulta. No se muestran registros anteriores ni cantidades de reemplazo.'],
+ demo: ['Este recorrido requiere una empresa real', 'La sesión de demostración no consulta lotes productivos ni acredita publicación, calidad o lecturas físicas.'],
+ invalid: ['No se pudo validar la consulta', 'El alcance o la respuesta no coincide con el contrato esperado. No se muestra una selección parcial ni datos de otra empresa.'],
+ unavailable: ['Los lotes no están disponibles en esta consulta', 'No significa que la empresa no tenga lotes. Volvé a consultar antes de continuar.'],
+ timeout: ['La consulta de lotes no terminó a tiempo', 'No se reintenta automáticamente. Podés volver a consultar sin iniciar ninguna operación.'],
+ selected: ['Consulta pendiente', 'Todavía no hay una respuesta confirmada.'],
+ ready: ['', ''],
 } as const;
-
-function formatNumber(value: number) {
-  return value.toLocaleString("es-AR");
+const number = (v: number) => v.toLocaleString('es-AR');
+export function PilotLaunchpad({ model }: { model: PilotLaunchpadModel }) {
+ // Every changed scope, permission projection or source resets the local selection, including A → B → A.
+ return <PilotWorkspace key={JSON.stringify(model)} model={model} />;
 }
-
-function stageLabel(status: PilotStageStatus) {
-  if (status === "complete") return "Listo";
-  if (status === "current") return "Siguiente";
-  if (status === "explore") return "Explorar";
-  return "Bloqueado";
-}
-
-function metricValue(value: number, available: boolean) {
-  return available ? formatNumber(value) : "—";
-}
-
-function resolveStatuses(checks: boolean[]): PilotStageStatus[] {
-  const firstIncomplete = checks.findIndex((complete) => !complete);
-  return checks.map((complete, index) => {
-    if (complete) return "complete";
-    return index === firstIncomplete ? "current" : "blocked";
-  });
-}
-
-function buildStages(snapshot: PilotSnapshot): PilotStage[] {
-  const demoSandbox = snapshot.dataState === "demo";
-  const productionEvidence = snapshot.dataState !== "demo" && snapshot.dataState !== "unavailable";
-  const workspaceReady = snapshot.setupComplete;
-  const supplyReady = productionEvidence
-    && ((snapshot.ordersAvailable && snapshot.supplierOrderCount > 0) || (snapshot.batchesAvailable && snapshot.supplierManagedBatches > 0));
-  const identityReady = productionEvidence
-    && snapshot.batchesAvailable && snapshot.assetsAvailable && snapshot.importedTags > 0 && snapshot.readyAssets > 0;
-  const validationReady = productionEvidence
-    && snapshot.batchesAvailable && snapshot.ordersAvailable && snapshot.activeTags > 0 && snapshot.qaPassed > 0;
-  const proofReady = productionEvidence
-    && ((snapshot.anchorsAvailable && snapshot.confirmedAnchors > 0)
-      || (snapshot.tokenizationAvailable && snapshot.tokenizedAssets > 0));
-  const statuses: PilotStageStatus[] = demoSandbox
-    ? [workspaceReady ? "complete" : "current", "explore", "explore", "explore", "explore"]
-    : resolveStatuses([workspaceReady, supplyReady, identityReady, validationReady, proofReady]);
-
-  return [
-    {
-      key: "workspace",
-      number: "01",
-      title: "Configurar identidad y politica",
-      summary: "Vertical, origen, claim policy y permisos quedan definidos antes de emitir unidades.",
-      status: statuses[0],
-      href: "/settings",
-      action: workspaceReady ? "Revisar workspace" : "Completar configuracion",
-      evidence: [
-        { label: "Scope", value: snapshot.tenantScope || "multi-tenant" },
-        { label: "Setup", value: workspaceReady ? "completo" : "pendiente" },
-      ],
-    },
-    {
-      key: "supply",
-      number: "02",
-      title: "Preparar pedido y lote seguro",
-      summary: "El Supplier Order crea sub-batches y llaves cifradas en servidor, sin exponer material secreto.",
-      status: statuses[1],
-      href: demoSandbox || supplyReady ? "/supplier-orders" : "/batches/supplier#supplier-order-console",
-      action: demoSandbox ? "Explorar pedidos seguros" : supplyReady ? "Abrir pedidos" : "Crear pedido seguro",
-      evidence: [
-        { label: "Pedidos", value: metricValue(snapshot.supplierOrderCount, snapshot.ordersAvailable) },
-        { label: "Lotes con Vault", value: metricValue(snapshot.supplierManagedBatches, snapshot.batchesAvailable) },
-        { label: "Carrier 424", value: metricValue(snapshot.secureBatches, snapshot.batchesAvailable) },
-      ],
-    },
-    {
-      key: "identity",
-      number: "03",
-      title: "Cargar manifest e identidad visual",
-      summary: "UIDs, ficha declarada, seriales y assets aprobados se revisan antes de publicar el passport.",
-      status: statuses[2],
-      href: demoSandbox || snapshot.importedTags > 0 ? "/tokenization" : "/batches/supplier#supplier-order-console",
-      action: demoSandbox ? "Explorar identidad y assets" : snapshot.importedTags > 0 ? "Completar assets" : "Importar manifest",
-      evidence: [
-        { label: "UID importados", value: metricValue(snapshot.importedTags, snapshot.batchesAvailable) },
-        { label: "Assets listos (ventana)", value: snapshot.assetsAvailable ? `${formatNumber(snapshot.readyAssets)}/${formatNumber(snapshot.assetProfiles)}` : "—" },
-        { label: "Score visual", value: snapshot.assetsAvailable && snapshot.scoredAssetProfiles > 0 ? `${snapshot.averageAssetScore}/100` : "Sin base" },
-      ],
-    },
-    {
-      key: "validation",
-      number: "04",
-      title: "Validar muestra fisica",
-      summary: "QA, tap reportado, SUN y anti-replay verifican el flujo técnico del lote antes del despliegue masivo.",
-      status: statuses[3],
-      href: "/batches",
-      action: demoSandbox ? "Explorar validacion fisica" : validationReady ? "Revisar validaciones" : "Probar lote y tap",
-      evidence: [
-        { label: "QA aprobado", value: metricValue(snapshot.qaPassed, snapshot.ordersAvailable) },
-        { label: "Tags activos", value: metricValue(snapshot.activeTags, snapshot.batchesAvailable) },
-        { label: "Planificados", value: metricValue(snapshot.plannedTags || snapshot.supplierPlannedUnits, snapshot.batchesAvailable || snapshot.ordersAvailable) },
-      ],
-    },
-    {
-      key: "proof",
-      number: "05",
-      title: "Abrir prueba y salida comercial",
-      summary: "IOTA verifica integridad de evidencia; Polygon registra titularidad digital cuando aplica. Ninguna capa prueba propiedad física.",
-      status: statuses[4],
-      href: demoSandbox || proofReady ? "/proof" : "/tokenization",
-      action: demoSandbox ? "Explorar centro de Proof" : proofReady ? "Abrir centro de Proof" : "Preparar evidencia",
-      evidence: [
-        { label: "Anchors confirmados", value: snapshot.anchorsAvailable ? `${formatNumber(snapshot.confirmedAnchors)}/${formatNumber(snapshot.proofAnchorCount)}` : "—" },
-        { label: "Ownership (ventana)", value: snapshot.tokenizationAvailable ? `${formatNumber(snapshot.tokenizedAssets)}/${formatNumber(snapshot.tokenizationRequestCount)}` : "—" },
-      ],
-    },
-  ];
-}
-
-export function PilotLaunchpad({ snapshot, role }: { snapshot: PilotSnapshot; role: string }) {
-  const stages = buildStages(snapshot);
-  const completed = stages.filter((stage) => stage.status === "complete").length;
-  const currentStage = stages.find((stage) => stage.status === "current")
-    || stages.find((stage) => stage.status === "explore")
-    || stages[stages.length - 1];
-  const progress = Math.round((completed / stages.length) * 100);
-  const dataLabel = snapshot.dataState === "live"
-    ? "Datos operativos en vivo"
-    : snapshot.dataState === "demo"
-      ? "Sandbox aislado"
-    : snapshot.dataState === "partial"
-      ? "Lectura parcial"
-      : "Telemetria no disponible";
-
-  return (
-    <section className={styles.launchpad} data-testid="pilot-launchpad" aria-labelledby="pilot-launchpad-title">
-      <div className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <div className={styles.eyebrowRow}>
-            <span className={styles.eyebrow}>
-              <RadioTower aria-hidden="true" />
-              Control de rollout
-            </span>
-            <span className={styles.dataState} data-state={snapshot.dataState}>
-              <span aria-hidden="true" />
-              {dataLabel} - {snapshot.availableSources}/5 fuentes
-            </span>
-          </div>
-          <h2 id="pilot-launchpad-title">Del setup a una prueba vendible, con un proximo paso claro.</h2>
-          <p>
-            Este panel no marca tareas por relato. Lee el estado disponible del {snapshot.tenantScope ? `tenant ${snapshot.tenantScope}` : "workspace global"}{" "}
-            y distingue produccion de sandbox antes de prometer un piloto listo.
-          </p>
-          <div className={styles.progressBlock}>
-            <div className={styles.progressLabel}>
-              <span>{completed} de {stages.length} etapas listas</span>
-              <strong>{progress}%</strong>
-            </div>
-            <div className={styles.progressTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label="Avance del piloto">
-              <span style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-        </div>
-
-        <aside className={styles.nextAction} aria-label="Siguiente accion recomendada">
-          <span className={styles.nextActionLabel}>Siguiente accion recomendada</span>
-          <div className={styles.nextActionTitle}>
-            <span>{currentStage.number}</span>
-            <strong>{currentStage.title}</strong>
-          </div>
-          <p>{currentStage.summary}</p>
-          <Link href={currentStage.href} className={styles.primaryAction} data-testid="pilot-primary-action">
-            {currentStage.action}
-            <ArrowRight aria-hidden="true" />
-          </Link>
-          <small>
-            {snapshot.dataState === "demo"
-              ? "Sandbox de solo lectura: explora el flujo sin escribir sobre datos productivos."
-              : role === "tenant-admin"
-                ? "Accion limitada al tenant de la sesion."
-                : "Vista global: valida el tenant antes de mutar datos."}
-          </small>
-        </aside>
-      </div>
-
-      <div className={styles.metrics} aria-label="Resumen operativo del piloto">
-        <div>
-          <span>Inventario</span>
-          <strong>{metricValue(snapshot.activeTags, snapshot.batchesAvailable)}</strong>
-          <small>{snapshot.batchesAvailable ? `tags activos de ${formatNumber(snapshot.plannedTags || snapshot.supplierPlannedUnits)} planificados` : "fuente de lotes no disponible"}</small>
-        </div>
-        <div>
-          <span>Identidad visual</span>
-          <strong>{snapshot.assetsAvailable && snapshot.scoredAssetProfiles > 0 ? `${snapshot.averageAssetScore}/100` : "—"}</strong>
-          <small>{snapshot.assetsAvailable ? snapshot.scoredAssetProfiles > 0 ? `${formatNumber(snapshot.readyAssets)} perfiles listos; ${formatNumber(snapshot.scoredAssetProfiles)} con score en ventana` : "sin perfiles con score informado" : "fuente de assets no disponible"}</small>
-        </div>
-        <div>
-          <span>Prueba IOTA</span>
-          <strong>{metricValue(snapshot.confirmedAnchors, snapshot.anchorsAvailable)}</strong>
-          <small>{snapshot.anchorsAvailable ? "anchors confirmados y auditables" : "fuente de anchors no disponible"}</small>
-        </div>
-        <div>
-          <span>Ownership Polygon</span>
-          <strong>{metricValue(snapshot.tokenizedAssets, snapshot.tokenizationAvailable)}</strong>
-          <small>{snapshot.tokenizationAvailable ? "activos con transaccion de titularidad digital en ventana (max. 80)" : "fuente de tokenizacion no disponible"}</small>
-        </div>
-      </div>
-
-      <div className={styles.workflow}>
-        <div className={styles.stageList} aria-label="Etapas del piloto">
-          {stages.map((stage) => {
-            const Icon = stageIcons[stage.key as keyof typeof stageIcons];
-            const StatusIcon = stage.status === "complete" ? CircleCheck : stage.status === "current" || stage.status === "explore" ? DatabaseZap : CircleAlert;
-            return (
-              <article
-                key={stage.key}
-                className={styles.stage}
-                data-status={stage.status}
-                aria-current={stage.status === "current" ? "step" : undefined}
-              >
-                <div className={styles.stageIcon} aria-hidden="true">
-                  <Icon />
-                </div>
-                <div className={styles.stageBody}>
-                  <div className={styles.stageTitleRow}>
-                    <span>{stage.number}</span>
-                    <h3>{stage.title}</h3>
-                    <b data-status={stage.status}>
-                      <StatusIcon aria-hidden="true" />
-                      {stageLabel(stage.status)}
-                    </b>
-                  </div>
-                  <p>{stage.summary}</p>
-                  <dl className={styles.evidence}>
-                    {stage.evidence.map((item) => (
-                      <div key={item.label}>
-                        <dt>{item.label}</dt>
-                        <dd>{item.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-                {stage.status === "blocked" ? (
-                  <span className={`${styles.stageAction} ${styles.disabledAction}`} aria-disabled="true">
-                    <span>{stage.action}</span>
-                  </span>
-                ) : (
-                  <Link href={stage.href} className={styles.stageAction} aria-label={`${stage.action}: ${stage.title}`}>
-                    <span>{stage.action}</span>
-                    <ArrowRight aria-hidden="true" />
-                  </Link>
-                )}
-              </article>
-            );
-          })}
-        </div>
-
-        <aside className={styles.trustGuide} aria-label="Responsabilidad de cada capa">
-          <div className={styles.trustGuideHeader}>
-            <BadgeCheck aria-hidden="true" />
-            <div>
-              <span>Lectura ejecutiva</span>
-              <h3>Que prueba cada capa</h3>
-            </div>
-          </div>
-          <div className={styles.trustRow}>
-            <Fingerprint aria-hidden="true" />
-            <div><strong>nexID Core</strong><p>Identidad, reglas, tap, QA y experiencia del producto.</p></div>
-          </div>
-          <div className={styles.trustRow}>
-            <DatabaseZap aria-hidden="true" />
-            <div><strong>IOTA</strong><p>Incluye hashes y Merkle roots como evidencia publica hash-only.</p></div>
-          </div>
-          <div className={styles.trustRow}>
-            <ShieldCheck aria-hidden="true" />
-            <div><strong>Polygon</strong><p>Emite ownership, garantia o NFT cuando el caso comercial lo requiere.</p></div>
-          </div>
-          <Link href="/demo-lab" className={styles.secondaryAction}>
-            Ver experiencia para cliente
-            <ExternalLink aria-hidden="true" />
-          </Link>
-          <div className={styles.privacyNote}>
-            <ClipboardCheck aria-hidden="true" />
-            <p>La evidencia publica no expone UIDs, llaves, contratos privados ni datos personales.</p>
-          </div>
-        </aside>
-      </div>
+function PilotWorkspace({ model }: { model: PilotLaunchpadModel }) {
+ const [query, setQuery] = useState(''), [bid, setBid] = useState<string | null>(null);
+ const heading = useRef<HTMLHeadingElement | null>(null);
+ const visible = filterPilotBatches(model.batches, query);
+ const selected = model.state === 'ready' ? model.batches.find(row => row.bid === bid) : undefined;
+ useEffect(() => { if (bid) { heading.current?.focus({ preventScroll: true }); heading.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' }); } }, [bid]);
+ const scoped = model.tenant ? `/onboarding?${new URLSearchParams({ tenant: model.tenant })}` : '/onboarding';
+ const stamp = model.checkedAt ? `${model.checkedAt.slice(0, 10)} · ${model.checkedAt.slice(11, 19)} UTC` : null;
+ return <section className={styles.launchpad} data-testid="pilot-launchpad" aria-labelledby="pilot-title">
+  <header className={styles.hero}>
+   <div><p className={styles.eyebrow}><FileCheck2 aria-hidden="true" /> Puesta en marcha · NexID</p><h1 id="pilot-title">Del lote al pasaporte digital</h1><p>Elegí el lote y abrí la tarea que necesitás. Su expediente conserva el contenido, las unidades y la evidencia de cada etapa.</p></div>
+   <span className={styles.badge}>Guía de operación</span>
+  </header>
+  <div className={styles.scope} data-testid="pilot-scope"><strong>{model.tenant ? `Empresa: ${model.tenant}` : 'Sin empresa seleccionada'}</strong><span>Cada tarea conserva el contexto de esta empresa y del lote elegido.</span></div>
+  {model.canSelect ? <form action="/onboarding" method="GET" className={styles.companyForm} data-testid="pilot-tenant-form">
+   <label htmlFor="pilot-tenant">Identificador de empresa<input id="pilot-tenant" name="tenant" defaultValue={model.tenant} required maxLength={128} autoCapitalize="none" spellCheck={false} placeholder="Identificador de la empresa" /></label>
+   <button className={styles.primary} type="submit">Consultar empresa</button>
+   {model.links.tenants ? <Link prefetch={false} className={styles.button} href={model.links.tenants}>Directorio de empresas</Link> : null}
+  </form> : null}
+  {model.state !== 'ready' ? <div className={styles.notice} data-testid="pilot-source-notice" role="status"><h2>{copy[model.state][0]}</h2><p>{copy[model.state][1]}</p>{model.tenant ? <Link prefetch={false} className={styles.button} href={scoped}>Volver a consultar lotes</Link> : null}</div> : <>
+   <div className={styles.sectionHeading}><div><h2>Elegí un lote</h2><p data-testid="pilot-count">{number(model.batches.length)} lotes cargados en esta respuesta; no es un total histórico.</p>{stamp ? <p className={styles.muted}>Consulta: <time dateTime={model.checkedAt!}>{stamp}</time>. No es una lectura en vivo.</p> : null}</div><Link prefetch={false} className={styles.button} href={scoped}>Actualizar lotes</Link></div>
+   {!model.batches.length ? <div className={styles.notice} data-testid="pilot-empty">
+    <h3>La consulta no devolvió lotes</h3><p>No hay un lote seleccionable en esta respuesta. Revisá el registro de la empresa o su circuito de recepción; abrirlos no crea ni activa unidades.</p>
+    {model.links.batches ? <Link prefetch={false} className={styles.button} href={model.links.batches}>Abrir registro de lotes</Link> : null}
+    {model.links.reception ? <Link prefetch={false} className={styles.button} href={model.links.reception}>Revisar recepción y pedidos</Link> : null}
+   </div> : <div className={styles.workspace}>
+    <section className={styles.picker} aria-labelledby="pilot-picker-title">
+     <h3 id="pilot-picker-title"><Layers3 aria-hidden="true" /> Lotes de la empresa</h3>
+     <label htmlFor="pilot-search"><span className={styles.searchLabel}><Search aria-hidden="true" /> Buscar en esta respuesta</span><input id="pilot-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Producto, lote, SKU o soporte" /></label>
+     <p className={styles.muted} role="status">{visible.length} de {model.batches.length} lotes cargados coinciden.</p>
+     {!visible.length ? <div className={styles.noMatches} data-testid="pilot-no-matches"><p>No hay coincidencias en los lotes cargados.</p><button type="button" className={styles.button} onClick={() => setQuery('')}>Limpiar búsqueda</button></div> : null}
+     <ul className={styles.batchList}>{visible.map(row => <li key={row.bid}>
+      <button type="button" className={styles.batchChoice} aria-pressed={selected?.bid === row.bid} data-testid="pilot-batch-choice" onClick={() => setBid(row.bid)}>
+       <strong>{row.name || 'Producto sin nombre registrado'}</strong><span className={styles.code}>Lote {row.bid}</span><span>{row.sku ? `SKU ${row.sku}` : 'Sin SKU informado'}</span><span className={styles.muted}>{row.carrier || 'Soporte no informado'}</span>
+      </button>
+     </li>)}</ul>
     </section>
-  );
+    <section className={styles.detail} aria-labelledby="pilot-selected-title" data-testid="pilot-selected">
+     <h3 id="pilot-selected-title" ref={heading} tabIndex={-1}>{selected ? selected.name || 'Lote seleccionado' : 'Seleccioná el lote que vas a trabajar'}</h3>
+     {!selected ? <p>La selección es explícita. No se abre automáticamente el primer lote ni se inicia una operación al entrar.</p> : <>
+      <p className={styles.code} data-testid="pilot-selected-reference">{selected.tenant} · {selected.bid}</p>
+      {!visible.some(row => row.bid === selected.bid) ? <p className={styles.notice} data-testid="pilot-selection-filtered">El lote seleccionado no coincide con la búsqueda actual. La selección no cambió.</p> : null}
+      <dl className={styles.metrics}><div><dt>Unidades registradas</dt><dd>{number(selected.quantity)}</dd></div><div><dt>Activas</dt><dd>{number(selected.active)}</dd></div><div><dt>Inactivas</dt><dd>{number(selected.inactive)}</dd></div><div><dt>Revocadas</dt><dd>{number(selected.revoked)}</dd></div></dl>
+      <p className={styles.muted}>Estados del registro de este lote. No prueban recepción física, contenido del producto ni aprobación del pasaporte.</p>
+      <div className={styles.tasks}>{selected.tasks.map(task => <article key={task.view} className={styles.task} data-testid={`pilot-task-${task.view}`}>
+       <div><h4>{task.title}</h4><p>{task.description}</p></div>
+       {task.href ? <Link prefetch={false} className={task.view === 'passport' ? styles.primary : styles.button} href={task.href}>Abrir {task.title.toLowerCase()}<ArrowRight aria-hidden="true" /></Link> : <p className={styles.restricted}>No disponible con los permisos actuales.</p>}
+      </article>)}</div>
+     </>}
+    </section>
+   </div>}
+  </>}
+  <footer className={styles.resources}>
+   <h2>Herramientas de la empresa</h2><p>Revisá el contenido editorial, los informes y el consumo según los permisos de tu cuenta.</p>
+   <div className={styles.resourceLinks}>
+    {model.links.editorial ? <Link prefetch={false} className={styles.button} href={model.links.editorial}>Bandeja de revisión de pasaportes</Link> : null}
+    {model.links.report ? <Link prefetch={false} className={styles.button} href={model.links.report}>Informe del piloto de la empresa</Link> : null}
+    {model.links.usage ? <Link prefetch={false} className={styles.button} href={model.links.usage}>Uso y estado de servicios</Link> : null}
+    {model.links.settings ? <Link prefetch={false} className={styles.button} href={model.links.settings}>Configuración de la cuenta</Link> : null}
+   </div>
+   <p className={styles.muted}>La publicación del pasaporte, las pruebas NFC y la aceptación del piloto se verifican por separado. Esta guía no modifica contenidos, unidades, permisos ni claves.</p>
+  </footer>
+ </section>;
 }
