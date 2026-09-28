@@ -1,7 +1,7 @@
 {
   "base": "cbeae033294da57b22eaa0603fc68cbbec3086cf",
   "sourceCount": 438,
-  "digest": "3d4012ef93158760677df80fcc09b11f6a619ba1354727d1b5f022e52a860d52",
+  "digest": "e1df1a8e956f0e2b0aaf845814870f2ad6e6af42d1314aa52336c4137766dfb9",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -450,5 +450,15 @@
     "base": "cb2a845d8220d32716faa2a925ab7a03fe37908f",
     "file": "apps/dashboard/src/components/supplier-request-workspace.tsx",
     "reason": "Explicit draft field guidance and keyboard confirmation; all other preserved paths retained"
-  }
+  },
+  "reviewedChanges": [
+    {
+      "base": "a523252d7a1c6fbb36955cfd13ce3b6fbfa964f8",
+      "files": [
+        "apps/dashboard/src/components/supplier-request-review.tsx",
+        "apps/dashboard/src/lib/supplier-request-review-client.ts"
+      ],
+      "reason": "Clarification GET denial, cancellable reads, StrictMode cleanup and keyboard continuity. Other fingerprinted paths unchanged. The previously excluded request workspace adds only the parent denial callback."
+    }
+  ]
 }
