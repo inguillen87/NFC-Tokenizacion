@@ -1,7 +1,7 @@
 {
   "base": "7e3b7f9db153266dd7763d70111e93784c47bb1d",
   "sourceCount": 483,
-  "digest": "ba86208dd2b7725280dd153852a92bda82df54c5b82ebc96553240c5c5593747",
+  "digest": "9035be07ac1f94b1ff5fcaa6d190421a133dc8a274c65cbd7479e65de33694fc",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -511,6 +511,13 @@
         "apps/dashboard/src/components/pilot-launchpad.tsx"
       ],
       "reason": "Replace aggregate completion heuristics with exact tenant/batch task navigation."
+    },
+    {
+      "base": "ce0e3535ce3916099454561efe8587d5c605a367",
+      "files": [
+        "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx"
+      ],
+      "reason": "Review passport enrollment, preserve operation identity and isolate authenticated context changes."
     }
   ]
 }
