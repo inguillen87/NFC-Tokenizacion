@@ -1,12 +1,15 @@
 name: Audited support ticket status changes
 on:
   push:
-    branches: [codex/nexid-s9-ticket-workflow-api-20260922, codex/nexid-request-cancellation-api-20260924, codex/nexid-request-quotes-api-20260924, codex/nexid-supplier-binding-api-20260924, codex/nexid-delivery-ack-api-20260924, codex/nexid-supplier-chain-acceptance-api-20260924, codex/nexid-supplier-runtime-acceptance-api-20260924, codex/nexid-release-readiness-20260924, codex/nexid-runtime-readiness-20260924, codex/nexid-supplier-upgrade-acceptance-20260924, codex/nexid-integrated-services-api-20260924]
+    branches: [codex/nexid-s9-ticket-workflow-api-20260922, codex/nexid-request-cancellation-api-20260924, codex/nexid-request-quotes-api-20260924, codex/nexid-supplier-binding-api-20260924, codex/nexid-delivery-ack-api-20260924, codex/nexid-supplier-chain-acceptance-api-20260924, codex/nexid-supplier-runtime-acceptance-api-20260924, codex/nexid-release-readiness-20260924, codex/nexid-runtime-readiness-20260924, codex/nexid-supplier-upgrade-acceptance-20260924, codex/nexid-integrated-services-api-20260924, codex/nexid-observed-upgrade-20260928]
     paths:
       - apps/api/**
       - packages/core/**
       - scripts/qa/*s9*
       - .github/workflows/support-ticket-workflow-api-qa.yml
+      - .github/workflows/enterprise-ci-security-gate.yml
+      - scripts/tests/enterprise-ci-dependency-bootstrap.test.mjs
+      - apps/web/package.json
 permissions:
   contents: read
 concurrency:
@@ -41,11 +44,12 @@ jobs:
           cache: npm
       - name: Install exact dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Focal API regressions without production credentials or network
+      - name: Observed-schema input gates and focal API regressions
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/nexid-s9-evidence"
+          node --test apps/api/tests/supplier-observed-upgrade.test.mjs
           node scripts/qa/run-s9-api-unit.mjs 2>&1 | tee "$RUNNER_TEMP/nexid-s9-evidence/focal-tests.log"
       - name: Actual SQL against disposable PostgreSQL
         shell: bash

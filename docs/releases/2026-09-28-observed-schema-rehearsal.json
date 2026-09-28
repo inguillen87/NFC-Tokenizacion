@@ -1,0 +1,50 @@
+{
+  "protocol": "nexid.observed-schema-upgrade.v1",
+  "ok": true,
+  "sourceSchemaSha256": "9a8be5aeeab9c7c60c0c77a678d88f3a63f8ddf8afc6dfce1c9ba95e0b299fac",
+  "customerRowsCopied": false,
+  "syntheticBusinessRecords": false,
+  "productionExecutionAllowed": false,
+  "liveRuntimeRoleVerified": false,
+  "stage": "complete",
+  "migrations": [
+    {
+      "id": "20260924010000_0117_supplier_request_cancellation.sql",
+      "sha256": "be81286a20d58815b290b0781947c1a4f1a899b0a4a6d008f1901f3b43bbf581"
+    },
+    {
+      "id": "20260924050000_0118_supplier_request_quotes.sql",
+      "sha256": "c04a7794f7b12bf07f232b63b42c53d7f3192684b0e9cc16b3ac96f00c9e17f7"
+    },
+    {
+      "id": "20260924110000_0119_supplier_request_binding.sql",
+      "sha256": "acc00b268f6c2c110e62ce82dc234de9b0a0bd456fd00c4795606869ba37edc2"
+    },
+    {
+      "id": "20260924150000_0120_supplier_delivery_ack.sql",
+      "sha256": "08df6a1380a12782bd1551d1cc67253a969bff0b978dacc46abb5148155f061b"
+    },
+    {
+      "id": "20260924163000_0121_support_ticket_status_type_compatibility.sql",
+      "sha256": "9dabc6b9dc8b13b542cced05f9dff66f528bdc37f1ec4772026e9f6f9de60b1f"
+    }
+  ],
+  "baselineTables": 162,
+  "ledgerBefore": 79,
+  "ledgerAfter": 84,
+  "historicalGapsRetained": 48,
+  "recordedAt": "2026-09-28T04:31:00.390851+00:00",
+  "scope": "observed-schema-local-rehearsal-only",
+  "apiCandidateBase": "08eebb7f86b565a13c497a85bd056bbf01d4e4b1",
+  "schemaOnly": true,
+  "observedLedgerSha256": "dbb58af33f9b1544eeb8ab310b7f0e88764f298de701a7a2fcf886af6495580f",
+  "postgresVersion": "17.11",
+  "checksPassed": 177,
+  "clusterStopped": true,
+  "remoteMigrationsApplied": false,
+  "newUnitTests": 36,
+  "combinedSafetyTests": 80,
+  "focalApiRegressions": 603,
+  "productionAcceptance": false,
+  "physicalAcceptance": false
+}
