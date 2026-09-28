@@ -5,7 +5,7 @@ import test from 'node:test';
 const workflow = readFileSync(new URL('../../.github/workflows/enterprise-ci-security-gate.yml', import.meta.url), 'utf8');
 const install = 'npm ci --ignore-scripts --no-audit --no-fund';
 function bootstrapValid(source) {
-  const job = source.split('  policy-and-supply-chain:\n')[1]?.split('\n  api-and-sdk:\n')[0] || '';
+  const job = source.replace(/\r\n?/g, '\n').split('  policy-and-supply-chain:\n')[1]?.split('\n  api-and-sdk:\n')[0] || '';
   const audit = job.indexOf('node scripts/enterprise-dependency-audit.mjs');
   const dependencies = job.indexOf(install);
   const migrationTests = job.indexOf('npm run test:migration-gates');
@@ -28,4 +28,14 @@ test('regression: installation cannot enable lifecycle scripts', () => {
 });
 test('regression: installation must remain lockfile-exact', () => {
   assert.equal(bootstrapValid(workflow.replace(install, 'npm install --ignore-scripts --no-audit --no-fund')), false);
+});
+
+test('web suite loads TypeScript explicitly on every supported Node runtime', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../../apps/web/package.json', import.meta.url), 'utf8'));
+  assert.equal(manifest.scripts.test, 'node --import tsx --test tests/*.test.mjs');
+});
+
+test('bootstrap order is identical in Windows CRLF and Unix LF checkouts', () => {
+  assert.equal(bootstrapValid(workflow.replace(/\r?\n/g, '\r\n')), true);
+  assert.equal(bootstrapValid(workflow.replace(/\r\n?/g, '\n')), true);
 });
