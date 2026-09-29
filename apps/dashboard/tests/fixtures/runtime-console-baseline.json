@@ -1,7 +1,7 @@
 {
   "base": "7e3b7f9db153266dd7763d70111e93784c47bb1d",
   "sourceCount": 483,
-  "digest": "4b9fe9c9b9cf9c5daf98ddc36ec754affef788f814c8f79979780fdef344cda5",
+  "digest": "9c40f9e6e4d4d1012ffb893184c80996e1681439cdca7753576ccf5ecdfbfb3e",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -525,6 +525,16 @@
         "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx"
       ],
       "reason": "Retain access withdrawal through later outages; only a valid receipt or a new context can restore content."
+    },
+    {
+      "base": "bbec34f46e7fcab57574a33dda95a9066d59ad34",
+      "files": [
+        "apps/dashboard/src/app/(app)/passports/review/page.tsx",
+        "apps/dashboard/src/components/editorial-queue.module.css",
+        "apps/dashboard/src/components/editorial-queue.tsx",
+        "apps/dashboard/src/lib/editorial-queue.ts"
+      ],
+      "reason": "Bounded and scoped editorial queue, deliberate selection and read cancellation."
     }
   ]
 }
