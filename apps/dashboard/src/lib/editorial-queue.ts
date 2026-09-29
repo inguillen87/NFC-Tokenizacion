@@ -10,12 +10,14 @@ function assert(v:unknown):asserts v{if(!v)throw Error('La fuente no confirmó u
 function number(v:unknown){assert(Number.isSafeInteger(v)&&Number(v)>=0);}
 function text(v:unknown,max=180){assert(typeof v==='string'&&v.length<=max);}
 export function parseEditorialQueue(raw:unknown,tenant:string,f:QueueFilters,expectedPage=1):EditorialQueue{
+ normalizeQueueFilters(f);
+ const markers=raw as Record<string,unknown>|null;assert(markers&&markers.demo!==true&&markers.demoMode!==true&&markers.dataSource!=='demo');
  const r=raw as EditorialQueue;assert(r?.ok===true&&r.protocol==='nexid.editorial-queue.v1'&&r.source==='database'&&r.readOnly===true&&r.scope?.tenant===tenant&&r.scope.mode===(tenant?'tenant':'global'));
  assert(Number.isFinite(Date.parse(r.observedAt)));assert(r.filters&&r.filters.state===f.state&&r.filters.q===f.q.trim()&&r.filters.view===f.view);assert(!r.filters.state||Object.hasOwn(QUEUE_STATES,r.filters.state));
  assert(r.summary?.basis==='enrolled_passports_in_scope');number(r.summary.total);number(r.summary.forActor);number(r.matched);assert(r.matched<=r.summary.total&&r.summary.forActor<=r.summary.total);
  let total=0;for(const k of Object.keys(QUEUE_STATES) as QueueState[]){number(r.summary.byState[k]);total+=r.summary.byState[k];}assert(total===r.summary.total);
  assert(Array.isArray(r.items)&&r.items.length<=25&&r.items.length<=r.matched);const seen=new Set<string>();
- for(const i of r.items){assert(uuid.test(i.id)&&!seen.has(i.id));seen.add(i.id);text(i.bid,160);text(i.tenant,120);text(i.tenantName,240);assert(!tenant||i.tenant===tenant);assert(i.product===null||typeof i.product==='string'&&i.product.length<=160);assert(Object.hasOwn(QUEUE_STATES,i.state)&&Object.hasOwn(QUEUE_STEPS,i.code));number(i.revision);assert(i.revision>0);number(i.publishedVersion);assert(['general','agro'].includes(i.template)&&['es-AR','en','pt-BR'].includes(i.locale));assert(Number.isFinite(Date.parse(i.updatedAt))&&typeof i.forActor==='boolean');assert(!f.state||i.state===f.state);assert(f.view!=='mine'||i.forActor);
+ for(const i of r.items){assert(uuid.test(i.id)&&!seen.has(i.id));seen.add(i.id);text(i.bid,160);text(i.tenant,120);assert(/^[a-z0-9][a-z0-9._-]{0,119}$/.test(i.tenant));text(i.tenantName,240);assert(!tenant||i.tenant===tenant);assert(i.product===null||typeof i.product==='string'&&i.product.length<=160);assert(Object.hasOwn(QUEUE_STATES,i.state)&&Object.hasOwn(QUEUE_STEPS,i.code));number(i.revision);assert(i.revision>0);number(i.publishedVersion);assert(['general','agro'].includes(i.template)&&['es-AR','en','pt-BR'].includes(i.locale));assert(Number.isFinite(Date.parse(i.updatedAt))&&typeof i.forActor==='boolean');assert(!f.state||i.state===f.state);assert(f.view!=='mine'||i.forActor);
   const eligible=i.code==='edit'||i.code==='review'||i.code==='publish';assert(eligible===i.forActor);assert((i.state==='in_review'&&['review','needs_reviewer','needs_independent_review'].includes(i.code))||(i.state==='approved'&&['publish','needs_publisher'].includes(i.code))||(i.state==='published'&&i.code==='published')||(['draft','changes_requested'].includes(i.state)&&['edit','needs_editor'].includes(i.code)));
   if(i.lastChange){text(i.lastChange.actorLabel);assert(['start','save','submit','request_changes','approve','publish','reopen'].includes(i.lastChange.action));assert(Number.isFinite(Date.parse(i.lastChange.at)));assert(i.lastChange.note===null||i.lastChange.action==='request_changes'&&typeof i.lastChange.note==='string'&&i.lastChange.note.length<=800);}
  }
@@ -24,3 +26,16 @@ export function parseEditorialQueue(raw:unknown,tenant:string,f:QueueFilters,exp
 export function queueParams(tenant:string,f:QueueFilters,cursor:string|null=null){const p=new URLSearchParams();if(tenant)p.set('tenant',tenant);if(f.q.trim())p.set('q',f.q.trim());if(f.state)p.set('state',f.state);if(f.view==='mine')p.set('view','mine');if(cursor)p.set('cursor',cursor);return p;}
 export function queueStudioHref(item:Pick<QueueItem,'bid'|'tenant'>){return `/batches/${encodeURIComponent(item.bid)}/passport?${new URLSearchParams({tenant:item.tenant})}`;}
 export function queueDate(value:string){return new Intl.DateTimeFormat('es-AR',{timeZone:'UTC',dateStyle:'medium',timeStyle:'short'}).format(new Date(value))+' UTC';}
+
+/** Reject malformed filters before reading; do not silently broaden a shared link. */
+export function normalizeQueueFilters(input:unknown):QueueFilters {
+ if(!input||typeof input!=='object'||Array.isArray(input))throw Error('queue_filters_invalid');
+ const f=input as Record<string,unknown>;
+ if(Object.keys(f).some(k=>!['state','view','q'].includes(k))||typeof f.state!=='string'||f.state!==''&&!Object.hasOwn(QUEUE_STATES,f.state)||typeof f.view!=='string'||!['all','mine'].includes(f.view)||typeof f.q!=='string'||f.q.trim().length>100||/[\u0000-\u001f\u007f]/.test(f.q))throw Error('queue_filters_invalid');
+ return {state:f.state,view:f.view as 'all'|'mine',q:f.q.trim()};
+}
+export function queueFiltersFromSearch(params:Record<string,string|string[]|undefined>):QueueFilters {
+ if(Object.keys(params).some(k=>!['tenant','state','view','q'].includes(k)))throw Error('queue_filters_invalid');
+ for(const key of ['tenant','state','view','q'])if(params[key]!==undefined&&typeof params[key]!=='string')throw Error('queue_filters_invalid');
+ return normalizeQueueFilters({state:params.state??'',view:params.view??'all',q:params.q??''});
+}

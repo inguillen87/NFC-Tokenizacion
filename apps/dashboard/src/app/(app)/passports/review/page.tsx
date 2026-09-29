@@ -1,12 +1,18 @@
+import {createHash} from 'node:crypto';
 import {requireDashboardSession} from '../../../../lib/session';
 import {createAdminPageContext,fetchAdminPage} from '../../../../lib/admin-page-access';
-import {boundedDossierJson} from '../../../../lib/batch-dossier-readings';
-import {parseEditorialQueue,INITIAL_QUEUE_FILTERS,queueParams,type EditorialQueue,type QueueFilters} from '../../../../lib/editorial-queue';
+import {INITIAL_QUEUE_FILTERS,queueParams,queueFiltersFromSearch,type EditorialQueue,type QueueFilters} from '../../../../lib/editorial-queue';
+import {readEditorialQueue,EditorialQueueReadError,QUEUE_READ_COPY} from '../../../../lib/editorial-queue-read';
 import {EditorialQueueWorkspace} from '../../../../components/editorial-queue';
 export default async function EditorialReviewPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
- const session=await requireDashboardSession('batches:read'),params=await searchParams,context=await createAdminPageContext(session,params.tenant);
- const filters:QueueFilters={...INITIAL_QUEUE_FILTERS};for(const k of ['state','view','q'] as const)if(typeof params[k]==='string')(filters as Record<string,string>)[k]=params[k] as string;
- let initial:EditorialQueue|null=null;
- if(!session.isDemo)try{const response=await fetchAdminPage(context,'passport-editorial/queue?'+queueParams('',filters),{signal:AbortSignal.timeout(12000)});if(response.ok&&response.headers.get('x-nexid-data-mode')!=='demo')initial=parseEditorialQueue(await boundedDossierJson(response),context.tenantSlug,filters);}catch{}
- return <EditorialQueueWorkspace key={`${session.id}:${context.tenantSlug}`} initial={initial} tenant={context.tenantSlug} filters={filters} enabled={!session.isDemo}/>;
+ const session=await requireDashboardSession('batches:read'),params=await searchParams;
+ const context=await createAdminPageContext(session,params.tenant);
+ let filters:QueueFilters={...INITIAL_QUEUE_FILTERS},initial:EditorialQueue|null=null,initialError:string|undefined;
+ try{filters=queueFiltersFromSearch(params);}catch{initialError='El enlace contiene filtros inválidos o repetidos. Revisá las opciones y consultá de nuevo.';}
+ if(!session.isDemo&&!initialError)try{
+  initial=await readEditorialQueue({tenant:context.tenantSlug,filters},(_url,init)=>fetchAdminPage(context,'passport-editorial/queue?'+queueParams('',filters),init));
+ }catch(e){initialError=QUEUE_READ_COPY[e instanceof EditorialQueueReadError?e.code:'unavailable'];}
+ // Only a nonreversible context identity reaches the client; no cookie or session identifier.
+ const contextKey=createHash('sha256').update(JSON.stringify([session.id,session.userId,session.role,session.tenantId,session.tenantSlug,session.permissions,session.deniedPermissions,session.isDemo,context.tenantSlug])).digest('hex');
+ return <EditorialQueueWorkspace contextKey={contextKey} initial={initial} tenant={context.tenantSlug} filters={filters} initialError={initialError} enabled={!session.isDemo}/>;
 }
