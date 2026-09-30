@@ -1,0 +1,80 @@
+name: Passport paired persistence acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/qa/passport-persistence*'
+      - '.github/workflows/passport-persistence-acceptance.yml'
+      - 'apps/dashboard/src/lib/passport-*.ts'
+      - 'apps/dashboard/src/components/passport-studio/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: passport-persistence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paired-editorial:
+    name: Editorial persistence PostgreSQL ${{ matrix.postgres.version }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres:
+          - version: '16.4'
+            image: 'postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c'
+          - version: '18.4'
+            image: 'postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15'
+    services:
+      postgres:
+        image: ${{ matrix.postgres.image }}
+        env:
+          POSTGRES_USER: nexid_e2e
+          POSTGRES_PASSWORD: ephemeral-ci-password
+          POSTGRES_DB: nexid_e2e_editorial
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexid_e2e -d nexid_e2e_editorial"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      NODE_ENV: test
+      VERCEL_ENV: test
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXID_E2E_CONFIRMATION: I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE
+      NEXID_E2E_EXPECTED_POSTGRES_VERSION: ${{ matrix.postgres.version }}
+      NEXID_E2E_DATABASE_URL: postgresql://nexid_e2e:ephemeral-ci-password@127.0.0.1:5432/nexid_e2e_editorial
+      NEXID_EDITORIAL_API_SHA: 607fe4057458e4436982df2c08785e233b30b86f
+      NEXID_EDITORIAL_API_ROOT: ${{ github.workspace }}/.paired-api
+    steps:
+      - name: Checkout dashboard candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Checkout explicitly paired API source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: inguillen87/NFC-Tokenizacion
+          ref: 607fe4057458e4436982df2c08785e233b30b86f
+          path: .paired-api
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20.19.1'
+          cache: npm
+      - name: Install exact candidate dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Prove unsafe targets are refused
+        run: node --test scripts/qa/passport-persistence-safety.test.mjs
+      - name: Run real persistence and current dashboard receipt contracts
+        run: node --require ./.paired-api/scripts/qa/s7-loopback-only.cjs --import tsx scripts/qa/passport-persistence.acceptance.mjs
+      - name: Confirm application sources were not rewritten by acceptance
+        if: always()
+        run: git diff --exit-code -- apps packages package.json package-lock.json
