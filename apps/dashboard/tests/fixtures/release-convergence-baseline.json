@@ -285,8 +285,8 @@
     "apps/dashboard/src/components/ops-command-center.module.css": "2b0e4f87b4635f571ea5d3a0f4db3c270cf478f8fb8170a4333abf77e112f285",
     "apps/dashboard/src/components/ops-command-center.tsx": "f0e8d859ac2e880b2629ba173770344dbd42a11910c1b7c52571cca0ed42ce99",
     "apps/dashboard/src/components/passport-studio/passport-studio-entry.tsx": "a628c2d85a340ab6749588a35516a1a7ecbff8f6b9786db271ed15b99df0e559",
-    "apps/dashboard/src/components/passport-studio/passport-studio-view.ts": "41d7dfd393fa7a1dc9d2bb28a9fa8bc09c02e4926d390e2dba1dd9ef7ec5c93a",
-    "apps/dashboard/src/components/passport-studio/passport-studio.css": "615b3fdc8fd17f12be7c93da9ea5ff6b13b2924c27d5f5fdf5ea1d67f7d063e9",
+    "apps/dashboard/src/components/passport-studio/passport-studio-view.ts": "23f1243739763295ebf34d183746d89412a88e557720a625423ceb7bc0e43d06",
+    "apps/dashboard/src/components/passport-studio/passport-studio.css": "d79101eee96a60f26d270f3e792ec1b48c2f5005cbbc97c2e69e0a2d3be63a7c",
     "apps/dashboard/src/components/passport-studio/passport-studio.tsx": "e152c7005123e1df39c20630823ddb2cd7da9aebb8753e1b8df00feb0687a977",
     "apps/dashboard/src/components/passport-studio/published-reuse-dialog.ts": "04979f4dd331934b856c8d9a2ba70a96f926386449eb7b9a4355f0fefc6972b7",
     "apps/dashboard/src/components/passport-studio/published-reuse.css": "2da8c1d2e21e7e0383a51ca1f97f16863c9d48810f0effd6a0c127f3c958f172",
@@ -526,7 +526,8 @@
     "apps/dashboard/src/lib/pilot-launchpad-model.ts": "40cc25eae997ed58b9458cca23f44ea154ff6214fafdc2254e9babf5c40f910f",
     "apps/dashboard/src/components/passport-studio/passport-enrollment.module.css": "5dc2159f6b08e1b81b4f934d38a125296012f35e3c32a6d53a6ec273fb6d66ac",
     "apps/dashboard/src/lib/passport-enrollment.ts": "eed19d7e3d20158148b25bbf495f32f3c3152c316b00415b64844bfa925e8743",
-    "apps/dashboard/src/lib/editorial-queue-read.ts": "9c06c150bb93ff5c3e271fd27c6501fb4be75888f02e6520bf94a7e6af361f57"
+    "apps/dashboard/src/lib/editorial-queue-read.ts": "9c06c150bb93ff5c3e271fd27c6501fb4be75888f02e6520bf94a7e6af361f57",
+    "apps/dashboard/src/lib/passport-editing-guidance.ts": "415ef5304ac56cabfcbccc32e9d2208179632a11dcaad5aae750d3dda0b5cf60"
   },
   "draftGuidance": {
     "base": "f076212a",
@@ -686,5 +687,24 @@
       "apps/dashboard/src/lib/editorial-queue-read.ts"
     ],
     "scope": "Explicit passport selection, bounded queue reads, authenticated context and cancellation."
+  },
+  "passportEditingGuidance": {
+    "base": "2e3273551bc919513c0dbd09aef49dfec6972986",
+    "changed": [
+      {
+        "path": "apps/dashboard/src/components/passport-studio/passport-studio-view.ts",
+        "before": "41d7dfd393fa7a1dc9d2bb28a9fa8bc09c02e4926d390e2dba1dd9ef7ec5c93a",
+        "after": "23f1243739763295ebf34d183746d89412a88e557720a625423ceb7bc0e43d06"
+      },
+      {
+        "path": "apps/dashboard/src/components/passport-studio/passport-studio.css",
+        "before": "615b3fdc8fd17f12be7c93da9ea5ff6b13b2924c27d5f5fdf5ea1d67f7d063e9",
+        "after": "d79101eee96a60f26d270f3e792ec1b48c2f5005cbbc97c2e69e0a2d3be63a7c"
+      }
+    ],
+    "added": [
+      "apps/dashboard/src/lib/passport-editing-guidance.ts"
+    ],
+    "scope": "Live editorial guidance, field validation and retained uncertain write identity."
   }
 }

@@ -1,7 +1,7 @@
 name: Dashboard ticket and CRM acceptance
 on:
   push:
-    branches: [codex/nexid-s9-ticket-deadline-20260922, codex/nexid-operator-workbench-20260923, codex/nexid-roll-intake-20260923, codex/nexid-request-cancellation-ui-20260924, codex/nexid-request-quotes-ui-20260924, codex/nexid-supplier-binding-ui-20260924, codex/nexid-delivery-ack-ui-20260924, codex/nexid-runtime-console-ui-20260924, codex/nexid-integrated-services-ui-20260924, codex/nexid-request-read-safety-20260924, codex/nexid-runtime-access-fix-20260924, codex/nexid-release-convergence-20260925, codex/nexid-request-form-ux-20260925, codex/nexid-request-form-integrated-20260925, codex/nexid-request-inbox-ux-20260925, codex/nexid-inbox-integrated-20260925, codex/nexid-draft-reconcile-20260925, codex/nexid-reconcile-integrated-20260925, codex/nexid-request-case-summary-20260925, codex/nexid-case-summary-integrated-20260925, codex/nexid-request-continuity-20260928, codex/nexid-advanced-continuity-20260928, codex/nexid-dpp-launchpad-20260928, codex/nexid-passport-enrollment-20260928, codex/nexid-editorial-queue-20260929]
+    branches: [codex/nexid-s9-ticket-deadline-20260922, codex/nexid-operator-workbench-20260923, codex/nexid-roll-intake-20260923, codex/nexid-request-cancellation-ui-20260924, codex/nexid-request-quotes-ui-20260924, codex/nexid-supplier-binding-ui-20260924, codex/nexid-delivery-ack-ui-20260924, codex/nexid-runtime-console-ui-20260924, codex/nexid-integrated-services-ui-20260924, codex/nexid-request-read-safety-20260924, codex/nexid-runtime-access-fix-20260924, codex/nexid-release-convergence-20260925, codex/nexid-request-form-ux-20260925, codex/nexid-request-form-integrated-20260925, codex/nexid-request-inbox-ux-20260925, codex/nexid-inbox-integrated-20260925, codex/nexid-draft-reconcile-20260925, codex/nexid-reconcile-integrated-20260925, codex/nexid-request-case-summary-20260925, codex/nexid-case-summary-integrated-20260925, codex/nexid-request-continuity-20260928, codex/nexid-advanced-continuity-20260928, codex/nexid-dpp-launchpad-20260928, codex/nexid-passport-enrollment-20260928, codex/nexid-editorial-queue-20260929, codex/nexid-studio-editing-20260929]
     paths:
       - apps/dashboard/**
       - packages/**
@@ -55,6 +55,7 @@ jobs:
           node apps/dashboard/tests/support-tickets.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-passport-enrollment/browser" node apps/dashboard/tests/passport-enrollment.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-editorial-queue/browser" node apps/dashboard/tests/editorial-queue-continuity.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/nexid-passport-editing/browser" node apps/dashboard/tests/passport-editing.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-passport-studio/browser" node apps/dashboard/tests/passport-studio.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-customer-activity/browser" node apps/dashboard/tests/customer-activity-summary.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-member-history/browser" node apps/dashboard/tests/member-timeline-continuity.browser.mjs
