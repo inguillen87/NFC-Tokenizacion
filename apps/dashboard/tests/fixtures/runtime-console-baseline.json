@@ -1,7 +1,7 @@
 {
   "base": "7e3b7f9db153266dd7763d70111e93784c47bb1d",
   "sourceCount": 483,
-  "digest": "9c40f9e6e4d4d1012ffb893184c80996e1681439cdca7753576ccf5ecdfbfb3e",
+  "digest": "2fa84589061535cde4a49cde0d1dae82e08f70ab0b4a74de51e6a6cb0754fe08",
   "paths": [
     "apps/dashboard/src/app/(app)/admin/tenant-vault/[tenantId]/page.tsx",
     "apps/dashboard/src/app/(app)/analytics/layout.tsx",
@@ -535,6 +535,14 @@
         "apps/dashboard/src/lib/editorial-queue.ts"
       ],
       "reason": "Bounded and scoped editorial queue, deliberate selection and read cancellation."
+    },
+    {
+      "base": "2e3273551bc919513c0dbd09aef49dfec6972986",
+      "files": [
+        "apps/dashboard/src/components/passport-studio/passport-studio-view.ts",
+        "apps/dashboard/src/components/passport-studio/passport-studio.css"
+      ],
+      "reason": "Live field guidance and retained operation identity after subsequent failures."
     }
   ]
 }
