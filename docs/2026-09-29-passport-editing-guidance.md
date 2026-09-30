@@ -24,3 +24,10 @@ Se verificaron las huellas anteriores de todas las fuentes del manifiesto de con
 
 ## Límites
 No se aprobaron ni publicaron pasaportes de clientes para este ensayo. No hay migraciones, cambios de usuarios o permisos, claves NFC, envíos a terceros ni activación de proveedor/acuse. Se conserva la separación entre aprobación del contenido y evidencia de autenticidad física.
+
+## Ajuste de dependencia detectado por CI
+El primer candidato no se promovió: la auditoría obligatoria bloqueó `undici` 6.28.0 por GHSA-3wwx-pv8p-q78v, GHSA-r53p-7pc4-xj5r y GHSA-rfgv-xxqx-mfg5. Se consultaron los avisos y releases oficiales de nodejs/undici: la corrección está en la línea 6.28.1 y posteriores.
+
+La actualización dirigida resolvió 6.29.0 dentro del rango 6.x requerido por `@nomicfoundation/hardhat-utils`. Se verificó que cambió únicamente la entrada `node_modules/undici` del lockfile y que sigue marcada `dev: true`. Los demás paquetes y el manifiesto raíz permanecen idénticos; no se agregó una dependencia productiva ni se cambió el Undici integrado en Node.js.
+
+La auditoría real volvió a aprobar, con cero hallazgos altos/críticos productivos y sin excepciones de desarrollo. No se modificaron el script de auditoría, sus umbrales ni su lista de excepciones. El nuevo commit y su instalación limpia deben completar nuevamente CI antes de promover. Los resultados del candidato anterior no se atribuyen al definitivo.
