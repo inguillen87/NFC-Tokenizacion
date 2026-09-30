@@ -1,0 +1,39 @@
+name: Runtime dependency compatibility
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: runtime-dependency-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  local-protocols:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      NODE_ENV: test
+      VERCEL_ENV: test
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Use exact compatibility runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20.19.1"
+          cache: npm
+      - name: Audit before installing
+        run: node scripts/enterprise-dependency-audit.mjs
+      - name: Install exact dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Exercise SMTP TLS and local HTTP gRPC without external delivery
+        run: node --require ./scripts/qa/s7-loopback-only.cjs --import tsx --test scripts/qa/runtime-dependency-compatibility.test.mjs
+      - name: Preserve sources and custody
+        run: |
+          git diff --exit-code -- apps packages package.json package-lock.json
+          npm run check:secrets
