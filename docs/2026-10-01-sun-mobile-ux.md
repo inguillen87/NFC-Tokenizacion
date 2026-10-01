@@ -32,7 +32,7 @@ Se revisó la [experiencia de información y postcompra de atma.io](https://www.
 
 ## Límites de esta entrega
 
-Cambios sólo en web SUN, tests, workflow de aceptación web y manifiesto web. No se cambian código ni despliegues de API/dashboard, criptografía, anti-replay, permisos, claves, migraciones o datos de clientes. El build sintético y una preview no certifican un TAP físico. Siguen pendientes lecturas nuevas con sello cerrado/abierto desde teléfonos reales y la medición completa de chip, validación y GPS.
+Cambios en web SUN, tests, workflow de aceptación web y manifiesto web. La prueba cruzada `apps/api/tests/sun-posttap-mobile-ux.test.mjs` se adapta al componente de imagen extraído y conserva sus controles de prioridad, producto y fallback; los 173 tests SUN de API pasan localmente. No se cambian código de ejecución ni despliegues de API/dashboard, criptografía, anti-replay, permisos, claves, migraciones o datos de clientes. El build sintético y una preview no certifican un TAP físico. Siguen pendientes lecturas nuevas con sello cerrado/abierto desde teléfonos reales y la medición completa de chip, validación y GPS.
 
 ## Publicación
 
