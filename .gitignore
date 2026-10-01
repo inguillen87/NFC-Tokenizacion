@@ -34,3 +34,6 @@ apps/api/typechain-types
 
 # Versioned worker assets copied byte-for-byte from the audited MapLibre package at build.
 /apps/web/public/maplibre/
+
+# Derived CSS; the original globals.css remains the sole editable source.
+/apps/web/src/app/generated/
