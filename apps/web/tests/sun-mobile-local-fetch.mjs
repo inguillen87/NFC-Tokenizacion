@@ -2,7 +2,7 @@
 const original = globalThis.fetch;
 globalThis.fetch = async function(input, init) {
   const url = new URL(input instanceof Request ? input.url : String(input));
-  if (url.hostname === 'api.nexid.lat' && /^\/sun\/snapshot\/qa-(closed|opened|replay|missing|photo-failure)$/.test(url.pathname) && url.searchParams.get('trace') === 'synthetic' && url.searchParams.get('access') === 'invalid') {
+  if (url.hostname === 'api.nexid.lat' && /^\/sun\/snapshot\/qa-(closed|opened|replay|missing|photo-failure|missing-date|history-only)$/.test(url.pathname) && url.searchParams.get('trace') === 'synthetic' && url.searchParams.get('access') === 'invalid') {
     const state = url.pathname.split('qa-')[1];
     return Response.json({ok:true,contract:{
       ok: state !== 'replay',
@@ -12,7 +12,9 @@ globalThis.fetch = async function(input, init) {
       snapshot:{mode:'fresh_handoff'},tapSecurity:{actionability:'fresh_handoff',replayDetected:state==='replay'},
       trustSignals:{antiReplay:state!=='replay'},
       tag_tamper:{available:true,status:state==='opened'?'opened':'closed'},
-      provenance:{origin:'Origen de ensayo',timelineSummary:[]},cta:{},
+      provenance:{origin:'Origen de ensayo',timelineSummary:state==='history-only'?[{eventId:'older-synthetic-event',at:'2020-01-02T03:04:00.000Z',result:'VALID_CLOSED',city:'Montevideo',country:'UY'}]:[],...(state==='history-only'?{lastVerifiedLocation:{at:'2021-02-03T04:05:00.000Z',city:'Montevideo',country:'UY'}}:{})},
+      ...(state==='missing-date'?{tapContext:{timezone:'UTC'}}:state==='history-only'?{}:{tapContext:{utcTime:'2026-09-30T14:25:00.000Z',timezone:'UTC'}}),
+      cta:{},
     }},{headers:{'cache-control':'no-store'}});
   }
   if (url.hostname === 'api.nexid.lat' && url.pathname === '/sun/snapshot/0') return Response.json({ok:false},{status:404});
