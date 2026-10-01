@@ -21,9 +21,14 @@ try{
   check(lean.css.length<full.css.length*.55,'Cold SUN excludes unrelated style families '+width+' '+theme);
   check(await t.page.locator('html').getAttribute('data-theme')===theme,'Server theme retained '+width+' '+theme);
   const before=await capture(t.page);await t.page.screenshot({path:join(output,`sun-${width}-${theme}.png`),fullPage:true});
-  await t.page.route(origin+'/__qa_original.css',r=>r.fulfill({status:200,contentType:'text/css',body:full.css}));
-  await t.page.evaluate(({from,to})=>new Promise((resolve,reject)=>{const link=[...document.querySelectorAll('link[rel="stylesheet"]')].find(el=>new URL(el.href).pathname===new URL(from,location.href).pathname);if(!link)return reject(Error('route stylesheet absent'));const replacement=document.createElement('link');replacement.rel='stylesheet';replacement.media='not all';replacement.href=to;replacement.onload=()=>{replacement.media='all';link.remove();resolve();};replacement.onerror=()=>reject(Error('reference stylesheet not loaded'));link.parentNode.insertBefore(replacement,link);}),{from:lean.path,to:origin+'/__qa_original.css'});
-  await stable(t.page);const after=await capture(t.page);const identical=JSON.stringify(before)===JSON.stringify(after);check(identical,'Rendered SUN styles equal full stylesheet '+width+' '+theme);
+  // An independent load keeps React's stylesheet precedence and initial cascade intact.
+  // Replace only the response bytes, never an active <link> in a hydrated document.
+  const reference=await context(width,theme);
+  await reference.page.route(new URL(lean.path,origin).href,r=>r.fulfill({status:200,contentType:'text/css',body:full.css}));
+  await reference.page.goto(origin+path,{waitUntil:'networkidle',timeout:45000});
+  await reference.page.locator('[data-testid="sun-summary-product"]').waitFor();await stable(reference.page);
+  const after=await capture(reference.page);await reference.context.close();
+  const identical=JSON.stringify(before)===JSON.stringify(after);check(identical,'Rendered SUN styles equal full stylesheet '+width+' '+theme);
   const diffs=before.flatMap((b,i)=>JSON.stringify(b)!==JSON.stringify(after[i])?[{index:i,before:b,after:after[i]}]:[]).slice(0,8);
   report.comparisons.push({width,theme,identical,visibleElements:before.length,fullGzip:gzipSync(full.css).length,leanGzip:gzipSync(lean.css).length,totalSunCssGzip:smallBytes,differences:diffs});report.views.push({width,theme,file:`sun-${width}-${theme}.png`});
   check(await t.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow '+width+' '+theme);await t.context.close();
