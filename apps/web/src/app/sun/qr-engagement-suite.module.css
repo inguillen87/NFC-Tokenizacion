@@ -21,10 +21,14 @@
 
 @media (max-width: 420px) {
   .tabs > button > span {
+    width: 100%;
+    min-width: 0;
     flex-direction: column;
     gap: 4px;
     font-size: 11px;
+    line-height: 1.3;
     letter-spacing: 0;
+    overflow-wrap: anywhere;
   }
 }
 

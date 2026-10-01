@@ -425,7 +425,11 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       target.setAttribute("aria-hidden", "true");
     });
 
-    const frame = window.requestAnimationFrame(() => mobileCloseRef.current?.focus());
+    const frame = window.requestAnimationFrame(() => {
+      if (!mobileDialogRef.current?.contains(document.activeElement)) {
+        mobileCloseRef.current?.focus();
+      }
+    });
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {

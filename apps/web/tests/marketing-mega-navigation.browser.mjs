@@ -39,7 +39,7 @@ const server=createServer((req,res)=>{
 });
 await new Promise((ok,fail)=>{server.once('error',fail);server.listen(Number(process.env.QA_PORT||3302),'127.0.0.1',ok)});
 const origin=`http://127.0.0.1:${server.address().port}`;
-const report={realComponents:true,realCss:true,syntheticHomeAboutContent:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,origin,checks:[],views:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
+const report={realComponents:true,realCss:true,syntheticHomeAboutContent:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,origin,checks:[],views:[],earlyFocusedMenuCases:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
 const check=(passed,name,details)=>report.checks.push({name,passed:Boolean(passed),...(details===undefined?{}:{details})});
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 const visibleSelector='a[href],button:not([disabled]),select,summary,[tabindex]:not([tabindex="-1"])';
@@ -72,6 +72,29 @@ async function retained(page,name){
  check(await page.locator('#main-content').evaluate(node=>!node.inert&&node.getAttribute('aria-hidden')===null),'Main released '+name);
  check(await page.locator('#foreign-inert').evaluate(node=>node.inert&&node.getAttribute('aria-hidden')==='false'),'Existing inert and aria preserved '+name);
 }
+async function earlyMenuInteraction(page,name){
+ // Focus a real menu link as soon as React mounts it, before the scheduled
+ // initial autofocus. MutationObserver observes the DOM; it changes no React
+ // state, visibility, rAF scheduling or implementation behavior.
+ await page.evaluate(()=>{
+  window.__earlyMenuFocus={focusedOnMount:false};
+  const observer=new MutationObserver(()=>{
+   const link=document.querySelector('[role="dialog"] a[href="/#pasaporte-digital"]');
+   if(!link)return;
+   link.focus();window.__earlyMenuFocus.focusedOnMount=document.activeElement===link;
+   observer.disconnect();
+  });
+  observer.observe(document.body,{childList:true,subtree:true});
+ });
+ const trigger=page.getByRole('button',{name:'Abrir navegación',exact:true});
+ await trigger.focus();await page.keyboard.press('Enter');await page.getByRole('dialog').waitFor();await frames(page);
+ const initial=await page.evaluate(()=>({focusedOnMount:window.__earlyMenuFocus.focusedOnMount,
+  retainedThroughAutofocus:document.activeElement?.matches('[role="dialog"] a[href="/#pasaporte-digital"]')}));
+ await page.keyboard.press('Enter');
+ const destination=await page.waitForFunction(()=>location.hash==='#pasaporte-digital'&&document.activeElement?.matches('#pasaporte-digital h2'),null,{timeout:3000}).then(()=>true,()=>false);
+ const details={name,...initial,nativeDestinationFocused:destination};report.earlyFocusedMenuCases.push(details);
+ check(initial.focusedOnMount&&initial.retainedThroughAutofocus&&destination,'Early menu interaction keeps link focus and native destination '+name,details);
+}
 try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
   const name=`${width} ${theme}`,context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'});
@@ -79,6 +102,7 @@ try{
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({name,error:error.message.slice(0,180)}));
   await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||/^\/(?:api|sun)(?:\/|$)/.test(url.pathname)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
   try{
+   await page.goto(origin+'/',{waitUntil:'networkidle'});await earlyMenuInteraction(page,name);
    await page.goto(origin+'/',{waitUntil:'networkidle'});let trigger=await openMenu(page);
    check(await page.getByRole('button',{name:'Cerrar navegación',exact:true}).evaluate(node=>node===document.activeElement),'Open focuses close '+name);
    check(await page.locator('#main-content').evaluate(node=>node.inert),'Open makes content inert '+name);
