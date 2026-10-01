@@ -1,3 +1,4 @@
+import {runSunProjection,type SunAfterResponse} from './sun-post-response';
 import { sql } from './db';
 import { randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
@@ -282,6 +283,8 @@ export async function processSunScan(input: {
   rawQuery?: Record<string, string>;
   context?: ScanContext;
   sideEffectMode?: SunScanSideEffectMode;
+  /** Optional request-lifecycle callback, supplied exclusively by server code. */
+  afterResponse?: SunAfterResponse;
 }) {
   const persistScanState = shouldPersistSunScanState(input.sideEffectMode);
   const replayExecutionClass = resolveSunReplayExecutionClass(input.context?.source);
@@ -776,6 +779,7 @@ export async function processSunScan(input: {
 
     // Notifications and alerts are post-commit projections. Their failure must
     // never undo or misreport the canonical tag/event transaction.
+    await runSunProjection(async()=>{
     try {
       const projection = await publishTenantTapRealtimeProjection(
         receipt.eventId,
@@ -794,6 +798,7 @@ export async function processSunScan(input: {
         reason: error instanceof Error ? error.name : "unknown_error",
       }));
     }
+    },input.afterResponse);
     void evaluateSecurityAlerts({
       eventId: receipt.eventId,
       tenantId: String(batch.tenant_id),

@@ -1,3 +1,4 @@
+import {runSunProjection,type SunAfterResponse} from './sun-post-response';
 import { publishTenantTapRealtimeProjection } from "./realtime-tap-projection";
 import { persistSunRequestLocation } from "./sun-tap-location";
 
@@ -23,10 +24,12 @@ const dependencies: LocationRealtimeDependencies = {
 export async function persistSunRequestLocationAndPublish(
   input: LocationInput,
   services: LocationRealtimeDependencies = dependencies,
+  afterResponse?: SunAfterResponse,
 ): Promise<boolean> {
   const persisted = await services.persist(input);
   if (!persisted) return false;
 
+  await runSunProjection(async()=>{
   try {
     const publication = await services.publish(input.eventId);
     if (!publication.projected || !publication.distributed) {
@@ -37,5 +40,6 @@ export async function persistSunRequestLocationAndPublish(
     // already recorded physical tap into an apparent scan failure.
     services.warn("publication_failed");
   }
+  },afterResponse);
   return true;
 }
