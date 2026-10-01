@@ -38,8 +38,14 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
       : ["Identidad por modelo, lote o unidad", "Información e historia disponibles", "NFC + QR, sin app"];
 
   return (
-    <section className={styles.hero}>
-      <div className={`container-shell ${styles.grid}`}>
+    <section className={`landing-hero-section ${styles.hero}`} data-hero-presentation="immersive">
+      <div className={`hero-immersive-media ${styles.media}`} aria-hidden="true">
+        <Image src={nexIdDppHero} alt="" fill priority placeholder="blur" sizes="100vw" className="hero-immersive-image" />
+        <div className="hero-immersive-veil" />
+        <HeroImmersiveSignal locale={locale} />
+      </div>
+      <div className="hero-signal-field pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
+      <div className={`container-shell hero-story-grid ${styles.grid}`}>
           <div className={styles.copy}>
             <p className={styles.eyebrow}>{hero.badge}</p>
             <h1 className={styles.title}>{hero.title}</h1>
@@ -55,17 +61,11 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
                 <li key={point}>{point}</li>
               ))}
             </ul>
-          </div>
-          <figure className={styles.figure}>
-            <div className={styles.artwork} aria-hidden="true">
-              <Image src={nexIdDppHero} alt="" fill priority placeholder="blur" sizes="(max-width: 760px) 100vw, 50vw" className={styles.image} />
-              <div className={styles.signal}><HeroImmersiveSignal locale={locale} /></div>
-            </div>
-            <figcaption className={styles.caption}>
+            <p className={styles.caption}>
               <span>{isEn ? "The product is the starting point" : isBr ? "O produto é o ponto de partida" : "El producto es el punto de partida"}</span>
               <small>{isEn ? "Illustrative NFC experience" : isBr ? "Experiência NFC ilustrativa" : "Experiencia NFC ilustrativa"}</small>
-            </figcaption>
-          </figure>
+            </p>
+          </div>
       </div>
     </section>
   );

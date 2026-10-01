@@ -1,0 +1,27 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readOnlyRequestDecision,validateAllowedClerkOrigins,blockedWriteCategory} from './native-brand-hero-hidden.mjs';
+
+const origin='https://nexid-3a6n6hkyo-marcelos-projects-c26aa499.vercel.app';
+const clerk='https://advanced-kodiak-20.clerk.accounts.dev';
+const allowedClerkOrigins=validateAllowedClerkOrigins([clerk]);
+const decision=(path,method='GET',allowed=allowedClerkOrigins)=>readOnlyRequestDecision({method,url:new URL(path,origin),origin,allowedClerkOrigins:allowed});
+test('local/default permission blocks the Clerk origin',()=>assert.equal(decision(clerk+'/npm/@clerk/clerk-js@6/dist/clerk.browser.js','GET',[]),'blocked-external'));
+test('explicit permission permits the configured script',()=>assert.equal(decision(clerk+'/npm/@clerk/clerk-js@6/dist/clerk.browser.js'),'allow-read'));
+test('explicit permission permits the configured GET handshake',()=>assert.equal(decision(clerk+'/v1/client/handshake'),'allow-read'));
+test('own public document remains readable',()=>assert.equal(decision('/'),'allow-read'));
+test('every non-GET stays blocked on own and configured origins',()=>{for(const method of ['POST','PUT','PATCH','DELETE','HEAD','OPTIONS'])for(const target of [origin,clerk])assert.equal(decision(target+'/v1/client',method),'blocked-write');});
+test('SUN reads stay blocked on own and configured origins',()=>{for(const target of [origin,clerk])for(const path of ['/sun','/sun/context'])assert.equal(decision(target+path),'blocked-sensitive');});
+test('API reads stay blocked on own and configured origins',()=>{for(const target of [origin,clerk])for(const path of ['/api','/api/example'])assert.equal(decision(target+path),'blocked-sensitive');});
+test('snapshot and access queries stay blocked everywhere',()=>{for(const target of [origin,clerk])for(const query of ['snapshot=0','access=invalid'])assert.equal(decision(target+'/?'+query),'blocked-sensitive');});
+test('Vercel feedback remains blocked',()=>assert.equal(decision('https://vercel.live/_next-live/feedback/feedback.js'),'blocked-external'));
+test('a different Clerk tenant remains blocked',()=>assert.equal(decision('https://other.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js'),'blocked-external'));
+test('origin suffix tricks remain blocked',()=>assert.equal(decision(clerk+'.example.org/npm/@clerk/clerk-js@6/dist/clerk.browser.js'),'blocked-external'));
+test('unobserved, insecure, credentialed, or noncanonical allowlist entries are rejected',()=>{for(const value of ['https://vercel.live','http://advanced-kodiak-20.clerk.accounts.dev',clerk+'/',clerk+'?access=invalid','https://user:password@advanced-kodiak-20.clerk.accounts.dev'])assert.throws(()=>validateAllowedClerkOrigins([value]));});
+test('the allowlist is an explicit array and deduplicates verified origins',()=>{assert.throws(()=>validateAllowedClerkOrigins(clerk));assert.deepEqual(validateAllowedClerkOrigins([clerk,clerk]),[clerk]);assert.deepEqual(validateAllowedClerkOrigins(),[]);});
+test('exact automatic Clerk POST is classified while still blocked',()=>{assert.equal(blockedWriteCategory({method:'POST',url:new URL(clerk+'/v1/environment'),allowedClerkOrigins}),'automatic-clerk-initialization');assert.equal(decision(clerk+'/v1/environment','POST'),'blocked-write');});
+test('other methods and Clerk endpoint writes stay business writes',()=>{for(const [method,path] of [['PATCH','/v1/environment'],['POST','/v1/client'],['POST','/v1/environment/extra']])assert.equal(blockedWriteCategory({method,url:new URL(clerk+path),allowedClerkOrigins}),'business-write');});
+test('own or unapproved environment POST stays a business write',()=>{for(const target of [origin,'https://other.clerk.accounts.dev'])assert.equal(blockedWriteCategory({method:'POST',url:new URL(target+'/v1/environment'),allowedClerkOrigins}),'business-write');assert.equal(blockedWriteCategory({method:'POST',url:new URL(clerk+'/v1/environment'),allowedClerkOrigins:[]}),'business-write');});
+test('exact SDK telemetry preflight and POST are classified but never permitted',()=>{for(const method of ['OPTIONS','POST']){const url=new URL('https://clerk-telemetry.com/v1/event');assert.equal(blockedWriteCategory({method,url,allowedClerkOrigins}),'sdk-telemetry');assert.equal(readOnlyRequestDecision({method,url,origin,allowedClerkOrigins}),'blocked-write');}});
+test('SDK telemetry GET and all other external reads remain blocked',()=>assert.equal(decision('https://clerk-telemetry.com/v1/event'),'blocked-external'));
+test('other telemetry methods, endpoints and lookalike origins stay business writes',()=>{for(const [method,target] of [['PUT','https://clerk-telemetry.com/v1/event'],['POST','https://clerk-telemetry.com/v1/event/extra'],['OPTIONS','https://clerk-telemetry.com.example.org/v1/event']])assert.equal(blockedWriteCategory({method,url:new URL(target),allowedClerkOrigins}),'business-write');});

@@ -5,13 +5,18 @@
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
-.header:global(.landing-mega-header) :global(.header-main-row) { min-height: 76px; padding-block: 12px; }
+.header:global(.landing-mega-header) :global(.header-main-row) { min-height: 88px; padding-block: 12px; }
+.header:global(.landing-mega-header) :global(.theme-toggle) { min-width: 44px; min-height: 44px !important; }
 :global(html[data-theme="dark"]) .header:global(.landing-mega-header.site-header) {
   background: #10282f !important;
   color: #edf5f4;
   border-color: #294249 !important;
 }
 @media (max-width: 760px) {
-  .header:global(.landing-mega-header) :global(.header-main-row) { min-height: 64px; padding-block: 8px; }
+  .header:global(.landing-mega-header) :global(.header-main-row) { min-height: 76px; padding-block: 10px; }
+  .header [data-brand-motion] [data-identity-theme] { --identity-size: 56px !important; }
   .header:global(.landing-mega-header) :global(.site-brand-lockup) { transform: none; }
+}
+@media (max-width: 380px) {
+  .header [data-brand-motion] [data-identity-theme] { --identity-size: 48px !important; }
 }

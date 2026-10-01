@@ -14,11 +14,19 @@ const [home, content, signal, journey, visuals, css, ...packagingAssets] = await
   stat(new URL("../public/landing/connected-journey/packaging-journey-03.webp", import.meta.url)),
 ]);
 
-test("the home hero uses isolated semantic surfaces and a labelled illustration", async () => {
+test("the home hero restores the immersive scene while keeping semantic copy and a labelled illustration", async () => {
   const hero = home.slice(home.indexOf("export function HeroSection"), home.indexOf("export function SimpleTrustFlowSection"));
   const enterpriseHero = await readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8");
 
-  assert.match(hero, /className=\{styles\.hero\}/);
+  assert.match(hero, /landing-hero-section \$\{styles\.hero\}/);
+  assert.match(hero, /data-hero-presentation="immersive"/);
+  assert.match(hero, /hero-immersive-media \$\{styles\.media\}/);
+  assert.match(hero, /hero-immersive-veil/);
+  assert.match(hero, /sizes="100vw"/);
+  assert.match(hero, /<HeroImmersiveSignal locale=\{locale\} \/>/);
+  assert.equal((hero.match(/src=\{nexIdDppHero\}/g) ?? []).length, 1);
+  assert.match(hero, /href="\/demo-lab\?profile=wine" prefetch=\{false\}/);
+  assert.match(hero, /href="\/\?contact=demo#contact-modal" prefetch=\{false\}/);
   assert.doesNotMatch(hero, /bg-slate-950|border-white\/5|text-slate-400|text-white/);
   assert.match(hero, /styles\.eyebrow/);
   assert.match(hero, /styles\.primary/);
@@ -28,6 +36,9 @@ test("the home hero uses isolated semantic surfaces and a labelled illustration"
   assert.match(enterpriseHero, /--hero-paper: #f7faf9/);
   assert.match(enterpriseHero, /html\[data-theme="dark"\][\s\S]*--hero-paper: #10282f/);
   assert.match(enterpriseHero, /max-width: 760px/);
+  assert.match(enterpriseHero, /data-motion-mode="ready"[\s\S]{0,150}animation: sceneBreathe/);
+  assert.match(enterpriseHero, /data-motion-active="true"[\s\S]{0,100}animation-play-state: running/);
+  assert.doesNotMatch(enterpriseHero, /hero-immersive-(?:object-label|status|ring)[\s\S]{0,30}display: none/);
 });
 
 test("the hero names both physical anchors and animates a bidirectional multicolor exchange", () => {

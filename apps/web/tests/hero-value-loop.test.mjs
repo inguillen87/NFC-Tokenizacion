@@ -12,9 +12,16 @@ const [home, signal, css, asset] = await Promise.all([
 test("the hero uses the approved NFC artwork without loading an interactive explainer", () => {
   assert.match(home, /import Image from "next\/image"/);
   assert.match(home, /import nexIdDppHero from "\.\.\/\.\.\/public\/landing\/nexid-dpp-hero-v3\.webp"/);
-  assert.match(home, /src=\{nexIdDppHero\}/);
-  assert.match(home, /placeholder="blur"/);
-  assert.match(home, /className=\{styles\.image\}/);
+  const heroImages = [...home.matchAll(/<Image\b[^>]*src=\{nexIdDppHero\}[^>]*\/>/g)].map(([image]) => image);
+  assert.equal(heroImages.length, 1, "the immersive scene must preload one approved artwork");
+  const image = heroImages[0];
+  assert.match(image, /\bfill\b/);
+  assert.match(image, /\bpriority\b/);
+  assert.match(image, /placeholder="blur"/);
+  assert.match(image, /sizes="100vw"/);
+  assert.match(image, /alt=""/);
+  assert.match(image, /className="hero-immersive-image"/);
+  assert.doesNotMatch(image, /loading="lazy"/);
   assert.match(home, /<HeroImmersiveSignal locale=\{locale\} \/>/);
   assert.match(home, /aria-hidden="true"/);
   assert.doesNotMatch(home, /HeroValueLoop|framer-motion|setInterval|IntersectionObserver/);

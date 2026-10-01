@@ -1,0 +1,29 @@
+{
+  "sourceCommit": "79b864d3de593919f1913e9d42e0b880760ff737",
+  "method": "SSR of the published component with Next Link and CSS adapters; no browser, auth or API.",
+  "cases": [
+    {
+      "props": {
+        "size": 44,
+        "variant": "static",
+        "theme": "dark",
+        "locale": "es-AR"
+      },
+      "html": "<a href=\"/\" aria-label=\"Ir al inicio de nexID\" class=\"homeLink\" data-brand-home-link=\"true\"><span class=\"identity\" style=\"--identity-size:44px\" data-identity-theme=\"dark\" data-identity-variant=\"static\" aria-hidden=\"true\"><svg viewBox=\"0 0 160 160\" fill=\"none\" class=\"mark\" focusable=\"false\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"158\" rx=\"40\" fill=\"currentColor\"></rect><path d=\"M37 111V49H52L86 90V49H102V111H87L53 70V111H37Z\" fill=\"var(--identity-face)\"></path><path d=\"M115 62H131V111H115V62Z\" fill=\"var(--identity-accent)\"></path><circle cx=\"123\" cy=\"45\" r=\"8\" fill=\"var(--identity-accent)\"></circle></svg><span class=\"word\">nex<span>ID</span></span></span></a>"
+    },
+    {
+      "props": {
+        "size": 30,
+        "locale": "en"
+      },
+      "html": "<a href=\"/\" aria-label=\"Go to the nexID home page\" class=\"homeLink\" data-brand-home-link=\"true\"><span class=\"identity\" style=\"--identity-size:30px\" data-identity-theme=\"dark\" data-identity-variant=\"static\" aria-hidden=\"true\"><svg viewBox=\"0 0 160 160\" fill=\"none\" class=\"mark\" focusable=\"false\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"158\" rx=\"40\" fill=\"currentColor\"></rect><path d=\"M37 111V49H52L86 90V49H102V111H87L53 70V111H37Z\" fill=\"var(--identity-face)\"></path><path d=\"M115 62H131V111H115V62Z\" fill=\"var(--identity-accent)\"></path><circle cx=\"123\" cy=\"45\" r=\"8\" fill=\"var(--identity-accent)\"></circle></svg><span class=\"word\">nex<span>ID</span></span></span></a>"
+    },
+    {
+      "props": {
+        "markOnly": true,
+        "locale": "pt-BR"
+      },
+      "html": "<a href=\"/\" aria-label=\"Ir para o início da nexID\" class=\"homeLink\" data-brand-home-link=\"true\"><span class=\"identity\" style=\"--identity-size:42px\" data-identity-theme=\"dark\" data-identity-variant=\"static\" aria-hidden=\"true\"><svg viewBox=\"0 0 160 160\" fill=\"none\" class=\"mark\" focusable=\"false\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"158\" rx=\"40\" fill=\"currentColor\"></rect><path d=\"M37 111V49H52L86 90V49H102V111H87L53 70V111H37Z\" fill=\"var(--identity-face)\"></path><path d=\"M115 62H131V111H115V62Z\" fill=\"var(--identity-accent)\"></path><circle cx=\"123\" cy=\"45\" r=\"8\" fill=\"var(--identity-accent)\"></circle></svg></span></a>"
+    }
+  ]
+}

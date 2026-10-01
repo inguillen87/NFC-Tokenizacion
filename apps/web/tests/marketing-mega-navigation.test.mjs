@@ -95,15 +95,20 @@ test("mega navigation keeps hover intent stable instead of closing on pointer ga
 });
 
 test("public headers give the brand a responsive, prominent lockup on every viewport", async () => {
-  const [home, publicHeader, css, navigationCss] = await Promise.all([
+  const [home, publicHeader, css, navigationCss, headerCss] = await Promise.all([
     read("../src/app/page.tsx"),
     read("../src/components/public-site-header.tsx"),
     read("../src/app/globals.css"),
     read("../src/components/marketing-mega-nav.module.css"),
+    read("../src/components/public-site-header.module.css"),
   ]);
 
-  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{44\}/);
-  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{44\}/);
+  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{64\}[\s\S]{0,100}variant="pulse"[\s\S]{0,100}theme=\{initialTheme\}/);
+  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{64\}[\s\S]{0,100}variant="pulse"[\s\S]{0,100}theme=\{initialTheme\}/);
+  assert.match(headerCss, /min-height: 88px/);
+  assert.match(headerCss, /\.header:global\(\.landing-mega-header\) :global\(\.theme-toggle\)\s*\{[^}]*min-height: 44px !important/);
+  assert.match(headerCss, /max-width: 760px[\s\S]*--identity-size: 56px !important/);
+  assert.match(headerCss, /max-width: 380px[\s\S]*--identity-size: 48px !important/);
   assert.match(css, /\.landing-mega-header\s*\{[\s\S]{0,360}linear-gradient\(108deg[\s\S]{0,260}backdrop-filter: blur\(20px\) saturate\(145%\)/);
   assert.match(css, /html\.theme-dark \.landing-mega-header,[\s\S]{0,100}html\[data-theme="dark"\] \.landing-mega-header\s*\{[\s\S]{0,260}linear-gradient\(108deg/);
   assert.match(css, /\.landing-mega-header \.site-brand-lockup \.brand-wordmark-svg\s*\{[\s\S]{0,100}width: clamp\(11\.5rem, 15vw, 14\.5rem\)/);
