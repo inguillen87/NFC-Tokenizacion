@@ -11,12 +11,12 @@
 .primary:disabled,.secondary:disabled{opacity:.65;cursor:wait;box-shadow:none}
 .optional{font-size:11px;line-height:1.5;color:var(--quick-muted);margin:0}
 .details{border-top:1px solid var(--quick-line);margin-top:10px;padding-top:3px}
-.details summary{min-height:34px;display:flex;align-items:center;cursor:pointer;font-size:12px;font-weight:750;color:var(--quick-ink)}
+.details summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:12px;font-weight:750;color:var(--quick-ink)}
 .details p{font-size:12px;line-height:1.6;color:var(--quick-muted);margin:6px 0 9px}
 .feedback{font-size:13px;line-height:1.6;padding:10px;border:1px solid var(--quick-line);border-radius:10px;color:var(--quick-ink);margin:9px 0 0}
 .phase{border-inline-start-width:3px;background:var(--quick-secondary)}
 .success{display:flex;align-items:center;gap:12px;border-color:#35a17e;background:var(--quick-bg)}.success strong{font-size:15px}.success>svg{flex-shrink:0;color:#2dad83}
-.reopen{width:100%;margin-top:10px;justify-content:space-between;min-height:40px}
+.reopen{width:100%;margin-top:10px;justify-content:space-between;min-height:44px}
 .card :is(button,a,summary):focus-visible{outline:3px solid #21c0cf;outline-offset:3px}
 @media(max-width:370px){.card{padding:13px}.heading h2{font-size:18px}.primary,.secondary{font-size:13px;padding:10px}.actions{gap:6px}}
 @media(prefers-reduced-motion:reduce){.card *{animation:none!important;transition:none!important}}

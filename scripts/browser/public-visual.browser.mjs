@@ -55,6 +55,36 @@ async function menu(page, name) {
     await page.keyboard.press('Escape'); await dialog.waitFor({state:'detached'}); await stable(page);
     check(await trigger.evaluate(e=>e===document.activeElement),'Escape restores menu trigger focus '+name);
     check(await page.locator('[data-nav-inert]').evaluateAll(nodes=>nodes.every(e=>!e.inert)),'Menu releases page focus and interaction '+name);
+    const ring=await trigger.evaluate(el=>{const cs=getComputedStyle(el);return{style:cs.outlineStyle,width:parseFloat(cs.outlineWidth),color:cs.outlineColor};});
+    check(ring.style==='solid'&&ring.width>=3&&/^rgb\(/.test(ring.color),'Menu trigger exposes a solid keyboard focus ring '+name,ring);
+    await page.keyboard.press('Enter'); await dialog.waitFor();
+    await page.getByRole('button',{name:'Cerrar navegación',exact:true}).click(); await dialog.waitFor({state:'detached'}); await stable(page);
+    check(await trigger.evaluate(e=>e===document.activeElement),'Close control restores menu trigger focus '+name);
+    await trigger.focus(); await page.keyboard.press('Enter'); await dialog.waitFor();
+    if(page.viewportSize().width>520) {
+      const scrimPoint=await dialog.evaluate(el=>{const rect=el.getBoundingClientRect(),x=Math.max(1,rect.left/2),y=100,target=document.elementFromPoint(x,y);return{x,y,left:rect.left,hitsScrim:target instanceof HTMLButtonElement&&target.getAttribute('aria-hidden')==='true'&&target.tabIndex===-1};});
+      check(scrimPoint.left>0&&scrimPoint.hitsScrim,'Scrim exposes an actual reachable backdrop '+name,scrimPoint);
+      await page.mouse.click(scrimPoint.x,scrimPoint.y); await dialog.waitFor({state:'detached'}); await stable(page);
+      check(await trigger.evaluate(e=>e===document.activeElement),'Scrim restores menu trigger focus '+name);
+    } else {
+      // At <=520px the approved drawer occupies the full viewport; no backdrop is exposed.
+      await page.keyboard.press('Escape'); await dialog.waitFor({state:'detached'}); await stable(page);
+    }
+    await trigger.focus(); await page.keyboard.press('Enter'); await dialog.waitFor();
+    await dialog.locator('a[href="/#pasaporte-digital"]').focus(); await page.keyboard.press('Enter'); await dialog.waitFor({state:'detached'}); await stable(page);
+    const destination=page.locator('#pasaporte-digital h2').first();
+    try {
+      await page.waitForFunction(()=>document.activeElement===document.querySelector('#pasaporte-digital h2'),null,{timeout:5000});
+    } catch(error) {
+      const diagnostic=await page.evaluate(()=>{const heading=document.querySelector('#pasaporte-digital h2'),active=document.activeElement;return{url:location.href,readyState:document.readyState,headingExists:Boolean(heading),headingTabindex:heading?.getAttribute('tabindex'),headingInert:Boolean(heading?.closest('[inert]')),activeTag:active?.tagName,activeId:active?.id,activeOuter:active?.outerHTML.slice(0,240),overflow:document.body.style.overflow,scrollY,navigation:performance.getEntriesByType('navigation').map(e=>({name:e.name,type:e.type}))};});
+      check(false,'Native passport focus diagnostic '+name,diagnostic);
+      await page.screenshot({path:join(output,'passport-focus-failure-'+page.viewportSize().width+'.png')});
+      throw error;
+    }
+    check(new URL(page.url()).hash==='#pasaporte-digital'&&await destination.evaluate(el=>el===document.activeElement),'Native passport link moves keyboard focus to its content '+name);
+    await page.keyboard.press('Tab'); await stable(page);
+    check(await page.locator('#pasaporte-digital').evaluate(el=>el.contains(document.activeElement)),'Tab continues within passport content after menu navigation '+name);
+    await page.evaluate(()=>scrollTo(0,0)); await stable(page);
   } else {
     for(const group of ['solutions','industries','platform','resources']) {
       const button=page.locator(`[data-mega-nav-group="${group}"] > button`); await button.focus(); await page.keyboard.press('ArrowDown'); await stable(page);
@@ -95,10 +125,20 @@ async function journey(page,name) {
   const handoff=await root.locator('[data-sun-preview-handoff]').getAttribute('href');
   const handoffUrl=new URL(handoff||'/',origin);
   check(handoffUrl.pathname==='/sun'&&handoffUrl.searchParams.get('demo')==='1'&&handoffUrl.searchParams.get('profile')==='perfume'&&handoffUrl.searchParams.get('action')==='support','Final link retains selected illustrative profile and action '+name,{href:handoff}); // Inspect only: do not visit SUN routes.
+  if(await compactSelector.isVisible()) await compactSelector.selectOption('perfume');
+  else await root.getByRole('button',{name:/Packaging premium/}).click();
+  await stable(page);
+  check(await root.getAttribute('data-step')==='3'&&await progress.getAttribute('aria-valuenow')==='4','Selecting the active product preserves completed progress '+name);
+  check(await root.locator('[data-sun-preview-handoff]').getAttribute('href')===handoff,'Selecting the active product preserves its chosen action '+name);
   await audit(page,'[data-demo-featured-journey]','completed journey '+name);
   await root.getByRole('button',{name:'Reiniciar recorrido',exact:true}).click(); await stable(page);
   check(await root.getAttribute('data-step')==='0'&&await root.getByRole('button',{name:/2\. /}).isDisabled(),'Restart clears only illustrative progress '+name);
-  report.interactions.push({name,profile:'perfume',steps:[0,1,2,3,0],handoffInspectedOnly:true});
+  await root.getByRole('button',{name:'Simular acercamiento',exact:true}).click(); await stable(page);
+  if(await compactSelector.isVisible()) await compactSelector.selectOption('wine');
+  else await root.locator('[role="group"] button').first().click();
+  await stable(page);
+  check(await root.getAttribute('data-step')==='0'&&await progress.getAttribute('aria-valuenow')==='1'&&await root.getByRole('button',{name:/2\. /}).isDisabled(),'Choosing a different product resets progress for that product '+name);
+  report.interactions.push({name,profile:'perfume',steps:[0,1,2,3,3,0,1,0],handoffInspectedOnly:true});
 }
 try {
   for(const width of [320,390,768,1440]) for(const theme of ['light','dark']) for(const path of ['/','/demo-lab','/demo-lab?profile=wine']) {

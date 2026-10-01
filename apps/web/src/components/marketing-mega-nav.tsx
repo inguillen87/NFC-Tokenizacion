@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, ChevronDown, ExternalLink, Menu, X } from "lucide-react";
@@ -316,7 +316,41 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const groupButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const closeTimerRef = useRef<number | null>(null);
+  const passportFocusFrameRef = useRef<number | null>(null);
+  const pendingPassportFocusRef = useRef(false);
+  const mobileCloseReasonRef = useRef<"dismiss" | "navigate">("dismiss");
   const openMenuSourceRef = useRef<"hover" | "click" | null>(null);
+
+  function closeMobileMenu(reason: "dismiss" | "navigate" = "dismiss") {
+    mobileCloseReasonRef.current = reason;
+    setMobileOpen(false);
+  }
+
+  function focusPassportContent() {
+    if (passportFocusFrameRef.current !== null) window.cancelAnimationFrame(passportFocusFrameRef.current);
+    passportFocusFrameRef.current = window.requestAnimationFrame(() => {
+      passportFocusFrameRef.current = null;
+      const section = document.getElementById("pasaporte-digital");
+      const heading = section?.querySelector<HTMLElement>("h1, h2, h3") ?? section;
+      if (!heading) return;
+      if (!heading.hasAttribute("tabindex")) {
+        heading.setAttribute("tabindex", "-1");
+        heading.addEventListener("blur", () => heading.removeAttribute("tabindex"), { once: true });
+      }
+      heading.focus({ preventScroll: true });
+    });
+  }
+
+  function handlePassportNavigation(event: ReactMouseEvent<HTMLAnchorElement>) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    closeDesktopMenu();
+    closeMobileMenu("navigate");
+    // Let the native fragment perform the scroll and retain cross-route/back behavior.
+    if (window.location.pathname === "/" && event.detail === 0) {
+      if (mobileOpen) pendingPassportFocusRef.current = true;
+      else focusPassportContent();
+    }
+  }
 
   function cancelScheduledClose() {
     if (closeTimerRef.current === null) return;
@@ -367,13 +401,15 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       window.clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
     }
-    setMobileOpen(false);
+    closeMobileMenu("navigate");
     openMenuSourceRef.current = null;
     setOpenMenu(null);
+    if (pathname === "/" && window.location.hash === "#pasaporte-digital") focusPassportContent();
   }, [pathname]);
 
   useEffect(() => () => {
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+    if (passportFocusFrameRef.current !== null) window.cancelAnimationFrame(passportFocusFrameRef.current);
   }, []);
 
   useEffect(() => {
@@ -382,6 +418,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     const previousOverflow = document.body.style.overflow;
     const inertTargets = Array.from(document.querySelectorAll<HTMLElement>("[data-nav-inert]"));
     const previousAria = inertTargets.map((target) => target.getAttribute("aria-hidden"));
+    const previousInert = inertTargets.map((target) => target.hasAttribute("inert"));
     document.body.style.overflow = "hidden";
     inertTargets.forEach((target) => {
       target.setAttribute("inert", "");
@@ -393,7 +430,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        setMobileOpen(false);
+        closeMobileMenu();
         return;
       }
 
@@ -402,7 +439,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
         mobileDialogRef.current?.querySelectorAll<HTMLElement>(
           'button:not([disabled]), a[href], select, summary, [tabindex]:not([tabindex="-1"])',
         ) ?? [],
-      );
+      ).filter((target) => target.getClientRects().length > 0 && !target.closest("[inert]") && getComputedStyle(target).visibility !== "hidden");
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -421,12 +458,17 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
       inertTargets.forEach((target, index) => {
-        target.removeAttribute("inert");
+        if (!previousInert[index]) target.removeAttribute("inert");
         const ariaValue = previousAria[index];
         if (ariaValue === null) target.removeAttribute("aria-hidden");
         else target.setAttribute("aria-hidden", ariaValue);
       });
-      mobileTriggerRef.current?.focus();
+      if (pendingPassportFocusRef.current) {
+        pendingPassportFocusRef.current = false;
+        focusPassportContent();
+      } else if (mobileCloseReasonRef.current === "dismiss") {
+        mobileTriggerRef.current?.focus({ preventScroll: true });
+      }
     };
   }, [mobileOpen]);
 
@@ -465,7 +507,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   return (
     <div ref={navigationRef} className={styles.navigation}>
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
-        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
+        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={handlePassportNavigation}>
           {copy.passport}
         </a>
         {copy.groups.map((group) => {
@@ -539,7 +581,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       </nav>
 
       <nav className={styles.compactNav} aria-label={copy.ariaLabel}>
-        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={closeDesktopMenu}>
+        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={handlePassportNavigation}>
           {copy.passport}
         </a>
         <Link
@@ -563,7 +605,10 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
           className={styles.mobileMenuButton}
           aria-label={copy.menu}
           aria-expanded={mobileOpen}
-          onClick={() => setMobileOpen(true)}
+          onClick={() => {
+            mobileCloseReasonRef.current = "dismiss";
+            setMobileOpen(true);
+          }}
         >
           <Menu aria-hidden="true" />
         </button>
@@ -571,7 +616,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
 
       {mobileOpen ? (
         <div className={styles.mobileOverlay}>
-          <button type="button" tabIndex={-1} aria-hidden="true" className={styles.mobileScrim} onClick={() => setMobileOpen(false)} />
+          <button type="button" tabIndex={-1} aria-hidden="true" className={styles.mobileScrim} onClick={() => closeMobileMenu()} />
           <div ref={mobileDialogRef} className={styles.mobileDialog} role="dialog" aria-modal="true" aria-label={copy.menu}>
             <div className={styles.mobileDialogHead}>
               <BrandHomeLink
@@ -579,13 +624,13 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                 size={46}
                 brandClassName="mobile-menu-brand"
                 className={styles.mobileDialogBrand}
-                onNavigate={() => setMobileOpen(false)}
+                onNavigate={() => closeMobileMenu("navigate")}
               />
-              <button ref={mobileCloseRef} type="button" aria-label={copy.close} onClick={() => setMobileOpen(false)}><X aria-hidden="true" /></button>
+              <button ref={mobileCloseRef} type="button" aria-label={copy.close} onClick={() => closeMobileMenu()}><X aria-hidden="true" /></button>
             </div>
 
             <div className={styles.mobileGroups}>
-              <a href="/#pasaporte-digital" className={styles.mobileAboutLink} onClick={() => setMobileOpen(false)}>
+              <a href="/#pasaporte-digital" className={styles.mobileAboutLink} onClick={handlePassportNavigation}>
                 <span>{copy.passport}</span>
                 <ArrowRight aria-hidden="true" />
               </a>
@@ -593,7 +638,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                 href="/about"
                 className={styles.mobileAboutLink}
                 aria-current={pathname === "/about" ? "page" : undefined}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => closeMobileMenu("navigate")}
               >
                 <span>{copy.about}</span>
                 <ArrowRight aria-hidden="true" />
@@ -606,9 +651,9 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                   </summary>
                   <div className={styles.mobileGroupItems}>
                     {group.items.filter((item) => item.href !== "/about").map((item) => (
-                      <MenuLink key={`${group.id}-mobile-${item.href}`} item={item} currentPath={pathname} onNavigate={() => setMobileOpen(false)} />
+                      <MenuLink key={`${group.id}-mobile-${item.href}`} item={item} currentPath={pathname} onNavigate={() => closeMobileMenu("navigate")} />
                     ))}
-                    <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={() => setMobileOpen(false)} />
+                    <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={() => closeMobileMenu("navigate")} />
                   </div>
                 </details>
               ))}
@@ -620,7 +665,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
             <div className={styles.mobileActions}>
               <a href={loginHref}>{copy.login}</a>
-              <Link href="/?contact=demo#contact-modal" onClick={() => setMobileOpen(false)}>{copy.demo}</Link>
+              <Link href="/?contact=demo#contact-modal" onClick={() => closeMobileMenu("navigate")}>{copy.demo}</Link>
             </div>
           </div>
         </div>

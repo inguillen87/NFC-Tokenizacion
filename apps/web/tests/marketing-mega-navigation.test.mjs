@@ -67,7 +67,7 @@ test("mega navigation shares one accessible keyboard and mobile interaction mode
   assert.match(navigation, /role="dialog" aria-modal="true"/);
   assert.match(navigation, /querySelectorAll<HTMLElement>\("\[data-nav-inert\]"\)/);
   assert.match(navigation, /document\.body\.style\.overflow = "hidden"/);
-  assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\)/);
+  assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*min-height: 2\.75rem/);
   assert.match(css, /\.mobileAboutLink\s*\{[\s\S]*min-height: 3\.65rem/);
   assert.match(css, /@media \(max-width: 1599px\)[\s\S]*\.desktopNav,[\s\S]*\.desktopUtility/);
@@ -136,7 +136,7 @@ test("desktop, compact and mobile navigation keep a direct route to the passport
   assert.equal(navigation.match(/<a href="\/#pasaporte-digital"/g)?.length, 3);
   assert.doesNotMatch(navigation, /<Link href="\/#pasaporte-digital"/);
   assert.match(navigation, /<nav className=\{styles\.compactNav\}/);
-  assert.match(navigation, /href="\/#pasaporte-digital" className=\{styles\.mobileAboutLink\} onClick=\{\(\) => setMobileOpen\(false\)\}/);
+  assert.match(navigation, /href="\/#pasaporte-digital" className=\{styles\.mobileAboutLink\} onClick=\{handlePassportNavigation\}/);
   assert.match(css, /@media \(min-width: 980px\) and \(max-width: 1599px\)\s*\{\s*\.compactNav\s*\{\s*display: flex/);
   assert.match(home, /id="pasaporte-digital"/);
   assert.match(globalCss, /width: clamp\(8\.75rem, calc\(100vw - 200px\), 12rem\) !important/);
