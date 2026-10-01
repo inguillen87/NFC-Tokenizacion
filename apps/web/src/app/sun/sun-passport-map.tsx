@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as MapLibreMap, Marker, Popup, StyleSpecification } from "maplibre-gl";
 import { resolveTrustMapSource } from "@product/ui/trust-map-source";
 import styles from "./sun-passport-map.module.css";
+import {configureSunMapWorker} from "../../lib/sun-map-worker";
 
 export type SunPassportMapLocation = {
   id: string;
@@ -248,6 +249,8 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
     let resizeObserver: ResizeObserver | null = null;
     let loadTimeoutId: number | null = null;
     let styleReady = false;
+    let fullyReady = false;
+    let rasterTileLoaded = false;
 
     const start = async () => {
       if (started || disposed) return;
@@ -255,13 +258,14 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
       setIsDegraded(false);
       setLoadState("loading");
       loadTimeoutId = window.setTimeout(() => {
-        if (!disposed && !styleReady) setLoadState("error");
+        if (!disposed && !fullyReady) setLoadState("error");
       }, 8_000);
 
       try {
         const maplibre = await import("maplibre-gl");
         if (disposed || !mapContainerRef.current) return;
 
+        configureSunMapWorker(maplibre, window.location.origin);
         const map = new maplibre.Map({
           container: mapContainerRef.current,
           style: mapStyleForTheme(isLightTheme()),
@@ -315,7 +319,8 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           loadTimeoutId = null;
         };
         const markReady = () => {
-          if (disposed) return;
+          if (disposed || !rasterTileLoaded) return;
+          fullyReady = true;
           clearLoadTimers();
           setLoadState("ready");
         };
@@ -405,6 +410,9 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           });
         };
 
+        map.on("sourcedata", (event) => {
+          if (event.sourceId === "configured-basemap" && event.tile?.state === "loaded") rasterTileLoaded = true;
+        });
         let tileErrorCount = 0;
         map.on("error", (event) => {
           const sourceId = String((event as { sourceId?: string }).sourceId || "");
@@ -476,6 +484,12 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         map.on("render", () => {
           if (!disposed && map.loaded() && map.areTilesLoaded()) markReady();
         });
+        map.on("webglcontextlost", () => {
+          if (disposed) return;
+          fullyReady = false;
+          clearLoadTimers();
+          setLoadState("error");
+        });
         map.on("load", () => {
           if (disposed) return;
           addOperationalLayers();
@@ -489,10 +503,13 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           if (nextLightTheme === currentLightTheme) return;
           currentLightTheme = nextLightTheme;
           styleReady = false;
+          fullyReady = false;
+          // Theme paint changes reuse the same raster source and already decoded tiles.
+          clearLoadTimers();
           setIsDegraded(false);
           setLoadState("loading");
           loadTimeoutId = window.setTimeout(() => {
-            if (!disposed && !styleReady) setLoadState("error");
+            if (!disposed && !fullyReady) setLoadState("error");
           }, 8_000);
           map.setStyle(mapStyleForTheme(nextLightTheme));
         };

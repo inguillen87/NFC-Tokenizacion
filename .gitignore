@@ -31,3 +31,6 @@ apps/api/typechain-types
 *.tsbuildinfo
 
 .vercel
+
+# Versioned worker assets copied byte-for-byte from the audited MapLibre package at build.
+/apps/web/public/maplibre/

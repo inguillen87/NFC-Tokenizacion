@@ -37,6 +37,7 @@ jobs:
         run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/first-paint" node apps/web/tests/sun-first-paint.browser.mjs
           CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/location" node apps/web/tests/sun-location-single-action.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/map-recovery" node apps/web/tests/sun-map-recovery.browser.mjs
           git diff --exit-code -- apps packages package.json package-lock.json
       - name: Upload synthetic browser evidence
         if: always()
