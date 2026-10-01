@@ -1,45 +1,36 @@
 .journey {
-  --journey-bg: rgba(5, 15, 30, 0.9);
-  --journey-panel: rgba(8, 22, 41, 0.94);
-  --journey-panel-soft: rgba(15, 34, 55, 0.78);
-  --journey-line: rgba(125, 211, 252, 0.2);
-  --journey-line-strong: rgba(103, 232, 249, 0.55);
-  --journey-text: #f8fafc;
-  --journey-muted: #b9cbe0;
-  --journey-accent: #67e8f9;
-  --journey-accent-strong: #22d3ee;
-  --journey-focus: #67e8f9;
+  --journey-bg: #14201f;
+  --journey-panel: #14201f;
+  --journey-panel-soft: #1b2c28;
+  --journey-line: #354944;
+  --journey-line-strong: #7dbbb0;
+  --journey-text: #ecf2ef;
+  --journey-muted: #bbc9c3;
+  --journey-accent: #9fd5c8;
+  --journey-accent-strong: #a2d8c9;
+  --journey-primary-text: #16362e;
+  --journey-focus: #a2d8c9;
   position: relative;
   isolation: isolate;
   overflow: hidden;
   border: 1px solid var(--journey-line);
-  border-radius: clamp(1.35rem, 3vw, 2.2rem);
-  background:
-    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.13), transparent 30%),
-    radial-gradient(circle at 100% 100%, rgba(45, 212, 191, 0.1), transparent 34%),
-    var(--journey-bg);
-  box-shadow: 0 2rem 5rem rgba(0, 0, 0, 0.24);
+  border-radius: 1rem;
+  background: var(--journey-bg);
+  box-shadow: none;
   color: var(--journey-text);
+  font-family: var(--font-geist-sans, Arial), ui-sans-serif, system-ui, sans-serif;
 }
 
 .journey::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image:
-    linear-gradient(rgba(125, 211, 252, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125, 211, 252, 0.035) 1px, transparent 1px);
-  background-size: 2.5rem 2.5rem;
-  content: "";
-  mask-image: linear-gradient(to bottom, black, transparent 86%);
+  content: none;
 }
 
 .header {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(15rem, 0.65fr);
-  gap: clamp(1rem, 3vw, 2.5rem);
-  align-items: end;
-  padding: clamp(1.35rem, 4vw, 2.7rem);
+  grid-template-columns: minmax(0, 1.3fr) minmax(15rem, 0.7fr);
+  gap: 1.5rem;
+  align-items: center;
+  padding: clamp(1rem, 2.5vw, 1.75rem);
   border-bottom: 1px solid var(--journey-line);
 }
 
@@ -52,28 +43,28 @@
   display: inline-flex;
   color: var(--journey-accent);
   font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.16em;
+  font-weight: 650;
+  letter-spacing: 0.09em;
   line-height: 1.3;
   text-transform: uppercase;
 }
 
 .headerCopy h2 {
-  max-width: 16ch;
+  max-width: 30ch;
   margin: 0.55rem 0 0;
-  font-size: clamp(2rem, 5.2vw, 4rem);
-  font-weight: 900;
-  letter-spacing: -0.055em;
-  line-height: 0.98;
+  font-size: clamp(1.5rem, 2.5vw, 1.85rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.14;
   text-wrap: balance;
 }
 
 .headerCopy > p {
   max-width: 48rem;
-  margin: 1rem 0 0;
+  margin: 0.65rem 0 0;
   color: var(--journey-muted);
-  font-size: clamp(0.98rem, 1.5vw, 1.1rem);
-  line-height: 1.7;
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 .truthNote {
@@ -81,10 +72,11 @@
   display: grid;
   align-content: center;
   gap: 0.55rem;
-  padding: 1rem 1.05rem;
-  border: 1px solid var(--journey-line);
-  border-radius: 1.2rem;
-  background: rgba(14, 38, 59, 0.65);
+  padding: 0.4rem 0 0.4rem 1rem;
+  border: 0;
+  border-left: 2px solid var(--journey-line-strong);
+  border-radius: 0;
+  background: transparent;
 }
 
 .truthNote span {
@@ -93,9 +85,8 @@
   gap: 0.5rem;
   color: var(--journey-accent);
   font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
 .truthNote svg {
@@ -117,7 +108,7 @@
   align-items: center;
   padding: 0.9rem clamp(1.1rem, 4vw, 2.7rem);
   border-bottom: 1px solid var(--journey-line);
-  background: rgba(4, 16, 31, 0.68);
+  background: var(--journey-panel);
 }
 
 .productSelector > div:first-child {
@@ -137,10 +128,14 @@
   line-height: 1.4;
 }
 
-.productSelector > div:last-child {
+.productChoices {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.productSelect {
+  display: none;
 }
 
 .productSelector button {
@@ -152,8 +147,8 @@
   align-items: center;
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--journey-line);
-  border-radius: 0.9rem;
-  background: rgba(9, 27, 47, 0.74);
+  border-radius: 0.5rem;
+  background: var(--journey-panel);
   color: var(--journey-muted);
   cursor: pointer;
   font: inherit;
@@ -166,7 +161,7 @@
   border-color: var(--journey-line-strong);
   background: rgba(13, 148, 168, 0.15);
   color: var(--journey-text);
-  transform: translateY(-0.08rem);
+  transform: none;
 }
 
 .productSelector button > svg {
@@ -281,20 +276,20 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #22d3ee, #2dd4bf);
-  box-shadow: 0 0 1rem rgba(34, 211, 238, 0.45);
+  background: var(--journey-accent-strong);
+  box-shadow: none;
   transition: width 450ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .stage {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(21rem, 0.8fr);
-  min-height: 35rem;
+  min-height: 30rem;
 }
 
 .visual {
   position: relative;
-  min-height: 35rem;
+  min-height: 30rem;
   overflow: hidden;
   border-right: 1px solid var(--journey-line);
   background: #d9edf1;
@@ -454,9 +449,9 @@
   margin: 0.55rem 0 0;
   color: var(--journey-text);
   font-size: clamp(1.65rem, 3vw, 2.4rem);
-  font-weight: 900;
+  font-weight: 650;
   letter-spacing: -0.045em;
-  line-height: 1.05;
+  line-height: 1.16;
   outline: none;
   text-wrap: balance;
 }
@@ -475,22 +470,40 @@
 }
 
 .conceptCard {
-  display: grid;
-  gap: 0.4rem;
-  margin-top: 1.25rem;
-  padding: 0.95rem 1rem;
-  border: 1px solid var(--journey-line);
-  border-radius: 1rem;
-  background: var(--journey-panel-soft);
+  margin-top: 1rem;
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--journey-line);
+  border-bottom: 1px solid var(--journey-line);
 }
 
-.conceptCard span {
+.conceptCard summary {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   color: var(--journey-accent);
-  font-size: 0.77rem;
-  font-weight: 900;
+  min-height: 2.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.conceptCard summary::after {
+  margin-left: auto;
+  content: "+";
+  font-size: 1.15rem;
+}
+
+.conceptCard[open] summary::after {
+  content: "−";
+}
+
+.conceptCard summary::-webkit-details-marker {
+  display: none;
+}
+
+.conceptCard[open] p {
+  padding-bottom: 0.75rem;
 }
 
 .conceptCard svg {
@@ -697,10 +710,7 @@
   overflow: hidden;
   padding: clamp(1.35rem, 4vw, 2.7rem);
   border-top: 1px solid var(--journey-line);
-  background:
-    radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.12), transparent 28%),
-    radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.1), transparent 34%),
-    var(--journey-panel);
+  background: var(--journey-panel-soft);
   animation: signalReveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -711,7 +721,7 @@
     linear-gradient(rgba(103, 232, 249, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(103, 232, 249, 0.04) 1px, transparent 1px);
   background-size: 2rem 2rem;
-  content: "";
+  content: none;
   mask-image: linear-gradient(to bottom, black, transparent 78%);
   pointer-events: none;
 }
@@ -1216,8 +1226,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
-  margin-top: auto;
-  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
 }
 
 .primaryButton,
@@ -1227,12 +1237,12 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  border-radius: 0.9rem;
+  border-radius: 0.45rem;
   padding: 0.7rem 1rem;
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 900;
+  font-size: 0.9rem;
+  font-weight: 650;
   line-height: 1.25;
   text-align: center;
   text-decoration: none;
@@ -1241,21 +1251,21 @@
 
 .primaryButton {
   flex: 1 1 12rem;
-  border: 1px solid #67e8f9;
-  background: linear-gradient(135deg, #67e8f9, #2dd4bf);
-  color: #05202d;
+  border: 1px solid var(--journey-accent-strong);
+  background: var(--journey-accent-strong);
+  color: var(--journey-primary-text);
 }
 
 .secondaryButton {
   flex: 0 1 auto;
   border: 1px solid var(--journey-line);
-  background: rgba(14, 32, 52, 0.7);
+  background: var(--journey-panel);
   color: var(--journey-text);
 }
 
 .primaryButton:hover,
 .secondaryButton:hover {
-  transform: translateY(-0.1rem);
+  transform: none;
   filter: brightness(1.06);
 }
 
@@ -1276,26 +1286,28 @@
 }
 
 .journey button:focus-visible,
-.journey a:focus-visible {
+.journey a:focus-visible,
+.journey select:focus-visible,
+.journey summary:focus-visible {
   outline: 3px solid var(--journey-focus);
   outline-offset: 3px;
 }
 
 :global(.demo-lab-hub-root--light) .journey {
-  --journey-bg: rgba(250, 253, 255, 0.96);
-  --journey-panel: rgba(248, 252, 255, 0.98);
-  --journey-panel-soft: rgba(231, 246, 250, 0.82);
-  --journey-line: rgba(14, 116, 144, 0.18);
-  --journey-line-strong: rgba(8, 145, 178, 0.52);
-  --journey-text: #102a43;
-  --journey-muted: #526b82;
-  --journey-accent: #08798b;
-  --journey-accent-strong: #0891b2;
-  --journey-focus: #075985;
-  box-shadow: 0 2rem 5rem rgba(15, 23, 42, 0.1);
+  --journey-bg: #ffffff;
+  --journey-panel: #ffffff;
+  --journey-panel-soft: #f0f5f1;
+  --journey-line: #d4dfd8;
+  --journey-line-strong: #39796b;
+  --journey-text: #19372f;
+  --journey-muted: #52665e;
+  --journey-accent: #246c5b;
+  --journey-accent-strong: #246c5b;
+  --journey-primary-text: #ffffff;
+  --journey-focus: #246c5b;
+  box-shadow: none;
 }
 
-:global(.demo-lab-hub-root--light) .truthNote,
 :global(.demo-lab-hub-root--light) .stepper,
 :global(.demo-lab-hub-root--light) .productSelector,
 :global(.demo-lab-hub-root--light) .productSelector button,
@@ -1316,10 +1328,7 @@
 }
 
 :global(.demo-lab-hub-root--light) .businessSignal {
-  background:
-    radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.12), transparent 30%),
-    radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.09), transparent 36%),
-    rgba(247, 252, 254, 0.98);
+  background: var(--journey-panel-soft);
 }
 
 :global(.demo-lab-hub-root--light) .signalFlow li,
@@ -1420,7 +1429,8 @@
   }
 
   .panel {
-    min-height: 31rem;
+    min-height: auto;
+    order: -1;
   }
 
   .signalFlow {
@@ -1440,11 +1450,35 @@
 
 @media (max-width: 640px) {
   .header {
-    padding: 1.25rem;
+    gap: 0.75rem;
+    padding: 1rem;
   }
 
   .headerCopy h2 {
-    font-size: clamp(2rem, 10vw, 2.8rem);
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .headerCopy .eyebrow {
+    display: none;
+  }
+
+  .headerCopy {
+    height: 0;
+  }
+
+  .header {
+    gap: 0;
+  }
+
+  .headerCopy > p {
+    display: none;
   }
 
   .stepper {
@@ -1452,11 +1486,47 @@
   }
 
   .productSelector {
-    padding: 0.85rem;
+    padding: 0.75rem 1rem;
   }
 
-  .productSelector > div:last-child {
-    grid-template-columns: minmax(0, 1fr);
+  .productSelector > div:first-child,
+  .productChoices {
+    display: none;
+  }
+
+  .productSelect {
+    display: grid;
+    gap: 0.4rem;
+    color: var(--journey-text);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .productSelect select {
+    width: 100%;
+    min-width: 0;
+    min-height: 3rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--journey-line-strong);
+    border-radius: 0.4rem;
+    background: var(--journey-panel);
+    color: var(--journey-text);
+    font: inherit;
+    font-size: 1rem;
+  }
+
+  .stage {
+    display: flex;
+    min-height: auto;
+    flex-direction: column;
+  }
+
+  .panel {
+    order: -1;
+  }
+
+  .businessSignal {
+    order: 1;
   }
 
   .stepper ol {
@@ -1477,7 +1547,9 @@
   }
 
   .visual {
-    min-height: 19.5rem;
+    min-height: 18rem;
+    border-top: 1px solid var(--journey-line);
+    border-bottom: 0;
   }
 
   .demoChip {
@@ -1557,7 +1629,7 @@
   }
 
   .truthNote {
-    padding: 0.8rem;
+    padding: 0.25rem 0 0.25rem 0.75rem;
   }
 
   .stepper button > span {

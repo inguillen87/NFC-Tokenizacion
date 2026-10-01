@@ -8,8 +8,8 @@ import type { AppLocale } from "@product/config";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Factory, Fingerprint, LockKeyhole, MapPin, PackageCheck, ShieldCheck, Smartphone, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
 import { HeroTrustNetworkDiagram } from "../../../components/hero-scene";
 import { platformVerticals } from "../../../lib/platform-verticals";
-import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
+import surfaceStyles from "./demo-lab-surface.module.css";
 import type { VectorMapPoint, VectorMapRoute } from "@product/ui";
 import {
   canUseVerifiedDemoLanguage,
@@ -24,6 +24,14 @@ import {
   getDemoLabScenarioStatus,
   type DemoLabScenarioId,
 } from "./demo-lab-scenario-catalog";
+
+const ThreeDProduct = dynamic(
+  () => import("../../investor-snapshot/investor-snapshot-client").then((module) => module.ThreeDProduct),
+  {
+    ssr: false,
+    loading: () => <div className={surfaceStyles.previewLoading} role="status" aria-label="3D">3D…</div>,
+  },
+);
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -1478,7 +1486,7 @@ export function DemoLabClient({
   }
 
   return (
-    <main className={`demo-lab-shell demo-lab-shell--${viewMode} container-shell py-8 text-slate-100`}>
+    <main className={`demo-lab-shell demo-lab-shell--${viewMode} ${surfaceStyles.surface} container-shell py-8`}>
       {/* Premium Toggle Header */}
       <div className="demo-lab-mode-bar demo-lab-mode-bar--compact mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -1488,6 +1496,7 @@ export function DemoLabClient({
         <div className="flex gap-2">
           <button
             type="button"
+            aria-pressed={viewMode === "simulator"}
             onClick={() => setViewMode("simulator")}
             className={`demo-lab-mode-tab ${viewMode === "simulator" ? "is-active" : "is-inactive"} rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
               viewMode === "simulator"
@@ -1499,6 +1508,7 @@ export function DemoLabClient({
           </button>
           <button
             type="button"
+            aria-pressed={viewMode === "crm"}
             onClick={() => setViewMode("crm")}
             className={`demo-lab-mode-tab ${viewMode === "crm" ? "is-active" : "is-inactive"} rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition flex items-center gap-2 ${
               viewMode === "crm"
@@ -2097,7 +2107,6 @@ function DemoLabStudioHero({
                   ? locale === "en" ? "Public evidence confirmed" : locale === "pt-BR" ? "Evidencia publica confirmada" : "Evidencia publica confirmada"
                   : locale === "en" ? "No verified evidence" : locale === "pt-BR" ? "Sem evidencia verificada" : "Sin evidencia verificada"}
               </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">⏱ {new Date().toLocaleTimeString(locale)}</span>
             </div>
             <p className="demo-lab-wizard-result-desc mt-3 max-w-2xl text-sm leading-6 text-slate-300">{executionTruthCopy.explanation}</p>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-400">{scenario.headline}</p>

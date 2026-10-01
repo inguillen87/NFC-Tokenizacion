@@ -12,8 +12,8 @@ test("SUN header gives the existing brand priority and puts status and locale in
   ]);
 
   assert.match(source, /sun-passport-header sun-topbar \$\{styles\.header\}/);
-  assert.match(source, /<BrandLockup size=\{52\} variant="static" theme="dark" \/>/);
-  assert.ok(source.indexOf("<BrandLockup") < source.indexOf("<ThemeToggle"));
+  assert.match(source, /<BrandHomeLink size=\{44\} variant="static" theme="dark" locale=\{locale\} \/>/);
+  assert.ok(source.indexOf("<BrandHomeLink") < source.indexOf("<ThemeToggle"));
   assert.ok(source.indexOf("<ThemeToggle") < source.indexOf("sun-topbar-actions"));
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("sun-live-tap-pill"));
   assert.ok(source.indexOf("sun-live-tap-pill") < source.indexOf("<SunLocaleSwitcher"));
@@ -22,12 +22,12 @@ test("SUN header gives the existing brand priority and puts status and locale in
   assert.match(css, /\.header \.status\s*\{[^}]*max-width: 100%;[^}]*white-space: normal;/);
 });
 
-test("SUN header sizing overrides legacy logo shrink rules and keeps real controls touch-safe", async () => {
+test("SUN header keeps the web home identity and real controls touch-safe", async () => {
   const css = await readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8");
 
-  assert.match(css, /\.header \.brand :global\(\.brand-mark\)\s*\{[^}]*width: 3\.25rem !important;[^}]*height: 3\.25rem !important;/);
-  assert.match(css, /\.header \.brand :global\(\.brand-wordmark-svg\)\s*\{[^}]*width: 13rem !important;[^}]*height: 3rem !important;[^}]*max-width: none !important;[^}]*flex-shrink: 0;/);
-  assert.match(css, /margin-inline-end: -5\.75rem/);
+  assert.match(css, /\.header \.brand \[data-brand-home-link\]\s*\{[^}]*min-width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
+  assert.match(css, /\.header \.brand \[data-identity-theme\]\s*\{[^}]*--identity-size: 44px !important;/);
+  assert.doesNotMatch(css, /brand-wordmark-svg|margin-inline-end:\s*-/);
   assert.match(css, /\.header \.theme :global\(\.theme-toggle\)\s*\{[^}]*width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
   assert.match(css, /\.header \.locale select\s*\{[^}]*min-width: 0;[^}]*min-height: 2\.75rem;/);
   assert.match(css, /span:not\(:global\(\.theme-toggle__glyph\)\)\s*\{[^}]*display: none;/);

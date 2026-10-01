@@ -15,6 +15,7 @@ import { HeroImmersiveSignal } from "./hero-immersive-signal";
 import { SimpleTrustFlowIntroMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustIndustryJourney } from "./simple-trust-industry-journey";
 import nexIdDppHero from "../../public/landing/nexid-dpp-hero-v3.webp";
+import styles from "./home-sections.module.css";
 
 type Content = {
   hero: {
@@ -37,60 +38,34 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
       : ["Identidad por modelo, lote o unidad", "Información e historia disponibles", "NFC + QR, sin app"];
 
   return (
-    <section className="landing-hero-section relative overflow-hidden border-b pb-6 pt-8 lg:pb-8 lg:pt-12">
-      <div className="hero-immersive-media pointer-events-none absolute inset-x-0 top-0 z-0" aria-hidden="true">
-        <Image
-          src={nexIdDppHero}
-          alt=""
-          fill
-          priority
-          placeholder="blur"
-          sizes="100vw"
-          className="hero-immersive-image"
-        />
-        <div className="hero-immersive-veil" />
-        <HeroImmersiveSignal locale={locale} />
-      </div>
-      <div className="hero-signal-field pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
-
-      <div className="container-shell relative z-10">
-        <div className="hero-story-grid grid min-w-0 items-center">
-          <div className="hero-main-copy min-w-0 max-w-[47rem] text-left">
-            <div className="hero-eyebrow-chip inline-flex items-center gap-2 rounded-full border px-4 py-1.5 backdrop-blur-md">
-              <span className="hero-eyebrow-dot flex h-2 w-2 rounded-full" aria-hidden="true" />
-              <span className="hero-eyebrow-copy text-xs font-medium uppercase tracking-widest">{hero.badge}</span>
-            </div>
-
-            <h1 className="brand-editorial-gradient mt-6 max-w-4xl pb-2 text-[2.65rem] font-extrabold leading-[1.03] tracking-[-0.045em] sm:text-[3.5rem] lg:text-[4.25rem]">
-              {hero.title}
-            </h1>
-            <p className="hero-subtitle mt-5 max-w-2xl text-base leading-7 md:text-lg md:leading-8">
-              {hero.body}
-            </p>
-
-            <div className="hero-post-video-actions mt-7" role="group" aria-label={isEn ? "Main actions" : isBr ? "Ações principais" : "Acciones principales"}>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href="#como-funciona" className="inline-flex min-h-12 hero-primary-action items-center justify-center rounded-xl px-6 py-3 text-sm font-bold transition hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
-                  {hero.primary}
-                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+    <section className={styles.hero}>
+      <div className={`container-shell ${styles.grid}`}>
+          <div className={styles.copy}>
+            <p className={styles.eyebrow}>{hero.badge}</p>
+            <h1 className={styles.title}>{hero.title}</h1>
+            <p className={styles.body}>{hero.body}</p>
+            <div className={styles.actions} role="group" aria-label={isEn ? "Main actions" : isBr ? "Ações principais" : "Acciones principales"}>
+                <Link href="/demo-lab?profile=wine" prefetch={false} className={styles.primary}>
+                  {hero.primary}<ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <Link href="/?contact=demo#contact-modal" className="inline-flex min-h-12 hero-secondary-action items-center justify-center rounded-xl border px-6 py-3 text-sm font-semibold transition hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
-                  {hero.secondary}
-                </Link>
-              </div>
+                <Link href="/?contact=demo#contact-modal" prefetch={false} className={styles.secondary}>{hero.secondary}</Link>
             </div>
-
-            <ul className="mt-6 flex flex-wrap gap-2" aria-label={isEn ? "Experience highlights" : isBr ? "Destaques da experiência" : "Claves de la experiencia"}>
+            <ul className={styles.proof} aria-label={isEn ? "Experience highlights" : isBr ? "Destaques da experiência" : "Claves de la experiencia"}>
               {proofPoints.map((point) => (
-                <li key={point} className="hero-proof-chip inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-xs font-semibold">
-                  <span className="hero-proof-dot h-1.5 w-1.5 rounded-full" aria-hidden="true" />
-                  {point}
-                </li>
+                <li key={point}>{point}</li>
               ))}
             </ul>
           </div>
-
-        </div>
+          <figure className={styles.figure}>
+            <div className={styles.artwork} aria-hidden="true">
+              <Image src={nexIdDppHero} alt="" fill priority placeholder="blur" sizes="(max-width: 760px) 100vw, 50vw" className={styles.image} />
+              <div className={styles.signal}><HeroImmersiveSignal locale={locale} /></div>
+            </div>
+            <figcaption className={styles.caption}>
+              <span>{isEn ? "The product is the starting point" : isBr ? "O produto é o ponto de partida" : "El producto es el punto de partida"}</span>
+              <small>{isEn ? "Illustrative NFC experience" : isBr ? "Experiência NFC ilustrativa" : "Experiencia NFC ilustrativa"}</small>
+            </figcaption>
+          </figure>
       </div>
     </section>
   );

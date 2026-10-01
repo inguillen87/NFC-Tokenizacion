@@ -51,9 +51,9 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Ingresar", requestDemo: "Solicitar demo" },
     hero: {
       badge: "Pasaporte Digital de Producto · Trazabilidad conectada",
-      title: "El futuro de la trazabilidad para tu producto.",
-      body: "Con NFC o QR, nexID conecta cada producto con su Pasaporte Digital: identidad, información, historia y trazabilidad declaradas por tu organización. Disponible en el navegador, según el rol y sin exigir una app.",
-      primary: "Explorar cómo funciona",
+      title: "La historia de tu producto, a un tap.",
+      body: "Tu marca publica la información. Las personas la descubren desde el producto, con NFC o QR y sin instalar una app. El pasaporte muestra identidad, historia y trazabilidad declaradas según cada rol.",
+      primary: "Probar un pasaporte",
       secondary: "Agendar una demo",
       tertiary: "Quiero ser reseller",
     },
@@ -203,7 +203,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   "pt-BR": {
     nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Arquitetura", cta: "Entrar", requestDemo: "Solicitar demo" },
-    hero: { badge: "Passaporte Digital de Produto · Rastreabilidade conectada", title: "O futuro da rastreabilidade para o seu produto.", body: "Com NFC ou QR, a nexID conecta cada produto ao seu Passaporte Digital: identidade, informação, história e rastreabilidade declaradas pela sua organização. Disponível no navegador, conforme o papel e sem exigir um app.", primary: "Explorar como funciona", secondary: "Agendar uma demo", tertiary: "Quero ser revendedor" },
+    hero: { badge: "Passaporte Digital de Produto · Rastreabilidade conectada", title: "A história do seu produto, a um toque.", body: "Sua marca publica a informação. As pessoas a descobrem pelo produto, com NFC ou QR e sem instalar um app. O passaporte apresenta identidade, história e rastreabilidade declaradas conforme cada papel.", primary: "Testar um passaporte", secondary: "Agendar uma demo", tertiary: "Quero ser revendedor" },
     trustBar: ["Evidência NFC/SUN", "Origem e lote declarados", "Garantia por política", "Clube e benefícios", "Canal white-label"],
     howItWorks: { eyebrow: "Como funciona", title: "Encoste, valide a mensagem e ative a pós-venda", description: "Cada toque mostra o resultado NFC/SUN, os dados declarados e a próxima ação permitida.", steps: [{ title: "1. Você ativa o lote", body: "Configura carrier, lote, dados declarados e política." }, { title: "2. O cliente encosta o celular", body: "A tela mostra mensagem válida, sinalizada ou bloqueada; não um veredito físico." }, { title: "3. O sistema registra evidência", body: "Ficam registrados horário, local aproximado informado e TT reportado." }, { title: "4. A marca ativa a pós-venda", body: "Garantia, benefícios ou ownership exigem sua própria evidência e aprovação." }] },
     what: { eyebrow: "Plataforma", title: "Uma infraestrutura para validar mensagens e ativar negócios", description: "Associe uma identidade digital declarada por unidade e opere com dashboard, API e webhooks.", cards: [{ title: "Verify", body: "Valida mensagem NFC/SUN, TT reportado e política; não o conteúdo físico." }, { title: "Passport", body: "Organiza lote, origem e eventos declarados, canal e garantia." }, { title: "Rights", body: "Ativa ownership, acesso, vouchers, transferências e garantias somente por política." }] },
@@ -240,7 +240,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   en: {
     nav: { product: "Product", pricing: "Pricing", reseller: "Resellers", docs: "Docs", cta: "Login", requestDemo: "Request demo" },
-    hero: { badge: "Digital Product Passport · Connected traceability", title: "The future of traceability for your product.", body: "With NFC or QR, nexID connects each product to its Digital Product Passport: identity, information, history and traceability published by your organization. Available in the browser, by role, with no app required.", primary: "Explore how it works", secondary: "Book a demo", tertiary: "Become a reseller" },
+    hero: { badge: "Digital Product Passport · Connected traceability", title: "Your product’s story, one tap away.", body: "Your brand publishes the information. People discover it through the product with NFC or QR, without installing an app. The passport shows identity, history and declared traceability according to each role.", primary: "Try a passport", secondary: "Book a demo", tertiary: "Become a reseller" },
     trustBar: ["NFC/SUN evidence", "Declared origin and batch", "Policy-based warranty", "Multi-tenant SaaS", "White-label distribution"],
     howItWorks: { eyebrow: "How it works", title: "Tap, validate the message, and activate after-sales", description: "Each tap shows the NFC/SUN result, declared data and the next permitted action.", steps: [{ title: "1. Activate your batch", body: "Configure carrier, batch, declared data and policy." }, { title: "2. Customer taps", body: "The phone shows a valid, flagged or blocked tag message—not a physical-product verdict." }, { title: "3. Evidence is recorded", body: "Time, reported approximate location and reported TT state can be stored." }, { title: "4. Teams take action", body: "Warranty, benefits or ownership require their own evidence and approval." }] },
     what: { eyebrow: "Platform value", title: "One infrastructure to validate messages and activate business flows", description: "Associate a declared digital identity with each unit and operate it through dashboard, API and webhooks.", cards: [{ title: "Verify", body: "Validate the NFC/SUN message, reported TT and policy—not physical contents." }, { title: "Passport", body: "Organize declared batch, origin, events, channel and warranty." }, { title: "Rights", body: "Activate ownership, access, perks, transfers and warranties only under policy." }] },

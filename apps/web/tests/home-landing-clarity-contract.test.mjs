@@ -14,17 +14,17 @@ test("home hero is large, friendly and truthful without becoming a technical das
   const [sections, content, css] = await Promise.all([
     readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/landing-content.ts", import.meta.url), "utf8"),
-    readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8"),
   ]);
   const hero = sliceBetween(sections, "export function HeroSection", "export function SimpleTrustFlowSection");
-  const h1Class = hero.match(/<h1 className="([^"]+)"/)?.[1];
-
-  assert.ok(h1Class, "hero H1 must keep an explicit responsive type scale");
-  const remSizes = [...h1Class.matchAll(/(\d+(?:\.\d+)?)rem/g)].map((match) => Number(match[1]));
+  assert.match(hero, /<h1 className=\{styles\.title\}/);
+  const titleRule = css.match(/\.title\s*\{([^}]+)\}/)?.[1];
+  assert.ok(titleRule, "hero H1 must keep an explicit responsive type scale");
+  const remSizes = [...titleRule.matchAll(/(\d+(?:\.\d+)?)rem/g)].map((match) => Number(match[1]));
   assert.ok(remSizes.length > 0, "hero H1 must expose auditable rem-based responsive sizes");
   assert.ok(Math.max(...remSizes) >= 4, "desktop hero H1 must reach at least 4rem");
-  assert.match(css, /\.landing-hero-section h1 \{[\s\S]{0,260}font-size:\s*clamp\(2\.85rem, 4\.5vw, 4\.25rem\) !important/);
-  assert.match(css, /\.landing-hero-section \.hero-subtitle \{[\s\S]{0,260}font-size:\s*clamp\(1rem, 1\.25vw, 1\.15rem\) !important/);
+  assert.match(css, /\.title\s*\{[^}]*font-size:\s*clamp\(/);
+  assert.match(css, /\.body\s*\{[^}]*line-height:\s*1\.8/);
   assert.match(sections, /import nexIdDppHero from "\.\.\/\.\.\/public\/landing\/nexid-dpp-hero-v3\.webp"/);
   assert.match(hero, /src=\{nexIdDppHero\}/);
   assert.doesNotMatch(hero, /InstitutionalVideoPanel/);
@@ -37,12 +37,9 @@ test("home hero is large, friendly and truthful without becoming a technical das
     assert.doesNotMatch(body, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
     assert.doesNotMatch(body, /physical product|producto físico|produto físico/i);
   }
-  assert.match(content, /title: "El futuro de la trazabilidad para tu producto\."/);
-  assert.match(content, /title: "O futuro da rastreabilidade para o seu produto\."/);
-  assert.match(content, /title: "The future of traceability for your product\."/);
-  assert.match(heroBodies[0], /Pasaporte Digital: identidad, información, historia y trazabilidad declaradas/i);
-  assert.match(heroBodies[1], /Passaporte Digital: identidade, informação, história e rastreabilidade declaradas/i);
-  assert.match(heroBodies[2], /Digital Product Passport: identity, information, history and traceability/i);
+  assert.match(heroBodies[0], /identidad, historia y trazabilidad declaradas según cada rol/i);
+  assert.match(heroBodies[1], /identidade, história e rastreabilidade declaradas conforme cada papel/i);
+  assert.match(heroBodies[2], /identity, history and declared traceability according to each role/i);
   for (const body of heroBodies) assert.doesNotMatch(body, /cumple|compliant|certified|certificado/i);
   for (const body of heroBodies) assert.doesNotMatch(body, /piloto|pilot/i);
 });

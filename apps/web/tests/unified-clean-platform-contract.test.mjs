@@ -10,7 +10,7 @@ test("unified release preserves the approved clean home composition", async () =
   ]);
 
   assert.match(layout, /nexID \| Pasaporte digital de producto y trazabilidad/);
-  assert.match(home, /className="site-header landing-mega-header/);
+  assert.match(home, /className=\{`site-header landing-mega-header/);
   assert.match(home, /<HeroSection content=\{content\} locale=\{locale\} \/>/);
   assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);
@@ -68,7 +68,7 @@ test("clean home keeps its CTA group semantic and readable light footer copy", a
     readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(sections, /className="hero-post-video-actions[^\"]*" role="group" aria-label=/);
+  assert.match(sections, /className=\{styles\.actions\} role="group" aria-label=/);
   assert.match(
     styles,
     /html\.theme-light \.site-footer-meta,[\s\S]*?html\[data-theme="light"\] \.site-footer-meta \{[\s\S]*?color: #5b6d82;/,

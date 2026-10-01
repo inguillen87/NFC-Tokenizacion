@@ -14,7 +14,7 @@ test("the hero uses the approved NFC artwork without loading an interactive expl
   assert.match(home, /import nexIdDppHero from "\.\.\/\.\.\/public\/landing\/nexid-dpp-hero-v3\.webp"/);
   assert.match(home, /src=\{nexIdDppHero\}/);
   assert.match(home, /placeholder="blur"/);
-  assert.match(home, /className="hero-immersive-image"/);
+  assert.match(home, /className=\{styles\.image\}/);
   assert.match(home, /<HeroImmersiveSignal locale=\{locale\} \/>/);
   assert.match(home, /aria-hidden="true"/);
   assert.doesNotMatch(home, /HeroValueLoop|framer-motion|setInterval|IntersectionObserver/);

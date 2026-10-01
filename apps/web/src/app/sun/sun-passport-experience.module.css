@@ -1,58 +1,60 @@
 .passport {
-  --passport-ink: #f8fafc;
-  --passport-muted: #b3c2d5;
-  --passport-accent: #67e8f9;
+  --passport-ink: #edf4f6;
+  --passport-muted: #adbec8;
+  --passport-accent: #8bd8c3;
   --passport-warning: #fcd34d;
-  --passport-line: rgba(103, 232, 249, 0.22);
-  --passport-media: linear-gradient(145deg, #122b41, #101a30);
-  --passport-product: radial-gradient(ellipse at 0% 0%, rgba(45, 212, 191, 0.15), transparent 75%), #102338;
-  --passport-surface: #0e1d30;
-  --passport-closed: #6ee7b7;
-  --passport-closed-bg: #0d302b;
+  --passport-line: #31454e;
+  --passport-media: #1d333c;
+  --passport-product: #142630;
+  --passport-surface: #142630;
+  --passport-closed: #93dfbd;
+  --passport-closed-bg: #15332d;
   --passport-attention: #fcd34d;
   --passport-attention-bg: #322818;
-  --passport-info: #67e8f9;
-  --passport-info-bg: #102c3d;
+  --passport-info: #8bd8c3;
+  --passport-info-bg: #192f3b;
   --passport-risk: #fda4af;
   --passport-risk-bg: #351f2c;
 }
 
 :global(html:is(.theme-light, [data-theme="light"])) .passport {
-  --passport-ink: #10233f;
-  --passport-muted: #52657a;
-  --passport-accent: #087c91;
+  --passport-ink: #17313b;
+  --passport-muted: #536972;
+  --passport-accent: #086f62;
   --passport-warning: #92400e;
-  --passport-line: rgba(8, 124, 145, 0.22);
-  --passport-media: linear-gradient(145deg, #f4fdff, #e0f4f4);
-  --passport-product: radial-gradient(ellipse at 0% 0%, rgba(13, 148, 136, 0.12), transparent 75%), #f2fafb;
+  --passport-line: #d6e1de;
+  --passport-media: #eef4f1;
+  --passport-product: #ffffff;
   --passport-surface: #ffffff;
   --passport-closed: #086148;
-  --passport-closed-bg: #e9f8f0;
+  --passport-closed-bg: #edf7f1;
   --passport-attention: #8a4708;
   --passport-attention-bg: #fff5de;
-  --passport-info: #07647a;
-  --passport-info-bg: #eaf7fc;
+  --passport-info: #29596b;
+  --passport-info-bg: #edf4f7;
   --passport-risk: #a52140;
   --passport-risk-bg: #fff0f2;
 }
 
 .passport :global(.sun-summary-panel) {
   border-color: var(--passport-line);
-  box-shadow: 0 18px 52px rgba(8, 47, 73, 0.14);
+  box-shadow: 0 4px 16px rgba(8, 32, 33, 0.04);
 }
 
 .passport:global(.sun-tap-shell) :global(.sun-summary-product) {
-  padding: 0.75rem;
-  border: 1px solid var(--passport-line);
-  border-radius: 1.15rem;
-  background: var(--passport-product);
+  padding: 0.25rem 0 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--passport-line);
+  border-radius: 0;
+  background: transparent;
 }
 
 .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual) {
   height: 8rem !important;
   border-color: var(--passport-line) !important;
   background: var(--passport-media) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 16px rgba(8, 47, 73, 0.1);
+  border-radius: 0.75rem;
+  box-shadow: none;
 }
 
 .passport :global(.sun-summary-product__copy) {
@@ -64,21 +66,25 @@
 }
 
 .passport :global(.sun-summary-product__copy) > p:first-of-type {
-  font-size: 0.69rem;
-  letter-spacing: 0.13em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  text-transform: none;
+  color: var(--passport-muted) !important;
 }
 
 .passport :global(.sun-summary-product__title) {
   font-size: clamp(1.45rem, 6.2vw, 1.8rem) !important;
-  font-weight: 900;
-  line-height: 1.08 !important;
-  letter-spacing: -0.035em;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  line-height: 1.12 !important;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
 .passport :global(.sun-summary-product__copy) > p:last-of-type {
-  font-size: 0.75rem;
-  line-height: 1.45;
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
 .passport :global(.sun-summary-product__copy) > span {
@@ -118,14 +124,14 @@
 /* Specificity keeps the scoped palette above legacy global light-mode rules. */
 .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-status)[data-status-tone] {
   border-color: var(--status-ink) !important;
-  border-left-width: 4px;
+  border-left-width: 3px;
   background: var(--status-surface) !important;
   box-shadow: none;
 }
 
 .passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] :global(.sun-summary-status__icon) {
-  border-color: var(--status-ink) !important;
-  background: var(--passport-surface) !important;
+  border-color: transparent !important;
+  background: transparent !important;
   color: var(--status-ink) !important;
 }
 
@@ -138,8 +144,8 @@
 }
 
 .passport :global(.sun-summary-status__copy) {
-  font-size: 0.8125rem !important;
-  line-height: 1.55 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
 }
 
 .passport [data-testid="sun-summary-facts"] dt {
@@ -202,14 +208,14 @@
   flex-wrap: wrap;
   padding: 0.75rem;
   gap: 0.4rem 0.7rem;
-  border-color: #087c91 !important;
-  background: linear-gradient(120deg, #087c91, #155eaa) !important;
+  border-color: #086f62 !important;
+  background: #086f62 !important;
   color: #fff !important;
   font-size: 0.8125rem;
   font-weight: 850;
   line-height: 1.4;
   text-align: left;
-  box-shadow: 0 6px 18px rgba(8, 124, 145, 0.16);
+  box-shadow: 0 2px 6px rgba(8, 65, 55, 0.12);
 }
 
 .passport:global(.sun-tap-shell) [data-testid="sun-location-consent-cta"] > span {
@@ -393,7 +399,7 @@
 }
 
 .passport :global(.sun-mobile-dock) a[aria-current="location"] {
-  box-shadow: inset 0 3px 0 var(--passport-accent);
+  box-shadow: inset 0 -2px 0 var(--passport-accent);
 }
 
 @container (max-width: 280px) {
@@ -408,15 +414,28 @@
 
 /* Readable first viewport: product + verification + optional location precede detail. */
 @media(max-width:640px){
- .passport:global(.sun-tap-shell) :global(.sun-summary-product){padding:10px;gap:12px}
+ .passport:global(.sun-tap-shell) :global(.sun-summary-product){padding:4px 0 12px;gap:12px}
  .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual){height:6.25rem!important}
  .passport :global(.sun-summary-product__title){font-size:clamp(1.35rem,5.5vw,1.7rem)!important}
  .passport :global(.sun-summary-status){padding:12px!important}
  .passport :global(.sun-summary-status__headline){font-size:1.2rem!important}
- .passport :global(.sun-summary-status__copy){font-size:12px!important;line-height:1.5!important;margin-top:7px!important}
+ .passport :global(.sun-summary-status__copy){font-size:14px!important;line-height:1.55!important;margin-top:8px!important}
  .passport :global(.sun-summary-panel){gap:12px!important;padding:14px!important}
  .passport :global(.sun-summary-facts){margin-top:8px}
  .passport :global(.sun-main-body){padding-bottom:calc(100px + env(safe-area-inset-bottom))}
 }
 
 :global(html.theme-light) .passport :global(.sun-account-entry),:global(html[data-theme="light"]) .passport :global(.sun-account-entry){color:#075869;background:#eefafd;border-color:#8db9c8}
+
+/* SUN alone uses a quiet canvas; the underlying data and map geometry are unchanged. */
+:global(.sun-tap-experience):has(.passport) { background: #0d1b24 !important; }
+:global(html:is(.theme-light, [data-theme="light"])) :global(.sun-tap-experience):has(.passport) { background: #f5f8f6 !important; }
+:global(.sun-tap-experience):has(.passport) > :global(.absolute) { opacity: .12; }
+.passport:global(.sun-tap-shell) :global(.sun-summary-panel) { background: var(--passport-surface) !important; border-color: var(--passport-line) !important; border-radius: 1.25rem; box-shadow: 0 4px 16px rgba(8, 32, 33, .04) !important; backdrop-filter: none; }
+.passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] { border-color: color-mix(in srgb, var(--status-ink) 28%, var(--passport-line)) !important; border-left-color: var(--status-ink) !important; border-radius: .875rem; }
+.passport:global(.sun-tap-shell) :global(.sun-summary-location) { background: var(--passport-product) !important; border-color: var(--passport-line) !important; border-radius: .875rem; box-shadow: none; }
+.passport :global(.sun-summary-location) p { font-size: .8125rem; }
+.passport :global(.sun-summary-status__headline) { font-weight: 750; }
+.passport :global(.sun-summary-actions) a { font-size: .875rem; font-weight: 650; border-radius: .75rem; box-shadow: none; }
+.passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:first-child { background: #086f62 !important; border-color: #086f62 !important; color: #ffffff !important; }
+.passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:nth-child(2) { background: var(--passport-surface) !important; border-color: var(--passport-line) !important; color: var(--passport-ink) !important; }

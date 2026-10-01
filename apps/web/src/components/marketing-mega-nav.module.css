@@ -1,13 +1,13 @@
 .navigation {
-  --nav-text: #10233f;
-  --nav-muted: #5f7086;
+  --nav-text: #172f39;
+  --nav-muted: #526772;
   --nav-border: rgba(15, 35, 63, 0.12);
   --nav-border-strong: rgba(8, 145, 178, 0.28);
   --nav-surface: #ffffff;
   --nav-surface-soft: #f6fafc;
-  --nav-accent: #087f8c;
-  --nav-accent-strong: #075f6a;
-  --nav-accent-soft: #eaf9fa;
+  --nav-accent: #087f78;
+  --nav-accent-strong: #086b66;
+  --nav-accent-soft: #ecf6f3;
   --nav-shadow: 0 28px 80px rgba(15, 35, 63, 0.16), 0 8px 24px rgba(15, 35, 63, 0.08);
   position: static;
   display: flex;
@@ -20,14 +20,14 @@
 }
 
 :global(html[data-theme="dark"]) .navigation {
-  --nav-text: #edf6ff;
-  --nav-muted: #a7b5c8;
+  --nav-text: #edf5f4;
+  --nav-muted: #b4c6ca;
   --nav-border: rgba(255, 255, 255, 0.12);
   --nav-border-strong: rgba(103, 232, 249, 0.28);
   --nav-surface: #0a1424;
   --nav-surface-soft: #101d30;
-  --nav-accent: #67e8f9;
-  --nav-accent-strong: #a5f3fc;
+  --nav-accent: #64d9c7;
+  --nav-accent-strong: #8aeadb;
   --nav-accent-soft: rgba(8, 145, 178, 0.13);
   --nav-shadow: 0 28px 80px rgba(0, 0, 0, 0.42), 0 8px 24px rgba(0, 0, 0, 0.24);
 }
@@ -297,14 +297,14 @@
 }
 
 .headerCta {
-  border: 1px solid #0a7884;
-  background: #0b7e89;
+  border: 1px solid #087f78;
+  background: #087f78;
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(8, 127, 140, 0.18);
+  box-shadow: none;
 }
 
 .headerCta:hover {
-  background: #096a75;
+  background: #086b66;
   transform: translateY(-1px);
 }
 

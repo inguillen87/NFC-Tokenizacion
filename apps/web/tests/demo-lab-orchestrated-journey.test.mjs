@@ -106,11 +106,18 @@ test("Packaging is the public Demo Lab taxonomy while the legacy perfume key rem
 });
 
 test("the guided journey is keyboard-visible, responsive and motion-safe", async () => {
-  const css = await readFile(journeyCssUrl, "utf8");
+  const [css, journey] = await Promise.all([
+    readFile(journeyCssUrl, "utf8"),
+    readFile(journeyUrl, "utf8"),
+  ]);
 
   assert.match(css, /\.journey button:focus-visible,[\s\S]*\.journey a:focus-visible/);
   assert.match(css, /@media \(max-width: 640px\)/);
-  assert.match(css, /\.productSelector > div:last-child\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(journey, /<label className=\{styles\.productSelect\}>[\s\S]*<select value=\{productKey\}/);
+  assert.match(journey, /isDemoProductProfileKey\(event\.target\.value\)\) chooseProduct\(event\.target\.value\)/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.productChoices\s*\{\s*display: none/);
+  assert.match(css, /\.productSelect select\s*\{[^}]*min-height:\s*3rem;[^}]*font-size:\s*1rem/);
+  assert.match(css, /\.journey select:focus-visible/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /animation-duration:\s*0\.01ms !important/);
   assert.match(css, /:global\(\.demo-lab-hub-root--light\) \.journey/);

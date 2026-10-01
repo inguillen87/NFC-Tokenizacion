@@ -14,19 +14,20 @@ const [home, content, signal, journey, visuals, css, ...packagingAssets] = await
   stat(new URL("../public/landing/connected-journey/packaging-journey-03.webp", import.meta.url)),
 ]);
 
-test("the home hero is white-first and uses explicit semantic theme surfaces", () => {
+test("the home hero uses isolated semantic surfaces and a labelled illustration", async () => {
   const hero = home.slice(home.indexOf("export function HeroSection"), home.indexOf("export function SimpleTrustFlowSection"));
-  const enterpriseHero = css.slice(css.indexOf("/* Enterprise DPP hero:"));
+  const enterpriseHero = await readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8");
 
-  assert.match(hero, /className="landing-hero-section relative overflow-hidden border-b/);
+  assert.match(hero, /className=\{styles\.hero\}/);
   assert.doesNotMatch(hero, /bg-slate-950|border-white\/5|text-slate-400|text-white/);
-  assert.match(hero, /hero-eyebrow-chip/);
-  assert.match(hero, /hero-primary-action/);
-  assert.match(hero, /hero-secondary-action/);
-  assert.match(hero, /hero-proof-chip/);
-  assert.match(enterpriseHero, /\.landing-hero-section \{[\s\S]{0,520}linear-gradient\(180deg, #fbfeff/);
-  assert.match(enterpriseHero, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.landing-hero-section \{[\s\S]{0,520}linear-gradient\(180deg, #04101f/);
-  assert.match(enterpriseHero, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.hero-immersive-image \{[\s\S]{0,180}brightness\(0\.68\)/);
+  assert.match(hero, /styles\.eyebrow/);
+  assert.match(hero, /styles\.primary/);
+  assert.match(hero, /styles\.secondary/);
+  assert.match(hero, /styles\.proof/);
+  assert.match(hero, /Experiencia NFC ilustrativa/);
+  assert.match(enterpriseHero, /--hero-paper: #f7faf9/);
+  assert.match(enterpriseHero, /html\[data-theme="dark"\][\s\S]*--hero-paper: #10282f/);
+  assert.match(enterpriseHero, /max-width: 760px/);
 });
 
 test("the hero names both physical anchors and animates a bidirectional multicolor exchange", () => {
@@ -49,7 +50,7 @@ test("the hero names both physical anchors and animates a bidirectional multicol
 
 test("DPP copy stays concise while the three-step section owns the explanation", () => {
   assert.match(content, /Pasaporte Digital de Producto · Trazabilidad conectada/);
-  assert.match(content, /nexID conecta cada producto con su Pasaporte Digital: identidad, información, historia y trazabilidad declaradas/);
+  assert.match(content, /identidad, historia y trazabilidad declaradas según cada rol/);
   assert.match(home, /Del producto a su pasaporte, en tres momentos/);
   assert.match(home, /seguí un único producto/);
   assert.doesNotMatch(home, /venta|conversión|funnel|recompra/i);

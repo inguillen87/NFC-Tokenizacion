@@ -1,0 +1,17 @@
+.header:global(.landing-mega-header.site-header) {
+  background: #fff !important;
+  color: #172f39;
+  border-color: #dae7e7 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.header:global(.landing-mega-header) :global(.header-main-row) { min-height: 76px; padding-block: 12px; }
+:global(html[data-theme="dark"]) .header:global(.landing-mega-header.site-header) {
+  background: #10282f !important;
+  color: #edf5f4;
+  border-color: #294249 !important;
+}
+@media (max-width: 760px) {
+  .header:global(.landing-mega-header) :global(.header-main-row) { min-height: 64px; padding-block: 8px; }
+  .header:global(.landing-mega-header) :global(.site-brand-lockup) { transform: none; }
+}

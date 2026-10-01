@@ -1,0 +1,522 @@
+.surface {
+  --lab-bg: #101a18;
+  --lab-panel: #14201f;
+  --lab-soft: #1c2d28;
+  --lab-text: #edf3ef;
+  --lab-muted: #b8c8c0;
+  --lab-line: #364b43;
+  --lab-accent: #a2d8c9;
+  --lab-on-accent: #153b2e;
+  background: var(--lab-bg) !important;
+  color: var(--lab-text) !important;
+  font-family: var(--font-geist-sans, Arial), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* The legacy Demo Lab theme sheet uses !important. Keep this override scoped. */
+.surface:global(.demo-lab-hub-root):global(.demo-lab-hub-root--light),
+.surface:global(.demo-lab-hub-root),
+.surface:global(.demo-lab-fullscreen-root):global(.demo-lab-fullscreen-root--light),
+.surface:global(.demo-lab-fullscreen-root) {
+  background: var(--lab-bg) !important;
+  color: var(--lab-text) !important;
+}
+
+.surface:global(.demo-lab-fullscreen-root) :global(.demo-lab-fullscreen-stage),
+.surface:global(.demo-lab-fullscreen-root) :global(.demo-lab-infobar) {
+  background: var(--lab-bg) !important;
+  border-color: var(--lab-line) !important;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-fullscreen-root) :global(.demo-lab-fullscreen-bg) {
+  display: none;
+}
+
+.surface:global(.demo-lab-fullscreen-root) .surface:global(.demo-lab-shell) :global(.demo-lab-studio),
+.surface:global(.demo-lab-fullscreen-root) .surface:global(.demo-lab-shell) :global(.demo-lab-mode-bar),
+.surface:global(.demo-lab-fullscreen-root) .surface:global(.demo-lab-shell) :global(.demo-lab-wizard-result-card),
+.surface:global(.demo-lab-fullscreen-root) .surface:global(.demo-lab-shell) :global(.demo-lab-wizard-events) {
+  background: var(--lab-panel) !important;
+  border-color: var(--lab-line) !important;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.theme-toggle),
+.surface:global(.demo-lab-fullscreen-root) :global(.theme-toggle) {
+  min-width: 2.75rem !important;
+  min-height: 2.75rem !important;
+  width: 2.75rem !important;
+  height: 2.75rem !important;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-mode-legend) > div > span {
+  color: var(--lab-accent) !important;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-scenario-mode),
+.surface:global(.demo-lab-fullscreen-root) :global(.demo-lab-scenario-mode) {
+  border-color: var(--lab-line) !important;
+  background: var(--lab-soft) !important;
+  color: var(--lab-text) !important;
+  opacity: 1;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.surface:global(.demo-lab-fullscreen-root) :global(.demo-lab-context-strip__trigger) > span {
+  color: var(--lab-muted) !important;
+}
+
+.surface:global(.demo-lab-hub-root--light),
+.surface:global(.demo-lab-fullscreen-root--light),
+:global(.demo-lab-fullscreen-root--light) .surface {
+  --lab-bg: #f7f9f6;
+  --lab-panel: #ffffff;
+  --lab-soft: #edf3ee;
+  --lab-text: #19372f;
+  --lab-muted: #52665e;
+  --lab-line: #d4dfd8;
+  --lab-accent: #246c5b;
+  --lab-on-accent: #ffffff;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav) {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem max(1rem, calc((100vw - 1120px) / 2));
+  border-color: var(--lab-line) !important;
+  background: var(--lab-panel) !important;
+  backdrop-filter: none;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.headerLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem !important;
+  color: var(--lab-muted) !important;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.headerLink:hover {
+  background: var(--lab-soft) !important;
+  color: var(--lab-text) !important;
+}
+
+.scheduleLink {
+  border-color: var(--lab-line) !important;
+  color: var(--lab-text) !important;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav) .headerLink {
+  border-color: var(--lab-line) !important;
+  background: var(--lab-panel) !important;
+  color: var(--lab-text) !important;
+}
+
+.content {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 2.25rem 1.5rem 4rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.65fr) minmax(0, 1.35fr);
+  column-gap: 2rem;
+  margin-bottom: 1.75rem;
+  text-align: left;
+}
+
+.eyebrow {
+  margin: 0 0 0.45rem;
+  color: var(--lab-accent) !important;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  color: var(--lab-text) !important;
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  font-weight: 650;
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+}
+
+.lede {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  max-width: 65ch;
+  margin: 0;
+  color: var(--lab-muted) !important;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-advanced) {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--lab-line);
+  border-radius: 0.7rem !important;
+  background: var(--lab-panel) !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-advanced) > summary {
+  min-height: 2.75rem;
+  color: var(--lab-text) !important;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-card) {
+  min-height: 11rem;
+  padding: 1.1rem;
+  border-color: var(--lab-line) !important;
+  border-radius: 0.55rem !important;
+  background: var(--lab-panel) !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  transform: none;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-card):hover {
+  border-color: var(--lab-accent) !important;
+  background: var(--lab-soft) !important;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-card__icon) {
+  border-radius: 0.45rem !important;
+  background: var(--lab-soft) !important;
+  color: var(--lab-accent) !important;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-card__cta) {
+  color: var(--lab-accent) !important;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.surface:global(.demo-lab-shell) {
+  padding-top: 1.25rem;
+  padding-bottom: 2rem;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-mode-bar),
+.surface:global(.demo-lab-shell) :global(.demo-lab-studio) {
+  border: 1px solid var(--lab-line);
+  border-radius: 0.75rem !important;
+  background: var(--lab-panel) !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-mode-bar) {
+  margin-bottom: 1rem;
+  gap: 0.75rem;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-mode-tab) {
+  min-height: 2.75rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--lab-line);
+  border-radius: 0.4rem !important;
+  background: var(--lab-panel) !important;
+  color: var(--lab-muted) !important;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-mode-tab.is-active) {
+  border-color: var(--lab-accent) !important;
+  background: var(--lab-soft) !important;
+  color: var(--lab-text) !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-nav) {
+  top: 0;
+  margin: 0;
+  padding: 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--lab-line);
+  border-radius: 0 !important;
+  background: var(--lab-panel) !important;
+  backdrop-filter: none;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-step-pill),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-nav-back) {
+  min-height: 2.75rem;
+  border-radius: 0.4rem !important;
+  border-color: var(--lab-line) !important;
+  background: var(--lab-panel) !important;
+  color: var(--lab-muted) !important;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-step-pill.is-active) {
+  border-color: var(--lab-accent) !important;
+  background: var(--lab-soft) !important;
+  color: var(--lab-text) !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-brief),
+.surface:global(.demo-lab-shell) :global(.demo-lab-trust-switcher),
+.surface:global(.demo-lab-shell) :global(.demo-lab-mobile-product-switcher) {
+  border-color: var(--lab-line) !important;
+  border-radius: 0.45rem !important;
+  background: var(--lab-soft) !important;
+  color: var(--lab-text) !important;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-scene) {
+  min-height: auto;
+  padding: 1.25rem;
+  gap: 1.25rem;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-context),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-result-card),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-events),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-trazo-side),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-gano-card) {
+  padding: 1.25rem;
+  border-color: var(--lab-line) !important;
+  border-radius: 0.6rem !important;
+  background: var(--lab-panel) !important;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-product-name),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-result-status) {
+  color: var(--lab-text) !important;
+  font-size: clamp(1.75rem, 3.2vw, 2.6rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-tagline),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-result-desc) {
+  color: var(--lab-muted) !important;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-eyebrow) {
+  color: var(--lab-accent) !important;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-next-btn),
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-primary-cta) {
+  min-height: 3rem;
+  border-color: var(--lab-accent) !important;
+  border-radius: 0.45rem !important;
+  background: var(--lab-accent) !important;
+  color: var(--lab-on-accent) !important;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-tap-btn) {
+  border-color: var(--lab-accent) !important;
+  background: var(--lab-soft) !important;
+  color: var(--lab-accent) !important;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-tap-ring) {
+  display: none;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-vertical-btn) {
+  min-height: 3rem;
+  border-color: var(--lab-line) !important;
+  border-radius: 0.4rem !important;
+  background: var(--lab-panel) !important;
+  color: var(--lab-muted) !important;
+  box-shadow: none !important;
+}
+
+.surface:global(.demo-lab-shell) :global(.demo-lab-wizard-vertical-btn.is-active) {
+  border-color: var(--lab-accent) !important;
+  background: var(--lab-soft) !important;
+  color: var(--lab-text) !important;
+}
+
+.previewLoading {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  color: var(--lab-muted) !important;
+  font-size: 0.9rem;
+}
+
+.surface button:focus-visible,
+.surface a:focus-visible,
+.surface select:focus-visible,
+.surface summary:focus-visible {
+  outline: 3px solid var(--lab-accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .surface:global(.demo-lab-fullscreen-root) :global(.demo-lab-infobar__right) :global(.demo-lab-scenario-mode) {
+    grid-column: 1 / -1;
+    justify-self: end;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe) {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center !important;
+    gap: 0.25rem !important;
+    padding: 0.4rem 0.75rem !important;
+  }
+
+  .surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe) > .headerActions {
+    display: flex !important;
+    width: auto !important;
+    margin-left: auto;
+    gap: 0.2rem !important;
+  }
+
+  .surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe) .scheduleLink {
+    width: auto !important;
+  }
+
+  .headerLink:not(.scheduleLink) > span {
+    display: none;
+  }
+
+  .headerLink:not(.scheduleLink) {
+    min-width: 2.75rem;
+  }
+
+  .surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav) :global(.theme-toggle) {
+    background: var(--lab-panel) !important;
+    border-color: var(--lab-line) !important;
+    color: var(--lab-accent) !important;
+  }
+
+  .headerLink {
+    padding: 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .content {
+    padding: 1.25rem 1rem 2rem;
+  }
+
+  .hero {
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .hero .eyebrow {
+    display: none;
+  }
+
+  .hero h1 {
+    font-size: 1.85rem;
+  }
+
+  .lede {
+    margin-top: 0.6rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .surface:global(.demo-lab-shell) :global(.demo-lab-wizard-scene) {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .surface:global(.demo-lab-shell) :global(.demo-lab-mode-tab) {
+    padding: 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .surface:global(.demo-lab-shell) :global(.demo-lab-wizard-context) {
+    padding: 1rem;
+  }
+
+  .surface:global(.demo-lab-shell) :global(.demo-lab-mobile-product-switcher) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.65rem !important;
+  }
+
+  .surface:global(.demo-lab-shell) :global(.demo-lab-mobile-product-switcher__copy) strong {
+    overflow: visible !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    color: var(--lab-text) !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
+  }
+
+  .surface:global(.demo-lab-shell) :global(.demo-lab-mobile-product-select) {
+    min-height: 3rem !important;
+    border-color: var(--lab-line) !important;
+    border-radius: 0.4rem !important;
+    background: var(--lab-panel) !important;
+    color: var(--lab-text) !important;
+  }
+
+  .surface:global(.demo-lab-shell) :global(.demo-lab-mobile-product-select) select {
+    min-height: 3rem !important;
+    color: var(--lab-text) !important;
+    font-size: 1rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface *,
+  .surface *::before,
+  .surface *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
