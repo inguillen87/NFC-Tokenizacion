@@ -52,3 +52,89 @@
   .identity { --identity-ink: CanvasText; --identity-face: Canvas; --identity-accent: Canvas; }
   .word span { color: CanvasText; }
 }
+
+/* Opt-in public identity uses the original artwork; compact static callers
+   retain the accepted passport/account presentation above. */
+.originalIdentity { display: inline-flex; align-items: center; max-width: 100%; }
+.originalIdentity .originalLockup,
+.originalIdentity .originalMark {
+  --brand-accent: #087f8c;
+  --brand-dot-color: #087f8c;
+  --brand-dot-glow: rgba(8, 127, 140, .32);
+  --brand-mark-bg: linear-gradient(145deg, #fff, #dff8ff 54%, #eef2ff);
+  --brand-mark-border: rgba(8, 127, 140, .28);
+  --brand-wordmark-main: #172f39;
+  --brand-wordmark-main-hi: #172f39;
+  --brand-wordmark-main-lo: #35545f;
+  --brand-wordmark-accent: #087f78;
+  --brand-wordmark-accent-hi: #087f8c;
+  --brand-wordmark-accent-lo: #086b66;
+  --brand-wordmark-orbit: rgba(8, 127, 140, .55);
+  color: #172f39;
+}
+.originalIdentity .originalLockup { min-width: 0; max-width: 100%; gap: .75rem; }
+.originalIdentity :global(.brand-mark),
+.originalIdentity .originalMark { width: var(--identity-size) !important; height: var(--identity-size) !important; flex-shrink: 0; }
+.originalIdentity :global(.brand-wordmark-svg) {
+  width: calc(var(--identity-size) * 3.1) !important;
+  height: calc(var(--identity-size) * .806) !important;
+  max-width: none !important;
+  flex-shrink: 0;
+}
+:global(html[data-theme="dark"]) .originalIdentity .originalLockup,
+:global(html[data-theme="dark"]) .originalIdentity .originalMark,
+:global(html:not([data-theme])) .originalIdentity[data-identity-theme="dark"] .originalLockup,
+:global(html:not([data-theme])) .originalIdentity[data-identity-theme="dark"] .originalMark {
+  --brand-accent: #2fe1c3;
+  --brand-dot-color: #2fe1c3;
+  --brand-dot-glow: rgba(47, 225, 195, .45);
+  --brand-mark-bg: linear-gradient(145deg, #0b1220, #112b39);
+  --brand-mark-border: rgba(103, 232, 249, .32);
+  --brand-wordmark-main: #edf6f5;
+  --brand-wordmark-main-hi: #fff;
+  --brand-wordmark-main-lo: #c7e4e1;
+  --brand-wordmark-accent: #2fe1c3;
+  --brand-wordmark-accent-hi: #67e8f9;
+  --brand-wordmark-accent-lo: #64d9c7;
+  --brand-wordmark-orbit: rgba(47, 225, 195, .6);
+  color: #edf6f5;
+}
+/* Explicit document theme outranks the legacy theme prop and global classes. */
+:global(html[data-theme="light"]) .originalIdentity .originalLockup,
+:global(html[data-theme="light"]) .originalIdentity .originalMark {
+  --brand-accent: #087f8c;
+  --brand-dot-color: #087f8c;
+  --brand-dot-glow: rgba(8, 127, 140, .32);
+  --brand-mark-bg: linear-gradient(145deg, #fff, #dff8ff 54%, #eef2ff);
+  --brand-mark-border: rgba(8, 127, 140, .28);
+  --brand-wordmark-main: #172f39;
+  --brand-wordmark-main-hi: #172f39;
+  --brand-wordmark-main-lo: #35545f;
+  --brand-wordmark-accent: #087f78;
+  --brand-wordmark-accent-hi: #087f8c;
+  --brand-wordmark-accent-lo: #086b66;
+  --brand-wordmark-orbit: rgba(8, 127, 140, .55);
+  color: #172f39;
+}
+.homeLink[data-brand-motion-active="false"] .originalIdentity,
+.homeLink[data-brand-motion-active="false"] .originalIdentity *,
+.homeLink[data-brand-motion-active="false"] .originalIdentity *::before,
+.homeLink[data-brand-motion-active="false"] .originalIdentity *::after { animation-play-state: paused !important; transition: none !important; }
+.homeLink[data-brand-motion-active="false"] .originalIdentity :global(.brand-mark) { transform: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .originalIdentity, .originalIdentity *, .originalIdentity *::before, .originalIdentity *::after { animation: none !important; transition: none !important; }
+  .originalIdentity :global(.brand-mark) { transform: none !important; }
+}
+@media (forced-colors: active) {
+  .originalIdentity .originalLockup, .originalIdentity .originalMark {
+    --brand-wordmark-main: CanvasText;
+    --brand-wordmark-main-hi: CanvasText;
+    --brand-wordmark-main-lo: CanvasText;
+    --brand-wordmark-accent: CanvasText;
+    --brand-wordmark-accent-hi: CanvasText;
+    --brand-wordmark-accent-lo: CanvasText;
+    --brand-mark-bg: Canvas;
+    --brand-accent: CanvasText;
+    color: CanvasText;
+  }
+}

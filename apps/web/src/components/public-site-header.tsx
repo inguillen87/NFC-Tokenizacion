@@ -28,9 +28,9 @@ export async function PublicSiteHeader() {
         <div className="container-shell header-main-row flex items-center justify-between gap-4">
           <BrandHomeLink
             locale={locale}
-            size={44}
-            variant="static"
-            theme="light"
+            size={64}
+            variant="pulse"
+            theme={initialTheme}
             brandClassName="site-brand-identity"
             className="landing-brand-link"
           />

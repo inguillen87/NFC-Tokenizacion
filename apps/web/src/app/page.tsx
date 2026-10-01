@@ -110,9 +110,9 @@ export default async function HomePage() {
           <BrandHomeLink
             ariaLabel={footerCopy.home}
             locale={locale}
-            size={44}
-            variant="static"
-            theme="light"
+            size={64}
+            variant="pulse"
+            theme={initialTheme}
             brandClassName="site-brand-identity"
             className="landing-brand-link"
           />
@@ -142,7 +142,7 @@ export default async function HomePage() {
             <BrandHomeLink
               ariaLabel={footerCopy.home}
               locale={locale}
-              size={42}
+              size={54}
               variant="ripple"
               theme="dark"
               brandClassName="hero-brand brand-surface-footer"
