@@ -69,6 +69,11 @@
   color: var(--lab-muted) !important;
 }
 
+.surface:global(.demo-lab-shell) .executionLabel {
+  background: var(--lab-panel) !important;
+  color: var(--lab-accent) !important;
+}
+
 .surface:global(.demo-lab-hub-root--light),
 .surface:global(.demo-lab-fullscreen-root--light),
 :global(.demo-lab-fullscreen-root--light) .surface {

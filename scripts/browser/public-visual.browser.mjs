@@ -199,6 +199,48 @@ try {
       report.views.push({path,width,theme,locale,file,heading,lede,axe:axeResult});
     }finally{await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));}
   }
+  // Exercise the actual specialized fullscreen route. Its execution label is
+  // separate from the hub's scenario pills and requires a measurable surface.
+  for(const width of [320,1440]) for(const theme of ['light','dark']) {
+    const path='/demo-lab?scenario=nfc-424',name=`fullscreen nfc-424 ${width} ${theme}`;
+    const context=await browser.newContext({viewport:{width,height:width===320?844:900},locale:'es-AR',isMobile:width===320,hasTouch:width===320,reducedMotion:'reduce',serviceWorkers:'block'});
+    await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
+    const page=await context.newPage();
+    page.on('pageerror',e=>report.errors.push({name,error:e.message.replace(/https?:\/\/\S+/g,'[url]').slice(0,180)}));
+    await page.addInitScript(()=>{window.__geoRequests=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__geoRequests++;},watchPosition(){window.__geoRequests++;},clearWatch(){}}});});
+    await page.route('**/*',route=>{
+      const req=route.request(),url=new URL(req.url());
+      if(req.method()!=='GET'){report.blockedWrites.push({name,method:req.method(),path:url.pathname});return route.abort();}
+      if(/(?:^|\/)sun(?:\/|$)/.test(url.pathname)||['snapshot','access','fresh','fresh_handoff','cmac','picc_data','sdm'].some(key=>url.searchParams.has(key))){report.blockedSensitiveReads.push({name,path:url.pathname});return route.abort();}
+      if(url.origin!==origin||url.pathname.startsWith('/api/'))return route.abort();
+      return route.continue();
+    });
+    try {
+      const response=await page.goto(origin+path,{waitUntil:'networkidle',timeout:45000});
+      await page.locator('.demo-lab-studio').waitFor({timeout:20000});await stable(page);
+      check(response?.status()===200,'Fullscreen route renders '+name);
+      check(await page.locator('html').getAttribute('data-theme')===theme,'Fullscreen theme is retained '+name);
+      check(await page.locator('main').evaluateAll(nodes=>nodes.filter(node=>node.getClientRects().length).length===1),'Fullscreen has one visible main '+name);
+      check(await page.locator('.demo-lab-wizard-scene').evaluateAll(nodes=>nodes.filter(node=>node.getClientRects().length).length===1),'Specialized fullscreen scene is rendered '+name);
+      check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Fullscreen has no horizontal overflow '+name);
+      const mode=page.locator('.demo-lab-mode-tab').first();
+      await mode.focus();await page.keyboard.press('Enter');await stable(page);
+      const modeState=await mode.evaluate(node=>({native:node instanceof HTMLButtonElement,pressed:node.getAttribute('aria-pressed')==='true',focused:document.activeElement===node}));
+      check(modeState.native&&modeState.pressed&&modeState.focused,'Fullscreen simulator retains native keyboard focus '+name,modeState);
+      const badge=page.locator('[data-demo-execution-badge]');
+      check(await badge.count()===1&&await badge.isVisible(),'Fullscreen execution badge is visible '+name);
+      const badgeState=await badge.getAttribute('data-demo-execution-badge'),badgeText=(await badge.innerText()).trim();
+      check(badgeText.length>0&&['not_started','synthetic_preview'].includes(badgeState),'Fullscreen label preserves current illustrative execution state '+name,{state:badgeState,text:badgeText});
+      const surface=await badge.evaluate(node=>{const style=getComputedStyle(node);const rgba=style.backgroundColor.match(/[\d.]+/g)?.map(Number);return{background:style.backgroundColor,backgroundImage:style.backgroundImage,opacity:style.opacity,alpha:rgba?.[3]??1};});
+      check(surface.alpha===1&&surface.backgroundImage==='none'&&surface.opacity==='1','Fullscreen execution badge has an opaque measurable background '+name,surface);
+      const executionBadge=await contrast(page,'[data-demo-execution-badge]');
+      check(!executionBadge.indeterminate&&executionBadge.ratio>=4.5,'Fullscreen execution badge has measurable AA contrast '+name,executionBadge);
+      const axeResult=await audit(page,null,'fullscreen page '+name);
+      check(await page.evaluate(()=>window.__geoRequests===0),'Fullscreen requests no geolocation '+name);
+      const file=`fullscreen-nfc-424-${width}-${theme}.png`;await page.screenshot({path:join(output,file),fullPage:true});
+      report.views.push({path,scenario:'nfc-424',width,theme,file,executionState:badgeState,executionBadge,axe:axeResult});
+    } finally {await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));}
+  }
   check(report.errors.length===0,'No browser exceptions',report.errors);
   check(report.blockedWrites.filter(r=>r.path!=='/cdn-cgi/rum').length===0,'No attempted business writes',report.blockedWrites);
 } finally {await browser.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));}

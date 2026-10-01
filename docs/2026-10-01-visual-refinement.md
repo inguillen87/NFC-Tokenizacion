@@ -8,6 +8,7 @@ Base: `5ddce259a4413d5fa60320cef7b2ffc975a8690a`, árbol de la versión publicad
 - Marca web: símbolo Ni y nombre nexID planos, sin filtros SVG ni animaciones permanentes. Enlace al inicio con nombre accesible y sin precarga de la landing desde SUN.
 - Navegación pública: superficies sólidas, un acento teal y botones consistentes. Menús, destinos, idioma, tema y contacto conservados.
 - Demo Lab: siguiente paso junto al producto, selector nativo en móvil y explicación conceptual desplegable. Catálogo, simulaciones, fuentes y distinción entre evidencia real e ilustración conservados.
+- La etiqueta de ejecución de Demo Lab conserva su estado y texto, con color legible sobre un fondo opaco en ambos temas. La aceptación incluye la pantalla avanzada NFC real a 320 y 1440 px, además de landing, hub, menú y catálogo desplegado.
 - SUN móvil: menos cajas y brillos; tipografía, estados y acciones más legibles en claro y oscuro. Los colores de advertencia y riesgo siguen diferenciados.
 
 ## Medición y aceptación

@@ -2098,7 +2098,7 @@ function DemoLabStudioHero({
             <div className={`demo-lab-wizard-result-icon grid h-20 w-20 place-items-center rounded-3xl ${hasVerifiedExecution ? "bg-emerald-500/15 text-emerald-200" : "bg-amber-500/15 text-amber-100"}`}>
               {hasVerifiedExecution ? <ShieldCheck size={64} /> : <Cpu size={58} />}
             </div>
-            <p className={`mt-4 text-xs font-black uppercase tracking-[0.16em] ${hasVerifiedExecution ? "text-emerald-200" : "text-amber-200"}`}>{executionTruthCopy.badge}</p>
+            <p data-demo-execution-badge={executionTruthState} className={`${surfaceStyles.executionLabel} mt-4 text-xs font-black uppercase tracking-[0.16em] ${hasVerifiedExecution ? "text-emerald-200" : "text-amber-200"}`}>{executionTruthCopy.badge}</p>
             <h2 className="demo-lab-wizard-result-status mt-2 text-3xl font-black leading-none text-white md:text-5xl">{executionTruthCopy.title}</h2>
             <div className="demo-lab-wizard-result-pills mt-4 flex flex-wrap gap-2">
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">🌍 Valle de Uco, Argentina</span>
