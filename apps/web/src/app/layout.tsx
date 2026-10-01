@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import "maplibre-gl/dist/maplibre-gl.css";
-import "./globals.css";
+import "./generated/root-base.css";
 import { siteConfig } from "@product/config";
 import { ContextualHelpBot } from "../components/contextual-helpbot";
 import { PwaInstallPrompt } from "../components/pwa-install-prompt";
