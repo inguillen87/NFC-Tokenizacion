@@ -1,3 +1,5 @@
+import {after} from 'next/server';
+import {readSunPresentation,timedSunResponse} from '../../lib/sun-presentation-read';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -3104,6 +3106,9 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
 }
 
 export async function GET(req: Request): Promise<Response> {
+ return timedSunResponse("sun_total",()=>handleSunRequest(req));
+}
+async function handleSunRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const meta = getRequestMeta(req);
   const traceId = meta.traceId;
@@ -3194,6 +3199,7 @@ export async function GET(req: Request): Promise<Response> {
     },
   };
   const sunScanInput = {
+    afterResponse: after,
     bid,
     piccDataHex: picc_data,
     encHex: enc,
@@ -3261,7 +3267,7 @@ export async function GET(req: Request): Promise<Response> {
       lng: edgeCoordinate.lng,
       city: geoCity,
       country: geoCountry,
-    }).catch(() => false);
+    }, undefined, after).catch(() => false);
   }
   if (uid && ctr != null) {
     const uidCtrRate = await safeHitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
@@ -3280,21 +3286,13 @@ export async function GET(req: Request): Promise<Response> {
       );
     }
   }
-  const tagPassport = await withTimeout(getPassportSnapshot(bid, uid || undefined), 2500, "sun_passport_snapshot").catch(() => null);
-  const batchContext = tagPassport
-    ? null
-    : await withTimeout(getBatchSunContext(bid), 2500, "sun_batch_context").catch(() => null);
-  const passport = tagPassport || batchContext;
-  const [timeline, sdkSensorTimeline, hasTokenizeRequest] = await Promise.all([
-    withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]),
-    withTimeout(getSdkSensorTimelineSummary({ tenantId: passport?.tenant_id, bid, uid }), 2500, "sun_sdk_sensor_timeline")
-      .catch(() => [] as TimelineEvent[]),
-    uid
-      ? withTimeout(listDemoCta(bid, uid), 2500, "sun_cta_status")
-        .then((actions) => actions.some((item) => String(item.action || "") === "tokenize_request"))
-        .catch(() => false)
-      : Promise.resolve(false),
-  ]);
+  const {passport,timeline,sdkSensorTimeline,hasTokenizeRequest}=await readSunPresentation({
+    passport:()=>withTimeout(getPassportSnapshot(bid,uid||undefined),2500,"sun_passport_snapshot").catch(()=>null),
+    fallback:()=>withTimeout(getBatchSunContext(bid),2500,"sun_batch_context").catch(()=>null),
+    timeline:()=>withTimeout(getTimelineSummary(bid,uid||undefined),2500,"sun_timeline_summary").catch(()=>[] as TimelineEvent[]),
+    sensors:(passport)=>withTimeout(getSdkSensorTimelineSummary({tenantId:passport?.tenant_id,bid,uid}),2500,"sun_sdk_sensor_timeline").catch(()=>[] as TimelineEvent[]),
+    actions:()=>uid?withTimeout(listDemoCta(bid, uid),2500,"sun_cta_status").then(actions=>actions.some((item) => String(item.action || "") === "tokenize_request")).catch(()=>false):Promise.resolve(false),
+  });
   const contract = buildPublicContract({
     bid,
     uid,

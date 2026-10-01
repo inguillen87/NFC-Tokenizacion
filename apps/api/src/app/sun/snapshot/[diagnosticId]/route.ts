@@ -1,3 +1,4 @@
+import {timedSunResponse} from '../../../../lib/sun-presentation-read';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -5,7 +6,10 @@ import { json } from "../../../../lib/http";
 import { getSunDiagnosticSnapshot } from "../../../../lib/sun-diagnostics";
 import { verifySunSnapshotAccessToken } from "../../../../lib/sun-fresh-handoff";
 
-export async function GET(req: Request, { params }: { params: Promise<{ diagnosticId: string }> }) {
+export async function GET(req: Request, context: { params: Promise<{ diagnosticId: string }> }) {
+ return timedSunResponse("sun_snapshot",()=>readSnapshot(req,context));
+}
+async function readSnapshot(req: Request, { params }: { params: Promise<{ diagnosticId: string }> }) {
   const { diagnosticId } = await params;
   const url = new URL(req.url);
   const trace = String(url.searchParams.get("trace") || "").trim();
