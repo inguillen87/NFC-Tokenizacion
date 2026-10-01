@@ -21,7 +21,7 @@ async function assessment(page,selector,name,width,theme){
  await page.addScriptTag({content:axe});
  const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),selector);
  check(violations.length===0,`${width}/${theme} ${name}: zero axe violations`);
- await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'});
+ await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'});
  report.views.push({width,theme,name,violations});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
@@ -97,6 +97,14 @@ try{
   report.experienceControls??=[];report.experienceControls.push({width,theme,buttons:await experience.locator('button').evaluateAll(elements=>elements.map(element=>({text:element.textContent.trim(),visible:element.getClientRects().length>0,height:element.getBoundingClientRect().height,fontSize:getComputedStyle(element).fontSize,minHeight:getComputedStyle(element).minHeight}))),fields:await experience.locator('input:not([type="radio"]):not([type="file"]),textarea,select').evaluateAll(elements=>elements.map(element=>({name:element.getAttribute('aria-label')||element.getAttribute('placeholder'),fontSize:getComputedStyle(element).fontSize}))) });
   check(await experience.locator('input:not([type="radio"]):not([type="file"]),textarea,select').evaluateAll(elements=>elements.length>0&&elements.filter(element=>element.getClientRects().length).every(element=>parseFloat(getComputedStyle(element).fontSize)>=16)),`${width}/${theme} actual experience fields use 16px text`);
   check(await experience.locator('button').evaluateAll(elements=>elements.length>0&&elements.filter(element=>element.getClientRects().length).every(element=>element.getBoundingClientRect().height>=44)),`${width}/${theme} actual experience actions have 44px targets`);
+  const introContrast=await experience.evaluate(root=>{
+   const channels=color=>color.match(/[\d.]+/g)?.map(Number)||[],luminance=rgb=>rgb.slice(0,3).map(value=>value/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4).reduce((value,channel,index)=>value+channel*[.2126,.7152,.0722][index],0);
+   const style=getComputedStyle(root),background=channels(style.backgroundColor),heading=root.querySelector('h2'),paragraph=heading?.nextElementSibling;
+   const ratio=element=>{const foreground=channels(getComputedStyle(element).color);if((background[3]??1)<1||(foreground[3]??1)<1)return null;const a=luminance(foreground),b=luminance(background);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
+   return {backgroundColor:style.backgroundColor,backgroundImage:style.backgroundImage,headingColor:getComputedStyle(heading).color,paragraphColor:getComputedStyle(paragraph).color,headingRatio:ratio(heading),paragraphRatio:ratio(paragraph)};
+  });
+  report.experienceControls.at(-1).introContrast=introContrast;
+  check(introContrast.headingRatio>=3&&introContrast.paragraphRatio>=4.5,`${width}/${theme} actual experience heading and introduction have readable contrast against form background`);
   await noOverflow(page,`${width}/${theme} actual experience fits viewport`);await assessment(page,'[data-testid="verified-experience-form"]','experience',width,theme);
   await context.close();
  }

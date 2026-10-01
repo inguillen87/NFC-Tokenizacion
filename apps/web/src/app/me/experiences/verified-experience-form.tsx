@@ -3,6 +3,7 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Camera, CheckCircle2, Link2, MessageSquareText, Send, ShieldCheck, Star, X } from "lucide-react";
 import { requestConsumerJson } from "../../../lib/consumer-request";
+import styles from "./verified-experience-form.module.css";
 
 type Props = {
   initialEventId?: string;
@@ -225,81 +226,77 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
   }
 
   return (
-    <section data-testid="verified-experience-form" className="rounded-3xl border border-emerald-300/20 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.2),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.97))] p-5 shadow-2xl shadow-emerald-950/20 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Dejar experiencia verificada</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Compartí tu experiencia con la marca.</h2>
-          <p className="mt-2 text-sm leading-6 text-emerald-50/82">
+    <section data-testid="verified-experience-form" className={styles.experience}>
+      <div className={styles.header}>
+        <div className={styles.introBlock}>
+          <p className={styles.eyebrow}>Dejar experiencia verificada</p>
+          <h2 className={styles.heading}>Compartí tu experiencia con la marca.</h2>
+          <p className={styles.intro}>
             Tu comentario queda asociado a tu cuenta y al registro del producto.
             La marca revisa la información antes de publicarla.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm text-slate-200">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-emerald-200" aria-hidden="true" />
-            <span className="font-black text-white">Con revisión de la marca</span>
+        <div className={styles.reviewNote}>
+          <div className={styles.noteTitle}>
+            <ShieldCheck className={styles.icon} aria-hidden="true" />
+            <span>Con revisión de la marca</span>
           </div>
-          <p className="mt-2 text-xs leading-5 text-slate-400">
+          <p className={styles.muted}>
             Podés consultar el estado de tu comentario en Mis experiencias.
           </p>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Producto</p>
-          <p className="mt-2 text-lg font-black text-white">{initialProductName || "Producto asociado"}</p>
-          <p className="mt-1 text-xs text-slate-400">{tenant ? `Marca: ${tenant}` : "Club de marca"}</p>
-          <div className="mt-4 grid gap-2">
+      <div className={styles.layout}>
+        <div className={styles.panel}>
+          <p className={styles.fieldLabel}>Producto</p>
+          <p className={styles.productName}>{initialProductName || "Producto asociado"}</p>
+          <p className={styles.muted}>{tenant ? `Marca: ${tenant}` : "Club de marca"}</p>
+          <div className={styles.metadata}>
             {[
               ["Referencia de lectura", eventId ? `#${eventId}; se comprueba al enviar` : "Pendiente"],
               ["Cuenta", "Requiere acceso al Pasaporte"],
               ["Publicacion", "Privada hasta moderacion"],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.13em] text-cyan-200">{label}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-200">{value}</p>
+              <div key={label} className={styles.metadataRow}>
+                <p className={styles.fieldLabel}>{label}</p>
+                <p className={styles.metadataValue}>{value}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <form className="space-y-3" aria-busy={state === "sending" || preparingPhoto} onSubmit={(event) => { event.preventDefault(); void submitExperience(); }}>
-          <fieldset disabled={state === "sending"} className="min-w-0 space-y-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-            <label className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Estrellas</label>
-            <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Puntaje">
+        <form className={styles.form} aria-busy={state === "sending" || preparingPhoto} onSubmit={(event) => { event.preventDefault(); void submitExperience(); }}>
+          <fieldset disabled={state === "sending"} className={styles.fields}>
+          <div className={styles.panel}>
+            <span className={styles.fieldLabel}>Estrellas</span>
+            <div className={styles.rating} role="radiogroup" aria-label="Puntaje">
               {[1, 2, 3, 4, 5].map((value) => (
                 <label
                   key={value}
-                  className={`inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border transition focus-within:ring-2 focus-within:ring-cyan-300 ${
-                    value <= rating
-                      ? "border-amber-300/45 bg-amber-500/20 text-amber-100"
-                      : "border-white/10 bg-white/[0.03] text-slate-500 hover:text-amber-100"
-                  }`}
+                  className={`${styles.star} ${value <= rating ? styles.starSelected : ""}`}
                 >
                   <input type="radio" name="experience-rating" value={value} checked={value === rating} onChange={() => setRating(value)} aria-label={`${value} ${value === 1 ? "estrella" : "estrellas"}`} className="sr-only" />
-                  <Star className="h-5 w-5 fill-current" aria-hidden="true" />
+                  <Star className={styles.starIcon} aria-hidden="true" />
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-              <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Titulo corto</span>
+          <div className={styles.fieldGrid}>
+            <label className={styles.panel}>
+              <span className={styles.fieldLabel}>Titulo corto</span>
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 maxLength={96}
                 placeholder="Ej: Excelente guarda"
-                className="mt-3 min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-base font-semibold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
+                className={styles.control}
               />
             </label>
-            <div className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-              <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Foto opcional</span>
-              <p className="mt-2 text-xs leading-5 text-slate-500">
+            <div className={styles.panel}>
+              <span className={styles.fieldLabel}>Foto opcional</span>
+              <p className={styles.muted}>
                 Agregá una foto del producto. En el teléfono podés usar la cámara.
               </p>
               <input
@@ -311,31 +308,31 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
                 className="sr-only"
                 onChange={handlePhotoFile}
               />
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className={styles.photoActions}>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-400/18"
+                  className={styles.secondaryButton}
                 >
-                  <Camera className="h-4 w-4" aria-hidden="true" />
+                  <Camera className={styles.icon} aria-hidden="true" />
                   Subir foto
                 </button>
                 {photoUrl || preparingPhoto ? (
                   <button
                     type="button"
                     onClick={clearPhoto}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-slate-200 transition hover:bg-white/[0.08]"
+                    className={styles.secondaryButton}
                   >
-                    <X className="h-4 w-4" aria-hidden="true" />
+                    <X className={styles.icon} aria-hidden="true" />
                     Quitar
                   </button>
                 ) : null}
               </div>
-              <p className="mt-2 text-[11px] font-semibold text-slate-500">
+              <p className={styles.muted}>
                 {preparingPhoto ? photoFileName : photoFileName ? `Foto lista: ${photoFileName}` : "Tambien podes pegar un link de imagen si ya la tenes subida."}
               </p>
-              <div className="mt-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+              <div className={styles.linkLabel}>
+                <Link2 className={styles.icon} aria-hidden="true" />
                 Link opcional
               </div>
               <input
@@ -350,16 +347,16 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
                   setPhotoUrl(event.target.value);
                 }}
                 placeholder="https://..."
-                className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-base font-semibold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className={styles.control}
               />
-              {photoError ? <p className="mt-2 text-xs font-semibold text-rose-200" role="alert">{photoError}</p> : null}
-              {preparingPhoto ? <p role="status" className="mt-2 text-xs text-cyan-100">Preparando tu foto antes de enviar…</p> : null}
+              {photoError ? <p className={styles.fieldError} role="alert">{photoError}</p> : null}
+              {preparingPhoto ? <p role="status" className={styles.photoStatus}>Preparando tu foto antes de enviar…</p> : null}
             </div>
           </div>
 
-          <label className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-            <span id="experience-comment-label" className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
-              <MessageSquareText className="h-4 w-4" aria-hidden="true" />
+          <label className={styles.panel}>
+            <span id="experience-comment-label" className={styles.linkLabel}>
+              <MessageSquareText className={styles.icon} aria-hidden="true" />
               Comentario
             </span>
             <textarea
@@ -369,20 +366,20 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
               maxLength={1200}
               rows={5}
               placeholder="Contale a otra persona que va a comprar: como lo viviste, que te gusto, si lo recomendarias y para que ocasion."
-              className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-base font-semibold leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
+              className={styles.control}
             />
           </label>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="max-w-xl text-xs leading-5 text-slate-400">
+          <div className={styles.submitRow}>
+            <p className={styles.muted}>
               Se guarda privada, se modera, y despues puede aparecer como experiencia verificada en producto, marketplace y club.
             </p>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-45"
+              className={styles.submitButton}
             >
-              <Send className="h-4 w-4" aria-hidden="true" />
+              <Send className={styles.icon} aria-hidden="true" />
               {state === "sending" ? "Enviando experiencia…" : "Enviar experiencia"}
             </button>
           </div>
@@ -391,20 +388,14 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
           {message ? (
             <div
               role={state === "error" ? "alert" : "status"}
-              className={`flex items-start gap-3 rounded-2xl border p-4 text-sm ${
-                state === "success"
-                  ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-50"
-                  : state === "error"
-                    ? "border-rose-300/30 bg-rose-500/10 text-rose-50"
-                    : "border-cyan-300/30 bg-cyan-500/10 text-cyan-50"
-              }`}
+              className={`${styles.feedback} ${state === "success" ? styles.success : state === "error" ? styles.error : styles.pending}`}
             >
-              {state === "success" ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /> : <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />}
+              {state === "success" ? <CheckCircle2 className={styles.icon} aria-hidden="true" /> : <AlertCircle className={styles.icon} aria-hidden="true" />}
               <p>
                 {message}
-                {createdTrust !== null ? <span className="ml-2 font-black">Trust {createdTrust}/100</span> : null}
+                {createdTrust !== null ? <span className={styles.trustScore}>Trust {createdTrust}/100</span> : null}
               </p>
-              {state === "error" ? <a href="/me/experiences" className="font-semibold underline">Consultar mis experiencias</a> : null}
+              {state === "error" ? <a href="/me/experiences" className={styles.recoveryLink}>Consultar mis experiencias</a> : null}
             </div>
           ) : null}
         </form>
