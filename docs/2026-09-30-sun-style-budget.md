@@ -21,3 +21,6 @@ En ese build, el stylesheet principal baja de 229.415 a 109.138 bytes con la mis
 El código de API, de SUN, del mapa, sus créditos y controles, la ubicación consentida y el dashboard permanecen intactos. No hay cambios de dependencias, migraciones, claves NFC, permisos ni datos de clientes. Los estilos completos siguen disponibles al navegar por el resto del sitio; la mejora se centra en una entrada fría directamente a SUN.
 
 Referencia de integración de CSS por rutas y orden de importación: https://nextjs.org/docs/app/getting-started/css . Se prueba la compilación de producción, no sólo el servidor de desarrollo.
+
+## Comparación de estilos en CI
+El primer ensayo de CI detectó una diferencia transitoria de color al reemplazar la hoja de referencia: el propio ensayo retiraba el CSS activo mientras descargaba el completo. Se cambió esa maniobra por una sustitución atómica: primero carga la referencia sin aplicarla, luego la activa en el mismo lugar y retira la anterior. Las aserciones de igualdad y el presupuesto no se relajaron; se vuelve a ejecutar el conjunto sobre el commit corregido. Esta modificación afecta al comparador, no al CSS ni a los componentes productivos.
