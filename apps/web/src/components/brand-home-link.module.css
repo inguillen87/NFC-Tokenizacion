@@ -1,0 +1,54 @@
+.homeLink {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  text-decoration: none;
+  outline-offset: 5px;
+}
+.homeLink:focus-visible { outline: 3px solid #087f8c; }
+:global(html[data-theme="dark"]) .homeLink:focus-visible { outline-color: #64d9c7; }
+.identity {
+  --identity-ink: #112d35;
+  --identity-face: #fff;
+  --identity-accent: #52d9c2;
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(9px, calc(var(--identity-size) * .24), 15px);
+  color: var(--identity-ink);
+}
+.mark { width: var(--identity-size); height: var(--identity-size); flex-shrink: 0; }
+.word {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(24px, calc(var(--identity-size) * .64), 40px);
+  font-weight: 760;
+  letter-spacing: -.065em;
+  line-height: 1;
+}
+.word span { color: #087f78; letter-spacing: -.075em; }
+:global(html[data-theme="dark"]) .identity,
+:global(html:not([data-theme])) .identity[data-identity-theme="dark"] {
+  --identity-ink: #edf6f5;
+  --identity-face: #102d33;
+  --identity-accent: #087f78;
+}
+:global(html[data-theme="dark"]) .word span,
+:global(html:not([data-theme])) .identity[data-identity-theme="dark"] .word span { color: #52d9c2; }
+/* The preference cookie remains authoritative on light pages with legacy theme props. */
+:global(html[data-theme="light"]) .identity {
+  --identity-ink: #112d35;
+  --identity-face: #fff;
+  --identity-accent: #52d9c2;
+}
+:global(html[data-theme="light"]) .word span { color: #087f78; }
+@media (max-width: 760px) {
+  .identity { --identity-size: 36px !important; }
+  .word { font-size: 27px; }
+}
+@media (forced-colors: active) {
+  .homeLink:focus-visible { outline-color: Highlight; }
+  .identity { --identity-ink: CanvasText; --identity-face: Canvas; --identity-accent: Canvas; }
+  .word span { color: CanvasText; }
+}

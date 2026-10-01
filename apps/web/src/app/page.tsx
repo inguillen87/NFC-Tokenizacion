@@ -7,6 +7,8 @@ import {
   CommercialValueSection,
 } from "../components/home-sections";
 import { BrandHomeLink } from "../components/brand-home-link";
+import headerStyles from "../components/public-site-header.module.css";
+import homeStyles from "../components/home-sections.module.css";
 import { MarketingMegaNav } from "../components/marketing-mega-nav";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
@@ -101,17 +103,17 @@ export default async function HomePage() {
       };
 
   return (
-    <div className="landing-root">
+    <div className={`landing-root ${homeStyles.landing}`}>
       <a href="#main-content" className="landing-skip-link">{skipLabel}</a>
-      <header className="site-header landing-mega-header sticky top-0 z-50 border-b">
+      <header className={`site-header landing-mega-header sticky top-0 z-50 border-b ${headerStyles.header}`}>
         <div className="container-shell header-main-row flex items-center justify-between gap-4">
           <BrandHomeLink
             ariaLabel={footerCopy.home}
             locale={locale}
-            size={64}
+            size={44}
             variant="static"
             theme="light"
-            brandClassName="site-brand-lockup"
+            brandClassName="site-brand-identity"
             className="landing-brand-link"
           />
           <MarketingMegaNav

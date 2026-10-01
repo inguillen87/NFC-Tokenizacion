@@ -5,6 +5,7 @@ import { getWebI18n } from "../lib/locale";
 import { BrandHomeLink } from "./brand-home-link";
 import { MarketingMegaNav } from "./marketing-mega-nav";
 import { PublicRouteContext } from "./public-route-context";
+import styles from "./public-site-header.module.css";
 
 export async function PublicSiteHeader() {
   const { locale, locales } = await getWebI18n();
@@ -23,14 +24,14 @@ export async function PublicSiteHeader() {
   return (
     <>
       <a href="#main-content" className="landing-skip-link">{skipLabel}</a>
-      <header className="site-header landing-mega-header public-site-header sticky top-0 z-50 border-b">
+      <header className={`site-header landing-mega-header public-site-header sticky top-0 z-50 border-b ${styles.header}`}>
         <div className="container-shell header-main-row flex items-center justify-between gap-4">
           <BrandHomeLink
             locale={locale}
-            size={64}
+            size={44}
             variant="static"
             theme="light"
-            brandClassName="site-brand-lockup"
+            brandClassName="site-brand-identity"
             className="landing-brand-link"
           />
           <MarketingMegaNav

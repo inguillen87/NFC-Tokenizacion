@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { cookies } from "next/headers";
 import type { ComponentType } from "react";
 import type { AppLocale } from "@product/config";
@@ -10,9 +11,11 @@ import {
   type DemoProductProfileKey,
 } from "../../../lib/demo-product-profiles";
 import { JsonLd } from "../../../components/json-ld";
-import { DemoLabClient } from "./demo-lab-client";
 import { DemoLabFeaturedJourney } from "./demo-lab-featured-journey";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
+import { BrandHomeLink } from "../../../components/brand-home-link";
+import surfaceStyles from "./demo-lab-surface.module.css";
+const DemoLabClient = dynamic(() => import("./demo-lab-client").then((module) => module.DemoLabClient));
 import {
   Box,
   Network,
@@ -851,7 +854,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
       : null;
 
     return (
-      <div className={`demo-lab-fullscreen-root ${demoThemeClass}`}>
+      <div className={`demo-lab-fullscreen-root ${demoThemeClass} ${surfaceStyles.surface}`}>
         {structuredData.map((schema) => (
           <JsonLd key={schema["@type"]} data={schema} />
         ))}
@@ -863,7 +866,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <div className="demo-lab-infobar__inner mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
             {/* Left: back + title */}
             <div className="demo-lab-infobar__left flex min-w-0 items-center gap-3">
-              <Link href="/demo-lab" className="demo-lab-infobar__back inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black uppercase tracking-wider text-slate-200">
+              <Link href="/demo-lab" aria-label={locale === "en" ? "Back to Demo Lab" : locale === "pt-BR" ? "Voltar ao Demo Lab" : "Volver al Demo Lab"} className="demo-lab-infobar__back inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black uppercase tracking-wider text-slate-200">
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Hub</span>
               </Link>
@@ -971,25 +974,14 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const hubThemeClass = requestedTheme === "light" ? "demo-lab-hub-root--light" : "";
 
   return (
-    <div className={`demo-lab-hub-root ${hubThemeClass} min-h-screen bg-[#03070f] text-white font-sans relative overflow-hidden`}>
+    <main className={`demo-lab-hub-root ${hubThemeClass} ${surfaceStyles.surface} min-h-screen font-sans relative`}>
       {structuredData.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}
-      <div className="demo-lab-hub-bg absolute inset-0 z-0 pointer-events-none" aria-hidden="true">
-        <div className="demo-lab-hub-bg__grid" />
-        <div className="demo-lab-hub-bg__scan" />
-      </div>
-
       {/* Top nav bar */}
       <nav className="demo-lab-hub-nav demo-lab-hub-nav--mobile-safe sticky top-0 z-50 grid min-h-[3.75rem] grid-cols-1 items-start justify-between gap-3 border-b border-white/[0.06] bg-[#03070f]/90 px-4 py-2 backdrop-blur-xl sm:grid-cols-[auto_minmax(0,1fr)] md:flex md:items-center">
-        <Link
-          href="/"
-          className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs font-black text-slate-300 transition-colors hover:border-cyan-300/40 hover:text-cyan-200"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>nexID</span>
-        </Link>
-        <div className="grid w-full min-w-0 justify-self-end grid-cols-[44px_auto] items-center justify-end gap-2 md:flex md:w-auto md:flex-wrap">
+        <BrandHomeLink locale={locale} theme={requestedTheme} size={30} />
+        <div className={surfaceStyles.headerActions}>
           <span className="hidden text-xs font-black uppercase tracking-[0.18em] text-slate-400 md:inline">
             Demo Lab
           </span>
@@ -998,7 +990,8 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <DemoLabThemeToggle initialTheme={requestedTheme} initialReturnTo={demoLabReturnTo} />
           <Link
             href={proofVerifierHref}
-            className="inline-flex min-h-10 items-center justify-self-end rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 text-xs font-black text-cyan-100 transition-colors hover:border-cyan-200/50 hover:bg-cyan-300/16 md:gap-2"
+            className={surfaceStyles.headerLink}
+            aria-label={hubShellCopy.proof}
           >
             <ShieldCheck className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{hubShellCopy.proof}</span>
@@ -1006,7 +999,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           </Link>
           <Link
             href="/?contact=demo#contact-modal"
-            className="col-span-2 inline-flex min-h-10 items-center justify-self-end gap-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-4 text-xs font-black tracking-wide text-slate-950 transition-all hover:brightness-110 md:col-span-1"
+            className={`${surfaceStyles.headerLink} ${surfaceStyles.scheduleLink}`}
           >
             {hubShellCopy.scheduleDemo}
             <ArrowRight className="w-3 h-3" />
@@ -1014,21 +1007,17 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
         </div>
       </nav>
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 md:py-16">
+      <div className={surfaceStyles.content}>
         {/* Header */}
-        <div className="mx-auto mb-8 max-w-3xl text-center md:mb-10">
-          <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-cyan-200">
+        <header className={surfaceStyles.hero}>
+          <p className={surfaceStyles.eyebrow}>
             {hubShellCopy.eyebrow}
           </p>
-          <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
-            <span className="demo-lab-hub-title-gradient text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-violet-400">
-              Demo Lab
-            </span>
-          </h1>
-          <p className="mx-auto max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
+          <h1>Demo Lab</h1>
+          <p className={surfaceStyles.lede}>
             {hubShellCopy.lede}
           </p>
-        </div>
+        </header>
 
         <DemoLabFeaturedJourney
           key={`${locale}-${initialProfile}`}
@@ -1275,6 +1264,6 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

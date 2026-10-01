@@ -28,6 +28,7 @@ import { useState } from "react";
 import type { AppLocale } from "@product/config";
 import {
   DEMO_PRODUCT_PROFILES,
+  isDemoProductProfileKey,
   type DemoExperienceAction,
   type DemoProductProfileKey,
 } from "../../../lib/demo-product-profiles";
@@ -534,7 +535,7 @@ export function DemoLabFeaturedJourney({
           <strong>{copy.productPrompt}</strong>
           <small>{copy.productHint}</small>
         </div>
-        <div role="group" aria-label={copy.productPrompt}>
+        <div className={styles.productChoices} role="group" aria-label={copy.productPrompt}>
           {(Object.keys(DEMO_PRODUCT_PROFILES) as DemoProductProfileKey[]).map((key) => {
             const item = DEMO_PRODUCT_PROFILES[key];
             return (
@@ -551,6 +552,16 @@ export function DemoLabFeaturedJourney({
             );
           })}
         </div>
+        <label className={styles.productSelect}>
+          <span>{copy.productPrompt}</span>
+          <select value={productKey} onChange={(event) => {
+            if (isDemoProductProfileKey(event.target.value)) chooseProduct(event.target.value);
+          }}>
+            {(Object.keys(DEMO_PRODUCT_PROFILES) as DemoProductProfileKey[]).map((key) => (
+              <option key={key} value={key}>{copy.productLabels[key]} · {DEMO_PRODUCT_PROFILES[key].name}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <nav className={styles.stepper} aria-label={copy.progressLabel}>
@@ -645,11 +656,6 @@ export function DemoLabFeaturedJourney({
           <h3 id="demo-lab-featured-step-title" tabIndex={-1}>{current.title}</h3>
           <p className={styles.panelBody}>{current.body}</p>
 
-          <div className={styles.conceptCard}>
-            <span><BadgeCheck aria-hidden="true" />{current.concept}</span>
-            <p>{current.conceptBody}</p>
-          </div>
-
           {step === 1 ? (
             <div className={styles.readout} role="region" aria-label={copy.readoutTitle}>
               <span className={styles.readoutTitle}>{copy.readoutTitle}</span>
@@ -734,6 +740,10 @@ export function DemoLabFeaturedJourney({
             ) : null}
           </div>
           <small className={styles.helper}>{copy.helper}</small>
+          <details className={styles.conceptCard}>
+            <summary><BookOpenCheck aria-hidden="true" />{current.concept}</summary>
+            <p>{current.conceptBody}</p>
+          </details>
         </div>
 
         {step === 3 ? (

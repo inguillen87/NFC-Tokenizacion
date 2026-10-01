@@ -30,7 +30,7 @@ const [
 
 test("brand marks use one accessible home-link contract on public surfaces", () => {
   assert.match(brandHomeLink, /href="\/"/);
-  assert.match(brandHomeLink, /min-h-11 min-w-11/);
+  assert.match(brandHomeLink, /styles\.homeLink/);
   assert.match(brandHomeLink, /data-brand-home-link/);
   assert.match(home, /<BrandHomeLink/);
   assert.match(publicHeader, /<BrandHomeLink/);

@@ -9,9 +9,9 @@ const proofSection = await readFile(new URL("../src/components/landing-proof-sec
 
 test("landing content scopes tap validation to digital evidence in ES, EN and PT", () => {
   const heroBodies = [...content.matchAll(/hero:\s*\{[^{}]*badge:\s*"[^"]+"[^{}]*body:\s*"([^"]+)"[^{}]*\}/g)].map((match) => match[1]);
-  assert.match(content, /Con NFC o QR, nexID conecta cada producto/);
-  assert.match(content, /Com NFC ou QR, a nexID conecta cada produto/);
-  assert.match(content, /With NFC or QR, nexID connects each product/);
+  assert.match(content, /Tu marca publica la información/);
+  assert.match(content, /Sua marca publica a informação/);
+  assert.match(content, /Your brand publishes the information/);
   assert.equal(heroBodies.length, 3);
   for (const heroBody of heroBodies) {
     assert.doesNotMatch(heroBody, /SUN|\bTT\b|hash-only|cumple|compliant|certified|certificado/i);

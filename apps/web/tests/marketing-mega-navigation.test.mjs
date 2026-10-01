@@ -102,8 +102,8 @@ test("public headers give the brand a responsive, prominent lockup on every view
     read("../src/components/marketing-mega-nav.module.css"),
   ]);
 
-  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{64\}/);
-  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{64\}/);
+  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{44\}/);
+  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{44\}/);
   assert.match(css, /\.landing-mega-header\s*\{[\s\S]{0,360}linear-gradient\(108deg[\s\S]{0,260}backdrop-filter: blur\(20px\) saturate\(145%\)/);
   assert.match(css, /html\.theme-dark \.landing-mega-header,[\s\S]{0,100}html\[data-theme="dark"\] \.landing-mega-header\s*\{[\s\S]{0,260}linear-gradient\(108deg/);
   assert.match(css, /\.landing-mega-header \.site-brand-lockup \.brand-wordmark-svg\s*\{[\s\S]{0,100}width: clamp\(11\.5rem, 15vw, 14\.5rem\)/);

@@ -64,11 +64,11 @@ test("landing trust layer cards open related proof experiences", async () => {
   assert.match(css, /\.enterprise-trust-layer-card--capability:not\(\.enterprise-trust-layer-card--mobile-sim\) \.trust-layer-sim\s*\{[\s\S]*display:\s*none/);
 });
 
-test("landing hero uses one commercial CTA and one in-page discovery CTA", async () => {
+test("landing hero uses one commercial CTA and one passport discovery CTA", async () => {
   const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const hero = await readFile(new URL("../src/components/hero-scene.tsx", import.meta.url), "utf8");
 
-  assert.match(sections, /href="#como-funciona"[^>]*>[\s\S]*\{hero\.primary\}/);
+  assert.match(sections, /href="\/demo-lab\?profile=wine"[^>]*>[\s\S]*\{hero\.primary\}/);
   assert.match(sections, /href="\/\?contact=demo#contact-modal"[^>]*>[\s\S]*\{hero\.secondary\}/);
   assert.doesNotMatch(sections, /href="\/docs"[^>]*>[\s\S]{0,100}\{secondaryCta\}/);
   assert.match(hero, /routeTitle: "RUTA DECLARADA · DEMO"/);
@@ -113,16 +113,16 @@ test("landing hero exposes two clear actions without repeating an institutional 
   const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
-  const mobileActionsIndex = sections.indexOf("hero-post-video-actions");
+  const mobileActionsIndex = sections.indexOf("styles.actions");
   assert.ok(mobileActionsIndex > -1, "expected accessible hero actions");
   assert.doesNotMatch(sections, /InstitutionalVideoPanel/);
   assert.match(sections, /Identidad por modelo, lote o unidad/);
   assert.doesNotMatch(sections, /<HeroScene|const heroStats = \[/);
-  assert.match(sections, /href="\/\?contact=demo#contact-modal" className="inline-flex min-h-12/);
-  assert.match(sections, /href="#como-funciona" className="inline-flex min-h-12/);
-  assert.doesNotMatch(sections, /hero-post-video-actions[\s\S]{0,1200}href="\/(?:proof\/verify|pricing|docs)"/);
+  assert.match(sections, /href="\/\?contact=demo#contact-modal" prefetch=\{false\} className=\{styles\.secondary\}/);
+  assert.match(sections, /href="\/demo-lab\?profile=wine" prefetch=\{false\} className=\{styles\.primary\}/);
+  assert.doesNotMatch(sections, /styles\.actions[\s\S]{0,1200}href="\/(?:proof\/verify|pricing|docs)"/);
   assert.doesNotMatch(sections, /mobileDocsCta|landing-mobile-hero-actions__muted/);
-  assert.match(sections, /className="hero-post-video-actions[^\"]*" role="group" aria-label=/);
+  assert.match(sections, /className=\{styles\.actions\} role="group" aria-label=/);
 });
 
 test("docs code console wraps long environment and hash lines on mobile", async () => {
