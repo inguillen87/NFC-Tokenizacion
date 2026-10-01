@@ -104,7 +104,7 @@ try{
    return {backgroundColor:style.backgroundColor,backgroundImage:style.backgroundImage,headingColor:getComputedStyle(heading).color,paragraphColor:getComputedStyle(paragraph).color,headingRatio:ratio(heading),paragraphRatio:ratio(paragraph)};
   });
   report.experienceControls.at(-1).introContrast=introContrast;
-  check(introContrast.headingRatio>=3&&introContrast.paragraphRatio>=4.5,`${width}/${theme} actual experience heading and introduction have readable contrast against form background`);
+  check(introContrast.backgroundImage==='none'&&introContrast.headingRatio>=3&&introContrast.paragraphRatio>=4.5,`${width}/${theme} actual experience heading and introduction have readable contrast against solid form background`);
   await noOverflow(page,`${width}/${theme} actual experience fits viewport`);await assessment(page,'[data-testid="verified-experience-form"]','experience',width,theme);
   await context.close();
  }
