@@ -55,7 +55,7 @@ body{margin:0;font:16px system-ui;overflow-anchor:none}#fixture-main{box-sizing:
 });
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe" });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
 const report = { localSyntheticDom: true, realReactComponent: true, baselineRef, physicalTapMeasured: false, checks: [], views: [], performance: [], errors: [] };
 const check = (passed, name) => { report.checks.push({ name, passed: Boolean(passed) }); assert.ok(passed, name); };
 const output = process.env.QA_OUTPUT;
