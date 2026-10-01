@@ -1,14 +1,14 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.01-web-sun-mobile.2",
-  "scope": "sun-mobile-bounded-location-feedback-deferred-tools-accessible-navigation-and-truthful-read-time",
-  "baseCommit": "4ba8eb2c23aa5df0f6308bac747c2ec176310af3",
+  "version": "2026.10.01-web-client-experience.1",
+  "scope": "sun-query-availability-consumer-access-product-library-navigation-and-confirmed-form-feedback",
+  "baseCommit": "5976b476cd61e7e9ab0f436fc1e0bbdfa4be02cd",
   "physicalTapCertification": "not-included",
   "requiredApiRelease": "2026.09.21-api-support.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.01-web-sun-mobile.2",
+  "release": "2026.10.01-web-client-experience.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1"
 }

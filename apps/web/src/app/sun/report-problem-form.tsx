@@ -30,6 +30,8 @@ function ReportProblemSession(props: ReportProblemProps) {
   const details = useRef<HTMLDetailsElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const description = useRef<HTMLTextAreaElement>(null);
+  const contact = useRef<HTMLInputElement>(null);
+  const category = useRef<HTMLSelectElement>(null);
   const requestLock = useRef(false);
   const mounted = useRef(false);
   const controller = useRef<AbortController | null>(null);
@@ -68,7 +70,9 @@ function ReportProblemSession(props: ReportProblemProps) {
     setFieldErrors(prepared.ok ? {} : prepared.errors);
     setPreparationError(!prepared.ok && prepared.reason ? prepared.reason : null);
     if (prepared.ok) { setReview(prepared.attempt); setOutcome(null); }
-    else description.current?.focus();
+    else if (prepared.errors.category) category.current?.focus();
+    else if (prepared.errors.description) description.current?.focus();
+    else if (prepared.errors.contact) contact.current?.focus();
   }
   async function confirm() {
     if (!ready || !review || requestLock.current) return;
@@ -124,11 +128,11 @@ function ReportProblemSession(props: ReportProblemProps) {
               {!lockedDetails && !outcome ? <button type="button" className={styles.secondary} onClick={edit}>{copy.edit}</button> : null}
             </div>
           </div> : <form onSubmit={prepare} noValidate>
-            <label className={styles.field} htmlFor="report-category"><span>{copy.category}</span><select id="report-category" value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })} aria-invalid={Boolean(fieldErrors.category)}>{REPORT_CATEGORIES.map(category => <option key={category} value={category}>{copy.categories[category]}</option>)}</select></label>
+            <label className={styles.field} htmlFor="report-category"><span>{copy.category}</span><select ref={category} id="report-category" value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })} aria-invalid={Boolean(fieldErrors.category)}>{REPORT_CATEGORIES.map(category => <option key={category} value={category}>{copy.categories[category]}</option>)}</select></label>
             <label className={styles.field} htmlFor="report-description"><span>{copy.description}</span><textarea ref={description} id="report-description" rows={5} maxLength={1500} required value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} aria-describedby={`report-description-help${fieldErrors.description ? " report-description-error" : ""}`} aria-invalid={Boolean(fieldErrors.description)} /></label>
             <p id="report-description-help" className={styles.help}>{copy.descriptionHelp} <span>{draft.description.length}/1500</span></p>
             {fieldErrors.description ? <p id="report-description-error" className={styles.fieldError}>{fieldError("description")}</p> : null}
-            <label className={styles.field} htmlFor="report-contact"><span>{copy.contact}</span><input id="report-contact" type="text" autoComplete="off" maxLength={320} value={draft.contact} onChange={event => setDraft({ ...draft, contact: event.target.value })} aria-describedby={`report-contact-help${fieldErrors.contact ? " report-contact-error" : ""}`} aria-invalid={Boolean(fieldErrors.contact)} /></label>
+            <label className={styles.field} htmlFor="report-contact"><span>{copy.contact}</span><input ref={contact} id="report-contact" type="text" autoComplete="off" maxLength={320} value={draft.contact} onChange={event => setDraft({ ...draft, contact: event.target.value })} aria-describedby={`report-contact-help${fieldErrors.contact ? " report-contact-error" : ""}`} aria-invalid={Boolean(fieldErrors.contact)} /></label>
             <p id="report-contact-help" className={styles.help}>{copy.contactHelp}</p>
             {fieldErrors.contact ? <p id="report-contact-error" className={styles.fieldError}>{fieldError("contact")}</p> : null}
             <p className={styles.privacy}>{copy.privacy}</p>

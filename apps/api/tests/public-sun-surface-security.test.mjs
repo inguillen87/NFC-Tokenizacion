@@ -164,7 +164,7 @@ test("public SUN markup escapes stored text and inline-script terminators", () =
   assert.doesNotMatch(sunRoute, /const bid = \$\{JSON\.stringify\(contract\.identity\.bid\)\}/);
 });
 
-test("snapshot lookup verifies the signed capability before reading diagnostics", () => {
+test("snapshot lookup verifies the signed capability before reading diagnostics", async () => {
   const verifyIndex = snapshotRoute.indexOf("verifySunSnapshotAccessToken");
   const readIndex = snapshotRoute.indexOf("getSunDiagnosticSnapshot(diagnosticId");
   assert.ok(verifyIndex > 0);
@@ -173,7 +173,14 @@ test("snapshot lookup verifies the signed capability before reading diagnostics"
   assert.match(snapshotRoute, /x-robots-tag/);
   assert.match(sunRoute, /createSunSnapshotAccessToken/);
   assert.match(sunRoute, /target\.searchParams\.set\("access", snapshotAccessToken/);
-  assert.match(webSunPage, /snapshotId && snapshotTrace && snapshotAccess/);
+  const { resolveSunEntry } = await import("../../web/src/app/sun/sun-availability.ts");
+  assert.match(webSunPage, /resolveSunEntry\(/);
+  assert.match(webSunPage, /if \(entry === "snapshot"\)/);
+  const complete = { isQrScan: false, demoRequested: false, snapshotId: "42", snapshotTrace: "synthetic", snapshotAccess: "synthetic", freshToken: "", dynamic: [] };
+  assert.equal(resolveSunEntry(complete), "snapshot");
+  for (const key of ["snapshotId", "snapshotTrace", "snapshotAccess"]) {
+    assert.equal(resolveSunEntry({ ...complete, [key]: "" }), "incomplete", key);
+  }
   assert.match(webSunPage, /&access=\$\{encodeURIComponent\(snapshotAccess\)\}/);
   assert.match(webNextConfig, /source: "\/sun"/);
   assert.match(webNextConfig, /Referrer-Policy", value: "no-referrer"/);

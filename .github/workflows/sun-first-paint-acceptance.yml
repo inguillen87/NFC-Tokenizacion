@@ -44,6 +44,9 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/section-navigation" node apps/web/tests/sun-section-navigation.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/deferred-tools" node apps/web/tests/sun-deferred-consumer-tools.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/deferred-tools-next" node apps/web/tests/sun-deferred-consumer-tools-next.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-access" node apps/web/tests/consumer-access.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-actions" node apps/web/tests/consumer-action-feedback.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal" node apps/web/tests/consumer-portal-experience.browser.mjs
           git diff --exit-code -- apps packages package.json package-lock.json
       - name: Upload synthetic browser evidence
         if: always()

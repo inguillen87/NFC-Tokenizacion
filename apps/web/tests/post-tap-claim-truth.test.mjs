@@ -7,9 +7,9 @@ const source = await readFile(new URL("../src/app/sun/cta-actions.tsx", import.m
 test("post-tap copy separates contact-channel confirmation from approved purchase and ownership", () => {
   assert.match(source, /Canal de contacto confirmado/);
   assert.match(source, /El codigo solo confirma el canal de contacto/);
-  assert.match(source, /Registro de comprador aprobado y asociado al tenant/);
+  assert.match(source, /Registro de comprador aprobado y asociado a la marca/);
   assert.match(source, /ownershipStatus === "claimed"/);
-  assert.match(source, /La propiedad y la garantia esperan el estado aprobado del backend/);
+  assert.match(source, /La propiedad y la garantia esperan la aprobación de la marca/);
   assert.doesNotMatch(source, /Identidad verificada/);
   assert.doesNotMatch(source, /continuar como comprador verificado/);
   assert.doesNotMatch(source, /Alta de comprador verificado/);

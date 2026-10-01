@@ -76,7 +76,7 @@ test("SUN location wraps and the two first actions are touch-safe", () => {
   assert.match(summary, /canRequestBrowserLocation && !hasConfirmedBrowserLocation/);
   assert.match(location, /Ver fuente y horario/);
 
-  assert.match(actions, /href="#product-info"[\s\S]*?Ver producto/);
+  assert.match(actions, /href=\{hasSourceResult \? "#product-info" : "#sun-availability-help"\}[\s\S]*?hasSourceResult \? "Ver producto" : "Qué puedo hacer"/);
   assert.match(actions, /!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic[\s\S]*?\? "#sun-condition"/);
   assert.match(actions, /"Entender apertura"[\s\S]*?"Ver origen y mapa"/);
   assert.equal((actions.slice(0,actions.indexOf("sun-account-entry")).match(/min-h-11/g) || []).length, 2);

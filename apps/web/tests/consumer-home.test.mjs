@@ -238,13 +238,20 @@ test("home themes have readable text pairs, visible focus, touch targets and red
 });
 
 const libraryModel = compile(readFileSync(new URL('../products/product-library-model.ts',dir),'utf8'));
+const currentNotices = compile(readFileSync(new URL('reading-current-notices.tsx',dir),'utf8'),{
+ '../../sun/product-notices':{ProductNoticePanel:()=>null},
+ '../products/product-library-model':libraryModel,
+ './reading-current-notices.module.css':{__esModule:true,default:styles},
+});
 const library = compile(readFileSync(new URL('../products/product-library.tsx',dir),'utf8'),{
  '../_components/consumer-home-model':model,
  '../_components/me-portal-interactive-client':client,
  '../../sun/product-notices':{ProductNoticePanel:()=>null},
+ '../_components/reading-current-notices':currentNotices,
  './product-library-model':libraryModel,
  './product-library.module.css':{__esModule:true,default:styles},
  'next/link':{__esModule:true,default:({children,prefetch,...props})=>React.createElement('a',props,children)},
+ 'next/navigation':{useSearchParams:()=>new URLSearchParams()},
 });
 const productsSource = readFileSync(new URL("../products/page.tsx", dir), "utf8");
 const productsCss = readFileSync(new URL("../products/products.module.css", dir), "utf8");
@@ -288,19 +295,26 @@ test("products unavailable is not an empty collection and supports a manual retr
   assert.doesNotMatch(emptyHtml, /No pudimos cargar|Reintentar carga|0 productos/);
 });
 
-test("products show actual metadata and real certificate/experience destinations without inferred product type or blockchain status", async () => {
+test("product cards show source identity and stored reading with one action; the saved ficha retains secondary destinations", async () => {
   const payload = list([{ product_name: "Filtro industrial", brand_name: "Empresa Agua", tenant_slug: "agua", bid: "B-200", image_url: "/images/filter.jpg", latest_tap_event_id: 88, latest_verdict: "VALID_OPENED", latest_city: "Mendoza", latest_country: "AR", ownership_record_status: "pending", created_at: "2026-09-06 01:22:29+00", latest_tap_at: "2026-09-06T02:22:29Z" }]);
   const html = renderToStaticMarkup(await loadProductsPage(payload).page({}));
   assert.match(html, /Filtro industrial/);
   assert.match(html, /Empresa Agua/);
-  assert.match(html, /href="\/me\/taps\/88"/);
-  assert.match(html, /href="\/me\/experiences\?tenant=agua&amp;eventId=88&amp;product=Filtro\+industrial"/);
-  assert.match(html, /href="\/me\/marketplace\?tenant=agua"/);
-  assert.match(html, /Solicitud pendiente/);
   assert.match(html, /Sello abierto reportado/);
-  assert.match(html, /01:22 UTC/);
+  assert.match(html, /02:22 UTC/);
   assert.match(html, /1 producto en esta lista/);
-  assert.match(html, /<details[^>]*><summary>Datos del registro/);
+  const card = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/)?.[1];
+  assert.ok(card);
+  assert.equal([...card.matchAll(/<button\b/g)].length, 1);
+  assert.match(card, /Abrir ficha y avisos de Filtro industrial/);
+  assert.doesNotMatch(card, /<nav|<details|href=/);
+  const ficha = renderToStaticMarkup(React.createElement(library.ProductPassportDialog,{product:model.buildHomeProductsSource(payload).data[0],onClose:()=>{}}));
+  assert.match(ficha, /href="\/me\/taps\/88"/);
+  assert.match(ficha, /href="\/me\/experiences\?tenant=agua&amp;eventId=88&amp;product=Filtro\+industrial"/);
+  assert.match(ficha, /href="\/me\/marketplace\?tenant=agua"/);
+  assert.match(ficha, /Solicitud pendiente/);
+  assert.match(ficha, /01:22 UTC/);
+  assert.match(ficha, /<details[^>]*><summary>Datos del registro/);
   assert.doesNotMatch(html, /active: true|assetScore|Sommelier|Acuñado|Polygon|Autenticación verificada|Total|Canjear Beneficios/);
 });
 
@@ -310,12 +324,32 @@ test("products missing metadata stay neutral and lack certificate/experience lin
   assert.match(html, /Marca no informada/);
   assert.match(html, /Estado no informado/);
   assert.match(html, /Fecha no informada/);
-  assert.match(html, /Consultar historial/);
+  assert.match(html, /Abrir ficha y avisos de Producto sin nombre reportado/);
+  const ficha = renderToStaticMarkup(React.createElement(library.ProductPassportDialog,{product:model.buildHomeProductsSource(list([{}])).data[0],onClose:()=>{}}));
+  assert.match(ficha, /Consultar historial/);
+  assert.match(ficha, /No se presume que el producto esté libre de restricciones/);
   assert.doesNotMatch(html, /href="\/certificado|href="\/me\/experiences|<img|Gran Reserva|nexID Partner|premium_magnum|wine_crate|Titularidad digital registrada/);
   const withoutTenant = model.buildHomeProductsSource(list([{ latest_tap_event_id: 40 }])).data[0];
   assert.equal(model.homeProductExperienceHref(withoutTenant), null);
   const withoutEvent = model.buildHomeProductsSource(list([{ tenant_slug: "agua" }])).data[0];
   assert.equal(model.homeProductExperienceHref(withoutEvent), null);
+});
+
+test("product focus only exposes an unambiguous account reference and preserves unrelated return context", () => {
+ const products=model.buildHomeProductsSource(list([{latest_tap_event_id:'88'},{latest_tap_event_id:'89'},{latest_tap_event_id:'89'}])).data;
+ assert.equal(libraryModel.productFocusSearch(products,'88','fromTap=1&tenant=agua&focus=2&focus=3'),'fromTap=1&tenant=agua&focus=88');
+ for(const id of ['89','90','01','1%2F2',''])assert.equal(libraryModel.productFocusSearch(products,id,''),null);
+ assert.equal(libraryModel.productFocusSearch(products,null,'tenant=agua&focus=88'),'tenant=agua');
+});
+
+test("missing notice scope stays visibly unknown and contextual help describes an enabled SUN report without issuing one", () => {
+ const html=renderToStaticMarkup(React.createElement(currentNotices.ReadingCurrentNotices,{tenant:null,bid:null}));
+ assert.match(html,/Avisos actuales del producto/);
+ assert.match(html,/role="status"/);
+ assert.match(html,/No se presume que el producto esté libre de restricciones/);
+ assert.match(html,/etiqueta física/);
+ assert.match(html,/cuando esa opción esté habilitada/);
+ assert.doesNotMatch(html,/Sin avisos|<button|href="\/sun|support_token/);
 });
 
 test("product colors, mobile layout, touch targets and reduced motion match the home", () => {

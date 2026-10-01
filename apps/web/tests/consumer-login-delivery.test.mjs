@@ -61,7 +61,7 @@ test("unknown or absent login errors use a safe message without exposing provide
 test("login panel uses the shared error mapper and has no duplicate implementation", async () => {
   const source = await readFile(new URL("../src/app/login/consumer-login-panel.tsx", import.meta.url), "utf8");
   assert.match(source, /import\s*\{[^}]*\bauthStartErrorMessage\b[^}]*\}\s*from\s*["']\.\/consumer-login-delivery["']/);
-  assert.match(source, /setStatus\(authStartErrorMessage\(payload\?\.error\)\)/);
+  assert.match(source, /setStatus\(authStartErrorMessage\(payload\?\.error\), "error"\)/);
   assert.doesNotMatch(source, /function\s+authStartErrorMessage\b|(?:const|let|var)\s+authStartErrorMessage\s*=/);
 });
 

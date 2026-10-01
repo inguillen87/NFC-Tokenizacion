@@ -17,8 +17,8 @@ test("complete dynamic SUN payload reaches the API from the browser, not an SSR 
 
   assert.notEqual(completePayload, -1);
   assert.notEqual(browserRedirect, -1);
-  assert.notEqual(serverFetch, -1);
-  assert.ok(browserRedirect < serverFetch);
+  assert.equal(serverFetch, -1, "the server never consumes a dynamic scan, including incomplete input");
+  assert.match(page, /if \(!hasSnapshotReference && !snapshotResult && hasCompleteDynamicSunPayload\)/);
   assert.match(page, /\["bid", "picc_data", "enc", "cmac"\]/);
   assert.match(page, /const localOverrideEnabled = process\.env\.NODE_ENV === "development" && !process\.env\.VERCEL_ENV/);
   assert.match(page, /if \(override && localOverrideEnabled\)/);
@@ -166,7 +166,7 @@ test("city-only network and historical hints never become a physical tap locatio
 
 test("SUN headings and distance claims follow the current location evidence", () => {
   assert.match(page, /const locationSectionTitle = isDemoPreview[\s\S]*?"Origen declarado"[\s\S]*?"Origen y zona estimada por red"[\s\S]*?"Origen y zona compartida"/);
-  assert.match(page, /const locationSectionDescription = isDemoPreview[\s\S]*?Esta lectura no informó coordenadas[\s\S]*?no es GPS, no ubica el producto y no prueba dónde ocurrió el tap/);
+  assert.match(page, /const locationSectionDescription = !hasSourceResult[\s\S]*?Las ciudades del historial o de la red no se atribuyen a este tap[\s\S]*?isDemoPreview[\s\S]*?Esta lectura no informó coordenadas[\s\S]*?no es GPS, no ubica el producto y no prueba dónde ocurrió el tap/);
   assert.match(page, /\.\.\.\(hasConsumerComparableDistance \? \[\{ label: "Separación lineal", value: distanceDisplay \}\] : \[\]\)/);
   assert.match(page, /detail: wineryPoint\.length \? "Disponible" : "Pendiente"/);
   assert.match(page, /\{locationSectionTitle\}/);

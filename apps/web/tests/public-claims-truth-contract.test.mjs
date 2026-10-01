@@ -193,7 +193,7 @@ test("SUN fallbacks and post-tap actions fail closed and stay pending until conf
   assert.match(ctaActions, /confirmedStatuses/);
   assert.match(ctaActions, /Lectura digital/);
   assert.match(ctaActions, /Apertura declarada/);
-  assert.match(ctaActions, /OCR solo extrae campos y un score de lectura/);
+  assert.match(ctaActions, /La lectura automática sólo extrae los datos del comprobante/);
   assert.match(ctaActions, /signed_pos/);
   assert.match(ctaActions, /tenant_manual_approval/);
   assert.doesNotMatch(ctaActions, /tap fisico valido y fresco|Verificado por proveedor|data\.claim_eligible === true|validen ticket, producto y score/i);

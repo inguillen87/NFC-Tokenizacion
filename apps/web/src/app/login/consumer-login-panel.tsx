@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
+import { requestConsumerJson } from "../../lib/consumer-request";
 import { authStartErrorMessage, consumerDeliveryIsSimulation, consumerDeliveryMessage } from "./consumer-login-delivery";
 import {
   ConsumerContactInput,
@@ -12,12 +13,10 @@ import {
   createEmptyConsumerContactDraft,
   type ConsumerContactDraft,
 } from "../../components/consumer-contact-input";
+import styles from "./consumer-login.module.css";
 
 async function logoutConsumerSession() {
-  await fetch("/api/consumer/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  }).catch(() => null);
+  return requestConsumerJson("/api/consumer/auth/logout", { method: "POST", credentials: "include" });
 }
 
 export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
@@ -25,15 +24,27 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [contactDraft, setContactDraft] = useState(() => createEmptyConsumerContactDraft());
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"start" | "verify">("start");
-  const [status, setStatus] = useState("");
+  const [feedback, setFeedback] = useState<{ message: string; tone: "info" | "error"; field?: "contact" | "code" }>({ message: "", tone: "info" });
   const [pending, setPending] = useState(false);
+  const requestInFlight = useRef(false);
+  const mounted = useRef(true);
+  const codeRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const status = feedback.message;
   const searchParams = useSearchParams();
   const forceOtp = searchParams.get("forceOtp") === "1" || searchParams.get("fresh") === "1";
-
+  const magicToken = searchParams.get("t") || searchParams.get("token");
+  const contactParam = searchParams.get("contact");
+  const codeParam = searchParams.get("code");
+  const autoverify = searchParams.get("autoverify");
   const isTapReturn = safeNextPath.includes("fromTap=1") || safeNextPath.includes("eventId=");
   const tapReturnCopy = isTapReturn
     ? "Recibí un código y volvé al producto que estabas consultando. Tus beneficios mantienen las condiciones de la marca."
     : "Elegí dónde recibir tu código para entrar a tus productos y beneficios. No necesitás una contraseña.";
+
+  function setStatus(message: string, tone: "info" | "error" = "info", field?: "contact" | "code") {
+    setFeedback({ message, tone, field });
+  }
 
   function changeContact(nextDraft: ConsumerContactDraft) {
     setContactDraft(nextDraft);
@@ -42,194 +53,176 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     setStatus("");
   }
 
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+
+  useEffect(() => {
+    if (step === "verify" && !pending) codeRef.current?.focus();
+  }, [step, pending]);
+
+  useEffect(() => {
+    if (feedback.tone !== "error" || pending) return;
+    if (feedback.field === "code") codeRef.current?.focus();
+    if (feedback.field === "contact") formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus();
+  }, [feedback, pending]);
+
   useEffect(() => {
     if (!forceOtp) return;
     let cancelled = false;
+    requestInFlight.current = true;
     setPending(true);
-    void logoutConsumerSession().finally(() => {
+    void logoutConsumerSession().then((response) => {
       if (cancelled) return;
       setStep("start");
       setCode("");
-      setStatus("Sesión local reiniciada. Pedí un código real para continuar.");
+      setStatus(response.status === "received" && response.ok && response.payload?.ok === true
+        ? "Pedí un nuevo código para continuar."
+        : "No pudimos confirmar el cierre de la sesión anterior. Volvé a intentar antes de cambiar de cuenta.",
+      response.status === "received" && response.ok && response.payload?.ok === true ? "info" : "error");
       setPending(false);
+      requestInFlight.current = false;
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; requestInFlight.current = false; setPending(false); };
   }, [forceOtp]);
 
   useEffect(() => {
-    if (forceOtp) return;
-    const magicToken = searchParams.get("t") || searchParams.get("token");
-    const autoverify = searchParams.get("autoverify");
-    const contactParam = searchParams.get("contact");
-    const codeParam = searchParams.get("code");
-
-    if (!magicToken && (autoverify !== "1" || !contactParam || !codeParam)) return;
-
+    if (forceOtp || (!magicToken && (autoverify !== "1" || !contactParam || !codeParam))) return;
+    let cancelled = false;
     const legacyContact = contactParam || "";
     const legacyCode = codeParam || "";
     setContactDraft(consumerContactDraftFromValue(legacyContact));
     setCode(legacyCode);
     setStep("verify");
+    requestInFlight.current = true;
     setPending(true);
-    setStatus("Autenticando automáticamente...");
-
-    fetch("/api/consumer/auth/verify", {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: magicToken
-        ? JSON.stringify({ token: magicToken })
-        : JSON.stringify(legacyContact.includes("@")
-          ? { email: legacyContact, code: legacyCode.trim() }
-          : { phone: legacyContact, code: legacyCode.trim() }),
-    })
-      .then(async (res) => {
-        if (!res?.ok) {
-          setStatus("El link de verificación falló o expiró. Pedí un nuevo código y volvé a intentar.");
-          return;
-        }
+    setStatus("Estamos comprobando tu acceso…");
+    void requestConsumerJson("/api/consumer/auth/verify", {
+      method: "POST", credentials: "include", headers: { "content-type": "application/json" },
+      body: magicToken ? JSON.stringify({ token: magicToken })
+        : JSON.stringify(legacyContact.includes("@") ? { email: legacyContact, code: legacyCode.trim() } : { phone: legacyContact, code: legacyCode.trim() }),
+    }).then(async (response) => {
+      if (cancelled) return;
+      if (response.status !== "received") {
+        setStatus("No pudimos confirmar el acceso por la conexión. Tu cuenta sigue protegida. Volvé a intentar.", "error");
+      } else if (!response.ok || response.payload?.ok !== true) {
+        setStatus("No pudimos usar este enlace. Pedí un código nuevo para continuar.", "error", "code");
+      } else {
         const ready = await confirmSession();
-        if (!ready) {
-          setStatus("Verificación exitosa, pero la sesión no quedó activa. Revisá cookies o intentá de nuevo.");
-          return;
-        }
-        window.location.assign(safeNextPath);
-      })
-      .catch(() => {
-        setStatus("Error en la conexión de verificación automática.");
-      })
-      .finally(() => setPending(false));
-  }, [forceOtp, safeNextPath, searchParams]);
+        if (cancelled) return;
+        if (ready) { window.location.assign(safeNextPath); return; }
+        setStatus("No pudimos confirmar tu sesión en este navegador. Volvé a intentar. Si se repite, revisá que las cookies estén habilitadas.", "error");
+      }
+      if (!cancelled) { setPending(false); requestInFlight.current = false; }
+    });
+    return () => {
+      cancelled = true;
+      requestInFlight.current = false;
+      setPending(false);
+      setStatus("La verificación se interrumpió. Podés pedir un código para continuar.");
+    };
+  }, [forceOtp, magicToken, autoverify, contactParam, codeParam, safeNextPath]);
 
   async function confirmSession() {
-    const session = await fetch("/api/consumer/session", {
-      cache: "no-store",
-      credentials: "include",
-    })
-      .then((res) => res.json().catch(() => null))
-      .catch(() => null);
+    const response = await requestConsumerJson("/api/consumer/session", { cache: "no-store", credentials: "include" });
+    const session = response.status === "received" && response.ok ? response.payload : null;
     return Boolean(session?.ok && session?.authenticated);
   }
 
   async function start() {
+    if (requestInFlight.current) return;
     const contactPayload = consumerContactPayload(contactDraft);
-    if (!contactPayload) {
-      setStatus("Ingresá un email válido o WhatsApp con prefijo y número local.");
-      return;
-    }
+    if (!contactPayload) { setStatus("Ingresá un email válido o WhatsApp con prefijo y número local.", "error", "contact"); return; }
+    requestInFlight.current = true;
     setPending(true);
-    setStatus("Enviando código...");
-    setCode("");
-    await logoutConsumerSession();
-    const payload = await fetch("/api/consumer/auth/start", {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(contactPayload),
-    })
-      .then((res) => res.json().catch(() => null))
-      .catch(() => null);
-    setPending(false);
-    if (!payload?.ok) {
-      setStatus(authStartErrorMessage(payload?.error));
+    setStatus("Estamos solicitando tu código…");
+    const logout = await logoutConsumerSession();
+    if (!mounted.current) return;
+    if (logout.status !== "received" || !logout.ok || logout.payload?.ok !== true) {
+      setPending(false); requestInFlight.current = false;
+      setStatus("No pudimos preparar el acceso. Tu contacto se conserva; volvé a intentar cuando tengas conexión.", "error");
       return;
     }
+    const response = await requestConsumerJson("/api/consumer/auth/start", {
+      method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(contactPayload),
+    });
+    if (!mounted.current) return;
+    setPending(false); requestInFlight.current = false;
+    if (response.status !== "received") {
+      setStatus("No pudimos confirmar la solicitud. Puede que el mensaje llegue igualmente. Esperá unos instantes; si pedís otro código, usá el más reciente.", "error");
+      return;
+    }
+    const payload = response.payload;
+    if (!response.ok || payload?.ok !== true) { setStatus(authStartErrorMessage(payload?.error), "error"); return; }
     if (consumerDeliveryIsSimulation(payload)) {
-      setStatus("El acceso respondió en modo de prueba y no envió un código real. Contactá a soporte para habilitar este canal.");
+      setStatus("Este acceso está en modo de prueba y no envió un código real. Probá el otro canal o consultá a la marca.", "error");
       return;
     }
+    setCode("");
     setStep("verify");
     setStatus(consumerDeliveryMessage(payload));
   }
 
   async function verify() {
+    if (requestInFlight.current) return;
     const contactPayload = consumerContactPayload(contactDraft);
-    if (!contactPayload || !code.trim()) {
-      setStatus("Revisá el contacto y el código.");
+    if (!contactPayload || !code.trim()) { setStatus("Revisá el contacto y el código.", "error", "code"); return; }
+    requestInFlight.current = true;
+    setPending(true);
+    setStatus("Estamos comprobando tu código…");
+    const response = await requestConsumerJson("/api/consumer/auth/verify", {
+      method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...contactPayload, code: code.trim() }),
+    });
+    if (!mounted.current) return;
+    if (response.status !== "received") {
+      setPending(false); requestInFlight.current = false;
+      setStatus("No pudimos confirmar el acceso por la conexión. Conservamos el código que ingresaste; volvé a intentar.", "error");
       return;
     }
-    setPending(true);
-    setStatus("Verificando...");
-    const response = await fetch("/api/consumer/auth/verify", {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...contactPayload, code: code.trim() }),
-    }).catch(() => null);
-    if (!response?.ok) {
-      setPending(false);
-      setStatus("Código inválido o expirado. Pedí un nuevo código si el link anterior ya fue usado.");
+    if (!response.ok || response.payload?.ok !== true) {
+      setPending(false); requestInFlight.current = false;
+      setStatus(response.httpStatus === 429 ? "Demasiados intentos. Esperá unos minutos antes de volver a probar." : response.httpStatus >= 500
+        ? "El servicio de acceso no está disponible ahora. Conservamos tu código; probá más tarde."
+        : "No pudimos validar ese código. Revisá el mensaje más reciente o pedí uno nuevo.", "error", "code");
       return;
     }
     const ready = await confirmSession();
-    setPending(false);
-    if (!ready) {
-      setStatus("La identidad fue validada, pero el navegador no guardó la sesión. Probá de nuevo o revisá cookies.");
-      return;
-    }
+    if (!mounted.current) return;
+    setPending(false); requestInFlight.current = false;
+    if (!ready) { setStatus("No pudimos confirmar tu sesión en este navegador. Volvé a intentar. Si se repite, revisá que las cookies estén habilitadas.", "error"); return; }
     window.location.assign(safeNextPath);
   }
 
   const contactIsValid = consumerContactDraftIsValid(contactDraft);
-
   return (
-    <div className="consumer-login-panel mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Pasaporte nexID</p>
-      <p className="mt-1 text-sm text-cyan-50/90">{tapReturnCopy}</p>
-
-      <form className="mt-3 grid gap-3" aria-busy={pending} onSubmit={(event) => { event.preventDefault(); if (!pending) void (step === "start" ? start() : verify()); }}>
-        <ConsumerContactInput draft={contactDraft} onChange={changeContact} disabled={pending} idPrefix="consumer-login" />
-
-        {step === "verify" ? (
-          <div className="grid gap-1.5">
-            <label htmlFor="consumer-access-code" className="text-sm font-semibold">Código de acceso</label>
-            <input
-              id="consumer-access-code"
-              suppressHydrationWarning
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="Código recibido"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={8}
-              disabled={pending}
-              className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500"
-            />
-            <p className="text-[11px] leading-4 text-slate-400">Por seguridad nexID no muestra ni completa el código por vos.</p>
+    <div className={`consumer-login-panel ${styles.panel}`}>
+      <ol className={styles.steps} aria-label="Pasos de acceso">
+        <li aria-current={step === "start" ? "step" : undefined}><span aria-hidden="true">1</span>Tu contacto</li>
+        <li aria-current={step === "verify" ? "step" : undefined}><span aria-hidden="true">2</span>Tu código</li>
+      </ol>
+      <p className={styles.intro}>{tapReturnCopy}</p>
+      <form ref={formRef} className={styles.form} aria-busy={pending} onSubmit={(event) => { event.preventDefault(); if (!pending) void (step === "start" ? start() : verify()); }}>
+        <ConsumerContactInput draft={contactDraft} onChange={changeContact} disabled={pending} idPrefix="consumer-login"
+          invalid={feedback.field === "contact" && feedback.tone === "error"} describedBy={feedback.field === "contact" ? "consumer-access-feedback" : undefined} />
+        {step === "verify" ? <div className={styles.codeGroup}>
+          <label htmlFor="consumer-access-code">Código de acceso</label>
+          <input ref={codeRef} id="consumer-access-code" value={code} onChange={(event) => { setCode(event.target.value); if (feedback.field === "code") setStatus(""); }}
+            placeholder="Código recibido" inputMode="numeric" autoComplete="one-time-code" maxLength={8} disabled={pending}
+            aria-invalid={feedback.field === "code" && feedback.tone === "error" || undefined}
+            aria-describedby={`consumer-code-hint${feedback.field === "code" ? " consumer-access-feedback" : ""}`} className={styles.codeInput} />
+          <p id="consumer-code-hint" className={styles.hint}>Ingresá el código del mensaje más reciente.</p>
+        </div> : null}
+        <button type="submit" disabled={pending || (step === "start" ? !contactIsValid : !code.trim())} className={styles.primary}>
+          {pending ? step === "start" ? "Solicitando código…" : "Comprobando acceso…" : step === "start" ? "Recibir código" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
+        </button>
+        {step === "verify" ? <>
+          <div className={styles.secondaryActions}>
+            <button type="button" disabled={pending} onClick={() => void start()} className={styles.secondary}>Reenviar código</button>
+            <button type="button" disabled={pending} onClick={() => { changeContact(contactDraft); requestAnimationFrame(() => formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus()); }} className={styles.secondary}>Cambiar contacto</button>
+            <button type="button" disabled={pending} onClick={() => changeContact({ ...contactDraft, channel: contactDraft.channel === "email" ? "whatsapp" : "email" })} className={styles.secondary}>{contactDraft.channel === "email" ? "Probar con WhatsApp" : "Probar con email"}</button>
           </div>
-        ) : null}
-
-        {step === "start" ? (
-          <button
-            suppressHydrationWarning
-            type="submit"
-            disabled={pending || !contactIsValid}
-            className="min-h-12 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60"
-          >
-            {pending ? "Solicitando código…" : "Recibir código"}
-          </button>
-        ) : (
-          <button
-            suppressHydrationWarning
-            type="submit"
-            disabled={pending || !code.trim()}
-            className="min-h-12 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60"
-          >
-            {pending ? "Verificando…" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
-          </button>
-        )}
-        {step === "verify" ? (
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button type="button" disabled={pending} onClick={() => void start()} className="min-h-11 rounded-xl border border-current/20 px-3 text-sm font-semibold disabled:opacity-60">Reenviar código</button>
-            <button type="button" disabled={pending} onClick={() => changeContact({ ...contactDraft, channel: contactDraft.channel === "email" ? "whatsapp" : "email" })} className="min-h-11 rounded-xl border border-current/20 px-3 text-sm font-semibold disabled:opacity-60">{contactDraft.channel === "email" ? "Probar con WhatsApp" : "Probar con email"}</button>
-            <p className="text-xs leading-5 text-slate-400 sm:col-span-2">Puede demorar unos instantes. En email, revisá también Spam. Si pedís otro código, usá el más reciente.</p>
-          </div>
-        ) : null}
+          <p className={styles.hint}>Puede demorar unos instantes. En email, revisá también Spam. Si pedís otro código, usá el más reciente.</p>
+        </> : null}
       </form>
-
-      {status ? <p role="status" aria-live="polite" className="mt-3 text-sm leading-6 text-slate-300">{status}</p> : null}
+      <p id="consumer-access-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!status} className={styles.feedback} data-tone={feedback.tone}>{status}</p>
     </div>
   );
 }
