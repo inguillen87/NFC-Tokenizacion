@@ -53,7 +53,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
             </div>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-              Sesión protegida
+              Acceso protegido
             </span>
           </div>
 
@@ -67,18 +67,18 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
                   {isTapReturn ? "Volvé a tu producto sin perder el recorrido." : "Entrá a tu Pasaporte nexID."}
                 </h1>
                 <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-                  Recibí un código real por tu canal configurado. Después de validarlo volvés exactamente al producto, beneficio o servicio que estabas consultando.
+                  Pedí un código por email o teléfono. Al confirmar tu acceso, volvés al producto, beneficio o servicio que estabas consultando.
                 </p>
                 <ConsumerLoginPanel nextPath={nextPath} />
               </section>
 
               <aside className="auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 p-5">
                 <Fingerprint className="h-7 w-7 text-cyan-200" aria-hidden="true" />
-                <h2 className="mt-4 text-xl font-black text-white">Un acceso para tus productos conectados.</h2>
+                <h2 className="mt-4 text-xl font-black text-white">Tus productos y beneficios, en un solo lugar.</h2>
                 <ul className="mt-4 grid gap-3 text-sm leading-5 text-slate-300">
                   <li>Consultá la historia y el pasaporte digital de cada producto.</li>
                   <li>Accedé a garantías, beneficios o contacto cuando la marca los habilita.</li>
-                  <li>Las acciones sensibles respetan las políticas de validación de compra.</li>
+                  <li>La marca informa qué condiciones necesitás cumplir para cada servicio.</li>
                 </ul>
                 <Link href="/login" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-cyan-200 hover:text-cyan-100">
                   Cambiar tipo de acceso <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -92,7 +92,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
                 ¿Dónde querés entrar?
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                Separamos la operación de las empresas de la experiencia del consumidor para evitar permisos confusos y mantener cada sesión en su contexto.
+                Elegí tu Pasaporte para consultar un producto, o el centro de control para trabajar con tu equipo.
               </p>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -105,7 +105,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
                   </span>
                   <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Empresas y equipos</p>
                   <h2 className="mt-2 text-2xl font-black text-white">Centro de control</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Administrá productos, etiquetas, eventos y permisos con una cuenta tenant real.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">Administrá los productos, etiquetas y permisos de tu empresa.</p>
                   <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-cyan-100">
                     Entrar al panel empresa <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
                   </span>

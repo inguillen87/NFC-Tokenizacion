@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { isSecurePostTapActionAllowed, type SecurePostTapActionKey } from "./post-tap-policy";
 import { selectSunTruthCopy, SUN_DEMO_COPY } from "./sun-truth-copy";
+import { authStartErrorMessage, consumerDeliveryMessage } from "../login/consumer-login-delivery";
+import { requestConsumerJson } from "../../lib/consumer-request";
 
 type TapState = "valid" | "opened" | "manual_opened" | "blocked";
 type RightsPolicy = {
@@ -25,6 +27,8 @@ type CallResponse = {
   code?: string;
   mode?: string;
   deliveryChannel?: string;
+  delivery?: { channel?: string; status?: string };
+  secondaryDelivery?: { channel?: string; status?: string };
   ttlMinutes?: number;
   next_step?: string;
   status?: string | null;
@@ -76,14 +80,13 @@ function normalizeUnknownError(error: unknown) {
 
 function normalizeClaimAuthError(error: unknown) {
   const message = normalizeUnknownError(error);
-  if (message.includes("email_contact_required")) return "Este modo envia codigos por email. Usa un email valido o activa SMS/WhatsApp para telefonos.";
-  if (message.includes("phone_contact_required")) return "Este modo envia codigos a celular. Usa un telefono con codigo de pais o cambia a email OTP.";
-  if (message.includes("resend_api_key_missing") || message.includes("consumer_auth_from_email_missing")) return "Falta configurar el envio de emails OTP. Carga RESEND_API_KEY y CONSUMER_AUTH_FROM_EMAIL en el API.";
-  if (message.includes("twilio_credentials_missing") || message.includes("twilio_sender_missing")) return "Falta configurar Twilio SMS/WhatsApp. Carga TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y un sender.";
-  if (message.includes("twilio_delivery_failed")) return "Twilio no pudo entregar el codigo. Revisa que el numero este en formato internacional y habilitado para pruebas.";
-  if (message.includes("resend_delivery_failed")) return "No se pudo enviar el email OTP. Revisa dominio/from verificado en Resend.";
-  if (message.includes("rate_limited")) return "Demasiados intentos. Espera unos minutos y volve a probar.";
-  return message;
+  if (message.includes("email_contact_required")) return "Usa un email valido para recibir el codigo por este canal.";
+  if (message.includes("phone_contact_required")) return "Usa un celular con codigo de pais para recibir el codigo por este canal.";
+  if (["invalid", "mismatch", "invalid_code", "contact_and_code_required"].includes(message)) return "El codigo no coincide. Revisa el mensaje mas reciente e intenta de nuevo.";
+  if (message === "expired") return "El codigo vencio. Usa la opcion de pedir un nuevo codigo.";
+  if (message === "locked") return "Este codigo alcanzo el limite de intentos. Espera antes de solicitar otro.";
+  const knownMessage = authStartErrorMessage(message);
+  return knownMessage === "No se pudo iniciar sesión." ? "No pudimos confirmar este paso. Conservamos tus datos; intenta de nuevo." : knownMessage;
 }
 
 function labelPolicy(value?: string | null) {
@@ -92,6 +95,11 @@ function labelPolicy(value?: string | null) {
 }
 
 async function call(path: string, method: "POST" | "GET", payload: Record<string, unknown> | null): Promise<CallResponse> {
+  if (method === "POST" && ["/api/consumer/auth/start", "/api/consumer/auth/verify"].includes(path)) {
+    const result = await requestConsumerJson(path, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {}) });
+    if (result.status !== "received") throw new Error("consumer_auth_unavailable");
+    return { ...result.payload, _httpStatus: result.httpStatus, _httpOk: result.ok } as CallResponse;
+  }
   const url = new URL(path, window.location.origin);
   if (method === "GET" && payload) {
     Object.entries(payload).forEach(([key, value]) => {
@@ -186,7 +194,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [claimContact, setClaimContact] = useState("");
   const [claimCode, setClaimCode] = useState("");
   const [claimAuthStarted, setClaimAuthStarted] = useState(false);
-  const [claimAuthMode, setClaimAuthMode] = useState("");
   const [claimAuthMessage, setClaimAuthMessage] = useState("");
   const [claimAuthError, setClaimAuthError] = useState("");
   const [claimAuthLoading, setClaimAuthLoading] = useState(false);
@@ -210,6 +217,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const tokenModalRef = useRef<HTMLDivElement | null>(null);
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+  const claimContactRef = useRef<HTMLInputElement | null>(null);
+  const claimCodeRef = useRef<HTMLInputElement | null>(null);
+  const primaryClaimButtonRef = useRef<HTMLButtonElement | null>(null);
+  const receiptHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const claimAuthLock = useRef(false);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
   const normalizedClaimContact = claimContact.trim();
   const claimContactLooksEmail = normalizedClaimContact.includes("@");
@@ -237,7 +249,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     : isAuthenticated
       ? "Canal confirmado"
       : claimAuthStarted
-        ? "Código enviado"
+        ? "Envío solicitado"
         : "Listo para iniciar";
   const ownerClaimTone = isOpenedConsumerFlow
     ? "text-amber-100 border-amber-300/30 bg-amber-500/10"
@@ -254,7 +266,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       ),
     },
     { label: "Política del lote", state: policyAllowsAction("claimOwnership") ? "Habilitada" : "No habilitada" },
-    { label: "Email o celular", state: claimAuthStarted ? "Codigo enviado" : "Pendiente" },
+    { label: "Email o celular", state: claimAuthStarted ? "Envío solicitado" : "Pendiente" },
     { label: "Ticket / POS", state: claimMode.includes("purchase") || claimMode.includes("review") ? "Revisable" : "Opcional" },
   ];
   const primaryCtaLabel = !commercialActionsAllowed
@@ -269,36 +281,36 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const primaryCtaHelp = !commercialActionsAllowed
     ? isManualOpenedConsumerFlow
       ? "La apertura fue declarada por un operador y necesita revisión. Podés avisar a la marca, pero no habilita propiedad, garantía ni tokenización."
-      : "Por seguridad, este link solo muestra la prueba. Para garantia, wallet o tokenizacion, toca la etiqueta otra vez."
+      : "Podés consultar el producto. Para solicitar garantía o un registro digital, volvé a leer la etiqueta NFC."
     : !policyAllowsAction("claimOwnership")
-      ? "La politica de este producto no permite claim publico. Usa solamente las opciones habilitadas abajo."
+      ? "La marca no habilitó el registro de comprador para este producto. Consultá las opciones disponibles abajo."
       : isOpenedConsumerFlow
         ? "Continuá sólo si reconocés la apertura y el envase está en condiciones. La marca puede pedir contacto y comprobante."
         : "Confirmamos el canal de contacto y revisamos la prueba de compra antes de activar garantía o beneficios.";
   const tokenSubtitle = tokenPolicy === "issuer_transfer"
-    ? "Tokenizacion por transferencia del issuer: requiere prueba documental antes del mint."
+    ? "La transferencia del registro digital requiere documentación y autorización del emisor."
     : tokenPolicy === "lot_anchor"
-      ? "Ancla de lote: solicita registrar evidencia declarada del lifecycle sin prometer origen fisico ni ownership individual."
+      ? "Solicitá registrar la información declarada del lote. Esto no confirma su origen físico ni la propiedad individual."
       : tokenPolicy === "manual_review"
-        ? "Solicitud a revision: el tenant aprueba antes de mintear en Polygon."
-        : "Solicitud disponible despues de validar comprador: UID hasheado, salt privado y confirmacion Polygon solo si existe receipt real.";
+        ? "La marca revisa la solicitud antes de emitir el registro digital."
+        : "Podés solicitar un registro digital después de validar la compra. Sólo se confirma con una transacción verificable.";
   const realGatedCopy = tapState === "blocked"
-    ? "Propiedad, garantia y tokenizacion quedan bloqueadas hasta que el backend valide evidencia NFC reciente; eso no prueba el producto fisico."
+    ? "Para solicitar propiedad, garantía o un registro digital necesitás una nueva lectura NFC validada. Esa lectura no prueba el producto físico."
     : policySummary || (isManualOpenedConsumerFlow
       ? "Un operador informó una apertura. La etiqueta digital no la detectó automáticamente; la marca puede revisar el registro y acompañarte con la postventa."
       : isSensorOpenedConsumerFlow
       ? "La etiqueta digital informó una apertura. Si no la reconocés o el envase está dañado, no uses el producto y avisá a la marca."
-      : "Mensaje SUN reciente validado por el backend. La ficha queda disponible; compra, propiedad y beneficios requieren validaciones separadas.");
+      : "La lectura digital fue validada. Compra, propiedad y beneficios requieren validaciones separadas.");
   const gatedCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.gatedActions, realGatedCopy);
   const realTokenModalCopy = tokenPolicy === "issuer_transfer"
-    ? "El token se solicita como transferencia del issuer: no se mintea propiedad publica sin prueba de compra o autorizacion."
+    ? "La transferencia del registro digital requiere prueba de compra o autorización del emisor; no concede propiedad por sí sola."
     : tokenPolicy === "lot_anchor"
-      ? "Una transaccion on-chain confirmada puede registrar hashes de eventos declarados del lote; no prueba por si sola origen fisico, recorrido ni ownership individual."
+      ? "Una transaccion confirmada puede registrar información declarada del lote; no prueba por si sola origen fisico, recorrido ni propiedad individual."
       : tokenPolicy === "manual_review"
-        ? "La solicitud queda en revision comercial antes de mintear. Es ideal para pharma, cosmetica o casos con riesgo regulatorio."
+        ? "La marca debe revisar y aprobar la solicitud antes de emitir el registro digital."
         : isOpenedConsumerFlow
-    ? "Una transaccion confirmada puede registrar el estado TT reportado y claims aprobados de propiedad o provenance; no prueba por si sola una apertura fisica ni el contenido."
-    : "Una transaccion confirmada puede registrar claims aprobados de propiedad, provenance o garantia; no prueba por si sola custodia ni contenido fisico.";
+    ? "Una transaccion confirmada puede registrar la apertura informada y declaraciones aprobadas de propiedad u origen; no prueba por si sola una apertura fisica ni el contenido."
+    : "Una transaccion confirmada puede registrar declaraciones aprobadas de propiedad, origen o garantia; no prueba por si sola custodia ni contenido fisico.";
   const tokenModalCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.tokenModal, realTokenModalCopy);
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
@@ -318,8 +330,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       tone: "border-violet-300/40 bg-violet-500/10 text-violet-100 transition hover:bg-violet-500/20",
     },
     provenance: {
-      title: "Ver provenance",
-      subtitle: "Consulta origen y ruta declarados, eventos del tenant y evidencia tecnica.",
+      title: "Consultar origen",
+      subtitle: "Consultá el origen y recorrido declarados por la marca y los registros disponibles.",
       icon: "PRO",
       path: "/api/public-cta/provenance",
       method: "GET",
@@ -335,10 +347,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     }
   };
   const successCopy: Record<ActionKey, string> = {
-    claimOwnership: "Registro de comprador aprobado y asociado al tenant.",
+    claimOwnership: "Registro de comprador aprobado y asociado a la marca.",
     registerWarranty: "Solicitud de garantía registrada · pendiente de revisión.",
-    provenance: "Provenance consultada correctamente.",
-    tokenization: "Solicitud de tokenizacion registrada. No hay NFT confirmado hasta recibir tx, receipt y token ID verificables.",
+    provenance: "Información de origen consultada.",
+    tokenization: "Solicitud de registro digital recibida. No hay NFT confirmado hasta contar con una transacción y un identificador verificables.",
     report: "Aviso registrado para revisión.",
   };
 
@@ -423,7 +435,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       const ownershipStatus = String(data.ownership_status || data.ownership?.status || "").toLowerCase();
       return ownershipStatus === "claimed"
         ? successCopy.claimOwnership
-        : "Solicitud de comprador registrada. La propiedad y la garantia esperan el estado aprobado del backend.";
+        : "Solicitud de comprador registrada. La propiedad y la garantia esperan la aprobación de la marca.";
     }
     const provenance = typeof data.provenance === "string"
       ? data.provenance
@@ -438,7 +450,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     const confirmedStatuses = new Set(["approved", "active", "confirmed", "completed", "ticket_open", "open"]);
     if (actionKey === "registerWarranty") {
       return confirmedStatuses.has(responseStatus)
-        ? "Garantía confirmada por el backend para postventa."
+        ? "Garantía confirmada por el servicio de validación para postventa."
         : successCopy.registerWarranty;
     }
     if (actionKey === "report") {
@@ -496,6 +508,15 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   useEffect(() => {
+    if (claimAuthOpen) (claimAuthStarted ? claimCodeRef.current : claimContactRef.current)?.focus();
+  }, [claimAuthOpen, claimAuthStarted]);
+  useEffect(() => {
+    if (claimAuthOpen && claimAuthError && !claimAuthLoading) (claimAuthStarted ? claimCodeRef.current : claimContactRef.current)?.focus();
+  }, [claimAuthOpen, claimAuthError, claimAuthLoading, claimAuthStarted]);
+  useEffect(() => {
+    if (showReceiptForm) receiptHeadingRef.current?.focus();
+  }, [showReceiptForm]);
+  useEffect(() => {
     const hasSuccess = Object.values(actionStates).some((item) => item === "success");
     if (!hasSuccess) return;
     const timeout = setTimeout(() => {
@@ -540,8 +561,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }, [showTokenModal]);
 
   function normalizeReason(data: { reason?: string; error?: string; _httpStatus?: number }) {
-    if (data.error) return data.error;
-    const reason = String(data.reason || "").toLowerCase();
+    const reason = String(data.error || data.reason || "").toLowerCase();
     if (reason.includes("consumer_auth_required")) {
       return "Para iniciar la validacion de compra o solicitar un NFT necesitamos confirmar un email o celular. El producto queda visible, pero no se asocia a nadie solo por confirmar ese canal.";
     }
@@ -549,7 +569,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       return "Primero completa la validacion de compra segun la politica de la marca. Despues se habilita la solicitud NFT y la conexion de wallet.";
     }
     if (reason.includes("fresh") || reason.includes("physical") || reason.includes("expired")) {
-      return "Para propiedad, garantia o tokenizacion necesitamos evidencia NFC reciente validada por el backend. Volve a leer la etiqueta NFC.";
+      return "Para solicitar propiedad, garantía o un registro digital necesitás una nueva lectura NFC validada. Volvé a leer la etiqueta.";
     }
     if (reason.includes("share") || reason.includes("token")) {
       return "Acción no disponible en este enlace. Abrí el SUN desde un link firmado o escaneá nuevamente.";
@@ -557,7 +577,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     if ((data._httpStatus || 0) >= 500) {
       return "El servicio está con demora temporal. Probá reintentar en unos segundos.";
     }
-    return data.reason || "No se pudo completar la acción. Reintentá en unos segundos.";
+    return "No se pudo completar la acción. Conservamos los datos; reintentá en unos segundos.";
   }
 
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
@@ -685,7 +705,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   async function startClaimAuth() {
-    if (!isClaimContactValid || claimAuthLoading) return;
+    if (!isClaimContactValid || claimAuthLoading || claimAuthLock.current) return;
+    claimAuthLock.current = true;
     setClaimAuthLoading(true);
     setClaimAuthError("");
     setClaimAuthMessage("");
@@ -694,26 +715,22 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         ? { email: normalizedClaimContact }
         : { phone: normalizedClaimContact };
       const data = await call("/api/consumer/auth/start", "POST", payload);
-      if (!data._httpOk || data.ok === false) {
+      if (!data._httpOk || data.ok !== true) {
         throw new Error(String(data.error || data.reason || "auth_start_failed"));
       }
       setClaimAuthStarted(true);
-      setClaimAuthMode(String(data.mode || "otp"));
-      const channel = String(data.deliveryChannel || (claimContactLooksEmail ? "email" : "sms"));
-      setClaimAuthMessage(channel === "email"
-          ? "Codigo enviado por email. Ingresalo para confirmar el canal y continuar con la validacion de compra."
-          : channel === "whatsapp"
-            ? "Codigo enviado por WhatsApp. Ingresalo para confirmar el canal y continuar con la validacion de compra."
-            : "Codigo enviado por SMS. Ingresalo para confirmar el canal y continuar con la validacion de compra.");
+      setClaimAuthMessage(consumerDeliveryMessage(data));
     } catch (error) {
       setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
+      claimAuthLock.current = false;
       setClaimAuthLoading(false);
     }
   }
 
   async function verifyClaimAuthAndRetry() {
-    if (!isClaimContactValid || !isClaimCodeValid || claimAuthLoading) return;
+    if (!isClaimContactValid || !isClaimCodeValid || claimAuthLoading || claimAuthLock.current) return;
+    claimAuthLock.current = true;
     setClaimAuthLoading(true);
     setClaimAuthError("");
     setClaimAuthMessage("");
@@ -722,7 +739,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         ? { email: normalizedClaimContact, code: claimCode.trim() }
         : { phone: normalizedClaimContact, code: claimCode.trim() };
       const data = await call("/api/consumer/auth/verify", "POST", payload);
-      if (!data._httpOk || data.ok === false) {
+      if (!data._httpOk || data.ok !== true || !data.consumer) {
         throw new Error(String(data.error || data.reason || "auth_verify_failed"));
       }
       setClaimAuthOpen(false);
@@ -740,6 +757,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     } catch (error) {
       setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
+      claimAuthLock.current = false;
       setClaimAuthLoading(false);
     }
   }
@@ -801,12 +819,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   function handlePrimaryClaimAction() {
     if (!canStartClaim) {
       if (commercialActionsAllowed && !policyAllowsAction("claimOwnership")) {
-        setActionError("La politica de este producto no permite un claim publico. Usa una opcion habilitada para el lote.");
+        setActionError("La marca no habilitó el registro de comprador para este producto. Usá una opción disponible para el lote.");
         return;
       }
       setActionError(isManualOpenedConsumerFlow
         ? "La apertura declarada puede enviarse a revisión, pero no habilita comprador, garantía ni propiedad."
-        : "Para activar comprador, garantia o propiedad necesitamos una nueva lectura NFC validada por el backend.");
+        : "Para registrar la compra, solicitar garantía o propiedad necesitás una nueva lectura NFC validada.");
       return;
     }
     if (claimAuthStarted) {
@@ -858,7 +876,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Validacion de compra</p>
-                <h3 className="text-sm font-black text-white">Comprobante de Compra (Ticket/Factura)</h3>
+                <h3 ref={receiptHeadingRef} tabIndex={-1} className="text-sm font-black text-white">Comprobante de Compra (Ticket/Factura)</h3>
               </div>
               <button
                 suppressHydrationWarning
@@ -1103,11 +1121,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               onClick={() => void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership")}
               className="mt-3 w-full rounded-xl border border-emerald-300/35 bg-emerald-400 px-4 py-3 text-xs font-black text-slate-950 shadow-[0_16px_40px_rgba(16,185,129,0.22)] hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 transition"
             >
-              {pending ? "Procesando autorizacion..." : ocrVerification?.authorizationConfirmed ? "Enviar autorización y activar beneficios" : "Esperando aprobación tenant / POS firmado"}
+              {pending ? "Procesando autorizacion..." : ocrVerification?.authorizationConfirmed ? "Enviar autorización y activar beneficios" : "Esperando aprobación de la marca o comprobante firmado"}
             </button>
             {!ocrVerification?.authorizationConfirmed ? (
               <p className="text-[10px] text-amber-300 text-center">
-                * OCR solo extrae campos y un score de lectura. No valida pago, producto ni titularidad: la propiedad sigue bloqueada hasta recibir aprobación manual del tenant o un comprobante POS firmado.
+                * La lectura automática sólo extrae los datos del comprobante. No valida pago, producto ni titularidad: la propiedad sigue bloqueada hasta recibir aprobación de la marca o un comprobante de caja firmado.
               </p>
             ) : !receiptFileData || !receiptEstablishment.trim() || !receiptDate || !receiptPrice ? (
               <p className="text-[10px] text-amber-300 text-center">
@@ -1148,6 +1166,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             </div>
             <button
               suppressHydrationWarning
+              ref={primaryClaimButtonRef}
               type="button"
               disabled={!canStartClaim || pending || claimAuthLoading || consumerSessionLoading || (claimAuthStarted && !isClaimCodeValid)}
               onClick={handlePrimaryClaimAction}
@@ -1209,55 +1228,70 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100" aria-live="assertive">{actionError}</p> : null}
       
       {claimAuthOpen ? (
-        <div className="rounded-2xl border border-cyan-300/25 bg-slate-950/80 p-3 text-xs text-slate-200">
+        <form className="rounded-2xl border border-cyan-300/25 bg-slate-950/80 p-3 text-xs text-slate-200" aria-busy={claimAuthLoading} onSubmit={(event) => { event.preventDefault(); void (claimAuthStarted ? verifyClaimAuthAndRetry() : startClaimAuth()); }}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Validacion de compra</p>
-              <h3 className="mt-1 text-sm font-black text-white">Confirma tu WhatsApp o Email</h3>
-              <p className="mt-1 text-[11px] leading-5 text-slate-300">
+              <h3 className="mt-1 text-sm font-black text-white">Confirma tu email o celular</h3>
+              <p id="sun-claim-contact-help" className="mt-1 text-[11px] leading-5 text-slate-300">
                 El codigo solo confirma el canal de contacto. La botella no se asocia a una cuenta ni propiedad sin comprobante aprobado y politica de marca.
               </p>
             </div>
-            <button suppressHydrationWarning type="button" onClick={() => setClaimAuthOpen(false)} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">
+            <button suppressHydrationWarning type="button" disabled={claimAuthLoading} onClick={() => { setClaimAuthOpen(false); primaryClaimButtonRef.current?.focus(); }} className="min-h-11 rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200 disabled:opacity-50">
               Cerrar
             </button>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-[1.1fr_0.9fr_auto]">
+            <label className="grid gap-1">Email o celular
             <input
               suppressHydrationWarning
+              ref={claimContactRef}
+              autoComplete="username"
+              disabled={claimAuthLoading || claimAuthStarted}
+              aria-describedby="sun-claim-contact-help sun-claim-contact-validation"
+              aria-invalid={!isClaimContactValid && Boolean(normalizedClaimContact)}
               value={claimContact}
               onChange={(event) => setClaimContact(event.target.value)}
               placeholder="WhatsApp (+54...) o Email"
-              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none focus:border-cyan-300/50"
+              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-none focus:border-cyan-300/50 disabled:opacity-60"
             />
+            </label>
+            {claimAuthStarted ? <label className="grid gap-1">Codigo recibido
             <input
               suppressHydrationWarning
+              ref={claimCodeRef}
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              disabled={claimAuthLoading}
+              aria-invalid={Boolean(claimAuthError)}
+              aria-describedby={claimAuthError ? "sun-claim-auth-error" : undefined}
               value={claimCode}
               onChange={(event) => setClaimCode(event.target.value)}
               placeholder={claimAuthStarted ? "Codigo recibido" : "Codigo"}
-              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none focus:border-cyan-300/50"
+              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-none focus:border-cyan-300/50 disabled:opacity-60"
             />
+            </label> : null}
             <button
               suppressHydrationWarning
-              type="button"
-              disabled={claimAuthLoading || !isClaimContactValid}
-              onClick={() => claimAuthStarted ? void verifyClaimAuthAndRetry() : void startClaimAuth()}
+              type="submit"
+              disabled={claimAuthLoading || !isClaimContactValid || (claimAuthStarted && !isClaimCodeValid)}
               className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {claimAuthLoading ? "Validando..." : claimAuthStarted ? "Confirmar" : "Enviar codigo"}
             </button>
           </div>
-          {!isClaimContactValid && normalizedClaimContact ? <p className="mt-2 text-[11px] text-amber-200">Usa un email valido o un celular con codigo de pais.</p> : null}
-          {claimAuthMode ? <p className="mt-2 text-[11px] text-slate-400">Modo de verificacion: {claimAuthMode}</p> : null}
-          {claimAuthMessage ? <p className="mt-2 text-[11px] text-cyan-100">{claimAuthMessage}</p> : null}
-          {claimAuthError ? <p className="mt-2 rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-[11px] text-rose-100">{claimAuthError}</p> : null}
+          <p id="sun-claim-contact-validation" className="mt-2 text-[11px] text-amber-200">{!isClaimContactValid && normalizedClaimContact ? "Usa un email valido o un celular con codigo de pais." : ""}</p>
+          {claimAuthStarted ? <button type="button" disabled={claimAuthLoading} onClick={() => { setClaimAuthStarted(false); setClaimCode(""); setClaimAuthError(""); setClaimAuthMessage(""); }} className="min-h-11 rounded-lg border border-white/15 px-3 py-2 text-xs disabled:opacity-50">Usar otro contacto o pedir un nuevo codigo</button> : null}
+          {claimAuthLoading ? <p role="status" className="mt-2 text-xs text-cyan-100">{claimAuthStarted ? "Confirmando el codigo…" : "Solicitando el envio del codigo…"}</p> : null}
+          {claimAuthMessage ? <p role="status" className="mt-2 text-[11px] text-cyan-100">{claimAuthMessage}</p> : null}
+          {claimAuthError ? <p id="sun-claim-auth-error" role="alert" className="mt-2 rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-[11px] text-rose-100">{claimAuthError}</p> : null}
           
-        </div>
+        </form>
       ) : null}
       {lastTraceId ? <p className="text-[11px] text-slate-400">trace_id: <span className="font-mono">{lastTraceId}</span></p> : null}
       {provenance?.timeline?.length ? (
         <details className="rounded border border-cyan-300/15 bg-slate-950/45 p-2 text-[11px] text-slate-200">
-          <summary className="cursor-pointer font-semibold text-cyan-100">Lifecycle timeline</summary>
+          <summary className="cursor-pointer font-semibold text-cyan-100">Historial del registro</summary>
           <ul className="mt-2 space-y-1">
             {provenance.timeline.map((item, index) => (
               <li key={`${String(item.stage || "stage")}-${index}`}>
@@ -1276,18 +1310,21 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       ) : null}
       {showTokenModal ? (
         <div ref={tokenModalRef} role="dialog" aria-modal="true" aria-labelledby="sun-token-modal-title" className="rounded-xl border border-emerald-300/30 bg-slate-950/90 p-3 text-xs text-slate-200">
-          <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Blockchain opcional · sujeta a confirmacion</p>
+          <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Registro digital opcional · sujeto a confirmación</p>
           <p className="mt-1 text-slate-300">{tokenModalCopy}</p>
           <ul className="mt-2 list-disc pl-4 text-[11px] text-slate-300">
-            <li>Uso enterprise: registros declarados de provenance o garantia y solicitudes de transferencia sujetas a politica, evidencia y confirmacion on-chain.</li>
-            <li>Infra opcional: smart contracts / blockchain solo cuando hay ROI claro.</li>
-            <li>Core digital: validacion de mensajes NFC, trazabilidad declarada y señales anti-replay o de riesgo.</li>
+            <li>Solicitarlo es opcional y está sujeto a la política de la marca, documentación y confirmación de la transacción.</li>
+            <li>La lectura NFC y la consulta del producto siguen disponibles sin este registro.</li>
           </ul>
           <input suppressHydrationWarning
             ref={emailInputRef}
             value={leadEmail}
             onChange={(event) => setLeadEmail(event.target.value)}
             placeholder="Email de contacto"
+            aria-label="Email de contacto"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
             aria-invalid={Boolean(leadEmail.trim()) && !isEmailValid}
             className="mt-2 w-full rounded border border-white/10 bg-slate-900 px-2 py-1 text-white"
           />
@@ -1296,7 +1333,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             <button suppressHydrationWarning disabled={pending || !leadEmail.trim() || !isEmailValid} onClick={() => void saveTokenizationLead()} className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("Guardar interés", "tokenization")}</button>
             <button suppressHydrationWarning onClick={() => setShowTokenModal(false)} className="rounded border border-white/20 px-3 py-1 text-white">Cerrar</button>
           </div>
-          {leadSaved ? <p className="mt-2 text-emerald-300">Interés guardado en pipeline comercial.</p> : null}
+          {leadSaved ? <p className="mt-2 text-emerald-300">Solicitud registrada para revisión.</p> : null}
         </div>
       ) : null}
     </div>

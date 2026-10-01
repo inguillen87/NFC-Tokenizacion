@@ -13,3 +13,12 @@ export function productFocus(products:HomeProduct[],eventId:unknown):number|null
  const matching=products.map((p,index)=>({p,index})).filter(({p})=>p.eventId===eventId);
  return matching.length===1?matching[0].index:null;
 }
+
+// Only a unique reference already supplied for this account may enter the URL.
+// Keep the existing return/tap context; this parameter grants no capability.
+export function productFocusSearch(products:HomeProduct[],eventId:string|null,search:string):string|null{
+ if(eventId!==null&&productFocus(products,eventId)===null)return null;
+ const params=new URLSearchParams(search);params.delete('focus');
+ if(eventId!==null)params.set('focus',eventId);
+ return params.toString();
+}

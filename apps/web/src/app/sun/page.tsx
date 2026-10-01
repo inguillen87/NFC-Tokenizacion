@@ -1,4 +1,5 @@
-import {readSunSnapshot} from './sun-snapshot-read';
+import { readSunSnapshotResult, readSunPublicContract } from "./sun-snapshot-read";
+import { resolveSunEntry, type SunAvailability } from "./sun-availability";
 import { ProductNoticeProvider } from "../../lib/product-notice-resource";
 import { PassportEssentialSignals } from "./passport-essential-signals";
 import { PassportEvidenceResources } from "./passport-evidence-resources";
@@ -10,7 +11,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { AlertTriangle, ArrowDown, ArrowLeft, ChevronRight, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowLeft, ChevronRight, Info, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { DeferredCtaActions, DeferredQREngagementSuite } from "./sun-deferred-consumer-tools";
 import { ReportProblemForm } from "./report-problem-form";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
@@ -348,13 +349,12 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     return {
       ok: false,
       status: {
-        code: "SUN_UPSTREAM_UNAVAILABLE",
-        label: "Verificacion pendiente",
+        code: "SUN_SOURCE_PENDING",
+        label: "Consulta pendiente",
         tone: "warn",
-        summary: "No pudimos contactar la API de SUN en este momento.",
-        reason: "api_unavailable",
-        productState: "NOT_REGISTERED",
-        tamperSupported: true,
+        summary: "No hay un resultado disponible para esta consulta.",
+        reason: "source_pending",
+        tamperSupported: false,
         tamperStatus: "UNKNOWN",
       },
       identity: {
@@ -371,8 +371,8 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
       },
       provenance: { origin: "Sin datos de origen", timelineSummary: [] },
       tapContext: undefined,
-      tag_tamper: { available: true, status: "unknown" },
-      troubleshooting: ["La API de validacion no respondio. Reintentá el tap o revisá conectividad/API."],
+      tag_tamper: { available: false, status: "unknown" },
+      troubleshooting: [],
     };
   }
 
@@ -489,7 +489,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? params.fresh_token.trim()
       : "";
   const resolvedApiBase = apiBase(params);
-  const isDemoPreview = !isQrScan && query.toString().length === 0 && !snapshotId;
+  const hasSnapshotMarker = ["snapshot", "trace", "access", "snapshot_access", "fresh", "fresh_token"].some((key) => params[key] !== undefined);
+  const entry = resolveSunEntry({
+    isQrScan,
+    demoRequested: readParam(params, "demo") === "1",
+    snapshotId, snapshotTrace, snapshotAccess, freshToken,
+    hasSnapshotMarker,
+    hasDynamicMarker: ["v", "bid", "picc_data", "enc", "cmac"].some((key) => params[key] !== undefined),
+    dynamic: ["v", "bid", "picc_data", "enc", "cmac"].map((key) => query.get(key) || ""),
+  });
+  const isDemoPreview = !isQrScan && query.toString().length === 0 && !snapshotId && entry === "demo";
   const isDemoLabHandoff = isDemoPreview
     && readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
@@ -515,6 +524,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   let result: SunContract;
   let snapshotResult: SunContract | null = null;
+  let availability: SunAvailability = entry === "empty" || entry === "incomplete" ? entry : "ready";
 
   if (isQrScan) {
     const requestedProduct = readParam(params, "product") || readParam(params, "productName");
@@ -534,12 +544,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       const value = incomingHeaders.get(key);
       if (value) forwardedHeaders.set(key, value);
     });
-    const apiQrResult = await fetch(`${resolvedApiBase}/sun?${qrQuery.toString()}`, {
-      headers: forwardedHeaders,
-      cache: "no-store",
-    })
-      .then((res) => res.ok ? res.json() : null)
-      .catch(() => null) as SunContract | null;
+    const qrRead = await readSunPublicContract(`${resolvedApiBase}/sun?${qrQuery.toString()}`, forwardedHeaders);
+    availability = qrRead.availability;
+    const apiQrResult = qrRead.contract as SunContract | null;
     result = apiQrResult || {
       ok: false,
       status: {
@@ -573,14 +580,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       troubleshooting: ["Reintentá cuando la API esté disponible. No tomes esta vista como validación del producto ni del mensaje."],
     };
   } else if (isDemoPreview) {
-    // Opening /sun as a guided demo is not a physical NFC read. Resolve it
-    // locally so it cannot generate false MALFORMED_URL noise in the SUN API.
+    // Only an explicit demo request creates sample data. It stays local.
     result = sunFallbackResult(params, true);
   } else {
-    const hasSnapshotReference = Boolean(snapshotId || snapshotTrace || snapshotAccess);
-    snapshotResult = snapshotId && snapshotTrace && snapshotAccess
-      ? await readSunSnapshot(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}&access=${encodeURIComponent(snapshotAccess)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`) as SunContract | null
-      : null;
+    const hasSnapshotReference = hasSnapshotMarker;
+    if (entry === "snapshot") {
+      const snapshotRead = await readSunSnapshotResult(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}&access=${encodeURIComponent(snapshotAccess)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`);
+      availability = snapshotRead.availability;
+      snapshotResult = snapshotRead.contract as SunContract | null;
+    }
     const hasCompleteDynamicSunPayload = ["bid", "picc_data", "enc", "cmac"]
       .every((key) => Boolean(query.get(key)?.trim()));
     if (!hasSnapshotReference && !snapshotResult && hasCompleteDynamicSunPayload) {
@@ -590,12 +598,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       // redirects the browser back to the signed snapshot URL.
       redirect(`${resolvedApiBase}/sun?${query.toString()}`);
     }
-    const response = snapshotResult || hasSnapshotReference ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
-    const parsedResult = response?.ok
-      ? await response.json().catch(() => null) as SunContract | null
-      : null;
-    result = snapshotResult || parsedResult || sunFallbackResult(params, isDemoPreview);
+    // Incomplete input has no physical scan to consume. A failed snapshot must
+    // never fall back to the dynamic endpoint, even if its URL contains NFC data.
+    result = snapshotResult || sunFallbackResult(params, false);
   }
+
+  const hasSourceResult = availability === "ready";
 
   const bid = String(result.identity?.bid || params.bid || "");
   const uid = String(result.identity?.uid || "");
@@ -800,7 +808,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         : hasCurrentTapCoords
           ? "Fuente reportada"
           : "Sin ubicación";
-  const summaryLocationFriendlyCopy = isDemoPreview
+  const summaryLocationFriendlyCopy = !hasSourceResult
+    ? "No hay coordenadas informadas para esta lectura. Las ciudades del historial o de la red no se atribuyen a este tap."
+    : isDemoPreview
     ? "Esta ubicación pertenece a la simulación y no a un teléfono real."
     : hasConfirmedBrowserLocation
       ? "El teléfono compartió una zona aproximada después del tap y con tu permiso."
@@ -863,8 +873,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || (usesDemoTastingProfile ? "Entrada dulce y carnosa, taninos maduros y final persistente." : null);
   const dynamicMaridaje = result.product?.maridaje
     || (usesDemoTastingProfile ? "Carnes asadas, pastas intensas o quesos curados." : null);
-  const livePillLabel = isDemoPreview ? "Muestra demo" : isQrScan ? "QR / SDK" : isFreshHandoff ? "Tap físico activo" : isSnapshotView ? "Consulta segura" : "Tap SUN";
+  const livePillLabel = isDemoPreview ? "Muestra demo" : !hasSourceResult ? "Consulta pendiente" : isQrScan ? "QR / SDK" : isFreshHandoff ? "Tap físico activo" : isSnapshotView ? "Consulta segura" : "Tap SUN";
   const consumerStatus = resolveSunConsumerStatus({
+    availability,
     isDemoPreview,
     isQrScan,
     isTechnicallyAuthentic,
@@ -905,7 +916,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : isTamperRisk || result.status?.tone === "risk"
         ? "sun-status-dot--risk"
         : "sun-status-dot--warn";
-  const pulseClass = isSnapshotView
+  const pulseClass = !hasSourceResult
+    ? "bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.75)]"
+    : isSnapshotView
     ? "bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.75)]"
     : isSunProfileMismatch
     ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
@@ -988,7 +1001,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         : hasConfirmedBrowserLocation
           ? "Origen y zona compartida"
           : "Origen y ubicación reportada";
-  const locationSectionDescription = isDemoPreview
+  const locationSectionDescription = !hasSourceResult
+    ? "No hay coordenadas informadas para esta lectura. Las ciudades del historial o de la red no se atribuyen a este tap."
+    : isDemoPreview
     ? "Los puntos y la conexión son simulados y no representan un recorrido físico."
     : !hasCurrentTapCoords
       ? "El mapa muestra únicamente el origen declarado. Esta lectura no informó coordenadas y no se reutiliza una ciudad histórica como ubicación actual."
@@ -1157,12 +1172,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     result.condition?.carrier_label ||
     result.technical?.carrierLabel ||
     result.technical?.carrier_label ||
-    carrierLabels[rawCarrierProfileCode] ||
-    (result.status?.tamperSupported || result.tag_tamper?.available
-      ? "NTAG 424 DNA TT"
-      : result.technical?.raw
-        ? "NTAG 424 DNA"
-        : "QR / NFC");
+    carrierLabels[rawCarrierProfileCode] || "Tecnología no informada";
   const isCryptoCarrier = !isQrScan && (
     rawCarrierProfileCode === "ntag424_dna" ||
     rawCarrierProfileCode === "ntag424_dna_tt" ||
@@ -1238,7 +1248,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : tokenBlocked
         ? "Mostramos la evidencia digital disponible, pero el mint queda bloqueado hasta tener un tap fresco y apto."
         : "Si la marca lo habilita y el comprador valida la compra, el producto puede sumar certificado NFT/sandbox, wallet, club o marketplace.";
-  const realReplayDecisionText = isSunProfileMismatch
+  const realReplayDecisionText = !hasSourceResult
+    ? consumerStatus.copy
+    : isSunProfileMismatch
     ? "Producto y lote declarados en plataforma. La activación comercial queda pendiente porque el perfil SUN del batch no coincide con la lectura física registrada."
     : isReplay
       ? "Replay detectado: esta URL SUN ya fue usada. Garantía, rewards y tokenización quedan bloqueados hasta un nuevo tap físico."
@@ -1252,7 +1264,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ? "Un operador registró una apertura. Esa declaración no reemplaza una lectura criptográfica del sello ni una inspección del envase."
             : isVerifiedOpenedState && isTechnicallyAuthentic
               ? rightsSummary || "Mensaje SUN válido y estado TT abierto reportado. Podés iniciar una validación de compra separada para cuenta, puntos o club."
-              : rightsSummary || "Lectura de control: la evidencia técnica del mensaje NFC sigue disponible, pero algunas acciones comerciales quedan restringidas.";
+               : rightsSummary || "No pudimos confirmar la identidad digital en esta lectura. Las acciones protegidas siguen sin habilitarse; podés consultar el resultado o avisar a la marca.";
   const replayDecisionText = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.decision, realReplayDecisionText);
   const tokenEvidenceLabel = hasOnChainProof
     ? `On-chain ${tokenNetwork}`
@@ -1455,7 +1467,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     isQrScan ? "Sin propiedad automatica" : isFreshCommercialTap ? "Ficha abierta" : "Acciones protegidas",
   ].filter(Boolean);
 
-  const friendlyStageTitle = isDemoPreview
+  const friendlyStageTitle = !hasSourceResult
+    ? consumerStatus.headline
+    : isDemoPreview
     ? SUN_DEMO_COPY.stageTitle
     : isQrScan
       ? "Ficha publica del producto"
@@ -1464,13 +1478,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isManualOpenedState
     ? "Un operador registró una apertura"
     : isRiskBlocked
-    ? "Necesitamos un nuevo tap fisico"
+    ? consumerStatus.headline
     : isSnapshotView
       ? "Consulta segura del producto"
       : isVerifiedOpenedState
         ? "Lectura válida · sello abierto"
         : "Identidad NFC validada";
-  const friendlyStageBody = isDemoPreview
+  const friendlyStageBody = !hasSourceResult
+    ? consumerStatus.copy
+    : isDemoPreview
     ? SUN_DEMO_COPY.stageBody
     : isQrScan
       ? "Con el QR podés conocer el producto y acceder a las opciones que la marca dejó disponibles. Garantía o titularidad requieren una validación adicional."
@@ -1479,7 +1495,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isManualOpenedState
     ? "La apertura fue declarada por un operador. No fue detectada automáticamente por el sello; si no la reconocés o el envase está dañado, no uses el producto y avisá para revisión."
     : isRiskBlocked
-    ? "Vemos la prueba, pero no habilitamos garantia, club ni NFT con una lectura sospechosa o repetida."
+    ? consumerStatus.copy
     : isSnapshotView
       ? "La evidencia digital y los datos declarados se pueden revisar. Para activar beneficios sensibles, tocá de nuevo la etiqueta."
       : isVerifiedOpenedState
@@ -1487,6 +1503,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         : "La lectura es fresca. Primero lees la ficha; si queres, despues dejas contacto o acreditas compra.";
   const primaryPostTapAction = isDemoPreview
     ? { label: "Ver opciones de muestra", href: "#sun-services", tone: "trace" }
+    : !hasSourceResult
+    ? { label: "Qué puedo hacer", href: "#sun-availability-help", tone: "trace" }
     : isQrScan && isAgroDpp
     ? { label: "Ver pasaporte agro", href: "#agro-dpp", tone: "trace" }
     : isQrScan
@@ -1504,7 +1522,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         : isRiskBlocked
           ? { label: "Cómo hacer un nuevo toque", href: "#fresh-tap-required", tone: "risk" }
           : { label: "Ver mapa y fuentes", href: "#geo-trace", tone: "trace" };
-  const consumerSignalLabel = isQrScan
+  const consumerSignalLabel = !hasSourceResult
+    ? consumerStatus.label
+    : isQrScan
     ? "Ficha digital disponible"
     : isReplay
       ? "Lectura repetida"
@@ -1524,7 +1544,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : sealOpened
       ? "Apertura detectada"
       : "Estado del sello no disponible";
-  const consumerResultTone = isReplay || isSunProfileMismatch || isTamperRisk
+  const consumerResultTone = !hasSourceResult
+    ? "notice"
+    : isReplay || isSunProfileMismatch || isTamperRisk
     ? "review"
     : isOpenedAttentionState
       ? "opened"
@@ -1579,7 +1601,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       { label: "Coordenadas comparables", ok: hasConsumerComparableDistance },
       { label: trustScore == null ? "Score no reportado" : "Score de calidad informado", ok: trustScore != null && !isRiskBlocked && trustScore >= 65 },
     ];
-  const passportStorySteps = [
+  const passportStorySteps = !hasSourceResult ? [
+    { label: "Consulta", title: consumerStatus.headline, body: consumerStatus.copy },
+  ] : [
     {
       label: "Declaró",
       title: result.product?.region || result.provenance?.origin || "Origen no declarado",
@@ -1598,7 +1622,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     },
   ];
 
-  const evidenceResources = <PassportEvidenceResources
+  const evidenceResources = hasSourceResult ? <PassportEvidenceResources
     mode={isDemoPreview ? "demo" : isQrScan ? "qr" : isSnapshotView ? "historical" : isFreshCommercialTap ? "fresh" : "unknown"}
     carrierCode={rawCarrierProfileCode}
     occurredAt={result.tapContext?.utcTime}
@@ -1609,7 +1633,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     safetySheetHref={agroProfile?.safetySheetUrl}
     currentEditorial={result.currentEditorial}
     showProductNotices={!isDemoPreview && result.ok === true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}
-  />;
+  /> : null;
 
   return (
     <SunLocaleProvider initialLocale={locale}>
@@ -1750,6 +1774,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             <div
               data-testid="sun-summary-status"
+              data-availability={availability}
               data-status-tone={consumerStatus.tone}
               className={`sun-summary-status rounded-2xl border border-l-4 p-3.5 ${
                 consumerStatus.tone === "closed"
@@ -1775,7 +1800,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     ? <PackageCheck className="h-5 w-5" strokeWidth={2} />
                     : consumerStatus.tone === "opened"
                       ? <PackageOpen className="h-5 w-5" strokeWidth={2} />
-                      : consumerStatus.tone === "verified" || consumerStatus.tone === "info"
+                      : consumerStatus.tone === "info"
+                        ? <Info className="h-5 w-5" strokeWidth={2} />
+                      : consumerStatus.tone === "verified"
                         ? <ShieldCheck className="h-5 w-5" strokeWidth={2} />
                         : <ShieldAlert className="h-5 w-5" strokeWidth={2} />}
                 </span>
@@ -1849,19 +1876,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             <div data-testid="sun-summary-actions" className="sun-summary-actions grid grid-cols-2 gap-2">
               <a
-                href="#product-info"
+                href={hasSourceResult ? "#product-info" : "#sun-availability-help"}
                 className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl bg-white px-2.5 text-center text-[11px] font-black leading-tight text-slate-950 shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
-                Ver producto
+                {hasSourceResult ? "Ver producto" : "Qué puedo hacer"}
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
               </a>
               <a
-                href={!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
+                href={!hasSourceResult ? "/demo-lab" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
                   ? "#sun-condition"
                   : "#sun-origin"}
                 className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-2 text-center text-[10px] font-black leading-tight text-cyan-100 transition hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
-                {!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
+                {!hasSourceResult ? "Explorar una demostración" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
                   ? "Entender apertura"
                   : "Ver origen y mapa"}
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
@@ -1925,7 +1952,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           <div className="sun-result-card__intro">
             <div className="sun-result-card__icon" aria-hidden="true">
-              {isReplay ? <RotateCcw /> : isRiskBlocked || isOpenedAttentionState ? <AlertTriangle /> : <ShieldCheck />}
+              {!hasSourceResult ? <Info /> : isReplay ? <RotateCcw /> : isRiskBlocked || isOpenedAttentionState ? <AlertTriangle /> : <ShieldCheck />}
             </div>
             <div>
               {isDemoPreview && (
@@ -1959,7 +1986,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               : <ArrowDown aria-hidden="true" />}
           </a>
 
-          <details className="sun-result-card__details">
+          {hasSourceResult ? <details className="sun-result-card__details">
             <summary>Ver controles de esta lectura</summary>
             <div className="sun-result-card__controls">
               <div><span>Etiqueta</span><strong>{consumerSignalLabel}</strong></div>
@@ -1980,7 +2007,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </p>
             <p>{replayDecisionText}</p>
             <small>{consumerStatus.headline} · {consumerStatus.label}</small>
-          </details>
+          </details> : null}
         </section>
 
         </> : null}
@@ -2259,7 +2286,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               isDemoPreview={isDemoPreview}
             />
             <div id="consumer-choice" className="scroll-mt-24">
-              <SunServicesHub
+              {hasSourceResult ? <SunServicesHub
                 eventId={eventId}
                 freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                 promotion={publishedPromotion}
@@ -2272,7 +2299,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 policyAvailability={servicePolicyAvailability}
                 locale={locale}
                 demoIntent={demoLabAction}
-              />
+              /> : <section id="sun-availability-help" data-testid="sun-availability-help" className="scroll-mt-24 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4" aria-labelledby="sun-availability-help-title">
+                <h2 id="sun-availability-help-title" className="text-sm font-black text-white">Qué puedo hacer</h2>
+                <p className="mt-2 text-xs leading-5 text-slate-300">{consumerStatus.copy}</p>
+                {availability === "empty" || availability === "incomplete" ? <p className="mt-2 text-xs leading-5 text-slate-300">Desbloqueá el teléfono, acercá la zona NFC a la etiqueta y abrí el enlace que aparezca. Una lectura nueva debe venir de la etiqueta.</p> : null}
+                {availability === "inaccessible" || availability === "unavailable" ? <p className="mt-2 text-xs leading-5 text-slate-300">No recargues una URL de lectura NFC para intentar validarla otra vez. Esta consulta no habilita acciones protegidas.</p> : null}
+              </section>}
             </div>
 
             {canSubscribeToBrand && !showEngagementSuite ? (
@@ -2285,7 +2317,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               />
             ) : null}
 
-            {isRiskBlocked ? (
+            {hasSourceResult && isRiskBlocked ? (
               <Link
                 href={reportProblemHref}
                 data-sun-experience-event="PROBLEM_REPORTED"
@@ -2298,7 +2330,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </Link>
             ) : null}
 
-            {!isDemoPreview ? <details className="group rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+            {!isDemoPreview && hasSourceResult ? <details className="group rounded-2xl border border-white/10 bg-slate-950/45 p-3">
               <summary className="cursor-pointer list-none text-xs font-black text-slate-200 marker:hidden">
                 <span className="flex min-h-11 items-center justify-between gap-3">
                   Como se protege cada accion
@@ -2327,7 +2359,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
             </details> : null}
 
-            {isSnapshotView || isQrScan || isRiskBlocked ? (
+            {hasSourceResult && (isSnapshotView || isQrScan || isRiskBlocked) ? (
               <section id="fresh-tap-required" className="scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4" aria-labelledby="fresh-tap-required-title">
                 <h2 id="fresh-tap-required-title" className="text-sm font-black text-amber-100">{isQrScan ? "Toca el chip NFC para acciones protegidas" : "Hace un nuevo tap desde la etiqueta fisica"}</h2>
                 <p className="mt-1 text-xs leading-5 text-amber-50/80">
@@ -2374,7 +2406,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         </section>
 
         {/* 5. Technical Specifications (Accordion) */}
-        <section>
+        {hasSourceResult ? <section>
           <details className="group border border-white/5 rounded-3xl bg-slate-900/20 backdrop-blur-md overflow-hidden transition-all duration-300">
             <summary className="flex items-center justify-between p-5 cursor-pointer font-bold text-xs text-slate-400 uppercase tracking-widest hover:text-slate-200 select-none">
               <span>Información técnica de la etiqueta</span>
@@ -2488,7 +2520,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               )}
             </div>
           </details>
-        </section>
+        </section> : null}
 
       </div>
     </main>

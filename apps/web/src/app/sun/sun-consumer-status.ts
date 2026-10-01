@@ -1,3 +1,5 @@
+import type { SunAvailability } from "./sun-availability";
+
 export type SunConsumerStatusTone = "closed" | "opened" | "verified" | "review" | "risk" | "info";
 
 export type SunConsumerStatus = {
@@ -10,6 +12,7 @@ export type SunConsumerStatus = {
 };
 
 type ResolveSunConsumerStatusInput = {
+  availability?: SunAvailability;
   isDemoPreview: boolean;
   isQrScan: boolean;
   isTechnicallyAuthentic: boolean;
@@ -32,6 +35,32 @@ function resolveSunConsumerStatusEs(input: ResolveSunConsumerStatusInput): SunCo
       identityLabel: "Simulada",
       sealLabel: "Abierto (demo)",
     };
+  }
+
+  if (input.availability && input.availability !== "ready") {
+    const unavailableCopy = {
+      empty: {
+        label: "Abrí el pasaporte del producto",
+        headline: "Todavía no hay una lectura para consultar",
+        copy: "Acercá el teléfono a la etiqueta NFC y abrí el enlace que aparezca. También podés explorar una demostración identificada como muestra.",
+      },
+      incomplete: {
+        label: "Enlace incompleto",
+        headline: "Faltan datos para abrir esta consulta",
+        copy: "Este enlace no contiene todos los datos necesarios. Pedí el enlace completo a quien lo compartió o abrí uno nuevo desde la etiqueta NFC. No se evaluó una lectura.",
+      },
+      inaccessible: {
+        label: "Consulta no accesible",
+        headline: "No podemos abrir esta consulta",
+        copy: "No pudimos acceder al registro desde este enlace. Esto no informa el resultado NFC ni el estado del producto. Pedí el enlace completo a quien lo compartió.",
+      },
+      unavailable: {
+        label: "Servicio no disponible",
+        headline: "La consulta no está disponible ahora",
+        copy: "El servicio no pudo entregar la información. Esto no indica una lectura NFC rechazada ni un problema con el producto. Podés volver más tarde; las acciones protegidas siguen sin habilitarse.",
+      },
+    }[input.availability];
+    return { tone: "info", ...unavailableCopy, identityLabel: "No confirmada", sealLabel: "No informado" };
   }
 
   if (input.isQrScan) {

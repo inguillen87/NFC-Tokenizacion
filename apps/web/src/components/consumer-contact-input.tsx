@@ -108,6 +108,8 @@ export function ConsumerContactInput({
   idPrefix = "consumer-contact",
   compact = false,
   channelLocked,
+  invalid = false,
+  describedBy,
 }: {
   draft: ConsumerContactDraft;
   onChange: (draft: ConsumerContactDraft) => void;
@@ -115,15 +117,17 @@ export function ConsumerContactInput({
   idPrefix?: string;
   compact?: boolean;
   channelLocked?: ConsumerContactDraft["channel"];
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const activeDraft = channelLocked && draft.channel !== channelLocked ? { ...draft, channel: channelLocked } : draft;
   const selectedOption = COUNTRY_OPTIONS.find((option) => option.code === activeDraft.countryCode) || COUNTRY_OPTIONS[0];
   const inputClass = compact
-    ? "rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
-    : "rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500";
+    ? "min-h-11 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-base text-slate-100 placeholder:text-slate-500"
+    : "min-h-11 rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-base text-slate-100 placeholder:text-slate-500";
   const selectClass = compact
-    ? "rounded-lg border border-white/10 bg-slate-950/70 px-2 py-2 text-sm text-slate-100"
-    : "rounded-xl border border-white/15 bg-slate-950 px-2 py-2.5 text-sm text-slate-100";
+    ? "min-h-11 rounded-lg border border-white/10 bg-slate-950/70 px-2 py-2 text-base text-slate-100"
+    : "min-h-11 rounded-xl border border-white/15 bg-slate-950 px-2 py-2.5 text-base text-slate-100";
 
   return (
     <div className="grid gap-2">
@@ -139,7 +143,7 @@ export function ConsumerContactInput({
             aria-pressed={draft.channel === channel}
             onClick={() => onChange({ ...draft, channel: channel as ConsumerContactDraft["channel"] })}
             title={channel === "whatsapp" ? "Solicitar un código en el teléfono con prefijo de país." : "Solicitar un código por email."}
-            className={`rounded-lg px-3 py-2 text-xs font-black uppercase tracking-[0.08em] transition ${
+            className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition ${
               draft.channel === channel
                 ? "bg-cyan-300 text-slate-950"
                 : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
@@ -151,10 +155,14 @@ export function ConsumerContactInput({
       </div> : null}
 
       {activeDraft.channel === "email" ? (
+        <div className="grid gap-1.5">
+        <label htmlFor={`${idPrefix}-email`} className="text-sm font-semibold">Correo electrónico</label>
         <input
           suppressHydrationWarning
           id={`${idPrefix}-email`}
           aria-label="Correo electrónico"
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           type="email"
           value={activeDraft.email}
           onChange={(event) => onChange({ ...draft, email: event.target.value })}
@@ -165,8 +173,11 @@ export function ConsumerContactInput({
           title="Email donde recibis el codigo de acceso."
           className={inputClass}
         />
+        </div>
       ) : (
         <div className="grid gap-2 sm:grid-cols-[minmax(132px,0.36fr)_minmax(0,1fr)]">
+          <div className="grid gap-1.5">
+          <label htmlFor={`${idPrefix}-country`} className="text-sm font-semibold">Código de país</label>
           <select
             suppressHydrationWarning
             id={`${idPrefix}-country`}
@@ -183,10 +194,15 @@ export function ConsumerContactInput({
               </option>
             ))}
           </select>
+          </div>
+          <div className="grid gap-1.5">
+          <label htmlFor={`${idPrefix}-phone`} className="text-sm font-semibold">Número de teléfono</label>
           <input
             suppressHydrationWarning
             id={`${idPrefix}-phone`}
             aria-label="Número de teléfono sin código de país"
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
             type="tel"
             value={draft.localPhone}
             onChange={(event) => {
@@ -204,6 +220,7 @@ export function ConsumerContactInput({
             title="Numero local sin codigo pais, espacios ni guiones."
             className={inputClass}
           />
+          </div>
         </div>
       )}
 

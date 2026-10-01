@@ -86,10 +86,12 @@
 .closeButton { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; min-height: 2.75rem; flex-shrink: 0; border: 1px solid var(--portal-border); border-radius: .7rem; background: var(--portal-subtle); color: var(--portal-text); touch-action: manipulation; cursor: pointer; }
 .closeButton svg { width: 1.15rem; height: 1.15rem; }
 .moreLinks { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+.moreGroups { display: grid; gap: 1.25rem; }
+.moreGroup h3 { margin: 0 0 .6rem; color: var(--portal-muted); font-size: .875rem; font-weight: 750; }
 .moreLink { display: flex; align-items: center; gap: .75rem; min-width: 0; min-height: 2.75rem; border: 1px solid var(--portal-border); border-radius: .8rem; padding: .75rem; background: var(--portal-surface); color: var(--portal-text); text-decoration: none; touch-action: manipulation; }
 .moreLink > svg { width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--portal-accent); }
 .moreLink strong { display: block; font-size: .9rem; font-weight: 650; }
-.moreLink small { display: block; margin-top: .2rem; color: var(--portal-muted); font-size: .75rem; line-height: 1.45; }
+.moreLink small { display: block; margin-top: .2rem; color: var(--portal-muted); font-size: .875rem; line-height: 1.45; }
 .moreLink[aria-current="page"] { border-color: var(--portal-accent); background: var(--portal-active); }
 .portal a:focus-visible, .portal button:focus-visible { outline: 3px solid var(--portal-accent); outline-offset: 3px; }
 .main:focus { outline: none; }

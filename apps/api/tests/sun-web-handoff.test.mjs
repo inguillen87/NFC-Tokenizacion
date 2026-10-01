@@ -52,13 +52,35 @@ test("web SUN page can hydrate a snapshot created by the API tap route", async (
   assert.match(webSource, /\/sun\/snapshot\//);
   assert.match(webSource, /await readSunSnapshot/);
   const reader = await readFile(new URL("../../web/src/app/sun/sun-snapshot-read.ts", import.meta.url), "utf8");
-  assert.match(reader, /body\?\.ok===true/);
+  assert.match(reader, /body\?\.ok\s*===\s*true/);
   assert.match(reader, /body\.contract/);
   assert.match(webSource, /!hasSnapshotReference && !snapshotResult && hasCompleteDynamicSunPayload/);
   assert.match(webSource, /isFreshHandoff/);
   assert.match(webSource, /isSnapshotView/);
   assert.match(webSource, /isFreshCommercialTap/);
   assert.match(webSource, /Consulta segura/);
+});
+
+test("web snapshot reader preserves received API evidence and action restrictions", async () => {
+  const { readSunSnapshotResult } = await import("../../web/src/app/sun/sun-snapshot-read.ts");
+  const contract = {
+    ok: true,
+    status: { code: "VALID_CLOSED", tamperStatus: "CLOSED" },
+    tapContext: { utcTime: "2026-10-01T12:00:00Z" },
+    freshness: { source: "snapshot_view_only", requiresFreshTapForCommercialActions: true },
+    allowedActions: ["provenance"], blockedActions: ["claim", "warranty", "tokenization"],
+  };
+  let reads = 0;
+  const result = await readSunSnapshotResult("https://api.example.test/sun/snapshot/synthetic", async (_url, options) => {
+    reads++;
+    assert.equal(options.method, "GET");
+    assert.equal(options.cache, "no-store");
+    assert.equal(options.redirect, "error");
+    return Response.json({ ok: true, contract });
+  });
+  assert.equal(reads, 1);
+  assert.equal(result.availability, "ready");
+  assert.deepEqual(result.contract, contract);
 });
 
 test("web SUN CTAs can use event id without exposing raw UID", async () => {

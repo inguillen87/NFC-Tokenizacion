@@ -30,6 +30,7 @@ const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://
  calls.push({path:u.pathname,method:req.method,tenant:u.searchParams.get('tenant'),bid:u.searchParams.get('bid')});
  if(u.pathname==='/public/product-notices/v2'){if(failed)return reply(503,{ok:false});return reply(200,await publicNoticesV2(u.searchParams.get('tenant'),u.searchParams.get('bid')));}
  if(u.pathname==='/sun')return reply(200,contract(u));
+ if(/^\/sun\/snapshot\/TT-(OPEN|HISTORICAL)-QA$/.test(u.pathname)&&u.searchParams.get('trace')==='synthetic'&&u.searchParams.get('access')==='invalid'){const projected=new URL(u);projected.searchParams.set('bid',u.pathname.split('/').at(-1));return reply(200,{ok:true,contract:contract(projected)});}
  if(u.pathname.startsWith('/consumer/')){
   const authorized=String(req.headers.cookie||'').includes('consumer_qa=local');
   if(u.pathname==='/consumer/session')return reply(200,{ok:true,authenticated:authorized});

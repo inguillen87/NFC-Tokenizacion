@@ -25,6 +25,12 @@ export const PORTAL_MORE_DESTINATIONS = [
   { href: "/me/security", label: "Seguridad", detail: "Protección de tu cuenta", icon: ShieldCheck },
 ] as const;
 
+export const PORTAL_MORE_GROUPS = [
+  { label: "Productos y marcas", destinations: ["/me/brands", "/me/marketplace", "/me/experiences"] },
+  { label: "Herramientas", destinations: ["/me/sommelier", "/me/cork-analyzer"] },
+  { label: "Mi cuenta", destinations: ["/me/passport", "/me/wallet", "/me/privacy", "/me/security"] },
+] as const;
+
 export function isPortalDestinationActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   const normalized = pathname.replace(/\/+$/, "") || "/";
@@ -96,15 +102,18 @@ export function PortalNavigation() {
           <div><h2 id={headingId}>Más opciones</h2><p>Tu cuenta y otras herramientas.</p></div>
           <button type="button" className={styles.closeButton} onClick={closeMenu} aria-label="Cerrar más opciones" autoFocus><X aria-hidden="true" /></button>
         </div>
-        <nav className={styles.moreLinks} aria-label="Todas las demás secciones del portal">
-          {PORTAL_MORE_DESTINATIONS.map((item) => {
+        <nav className={styles.moreGroups} aria-label="Todas las demás secciones del portal">
+          {PORTAL_MORE_GROUPS.map((group, index) => <section className={styles.moreGroup} key={group.label} aria-labelledby={`${headingId}-group-${index}`}>
+            <h3 id={`${headingId}-group-${index}`}>{group.label}</h3>
+            <div className={styles.moreLinks}>{group.destinations.map((href) => {
+            const item = PORTAL_MORE_DESTINATIONS.find((destination) => destination.href === href)!;
             const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href} className={styles.moreLink} onClick={closeMenu} aria-current={isPortalDestinationActive(pathname, item.href) ? "page" : undefined}>
                 <Icon aria-hidden="true" /><span><strong>{item.label}</strong><small>{item.detail}</small></span>
               </Link>
             );
-          })}
+          })}</div></section>)}
         </nav>
       </dialog>
     </>

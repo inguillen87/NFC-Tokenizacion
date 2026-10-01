@@ -86,6 +86,15 @@ test("portal destinations preserve four primary routes and every existing second
   }
 });
 
+test("More groups existing destinations by customer intent with accessible group headings", () => {
+  const groups=model.PORTAL_MORE_GROUPS;
+  assert.deepEqual(groups.map(group=>group.label),["Productos y marcas","Herramientas","Mi cuenta"]);
+  assert.deepEqual(groups.flatMap(group=>group.destinations).sort(),[...expectedMore].sort());
+  const html=renderNavigation('/me/products');
+  for(const group of groups)assert.ok(html.includes(`>${group.label}</h3>`));
+  assert.equal([...html.matchAll(/<section\b[^>]*aria-labelledby=/g)].length,3);
+});
+
 test("current destination matching treats home as exact and nested destinations as complete route segments", () => {
   const cases = [
     [null, "/me", false], ["", "/me", false], ["/", "/me", false],
