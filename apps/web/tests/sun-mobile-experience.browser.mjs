@@ -19,7 +19,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 const report={realProductionBuild:true,syntheticContract:true,physicalTapMeasured:false,checks:[],views:[],errors:[],blockedWrites:0};
 const check=(passed,name)=>report.checks.push({name,passed:Boolean(passed)});
 try {
- for(const theme of ['light','dark']) for(const width of [320,390,768,1440]) for(const state of ['closed','opened','replay','missing','photo-failure','rejected']) {
+ for(const theme of ['light','dark']) for(const width of [320,390,768,1440]) for(const state of ['closed','opened','replay','missing','photo-failure','rejected','missing-date','history-only']) {
   const context=await browser.newContext({viewport:{width,height:844},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
   await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
   await context.addInitScript(()=>{window.__geoCalls=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__geoCalls++;}}});});
@@ -38,6 +38,20 @@ try {
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`No overflow ${state} ${width} ${theme}`);
   check(await page.evaluate(()=>window.__geoCalls)===0,`No automatic location ${state} ${width} ${theme}`);
   check(await summary.getByRole('heading',{level:1}).count()===1,`Product hierarchy ${state} ${width} ${theme}`);
+  const readingTime=page.locator('.sun-result-journey li').nth(2).locator('strong');
+  await page.getByTestId('sun-summary-location').locator('details > summary').click();
+  const summaryTime=page.getByTestId('sun-summary-location').locator('p').filter({hasText:'Hora del tap:'}).locator('span').last();
+  if(['rejected','missing-date','history-only'].includes(state)) {
+    check(await readingTime.innerText()==='Hora no registrada',`Unknown read time ${state} ${width} ${theme}`);
+    check(await readingTime.getAttribute('data-sun-datetime')===null,`No inherited read timestamp ${state} ${width} ${theme}`);
+    check(await summaryTime.innerText()==='Hora no registrada',`Unknown summary tap time ${state} ${width} ${theme}`);
+    check(await summaryTime.getAttribute('data-sun-datetime')===null,`No inherited summary timestamp ${state} ${width} ${theme}`);
+  } else {
+    check(await readingTime.getAttribute('data-sun-datetime')==='2026-09-30T14:25:00.000Z',`Reported read timestamp preserved ${state} ${width} ${theme}`);
+    check(await summaryTime.getAttribute('data-sun-datetime')==='2026-09-30T14:25:00.000Z',`Reported summary timestamp preserved ${state} ${width} ${theme}`);
+    check((await readingTime.innerText()).includes('14:25'),`Reported read time rendered ${state} ${width} ${theme}`);
+  }
+  check(!/Registrada ahora|La validación NFC quedó registrada/.test(await page.locator('body').innerText()),`No invented registration ${state} ${width} ${theme}`);
   if(state==='missing'||state==='rejected')check(await summary.locator('img').count()===0,`No stock photo ${state} ${width} ${theme}`);
   else if(state==='photo-failure')check(await summary.getByTestId('sun-image-unavailable').isVisible(),`Image failure remains readable ${width} ${theme}`);
   else {check(await summary.locator('img').getAttribute('fetchpriority')==='high',`First image priority ${width} ${theme}`);check(await page.locator('#product-info img').getAttribute('loading')==='lazy',`Secondary photo lazy ${width} ${theme}`);}
@@ -48,6 +62,28 @@ try {
   }
   if(axe&&width===390){await page.addScriptTag({content:axe});const violations=await page.evaluate(async()=>(await axe.run('#sun-summary',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));check(!violations.length,`Summary accessibility ${state} ${theme}`);report.views.push({width,theme,state,violations});}
   if(width===390&&(state==='closed'||state==='photo-failure'||state==='rejected'))await page.screenshot({path:join(output,`${state}-${theme}.png`),fullPage:false});
+  await context.close();
+ }
+ for(const [locale,unknownTime,neutralLocation] of [
+  ['en','Time not recorded','No coordinates were reported for this read. Cities from history or the network are not attributed to this tap.'],
+  ['pt-BR','Horário não registrado','Não há coordenadas informadas para esta leitura. As cidades do histórico ou da rede não são atribuídas a este toque.'],
+ ]) for(const state of ['rejected','missing-date','history-only','closed']) {
+  const context=await browser.newContext({viewport:{width:390,height:844},locale,reducedMotion:'reduce',serviceWorkers:'block'});
+  const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));
+  await page.route('**/*',r=>{const u=new URL(r.request().url());if(r.request().method()!=='GET'){report.blockedWrites++;return r.abort();}if(u.origin!==origin)return r.abort();if(u.pathname==='/qa-product.svg')return r.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="92" height="128"><rect width="92" height="128" fill="#147d83"/></svg>'});if(u.pathname.startsWith('/api/'))return r.fulfill({status:404,contentType:'application/json',body:'{"ok":false}'});return r.continue();});
+  await page.goto(origin+`/sun?snapshot=${state==='rejected'?'0':'qa-'+state}&trace=synthetic&access=invalid&lang=${locale}`,{waitUntil:'networkidle'});
+  const readingTime=page.locator('.sun-result-journey li').nth(2).locator('strong');
+  await page.getByTestId('sun-summary-location').locator('details > summary').click();
+  check((await page.locator('body').innerText()).includes(neutralLocation),`Neutral no-coordinate copy localized ${state} ${locale}`);
+  if(state==='closed') {
+    check(await readingTime.getAttribute('data-sun-datetime')==='2026-09-30T14:25:00.000Z',`Reported read timestamp survives locale ${locale}`);
+    check((await readingTime.innerText()).includes('14:25'),`Reported read time rendered in ${locale}`);
+  } else {
+    check(await readingTime.innerText()===unknownTime,`Unknown read time localized ${state} ${locale}`);
+    check(await readingTime.getAttribute('data-sun-datetime')===null,`No fabricated datetime ${state} ${locale}`);
+    check(await page.getByTestId('sun-summary-location').getByText(unknownTime,{exact:true}).count()===1,`Unknown summary tap time localized ${state} ${locale}`);
+  }
+  check(!/Registrada ahora|Recorded now|Registrada agora|La validación NFC quedó registrada/.test(await page.locator('body').innerText()),`No invented registration ${state} ${locale}`);
   await context.close();
  }
  check(!report.errors.length,'No browser errors');

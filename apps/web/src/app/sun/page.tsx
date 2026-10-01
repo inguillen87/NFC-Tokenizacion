@@ -889,8 +889,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const trustScore = Number.isFinite(apiQualityScore)
     ? Math.max(0, Math.min(100, apiQualityScore))
     : null;
-  const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
-  const tapTimeIsoCandidate = result.tapContext?.utcTime || lastEventAt || "";
+  const tapTimeIsoCandidate = result.tapContext?.utcTime || "";
   const localTapTimeIso = Number.isFinite(new Date(tapTimeIsoCandidate).getTime()) ? tapTimeIsoCandidate : "";
   const localTapTimeLabel = localTapTimeIso
     ? fmtDate(localTapTimeIso, result.tapContext?.timezone, locale)
@@ -1008,7 +1007,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? {
         label: "Ubicación",
         title: "No compartida en esta lectura",
-        body: "La validación NFC quedó registrada sin coordenadas. Las ciudades del historial o de la red no se atribuyen a este tap.",
+        body: "No hay coordenadas informadas para esta lectura. Las ciudades del historial o de la red no se atribuyen a este tap.",
       }
       : isNetworkEstimatedLocation
         ? {
@@ -1841,7 +1840,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 </summary>
                 <div className="space-y-1 pb-1 leading-4">
                   <p className="break-words"><span className="font-bold text-slate-500">Fuente / precisión:</span> <span data-sun-server-evidence="true">{summaryLocationEvidence}</span></p>
-                  <p className="break-words"><span className="font-bold text-slate-500">Hora del tap:</span> <span data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={(!localTapTimeIso).toString()}>{summaryLocationTime}</span></p>
+                  <p className="break-words"><span className="font-bold text-slate-500">Hora del tap:</span> <span data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={Boolean(!localTapTimeIso && localTapTimeLabel).toString()}>{summaryLocationTime}</span></p>
                   <p>Este resultado corresponde únicamente a este tag y esta lectura.</p>
                 </div>
               </details>
@@ -1949,7 +1948,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </li>
             <li>
               <span>03</span>
-              <div><small>Lectura</small><strong data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={(!localTapTimeIso).toString()}>{localTapTimeLabel || "Registrada ahora"}</strong></div>
+              <div><small>Lectura</small><strong data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={Boolean(!localTapTimeIso && localTapTimeLabel).toString()}>{localTapTimeLabel || "Hora no registrada"}</strong></div>
             </li>
           </ol>
 

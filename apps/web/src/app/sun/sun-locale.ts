@@ -124,6 +124,8 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "Sin ubicación registrada", pt: "Sem localização registrada", en: "No location recorded" },
   { es: "Sin fuente ni precisión registradas", pt: "Sem fonte nem precisão registradas", en: "No source or accuracy recorded" },
   { es: "Hora no registrada", pt: "Horário não registrado", en: "Time not recorded" },
+  { es: "No compartida en esta lectura", pt: "Não compartilhada nesta leitura", en: "Not shared for this read" },
+  { es: "No hay coordenadas informadas para esta lectura. Las ciudades del historial o de la red no se atribuyen a este tap.", pt: "Não há coordenadas informadas para esta leitura. As cidades do histórico ou da rede não são atribuídas a este toque.", en: "No coordinates were reported for this read. Cities from history or the network are not attributed to this tap." },
   { es: "Fuente / precisión", pt: "Fonte / precisão", en: "Source / accuracy" },
   { es: "Hora del tap", pt: "Horário do toque", en: "Tap time" },
   { es: "Ver fuente y horario", pt: "Ver fonte e horário", en: "View source and time" },
