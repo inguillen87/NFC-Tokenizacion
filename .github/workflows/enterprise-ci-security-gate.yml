@@ -47,6 +47,9 @@ jobs:
       - name: Fail on unapproved high or critical dependencies
         run: node scripts/enterprise-dependency-audit.mjs
 
+      - name: Install audited lockfile dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+
       - name: Validate migration safety and gate contracts
         run: |
           npm run check:migrations:safety
