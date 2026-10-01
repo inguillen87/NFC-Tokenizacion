@@ -37,4 +37,3 @@ Cambios sólo en web SUN, tests, workflow de aceptación web y manifiesto web. N
 ## Publicación
 
 Pendiente de CI y validación de preview al preparar este documento. No se considera publicado hasta verificar el alias, manifiesto, commit y contenido servido. La versión anterior se conserva como reversión.
-
