@@ -81,7 +81,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       setPending(false);
       requestInFlight.current = false;
     });
-    return () => { cancelled = true; requestInFlight.current = false; };
+    return () => { cancelled = true; requestInFlight.current = false; setPending(false); };
   }, [forceOtp]);
 
   useEffect(() => {
@@ -113,7 +113,12 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       }
       if (!cancelled) { setPending(false); requestInFlight.current = false; }
     });
-    return () => { cancelled = true; requestInFlight.current = false; };
+    return () => {
+      cancelled = true;
+      requestInFlight.current = false;
+      setPending(false);
+      setStatus("La verificación se interrumpió. Podés pedir un código para continuar.");
+    };
   }, [forceOtp, magicToken, autoverify, contactParam, codeParam, safeNextPath]);
 
   async function confirmSession() {

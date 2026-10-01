@@ -9,6 +9,8 @@ Base publicada revisada: web `2026.10.01-web-sun-mobile.2`, fuente `45ce24ebee11
 - `/register` ofrecía campos y un botón sin envío implementado.
 - El formulario de experiencias aceptaba un HTTP 200 con cuerpo vacío como guardado y borraba el borrador. La respuesta actual de API contiene un registro persistido con identificador, referencia, privacidad y estado de moderación.
 - Las tarjetas de productos reunían acciones secundarias junto a la principal; la ficha, la URL y el botón Atrás no conservaban un mismo estado.
+- Al abandonar una verificación automática, el acceso podía conservar el bloqueo de espera aunque la respuesta ya no correspondiera a la pantalla.
+- Experiencias tenía texto oscuro sobre superficies oscuras en modo claro; además, afirmaba ausencia de reservas y visitas sin consultar esos datos.
 
 ## Cambio concreto
 
@@ -19,6 +21,8 @@ El acceso presenta dos pasos, etiquetas visibles, foco en el código, mensajes a
 La colección usa una acción principal por tarjeta y mantiene los secundarios dentro de la ficha. «Más» agrupa los destinos existentes por intención. La ficha sincroniza una referencia única perteneciente a la cuenta con la URL y el historial del navegador. Los avisos desconocidos tienen un estado visible y orientación para iniciar el reporte desde una lectura habilitada, sin trasladar credenciales.
 
 Experiencias conserva comentario y foto ante un acuse inválido, bloquea envíos simultáneos y distingue preparación de foto y envío. La calificación funciona con teclado; OTP y reporte mejoran foco y feedback. Los permisos, la validación de compra, los contratos y los controles anti-replay conservan su autoridad en API.
+
+La página completa de experiencias usa superficies y contrastes propios para ambos temas. Reservas y visitas se muestran como información no disponible en esa pantalla. Al salir de la verificación automática se liberan los controles; una respuesta tardía no cambia el estado ni inicia otra solicitud.
 
 ## Criterio de diseño
 
