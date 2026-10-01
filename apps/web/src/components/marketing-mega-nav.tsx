@@ -7,6 +7,7 @@ import { ArrowRight, ChevronDown, ExternalLink, Menu, X } from "lucide-react";
 import { LocaleSwitcher, ThemeToggle, type Theme } from "@product/ui";
 import type { AppLocale } from "@product/config";
 import { BrandHomeLink } from "./brand-home-link";
+import { focusInitialPassportFragment } from "./passport-fragment-restoration";
 import styles from "./marketing-mega-nav.module.css";
 
 type NavItem = {
@@ -404,7 +405,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     closeMobileMenu("navigate");
     openMenuSourceRef.current = null;
     setOpenMenu(null);
-    if (pathname === "/" && window.location.hash === "#pasaporte-digital") focusPassportContent();
+    if (pathname === "/") return focusInitialPassportFragment();
   }, [pathname]);
 
   useEffect(() => () => {

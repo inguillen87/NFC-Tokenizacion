@@ -28,6 +28,7 @@
     font-size: 11px;
     line-height: 1.3;
     letter-spacing: 0;
+    text-transform: none;
     overflow-wrap: anywhere;
   }
 }

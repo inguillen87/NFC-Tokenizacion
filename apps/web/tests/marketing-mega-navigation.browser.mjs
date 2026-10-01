@@ -26,20 +26,43 @@ const bundle=await build({stdin:{contents:fixture,resolveDir:web,loader:'tsx'},b
 const js=bundle.outputFiles.find(file=>file.path.endsWith('.js')).contents,css=bundle.outputFiles.find(file=>file.path.endsWith('.css')).contents;
 await writeFile(join(output,'fixture.css'),css);
 const globals=(await postcss([tailwindcss({content:[join(web,'src/components/marketing-mega-nav.tsx'),join(root,'packages/ui/src/theme-toggle.tsx'),join(root,'packages/ui/src/locale-switcher.tsx')],darkMode:['selector','[data-theme="dark"]']})]).process(await readFile(join(web,'src/app/globals.css'),'utf8'),{from:undefined})).css;
+// Hold real HTTP bytes until the test observes the mounted React navigation.
+// Releasing a response changes no DOM, focus, React state or browser lifecycle.
+const pendingNativeLoads=new Map();
+function releaseNativeLoad(kind){const release=pendingNativeLoads.get(kind);pendingNativeLoads.delete(kind);release?.();}
 const server=createServer((req,res)=>{
  if(req.method!=='GET'){res.writeHead(405);return res.end();}
  const path=new URL(req.url,'http://fixture.invalid').pathname;
  if(path==='/fixture.js'){res.setHeader('content-type','text/javascript');return res.end(js);}
  if(path==='/fixture.css'){res.setHeader('content-type','text/css');return res.end(css);}
  if(path==='/base.css'){res.setHeader('content-type','text/css');return res.end(globals);}
+ if(path==='/native-load-delay.svg'){
+  const kind=new URL(req.url,'http://fixture.invalid').searchParams.get('case');
+  res.setHeader('content-type','image/svg+xml');
+  pendingNativeLoads.set(kind,()=>res.end('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#147d83"/></svg>'));
+  return;
+ }
  if(path==='/favicon.ico'){res.writeHead(204);return res.end();}
  if(!['/','/about'].includes(path)){res.writeHead(404);return res.end();}
  const theme=/(?:^|;\s*)theme=dark(?:;|$)/.test(req.headers.cookie||'')?'dark':'light';
+ const nativeKind=path==='/'?/\bnav_load_case=([^;]+)/.exec(req.headers.cookie||'')?.[1]:null;
+ if(['late-heading','late-asset','early-input'].includes(nativeKind)){
+  const head=`<!doctype html><html lang="es-AR" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Native fragment loading fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0;font:16px system-ui}header{position:sticky!important;top:0;z-index:50}.header-main-row{display:flex;align-items:center;gap:12px;padding-inline:12px}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{scroll-margin-top:110px;padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><script async src="/fixture.js"></script><main id="main-content" data-nav-inert><h1>Home — synthetic delayed content</h1><button class="fixture-action" id="native-early-control">Conservar mi foco</button><div id="prelude"></div>`;
+  const destination='<section id="pasaporte-digital"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section><div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside>';
+  res.setHeader('content-type','text/html;charset=utf-8');
+  if(nativeKind==='late-heading'){
+   res.write(head);
+   pendingNativeLoads.set(nativeKind,()=>res.end(destination+'</body></html>'));
+  }else{
+   res.end(head+destination+`<img alt="" width="1" height="1" src="/native-load-delay.svg?case=${nativeKind}"></body></html>`);
+  }
+  return;
+ }
  res.setHeader('content-type','text/html;charset=utf-8');res.end(`<!doctype html><html lang="es-AR" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navigation component fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0;font:16px system-ui}header{position:sticky!important;top:0;z-index:50}.header-main-row{display:flex;align-items:center;gap:12px;padding-inline:12px}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{scroll-margin-top:110px;padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><main id="main-content" data-nav-inert><h1>${path==='/'?'Home':'About'} — synthetic content</h1><div id="prelude"></div>${path==='/'?'<section id="pasaporte-digital"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section>':''}<div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside><script src="/fixture.js"></script></body></html>`);
 });
 await new Promise((ok,fail)=>{server.once('error',fail);server.listen(Number(process.env.QA_PORT||3302),'127.0.0.1',ok)});
 const origin=`http://127.0.0.1:${server.address().port}`;
-const report={realComponents:true,realCss:true,syntheticHomeAboutContent:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,origin,checks:[],views:[],earlyFocusedMenuCases:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
+const report={realComponents:true,realCss:true,syntheticHomeAboutContent:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,origin,checks:[],views:[],earlyFocusedMenuCases:[],nativeLoadCases:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
 const check=(passed,name,details)=>report.checks.push({name,passed:Boolean(passed),...(details===undefined?{}:{details})});
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 const visibleSelector='a[href],button:not([disabled]),select,summary,[tabindex]:not([tabindex="-1"])';
@@ -95,6 +118,71 @@ async function earlyMenuInteraction(page,name){
  const details={name,...initial,nativeDestinationFocused:destination};report.earlyFocusedMenuCases.push(details);
  check(initial.focusedOnMount&&initial.retainedThroughAutofocus&&destination,'Early menu interaction keeps link focus and native destination '+name,details);
 }
+async function failureSnapshot(page){
+ return page.evaluate(()=>({url:location.origin+location.pathname+location.hash,readyState:document.readyState,
+  activeElement:document.activeElement?.outerHTML.slice(0,500),
+  destination:document.querySelector('#pasaporte-digital h2')?.outerHTML.slice(0,500)||null,
+  mainInert:document.querySelector('#main-content')?.inert,
+  mainAria:document.querySelector('#main-content')?.getAttribute('aria-hidden'),
+  nativeLoadProbe:window.__nativeLoadProbe||null})).catch(()=>({snapshotUnavailable:true}));
+}
+async function nativeLoadCase(width,theme,kind){
+ const name=`native ${kind} ${width} ${theme}`,context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'});
+ const details={width,theme,kind,realHttpLoadHeld:true,completed:false};report.nativeLoadCases.push(details);
+ await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
+ await context.addInitScript(()=>{
+  const probe=window.__nativeLoadProbe={events:[],navigationMounted:null};
+  const event=type=>probe.events.push({type,readyState:document.readyState,at:performance.now(),active:document.activeElement?.id||document.activeElement?.tagName||null});
+  document.addEventListener('readystatechange',()=>event('readystatechange'));
+  document.addEventListener('focusin',()=>event('focusin'));
+  window.addEventListener('load',()=>event('load'),{once:true});
+  const observer=new MutationObserver(()=>{
+   if(!document.querySelector('button[aria-label="Abrir navegación"]'))return;
+   probe.navigationMounted={readyState:document.readyState,at:performance.now(),destinationPresent:Boolean(document.querySelector('#pasaporte-digital h2'))};
+   observer.disconnect();
+  });
+  observer.observe(document,{childList:true,subtree:true});
+ });
+ const page=await context.newPage();page.on('pageerror',error=>report.errors.push({name,error:error.message.slice(0,180)}));
+ await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||/^\/(?:api|sun)(?:\/|$)/.test(url.pathname)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
+ try{
+  await page.goto(origin+'/about',{waitUntil:'networkidle'});await openMenu(page);
+  await context.addCookies([{name:'nav_load_case',value:kind,url:origin}]);
+  const committed=page.waitForURL(origin+'/#pasaporte-digital',{waitUntil:'commit'});
+  await page.getByRole('dialog').getByRole('link',{name:'Pasaporte digital',exact:true}).press('Enter',{noWaitAfter:true});
+  await committed;
+  await page.getByRole('button',{name:'Abrir navegación',exact:true}).waitFor({state:'attached'});await frames(page);
+  details.beforeRelease=await page.evaluate(()=>({readyState:document.readyState,destinationPresent:Boolean(document.querySelector('#pasaporte-digital h2')),probe:window.__nativeLoadProbe}));
+  check(pendingNativeLoads.has(kind)&&details.beforeRelease.readyState!=='complete'
+   &&details.beforeRelease.probe.navigationMounted?.readyState!=='complete'
+   &&details.beforeRelease.destinationPresent===(kind!=='late-heading'),
+   'React mounts during real unfinished native load '+name,details.beforeRelease);
+  if(kind==='early-input'){
+   await page.locator('#native-early-control').click();
+   details.userFocusBeforeRelease=await page.locator('#native-early-control').evaluate(node=>node===document.activeElement);
+  }
+  releaseNativeLoad(kind);
+  await page.waitForLoadState('load');await frames(page);
+  if(kind==='early-input'){
+   check(details.userFocusBeforeRelease&&await page.locator('#native-early-control').evaluate(node=>node===document.activeElement)
+    &&new URL(page.url()).hash==='#pasaporte-digital','New user interaction retains focus after native load '+name);
+  }else{
+   await page.waitForFunction(()=>document.activeElement?.matches('#pasaporte-digital h2'));
+   const nativeDestination=await page.evaluate(()=>location.pathname==='/'&&location.hash==='#pasaporte-digital'&&scrollY>500
+    &&document.querySelector('#pasaporte-digital h2').getAttribute('tabindex')==='-1'&&!document.querySelector('#main-content').inert);
+   await page.keyboard.press('Tab');
+   check(nativeDestination&&await page.locator('#destination-action').evaluate(node=>node===document.activeElement)
+    &&await page.locator('#pasaporte-digital h2').getAttribute('tabindex')===null,
+    'Completed native load focuses destination and continues local Tab '+name);
+  }
+  details.afterRelease=await failureSnapshot(page);
+  await page.goBack({waitUntil:'networkidle'});await frames(page);
+  check(new URL(page.url()).pathname==='/about'&&new URL(page.url()).hash===''
+   &&await page.locator('#pasaporte-digital').count()===0,'Native Back retains About without late destination focus '+name);
+  details.completed=true;
+ }catch(error){details.failure=await failureSnapshot(page);report.errors.push({name,error:error.message.slice(0,180),snapshot:details.failure});}
+ finally{releaseNativeLoad(kind);await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));}
+}
 try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
   const name=`${width} ${theme}`,context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'});
@@ -138,9 +226,10 @@ try{
    check(await page.locator('#pasaporte-digital h2').evaluate(node=>node===document.activeElement),'About→Home destination receives focus '+name);
    await page.goBack({waitUntil:'networkidle'});check(new URL(page.url()).pathname==='/about','Native Back retains About route '+name);
    report.views.push({width,theme,paths:['/','/about'],closedDetailsTabStops:visibleCount});
-  }catch(error){report.errors.push({name,error:error.message.slice(0,180)})}finally{await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2))}
+  }catch(error){report.errors.push({name,error:error.message.slice(0,180),snapshot:await failureSnapshot(page)})}finally{await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2))}
  }
+ for(const width of [390,1440])for(const theme of ['light','dark'])for(const kind of ['late-heading','late-asset','early-input'])await nativeLoadCase(width,theme,kind);
  check(report.errors.length===0,'No runtime or test exceptions',report.errors);check(report.blockedRequests.length===0,'No external/sensitive/write request',report.blockedRequests);
 }finally{await browser.close();report.browserClosed=true;await new Promise(ok=>server.close(ok));report.serverClosed=true;await writeFile(join(output,'report.json'),JSON.stringify(report,null,2))}
 console.log(JSON.stringify({views:report.views.length,checks:report.checks.length,failed:report.checks.filter(check=>!check.passed),errors:report.errors,browserClosed:report.browserClosed,serverClosed:report.serverClosed,output},null,2));
-assert.equal(report.views.length,8);assert.ok(report.checks.every(check=>check.passed));assert.equal(report.errors.length,0);
+assert.equal(report.views.length,8);assert.equal(report.nativeLoadCases.length,12);assert.ok(report.nativeLoadCases.every(item=>item.completed));assert.ok(report.checks.every(check=>check.passed));assert.equal(report.errors.length,0);
