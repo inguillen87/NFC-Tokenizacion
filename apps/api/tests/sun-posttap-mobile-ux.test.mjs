@@ -19,7 +19,10 @@ test("physical SUN passport puts official configured product and image in the fi
   assert.match(firstMobileCard, /productHeroImageUrl/);
   assert.match(firstMobileCard, /productDisplayName/);
   assert.match(firstMobileCard, /fetchPriority="high"/);
-  assert.match(firstMobileCard, /<SunProductHeroStage/);
+  assert.doesNotMatch(firstMobileCard, /<SunProductHeroStage/);
+  assert.match(firstMobileCard, /sun-product-placeholder/);
+  assert.match(firstMobileCard, /Imagen no informada/);
+  assert.match(firstMobileCard, /decoding="async"/);
 });
 
 test("seal state and SUN freshness remain independent above the fold", () => {

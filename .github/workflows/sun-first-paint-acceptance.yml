@@ -1,0 +1,48 @@
+name: SUN first-paint and location acceptance
+on:
+  pull_request:
+    paths: ['apps/web/**', 'packages/**', 'package.json', 'package-lock.json', '.github/workflows/sun-first-paint-acceptance.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sun-web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Install exact dependencies and validate web
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test --workspace web
+          npx tsc --noEmit --incremental false -p apps/web/tsconfig.json
+          npm run check:secrets
+          npm run build:web
+      - name: Install isolated browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sun-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
+          node "$RUNNER_TEMP/sun-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
+      - name: Verify loading DOM work and explicit same-tap location
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
+        run: |
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/first-paint" node apps/web/tests/sun-first-paint.browser.mjs
+          CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/location" node apps/web/tests/sun-location-single-action.browser.mjs
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Upload synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sun-first-paint-evidence
+          path: ${{ runner.temp }}/sun-evidence
+          if-no-files-found: ignore
+          retention-days: 7

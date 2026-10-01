@@ -50,7 +50,11 @@ test("web SUN page can hydrate a snapshot created by the API tap route", async (
   assert.match(webSource, /snapshotId/);
   assert.match(webSource, /freshToken/);
   assert.match(webSource, /\/sun\/snapshot\//);
-  assert.match(webSource, /payload\?\.contract/);
+  assert.match(webSource, /await readSunSnapshot/);
+  const reader = await readFile(new URL("../../web/src/app/sun/sun-snapshot-read.ts", import.meta.url), "utf8");
+  assert.match(reader, /body\?\.ok===true/);
+  assert.match(reader, /body\.contract/);
+  assert.match(webSource, /!hasSnapshotReference && !snapshotResult && hasCompleteDynamicSunPayload/);
   assert.match(webSource, /isFreshHandoff/);
   assert.match(webSource, /isSnapshotView/);
   assert.match(webSource, /isFreshCommercialTap/);

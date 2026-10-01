@@ -1,3 +1,4 @@
+import {readSunSnapshot} from './sun-snapshot-read';
 import { ProductNoticeProvider } from "../../lib/product-notice-resource";
 import { PassportEssentialSignals } from "./passport-essential-signals";
 import { PassportEvidenceResources } from "./passport-evidence-resources";
@@ -12,7 +13,7 @@ import { AlertTriangle, ArrowDown, ArrowLeft, ChevronRight, MapPin, MessageCircl
 import { CtaActions } from "./cta-actions";
 import { ReportProblemForm } from "./report-problem-form";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
-import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
+import type { SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
 import { SunLocaleProvider } from "./sun-locale-provider";
 import { formatSunDateTime, translateSunUiText, type SunLocale } from "./sun-locale";
@@ -576,22 +577,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     // locally so it cannot generate false MALFORMED_URL noise in the SUN API.
     result = sunFallbackResult(params, true);
   } else {
+    const hasSnapshotReference = Boolean(snapshotId || snapshotTrace || snapshotAccess);
     snapshotResult = snapshotId && snapshotTrace && snapshotAccess
-      ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}&access=${encodeURIComponent(snapshotAccess)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`, { cache: "no-store" })
-        .then((res) => res.ok ? res.json() : null)
-        .then((payload) => payload?.contract || null)
-        .catch(() => null) as SunContract | null
+      ? await readSunSnapshot(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}&access=${encodeURIComponent(snapshotAccess)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`) as SunContract | null
       : null;
     const hasCompleteDynamicSunPayload = ["bid", "picc_data", "enc", "cmac"]
       .every((key) => Boolean(query.get(key)?.trim()));
-    if (!snapshotResult && hasCompleteDynamicSunPayload) {
+    if (!hasSnapshotReference && !snapshotResult && hasCompleteDynamicSunPayload) {
       // Keep the browser as the first caller of the SUN API. A server-side BFF
       // fetch would attribute Vercel's server region/IP to the tap instead of
       // the phone. The API validates and persists the dynamic payload, then
       // redirects the browser back to the signed snapshot URL.
       redirect(`${resolvedApiBase}/sun?${query.toString()}`);
     }
-    const response = snapshotResult ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
+    const response = snapshotResult || hasSnapshotReference ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
     const parsedResult = response?.ok
       ? await response.json().catch(() => null) as SunContract | null
       : null;
@@ -1711,24 +1710,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     alt={productDisplayName}
                     className="h-full w-full object-contain p-1.5 drop-shadow-[0_12px_18px_rgba(0,0,0,0.42)]"
                     loading="eager"
+                    decoding="async"
                     fetchPriority="high"
                   />
                 ) : (
                   <div className="sun-summary-product-stage h-full w-full" aria-label={`Vista del producto ${productDisplayName}`}>
-                    <SunProductHeroStage
-                      kind={productVisualKind}
-                      productName={productDisplayName}
-                      imageUrl={productHeroImageUrl}
-                      originDisplay={originDisplay}
-                      tapDisplay={tapDisplay}
-                      distanceDisplay={distanceDisplay}
-                      state={productVisualState}
-                      originLat={wineryPoint[0]?.lat}
-                      originLng={wineryPoint[0]?.lng}
-                      tapLat={currentTapPoint[0]?.lat}
-                      tapLng={currentTapPoint[0]?.lng}
-                      isDemoPreview={isDemoPreview}
-                    />
+                    <div data-testid="sun-product-placeholder" className="grid h-full w-full place-items-center text-cyan-300">
+                      <Package className="h-12 w-12" aria-hidden="true"/><span className="sr-only">Imagen no informada</span>
+                    </div>
                   </div>
                 )}
               </div>

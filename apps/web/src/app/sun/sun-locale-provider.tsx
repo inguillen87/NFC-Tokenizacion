@@ -39,7 +39,9 @@ function shouldSkipTextNode(node: Node) {
 }
 
 function localizeTree(root: HTMLElement, locale: SunLocale) {
-  for (const element of root.querySelectorAll<HTMLElement>("[data-sun-datetime]")) {
+  if (root.closest("[data-sun-server-evidence='true']")) return;
+  const nodes = (selector: string) => [...(root.matches(selector) ? [root] : []), ...root.querySelectorAll<HTMLElement>(selector)];
+  for (const element of nodes("[data-sun-datetime]")) {
     if (element.closest("[data-sun-server-evidence='true']")) continue;
     const rawValue = element.dataset.sunDatetime;
     if (!rawValue) continue;
@@ -59,7 +61,7 @@ function localizeTree(root: HTMLElement, locale: SunLocale) {
     current = walker.nextNode();
   }
 
-  for (const element of root.querySelectorAll<HTMLElement>("[aria-label], [placeholder], [title]")) {
+  for (const element of nodes("[aria-label], [placeholder], [title]")) {
     if (element.closest("[data-sun-server-evidence='true']")) continue;
     for (const attribute of TRANSLATED_ATTRIBUTES) {
       const value = element.getAttribute(attribute);
@@ -138,9 +140,22 @@ export function SunLocaleProvider({
     const root = rootRef.current;
     if (!root) return;
 
-    const observer = new MutationObserver(() => {
+    // Only mutated subtrees need translation; consent/map updates must not traverse the whole passport.
+    const observer = new MutationObserver((records) => {
       if (translatingRef.current) return;
-      applyLocale(locale);
+      const roots = new Set<HTMLElement>();
+      for (const record of records) {
+        const changed = record.type === "characterData" ? [record.target] : [...record.addedNodes];
+        for (const node of changed) {
+          const element = node instanceof HTMLElement ? node : node.parentElement;
+          if (!element || !root.contains(element) || element.closest("[data-sun-server-evidence='true']")) continue;
+          roots.add(element);
+        }
+      }
+      if (!roots.size) return;
+      observer.disconnect();
+      try { for (const element of roots) if (![...roots].some(parent => parent !== element && parent.contains(element))) localizeTree(element, locale); }
+      finally { observer.observe(root, { childList: true, subtree: true, characterData: true }); }
     });
     observer.observe(root, { childList: true, subtree: true, characterData: true });
     return () => observer.disconnect();

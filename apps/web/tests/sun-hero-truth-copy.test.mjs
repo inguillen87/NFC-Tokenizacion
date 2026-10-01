@@ -11,10 +11,11 @@ test("SUN product-first card uses the recent truth-gated hero without a live fab
 
   assert.match(hero, /isDemoPreview: boolean/);
   assert.match(hero, /getSunHeroTraceCopy\(isDemoPreview, state, text\)/);
-  assert.match(page, /<SunProductHeroStage/);
+  assert.doesNotMatch(page, /<SunProductHeroStage/);
+  assert.match(page, /sun-product-placeholder/);
   assert.match(page, /data-testid="sun-summary-product"/);
-  assert.match(page, /originLat=\{wineryPoint\[0\]\?\.lat\}/);
-  assert.match(page, /tapLat=\{currentTapPoint\[0\]\?\.lat\}/);
+  assert.match(page, /<SunLocationExperience/);
+  assert.match(page, /Imagen no informada/);
   assert.match(page, /Perfil oficial del piloto/);
   assert.doesNotMatch(demoCopy, /Tap actual|Tap fisico|Lectura fisica del chip|Ruta real de confianza del producto/);
   assert.match(demoCopy, /sin tap físico/);
