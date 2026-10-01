@@ -1839,8 +1839,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   Ver fuente y horario
                 </summary>
                 <div className="space-y-1 pb-1 leading-4">
-                  <p className="break-words"><span className="font-bold text-slate-500">Fuente / precisión:</span> <span data-sun-server-evidence="true">{summaryLocationEvidence}</span></p>
-                  <p className="break-words"><span className="font-bold text-slate-500">Hora del tap:</span> <span data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={Boolean(!localTapTimeIso && localTapTimeLabel).toString()}>{summaryLocationTime}</span></p>
+                  <p className="break-words"><span className="font-bold text-slate-400">Fuente / precisión:</span> <span data-sun-server-evidence="true">{summaryLocationEvidence}</span></p>
+                  <p className="break-words"><span className="font-bold text-slate-400">Hora del tap:</span> <span data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={Boolean(!localTapTimeIso && localTapTimeLabel).toString()}>{summaryLocationTime}</span></p>
                   <p>Este resultado corresponde únicamente a este tag y esta lectura.</p>
                 </div>
               </details>
