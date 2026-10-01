@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Map as MapLibreMap, Marker, Popup, StyleSpecification } from "maplibre-gl";
 import { resolveTrustMapSource } from "@product/ui/trust-map-source";
 import styles from "./sun-passport-map.module.css";
 import {configureSunMapWorker} from "../../lib/sun-map-worker";
+import {googlePointLink, googleComparisonLink, sunMapInsets} from "../../lib/sun-external-map";
 
 export type SunPassportMapLocation = {
   id: string;
@@ -30,6 +31,9 @@ type LoadState = "waiting" | "loading" | "ready" | "empty" | "error";
 const LEGACY_CARTO_TEMPLATE = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
 const FALLBACK_WORLD_STREET_MAP_TEMPLATE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
 const FALLBACK_WORLD_STREET_MAP_ATTRIBUTION = "Esri World Street Map / OpenStreetMap contributors";
+// Compact visible credit; source and licence names remain accessible and readable.
+const FALLBACK_WORLD_STREET_MAP_CREDIT = '© <a href="https://www.esri.com/en-us/legal/copyright-trademarks" target="_blank" rel="noopener noreferrer">Esri</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>';
+
 const TRUST_MAP_SOURCE = resolveTrustMapSource();
 const USE_CONFIGURED_RASTER = Boolean(
   TRUST_MAP_SOURCE.rasterTileTemplate
@@ -48,7 +52,7 @@ function configuredRasterStyle(light: boolean): StyleSpecification {
     : FALLBACK_WORLD_STREET_MAP_TEMPLATE;
   const attribution = USE_CONFIGURED_RASTER
     ? TRUST_MAP_SOURCE.attribution
-    : FALLBACK_WORLD_STREET_MAP_ATTRIBUTION;
+    : FALLBACK_WORLD_STREET_MAP_CREDIT;
   return {
     version: 8,
     sources: {
@@ -216,6 +220,11 @@ function tapSourcePresentation(point: SunPassportMapLocation | null) {
 }
 
 export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeLabel }: SunPassportMapProps) {
+  const mapId = useId();
+  const mapFrameRef = useRef<HTMLDivElement | null>(null);
+  const expandButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [controlNotice, setControlNotice] = useState("");
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
@@ -340,6 +349,8 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         };
         const fitAll = (animated = true) => {
           if (!mapRef.current) return;
+          mapRef.current.stop();
+          Object.values(popupsRef.current).forEach(popup => popup.remove());
           if (points.length === 1 && points[0].kind === "origin") {
             mapRef.current.easeTo({
               center: [points[0].point.lng, points[0].point.lat],
@@ -358,7 +369,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
             bounds.extend([tap.lng + longitudeDelta, tap.lat + latitudeDelta]);
           }
           mapRef.current.fitBounds(bounds, {
-            padding: window.innerWidth < 640 ? { top: 72, right: 42, bottom: 64, left: 42 } : { top: 82, right: 72, bottom: 72, left: 72 },
+            padding: sunMapInsets(container.clientWidth, container.clientHeight),
             maxZoom: points.length === 1 && tap ? focusZoom(tap) : 10.5,
             duration: animated ? duration(550) : 0,
           });
@@ -553,6 +564,22 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
   // Coordinates and evidence changes rebuild markers after a consented local update.
   }, [pointKey, retryNonce, showDemoConnection]);
 
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      mapRef.current?.resize();
+      fitAllRef.current();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expanded]);
+  const comparisonHref = googleComparisonLink(origin, tap);
+  const originHref = googlePointLink(origin, "origin");
+  const tapHref = googlePointLink(tap, "tap");
+  function toggleExpanded() {
+    setExpanded(value => !value);
+    setControlNotice(expanded ? "Mapa reducido dentro del pasaporte." : "Mapa ampliado dentro de NexID. Los puntos conservan su ubicación.");
+  }
+
   const renderLocation = (kind: "origin" | "tap", point: SunPassportMapLocation | null) => {
     const tapPresentation = tapSourcePresentation(point);
     const locationCode = kind === "origin" ? "O" : "T";
@@ -584,7 +611,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
             <span className={styles.locationMeta}>{kind === "origin" ? "Informado por la empresa" : tapPresentation.badge}</span>
           </span>
         </button>
-        {point.mapHref ? <a className={styles.externalLink} href={point.mapHref} target="_blank" rel="noreferrer" aria-label={`Abrir ${kind === "origin" ? "origen" : "tap"} en OpenStreetMap`}>Abrir mapa ↗</a> : <span />}
+        {point.mapHref ? <a className={styles.externalLink} href={point.mapHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label={`Abrir ${kind === "origin" ? "origen" : "tap"} en OpenStreetMap`}>OpenStreetMap ↗</a> : <span />}
       </div>
     );
   };
@@ -601,14 +628,37 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
 
   return (
     <div
-      className={styles.shell}
+      className={`${styles.shell} ${expanded ? styles.expanded : ""}`}
+      data-map-expanded={expanded}
+      onKeyDown={event => { if (event.key === "Escape" && event.target instanceof Element) { const menu = event.target.closest("details"); if (menu?.open) { event.preventDefault(); menu.open = false; menu.querySelector("summary")?.focus(); return; } } if (expanded && event.key === "Escape") { event.preventDefault(); setExpanded(false); setControlNotice("Mapa reducido dentro del pasaporte."); expandButtonRef.current?.focus(); } }}
       data-sun-passport-map="maplibre"
       data-route-mode={showDemoConnection ? "demo" : "no-route"}
       data-basemap="configured-raster"
       data-basemap-state={isDegraded && loadState === "ready" ? "degraded" : loadState}
       data-location-source={tapPresentation.kind}
     >
-      <div className={styles.mapFrame} role="region" aria-label={mapAriaLabel}>
+      <div className={styles.mapToolbar}>
+        <div className={styles.toolbarIntro}><span>UBICACIONES DE ESTA LECTURA</span><p>Explorá el mapa sin salir del pasaporte.</p></div>
+        <div className={styles.toolbarActions}>
+          <button ref={expandButtonRef} type="button" className={styles.expandButton} aria-expanded={expanded} aria-controls={mapId} disabled={!points.length} onClick={toggleExpanded}>{expanded ? "Reducir mapa" : "Ampliar mapa"}</button>
+          {(originHref || tapHref) ? <details className={styles.externalMenu}>
+            <summary><span>Abrir en Google Maps</span><span aria-hidden="true">↗</span></summary>
+            <div className={styles.externalChoices}>
+              <p>Se abrirá una aplicación externa con las coordenadas públicas elegidas. No se envían el identificador ni el enlace de esta lectura.</p>
+              {comparisonHref ? <>
+                <a href={comparisonHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Ver ambos en Google Maps ↗</a>
+                <small>Google puede calcular una ruta sugerida entre el origen declarado y la zona aproximada compartida. No representa el recorrido del producto.</small>
+              </> : null}
+              {originHref ? <a href={originHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Abrir origen declarado ↗</a> : null}
+              {tapHref ? <a href={tapHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{tap?.source === "ip_geo" || tap?.source === "edge_ip_approx" ? "Ver zona estimada de red ↗" : "Abrir zona compartida ↗"}</a> : null}
+              {!comparisonHref && (tap?.source === "ip_geo" || tap?.source === "edge_ip_approx") ? <small>La zona estimada por la red no se usa como destino preciso ni para calcular una ruta.</small> : null}
+            </div>
+          </details> : null}
+        </div>
+        <span className={styles.controlNotice} role="status" aria-live="polite">{controlNotice}</span>
+      </div>
+
+      <div ref={mapFrameRef} id={mapId} className={styles.mapFrame} role="region" aria-label={mapAriaLabel}>
         <div ref={mapContainerRef} className={styles.map} />
         {loadState === "waiting" || loadState === "loading" ? (
           <div className={styles.loading} aria-live="polite">
@@ -642,7 +692,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
               {showDemoConnection ? <span className={styles.demoBadge}>Demo · conexión ilustrativa</span> : null}
               {isDegraded ? <span className={styles.degradedBadge}>Cartografía parcial</span> : null}
             </div>
-            {points.length > 1 ? <button type="button" className={styles.fitButton} onClick={() => fitAllRef.current()}>Ver ambos puntos</button> : null}
+            {points.length > 1 ? <button type="button" className={styles.fitButton} title="Reencuadrar origen y zona dentro de este mapa" onClick={() => { fitAllRef.current(); setControlNotice("Origen y zona centrados en este mapa."); }}>Centrar puntos</button> : null}
           </>
         ) : null}
       </div>

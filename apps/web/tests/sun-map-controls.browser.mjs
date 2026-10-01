@@ -1,7 +1,7 @@
 import {prepareSunMapWorker} from '../scripts/prepare-sun-map-worker.mjs';
 import {createTestRaster} from './sun-test-raster.mjs';
 import assert from 'node:assert/strict';import {createServer} from 'node:http';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {fileURLToPath,pathToFileURL} from 'node:url';import {resolve,join,dirname} from 'node:path';import {build} from 'esbuild';
-const web=fileURLToPath(new URL('../',import.meta.url)),root=resolve(web,'../..'),output=resolve(process.env.QA_OUTPUT||'artifacts/sun-map-recovery');await mkdir(output,{recursive:true});
+const web=fileURLToPath(new URL('../',import.meta.url)),root=resolve(web,'../..'),output=resolve(process.env.QA_OUTPUT||'artifacts/sun-map-controls');await mkdir(output,{recursive:true});
 const preparedWorker=await prepareSunMapWorker();
 const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
 const source=await readFile(join(web,'src/app/sun/sun-passport-map.tsx'),'utf8');
@@ -15,7 +15,7 @@ const report={actualMapLibre:true,syntheticLocations:true,syntheticTileImages:tr
 // Tiny PNG tests delivery/lifecycle only; it is not represented as real map imagery.
 const png=createTestRaster();
 async function scenario(mode='success',width=390,theme='dark'){
- const context=await browser.newContext({viewport:{width,height:1100},reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(15000);const state={mode,requests:0,held:[]};
+ const context=await browser.newContext({viewport:{width,height:1100},reducedMotion:'reduce',hasTouch:width<768,isMobile:width<768,deviceScaleFactor:1,serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(15000);const state={mode,requests:0,held:[]};
  page.on('pageerror',e=>report.errors.push(e.message));await page.addInitScript(()=>{window.__geoRequests=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__geoRequests++;}}});});
  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.origin===origin&&req.method()==='GET'){if(u.pathname.startsWith('/maplibre/')&&state.mode==='worker-failure')return route.fulfill({status:503,contentType:'text/plain',body:'synthetic worker outage'});return route.continue();}if(req.method()==='GET'&&u.hostname==='server.arcgisonline.com'&&u.pathname.includes('/tile/')){state.requests++;if(req.headers()['referer'])report.network.push('unexpected-referrer');if(state.mode==='hang'){state.held.push(route);return;}if(state.mode==='live')return route.continue();return route.fulfill({status:state.mode==='failure'?503:200,contentType:state.mode==='failure'?'text/plain':'image/png',headers:{'access-control-allow-origin':'*','cache-control':'no-store'},body:state.mode==='failure'?'synthetic outage':png});}report.network.push(req.method()+' '+u.origin+u.pathname);return route.abort();});
  await page.goto(origin+'/?theme='+theme);await page.locator('[data-sun-passport-map]').waitFor();await page.waitForFunction(()=>window.__qaMap);return{page,context,state,width,theme};
@@ -23,26 +23,38 @@ async function scenario(mode='success',width=390,theme='dark'){
 const stateOf=t=>t.page.locator('[data-sun-passport-map]').getAttribute('data-basemap-state');
 async function ready(t){await t.page.waitForFunction(()=>document.querySelector('[data-sun-passport-map]')?.getAttribute('data-basemap-state')==='ready'&&window.__qaMap.loaded()&&window.__qaMap.areTilesLoaded(),null,{timeout:7500});}
 async function picture(t,name){const file=`${name}-${t.width}-${t.theme}.png`;await t.page.screenshot({path:join(output,file),fullPage:true});report.views.push({file,name,width:t.width,theme:t.theme});}
+async function frames(page){await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));}
+async function bothInside(t){return t.page.evaluate(()=>{const map=window.__qaMap,size=map.getCanvas().getBoundingClientRect();return [window.__initial.origin,window.__initial.tap].every(p=>{const q=map.project([p.lng,p.lat]);return q.x>=20&&q.x<=size.width-20&&q.y>=40&&q.y<=size.height-20;});});}
 try{
- const hang=await scenario('hang');await hang.page.waitForTimeout(8500);
- check(hang.state.requests>0,'Real renderer requested raster tiles');check(await stateOf(hang)==='error','Loaded style with stalled raster exits loading');check(await hang.page.getByRole('button',{name:'Reintentar mapa',exact:true}).count()===1,'Stalled map offers explicit retry');
- check(await hang.page.getByText('Origen de ensayo',{exact:true}).isVisible(),'Origin remains available when tile transfer stalls');
- await picture(hang,'stalled');hang.state.mode='success';await hang.page.evaluate(()=>window.__oldMap=window.__qaMap);await hang.page.getByRole('button',{name:'Reintentar mapa',exact:true}).click();await ready(hang);
- check(await hang.page.evaluate(()=>window.__qaMap!==window.__oldMap),'Retry replaces only the map renderer');check(await hang.page.locator('.maplibregl-canvas').count()===1,'Retry does not duplicate canvases');for(const route of hang.state.held.splice(0))await route.abort().catch(()=>{});await hang.page.waitForTimeout(100);check(await stateOf(hang)==='ready','Old failed requests cannot overwrite the replacement map');await hang.context.close();
- for(const mode of ['failure','worker-failure']){
-  const t=await scenario(mode);await t.page.waitForTimeout(8500);check(await stateOf(t)==='error','Failure '+mode+' never claims the blank map is ready');check(!await t.page.getByText('Cargando cartografía',{exact:true}).count(),'Failure '+mode+' ends its loading message');check(await t.page.getByRole('button',{name:'Reintentar mapa',exact:true}).isVisible(),'Failure '+mode+' keeps recovery available');await t.context.close();
- }
  for(const theme of ['light','dark'])for(const width of [320,390,768,1440]){
-  const t=await scenario('success',width,theme);await ready(t);check(await t.page.evaluate(()=>window.__qaMap.loaded()&&window.__qaMap.areTilesLoaded()),'Real raster and accuracy layer ready '+width+' '+theme);check(await t.page.locator('.maplibregl-marker').count()===2,'Both original markers visible '+width+' '+theme);
-  check(await t.page.getByRole('button',{name:'Centrar puntos',exact:true}).isVisible(),'Original map controls retained '+width+' '+theme);check(await t.page.evaluate(()=>Boolean(window.__qaMap.getSource('sun-tap-accuracy'))),'Consented precision area present '+width+' '+theme);
-  check(await t.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Viewport fits '+width+' '+theme);check(await t.page.evaluate(()=>window.__geoRequests)===0,'Map does not request phone permission '+width+' '+theme);await picture(t,'restored');
-  await t.page.getByRole('button',{name:'Enfocar origen en el mapa: Origen de ensayo'}).click();check(await t.page.locator('.maplibregl-popup').count()===1,'Original point detail works '+width+' '+theme);await t.context.close();
+  const t=await scenario('success',width,theme);await ready(t);const initial=await t.page.evaluate(()=>{window.__originalMap=window.__qaMap;return{height:window.__qaMap.getCanvas().clientHeight};});
+  await t.page.evaluate(()=>window.__qaMap.jumpTo({center:[-60,-20],zoom:9}));await frames(t.page);check(!await bothInside(t),'Camera deliberately displaced '+width+' '+theme);
+  const center=t.page.getByRole('button',{name:'Centrar puntos',exact:true});await center.click();await ready(t);await frames(t.page);check(await bothInside(t),'Centrar puntos restores both markers '+width+' '+theme);
+  check(!await t.page.getByRole('button',{name:'Ver ambos puntos',exact:true}).count(),'Ambiguous name is removed '+width+' '+theme);
+  const expand=t.page.getByRole('button',{name:'Ampliar mapa',exact:true});await expand.click();await frames(t.page);await ready(t);check(await t.page.evaluate(h=>window.__qaMap.getCanvas().clientHeight>h+150,initial.height),'Expanded canvas is materially larger '+width+' '+theme);
+  check(await t.page.evaluate(()=>window.__qaMap===window.__originalMap),'Expansion reuses renderer '+width+' '+theme);check(await bothInside(t),'Expansion fits both points '+width+' '+theme);check(await t.page.locator('.maplibregl-marker').count()===2,'No duplicated markers '+width+' '+theme);
+  const fitbox=await center.boundingBox();check(fitbox.height>=44,'Touch target remains at least 44px '+width+' '+theme);check(await t.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow '+width+' '+theme);
+  await picture(t,'expanded');await t.page.getByRole('button',{name:'Reducir mapa',exact:true}).focus();await t.page.keyboard.press('Escape');await frames(t.page);await ready(t);check(await t.page.getByRole('button',{name:'Ampliar mapa',exact:true}).getAttribute('aria-expanded')==='false','Escape reduces without navigation '+width+' '+theme);
+  const menu=t.page.locator('details').filter({has:t.page.locator('summary').filter({hasText:'Abrir en Google Maps'})});await menu.locator('summary').click();const pair=menu.getByRole('link',{name:'Ver ambos en Google Maps ↗',exact:true});
+  const href=await pair.getAttribute('href'),url=new URL(href);check(url.origin==='https://www.google.com'&&url.pathname==='/maps/dir/'&&url.searchParams.get('api')==='1','External provider action is explicit '+width+' '+theme);
+  check(url.searchParams.get('origin')==='-32.89,-68.84'&&url.searchParams.get('destination')==='-32.91,-68.83','Both public points are sent, never identifiers '+width+' '+theme);check(await pair.getAttribute('rel')==='noopener noreferrer'&&await pair.getAttribute('referrerpolicy')==='no-referrer','External link does not disclose SUN URL '+width+' '+theme);
+  check((await menu.innerText()).includes('No representa el recorrido del producto'),'Suggested route is not asserted as provenance '+width+' '+theme);
+  if(width===390&&theme==='light'){
+    const external=[];
+    await t.context.route('https://www.google.com/maps/**',async route=>{external.push({url:route.request().url(),referrer:route.request().headers().referer});await route.fulfill({status:200,contentType:'text/html',body:'<html><title>External navigation test</title></html>'});});
+    const [popup]=await Promise.all([t.context.waitForEvent('page'),pair.click()]);await popup.waitForLoadState();
+    check(popup.url()===href&&external.length===1,'Explicit Google action opens the expected application URL');
+    check(!external[0].referrer,'The external navigation does not send the passport URL');await popup.close();
+    await menu.locator('summary').focus();await t.page.keyboard.press('Escape');check(await menu.getAttribute('open')===null,'Escape closes the provider menu');await menu.locator('summary').click();
+  }
+
+  check((await t.page.locator('.maplibregl-ctrl-attrib').textContent()).includes('Esri')&&(await t.page.locator('.maplibregl-ctrl-attrib').textContent()).includes('OpenStreetMap'),'Required provider credit remains '+width+' '+theme);
+  check(await t.page.evaluate(()=>window.__geoRequests)===0,'Map controls never request fresh GPS '+width+' '+theme);await picture(t,'external-choice');await t.context.close();
  }
  {
-  const t=await scenario();await ready(t);await t.page.evaluate(()=>{window.__oldMap=window.__qaMap;document.documentElement.dataset.theme='light';});await t.page.waitForFunction(()=>window.__qaMap.getPaintProperty('configured-basemap','raster-saturation')===-0.12);await ready(t);check(await t.page.evaluate(()=>window.__qaMap===window.__oldMap),'Theme change retains the interactive map instance');
-  await t.page.evaluate(()=>{window.__beforeUpdate=window.__qaMap;window.__change({...window.__initial,tap:{...window.__initial.tap,id:'qa-replacement',lat:-32.93,label:'Otra zona de ensayo'}});});await t.page.waitForFunction(()=>window.__qaMap!==window.__beforeUpdate);await t.page.getByText('Otra zona de ensayo',{exact:true}).waitFor();await ready(t);check(await t.page.locator('.maplibregl-marker').count()===2,'New same-page coordinates replace markers without duplication');check(await t.page.evaluate(()=>window.__geoRequests)===0,'Updating map evidence never requests permission again');await t.context.close();
+  const t=await scenario();await ready(t);await t.page.evaluate(()=>{window.__prior=window.__qaMap;window.__change({...window.__initial,tap:{...window.__initial.tap,source:'edge_ip_approx'}});});await t.page.waitForFunction(()=>window.__qaMap!==window.__prior);await ready(t);
+  await t.page.getByText('Abrir en Google Maps',{exact:true}).click();check(!await t.page.getByRole('link',{name:'Ver ambos en Google Maps ↗',exact:true}).count(),'IP zone is not used as a route endpoint');const href=await t.page.getByRole('link',{name:'Ver zona estimada de red ↗'}).getAttribute('href');const u=new URL(href);check(u.searchParams.get('map_action')==='map'&&!u.searchParams.has('destination')&&!u.searchParams.has('query'),'IP region opens broadly without a pinpoint');await t.context.close();
  }
- check(!report.errors.length,'No browser exceptions');check(!report.network.length,'No unrelated requests or referrer disclosure');
-
+ check(!report.errors.length,'No browser exceptions');check(!report.network.length,'No provider contact before a deliberate external link click');
 }finally{await browser.close();await new Promise(r=>server.close(r));await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));}
-console.log(JSON.stringify({checks:report.checks.length,failed:report.checks.filter(c=>!c.passed),views:report.views.length,errors:report.errors,network:report.network},null,2));assert.ok(report.checks.every(c=>c.passed));
+console.log(JSON.stringify({checks:report.checks.length,failed:report.checks.filter(c=>!c.passed),views:report.views.length,errors:report.errors},null,2));assert.ok(report.checks.every(c=>c.passed));
