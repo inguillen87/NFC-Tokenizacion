@@ -48,23 +48,53 @@ export function validateNativeExpressions() {
   return expressions;
 }
 
-export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,output,protectionCookies=[],probeOnly=false}) {
+export function validateAllowedClerkOrigins(origins=[]) {
+  if(!Array.isArray(origins))throw Error('explicit_clerk_origin_array_required');
+  const observedOrigins=new Set(['https://advanced-kodiak-20.clerk.accounts.dev']);
+  for(const origin of origins){
+    if(typeof origin!=='string'||!observedOrigins.has(origin))throw Error('unverified_clerk_origin');
+    const url=new URL(origin);
+    if(url.protocol!=='https:'||url.origin!==origin||url.username||url.password||url.search||url.hash)throw Error('invalid_clerk_origin');
+  }
+  return [...new Set(origins)];
+}
+
+export function readOnlyRequestDecision({method,url,origin,allowedClerkOrigins=[]}) {
+  if(method!=='GET')return 'blocked-write';
+  if(/^\/(?:sun|api)(?:\/|$)/.test(url.pathname)||url.searchParams.has('snapshot')||url.searchParams.has('access'))return 'blocked-sensitive';
+  return url.origin===origin||allowedClerkOrigins.includes(url.origin)?'allow-read':'blocked-external';
+}
+
+export function blockedWriteCategory({method,url,allowedClerkOrigins=[]}) {
+  if(['OPTIONS','POST'].includes(method)&&url.origin==='https://clerk-telemetry.com'&&url.pathname==='/v1/event')return 'sdk-telemetry';
+  return method==='POST'&&url.pathname==='/v1/environment'&&allowedClerkOrigins.includes(url.origin)
+    ?'automatic-clerk-initialization':'business-write';
+}
+
+export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,output,protectionCookies=[],probeOnly=false,allowedClerkOrigins=[]}) {
   const expressions=validateNativeExpressions();
+  allowedClerkOrigins=validateAllowedClerkOrigins(allowedClerkOrigins);
   const ownOrigin=new URL(origin).origin, checks=[],observations=[],errors=[],blockedWrites=[],blockedSensitiveReads=[];
   const check=(passed,name,details)=>checks.push({passed:Boolean(passed),name,...(details===undefined?{}:{details})});
   const prefix=resolve(output,'native-chrome-profile-'),profile=await mkdtemp(prefix);
   const reserve=createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
   const position=process.platform==='win32'?{left:-10000,top:-10000}:{left:0,top:0};
+  const linuxLaunchFlags=process.platform==='linux'?['--no-sandbox','--disable-dev-shm-usage']:[];
   const child=spawn(chromiumExecutable,['--remote-debugging-address=127.0.0.1','--remote-debugging-port='+port,'--user-data-dir='+profile,
     '--window-position='+position.left+','+position.top,'--window-size=1440,1080',
     ...(process.platform==='win32'?['--disable-features=CalculateNativeWinOcclusion','--disable-backgrounding-occluded-windows']:[]),
+    ...linuxLaunchFlags,
     '--no-first-run','--no-default-browser-check','--disable-background-networking',
-    '--disable-component-update','--disable-sync','--disable-extensions','about:blank'],{windowsHide:true,stdio:'ignore'});
-  let browser,closed=false;
+    '--disable-component-update','--disable-sync','--disable-extensions','about:blank'],{windowsHide:true,stdio:['ignore','ignore','pipe']});
+  let browser,closed=false,started=false,startupStderr='',spawnError;
+  const processExited=()=>child.exitCode!==null||child.signalCode!==null;
+  const waitForExit=async()=>{if(!processExited()&&!spawnError)await Promise.race([new Promise(resolve=>child.once('exit',resolve)),delay(3000)]);};
+  child.on('error',error=>{spawnError=error;});
+  child.stderr.on('data',data=>{if(!started)startupStderr=(startupStderr+String(data)).slice(-16384);});
   try{
     let endpoint;
-    for(let attempt=0;attempt<80;attempt++){if(child.exitCode!==null)throw Error('native_chrome_stopped');try{const response=await fetch('http://127.0.0.1:'+port+'/json/version',{signal:AbortSignal.timeout(500)});endpoint=(await response.json()).webSocketDebuggerUrl;if(endpoint)break;}catch{}await delay(100);}
-    if(!endpoint)throw Error('native_chrome_startup_timeout');browser=await connect(endpoint);
+    for(let attempt=0;attempt<80;attempt++){if(spawnError)throw Error('native_chrome_spawn_failed');if(processExited())throw Error('native_chrome_stopped');try{const response=await fetch('http://127.0.0.1:'+port+'/json/version',{signal:AbortSignal.timeout(500)});endpoint=(await response.json()).webSocketDebuggerUrl;if(endpoint)break;}catch{}await delay(100);}
+    if(!endpoint)throw Error('native_chrome_startup_timeout');started=true;startupStderr='';browser=await connect(endpoint);
     for(const theme of probeOnly?['light']:['light','dark']){
       const context=await browser.send('Target.createBrowserContext',{disposeOnDetach:true});
       let page;
@@ -79,10 +109,11 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         await page.send('Page.addScriptToEvaluateOnNewDocument',{source:'window.__nativeVisibilityEvents=[];window.__nativeGeoRequests=0;document.addEventListener("visibilitychange",()=>window.__nativeVisibilityEvents.push(document.visibilityState));Object.defineProperty(navigator,"geolocation",{value:{getCurrentPosition(){window.__nativeGeoRequests++;},watchPosition(){window.__nativeGeoRequests++;},clearWatch(){}}});'});
         page.on('Fetch.requestPaused',async({requestId,request})=>{
           const url=new URL(request.url);
-          if(request.method!=='GET'){blockedWrites.push({theme,method:request.method,path:url.pathname});return page.send('Fetch.failRequest',{requestId,errorReason:'BlockedByClient'});}
+          if(request.method!=='GET'){blockedWrites.push({theme,method:request.method,origin:url.origin,path:url.pathname,category:blockedWriteCategory({method:request.method,url,allowedClerkOrigins}),aborted:true});return page.send('Fetch.failRequest',{requestId,errorReason:'BlockedByClient'});}
           if(url.protocol==='about:'||probeOnly&&url.protocol==='data:')return page.send('Fetch.continueRequest',{requestId});
-          if(url.origin!==ownOrigin||/^\/(?:sun|api)(?:\/|$)/.test(url.pathname)||url.searchParams.has('snapshot')||url.searchParams.has('access')){
-            blockedSensitiveReads.push({theme,path:url.pathname});return page.send('Fetch.failRequest',{requestId,errorReason:'BlockedByClient'});
+          const decision=readOnlyRequestDecision({method:request.method,url,origin:ownOrigin,allowedClerkOrigins});
+          if(decision!=='allow-read'){
+            blockedSensitiveReads.push({theme,origin:url.origin,path:url.pathname,reason:decision});return page.send('Fetch.failRequest',{requestId,errorReason:'BlockedByClient'});
           }
           return page.send('Fetch.continueRequest',{requestId});
         });
@@ -130,15 +161,20 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
   }catch(error){check(false,'Native hidden proof completed',{message:String(error.message).replace(/https?:\/\/\S+/g,'[url]').slice(0,180)});}
   finally{
     if(browser){await browser.send('Browser.close').catch(()=>{});browser.close();}
-    if(child.exitCode===null)await Promise.race([new Promise(resolve=>child.once('exit',resolve)),delay(3000)]);
-    if(child.exitCode===null){child.kill();await delay(300);}closed=child.exitCode!==null;
+    await waitForExit();
+    if(!processExited()&&!spawnError){child.kill();await waitForExit();}
+    if(!processExited()&&!spawnError){child.kill('SIGKILL');await waitForExit();}
+    closed=Boolean(spawnError)||processExited();
     // The computed recursive-delete target is verified inside this owned QA
     // output directory before removing the disposable, non-user profile.
     if(!resolve(profile).startsWith(prefix))throw Error('native_profile_cleanup_target_invalid');
-    await rm(profile,{recursive:true,force:true});
+    if(closed)await rm(profile,{recursive:true,force:true});
   }
-  check(closed,'Owned native browser closed');check(errors.length===0,'Native page has no exceptions',errors);check(blockedWrites.length===0,'Native page attempted no business writes',blockedWrites);
-  const report={ownedDisposableBrowser:true,offscreenWindow:process.platform==='win32',virtualDisplayExpected:process.platform!=='win32',incognitoContexts:true,profileRemoved:true,realDocumentVisibility:true,
-    fabricatedVisibility:false,probeOnly,checks,observations,errors,blockedWrites,blockedSensitiveReads,browserClosed:closed};
+  const blockedAutomaticClerkInitialization=blockedWrites.filter(row=>row.category==='automatic-clerk-initialization');
+  const blockedSdkTelemetry=blockedWrites.filter(row=>row.category==='sdk-telemetry');
+  check(closed,'Owned native browser closed');check(errors.length===0,'Native page has no exceptions',errors);check(blockedWrites.every(row=>['automatic-clerk-initialization','sdk-telemetry'].includes(row.category)),'Native attempted no business writes; automatic Clerk initialization and SDK telemetry were aborted',blockedWrites);
+  const startupDiagnostics=started?null:{platform:process.platform,virtualDisplayPresent:Boolean(process.env.DISPLAY),linuxLaunchFlags,exitCode:child.exitCode,signalCode:child.signalCode,stderr:startupStderr.split('\n').map(line=>/cookie|token|authorization|secret|password/i.test(line)?'[redacted startup line]':line.replace(/https?:\/\/\S+|wss?:\/\/\S+/g,'[url]')).join('\n').slice(-4096)};
+  const report={ownedDisposableBrowser:true,offscreenWindow:process.platform==='win32',virtualDisplayExpected:process.platform!=='win32',incognitoContexts:true,profileRemoved:closed,realDocumentVisibility:true,
+    fabricatedVisibility:false,probeOnly,allowedClerkOrigins,startupDiagnostics,checks,observations,errors,blockedWrites,blockedAutomaticClerkInitialization,blockedSdkTelemetry,blockedSensitiveReads,browserClosed:closed};
   await writeFile(join(output,'native-hidden-report.json'),JSON.stringify(report,null,2));return report;
 }

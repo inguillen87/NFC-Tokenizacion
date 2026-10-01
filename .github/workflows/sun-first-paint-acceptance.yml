@@ -23,6 +23,7 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npm test --workspace web
+          node --test scripts/browser/brand-hero-readonly-network.test.mjs
           npx tsc --noEmit --incremental false -p apps/web/tsconfig.json
           npm run check:secrets
           npm run build:web

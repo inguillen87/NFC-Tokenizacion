@@ -61,6 +61,11 @@
   color: var(--hero-ink) !important;
   -webkit-text-fill-color: var(--hero-ink) !important;
 }
+.landing :global(.simple-trust-flow-intro h2 .simple-trust-flow-title-line__inner) {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
 .landing :global(.simple-trust-flow-shell) {
   border: 0 !important;
   background: transparent !important;

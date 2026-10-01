@@ -5,12 +5,12 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
-import { verifyNativeBrandHeroHidden } from './native-brand-hero-hidden.mjs';
+import { verifyNativeBrandHeroHidden, validateAllowedClerkOrigins, readOnlyRequestDecision, blockedWriteCategory } from './native-brand-hero-hidden.mjs';
 
 // Remote callers must supply provider-verified metadata and acquire protection
 // cookies in memory. This module never discovers, stores or prints credentials.
 export async function verifyBrandHeroMotion({ origin:originInput, output:outputInput, protectionCookies=[],
-  expectedRelease, expectedSourceSha, expectedDeployment, providerMetadataVerifiedByCaller=false, allowRemote=false }={}) {
+  expectedRelease, expectedSourceSha, expectedDeployment, providerMetadataVerifiedByCaller=false, allowRemote=false, allowedClerkOrigins=[] }={}) {
 if (!originInput) throw Error('QA_ORIGIN_required');
 const suppliedOrigin = new URL(originInput);
 const local = suppliedOrigin.protocol === 'http:' && ['localhost','127.0.0.1'].includes(suppliedOrigin.hostname);
@@ -22,6 +22,7 @@ if ((!local && !remote) || suppliedOrigin.username || suppliedOrigin.password ||
 if (remote && (!expectedRelease || !/^[a-f0-9]{40}$/.test(expectedSourceSha || '')
   || !/^dpl_[A-Za-z0-9]+$/.test(expectedDeployment || '') || !providerMetadataVerifiedByCaller)) throw Error('remote_provider_verified_identity_required');
 const origin = suppliedOrigin.origin;
+allowedClerkOrigins=validateAllowedClerkOrigins(allowedClerkOrigins);
 const output = resolve(outputInput || 'artifacts/brand-hero-motion-local');
 await mkdir(output, { recursive:true });
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE || 'C:/Users/guill/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs').href);
@@ -31,8 +32,9 @@ const report = {
   origin, fabricatedApiResponses:false, fabricatedVisibility:false, physicalTapMeasured:false,
   gpsMeasured:false, businessWritesAllowed:false, expectedRelease:expectedRelease || null,
   expectedSourceSha:expectedSourceSha || null, expectedDeployment:expectedDeployment || null,
-  providerMetadataVerifiedByCaller, protectionCookieCount:protectionCookies.length, releaseVerification:null,
-  matrix:{ widths:[320,390,768,1440,1920], themes:['light','dark'], reducedMotion:['no-preference','reduce'] },
+  providerMetadataVerifiedByCaller, protectionCookieCount:protectionCookies.length, allowedClerkOrigins, releaseVerification:null,
+  matrix:{ widths:[320,390,768,1440,1920], heightsByWidth:{320:844,390:844,768:960,1440:1080,1920:1080}, themes:['light','dark'], reducedMotion:['no-preference','reduce'],
+    workflowRegression:{width:768,height:960,reducedMotion:'no-preference',headingBottomMargin:8} },
   contrastMethod:'Minimum sampled contrast across the actual element backdrop, with only its text ink temporarily transparent and its exact inline style restored. Normal screenshots remain unmodified. This is sampled rendered contrast, not certification of every possible animation frame.',
   checks:[], views:[], motionSamples:[], hiddenPageSamples:[], errors:[], blockedWrites:[], blockedSensitiveReads:[],
 };
@@ -222,8 +224,9 @@ try {
     } finally { await releaseContext.close(); }
   }
   for (const width of report.matrix.widths) for (const theme of report.matrix.themes) for (const reducedMotion of report.matrix.reducedMotion) {
+    const viewport={width,height:report.matrix.heightsByWidth[width]};
     const name = `${width}-${theme}-${reducedMotion}`, context = await browser.newContext({
-      viewport:{ width, height:width < 768 ? 844 : 1080 }, deviceScaleFactor:1, locale:'es-AR',
+      viewport, deviceScaleFactor:1, locale:'es-AR',
       isMobile:width < 768, hasTouch:width < 768, reducedMotion, serviceWorkers:'block',
     });
     await context.addCookies([...protectionCookies, { name:'theme', value:theme, url:origin }, { name:'nexid_theme_version', value:'white-first-v2', url:origin }]);
@@ -231,11 +234,12 @@ try {
     page.on('pageerror', error => report.errors.push({ name, message:error.message.replace(/https?:\/\/\S+/g,'[url]').slice(0,180) }));
     await context.route('**/*', route => {
       const request=route.request(), url=new URL(request.url());
-      if (request.method() !== 'GET') { report.blockedWrites.push({ name, method:request.method(), path:url.pathname }); return route.abort(); }
-      if (/^\/sun(?:\/|$)/.test(url.pathname) || url.searchParams.has('snapshot') || url.searchParams.has('access') || /^\/api(?:\/|$)/.test(url.pathname)) {
-        report.blockedSensitiveReads.push({ name, path:url.pathname }); return route.abort();
+      if (request.method() !== 'GET') { report.blockedWrites.push({ name, method:request.method(), origin:url.origin, path:url.pathname, category:blockedWriteCategory({method:request.method(),url,allowedClerkOrigins}), aborted:true }); return route.abort(); }
+      const decision=readOnlyRequestDecision({method:request.method(),url,origin,allowedClerkOrigins});
+      if (decision!=='allow-read') {
+        report.blockedSensitiveReads.push({ name, origin:url.origin, path:url.pathname, reason:decision }); return route.abort();
       }
-      return url.origin === origin ? route.continue() : route.abort();
+      return route.continue();
     });
     await page.addInitScript(() => {
       window.__geoRequests=0;
@@ -299,7 +303,19 @@ try {
       await page.evaluate(() => scrollTo(0,0)); await settle(page);
       const file='landing-'+name+'.png'; await page.screenshot({ path:join(output,file),fullPage:true });
       const workflowHeading=page.locator('.simple-trust-flow-intro h2');
-      await workflowHeading.scrollIntoViewIfNeeded();await page.waitForTimeout(1100);
+      let workflowViewportEdge=null;
+      if(width===768&&reducedMotion==='no-preference'){
+        // Enter at the demonstrated viewport edge directly. Centering first
+        // could already complete the observer's entry animation and hide a bug.
+        await workflowHeading.evaluate(element=>{const rect=element.getBoundingClientRect();scrollTo({top:scrollY+rect.bottom-innerHeight+8,behavior:'instant'});});
+      }else await workflowHeading.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1100);
+      if(width===768&&reducedMotion==='no-preference'){
+        workflowViewportEdge=await workflowHeading.evaluate(element=>{const rect=element.getBoundingClientRect();return{top:rect.top,right:rect.right,bottom:rect.bottom,left:rect.left,width:rect.width,height:rect.height,viewportWidth:innerWidth,viewportHeight:innerHeight,bottomMargin:innerHeight-rect.bottom};});
+        const edge=workflowViewportEdge;
+        check(edge.width>0&&edge.height>0&&edge.top>=0&&edge.left>=0&&edge.right<=edge.viewportWidth&&edge.bottom<=edge.viewportHeight&&Math.abs(edge.bottomMargin-8)<=1,
+          'Workflow heading fully inside viewport at natural8px edge '+name,edge);
+      }
       const workflowInk=await workflowHeading.evaluate(element=>[element,...element.querySelectorAll('.simple-trust-flow-title-line__inner')].map(node=>{
         const cs=getComputedStyle(node),rect=node.getBoundingClientRect();return{text:node.textContent.trim(),visible:rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<innerHeight,
           color:cs.color,textFill:cs.webkitTextFillColor,backgroundImage:cs.backgroundImage,opacity:cs.opacity};
@@ -321,16 +337,18 @@ try {
         check(phaseChanged(returned), 'Hero resumes after viewport return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
       }
       check(await page.evaluate(() => window.__geoRequests === 0), 'No geolocation request ' + name);
-      report.views.push({ width,theme,reducedMotion,file,heading,lede,workflowInk,workflowContrast,axe:axeResult,dimensions });
+      report.views.push({ width,height:viewport.height,theme,reducedMotion,file,heading,lede,workflowViewportEdge,workflowInk,workflowContrast,axe:axeResult,dimensions });
     } catch (error) {
       check(false,'View completed ' + name,{ message:String(error.message).replace(/https?:\/\/\S+/g,'[url]').slice(0,220) });
     } finally { await context.close(); await save(); }
   }
   check(report.views.length === 20, 'Complete20view matrix');
   check(report.errors.length === 0, 'No browser exceptions',report.errors);
-  check(report.blockedWrites.length === 0, 'No attempted business writes',report.blockedWrites);
+  report.blockedAutomaticClerkInitialization=report.blockedWrites.filter(row=>row.category==='automatic-clerk-initialization');
+  report.blockedSdkTelemetry=report.blockedWrites.filter(row=>row.category==='sdk-telemetry');
+  check(report.blockedWrites.every(row=>['automatic-clerk-initialization','sdk-telemetry'].includes(row.category)), 'No attempted business writes; automatic Clerk initialization and SDK telemetry were aborted',report.blockedWrites);
 } finally { await browser.close(); report.browserClosed=true; await save(); }
-const native=await verifyNativeBrandHeroHidden({chromiumExecutable,origin,output,protectionCookies});
+const native=await verifyNativeBrandHeroHidden({chromiumExecutable,origin,output,protectionCookies,allowedClerkOrigins});
 report.nativeHidden=native;report.hiddenPageSamples=native.observations;
 report.checks.push(...native.checks);await save();
 const failed=report.checks.filter(item => !item.passed);
