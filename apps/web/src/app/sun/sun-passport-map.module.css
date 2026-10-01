@@ -237,6 +237,10 @@
   cursor: pointer;
 }
 
+.locationButton:disabled{cursor:default}
+.locationButton:disabled:hover{background:transparent}
+.loadingDot[data-waiting="true"]{animation:none}
+
 .locationButton:hover,
 .locationButton:focus-visible {
   background: rgba(34, 211, 238, 0.06);

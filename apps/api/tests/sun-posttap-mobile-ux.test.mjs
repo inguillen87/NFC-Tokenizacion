@@ -4,6 +4,7 @@ import test from "node:test";
 
 const route = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
 const webPassport = await readFile(new URL("../../web/src/app/sun/page.tsx", import.meta.url), "utf8");
+const productImage = await readFile(new URL("../../web/src/app/sun/sun-product-image.tsx", import.meta.url), "utf8");
 const sensorEvidence = await readFile(new URL("../src/lib/sun-sensor-evidence.ts", import.meta.url), "utf8");
 
 test("physical SUN passport puts official configured product and image in the first mobile card", () => {
@@ -18,11 +19,14 @@ test("physical SUN passport puts official configured product and image in the fi
   assert.ok(summaryStart >= 0 && summaryEnd > summaryStart);
   assert.match(firstMobileCard, /productHeroImageUrl/);
   assert.match(firstMobileCard, /productDisplayName/);
-  assert.match(firstMobileCard, /fetchPriority="high"/);
+  assert.match(firstMobileCard, /<SunProductImage\s+src=\{productHeroImageUrl\}[\s\S]*?\spriority\s*\/>/);
+  assert.match(productImage, /loading=\{priority \? "eager" : "lazy"\}/);
+  assert.match(productImage, /fetchPriority=\{priority \? "high" : "low"\}/);
   assert.doesNotMatch(firstMobileCard, /<SunProductHeroStage/);
   assert.match(firstMobileCard, /sun-product-placeholder/);
   assert.match(firstMobileCard, /Imagen no informada/);
-  assert.match(firstMobileCard, /decoding="async"/);
+  assert.match(productImage, /decoding="async"/);
+  assert.match(productImage, /data-testid="sun-image-unavailable"/);
 });
 
 test("seal state and SUN freshness remain independent above the fold", () => {

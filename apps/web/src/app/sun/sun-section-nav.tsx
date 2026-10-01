@@ -39,7 +39,7 @@ function SunSectionLinks({
   items: readonly SunSectionNavItem[];
   mobile?: boolean;
   disabled?: boolean;
-  onNavigate: (sectionId: SunSectionId) => void;
+  onNavigate: (sectionId: SunSectionId, keyboardNavigation: boolean) => void;
 }) {
   const { text } = useSunLocale();
   return (
@@ -53,7 +53,10 @@ function SunSectionLinks({
             href={`#${id}`}
             aria-current={isActive ? "location" : undefined}
             tabIndex={disabled ? -1 : undefined}
-            onClick={() => onNavigate(id)}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+              onNavigate(id, event.detail === 0);
+            }}
             className={`group flex min-h-11 min-w-0 items-center justify-center rounded-xl border font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
               mobile ? "flex-col gap-1 px-1.5 py-1.5 text-[11px] leading-none" : "gap-1 px-1.5 py-2 text-[11px]"
             } ${
@@ -83,112 +86,216 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
   const [isScrollingDown, setIsScrollingDown] = useState(false);
   const [isDockAvoided, setIsDockAvoided] = useState(false);
   const mobileDockRef = useRef<HTMLElement>(null);
+  const desktopNavRef = useRef<HTMLElement>(null);
+  const focusFrameRef = useRef(0);
 
   useEffect(() => {
     setActiveSection(items[0].id);
-    const sectionNodes = items
-      .map(({ id }) => document.getElementById(id))
-      .filter((node): node is HTMLElement => Boolean(node));
-
-    if (!sectionNodes.length) return;
-
-    let frameId = 0;
-    const syncActiveSection = () => {
-      const marker = Math.max(104, window.innerHeight * 0.3);
-      let nextSection = sectionNodes[0].id as SunSectionId;
-      const summaryBottom = sectionNodes[0].getBoundingClientRect().bottom;
-      const hasLeftFirstView = window.scrollY > 24;
-      const hasClearedIntro = variant === "agro"
-        ? window.scrollY > 280
-        : summaryBottom < window.innerHeight - MOBILE_DOCK_CLEARANCE_PX;
-
-      for (const node of sectionNodes) {
-        if (node.getBoundingClientRect().top <= marker) nextSection = node.id as SunSectionId;
-        else break;
-      }
-
-      const lastSection = sectionNodes[sectionNodes.length - 1];
-      if (lastSection.getBoundingClientRect().bottom <= window.innerHeight + 2) {
-        nextSection = lastSection.id as SunSectionId;
-      }
-
-      setActiveSection((current) => (current === nextSection ? current : nextSection));
-      setShowMobileNav(hasLeftFirstView && hasClearedIntro);
-    };
-    const scheduleSync = () => {
-      window.cancelAnimationFrame(frameId);
-      frameId = window.requestAnimationFrame(syncActiveSection);
-    };
-
-    syncActiveSection();
-    window.addEventListener("scroll", scheduleSync, { passive: true });
-    window.addEventListener("resize", scheduleSync);
-    window.addEventListener("hashchange", scheduleSync);
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      window.removeEventListener("scroll", scheduleSync);
-      window.removeEventListener("resize", scheduleSync);
-      window.removeEventListener("hashchange", scheduleSync);
-    };
-  }, [items]);
-
-  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    type Bounds = { node: HTMLElement; top: number; bottom: number };
+    let sectionNodes: HTMLElement[] = [];
+    let avoidNodes: HTMLElement[] = [];
+    let sections: Bounds[] = [];
+    let avoidBounds: Bounds[] = [];
+    const movingAvoidNodes = new Map<Element, Set<string>>();
+    let referencesDirty = true;
+    let sectionGeometryDirty = true;
+    let avoidGeometryDirty = true;
+    let dockGeometryDirty = true;
+    let dockHeight = 0;
+    let dockBottom = 0;
     let lastScrollY = window.scrollY;
+    let scrollingDown = false;
     let frameId = 0;
     let idleTimer = 0;
 
-    const syncDockVisibility = () => {
-      const nextScrollY = window.scrollY;
-      const delta = nextScrollY - lastScrollY;
-      if (delta > 5) setIsScrollingDown(true);
-      if (delta < -5) setIsScrollingDown(false);
-      lastScrollY = nextScrollY;
+    const scheduleSync = () => {
+      if (!frameId) frameId = window.requestAnimationFrame(syncNavigation);
+    };
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const { target } of entries) {
+        if (target === mobileDockRef.current) dockGeometryDirty = true;
+        else sectionGeometryDirty = avoidGeometryDirty = true;
+      }
+      scheduleSync();
+    });
+    const refreshReferences = () => {
+      sectionNodes = items
+        .map(({ id }) => document.getElementById(id))
+        .filter((node): node is HTMLElement => Boolean(node));
+      avoidNodes = Array.from(document.querySelectorAll<HTMLElement>("[data-sun-dock-avoid]"));
+      for (const node of movingAvoidNodes.keys()) {
+        if (!node.isConnected || !avoidNodes.some((avoid) => node.contains(avoid))) movingAvoidNodes.delete(node);
+      }
+      resizeObserver.disconnect();
+      for (const node of new Set([document.body, ...sectionNodes, ...avoidNodes, mobileDockRef.current])) {
+        if (node) resizeObserver.observe(node);
+      }
+      referencesDirty = false;
+      sectionGeometryDirty = avoidGeometryDirty = true;
+    };
+    const measure = (nodes: HTMLElement[], scrollY: number): Bounds[] => nodes.flatMap((node) => {
+      const rect = node.getBoundingClientRect();
+      return rect.width || rect.height ? [{ node, top: rect.top + scrollY, bottom: rect.bottom + scrollY }] : [];
+    });
 
+    function syncNavigation() {
+      frameId = 0;
+      if (referencesDirty) refreshReferences();
+      const scrollY = window.scrollY;
+      const viewportHeight = window.innerHeight;
+      const delta = scrollY - lastScrollY;
+      if (delta > 5) scrollingDown = true;
+      if (delta < -5) scrollingDown = false;
+      lastScrollY = scrollY;
+
+      // Document coordinates survive scrolling. Remeasure only after content/size changes.
+      if (sectionGeometryDirty) {
+        sections = measure(sectionNodes, scrollY);
+        sectionGeometryDirty = false;
+      }
+      if (!sections.length) {
+        setShowMobileNav(false);
+        return;
+      }
+      const marker = scrollY + Math.max(104, viewportHeight * 0.3);
+      let nextSection = sections[0].node.id as SunSectionId;
+      for (const section of sections) {
+        if (section.top <= marker) nextSection = section.node.id as SunSectionId;
+        else break;
+      }
+      const lastSection = sections[sections.length - 1];
+      if (lastSection.bottom <= scrollY + viewportHeight + 2) nextSection = lastSection.node.id as SunSectionId;
+      setActiveSection((current) => (current === nextSection ? current : nextSection));
+
+      const hasLeftFirstView = scrollY > 24;
+      const hasClearedIntro = variant === "agro"
+        ? scrollY > 280
+        : sections[0].bottom - scrollY < viewportHeight - MOBILE_DOCK_CLEARANCE_PX;
+      const eligible = !desktop.matches && hasLeftFirstView && hasClearedIntro;
+      setShowMobileNav(eligible);
+      setIsScrollingDown(scrollingDown);
+
+      // Hidden or desktop docks need no layout/style reads. Keep invalidations for the next reveal.
+      if (!eligible || scrollingDown) return;
       const mobileDock = mobileDockRef.current;
-      const dockHeight = mobileDock?.offsetHeight || 0;
-      const dockBottom = mobileDock
-        ? Number.parseFloat(window.getComputedStyle(mobileDock).bottom) || 0
-        : 0;
-      const dockTop = window.innerHeight - dockBottom - dockHeight;
-      const avoidNodes = Array.from(document.querySelectorAll<HTMLElement>("[data-sun-dock-avoid]"));
-      const nextAvoided = avoidNodes.some((node) => {
-        const rect = node.getBoundingClientRect();
-        return rect.top < window.innerHeight && rect.bottom > dockTop;
-      });
-      setIsDockAvoided(nextAvoided);
-
+      if (mobileDock && dockGeometryDirty) {
+        dockHeight = mobileDock.offsetHeight;
+        dockBottom = Number.parseFloat(window.getComputedStyle(mobileDock).bottom) || 0;
+        dockGeometryDirty = false;
+      }
+      if (avoidGeometryDirty) {
+        avoidBounds = measure(avoidNodes, scrollY);
+        avoidGeometryDirty = false;
+      }
+      const dockTop = scrollY + viewportHeight - dockBottom - dockHeight;
+      setIsDockAvoided(movingAvoidNodes.size > 0 || avoidBounds.some(({ top, bottom }) => top < scrollY + viewportHeight && bottom > dockTop));
+    }
+    const onScroll = () => {
       window.clearTimeout(idleTimer);
-      idleTimer = window.setTimeout(() => setIsScrollingDown(false), 650);
+      idleTimer = window.setTimeout(() => {
+        scrollingDown = false;
+        scheduleSync();
+      }, 650);
+      scheduleSync();
     };
-
-    const scheduleDockSync = () => {
-      window.cancelAnimationFrame(frameId);
-      frameId = window.requestAnimationFrame(syncDockVisibility);
+    const onResize = () => {
+      sectionGeometryDirty = avoidGeometryDirty = dockGeometryDirty = true;
+      scheduleSync();
     };
+    const onContentMotion = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element) || mobileDockRef.current?.contains(target) || desktopNavRef.current?.contains(target)) return;
+      const transition = event.type.startsWith("transition");
+      const name = transition ? (event as TransitionEvent).propertyName : (event as AnimationEvent).animationName;
+      if (transition && !/^(transform|translate|scale|rotate|top|right|bottom|left|height|width|min-|max-|margin|padding|inset|grid-)/.test(name)) return;
+      if (![...sectionNodes, ...avoidNodes].some((node) => target.contains(node))) return;
+      const key = `${transition ? "transition" : "animation"}:${name}`;
+      if (event.type === "transitionrun" || event.type === "animationstart") {
+        if (avoidNodes.some((node) => target.contains(node))) {
+          const motions = movingAvoidNodes.get(target) || new Set<string>();
+          motions.add(key);
+          movingAvoidNodes.set(target, motions);
+        }
+      } else {
+        const motions = movingAvoidNodes.get(target);
+        motions?.delete(key);
+        if (!motions?.size) movingAvoidNodes.delete(target);
+      }
+      // Position-only motion does not notify ResizeObserver. Yield until controls settle.
+      sectionGeometryDirty = avoidGeometryDirty = true;
+      scheduleSync();
+    };
+    const motionEvents = ["transitionrun", "transitionend", "transitioncancel", "animationstart", "animationend", "animationcancel"];
+    const mutationObserver = new MutationObserver((records) => {
+      const contentRecords = records.filter(({ target }) => {
+        const element = target instanceof Element ? target : target.parentElement;
+        return element && !mobileDockRef.current?.contains(element) && !desktopNavRef.current?.contains(element);
+      });
+      if (!contentRecords.length) return;
+      sectionGeometryDirty = avoidGeometryDirty = true;
+      const trackedSelector = `${items.map(({ id }) => `#${id}`).join(",")},[data-sun-dock-avoid]`;
+      for (const record of contentRecords) {
+        if (record.type === "childList") {
+          if ([...record.addedNodes, ...record.removedNodes].some((node) => node instanceof Element && (node.matches(trackedSelector) || node.querySelector(trackedSelector)))) referencesDirty = true;
+        } else if (record.attributeName === "id" || record.attributeName === "data-sun-dock-avoid") {
+          referencesDirty = true;
+        }
+        if (record.target === document.documentElement || record.target === document.body) dockGeometryDirty = true;
+      }
+      scheduleSync();
+    });
+    mutationObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["id", "data-sun-dock-avoid", "hidden", "open", "class", "style"] });
 
-    syncDockVisibility();
-    window.addEventListener("scroll", scheduleDockSync, { passive: true });
-    window.addEventListener("resize", scheduleDockSync);
-    window.addEventListener("focusin", scheduleDockSync);
-    window.addEventListener("focusout", scheduleDockSync);
+    syncNavigation();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    window.addEventListener("hashchange", scheduleSync);
+    window.addEventListener("focusin", scheduleSync);
+    window.addEventListener("focusout", scheduleSync);
+    desktop.addEventListener("change", onResize);
+    for (const event of motionEvents) document.addEventListener(event, onContentMotion);
 
     return () => {
       window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(focusFrameRef.current);
       window.clearTimeout(idleTimer);
-      window.removeEventListener("scroll", scheduleDockSync);
-      window.removeEventListener("resize", scheduleDockSync);
-      window.removeEventListener("focusin", scheduleDockSync);
-      window.removeEventListener("focusout", scheduleDockSync);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("hashchange", scheduleSync);
+      window.removeEventListener("focusin", scheduleSync);
+      window.removeEventListener("focusout", scheduleSync);
+      desktop.removeEventListener("change", onResize);
+      for (const event of motionEvents) document.removeEventListener(event, onContentMotion);
     };
-  }, []);
+  }, [items, variant]);
 
-  const onNavigate = (sectionId: SunSectionId) => setActiveSection(sectionId);
+  const onNavigate = (sectionId: SunSectionId, keyboardNavigation: boolean) => {
+    setActiveSection(sectionId);
+    if (!keyboardNavigation) return;
+    window.cancelAnimationFrame(focusFrameRef.current);
+    focusFrameRef.current = window.requestAnimationFrame(() => {
+      const section = document.getElementById(sectionId);
+      const heading = section?.querySelector<HTMLElement>("h1, h2, h3, [role='heading']") || section;
+      if (!heading) return;
+      const temporaryTabIndex = !heading.hasAttribute("tabindex");
+      if (temporaryTabIndex) heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+      if (temporaryTabIndex) heading.addEventListener("blur", () => heading.removeAttribute("tabindex"), { once: true });
+    });
+  };
   const isMobileDockVisible = showMobileNav && !isScrollingDown && !isDockAvoided;
+  useEffect(() => {
+    // React 18 does not serialize the boolean inert attribute; enforce the native property too.
+    if (mobileDockRef.current) mobileDockRef.current.inert = !isMobileDockVisible;
+  }, [isMobileDockVisible]);
 
   return (
     <>
       <nav
+        ref={desktopNavRef}
         aria-label={text("Secciones del producto")}
         className="sticky top-4 z-20 hidden w-full rounded-2xl border border-white/10 bg-slate-950/80 p-2 shadow-[0_16px_50px_rgba(0,0,0,0.32)] backdrop-blur-xl lg:block"
       >
@@ -200,7 +307,7 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
         aria-label={text("Secciones del producto")}
         aria-hidden={!isMobileDockVisible}
         inert={!isMobileDockVisible}
-        className={`sun-mobile-dock fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-40 mx-auto max-w-[430px] rounded-2xl border border-white/10 bg-slate-950/90 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-[opacity,transform] duration-200 lg:hidden ${
+        className={`sun-mobile-dock fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-40 mx-auto max-w-[430px] rounded-2xl border border-white/10 bg-slate-950/90 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-[opacity,transform] duration-200 motion-reduce:transition-none lg:hidden ${
           isMobileDockVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0"
         }`}
       >

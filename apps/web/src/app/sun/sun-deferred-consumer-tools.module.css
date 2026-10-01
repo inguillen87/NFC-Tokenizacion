@@ -1,0 +1,10 @@
+.boundary { min-width: 0; outline-offset: 4px; }
+.boundary:focus-visible { outline: 2px solid #22d3ee; }
+.placeholder, .loading { margin: 0; min-height: 13rem; padding: 1.25rem; border: 1px solid #334155; border-radius: 1rem; background: #0f172a; color: #e2e8f0; }
+.placeholder h3 { margin: 0 0 .5rem; font-size: 1rem; font-weight: 800; }
+.placeholder p { margin: 0 0 1rem; max-width: 44rem; font-size: .875rem; line-height: 1.6; }
+.openButton { min-height: 44px; padding: .625rem 1rem; border: 1px solid #67e8f9; border-radius: .75rem; background: #164e63; color: #ecfeff; font: inherit; font-size: .875rem; font-weight: 700; cursor: pointer; }
+.openButton:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
+.placeholder noscript { display: block; margin-top: 1rem; font-size: .875rem; line-height: 1.6; }
+:global(html[data-theme=light]) .placeholder, :global(html[data-theme=light]) .loading { background: #fff; color: #334155; border-color: #cbd5e1; }
+:global(html[data-theme=light]) .openButton { background: #ecfeff; color: #155e75; border-color: #0e7490; }

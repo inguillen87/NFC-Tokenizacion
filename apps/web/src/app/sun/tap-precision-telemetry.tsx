@@ -14,6 +14,7 @@ import { useSunLocationController } from "./sun-location-controller";
 type TelemetryState =
   | "idle"
   | "requesting"
+  | "measuring"
   | "saving"
   | "updated"
   | "denied"
@@ -29,6 +30,7 @@ type TelemetryState =
 export type { LocationReceipt } from "./tap-location-model";
 
 const LOCATION_SESSION_SCHEMA = "nexid-sun-location-session/v1";
+const LOCATION_SAVE_TIMEOUT_MS = 12_000;
 
 export type TapPrecisionTelemetryProps = {
   endpoint: string;
@@ -85,6 +87,9 @@ export function TapPrecisionTelemetry({
   const successRef = useRef<HTMLDivElement | null>(null);
   const focusSuccessRef = useRef(false);
   const requestInFlightRef = useRef(false);
+  const measurementGenerationRef = useRef(0);
+  const mountedRef = useRef(false);
+  const permissionCleanupRef = useRef<(() => void) | null>(null);
   const storageKey = useMemo(
     () => `nexid:tap-context:${bid}:${eventId || "unknown"}:${readCounter ?? "latest"}`,
     [bid, eventId, readCounter],
@@ -94,6 +99,17 @@ export function TapPrecisionTelemetry({
     && typeof readCounter === "number"
     && Number.isSafeInteger(readCounter)
     && readCounter >= 0;
+
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    measurementGenerationRef.current += 1;
+    requestInFlightRef.current = false;
+    return () => {
+      mountedRef.current = false;
+      measurementGenerationRef.current += 1;
+      permissionCleanupRef.current?.();
+    };
+  }, [bid, uid, eventId, readCounter]);
 
   useEffect(() => {
     setState("idle");
@@ -146,12 +162,17 @@ export function TapPrecisionTelemetry({
 
   async function send(payload: Record<string, unknown>) {
     setState("saving");
+    const controller = new AbortController();
+    // The same budget covers both response headers and the persistence receipt.
+    // Aborting a sent POST cannot prove whether its one-time capability was used.
+    const timeout = window.setTimeout(() => controller.abort(), LOCATION_SAVE_TIMEOUT_MS);
     try {
       const request = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
         cache: "no-store",
+        signal: controller.signal,
       });
       const response = await request.json().catch(() => null) as {
         ok?: boolean;
@@ -162,6 +183,10 @@ export function TapPrecisionTelemetry({
         matchedBy?: string;
         location?: LocationReceipt;
       } | null;
+      if (controller.signal.aborted) {
+        setState("uncertain");
+        return;
+      }
       if (!request.ok) {
         setState(classifyLocationSubmissionFailure(
           request.status,
@@ -203,17 +228,21 @@ export function TapPrecisionTelemetry({
       // A transport failure cannot prove whether the server consumed the
       // one-time capability. Do not claim success or blindly resend it.
       setState("uncertain");
+    } finally {
+      window.clearTimeout(timeout);
     }
   }
 
   async function shareApproximateLocation() {
     if (
       state === "requesting"
+      || state === "measuring"
       || state === "saving"
       || state === "updated"
       || state === "fresh_tap_required"
       || state === "uncertain"
       || requestInFlightRef.current
+      || !mountedRef.current
       || !hasBoundTap
     ) return;
     if (typeof window === "undefined" || !window.isSecureContext || !("geolocation" in navigator)) {
@@ -223,6 +252,32 @@ export function TapPrecisionTelemetry({
 
     requestInFlightRef.current = true;
     setState("requesting");
+    const generation = measurementGenerationRef.current;
+    const isCurrentMeasurement = () => mountedRef.current && generation === measurementGenerationRef.current;
+    let collectingLocation = true;
+    let permissionStatus: PermissionStatus | null = null;
+    const syncMeasurementPhase = () => {
+      if (collectingLocation && isCurrentMeasurement() && permissionStatus?.state === "granted") setState("measuring");
+    };
+    const clearPermissionObserver = () => {
+      collectingLocation = false;
+      permissionStatus?.removeEventListener("change", syncMeasurementPhase);
+      permissionStatus = null;
+      if (permissionCleanupRef.current === clearPermissionObserver) permissionCleanupRef.current = null;
+    };
+    permissionCleanupRef.current = clearPermissionObserver;
+    // Reading the optional Permissions API does not prompt. It lets us distinguish
+    // an open permission prompt from measurement, without requesting another fix.
+    try {
+      if (typeof navigator.permissions?.query === "function") {
+        void navigator.permissions.query({ name: "geolocation" }).then((permission) => {
+          if (!collectingLocation || !isCurrentMeasurement()) return;
+          permissionStatus = permission;
+          syncMeasurementPhase();
+          permission.addEventListener("change", syncMeasurementPhase);
+        }).catch(() => { /* Permission inspection is optional; geolocation still works. */ });
+      }
+    } catch { /* Browsers without permission inspection keep the ordinary location flow. */ }
     const locationRequestedAt = new Date().toISOString();
     const locationRequestedAtMs = Date.parse(locationRequestedAt);
     const basePayload = {
@@ -240,6 +295,12 @@ export function TapPrecisionTelemetry({
 
     try {
       const result = await requestApproximateBrowserLocation(navigator.geolocation, locationRequestedAtMs);
+      collectingLocation = false;
+      clearPermissionObserver();
+      // A native geolocation callback cannot be cancelled. Discard measurements
+      // that arrive after this instance/tap was abandoned, before starting a POST.
+      // An already-started delivery retains its existing receipt/timeout handling.
+      if (!isCurrentMeasurement()) return;
       if (!result.ok) {
         setState(result.reason);
         return;
@@ -254,7 +315,9 @@ export function TapPrecisionTelemetry({
         },
       });
     } finally {
-      requestInFlightRef.current = false;
+      collectingLocation = false;
+      clearPermissionObserver();
+      if (generation === measurementGenerationRef.current) requestInFlightRef.current = false;
     }
   }
 
@@ -327,7 +390,7 @@ export function TapPrecisionTelemetry({
     );
   }
 
-  const isBusy = state === "requesting" || state === "saving";
+  const isBusy = state === "requesting" || state === "measuring" || state === "saving";
   const canRetry = state === "idle"
     || state === "denied"
     || state === "timeout"
@@ -372,6 +435,8 @@ export function TapPrecisionTelemetry({
           <LocateFixed className="h-4 w-4" aria-hidden="true" />
           {state === "requesting"
             ? "Solicitando permiso..."
+            : state === "measuring"
+              ? "Obteniendo zona..."
             : state === "saving"
               ? "Guardando zona..."
               : state === "idle"

@@ -1,0 +1,108 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ComponentType, type ReactNode } from "react";
+import type { CtaActions } from "./cta-actions";
+import type { QREngagementSuite } from "./qr-engagement-suite";
+import { useSunLocale } from "./sun-locale-provider";
+import styles from "./sun-deferred-consumer-tools.module.css";
+
+type ReadyProps = { onReady: () => void };
+type CtaProps = ComponentProps<typeof CtaActions>;
+type EngagementProps = ComponentProps<typeof QREngagementSuite>;
+
+function LoadingTool() {
+  const { text } = useSunLocale();
+  return <p className={styles.loading} role="status">{text("Preparando las opciones…")}</p>;
+}
+
+// A new instance is only needed after a failed download. Once mounted, forms stay mounted.
+function createCtaTool() {
+  return dynamic<CtaProps & ReadyProps>(() => import("./cta-actions").then(({ CtaActions: Tool }) => function ReadyTool({ onReady, ...props }) {
+    useEffect(onReady, [onReady]);
+    return <Tool {...props} />;
+  }), { ssr: false, loading: LoadingTool });
+}
+
+function createEngagementTool() {
+  return dynamic<EngagementProps & ReadyProps>(() => import("./qr-engagement-suite").then(({ QREngagementSuite: Tool }) => function ReadyTool({ onReady, ...props }) {
+    useEffect(onReady, [onReady]);
+    return <Tool {...props} />;
+  }), { ssr: false, loading: LoadingTool });
+}
+
+class ToolErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode; onError: () => void }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() { this.props.onError(); }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
+function DeferredTool<Props extends object>({ anchorId, title, description, create, toolProps }: {
+  anchorId: string;
+  title: string;
+  description: string;
+  create: () => ComponentType<Props & ReadyProps>;
+  toolProps: Props;
+}) {
+  const { text } = useSunLocale();
+  const [requested, setRequested] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const focusAfterLoad = useRef(false);
+  const Tool = useMemo(create, [create, attempt]);
+  const request = useCallback((focus = false) => {
+    if (focus) focusAfterLoad.current = true;
+    setRequested(true);
+  }, []);
+  const onReady = useCallback(() => {
+    setReady(true);
+    setFailed(false);
+    if (focusAfterLoad.current) {
+      focusAfterLoad.current = false;
+      rootRef.current?.focus({ preventScroll: true });
+    }
+  }, []);
+  const onError = useCallback(() => setFailed(true), []);
+
+  useEffect(() => {
+    if (requested) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const syncHash = () => { if (window.location.hash === `#${anchorId}`) request(true); };
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    let observer: IntersectionObserver | undefined;
+    if ("IntersectionObserver" in window) {
+      observer = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) request();
+      }, { rootMargin: "320px 0px" });
+      observer.observe(root);
+    } else request();
+    return () => { observer?.disconnect(); window.removeEventListener("hashchange", syncHash); };
+  }, [anchorId, request, requested]);
+
+  return <div ref={rootRef} className={styles.boundary} role="region" aria-label={text(title)} tabIndex={-1}
+    data-sun-deferred-tool={anchorId} data-tool-load-state={failed ? "error" : ready ? "ready" : requested ? "loading" : "waiting"}
+    aria-busy={requested && !ready && !failed}>
+    {requested ? <ToolErrorBoundary key={attempt} onError={onError} fallback={<div className={styles.placeholder}>
+      <p role="status">{text("No pudimos preparar estas opciones. Revisá la conexión y volvé a intentar.")}</p>
+      <button type="button" className={styles.openButton} onClick={() => { setFailed(false); focusAfterLoad.current = true; setAttempt(value => value + 1); }}>{text("Volver a intentar")}</button>
+    </div>}><Tool {...toolProps} onReady={onReady} /></ToolErrorBoundary> : <div className={styles.placeholder}>
+      <h3>{text(title)}</h3>
+      <p>{text(description)}</p>
+      <button type="button" className={styles.openButton} onClick={() => request(true)}>{text("Ver opciones")}</button>
+      <noscript>{text("Activá JavaScript para usar estas opciones. La información del producto sigue disponible arriba.")}</noscript>
+    </div>}
+  </div>;
+}
+
+export function DeferredCtaActions(props: CtaProps) {
+  return <DeferredTool anchorId="protected-actions" title="Postventa y garantía" description="Consultá las opciones habilitadas para este producto. Cada acción conserva sus requisitos de validación." create={createCtaTool} toolProps={props} />;
+}
+
+export function DeferredQREngagementSuite(props: EngagementProps) {
+  return <DeferredTool anchorId="qr-engagement" title="Novedades y experiencias" description="Explorá las opciones de la marca. Compartir datos o enviar una consulta requiere tu acción." create={createEngagementTool} toolProps={props} />;
+}
