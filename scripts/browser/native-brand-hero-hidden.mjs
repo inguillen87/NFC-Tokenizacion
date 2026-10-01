@@ -34,7 +34,22 @@ function state() {
     logo:inspect(roots.logo),hero:inspect(roots.hero)};
 }
 
+function productReady() {
+  const image=document.querySelector('.hero-immersive-media img');
+  return Boolean(document.readyState==='complete'&&image?.complete&&image.naturalWidth>0
+    &&document.querySelector('header [data-brand-motion-active="true"]'));
+}
+
+export function validateNativeExpressions() {
+  const expressions={snapshot:'('+state.toString()+')()',productReady:'('+productReady.toString()+')()',blankReady:'document.readyState==="complete"'};
+  // Compile owned expressions before any browser process or network request;
+  // DOM references are deliberately not executed in Node.
+  for(const expression of Object.values(expressions))new Function('return ('+expression+')');
+  return expressions;
+}
+
 export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,output,protectionCookies=[],probeOnly=false}) {
+  const expressions=validateNativeExpressions();
   const ownOrigin=new URL(origin).origin, checks=[],observations=[],errors=[],blockedWrites=[],blockedSensitiveReads=[];
   const check=(passed,name,details)=>checks.push({passed:Boolean(passed),name,...(details===undefined?{}:{details})});
   const prefix=resolve(output,'native-chrome-profile-'),profile=await mkdtemp(prefix);
@@ -57,8 +72,8 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         const target=await browser.send('Target.createTarget',{url:'about:blank',browserContextId:context.browserContextId,newWindow:true});
         const list=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
         const entry=list.find(item=>item.id===target.targetId);if(!entry)throw Error('owned_native_target_missing');page=await connect(entry.webSocketDebuggerUrl);
-        const evaluate=async expression=>{const result=await page.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails)throw Error('native_evaluation_failed');return result.result.value;};
-        const sample=()=>evaluate('('+state.toString()+')()');
+        const evaluate=async expression=>{const result=await page.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails){const description=String(result.exceptionDetails.exception?.description||result.exceptionDetails.text).split('\n')[0].replace(/https?:\/\/\S+/g,'[url]').slice(0,140);throw Error('native_evaluation_failed: '+description);}return result.result.value;};
+        const sample=()=>evaluate(expressions.snapshot);
         await page.send('Runtime.enable');await page.send('Page.enable');await page.send('Network.enable');
         page.on('Runtime.exceptionThrown',({exceptionDetails})=>errors.push({theme,message:String(exceptionDetails.exception?.description||exceptionDetails.text).replace(/https?:\/\/\S+/g,'[url]').slice(0,180)}));
         await page.send('Page.addScriptToEvaluateOnNewDocument',{source:'window.__nativeVisibilityEvents=[];window.__nativeGeoRequests=0;document.addEventListener("visibilitychange",()=>window.__nativeVisibilityEvents.push(document.visibilityState));Object.defineProperty(navigator,"geolocation",{value:{getCurrentPosition(){window.__nativeGeoRequests++;},watchPosition(){window.__nativeGeoRequests++;},clearWatch(){}}});'});
@@ -81,7 +96,7 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         await page.send('Page.navigate',{url:probeOnly?'data:text/html,<p>Native visibility capability probe without network</p>':ownOrigin+'/'});
         let ready=false;
         for(let attempt=0;attempt<100;attempt++){
-          if(await evaluate(probeOnly?'document.readyState==="complete"':'Boolean(document.readyState==="complete"&&document.querySelector(".hero-immersive-media img")?.complete&&document.querySelector(".hero-immersive-media img")?.naturalWidth>0&&document.querySelector("header [data-brand-motion-active=\"true\"]"))')){ready=true;break;}await delay(100);
+          if(await evaluate(probeOnly?expressions.blankReady:expressions.productReady)){ready=true;break;}await delay(100);
         }
         if(!ready)throw Error('native_product_render_timeout');await delay(600);
         const before=await sample();await delay(500);const moving=await sample();
