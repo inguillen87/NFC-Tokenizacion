@@ -134,7 +134,7 @@ test("QR engagement is wine-only, policy-aware and never confirms local rewards 
   assert.match(page, /!isQrScan && trustSignals\.antiReplay === false/);
   assert.match(page, /\(!isTechnicallyAuthentic && !isQrScan\)/);
   assert.match(page, /const showEngagementSuite = engagementBaseEligible && isWineProduct/);
-  assert.match(page, /<QREngagementSuite[\s\S]*allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
+  assert.match(page, /<DeferredQREngagementSuite[\s\S]*allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
   assert.match(page, /purchase: postTapQuickActions\.marketplace && !isRiskBlocked/);
   assert.match(page, /<SunLocationExperience/);
   assert.match(locationExperience, /<SunPassportMap/);

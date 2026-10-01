@@ -17,10 +17,10 @@ test("the first mobile viewport is product-first and keeps the official image ea
   assert.match(page, /data-testid="sun-summary-product"/);
   assert.match(page, /sun-summary-product grid grid-cols-\[92px_minmax\(0,1fr\)\]/);
   assert.match(page, /sun-summary-product__visual relative h-28/);
-  assert.match(page, /fetchPriority="high"/);
+  assert.match(page, /<SunProductImage[\s\S]*?\bpriority\b/);
   assert.match(page, /data-testid="sun-summary-status"/);
   assert.match(page, /<PassportEssentialSignals/);
-  assert.match(page, /Perfil oficial del piloto/);
+  assert.match(page, /Imagen informada por la marca/);
 });
 
 test("consumer copy leads with the decision while preserving the physical boundary", () => {

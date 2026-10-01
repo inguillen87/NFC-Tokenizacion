@@ -18,7 +18,17 @@ const bundle = await build({
 const js = bundle.outputFiles.find(file => file.path.endsWith(".js")).contents;
 const css = bundle.outputFiles.find(file => file.path.endsWith(".css"))?.contents || "";
 const server = createServer((req, res) => {
-  if (req.url === "/fixture.js") { res.setHeader("Content-Type", "text/javascript"); res.end(js); }
+  const url = new URL(req.url, "http://fixture.invalid");
+  if (req.method === "POST" && url.pathname === "/fixture-context") {
+    // Actual streamed HTTP exercises fetch aborts both before headers and while
+    // reading a response body; mocked fetch promises would not prove that path.
+    req.resume();
+    if (url.searchParams.get("submission") === "stall_body") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.write('{"ok":true,');
+    }
+  }
+  else if (req.url === "/fixture.js") { res.setHeader("Content-Type", "text/javascript"); res.end(js); }
   else if (req.url === "/fixture.css") { res.setHeader("Content-Type", "text/css"); res.end(css); }
   else if (req.method === "GET") {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -31,9 +41,15 @@ const browser = await chromium.launch({ headless: true, executablePath: process.
 const results = [];
 if(process.env.QA_OUTPUT)await mkdir(process.env.QA_OUTPUT,{recursive:true});
 try {
-  for (const scenario of ["success", "denied", "timeout", "uncertain", "upstream_unknown", "retryable", "disabled"]) {
+  for (const scenario of ["success", "permission_pregranted", "permission_api_unavailable", "permission_api_rejected", "permission_api_throws", "abandoned_measurement", "denied", "timeout", "uncertain", "upstream_unknown", "upstream_error", "expired", "unauthorized", "retryable", "stall_headers", "stall_body", "disabled"]) {
+    const isSuccess = scenario === "success" || scenario.startsWith("permission_");
+    const noPermissionInspection = scenario.startsWith("permission_api_");
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
+    if (scenario.startsWith("stall_")) await page.clock.install();
+    const streamedResponse = scenario === "stall_body"
+      ? page.waitForResponse(response => new URL(response.url()).pathname === "/fixture-context")
+      : null;
     const errors = [];
     const posts = [];
     let releaseResponse;
@@ -43,10 +59,14 @@ try {
       if (url.origin !== origin) return route.abort();
       if (url.pathname !== "/fixture-context") return route.continue();
       posts.push(route.request().postDataJSON());
-      if (scenario === "success") await new Promise(resolve => { releaseResponse = resolve; });
+      if (scenario.startsWith("stall_")) return route.continue();
+      if (isSuccess) await new Promise(resolve => { releaseResponse = resolve; });
       const now = new Date().toISOString();
       if (scenario === "retryable") return route.fulfill({ status: 429, json: { reason: "rate_limited" } });
       if (scenario === "upstream_unknown") return route.fulfill({ status: 503, json: { reason: "sun_context_upstream_unavailable" } });
+      if (scenario === "upstream_error") return route.fulfill({ status: 500, json: { reason: "persistence_unknown" } });
+      if (scenario === "expired") return route.fulfill({ status: 403, json: { reason: "fresh_tap_capability_required", fresh_token_status: "fresh_token_expired" } });
+      if (scenario === "unauthorized") return route.fulfill({ status: 401, json: { reason: "authentication_unknown" } });
       if (scenario === "uncertain") return route.fulfill({ status: 200, json: { ok: true, updated: true, eventId: "wrong-fixture", matchedBy: "signed_event_bid_uid_ctr" } });
       return route.fulfill({ status: 200, json: {
         ok: true, updated: true, eventId: posts.at(-1).eventId, matchedBy: "signed_event_bid_uid_ctr",
@@ -56,6 +76,27 @@ try {
     await page.addInitScript(({ scenario }) => {
       window.fixtureGeoCalls = 0;
       window.fixtureGeoCallbacks = [];
+      const permission = new EventTarget();
+      const permissionListeners = new Set();
+      const addPermissionListener = permission.addEventListener.bind(permission);
+      const removePermissionListener = permission.removeEventListener.bind(permission);
+      permission.addEventListener = (type, listener, options) => {
+        if (type === "change") permissionListeners.add(listener);
+        addPermissionListener(type, listener, options);
+      };
+      permission.removeEventListener = (type, listener, options) => {
+        if (type === "change") permissionListeners.delete(listener);
+        removePermissionListener(type, listener, options);
+      };
+      window.fixturePermissionListenerCount = () => permissionListeners.size;
+      permission.state = scenario === "permission_pregranted" ? "granted" : "prompt";
+      window.fixtureGrantPermission = () => { permission.state = "granted"; permission.dispatchEvent(new Event("change")); };
+      Object.defineProperty(navigator, "permissions", { configurable: true, value: scenario === "permission_api_unavailable" ? undefined : {
+        query: () => {
+          if (scenario === "permission_api_throws") throw new Error("Permission inspection unsupported");
+          return scenario === "permission_api_rejected" ? Promise.reject(new Error("Permission inspection unsupported")) : Promise.resolve(permission);
+        },
+      } });
       Object.defineProperty(navigator, "geolocation", { configurable: true, value: {
         getCurrentPosition(success, error, options) {
           window.fixtureGeoCalls += 1;
@@ -67,7 +108,7 @@ try {
         },
       } });
     }, { scenario });
-    await page.goto(`${origin}/${scenario === "disabled" ? "?disabled=1" : ""}`);
+    await page.goto(`${origin}/${scenario === "disabled" ? "?disabled=1" : scenario.startsWith("stall_") ? `?submission=${scenario}` : ""}`);
     const firstButton = page.getByTestId("sun-location-consent-cta");
     await firstButton.waitFor();
     if (scenario === "disabled") {
@@ -93,18 +134,55 @@ try {
     await firstButton.click();
     await page.waitForFunction(() => window.fixtureGeoCalls === 1 && document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
     assert.equal(await firstButton.isDisabled(), true);
-    assert.match(await firstButton.textContent(), /Solicitando permiso/);
+    if (scenario !== "permission_pregranted") {
+      assert.match(await firstButton.textContent(), /Solicitando permiso/);
+      assert.match(await page.getByTestId("sun-location-phase").textContent(), /Si aparece el permiso/);
+      await page.evaluate(() => window.fixtureGrantPermission());
+    }
+    if (noPermissionInspection) {
+      assert.equal(await page.locator('[data-location-state="measuring"]').count(), 0, "No unconfirmed claim that permission was granted");
+    } else {
+      await page.waitForFunction(() => document.querySelector('[data-location-state="measuring"]'));
+      assert.match(await firstButton.textContent(), /Obteniendo zona/);
+      assert.match(await page.getByTestId("sun-location-phase").textContent(), /todavía no se guardó/);
+    }
+    if(scenario === "success" && process.env.QA_OUTPUT)await page.screenshot({path:join(process.env.QA_OUTPUT,"location-measuring.png"),fullPage:false});
     // A rapid double tap or alternate entry point must not create another request.
     await page.evaluate(() => {
       document.querySelector('[data-testid="sun-location-consent-cta"]').click();
       document.querySelector('#tap-location-consent button').click();
     });
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 1);
+    if (scenario === "abandoned_measurement") {
+      assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 1, "Active measurement observes permission changes");
+      await page.locator("#next-tap").click();
+      await page.waitForFunction(() => document.querySelector('[data-location-state="idle"]') && !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
+      assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 0, "Unmount immediately removes the permission listener");
+      await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.equal(posts.length, 0, "Measurement from an abandoned tap never starts a POST");
+      assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0, "Old measurement cannot confirm the new tap");
+      assert.equal(await page.locator('[data-location-state="idle"]').count(), 1, "New tap stays idle after the old callback");
+      assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith("nexid:tap-context:")).length), 0, "Discarded measurement creates no receipt");
+      await firstButton.click();
+      await page.waitForFunction(() => window.fixtureGeoCalls === 2 && document.querySelector('[data-location-state="measuring"]'));
+      await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+      await page.locator('[data-location-state="updated"]').waitFor();
+      assert.equal(posts.length, 1, "A separate user request can save the new tap once");
+      assert.equal(posts[0].eventId, "local-fixture-2", "Only the new tap is sent");
+      assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 0, "Completed measurement releases its permission listener");
+      assert.deepEqual(errors, [], "No React or client errors after abandoning a measurement");
+      results.push({ scenario, pass: true, permissionRequests: 2, abandonedSubmissions: 0, submissions: 1 });
+      await context.close();
+      continue;
+    }
     await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
-    if (scenario === "success") {
+    if (isSuccess) {
       await page.waitForFunction(() => document.querySelector('[data-location-state="saving"]'));
       assert.equal(posts.length, 1);
       assert.match(await firstButton.textContent(), /Guardando zona/);
+      assert.match(await page.getByTestId("sun-location-phase").textContent(), /Esperamos el comprobante/);
+      if(scenario === "success" && process.env.QA_OUTPUT)await page.screenshot({path:join(process.env.QA_OUTPUT,"location-saving.png"),fullPage:false});
       assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0, "Not saved before receipt");
       assert.equal(posts[0].geoConsent, true);
       assert.equal(posts[0].geo.lat, -32.901);
@@ -127,13 +205,28 @@ try {
       assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0, "New tap cannot reuse prior receipt");
       assert.match(await page.locator("#geo-trace").textContent(), /Buenos Aires, AR/);
     } else {
-      await page.locator(`[data-location-state="${scenario === "upstream_unknown" ? "uncertain" : scenario}"]`).waitFor();
+      const isAmbiguous = ["uncertain", "upstream_unknown", "upstream_error", "unauthorized", "stall_headers", "stall_body"].includes(scenario);
+      if (scenario.startsWith("stall_")) {
+        await page.locator('[data-location-state="saving"]').waitFor();
+        await page.waitForFunction(() => document.querySelector('[data-testid="sun-location-quick-action"]').dataset.state === "saving");
+        assert.match(await page.getByTestId("sun-location-phase").textContent(), /Esperamos el comprobante/);
+        assert.equal(posts.length, 1);
+        if (streamedResponse) assert.equal((await streamedResponse).status(), 200, "Body-stall scenario has already received response headers");
+        // Move simulated time past the actual component budget, covering headers
+        // and body without a 12-second wall-clock sleep in each scenario.
+        await page.clock.fastForward(12_001);
+      }
+      const expectedState = isAmbiguous ? "uncertain" : scenario === "expired" ? "fresh_tap_required" : scenario;
+      await page.locator(`[data-location-state="${expectedState}"]`).waitFor();
       assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0);
-      assert.equal(posts.length, ["uncertain", "upstream_unknown", "retryable"].includes(scenario) ? 1 : 0);
-      if (scenario === "uncertain" || scenario === "upstream_unknown") {
+      assert.equal(posts.length, isAmbiguous || ["expired", "retryable"].includes(scenario) ? 1 : 0);
+      if (isAmbiguous || scenario === "expired") {
         assert.equal(await firstButton.count(), 0, "Uncertain delivery cannot silently resend");
+        assert.match(await page.getByTestId("sun-location-quick-action").textContent(), /TAP|etiqueta/);
         await page.getByRole("link", { name: "Ver estado de la ubicación" }).click();
         assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 1);
+        assert.equal(posts.length, 1, "Reading the status never resends a consumed or ambiguous capability");
+        assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith("nexid:tap-context:")).length), 0, "No saved receipt for an ambiguous or rejected response");
       } else {
         assert.equal(await firstButton.isEnabled(), true);
       }

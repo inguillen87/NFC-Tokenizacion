@@ -15,6 +15,14 @@ export const SUN_LOCALE_COOKIE = "locale";
  * the evidence returned by the server.
  */
 export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
+  { es: "Preparando las opciones…", pt: "Preparando as opções…", en: "Preparing options…" },
+  { es: "Postventa y garantía", pt: "Pós-venda e garantia", en: "After-sales and warranty" },
+  { es: "Novedades y experiencias", pt: "Novidades e experiências", en: "News and experiences" },
+  { es: "Consultá las opciones habilitadas para este producto. Cada acción conserva sus requisitos de validación.", pt: "Consulte as opções habilitadas para este produto. Cada ação mantém seus requisitos de validação.", en: "View the options available for this product. Each action keeps its validation requirements." },
+  { es: "Explorá las opciones de la marca. Compartir datos o enviar una consulta requiere tu acción.", pt: "Explore as opções da marca. Compartilhar dados ou enviar uma consulta exige sua ação.", en: "Explore the brand's options. Sharing data or sending an enquiry requires your action." },
+  { es: "No pudimos preparar estas opciones. Revisá la conexión y volvé a intentar.", pt: "Não foi possível preparar estas opções. Verifique a conexão e tente novamente.", en: "These options could not load. Check your connection and try again." },
+  { es: "Ver opciones", pt: "Ver opções", en: "View options" },
+  { es: "Activá JavaScript para usar estas opciones. La información del producto sigue disponible arriba.", pt: "Ative o JavaScript para usar estas opções. As informações do produto continuam disponíveis acima.", en: "Enable JavaScript to use these options. The product information remains available above." },
   { es: "Cómo leer este pasaporte", pt: "Como ler este passaporte", en: "How to read this passport" },
   { es: "La ficha reúne los datos declarados por la empresa. Su publicación no acredita el origen físico ni una fecha de producción.", pt: "A ficha reúne os dados declarados pela empresa. Sua publicação não comprova a origem física nem uma data de produção.", en: "This record brings together company-declared data. Publication does not establish physical origin or a production date." },
   { es: "La consulta permite leer la ficha publicada. Compartir ubicación o datos de contacto requiere una acción separada.", pt: "A consulta permite ler a ficha publicada. Compartilhar localização ou dados de contato exige uma ação separada.", en: "This view provides the published product record. Sharing location or contact details requires a separate action." },
@@ -164,6 +172,12 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "La ciudad estimada por la red puede ser incorrecta. Sólo pediremos ubicación al tocar el botón. El origen reportado del producto no se modifica.", pt: "A cidade estimada pela rede pode estar incorreta. Só pediremos a localização quando você tocar no botão. A origem informada do produto não será alterada.", en: "The network-estimated city may be wrong. Location is requested only when you press the button. The product's reported origin is not changed." },
   { es: "Agregar zona al pasaporte", pt: "Adicionar zona ao passaporte", en: "Add area to passport" },
   { es: "Solicitando permiso...", pt: "Solicitando permissão...", en: "Requesting permission..." },
+  { es: "Obteniendo zona...", pt: "Obtendo área...", en: "Obtaining area..." },
+  { es: "Mapa disponible al llegar a esta sección", pt: "Mapa disponível ao chegar a esta seção", en: "Map available when you reach this section" },
+  { es: "Se carga al acercarte para priorizar el pasaporte.", pt: "É carregado ao se aproximar para priorizar o passaporte.", en: "It loads as you approach to prioritize the passport." },
+  { es: "Imagen informada por la marca", pt: "Imagem informada pela marca", en: "Image supplied by the brand" },
+  { es: "Desbloqueá el teléfono, acercá la zona NFC a la etiqueta y abrí el enlace que aparezca. Esta vista histórica conserva la evidencia, pero las acciones protegidas necesitan una lectura nueva.", pt: "Desbloqueie o telefone, aproxime a área NFC da etiqueta e abra o link exibido. Esta visualização histórica preserva a evidência, mas as ações protegidas precisam de uma nova leitura.", en: "Unlock your phone, bring its NFC area near the tag and open the link. This historical view preserves the evidence, but protected actions need a new reading." },
+  { es: "Desbloqueá el teléfono, acercá la zona NFC a la etiqueta y abrí el enlace nuevo. No recargues este enlace: una lectura nueva debe venir de la etiqueta. Si el aviso continúa, contactá a la marca.", pt: "Desbloqueie o telefone, aproxime a área NFC da etiqueta e abra o novo link. Não recarregue este link: uma nova leitura deve vir da etiqueta. Se o aviso continuar, contate a marca.", en: "Unlock your phone, bring its NFC area near the tag and open the new link. Do not reload this link: a new reading must come from the tag. Contact the brand if the warning persists." },
   { es: "Guardando zona...", pt: "Salvando zona...", en: "Saving area..." },
   { es: "Volver a intentar", pt: "Tentar novamente", en: "Try again" },
   { es: "Opcional · ubicación aproximada · zona redondeada · sin cambiar la validación", pt: "Opcional · localização aproximada · zona arredondada · sem alterar a validação", en: "Optional · approximate location · rounded area · validation unchanged" },

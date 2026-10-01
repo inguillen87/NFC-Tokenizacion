@@ -5,7 +5,7 @@ import { LocateFixed, MapPin } from "lucide-react";
 import type { LocationReceipt } from "./tap-location-model";
 import { useSunLocale } from "./sun-locale-provider";
 
-export type SunLocationState = "idle" | "requesting" | "saving" | "updated" | "denied" | "timeout"
+export type SunLocationState = "idle" | "requesting" | "measuring" | "saving" | "updated" | "denied" | "timeout"
   | "unsupported" | "invalid" | "stale" | "unavailable" | "retryable" | "fresh_tap_required" | "uncertain";
 
 type LocationStatus = { state: SunLocationState; receipt: LocationReceipt | null };
@@ -47,9 +47,9 @@ export function SunLocationRequestButton({ children, className }: { children: Re
   const control = useSunLocationController();
   const { text } = useSunLocale();
   const state = control?.state || "idle";
-  const busy = state === "requesting" || state === "saving";
+  const busy = state === "requesting" || state === "measuring" || state === "saving";
   const unavailable = state === "fresh_tap_required" || state === "uncertain" || state === "unsupported";
-  const label = state === "requesting" ? "Solicitando permiso..." : "Guardando zona...";
+  const label = state === "requesting" ? "Solicitando permiso..." : state === "measuring" ? "Obteniendo zona..." : "Guardando zona...";
 
   if (unavailable) {
     return <a className={className} href="#tap-location-consent">{text("Ver estado de la ubicación")}</a>;

@@ -9,6 +9,7 @@ import { SunLocationExperience } from "../../src/app/sun/sun-location-experience
 function Fixture() {
   const [event, setEvent] = useState("local-fixture-1");
   const enabled = !new URLSearchParams(location.search).has("disabled");
+  const submission = new URLSearchParams(location.search).get("submission");
   return (
     <StrictMode>
       <SunLocaleProvider initialLocale="es-AR">
@@ -28,7 +29,7 @@ function Fixture() {
             tap={{ id: "fixture-network", lat: -34.6, lng: -58.38, label: "Buenos Aires, AR", evidence: "Red simulada", source: "edge_ip_approx" }}
             showRoute={false}
             distanceLabel="Ejemplo"
-            telemetry={{ endpoint: "/fixture-context", bid: "local-fixture-batch", uid: "local-fixture-unit", eventId: event, freshToken: "NOT-A-REAL-CAPABILITY", readCounter: 1, enabled }}
+            telemetry={{ endpoint: submission ? `/fixture-context?submission=${encodeURIComponent(submission)}` : "/fixture-context", bid: "local-fixture-batch", uid: "local-fixture-unit", eventId: event, freshToken: "NOT-A-REAL-CAPABILITY", readCounter: 1, enabled }}
           />
         </SunLocationProvider>
       </SunLocaleProvider>

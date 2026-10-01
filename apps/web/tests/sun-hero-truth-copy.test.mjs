@@ -16,7 +16,8 @@ test("SUN product-first card uses the recent truth-gated hero without a live fab
   assert.match(page, /data-testid="sun-summary-product"/);
   assert.match(page, /<SunLocationExperience/);
   assert.match(page, /Imagen no informada/);
-  assert.match(page, /Perfil oficial del piloto/);
+  assert.match(page, /Imagen informada por la marca/);
+  assert.doesNotMatch(page, /Perfil oficial del piloto/);
   assert.doesNotMatch(demoCopy, /Tap actual|Tap fisico|Lectura fisica del chip|Ruta real de confianza del producto/);
   assert.match(demoCopy, /sin tap físico/);
   assert.match(demoCopy, /simulad/);

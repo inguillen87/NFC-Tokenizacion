@@ -231,7 +231,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
   const popupsRef = useRef<Record<string, Popup>>({});
   const fitAllRef = useRef<() => void>(() => undefined);
   const focusRef = useRef<(point: SunPassportMapLocation) => void>(() => undefined);
-  const [loadState, setLoadState] = useState<LoadState>("waiting");
+  const [loadState, setLoadState] = useState<LoadState>(() => origin || tap ? "waiting" : "empty");
   const [isDegraded, setIsDegraded] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const points = useMemo(
@@ -601,6 +601,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         <button
           type="button"
           className={styles.locationButton}
+          disabled={loadState !== "ready"}
           onClick={() => focusRef.current(point)}
           aria-label={`Enfocar ${kind === "origin" ? "origen" : "tap"} en el mapa: ${point.label}`}
         >
@@ -658,14 +659,14 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         <span className={styles.controlNotice} role="status" aria-live="polite">{controlNotice}</span>
       </div>
 
-      <div ref={mapFrameRef} id={mapId} className={styles.mapFrame} role="region" aria-label={mapAriaLabel}>
+      <div ref={mapFrameRef} id={mapId} className={styles.mapFrame} role="region" aria-label={mapAriaLabel} aria-busy={loadState === "loading"}>
         <div ref={mapContainerRef} className={styles.map} />
         {loadState === "waiting" || loadState === "loading" ? (
           <div className={styles.loading} aria-live="polite">
             <div>
-              <span className={styles.loadingDot} />
-              <strong>Cargando cartografía</strong>
-              <p className="mt-1 text-xs">Las ubicaciones informadas siguen disponibles en la lista.</p>
+              <span className={styles.loadingDot} data-waiting={loadState === "waiting"} aria-hidden="true"/>
+              <strong>{loadState === "waiting" ? "Mapa disponible al llegar a esta sección" : "Cargando cartografía"}</strong>
+              <p className="mt-1 text-xs">{loadState === "waiting" ? "Se carga al acercarte para priorizar el pasaporte." : "Las ubicaciones informadas siguen disponibles en la lista."}</p>
             </div>
           </div>
         ) : null}

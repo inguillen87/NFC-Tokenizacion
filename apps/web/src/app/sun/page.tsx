@@ -5,19 +5,19 @@ import { PassportEvidenceResources } from "./passport-evidence-resources";
 import { ConsumerPassportLink } from "./consumer-passport-link";
 import { ProductNotices } from "./product-notices";
 import { SunLocationQuickAction } from "./sun-location-quick-action";
+import { SunProductImage } from "./sun-product-image";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowDown, ArrowLeft, ChevronRight, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
-import { CtaActions } from "./cta-actions";
+import { DeferredCtaActions, DeferredQREngagementSuite } from "./sun-deferred-consumer-tools";
 import { ReportProblemForm } from "./report-problem-form";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import type { SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
 import { SunLocaleProvider } from "./sun-locale-provider";
 import { formatSunDateTime, translateSunUiText, type SunLocale } from "./sun-locale";
-import { QREngagementSuite } from "./qr-engagement-suite";
 import { PostTapNextStep } from "./post-tap-next-step";
 import { SunSectionNav } from "./sun-section-nav";
 import { SunServicesHub, type SunPublishedPromotion } from "./sun-services-hub";
@@ -365,7 +365,7 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
       },
       product: {
         name: "Producto conectado",
-        winery: "Tenant pendiente",
+        winery: "Marca no informada",
         region: "Origen pendiente",
         varietal: "N/A",
       },
@@ -1319,9 +1319,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     warranty: postTapQuickActions.warranty && !isRiskBlocked,
   };
   const consumerBrandName = requestedBrandDisplay || result.product?.winery || result.tenant?.name || result.tenant?.slug || "la marca";
-  const engagementWineryName = consumerBrandName === "la marca" ? "Bodega Premium" : consumerBrandName;
+  const engagementWineryName = consumerBrandName;
   const engagementTenantSlug = readParam(params, "tenant") || tenantSlug || "demobodega";
-  const productHeroImageUrl = assetProfile.primaryImageUrl || productImageUrl;
+  // Stock photography belongs to the labelled demo. A real reading shows only
+  // media supplied in its product contract, never a guessed product or vertical.
+  const productHeroImageUrl = isDemoPreview
+    ? assetProfile.primaryImageUrl || productImageUrl
+    : productImageUrl || productGalleryUrls[0] || null;
   const productVisualState = (isReplay || isRiskBlocked)
     ? "blocked"
     : (sealOpened || isVerifiedOpenedState)
@@ -1395,7 +1399,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ? 5
             : 0;
 
-  const tenantDisplayName = requestedBrandDisplay || result.tenant?.name || result.product?.winery || result.tenant?.slug || result.identity?.tenantSlug || "Bodega Premium";
+  const tenantDisplayName = requestedBrandDisplay || result.tenant?.name || result.product?.winery || result.tenant?.slug || result.identity?.tenantSlug || "Marca no informada";
   const publicLotDisplay = String(result.product?.lotLabel || result.identity?.displayLot || "").trim() || null;
   const batchDisplay = publicLotDisplay || (isDemoPreview ? bid || result.identity?.bid || "Batch de muestra" : null);
   const technicalBid = bid || result.identity?.bid || "N/A";
@@ -1705,13 +1709,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             >
               <div className="sun-summary-product__visual relative h-28 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_34%,rgba(34,211,238,0.18),transparent_54%),rgba(2,6,23,0.62)] shadow-inner">
                 {productHeroImageUrl ? (
-                  <img
+                  <SunProductImage
                     src={productHeroImageUrl}
                     alt={productDisplayName}
                     className="h-full w-full object-contain p-1.5 drop-shadow-[0_12px_18px_rgba(0,0,0,0.42)]"
-                    loading="eager"
-                    decoding="async"
-                    fetchPriority="high"
+                    priority
                   />
                 ) : (
                   <div className="sun-summary-product-stage h-full w-full" aria-label={`Vista del producto ${productDisplayName}`}>
@@ -1879,16 +1881,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             {/* Floating Premium Image */}
             <div className={passportStyles.productMedia}>
               {productHeroImageUrl ? (
-                <img
+                <SunProductImage
                   src={productHeroImageUrl}
                   alt={productDisplayName}
-                  decoding="async"
-                  fetchPriority="high"
                 />
               ) : (
                 <Package aria-hidden="true" />
               )}
-              <span>{isDemoPreview ? "Perfil de muestra" : "Perfil oficial del piloto"}</span>
+              <span>{isDemoPreview ? "Perfil de muestra" : productHeroImageUrl ? "Imagen informada por la marca" : "Imagen no informada"}</span>
             </div>
 
             <div className="text-center w-full">
@@ -2328,20 +2328,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
             </details> : null}
 
-            {isSnapshotView || isQrScan ? (
+            {isSnapshotView || isQrScan || isRiskBlocked ? (
               <section id="fresh-tap-required" className="scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4" aria-labelledby="fresh-tap-required-title">
                 <h2 id="fresh-tap-required-title" className="text-sm font-black text-amber-100">{isQrScan ? "Toca el chip NFC para acciones protegidas" : "Hace un nuevo tap desde la etiqueta fisica"}</h2>
                 <p className="mt-1 text-xs leading-5 text-amber-50/80">
                   {isQrScan
                     ? "El QR abre contenido y CRM, pero no prueba posesion ni autenticidad criptografica. Acerca el telefono al chip NFC para reclamar, registrar garantia o solicitar tokenizacion."
-                    : "Desbloquea el telefono, acerca la zona NFC a la etiqueta y abri el enlace que aparezca. Esta vista historica conserva la evidencia, pero no puede fabricar la frescura criptografica de otro tap."}
+                    : isSnapshotView
+                      ? "Desbloqueá el teléfono, acercá la zona NFC a la etiqueta y abrí el enlace que aparezca. Esta vista histórica conserva la evidencia, pero las acciones protegidas necesitan una lectura nueva."
+                      : "Desbloqueá el teléfono, acercá la zona NFC a la etiqueta y abrí el enlace nuevo. No recargues este enlace: una lectura nueva debe venir de la etiqueta. Si el aviso continúa, contactá a la marca."}
                 </p>
               </section>
             ) : null}
 
             {!isDemoPreview && bid && (uid || eventId) ? (
               <div id="protected-actions" className="scroll-mt-24 pt-1">
-                <CtaActions
+                <DeferredCtaActions
                   bid={bid}
                   uid={uid}
                   eventId={eventId}
@@ -2358,7 +2360,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             {showEngagementSuite ? (
               <div id="qr-engagement" className="scroll-mt-24">
-                <QREngagementSuite
+                <DeferredQREngagementSuite
                   wineryName={engagementWineryName}
                   productName={productDisplayName}
                   tenantSlug={engagementTenantSlug}
