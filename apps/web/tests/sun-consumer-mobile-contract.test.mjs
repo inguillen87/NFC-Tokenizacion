@@ -88,7 +88,7 @@ test("real SUN maps keep evidence sources separate while the basemap remains vis
   assert.match(passportMap, /data-basemap-state=\{isDegraded && loadState === "ready" \? "degraded" : loadState\}/);
   assert.match(passportMap, /data-location-source=\{tapPresentation\.kind\}/);
   assert.doesNotMatch(passportMap, /localCoordinateStyle|data-external-tiles/);
-  assert.match(passportMap, /Abrir mapa ↗/);
+  assert.match(passportMap, /OpenStreetMap ↗/);
 });
 
 test("mobile navigation uses four unique product sections and keeps engagement progressive", () => {
