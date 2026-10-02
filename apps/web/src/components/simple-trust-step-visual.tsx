@@ -215,10 +215,12 @@ export function SimpleTrustStepVisual({
   kind,
   locale,
   industry = SIMPLE_TRUST_DEFAULT_INDUSTRY,
+  imageSizes = "(max-width: 760px) calc(100vw - 4.5rem), (max-width: 1100px) calc(50vw - 3.5rem), 29vw",
 }: {
   kind: SimpleTrustVisualKind;
   locale: string;
   industry?: SimpleTrustIndustry;
+  imageSizes?: string;
 }) {
   const normalizedLocale = locale === "en" || locale === "pt-BR" ? locale : "es-AR";
   const normalizedIndustry = resolveSimpleTrustIndustry(industry);
@@ -252,7 +254,7 @@ export function SimpleTrustStepVisual({
             quality={75}
             loading={kind === "discover" ? "eager" : "lazy"}
             fetchPriority={kind === "discover" ? "high" : undefined}
-            sizes="(max-width: 760px) calc(100vw - 4.5rem), (max-width: 1100px) calc(50vw - 3.5rem), 29vw"
+            sizes={imageSizes}
             className={`trust-photo__image trust-visual__device trust-visual__scene-base trust-visual__scene-base--${kind} trust-visual__animated`}
             data-trust-photo-base={visualMeta.photoBase}
           />

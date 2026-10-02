@@ -138,7 +138,8 @@ test("three phases keep the default Reserva Andina story with deterministic phot
   assert.match(visuals, /aria-hidden="true"/);
   assert.match(visuals, /alt=""/);
   assert.match(visuals, /quality=\{75\}/);
-  assert.match(visuals, /sizes="\(max-width:/);
+  assert.match(visuals, /imageSizes = "\(max-width:/);
+  assert.match(visuals, /sizes=\{imageSizes\}/);
   assert.match(visuals, /focusable="false"/);
   assert.match(visuals, /<svg/g);
   assert.match(visuals, /EJEMPLO ILUSTRATIVO/);
