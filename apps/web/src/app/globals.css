@@ -61383,6 +61383,12 @@ html:is(.theme-light, [data-theme="light"]) .dpp-participant-detail-bridge {
     scrollbar-width: none;
   }
 
+  /* One complete step per phone viewport; the controls keep the next step clear. */
+  .simple-trust-industry-journey .simple-trust-industry-panel .simple-trust-flow-steps {
+    grid-auto-columns: minmax(0, 100%);
+    column-gap: 2.2rem;
+  }
+
   .simple-trust-industry-panel .simple-trust-flow-steps::-webkit-scrollbar {
     width: 0;
     height: 0;
