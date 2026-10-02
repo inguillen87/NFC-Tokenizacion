@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import postcss from "postcss";
 
 const headerUrl = new URL("../src/app/sun/sun-passport-header.tsx", import.meta.url);
 const pageUrl = new URL("../src/app/sun/page.tsx", import.meta.url);
@@ -14,11 +15,14 @@ test("SUN header gives the existing brand priority and puts status and locale in
   assert.match(source, /sun-passport-header sun-topbar \$\{styles\.header\}/);
   assert.match(source, /<Link href="\/" prefetch=\{false\} aria-label=\{homeLabel\(locale\)\}/);
   assert.ok(source.indexOf("<SunBrandIdentity") < source.indexOf("<ThemeToggle"));
-  assert.ok(source.indexOf("<ThemeToggle") < source.indexOf("sun-topbar-actions"));
+  assert.match(source, /<SunBrandIdentity variant="passport" \/>/);
+  assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("<ThemeToggle"));
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("sun-live-tap-pill"));
   assert.ok(source.indexOf("sun-live-tap-pill") < source.indexOf("<SunLocaleSwitcher"));
-  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) 2\.75rem/);
-  assert.match(css, /\.header \.utilities\s*\{[^}]*grid-column: 1 \/ -1;[^}]*grid-template-columns: minmax\(0, 1fr\) 9rem;/);
+  assert.ok(source.indexOf("<SunLocaleSwitcher") < source.indexOf("<ThemeToggle"));
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(css, /\.header \.utilities\s*\{[^}]*grid-column: 1 \/ -1;[^}]*grid-template-columns: minmax\(0, 1fr\) 7\.625rem 2\.75rem;/);
+  assert.match(css, /@media \(max-width: 299px\)[\s\S]*?\.header \.status \{ grid-column: 1 \/ -1; grid-row: 2;/);
   assert.match(css, /\.header \.status\s*\{[^}]*max-width: 100%;[^}]*white-space: normal;/);
 });
 
@@ -71,4 +75,35 @@ test("SUN brand entrance is finite and respects reduced motion, including inheri
   assert.match(css, /@media \(prefers-reduced-motion: no-preference\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation: none !important;[\s\S]*?transition: none !important;/);
   assert.doesNotMatch(css, /animation[^;]*infinite/);
+});
+
+test("SUN owns solid header and theme-control paint despite the inherited global glass styles", async () => {
+  const [localCss, globalCss] = await Promise.all([
+    readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  ]);
+  const local = postcss.parse(localCss);
+  const global = postcss.parse(globalCss);
+  const rule = (root, selector) => root.nodes.find(node => node.type === "rule" && node.selector === selector);
+  const declaration = (node, property) => node.nodes.find(child => child.type === "decl" && child.prop === property);
+
+  // This was the actual cascade conflict: the global important gradient beat
+  // a normal declaration in the otherwise more specific SUN control rule.
+  assert.match(declaration(rule(global, ".theme-toggle"), "background").value, /linear-gradient/);
+  assert.equal(declaration(rule(global, ".theme-toggle"), "background").important, true);
+  assert.match(declaration(rule(global, ".sun-topbar"), "backdrop-filter").value, /blur/);
+
+  const header = rule(local, ".header:global(.sun-passport-header)");
+  assert.equal(declaration(header, "backdrop-filter").value, "none");
+  assert.equal(declaration(header, "-webkit-backdrop-filter").value, "none");
+  const theme = rule(local, ".header .theme :global(.theme-toggle)");
+  for (const [property, value] of [
+    ["background", "var(--header-control)"],
+    ["border-color", "var(--header-line)"],
+    ["color", "var(--header-ink)"],
+  ]) {
+    const selected = declaration(theme, property);
+    assert.equal(selected.value, value);
+    assert.equal(selected.important, true);
+  }
 });

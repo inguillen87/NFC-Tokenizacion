@@ -9,15 +9,15 @@ globalThis.fetch = async function(input, init) {
     if(failure==='malformed')return Response.json({ok:true,contract:{}});
     return Response.json({ok:false},{status:failure==='denied'?403:503});
   }
-  if (url.hostname === 'api.nexid.lat' && /^\/sun\/snapshot\/qa-(closed|opened|replay|missing|photo-failure|missing-date|history-only|seal-unknown|unsupported|historical-closed|invalid)$/.test(url.pathname) && url.searchParams.get('trace') === 'synthetic' && url.searchParams.get('access') === 'invalid') {
+  if (url.hostname === 'api.nexid.lat' && /^\/sun\/snapshot\/qa-(closed|opened|replay|missing|photo-failure|missing-date|history-only|seal-unknown|unsupported|historical-closed|manual-opened|invalid|location-closed)$/.test(url.pathname) && url.searchParams.get('trace') === 'synthetic' && url.searchParams.get('access') === 'invalid') {
     const state = url.pathname.split('qa-')[1];
-    const statusCode=state==='replay'?'REPLAY_SUSPECT':state==='invalid'?'INVALID':state==='opened'?'VALID_OPENED':state==='seal-unknown'?'VALID_UNKNOWN_TAMPER':state==='unsupported'?'AUTH_OK':'VALID_CLOSED';
+    const statusCode=state==='manual-opened'?'MANUAL_OPENED':state==='replay'?'REPLAY_SUSPECT':state==='invalid'?'INVALID':state==='opened'?'VALID_OPENED':state==='seal-unknown'?'VALID_UNKNOWN_TAMPER':state==='unsupported'?'AUTH_OK':'VALID_CLOSED';
     const seal=state==='seal-unknown'?'unknown':state==='unsupported'?'not_available':state==='opened'?'opened':'closed';
     return Response.json({ok:true,contract:{
       ok: !['replay','invalid'].includes(state),
-      status:{code:statusCode,tone:['replay','invalid'].includes(state)?'risk':'good',productState:statusCode,tamperSupported:state!=='unsupported',tamperStatus:seal,...(state==='unsupported'?{carrierProfileCode:'ntag424_dna'}:{})},
-      identity:{bid:'synthetic-only',uid:'qa-only',eventId:'synthetic-event',scanCount:1,tenantSlug:'qa'},
-      product:{name:'Producto de ensayo',winery:'Marca de ensayo',vertical:'wine',...(state==='missing'?{}:{imageUrl:'/qa-product.svg'})},
+      status:{code:statusCode,tone:['replay','invalid'].includes(state)?'risk':'good',productState:state==='manual-opened'?'VALID_MANUAL_OPENED':statusCode,tamperSupported:state!=='unsupported',tamperStatus:seal,...(state==='unsupported'?{carrierProfileCode:'ntag424_dna'}:{})},
+      identity:{bid:'synthetic-only',uid:'qa-only',eventId:'synthetic-event',scanCount:1,tenantSlug:'qa',...(state==='location-closed'?{readCounter:1}:{})},
+      product:{name:state==='location-closed'?'Gran Reserva Malbec':'Producto de ensayo',winery:state==='location-closed'?'Bodega de ensayo':'Marca de ensayo',vertical:'wine',...(state==='missing'?{}:{imageUrl:state==='location-closed'?'/images/premium_wine_mendoza_nfc.png':'/qa-product.svg'})},
       snapshot:{mode:state==='historical-closed'?'readonly':'fresh_handoff'},tapSecurity:{actionability:state==='historical-closed'?'snapshot':'fresh_handoff',replayDetected:state==='replay'},
       trustSignals:{antiReplay:state!=='replay'},
       tag_tamper:{available:state!=='unsupported',status:seal},

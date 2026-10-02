@@ -53,10 +53,10 @@
 
 .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual) {
   height: 8rem !important;
-  border-color: var(--passport-line) !important;
+  border: 0 !important;
   background: var(--passport-media) !important;
   border-radius: 0.75rem;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .passport :global(.sun-summary-product__copy) {
@@ -129,21 +129,27 @@
 }
 
 /* Specificity keeps the scoped palette above legacy global light-mode rules. */
-.passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-status)[data-status-tone] {
-  border-color: var(--status-ink) !important;
-  border-left-width: 3px;
-  background: var(--status-surface) !important;
-  box-shadow: none;
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-status)[data-status-tone] {
+  border: 0 !important;
+  border-left: 3px solid var(--status-ink) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0.625rem 0 0.625rem 0.875rem !important;
+  box-shadow: none !important;
 }
 
 .passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] :global(.sun-summary-status__icon) {
+  width: 1.75rem;
+  height: 1.75rem;
   border-color: transparent !important;
   background: transparent !important;
   color: var(--status-ink) !important;
+  border-radius: 0;
+  box-shadow: none !important;
 }
 
 .passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] :global(.sun-summary-status__headline) {
-  color: var(--passport-ink) !important;
+  color: var(--status-ink) !important;
 }
 
 .passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] :global(.sun-summary-status__copy) {
@@ -246,20 +252,25 @@
   outline-offset: 3px;
 }
 
-.productProfile {
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) > .productProfile {
   scroll-margin-top: 6rem;
+  padding: 1.5rem 0 !important;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .passport .productMedia {
   position: relative;
   display: grid;
   width: 100%;
-  height: clamp(16rem, 68vw, 20rem);
+  height: clamp(18rem, 76vw, 24rem);
   margin-bottom: 1.25rem;
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--passport-line);
-  border-radius: 1.25rem;
+  border: 0;
+  border-radius: 0.75rem;
   background: var(--passport-media);
 }
 
@@ -269,7 +280,7 @@
   min-height: 0;
   object-fit: contain;
   object-position: center;
-  padding: 1rem;
+  padding: 0.75rem;
   filter: none;
 }
 
@@ -287,13 +298,47 @@
   width: fit-content;
   max-width: calc(100% - 1.5rem);
   padding: 0.4rem 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 0.6rem;
-  background: #102d41;
-  color: #fff;
+  border: 0;
+  border-radius: 0.375rem;
+  background: var(--passport-product);
+  color: var(--passport-muted);
   font-size: 0.6875rem;
-  font-weight: 750;
+  font-weight: 500;
   line-height: 1.35;
+}
+
+.passport .photoCredit {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0;
+  border: 0;
+  background: transparent !important;
+  color: var(--passport-accent) !important;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.passport .photoCredit:focus-visible {
+  outline: 2px solid var(--passport-accent);
+  outline-offset: 3px;
+  border-radius: 0.25rem;
+}
+
+/* Producer content reads as a sheet, rather than cards within a photo card. */
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) .productProfile [data-sun-experience-placement="producer_product_sheet"],
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) .productProfile .productSpecs {
+  padding: 1.25rem 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--passport-line) !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .passport .productTitle,
@@ -421,7 +466,7 @@
 
 /* Readable first viewport: product + verification + optional location precede detail. */
 @media(max-width:640px){
- .passport:global(.sun-tap-shell) :global(.sun-summary-product){padding:4px 0 12px;gap:12px}
+ .passport:global(.sun-tap-shell) :global(.sun-summary-product){padding:4px 0 6px;gap:12px}
  .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual){height:clamp(7.5rem,35vw,9rem)!important}
  .passport :global(.sun-summary-product__title){font-size:clamp(1.45rem,6.2vw,1.9rem)!important}
  .passport :global(.sun-summary-status){padding:12px!important}
@@ -438,11 +483,99 @@
 :global(.sun-tap-experience):has(.passport) { background: #0d1b24 !important; }
 :global(html:is(.theme-light, [data-theme="light"])) :global(.sun-tap-experience):has(.passport) { background: #f5f8f6 !important; }
 :global(.sun-tap-experience):has(.passport) > :global(.absolute) { opacity: .12; }
-.passport:global(.sun-tap-shell) :global(.sun-summary-panel) { background: var(--passport-surface) !important; border-color: var(--passport-line) !important; border-radius: 1.25rem; box-shadow: 0 4px 16px rgba(8, 32, 33, .04) !important; backdrop-filter: none; }
-.passport:global(.sun-tap-shell) :global(.sun-summary-status)[data-status-tone] { border-color: color-mix(in srgb, var(--status-ink) 28%, var(--passport-line)) !important; border-left-color: var(--status-ink) !important; border-radius: .875rem; }
-.passport:global(.sun-tap-shell) :global(.sun-summary-location) { background: var(--passport-product) !important; border-color: var(--passport-line) !important; border-radius: .875rem; box-shadow: none; }
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) :global(.sun-summary-panel) { background: var(--passport-surface) !important; border: 0 !important; border-radius: .875rem; box-shadow: none !important; backdrop-filter: none; }
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-location) { background: transparent !important; border: 0 !important; border-radius: 0; padding: .5rem 0 !important; box-shadow: none !important; }
 .passport :global(.sun-summary-location) p { font-size: .8125rem; }
 .passport :global(.sun-summary-status__headline) { font-weight: 750; }
 .passport :global(.sun-summary-actions) a { font-size: .875rem; font-weight: 650; border-radius: .75rem; box-shadow: none; }
-.passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:first-child { background: #086f62 !important; border-color: #086f62 !important; color: #ffffff !important; }
-.passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:nth-child(2) { background: var(--passport-surface) !important; border-color: var(--passport-line) !important; color: var(--passport-ink) !important; }
+
+/* One primary action before optional evidence. Native details keep content usable without JS. */
+.passport:global(.sun-tap-shell) :global(.sun-summary-actions) {
+  display: flex !important;
+  flex-direction: column;
+  gap: .125rem;
+}
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-actions) a:first-child {
+  min-height: 3.125rem;
+  padding: .75rem 1rem;
+  font-size: .9375rem;
+  border: 0 !important;
+  background: #086f62 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+:global(.sun-tap-experience) .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-actions) a:nth-child(2) {
+  min-height: 2.75rem;
+  padding: .5rem .25rem;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--passport-accent) !important;
+  box-shadow: none !important;
+  font-size: .8125rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .2em;
+}
+.passport :global(.sun-summary-product__copy) > span {
+  font-size: .625rem;
+  font-weight: 650;
+  letter-spacing: .025em;
+}
+.summaryDetails, .profileDetails {
+  border-top: 1px solid var(--passport-line);
+  color: var(--passport-ink);
+}
+.summaryDetails > summary, .profileDetails > summary {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: .625rem;
+  padding: .5rem .125rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: .8125rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+.summaryDetails > summary::-webkit-details-marker, .profileDetails > summary::-webkit-details-marker { display: none; }
+.summaryDetails > summary > span { flex: 1; min-width: 0; }
+.summaryDetails > summary > svg:last-child, .profileDetails > summary > svg { flex-shrink: 0; margin-left: auto; }
+.summaryDetails[open] > summary > svg:last-child, .profileDetails[open] > summary > svg { transform: rotate(180deg); }
+.summaryDetailsBody { padding-bottom: .75rem; }
+.summaryDetailsBody > span { margin: .25rem 0 .75rem; }
+.profileDetails { width: 100%; margin-top: 1.25rem; }
+.profileDetails[open] { padding-bottom: 1rem; }
+.manualOpening { margin-top: .75rem; padding: .75rem 0 0; border: 0; border-top: 1px solid var(--passport-attention); border-radius: 0; background: transparent; color: var(--passport-ink); font-size: .875rem; line-height: 1.6; }
+.manualOpening strong { display: block; color: var(--passport-attention); }
+.manualOpening p { margin-top: .375rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .summaryDetails > summary > svg:last-child, .profileDetails > summary > svg { transition: transform 160ms ease; }
+}
+@media (forced-colors: active) {
+  .summaryDetails, .profileDetails { border-color: CanvasText; color: CanvasText; }
+  .manualOpening { background: Canvas; color: CanvasText; border-color: CanvasText; }
+  .manualOpening strong { color: CanvasText; }
+}
+
+/* In a narrow passport, let long titles continue below the photograph. */
+@container (min-width: 221px) and (max-width: 320px) {
+  .passport:global(.sun-tap-shell) :global(.sun-summary-product) { display: flow-root !important; }
+  .passport:global(.sun-tap-shell) :global(.sun-summary-product__visual) { float: left; width: 92px; margin: .25rem .75rem .75rem 0; }
+  .passport :global(.sun-summary-product__copy) { display: contents; }
+  .passport :global(.sun-summary-product__title) { text-wrap: wrap; }
+}
+
+.passport:global(.sun-tap-shell) :global(.sun-summary-panel) > div.relative > :not([hidden]) ~ :not([hidden]) { margin-top: .5rem; }
+
+.passport:global(.sun-tap-shell) > :global(.sun-summary-panel) { margin-top: .75rem !important; }
+
+@media (forced-colors: active) {
+  :global(html) .passport,
+  :global(html:is(.theme-light, [data-theme="light"])) .passport { --passport-ink: CanvasText; --passport-muted: CanvasText; --passport-accent: LinkText; --passport-line: CanvasText; --passport-media: Canvas; --passport-product: Canvas; --passport-surface: Canvas; --passport-closed: CanvasText; --passport-attention: CanvasText; --passport-info: CanvasText; --passport-risk: CanvasText; }
+  :global(.sun-tap-experience) .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-actions) a:first-child { border: 1px solid ButtonText !important; background: ButtonFace !important; color: ButtonText !important; }
+  :global(.sun-tap-experience) .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-actions) a:nth-child(2) { color: LinkText !important; }
+  .passport :is(a, button, select, summary):focus-visible { outline-color: Highlight; }
+  .passport .photoCredit:focus-visible { outline-color: Highlight; }
+}

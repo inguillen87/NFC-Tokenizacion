@@ -123,6 +123,10 @@ try {
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "No permission on mount");
     if(scenario === "success") {
       const quick=page.getByTestId("sun-location-quick-action");
+      const entryBounds=await quick.boundingBox();
+      assert.ok(entryBounds && entryBounds.height<=190,"Optional location prompt remains compact at 390px");
+      assert.match(await quick.locator("h2 + p").innerText(),/Opcional.*aproximada/,"Optional scope is visible before consent");
+      assert.equal(await quick.locator("details").getAttribute("open"),null,"Full privacy explanation starts collapsed");
       await quick.getByRole("button",{name:"Ahora no",exact:true}).click();
       assert.equal(await page.evaluate(()=>window.fixtureGeoCalls),0,"Declining never requests location");
       assert.ok((await quick.getByRole("button",{name:"Compartir ubicación",exact:true}).boundingBox()).height>=44,"Reopen target remains at least 44px");
@@ -170,6 +174,14 @@ try {
       await page.waitForFunction(() => window.fixtureGeoCalls === 2 && document.querySelector('[data-location-state="measuring"]'));
       await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
       await page.locator('[data-location-state="updated"]').waitFor();
+      const confirmedQuick=page.getByTestId("sun-location-quick-action");
+      assert.equal(await confirmedQuick.getByTestId("sun-location-quick-confirmed").innerText(),"Mendoza, AR","The quick card displays the server receipt, not the previous network estimate");
+      assert.equal(await confirmedQuick.getByTestId("sun-location-quick-confirmed").getAttribute("data-sun-server-evidence"),"true","Receipt city and country remain protected evidence");
+      assert.match(await confirmedQuick.locator("p").first().innerText(),/zona aproximada con permiso/,"The receipt source remains visible");
+      const mapLink=confirmedQuick.getByRole("link",{name:"Ver zona en el mapa",exact:true});
+      assert.equal(await mapLink.getAttribute("href"),"#geo-trace");
+      assert.equal(await mapLink.isVisible(),true,"The map action is outside collapsed evidence");
+      assert.ok((await mapLink.boundingBox()).height>=44,"Confirmed map action remains touch sized");
       assert.equal(posts.length, 1, "A separate user request can save the new tap once");
       assert.equal(posts[0].eventId, "local-fixture-2", "Only the new tap is sent");
       assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 0, "Completed measurement releases its permission listener");
