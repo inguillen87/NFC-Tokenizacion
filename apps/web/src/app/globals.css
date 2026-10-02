@@ -61385,7 +61385,7 @@ html:is(.theme-light, [data-theme="light"]) .dpp-participant-detail-bridge {
 
   /* One complete step per phone viewport; the controls keep the next step clear. */
   .simple-trust-industry-journey .simple-trust-industry-panel .simple-trust-flow-steps {
-    grid-auto-columns: minmax(0, 100%);
+    grid-auto-columns: 100%;
     column-gap: 2.2rem;
   }
 
