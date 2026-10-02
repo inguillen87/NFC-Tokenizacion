@@ -65,7 +65,7 @@ test("selector and shared three-step journey are localized", () => {
   assert.match(journey, /const copy = JOURNEY_COPY\[normalizedLocale\]/);
   assert.match(journey, /const STEP_KINDS: readonly SimpleTrustVisualKind\[\] = \["discover", "signal", "aftercare"\]/);
   assert.match(journey, /<SimpleTrustFlowMotion/);
-  assert.match(journey, /<SimpleTrustStepVisual kind=\{kind\} locale=\{normalizedLocale\} industry=\{activeIndustry\} \/>/);
+  assert.match(journey, /<SimpleTrustStepVisual\s+kind=\{kind\}\s+locale=\{normalizedLocale\}\s+industry=\{activeIndustry\}\s+imageSizes=\{INDUSTRY_JOURNEY_IMAGE_SIZES\}\s*\/>/);
   assert.match(journey, /<HorizontalRailControls/);
   assert.match(journey, /itemCount=\{activeCopy\.steps\.length\}/);
   assert.match(journey, /Abrí su pasaporte digital/);

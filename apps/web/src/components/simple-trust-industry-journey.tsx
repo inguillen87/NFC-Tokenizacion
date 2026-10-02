@@ -36,6 +36,10 @@ type JourneyCopy = {
 
 const INDUSTRIES: readonly SimpleTrustIndustry[] = ["bottles", "perfume", "agro"];
 const STEP_KINDS: readonly SimpleTrustVisualKind[] = ["discover", "signal", "aftercare"];
+
+const INDUSTRY_JOURNEY_IMAGE_SIZES =
+  "(min-width: 1181px) calc((min(100vw, 80rem) - 23.3rem - 2px) / 3 - clamp(.85rem, 1.35vw, 1.15rem) - clamp(.85rem, 1.35vw, 1.15rem) - 4px), (max-width: 760px) calc(100vw - 4.5rem), (max-width: 1100px) calc(50vw - 3.5rem), 29vw";
+
 const DEMO_PROFILE_BY_INDUSTRY: Readonly<Record<SimpleTrustIndustry, "wine" | "packaging" | "agro">> = {
   bottles: "wine",
   perfume: "packaging",
@@ -273,7 +277,12 @@ export function SimpleTrustIndustryJourney({ locale, ctaLabel }: { locale: strin
 
               return (
                 <li key={kind} data-industry={activeIndustry} data-journey-step={kind}>
-                  <SimpleTrustStepVisual kind={kind} locale={normalizedLocale} industry={activeIndustry} />
+                  <SimpleTrustStepVisual
+                    kind={kind}
+                    locale={normalizedLocale}
+                    industry={activeIndustry}
+                    imageSizes={INDUSTRY_JOURNEY_IMAGE_SIZES}
+                  />
                   <span className="simple-trust-flow-step-number" aria-hidden="true">
                     {String(index + 1).padStart(2, "0")}
                   </span>
