@@ -1,14 +1,14 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.02-web-consumer-details.2",
-  "scope": "sun-progressive-tools-map-focus-and-landing-photo-sizing",
+  "version": "2026.10.02-web-consumer-details.4",
+  "scope": "sun-progressive-tools-map-focus-and-landing-photo-legibility",
   "baseCommit": "be89586f6041b69ba89288aa1fc752c2048d488b",
   "physicalTapCertification": "not-included",
   "requiredApiRelease": "2026.09.21-api-support.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.02-web-consumer-details.2",
+  "release": "2026.10.02-web-consumer-details.4",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1"
 }
