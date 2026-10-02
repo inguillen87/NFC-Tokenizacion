@@ -21,3 +21,19 @@ export function closestHorizontalRailIndex(railLeft, itemLefts) {
     return distance < closestDistance ? index : closestIndex;
   }, 0);
 }
+
+export function horizontalRailTargetLeft({ itemLeft, railLeft, scrollLeft, clientLeft, scrollPaddingStart, maximumLeft }) {
+  if (![itemLeft, railLeft, scrollLeft, clientLeft, scrollPaddingStart, maximumLeft].every(Number.isFinite)) return 0;
+  const left = itemLeft - railLeft + scrollLeft - clientLeft - scrollPaddingStart;
+  return Math.max(0, Math.min(left, Math.max(0, maximumLeft)));
+}
+
+export function reconcileHorizontalRailNavigation(navigation, scrollLeft, generation) {
+  if (!navigation || navigation.generation !== generation || !Number.isFinite(scrollLeft)) {
+    return { action: "ignore", navigation };
+  }
+  // Native scroll positions can round a fractional CSS target.
+  if (Math.abs(scrollLeft - navigation.left) <= 1) return { action: "settled", navigation: null };
+  if (navigation.reframed) return { action: "wait", navigation };
+  return { action: "reframe", navigation: { ...navigation, reframed: true } };
+}
