@@ -230,7 +230,8 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
   const markersRef = useRef<Marker[]>([]);
   const popupsRef = useRef<Record<string, Popup>>({});
   const fitAllRef = useRef<() => void>(() => undefined);
-  const focusRef = useRef<(point: SunPassportMapLocation) => void>(() => undefined);
+  const focusRef = useRef<(point: SunPassportMapLocation, trigger: HTMLButtonElement, keyboard: boolean) => void>(() => undefined);
+  const closePopupRef = useRef<() => boolean>(() => false);
   const [loadState, setLoadState] = useState<LoadState>(() => origin || tap ? "waiting" : "empty");
   const [isDegraded, setIsDegraded] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -260,6 +261,24 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
     let styleReady = false;
     let fullyReady = false;
     let rasterTileLoaded = false;
+    let activePopup: {
+      popup: Popup;
+      trigger: HTMLButtonElement;
+      closeButton: HTMLButtonElement | null;
+      onDismiss: (event: Event) => void;
+    } | null = null;
+    const closePopup = (restoreFocus = false) => {
+      const session = activePopup;
+      if (!session) return false;
+      // Clear the session before MapLibre fires its synchronous close callback.
+      activePopup = null;
+      session.closeButton?.removeEventListener("click", session.onDismiss, true);
+      session.popup.remove();
+      if (restoreFocus && session.trigger.isConnected && !session.trigger.disabled && !session.trigger.closest("[inert]")) {
+        session.trigger.focus({ preventScroll: true });
+      }
+      return true;
+    };
 
     const start = async () => {
       if (started || disposed) return;
@@ -350,6 +369,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         const fitAll = (animated = true) => {
           if (!mapRef.current) return;
           mapRef.current.stop();
+          closePopup();
           Object.values(popupsRef.current).forEach(popup => popup.remove());
           if (points.length === 1 && points[0].kind === "origin") {
             mapRef.current.easeTo({
@@ -375,6 +395,31 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           });
         };
         fitAllRef.current = () => fitAll(true);
+        closePopupRef.current = () => closePopup(true);
+
+        const openPopup = (point: SunPassportMapLocation, trigger: HTMLButtonElement, keyboard: boolean) => {
+          const popup = popupsRef.current[point.id];
+          if (disposed || !popup) return;
+          closePopup();
+          Object.values(popupsRef.current).forEach((openPopup) => openPopup.remove());
+          popup.setLngLat([point.lng, point.lat]).addTo(map);
+          const closeButton = popup.getElement().querySelector<HTMLButtonElement>(".maplibregl-popup-close-button");
+          const onDismiss = (event: Event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closePopup(true);
+          };
+          closeButton?.addEventListener("click", onDismiss, true);
+          activePopup = { popup, trigger, closeButton, onDismiss };
+          // Pointer activation keeps its natural focus; keyboard users enter the detail.
+          if (keyboard) closeButton?.focus({ preventScroll: true });
+          map.easeTo({
+            center: [point.lng, point.lat],
+            zoom: Math.min(Math.max(map.getZoom(), 8), focusZoom(point)),
+            duration: duration(350),
+          });
+        };
+        focusRef.current = openPopup;
 
         points.forEach(({ kind, point }) => {
           const markerAnchor = document.createElement("div");
@@ -389,37 +434,22 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           element.append(markerCode);
           markerAnchor.append(element);
 
-          const popup = new maplibre.Popup({ offset: 24, closeButton: true, closeOnClick: false, maxWidth: "260px" })
+          const popup = new maplibre.Popup({ offset: 24, closeButton: true, closeOnClick: false, focusAfterOpen: false, maxWidth: "260px" })
             .setDOMContent(popupContent(kind, point));
           popupsRef.current[point.id] = popup;
-
-          element.addEventListener("click", () => {
-            Object.values(popupsRef.current).forEach((openPopup) => openPopup.remove());
-            popup.setLngLat([point.lng, point.lat]).addTo(map);
-            map.easeTo({
-              center: [point.lng, point.lat],
-              zoom: Math.min(Math.max(map.getZoom(), 8), focusZoom(point)),
-              duration: duration(350),
-            });
+          popup.on("close", () => {
+            if (activePopup?.popup !== popup) return;
+            const session = activePopup;
+            activePopup = null;
+            session.closeButton?.removeEventListener("click", session.onDismiss, true);
           });
+          element.addEventListener("click", (event) => openPopup(point, element, event.detail === 0));
 
           const marker = new maplibre.Marker({ element: markerAnchor, anchor: "bottom" })
             .setLngLat([point.lng, point.lat])
             .addTo(map);
           markersRef.current.push(marker);
         });
-
-        focusRef.current = (point) => {
-          const popup = popupsRef.current[point.id];
-          if (!popup) return;
-          Object.values(popupsRef.current).forEach((openPopup) => openPopup.remove());
-          popup.setLngLat([point.lng, point.lat]).addTo(map);
-          map.easeTo({
-            center: [point.lng, point.lat],
-            zoom: Math.min(Math.max(map.getZoom(), 8), focusZoom(point)),
-            duration: duration(350),
-          });
-        };
 
         map.on("sourcedata", (event) => {
           if (event.sourceId === "configured-basemap" && event.tile?.state === "loaded") rasterTileLoaded = true;
@@ -552,6 +582,8 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
       themeObserver?.disconnect();
       resizeObserver?.disconnect();
       if (loadTimeoutId != null) window.clearTimeout(loadTimeoutId);
+      closePopup();
+      closePopupRef.current = () => false;
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
       Object.values(popupsRef.current).forEach((popup) => popup.remove());
@@ -602,7 +634,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           type="button"
           className={styles.locationButton}
           disabled={loadState !== "ready"}
-          onClick={() => focusRef.current(point)}
+          onClick={event => focusRef.current(point, event.currentTarget, event.detail === 0)}
           aria-label={`Enfocar ${kind === "origin" ? "origen" : "tap"} en el mapa: ${point.label}`}
         >
           <span className={`${styles.locationIndex} ${kind === "tap" ? styles.locationIndexTap : ""}`} aria-hidden="true">{locationCode}</span>
@@ -631,7 +663,30 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
     <div
       className={`${styles.shell} ${expanded ? styles.expanded : ""}`}
       data-map-expanded={expanded}
-      onKeyDown={event => { if (event.key === "Escape" && event.target instanceof Element) { const menu = event.target.closest("details"); if (menu?.open) { event.preventDefault(); menu.open = false; menu.querySelector("summary")?.focus(); return; } } if (expanded && event.key === "Escape") { event.preventDefault(); setExpanded(false); setControlNotice("Mapa reducido dentro del pasaporte."); expandButtonRef.current?.focus(); } }}
+      onKeyDown={event => {
+        if (event.key !== "Escape") return;
+        if (event.target instanceof Element) {
+          const menu = event.target.closest("details");
+          if (menu?.open) {
+            event.preventDefault();
+            event.stopPropagation();
+            menu.open = false;
+            menu.querySelector("summary")?.focus();
+            return;
+          }
+        }
+        if (closePopupRef.current()) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        if (expanded) {
+          event.preventDefault();
+          setExpanded(false);
+          setControlNotice("Mapa reducido dentro del pasaporte.");
+          expandButtonRef.current?.focus();
+        }
+      }}
       data-sun-passport-map="maplibre"
       data-route-mode={showDemoConnection ? "demo" : "no-route"}
       data-basemap="configured-raster"

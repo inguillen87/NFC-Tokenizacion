@@ -36,14 +36,16 @@ import { fmtDistance, haversineKm } from "./sun-route-distance";
 import { resolveSunTtEvidence, type SunTtTechnicalInput } from "./sun-tt-evidence";
 import { selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
 import { productUrls } from "@product/config";
-import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail } from "@product/ui";
+import { DeviceSignatureBadge } from "../../../../../packages/ui/src/device-signature-badge";
+import { EmptyState } from "../../../../../packages/ui/src/empty-state";
+import { KeyValueSpec } from "../../../../../packages/ui/src/key-value-spec";
+import { TimelineRail } from "../../../../../packages/ui/src/timeline-rail";
 import { getWebI18n } from "../../lib/locale";
 import { resolveProductAssetProfile } from "../../lib/product-asset-bank";
 import {
   resolveDemoExperienceAction,
   resolveDemoProductProfile,
 } from "../../lib/demo-product-profiles";
-import { BrandHomeLink } from "../../components/brand-home-link";
 import passportStyles from "./sun-passport-experience.module.css";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {

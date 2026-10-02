@@ -11,24 +11,32 @@ type ReadyProps = { onReady: () => void };
 type CtaProps = ComponentProps<typeof CtaActions>;
 type EngagementProps = ComponentProps<typeof QREngagementSuite>;
 
-function LoadingTool() {
+function LoadingTool({ title }: { title: string }) {
   const { text } = useSunLocale();
-  return <p className={styles.loading} role="status">{text("Preparando las opciones…")}</p>;
+  return <div className={styles.loading} data-testid="sun-tool-loading">
+    <h3>{text(title)}</h3>
+    <p className={styles.loadingStatus} role="status"><span className={styles.loadingSignal} aria-hidden="true" />{text("Preparando las opciones…")}</p>
+    <div className={styles.loadingPreview} aria-hidden="true"><span /><span /></div>
+    <p className={styles.loadingNote}>{text("Podés seguir consultando la información del producto.")}</p>
+  </div>;
 }
+
+function LoadingCtaTool() { return <LoadingTool title="Postventa y garantía" />; }
+function LoadingEngagementTool() { return <LoadingTool title="Novedades y experiencias" />; }
 
 // A new instance is only needed after a failed download. Once mounted, forms stay mounted.
 function createCtaTool() {
   return dynamic<CtaProps & ReadyProps>(() => import("./cta-actions").then(({ CtaActions: Tool }) => function ReadyTool({ onReady, ...props }) {
     useEffect(onReady, [onReady]);
     return <Tool {...props} />;
-  }), { ssr: false, loading: LoadingTool });
+  }), { ssr: false, loading: LoadingCtaTool });
 }
 
 function createEngagementTool() {
   return dynamic<EngagementProps & ReadyProps>(() => import("./qr-engagement-suite").then(({ QREngagementSuite: Tool }) => function ReadyTool({ onReady, ...props }) {
     useEffect(onReady, [onReady]);
     return <Tool {...props} />;
-  }), { ssr: false, loading: LoadingTool });
+  }), { ssr: false, loading: LoadingEngagementTool });
 }
 
 class ToolErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode; onError: () => void }, { failed: boolean }> {
@@ -51,21 +59,57 @@ function DeferredTool<Props extends object>({ anchorId, title, description, crea
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
   const focusAfterLoad = useRef(false);
+  const focusOwner = useRef<Element | null>(null);
   const Tool = useMemo(create, [create, attempt]);
-  const request = useCallback((focus = false) => {
-    if (focus) focusAfterLoad.current = true;
-    setRequested(true);
+  const rememberFocus = useCallback(() => {
+    focusAfterLoad.current = true;
+    focusOwner.current = document.activeElement;
   }, []);
+  const finishFocus = useCallback((target: HTMLElement | null) => {
+    const active = document.activeElement;
+    const mayFocus = focusAfterLoad.current && (
+      active === focusOwner.current || active === document.body || active === document.documentElement
+    );
+    focusAfterLoad.current = false;
+    focusOwner.current = null;
+    if (mayFocus) target?.focus({ preventScroll: true });
+  }, []);
+  const request = useCallback((focus = false) => {
+    if (focus) rememberFocus();
+    setRequested(true);
+  }, [rememberFocus]);
   const onReady = useCallback(() => {
     setReady(true);
     setFailed(false);
-    if (focusAfterLoad.current) {
-      focusAfterLoad.current = false;
-      rootRef.current?.focus({ preventScroll: true });
-    }
-  }, []);
+    finishFocus(rootRef.current);
+  }, [finishFocus]);
   const onError = useCallback(() => setFailed(true), []);
+
+  useEffect(() => {
+    if (!requested || ready || failed) return;
+    // A delayed download must not override a newer interaction or browser history.
+    const cancel = () => { focusAfterLoad.current = false; focusOwner.current = null; };
+    const onFocus = (event: FocusEvent) => {
+      if (event.target !== focusOwner.current) cancel();
+    };
+    const pointerEvents = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
+    document.addEventListener("focusin", onFocus);
+    for (const event of pointerEvents) document.addEventListener(event, cancel, { passive: true });
+    window.addEventListener("hashchange", cancel);
+    window.addEventListener("popstate", cancel);
+    return () => {
+      document.removeEventListener("focusin", onFocus);
+      for (const event of pointerEvents) document.removeEventListener(event, cancel);
+      window.removeEventListener("hashchange", cancel);
+      window.removeEventListener("popstate", cancel);
+    };
+  }, [attempt, failed, ready, requested]);
+
+  useEffect(() => {
+    if (failed) finishFocus(retryRef.current);
+  }, [failed, finishFocus]);
 
   useEffect(() => {
     if (requested) return;
@@ -89,7 +133,7 @@ function DeferredTool<Props extends object>({ anchorId, title, description, crea
     aria-busy={requested && !ready && !failed}>
     {requested ? <ToolErrorBoundary key={attempt} onError={onError} fallback={<div className={styles.placeholder}>
       <p role="status">{text("No pudimos preparar estas opciones. Revisá la conexión y volvé a intentar.")}</p>
-      <button type="button" className={styles.openButton} onClick={() => { setFailed(false); focusAfterLoad.current = true; setAttempt(value => value + 1); }}>{text("Volver a intentar")}</button>
+      <button ref={retryRef} type="button" className={styles.openButton} onClick={() => { rememberFocus(); setReady(false); setFailed(false); setAttempt(value => value + 1); }}>{text("Volver a intentar")}</button>
     </div>}><Tool {...toolProps} onReady={onReady} /></ToolErrorBoundary> : <div className={styles.placeholder}>
       <h3>{text(title)}</h3>
       <p>{text(description)}</p>

@@ -1,8 +1,10 @@
 "use client";
 
-import { HelpBot } from "@product/ui";
+import dynamic from "next/dynamic";
 import type { AppLocale } from "@product/config";
 import { usePathname } from "next/navigation";
+
+const HelpBot = dynamic(() => import("./contextual-helpbot-content"), { ssr: true });
 
 export function ContextualHelpBot({ locale }: { locale: AppLocale }) {
   const pathname = usePathname() || "";

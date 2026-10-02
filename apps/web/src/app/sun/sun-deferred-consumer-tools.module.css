@@ -1,10 +1,21 @@
 .boundary { min-width: 0; outline-offset: 4px; }
 .boundary:focus-visible { outline: 2px solid #22d3ee; }
 .placeholder, .loading { margin: 0; min-height: 13rem; padding: 1.25rem; border: 1px solid #334155; border-radius: 1rem; background: #0f172a; color: #e2e8f0; }
-.placeholder h3 { margin: 0 0 .5rem; font-size: 1rem; font-weight: 800; }
-.placeholder p { margin: 0 0 1rem; max-width: 44rem; font-size: .875rem; line-height: 1.6; }
+.placeholder h3, .loading h3 { margin: 0 0 .5rem; font-size: 1rem; font-weight: 800; }
+.placeholder p, .loading p { margin: 0 0 1rem; max-width: 44rem; font-size: .875rem; line-height: 1.6; }
+.loadingStatus { display: flex; align-items: center; gap: .5rem; }
+.loadingSignal { width: .5rem; height: .5rem; flex: none; border-radius: 50%; background: #5eead4; animation: signal 1.6s ease-in-out infinite; }
+.loadingPreview { display: grid; gap: .625rem; margin: 1rem 0; }
+.loadingPreview span { height: .5rem; width: 82%; border-radius: 1rem; background: #243e4a; }
+.loadingPreview span:last-child { width: 58%; }
+.loading .loadingNote { margin-bottom: 0; color: #b5c8d4; font-size: .8125rem; }
+@keyframes signal { 50% { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .loadingSignal { animation: none; } }
 .openButton { min-height: 44px; padding: .625rem 1rem; border: 1px solid #67e8f9; border-radius: .75rem; background: #164e63; color: #ecfeff; font: inherit; font-size: .875rem; font-weight: 700; cursor: pointer; }
 .openButton:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
 .placeholder noscript { display: block; margin-top: 1rem; font-size: .875rem; line-height: 1.6; }
 :global(html[data-theme=light]) .placeholder, :global(html[data-theme=light]) .loading { background: #fff; color: #334155; border-color: #cbd5e1; }
 :global(html[data-theme=light]) .openButton { background: #ecfeff; color: #155e75; border-color: #0e7490; }
+:global(html[data-theme=light]) .loadingSignal { background: #0f766e; }
+:global(html[data-theme=light]) .loadingPreview span { background: #e3eef0; }
+:global(html[data-theme=light]) .loading .loadingNote { color: #52657a; }
