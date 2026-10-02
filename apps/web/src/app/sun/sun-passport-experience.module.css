@@ -466,7 +466,7 @@
 
 /* Readable first viewport: product + verification + optional location precede detail. */
 @media(max-width:640px){
- .passport:global(.sun-tap-shell) :global(.sun-summary-product){padding:4px 0 12px;gap:12px}
+ .passport:global(.sun-tap-shell) :global(.sun-summary-product){padding:4px 0 6px;gap:12px}
  .passport:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual){height:clamp(7.5rem,35vw,9rem)!important}
  .passport :global(.sun-summary-product__title){font-size:clamp(1.45rem,6.2vw,1.9rem)!important}
  .passport :global(.sun-summary-status){padding:12px!important}
