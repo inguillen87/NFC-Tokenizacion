@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLockup } from "@product/ui";
+import { BrandLockup } from "../../../../packages/ui/src/brand/brand-lockup";
 
 export default function Loading() {
   return (

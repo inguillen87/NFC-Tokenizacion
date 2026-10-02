@@ -1,27 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { BrandLockup, BrandMark, type BrandTheme, type BrandVariant } from "@product/ui";
+import { BrandLockup, BrandMark } from "@product/ui";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { homeLabel, type BrandHomeLinkProps } from "./brand-home-link-types";
+import { StaticBrandHomeLink } from "./brand-home-link-static";
 import styles from "./brand-home-link.module.css";
-
-type BrandHomeLinkProps = {
-  ariaLabel?: string;
-  brandClassName?: string;
-  className?: string;
-  locale?: string;
-  markOnly?: boolean;
-  onNavigate?: () => void;
-  size?: number;
-  theme?: BrandTheme;
-  variant?: BrandVariant;
-};
-
-function homeLabel(locale?: string) {
-  if (locale === "en") return "Go to the nexID home page";
-  if (locale === "pt-BR" || locale === "pt") return "Ir para o início da nexID";
-  return "Ir al inicio de nexID";
-}
 
 export function BrandHomeLink({
   ariaLabel,
@@ -74,6 +58,10 @@ export function BrandHomeLink({
     });
   }, [motionActive, restoredIdentity, variant]);
 
+  if (!restoredIdentity) {
+    return <StaticBrandHomeLink ariaLabel={ariaLabel} brandClassName={brandClassName} className={className} locale={locale} markOnly={markOnly} onNavigate={onNavigate} size={size} theme={theme} />;
+  }
+
   const linkClassName = [
     styles.homeLink,
     className,
@@ -91,35 +79,19 @@ export function BrandHomeLink({
       data-brand-motion-active={restoredIdentity ? motionActive : undefined}
       onClick={() => onNavigate?.()}
     >
-      {restoredIdentity ? (
-        <div
-          className={styles.originalIdentity}
-          style={{ "--identity-size": `${size}px` } as CSSProperties}
-          data-identity-theme={theme}
-          data-identity-variant={variant}
-          aria-hidden="true"
-        >
-          {markOnly ? (
-            <BrandMark key={visibleVariant} size={size} variant={visibleVariant} theme={theme} className={[styles.originalMark, brandClassName].filter(Boolean).join(" ")} />
-          ) : (
-            <BrandLockup key={visibleVariant} size={size} variant={visibleVariant} theme={theme} className={[styles.originalLockup, brandClassName].filter(Boolean).join(" ")} />
-          )}
-        </div>
-      ) : <span
-        className={[styles.identity, brandClassName].filter(Boolean).join(" ")}
+      <div
+        className={styles.originalIdentity}
         style={{ "--identity-size": `${size}px` } as CSSProperties}
         data-identity-theme={theme}
         data-identity-variant={variant}
         aria-hidden="true"
       >
-        <svg viewBox="0 0 160 160" fill="none" className={styles.mark} focusable="false">
-          <rect x="1" y="1" width="158" height="158" rx="40" fill="currentColor" />
-          <path d="M37 111V49H52L86 90V49H102V111H87L53 70V111H37Z" fill="var(--identity-face)" />
-          <path d="M115 62H131V111H115V62Z" fill="var(--identity-accent)" />
-          <circle cx="123" cy="45" r="8" fill="var(--identity-accent)" />
-        </svg>
-        {!markOnly && <span className={styles.word}>nex<span>ID</span></span>}
-      </span>}
+        {markOnly ? (
+          <BrandMark key={visibleVariant} size={size} variant={visibleVariant} theme={theme} className={[styles.originalMark, brandClassName].filter(Boolean).join(" ")} />
+        ) : (
+          <BrandLockup key={visibleVariant} size={size} variant={visibleVariant} theme={theme} className={[styles.originalLockup, brandClassName].filter(Boolean).join(" ")} />
+        )}
+      </div>
     </Link>
   );
 }

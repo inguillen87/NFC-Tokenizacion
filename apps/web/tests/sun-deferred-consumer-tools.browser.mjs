@@ -13,7 +13,7 @@ const web = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(web, 
 const output = resolve(process.env.QA_OUTPUT || 'artifacts/performance/deferred-tools');
 await mkdir(output, { recursive: true });
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
-const fixture = `import React from 'react';import{hydrateRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{DeferredCtaActions,DeferredQREngagementSuite}from'./src/app/sun/sun-deferred-consumer-tools';export function App({locale='es-AR'}={}){return <SunLocaleProvider initialLocale={locale}><h1>Ensayo de opciones SUN</h1><p>Datos de prueba. Sin tap físico ni operaciones reales.</p><div style={{height:2000}} aria-hidden='true'/><div id='protected-actions'><DeferredCtaActions bid='synthetic-bid' uid='synthetic-uid' eventId='0' freshToken='' canExecute={false} tapState='blocked' allowedActions={['report']} blockedActions={['claimOwnership','registerWarranty','tokenization']}/></div><div style={{height:1500}} aria-hidden='true'/><div id='qr-engagement'><DeferredQREngagementSuite wineryName='Marca de ensayo' productName='Producto de ensayo' tenantSlug='synthetic' eventId='0' bid='synthetic-bid' initialTab='contact' allowedActions={['lead','feedback','sommelier','rewards']}/></div><div style={{height:1800}} aria-hidden='true'/></SunLocaleProvider>};`;
+const fixture = `import React from 'react';import{hydrateRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{DeferredCtaActions,DeferredQREngagementSuite}from'./src/app/sun/sun-deferred-consumer-tools';export function App({locale='es-AR'}={}){return <SunLocaleProvider initialLocale={locale}><h1>Ensayo de opciones SUN</h1><p>Datos de prueba. Sin tap físico ni operaciones reales.</p><section id='information'><input aria-label='Otra consulta de prueba'/><a href='#information'>Seguir leyendo el producto</a></section><div style={{height:2000}} aria-hidden='true'/><div id='protected-actions'><DeferredCtaActions bid='synthetic-bid' uid='synthetic-uid' eventId='0' freshToken='' canExecute={false} tapState='blocked' allowedActions={['report']} blockedActions={['claimOwnership','registerWarranty','tokenization']}/></div><div style={{height:1500}} aria-hidden='true'/><div id='qr-engagement'><DeferredQREngagementSuite wineryName='Marca de ensayo' productName='Producto de ensayo' tenantSlug='synthetic' eventId='0' bid='synthetic-bid' initialTab='contact' allowedActions={['lead','feedback','sommelier','rewards']}/></div><div style={{height:1800}} aria-hidden='true'/></SunLocaleProvider>};`;
 const plugin = { name: 'consumer-tool-hosts', setup(b) {
   b.onResolve({ filter: /^next\/dynamic$/ }, () => ({ path: join(repo, 'node_modules/next/dist/shared/lib/app-dynamic.js') }));
   // PreloadChunks is server-only, never reached by these ssr:false tools.
@@ -62,6 +62,7 @@ try {
   check(await cta.getAttribute('data-tool-load-state') === 'waiting' && await qr.getAttribute('data-tool-load-state') === 'waiting', 'Offscreen tools remain waiting'); check(!t.state.requests.some(p => /\/chunks\/(cta-actions|qr-engagement-suite)-/.test(p)), 'Neither tool chunk downloads offscreen');
   await cta.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await t.page.keyboard.press('Enter'); await t.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('aria-busy') === 'true');
   check(await cta.getAttribute('data-tool-load-state') === 'loading', 'Keyboard action reports pending chunk download'); check(await cta.getByRole('status').innerText() === 'Preparando las opciones…', 'Chunk loading exposes clear status');
+  check(await cta.getByRole('heading', { name: 'Postventa y garantía', exact: true }).count() === 1, 'Loading retains the requested tool title');
   t.state.hold = false; for (const route of t.state.held) await route.continue();
   await t.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'ready');
   check(await cta.getAttribute('aria-busy') === 'false', 'Ready chunk clears aria-busy'); check(await cta.evaluate(el => el === document.activeElement), 'Keyboard load keeps focus in the loaded region');
@@ -75,7 +76,42 @@ try {
   check(t.state.writes.length === 0 && await t.page.evaluate(() => window.__geoRequests) === 0, 'Mount and navigation initiate no writes or GPS'); await t.context.close();
   for (const anchor of ['protected-actions', 'qr-engagement']) { const h = await scenario('#' + anchor); await h.page.waitForFunction(id => document.querySelector(`[data-sun-deferred-tool="${id}"]`)?.getAttribute('data-tool-load-state') === 'ready', anchor); check(await h.page.locator(`[data-sun-deferred-tool="${anchor}"]`).getAttribute('aria-busy') === 'false', 'Direct hash loads ready region ' + anchor); check(h.state.writes.length === 0, 'Hash never initiates a write ' + anchor); await h.context.close(); }
   const h = await scenario(); await h.page.evaluate(() => { location.hash = '#qr-engagement'; }); await h.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="qr-engagement"]')?.getAttribute('data-tool-load-state') === 'ready'); check(true, 'Hash navigation after load reaches the brand tools'); await h.context.close();
-  const e = await scenario('', false, true); await e.page.locator('[data-sun-deferred-tool="protected-actions"]').getByRole('button', { name: 'Ver opciones' }).click(); await e.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'error'); check(await e.page.locator('[data-sun-deferred-tool="protected-actions"]').getAttribute('aria-busy') === 'false', 'Chunk failure ends busy state and preserves the page'); check(await e.page.getByRole('button', { name: 'Volver a intentar', exact: true }).count() === 1, 'Chunk failure offers explicit retry'); await e.context.close();
+  const e = await scenario('', false, true); await e.page.locator('[data-sun-deferred-tool="protected-actions"]').getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await e.page.keyboard.press('Enter'); await e.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'error'); check(await e.page.locator('[data-sun-deferred-tool="protected-actions"]').getAttribute('aria-busy') === 'false', 'Chunk failure ends busy state and preserves the page'); check(await e.page.getByRole('button', { name: 'Volver a intentar', exact: true }).count() === 1, 'Chunk failure offers explicit retry'); check(await e.page.getByRole('button', { name: 'Volver a intentar', exact: true }).evaluate(el => el === document.activeElement), 'A failed keyboard request hands focus to retry'); await e.context.close();
+  for (const newerAction of ['focus-and-type', 'scroll', 'history']) {
+    const next = await scenario('', true), region = next.page.locator('[data-sun-deferred-tool="protected-actions"]');
+    await region.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await next.page.keyboard.press('Enter');
+    await next.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'loading');
+    if (newerAction === 'focus-and-type') await next.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).fill('Conservar esta interacción');
+    if (newerAction === 'scroll') {
+      await next.page.evaluate(() => { window.__wheelDelivered = false; document.addEventListener('wheel', () => { window.__wheelDelivered = true; }, { once: true }); });
+      await next.page.mouse.wheel(0, 150);
+      await next.page.waitForFunction(() => window.__wheelDelivered === true);
+    }
+    if (newerAction === 'history') { await next.page.getByRole('link', { name: 'Seguir leyendo el producto' }).click(); await next.page.goBack(); }
+    await next.page.evaluate(() => { window.__focusBeforeChunk = document.activeElement; });
+    next.state.focusBefore = await next.page.evaluate(() => ({ tag: document.activeElement?.tagName, id: document.activeElement?.id }));
+    next.state.hold = false; for (const route of next.state.held) await route.continue();
+    await next.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'ready');
+    next.state.focusAfter = await next.page.evaluate(() => ({ tag: document.activeElement?.tagName, id: document.activeElement?.id, isTool: document.activeElement?.hasAttribute('data-sun-deferred-tool') }));
+    check(await next.page.evaluate(() => window.__focusBeforeChunk === document.activeElement), 'A newer ' + newerAction + ' retains focus after the download');
+    check(!await region.evaluate(el => el === document.activeElement), 'The late tool does not steal focus after ' + newerAction);
+    if (newerAction === 'focus-and-type') check(await next.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).inputValue() === 'Conservar esta interacción', 'Typing elsewhere keeps the new input unchanged');
+    check(next.state.writes.length === 0 && await next.page.evaluate(() => window.__geoRequests) === 0, 'Delayed focus handling never sends data or asks for GPS ' + newerAction);
+    await next.context.close();
+  }
+  for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']) {
+    const visual = await scenario('', true, false, 'es-AR', width), region = visual.page.locator('[data-sun-deferred-tool="protected-actions"]');
+    await visual.page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
+    await region.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await visual.page.keyboard.press('Enter');
+    await region.getByTestId('sun-tool-loading').waitFor();
+    const loading = region.getByTestId('sun-tool-loading');
+    check(await loading.getByRole('heading', { name: 'Postventa y garantía' }).count() === 1, 'Tool title remains readable while waiting ' + width + ' ' + theme);
+    check(await loading.evaluate(el => el.scrollWidth <= el.clientWidth), 'The progressive card has no horizontal overflow ' + width + ' ' + theme);
+    check(await loading.locator('.loadingSignal').evaluate(el => getComputedStyle(el).animationName === 'none'), 'Reduced motion keeps the loading signal still ' + width + ' ' + theme);
+    await loading.screenshot({ path: join(output, 'loading-' + width + '-' + theme + '.png') });
+    check(visual.state.writes.length === 0 && await visual.page.evaluate(() => window.__geoRequests) === 0, 'Progressive display never submits or asks for GPS ' + width + ' ' + theme);
+    await visual.context.close();
+  }
   // Retry is checked against Turbopack's real chunk loader in the companion Next test.
   for (const copy of [
     { locale: 'es-AR', star: 'Calificar con 3 estrellas', otherStar: 'Calificar con 4 estrellas', comment: 'Comentario corto', send: 'Enviar opinión', explanation: 'Tu opinión se envía a la marca junto con esta lectura.' },

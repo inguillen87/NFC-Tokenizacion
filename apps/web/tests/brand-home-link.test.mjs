@@ -8,14 +8,17 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 const source = readFileSync(new URL("../src/components/brand-home-link.tsx", import.meta.url), "utf8");
+const staticSource = readFileSync(new URL("../src/components/brand-home-link-static.tsx", import.meta.url), "utf8");
+const typesSource = readFileSync(new URL("../src/components/brand-home-link-types.ts", import.meta.url), "utf8");
 const css = readFileSync(new URL("../src/components/brand-home-link.module.css", import.meta.url), "utf8");
 const styles = new Proxy({}, { get: (_, key) => String(key) });
 const Link = React.forwardRef(({ children, prefetch, ...props }, ref) => React.createElement("a", { ...props, ref }, children));
 
 // Render the real web component and original shared artwork. Only framework
 // navigation, CSS and Framer's browser animation driver are replaced.
-function loadBrand(hooks = React, brandSource = source) {
+function loadBrand(hooks = React, brandSource = source, options = {}) {
   const shared = new Map();
+  const local = new Map();
   const compile = (text, file, dependency) => {
     const output = ts.transpileModule(text, { fileName: file, compilerOptions: {
       module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
@@ -32,11 +35,21 @@ function loadBrand(hooks = React, brandSource = source) {
     ));
     return shared.get(name);
   };
+  const loadLocal = (name, text) => {
+    if (!local.has(name)) local.set(name, compile(text, `${name}.tsx`, dependency));
+    return local.get(name);
+  };
   const dependency = request => {
+    options.runtimeDependencies?.push(request);
+    if (options.forbidHeavy && (request === "@product/ui" || request === "framer-motion")) {
+      throw new Error(`Static entry evaluated an animated dependency: ${request}`);
+    }
     if (request === "react") return hooks;
     if (request === "react/jsx-runtime") return require(request);
     if (request === "next/link") return { __esModule: true, default: Link };
     if (request.endsWith(".module.css")) return { __esModule: true, default: styles };
+    if (request === "./brand-home-link-types") return loadLocal("brand-home-link-types", typesSource);
+    if (request === "./brand-home-link-static") return loadLocal("brand-home-link-static", staticSource);
     if (request === "@product/ui") return { ...loadShared("brand-lockup"), ...loadShared("brand-mark") };
     if (request === "./types") return { cx: (...names) => names.filter(Boolean).join(" ") };
     if (request.startsWith("./brand-")) return loadShared(request.slice(2));
@@ -46,7 +59,7 @@ function loadBrand(hooks = React, brandSource = source) {
     };
     throw new Error(`Unexpected brand dependency: ${request}`);
   };
-  return compile(brandSource, "brand-home-link.tsx", dependency).BrandHomeLink;
+  return compile(brandSource, "brand-home-link.tsx", dependency)[options.exportName || "BrandHomeLink"];
 }
 
 test("compact static identity preserves the published SUN/account markup exactly", () => {
@@ -55,6 +68,37 @@ test("compact static identity preserves the published SUN/account markup exactly
   const current = loadBrand();
   for (const { props, html } of published.cases) {
     assert.equal(renderToStaticMarkup(React.createElement(current, props)), html);
+  }
+});
+
+test("the SUN static entry preserves published markup without evaluating UI or animation modules", () => {
+  const published = JSON.parse(readFileSync(new URL("fixtures/brand-home-link-static-79b864d3.json", import.meta.url), "utf8"));
+  const runtimeDependencies = [];
+  const StaticBrand = loadBrand(React, staticSource, { exportName: "StaticBrandHomeLink", forbidHeavy: true, runtimeDependencies });
+  for (const { props, html } of published.cases) {
+    assert.equal(renderToStaticMarkup(React.createElement(StaticBrand, props)), html);
+  }
+  assert.ok(runtimeDependencies.includes("next/link"));
+  assert.ok(runtimeDependencies.includes("./brand-home-link.module.css"));
+  assert.ok(!runtimeDependencies.some(request => /framer-motion|@product\/ui|brand-(?:dot|mark|lockup|wordmark)/.test(request)));
+});
+
+test("the static entry keeps native home navigation and callbacks without hooks", () => {
+  const StaticBrand = loadBrand({ ...React,
+    useState: () => { throw new Error("static identity allocated state"); },
+    useRef: () => { throw new Error("static identity allocated a ref"); },
+    useEffect: () => { throw new Error("static identity registered effects"); },
+  }, staticSource, { exportName: "StaticBrandHomeLink", forbidHeavy: true });
+  for (const [locale, label] of [["es-AR", "Ir al inicio de nexID"], ["en", "Go to the nexID home page"], ["pt-BR", "Ir para o início da nexID"]]) {
+    let called = 0;
+    const link = StaticBrand({ locale, onNavigate: () => called++ });
+    assert.equal(link.props.href, "/");
+    assert.equal(link.props.prefetch, false);
+    assert.equal(link.props["aria-label"], label);
+    assert.equal(link.props["data-brand-motion"], undefined);
+    assert.equal(link.props["data-brand-motion-active"], undefined);
+    link.props.onClick();
+    assert.equal(called, 1);
   }
 });
 

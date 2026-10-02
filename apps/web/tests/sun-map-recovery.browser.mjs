@@ -39,7 +39,11 @@ try{
   await t.page.getByRole('button',{name:'Enfocar origen en el mapa: Origen de ensayo'}).click();check(await t.page.locator('.maplibregl-popup').count()===1,'Original point detail works '+width+' '+theme);await t.context.close();
  }
  {
-  const t=await scenario();await ready(t);await t.page.evaluate(()=>{window.__oldMap=window.__qaMap;document.documentElement.dataset.theme='light';});await t.page.waitForFunction(()=>window.__qaMap.getPaintProperty('configured-basemap','raster-saturation')===-0.12);await ready(t);check(await t.page.evaluate(()=>window.__qaMap===window.__oldMap),'Theme change retains the interactive map instance');
+  const t=await scenario();await ready(t);
+  await t.page.getByRole('button',{name:'Enfocar origen en el mapa: Origen de ensayo'}).focus();await t.page.keyboard.press('Enter');
+  const stableControl=t.page.getByRole('button',{name:'Ampliar mapa',exact:true});await stableControl.focus();
+  await t.page.evaluate(()=>{window.__oldMap=window.__qaMap;document.documentElement.dataset.theme='light';});await t.page.waitForFunction(()=>window.__qaMap.getPaintProperty('configured-basemap','raster-saturation')===-0.12);await ready(t);check(await t.page.evaluate(()=>window.__qaMap===window.__oldMap),'Theme change retains the interactive map instance');
+  check(await t.page.locator('.maplibregl-popup').count()===0&&await stableControl.evaluate(element=>document.activeElement===element),'Theme style reload dismisses popup without moving control focus');
   await t.page.evaluate(()=>{window.__beforeUpdate=window.__qaMap;window.__change({...window.__initial,tap:{...window.__initial.tap,id:'qa-replacement',lat:-32.93,label:'Otra zona de ensayo'}});});await t.page.waitForFunction(()=>window.__qaMap!==window.__beforeUpdate);await t.page.getByText('Otra zona de ensayo',{exact:true}).waitFor();await ready(t);check(await t.page.locator('.maplibregl-marker').count()===2,'New same-page coordinates replace markers without duplication');check(await t.page.evaluate(()=>window.__geoRequests)===0,'Updating map evidence never requests permission again');await t.context.close();
  }
  check(!report.errors.length,'No browser exceptions');check(!report.network.length,'No unrelated requests or referrer disclosure');

@@ -12,8 +12,8 @@ test("SUN header gives the existing brand priority and puts status and locale in
   ]);
 
   assert.match(source, /sun-passport-header sun-topbar \$\{styles\.header\}/);
-  assert.match(source, /<BrandHomeLink size=\{44\} variant="static" theme="dark" locale=\{locale\} \/>/);
-  assert.ok(source.indexOf("<BrandHomeLink") < source.indexOf("<ThemeToggle"));
+  assert.match(source, /<StaticBrandHomeLink size=\{44\} variant="static" theme="dark" locale=\{locale\} \/>/);
+  assert.ok(source.indexOf("<StaticBrandHomeLink") < source.indexOf("<ThemeToggle"));
   assert.ok(source.indexOf("<ThemeToggle") < source.indexOf("sun-topbar-actions"));
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("sun-live-tap-pill"));
   assert.ok(source.indexOf("sun-live-tap-pill") < source.indexOf("<SunLocaleSwitcher"));
