@@ -18,9 +18,12 @@ import {
   HORIZONTAL_RAIL_NAVIGATE_EVENT,
   clampHorizontalRailIndex,
   closestHorizontalRailIndex,
+  horizontalRailTargetLeft,
+  reconcileHorizontalRailNavigation,
   wrapHorizontalRailIndex,
   type HorizontalRailIndexChangeDetail,
   type HorizontalRailNavigateDetail,
+  type HorizontalRailNavigationIntent,
 } from "../lib/horizontal-rail-model.mjs";
 
 type MotionEnvironment = {
@@ -161,7 +164,16 @@ export function SimpleTrustFlowMotion({
   const listRef = useRef<HTMLOListElement>(null);
   const [visibleItems, setVisibleItems] = useState<ReadonlySet<number>>(() => new Set());
   const [activeItemIndex, setActiveItemIndex] = useState(0);
+  const pendingNavigationRef = useRef<HorizontalRailNavigationIntent | null>(null);
+  const navigationGenerationRef = useRef(0);
+  const scheduleScrollFallbackRef = useRef<(() => void) | null>(null);
   const { mounted, pageVisible, reducedMotion } = useMotionEnvironment();
+
+  useEffect(() => {
+    pendingNavigationRef.current = null;
+    navigationGenerationRef.current += 1;
+    setActiveItemIndex(0);
+  }, [id]);
 
   useEffect(() => {
     const list = listRef.current;
@@ -215,22 +227,94 @@ export function SimpleTrustFlowMotion({
       nextTrigger?.focus({ preventScroll: true });
     }
 
-    const left = nextItem.getBoundingClientRect().left - list.getBoundingClientRect().left + list.scrollLeft;
+    const padding = window.getComputedStyle(list).scrollPaddingLeft;
+    const scrollPaddingStart = (Number.parseFloat(padding) || 0) * (padding.endsWith("%") ? list.clientWidth / 100 : 1);
+    const maximumLeft = Math.max(0, list.scrollWidth - list.clientWidth);
+    const left = horizontalRailTargetLeft({
+      itemLeft: nextItem.getBoundingClientRect().left,
+      railLeft: list.getBoundingClientRect().left,
+      scrollLeft: list.scrollLeft,
+      clientLeft: list.clientLeft,
+      scrollPaddingStart,
+      maximumLeft,
+    });
+    const generation = ++navigationGenerationRef.current;
+    // The latest explicit destination owns the rail until the user starts a new gesture.
+    pendingNavigationRef.current = maximumLeft > 0
+      ? { generation, index: nextIndex, left, reframed: false }
+      : null;
     list.scrollTo({ left, behavior: reducedMotion ? "auto" : "smooth" });
+    if (pendingNavigationRef.current) scheduleScrollFallbackRef.current?.();
   }, [itemCount, reducedMotion]);
 
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
     let animationFrame = 0;
+    let scrollIdleTimer = 0;
+    let observedWidth = list.clientWidth;
+    const nativeScrollEnd = "onscrollend" in list;
 
-    const syncIndexFromScroll = () => {
+    const queueIndexFromScroll = () => {
       window.cancelAnimationFrame(animationFrame);
       animationFrame = window.requestAnimationFrame(() => {
+        if (pendingNavigationRef.current || list.scrollWidth <= list.clientWidth) return;
         const itemLefts = Array.from(list.children, (item) => item.getBoundingClientRect().left);
         const nextIndex = closestHorizontalRailIndex(list.getBoundingClientRect().left, itemLefts);
         setActiveItemIndex((current) => current === nextIndex ? current : nextIndex);
       });
+    };
+
+    const settleNavigation = (generation: number | undefined) => {
+      const pending = pendingNavigationRef.current;
+      const result = reconcileHorizontalRailNavigation(pending, list.scrollLeft, generation);
+      if (result.action === "ignore") return;
+      pendingNavigationRef.current = result.navigation;
+      if (result.action === "settled" && pending) setActiveItemIndex(pending.index);
+      if (result.action === "reframe" && result.navigation) {
+        // Reapply the latest explicit destination once, without moving focus.
+        list.scrollTo({ left: result.navigation.left, behavior: "auto" });
+        scheduleScrollFallbackRef.current?.();
+      }
+    };
+
+    const finishScroll = () => {
+      settleNavigation(pendingNavigationRef.current?.generation);
+      if (!pendingNavigationRef.current) queueIndexFromScroll();
+    };
+
+    const scheduleFallback = () => {
+      window.clearTimeout(scrollIdleTimer);
+      const generation = pendingNavigationRef.current?.generation;
+      scrollIdleTimer = window.setTimeout(() => {
+        settleNavigation(generation);
+        if (!pendingNavigationRef.current) queueIndexFromScroll();
+      }, 150);
+    };
+    scheduleScrollFallbackRef.current = nativeScrollEnd ? null : scheduleFallback;
+
+    const syncIndexFromScroll = () => {
+      queueIndexFromScroll();
+      scheduleScrollFallbackRef.current?.();
+    };
+
+    const startNewGesture = (event: Event) => {
+      if (!event.isTrusted) return;
+      pendingNavigationRef.current = null;
+      navigationGenerationRef.current += 1;
+      window.clearTimeout(scrollIdleTimer);
+      queueIndexFromScroll();
+    };
+
+    const handleResize = () => {
+      if (list.clientWidth !== observedWidth) {
+        observedWidth = list.clientWidth;
+        // A changed rail width invalidates the previous pixel destination.
+        pendingNavigationRef.current = null;
+        navigationGenerationRef.current += 1;
+        window.clearTimeout(scrollIdleTimer);
+      }
+      queueIndexFromScroll();
     };
 
     const handleNavigate = (event: Event) => {
@@ -240,19 +324,31 @@ export function SimpleTrustFlowMotion({
       selectStep(detail.index, detail.focus === true);
     };
 
-    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncIndexFromScroll);
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(handleResize);
     resizeObserver?.observe(list);
     list.addEventListener("scroll", syncIndexFromScroll, { passive: true });
+    if (nativeScrollEnd) list.addEventListener("scrollend", finishScroll);
+    list.addEventListener("pointerdown", startNewGesture, { passive: true });
+    list.addEventListener("touchstart", startNewGesture, { passive: true });
+    list.addEventListener("wheel", startNewGesture, { passive: true });
     list.addEventListener(HORIZONTAL_RAIL_NAVIGATE_EVENT, handleNavigate);
-    window.addEventListener("resize", syncIndexFromScroll);
-    syncIndexFromScroll();
+    window.addEventListener("resize", handleResize);
+    queueIndexFromScroll();
 
     return () => {
       window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(scrollIdleTimer);
+      scheduleScrollFallbackRef.current = null;
+      pendingNavigationRef.current = null;
+      navigationGenerationRef.current += 1;
       resizeObserver?.disconnect();
       list.removeEventListener("scroll", syncIndexFromScroll);
+      if (nativeScrollEnd) list.removeEventListener("scrollend", finishScroll);
+      list.removeEventListener("pointerdown", startNewGesture);
+      list.removeEventListener("touchstart", startNewGesture);
+      list.removeEventListener("wheel", startNewGesture);
       list.removeEventListener(HORIZONTAL_RAIL_NAVIGATE_EVENT, handleNavigate);
-      window.removeEventListener("resize", syncIndexFromScroll);
+      window.removeEventListener("resize", handleResize);
     };
   }, [id, selectStep]);
 
