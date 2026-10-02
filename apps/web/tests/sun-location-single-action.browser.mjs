@@ -125,8 +125,10 @@ try {
       const quick=page.getByTestId("sun-location-quick-action");
       await quick.getByRole("button",{name:"Ahora no",exact:true}).click();
       assert.equal(await page.evaluate(()=>window.fixtureGeoCalls),0,"Declining never requests location");
+      assert.ok((await quick.getByRole("button",{name:"Compartir ubicación",exact:true}).boundingBox()).height>=44,"Reopen target remains at least 44px");
       await quick.getByRole("button",{name:"Compartir ubicación",exact:true}).click();
       assert.equal(await page.evaluate(()=>window.fixtureGeoCalls),0,"Reopening is not consent");
+      assert.ok((await quick.locator("summary").boundingBox()).height>=44,"Privacy disclosure target remains at least 44px");
       const bounds=await firstButton.boundingBox();assert.ok(bounds && bounds.height>=44 && bounds.y+bounds.height<844,"Primary action visible in fixture viewport");
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),"No horizontal overflow");
       if(process.env.QA_OUTPUT){await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-light.png"),fullPage:false});await page.evaluate(()=>document.documentElement.dataset.theme="dark");await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-dark.png"),fullPage:false});}
@@ -229,10 +231,73 @@ try {
         assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith("nexid:tap-context:")).length), 0, "No saved receipt for an ambiguous or rejected response");
       } else {
         assert.equal(await firstButton.isEnabled(), true);
+        assert.equal(await firstButton.innerText(), "Reintentar", "Retryable measurement or delivery offers an explicit manual retry");
+        if (scenario === "retryable") {
+          assert.match(await page.getByTestId("sun-location-quick-action").textContent(), /La zona no se guardó esta vez/);
+          assert.doesNotMatch(await page.getByTestId("sun-location-quick-action").textContent(), /No se obtuvo una ubicación utilizable/);
+        }
       }
     }
     assert.deepEqual(errors, [], "No React or client errors");
     results.push({ scenario, pass: true, permissionRequests: 1, submissions: posts.length });
+    await context.close();
+  }
+  for (const copy of [
+    { locale: "es-AR", retry: "Reintentar", retryMessage: "La zona no se guardó esta vez", details: "Qué se comparte", conditional: "cuando esté disponible" },
+    { locale: "en", retry: "Try again", retryMessage: "The area was not saved this time", details: "What is shared", conditional: "when available" },
+    { locale: "pt-BR", retry: "Tentar novamente", retryMessage: "A área não foi salva desta vez", details: "O que é compartilhado", conditional: "quando disponível" },
+  ]) {
+    const context = await browser.newContext({ viewport: { width: 320, height: 844 } }), page = await context.newPage();
+    const posts = [], errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.route("**/*", route => {
+      const request = route.request(), url = new URL(request.url());
+      if (url.origin !== origin) return route.abort();
+      if (url.pathname === "/fixture-context") {
+        posts.push(request.postDataJSON());
+        return route.fulfill({ status: 429, json: { reason: "rate_limited" } });
+      }
+      return route.continue();
+    });
+    await page.addInitScript(() => {
+      window.fixtureGeoCalls = 0; window.fixtureGeoCallbacks = [];
+      const permission = new EventTarget(); permission.state = "granted";
+      Object.defineProperty(navigator, "permissions", { configurable: true, value: { query: async () => permission } });
+      Object.defineProperty(navigator, "geolocation", { configurable: true, value: {
+        getCurrentPosition(success) {
+          window.fixtureGeoCalls++;
+          window.fixtureGeoCallbacks.push(() => success({ coords: { latitude: -32.901234, longitude: -68.801234, accuracy: 10 }, timestamp: Date.now() }));
+        },
+      } });
+    });
+    await page.goto(`${origin}/?locale=${copy.locale}`);
+    const quick = page.getByTestId("sun-location-quick-action"), button = quick.getByTestId("sun-location-consent-cta");
+    await page.waitForFunction(() => !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
+    await quick.locator("summary").filter({ hasText: copy.details }).click();
+    assert.ok((await quick.innerText()).includes(copy.conditional), "IP copy makes availability conditional in " + copy.locale);
+    assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "Reading privacy is not location consent");
+    assert.equal(posts.length, 0);
+    await button.click();
+    await page.waitForFunction(() => window.fixtureGeoCalls === 1);
+    await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+    await page.waitForFunction(() => document.querySelector('[data-testid="sun-location-quick-action"]').dataset.state === "retryable");
+    assert.ok((await quick.innerText()).includes(copy.retryMessage), "Failed persistence is explained without calling it a measurement failure in " + copy.locale);
+    assert.equal(await button.innerText(), copy.retry);
+    assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0, "429 never becomes a saved receipt");
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(posts.length, 1, "Displaying the retry state never automatically resends");
+    assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 1);
+    await button.focus(); await page.keyboard.press("Enter");
+    await page.waitForFunction(() => window.fixtureGeoCalls === 2);
+    assert.equal(posts.length, 1, "A user retry still waits for a new measurement");
+    await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+    await page.waitForFunction(() => document.querySelector('[data-testid="sun-location-quick-action"]').dataset.state === "retryable");
+    assert.equal(posts.length, 2, "Only the explicit keyboard retry starts another local submission");
+    assert.equal(posts[1].geoConsent, true);
+    assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0);
+    assert.deepEqual(errors, []);
+    results.push({ scenario: "localized_manual_retry", locale: copy.locale, pass: true, permissionRequests: 2, submissions: 2, automaticRetries: 0 });
+    if (process.env.QA_OUTPUT) await page.screenshot({ path: join(process.env.QA_OUTPUT, `location-retry-${copy.locale}-320.png`), fullPage: false });
     await context.close();
   }
   if(process.env.QA_OUTPUT)await writeFile(join(process.env.QA_OUTPUT,"report.json"),JSON.stringify({localSynthetic:true,results},null,2));

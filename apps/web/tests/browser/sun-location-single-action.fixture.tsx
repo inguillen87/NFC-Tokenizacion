@@ -10,9 +10,11 @@ function Fixture() {
   const [event, setEvent] = useState("local-fixture-1");
   const enabled = !new URLSearchParams(location.search).has("disabled");
   const submission = new URLSearchParams(location.search).get("submission");
+  const requestedLocale = new URLSearchParams(location.search).get("locale");
+  const locale = requestedLocale === "en" || requestedLocale === "pt-BR" ? requestedLocale : "es-AR";
   return (
     <StrictMode>
-      <SunLocaleProvider initialLocale="es-AR">
+      <SunLocaleProvider initialLocale={locale}>
         <p>PRUEBA LOCAL SIMULADA · sin datos ni validación productivos</p>
         <button id="next-tap" onClick={() => setEvent("local-fixture-2")}>Siguiente fixture</button>
         <SunLocationProvider key={event}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useId, useMemo, useState, useEffect } from "react";
 import { Sparkles, HelpCircle, Star, Send, Gift, CheckCircle2, Bot, ArrowRight, Brain, Trophy } from "lucide-react";
 import Link from "next/link";
 import { isPostTapPolicyActionAllowed } from "./post-tap-policy";
@@ -11,6 +11,13 @@ import {
   type SommelierProvenance,
 } from "../../lib/sommelier-guidance";
 import { useSunLocale } from "./sun-locale-provider";
+import styles from "./qr-engagement-suite.module.css";
+
+const FEEDBACK_COPY = {
+  "es-AR": { explanation: "Tu opinión se envía a la marca junto con esta lectura.", rating: (star: number) => `Calificar con ${star} estrella${star > 1 ? "s" : ""}`, comment: "Comentario corto", commentHint: "Comentario opcional para la marca", send: "Enviar opinión", saving: "Guardando..." },
+  en: { explanation: "Your opinion is sent to the brand with this reading.", rating: (star: number) => `Rate ${star} star${star > 1 ? "s" : ""}`, comment: "Short comment", commentHint: "Optional comment for the brand", send: "Send opinion", saving: "Saving..." },
+  "pt-BR": { explanation: "Sua opinião é enviada à marca junto com esta leitura.", rating: (star: number) => `Avaliar com ${star} estrela${star > 1 ? "s" : ""}`, comment: "Comentário curto", commentHint: "Comentário opcional para a marca", send: "Enviar opinião", saving: "Salvando..." },
+} as const;
 
 type EngagementTab = "sommelier" | "trivia" | "feedback" | "contact";
 
@@ -108,6 +115,8 @@ export function QREngagementSuite({
   initialTab = "sommelier",
 }: QREngagementSuiteProps) {
   const { locale } = useSunLocale();
+  const feedbackCopy = FEEDBACK_COPY[locale];
+  const commentId = useId();
   const [activeTab, setActiveTab] = useState<EngagementTab>(initialTab);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -427,12 +436,14 @@ export function QREngagementSuite({
 
   return (
     <div className="sun-engagement-suite mt-4 w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 shadow-xl backdrop-blur-md" data-sun-dock-avoid>
-      <div className="sun-engagement-tabs flex border-b border-white/5 bg-black/40 text-[11px] md:text-xs">
+      <div className={`${styles.tabs} sun-engagement-tabs border-b border-white/5 bg-black/40 text-[11px] md:text-xs`}
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, engagementTabs.length)}, minmax(0, 1fr))` }}>
         {engagementTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             title={tab.title}
+            aria-pressed={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
             data-sun-experience-event={tab.id === "trivia" ? "TRAINING_STARTED" : undefined}
             data-sun-experience-placement={tab.id === "trivia" ? "wine_education" : undefined}
@@ -444,7 +455,7 @@ export function QREngagementSuite({
             }`}
           >
             <span className="flex items-center justify-center gap-1">
-              <tab.Icon className="h-3.5 w-3.5" /> {tab.label}
+              <tab.Icon aria-hidden="true" className="h-3.5 w-3.5" /> {tab.label}
             </span>
           </button>
         ))}
@@ -634,7 +645,7 @@ export function QREngagementSuite({
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-bold text-white">¿Qué te parece este {productName}?</h4>
-                  <p className="mt-0.5 text-[11px] text-slate-400">Tu opinión queda asociada al contexto del tap para analítica del tenant.</p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">{feedbackCopy.explanation}</p>
                 </div>
 
                 <div className="flex justify-center gap-1.5 py-2">
@@ -642,30 +653,33 @@ export function QREngagementSuite({
                     <button
                       key={star}
                       type="button"
-                      title={`Calificar con ${star} estrella${star > 1 ? "s" : ""}`}
+                      title={feedbackCopy.rating(star)}
+                      aria-label={feedbackCopy.rating(star)}
+                      aria-pressed={rating === star}
                       onClick={() => setRating(star)}
-                      className="transition active:scale-95 hover:scale-110"
+                      className={`${styles.ratingButton} transition active:scale-95 hover:scale-110`}
                     >
-                      <Star className={`h-8 w-8 ${star <= rating ? "fill-amber-400 text-amber-400" : "text-slate-600 hover:text-slate-400"}`} />
+                      <Star aria-hidden="true" className={`h-8 w-8 ${star <= rating ? "fill-amber-400 text-amber-400" : "text-slate-600 hover:text-slate-400"}`} />
                     </button>
                   ))}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Comentario corto</label>
+                  <label htmlFor={commentId} className="block text-[10px] font-black uppercase tracking-wider text-slate-400">{feedbackCopy.comment}</label>
                   <textarea
+                    id={commentId}
                     rows={3}
-                    title="Comentario opcional para la bodega"
+                    title={feedbackCopy.commentHint}
                     placeholder="Contanos qué te pareció en boca, temperatura, aroma o presentación."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-none"
+                    className={`${styles.comment} block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-none`}
                   />
                 </div>
 
                 <button
                   type="button"
-                  title="Enviar feedback al CRM"
+                  title={feedbackCopy.send}
                   disabled={rating === 0 || submittingLead}
                   onClick={async () => {
                     const saved = await submitLead({
@@ -680,7 +694,7 @@ export function QREngagementSuite({
                   }}
                   className="w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
                 >
-                  {submittingLead ? "Guardando..." : "Enviar feedback"}
+                  {submittingLead ? feedbackCopy.saving : feedbackCopy.send}
                 </button>
                 {leadError ? <p role="alert" className="text-center text-[11px] text-rose-300">{leadError}</p> : null}
               </div>

@@ -505,6 +505,7 @@ export function DemoLabFeaturedJourney({
   };
 
   const chooseProduct = (nextProduct: DemoProductProfileKey) => {
+    if (nextProduct === productKey) return;
     setProductKey(nextProduct);
     setSelectedAction("warranty");
     setFurthestStep(0);
