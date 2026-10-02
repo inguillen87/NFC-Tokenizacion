@@ -84,6 +84,7 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "Ver mapa y fuentes", pt: "Ver mapa e fontes", en: "View map and sources" },
   { es: "Ver pasaporte agro", pt: "Ver passaporte agro", en: "View agricultural passport" },
   { es: "Perfil de muestra", pt: "Perfil de demonstração", en: "Demo profile" },
+  { es: "Fotografía: Rutini Wines · Referencia visual", pt: "Fotografia: Rutini Wines · Referência visual", en: "Photography: Rutini Wines · Visual reference" },
   { es: "Perfil oficial del piloto", pt: "Perfil oficial do piloto", en: "Official pilot profile" },
   { es: "Tap físico activo", pt: "Toque físico ativo", en: "Active physical tap" },
   { es: "Consulta segura", pt: "Consulta segura", en: "Secure view" },

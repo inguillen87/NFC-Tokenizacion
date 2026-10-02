@@ -47,6 +47,7 @@ import {
   resolveDemoProductProfile,
 } from "../../lib/demo-product-profiles";
 import passportStyles from "./sun-passport-experience.module.css";
+import { resolveSunDemoPhotography } from "./sun-demo-photography";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -381,12 +382,14 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
   const isDemoLabHandoff = readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
   const handoffProfile = resolveDemoProductProfile(readParam(params, "profile"));
-  const demoProduct = isDemoLabHandoff
+  const initialDemoProduct = isDemoLabHandoff
     ? { name: handoffProfile.name, vertical: handoffProfile.vertical, category: handoffProfile.category }
     : demoProductFromParams(params);
-  const demoBrand = isDemoLabHandoff ? handoffProfile.brand : "Bodega Balmec";
-  const demoRegion = isDemoLabHandoff ? handoffProfile.region : "Valle de Uco, Mendoza";
-  const demoLot = isDemoLabHandoff ? handoffProfile.lot : "BALMEC-2026-02";
+  const photography = resolveSunDemoPhotography({ isDemoPreview, isDemoLabHandoff, visual: readParam(params, "visual"), vertical: initialDemoProduct.vertical });
+  const demoProduct = photography ? { ...initialDemoProduct, name: photography.name } : initialDemoProduct;
+  const demoBrand = photography?.brand || (isDemoLabHandoff ? handoffProfile.brand : "Bodega Balmec");
+  const demoRegion = photography?.region || (isDemoLabHandoff ? handoffProfile.region : "Valle de Uco, Mendoza");
+  const demoLot = photography?.lot || (isDemoLabHandoff ? handoffProfile.lot : "BALMEC-2026-02");
   const demoOrigin = isDemoLabHandoff
     ? handoffProfile.origin
     : { city: "Tunuyan", country: "AR", lat: -33.2095, lng: -69.1211 };
@@ -417,12 +420,13 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     },
     product: {
       name: demoProduct.name,
+      imageUrl: photography?.imageUrl || null,
       winery: demoBrand,
       region: demoRegion,
       varietal: demoProduct.vertical === "vino" ? "Malbec" : demoProduct.category,
-      vintage: demoProduct.vertical === "vino" ? "2021" : null,
-      barrelMonths: demoProduct.vertical === "vino" ? 12 : null,
-      storage: demoProduct.vertical === "vino" ? "Cava 16C" : "Condición declarada por la marca",
+      vintage: !photography && demoProduct.vertical === "vino" ? "2021" : null,
+      barrelMonths: !photography && demoProduct.vertical === "vino" ? 12 : null,
+      storage: photography ? null : demoProduct.vertical === "vino" ? "Cava 16C" : "Condición declarada por la marca",
       category: demoProduct.category,
       vertical: demoProduct.vertical,
     },
@@ -868,8 +872,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       shock: dynamicShock,
     },
   };
+  const demoPhotography = resolveSunDemoPhotography({ isDemoPreview, isDemoLabHandoff, visual: readParam(params, "visual"), vertical: result.product?.vertical || "" });
   const hasDeclaredTastingProfile = Boolean(result.product?.notes || result.product?.tasting_notes || result.product?.maridaje);
-  const usesDemoTastingProfile = isDemoPreview && !hasDeclaredTastingProfile;
+  const usesDemoTastingProfile = isDemoPreview && !demoPhotography && !hasDeclaredTastingProfile;
   const dynamicTastingNotes = result.product?.notes
     || result.product?.tasting_notes
     || (usesDemoTastingProfile ? "Entrada dulce y carnosa, taninos maduros y final persistente." : null);
@@ -1504,7 +1509,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "La lectura digital es válida y el tag informa sello abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
         : "Podés conocer el producto. Las opciones de la marca requieren sus validaciones y son voluntarias.";
   const primaryPostTapAction = isDemoPreview
-    ? { label: "Ver opciones de muestra", href: "#sun-services", tone: "trace" }
+    ? isDemoLabHandoff
+      ? { label: "Ver opciones de muestra", href: "#sun-services", tone: "trace" }
+      : { label: "Conocer el producto", href: "#product-info", tone: "trace" }
     : !hasSourceResult
     ? { label: "Qué puedo hacer", href: "#sun-availability-help", tone: "trace" }
     : isQrScan && isAgroDpp
@@ -1829,6 +1836,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </aside> : null}
             </div>
 
+            {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? <SunLocationQuickAction /> : null}
+
             <div data-testid="sun-summary-actions" className="sun-summary-actions flex flex-col gap-1">
               <a
                 href={primaryPostTapAction.href}
@@ -1850,8 +1859,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
               </a>
             </div>
-
-            {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? <SunLocationQuickAction /> : null}
 
             <details className={passportStyles.summaryDetails} data-testid="sun-summary-evidence">
               <summary><ShieldCheck className="h-4 w-4" aria-hidden="true"/><span>Qué informa esta lectura</span><ChevronDown className="h-4 w-4" aria-hidden="true"/></summary>
@@ -1918,8 +1925,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
         </section>
 
-        <SunSectionNav variant="default" />
-
         {/* 2. Product photo and producer content, followed by optional reading data. */}
         <section id="product-info" aria-labelledby="sun-product-title" className={`${passportStyles.productProfile} rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden`}>
           <div className="flex flex-col items-center">
@@ -1938,6 +1943,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span>{isDemoPreview ? "Perfil de muestra" : productHeroImageUrl ? "Imagen informada por la marca" : "Imagen no informada"}</span>
             </div>
 
+            {demoPhotography ? <a data-testid="sun-demo-photo-source" href={demoPhotography.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className={passportStyles.photoCredit}>
+              {demoPhotography.sourceLabel} · Referencia visual
+            </a> : null}
+
             <div className="text-center w-full">
               <span data-sun-server-evidence="true" className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
                 {tenantDisplayName}
@@ -1953,7 +1962,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
 
           {/* Wine content uses producer data, or explicitly labelled Demo Lab fixtures. */}
-          {isWineProduct && (
+          {isWineProduct && !demoPhotography && (
             <div
               className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-4"
               data-sun-experience-impression={dynamicTastingNotes ? "TECHNICAL_SHEET_VIEWED" : undefined}
@@ -2067,8 +2076,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           </details>
 
-          <a className="sun-result-card__primary" href={primaryPostTapAction.href}>
-            {primaryPostTapAction.label}
+          <a className="sun-result-card__primary" href={isDemoPreview ? "#sun-services" : primaryPostTapAction.href}>
+            {isDemoPreview ? "Ver opciones de muestra" : primaryPostTapAction.label}
             {primaryPostTapAction.href === reportProblemHref
               ? <MessageCircle aria-hidden="true" />
               : <ArrowDown aria-hidden="true" />}
@@ -2097,6 +2106,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <small>{consumerStatus.headline} · {consumerStatus.label}</small>
           </details> : null}
         </section>
+
+        <SunSectionNav variant="default" />
 
         {evidenceResources}
 

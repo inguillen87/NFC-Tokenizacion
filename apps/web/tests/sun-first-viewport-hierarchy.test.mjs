@@ -76,6 +76,8 @@ test("SUN optional location preserves its source while the contextual actions re
   assert.match(location, /summaryLocationFriendlyCopy/);
   assert.match(summary, /<SunLocationQuickAction/);
   assert.ok(summary.indexOf("<SunLocationQuickAction") < summary.indexOf('<PassportEssentialSignals'));
+  assert.ok(summary.indexOf('data-testid="sun-summary-status"') < summary.indexOf('<SunLocationQuickAction'));
+  assert.ok(summary.indexOf('<SunLocationQuickAction') < actionsStart);
   assert.match(location, /href="#share-phone-location"/);
   assert.match(summary, /canRequestBrowserLocation && !hasConfirmedBrowserLocation/);
   assert.match(location, /Ver fuente y horario/);

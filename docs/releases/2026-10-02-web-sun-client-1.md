@@ -7,14 +7,18 @@ Candidate based on repository commit 7682c0ca0340eb60c2042a21cdb6a48a76d2a7b4. A
 ## Consumer changes
 
 - Passport header uses the landing Ni artwork in a larger local SVG/CSS variant. It reserves its layout, adds no library/font/image request, finishes its entrance in 1.35 seconds and is static for reduced motion and forced colors. The compact loading identity remains unchanged.
-- Product and full truthful status precede the primary contextual action. The action reuses existing fresh/QR/historical/risk and support rules; rearranging it does not grant capabilities.
+- Product and full truthful status precede the explicit optional phone-location request, which is visible before contextual actions on an eligible fresh handoff. Other contextual actions reuse existing fresh/QR/historical/risk and support rules; rearranging them does not grant capabilities.
 - Reading evidence and location/time use native keyboard-operable disclosures. Demonstration labels, NFC risk states, notices and an explicit manually declared opening warning remain visible. Location permissions stay explicit and independent.
 - The existing producer sensory sheet appears in the product profile before optional reading data. No producer story, origin, award, reward, points or commercial eligibility is fabricated.
 - Duplicate profile reading/specification data is progressively disclosed. Unknown timestamps, seal states and source markers remain preserved and translated. A generic profile message no longer claims freshness without its predicate.
+- Product imagery has a larger mobile thumbnail, a generous producer photograph and fewer surrounding boxes. The default Balmec demo retains its existing generated wine asset. `/sun?demo=1&visual=rutini` explicitly selects a server-owned photographic reference from Rutini's official site: coherent product/brand identity, linked attribution and no invented sensory scores, distinctions, vintage or cellar conditions. This cannot override a physical NFC, QR, historical result or Demo Lab handoff. The optimized 960 × 640 WebP weighs 31,882 bytes; its source is recorded in public/sun/references/SOURCES.md.
+- The optional phone-location panel is compact, keeps declining and retrying available, and displays the server-confirmed city/country, approximate source and map link after persistence. The controller, capability binding, one-shot request, receipt validation and permission behavior are unchanged. No new phone metadata is collected.
 
 ## Boundaries
 
 WEB only. API, dashboard, shared packages, NFC verification, anti-replay, permission decisions, backend contracts and database schemas are not changed. No new program of points or loyalty is introduced. No physical TAP certification is included. Existing brand opt-in and published offers retain their individual gates.
+
+Audit of the separately published API (`9c10e5c50912d58ee9e1177fa5b7849c2211b69b`) and dashboard (`4d976d385e75d1e9139ebc44f5ba820eaaebb591`) confirms existing post-tap consented-location projection into events, physical taps, SSE and analytics, with the source alias already recognized by the dashboard. An initial mismatch report was based on the older dashboard tree in this WEB checkout and was corrected after examining the actual published blobs. No dashboard fix is included or necessary for that alias. Code audit does not prove a new physical TAP, persisted location or an authenticated tenant's live CRM acceptance. The observation's new timezone is not separately projected into CRM.
 
 ## Evidence plan and results
 
