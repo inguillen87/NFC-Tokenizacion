@@ -20,24 +20,25 @@
 .header .brand {
   position: relative;
   min-width: 0;
-  min-height: 3.25rem;
-  overflow: hidden;
+  min-height: 4rem;
+  overflow: visible;
   padding-block: 0.125rem;
 }
 
 .header .brand [data-brand-home-link] { min-width: 2.75rem; min-height: 2.75rem; }
-.header .brand [data-identity-theme] { --identity-size: 44px !important; }
+.homeLink { display: inline-flex; border-radius: 0.75rem; text-decoration: none; }
+.homeLink:focus-visible { outline: 2px solid var(--header-accent); outline-offset: 4px; }
 
 .header .caption {
   position: absolute;
   right: 0;
-  bottom: 0.125rem;
-  left: 3.375rem;
+  bottom: 0.25rem;
+  left: 4rem;
   display: block;
   margin: 0;
   overflow: hidden;
   color: var(--header-muted);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.02em;
@@ -147,13 +148,6 @@
   --header-line: #d6e1de;
   --header-control: #f3f7f5;
   --header-surface: #ffffff;
-}
-
-/* Local motion replaces the shared brand's continuous decorative loops. */
-.header .brand *,
-.header .brand *::before,
-.header .brand *::after {
-  animation: none !important;
 }
 
 @media (prefers-reduced-motion: no-preference) {

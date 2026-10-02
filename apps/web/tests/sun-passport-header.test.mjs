@@ -12,8 +12,8 @@ test("SUN header gives the existing brand priority and puts status and locale in
   ]);
 
   assert.match(source, /sun-passport-header sun-topbar \$\{styles\.header\}/);
-  assert.match(source, /<StaticBrandHomeLink size=\{44\} variant="static" theme="dark" locale=\{locale\} \/>/);
-  assert.ok(source.indexOf("<StaticBrandHomeLink") < source.indexOf("<ThemeToggle"));
+  assert.match(source, /<Link href="\/" prefetch=\{false\} aria-label=\{homeLabel\(locale\)\}/);
+  assert.ok(source.indexOf("<SunBrandIdentity") < source.indexOf("<ThemeToggle"));
   assert.ok(source.indexOf("<ThemeToggle") < source.indexOf("sun-topbar-actions"));
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("sun-live-tap-pill"));
   assert.ok(source.indexOf("sun-live-tap-pill") < source.indexOf("<SunLocaleSwitcher"));
@@ -26,7 +26,7 @@ test("SUN header keeps the web home identity and real controls touch-safe", asyn
   const css = await readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8");
 
   assert.match(css, /\.header \.brand \[data-brand-home-link\]\s*\{[^}]*min-width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
-  assert.match(css, /\.header \.brand \[data-identity-theme\]\s*\{[^}]*--identity-size: 44px !important;/);
+  assert.match(css, /\.homeLink:focus-visible\s*\{[^}]*outline: 2px solid var\(--header-accent\)/);
   assert.doesNotMatch(css, /brand-wordmark-svg|margin-inline-end:\s*-/);
   assert.match(css, /\.header \.theme :global\(\.theme-toggle\)\s*\{[^}]*width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
   assert.match(css, /\.header \.locale select\s*\{[^}]*min-width: 0;[^}]*min-height: 2\.75rem;/);
@@ -68,7 +68,6 @@ test("SUN brand entrance is finite and respects reduced motion, including inheri
     readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(source, /animate-pulse|variant="ripple"/);
-  assert.match(css, /\.header \.brand \*[\s\S]*?animation: none !important;/);
   assert.match(css, /@media \(prefers-reduced-motion: no-preference\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation: none !important;[\s\S]*?transition: none !important;/);
   assert.doesNotMatch(css, /animation[^;]*infinite/);

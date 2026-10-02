@@ -1,0 +1,41 @@
+.identity {
+  --identity-face: #16323c;
+  --identity-line: #3b5b62;
+  --identity-ink: #f1f7f5;
+  --identity-accent: #76ddc7;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--identity-ink);
+}
+
+.mark { display: block; width: 3.25rem; height: 3.25rem; flex: 0 0 auto; }
+.face { fill: var(--identity-face); stroke: var(--identity-line); stroke-width: 2; }
+.edge { stroke: var(--identity-accent); stroke-width: 1; opacity: 0.2; }
+.letter { fill: currentColor; }
+.accent { fill: var(--identity-accent); }
+.orbit { stroke: var(--identity-accent); stroke-width: 2; stroke-linecap: round; opacity: 0.6; }
+.light { stroke: currentColor; stroke-width: 2; stroke-linecap: round; opacity: 0.15; }
+.word { font: 750 2.0625rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -0.055em; }
+.word > span { color: var(--identity-accent); }
+
+:global(html:is(.theme-light, [data-theme="light"])) .identity {
+  --identity-face: #f0f7f3;
+  --identity-line: #a4c4b9;
+  --identity-ink: #173b3b;
+  --identity-accent: #087263;
+}
+
+/* A single short trace, never a pulse that competes with the reading result. */
+@media (prefers-reduced-motion: no-preference) {
+  .orbit { animation: orbitArrival 480ms ease-out both; }
+}
+@keyframes orbitArrival {
+  from { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  to { stroke-dasharray: 1; stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .identity, .identity * { animation: none !important; transition: none !important; } }
+@media (forced-colors: active) {
+  .identity { --identity-face: Canvas; --identity-line: CanvasText; --identity-ink: CanvasText; --identity-accent: CanvasText; }
+  .edge, .orbit, .light { opacity: 1; }
+}

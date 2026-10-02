@@ -1,14 +1,14 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.02-web-consumer-details.8",
-  "scope": "sun-progressive-tools-map-focus-and-landing-mobile-intent",
-  "baseCommit": "be89586f6041b69ba89288aa1fc752c2048d488b",
+  "version": "2026.10.02-web-sun-visual.1",
+  "scope": "sun-brand-product-gallery-and-type",
+  "baseCommit": "6eaa0a4b002ffccc00da36f7fe072bdec187f4ba",
   "physicalTapCertification": "not-included",
   "requiredApiRelease": "2026.09.21-api-support.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.02-web-consumer-details.8",
+  "release": "2026.10.02-web-sun-visual.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1"
 }

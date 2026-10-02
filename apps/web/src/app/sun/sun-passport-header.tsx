@@ -1,7 +1,9 @@
 "use client";
 
 import { ThemeToggle } from "../../../../../packages/ui/src/theme-toggle";
-import { StaticBrandHomeLink } from "../../components/brand-home-link-static";
+import Link from "next/link";
+import { homeLabel } from "../../components/brand-home-link-types";
+import { SunBrandIdentity } from "./sun-brand-identity";
 import { SunLocaleSwitcher, useSunLocale } from "./sun-locale-provider";
 import styles from "./sun-passport-header.module.css";
 
@@ -27,7 +29,9 @@ export function SunPassportHeader({
       data-testid="sun-passport-header"
     >
       <div className={`sun-passport-brand ${styles.brand}`}>
-        <StaticBrandHomeLink size={44} variant="static" theme="dark" locale={locale} />
+        <Link href="/" prefetch={false} aria-label={homeLabel(locale)} className={styles.homeLink} data-brand-home-link>
+          <SunBrandIdentity />
+        </Link>
         <span className={`sun-passport-brand__caption ${styles.caption}`}>
           {passportLabel}
         </span>
