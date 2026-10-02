@@ -37,11 +37,13 @@ jobs:
           AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
         run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/first-paint" node apps/web/tests/sun-first-paint.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/product-image" node apps/web/tests/sun-product-image.browser.mjs
           CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/location" node apps/web/tests/sun-location-single-action.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/map-recovery" node apps/web/tests/sun-map-recovery.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/map-controls" node apps/web/tests/sun-map-controls.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/style-budget" node apps/web/tests/public-style-budget.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/mobile-experience" node apps/web/tests/sun-mobile-experience.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/visual-refinement" node apps/web/tests/sun-visual-refinement.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/section-navigation" node apps/web/tests/sun-section-navigation.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/deferred-tools" node apps/web/tests/sun-deferred-consumer-tools.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/consumer-opinion" node apps/web/tests/sun-consumer-opinion.browser.mjs

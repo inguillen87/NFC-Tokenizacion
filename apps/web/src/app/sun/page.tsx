@@ -1738,6 +1738,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     src={productHeroImageUrl}
                     alt={productDisplayName}
                     className="h-full w-full object-contain p-1.5 drop-shadow-[0_12px_18px_rgba(0,0,0,0.42)]"
+                    zoomable
                     priority
                   />
                 ) : (
@@ -1912,6 +1913,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <SunProductImage
                   src={productHeroImageUrl}
                   alt={productDisplayName}
+                  zoomable
                 />
               ) : (
                 <Package aria-hidden="true" />
