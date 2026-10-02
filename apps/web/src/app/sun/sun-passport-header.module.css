@@ -13,6 +13,8 @@
   border: 1px solid var(--header-line);
   border-radius: 1rem;
   background: var(--header-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: 0 2px 8px rgba(3, 18, 33, 0.04);
   color: var(--header-ink);
 }
@@ -61,8 +63,9 @@
   padding: 0;
   border: 1px solid var(--header-line);
   border-radius: 0.85rem;
-  background: var(--header-control);
-  color: var(--header-ink);
+  border-color: var(--header-line) !important;
+  background: var(--header-control) !important;
+  color: var(--header-ink) !important;
   box-shadow: none;
 }
 

@@ -24,7 +24,7 @@ Audit of the separately published API (`9c10e5c50912d58ee9e1177fa5b7849c2211b69b
 
 Contemporaneous measurement uses six GET-only synthetic inaccessible views: three native and three CPU ×4 / 150 ms latency / 200000 bytes per second. It is not a physical TAP, valid NFC verification, GPS or full consumer journey measurement. Raw samples and settings are preserved; no causal speed claim will be made from isolated timings.
 
-Local responsive/light/dark/ES-EN-PT/keyboard/reduced-motion checks, source-bound CI, Preview and publication observations are pending. Evidence is retained under artifacts/sun-client-experience-20261002; earlier .1 evidence is not overwritten.
+Local responsive/light/dark/ES-EN-PT/keyboard/reduced-motion checks and Preview acceptance passed for the first candidate. The first staged deployment was not promoted: the strict comparison reported 10 of 40 views with one-channel RGB differences in header edges/shadow and a product-panel edge. Semantic checks passed, but this did not satisfy the frozen raster gate. Inspection found a global important theme gradient and inherited header backdrop blur. The candidate now explicitly owns a solid theme control and removes that unnecessary header filter plus the summary's decorative blurred glow. The Ni artwork, finite entrance, reserved geometry, native photo bytes and comparison criteria remain unchanged. These source changes require fresh CI, Preview and staged verification before publication. Evidence is retained under artifacts/sun-client-experience-20261002; earlier .1 evidence and failed observations are not overwritten.
 
 ## References informing the interaction
 

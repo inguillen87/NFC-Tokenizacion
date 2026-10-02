@@ -1732,7 +1732,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           aria-labelledby="sun-summary-product-title"
           className="sun-summary-panel scroll-mt-24 relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-3 shadow-2xl backdrop-blur-2xl sm:p-4"
         >
-          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-500 opacity-10 blur-[60px]" />
 
           <div className="relative z-10 space-y-2.5">
             <div
