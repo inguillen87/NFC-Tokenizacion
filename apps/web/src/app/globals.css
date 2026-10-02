@@ -57212,6 +57212,12 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-status {
   transform-origin: center;
 }
 
+/* Keep journey scenes readable in both themes without an extra color filter.
+   The photo scrim and the separate caption panels provide their own contrast. */
+.simple-trust-industry-journey .trust-photo > .trust-photo__image {
+  filter: none;
+}
+
 .trust-photo__phone-motion {
   position: absolute;
   top: var(--trust-phone-top, 14%);
