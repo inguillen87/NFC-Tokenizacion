@@ -25,3 +25,5 @@ La fuente final aprobó build y typecheck. Pasaron 799 pruebas WEB, 47 controles
 El primer candidato del visor se rechazó: Tab trasladaba el foco al documento. Se corrigió el ciclo entre sus controles y se conservaron las 30 fallas originales de candidate1. Candidate2 conserva los controles y aprueba todos; sus capturas iniciales preceden a la interacción, con dos capturas del visor abierto y seis del reflow identificadas aparte.
 
 No se demuestra una ganancia causal de rendimiento. Se conserva la biblioteca de animación que entra por el loading global; este incremento no agrega fuentes remotas ni una biblioteca nueva. La ampliación aprobó el control de cero peticiones adicionales de la foto.
+
+La primera CI de este incremento rechazó una prueba API que inspecciona el JSX WEB: esperaba `priority` como última propiedad de la imagen. Se conservó esa convención ordenando `zoomable` antes de `priority`, sin cambiar la semántica, los contratos o el código API. La CI y preview de ese SHA inicial quedan registradas como intentos anteriores; la publicación exige nueva CI y build de la fuente corregida.
