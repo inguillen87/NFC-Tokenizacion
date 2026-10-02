@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { AlertTriangle, ArrowDown, ArrowLeft, ChevronRight, Info, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowLeft, ChevronDown, ChevronRight, Info, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { DeferredCtaActions, DeferredQREngagementSuite } from "./sun-deferred-consumer-tools";
 import { ReportProblemForm } from "./report-problem-form";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
@@ -1502,7 +1502,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "La evidencia digital y los datos declarados se pueden revisar. Para activar beneficios sensibles, tocá de nuevo la etiqueta."
       : isVerifiedOpenedState
         ? "La lectura digital es válida y el tag informa sello abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
-        : "La lectura es fresca. Primero lees la ficha; si queres, despues dejas contacto o acreditas compra.";
+        : "Podés conocer el producto. Las opciones de la marca requieren sus validaciones y son voluntarias.";
   const primaryPostTapAction = isDemoPreview
     ? { label: "Ver opciones de muestra", href: "#sun-services", tone: "trace" }
     : !hasSourceResult
@@ -1694,7 +1694,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </Link>
         ) : null}
 
-        <SunSectionNav variant={isAgroDpp ? "agro" : "default"} />
+        {isAgroDpp ? <SunSectionNav variant="agro" /> : null}
 
         {isAgroDpp ? <PassportEssentialSignals identityLabel={consumerStatus.identityLabel} sealLabel={consumerStatus.sealLabel} tone={consumerStatus.tone} carrierCode={rawCarrierProfileCode} isQr={isQrScan} isDemo={isDemoPreview} isHistorical={isSnapshotView}/> : null}
         {isAgroDpp && agroProfile ? (
@@ -1765,13 +1765,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <p data-sun-server-evidence="true" className="mt-1 break-words text-[10px] leading-4 text-slate-400">
                   {productLine || verticalLabel}
                 </p>
-                {batchDisplay ? (
-                  <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/45 px-2 py-1 text-[9px] font-bold text-slate-300">
-                    <span>{isDemoPreview ? "Batch de muestra" : "Lote"}</span>
-                    <span aria-hidden="true">·</span>
-                    <span data-sun-server-evidence="true">{batchDisplay}</span>
-                  </span>
-                ) : null}
+
               </div>
             </div>
 
@@ -1810,7 +1804,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                         : <ShieldAlert className="h-5 w-5" strokeWidth={2} />}
                 </span>
                 <div className="min-w-0">
-                  <span className={`block text-[10px] font-black uppercase tracking-[0.13em] ${
+                  <span className={`sr-only ${
                     consumerStatus.tone === "closed"
                       ? "text-emerald-300"
                       : consumerStatus.tone === "opened" || consumerStatus.tone === "review"
@@ -1829,12 +1823,53 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <p className="sun-summary-status__copy mt-2.5 text-[11px] leading-[1.55] text-slate-300">
                 {consumerStatus.copy}
               </p>
+              {isManualOpenedState ? <aside data-testid="sun-summary-manual-opening" className={passportStyles.manualOpening}>
+                <strong>Un operador registró una apertura</strong>
+                <p>{friendlyStageBody}</p>
+              </aside> : null}
+            </div>
+
+            <div data-testid="sun-summary-actions" className="sun-summary-actions flex flex-col gap-1">
+              <a
+                href={primaryPostTapAction.href}
+                data-testid="sun-summary-primary"
+                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl bg-white px-2.5 text-center text-[11px] font-black leading-tight text-slate-950 shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                {primaryPostTapAction.label}
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+              </a>
+              <a
+                href={!hasSourceResult ? "/demo-lab" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
+                  ? "#sun-condition"
+                  : "#sun-origin"}
+                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-2 text-center text-[10px] font-black leading-tight text-cyan-100 transition hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                {!hasSourceResult ? "Explorar una demostración" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
+                  ? "Entender apertura"
+                  : "Ver origen y mapa"}
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+              </a>
             </div>
 
             {canRequestBrowserLocation && !hasConfirmedBrowserLocation ? <SunLocationQuickAction /> : null}
 
+            <details className={passportStyles.summaryDetails} data-testid="sun-summary-evidence">
+              <summary><ShieldCheck className="h-4 w-4" aria-hidden="true"/><span>Qué informa esta lectura</span><ChevronDown className="h-4 w-4" aria-hidden="true"/></summary>
+              <div className={passportStyles.summaryDetailsBody}>
+                {batchDisplay ? (
+                  <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/45 px-2 py-1 text-[9px] font-bold text-slate-300">
+                    <span>{isDemoPreview ? "Batch de muestra" : "Lote"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span data-sun-server-evidence="true">{batchDisplay}</span>
+                  </span>
+                ) : null}
             <PassportEssentialSignals identityLabel={consumerStatus.identityLabel} sealLabel={consumerStatus.sealLabel} tone={consumerStatus.tone} carrierCode={rawCarrierProfileCode} isQr={isQrScan} isDemo={isDemoPreview} isHistorical={isSnapshotView}/>
+              </div>
+            </details>
 
+            <details className={passportStyles.summaryDetails} data-testid="sun-summary-location-disclosure">
+              <summary><MapPin className="h-4 w-4" aria-hidden="true"/><span>Ubicación y horario</span><ChevronDown className="h-4 w-4" aria-hidden="true"/></summary>
+              <div className={passportStyles.summaryDetailsBody}>
             <div
               data-testid="sun-summary-location"
               className="sun-summary-location rounded-2xl border border-cyan-300/15 bg-slate-950/45 p-3 text-left shadow-inner"
@@ -1876,34 +1911,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </details>
               </SunLocationSummary>
             </div>
+              </div>
+            </details>
 
-            <div data-testid="sun-summary-actions" className="sun-summary-actions grid grid-cols-2 gap-2">
-              <a
-                href={hasSourceResult ? "#product-info" : "#sun-availability-help"}
-                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl bg-white px-2.5 text-center text-[11px] font-black leading-tight text-slate-950 shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-              >
-                {hasSourceResult ? "Ver producto" : "Qué puedo hacer"}
-                <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
-              </a>
-              <a
-                href={!hasSourceResult ? "/demo-lab" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
-                  ? "#sun-condition"
-                  : "#sun-origin"}
-                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-2 text-center text-[10px] font-black leading-tight text-cyan-100 transition hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-              >
-                {!hasSourceResult ? "Explorar una demostración" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
-                  ? "Entender apertura"
-                  : "Ver origen y mapa"}
-                <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
-              </a>
-            </div>
             {!isDemoPreview && <ConsumerPassportLink href={isFreshCommercialTap && freshToken ? withTapQuery("/me/products","products") : "/me/products"} eventId={eventId} freshToken={isFreshCommercialTap ? freshToken : ""} />}
           </div>
         </section>
 
-        {evidenceResources}
+        <SunSectionNav variant="default" />
 
-        {/* 2. Premium Product Profile Card */}
+        {/* 2. Product photo and producer content, followed by optional reading data. */}
         <section id="product-info" aria-labelledby="sun-product-title" className={`${passportStyles.productProfile} rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden`}>
           <div className="flex flex-col items-center">
 
@@ -1933,6 +1950,73 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </p>
             </div>
 
+          </div>
+
+          {/* Wine content uses producer data, or explicitly labelled Demo Lab fixtures. */}
+          {isWineProduct && (
+            <div
+              className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-4"
+              data-sun-experience-impression={dynamicTastingNotes ? "TECHNICAL_SHEET_VIEWED" : undefined}
+              data-sun-experience-placement="producer_product_sheet"
+              data-sun-experience-interaction="sensory_sheet_visible"
+            >
+              <div className="space-y-1">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
+                {dynamicTastingNotes ? (
+                  <p data-sun-server-evidence="true" className="text-slate-300 italic">“{dynamicTastingNotes}”</p>
+                ) : (
+                  <p className="text-[11px] leading-relaxed text-slate-500">La marca todavía no cargó una ficha sensorial para este producto.</p>
+                )}
+                {dynamicMaridaje && (
+                  <p className="pt-1 text-[10px] font-medium text-amber-300">Maridaje sugerido: <span data-sun-server-evidence="true">{dynamicMaridaje}</span></p>
+                )}
+              </div>
+
+              {isDemoPreview && (
+                <div className="space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                  <p className="text-[10px] font-semibold leading-relaxed text-amber-200">
+                    Datos simulados del Demo Lab. El perfil y las distinciones siguientes ilustran el formato; no son certificaciones reales.
+                  </p>
+                  <div className="space-y-2.5 border-t border-amber-500/10 pt-3">
+                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Perfil sensorial simulado</span>
+                    {[
+                      { label: "Cuerpo / Intensidad", val: 85, desc: "Intenso y estructurado" },
+                      { label: "Taninos", val: 70, desc: "Sedosos y redondos" },
+                      { label: "Acidez", val: 60, desc: "Fresca y equilibrada" },
+                      { label: "Roble", val: 75, desc: "Crianza de ejemplo" },
+                      { label: "Fruta negra", val: 90, desc: "Mora y ciruela madura" },
+                    ].map((attr) => (
+                      <div key={attr.label} className="space-y-1">
+                        <div className="flex justify-between gap-3 text-[10px] font-medium text-slate-300">
+                          <span>{attr.label}</span>
+                          <span className="text-right text-[9px] text-slate-500">{attr.desc}</span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full border border-white/5 bg-slate-950">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400"
+                            style={{ width: `${attr.val}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-amber-500/10 pt-3">
+                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Distinciones ilustrativas</span>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                      {["Puntaje demo", "Premio simulado", "Origen de ejemplo"].map((label) => (
+                        <span key={label} className="rounded-xl border border-amber-500/20 bg-slate-950/40 p-2 text-[8px] font-bold uppercase tracking-wide text-amber-200">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <details className={passportStyles.profileDetails} data-testid="sun-product-reading-details">
+            <summary>Ficha y datos de esta lectura<ChevronDown className="h-4 w-4" aria-hidden="true"/></summary>
             {/* Spec grid for fast reading */}
             <div className={`${passportStyles.productSpecs} w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left`}>
               <div>
@@ -1952,8 +2036,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{tapDisplay}</span>
               </div>
             </div>
-          </div>
-
           <div className="sun-result-card__intro">
             <div className="sun-result-card__icon" aria-hidden="true">
               {!hasSourceResult ? <Info /> : isReplay ? <RotateCcw /> : isRiskBlocked || isOpenedAttentionState ? <AlertTriangle /> : <ShieldCheck />}
@@ -1982,6 +2064,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div><small>Lectura</small><strong data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={Boolean(!localTapTimeIso && localTapTimeLabel).toString()}>{localTapTimeLabel || "Hora no registrada"}</strong></div>
             </li>
           </ol>
+
+          </details>
 
           <a className="sun-result-card__primary" href={primaryPostTapAction.href}>
             {primaryPostTapAction.label}
@@ -2013,6 +2097,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <small>{consumerStatus.headline} · {consumerStatus.label}</small>
           </details> : null}
         </section>
+
+        {evidenceResources}
 
         </> : null}
 
@@ -2201,69 +2287,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           )}
           </section>
 
-          {/* Wine content uses producer data, or explicitly labelled Demo Lab fixtures. */}
-          {isWineProduct && (
-            <div
-              className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-4"
-              data-sun-experience-impression={dynamicTastingNotes ? "TECHNICAL_SHEET_VIEWED" : undefined}
-              data-sun-experience-placement="producer_product_sheet"
-              data-sun-experience-interaction="sensory_sheet_visible"
-            >
-              <div className="space-y-1">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
-                {dynamicTastingNotes ? (
-                  <p data-sun-server-evidence="true" className="text-slate-300 italic">“{dynamicTastingNotes}”</p>
-                ) : (
-                  <p className="text-[11px] leading-relaxed text-slate-500">La marca todavía no cargó una ficha sensorial para este producto.</p>
-                )}
-                {dynamicMaridaje && (
-                  <p className="pt-1 text-[10px] font-medium text-amber-300">Maridaje sugerido: <span data-sun-server-evidence="true">{dynamicMaridaje}</span></p>
-                )}
-              </div>
-
-              {isDemoPreview && (
-                <div className="space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-                  <p className="text-[10px] font-semibold leading-relaxed text-amber-200">
-                    Datos simulados del Demo Lab. El perfil y las distinciones siguientes ilustran el formato; no son certificaciones reales.
-                  </p>
-                  <div className="space-y-2.5 border-t border-amber-500/10 pt-3">
-                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Perfil sensorial simulado</span>
-                    {[
-                      { label: "Cuerpo / Intensidad", val: 85, desc: "Intenso y estructurado" },
-                      { label: "Taninos", val: 70, desc: "Sedosos y redondos" },
-                      { label: "Acidez", val: 60, desc: "Fresca y equilibrada" },
-                      { label: "Roble", val: 75, desc: "Crianza de ejemplo" },
-                      { label: "Fruta negra", val: 90, desc: "Mora y ciruela madura" },
-                    ].map((attr) => (
-                      <div key={attr.label} className="space-y-1">
-                        <div className="flex justify-between gap-3 text-[10px] font-medium text-slate-300">
-                          <span>{attr.label}</span>
-                          <span className="text-right text-[9px] text-slate-500">{attr.desc}</span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full border border-white/5 bg-slate-950">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400"
-                            style={{ width: `${attr.val}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="border-t border-amber-500/10 pt-3">
-                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Distinciones ilustrativas</span>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                      {["Puntaje demo", "Premio simulado", "Origen de ejemplo"].map((label) => (
-                        <span key={label} className="rounded-xl border border-amber-500/20 bg-slate-950/40 p-2 text-[8px] font-bold uppercase tracking-wide text-amber-200">
-                          {label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Timeline points list */}
           <div className="space-y-3 pt-2">
             <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Cómo leer este pasaporte</span>
@@ -2272,7 +2295,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <div key={`${step.label}-${step.title}`} className="relative text-xs">
                   <div className={`absolute -left-[14px] top-1 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${idx === 3 ? pulseClass : "bg-slate-700"}`} />
                   <span className="block text-[9px] font-mono text-slate-500">{step.label}</span>
-                  <span className="block font-bold text-slate-200 mt-0.5">{step.title}</span>
+                  <span data-sun-server-evidence={hasSourceResult && idx === 0 ? "true" : undefined} className="block font-bold text-slate-200 mt-0.5">{step.title}</span>
                   <p className="text-slate-400 mt-0.5 leading-normal text-[11px]">{step.body}</p>
                 </div>
               ))}

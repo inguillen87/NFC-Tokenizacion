@@ -30,15 +30,11 @@ export function SunPassportHeader({
     >
       <div className={`sun-passport-brand ${styles.brand}`}>
         <Link href="/" prefetch={false} aria-label={homeLabel(locale)} className={styles.homeLink} data-brand-home-link>
-          <SunBrandIdentity />
+          <SunBrandIdentity variant="passport" />
         </Link>
         <span className={`sun-passport-brand__caption ${styles.caption}`}>
           {passportLabel}
         </span>
-      </div>
-
-      <div className={styles.theme}>
-        <ThemeToggle locale={locale} />
       </div>
 
       <div className={`sun-topbar-actions ${styles.utilities}`}>
@@ -52,6 +48,9 @@ export function SunPassportHeader({
         </div>
         <div className={styles.locale}>
           <SunLocaleSwitcher />
+        </div>
+        <div className={styles.theme}>
+          <ThemeToggle locale={locale} />
         </div>
       </div>
     </header>

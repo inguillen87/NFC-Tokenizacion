@@ -18,6 +18,17 @@ for(let i=0;i<120;i++){try{if((await fetch(origin+'/release.json')).ok)break;}ca
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||undefined});
 const report={realProductionBuild:true,syntheticContract:true,physicalTapMeasured:false,checks:[],views:[],errors:[],blockedWrites:0};
 const check=(passed,name)=>report.checks.push({name,passed:Boolean(passed)});
+async function openNativeDisclosure(page,testId) {
+ const disclosure=page.getByTestId(testId);
+ assert.equal(await disclosure.count(),1,`${testId} must be unique`);
+ if(await disclosure.getAttribute('open')===null) await disclosure.locator(':scope > summary').click();
+ assert.notEqual(await disclosure.getAttribute('open'),null,`${testId} must open natively`);
+}
+async function openReadingEvidence(page) {
+ await openNativeDisclosure(page,'sun-product-reading-details');
+ await openNativeDisclosure(page,'sun-summary-location-disclosure');
+ await page.getByTestId('sun-summary-location').locator('details > summary').click();
+}
 try {
  for(const theme of ['light','dark']) for(const width of [320,390,768,1440]) for(const state of ['closed','opened','replay','missing','photo-failure','rejected','missing-date','history-only']) {
   const context=await browser.newContext({viewport:{width,height:844},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
@@ -38,8 +49,12 @@ try {
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`No overflow ${state} ${width} ${theme}`);
   check(await page.evaluate(()=>window.__geoCalls)===0,`No automatic location ${state} ${width} ${theme}`);
   check(await summary.getByRole('heading',{level:1}).count()===1,`Product hierarchy ${state} ${width} ${theme}`);
+  const firstAction=await page.getByTestId('sun-summary-primary').evaluate(element=>{const box=element.getBoundingClientRect();return {width:box.width,height:box.height,left:box.left,right:box.right,top:box.top,bottom:box.bottom,viewportWidth:innerWidth,viewportHeight:innerHeight,insideClosedDetails:Boolean(element.closest('details:not([open])'))};});
+  check(firstAction.width>=44&&firstAction.height>=44&&!firstAction.insideClosedDetails&&firstAction.left>=0&&firstAction.right<=firstAction.viewportWidth&&firstAction.top>=0&&firstAction.bottom<=firstAction.viewportHeight,`Contextual action reachable in first viewport ${state} ${width} ${theme}`);
+  check(await page.getByTestId('sun-summary-evidence').getAttribute('open')===null&&await page.getByTestId('sun-summary-location-disclosure').getAttribute('open')===null&&await page.getByTestId('sun-product-reading-details').getAttribute('open')===null,`Optional evidence starts collapsed ${state} ${width} ${theme}`);
+  check(await page.getByTestId('sun-summary-status').isVisible(),`Result stays visible before optional evidence ${state} ${width} ${theme}`);
   const readingTime=page.locator('.sun-result-journey li').nth(2).locator('strong');
-  await page.getByTestId('sun-summary-location').locator('details > summary').click();
+  await openReadingEvidence(page);
   const summaryTime=page.getByTestId('sun-summary-location').locator('p').filter({hasText:'Hora del tap:'}).locator('span').last();
   if(['rejected','missing-date','history-only'].includes(state)) {
     check(await readingTime.innerText()==='Hora no registrada',`Unknown read time ${state} ${width} ${theme}`);
@@ -80,7 +95,9 @@ try {
   await page.route('**/*',r=>{const u=new URL(r.request().url());if(r.request().method()!=='GET'){report.blockedWrites++;return r.abort();}if(u.origin!==origin)return r.abort();if(u.pathname==='/qa-product.svg')return r.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="92" height="128"><rect width="92" height="128" fill="#147d83"/></svg>'});if(u.pathname.startsWith('/api/'))return r.fulfill({status:404,contentType:'application/json',body:'{"ok":false}'});return r.continue();});
   await page.goto(origin+`/sun?snapshot=${state==='rejected'?'0':'qa-'+state}&trace=synthetic&access=invalid&lang=${locale}`,{waitUntil:'networkidle'});
   const readingTime=page.locator('.sun-result-journey li').nth(2).locator('strong');
-  await page.getByTestId('sun-summary-location').locator('details > summary').click();
+  await openReadingEvidence(page);
+  check(await page.getByTestId('sun-product-reading-details').locator(':scope > summary').innerText()===(locale==='en'?'Product and reading details':'Ficha e dados desta leitura'),`Reading disclosure localized ${state} ${locale}`);
+  check(await page.getByTestId('sun-summary-location-disclosure').locator(':scope > summary').innerText()===(locale==='en'?'Location and time':'Localização e horário'),`Location disclosure localized ${state} ${locale}`);
   check((await page.locator('body').innerText()).includes(neutralLocation),`Neutral no-coordinate copy localized ${state} ${locale}`);
   if(state==='closed') {
     check(await readingTime.getAttribute('data-sun-datetime')==='2026-09-30T14:25:00.000Z',`Reported read timestamp survives locale ${locale}`);
@@ -162,6 +179,7 @@ try {
   check(await status.getAttribute('data-availability')==='ready',`Delivered result remains distinct ${state}`);
   check(await status.getAttribute('data-status-tone')===tone,`NFC result tone preserved ${state}`);
   check(await status.locator('h2').innerText()===headline,`NFC result meaning preserved ${state}`);
+  await openNativeDisclosure(page,'sun-summary-evidence');
   if(state!=='invalid')check(await page.getByTestId('sun-summary-facts').getByText('Verificada',{exact:true}).count()===1,`Verified identity retained ${state}`);
   if(state==='seal-unknown'||state==='unsupported')check(await page.getByTestId('sun-summary-facts').getByText('No informado',{exact:true}).count()===1,`Unknown seal is not closed ${state}`);
   await context.close();

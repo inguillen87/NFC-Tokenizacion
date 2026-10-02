@@ -1,14 +1,14 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.02-web-sun-visual.1",
-  "scope": "sun-brand-product-gallery-and-type",
-  "baseCommit": "6eaa0a4b002ffccc00da36f7fe072bdec187f4ba",
+  "version": "2026.10.02-web-sun-client.1",
+  "scope": "sun-client-first-summary-brand-and-progressive-evidence",
+  "baseCommit": "7682c0ca0340eb60c2042a21cdb6a48a76d2a7b4",
   "physicalTapCertification": "not-included",
   "requiredApiRelease": "2026.09.21-api-support.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.02-web-sun-visual.1",
+  "release": "2026.10.02-web-sun-client.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1"
 }

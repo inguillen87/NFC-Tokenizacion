@@ -446,3 +446,74 @@
 .passport :global(.sun-summary-actions) a { font-size: .875rem; font-weight: 650; border-radius: .75rem; box-shadow: none; }
 .passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:first-child { background: #086f62 !important; border-color: #086f62 !important; color: #ffffff !important; }
 .passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:nth-child(2) { background: var(--passport-surface) !important; border-color: var(--passport-line) !important; color: var(--passport-ink) !important; }
+
+/* One primary action before optional evidence. Native details keep content usable without JS. */
+.passport:global(.sun-tap-shell) :global(.sun-summary-actions) {
+  display: flex !important;
+  flex-direction: column;
+  gap: .125rem;
+}
+.passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:first-child {
+  min-height: 3.125rem;
+  padding: .75rem 1rem;
+  font-size: .9375rem;
+}
+.passport:global(.sun-tap-shell) :global(.sun-summary-actions) a:nth-child(2) {
+  min-height: 2.75rem;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--passport-accent) !important;
+  font-size: .8125rem;
+}
+.passport :global(.sun-summary-product__copy) > span {
+  font-size: .625rem;
+  font-weight: 650;
+  letter-spacing: .025em;
+}
+.summaryDetails, .profileDetails {
+  border-top: 1px solid var(--passport-line);
+  color: var(--passport-ink);
+}
+.summaryDetails > summary, .profileDetails > summary {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: .625rem;
+  padding: .5rem .125rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: .8125rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+.summaryDetails > summary::-webkit-details-marker, .profileDetails > summary::-webkit-details-marker { display: none; }
+.summaryDetails > summary > span { flex: 1; min-width: 0; }
+.summaryDetails > summary > svg:last-child, .profileDetails > summary > svg { flex-shrink: 0; margin-left: auto; }
+.summaryDetails[open] > summary > svg:last-child, .profileDetails[open] > summary > svg { transform: rotate(180deg); }
+.summaryDetailsBody { padding-bottom: .75rem; }
+.summaryDetailsBody > span { margin: .25rem 0 .75rem; }
+.profileDetails { width: 100%; margin-top: 1.25rem; }
+.profileDetails[open] { padding-bottom: 1rem; }
+.manualOpening { margin-top: .75rem; padding: .875rem; border: 1px solid var(--passport-attention); border-radius: .75rem; background: var(--passport-attention-bg); color: var(--passport-ink); font-size: .875rem; line-height: 1.6; }
+.manualOpening strong { display: block; color: var(--passport-attention); }
+.manualOpening p { margin-top: .375rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .summaryDetails > summary > svg:last-child, .profileDetails > summary > svg { transition: transform 160ms ease; }
+}
+@media (forced-colors: active) {
+  .summaryDetails, .profileDetails { border-color: CanvasText; color: CanvasText; }
+  .manualOpening { background: Canvas; color: CanvasText; border-color: CanvasText; }
+  .manualOpening strong { color: CanvasText; }
+}
+
+/* In a narrow passport, let long titles continue below the photograph. */
+@container (min-width: 221px) and (max-width: 320px) {
+  .passport:global(.sun-tap-shell) :global(.sun-summary-product) { display: flow-root !important; }
+  .passport:global(.sun-tap-shell) :global(.sun-summary-product__visual) { float: left; width: 76px; margin: .25rem .75rem .75rem 0; }
+  .passport :global(.sun-summary-product__copy) { display: contents; }
+  .passport :global(.sun-summary-product__title) { text-wrap: wrap; }
+}
+
+.passport:global(.sun-tap-shell) :global(.sun-summary-panel) > div.relative > :not([hidden]) ~ :not([hidden]) { margin-top: .5rem; }
+
+.passport:global(.sun-tap-shell) > :global(.sun-summary-panel) { margin-top: .75rem !important; }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { translateSunUiText } from "../src/app/sun/sun-locale.ts";
 
 const [page, sectionNav, css, experienceCss] = await Promise.all([
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
@@ -18,14 +19,16 @@ function firstViewportSummary() {
   return page.slice(start, end);
 }
 
-test("SUN first viewport presents product, result, facts, location and actions in that order", () => {
+test("SUN first viewport presents product, result and actions before optional reading evidence", () => {
   const summary = firstViewportSummary();
   const orderedTestIds = [
     "sun-summary-product",
     "sun-summary-status",
-    "sun-summary-facts",
-    "sun-summary-location",
     "sun-summary-actions",
+    "sun-summary-evidence",
+    "sun-summary-facts",
+    "sun-summary-location-disclosure",
+    "sun-summary-location",
   ];
 
   let cursor = -1;
@@ -58,12 +61,13 @@ test("SUN first viewport keeps the result compact and preserves every risk state
   assert.doesNotMatch(summary, /w-20 h-20|text-3xl|border-4/);
 });
 
-test("SUN location wraps and the two first actions are touch-safe", () => {
+test("SUN optional location preserves its source while the contextual actions remain touch-safe", () => {
   const summary = firstViewportSummary();
   const locationStart = summary.indexOf('data-testid="sun-summary-location"');
   const actionsStart = summary.indexOf('data-testid="sun-summary-actions"');
-  const location = summary.slice(locationStart, actionsStart);
-  const actions = summary.slice(actionsStart);
+  const evidenceStart = summary.indexOf('data-testid="sun-summary-evidence"');
+  const location = summary.slice(locationStart);
+  const actions = summary.slice(actionsStart, evidenceStart);
 
   assert.match(location, /whitespace-normal break-words/);
   assert.doesNotMatch(location, /truncate/);
@@ -76,10 +80,45 @@ test("SUN location wraps and the two first actions are touch-safe", () => {
   assert.match(summary, /canRequestBrowserLocation && !hasConfirmedBrowserLocation/);
   assert.match(location, /Ver fuente y horario/);
 
-  assert.match(actions, /href=\{hasSourceResult \? "#product-info" : "#sun-availability-help"\}[\s\S]*?hasSourceResult \? "Ver producto" : "Qué puedo hacer"/);
+  assert.match(actions, /href=\{primaryPostTapAction\.href\}[\s\S]*?data-testid="sun-summary-primary"[\s\S]*?\{primaryPostTapAction\.label\}/);
   assert.match(actions, /!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic[\s\S]*?\? "#sun-condition"/);
   assert.match(actions, /"Entender apertura"[\s\S]*?"Ver origen y mapa"/);
-  assert.equal((actions.slice(0,actions.indexOf("sun-account-entry")).match(/min-h-11/g) || []).length, 2);
+  assert.equal((actions.match(/min-h-11/g) || []).length, 2);
+});
+
+test("SUN native disclosures preserve evidence in the DOM without hiding the result or manual opening warning", () => {
+  const summary = firstViewportSummary();
+  const actions = summary.indexOf('data-testid="sun-summary-actions"');
+  const visibleResult = summary.slice(summary.indexOf('data-testid="sun-summary-status"'), actions);
+  assert.doesNotMatch(visibleResult, /<details\b/);
+  assert.match(visibleResult, /\{consumerStatus\.copy\}/);
+  assert.match(visibleResult, /isManualOpenedState \? <aside[^>]*data-testid="sun-summary-manual-opening"[\s\S]*?\{friendlyStageBody\}/);
+  for (const testId of ["sun-summary-evidence", "sun-summary-location-disclosure"]) {
+    const opening = summary.match(new RegExp(`<details[^>]*data-testid="${testId}"[^>]*>`));
+    assert.ok(opening, `${testId} must be native details`);
+    assert.doesNotMatch(opening[0], /\bopen(?:\s|=|>)/);
+  }
+  assert.match(summary, /data-testid="sun-summary-evidence"[\s\S]*?data-sun-server-evidence="true">\{batchDisplay\}[\s\S]*?<PassportEssentialSignals/);
+  assert.match(summary, /data-testid="sun-summary-location-disclosure"[\s\S]*?data-sun-server-evidence="true"[^>]*>\s*\{summaryLocationDisplay\}/);
+  assert.match(page, /<details[^>]*data-testid="sun-product-reading-details"[\s\S]*?<ol className="sun-result-journey"[\s\S]*?data-sun-datetime=\{localTapTimeIso/);
+});
+
+test("SUN disclosure labels and the non-fresh fallback localize without adding a freshness claim", () => {
+  const messages = [
+    ["Qué informa esta lectura", "O que esta leitura informa", "What this reading tells you"],
+    ["Ubicación y horario", "Localização e horário", "Location and time"],
+    ["Ficha y datos de esta lectura", "Ficha e dados desta leitura", "Product and reading details"],
+    ["Podés conocer el producto. Las opciones de la marca requieren sus validaciones y son voluntarias.", "Você pode conhecer o produto. As opções da marca exigem suas validações e são voluntárias.", "You can learn about the product. The brand's options require their own checks and are optional."],
+    ["Un operador registró una apertura", "Um operador registrou uma abertura", "An operator recorded an opening"],
+    ["La apertura fue declarada por un operador. No fue detectada automáticamente por el sello; si no la reconocés o el envase está dañado, no uses el producto y avisá para revisión.", "A abertura foi declarada por um operador. Não foi detectada automaticamente pelo lacre; se você não a reconhecer ou a embalagem estiver danificada, não use o produto e avise para revisão.", "The opening was declared by an operator. It was not automatically detected by the seal; if you do not recognize it or the package is damaged, do not use the product and report it for review."],
+  ];
+  for (const [es, pt, en] of messages) {
+    assert.equal(translateSunUiText(es, "pt-BR"), pt);
+    assert.equal(translateSunUiText(es, "en"), en);
+    assert.equal(translateSunUiText(en, "es-AR"), es);
+    assert.equal(translateSunUiText(pt, "es-AR"), es);
+  }
+  assert.doesNotMatch(page, /: "La lectura es fresca\. Primero lees la ficha/);
 });
 
 test("SUN identity and state never wait for location permission and clear the bottom navigation", () => {

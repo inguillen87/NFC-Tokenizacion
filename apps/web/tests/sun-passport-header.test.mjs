@@ -14,11 +14,14 @@ test("SUN header gives the existing brand priority and puts status and locale in
   assert.match(source, /sun-passport-header sun-topbar \$\{styles\.header\}/);
   assert.match(source, /<Link href="\/" prefetch=\{false\} aria-label=\{homeLabel\(locale\)\}/);
   assert.ok(source.indexOf("<SunBrandIdentity") < source.indexOf("<ThemeToggle"));
-  assert.ok(source.indexOf("<ThemeToggle") < source.indexOf("sun-topbar-actions"));
+  assert.match(source, /<SunBrandIdentity variant="passport" \/>/);
+  assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("<ThemeToggle"));
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("sun-live-tap-pill"));
   assert.ok(source.indexOf("sun-live-tap-pill") < source.indexOf("<SunLocaleSwitcher"));
-  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) 2\.75rem/);
-  assert.match(css, /\.header \.utilities\s*\{[^}]*grid-column: 1 \/ -1;[^}]*grid-template-columns: minmax\(0, 1fr\) 9rem;/);
+  assert.ok(source.indexOf("<SunLocaleSwitcher") < source.indexOf("<ThemeToggle"));
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(css, /\.header \.utilities\s*\{[^}]*grid-column: 1 \/ -1;[^}]*grid-template-columns: minmax\(0, 1fr\) 7\.625rem 2\.75rem;/);
+  assert.match(css, /@media \(max-width: 299px\)[\s\S]*?\.header \.status \{ grid-column: 1 \/ -1; grid-row: 2;/);
   assert.match(css, /\.header \.status\s*\{[^}]*max-width: 100%;[^}]*white-space: normal;/);
 });
 
