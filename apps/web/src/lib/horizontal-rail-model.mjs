@@ -33,7 +33,9 @@ export function reconcileHorizontalRailNavigation(navigation, scrollLeft, genera
     return { action: "ignore", navigation };
   }
   // Native scroll positions can round a fractional CSS target.
-  if (Math.abs(scrollLeft - navigation.left) <= 1) return { action: "settled", navigation: null };
+  // An observed scrollend can precede later scroll updates without new user input.
+  // Keep the explicit destination until a newer command or user gesture replaces it.
+  if (Math.abs(scrollLeft - navigation.left) <= 1) return { action: "settled", navigation };
   if (navigation.reframed) return { action: "wait", navigation };
   return { action: "reframe", navigation: { ...navigation, reframed: true } };
 }

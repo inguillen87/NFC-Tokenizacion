@@ -45,12 +45,39 @@ test("a previous command survives the observed return from discover to signal", 
   assert.deepEqual(command, intent(), "the original intent is not mutated");
 });
 
-test("a settled command replays at most once and is released only at its own destination", () => {
+test("a command replays at most once and remains the owner even at its destination", () => {
   const first = reconcileHorizontalRailNavigation(intent(), 262, 4);
   const stillWrong = reconcileHorizontalRailNavigation(first.navigation, 262, 4);
   assert.equal(stillWrong.action, "wait");
   assert.equal(stillWrong.navigation, first.navigation);
-  assert.deepEqual(reconcileHorizontalRailNavigation(stillWrong.navigation, 0, 4), { action: "settled", navigation: null });
+  assert.deepEqual(reconcileHorizontalRailNavigation(stillWrong.navigation, 0, 4), { action: "settled", navigation: stillWrong.navigation });
+});
+
+test("the observed early scrollend0 then late268 then scrollend262 cannot discard the requested first step", () => {
+  const command = Object.freeze(intent());
+  const earlyEnd = reconcileHorizontalRailNavigation(command, 0, 4);
+  assert.equal(earlyEnd.action, "settled");
+  assert.equal(earlyEnd.navigation, command);
+  assert.equal(earlyEnd.navigation.index, 0);
+  const lateEnd = reconcileHorizontalRailNavigation(earlyEnd.navigation, 262, 4);
+  assert.equal(lateEnd.action, "reframe");
+  assert.equal(lateEnd.navigation.left, 0);
+  assert.equal(lateEnd.navigation.index, 0);
+  assert.equal(lateEnd.navigation.reframed, true);
+  const restoredEnd = reconcileHorizontalRailNavigation(lateEnd.navigation, 0, 4);
+  assert.equal(restoredEnd.action, "settled");
+  assert.equal(restoredEnd.navigation, lateEnd.navigation);
+  assert.equal(reconcileHorizontalRailNavigation(restoredEnd.navigation, 268, 4).action, "wait");
+});
+
+test("replacing a settled owner with a newer request also replaces its replay budget", () => {
+  const old = reconcileHorizontalRailNavigation(intent(), 0, 4).navigation;
+  const latest = intent({ generation: old.generation + 1, index: 2, left: 524 });
+  assert.equal(reconcileHorizontalRailNavigation(latest, 262, old.generation).action, "ignore");
+  const result = reconcileHorizontalRailNavigation(latest, 262, latest.generation);
+  assert.equal(result.action, "reframe");
+  assert.equal(result.navigation.left, 524);
+  assert.equal(result.navigation.index, 2);
 });
 
 test("an older callback cannot complete or replay the newer command", () => {

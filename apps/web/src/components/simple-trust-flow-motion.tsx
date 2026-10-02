@@ -165,15 +165,12 @@ export function SimpleTrustFlowMotion({
   const [visibleItems, setVisibleItems] = useState<ReadonlySet<number>>(() => new Set());
   const [activeItemIndex, setActiveItemIndex] = useState(0);
   const pendingNavigationRef = useRef<HorizontalRailNavigationIntent | null>(null);
-  const selectedDestinationRef = useRef<{ index: number; left: number } | null>(null);
   const navigationGenerationRef = useRef(0);
-  const scrollInProgressRef = useRef(false);
   const scheduleScrollFallbackRef = useRef<(() => void) | null>(null);
   const { mounted, pageVisible, reducedMotion } = useMotionEnvironment();
 
   useEffect(() => {
     pendingNavigationRef.current = null;
-    selectedDestinationRef.current = null;
     navigationGenerationRef.current += 1;
     setActiveItemIndex(0);
   }, [id]);
@@ -242,8 +239,8 @@ export function SimpleTrustFlowMotion({
       maximumLeft,
     });
     const generation = ++navigationGenerationRef.current;
-    selectedDestinationRef.current = { index: nextIndex, left };
-    pendingNavigationRef.current = maximumLeft > 0 && (scrollInProgressRef.current || Math.abs(list.scrollLeft - left) > 1)
+    // The latest explicit destination owns the rail until the user starts a new gesture.
+    pendingNavigationRef.current = maximumLeft > 0
       ? { generation, index: nextIndex, left, reframed: false }
       : null;
     list.scrollTo({ left, behavior: reducedMotion ? "auto" : "smooth" });
@@ -262,9 +259,6 @@ export function SimpleTrustFlowMotion({
       window.cancelAnimationFrame(animationFrame);
       animationFrame = window.requestAnimationFrame(() => {
         if (pendingNavigationRef.current || list.scrollWidth <= list.clientWidth) return;
-        const selected = selectedDestinationRef.current;
-        // At the clamped last stop a tablet can show two cards; keep the one explicitly requested.
-        if (selected && Math.abs(list.scrollLeft - selected.left) <= 1) return;
         const itemLefts = Array.from(list.children, (item) => item.getBoundingClientRect().left);
         const nextIndex = closestHorizontalRailIndex(list.getBoundingClientRect().left, itemLefts);
         setActiveItemIndex((current) => current === nextIndex ? current : nextIndex);
@@ -278,14 +272,13 @@ export function SimpleTrustFlowMotion({
       pendingNavigationRef.current = result.navigation;
       if (result.action === "settled" && pending) setActiveItemIndex(pending.index);
       if (result.action === "reframe" && result.navigation) {
-        // The previous gesture has ended; replay only its latest explicit destination, without moving focus.
+        // Reapply the latest explicit destination once, without moving focus.
         list.scrollTo({ left: result.navigation.left, behavior: "auto" });
         scheduleScrollFallbackRef.current?.();
       }
     };
 
     const finishScroll = () => {
-      scrollInProgressRef.current = false;
       settleNavigation(pendingNavigationRef.current?.generation);
       if (!pendingNavigationRef.current) queueIndexFromScroll();
     };
@@ -294,7 +287,6 @@ export function SimpleTrustFlowMotion({
       window.clearTimeout(scrollIdleTimer);
       const generation = pendingNavigationRef.current?.generation;
       scrollIdleTimer = window.setTimeout(() => {
-        scrollInProgressRef.current = false;
         settleNavigation(generation);
         if (!pendingNavigationRef.current) queueIndexFromScroll();
       }, 150);
@@ -302,7 +294,6 @@ export function SimpleTrustFlowMotion({
     scheduleScrollFallbackRef.current = nativeScrollEnd ? null : scheduleFallback;
 
     const syncIndexFromScroll = () => {
-      scrollInProgressRef.current = true;
       queueIndexFromScroll();
       scheduleScrollFallbackRef.current?.();
     };
@@ -310,7 +301,6 @@ export function SimpleTrustFlowMotion({
     const startNewGesture = (event: Event) => {
       if (!event.isTrusted) return;
       pendingNavigationRef.current = null;
-      selectedDestinationRef.current = null;
       navigationGenerationRef.current += 1;
       window.clearTimeout(scrollIdleTimer);
       queueIndexFromScroll();
@@ -321,7 +311,6 @@ export function SimpleTrustFlowMotion({
         observedWidth = list.clientWidth;
         // A changed rail width invalidates the previous pixel destination.
         pendingNavigationRef.current = null;
-        selectedDestinationRef.current = null;
         navigationGenerationRef.current += 1;
         window.clearTimeout(scrollIdleTimer);
       }
@@ -351,9 +340,7 @@ export function SimpleTrustFlowMotion({
       window.clearTimeout(scrollIdleTimer);
       scheduleScrollFallbackRef.current = null;
       pendingNavigationRef.current = null;
-      selectedDestinationRef.current = null;
       navigationGenerationRef.current += 1;
-      scrollInProgressRef.current = false;
       resizeObserver?.disconnect();
       list.removeEventListener("scroll", syncIndexFromScroll);
       if (nativeScrollEnd) list.removeEventListener("scrollend", finishScroll);

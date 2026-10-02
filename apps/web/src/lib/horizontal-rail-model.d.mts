@@ -15,10 +15,10 @@ export function wrapHorizontalRailIndex(index: number, itemCount: number): numbe
 export function closestHorizontalRailIndex(railLeft: number, itemLefts: readonly number[]): number;
 
 export type HorizontalRailNavigationIntent = {
-  generation: number;
-  index: number;
-  left: number;
-  reframed: boolean;
+  readonly generation: number;
+  readonly index: number;
+  readonly left: number;
+  readonly reframed: boolean;
 };
 
 export function horizontalRailTargetLeft(geometry: {
