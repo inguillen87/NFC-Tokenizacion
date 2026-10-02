@@ -1944,7 +1944,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
 
             {demoPhotography ? <a data-testid="sun-demo-photo-source" href={demoPhotography.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className={passportStyles.photoCredit}>
-              {demoPhotography.sourceLabel} · Referencia visual
+              {translateSunUiText(`${demoPhotography.sourceLabel} · Referencia visual`, locale)}
             </a> : null}
 
             <div className="text-center w-full">

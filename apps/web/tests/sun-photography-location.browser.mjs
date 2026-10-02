@@ -46,6 +46,7 @@ try {
    const image=page.locator('[data-testid="sun-summary-product"] img');await image.evaluate(i=>i.decode());
    check(await image.getAttribute('src')==='/sun/references/rutini-apartado.webp','Official photograph reference '+name);
    check(await credit.count()===1&&await credit.getAttribute('href')==='https://rutiniwines.com/apartado/','Source remains attributed '+name);
+   check(await credit.innerText()===(entry.locale==='en'?'Photography: Rutini Wines · Visual reference':entry.locale==='pt-BR'?'Fotografia: Rutini Wines · Referência visual':'Fotografía: Rutini Wines · Referencia visual'),'Photo credit uses the selected language '+name);
    check(await page.getByTestId('sun-location-quick-action').count()===0,'Reference cannot request phone location '+name);
    check(!/Perfil sensorial simulado|Puntaje demo|Premio simulado/.test(await page.locator('body').textContent()),'No invented producer ratings '+name);
    await page.screenshot({path:join(output,name+'.png'),fullPage:false});
