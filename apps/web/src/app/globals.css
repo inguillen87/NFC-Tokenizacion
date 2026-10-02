@@ -57218,6 +57218,25 @@ html:is(.theme-light, [data-theme="light"]) .hero-immersive-status {
   filter: none;
 }
 
+/* Give the product the caption width; keep the illustration label on its own row. */
+.simple-trust-industry-journey .trust-photo-frame > .trust-photo__callout--discover {
+  grid-template-areas:
+    "heading check"
+    "product check"
+    "lot check"
+    "demo demo";
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.simple-trust-industry-journey .trust-photo-frame .trust-photo__demo-label {
+  justify-self: start;
+}
+
+html:is(.theme-light, [data-theme="light"]) .simple-trust-industry-journey .trust-photo-frame[data-trust-industry="agro"],
+html:is(.theme-light, [data-theme="light"]) .simple-trust-industry-journey .trust-photo-frame[data-trust-industry="agro"] .trust-photo {
+  --trust-photo-accent: #9a5b00;
+}
+
 .trust-photo__phone-motion {
   position: absolute;
   top: var(--trust-phone-top, 14%);
