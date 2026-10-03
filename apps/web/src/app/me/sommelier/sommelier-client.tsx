@@ -1,248 +1,106 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Card } from "@product/ui";
-import { 
-  Sparkles, 
-  Send, 
-  ArrowLeft, 
-  Bot, 
-  Coffee, 
-  Thermometer, 
-  GlassWater, 
-  CalendarDays,
-  HelpCircle
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  classifySommelierResponse,
-  safeSommelierGuidance,
-  sommelierProvenanceLabel,
-  type SommelierProvenance,
-} from "../../../lib/sommelier-guidance";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, Bot, CalendarDays, CircleAlert, Coffee, GlassWater, Send, Thermometer } from "lucide-react";
+import { classifySommelierResponse, normalizeSommelierProductContext, safeSommelierGuidance, sommelierProvenanceLabel, type SommelierProvenance } from "../../../lib/sommelier-guidance";
+import { requestSommelierAnswer, sommelierWelcome, SOMMELIER_QUESTION_MAX_CHARS } from "../../../lib/sommelier-conversation";
+import styles from "./sommelier.module.css";
 
-interface ChatMessage {
-  id: string;
-  sender: "sommelier" | "user";
-  text: string;
-  provenance?: SommelierProvenance;
+type ChatMessage = { id: string; sender: "sommelier" | "user"; text: string; provenance?: SommelierProvenance; delivery?: "pending" | "received" | "unconfirmed" };
+const starters = [
+  { label: "Elegir un maridaje", question: "¿Qué debería tener en cuenta para elegir un maridaje?", Icon: Coffee },
+  { label: "Servir el vino", question: "¿Cómo elijo la temperatura para servir un vino?", Icon: Thermometer },
+  { label: "Entender la cata", question: "¿Cómo interpreto las notas de cata de una ficha técnica?", Icon: GlassWater },
+  { label: "Conservarlo", question: "¿Qué debería revisar antes de guardar un vino?", Icon: CalendarDays },
+] as const;
+
+function responseTitle(provenance?: SommelierProvenance) {
+  if (provenance?.mode === "live") return "Respuesta con IA";
+  if (provenance?.mode === "local-fallback") return "Guía local";
+  if (provenance?.mode === "server-fallback") return "Guía general del servicio";
+  return "Para empezar";
 }
 
-interface SommelierClientProps {
-  productName: string;
-  brandName: string;
-}
-
-export default function SommelierClient({ productName, brandName }: SommelierClientProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export default function SommelierClient({ productName, brandName }: { productName: string; brandName: string }) {
+  const context = useMemo(() => normalizeSommelierProductContext({ productName, brandName }), [productName, brandName]);
+  const welcome = useMemo((): ChatMessage => ({ id: "welcome", sender: "sommelier", text: sommelierWelcome(context), provenance: { mode: "context" } }), [context]);
+  const [messages, setMessages] = useState<ChatMessage[]>([welcome]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const requestRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
+  const followConversation = useRef(true);
+  const sequence = useRef(0);
+  const inputId = useId();
+  const hintId = useId();
 
-  // Initialize welcome message
   useEffect(() => {
-    setMessages([
-      {
-        id: "welcome",
-        sender: "sommelier",
-        text: `Hola. Puedo darte orientación general sobre "${productName || "el producto seleccionado"}" de "${brandName || "la marca indicada"}". Esos nombres fueron proporcionados por la pantalla y no prueban autenticidad ni reemplazan una ficha técnica.`,
-        provenance: { mode: "context" },
-      }
-    ]);
-  }, [productName, brandName]);
+    setMessages([welcome]); setPending(false); setFeedback("");
+    return () => { requestRef.current?.abort(); requestRef.current = null; };
+  }, [welcome]);
 
-  const handleSendMessage = async (textToSend: string) => {
-    if (!textToSend.trim()) return;
+  useEffect(() => {
+    if (followConversation.current && conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+  }, [messages]);
 
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: "user",
-      text: textToSend
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    setIsTyping(true);
-
-    try {
-      const res = await fetch("/api/cognitive-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: textToSend,
-          tone: "sommelier-chat",
-          productContext: { productName, brandName },
-        })
-      });
-
-      if (!res.ok) throw new Error("API failed");
-      const data = await res.json();
-      if (!data?.optimizedText) throw new Error("Empty AI response");
+  async function handleSendMessage(textToSend: string) {
+    if (!textToSend.trim() || requestRef.current) return;
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const questionId = `question-${++sequence.current}`;
+    followConversation.current = true;
+    setPending(true); setFeedback("");
+    setMessages(previous => [...previous, { id: questionId, sender: "user", text: textToSend.trim(), delivery: "pending" }]);
+    const result = await requestSommelierAnswer(textToSend.trim(), context, { signal: controller.signal });
+    // Navigation/context changes cancel the request and must never restore old replies.
+    if (controller.signal.aborted || requestRef.current !== controller) return;
+    if (result.status === "received") {
+      const data = result.data;
       const provenance = classifySommelierResponse(data);
-
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        sender: "sommelier",
-        text: data.optimizedText,
-        provenance,
-      }]);
-    } catch (err) {
-      console.warn("AI Sommelier fallback to rule-based cata:", err);
-      const replyText = safeSommelierGuidance(textToSend, { productName, brandName });
-
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        sender: "sommelier",
-        text: replyText,
-        provenance: { mode: "local-fallback" },
-      }]);
-    } finally {
-      setIsTyping(false);
+      setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "received" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier", text: data.optimizedText, provenance }]);
+      setInput("");
+      setFeedback("Respuesta recibida. Podés hacer otra consulta.");
+    } else {
+      const replyText = safeSommelierGuidance(textToSend, context);
+      setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "unconfirmed" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier", text: replyText, provenance: { mode: "local-fallback" } }]);
+      setFeedback("No pudimos recibir una respuesta del servicio. Conservamos tu consulta para que puedas volver a enviarla. La guía local no confirma una respuesta de IA.");
     }
-  };
+    requestRef.current = null;
+    setPending(false);
+  }
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    const text = input;
-    setInput("");
-    handleSendMessage(text);
-  };
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void handleSendMessage(input);
+  }
 
-  return (
-    <div className="space-y-6">
-      {/* Top navigation */}
-      <header className="flex items-center justify-between border-b border-white/5 pb-4">
-        <Link 
-          href="/me/products" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition"
-        >
-          <ArrowLeft className="w-4 h-4" /> Volver a mis productos
-        </Link>
-        <span className="flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-purple-300">
-          <Sparkles className="w-3 h-3 text-purple-300" /> Producto indicado · autenticidad no verificada
-        </span>
-      </header>
-
-      {/* Main Grid */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* Chat box */}
-        <div className="rounded-3xl border border-white/10 bg-slate-950/70 backdrop-blur-xl flex flex-col h-[520px] shadow-2xl relative overflow-hidden">
-          
-          {/* Sommelier Profile Header */}
-          <div className="p-4 border-b border-white/10 bg-slate-900/30 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">Cata AI Sommelier</h3>
-              <p className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Asistente enológico digital</p>
-            </div>
-          </div>
-
-          {/* Messages list */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs scrollbar-thin">
-            <AnimatePresence initial={false}>
-              {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`flex flex-col max-w-[85%] ${
-                    msg.sender === "user" ? "ml-auto items-end" : "mr-auto items-start"
-                  }`}
-                >
-                  <div
-                    className={`p-3.5 rounded-2xl leading-relaxed ${
-                      msg.sender === "user"
-                        ? "bg-purple-600 text-white rounded-br-none font-medium"
-                        : "bg-slate-900 border border-white/5 text-slate-200 rounded-bl-none"
-                    }`}
-                  >
-                    {msg.sender === "sommelier" ? (
-                      <span className="mb-1 block text-[9px] font-black uppercase tracking-wide text-cyan-300">
-                        {sommelierProvenanceLabel(msg.provenance)}
-                      </span>
-                    ) : null}
-                    {msg.text}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-
-            {isTyping && (
-              <div className="bg-slate-900 border border-white/5 text-slate-300 p-3.5 rounded-2xl rounded-bl-none mr-auto max-w-[80%] flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
-            )}
-          </div>
-
-          {/* Input form */}
-          <form onSubmit={onSubmit} className="p-3 border-t border-white/10 bg-slate-900/40 flex gap-2">
-            <input
-              type="text"
-              placeholder="Preguntale al sommelier (ej. ¿Con qué comida combina?)..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500 transition-colors"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
+  return <div className={styles.assistant} data-testid="sommelier-conversation">
+    <Link href="/me/products" className={styles.back}><ArrowLeft size={18} aria-hidden="true" />Volver a mis productos</Link>
+    <div className={styles.layout}>
+      <section className={styles.chat} aria-labelledby="sommelier-chat-title">
+        <header className={styles.chatHeading}><span className={styles.avatar}><Bot size={24} aria-hidden="true" /></span><div><h2 id="sommelier-chat-title">Conversemos sobre vinos</h2><p>Orientación general, con el origen de cada respuesta visible.</p></div></header>
+        <div ref={conversationRef} className={styles.conversation} role="log" aria-label="Conversación con el asistente de vinos" aria-live="polite" aria-relevant="additions" tabIndex={0} onScroll={event => { const log = event.currentTarget; followConversation.current = log.scrollHeight - log.scrollTop - log.clientHeight < 64; }}>
+          {messages.map(msg => <article key={msg.id} className={`${styles.message} ${msg.sender === "user" ? styles.userMessage : styles.assistantMessage}`}>
+            <span className={styles.messageLabel}>{msg.sender === "user" ? "Tu consulta" : responseTitle(msg.provenance)}</span>
+            <p>{msg.text}</p>
+            {msg.sender === "sommelier" && msg.provenance?.mode !== "context" ? <details className={styles.provenance}><summary>Origen y alcance de esta respuesta</summary><p>{sommelierProvenanceLabel(msg.provenance)}</p></details> : null}
+            {msg.delivery === "unconfirmed" ? <span className={styles.delivery}>Respuesta del servicio no recibida</span> : null}
+          </article>)}
         </div>
-
-        {/* Suggestion Chips and Bottle HUD */}
-        <div className="space-y-4">
-          <Card className="p-5 space-y-4">
-            <div>
-              <h4 className="text-xs font-black text-white uppercase tracking-wider">Consultas Sugeridas</h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">Hacé clic para preguntarle al Sommelier sobre tu botella.</p>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              {[
-                { text: "¿Con qué comida acompaña bien?", Icon: Coffee, query: "Maridaje recomendado" },
-                { text: "¿A qué temperatura se sirve?", Icon: Thermometer, query: "Temperatura ideal" },
-                { text: "¿Cuáles son las notas de cata?", Icon: GlassWater, query: "Aromas y cata en copa" },
-                { text: "¿Cuánto tiempo lo puedo guardar?", Icon: CalendarDays, query: "Potencial de guarda" }
-              ].map((chip, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendMessage(chip.query)}
-                  className="w-full text-left p-3 rounded-xl border border-white/5 bg-slate-950/40 hover:border-purple-500/35 hover:bg-purple-500/5 text-xs font-bold text-slate-200 transition-all flex items-center gap-3"
-                >
-                  <chip.Icon className="w-4.5 h-4.5 text-purple-400 shrink-0" />
-                  <span>{chip.text}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
-
-          {/* Declared identity card: this route has no SUN/tamper evidence. */}
-          <div className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-3">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400/15 text-amber-200">
-                <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-200">Identidad declarada</span>
-            </div>
-            <div className="text-xs text-slate-300 space-y-1">
-              <p>Producto indicado: <strong className="text-white">{productName}</strong></p>
-              <p>Marca indicada: <strong className="text-white">{brandName}</strong></p>
-              <p>Estado SUN/tamper: <strong className="text-amber-200">No disponible en esta pantalla</strong></p>
-              <p className="pt-1 text-[10px] leading-relaxed text-slate-400">Estos datos no verifican la botella, su contenido ni el estado físico del sello.</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        <form className={styles.composer} onSubmit={onSubmit} aria-busy={pending}>
+          <label htmlFor={inputId}>Tu pregunta sobre vinos</label>
+          <textarea ref={inputRef} id={inputId} value={input} onChange={event => setInput(event.target.value)} maxLength={SOMMELIER_QUESTION_MAX_CHARS} readOnly={pending} aria-describedby={hintId} rows={3} placeholder="Por ejemplo: ¿cómo elijo un vino para una cena?" />
+          <div className={styles.composerFooter}><p id={hintId}>Elegí una sugerencia o escribí tu pregunta. Vos decidís cuándo enviarla.</p><button type="submit" disabled={pending || !input.trim()}><Send size={18} aria-hidden="true" />{pending ? "Consultando…" : "Enviar consulta"}</button></div>
+          <p className={styles.feedback} role="status" aria-live="polite" aria-atomic="true">{pending ? "Consultando el servicio. Tu pregunta sigue visible." : feedback}</p>
+        </form>
+      </section>
+      <aside className={styles.sidebar} aria-label="Ideas y contexto de la consulta">
+        <section className={styles.panel} aria-labelledby="sommelier-starters-title"><span className={styles.eyebrow}>Ideas para conversar</span><h2 id="sommelier-starters-title">Empezá por lo que necesitás</h2><p>Estas sugerencias preparan una pregunta. Después podés editarla y enviarla.</p><div className={styles.starters}>{starters.map(({ label, question, Icon }) => <button type="button" key={label} disabled={pending} onClick={() => { setInput(question); inputRef.current?.focus(); }}><Icon size={20} aria-hidden="true" /><span>{label}</span></button>)}</div></section>
+        <section className={styles.panel} aria-labelledby="sommelier-context-title"><span className={styles.eyebrow}>Identidad declarada</span><h2 id="sommelier-context-title">Contexto de tu consulta</h2><dl className={styles.context}><dt>Producto indicado</dt><dd>{context.productName || "Sin producto seleccionado"}</dd><dt>Marca indicada</dt><dd>{context.brandName || "No indicada"}</dd><dt>Estado SUN/tamper:</dt><dd>No disponible en esta pantalla</dd></dl><p className={styles.contextNote}><CircleAlert size={18} aria-hidden="true" /><span>Estos datos no verifican la botella, su contenido ni el estado físico del sello. Consultá la ficha técnica de la marca para confirmar los datos del vino.</span></p></section>
+      </aside>
     </div>
-  );
+  </div>;
 }

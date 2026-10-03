@@ -70,7 +70,7 @@ export default async function BrandsPage() {
   return (
     <PortalShell
       title="Marcas, Fidelización & Clubes"
-      subtitle="Accede a los canales directos de tus bodegas preferidas: puntos acumulados, membresías VIP exclusivas y drops premium."
+      subtitle="Consultá los clubes, puntos y propuestas que tus marcas publican para esta cuenta."
       notificationCount={notifications.length}
     >
       {!engagement.length ? (
@@ -78,7 +78,7 @@ export default async function BrandsPage() {
           <Sparkles className="mx-auto h-8 w-8 text-slate-600 animate-pulse" />
           <h3 className="mt-3 text-sm font-black text-white">No perteneces a ningún club de marcas</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Escanea tu primera botella nexID y reclama su propiedad para habilitar beneficios y activar tu membresía.
+            Desde el pasaporte de un producto podés consultar si la marca ofrece un club y cuáles son sus condiciones para sumarte.
           </p>
         </section>
       ) : (
@@ -95,7 +95,7 @@ export default async function BrandsPage() {
                   Tus interacciones reales activan canales exclusivos de confianza.
                 </h2>
                 <p className="mt-3 max-w-xl text-xs leading-relaxed text-slate-400">
-                  Cada vez que compras y registras una botella nexID, acumulas puntos de fidelización de la bodega emisora, canjeables por visitas a bodegas, cenas exclusivas y drops limitados.
+                  Cada marca define cómo obtener puntos y qué beneficios ofrece. Consultá el saldo reportado y las condiciones de su programa antes de pedir un canje.
                 </p>
               </div>
               <div className="grid gap-2.5 grid-cols-2">
