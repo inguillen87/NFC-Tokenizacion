@@ -86,7 +86,7 @@ function normalizeClaimAuthError(error: unknown) {
   if (message === "expired") return "El codigo vencio. Usa la opcion de pedir un nuevo codigo.";
   if (message === "locked") return "Este codigo alcanzo el limite de intentos. Espera antes de solicitar otro.";
   const knownMessage = authStartErrorMessage(message);
-  return knownMessage === "No se pudo iniciar sesión." ? "No pudimos confirmar este paso. Conservamos tus datos; intenta de nuevo." : knownMessage;
+  return knownMessage === authStartErrorMessage(undefined) ? "No pudimos confirmar este paso. Conservamos tus datos; intenta de nuevo." : knownMessage;
 }
 
 function labelPolicy(value?: string | null) {

@@ -80,7 +80,7 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname === '/consumer/session') return reply(200, { ok: true, authenticated });
   if (u.pathname.startsWith('/consumer/')) {
     if (!authenticated) return reply(401, { ok: false, error: 'unauthorized' });
-    if (u.pathname === '/consumer/me') return reply(200, { ok: true, consumer: { display_name: 'Cuenta sintética QA', status: 'verified' }, stats: { products: 0, taps: 0 } });
+    if (u.pathname === '/consumer/me') return reply(200, { ok: true, consumer: { id: 'synthetic-actions-consumer', display_name: 'Cuenta sintética QA', status: 'verified' }, stats: { products: 0, taps: 0 } });
     return reply(200, { ok: true, items: [] });
   }
   const action = /^\/mobile\/passport\/(\d+)\/(consumer\/(?:save-product|join-tenant|claim)|loyalty\/enroll)$/.exec(u.pathname);

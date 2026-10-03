@@ -6,6 +6,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
+import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -30,7 +31,7 @@ const model = compile(modelSource, { "./consumer-wallet-points-model": walletMod
 const api = compile(read("_components/consumer-api.ts"), {
   "next/headers": { headers: () => { throw new Error("unexpected-network-read"); } },
   "next/navigation": { redirect: () => { throw new Error("unexpected-redirect"); } },
-  "./consumer-portal-model": { shouldRedirectToConsumerAuth: () => false },
+  "./consumer-bounded-fetch": boundedFetch,
 });
 const css = Object.fromEntries([...cssSource.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => [match[1], match[1]]));
 const shared = {

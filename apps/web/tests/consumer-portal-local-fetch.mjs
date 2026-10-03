@@ -21,7 +21,7 @@ globalThis.fetch=async(input,init)=>{
   if(url.pathname.startsWith('/consumer/')){
    if(!authorized)return reply({ok:false},401);
    if(url.pathname==='/consumer/products')return reply({ok:true,items});
-   if(url.pathname==='/consumer/me')return reply({ok:true,consumer:{display_name:'Cuenta sintética de ensayo',status:'verified'},stats:{products:items.length,taps:3}});
+   if(url.pathname==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',status:'verified'},stats:{products:items.length,taps:3}});
    if(url.pathname==='/consumer/brands')return reply({ok:true,items:[]});
    if(url.pathname==='/consumer/experiences')return reply({ok:true,verifiedExperiences:[]});
    if(url.pathname==='/consumer/taps')return reply({ok:true,items:items.slice(0,3).map(p=>({tap_event_id:p.latest_tap_event_id,tenant_slug:p.tenant_slug,product_name:p.product_name,bid:p.bid,verdict:p.latest_verdict,created_at:date}))});

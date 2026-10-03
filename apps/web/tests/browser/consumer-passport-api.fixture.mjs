@@ -35,7 +35,7 @@ const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://
   const authorized=String(req.headers.cookie||'').includes('consumer_qa=local');
   if(u.pathname==='/consumer/session')return reply(200,{ok:true,authenticated:authorized});
   if(!authorized)return reply(401,{ok:false});
-  if(u.pathname==='/consumer/me')return reply(200,{ok:true,consumer:{display_name:'Cuenta de prueba local',email:'qa@example.invalid',status:'verified'},stats:{products:14,taps:1}});
+  if(u.pathname==='/consumer/me')return reply(200,{ok:true,consumer:{id:'synthetic-passport-consumer',display_name:'Cuenta de prueba local',email:'qa@example.invalid',status:'verified'},stats:{products:14,taps:1}});
   if(u.pathname==='/consumer/products')return productsMode==='failed'?reply(503,{ok:false}):reply(200,{ok:true,items:productsMode==='empty'?[]:items});
   if(u.pathname==='/consumer/brands')return reply(200,{ok:true,items:[{name:'Bodega de prueba',slug:'recall-qa',status:'active',points_balance:0}]});
   const tap={tap_event_id:'900001',tenant_slug:'recall-qa',brand_name:'Bodega de prueba',product_name:'Vino reserva QA',bid:'LOT-RECALL-QA',verdict:'VALID_CLOSED',created_at:'2026-09-18T12:00:00Z',risk_level:'low'};

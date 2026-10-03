@@ -58,6 +58,28 @@ try{
  s.state.session={ok:true,authenticated:true};s.state.sessionHttp=503;await p.getByRole('button',{name:'Entrar a mi Pasaporte',exact:true}).click();await p.getByRole('status').filter({hasText:'No pudimos confirmar tu sesión'}).waitFor();check(new URL(p.url()).pathname==='/login','HTTP denial cannot be bypassed by a success body');
  s.state.sessionHttp=200;await p.getByRole('button',{name:'Entrar a mi Pasaporte',exact:true}).click();await p.waitForURL(url=>url.pathname==='/docs');check(true,'Successful local acknowledgement and session return to sanitized destination');await s.context.close();
  const failed=await open();await email(failed.page);failed.state.start={ok:false,error:'resend_delivery_failed'};await failed.page.getByRole('button',{name:'Recibir código',exact:true}).click();await failed.page.getByRole('status').filter({hasText:'No se pudo confirmar el envío.'}).waitFor();check(await failed.page.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='persona@example.test','Failed send retains contact');check(await failed.page.getByRole('textbox',{name:'Código de acceso',exact:true}).count()===0,'Failed send does not claim accepted challenge');await failed.context.close();
+ for(const error of ['twilio_delivery_failed','twilio_authentication_failed']) {
+  const recovery=await open(390,'dark'),p=recovery.page;
+  check(await p.getByRole('button',{name:'Email',exact:true}).getAttribute('aria-pressed')==='true','Email is the initial channel');
+  await email(p);await p.getByRole('button',{name:'WhatsApp',exact:true}).click();
+  await p.getByRole('textbox',{name:'Número de teléfono sin código de país',exact:true}).fill('1155551234');
+  recovery.state.start={ok:false,error};await p.getByRole('button',{name:'Recibir código',exact:true}).click();
+  await p.getByRole('button',{name:'Continuar con email',exact:true}).waitFor();
+  check(await p.getByRole('textbox',{name:'Código de acceso',exact:true}).count()===0,`${error} never claims a sent challenge`);
+  const callsBefore=recovery.state.calls.length;
+  await p.getByRole('button',{name:'Continuar con email',exact:true}).click();
+  const retainedEmail=p.getByRole('textbox',{name:'Correo electrónico',exact:true});
+  await p.waitForFunction(()=>document.activeElement?.type==='email');
+  check(await retainedEmail.inputValue()==='persona@example.test',`${error} preserves email draft and focus`);
+  check(recovery.state.calls.length===callsBefore,`${error} switching channels never sends automatically`);
+  check(new URL(p.url()).searchParams.get('next')==='/docs',`${error} preserves return context`);
+  recovery.state.start={ok:true,delivery:{channel:'email',status:'accepted'}};
+  await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();
+  check(recovery.state.calls.filter(c=>c.path.endsWith('/start')).length===2,`${error} fallback is explicitly requested once`);
+  await p.getByRole('button',{name:'Cambiar contacto',exact:true}).click();await p.getByRole('button',{name:'WhatsApp',exact:true}).click();
+  check(await p.getByRole('textbox',{name:'Número de teléfono sin código de país',exact:true}).inputValue()==='1155551234',`${error} retains phone draft too`);
+  await recovery.context.close();
+ }
  const slow=await open();await email(slow.page);slow.state.holdStart=true;await slow.page.locator('form').evaluate(form=>{form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});await slow.page.waitForFunction(()=>document.querySelector('form')?.getAttribute('aria-busy')==='true');check(await slow.page.getByRole('textbox',{name:'Correo electrónico',exact:true}).isDisabled(),'Pending request holds stable contact');await slow.page.getByRole('status').filter({hasText:'No pudimos confirmar la solicitud.'}).waitFor({timeout:16000});check(slow.state.calls.filter(c=>c.path.endsWith('/start')).length===1,'Double submit and timeout never retry automatically');check(await slow.page.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='persona@example.test','Timeout preserves contact');check(await slow.page.locator('form').getAttribute('aria-busy')==='false','Timeout exits busy state');check((await slow.page.getByRole('status').innerText()).includes('mensaje llegue igualmente'),'Interrupted send does not claim delivery failed');await slow.context.close();
  for(const kind of ['legacy-code','magic-token']){
   const cancelled=await open(),p=cancelled.page,state=cancelled.state;state.holdVerify=true;state.verifyHttp=404;
