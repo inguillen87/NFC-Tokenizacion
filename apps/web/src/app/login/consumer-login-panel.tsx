@@ -21,7 +21,7 @@ async function logoutConsumerSession() {
 
 export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const safeNextPath = normalizeSafeReturnPath(nextPath, "/me");
-  const [contactDraft, setContactDraft] = useState(() => createEmptyConsumerContactDraft());
+  const [contactDraft, setContactDraft] = useState<ConsumerContactDraft>(() => ({ ...createEmptyConsumerContactDraft(), channel: "email" }));
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"start" | "verify">("start");
   const [feedback, setFeedback] = useState<{ message: string; tone: "info" | "error"; field?: "contact" | "code" }>({ message: "", tone: "info" });
@@ -51,6 +51,11 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     setStep("start");
     setCode("");
     setStatus("");
+  }
+
+  function changeChannel() {
+    changeContact({ ...contactDraft, channel: contactDraft.channel === "email" ? "whatsapp" : "email" });
+    requestAnimationFrame(() => formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus());
   }
 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -217,10 +222,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           <div className={styles.secondaryActions}>
             <button type="button" disabled={pending} onClick={() => void start()} className={styles.secondary}>Reenviar código</button>
             <button type="button" disabled={pending} onClick={() => { changeContact(contactDraft); requestAnimationFrame(() => formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus()); }} className={styles.secondary}>Cambiar contacto</button>
-            <button type="button" disabled={pending} onClick={() => changeContact({ ...contactDraft, channel: contactDraft.channel === "email" ? "whatsapp" : "email" })} className={styles.secondary}>{contactDraft.channel === "email" ? "Probar con WhatsApp" : "Probar con email"}</button>
+            <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary}>{contactDraft.channel === "email" ? "Continuar con WhatsApp" : "Continuar con email"}</button>
           </div>
           <p className={styles.hint}>Puede demorar unos instantes. En email, revisá también Spam. Si pedís otro código, usá el más reciente.</p>
         </> : null}
+        {step === "start" && feedback.tone === "error" && !feedback.field ? <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary} aria-describedby="consumer-access-feedback">
+          {contactDraft.channel === "email" ? "Continuar con WhatsApp" : "Continuar con email"}
+        </button> : null}
       </form>
       <p id="consumer-access-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!status} className={styles.feedback} data-tone={feedback.tone}>{status}</p>
     </div>

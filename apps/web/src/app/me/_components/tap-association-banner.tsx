@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { associationCopy, associationLocale, type AssociationLocale } from "./tap-association-copy";
 import { createTapAssociationRunner, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
   type TapAssociationAction, type TapAssociationContext, type TapAssociationState, type TapAssociationSession } from "./tap-association-model";
@@ -15,6 +15,9 @@ async function actionTransport(path: string, body: Record<string, unknown>, sign
 }
 
 function AssociationCard({ context }: { context: TapAssociationContext }) {
+  const router = useRouter();
+  const refreshPortal = useRef(router.refresh);
+  refreshPortal.current = router.refresh;
   const [locale, setLocale] = useState<AssociationLocale>("es-AR");
   const [selected, setSelected] = useState<TapAssociationAction | null>(context.preferred);
   const [session, setSession] = useState<TapAssociationSession>("checking");
@@ -34,7 +37,9 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
 
   useEffect(() => {
     // A fresh runner for every effect setup also supports React StrictMode.
-    const current = createTapAssociationRunner(context, actionTransport);
+    const current = createTapAssociationRunner(context, actionTransport, () => {
+      if (runner.current === current) refreshPortal.current();
+    });
     runner.current = current;
     const unsubscribe = current.subscribe(setState);
     return () => { unsubscribe(); current.dispose(); if (runner.current === current) runner.current = null; };
@@ -96,7 +101,7 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
       <ul aria-live="polite">{TAP_ASSOCIATION_ACTIONS.map(action => state.results[action] ? <li key={action} data-testid={`tap-association-result-${action}`} data-outcome={state.results[action]?.outcome}>
         <strong>{copy.actions[action].label}</strong><p>{copy.outcomes[state.results[action]!.outcome]}</p>
       </li> : null)}</ul>
-      <Link href="/me/products" prefetch={false}>{copy.products}</Link>
+      <Link href="/me/products" className={styles.collectionLink} prefetch={false}>{copy.products}</Link>
     </section> : null}
   </section>;
 }

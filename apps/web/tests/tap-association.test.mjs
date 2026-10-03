@@ -33,7 +33,7 @@ function compile(code, name, loader = require) {
 const copy = compile(copySource, "tap-association-copy.ts");
 function render(query) {
   const dependencies = request => {
-    if (request === "next/navigation") return { useSearchParams: () => new URLSearchParams(query) };
+    if (request === "next/navigation") return { useSearchParams: () => new URLSearchParams(query), useRouter: () => ({ refresh() {} }) };
     if (request === "next/link") return { __esModule: true, default: ({ children, prefetch, ...props }) => React.createElement("a", props, children) };
     if (request === "./tap-association-model") return model;
     if (request === "./tap-association-copy") return copy;
@@ -148,6 +148,73 @@ test("runner makes one selected request, serializes rapid clicks and never repea
   assert.equal(calls.length, 1);
   assert.deepEqual(runner.state(), { pending: null, results: { save: { outcome: "saved", retryable: false } } });
   runner.dispose();
+});
+
+test("confirmed receipts refresh portal reads once per explicit action and never repeat the write", async () => {
+  let refreshes = 0;
+  const requests = [];
+  const runner = model.createTapAssociationRunner(context(), async path => {
+    requests.push(path);
+    const action = { "save-product": "save", "join-tenant": "join", claim: "claim", enroll: "rewards" }[path.split("/").at(-1)];
+    return { status: 200, payload: successPayloads[action] };
+  }, () => { refreshes++; });
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    assert.equal((await runner.run(action)).outcome, outcome[action]);
+    assert.equal(await runner.run(action), null);
+  }
+  assert.equal(requests.length, 4);
+  assert.equal(refreshes, 4);
+  assert.equal(runner.state().results.save.outcome, "saved", "revalidation retains confirmed feedback");
+  runner.dispose();
+});
+
+test("lost, rejected, malformed and incomplete receipts never refresh or invent a saved product", async () => {
+  const responses = [
+    new Error("response lost"),
+    { status: 200, payload: null },
+    { status: 200, payload: { ok: true } },
+    { status: 200, payload: { ok: true, saved: true, eventId: 716 } },
+    { status: 500, payload: successPayloads.save },
+    { status: 401, payload: { error: "unauthorized" } },
+    { status: 403, payload: { error: "fresh_tap_capability_required", fresh_token_status: "fresh_token_expired" } },
+    { status: 403, payload: { reason: "fresh_tap_capability_required", fresh_token_status: "fresh_token_already_used" } },
+    { status: 409, payload: { error: "ownership_already_claimed" } },
+    { status: 503, payload: { operation_committed: true } },
+  ];
+  for (const response of responses) {
+    let refreshes = 0, writes = 0;
+    const runner = model.createTapAssociationRunner(context(), async () => {
+      writes++;
+      if (response instanceof Error) throw response;
+      return response;
+    }, () => { refreshes++; });
+    const result = await runner.run("save");
+    assert.notEqual(result.outcome, "saved");
+    assert.equal(refreshes, 0);
+    assert.equal(writes, 1, "a response never schedules an automatic retry");
+    if (!result.retryable) assert.equal(await runner.run("save"), null);
+    runner.dispose();
+  }
+});
+
+test("expired and used readings require a new physical TAP and remain terminal", async () => {
+  for (const [freshTokenStatus, expected] of [["fresh_token_expired", "fresh_expired"], ["fresh_token_already_used", "fresh_used"]]) {
+    assert.deepEqual(model.tapAssociationResult("save", "715", 403, { error: "fresh_tap_capability_required", fresh_token_status: freshTokenStatus }), { outcome: expected, retryable: false });
+    for (const locale of Object.values(copy.associationCopy)) assert.ok(locale.outcomes[expected].trim());
+  }
+  assert.match(copy.associationCopy["es-AR"].outcomes.fresh_expired, /Acercá de nuevo el teléfono a la etiqueta/);
+  assert.match(copy.associationCopy["es-AR"].outcomes.fresh_used, /Revisá tus productos/);
+  assert.deepEqual(model.tapAssociationResult("save", "715", 403, { error: "fresh_tap_capability_required", fresh_token_status: "fresh_token_missing" }), { outcome: "fresh_required", retryable: false });
+});
+
+test("an unmounted context ignores a late confirmed receipt and cannot refresh the new portal", async () => {
+  let resolveResponse, refreshes = 0;
+  const runner = model.createTapAssociationRunner(context(), async () => new Promise(resolve => { resolveResponse = resolve; }), () => { refreshes++; });
+  const pending = runner.run("save");
+  runner.dispose();
+  resolveResponse({ status: 200, payload: successPayloads.save });
+  assert.equal(await pending, null);
+  assert.equal(refreshes, 0);
 });
 
 test("separate result summary survives a failed action and manual retry sends only that action", async () => {

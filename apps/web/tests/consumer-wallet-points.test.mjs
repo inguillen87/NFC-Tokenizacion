@@ -6,6 +6,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
+import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -26,7 +27,7 @@ const model = compile(modelSource);
 const api = compile(readFileSync(new URL("_components/consumer-api.ts", dir), "utf8"), {
   "next/headers": { headers: () => { throw new Error("unexpected-network-read"); } },
   "next/navigation": { redirect: () => { throw new Error("unexpected-redirect"); } },
-  "./consumer-portal-model": { shouldRedirectToConsumerAuth: () => false },
+  "./consumer-bounded-fetch": boundedFetch,
 });
 const list = (items = []) => ({ ok: true, items });
 const wallet = (overrides = {}) => ({
