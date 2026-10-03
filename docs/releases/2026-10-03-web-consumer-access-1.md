@@ -19,6 +19,12 @@ These observations establish response statuses, not handset message delivery or 
 
 The reported central animation of several photos has not been reproduced in an authenticated live account. The bounded loading change must not be presented as proof that this particular animation's cause was found. Source review found no carousel in the consumer portal shell; the global loading identity was animated, while the new portal loading view is static.
 
+## Local validation before publication
+
+The current application source passed the production Next build and TypeScript checks. WEB tests passed 870/870 with no skipped cases. Browser checks passed: access 168 checks in 24 views; confirmed save/refresh 313 in 18 views; portal experience 319 in 40 views; action feedback 34; bounded loading/recovery 230 in 16 captured views. Widths include 320, 390, 768 and 1440 pixels in light/dark themes. The save suite uses the actual Next router and checks visibility above fixed navigation, not only element presence. These are synthetic sessions and loopback fixtures; they do not certify a customer's saved database record or physical phone.
+
+Loading fault injection produced three React 419 recoverable framework reports in the accepted run. Each original numeric digest matched the failed initial document's streamed Suspense record, RSC error record and observed DOM template; each expected private-denying error view was visible before the report and each explicit retry restored all five read sources. Raw events are retained. There were zero unexpected client/native errors, business writes or location calls. Forty-three negative controls reject unrelated, duplicated, unbound or unsuccessful recovery reports. Earlier diagnostic runs failed the original zero-error rule and remain failed; they were not rewritten as accepted evidence.
+
 ## Release status and boundaries
 
 This source record precedes final verification/publication. The served production baseline is `2026.10.02-web-sun-client.1`, source `a9c07c1374248fc041a1f84ab9249b881ab766cb`, deployment `dpl_5yDh1FvHbb81rDU6Use8tigTS1nv`, WEB project `prj_pQIhl6GMCfAaSBpxPmLNDuyKEk17`. Its source is the immediate rollback target. Application-source base is `f76215265d7d7bf7a19dfb9937387f75543e7b99`, a documentation closure with the same WEB tree as that served source.

@@ -8,27 +8,28 @@ export async function createConsumerPortalLoadingFixture() {
     const path = new URL(req.url, "http://127.0.0.1").pathname;
     const requested = /(?:^|;\s*)consumer_loading_qa=([^;]+)/.exec(req.headers.cookie || "")?.[1];
     const scenario = allowed.has(requested) ? requested : "session-401";
-    const record = { path, scenario, method: req.method, closedBeforeEnd: false };
+    const record = { path, scenario, method: req.method, closedBeforeEnd: false, responseStatus: null, injectedFailure: null };
     requests.push(record);
     res.on("close", () => { record.closedBeforeEnd = !res.writableEnded; });
     res.setHeader("cache-control", "no-store");
     res.setHeader("content-type", "application/json");
-    const reply = (body, status = 200) => { res.writeHead(status); res.end(JSON.stringify(body)); };
+    const reply = (body, status = 200) => { record.responseStatus = status; res.writeHead(status); res.end(JSON.stringify(body)); };
     if (req.method !== "GET") return reply({ ok: false, error: "fixture_writes_forbidden" }, 405);
     if (path === "/consumer/session") {
-      if (scenario === "session-headers-stall") return;
+      if (scenario === "session-headers-stall") { record.injectedFailure = "stalled-headers"; return; }
       if (scenario === "session-body-stall") {
+        record.injectedFailure = "stalled-body"; record.responseStatus = 200;
         res.writeHead(200); res.flushHeaders(); res.write('{"ok":true,"authenticated":'); return;
       }
-      if (scenario === "session-500") return reply({ ok: true, authenticated: true }, 500);
-      if (scenario === "session-malformed") { res.writeHead(200); res.end("{malformed"); return; }
+      if (scenario === "session-500") { record.injectedFailure = "http-500"; return reply({ ok: true, authenticated: true }, 500); }
+      if (scenario === "session-malformed") { record.injectedFailure = "invalid-json"; record.responseStatus = 200; res.writeHead(200); res.end("{malformed"); return; }
       if (scenario === "session-401") return reply({ ok: false, authenticated: false }, 401);
       return reply({ ok: true, authenticated: true, consumer: { id: "synthetic-only" } });
     }
     if (scenario === "session-401" || scenario.startsWith("session-")) return reply({ ok: false, error: "unauthorized_fixture_data" }, 401);
     if (path === "/consumer/me") return reply({ ok: true, consumer: { id: "synthetic-only", display_name: "Cuenta local QA", status: "active" }, stats: { products: 1, taps: 1 } });
     if (path === "/consumer/products") {
-      if (scenario === "products-body-stall") { res.writeHead(200); res.flushHeaders(); res.write('{"ok":true,"items":['); return; }
+      if (scenario === "products-body-stall") { record.injectedFailure = "stalled-body"; record.responseStatus = 200; res.writeHead(200); res.flushHeaders(); res.write('{"ok":true,"items":['); return; }
       return reply({ ok: true, items: [{ product_name: "Producto local QA", brand_name: "Marca local QA", tenant_slug: "loading-qa", bid: "LOT-QA", latest_tap_event_id: "900001", ownership_status: "viewed" }] });
     }
     if (["/consumer/taps", "/consumer/brands", "/consumer/experiences"].includes(path)) return reply({ ok: true, items: [] });

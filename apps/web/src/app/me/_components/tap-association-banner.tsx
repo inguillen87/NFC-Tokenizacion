@@ -62,7 +62,10 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   }, [sessionRevision]);
 
   useEffect(() => {
-    if (!state.pending && Object.keys(state.results).length) resultFocus.current?.focus();
+    if (!state.pending && Object.keys(state.results).length) {
+      resultFocus.current?.scrollIntoView({ block: "start", inline: "nearest", behavior: "instant" });
+      resultFocus.current?.focus({ preventScroll: true });
+    }
   }, [state]);
 
   async function confirm() {

@@ -114,7 +114,7 @@ try {
   const code = claim.page.getByLabel('Codigo recibido', { exact: true }); await code.waitFor();
   check(await code.evaluate(el => el === document.activeElement) && await code.getAttribute('autocomplete') === 'one-time-code', 'Accepted code request focuses a labelled autofill-enabled code field');
   check(await claim.page.getByRole('button', { name: 'Confirmar', exact: true }).isDisabled(), 'Confirm stays disabled for a missing code');
-  check((await claim.page.getByRole('status').innerText()).includes('no confirma todavía su entrega'), 'Accepted OTP request does not claim delivery');
+  check((await claim.page.getByRole('status').innerText()).includes('La entrega todavía no está confirmada'), 'Accepted OTP request does not claim delivery');
   await code.fill('1234'); await code.press('Enter'); await claim.page.getByRole('alert').waitFor();
   check(await code.inputValue() === '1234' && await code.evaluate(el => el === document.activeElement), 'Rejected code stays available with focus and announced recovery');
   await code.fill('5678'); await code.press('Enter'); const heading = claim.page.getByRole('heading', { name: 'Comprobante de Compra (Ticket/Factura)', exact: true }); await heading.waitFor();

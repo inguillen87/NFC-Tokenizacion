@@ -25,9 +25,30 @@ const report = {
   localOnly: true, actualProductionBuild: true, actualNextRouterAndPages: true,
   syntheticSaveReceipts: true, syntheticReadOnlyAccountProjections: true,
   apiPersistenceVerified: false, physicalTapVerified: false, backendWrites: 0,
-  browser: browser.version(), checks: [], views: [], cases: [], errors: [], unexpectedWrites: [], geolocationCalls: 0,
+  browser: browser.version(), checks: [], views: [], viewportEvidence: [], cases: [], errors: [], unexpectedWrites: [], geolocationCalls: 0,
 };
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
+
+async function viewportHitTest(target) {
+  return target.evaluate(element => {
+    const bounds = rect => ({ top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, width: rect.width, height: rect.height });
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+    const hits = document.elementsFromPoint(x, y);
+    const header = document.querySelector('.consumer-portal-root > header');
+    const navigation = document.querySelector('nav[aria-label="Navegación del portal"]');
+    const headerRect = header?.getBoundingClientRect();
+    return {
+      target: bounds(rect), viewport: { width: innerWidth, height: innerHeight }, center: { x, y },
+      centerHitsTarget: Boolean(hits[0] && (hits[0] === element || element.contains(hits[0]))),
+      completelyInViewport: rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth + 1,
+      belowHeader: !headerRect || rect.top >= headerRect.bottom,
+      hitStack: hits.slice(0, 5).map(hit => ({ tag: hit.tagName.toLowerCase(), id: hit.id || null, role: hit.getAttribute('role'), label: hit.getAttribute('aria-label') })),
+      header: header ? { position: getComputedStyle(header).position, bounds: bounds(headerRect) } : null,
+      navigation: navigation ? { position: getComputedStyle(navigation).position, bounds: bounds(navigation.getBoundingClientRect()) } : null,
+    };
+  });
+}
 
 async function startLocalServer() {
   const reserve = createServer();
@@ -129,6 +150,23 @@ async function open(width, theme, scenario) {
   await page.waitForLoadState('networkidle');
   await page.waitForFunction(() => document.activeElement?.id === 'tap-association-results');
   check(true, `${width}/${theme}/${scenario}: result heading receives and retains keyboard focus`);
+  // Locator screenshots can include sticky/fixed elements at misleading crop
+  // positions. Capture the untouched viewport after focus before any locator
+  // screenshot or additional scroll, then measure what is actually hit-testable.
+  const headingHitTest = await viewportHitTest(page.locator('#tap-association-results'));
+  const reviewLink = banner.getByRole('link', { name: 'Revisar mis productos', exact: true });
+  const reviewBeforeScroll = await viewportHitTest(reviewLink);
+  const focusedViewport = `${scenario}-${width}-${theme}-viewport-focused.png`;
+  await page.screenshot({ path: join(output, focusedViewport) });
+  await reviewLink.scrollIntoViewIfNeeded();
+  await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+  const reviewAfterScroll = await viewportHitTest(reviewLink);
+  const reviewViewport = `${scenario}-${width}-${theme}-viewport-review-action.png`;
+  await page.screenshot({ path: join(output, reviewViewport) });
+  report.viewportEvidence.push({ width, theme, scenario, focusedViewport, reviewViewport, headingHitTest, reviewBeforeScroll, reviewAfterScroll });
+  check(headingHitTest.completelyInViewport && headingHitTest.centerHitsTarget && headingHitTest.belowHeader, `${width}/${theme}/${scenario}: focused result heading is visible and unobstructed below the sticky header`);
+  check(reviewAfterScroll.completelyInViewport && reviewAfterScroll.centerHitsTarget, `${width}/${theme}/${scenario}: explicit collection-action scroll leaves its center unobstructed`);
+  check(reviewAfterScroll.target.height >= 44, `${width}/${theme}/${scenario}: unobstructed collection action retains its 44px touch target`);
   check(postCount === 1, `${width}/${theme}/${scenario}: result does not automatically repeat the POST`);
   if (scenario === 'confirmed') {
     check(refreshCount - initialRefreshes === 1, `${width}/${theme}: definitive receipt performs exactly one Next RSC refresh`);
