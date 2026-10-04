@@ -77,9 +77,9 @@ test("club voting and loyalty values are tenant-reported or explicitly simulated
 });
 
 test("marketplace is request-to-buy and does not claim payment or reservation", () => {
-  assert.match(marketplace, /Carrito de solicitudes/);
+  assert.match(marketplace, /Tu lista de solicitudes/);
   assert.match(marketplace, /Enviar solicitudes/);
-  assert.match(marketplace, /no cobra, reserva stock ni confirma una compra/);
+  assert.match(marketplace, /Las solicitudes no realizan un pago ni reservan stock/);
   assert.match(marketplace, /item\.request_to_buy_enabled !== true/);
   assert.doesNotMatch(marketplace, /Carrito verificado|Marketplace vivo|Compr., reserv. o ped./);
 });

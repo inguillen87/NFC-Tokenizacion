@@ -611,7 +611,7 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
                 const next = Number(event.target.value);
                 if (Number.isFinite(next) && next > 0 && next <= 100_000) setContributionPerActiveUnit(next);
               }}
-              className="mt-3 w-full rounded-xl border border-amber-200/20 bg-slate-950/75 px-3 py-2 text-base font-black text-white outline-none focus:border-amber-200/60"
+              className="mt-3 w-full rounded-xl border border-amber-200/20 bg-slate-950/75 px-3 py-2 text-base font-black text-white outline-hidden focus:border-amber-200/60"
             />
             <span className="mt-2 block font-normal leading-5 text-amber-100/75">{txt.contributionHelp}</span>
           </label>
@@ -627,7 +627,7 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
                 const next = Number(event.target.value);
                 if (Number.isFinite(next) && next > 0 && next <= 100) setModeledCoveragePct(next);
               }}
-              className="mt-3 w-full rounded-xl border border-violet-200/20 bg-slate-950/75 px-3 py-2 text-base font-black text-white outline-none focus:border-violet-200/60"
+              className="mt-3 w-full rounded-xl border border-violet-200/20 bg-slate-950/75 px-3 py-2 text-base font-black text-white outline-hidden focus:border-violet-200/60"
             />
             <span className="mt-2 block font-normal leading-5 text-violet-100/75">{txt.activeCoverage}: {modeledCoveragePct}% · {estimate.activation.toLocaleString(numberLocale)} {calculator.tagsUnitLabel}</span>
           </label>
@@ -685,7 +685,7 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
                 <article key={profile.name} className={`calculator-carrier-card rounded-2xl border p-4 ${active ? "calculator-carrier-card--active border-cyan-300/35 bg-cyan-300/10" : "border-white/10 bg-slate-950/45"}`}>
                   {active ? <p className="mb-3 inline-flex rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100">{txt.carrierRecommended}</p> : null}
                   <h3 className="text-sm font-black text-white">{profile.name}</h3>
-                  <dl className="mt-3 space-y-3 text-xs leading-5">
+                  <dl className="mt-3 v3-space-y-3 text-xs leading-5">
                     <div>
                       <dt className="font-black uppercase tracking-[0.12em] text-cyan-300">{txt.carrierUnit}</dt>
                       <dd className="mt-1 font-bold text-slate-100">{profile.unit}</dd>
@@ -749,7 +749,7 @@ function Selector({ label, value, onChange, options }: { label: string; value: s
   return (
     <label className="flex flex-col gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
       <span className="flex items-center gap-2">{label}<span className="rounded-full border border-cyan-300/30 px-1.5 text-[10px] text-cyan-300">i</span></span>
-      <select suppressHydrationWarning value={value} onChange={(event) => onChange(event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-100 outline-none transition focus:border-cyan-300/60">
+      <select suppressHydrationWarning value={value} onChange={(event) => onChange(event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-100 outline-hidden transition focus:border-cyan-300/60">
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

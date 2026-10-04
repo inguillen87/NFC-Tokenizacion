@@ -9,7 +9,7 @@ export default async function DemoLabPage() {
   const canReset = session.role === "super-admin" && dashboardPermissionMatches(session.permissions, "demo:reset");
 
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading
         eyebrow="Tenant demo operations"
         title="Demo Mission Control"

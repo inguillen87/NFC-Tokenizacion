@@ -31,7 +31,7 @@ export function DemoControlCenter() {
   const [output, setOutput] = useState("Ready.");
 
   return (
-    <div className="space-y-4">
+    <div className="v3-space-y-4">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <button suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-900 p-3 text-left text-sm text-white" onClick={async () => setOutput(JSON.stringify(await post("/seed"), null, 2))}>Seed Bodega Balmec</button>
         <button suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-900 p-3 text-left text-sm text-white" onClick={() => setOutput("Reset Demo: run pnpm demo:demobodega after db reset.")}>Reset Demo</button>

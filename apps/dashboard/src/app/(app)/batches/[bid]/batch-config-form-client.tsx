@@ -117,7 +117,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="v3-space-y-6">
         {/* Grid 1: Basic product attributes */}
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 border-b border-white/5 pb-1">1. Identidad Comercial</h3>
@@ -132,7 +132,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 onChange={handleChange}
                 maxLength={160}
                 aria-describedby="public-lot-label-help"
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Balmec TT · Cosecha 2022"
               />
               <p id="public-lot-label-help" className="mt-2 text-xs leading-5 text-slate-400">
@@ -146,7 +146,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="product_name"
                 value={formData.product_name}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Gran Reserva Malbec"
               />
             </div>
@@ -157,7 +157,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="sku"
                 value={formData.sku}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="GRM-2022-L1"
               />
             </div>
@@ -168,7 +168,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="winery"
                 value={formData.winery}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Bodega del Valle"
               />
             </div>
@@ -179,7 +179,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="region"
                 value={formData.region}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Valle de Uco, Mendoza"
               />
             </div>
@@ -190,7 +190,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="grape_varietal"
                 value={formData.grape_varietal}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Malbec"
               />
             </div>
@@ -201,7 +201,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="vintage"
                 value={formData.vintage}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="2022"
               />
             </div>
@@ -212,7 +212,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="harvest_year"
                 value={formData.harvest_year}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="2022"
               />
             </div>
@@ -223,7 +223,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="barrel_months"
                 value={formData.barrel_months}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="14"
               />
             </div>
@@ -234,7 +234,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="temperature_storage"
                 value={formData.temperature_storage}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="14-16°C"
               />
             </div>
@@ -245,7 +245,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="target_market"
                 value={formData.target_market}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="US, BR, EU"
               />
             </div>
@@ -256,7 +256,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="image_url"
                 value={formData.image_url}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="https://example.com/foto.png"
               />
             </div>
@@ -274,7 +274,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="altitude"
                 value={formData.altitude}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="1200 metros snm"
               />
             </div>
@@ -285,7 +285,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="oak_type"
                 value={formData.oak_type}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Roble Francés de 2do uso"
               />
             </div>
@@ -296,7 +296,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="alcohol"
                 value={formData.alcohol}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="14.5%"
               />
             </div>
@@ -307,7 +307,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="bottle"
                 value={formData.bottle}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="750ml / Standard"
               />
             </div>
@@ -318,7 +318,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="serving"
                 value={formData.serving}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="16-18°C"
               />
             </div>
@@ -329,7 +329,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="maridaje"
                 value={formData.maridaje}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Carnes rojas asadas, pastas trufadas"
               />
             </div>
@@ -340,7 +340,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 value={formData.notes}
                 onChange={handleChange}
                 rows={3}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition resize-y"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition resize-y"
                 placeholder="Entrada dulce y carnosa, con taninos maduros y redondos..."
               />
             </div>
@@ -359,7 +359,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="simulated_temp_c"
                 value={formData.simulated_temp_c}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="15.2"
               />
             </div>
@@ -370,7 +370,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="simulated_humidity_pct"
                 value={formData.simulated_humidity_pct}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="62"
               />
             </div>
@@ -381,7 +381,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="simulated_light"
                 value={formData.simulated_light}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="Low / protected"
               />
             </div>
@@ -392,7 +392,7 @@ export function BatchConfigFormClient({ bid, initialData }: BatchConfigFormClien
                 name="simulated_shock"
                 value={formData.simulated_shock}
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-400 transition"
                 placeholder="No critical shocks detected"
               />
             </div>

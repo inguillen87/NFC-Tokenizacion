@@ -232,7 +232,7 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
       </div>
 
       <div className={`grid gap-5 p-5 sm:p-6 ${compact ? "xl:grid-cols-[1.1fr_0.9fr]" : "xl:grid-cols-[1.2fr_0.8fr]"}`}>
-        <section className="space-y-4">
+        <section className="v3-space-y-4">
           <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -285,11 +285,11 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
           </div>
         </section>
 
-        <aside className="space-y-4">
+        <aside className="v3-space-y-4">
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Ejemplo de cola de moderación</p>
             <p className="mt-2 text-xs leading-5 text-slate-400">Fixture de UX; no representa tickets abiertos.</p>
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 v3-space-y-3">
               {moderationQueueExamples.map((item) => (
                 <div key={item.item} className={`rounded-2xl border p-3 text-xs ${toneClass(item.tone)}`}>
                   <p className="font-black">{item.item}</p>
@@ -302,7 +302,7 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
 
           <div className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-200">Valor comercial</p>
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 v3-space-y-2">
               {socialProof.map((item) => (
                 <p key={item} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2 text-xs leading-5 text-slate-200">{item}</p>
               ))}

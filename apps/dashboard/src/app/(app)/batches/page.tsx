@@ -219,7 +219,7 @@ export default async function BatchesPage({
   });
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.batches} title={copy.pages.batches.title} description={copy.pages.batches.description} />
       <Card className="p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.

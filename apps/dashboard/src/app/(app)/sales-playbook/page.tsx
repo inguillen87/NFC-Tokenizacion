@@ -122,7 +122,7 @@ export default function SalesPlaybookPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="v3-space-y-6 max-w-5xl mx-auto">
       {/* Styles for print output override */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
@@ -285,7 +285,7 @@ export default function SalesPlaybookPage() {
       </section>
 
       {/* Section 2: Accordion FAQs */}
-      <section className="space-y-4">
+      <section className="v3-space-y-4">
         {sections.map((section, secIdx) => {
           const SectionIcon = section.icon;
           return (
@@ -294,7 +294,7 @@ export default function SalesPlaybookPage() {
                 <SectionIcon className={`w-5 h-5 ${section.iconColor}`} /> {section.title}
               </h2>
               
-              <div className="space-y-3">
+              <div className="v3-space-y-3">
                 {section.items.map((item, itemIdx) => {
                   const uniqueId = `${secIdx === 0 ? "bodeguero" : secIdx === 1 ? "inversor" : "consumidor"}-${itemIdx}`;
                   const isOpen = openIndex === uniqueId;
@@ -325,7 +325,7 @@ export default function SalesPlaybookPage() {
                         id={`sales-playbook-panel-${uniqueId}`}
                         className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-[500px]" : "max-h-0 print:max-h-[500px]"}`}
                       >
-                        <div className="p-4 pt-0 border-t border-white/5 space-y-3 text-xs text-slate-300 leading-relaxed">
+                        <div className="p-4 pt-0 border-t border-white/5 v3-space-y-3 text-xs text-slate-300 leading-relaxed">
                           <p>{item.answer}</p>
                           {item.context && (
                             <div className="rounded-lg bg-slate-900/50 p-3 border-l-2 border-cyan-500/40 flex gap-2.5 items-start">
@@ -368,7 +368,7 @@ export default function SalesPlaybookPage() {
               desc: "Abrí el panel CRM. Si el evento del tag llegó al backend, mostrá su fuente y estado; si son datos demo, dejá visible esa procedencia. Enseñá Polygon o IOTA sólo cuando la evidencia de red esté verificada."
             }
           ].map((item, idx) => (
-            <div key={idx} className="rounded-xl border border-white/5 bg-slate-950/40 p-4 space-y-2 relative">
+            <div key={idx} className="rounded-xl border border-white/5 bg-slate-950/40 p-4 v3-space-y-2 relative">
               <span className="absolute -top-2.5 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-[10px] font-black text-slate-950">
                 {idx + 1}
               </span>

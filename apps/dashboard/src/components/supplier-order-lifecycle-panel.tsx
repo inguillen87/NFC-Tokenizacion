@@ -269,7 +269,7 @@ function LifecycleForm({
           </select>
         </label>
       </div>
-      <div className="mt-3 space-y-3">
+      <div className="mt-3 v3-space-y-3">
         <LifecycleInput label="Referencia de evidencia" value={draft.evidenceRef} placeholder="artifact://…, tracking o ticket interno; nunca secretos" onChange={(evidenceRef) => setDraft({ ...draft, evidenceRef })} />
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Razón auditada</span>

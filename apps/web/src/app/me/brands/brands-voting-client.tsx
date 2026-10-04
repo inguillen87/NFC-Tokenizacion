@@ -113,7 +113,7 @@ export function BrandsVotingClient() {
                 <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">{poll.description}</p>
 
                 {/* Options List */}
-                <div className="mt-4 space-y-2.5">
+                <div className="mt-4 v3-space-y-2.5">
                   {poll.options.map(option => {
                     const percentage = totalVotes ? Math.round((option.votes / totalVotes) * 100) : 0;
                     const isSelected = poll.votedOptionId === option.id;

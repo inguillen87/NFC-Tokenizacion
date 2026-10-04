@@ -32,7 +32,7 @@ export default async function ApiKeysPage() {
 
   if (!canReadApiKeys) {
     return (
-      <main className="space-y-8" data-api-keys-availability="access_denied">
+      <main className="v3-space-y-8" data-api-keys-availability="access_denied">
         <SectionHeading
           eyebrow={copy.nav.apiKeys}
           title="Developer Hub no disponible"
@@ -46,7 +46,7 @@ export default async function ApiKeysPage() {
   }
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading
         eyebrow={copy.nav.apiKeys}
         title="Developer Hub: API keys, quickstart y webhooks"

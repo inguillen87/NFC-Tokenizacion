@@ -196,7 +196,7 @@ export function DemoOpsMap({
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">País:</span>
             <select
               suppressHydrationWarning
-              className="rounded-lg border border-white/10 bg-slate-900 p-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+              className="rounded-lg border border-white/10 bg-slate-900 p-1.5 text-xs text-white focus:outline-hidden focus:border-cyan-500"
               value={country}
               onChange={(event) => setCountry(event.target.value)}
             >

@@ -71,7 +71,7 @@ export function SecureDeliveryClaimForm({ shipmentId }: Props) {
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
           Issue type
-          <select name="issue_type" defaultValue="tamper_report" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-rose-400">
+          <select name="issue_type" defaultValue="tamper_report" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-rose-400">
             <option value="tamper_report">Tamper report</option>
             <option value="missing_item">Missing item</option>
             <option value="wrong_recipient">Wrong recipient</option>
@@ -81,15 +81,15 @@ export function SecureDeliveryClaimForm({ shipmentId }: Props) {
         </label>
         <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
           Location
-          <input name="location" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-rose-400" placeholder="Recipient doorstep / depot" />
+          <input name="location" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-rose-400" placeholder="Recipient doorstep / depot" />
         </label>
         <label className="text-xs font-bold uppercase tracking-wide text-slate-400 md:col-span-2">
           Reported by
-          <input name="reported_by" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-rose-400" placeholder="recipient@company.com" />
+          <input name="reported_by" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-rose-400" placeholder="recipient@company.com" />
         </label>
         <label className="text-xs font-bold uppercase tracking-wide text-slate-400 md:col-span-2">
           Claim description
-          <textarea name="description" required className="mt-1 min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-rose-400" placeholder="Recipient reports seal opened before handoff." />
+          <textarea name="description" required className="mt-1 min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-rose-400" placeholder="Recipient reports seal opened before handoff." />
         </label>
       </div>
 

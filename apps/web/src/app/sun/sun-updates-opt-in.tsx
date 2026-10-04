@@ -99,21 +99,21 @@ export function SunUpdatesOptIn({
             aria-expanded={open}
             aria-controls="sun-updates-form"
             onClick={() => setOpen((value) => !value)}
-            className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 text-left text-xs font-black text-slate-100 transition hover:border-indigo-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 text-left text-xs font-black text-slate-100 transition hover:border-indigo-300/25 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300"
           >
             {open ? "Cerrar formulario" : "Elegir canal de contacto"}
             <ChevronDown className={`h-4 w-4 shrink-0 text-indigo-200 transition ${open ? "rotate-180" : ""}`} aria-hidden="true" />
           </button>
 
           {open ? (
-            <form id="sun-updates-form" className="mt-3 space-y-3" onSubmit={submit}>
+            <form id="sun-updates-form" className="mt-3 v3-space-y-3" onSubmit={submit}>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Nombre <span className="normal-case tracking-normal text-slate-500">(opcional)</span>
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   autoComplete="name"
-                  className="mt-1.5 block min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 text-xs font-medium normal-case tracking-normal text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-300/35 focus:ring-2 focus:ring-indigo-300/20"
+                  className="mt-1.5 block min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 text-xs font-medium normal-case tracking-normal text-white outline-hidden transition placeholder:text-slate-600 focus:border-indigo-300/35 focus:ring-2 focus:ring-indigo-300/20"
                   placeholder="Tu nombre"
                 />
               </label>
@@ -125,7 +125,7 @@ export function SunUpdatesOptIn({
                   onChange={(event) => setContact(event.target.value)}
                   autoComplete="email"
                   inputMode="email"
-                  className="mt-1.5 block min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 text-xs font-medium normal-case tracking-normal text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-300/35 focus:ring-2 focus:ring-indigo-300/20"
+                  className="mt-1.5 block min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 text-xs font-medium normal-case tracking-normal text-white outline-hidden transition placeholder:text-slate-600 focus:border-indigo-300/35 focus:ring-2 focus:ring-indigo-300/20"
                   placeholder="mail@ejemplo.com o +54 9..."
                 />
               </label>

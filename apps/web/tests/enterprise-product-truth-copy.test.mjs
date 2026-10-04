@@ -120,9 +120,10 @@ test("tap association treats the query as a reference and reports only server-co
   assert.doesNotMatch(tapAssociation, /Tap físico verificado|El tap fue verificado/);
 });
 
-test("consumer marketplace describes the drop as connected to the tag", () => {
-  assert.match(marketplace, /Drop conectado al tag/);
-  assert.doesNotMatch(marketplace, /Drop verificado por tap/);
+test("consumer marketplace presents published products without upgrading catalogue data into physical proof", () => {
+  assert.match(marketplace, /Productos publicados/);
+  assert.match(marketplace, /solicitá contacto con la marca/);
+  assert.doesNotMatch(marketplace, /Drop conectado al tag|Drop verificado por tap|ownership listo para transferir|marketplace-product-visual/);
 });
 
 test("SUN next steps and motion assets never upgrade a simulation into physical proof", () => {

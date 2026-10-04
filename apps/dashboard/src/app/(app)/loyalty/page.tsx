@@ -79,7 +79,7 @@ export default async function LoyaltyPage({ searchParams }: { searchParams?: Pro
   const rewardsAvailable = rewardsAvailability === "ready" || rewardsAvailability === "ready_empty";
 
   return (
-    <main className="space-y-8" data-loyalty-availability={availability} data-loyalty-source={source}>
+    <main className="v3-space-y-8" data-loyalty-availability={availability} data-loyalty-source={source}>
       <SectionHeading eyebrow={copy.nav.loyalty} title={copy.pages.loyalty.title} description={copy.pages.loyalty.description} />
 
       {availability === "forbidden" ? (

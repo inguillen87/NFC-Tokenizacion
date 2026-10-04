@@ -250,7 +250,7 @@ export function WorldMapRealtime({
               }
             }}
           />
-          <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} space-y-2 overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-2`}>
+          <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} v3-space-y-2 overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-2`}>
             <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-slate-200">
               <p className="text-[11px] font-black uppercase tracking-[0.14em] text-cyan-200">Historia del mapa</p>
               <p className="mt-1 font-semibold text-white">{activePoint.city}, {activePoint.country || "--"}</p>

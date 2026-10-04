@@ -59,6 +59,21 @@
 .actionLink:focus-visible, .quickLink:focus-visible { outline: 3px solid var(--experiences-accent); outline-offset: 3px; }
 .actionLink:hover, .quickLink:hover { border-color: var(--experiences-accent); }
 .infoCard .description:first-child { margin-top: 0; }
+.startCard { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--experiences-border); border-radius: 1.25rem; background: var(--experiences-surface) !important; }
+.startCard > div { flex: 1 1 18rem; }
+.startCard .heading { margin-top: 0; }
+.startIcon { display: grid; place-items: center; width: 3rem; height: 3rem; flex-shrink: 0; border-radius: 1rem; color: var(--experiences-accent); background: var(--experiences-subtle); }
+.brandResponse { margin-top: 1rem; padding: 1rem; border-left: 3px solid var(--experiences-accent); border-radius: .5rem; background: var(--experiences-subtle); }
+.brandResponse h4, .brandResponse p { margin: 0; color: var(--experiences-text) !important; font-size: .95rem; line-height: 1.6; overflow-wrap: anywhere; }
+.brandResponse p { margin-top: .5rem; white-space: pre-wrap; }
+.recordDetails { margin-top: 1rem; }
+.recordDetails summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; color: var(--experiences-accent); font-size: .9rem; font-weight: 700; }
+.recordDetails summary:focus-visible, .unavailable button:focus-visible { outline: 3px solid var(--experiences-accent); outline-offset: 3px; }
+.unavailable { padding: 1.25rem; border: 1px solid var(--experiences-border); border-radius: 1.25rem; background: var(--experiences-surface) !important; }
+.unavailable h3 { margin: 0; color: var(--experiences-text) !important; font-size: 1rem; line-height: 1.5; }
+.unavailable button { min-height: 2.75rem; margin-top: 1rem; padding: .65rem .85rem; border-radius: .75rem; border: 1px solid var(--experiences-accent); color: var(--experiences-accent); background: var(--experiences-subtle); cursor: pointer; font-size: .95rem; font-weight: 700; }
+.infoCard .actionLink { margin-top: 1rem; }
+@media (max-width: 520px) { .startCard .actionLink { width: 100%; } }
 @media (min-width: 640px) { .proofGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 768px) { .quickLinks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 1024px) { .explainerGrid { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); } .reviewGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

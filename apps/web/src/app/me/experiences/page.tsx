@@ -1,195 +1,53 @@
 import Link from "next/link";
-import { CalendarDays, MessageSquareText, ShieldCheck, Sparkles, Star, Store, TicketCheck, WalletCards } from "lucide-react";
-import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { ArrowRight, MessageSquareText, Sparkles, Star, Store, TicketCheck } from "lucide-react";
+import { buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
 import { PortalShell } from "../_components/portal-shell";
 import { VerifiedExperienceForm } from "./verified-experience-form";
+import { buildExperienceModel, experienceEventId, experienceTenant } from "./experience-model";
 import styles from "./experiences.module.css";
-
-type VerifiedExperience = {
-  id?: string;
-  product_name?: string;
-  tenant_slug?: string;
-  rating?: number;
-  title?: string | null;
-  body?: string | null;
-  city?: string | null;
-  country?: string | null;
-  trust_score?: number | null;
-  trust_score_status?: string;
-  moderation_status?: string;
-  visibility?: string;
-  verification_badges?: string[];
-  created_at?: string;
-};
-
-function statusCopy(status?: string) {
-  if (status === "approved") return "Aprobada por la marca";
-  if (status === "needs_brand_response") return "Respuesta de marca";
-  if (status === "rejected") return "No publicada";
-  return "En revisión";
-}
-
-function badgeCopy(value: string) {
-  const map: Record<string, string> = {
-    tap_fisico_confirmado: "Evento NFC asociado",
-    contacto_validado: "Contacto validado",
-    dueno_verificado: "Titularidad digital registrada",
-    producto_guardado: "Producto guardado",
-    foto_de_uso_real: "Foto aportada",
-    nfc_event_linked: "Lectura digital asociada",
-    consumer_session_authenticated: "Cuenta autenticada",
-    digital_ownership_record_claimed: "Titularidad digital registrada",
-    digital_ownership_not_claimed: "Sin titularidad digital registrada",
-    consumer_supplied_photo: "Foto aportada",
-  };
-  return map[value] || value.replace(/_/g, " ");
-}
 
 export default async function ConsumerExperiencesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   await requireConsumerSession(buildConsumerNextPath("/me/experiences", params));
-  const tenant = typeof params.tenant === "string" ? params.tenant : "";
-  const eventId = typeof params.eventId === "string" ? params.eventId : "";
-  const productName = typeof params.product === "string" ? params.product : "";
-  const payload = (await fetchConsumerPath("experiences")) as { verifiedExperiences?: unknown } | null;
-  const verifiedExperiences = asArray<VerifiedExperience>(payload?.verifiedExperiences);
+  const tenant = experienceTenant(params.tenant);
+  const eventId = experienceEventId(params.eventId);
+  const productName = typeof params.product === "string" ? params.product.slice(0, 240) : "";
+  const model = buildExperienceModel(await fetchConsumerPath("experiences"));
+  return <PortalShell title="Tus experiencias" subtitle="Compartí tu opinión, leé la respuesta de la marca y descubrí sus propuestas.">
+    <div className={styles.page} data-testid="consumer-experiences">
+      {eventId ? <VerifiedExperienceForm initialEventId={eventId} initialProductName={productName} tenant={tenant || ""} />
+        : <section className={styles.startCard} aria-labelledby="experience-start-title">
+          <span className={styles.startIcon}><MessageSquareText aria-hidden="true" /></span>
+          <div><h2 id="experience-start-title" className={styles.heading}>¿Cómo fue tu experiencia?</h2><p className={styles.description}>Elegí un producto guardado para contarle a la marca qué te gustó o qué puede mejorar.</p></div>
+          <Link className={styles.actionLink} href="/me/products" prefetch={false}>Elegir un producto<ArrowRight className={styles.icon} aria-hidden="true" /></Link>
+        </section>}
 
-  return (
-    <PortalShell
-      title="Mis experiencias y comentarios"
-      subtitle="Consultá tus comentarios y la revisión de la marca. Los registros asociados no prueban uso, procedencia ni autenticidad física del producto."
-    >
-      <div className={styles.page}>
-        
-        {/* Review Form Container */}
-        <VerifiedExperienceForm initialEventId={eventId} initialProductName={productName} tenant={tenant} />
+      <section aria-labelledby="experience-reviews-title">
+        <div className={styles.sectionHeader}><div><h2 id="experience-reviews-title" className={styles.sectionTitle}>Tus opiniones y respuestas</h2><p className={styles.description}>El estado de cada comentario, sin perder de vista el producto.</p></div></div>
+        {model.reviews.status === "unavailable" ? <section className={styles.unavailable} role="status"><h3>No pudimos cargar tus comentarios</h3><p className={styles.description}>Reintentá para consultar sus estados y las respuestas de la marca.</p><ConsumerDataRetryButton /></section>
+          : model.reviews.items.length === 0 ? <div className={styles.empty}><MessageSquareText className={styles.emptyIcon} aria-hidden="true" /><p className={styles.cardTitle}>Todavía no hay comentarios en tu cuenta</p><p className={styles.description}>Tu primera opinión empieza desde la ficha de un producto.</p></div>
+            : <div className={styles.reviewGrid}>{model.reviews.items.map(review => <article key={review.id} className={styles.reviewCard}>
+              <header className={styles.reviewHeader}><div><span className={styles.brand}>{review.tenant || "Marca no informada"}</span><h3 className={styles.productTitle}>{review.product}</h3></div>
+                {review.rating !== null ? <span className={styles.rating} aria-label={`${review.rating} de 5 estrellas`}><Star className={styles.starIcon} aria-hidden="true" />{review.rating}/5</span> : <span className={styles.badge}>Puntaje no informado</span>}</header>
+              {review.title && <p className={styles.reviewTitle}>{review.title}</p>}<p className={styles.reviewBody}>{review.body || "Comentario no informado"}</p>
+              <div className={styles.badges}><span className={styles.badge}>{review.moderation}</span><span className={styles.badge}>{review.visibility}</span></div>
+              {review.response && <section className={styles.brandResponse} aria-label="Respuesta de la marca"><h4>Respuesta de la marca</h4><p>{review.response}</p></section>}
+              {(review.badges.length > 0 || review.trust !== null) && <details className={styles.recordDetails}><summary>Ver registros asociados</summary><div className={styles.badges}>{review.badges.map((badge, index) => <span key={`${badge}-${index}`} className={styles.badge}>{badge}</span>)}{review.trust !== null && <span className={styles.badge}>Puntaje de confianza reportado: {review.trust}/100</span>}</div></details>}
+            </article>)}</div>}
+      </section>
 
-        {/* Proof-of-Tap explanation card */}
-        <section data-testid="experience-explainer" className={styles.explainer}>
-          <div className={styles.explainerGrid}>
-            <div>
-              <p className={styles.eyebrow}>Comentarios asociados al producto</p>
-              <h2 className={styles.heading}>Tu opinión queda ligada a una interacción registrada</h2>
-              <p className={styles.description}>
-                El comentario se asocia a tu cuenta y a una lectura digital o registro de titularidad en el Pasaporte. Esos registros no demuestran uso, procedencia ni condición física del producto.
-              </p>
-            </div>
-            <div className={styles.proofGrid}>
-              {[
-                { title: "Registros asociados", detail: "Lectura digital, cuenta o titularidad registrada.", Icon: ShieldCheck },
-                { title: "Revisión de la marca", detail: "La marca revisa el comentario antes de publicarlo.", Icon: Sparkles },
-              ].map(({ title, detail, Icon }) => (
-                <div key={title} className={styles.proofCard}>
-                  <Icon className={styles.icon} aria-hidden="true" />
-                  <p className={styles.cardTitle}>{title}</p>
-                  <p className={styles.description}>{detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+      <section aria-labelledby="experience-offers-title">
+        <div className={styles.sectionHeader}><div><h2 id="experience-offers-title" className={styles.sectionTitle}>Propuestas de tus marcas</h2><p className={styles.description}>Revisá sus condiciones en Beneficios antes de planificar una visita o un canje.</p></div></div>
+        {model.offers.status === "unavailable" ? <section className={styles.unavailable} role="status"><h3>No pudimos consultar las propuestas</h3><p className={styles.description}>La disponibilidad está pendiente de consulta.</p><ConsumerDataRetryButton /></section>
+          : model.offers.items.length === 0 ? <div className={styles.empty}><Sparkles className={styles.emptyIcon} aria-hidden="true" /><p className={styles.cardTitle}>No hay propuestas para mostrar en esta cuenta</p><p className={styles.description}>Las experiencias que publiquen tus marcas aparecerán acá.</p></div>
+            : <div className={styles.reviewGrid}>{model.offers.items.map(offer => <article className={styles.infoCard} key={offer.id}><span className={styles.brand}>{offer.tenant || "Marca no informada"}</span><h3 className={styles.productTitle}>{offer.title}</h3>{offer.href && <Link className={styles.actionLink} href={offer.href} prefetch={false}>Consultar beneficios<ArrowRight className={styles.icon} aria-hidden="true" /></Link>}</article>)}</div>}
+      </section>
 
-        {/* My reviews list */}
-        <section>
-          <div className={styles.sectionHeader}>
-            <div>
-              <h3 className={styles.sectionTitle}>Tus comentarios y su estado</h3>
-              <p className={styles.description}>Podés consultar cuáles siguen en revisión y la respuesta de la marca.</p>
-            </div>
-            <Link href={tenant ? `/me/products?tenant=${encodeURIComponent(tenant)}` : "/me/products"} className={styles.actionLink}>
-              Elegir un producto para comentar
-            </Link>
-          </div>
-          
-          {verifiedExperiences.length ? (
-            <div className={styles.reviewGrid}>
-              {verifiedExperiences.map((experience) => {
-                const hasTrustScore = experience.trust_score_status !== "not_computed"
-                  && typeof experience.trust_score === "number"
-                  && Number.isFinite(experience.trust_score);
-                return (
-                <article key={experience.id || `${experience.product_name}-${experience.created_at}`} className={styles.reviewCard}>
-                  <div className={styles.reviewHeader}>
-                    <div>
-                      <span className={styles.brand}>{experience.tenant_slug || "Marca"}</span>
-                      <h4 className={styles.productTitle}>{experience.product_name || "Producto asociado"}</h4>
-                      <p className={styles.description}>
-                        {[experience.city, experience.country].filter(Boolean).join(", ") || "Ubicación privada"}
-                      </p>
-                    </div>
-                    
-                    {/* Star Rating */}
-                    <div className={styles.rating}>
-                      <Star className={styles.starIcon} aria-hidden="true" />
-                      {Number(experience.rating || 0).toFixed(1)}
-                    </div>
-                  </div>
-                  
-                  <p className={styles.reviewTitle}>{experience.title || "Experiencia del producto"}</p>
-                  <p className={styles.reviewBody}>{experience.body || "Comentario pendiente de completar."}</p>
-                  
-                  {/* Badges block */}
-                  <div className={styles.badges}>
-                    <span className={styles.badge}>
-                      {hasTrustScore ? `Trust Score ${experience.trust_score}/100` : "Trust Score no calculado"}
-                    </span>
-                    <span className={styles.badge}>{statusCopy(experience.moderation_status)}</span>
-                    {(experience.verification_badges || []).slice(0, 4).map((badge) => (
-                      <span key={badge} className={styles.badge}>{badgeCopy(badge)}</span>
-                    ))}
-                  </div>
-                </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={styles.empty}>
-              <MessageSquareText className={styles.emptyIcon} aria-hidden="true" />
-              <p className={styles.cardTitle}>No hay comentarios para mostrar</p>
-              <p className={styles.description}>
-                Elegí un producto de tu Pasaporte para compartir una experiencia con la marca.
-              </p>
-            </div>
-          )}
-        </section>
-
-        {/* Bottom Quick Links Navigation */}
-        <section className={styles.quickLinks}>
-          {[
-            { title: "Catálogo", detail: "Consultá productos y propuestas de la marca.", href: tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace", Icon: Store },
-            { title: "Registros digitales", detail: "Consultá solicitudes y registros de titularidad.", href: tenant ? `/me/wallet?tenant=${encodeURIComponent(tenant)}` : "/me/wallet", Icon: WalletCards },
-            { title: "Beneficios", detail: "Consultá los beneficios disponibles en tu Pasaporte.", href: tenant ? `/me/rewards?tenant=${encodeURIComponent(tenant)}` : "/me/rewards", Icon: TicketCheck },
-          ].map(({ title, detail, href, Icon }) => (
-            <Link key={title} href={href} className={styles.quickLink}>
-              <div className={styles.quickLinkHeader}>
-                <p className={styles.cardTitle}>{title}</p>
-                <Icon className={styles.icon} aria-hidden="true" />
-              </div>
-              <p className={styles.description}>{detail}</p>
-            </Link>
-          ))}
-        </section>
-
-        {/* Upcoming Experiences Block */}
-        <section>
-          <h3 className={styles.sectionTitle}>Reservas y visitas</h3>
-          <div className={styles.infoCard}>
-            <CalendarDays className={styles.icon} aria-hidden="true" />
-            <p className={styles.cardTitle}>Información de reservas no disponible en esta pantalla.</p>
-            <p className={styles.description}>
-              Consultá con la marca para confirmar una visita o reserva.
-            </p>
-          </div>
-        </section>
-
-        {/* Check-ins History block */}
-        <section>
-          <h3 className={styles.sectionTitle}>Historial de visitas</h3>
-          <div className={styles.infoCard}>
-            <p className={styles.description}>El historial de visitas no está disponible en esta pantalla. Consultá a la marca si necesitás revisar una asistencia.</p>
-          </div>
-        </section>
-      </div>
-    </PortalShell>
-  );
+      <section data-testid="experience-explainer" className={styles.explainer}><h2 className={styles.heading}>Tu opinión, con contexto</h2><p className={styles.description}>El comentario se asocia a tu cuenta y a un registro del producto. La marca lo revisa antes de publicarlo. Esos registros no demuestran uso, procedencia ni condición física del producto.</p></section>
+      <nav className={styles.quickLinks} aria-label="Seguir explorando">
+        {[{ title: "Catálogo", detail: "Productos y propuestas de la marca.", href: tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace", Icon: Store }, { title: "Beneficios", detail: "Condiciones, puntos y vouchers de tus marcas.", href: tenant ? `/me/rewards?tenant=${encodeURIComponent(tenant)}` : "/me/rewards", Icon: TicketCheck }].map(({ title, detail, href, Icon }) => <Link key={title} href={href} className={styles.quickLink}><div className={styles.quickLinkHeader}><span className={styles.cardTitle}>{title}</span><Icon className={styles.icon} aria-hidden="true" /></div><p className={styles.description}>{detail}</p></Link>)}
+      </nav>
+    </div>
+  </PortalShell>;
 }

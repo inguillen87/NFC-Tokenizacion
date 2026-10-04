@@ -271,7 +271,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             ))}
           </div>
 
-          <div className="helpbot-input helpbot-thread mt-3 max-h-72 space-y-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
+          <div className="helpbot-input helpbot-thread mt-3 max-h-72 v3-space-y-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
             {messages.map((m, idx) => (
               <div key={idx} className={m.role === "user" ? "helpbot-message helpbot-user text-cyan-300" : "helpbot-message helpbot-text text-slate-200"}>
                 {m.role === "user" ? t.roleUser : t.roleAi}: {m.text}

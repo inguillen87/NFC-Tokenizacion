@@ -235,7 +235,7 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
                 value={selectedMemberId}
                 onChange={(event) => selectMember(event.target.value)}
                 disabled={directory.availability !== "ready" || !members.length || isNavigating}
-                className="min-h-12 w-full appearance-none rounded-xl border border-white/10 bg-slate-950/70 py-2 pl-10 pr-10 text-sm font-bold text-white outline-none transition focus:border-emerald-300/40 disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-h-12 w-full appearance-none rounded-xl border border-white/10 bg-slate-950/70 py-2 pl-10 pr-10 text-sm font-bold text-white outline-hidden transition focus:border-emerald-300/40 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="">{members.length ? "Elegí un miembro" : "Sin miembros disponibles"}</option>
                 {members.map((member) => <option key={member.id} value={member.id}>{memberLabel(member)}</option>)}
@@ -268,7 +268,7 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
               </div>
               {visibleTimeline.hasMore ? <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">Hay actividad anterior</span> : <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200">Historial cargado</span>}
             </div>
-            <ol className="relative space-y-3 before:absolute before:bottom-5 before:left-[19px] before:top-5 before:w-px before:bg-gradient-to-b before:from-emerald-300/70 before:via-cyan-300/35 before:to-transparent">
+            <ol className="relative v3-space-y-3 before:absolute before:bottom-5 before:left-[19px] before:top-5 before:w-px before:bg-gradient-to-b before:from-emerald-300/70 before:via-cyan-300/35 before:to-transparent">
               {visibleTimeline.items.map((event) => {
                 const copy = eventCopy(event);
                 const Icon = copy.icon;

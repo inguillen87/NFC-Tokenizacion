@@ -11,7 +11,7 @@ export default function EncodeStationPage() {
   const hardwareUnavailableReason = "Vista previa solamente: esta pantalla no está conectada a un lector/escritor NFC autorizado.";
 
   return (
-    <main className="space-y-4">
+    <main className="v3-space-y-4">
       <SectionHeading eyebrow="Encode" title="Encode Station" description="Vista previa del payload NDEF para demos; la escritura física requiere una estación autorizada" />
       <Card className="p-4">
         <label className="text-xs text-slate-400">Template</label>

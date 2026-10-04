@@ -9,7 +9,7 @@ export default function DashboardWorkspaceError({ error, reset }: { error: Error
   }, [error]);
 
   return (
-    <main className="space-y-6" data-testid="dashboard-workspace-error">
+    <main className="v3-space-y-6" data-testid="dashboard-workspace-error">
       <EnterpriseOpsState
         variant="error"
         title="No pudimos abrir esta vista operativa"

@@ -41,18 +41,18 @@ test("marketplace consumer UI no expone textos de demo ni mojibake", () => {
   const grid = readFileSync(new URL("../src/app/me/marketplace/marketplace-grid-client.tsx", import.meta.url), "utf8");
   const visibleSurface = `${page}\n${grid}`;
 
-  assert.match(visibleSurface, /Bodega Balmec/);
-  assert.match(visibleSurface, /Request-to-buy . sin cobro/);
-  assert.match(visibleSurface, /MercadoPago/);
-  assert.match(visibleSurface, /MetaMask \/ USDC/);
+  assert.match(visibleSurface, /Productos publicados/);
+  assert.match(visibleSurface, /solicitudes de contacto/);
+  assert.match(visibleSurface, /Las solicitudes no realizan un pago ni reservan stock/);
+  assert.match(visibleSurface, /Ver mi wallet/);
+  assert.doesNotMatch(visibleSurface, /MARKETPLACE_SHOWCASE_SLIDES|ownership listo para transferir|MercadoPago|MetaMask \/ USDC|assetScore/);
   assert.doesNotMatch(visibleSurface, /Ã|Â|�|Demo Bodega|sandbox commerce|Lote Experimental/);
 });
 
-test("consumer experiences preserves an uncomputed trust score instead of fabricating zero", () => {
-  const page = readFileSync(new URL("../src/app/me/experiences/page.tsx", import.meta.url), "utf8");
-
-  assert.match(page, /trust_score\?: number \| null/);
-  assert.match(page, /trust_score_status\?: string/);
-  assert.match(page, /Trust Score no calculado/);
-  assert.doesNotMatch(page, /trust_score \|\| 0/);
+test("consumer experiences preserves an uncomputed trust score instead of fabricating zero", async () => {
+  const { buildExperienceModel } = await import("../src/app/me/experiences/experience-model.ts");
+  for (const status of [undefined, "not_computed", "unknown"]) {
+    const result = buildExperienceModel({ ok: true, items: [], verifiedExperiences: [{ id: "test-review", trust_score: 0, trust_score_status: status }] });
+    assert.equal(result.reviews.items[0].trust, null);
+  }
 });

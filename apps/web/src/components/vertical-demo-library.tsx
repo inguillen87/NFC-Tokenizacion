@@ -61,7 +61,7 @@ export async function VerticalDemoLibrary({ locale }: { locale: Locale }) {
   const packs = await readPacks();
 
   return (
-    <section className="container-shell py-12 space-y-4">
+    <section className="container-shell py-12 v3-space-y-4">
       <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">{t.title}</p>
       <h2 className="text-2xl font-semibold text-white">{t.subtitle}</h2>
       <p className="text-sm text-slate-300">{t.why215}</p>

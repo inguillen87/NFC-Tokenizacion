@@ -214,7 +214,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     : copy.pages.analytics.description;
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.analytics} title={copy.pages.analytics.title} description={analyticsDescription} />
       <div id="analytics-active-scope" className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.

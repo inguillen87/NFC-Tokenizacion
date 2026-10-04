@@ -1,0 +1,231 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import test from "node:test";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ts from "typescript";
+import { CONSUMER_READ_TIMEOUT_MS, consumerSessionState, fetchConsumerJson } from "../src/app/me/_components/consumer-bounded-fetch.ts";
+
+test("consumer reads time out stalled headers, even when the transport ignores abort", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let signal;
+  const pending = fetchConsumerJson("https://api.example.test/consumer/session", { cache: "no-store" }, {
+    fetchImpl: async (_url, init) => { signal = init.signal; return new Promise(() => {}); },
+  });
+  assert.equal(signal.aborted, false);
+  t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS - 1);
+  assert.equal(signal.aborted, false);
+  t.mock.timers.tick(1);
+  assert.deepEqual(await pending, { status: "unavailable", reason: "timeout" });
+  assert.equal(signal.aborted, true);
+});
+
+test("the same deadline covers JSON body stalls and cancels the response body", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let cancelled = 0;
+  let signal;
+  const pending = fetchConsumerJson("https://api.example.test/consumer/products", {}, {
+    fetchImpl: async (_url, init) => {
+      signal = init.signal;
+      return { ok: true, body: { cancel: async () => { cancelled += 1; } }, json: () => new Promise(() => {}) };
+    },
+  });
+  await Promise.resolve();
+  t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS);
+  assert.deepEqual(await pending, { status: "unavailable", reason: "timeout" });
+  assert.equal(signal.aborted, true);
+  assert.equal(cancelled, 1);
+});
+
+test("a response arriving after timeout is discarded without parsing private JSON", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let respond;
+  let parsed = 0;
+  let cancelled = 0;
+  const pending = fetchConsumerJson("https://api.example.test/consumer/me", {}, {
+    fetchImpl: () => new Promise((resolve) => { respond = resolve; }),
+  });
+  t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS);
+  assert.equal((await pending).reason, "timeout");
+  respond({ ok: true, body: { cancel: async () => { cancelled += 1; } }, json: async () => { parsed += 1; return { private: "not exposed" }; } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(parsed, 0);
+  assert.equal(cancelled, 1);
+});
+
+test("successful reads clear the deadline, retain cache policy and never abort afterward", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let init;
+  const data = { ok: true, items: [] };
+  const result = await fetchConsumerJson("https://api.example.test/consumer/products", { cache: "no-store", headers: { cookie: "session=private" } }, {
+    fetchImpl: async (_url, passedInit) => { init = passedInit; return new Response(JSON.stringify(data)); },
+  });
+  assert.deepEqual(result, { status: "ready", data });
+  assert.equal(init.cache, "no-store");
+  assert.equal(init.headers.cookie, "session=private");
+  t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS * 2);
+  assert.equal(init.signal.aborted, false);
+});
+
+test("failed HTTP reads cancel the body without treating provider content as a session", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let cancelled = 0;
+  let parsed = 0;
+  let signal;
+  const result = await fetchConsumerJson("https://api.example.test/consumer/session", {}, {
+    fetchImpl: async (_url, init) => {
+      signal = init.signal;
+      return { ok: false, status: 503, body: { cancel: async () => { cancelled += 1; } }, json: async () => { parsed += 1; return { ok: true, authenticated: true }; } };
+    },
+  });
+  assert.deepEqual(result, { status: "http-error", httpStatus: 503 });
+  assert.equal(cancelled, 1);
+  assert.equal(parsed, 0);
+  t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS);
+  assert.equal(signal.aborted, false);
+});
+
+test("network rejection and invalid JSON stay unavailable, without leaking raw errors", async () => {
+  const network = await fetchConsumerJson("https://api.example.test/consumer/session", {}, {
+    fetchImpl: async () => { throw new Error("secret diagnostic"); },
+  });
+  assert.deepEqual(network, { status: "unavailable", reason: "network" });
+  const malformed = await fetchConsumerJson("https://api.example.test/consumer/session", {}, {
+    fetchImpl: async () => new Response("{broken"),
+  });
+  assert.deepEqual(malformed, { status: "unavailable", reason: "invalid-json" });
+});
+
+test("only a verified session opens private content; only explicit unauthentication requests login", () => {
+  assert.equal(consumerSessionState({ status: "ready", data: { ok: true, authenticated: true } }), "authenticated");
+  assert.equal(consumerSessionState({ status: "ready", data: { ok: true, authenticated: false } }), "unauthenticated");
+  assert.equal(consumerSessionState({ status: "http-error", httpStatus: 401 }), "unauthenticated");
+  for (const httpStatus of [403, 429, 500, 502, 503, 504]) {
+    assert.equal(consumerSessionState({ status: "http-error", httpStatus }), "unavailable");
+  }
+  for (const data of [null, [], {}, { ok: false, authenticated: false }, { ok: true }, { authenticated: true }, { ok: true, authenticated: "true" }, { ok: 1, authenticated: true }]) {
+    assert.equal(consumerSessionState({ status: "ready", data }), "unavailable");
+  }
+  for (const reason of ["network", "timeout", "invalid-json"]) assert.equal(consumerSessionState({ status: "unavailable", reason }), "unavailable");
+});
+
+const require = createRequire(import.meta.url);
+const components = new URL("../src/app/me/_components/", import.meta.url);
+const root = new URL("../src/app/me/", import.meta.url);
+function compile(source, overrides = {}) {
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+  }).outputText;
+  const loaded = { exports: {} };
+  const localRequire = (name) => Object.hasOwn(overrides, name) ? overrides[name] : require(name);
+  new Function("require", "module", "exports", compiled)(localRequire, loaded, loaded.exports);
+  return loaded.exports;
+}
+
+function loadApi(result) {
+  const calls = [];
+  const api = compile(readFileSync(new URL("consumer-api.ts", components), "utf8"), {
+    "next/headers": { headers: async () => new Headers({ cookie: "session=private; capability=one-use", "user-agent": "test" }) },
+    "next/navigation": { redirect: (url) => { throw new Error(`redirect:${url}`); } },
+    "../../api/_lib/consumer-tap-handoff": { stripConsumerTapCapabilityCookies: () => "session=private" },
+    "./consumer-bounded-fetch": {
+      consumerSessionState,
+      fetchConsumerJson: async (url, init) => { calls.push({ url, init }); return result; },
+    },
+  });
+  return { api, calls };
+}
+
+test("session lookup preserves next and strips single-use capabilities from private reads", async () => {
+  const next = "/me?fromTap=1&tapEventId=732";
+  const denied = loadApi({ status: "http-error", httpStatus: 401 });
+  await assert.rejects(() => denied.api.requireConsumerSession(next), (error) => error.message === `redirect:/login?consumer=1&next=${encodeURIComponent(next)}`);
+  const accepted = loadApi({ status: "ready", data: { ok: true, authenticated: true } });
+  await accepted.api.requireConsumerSession(next);
+  assert.equal(accepted.calls[0].init.cache, "no-store");
+  assert.equal(accepted.calls[0].init.headers.cookie, "session=private");
+});
+
+test("an unknown session stops the page before any private account, collection or brand lookup", async () => {
+  const pageSource = readFileSync(new URL("page.tsx", root), "utf8");
+  for (const result of [{ status: "unavailable", reason: "timeout" }, { status: "http-error", httpStatus: 503 }, { status: "ready", data: {} }]) {
+    const loaded = loadApi(result);
+    const page = compile(pageSource, {
+      "./_components/consumer-api": loaded.api,
+      "./_components/portal-shell": { PortalShell: () => null },
+      "./_components/consumer-home-model": { buildConsumerHomeModel: () => { throw new Error("private model must not render"); } },
+      "./_components/me-portal-interactive-client": { MePortalInteractiveClient: () => null },
+    }).default;
+    await assert.rejects(() => page({ searchParams: Promise.resolve({ fromTap: "1", tapEventId: "732" }) }), /consumer_session_unavailable/);
+    assert.equal(loaded.calls.length, 1);
+    assert.ok(loaded.calls[0].url.endsWith("/consumer/session"));
+  }
+});
+
+test("portal reads reject non-object JSON and validate nested contact and detail records", async () => {
+  for (const data of [null, [], "unexpected", 1]) {
+    const { api } = loadApi({ status: "ready", data });
+    assert.equal(await api.fetchConsumerMe(), null);
+    assert.equal(await api.fetchConsumerPath("products"), null);
+  }
+  for (const item of [null, [], "wrong", 1]) {
+    const { api } = loadApi({ status: "ready", data: { ok: true, item } });
+    assert.deepEqual(await api.fetchConsumerPath("taps/1"), { ok: true, item: null });
+  }
+  const { api } = loadApi({ status: "ready", data: { ok: true, consumer: { id: "synthetic", email: [], phone: 123, status: null, display_name: "Cuenta QA" }, stats: [] } });
+  assert.deepEqual(await api.fetchConsumerMe(), { ok: true, consumer: { id: "synthetic", email: null, phone: null, status: undefined, display_name: "Cuenta QA" }, stats: null });
+  const invalidContact = loadApi({ status: "ready", data: { ok: true, consumer: { id: null }, stats: { products: 0 } } });
+  assert.deepEqual(await invalidContact.api.fetchConsumerMe(), { ok: true, consumer: null, stats: { products: 0 } });
+});
+
+const styles = new Proxy({}, { get: (_, name) => String(name) });
+const brand = compile(readFileSync(new URL("../../components/brand-home-link-static.tsx", root), "utf8"), {
+  "next/link": { __esModule: true, default: ({ children, prefetch, ...props }) => React.createElement("a", props, children) },
+  "./brand-home-link-types": { homeLabel: () => "Inicio" },
+  "./brand-home-link.module.css": { __esModule: true, default: styles },
+});
+const loading = compile(readFileSync(new URL("loading.tsx", root), "utf8"), {
+  "../../components/brand-home-link-static": brand,
+  "./portal-state.module.css": { __esModule: true, default: styles },
+}).default;
+
+test("portal loading reserves a static identity and skeleton with one meaningful live status", () => {
+  const html = renderToStaticMarkup(React.createElement(loading));
+  assert.match(html, /aria-busy="true"/);
+  assert.match(html, /role="status"/);
+  assert.match(html, /Abriendo tu espacio/);
+  assert.match(html, /Estamos consultando tu cuenta y tus productos/);
+  assert.match(html, /aria-hidden="true"/);
+  assert.doesNotMatch(html, /<animate|<img|<video|repeatCount|authenticated|guardado|Titularidad/);
+  const css = readFileSync(new URL("portal-state.module.css", root), "utf8");
+  assert.doesNotMatch(css, /animation:|@keyframes|transition:/);
+});
+
+function contrast(a, b) {
+  const lum = (hex) => {
+    const c = hex.slice(1).match(/.{2}/g).map((v) => parseInt(v, 16) / 255).map((v) => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
+    return c[0] * .2126 + c[1] * .7152 + c[2] * .0722;
+  };
+  const x = lum(a), y = lum(b);
+  return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
+}
+
+test("portal loading and recovery use readable themes and focusable 44-pixel actions", () => {
+  const css = readFileSync(new URL("portal-state.module.css", root), "utf8");
+  const themes = [...css.matchAll(/--state-text: (#[\da-f]+);[\s\S]*?--state-accent: (#[\da-f]+);/g)].map((match) => Object.fromEntries([...match[0].matchAll(/--state-([\w-]+): (#[\da-f]+);/g)].map((v) => [v[1], v[2]])));
+  assert.equal(themes.length, 2);
+  for (const theme of themes) {
+    for (const ink of ["text", "muted", "accent"]) for (const surface of ["surface", "base", "subtle"]) {
+      assert.ok(contrast(theme[ink], theme[surface]) >= 4.5, `${ink}/${surface}`);
+    }
+  }
+  assert.match(css, /:focus-visible/);
+  assert.match(css, /min-height: 2\.75rem/);
+  assert.match(css, /safe-area-inset-bottom/);
+  const error = readFileSync(new URL("error.tsx", root), "utf8");
+  assert.match(error, /heading\.current\?\.focus\(\)/);
+  assert.match(error, /no confirma si el último producto quedó guardado/);
+  assert.doesNotMatch(error, /error\.message|error\.stack|error\.digest|setInterval|fetch\(/);
+});

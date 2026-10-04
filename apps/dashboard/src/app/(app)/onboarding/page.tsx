@@ -140,7 +140,7 @@ export default async function OnboardingPage() {
   const isTenantBound = !requestContext.canSelectTenant;
 
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading
         eyebrow="Pilot launchpad"
         title={isTenantBound ? "Puesta en marcha del tenant" : "Puesta en marcha multi-tenant"}

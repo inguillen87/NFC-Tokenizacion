@@ -90,7 +90,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
   });
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       <div role="status" className={`rounded-2xl border p-3 text-xs leading-5 ${transferDemoEnabled ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-slate-700 bg-slate-900/60 text-slate-300"}`}>
         {transferDemoEnabled
           ? "DEMO DE TRANSFERENCIA · solo simula la UX. No firma, envía ni confirma transacciones y no genera hashes o links de explorador."
@@ -114,7 +114,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
                 placeholder="Buscar por nombre o lote..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-slate-900 py-2 pl-9 pr-4 text-xs text-white focus:border-amber-400 focus:outline-none md:w-60"
+                className="w-full rounded-xl border border-white/10 bg-slate-900 py-2 pl-9 pr-4 text-xs text-white focus:border-amber-400 focus:outline-hidden md:w-60"
               />
             </div>
 
@@ -244,7 +244,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
                               placeholder="Direccion 0x..."
                               value={recipientAddress}
                               onChange={(event) => setRecipientAddress(event.target.value)}
-                              className="min-w-40 rounded-lg border border-white/15 bg-slate-900 px-2.5 py-1 text-[10px] text-white focus:border-amber-400 focus:outline-none"
+                              className="min-w-40 rounded-lg border border-white/15 bg-slate-900 px-2.5 py-1 text-[10px] text-white focus:border-amber-400 focus:outline-hidden"
                             />
                             <div className="flex justify-end gap-1.5">
                               <button
@@ -295,7 +295,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
             <Clock className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
             Transferencias P2P recientes
           </h3>
-          <div className="space-y-2">
+          <div className="v3-space-y-2">
             {recentTransfers.map((transfer) => (
               <div key={transfer.id} className="flex flex-col gap-3 rounded-xl border border-white/5 bg-slate-900/30 p-3 text-[10px] sm:flex-row sm:items-center sm:justify-between">
                 <div>

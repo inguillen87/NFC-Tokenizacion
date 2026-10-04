@@ -136,7 +136,7 @@ function ArtifactFolder({
       </summary>
       <div className="border-t border-white/10 p-4">
         {artifacts.length ? (
-          <ul className="space-y-3">{artifacts.map((artifact, index) => <ArtifactRow key={artifact.id || `${label}-${index}`} artifact={artifact} operator={operator} />)}</ul>
+          <ul className="v3-space-y-3">{artifacts.map((artifact, index) => <ArtifactRow key={artifact.id || `${label}-${index}`} artifact={artifact} operator={operator} />)}</ul>
         ) : (
           <p className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-slate-500">Carpeta vacía. No se genera evidencia ficticia.</p>
         )}
@@ -182,7 +182,7 @@ function OrderTree({ order, operator, defaultOpen }: { order: TenantVaultOrder; 
         </div>
         <div className="flex items-center gap-3"><StatePill value={order.status} /><ChevronRight className="h-5 w-5 text-slate-500 transition group-open:rotate-90" /></div>
       </summary>
-      <div className="space-y-5 border-t border-white/10 p-5">
+      <div className="v3-space-y-5 border-t border-white/10 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/8 p-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Siguiente acción</p>
@@ -196,7 +196,7 @@ function OrderTree({ order, operator, defaultOpen }: { order: TenantVaultOrder; 
             <span className="text-xs text-slate-400">{order.sub_batches.length}</span>
           </summary>
           <div className="border-t border-white/10 p-4">
-            {order.sub_batches.length ? <ul className="space-y-3">{order.sub_batches.map((row) => <SubBatchRow key={row.id} row={row} operator={operator} />)}</ul> : <p className="text-xs text-slate-500">Sin sub-batches registrados.</p>}
+            {order.sub_batches.length ? <ul className="v3-space-y-3">{order.sub_batches.map((row) => <SubBatchRow key={row.id} row={row} operator={operator} />)}</ul> : <p className="text-xs text-slate-500">Sin sub-batches registrados.</p>}
           </div>
         </details>
         <div className="grid gap-4 xl:grid-cols-2">
@@ -221,7 +221,7 @@ export function TenantVaultBrowser({ vault }: { vault: TenantVaultPayload }) {
   ] as const;
 
   return (
-    <main className="space-y-8" data-testid="tenant-vault" data-viewer={vault.viewer.mode}>
+    <main className="v3-space-y-8" data-testid="tenant-vault" data-viewer={vault.viewer.mode}>
       <SectionHeading
         eyebrow="Tenant Vault · evidencia operativa"
         title={vault.tenant.name || vault.tenant.slug}
@@ -255,7 +255,7 @@ export function TenantVaultBrowser({ vault }: { vault: TenantVaultPayload }) {
         <div className="flex items-center gap-3 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4 text-sm text-amber-50"><CircleAlert className="h-5 w-5 shrink-0" />La vista está acotada a las órdenes y artefactos más recientes. No se interpreta el recorte como ausencia de evidencia.</div>
       ) : null}
 
-      <section className="space-y-4">
+      <section className="v3-space-y-4">
         <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-violet-200">Folder browser</p><h2 className="mt-2 text-xl font-black text-white">Órdenes y evidencia</h2></div><span className="text-xs text-slate-500">Actualizado {formatDate(vault.generated_at)}</span></div>
         {vault.orders.length ? vault.orders.map((order, index) => <OrderTree key={order.id} order={order} operator={operator} defaultOpen={index === 0} />) : (
           <Card className="p-8 text-center"><FolderClosed className="mx-auto h-8 w-8 text-slate-500" /><h3 className="mt-4 font-bold text-white">Sin órdenes de proveedor</h3><p className="mt-2 text-sm text-slate-400">La bóveda está vacía y no genera registros simulados.</p></Card>
@@ -263,7 +263,7 @@ export function TenantVaultBrowser({ vault }: { vault: TenantVaultPayload }) {
       </section>
 
       {operator ? (
-        <section className="space-y-4" data-testid="tenant-vault-export-audit">
+        <section className="v3-space-y-4" data-testid="tenant-vault-export-audit">
           <div><p className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">Superadmin only</p><h2 className="mt-2 text-xl font-black text-white">Auditoría de supplier operations</h2></div>
           <Card className="overflow-hidden p-0">
             {vault.export_audit?.length ? (

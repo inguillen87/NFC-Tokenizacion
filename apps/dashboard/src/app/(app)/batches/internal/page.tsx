@@ -10,11 +10,11 @@ export default async function InternalBatchPage() {
   const session = await requireDashboardSession("batches:write");
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow="Internal batches" title="Create internal batch" description="Flujo para lotes nacidos dentro de nexID. Puede usar keys autogeneradas según política." />
       <Card className="p-5 text-sm text-slate-300">
         <p className="font-semibold text-white">Cuándo usar este modo</p>
-        <ul className="mt-3 list-disc space-y-2 pl-5">
+        <ul className="mt-3 list-disc v3-space-y-2 pl-5">
           <li>Cuando el lote no viene preprogramado por proveedor.</li>
           <li>Cuando querés emitir piloto interno rápido con manifest controlado.</li>
           <li>Si el lote es supplier-programmed, usá <b>/batches/supplier</b>.</li>

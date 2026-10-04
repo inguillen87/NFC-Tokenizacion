@@ -70,7 +70,7 @@ export default async function BrandsPage() {
   return (
     <PortalShell
       title="Marcas, Fidelización & Clubes"
-      subtitle="Accede a los canales directos de tus bodegas preferidas: puntos acumulados, membresías VIP exclusivas y drops premium."
+      subtitle="Consultá los clubes, puntos y propuestas que tus marcas publican para esta cuenta."
       notificationCount={notifications.length}
     >
       {!engagement.length ? (
@@ -78,7 +78,7 @@ export default async function BrandsPage() {
           <Sparkles className="mx-auto h-8 w-8 text-slate-600 animate-pulse" />
           <h3 className="mt-3 text-sm font-black text-white">No perteneces a ningún club de marcas</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Escanea tu primera botella nexID y reclama su propiedad para habilitar beneficios y activar tu membresía.
+            Desde el pasaporte de un producto podés consultar si la marca ofrece un club y cuáles son sus condiciones para sumarte.
           </p>
         </section>
       ) : (
@@ -95,7 +95,7 @@ export default async function BrandsPage() {
                   Tus interacciones reales activan canales exclusivos de confianza.
                 </h2>
                 <p className="mt-3 max-w-xl text-xs leading-relaxed text-slate-400">
-                  Cada vez que compras y registras una botella nexID, acumulas puntos de fidelización de la bodega emisora, canjeables por visitas a bodegas, cenas exclusivas y drops limitados.
+                  Cada marca define cómo obtener puntos y qué beneficios ofrece. Consultá el saldo reportado y las condiciones de su programa antes de pedir un canje.
                 </p>
               </div>
               <div className="grid gap-2.5 grid-cols-2">
@@ -230,7 +230,7 @@ export default async function BrandsPage() {
                         </div>
 
                         {/* Chat / Feed list */}
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-3 v3-space-y-2">
                           {item.notifications.slice(0, 2).map((notification) => (
                             <Link key={notification.id} href={notification.href} className="block rounded-xl border border-white/5 bg-slate-900/35 p-3 hover:bg-slate-900/50 transition">
                               <div className="flex items-start justify-between gap-3">
@@ -254,7 +254,7 @@ export default async function BrandsPage() {
                       <div className="mt-5 grid gap-3 sm:grid-cols-2">
                         <div className="rounded-xl border border-white/5 bg-slate-900/20 p-3">
                           <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 block mb-2">Mis Vinos Registrados</span>
-                          <div className="space-y-1.5">
+                          <div className="v3-space-y-1.5">
                             {item.products.slice(0, 2).map((product, idx) => (
                               <div key={idx} className="rounded-lg border border-white/5 bg-slate-950/40 p-2 text-[10px]">
                                 <p className="font-bold text-white leading-normal truncate">{product.product_name || "Vino"}</p>
@@ -267,7 +267,7 @@ export default async function BrandsPage() {
 
                         <div className="rounded-xl border border-white/5 bg-slate-900/20 p-3">
                           <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 block mb-2">Escaneos Recientes</span>
-                          <div className="space-y-1.5">
+                          <div className="v3-space-y-1.5">
                             {item.taps.slice(0, 2).map((tap, idx) => (
                               <div key={idx} className="rounded-lg border border-white/5 bg-slate-950/40 p-2 text-[10px] flex items-center justify-between gap-1.5">
                                 <div className="truncate">

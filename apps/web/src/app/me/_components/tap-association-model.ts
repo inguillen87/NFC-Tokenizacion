@@ -2,7 +2,7 @@ export const TAP_ASSOCIATION_ACTIONS = ["save", "join", "claim", "rewards"] as c
 export type TapAssociationAction = typeof TAP_ASSOCIATION_ACTIONS[number];
 export type TapAssociationContext = { eventId: string; tenant: string; bid: string; preferred: TapAssociationAction | null; key: string };
 export type TapAssociationOutcome = "saved" | "linked" | "claimed" | "enrolled" | "recorded_pending" | "committed_unknown"
-  | "review_required" | "fresh_required" | "session_required" | "no_program" | "blocked" | "unconfirmed";
+  | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "session_required" | "no_program" | "blocked" | "unconfirmed";
 export type TapAssociationResult = { outcome: TapAssociationOutcome; retryable: boolean };
 export type TapAssociationState = { pending: TapAssociationAction | null; results: Partial<Record<TapAssociationAction, TapAssociationResult>> };
 export type TapAssociationSession = "checking" | "active" | "none" | "unavailable";
@@ -54,18 +54,26 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
   }
   const error = String(payload.error || payload.reason || "");
   if (status === 401) return { outcome: "session_required", retryable: true };
+  if (error === "fresh_tap_capability_required") {
+    if (payload.fresh_token_status === "fresh_token_expired") return { outcome: "fresh_expired", retryable: false };
+    if (payload.fresh_token_status === "fresh_token_already_used") return { outcome: "fresh_used", retryable: false };
+  }
   if (["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked", "pin_required", "invalid_pin", "claim_pin_locked"].includes(error)) return { outcome: "fresh_required", retryable: false };
   if (error === "ownership_manual_review_required" || payload.review_required === true) return { outcome: "review_required", retryable: false };
   if (error === "no_active_program") return { outcome: "no_program", retryable: false };
   if ([400, 403, 404, 409, 422].includes(status)) return { outcome: "blocked", retryable: false };
   return { outcome: "unconfirmed", retryable: true };
 }
+
+export function tapAssociationConfirmed(result: TapAssociationResult) {
+  return ["saved", "linked", "claimed", "enrolled"].includes(result.outcome);
+}
 type Transport = (path: string, body: Record<string, unknown>, signal: AbortSignal) => Promise<{ status: number; payload: unknown }>;
 /** One explicit request at a time; committed actions cannot be resent.
  * State belongs to this mounted context, never browser storage or a token.
  * A lost response does not guarantee the server performed no work.
  */
-export function createTapAssociationRunner(context: TapAssociationContext, transport: Transport) {
+export function createTapAssociationRunner(context: TapAssociationContext, transport: Transport, onConfirmed?: () => void) {
   let state: TapAssociationState = { pending: null, results: {} };
   let disposed = false;
   let controller: AbortController | null = null;
@@ -89,6 +97,9 @@ export function createTapAssociationRunner(context: TapAssociationContext, trans
       finally { clearTimeout(timer); }
       if (disposed) return null;
       state = { pending: null, results: { ...state.results, [action]: result } }; emit();
+      // Revalidate read-only portal data only after an action-specific receipt.
+      // Terminal results prevent repeated clicks from refreshing or writing again.
+      if (!disposed && tapAssociationConfirmed(result)) onConfirmed?.();
       return result;
     },
   };

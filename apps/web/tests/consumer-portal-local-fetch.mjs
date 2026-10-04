@@ -1,5 +1,6 @@
 // Explicit local QA only. Synthetic account projections and current notices;
 // no PostgreSQL, production account, SUN credential or business mutation.
+import { marketplaceFixtureItems } from './consumer-marketplace-fixture.mjs';
 if(process.env.CONSUMER_PORTAL_QA!=='1')throw Error('consumer_portal_fixture_requires_explicit_local_qa');
 const original=globalThis.fetch;
 const date='2026-10-01T12:00:00Z';
@@ -18,10 +19,14 @@ globalThis.fetch=async(input,init)=>{
   const headers=new Headers(init?.headers||(input instanceof Request?input.headers:undefined));
   const authorized=(headers.get('cookie')||'').includes('consumer_qa=local');
   if(url.pathname==='/consumer/session')return reply({ok:true,authenticated:authorized});
+  if(url.pathname==='/marketplace/products'){
+   if(!authorized)return reply({ok:false},401);
+   return reply({ok:true,items:url.searchParams.get('tenant')==='qa-empty'?[]:marketplaceFixtureItems});
+  }
   if(url.pathname.startsWith('/consumer/')){
    if(!authorized)return reply({ok:false},401);
    if(url.pathname==='/consumer/products')return reply({ok:true,items});
-   if(url.pathname==='/consumer/me')return reply({ok:true,consumer:{display_name:'Cuenta sintética de ensayo',status:'verified'},stats:{products:items.length,taps:3}});
+   if(url.pathname==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',status:'verified'},stats:{products:items.length,taps:3}});
    if(url.pathname==='/consumer/brands')return reply({ok:true,items:[]});
    if(url.pathname==='/consumer/experiences')return reply({ok:true,verifiedExperiences:[]});
    if(url.pathname==='/consumer/taps')return reply({ok:true,items:items.slice(0,3).map(p=>({tap_event_id:p.latest_tap_event_id,tenant_slug:p.tenant_slug,product_name:p.product_name,bid:p.bid,verdict:p.latest_verdict,created_at:date}))});

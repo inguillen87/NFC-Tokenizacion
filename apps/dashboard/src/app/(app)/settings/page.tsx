@@ -210,7 +210,7 @@ export default async function SettingsPage() {
   const restrictedTiles = allTiles.filter((tile) => tile.destination && !canOpenDestination(tile.destination));
 
   return (
-    <main className="space-y-8" data-testid="settings-command-center">
+    <main className="v3-space-y-8" data-testid="settings-command-center">
       <SectionHeading
         eyebrow="Configuracion enterprise"
         title={tenantName}
@@ -273,7 +273,7 @@ export default async function SettingsPage() {
 
             <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Estado de cuenta</p>
-              <div className="mt-3 space-y-2 text-sm">
+              <div className="mt-3 v3-space-y-2 text-sm">
                 <p className="flex items-center justify-between gap-3 text-slate-300">
                   <span>Setup</span>
                   <b className="text-white">{setupStatus}</b>

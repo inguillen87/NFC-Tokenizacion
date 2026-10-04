@@ -143,7 +143,7 @@ export function UserManagementPanel() {
         <div className="mt-4">
           <EnterpriseRoleCatalogGate status={catalog.status} error={catalog.error} onRetry={catalog.reload} />
         </div>
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 v3-space-y-3">
           {users.map((user) => {
             const editor = editors[user.id] || { role: normalizeEnterpriseRoleCode(user.role), tenantSlug: user.tenant_slug || "" };
             const selectedRole = catalog.byCode.get(normalizeEnterpriseRoleCode(editor.role));

@@ -1451,7 +1451,7 @@ export function ExecutiveRealtimeCrm({
       </header>
 
       <aside className="absolute bottom-0 left-0 top-[70px] z-10 hidden w-24 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:top-[144px] lg:flex 2xl:top-[70px]">
-        <div className="space-y-3">
+        <div className="v3-space-y-3">
           {railItems.map((item) => (
             <button
               key={item.label}
@@ -1484,7 +1484,7 @@ export function ExecutiveRealtimeCrm({
 
       {activeView === "physical-taps" ? (
         <main data-testid="crm-physical-taps-view" className="relative z-10 min-h-[calc(100vh-70px)] overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-176px)] lg:min-h-0 lg:overflow-y-auto lg:p-4 2xl:h-[calc(100vh-102px)] 2xl:p-5">
-          <section className="mx-auto w-full max-w-[1600px] space-y-4">
+          <section className="mx-auto w-full max-w-[1600px] v3-space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/15 bg-slate-950/55 px-4 py-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">CRM · evidencia física del tenant</p>
@@ -1504,7 +1504,7 @@ export function ExecutiveRealtimeCrm({
         </main>
       ) : (
       <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-176px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:h-[calc(100vh-102px)] 2xl:gap-4 2xl:p-4">
-        <section className="nexid-crm-kpi-column order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 xl:w-96">
+        <section className="nexid-crm-kpi-column order-2 min-h-0 v3-space-y-2 overflow-hidden lg:order-1 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 xl:w-96">
           <div className="flex items-start justify-between gap-3">
             <span>
               <h2 className="text-xl font-extrabold tracking-[-0.025em] text-white">Lectura operativa</h2>
@@ -1671,7 +1671,7 @@ export function ExecutiveRealtimeCrm({
                     <div className="mt-1.5 flex justify-between gap-3 text-[10px] font-semibold text-slate-300"><span>Menor volumen</span><span>Mayor volumen</span></div>
                   </div>
                 ) : mapView === "points" ? (
-                  <div className="space-y-1.5 text-[11px] font-medium text-slate-300">
+                  <div className="v3-space-y-1.5 text-[11px] font-medium text-slate-300">
                     <p className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-cyan-300" /> Lectura observada</p>
                     <p className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-rose-400" /> Evento con señal de riesgo</p>
                   </div>
@@ -1686,7 +1686,7 @@ export function ExecutiveRealtimeCrm({
 
                 <div className="nexid-crm-events-rail relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/78 p-3.5 shadow-2xl backdrop-blur 2xl:col-start-2 2xl:row-start-2 2xl:ml-0 2xl:mt-3 2xl:min-h-0 2xl:max-h-none">
                 <p className="text-base font-extrabold tracking-[-0.015em] text-white">Últimos eventos visibles</p>
-                <div className="mt-3 space-y-2">
+                <div className="mt-3 v3-space-y-2">
                   {valuesUnavailable ? <p data-testid="crm-events-pending" className="rounded-xl border border-dashed border-white/10 bg-slate-900/45 p-3 text-xs leading-5 text-slate-400">La actividad aparecerá cuando el tenant y la ventana queden confirmados.</p> : null}
                   {visibleEvents.slice(0, 4).map((event) => {
                     const authenticated = event.authenticationVerified === true;
@@ -1763,7 +1763,7 @@ export function ExecutiveRealtimeCrm({
                 </div>
               ) : null}
 
-              <div className="max-h-[150px] space-y-2 overflow-y-auto pr-1 2xl:max-h-[210px]">
+              <div className="max-h-[150px] v3-space-y-2 overflow-y-auto pr-1 2xl:max-h-[210px]">
                 {marketOpportunities.length ? marketOpportunities.map((opportunity) => (
                   <div key={opportunity.key} className="rounded-xl border border-white/8 bg-slate-950/55 p-3">
                     <div className="flex items-start justify-between gap-3">
@@ -1800,7 +1800,7 @@ export function ExecutiveRealtimeCrm({
                 <p className="text-base font-bold text-white">Alertas y excepciones <span className="ml-1 rounded-full bg-red-500 px-1.5 text-xs">{valuesUnavailable ? "—" : alerts.length}</span></p>
                 <button type="button" title="Abrir todas las alertas y excepciones" onClick={() => { window.location.href = "/events"; }} className="text-sm font-semibold text-cyan-300">Ver todas</button>
               </div>
-              <div className="space-y-2">
+              <div className="v3-space-y-2">
                 {alerts.map((alert) => (
                   <div key={alert.id} className="flex items-center gap-3 rounded-lg border border-white/6 bg-slate-900/60 px-3 py-1.5">
                     <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${alert.tone === "red" ? "bg-red-500/12 text-red-300" : alert.tone === "amber" ? "bg-amber-400/12 text-amber-300" : "bg-sky-400/12 text-sky-300"}`}>
