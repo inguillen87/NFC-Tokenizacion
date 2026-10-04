@@ -41,10 +41,11 @@ test("marketplace consumer UI no expone textos de demo ni mojibake", () => {
   const grid = readFileSync(new URL("../src/app/me/marketplace/marketplace-grid-client.tsx", import.meta.url), "utf8");
   const visibleSurface = `${page}\n${grid}`;
 
-  assert.match(visibleSurface, /Bodega Balmec/);
-  assert.match(visibleSurface, /Request-to-buy . sin cobro/);
-  assert.match(visibleSurface, /MercadoPago/);
-  assert.match(visibleSurface, /MetaMask \/ USDC/);
+  assert.match(visibleSurface, /Productos publicados/);
+  assert.match(visibleSurface, /solicitudes de contacto/);
+  assert.match(visibleSurface, /Las solicitudes no realizan un pago ni reservan stock/);
+  assert.match(visibleSurface, /Ver mi wallet/);
+  assert.doesNotMatch(visibleSurface, /MARKETPLACE_SHOWCASE_SLIDES|ownership listo para transferir|MercadoPago|MetaMask \/ USDC|assetScore/);
   assert.doesNotMatch(visibleSurface, /Ã|Â|�|Demo Bodega|sandbox commerce|Lote Experimental/);
 });
 

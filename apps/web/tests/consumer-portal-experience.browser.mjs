@@ -3,25 +3,28 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:http';
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {mkdir,mkdtemp,readFile,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {marketplaceBinding,runMarketplaceScenarios} from './consumer-marketplace.browser.mjs';
 
 const web=fileURLToPath(new URL('../',import.meta.url)),repo=resolve(web,'../..');
 let base=process.env.QA_BASE_URL||'',next=null,serverFailed=false;
 if(base)assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname),'QA must stay on loopback');
-const output=resolve(process.env.QA_OUTPUT||'artifacts/consumer-portal-experience');
+const outputParent=resolve(process.env.QA_OUTPUT||'artifacts/consumer-portal-experience');
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright-core');
 const axe=await readFile(process.env.AXE_MODULE_PATH,'utf8');
-await mkdir(output,{recursive:true});
+await mkdir(outputParent,{recursive:true});
+const output=await mkdtemp(join(outputParent,'run-'));
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
 const report={localOnly:true,realProductionBuild:!process.env.QA_BASE_URL,actualNextRouter:true,syntheticConsumerAndNotices:true,physicalTapMeasured:false,checks:[],views:[],errors:[],blockedWrites:[],geolocationCalls:0};
+report.marketplaceBindingBefore=await marketplaceBinding(repo,web);
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 async function assessment(page,selector,name,width,theme){
  await page.addScriptTag({content:axe});
  const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),selector);
  check(violations.length===0,`${width}/${theme} ${name}: zero axe violations`);
- await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'});
+ await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
  report.views.push({width,theme,name,selector,violations});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
@@ -109,6 +112,7 @@ try{
   const explainer=page.getByTestId('experience-explainer');await explainer.waitFor();const explainerContrast=await introContrast(explainer);report.experienceControls.at(-1).explainerContrast=explainerContrast;
   check(explainerContrast.backgroundImage==='none'&&explainerContrast.headingRatio>=explainerContrast.headingMinimum&&explainerContrast.paragraphRatio>=4.5,`${width}/${theme} experience explanation heading and paragraph have readable contrast against solid card background`);
   await noOverflow(page,`${width}/${theme} actual experience page fits viewport`);await assessment(page,'#consumer-portal-content','experience',width,theme);
+  await runMarketplaceScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await context.close();
  }
  const anonymous=await browser.newContext();const page=await anonymous.newPage();page.on('pageerror',error=>report.errors.push({name:'anonymous',message:error.message}));
@@ -127,4 +131,4 @@ try{
  report.syntheticLogoutRequests=logoutCalls;await logout.close();
  check(report.errors.length===0,'zero application runtime errors');check(report.geolocationCalls===0,'zero GPS calls');check(report.blockedWrites.length===0,'zero business or telemetry write attempts');report.status='passed';
 }catch(error){report.status='failed';report.error=String(error.stack);const page=browser.contexts().at(-1)?.pages().at(-1);if(page){report.visible=(await page.locator('body').innerText()).slice(0,10000);await page.screenshot({path:join(output,'failure.png'),fullPage:true}).catch(()=>{});}throw error;}
-finally{await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({status:report.status,realProductionBuild:report.realProductionBuild,checks:report.checks.length,views:report.views.length,errors:report.errors,blockedWrites:report.blockedWrites,geolocationCalls:report.geolocationCalls,output},null,2));await browser.close();if(next&&next.exitCode===null){next.kill();await Promise.race([new Promise(resolve=>next.once('exit',resolve)),new Promise(resolve=>setTimeout(resolve,1500))]);}}
+finally{report.marketplaceBindingAfter=await marketplaceBinding(repo,web);report.marketplaceSourceBuildStable=JSON.stringify(report.marketplaceBindingBefore)===JSON.stringify(report.marketplaceBindingAfter);if(!report.marketplaceSourceBuildStable)report.status='failed';await writeFile(join(output,'report.json'),JSON.stringify(report,null,2),{flag:'wx'});console.log(JSON.stringify({status:report.status,realProductionBuild:report.realProductionBuild,checks:report.checks.length,views:report.views.length,errors:report.errors,blockedWrites:report.blockedWrites,geolocationCalls:report.geolocationCalls,marketplaceSourceBuildStable:report.marketplaceSourceBuildStable,output},null,2));await browser.close();if(next&&next.exitCode===null&&next.signalCode===null){next.kill();await Promise.race([new Promise(resolve=>next.once('exit',resolve)),new Promise(resolve=>setTimeout(resolve,1500))]);}assert.ok(report.marketplaceSourceBuildStable,'catalogue source and actual build must stay unchanged during browser run');}

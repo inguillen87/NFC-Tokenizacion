@@ -1,14 +1,14 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.03-web-consumer-continuation.1",
-  "scope": "consumer-access-email-product-continuation-and-whatsapp-recovery",
+  "version": "2026.10.04-web-consumer-catalog.1",
+  "scope": "consumer-continuation-catalog-media-and-explicit-inquiries",
   "baseCommit": "f76215265d7d7bf7a19dfb9937387f75543e7b99",
   "physicalTapCertification": "not-included",
   "requiredApiRelease": "2026.09.21-api-support.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.03-web-consumer-continuation.1",
+  "release": "2026.10.04-web-consumer-catalog.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1"
 }
