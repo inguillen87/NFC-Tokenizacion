@@ -80,10 +80,33 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   check(await card('market-experience-qa').getByRole('button',{name:'Solicitar contacto',exact:true}).isDisabled(),`${label} unavailable product cannot be requested`);
   check(await card('market-no-photo-qa').getByRole('button',{name:'Solicitar contacto',exact:true}).isDisabled(),`${label} disabled request capability stays disabled`);
   const text=await catalog.innerText();check(!/Passport item|ownership|MetaMask|MercadoPago|Stripe|assets|Sumaste|Gran Reserva Malbec/.test(text),`${label} no simulated promotional, payment or points-award claims`);
-  const choice=page.getByTestId('tap-association-option-claim').locator('..');await choice.scrollIntoViewIfNeeded();
+  const radio=page.getByTestId('tap-association-option-claim'),choice=radio.locator('..');
+  const readChoice=()=>choice.evaluate(el=>{
+   const rect=element=>{const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};};
+   const bounds=rect(el),header=document.querySelector('.consumer-portal-root > header'),nav=document.querySelector('nav[aria-label="Navegación del portal"]');
+   const headerBounds=rect(header),navBounds=rect(nav),navPosition=getComputedStyle(nav).position;
+   const usable={top:Math.max(0,headerBounds.bottom)+8,bottom:(navPosition==='fixed'?Math.min(innerHeight,navBounds.top):innerHeight)-8};
+   const point={x:(bounds.left+bounds.right)/2,y:(bounds.top+bounds.bottom)/2},hit=document.elementFromPoint(point.x,point.y);
+   return {bounds,headerBounds,navBounds,navPosition,usable,scrollY,point,hitTag:hit?.tagName,hitText:hit?.textContent?.trim().slice(0,80),ownLabel:hit===el||el.contains(hit),fullyUsable:bounds.top>=usable.top&&bounds.bottom<=usable.bottom&&bounds.left>=0&&bounds.right<=innerWidth};
+  });
+  await choice.scrollIntoViewIfNeeded();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  record.tapChoicePlacementBefore=await readChoice();
+  await choice.evaluate(el=>el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  const hit=await choice.evaluate(el=>{const r=el.getBoundingClientRect(),point={x:r.left+r.width/2,y:r.top+r.height/2},hit=document.elementFromPoint(point.x,point.y);return {bounds:{top:r.top,bottom:r.bottom,left:r.left,right:r.right},point,hitText:hit?.textContent?.trim().slice(0,80),ownLabel:hit===el||el.contains(hit)};});
-  record.tapChoiceHit=hit;check(hit.ownLabel,`${label} tap ownership choice remains unobstructed by catalogue media`);
+  let hit=await readChoice();
+  if(!hit.fullyUsable){
+   const delta=hit.point.y-(hit.usable.top+hit.usable.bottom)/2;
+   await page.evaluate(delta=>window.scrollBy({top:delta,behavior:'instant'}),delta);
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   hit=await readChoice();record.measuredUsableScrollDelta=delta;
+  }
+  record.tapChoiceHit=hit;record.tapChoicePlacementReason='Native scroll within the usable area between unchanged sticky header and fixed navigation; catalogue styles and viewport are untouched.';
+  check(hit.fullyUsable,`${label} full tap ownership choice fits between header and navigation with 8px margin`);
+  check(hit.ownLabel,`${label} tap ownership choice remains unobstructed by catalogue media`);
+  const previousSelection=await page.locator('[name="tap-association-action"]:checked').evaluateAll(elements=>elements[0]?.getAttribute('data-testid')||null),beforeRadioRequests=requests.length;
+  await radio.click();check(await radio.isChecked(),`${label} actual unobstructed radio can be selected without forcing`);
+  check(requests.length===beforeRadioRequests,`${label} selecting the local tap option does not submit a catalogue request`);
+  if(previousSelection&&previousSelection!=='tap-association-option-claim')await page.getByTestId(previousSelection).click();
   record.geometry.push({phase:'tap-form',stages:await stageGeometry()});
   await assessment(page,'[data-testid="tap-association"]','marketplace-tap-form',width,theme);
   await targets('initial');await noOverflow(page,`${label} fits viewport`);
@@ -92,6 +115,14 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   await search.fill('');await catalog.getByRole('button',{name:'Vinos',exact:true}).click();
   check(await catalog.locator('[data-marketplace-product]').count()===1,`${label} category filter selects real published wine`);
   await catalog.getByRole('button',{name:'Todo',exact:true}).click();
+  record.loadedPhotos=[];
+  for(const item of marketplaceFixtureItems){
+   if(!(item.imageUrl||item.image_url||item.photoUrl||item.photo_url))continue;
+   const img=card(item.id).locator('img');await img.scrollIntoViewIfNeeded();
+   await page.waitForFunction(id=>{const image=document.querySelector(`[data-marketplace-product="${id}"] img`);return image?.complete&&image.naturalWidth>0;},item.id,{timeout:10000});
+   record.loadedPhotos.push(await img.evaluate(el=>({src:el.getAttribute('src'),complete:el.complete,naturalWidth:el.naturalWidth,naturalHeight:el.naturalHeight,loading:el.loading})));
+  }
+  check(record.loadedPhotos.length===3&&record.loadedPhotos.every(p=>p.complete&&p.naturalWidth>0&&p.naturalHeight>0&&p.loading==='lazy'),`${label} native scrolling loads every real published photo before capture`);
 
   const start=requests.length;
   await wine().getByRole('button',{name:'Agregar a la lista',exact:true}).click();
