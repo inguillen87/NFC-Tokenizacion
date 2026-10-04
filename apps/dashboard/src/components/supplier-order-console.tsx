@@ -1389,7 +1389,7 @@ export function SupplierOrderConsole({
           <p className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-sm leading-6 text-cyan-50">{status}</p>
         </div>
 
-        <div className="space-y-4">
+        <div className="v3-space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <Metric label="Sub-batches" value={String(subBatches.length)} />
             <Metric label="Propósito" value={activePurposeContract.badge} />
@@ -1414,7 +1414,7 @@ export function SupplierOrderConsole({
           {subBatches.length ? (
             <div className="max-h-72 overflow-auto rounded-2xl border border-white/10 bg-slate-950/60 p-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Sub-batches creados</p>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 v3-space-y-2">
                 {subBatches.map((item) => (
                   <button
                     key={item.bid}
@@ -1442,7 +1442,7 @@ export function SupplierOrderConsole({
           ) : orders.length ? (
             <div className="max-h-72 overflow-auto rounded-2xl border border-white/10 bg-slate-950/60 p-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ultimos pedidos</p>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 v3-space-y-2">
                 {orders.map((item) => (
                   <button
                     key={item.id}
@@ -1636,7 +1636,7 @@ export function SupplierOrderConsole({
               </div>
             ) : null}
             {pack?.encrypted_pack?.envelope_sha256 ? (
-              <div className="mt-3 space-y-1 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
+              <div className="mt-3 v3-space-y-1 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
                 <p>Envelope: <span className="font-mono text-cyan-100">{pack.encrypted_pack.envelope_sha256}</span></p>
                 <p>ZIP interno: <span className="font-mono text-cyan-100">{pack.encrypted_pack.plaintext_zip_sha256}</span></p>
               </div>
@@ -1656,7 +1656,7 @@ export function SupplierOrderConsole({
               </span>
             </div>
             {vaultArtifacts.length ? (
-              <div className="mt-3 max-h-56 space-y-2 overflow-auto">
+              <div className="mt-3 max-h-56 v3-space-y-2 overflow-auto">
                 {vaultArtifacts.map((artifact) => (
                   <div key={artifact.id} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-300">
                     <div className="flex flex-wrap items-center justify-between gap-2">

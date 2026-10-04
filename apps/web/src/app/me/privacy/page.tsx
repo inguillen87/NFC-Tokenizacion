@@ -14,7 +14,7 @@ export default async function PrivacyPage() {
         <p className="text-white">Perfil: <b className="text-cyan-100">{privacy?.consumer?.display_name || privacy?.consumer?.email || "consumer"}</b></p>
         <p className="mt-1 text-slate-300">Locale preferido: <b>{privacy?.consumer?.preferred_locale || "es-AR"}</b></p>
         <p className="mt-3 text-xs uppercase tracking-[0.12em] text-slate-500">Consentimientos por tenant</p>
-        <div className="mt-2 space-y-1">
+        <div className="mt-2 v3-space-y-1">
           {consentRows.length ? consentRows.slice(0, 8).map((item, idx) => (
             <p key={`${item.tenant_id || "tenant"}-${item.scope || idx}`} className="text-xs text-slate-300">
               tenant {item.tenant_id || "n/a"} · {item.scope || "scope"} · {item.granted ? "granted" : "revoked"}

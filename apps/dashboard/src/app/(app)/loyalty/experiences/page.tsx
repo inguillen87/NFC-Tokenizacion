@@ -125,7 +125,7 @@ export default async function ExperiencesPage({ searchParams }: { searchParams?:
   );
   if (!canReadConsumerExperiencePii) {
     return (
-      <main className="space-y-8" data-experiences-availability="access_denied" data-experiences-source="unavailable">
+      <main className="v3-space-y-8" data-experiences-availability="access_denied" data-experiences-source="unavailable">
         <SectionHeading
           eyebrow="Loyalty + social proof"
           title="Experiencias verificadas"
@@ -161,7 +161,7 @@ export default async function ExperiencesPage({ searchParams }: { searchParams?:
       : [{ product: "Fuente de experiencias no disponible", user: "No se infieren registros ni ceros", score: "—", state: "Reintentar cuando la API esté disponible" }];
 
   return (
-    <main className="space-y-8" data-experiences-availability={experiencesResult.availability} data-experiences-source={experiencesResult.source}>
+    <main className="v3-space-y-8" data-experiences-availability={experiencesResult.availability} data-experiences-source={experiencesResult.source}>
       <SectionHeading
         eyebrow="Loyalty + social proof"
         title="Experiencias verificadas"
@@ -206,7 +206,7 @@ export default async function ExperiencesPage({ searchParams }: { searchParams?:
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Auditor, tenant admin o marca pueden aprobar, traducir, pedir evidencia o responder desde un mismo lugar.
           </p>
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 v3-space-y-3">
             {pendingReviews.map((review) => (
               <div key={`${review.product}-${review.user}`} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">

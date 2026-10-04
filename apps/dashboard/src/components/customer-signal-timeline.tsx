@@ -179,7 +179,7 @@ export function CustomerSignalTimeline({ signals, collections, query = "" }: Cus
         </div>
 
         {filteredSignals.length ? (
-          <ol className="relative space-y-4 before:absolute before:bottom-5 before:left-[19px] before:top-5 before:w-px before:bg-gradient-to-b before:from-cyan-300/70 before:via-violet-300/35 before:to-transparent">
+          <ol className="relative v3-space-y-4 before:absolute before:bottom-5 before:left-[19px] before:top-5 before:w-px before:bg-gradient-to-b before:from-cyan-300/70 before:via-violet-300/35 before:to-transparent">
             {filteredSignals.map((signal) => {
               const kind = KIND_COPY[signal.kind];
               const Icon = kind.icon;
@@ -211,7 +211,7 @@ export function CustomerSignalTimeline({ signals, collections, query = "" }: Cus
 
                   <aside className="rounded-2xl border border-white/10 bg-slate-950/70 p-4" aria-label={`Contexto operativo de ${signal.title}`}>
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Contexto para actuar</p>
-                    <dl className="mt-3 space-y-3">
+                    <dl className="mt-3 v3-space-y-3">
                       {signal.owner ? (
                         <div><dt className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Responsable informado</dt><dd className="mt-1 text-sm font-bold text-white">{signal.owner}</dd></div>
                       ) : null}

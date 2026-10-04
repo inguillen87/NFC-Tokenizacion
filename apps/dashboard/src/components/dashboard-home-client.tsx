@@ -173,7 +173,7 @@ export default function DashboardHomeClient({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       {/* Dynamic Tab Navigation */}
       <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
         <button type="button" title="CRM en vivo: lecturas, riesgo, mapa por zona y próxima acción comercial" aria-label="Abrir CRM en vivo" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
@@ -203,10 +203,10 @@ export default function DashboardHomeClient({
       </nav>
 
       {/* Tab Contents */}
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="v3-space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
         {/* SUMMARY TAB */}
         {activeTab === "summary" && (
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             <ExecutiveRealtimeCrm
               account={{
                 email: session.email,
@@ -238,7 +238,7 @@ export default function DashboardHomeClient({
 
         {/* INFRASTRUCTURE TAB */}
         {activeTab === "infra" && (
-          <div className="space-y-8">
+          <div className="v3-space-y-8">
             {hasExplicitDemoData ? (
               <EnterpriseOpsState
                 variant="warning"
@@ -309,7 +309,7 @@ export default function DashboardHomeClient({
                 </div>
               </div>
 
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 v3-space-y-2">
                 {tokenizationAvailable && scopedTokenizationRows.slice(0, 5).map((row: any) => {
                   const status = String(row.status || "unknown").toLowerCase();
                   const tone = status === "anchored" || status === "minted" ? "good" : status === "failed" ? "risk" : "warn";
@@ -339,7 +339,7 @@ export default function DashboardHomeClient({
 
         {/* MARKETING & LOYALTY TAB */}
         {activeTab === "loyalty" && (
-          <div className="space-y-8">
+          <div className="v3-space-y-8">
             {!isTenantAdmin ? (
               <MultirubroOpsPanel
                 currentRole={session.role}
@@ -377,7 +377,7 @@ export default function DashboardHomeClient({
 
         {/* DEMO / SIMULATION TAB (SUPER/RESELLER ADMIN ONLY) */}
         {activeTab === "demo" && !isTenantAdmin && (
-          <div className="space-y-8">
+          <div className="v3-space-y-8">
             {/* Demo Orchestrator */}
             <Card className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -402,7 +402,7 @@ export default function DashboardHomeClient({
                       <p className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">{pack.label}</p>
                       <p className="text-[10px] text-slate-500 mt-1 uppercase font-mono">Tenant: {pack.tenant}</p>
                     </div>
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-4 v3-space-y-2">
                       <a
                         href={`${publicMobileBase}/${pack.tenant}/${pack.itemId}?pack=${encodeURIComponent(pack.key)}&demoMode=consumer_tap`}
                         target="_blank"
@@ -452,7 +452,7 @@ export default function DashboardHomeClient({
 
         {/* BRANDS & TENANTS TAB */}
         {activeTab === "tenants" && !isTenantAdmin && (
-          <div className="space-y-8">
+          <div className="v3-space-y-8">
             {overviewAvailable ? <DataTable
               title={copy.tables.tenants.title}
               columns={[

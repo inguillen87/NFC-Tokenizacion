@@ -12,7 +12,7 @@ export default async function ExperiencesPage() {
   const copy = dashboardContent[locale];
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.experiences} title={copy.pages.experiences.title} description={copy.pages.experiences.description} />
       <section className="rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,.05),transparent_40%),#020617] p-5 shadow-[0_24px_70px_rgba(2,6,23,.7)] md:p-6">
         <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Eventos y Reservas</p>

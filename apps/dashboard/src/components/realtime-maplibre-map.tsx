@@ -796,7 +796,7 @@ export function RealtimeMapLibreMap({
         </summary>
         <div className="border-t border-white/10 px-3 py-2">
           {textualHotspots.length ? (
-            <ol className="space-y-1.5">
+            <ol className="v3-space-y-1.5">
               {textualHotspots.map((hotspot) => (
                 <li key={hotspot.key}>
                   <b className="text-white">{hotspot.city}, {hotspot.country}</b>: {hotspot.taps} taps, {hotspot.valid} válidos, {hotspot.risk} con riesgo. Resumen por zona; no implica GPS exacto.

@@ -104,7 +104,7 @@ export default async function TagPassportPage({ params, searchParams }: { params
   const uniqueCountries = new Set(timeline.map((event) => event.location.country).filter(Boolean)).size;
 
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading eyebrow="Asset passport" title={uid} description="Identidad declarada, eventos NFC, ubicación reportada y tokenización digital asociada al UID." />
       <div><Link href="/tags" className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5">← Volver a tags</Link></div>
       <Card className="p-4">

@@ -1837,7 +1837,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             <ThemeToggle />
             <Link
               href={demoLabBackHref}
-              className="proof-top-cta inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
+              className="proof-top-cta inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-xs transition hover:border-cyan-300 hover:bg-cyan-50"
             >
               {demoLabBackLabel} <ArrowRight className="h-4 w-4" />
             </Link>
@@ -1845,13 +1845,13 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               href={ENTERPRISE_PROOF_CONSOLE_URL}
               target="_blank"
               rel="noreferrer"
-              className="proof-top-cta proof-top-cta--enterprise inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition"
+              className="proof-top-cta proof-top-cta--enterprise inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-xs transition"
             >
               Consola privada <ExternalLink className="h-4 w-4" />
             </a>
             <Link
               href="/sdk"
-              className="proof-top-cta proof-top-cta--sdk inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              className="proof-top-cta proof-top-cta--sdk inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-xs transition hover:border-slate-300 hover:bg-slate-50"
             >
               SDK/API
             </Link>
@@ -1859,12 +1859,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         </div>
 
         <div className="proof-hero-grid grid gap-5 lg:grid-cols-[1.02fr_0.98fr] lg:items-end lg:gap-8">
-          <div className="space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-800 shadow-sm">
+          <div className="v3-space-y-4 sm:v3-space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-800 shadow-xs">
               <ShieldCheck className="h-4 w-4" />
               Public proof verifier
             </div>
-            <div className="space-y-4">
+            <div className="v3-space-y-4">
               <h1 className="brand-editorial-gradient max-w-3xl text-4xl font-black leading-[0.98] tracking-normal text-slate-950 sm:text-6xl">
                 Prueba publica para evidencia privada.
               </h1>
@@ -1898,7 +1898,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   name="event_hash"
                   defaultValue={eventHash}
                   placeholder="sha256:..."
-                  className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 font-mono text-sm normal-case tracking-normal text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white"
+                  className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 font-mono text-sm normal-case tracking-normal text-slate-900 outline-hidden transition focus:border-cyan-400 focus:bg-white"
                 />
               </label>
               <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
@@ -1907,7 +1907,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   name="anchor_id"
                   defaultValue={anchorId}
                   placeholder="uuid"
-                  className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 font-mono text-sm normal-case tracking-normal text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white"
+                  className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 font-mono text-sm normal-case tracking-normal text-slate-900 outline-hidden transition focus:border-cyan-400 focus:bg-white"
                 />
               </label>
               <button className="mt-2 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-sm font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-cyan-900/10 transition hover:bg-cyan-900">
@@ -1918,7 +1918,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         </div>
 
         {showcaseDemo ? (
-          <section className="proof-fast-path proof-elevated rounded-[1.5rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5">
+          <section className="proof-fast-path proof-elevated rounded-[1.5rem] border border-cyan-200 bg-white/84 p-4 shadow-xs sm:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Arranque guiado</p>
@@ -1988,7 +1988,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </section>
         ) : null}
 
-        <details className="proof-architecture-disclosure proof-elevated rounded-[1.5rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5" open={architectureRequested}>
+        <details className="proof-architecture-disclosure proof-elevated rounded-[1.5rem] border border-cyan-200 bg-white/84 p-4 shadow-xs sm:p-5" open={architectureRequested}>
           <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-2xl px-1 text-left">
             <span>
               <span className="block text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-700">Arquitectura y redes</span>
@@ -1999,7 +1999,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </span>
           </summary>
           <div className="proof-architecture-content mt-5 grid gap-6">
-        <section className="proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5">
+        <section className="proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-4 shadow-xs sm:p-5">
           <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr] xl:items-stretch">
             <div className="rounded-[1.35rem] border border-cyan-200 bg-cyan-50/70 p-5">
               <div className="flex items-start justify-between gap-3">
@@ -2064,7 +2064,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {proofFlow.map((item) => (
-            <article key={item.label} className="proof-flat rounded-[1.25rem] border border-slate-200 bg-white/82 p-4 shadow-sm">
+            <article key={item.label} className="proof-flat rounded-[1.25rem] border border-slate-200 bg-white/82 p-4 shadow-xs">
               <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-cyan-700">{item.label}</p>
               <h2 className="mt-3 text-lg font-black leading-tight text-slate-950">{item.title}</h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
@@ -2073,7 +2073,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         </section>
 
         <section id="trust-networks" className="grid scroll-mt-24 gap-4 lg:grid-cols-2">
-          <article id="polygon-ownership" tabIndex={-1} className="proof-elevated scroll-mt-24 rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+          <article id="polygon-ownership" tabIndex={-1} className="proof-elevated scroll-mt-24 rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-xs">
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Polygon ownership layer</p>
@@ -2131,7 +2131,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </dl>
           </article>
 
-          <article id="iota-proof" tabIndex={-1} className="proof-elevated scroll-mt-24 rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+          <article id="iota-proof" tabIndex={-1} className="proof-elevated scroll-mt-24 rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-xs">
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">IOTA proof layer</p>
@@ -2169,7 +2169,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </article>
         </section>
 
-        <section className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+        <section className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-xs">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Demos publicos verificables</p>
@@ -2185,7 +2185,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
           <div className="mt-5 grid gap-4 lg:grid-cols-3">
             {demoCases.length ? demoCases.map((demoCase) => (
-              <article key={demoCase.id} className="proof-flat rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+              <article key={demoCase.id} className="proof-flat rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 shadow-xs">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-700">{demoCase.vertical}</p>
@@ -2231,7 +2231,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
         </details>
 
-        <section className="proof-verification-console proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-5 shadow-sm">
+        <section className="proof-verification-console proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-5 shadow-xs">
           <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr] xl:items-end">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Consola de verificacion publica</p>
@@ -2274,7 +2274,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         </section>
 
         <section id="proof-result" aria-live="polite" tabIndex={-1} className="proof-workstation-grid scroll-mt-24">
-          <div className="proof-workstation-result-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
+          <div className="proof-workstation-result-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-xs">
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Resultado</p>
@@ -2414,7 +2414,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
 
           <div className="proof-workstation-sidebar grid gap-5 xl:self-start">
-          <div className="proof-executive-panel proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+          <div className="proof-executive-panel proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
@@ -2505,7 +2505,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </details>
           </div>
 
-          <details className="proof-anchors-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-4 shadow-sm" open={Boolean(eventHash && matches.length)}>
+          <details className="proof-anchors-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-4 shadow-xs" open={Boolean(eventHash && matches.length)}>
             <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Anchors</p>
@@ -2547,7 +2547,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
           </details>
 
-          <details id="proof-decoder" tabIndex={-1} className="proof-decoder-panel proof-elevated scroll-mt-24 rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-4 shadow-sm" open={Boolean(requestedDecoderInput)}>
+          <details id="proof-decoder" tabIndex={-1} className="proof-decoder-panel proof-elevated scroll-mt-24 rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-4 shadow-xs" open={Boolean(requestedDecoderInput)}>
               <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Proof Decoder</p>
@@ -2573,7 +2573,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     wrap="soft"
                     rows={5}
                     placeholder="0x6e657849442d70726f6f662d76317c..."
-                    className="proof-decoder-input min-h-32 resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs font-bold normal-case leading-5 tracking-normal text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white"
+                    className="proof-decoder-input min-h-32 resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs font-bold normal-case leading-5 tracking-normal text-slate-900 outline-hidden transition focus:border-cyan-400 focus:bg-white"
                   />
                 </label>
                 <button className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
@@ -2739,7 +2739,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
             </details>
 
-          <details className="proof-manager-panel proof-elevated rounded-[1.5rem] border border-emerald-200 bg-emerald-50/75 p-4 shadow-sm">
+          <details className="proof-manager-panel proof-elevated rounded-[1.5rem] border border-emerald-200 bg-emerald-50/75 p-4 shadow-xs">
             <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-center justify-between gap-4">
               <span>
                 <span className="block text-xs font-black uppercase tracking-[0.18em] text-emerald-800">Como se lo explicas a gerencia</span>
@@ -2766,7 +2766,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         </section>
 
         {activeDemo ? (
-          <section className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-xs">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-800">
                 <Network className="h-5 w-5" />
@@ -2794,7 +2794,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         ) : null}
 
         <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-          <article className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+          <article className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-xs">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-800">
                 <Layers className="h-5 w-5" />
@@ -2826,7 +2826,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
           </article>
 
-          <article className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+          <article className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-xs">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-800">
                 <ClipboardCheck className="h-5 w-5" />

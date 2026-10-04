@@ -15,7 +15,7 @@ export default async function TenantsPage() {
   const copy = dashboardContent[locale];
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.tenants} title="Directorio ilustrativo de tenants" description="Fixtures para recorrer la UX multi-tenant. No representan clientes, contratos, revenue ni health productivo." />
       <ModuleAudienceHero
         ceo={{ eyebrow: "CEO / Investor read · DEMO", summary: "Esta vista modela cómo se ordenarían cuentas, regiones, planes y health cuando el directorio productivo esté conectado.", decision: "Evaluá la UX y el modelo operativo; no uses estos fixtures como evidencia de clientes o cartera activa.", cta: "Conectá el tenant API y billing antes de usarla como reporte comercial." }}

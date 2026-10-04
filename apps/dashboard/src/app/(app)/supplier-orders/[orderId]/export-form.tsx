@@ -52,7 +52,7 @@ export function ExportPackForm({
 
   if (result) {
     return (
-      <div className="space-y-4">
+      <div className="v3-space-y-4">
         <div className="p-3 bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 rounded text-xs">
           Export successful. Send the password to the factory separately!
         </div>
@@ -71,7 +71,7 @@ export function ExportPackForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="v3-space-y-3">
       {disabled ? (
         <div className="rounded border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-100">
           {disabledReason || "Packaging approval is required before factory export."}

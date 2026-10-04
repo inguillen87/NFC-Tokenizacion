@@ -142,7 +142,7 @@ function EventEvidenceCard({ row }: { row: PhysicalTapRow }) {
         <span className="shrink-0 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Fuente real</span>
       </div>
 
-      <div className="space-y-4 px-5 py-4">
+      <div className="v3-space-y-4 px-5 py-4">
         <div className="grid gap-2 text-xs sm:grid-cols-2">
           <div className="rounded-2xl border border-white/8 bg-slate-950/45 p-3">
             <p className="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">Unidad independiente</p>
@@ -534,7 +534,7 @@ export function PhysicalTapsCommandCenter({
   ];
 
   return (
-    <section data-testid="physical-taps-command-center" className="space-y-4 rounded-[2rem] border border-cyan-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.11),transparent_34%),linear-gradient(145deg,rgba(15,23,42,.92),rgba(2,6,23,.9))] p-4 shadow-[0_28px_100px_rgba(8,145,178,.12)] sm:p-6">
+    <section data-testid="physical-taps-command-center" className="v3-space-y-4 rounded-[2rem] border border-cyan-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.11),transparent_34%),linear-gradient(145deg,rgba(15,23,42,.92),rgba(2,6,23,.9))] p-4 shadow-[0_28px_100px_rgba(8,145,178,.12)] sm:p-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
@@ -612,9 +612,9 @@ export function PhysicalTapsCommandCenter({
           )}
         </div>
 
-        <aside className="space-y-3 rounded-3xl border border-violet-300/14 bg-violet-400/[0.045] p-4">
+        <aside className="v3-space-y-3 rounded-3xl border border-violet-300/14 bg-violet-400/[0.045] p-4">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-violet-300/20 bg-violet-400/10 text-violet-200"><Fingerprint className="h-4 w-4" /></span><div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-violet-200">CRM después del TAP</p><h3 className="mt-1 font-black text-white">Convertir sin invadir</h3></div></div>
-          <ol className="space-y-2 text-xs leading-5">
+          <ol className="v3-space-y-2 text-xs leading-5">
             <li className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.05] p-3 text-slate-300"><b className="text-emerald-100">1. Evidencia recibida</b><br />Producto, lote, estado TT, hora y zona aproximada.</li>
             <li className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.05] p-3 text-slate-300"><b className="text-amber-100">2. Cliente todavía anónimo</b><br />El TAP no crea owner, lead ni suscriptor automáticamente.</li>
             <li className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.05] p-3 text-slate-300"><b className="text-cyan-100">3. Acción con permiso</b><br />Claim, garantía, club, soporte o recompra sólo después de opt-in.</li>

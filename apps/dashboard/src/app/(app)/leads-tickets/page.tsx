@@ -238,7 +238,7 @@ export default async function LeadsTicketsPage({
   });
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.leadsTickets} title={copy.pages.leadsTickets.title} description={copy.pages.leadsTickets.description} />
 
       <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">

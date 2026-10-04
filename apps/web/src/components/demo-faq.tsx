@@ -155,7 +155,7 @@ export function DemoFaq({ locale }: Props) {
         {copy.title}
       </p>
       <p className="mt-2 text-sm text-slate-300">{copy.lead}</p>
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 v3-space-y-2">
         {copy.items.map((item) => (
           <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-4 transition hover:border-cyan-300/30">
             <summary className="cursor-pointer list-none text-sm font-semibold text-white">

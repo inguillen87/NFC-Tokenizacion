@@ -16,7 +16,7 @@ export default async function Web3SignUpPage({ searchParams }: { searchParams?: 
         <section>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <BrandHomeLink size={72} />
-            <Link href="/me/wallet" className="inline-flex min-h-11 items-center rounded-full border border-white/15 bg-white/5 px-4 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/35">
+            <Link href="/me/wallet" className="inline-flex min-h-11 items-center rounded-full border border-white/15 bg-white/5 px-4 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-cyan-300/35">
               Volver a Wallet
             </Link>
           </div>

@@ -57,7 +57,7 @@ function SunSectionLinks({
               if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
               onNavigate(id, event.detail === 0);
             }}
-            className={`group flex min-h-11 min-w-0 items-center justify-center rounded-xl border font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+            className={`group flex min-h-11 min-w-0 items-center justify-center rounded-xl border font-bold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
               mobile ? "flex-col gap-1 px-1.5 py-1.5 text-[11px] leading-none" : "gap-1 px-1.5 py-2 text-[11px]"
             } ${
               isActive
@@ -307,7 +307,7 @@ export function SunSectionNav({ variant = "default" }: { variant?: "default" | "
         aria-label={text("Secciones del producto")}
         aria-hidden={!isMobileDockVisible}
         inert={!isMobileDockVisible}
-        className={`sun-mobile-dock fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-40 mx-auto max-w-[430px] rounded-2xl border border-white/10 bg-slate-950/90 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-[opacity,transform] duration-200 motion-reduce:transition-none lg:hidden ${
+        className={`sun-mobile-dock fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-40 mx-auto max-w-[430px] rounded-2xl border border-white/10 bg-slate-950/90 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-[opacity,transform,translate] duration-200 motion-reduce:transition-none lg:hidden ${
           isMobileDockVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0"
         }`}
       >

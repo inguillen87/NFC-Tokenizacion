@@ -306,7 +306,7 @@ export default function TenantMarketplacePage() {
   };
 
   return (
-    <div className="space-y-6" data-marketplace-availability={availability} data-marketplace-source={dataSource}>
+    <div className="v3-space-y-6" data-marketplace-availability={availability} data-marketplace-source={dataSource}>
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Catálogo conectado · Sandbox</h1>
@@ -347,7 +347,7 @@ export default function TenantMarketplacePage() {
         >
           <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-amber-100">
             Tenant requerido para aislar el catálogo
-            <input value={tenantDraft} onChange={(event) => setTenantDraft(event.target.value)} placeholder="Ej.: demobodega" className="rounded-xl border border-amber-200/20 bg-slate-950/70 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-amber-200/50" />
+            <input value={tenantDraft} onChange={(event) => setTenantDraft(event.target.value)} placeholder="Ej.: demobodega" className="rounded-xl border border-amber-200/20 bg-slate-950/70 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-hidden focus:border-amber-200/50" />
           </label>
           <button type="submit" className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-950">Abrir tenant</button>
           <a href="/tenants" className="rounded-xl border border-amber-200/25 px-4 py-2 text-center text-sm font-bold text-amber-50">Ver directorio</a>
@@ -413,8 +413,8 @@ export default function TenantMarketplacePage() {
       </section>
 
       <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-        <input suppressHydrationWarning value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />
-        <select suppressHydrationWarning value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30">
+        <input suppressHydrationWarning value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/30" />
+        <select suppressHydrationWarning value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/30">
           <option value="all">Todas las visibilidades</option>
           <option value="network">Visible en simulación</option>
           <option value="private">Oculto</option>
@@ -499,16 +499,16 @@ export default function TenantMarketplacePage() {
         <div className="rounded-2xl border border-cyan-500/20 bg-slate-950/90 p-5">
           <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-cyan-300">{editingId ? "Editar producto" : "Nuevo producto"}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <input suppressHydrationWarning value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nombre del producto" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <input suppressHydrationWarning value={draft.vertical} onChange={(e) => setDraft((prev) => ({ ...prev, vertical: e.target.value }))} placeholder="Vertical (Wine, Events, Pharma...)" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <input suppressHydrationWarning value={draft.emoji} onChange={(e) => setDraft((prev) => ({ ...prev, emoji: e.target.value }))} placeholder="Emoji" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <input suppressHydrationWarning type="number" min={0} value={draft.priceArs} onChange={(e) => setDraft((prev) => ({ ...prev, priceArs: Number(e.target.value) || 0 }))} placeholder="Precio ARS" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <select suppressHydrationWarning value={draft.checkout} onChange={(e) => setDraft((prev) => ({ ...prev, checkout: e.target.value as CheckoutMode }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
+            <input suppressHydrationWarning value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nombre del producto" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/40" />
+            <input suppressHydrationWarning value={draft.vertical} onChange={(e) => setDraft((prev) => ({ ...prev, vertical: e.target.value }))} placeholder="Vertical (Wine, Events, Pharma...)" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/40" />
+            <input suppressHydrationWarning value={draft.emoji} onChange={(e) => setDraft((prev) => ({ ...prev, emoji: e.target.value }))} placeholder="Emoji" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/40" />
+            <input suppressHydrationWarning type="number" min={0} value={draft.priceArs} onChange={(e) => setDraft((prev) => ({ ...prev, priceArs: Number(e.target.value) || 0 }))} placeholder="Precio ARS" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/40" />
+            <select suppressHydrationWarning value={draft.checkout} onChange={(e) => setDraft((prev) => ({ ...prev, checkout: e.target.value as CheckoutMode }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/40">
               <option value="request">Request to Buy</option>
               <option value="direct">Direct Checkout</option>
               <option value="external">External URL</option>
             </select>
-            <select suppressHydrationWarning value={draft.visibility} onChange={(e) => setDraft((prev) => ({ ...prev, visibility: e.target.value as Visibility }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
+            <select suppressHydrationWarning value={draft.visibility} onChange={(e) => setDraft((prev) => ({ ...prev, visibility: e.target.value as Visibility }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-400/40">
               <option value="network">Visible en simulación</option>
               <option value="private">Oculto</option>
             </select>

@@ -10,7 +10,7 @@ export default async function TokenizationPage() {
   const canWrite = session.role === "super-admin" || dashboardPermissionMatches(session.permissions, "tokenization:write");
 
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading
         eyebrow="Ownership ledger operations"
         title="Tokenization, custody and digital twins"

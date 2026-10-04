@@ -166,7 +166,7 @@ export default async function SubscriptionsPage({
   }));
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading
         eyebrow={copy.nav.subscriptions}
         title={scopedTenant ? `Escenario de plan: ${primaryAccount?.tenant || scopedTenant}` : "Simulador de planes y cuentas"}

@@ -42,7 +42,7 @@ export default async function ResellersPage() {
   ]);
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description={copy.pages.resellers.description} />
       {!canManageLeads ? (
         <EnterpriseOpsState

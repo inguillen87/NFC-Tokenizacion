@@ -26,7 +26,7 @@ export default async function LogisticsHubPage() {
   const sourceCopy = describeLogisticsSource(statsResult.source);
 
   return (
-    <main className="space-y-8 pb-12" data-logistics-source={statsResult.source} data-logistics-availability={statsResult.availability}>
+    <main className="v3-space-y-8 pb-12" data-logistics-source={statsResult.source} data-logistics-availability={statsResult.availability}>
       <SectionHeading 
         eyebrow="Secure Delivery" 
         title="Logistics Hub" 
@@ -104,7 +104,7 @@ export default async function LogisticsHubPage() {
               </div>
             </div>
             <p className="mt-4 text-[11px] leading-5 text-slate-400">{sourceCopy.detail}</p>
-            <dl className="mt-5 space-y-4 text-xs font-medium text-slate-300">
+            <dl className="mt-5 v3-space-y-4 text-xs font-medium text-slate-300">
               <div className="flex items-center justify-between gap-3">
                 <dt className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" /> In-transit records</dt>
                 <dd className="font-mono text-sm text-cyan-100">{stats?.in_transit ?? "—"}</dd>

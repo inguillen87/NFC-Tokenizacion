@@ -329,7 +329,7 @@ export function LoginFormPanel({
           name="email"
           inputMode="email"
           autoComplete="username"
-          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-hidden"
           placeholder={emailPlaceholder}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
@@ -338,7 +338,7 @@ export function LoginFormPanel({
           type="password"
           name="password"
           autoComplete="current-password"
-          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+          className="dashboard-auth-input rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-hidden"
           placeholder={passwordPlaceholder}
           value={password}
           onChange={(event) => setPassword(event.target.value)}

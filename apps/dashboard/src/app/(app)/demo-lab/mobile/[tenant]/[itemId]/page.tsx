@@ -188,7 +188,7 @@ export default function DemoMobileItemPage() {
   }, [events, itemId, tenant]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-4 p-4">
+    <main className="mx-auto max-w-5xl v3-space-y-4 p-4">
       <SectionHeading
         eyebrow="Mobile preview"
         title="Preview de evidencia reportada"
@@ -199,14 +199,14 @@ export default function DemoMobileItemPage() {
         <button
           type="button"
           onClick={() => setRefreshRequest((current) => current + 1)}
-          className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 font-semibold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+          className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 font-semibold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-cyan-500/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300"
         >
           Actualizar evidencia
         </button>
       </div>
       <div className="mx-auto w-full max-w-[420px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
-        <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
+        <div className="v3-space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
       <div role="status" className="sticky top-2 z-20 rounded-xl border border-amber-300/50 bg-amber-950/95 px-3 py-2 text-center text-xs font-semibold tracking-[0.08em] text-amber-100 shadow-lg backdrop-blur">
         PREVIEW · NO ES UN TAP NFC FÍSICO
       </div>
@@ -240,7 +240,7 @@ export default function DemoMobileItemPage() {
       <Card className="p-4">
         <div className="relative mb-3 h-44 overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_30%_25%,rgba(56,189,248,.22),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(16,185,129,.2),transparent_35%),#0f172a]">
           <div className="absolute inset-y-6 left-1/2 w-24 -translate-x-1/2 rounded-3xl border border-amber-200/20 bg-gradient-to-b from-amber-100/20 via-amber-300/10 to-amber-700/20 shadow-[0_18px_40px_rgba(146,64,14,.35)]" />
-          <div className="absolute bottom-4 left-1/2 h-2 w-14 -translate-x-1/2 rounded-full bg-black/40 blur-sm" />
+          <div className="absolute bottom-4 left-1/2 h-2 w-14 -translate-x-1/2 rounded-full bg-black/40 blur-xs" />
           <div className="absolute right-3 top-3 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">PREVIEW</div>
           <div className="absolute left-3 top-3 rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">
             {evidenceSource === "backend_reported" ? "REPORTED DATA" : "SYNTHETIC SEED"}
@@ -289,7 +289,7 @@ export default function DemoMobileItemPage() {
 
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-white">Anti-fraude / trazabilidad</h3>
-        <ul className="mt-2 space-y-1 text-xs text-slate-300">
+        <ul className="mt-2 v3-space-y-1 text-xs text-slate-300">
           {detail.antiFraud.map((item) => (
             <li key={item}>• {item}</li>
           ))}
@@ -314,7 +314,7 @@ export default function DemoMobileItemPage() {
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-white">Qué respalda este preview</h3>
         <p className="mt-2 text-xs text-cyan-200">Fuente actual: <code>{evidenceSource}</code></p>
-        <ul className="mt-2 space-y-1 text-xs text-slate-300">
+        <ul className="mt-2 v3-space-y-1 text-xs text-slate-300">
           <li>
             {evidenceSource === "backend_reported"
               ? "Origen: eventos devueltos por /api/internal/demo/summary; pueden pertenecer a escenarios demo."
@@ -328,7 +328,7 @@ export default function DemoMobileItemPage() {
 
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-white">Timeline ({evidenceSource})</h3>
-        <div className="mt-2 space-y-2 text-xs text-slate-300">
+        <div className="mt-2 v3-space-y-2 text-xs text-slate-300">
           {timeline.map((event, index) => (
             <div key={`${event.label}-${index}`} className="rounded-lg border border-white/10 bg-slate-900 p-2">
               <p className="font-semibold text-cyan-200">{event.label}</p>

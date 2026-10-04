@@ -262,7 +262,7 @@ export function PostTapNextStep({
         <small className="mt-0.5 block text-[10px] leading-4 text-slate-400">{action.help}</small>
       </span>
     </>;
-    const className = "flex min-h-16 w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-left text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+    const className = "flex min-h-16 w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-left text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300";
     const tracking = {
       "data-sun-experience-event": "experienceEvent" in action ? action.experienceEvent : undefined,
       "data-sun-experience-placement": "experiencePlacement" in action ? action.experiencePlacement : undefined,
@@ -282,7 +282,7 @@ export function PostTapNextStep({
       </Link>
     );
   };
-  const primaryClassName = `mt-4 flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl p-4 text-slate-950 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${isOpenedSeal ? "bg-amber-300 shadow-[0_0_22px_rgba(252,211,77,0.18)] hover:bg-amber-200" : "bg-emerald-300 shadow-[0_0_22px_rgba(110,231,183,0.18)] hover:bg-emerald-200"}`;
+  const primaryClassName = `mt-4 flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl p-4 text-slate-950 transition active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white ${isOpenedSeal ? "bg-amber-300 shadow-[0_0_22px_rgba(252,211,77,0.18)] hover:bg-amber-200" : "bg-emerald-300 shadow-[0_0_22px_rgba(110,231,183,0.18)] hover:bg-emerald-200"}`;
   const primaryContent = <>
     <span className="flex items-center gap-3">
       <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -332,7 +332,7 @@ export function PostTapNextStep({
 
       {additionalSecondaryActions.length ? (
         <details className="mt-3 rounded-2xl border border-white/10 bg-slate-950/35 p-2">
-          <summary className="cursor-pointer rounded-xl px-2 py-2 text-xs font-black text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+          <summary className="cursor-pointer rounded-xl px-2 py-2 text-xs font-black text-slate-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300">
             Más opciones de la marca
           </summary>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">

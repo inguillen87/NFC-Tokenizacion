@@ -357,7 +357,7 @@ export function AdminActionForms({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       <Card className="p-5">
         <p className="text-sm font-semibold text-white">{copy.roleHeading}</p>
         <p className="mt-1 text-xs text-slate-400">{roleMessage}</p>

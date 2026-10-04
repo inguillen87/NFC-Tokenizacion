@@ -45,7 +45,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
       title="Pasaporte Criptográfico & Wallet"
       subtitle="Administrá certificados digitales, registros de ownership, NFT y puntos. Ninguno garantiza por sí solo autenticidad física, contenido o procedencia."
     >
-      <div className="space-y-6">
+      <div className="v3-space-y-6">
         <section aria-labelledby="wallet-brand-points-title" className="rounded-3xl border border-[color:var(--portal-border)] bg-[var(--portal-surface)] p-5 text-[var(--portal-text)] sm:p-6">
           <div className="flex items-start gap-3">
             <Coins className="mt-0.5 h-6 w-6 shrink-0 text-[var(--portal-accent)]" aria-hidden="true" />
@@ -56,7 +56,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
           </div>
 
           {points.brands.status === "unavailable" ? (
-            <div role="status" className="mt-5 space-y-3 rounded-2xl border border-[color:var(--portal-border)] bg-[var(--portal-subtle)] p-4">
+            <div role="status" className="mt-5 v3-space-y-3 rounded-2xl border border-[color:var(--portal-border)] bg-[var(--portal-subtle)] p-4">
               <p className="text-sm text-[var(--portal-muted)]">No pudimos cargar tus saldos por marca. No se muestran como cero.</p>
               <ConsumerDataRetryButton />
             </div>
@@ -83,7 +83,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
          
          {/* Left Column: Passport & Certificates */}
-         <div className="space-y-6">
+         <div className="v3-space-y-6">
             
             {/* Collector Banner with deep wine/burgundy and gold accents */}
             <section className="consumer-passport-collection rounded-3xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,rgba(153,27,27,0.3),transparent_40%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-6 shadow-2xl relative overflow-hidden">
@@ -156,7 +156,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
          </div>
 
          {/* Right Column: Faucet / Metamask / Sandbox & Tenant Points */}
-         <div className="space-y-6">
+         <div className="v3-space-y-6">
             
             <section data-wallet-scope="network" aria-labelledby="wallet-network-points-title" className="rounded-3xl border border-[color:var(--portal-border)] bg-[var(--portal-surface)] p-5 text-[var(--portal-text)]">
               <h3 id="wallet-network-points-title" className="text-base font-extrabold">Puntos de la red nexID</h3>
@@ -164,12 +164,12 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
               {points.network.status === "disabled" ? (
                 <p className="mt-4 rounded-xl bg-[var(--portal-subtle)] p-3 text-sm leading-6 text-[var(--portal-muted)]">La red nexID no está habilitada para esta cuenta. Esto no afecta tus puntos de cada marca.</p>
               ) : points.network.status === "unavailable" ? (
-                <div role="status" className="mt-4 space-y-3">
+                <div role="status" className="mt-4 v3-space-y-3">
                   <p className="text-sm leading-6 text-[var(--portal-muted)]">Saldo de red no disponible. No se reemplaza con cero ni con los puntos de tus marcas.</p>
                   {points.brands.status === "ready" ? <ConsumerDataRetryButton /> : null}
                 </div>
               ) : (
-                <dl className="mt-4 space-y-4">
+                <dl className="mt-4 v3-space-y-4">
                   <div><dt className="text-xs font-semibold text-[var(--portal-muted)]">Saldo reportado de la red</dt><dd className="mt-1 text-xl font-extrabold">{points.network.balance === null ? "No informado" : points.network.balance}</dd></div>
                   <div><dt className="text-xs font-semibold text-[var(--portal-muted)]">Acumulados en la red nexID</dt><dd className="mt-1 text-xl font-bold">{points.network.lifetime === null ? "No informado" : points.network.lifetime}</dd></div>
                 </dl>
@@ -185,7 +185,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
                <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
                  Cuando la política lo habilita, nexID puede registrar un ownership digital en Polygon. La transacción prueba ese registro y el control de la wallet; no prueba autenticidad física, procedencia ni custodia del producto.
                </p>
-               <div className="mt-4 space-y-2 text-[10px] text-slate-300 font-mono">
+               <div className="mt-4 v3-space-y-2 text-[10px] text-slate-300 font-mono">
                  {["1. Mensaje NFC Validado", "2. Identidad + Política", "3. Acuñación Confirmada", "4. Acciones Habilitadas"].map((step, idx) => (
                    <div key={step} className="rounded-xl border border-white/5 bg-slate-950/65 px-3 py-2 flex items-center justify-between">
                      <span>{step}</span>

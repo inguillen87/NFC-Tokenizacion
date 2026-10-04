@@ -8,7 +8,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import postcss from "postcss";
-import tailwindcss from "tailwindcss";
+import tailwindcss from "@tailwindcss/postcss";
 
 const root = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const web = join(root, "apps/web");
@@ -18,7 +18,7 @@ const baselineRef = process.env.NAV_BASELINE_REF || "989ad2deb343e16e7452d60f485
 const baseline = execFileSync("git", ["show", `${baselineRef}:apps/web/src/app/sun/sun-section-nav.tsx`], { cwd: root, encoding: "utf8" });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : "playwright-core");
 const globals = await readFile(join(web, "src/app/globals.css"), "utf8");
-const css = (await postcss([tailwindcss({ content: [{ raw: source, extension: "tsx" }], darkMode: ["selector", '[data-theme="dark"]'] })]).process(globals, { from: undefined })).css;
+const css = (await postcss([tailwindcss({ base: web })]).process(globals, { from: join(web, "src/app/globals.css") })).css;
 const fixture = `
 import React from 'react';
 import {createRoot} from 'react-dom/client';
@@ -56,7 +56,7 @@ body{margin:0;font:16px system-ui;overflow-anchor:none}#fixture-main{box-sizing:
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
-const report = { localSyntheticDom: true, realReactComponent: true, baselineRef, physicalTapMeasured: false, checks: [], views: [], performance: [], errors: [] };
+const report = { localSyntheticDom: true, realReactComponent: true, baselineRef, physicalTapMeasured: false, checks: [], views: [], motion: [], performance: [], errors: [] };
 const check = (passed, name) => { report.checks.push({ name, passed: Boolean(passed) }); assert.ok(passed, name); };
 const output = process.env.QA_OUTPUT;
 if (output) await mkdir(output, { recursive: true });
@@ -183,6 +183,27 @@ try {
   for (const width of [390, 1440]) for (const revision of ["before", "after"]) {
     const { context, page } = await openFixture({ width, revision, reducedMotion: "no-preference" });
     await scrollTo(page, await sectionTop(page, "sun-origin") + 120);
+    if (width === 390 && revision === "after") {
+      await page.evaluate(() => window.scrollBy(0, 80)); await frames(page);
+      check(!(await dockShown(page)), "Normal-motion dock starts hidden before slide restoration");
+      const properties = await page.locator(".sun-mobile-dock").evaluate(node => {
+        window.dockTransitionProperties = [];
+        node.addEventListener("transitionrun", event => window.dockTransitionProperties.push(event.propertyName));
+        return getComputedStyle(node).transitionProperty.split(",").map(value => value.trim());
+      });
+      check(properties.includes("translate"), "Normal-motion dock transitions its individual translate property");
+      await page.evaluate(() => window.scrollBy(0, -24));
+      await page.waitForFunction(() => window.dockTransitionProperties.includes("translate"), null, { timeout: 1200 });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+      const motion = await page.locator(".sun-mobile-dock").evaluate(node => {
+        const animation = node.getAnimations().find(item => item.transitionProperty === "translate");
+        return { properties: window.dockTransitionProperties, translate: getComputedStyle(node).translate, progress: animation?.effect?.getComputedTiming().progress };
+      });
+      check(motion.properties.includes("opacity") && motion.properties.includes("translate"), "Actual dock restoration runs opacity and sliding transitions");
+      check(typeof motion.progress === "number" && motion.progress > 0 && motion.progress < 1, "Dock translation interpolates during normal motion");
+      report.motion.push({ width, reducedMotion: "no-preference", ...motion });
+      await idle(page);
+    }
     const listeners = await page.evaluate(() => ({ ...window.navListeners }));
     const metrics = await page.evaluate(async () => {
       for (const key of Object.keys(window.navMetrics)) window.navMetrics[key] = 0;

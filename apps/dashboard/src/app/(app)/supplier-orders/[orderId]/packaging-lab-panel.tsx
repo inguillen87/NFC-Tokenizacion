@@ -279,7 +279,7 @@ export function PackagingLabPanel({ orderId, initialData }: { orderId: string; i
             </p>
           ) : (
             <div className="mt-4 grid gap-4 xl:grid-cols-3">
-              <div className="space-y-3">
+              <div className="v3-space-y-3">
                 <label className="block text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Preset operativo
                   <select value={presetCode} onChange={(event) => applyPreset(event.target.value)} className="mt-1 w-full rounded-lg border border-fuchsia-300/25 bg-slate-950 px-3 py-2 text-sm text-white">
                     <option value="">Configuracion manual</option>
@@ -307,7 +307,7 @@ export function PackagingLabPanel({ orderId, initialData }: { orderId: string; i
                 <Field label="SKU" value={sku} onChange={setSku} placeholder="SYN-SEED-001" />
               </div>
 
-              <div className="space-y-3">
+              <div className="v3-space-y-3">
                 <label className="block text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Tipo de packaging
                   <select value={packagingType} onChange={(event) => { setPackagingType(event.target.value); setPlacementId(""); }} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
                     {packagingTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -338,7 +338,7 @@ export function PackagingLabPanel({ orderId, initialData }: { orderId: string; i
                 </> : null}
               </div>
 
-              <div className="space-y-3">
+              <div className="v3-space-y-3">
                 <label className="block text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Objetivo
                   <textarea value={objective} onChange={(event) => setObjective(event.target.value)} className="mt-1 min-h-32 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
                 </label>
@@ -358,7 +358,7 @@ export function PackagingLabPanel({ orderId, initialData }: { orderId: string; i
         </section>
       ) : (
         <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,.55fr)]">
-          <section className="space-y-3">
+          <section className="v3-space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-black uppercase tracking-[0.14em] text-fuchsia-100">Plan de ensayos</h3>
               <span className="text-xs text-slate-400">{activeProject.template_code} / {activeProject.packaging_type} / {activeProject.placement_zone}</span>
@@ -390,7 +390,7 @@ export function PackagingLabPanel({ orderId, initialData }: { orderId: string; i
             })}
           </section>
 
-          <aside className="space-y-4">
+          <aside className="v3-space-y-4">
             <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
               <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">Gate de aprobacion</h3>
               <p className="mt-2 text-xs leading-5 text-slate-400">Pendientes obligatorios: <b className="text-white">{unresolvedTests.length}</b>. Criticos sin PASS: <b className="text-white">{criticalNotPassed.length}</b>.</p>
@@ -428,7 +428,7 @@ export function PackagingLabPanel({ orderId, initialData }: { orderId: string; i
 
             <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
               <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">Lotes vinculados</h3>
-              <div className="mt-2 space-y-2">
+              <div className="mt-2 v3-space-y-2">
                 {(data.activation_gates || []).map((gate) => <div key={gate.supplier_sub_batch_id} className="rounded-lg border border-white/10 p-2 text-xs text-slate-300"><div className="flex justify-between gap-2"><b className="font-mono text-white">{gate.bid}</b><span className={gate.packaging_lab_ready ? "text-emerald-300" : "text-amber-300"}>{gate.packaging_lab_ready ? "LAB READY" : "BLOCKED"}</span></div><span className="mt-1 block text-slate-500">Manifest {gate.manifest_count}/{gate.expected_quantity} / {gate.manifest_status}</span></div>)}
               </div>
             </div>
@@ -461,7 +461,7 @@ function GateChecklist({ id, title, checks }: { id: string; title: string; check
   return (
     <div id={id} className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
       <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{title}</p>
-      <ul className="mt-2 space-y-1.5">
+      <ul className="mt-2 v3-space-y-1.5">
         {checks.map((check) => (
           <li key={check.id} className={`flex items-start gap-2 text-xs ${check.ok ? "text-emerald-200" : "text-amber-100"}`}>
             <span aria-hidden="true" className="mt-px font-black">{check.ok ? "✓" : "!"}</span>

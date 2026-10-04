@@ -233,7 +233,7 @@ export function DemoLabControlCenter({
   const corpusReady = summary?.exists && summary?.batch?.bid === BID;
 
   return (
-    <div className="space-y-5" data-testid="demo-mission-control">
+    <div className="v3-space-y-5" data-testid="demo-mission-control">
       <section className="grid gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-5" aria-label="Estado del entorno demo">
         <StatusCell label="Scope" value={tenantSlug === TENANT ? "Bodega Balmec" : tenantSlug} detail="Tenant de la sesion" />
         <StatusCell label="Corpus" value={corpusReady ? "Listo" : "No disponible"} detail={summary?.batch?.bid || BID} tone={corpusReady ? "ok" : "warn"} />
@@ -250,7 +250,7 @@ export function DemoLabControlCenter({
       ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,.65fr)]">
-        <section className="min-w-0 space-y-4" aria-labelledby="demo-scenarios-title">
+        <section className="min-w-0 v3-space-y-4" aria-labelledby="demo-scenarios-title">
           <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 pb-3">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-200">Escenario comercial</p>
@@ -312,7 +312,7 @@ export function DemoLabControlCenter({
           </div>
 
           {receipt ? (
-            <div className="mt-4 space-y-3" data-testid="demo-execution-receipt">
+            <div className="mt-4 v3-space-y-3" data-testid="demo-execution-receipt">
               <div className={`rounded-lg border p-4 ${resultTone(receipt.result)}`}>
                 <div className="flex items-center justify-between gap-3"><span className="font-black">{receipt.result}</span><CheckCircle2 className="h-5 w-5" /></div>
                 <p className="mt-2 text-xs opacity-75">{receipt.scenario} / {receipt.mode}</p>
@@ -334,7 +334,7 @@ export function DemoLabControlCenter({
 
           <div className="mt-5 border-t border-white/10 pt-4">
             <div className="flex items-center justify-between gap-3"><p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Ultimos eventos demo</p><span className="text-xs font-bold text-slate-500">{events.length}</span></div>
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 v3-space-y-2">
               {events.slice(0, 5).map((event) => (
                 <div key={event.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/8 py-2.5 last:border-0">
                   <span className={`h-2.5 w-2.5 rounded-full ${event.result.toUpperCase().includes("VALID") ? "bg-emerald-300" : event.result.toUpperCase().includes("REPLAY") ? "bg-amber-300" : "bg-rose-300"}`} />
@@ -359,7 +359,7 @@ export function DemoLabControlCenter({
           <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.14em] text-rose-200">Reset super-admin del corpus demo</summary>
           <p className="mt-3 text-sm text-slate-400">Solo elimina eventos con tenant demobodega, batch {BID} y source=demo. Preserva tenant, tags, lote y CRM.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input value={resetText} onChange={(event) => setResetText(event.target.value)} aria-label="Confirmacion exacta del reset demo" placeholder={RESET_CONFIRMATION} className="min-h-11 flex-1 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-sm text-white outline-none focus:border-rose-300/45" />
+            <input value={resetText} onChange={(event) => setResetText(event.target.value)} aria-label="Confirmacion exacta del reset demo" placeholder={RESET_CONFIRMATION} className="min-h-11 flex-1 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-sm text-white outline-hidden focus:border-rose-300/45" />
             <button type="button" disabled={resetText !== RESET_CONFIRMATION || Boolean(pendingMode)} onClick={() => void reset()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-300/25 bg-rose-500/10 px-4 text-xs font-black text-rose-100 disabled:cursor-not-allowed disabled:opacity-40">
               {pendingMode === "reset" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Reset controlado
             </button>

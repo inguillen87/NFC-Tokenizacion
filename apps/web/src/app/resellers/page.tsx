@@ -137,7 +137,7 @@ export default async function ResellersPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface public-page-shell reseller-page container-shell space-y-8 pb-16 pt-8 md:py-16">
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface public-page-shell reseller-page container-shell v3-space-y-8 pb-16 pt-8 md:py-16">
       <MarketingPageIntro
         eyebrow={content.reseller.eyebrow}
         title={content.reseller.title}
@@ -163,7 +163,7 @@ export default async function ResellersPage() {
         </div>
       </Card>
 
-      <div className="space-y-3">
+      <div className="v3-space-y-3">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
           <Sparkles className="h-4 w-4 text-cyan-300" />
           {t.jumpTitle}
@@ -219,7 +219,7 @@ export default async function ResellersPage() {
 
       <Card id="onboarding" className="p-6">
         <SectionHeading eyebrow={content.credibility.eyebrow} title={content.credibility.title} description={content.credibility.description} />
-        <ul className="mt-4 space-y-2 text-sm text-slate-300">
+        <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
           {content.credibility.items.map((item) => <li key={item}>• {item}</li>)}
         </ul>
 

@@ -77,7 +77,7 @@ export function SunLocationSummary({ children }: { children: ReactNode }) {
   if (!receipt) return <>{children}</>;
   const label = [receipt.city, receipt.countryCode].filter(Boolean).join(", ") || text("Zona aproximada del teléfono");
   return (
-    <div data-testid="sun-summary-location-confirmed" role="status" className="space-y-3">
+    <div data-testid="sun-summary-location-confirmed" role="status" className="v3-space-y-3">
       <div className="flex items-start gap-3">
         <MapPin className="mt-1 h-6 w-6 shrink-0 text-emerald-400" aria-hidden="true" />
         <div>

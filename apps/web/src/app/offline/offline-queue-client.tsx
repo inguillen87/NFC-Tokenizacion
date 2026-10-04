@@ -297,7 +297,7 @@ export function OfflineQueueClient() {
           </div>
         </section>
 
-        <section aria-live="polite" aria-busy={!storageReady} className="space-y-4">
+        <section aria-live="polite" aria-busy={!storageReady} className="v3-space-y-4">
           {!storageReady ? (
             <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 text-slate-300">Abriendo la cola local…</div>
           ) : records.length === 0 ? (
@@ -358,7 +358,7 @@ export function OfflineQueueClient() {
                           {product.agro.batchLot ? <div><dt className="text-slate-500">Lote</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.batchLot}</dd></div> : null}
                           {product.agro.authorizedChannel ? <div><dt className="text-slate-500">Canal autorizado</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.authorizedChannel}</dd></div> : null}
                           {product.agro.ppeSummary ? <div className="sm:col-span-2"><dt className="text-slate-500">EPP</dt><dd className="mt-0.5 leading-6 text-slate-200">{product.agro.ppeSummary}</dd></div> : null}
-                          {product.agro.ppeItems?.length ? <div className="sm:col-span-2"><dt className="text-slate-500">Elementos requeridos</dt><dd><ul className="mt-1 list-disc space-y-1 pl-5 text-slate-200">{product.agro.ppeItems.map((item) => <li key={item}>{item}</li>)}</ul></dd></div> : null}
+                          {product.agro.ppeItems?.length ? <div className="sm:col-span-2"><dt className="text-slate-500">Elementos requeridos</dt><dd><ul className="mt-1 list-disc v3-space-y-1 pl-5 text-slate-200">{product.agro.ppeItems.map((item) => <li key={item}>{item}</li>)}</ul></dd></div> : null}
                           {product.agro.stewardshipSummary ? <div className="sm:col-span-2"><dt className="text-slate-500">Uso responsable</dt><dd className="mt-0.5 leading-6 text-slate-200">{product.agro.stewardshipSummary}</dd></div> : null}
                         </dl>
                       </div>

@@ -396,7 +396,7 @@ export function MetamaskSandboxCard({
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[1fr_0.92fr]">
-        <div className="space-y-3 p-5">
+        <div className="v3-space-y-3 p-5">
           <Link
             href="/web3/sign-in?next=/me/wallet"
             className="group flex items-center justify-between gap-4 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-left transition hover:border-cyan-200/60 hover:bg-cyan-300/15"

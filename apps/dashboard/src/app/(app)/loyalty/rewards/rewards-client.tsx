@@ -187,7 +187,7 @@ export default function RewardsClient({
 
   return (
     <div
-      className="space-y-6"
+      className="v3-space-y-6"
       data-rewards-availability={availability}
       data-rewards-source={dataSource}
       data-rewards-source-reason={sourceReason || undefined}
@@ -348,7 +348,7 @@ export default function RewardsClient({
 
       {/* MODAL */}
       {isModalOpen && canWrite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl animate-in fade-in zoom-in duration-200">
             <header className="flex items-center justify-between border-b border-white/10 bg-slate-900/50 px-6 py-4">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -363,7 +363,7 @@ export default function RewardsClient({
               </button>
             </header>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 v3-space-y-4 max-h-[75vh] overflow-y-auto">
               {message && (
                 <div
                   className={`flex items-start gap-3 p-3 rounded-xl border text-sm ${
@@ -390,7 +390,7 @@ export default function RewardsClient({
                   <select
                     value={customTenant}
                     onChange={(e) => setCustomTenant(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
                   >
                     <option value="demobodega">Bodega Balmec (demobodega)</option>
                     <option value="demoevents">Demo Events (demoevents)</option>
@@ -411,7 +411,7 @@ export default function RewardsClient({
                     disabled={!!editingReward}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="E.g. WINE-KIT-6B"
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed uppercase font-mono"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed uppercase font-mono"
                   />
                 </div>
 
@@ -422,7 +422,7 @@ export default function RewardsClient({
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
                   >
                     {REWARD_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
@@ -443,7 +443,7 @@ export default function RewardsClient({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="E.g. Caja Madera Edición Limitada"
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
                 />
               </div>
 
@@ -456,7 +456,7 @@ export default function RewardsClient({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Explicá claramente qué incluye y cómo se reclama..."
                   rows={3}
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 resize-none"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500 resize-none"
                 />
               </div>
 
@@ -471,7 +471,7 @@ export default function RewardsClient({
                     required
                     value={pointsCost}
                     onChange={(e) => setPointsCost(parseInt(e.target.value, 10) || 0)}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
                   />
                 </div>
 
@@ -485,7 +485,7 @@ export default function RewardsClient({
                     required
                     value={stockTotal}
                     onChange={(e) => setStockTotal(parseInt(e.target.value, 10) || 0)}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
                   />
                 </div>
               </div>
@@ -517,7 +517,7 @@ export default function RewardsClient({
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="O ingresá una URL personalizada..."
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-hidden"
                 />
               </div>
 
@@ -529,7 +529,7 @@ export default function RewardsClient({
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
                   >
                     <option value="active">Activo (Publicado)</option>
                     <option value="paused">Pausado</option>
@@ -537,7 +537,7 @@ export default function RewardsClient({
                   </select>
                 </div>
 
-                <div className="flex flex-col justify-end space-y-2">
+                <div className="flex flex-col justify-end v3-space-y-2">
                   <label className="flex items-center gap-2 text-slate-300 text-sm select-none cursor-pointer">
                     <input
                       type="checkbox"

@@ -46,7 +46,7 @@ export default async function ShipmentsPage() {
   };
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading 
         eyebrow="Secure Delivery" 
         title="Shipments" 

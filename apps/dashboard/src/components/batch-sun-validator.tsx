@@ -209,7 +209,7 @@ export function BatchSunValidator({ bid, defaultBid = "DEMO-2026-02", canRepair 
   return (
     <section className="rounded-3xl border border-cyan-300/15 bg-slate-950/65 p-6 shadow-2xl shadow-cyan-950/20">
       <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
-        <div className="space-y-4">
+        <div className="v3-space-y-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Operacion de lotes</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight text-white">SUN, TTStatus y recepcion de batches</h2>
@@ -228,7 +228,7 @@ export function BatchSunValidator({ bid, defaultBid = "DEMO-2026-02", canRepair 
                 id="batch-id"
                 value={batchId}
                 onChange={(event) => setBatchId(event.target.value)}
-                className="min-h-11 flex-1 rounded-2xl border border-slate-700 bg-slate-950 px-4 text-sm font-bold text-white outline-none transition focus:border-cyan-300"
+                className="min-h-11 flex-1 rounded-2xl border border-slate-700 bg-slate-950 px-4 text-sm font-bold text-white outline-hidden transition focus:border-cyan-300"
                 placeholder="DEMO-2026-02"
               />
               <Button
@@ -254,7 +254,7 @@ export function BatchSunValidator({ bid, defaultBid = "DEMO-2026-02", canRepair 
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="v3-space-y-4">
           <div>
             <label className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-cyan-200" htmlFor="sun-url">
               URL /sun recien escaneada
@@ -263,7 +263,7 @@ export function BatchSunValidator({ bid, defaultBid = "DEMO-2026-02", canRepair 
               id="sun-url"
               value={sunUrl}
               onChange={(event) => setSunUrl(event.target.value)}
-              className="mt-3 min-h-32 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-300"
+              className="mt-3 min-h-32 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-hidden transition placeholder:text-slate-600 focus:border-cyan-300"
               placeholder="Pega aca la URL completa que genero el tap fisico: https://api.nexid.lat/sun?v=1&bid=..."
             />
           </div>

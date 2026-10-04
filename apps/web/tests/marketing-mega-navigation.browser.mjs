@@ -8,7 +8,7 @@ import {resolve,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 import postcss from 'postcss';
-import tailwindcss from 'tailwindcss';
+import tailwindcss from '@tailwindcss/postcss';
 
 const root=resolve(fileURLToPath(new URL('../../../',import.meta.url))),web=join(root,'apps/web');
 const output=resolve(process.env.QA_OUTPUT||join(root,'artifacts/browser/marketing-navigation-details'));
@@ -25,7 +25,7 @@ const bundle=await build({stdin:{contents:fixture,resolveDir:web,loader:'tsx'},b
 }}],logLevel:'silent'});
 const js=bundle.outputFiles.find(file=>file.path.endsWith('.js')).contents,css=bundle.outputFiles.find(file=>file.path.endsWith('.css')).contents;
 await writeFile(join(output,'fixture.css'),css);
-const globals=(await postcss([tailwindcss({content:[join(web,'src/components/marketing-mega-nav.tsx'),join(root,'packages/ui/src/theme-toggle.tsx'),join(root,'packages/ui/src/locale-switcher.tsx')],darkMode:['selector','[data-theme="dark"]']})]).process(await readFile(join(web,'src/app/globals.css'),'utf8'),{from:undefined})).css;
+const globals=(await postcss([tailwindcss({base:web})]).process(await readFile(join(web,'src/app/globals.css'),'utf8'),{from:join(web,'src/app/globals.css')})).css;
 // Hold real HTTP bytes until the test observes the mounted React navigation.
 // Releasing a response changes no DOM, focus, React state or browser lifecycle.
 const pendingNativeLoads=new Map();

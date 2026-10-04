@@ -147,7 +147,7 @@ function SourceEvidenceCard({ label, result }: { label: string; result: AdminGet
           {sourceStateLabel(result)}
         </span>
       </div>
-      <dl className="mt-3 space-y-1 text-xs text-slate-400">
+      <dl className="mt-3 v3-space-y-1 text-xs text-slate-400">
         <div><dt className="inline text-slate-500">Transporte: </dt><dd className="inline">{transport}</dd></div>
         <div><dt className="inline text-slate-500">Alcance primario: </dt><dd className="inline">{recordScope}</dd></div>
         {recordProvenance ? (
@@ -242,7 +242,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         : "No hay una fuente confirmada para mostrar métricas; la vista conserva el estado de error o indisponibilidad sin fabricar ceros.";
 
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading eyebrow="CRM DEL TENANT" title="Actores, consentimiento y actividad" description={description} />
 
       <ConsumerNetworkLiveRefresh
@@ -391,7 +391,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <h3 className="text-sm font-semibold text-white">Límites de uso de los datos</h3>
-          <div className="mt-3 space-y-2 text-xs text-slate-300">
+          <div className="mt-3 v3-space-y-2 text-xs text-slate-300">
             <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2"><b className="text-cyan-100">Analítica:</b> usa actividad agregada, incluso cuando no existe un actor conocido.</p>
             <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2"><b className="text-violet-100">Relación:</b> sólo usa actividad vinculada a un actor conocido.</p>
             <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2"><b className="text-emerald-100">Campañas:</b> requieren miembro activo y consentimiento vigente para el canal y propósito exactos.</p>
@@ -399,7 +399,7 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
         </section>
         <section className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <h3 className="text-sm font-semibold text-white">Productos con más claims</h3>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 v3-space-y-2">
             {topProductsByClaims.length ? topProductsByClaims.map((item) => (
               <div key={`${item.bid}-${item.productName}`} className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200">
                 {item.productName} · BID {item.bid} · claims {item.claims}

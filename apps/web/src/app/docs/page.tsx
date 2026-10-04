@@ -839,7 +839,7 @@ export default async function DocsPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface docs-page container-shell max-w-[100vw] space-y-8 overflow-x-hidden px-3 pb-16 pt-8 sm:px-4 md:px-8 md:py-16">
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface docs-page container-shell max-w-[100vw] v3-space-y-8 overflow-x-hidden px-3 pb-16 pt-8 sm:px-4 md:px-8 md:py-16">
       {docsSchema.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}
@@ -899,11 +899,11 @@ export default async function DocsPage() {
 
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(210px,0.55fr)_minmax(0,1.45fr)]">
         <DocsSectionNavigation locale={locale} />
-        <div className="min-w-0 space-y-8">
+        <div className="min-w-0 v3-space-y-8">
           <DocsIntegrationConsole locale={locale} />
 
-      <div className="space-y-4">
-        <div className="space-y-3">
+      <div className="v3-space-y-4">
+        <div className="v3-space-y-3">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
             <Sparkles className="h-4 w-4 text-cyan-300" />
             {copy.quickJumpTitle}
@@ -986,7 +986,7 @@ export default async function DocsPage() {
           <h3 className="text-lg font-semibold text-white">
             {copy.pillarsTitle}
           </h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+          <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
             {copy.pillars.map((entry) => (
               <li key={entry}>• {entry}</li>
             ))}
@@ -1018,7 +1018,7 @@ export default async function DocsPage() {
         <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)] sm:p-6">
           <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
           <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 v3-space-y-3">
             {copy.apiRoutes.map((route) => (
               <div
                 key={`${route.method}-${route.path}`}
@@ -1097,7 +1097,7 @@ export default async function DocsPage() {
           <h3 className="text-lg font-semibold text-white">
             {copy.packsTitle}
           </h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+          <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
             {copy.packs.map((item) => (
               <li key={item}>• {item}</li>
             ))}
@@ -1107,7 +1107,7 @@ export default async function DocsPage() {
           <h3 className="text-lg font-semibold text-white">
             {copy.rolloutTitle}
           </h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+          <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
             {copy.rolloutBullets.map((item) => (
               <li key={item}>• {item}</li>
             ))}
@@ -1117,7 +1117,7 @@ export default async function DocsPage() {
           <h3 className="text-lg font-semibold text-white">
             {copy.revenueTitle}
           </h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+          <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
             {copy.revenueBullets.map((item) => (
               <li key={item}>• {item}</li>
             ))}
@@ -1127,7 +1127,7 @@ export default async function DocsPage() {
           <h3 className="text-lg font-semibold text-white">
             {copy.roadmapTitle}
           </h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+          <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
             {copy.roadmapBullets.map((item) => (
               <li key={item}>• {item}</li>
             ))}
@@ -1225,7 +1225,7 @@ export default async function DocsPage() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-6 rounded-2xl border border-white/5 bg-slate-950/40 p-6 backdrop-blur-sm">
+          <div className="relative z-10 mt-6 rounded-2xl border border-white/5 bg-slate-950/40 p-6 backdrop-blur-xs">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-300">
               {trustLayerFaq.docsTitle}
             </p>

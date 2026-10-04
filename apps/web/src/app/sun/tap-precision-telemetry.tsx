@@ -354,7 +354,7 @@ export function TapPrecisionTelemetry({
         tabIndex={-1}
         data-location-state="updated"
         data-location-receipt="saved"
-        className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-emerald-50 shadow-inner focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+        className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-emerald-50 shadow-inner focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-300"
         role="status"
         aria-live="polite"
       >
@@ -381,7 +381,7 @@ export function TapPrecisionTelemetry({
           </p>
         </details>
         {mapHref ? (
-          <a href={mapHref} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200/15 bg-emerald-400/10 px-3 text-xs font-black text-emerald-50 transition hover:bg-emerald-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200">
+          <a href={mapHref} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200/15 bg-emerald-400/10 px-3 text-xs font-black text-emerald-50 transition hover:bg-emerald-400/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-200">
             <MapPinned className="h-4 w-4" aria-hidden="true" />
             Abrir zona aproximada en OpenStreetMap (sitio externo)
           </a>
@@ -430,7 +430,7 @@ export function TapPrecisionTelemetry({
           onClick={shareApproximateLocation}
           disabled={isBusy}
           aria-describedby="tap-location-help tap-location-privacy"
-          className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/25 bg-cyan-300/15 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
+          className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/25 bg-cyan-300/15 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
         >
           <LocateFixed className="h-4 w-4" aria-hidden="true" />
           {state === "requesting"

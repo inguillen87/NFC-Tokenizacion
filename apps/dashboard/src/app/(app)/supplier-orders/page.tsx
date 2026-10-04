@@ -50,7 +50,7 @@ export default async function SupplierOrdersPage() {
   }));
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading 
         eyebrow="Supplier Ops" 
         title="Supplier Orders" 

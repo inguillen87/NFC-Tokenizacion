@@ -320,7 +320,7 @@ export default function LeadsTicketsClient({
     }`;
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       {/* Top HUD Cards */}
       <section className="grid gap-4 grid-cols-2 md:grid-cols-5">
         {[
@@ -381,12 +381,12 @@ export default function LeadsTicketsClient({
             <Compass className="h-4 w-4 text-purple-400" />
             Distribución de Canales de Adquisición
           </h2>
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             {Object.entries(allSources).map(([source, count]) => {
               const pct = totalSourcesCount ? Math.round((count / totalSourcesCount) * 100) : 0;
               const barColor = sourceColors[source] || "bg-slate-500";
               return (
-                <div key={source} className="space-y-1">
+                <div key={source} className="v3-space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-white capitalize">{source.replace("_", " ")}</span>
                     <span className="text-slate-400">{count} leads ({pct}%)</span>
@@ -408,7 +408,7 @@ export default function LeadsTicketsClient({
             <Sparkles className="h-4 w-4 text-amber-400" />
             Control Comercial Lite
           </h2>
-          <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+          <div className="v3-space-y-2 text-xs text-slate-300 leading-relaxed">
             <p>
               • <b>Leads / Prospectos:</b> Registran la demanda por industria, volumen estimado e interés en tags seguros o básicos.
             </p>
@@ -452,7 +452,7 @@ export default function LeadsTicketsClient({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar contacto, empresa o notas..."
-            className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-white/10 bg-slate-900/60 text-xs text-white outline-none focus:border-cyan-500/40"
+            className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-white/10 bg-slate-900/60 text-xs text-white outline-hidden focus:border-cyan-500/40"
           />
         </div>
       </div>
@@ -460,7 +460,7 @@ export default function LeadsTicketsClient({
       {/* Tab Contents */}
       <div className="animate-in fade-in slide-in-from-top-1 duration-200">
         {activeTab === "signals" && (
-          <div className="space-y-6">
+          <div className="v3-space-y-6">
             <CustomerMemberTimeline
               tenantScope={tenantScope}
               members={members}
@@ -613,7 +613,7 @@ export default function LeadsTicketsClient({
         )}
 
         {activeTab === "ai_queries" && (
-          <div className="space-y-5">
+          <div className="v3-space-y-5">
             <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
               <Card className="relative overflow-hidden border-cyan-300/20 bg-slate-950/85 p-5">
                 <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.16),transparent_62%)]" />
@@ -661,9 +661,9 @@ export default function LeadsTicketsClient({
                   </h2>
                   <Badge tone="cyan">{labels.aiQueries}</Badge>
                 </div>
-                <div className="space-y-3">
+                <div className="v3-space-y-3">
                   {aiCategoryStats.map((item) => (
-                    <div key={item.category} className="space-y-1.5">
+                    <div key={item.category} className="v3-space-y-1.5">
                       <div className="flex items-center justify-between gap-3 text-xs">
                         <span className="font-bold text-slate-200">{item.category}</span>
                         <span className="font-mono text-slate-400">{item.count} / {item.pct}%</span>

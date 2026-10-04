@@ -382,7 +382,7 @@ export function OpsCommandCenter({
             </div>
             <StatusChip label={`${readySteps}/${steps.length || 0} listo`} tone={stepCompletion >= 80 ? "good" : stepCompletion >= 40 ? "warn" : "risk"} />
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 v3-space-y-3">
             {steps.map((step, index) => (
               <div key={`${step.label}-${index}`} className="grid gap-3 rounded-2xl border border-white/10 bg-slate-900/55 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-start">
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-500/10 text-xs font-black text-cyan-100">{index + 1}</span>

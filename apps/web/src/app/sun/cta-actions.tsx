@@ -839,7 +839,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   return (
-    <div className="sun-public-cta mt-4 space-y-2">
+    <div className="sun-public-cta mt-4 v3-space-y-2">
       {showReportFlow ? (
         <section id="report-action" className="scroll-mt-24 rounded-2xl border border-amber-300/35 bg-amber-500/10 p-4 text-amber-50" aria-labelledby="report-action-title">
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">Ayuda con esta lectura</p>
@@ -858,7 +858,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             data-sun-experience-event="PROBLEM_REPORTED"
             data-sun-experience-placement="protected_actions"
             data-sun-experience-interaction="report_started"
-            className="mt-3 min-h-12 w-full rounded-xl border border-amber-200/50 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-3 min-h-12 w-full rounded-xl border border-amber-200/50 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             Describir el problema
           </button>
@@ -870,9 +870,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         </section>
       ) : null}
       
-      <div className={`rounded-2xl border p-4 ${ownerClaimTone} space-y-4`}>
+      <div className={`rounded-2xl border p-4 ${ownerClaimTone} v3-space-y-4`}>
         {showReceiptForm ? (
-          <div className="space-y-3">
+          <div className="v3-space-y-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Validacion de compra</p>
@@ -897,7 +897,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
             <div className="grid gap-3 sm:grid-cols-2">
               {/* File Uploader */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[10px] uppercase font-bold text-slate-300 block">Foto de Comprobante / Ticket</label>
                 <div className="relative border border-dashed border-white/20 rounded-xl p-3 flex flex-col items-center justify-center bg-slate-950/40 hover:border-cyan-400/50 transition">
                   <input
@@ -1042,59 +1042,59 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               </div>
 
               {/* Establecimiento */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[10px] uppercase font-bold text-slate-300 block">Establecimiento / Vinoteca</label>
                 <input
                   type="text"
                   placeholder="Ej: Vinoteca Mendoza, Online Shop"
                   value={receiptEstablishment}
                   onChange={(e) => setReceiptEstablishment(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-cyan-400/40"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-600 outline-hidden focus:border-cyan-400/40"
                 />
               </div>
 
               {/* Fecha de Compra */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[10px] uppercase font-bold text-slate-300 block">Fecha de Compra</label>
                 <input
                   type="date"
                   value={receiptDate}
                   onChange={(e) => setReceiptDate(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-hidden focus:border-cyan-400/40"
                 />
               </div>
 
               {/* Hora de Compra */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[10px] uppercase font-bold text-slate-300 block">Hora de Compra</label>
                 <input
                   type="time"
                   value={receiptTime}
                   onChange={(e) => setReceiptTime(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-hidden focus:border-cyan-400/40"
                 />
               </div>
 
               {/* Precio */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[10px] uppercase font-bold text-slate-300 block">Precio Pagado (USD / ARS)</label>
                 <input
                   type="number"
                   placeholder="Ej: 45.00"
                   value={receiptPrice}
                   onChange={(e) => setReceiptPrice(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-cyan-400/40"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-600 outline-hidden focus:border-cyan-400/40"
                 />
               </div>
 
               {/* WhatsApp como DNI */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[10px] uppercase font-bold text-slate-300 block">DNI Digital Vinculado (Contacto)</label>
                 <input
                   type="text"
                   disabled
                   value={consumerData?.phone || consumerData?.email || "Canal de contacto confirmado"}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-400 outline-none font-mono"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-400 outline-hidden font-mono"
                 />
               </div>
             </div>
@@ -1253,7 +1253,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               value={claimContact}
               onChange={(event) => setClaimContact(event.target.value)}
               placeholder="WhatsApp (+54...) o Email"
-              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-none focus:border-cyan-300/50 disabled:opacity-60"
+              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-hidden focus:border-cyan-300/50 disabled:opacity-60"
             />
             </label>
             {claimAuthStarted ? <label className="grid gap-1">Codigo recibido
@@ -1268,7 +1268,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               value={claimCode}
               onChange={(event) => setClaimCode(event.target.value)}
               placeholder={claimAuthStarted ? "Codigo recibido" : "Codigo"}
-              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-none focus:border-cyan-300/50 disabled:opacity-60"
+              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-hidden focus:border-cyan-300/50 disabled:opacity-60"
             />
             </label> : null}
             <button
@@ -1292,7 +1292,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       {provenance?.timeline?.length ? (
         <details className="rounded border border-cyan-300/15 bg-slate-950/45 p-2 text-[11px] text-slate-200">
           <summary className="cursor-pointer font-semibold text-cyan-100">Historial del registro</summary>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 v3-space-y-1">
             {provenance.timeline.map((item, index) => (
               <li key={`${String(item.stage || "stage")}-${index}`}>
                 <span className="text-white">{String(item.stage || "-")}</span> · {String(item.status || "-")}

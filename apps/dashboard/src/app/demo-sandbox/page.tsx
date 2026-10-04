@@ -5,7 +5,7 @@ import { productUrls } from "@product/config";
 export default function DemoSandboxPage() {
   const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
   return (
-    <main className="space-y-6 p-4">
+    <main className="v3-space-y-6 p-4">
       <SectionHeading eyebrow="Public demo" title="Sandbox anónimo" description="Probá escenarios sin contexto técnico previo" />
       <Card className="p-4 text-sm text-slate-300">
         <p>Este modo está pensado para usuarios anónimos: elegís vertical, disparás escenario y ves resultado en mobile preview + mapa.</p>

@@ -71,7 +71,7 @@ export default async function SuperadminConsumerNetworkPage() {
   const session = await requireDashboardSession();
   if (session.role !== "super-admin") {
     return (
-      <main className="space-y-6" data-testid="superadmin-network-access-denied">
+      <main className="v3-space-y-6" data-testid="superadmin-network-access-denied">
         <SectionHeading
           eyebrow="Superadmin network"
           title="Acceso global protegido"
@@ -227,7 +227,7 @@ export default async function SuperadminConsumerNetworkPage() {
   ];
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading
         eyebrow="Superadmin network"
         title="Consola global para operar tenants, resellers, auditores y clubes"
@@ -330,7 +330,7 @@ export default async function SuperadminConsumerNetworkPage() {
             </div>
             <StatusChip label="operativo" tone="good" />
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 v3-space-y-3">
             {[
               "1. Recibi la caja de tags y el remito del proveedor.",
               "2. Subi manifest CSV/TXT con UID, lote, SKU, producto y fotos.",

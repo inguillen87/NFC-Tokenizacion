@@ -4,7 +4,7 @@ import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state"
 
 export default function ConsumerNetworkOverviewError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <EnterpriseOpsState
         variant="error"
         title="No se pudo abrir clientes y campañas"
