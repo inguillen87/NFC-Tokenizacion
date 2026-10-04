@@ -59,7 +59,7 @@ export default function InvestorPitchDeck() {
       title: "nexID",
       tagline: "IDENTIDAD DIGITAL, EVIDENCIA NFC Y EXPERIENCIAS CONECTADAS",
       content: (
-        <div className="flex flex-col items-center justify-center text-center h-full space-y-6">
+        <div className="flex flex-col items-center justify-center text-center h-full v3-space-y-6">
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-400 to-purple-600 flex items-center justify-center text-slate-950 font-black text-3xl shadow-[0_0_40px_rgba(168,85,247,0.3)] animate-pulse">
             N
           </div>
@@ -107,7 +107,7 @@ export default function InvestorPitchDeck() {
               color: "border-amber-500/20 bg-amber-500/5 text-amber-300"
             }
           ].map((item, idx) => (
-            <div key={idx} className={`rounded-2xl border p-5 space-y-3 h-full flex flex-col justify-between ${item.color}`}>
+            <div key={idx} className={`rounded-2xl border p-5 v3-space-y-3 h-full flex flex-col justify-between ${item.color}`}>
               <div>
                 <item.icon className="w-8 h-8 mb-2" />
                 <h3 className="text-base font-bold text-white">{item.title}</h3>
@@ -124,7 +124,7 @@ export default function InvestorPitchDeck() {
       title: "El Ecosistema nexID",
       tagline: "RUNTIME EN VERCEL, DATOS EN NEON Y EVIDENCIA WEB3 OPCIONAL POR TENANT",
       content: (
-        <div className="flex flex-col justify-between h-full py-4 space-y-4">
+        <div className="flex flex-col justify-between h-full py-4 v3-space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             {[
               { step: "1. Producto serializado", desc: "La marca aplica un NFC o QR asignado al tenant, lote y producto bajo una política de activación definida.", icon: QrCode },
@@ -161,7 +161,7 @@ export default function InvestorPitchDeck() {
       tagline: "SEÑALES SERVER-SIDE PARA REPLAY, APERTURA Y RIESGO OPERATIVO",
       content: (
         <div className="grid gap-6 md:grid-cols-2 items-center h-full py-4">
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             {[
               {
                 title: "Firma Dinámica (NFC SUN)",
@@ -186,7 +186,7 @@ export default function InvestorPitchDeck() {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 font-mono text-[10px] text-slate-400 space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 font-mono text-[10px] text-slate-400 v3-space-y-3">
             <div className="flex justify-between items-center text-[9px] bg-slate-900 px-2.5 py-1 rounded text-cyan-300">
               <span>CONTRATO DE EVIDENCIA · EJEMPLO</span>
               <span>ESPERANDO TAP</span>
@@ -206,7 +206,7 @@ export default function InvestorPitchDeck() {
       tagline: "COPILOTO CON PROVEEDOR LIVE CONFIRMADO O FALLBACK DETERMINÍSTICO DECLARADO",
       content: (
         <div className="grid gap-6 md:grid-cols-2 items-center h-full py-4">
-          <div className="space-y-3.5">
+          <div className="v3-space-y-3.5">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">Tres perfiles de redacción asistida</h3>
             {[
               { title: "Tono Sommelier", desc: "Propone una versión enológica para revisión humana; no inventa atributos del producto que no estén en el brief." },
@@ -220,8 +220,8 @@ export default function InvestorPitchDeck() {
             ))}
           </div>
 
-          <div className="space-y-3">
-            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 space-y-2">
+          <div className="v3-space-y-3">
+            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 v3-space-y-2">
               <span className="text-[9px] font-bold text-purple-300 uppercase tracking-wider">Escenario ilustrativo · no es telemetría live</span>
               <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
                 <div className="bg-slate-950/50 p-2 rounded">
@@ -248,7 +248,7 @@ export default function InvestorPitchDeck() {
       tagline: "TRANSFORMANDO EL CONSUMO EN UN CLUB DE ESTATUS DIGITAL",
       content: (
         <div className="grid gap-6 md:grid-cols-2 items-center h-full py-4">
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             {[
               {
                 title: "Cava Digital del Coleccionista",
@@ -273,12 +273,12 @@ export default function InvestorPitchDeck() {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-center space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-center v3-space-y-3">
             <span className="text-[8px] bg-amber-500/10 border border-amber-500/25 px-2.5 py-0.5 rounded font-black text-amber-300 uppercase">
               Ejemplo de encuesta · datos simulados
             </span>
             <h4 className="text-xs font-bold text-white">Hipótesis: diseño de etiqueta para una campaña piloto</h4>
-            <div className="space-y-1.5 text-[10px] text-left pt-1">
+            <div className="v3-space-y-1.5 text-[10px] text-left pt-1">
               <div>
                 <div className="flex justify-between mb-0.5">
                   <span className="text-slate-300">Opción A (clásico grabado)</span>
@@ -329,7 +329,7 @@ export default function InvestorPitchDeck() {
               label: "Hipótesis comercial"
             }
           ].map((item, idx) => (
-            <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 space-y-3 h-full flex flex-col justify-between">
+            <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 v3-space-y-3 h-full flex flex-col justify-between">
               <div>
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">{item.title}</h3>
                 <p className="text-[10px] text-slate-400 leading-relaxed mt-2">{item.desc}</p>
@@ -349,7 +349,7 @@ export default function InvestorPitchDeck() {
       title: "Demostración Guiada y Próximos Pasos",
       tagline: "CADA ESTADO DISTINGUE PREVIEW, REGISTRO Y EVIDENCIA VERIFICADA",
       content: (
-        <div className="flex flex-col items-center justify-center text-center h-full space-y-6">
+        <div className="flex flex-col items-center justify-center text-center h-full v3-space-y-6">
           <h2 className="text-2xl font-black text-white uppercase tracking-tight">
             Listo para recorrer la prueba de punta a punta
           </h2>
@@ -381,7 +381,7 @@ export default function InvestorPitchDeck() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       {/* Styles for print output override */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
@@ -519,7 +519,7 @@ export default function InvestorPitchDeck() {
       </div>
 
       {/* Print Mode Layout (Displays all slides vertically on print output) */}
-      <div className="hidden print-layout space-y-8">
+      <div className="hidden print-layout v3-space-y-8">
         {slides.map((slide, idx) => (
           <div 
             key={slide.id} 

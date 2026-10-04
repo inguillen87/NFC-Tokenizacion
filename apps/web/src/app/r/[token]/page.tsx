@@ -159,7 +159,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(rgba(148,163,184,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.035)_1px,transparent_1px)] bg-[size:72px_72px]" />
 
       <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5">
-        <Link href="/" className="group flex items-center gap-3 rounded-2xl outline-none ring-cyan-300/30 transition focus-visible:ring-4">
+        <Link href="/" className="group flex items-center gap-3 rounded-2xl outline-hidden ring-cyan-300/30 transition focus-visible:ring-4">
           <BrandLockup size={48} variant="ripple" theme="dark" />
           <div className="hidden flex-col leading-none sm:flex">
             <span className="text-sm font-black text-white">nexID</span>
@@ -302,7 +302,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
           </div>
           <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Checklist staff</p>
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 v3-space-y-2">
               {["Escanear QR o ingresar código", "Confirmar teléfono enmascarado", "Aplicar premio y marcar canjeado"].map((item) => (
                 <div key={item} className="flex items-center gap-2 text-xs font-bold text-slate-300">
                   <CheckCircle2 className="h-4 w-4 text-emerald-300" aria-hidden="true" />

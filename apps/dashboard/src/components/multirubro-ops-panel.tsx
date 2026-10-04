@@ -803,7 +803,7 @@ export function MultirubroOpsPanel({
             </label>
           </div>
         </div>
-        <div className="mt-2 space-y-2">
+        <div className="mt-2 v3-space-y-2">
           {alerts.length ? alerts.slice(0, 12).map((item) => (
             <div key={item.id} className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -833,7 +833,7 @@ export function MultirubroOpsPanel({
 
       <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/60 p-3">
         <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Live event feed</p>
-        <div className="mt-2 space-y-2">
+        <div className="mt-2 v3-space-y-2">
           {liveFeed.length ? liveFeed.map((item) => (
             <div key={item.id} className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -865,7 +865,7 @@ export function MultirubroOpsPanel({
 
         <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
           <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Eventos de seguridad</p>
-          <div className="mt-2 space-y-2 text-xs">
+          <div className="mt-2 v3-space-y-2 text-xs">
             {(security?.repeatedInvalidUid || []).slice(0, 3).map((item) => (
               <div key={`invalid-${item.uidHex}`} className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-rose-100">
                 UID {item.uidHex} reportó {item.count} SUN inválidos.

@@ -204,7 +204,7 @@ export function IncidentEventDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/72 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Detalle operativo del evento" data-testid="incident-event-drawer">
+    <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/72 backdrop-blur-xs" role="dialog" aria-modal="true" aria-label="Detalle operativo del evento" data-testid="incident-event-drawer">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Cerrar detalle" onClick={onClose} />
       <aside className="relative z-10 h-full w-full max-w-2xl overflow-y-auto border-l border-cyan-300/20 bg-[#07111f] p-5 shadow-[-24px_0_80px_rgba(2,8,23,.75)] sm:p-7">
         <div className="flex items-start justify-between gap-4">
@@ -230,7 +230,7 @@ export function IncidentEventDrawer({
         <section className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/7 p-4">
           <div className="flex items-center gap-2 text-amber-100"><ShieldAlert className="h-4 w-4" /><b>Por qué requiere atención</b></div>
           <p className="mt-2 text-sm leading-6 text-slate-200">{explanation.decision}</p>
-          <ul className="mt-3 space-y-1 text-xs text-slate-400">
+          <ul className="mt-3 v3-space-y-1 text-xs text-slate-400">
             {explanation.facts.map((fact) => <li key={fact}>• {fact}</li>)}
           </ul>
         </section>
@@ -271,7 +271,7 @@ export function IncidentEventDrawer({
         )}
 
         {canWrite ? (
-          <section className="mt-4 space-y-3 rounded-xl border border-white/10 bg-slate-950/55 p-4">
+          <section className="mt-4 v3-space-y-3 rounded-xl border border-white/10 bg-slate-950/55 p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {incident ? (
                 <label className="text-xs text-slate-300">Próximo estado
@@ -314,7 +314,7 @@ export function IncidentEventDrawer({
         {history.length ? (
           <section className="mt-4 rounded-xl border border-white/10 bg-slate-950/55 p-4">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Historial inmutable</p>
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 v3-space-y-3">
               {history.map((entry) => (
                 <div key={entry.id} className="border-l-2 border-cyan-300/30 pl-3 text-xs text-slate-300">
                   <p><b className="text-white">{entry.actorLabel}</b> · {entry.action} · {STATUS_LABEL[entry.toStatus]}</p>

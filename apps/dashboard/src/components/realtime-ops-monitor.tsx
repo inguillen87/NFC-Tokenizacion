@@ -764,7 +764,7 @@ Acción recomendada: ${recommendation}
                 </span>
                 <span className="text-[10px] text-cyan-500">{connected ? "STREAM CONECTADO" : "STREAM SIN CONFIRMAR"}</span>
               </div>
-              <div className="flex-1 overflow-y-auto space-y-2.5 text-xs">
+              <div className="flex-1 overflow-y-auto v3-space-y-2.5 text-xs">
                 {visibleEvents.map((event) => {
                   const result = String(event.verdict || "UNKNOWN").toUpperCase();
                   const verdictBucket = classifyRealtimeVerdict(result, event.reason);
@@ -782,7 +782,7 @@ Acción recomendada: ${recommendation}
                         </span>
                         <span className="text-[10px] text-slate-500">{time}</span>
                       </div>
-                      <div className="text-[11px] text-slate-300 space-y-0.5">
+                      <div className="text-[11px] text-slate-300 v3-space-y-0.5">
                         <div><span className="text-cyan-500 font-bold">TAG_UID:</span> {event.uidMasked}</div>
                         <div><span className="text-cyan-500 font-bold">ZONA:</span> {event.city || "Geolocalizando..."}, {event.country || "AR"}</div>
                         <div><span className="text-cyan-500 font-bold">DETALLES:</span> {event.productName || "Sin Producto"} - {event.batchId}</div>
@@ -818,7 +818,7 @@ Acción recomendada: ${recommendation}
                 </span>
                 <span className="text-[10px] text-cyan-500">CAPA DENSIDAD</span>
               </div>
-              <div className="space-y-2">
+              <div className="v3-space-y-2">
                 {cityHotspots.slice(0, 4).map((hotspot, index) => {
                   const riskPct = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
                   const gpsPct = hotspot.taps ? (hotspot.gps / hotspot.taps) * 100 : 0;
@@ -847,7 +847,7 @@ Acción recomendada: ${recommendation}
   }
 
   return (
-    <div id="control-center" className="space-y-4">
+    <div id="control-center" className="v3-space-y-4">
       <style>{`
         @media print {
           body { background-color: #020817 !important; color: #f8fafc !important; }
@@ -917,7 +917,7 @@ Acción recomendada: ${recommendation}
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,.92fr)_minmax(34rem,1.08fr)]">
-        <div className="space-y-4">
+        <div className="v3-space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { label: "Lecturas", value: visibleEvents.length, detail: `${realtimePulse.recentCount} últimos 5m`, tone: "cyan" },
@@ -976,7 +976,7 @@ Acción recomendada: ${recommendation}
             <div className="rounded-xl border border-white/10 bg-slate-950/65 p-4">
               <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">Funnel post-tap</p>
               <p className="mt-1 text-[11px] text-slate-500">De lectura física a señal utilizable por CRM.</p>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 v3-space-y-2">
                 {funnelStages.map((stage) => (
                   <div key={stage.label}>
                     <div className="mb-1 flex items-center justify-between text-[11px] text-slate-300">
@@ -1079,7 +1079,7 @@ Acción recomendada: ${recommendation}
 
         <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-100">Riesgos y últimos eventos</p>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 v3-space-y-2">
             {(riskEvents.length ? riskEvents : visibleEvents.slice(0, 5)).map((event) => {
               const result = String(event.verdict || "UNKNOWN").toUpperCase();
               const verdictBucket = classifyRealtimeVerdict(result, event.reason);

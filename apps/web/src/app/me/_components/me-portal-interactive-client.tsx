@@ -197,7 +197,7 @@ export function MePortalInteractiveClient({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       
       {/* Category/Tabs Navigation Bar */}
       <div className="flex border-b border-white/10 bg-slate-950/60 p-2 rounded-2xl backdrop-blur-xl sticky top-[72px] z-[40] overflow-x-auto gap-2">
@@ -234,7 +234,7 @@ export function MePortalInteractiveClient({
 
       {/* Tab Contents: PASSPORT (Dashboard View) */}
       {activeTab === "passport" && (
-        <div className="space-y-6">
+        <div className="v3-space-y-6">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             {/* Left: Golden Passport Card */}
             <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[linear-gradient(135deg,#131316_0%,#1e1b18_100%)] p-6 shadow-2xl transition hover:border-amber-500/35">
@@ -253,9 +253,9 @@ export function MePortalInteractiveClient({
                 
                 {/* Hologram security chip */}
                 <div className="h-10 w-12 rounded-lg border border-amber-400/30 bg-gradient-to-br from-amber-300/20 to-amber-600/30 p-1.5 flex flex-col justify-between shadow-inner">
-                  <span className="h-1 w-full bg-amber-300/40 rounded-sm block" />
-                  <span className="h-1 w-2/3 bg-amber-300/30 rounded-sm block" />
-                  <span className="h-2 w-full bg-amber-300/20 rounded-sm block" />
+                  <span className="h-1 w-full bg-amber-300/40 rounded-xs block" />
+                  <span className="h-1 w-2/3 bg-amber-300/30 rounded-xs block" />
+                  <span className="h-2 w-full bg-amber-300/20 rounded-xs block" />
                 </div>
               </div>
 
@@ -332,7 +332,7 @@ export function MePortalInteractiveClient({
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-6">
+            <div className="v3-space-y-6">
               {/* Metrics Grid */}
               <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
                 {[
@@ -358,7 +358,7 @@ export function MePortalInteractiveClient({
                       <p className="text-[11px] text-slate-400">Resultados digitales reportados por el backend.</p>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 v3-space-y-3">
                     {latestTaps.map((tap, idx) => (
                       <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5">
@@ -385,7 +385,7 @@ export function MePortalInteractiveClient({
                       <p className="text-[11px] text-slate-400">Productos que el backend asoció a tu cuenta.</p>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 v3-space-y-3">
                     {products.slice(0, 4).map((product, idx) => (
                       <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3">
                         <div>
@@ -406,7 +406,7 @@ export function MePortalInteractiveClient({
             {/* Stepper info */}
             <article className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-lg self-start">
               <h3 className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 mb-4">Funcionamiento</h3>
-              <div className="space-y-4">
+              <div className="v3-space-y-4">
                 {journey.map((step, index) => {
                   const StepIcon = step.icon;
                   return (
@@ -432,7 +432,7 @@ export function MePortalInteractiveClient({
 
       {/* Tab Contents: NFTS (Digital Wine Cellar Grid) */}
       {activeTab === "nfts" && (
-        <div className="space-y-6">
+        <div className="v3-space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div>
               <h2 className="text-lg font-black text-white">Mi Bodega Digital (NFTs & Registros)</h2>
@@ -485,7 +485,7 @@ export function MePortalInteractiveClient({
                   </div>
 
                   {/* Actions / Public Cert */}
-                  <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
+                  <div className="mt-4 pt-3 border-t border-white/5 v3-space-y-2">
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="text-slate-500">Estado:</span>
                       <span className="text-emerald-400 font-bold uppercase">{isClaimed ? "Ownership registrado" : "Registro disponible"}</span>
@@ -520,7 +520,7 @@ export function MePortalInteractiveClient({
                                 name={product.bid || ""}
                                 value={p2pPrice[product.bid || ""] || ""}
                                 onChange={(e) => setP2pPrice((prev) => ({ ...prev, [product.bid || ""]: e.target.value }))}
-                                className="w-2/3 bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-[10px] text-white focus:outline-none focus:border-amber-400"
+                                className="w-2/3 bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-[10px] text-white focus:outline-hidden focus:border-amber-400"
                               />
                               <button
                                 onClick={() => handleListForSale(product.bid || "", product.product_name || "Producto sin nombre reportado")}
@@ -544,14 +544,14 @@ export function MePortalInteractiveClient({
 
       {/* Tab Contents: TRADES (Simulated Ledger) */}
       {activeTab === "trades" && (
-        <div className="space-y-6">
+        <div className="v3-space-y-6">
           <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
             <h2 className="text-lg font-black text-white">Simulación Local de Movimientos</h2>
             <p className="text-xs text-slate-400 mt-1">
               {commerceDemoEnabled ? "Escenario visual de acciones iniciadas con CTA Simular. No es un ledger público ni prueba transacciones, ownership o pagos reales." : "Demo deshabilitada. Los movimientos aparecerán cuando exista un origen real del backend."}
             </p>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 v3-space-y-4">
               {trades.map((trade) => (
                 <div key={trade.id} className="rounded-2xl border border-white/5 bg-slate-900/25 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-slate-900/40 transition">
                   <div className="flex items-start gap-3">
@@ -593,7 +593,7 @@ export function MePortalInteractiveClient({
 
       {/* Tab Contents: DROPS (Online Store Boutique drops) */}
       {activeTab === "drops" && (
-        <div className="space-y-6">
+        <div className="v3-space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
             <div>
               <h2 className="text-lg font-black text-white">Drops y preventas</h2>
@@ -725,7 +725,7 @@ export function MePortalInteractiveClient({
                     onClick={() => setPaymentMethod("points")}
                     className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
                       paymentMethod === "points"
-                        ? "bg-amber-500 text-slate-950 shadow-sm"
+                        ? "bg-amber-500 text-slate-950 shadow-xs"
                         : "text-slate-400 hover:text-white"
                     }`}
                   >
@@ -738,7 +738,7 @@ export function MePortalInteractiveClient({
                     }}
                     className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
                       paymentMethod === "usdt"
-                        ? "bg-cyan-500 text-slate-950 shadow-sm"
+                        ? "bg-cyan-500 text-slate-950 shadow-xs"
                         : "text-slate-400 hover:text-white"
                     }`}
                   >
@@ -747,9 +747,9 @@ export function MePortalInteractiveClient({
                 </div>
 
                 {/* Billing Details Pane */}
-                <div className="mt-4 rounded-2xl bg-black/40 border border-white/5 p-4 space-y-3">
+                <div className="mt-4 rounded-2xl bg-black/40 border border-white/5 p-4 v3-space-y-3">
                   {paymentMethod === "points" ? (
-                    <div className="space-y-2 text-xs">
+                    <div className="v3-space-y-2 text-xs">
                       <div className="flex justify-between text-slate-400">
                         <span>Puntos demo disponibles:</span>
                         <strong className="text-white">2,500 pts</strong>
@@ -769,7 +769,7 @@ export function MePortalInteractiveClient({
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-2 text-xs">
+                    <div className="v3-space-y-2 text-xs">
                       <div className="flex justify-between text-slate-400">
                         <span>Precio ficticio:</span>
                         <strong className="text-white">{checkoutDrop.rawPriceUsd} USDT</strong>
@@ -839,7 +839,7 @@ export function MePortalInteractiveClient({
               </>
             ) : (
               /* Success Screen */
-              <div className="text-center py-4 space-y-4 animate-fade-in">
+              <div className="text-center py-4 v3-space-y-4 animate-fade-in">
                 <div className="h-16 w-16 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/35 flex items-center justify-center text-emerald-400 text-2xl font-bold animate-bounce">
                   ✓
                 </div>
@@ -848,7 +848,7 @@ export function MePortalInteractiveClient({
                   <p className="text-[11px] text-slate-400 mt-1">No se creó una compra, orden, pago, reserva, escrow ni transacción on-chain.</p>
                 </div>
 
-                <div className="rounded-2xl bg-black/40 border border-white/5 p-4 text-[10px] space-y-2 text-left">
+                <div className="rounded-2xl bg-black/40 border border-white/5 p-4 text-[10px] v3-space-y-2 text-left">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Producto:</span>
                     <strong className="text-white truncate max-w-48">{checkoutDrop.name}</strong>

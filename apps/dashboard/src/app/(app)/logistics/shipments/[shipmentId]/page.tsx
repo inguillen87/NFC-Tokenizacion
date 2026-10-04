@@ -68,7 +68,7 @@ export default async function ShipmentDetailPage({ params, searchParams }: { par
   const claims = data?.claims || [];
 
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading eyebrow="Secure Delivery" title={shipment?.shipment_code || decodeURIComponent(shipmentId || "")} description="Shipment identity, reported TT state, recorded handling timeline, recipient checks and delivery claims. Operational records do not prove physical contents or custody by themselves." />
       <div className="flex flex-wrap gap-2">
         <Link href="/logistics" className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5">← Logistics hub</Link>
@@ -112,7 +112,7 @@ export default async function ShipmentDetailPage({ params, searchParams }: { par
             <Card className="p-5">
               <h3 className="text-lg font-black text-white">Recorded handling timeline</h3>
               {!custodyEvents.length ? <p className="mt-3 text-sm text-slate-400">No handling events recorded yet.</p> : (
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 v3-space-y-3">
                   {custodyEvents.map((event) => (
                     <div key={event.id} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -127,11 +127,11 @@ export default async function ShipmentDetailPage({ params, searchParams }: { par
               )}
             </Card>
 
-            <div className="space-y-5">
+            <div className="v3-space-y-5">
               <Card className="p-5">
                 <h3 className="text-lg font-black text-white">Physical seals</h3>
                 {!seals.length ? <p className="mt-3 text-sm text-slate-400">No seal assigned yet.</p> : (
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 v3-space-y-3">
                     {seals.map((seal) => (
                       <div key={seal.id} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                         <div className="flex items-center justify-between gap-2">
@@ -148,7 +148,7 @@ export default async function ShipmentDetailPage({ params, searchParams }: { par
               <Card className="p-5">
                 <h3 className="text-lg font-black text-white">Recipient verification</h3>
                 {!verifications.length ? <p className="mt-3 text-sm text-slate-400">No recipient verification yet.</p> : (
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 v3-space-y-3">
                     {verifications.map((verification) => (
                       <div key={verification.id} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                         <div className="flex items-center justify-between gap-2">
@@ -183,7 +183,7 @@ export default async function ShipmentDetailPage({ params, searchParams }: { par
             <Card className="p-5">
               <h3 className="text-lg font-black text-white">Delivery claims</h3>
               {!claims.length ? <p className="mt-3 text-sm text-slate-400">No claims opened.</p> : (
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 v3-space-y-3">
                   {claims.map((claim) => (
                     <div key={claim.id} className="rounded-2xl border border-rose-500/20 bg-rose-950/20 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">

@@ -92,7 +92,7 @@ export function LocaleSwitcher({ value, options }: { value: string; options: rea
       onChange={(e) => { document.cookie = `locale=${e.target.value}; path=/; max-age=31536000`; window.location.reload(); }}
       aria-label="Idioma del dashboard"
       title="Cambiar idioma"
-      className="locale-switcher min-h-11 rounded-lg border border-white/10 bg-transparent px-2 py-2 text-xs text-inherit outline-none"
+      className="locale-switcher min-h-11 rounded-lg border border-white/10 bg-transparent px-2 py-2 text-xs text-inherit outline-hidden"
     >
       {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
     </select>
@@ -412,7 +412,7 @@ export function DashboardShellInner({
       {/* Backdrop for mobile sidebar drawer */}
       {isMobileSidebarOpen && (
         <div
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
@@ -453,7 +453,7 @@ export function DashboardShellInner({
           <span className="ml-auto text-lg text-cyan-300" aria-hidden="true">←</span>
         </Link>
 
-        <div className="space-y-4">
+        <div className="v3-space-y-4">
           {/* Session-derived account identity. Never infer demo or vertical branding. */}
           <div className="dashboard-role-card relative overflow-hidden rounded-2xl border border-white/5 p-4 shadow-xl backdrop-blur-md">
             <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-violet-500/5 blur-2xl" />
@@ -490,14 +490,14 @@ export function DashboardShellInner({
                 }
               }}
               placeholder={shell.search}
-              className="min-h-12 w-full rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2 text-sm font-medium text-white outline-none transition-all focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20"
+              className="min-h-12 w-full rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2 text-sm font-medium text-white outline-hidden transition-all focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20"
             />
             <div className="absolute right-3 top-2.5 text-[10px] text-slate-500 font-mono border border-white/10 rounded px-1">/</div>
           </div>
           {normalizedQuery ? (
             <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/25 p-2 text-xs">
               {filteredLinks.length ? (
-                <div className="space-y-1">
+                <div className="v3-space-y-1">
                   {filteredLinks.slice(0, 4).map((entry) => (
                     <button suppressHydrationWarning key={entry.href} type="button" title={`Ir a ${entry.label}`} aria-label={`Ir a ${entry.label}`} onClick={() => { router.push(entry.href); setQuery(""); }} className="block w-full rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-left text-cyan-100 hover:bg-cyan-500/15">
                       {entry.label}
@@ -511,11 +511,11 @@ export function DashboardShellInner({
           ) : null}
         </div>
 
-        <nav className="mt-8 space-y-6">
+        <nav className="mt-8 v3-space-y-6">
           {/* Core Ops Group */}
           <div>
             <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Core Ops</p>
-            <div className="space-y-0.5">
+            <div className="v3-space-y-0.5">
               {coreOpsItems.map(renderNavLink)}
             </div>
           </div>
@@ -524,7 +524,7 @@ export function DashboardShellInner({
           {globalNetworkItems.length > 0 && (
             <div>
               <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Global Network</p>
-              <div className="space-y-0.5">
+              <div className="v3-space-y-0.5">
                 {globalNetworkItems.map(renderNavLink)}
               </div>
             </div>
@@ -534,7 +534,7 @@ export function DashboardShellInner({
           {loyaltyNetworkItems.length > 0 && (
             <div>
               <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Clientes & campañas</p>
-              <div className="space-y-0.5">
+              <div className="v3-space-y-0.5">
                 {loyaltyNetworkItems.map(renderNavLink)}
               </div>
             </div>
@@ -543,7 +543,7 @@ export function DashboardShellInner({
           {/* Settings Group */}
           <div>
             <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Settings</p>
-            <div className="space-y-0.5">
+            <div className="v3-space-y-0.5">
               {settingsItems.map(renderNavLink)}
             </div>
           </div>
@@ -648,7 +648,7 @@ export function DashboardShellInner({
             </div>
           </div>
           {canShowSandboxTools ? (
-            <div className="mt-4 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-4 py-3 flex items-center justify-between shadow-inner backdrop-blur-sm">
+            <div className="mt-4 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-4 py-3 flex items-center justify-between shadow-inner backdrop-blur-xs">
                <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-400 border border-cyan-500/30">🧪</div>
                   <div>

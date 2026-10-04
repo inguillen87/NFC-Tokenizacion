@@ -182,7 +182,7 @@ export default async function AudiencesPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface container-shell space-y-8 pb-16 pt-8 md:py-16">
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface container-shell v3-space-y-8 pb-16 pt-8 md:py-16">
       <MarketingPageIntro
         eyebrow={copy.eyebrow}
         title={copy.title}
@@ -214,7 +214,7 @@ export default async function AudiencesPage() {
         </div>
       </Card>
 
-      <div className="space-y-3">
+      <div className="v3-space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.jumpTitle}</p>
         <div className="flex flex-wrap gap-2">
           {copy.cards.map((card) => {
@@ -248,7 +248,7 @@ export default async function AudiencesPage() {
                   </span>
                 </div>
 
-                <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
                   {card.sell.map((item) => <li key={item}>• {item}</li>)}
                 </ul>
 
@@ -273,7 +273,7 @@ export default async function AudiencesPage() {
             <Rocket className="h-5 w-5 text-emerald-300" />
             {copy.investorTitle}
           </h3>
-          <ul className="mt-4 space-y-2 text-sm text-emerald-200">
+          <ul className="mt-4 v3-space-y-2 text-sm text-emerald-200">
             {copy.investorBullets.map((item) => <li key={item}>• {item}</li>)}
           </ul>
           <p className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{copy.investorNote}</p>

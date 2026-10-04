@@ -257,7 +257,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
       </div>
 
       <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="space-y-4">
+        <section className="v3-space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Señales operativas</p>
@@ -289,7 +289,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
           </div>
         </section>
 
-        <aside className="space-y-4">
+        <aside className="v3-space-y-4">
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -298,7 +298,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
               </div>
               <StatusChip label="post-tap" tone="good" />
             </div>
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 v3-space-y-3">
               {operationalMetrics.map((step) => {
                 const Icon = step.icon;
                 return (
@@ -321,7 +321,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, activityTotal
 
           <div className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-violet-100"><Sparkles className="h-4 w-4" /> Playbook recomendado</p>
-            <div className="mt-3 space-y-2 text-xs leading-5 text-violet-50/90">
+            <div className="mt-3 v3-space-y-2 text-xs leading-5 text-violet-50/90">
               <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">1. Validar la oportunidad por zona sin convertir eventos o UIDs en destinatarios.</p>
               <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">2. Resolver audiencia actor-level en servidor con tenant, scope, consentimiento y permisos.</p>
               <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">3. Recién entonces activar un beneficio o encuesta por un canal expresamente consentido.</p>

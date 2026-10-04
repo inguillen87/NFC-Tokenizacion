@@ -566,7 +566,7 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
             {copy.stages.map((stage) => {
               const Icon = stage.icon;
               return (
-                <article key={stage.label} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-5 shadow-sm dark:shadow-none transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]">
+                <article key={stage.label} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-5 shadow-xs dark:shadow-none transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]">
                   <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/20">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -642,14 +642,14 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
               </div>
 
               {/* Data Rows */}
-              <div className="space-y-3 mb-6">
+              <div className="v3-space-y-3 mb-6">
                 {[
                   { label: "BID", value: "SYN-AR-2026-001", icon: KeyRound },
                   { label: "UID Hash", value: "sha256:8f4c...", icon: Fingerprint },
                   { label: "Queue", value: "18 pending sync", icon: RotateCcw, highlight: true },
                   { label: "Bundle", value: "expires 24h", icon: PackageCheck }
                 ].map((row, i) => (
-                  <div key={i} className="offline-data-row flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] p-3 backdrop-blur-sm">
+                  <div key={i} className="offline-data-row flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] p-3 backdrop-blur-xs">
                     <div className="flex items-center gap-3">
                       <row.icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                       <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{row.label}</span>
@@ -995,7 +995,7 @@ export function RadarSection({ radar, locale }: { radar: any; locale: string }) 
       <div className="grid items-center gap-12 lg:grid-cols-2">
          <div>
             <SectionHeading eyebrow={radar.eyebrow} title={radar.title} description={radar.description}  />
-            <ul className="mt-8 space-y-4">
+            <ul className="mt-8 v3-space-y-4">
               {radar.features.map((feature: any) => (
                 <li key={feature.title} className="flex gap-4">
                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
@@ -1054,7 +1054,7 @@ export function InteractiveDemoSection({ locale }: { locale: string }) {
                      <Link href="/sun" className="inline-flex items-center justify-center rounded-xl bg-white text-slate-950 px-6 py-3 font-bold transition hover:bg-slate-200 shadow-lg shadow-white/10">
                         Probar pasaporte celular
                      </Link>
-                     <Link href="/demo-lab?vertical=wine" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white transition hover:bg-white/10 backdrop-blur-sm">
+                     <Link href="/demo-lab?vertical=wine" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white transition hover:bg-white/10 backdrop-blur-xs">
                         Abrir laboratorio
                      </Link>
                   </div>
@@ -1148,7 +1148,7 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/10 to-transparent p-6 hover:border-cyan-300/40 transition-colors">
             <p className="text-sm font-bold text-cyan-200">{copy.basicTitle}</p>
-            <ul className="mt-4 space-y-3 text-sm text-slate-300">
+            <ul className="mt-4 v3-space-y-3 text-sm text-slate-300">
               {copy.basicBullets.map((bullet) => (
                  <li key={bullet} className="flex items-start gap-2">
                     <span className="text-cyan-500 mt-0.5">•</span>
@@ -1159,7 +1159,7 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
           </div>
           <div className="rounded-2xl border border-violet-300/25 bg-gradient-to-br from-violet-500/10 to-transparent p-6 hover:border-violet-300/40 transition-colors">
             <p className="text-sm font-bold text-violet-200">{copy.secureTitle}</p>
-            <ul className="mt-4 space-y-3 text-sm text-slate-300">
+            <ul className="mt-4 v3-space-y-3 text-sm text-slate-300">
               {copy.secureBullets.map((bullet) => (
                  <li key={bullet} className="flex items-start gap-2">
                     <span className="text-violet-500 mt-0.5">•</span>
@@ -1278,7 +1278,7 @@ export function PlansSection({ content, locale }: { content: Content; locale: st
                  </div>
                </div>
                <div className="my-6 h-px w-full bg-gradient-to-r from-white/10 to-transparent" />
-               <ul className="space-y-3 text-sm text-slate-300">
+               <ul className="v3-space-y-3 text-sm text-slate-300">
                  {plan.bullets.map((bullet: string) => (
                     <li key={bullet} className="flex items-start gap-2">
                        <span className="text-cyan-500">✓</span>
@@ -1513,7 +1513,7 @@ export function RoiCredibilitySection({ content }: { content: Content }) {
 
         <Card className="p-8 backdrop-blur-md border-white/5 bg-slate-900/50">
           <SectionHeading eyebrow={content.credibility.eyebrow} title={content.credibility.title} description={content.credibility.description}  />
-          <ul className="mt-8 space-y-4 text-sm text-slate-300">
+          <ul className="mt-8 v3-space-y-4 text-sm text-slate-300">
             {content.credibility.items.map((item: string) => (
                <li key={item} className="flex gap-3">
                   <span className="text-cyan-500 font-bold mt-0.5">✓</span>

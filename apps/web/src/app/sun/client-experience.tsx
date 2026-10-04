@@ -118,11 +118,11 @@ export function TapClientExperience({ result }: { result: any }) {
                   key="passport"
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.2 }}
-                  className="space-y-4 pb-10"
+                  className="v3-space-y-4 pb-10"
                >
                   <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5">
                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Specs del Producto</h4>
-                     <div className="space-y-3">
+                     <div className="v3-space-y-3">
                         <div className="flex justify-between border-b border-white/5 pb-2">
                            <span className="text-xs text-slate-500">Cosecha</span>
                            <span className="text-xs font-semibold text-slate-200">{result.product?.vintage || "No informado"}</span>
@@ -165,7 +165,7 @@ export function TapClientExperience({ result }: { result: any }) {
                   key="loyalty"
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.2 }}
-                  className="space-y-4 pb-10"
+                  className="v3-space-y-4 pb-10"
                >
                   <div className="rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[40px] rounded-full group-hover:bg-indigo-500/20 transition-colors" />
@@ -178,7 +178,7 @@ export function TapClientExperience({ result }: { result: any }) {
                            <p className="text-[10px] text-indigo-300 uppercase tracking-widest mt-0.5">BENEFICIOS</p>
                         </div>
                      </div>
-                     <div className="space-y-3 mb-5 relative z-10">
+                     <div className="v3-space-y-3 mb-5 relative z-10">
                         <div className="flex items-start gap-3 bg-slate-950/50 p-3 rounded-xl border border-white/5">
                            <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0 mt-0.5">
                               <span className="text-emerald-400 font-bold text-xs">+10</span>
@@ -204,7 +204,7 @@ export function TapClientExperience({ result }: { result: any }) {
                   key="history"
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.2 }}
-                  className="space-y-4 pb-10"
+                  className="v3-space-y-4 pb-10"
                >
                   <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5">
                      <div className="flex justify-between items-center mb-6">
@@ -212,7 +212,7 @@ export function TapClientExperience({ result }: { result: any }) {
                         <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">UID: {result.identity?.uid?.substring(0, 8)}...</span>
                      </div>
 
-                     <div className="relative pl-4 space-y-6 before:absolute before:inset-y-0 before:left-[7px] before:w-[2px] before:bg-slate-800">
+                     <div className="relative pl-4 v3-space-y-6 before:absolute before:inset-y-0 before:left-[7px] before:w-[2px] before:bg-slate-800">
                         <div className="relative">
                            <div className={`absolute -left-[20px] top-1 w-3 h-3 rounded-full border-2 border-slate-900 ${toneStyles.dot}`} />
                            <p className="text-[10px] text-slate-500 font-mono mb-0.5">Ahora</p>

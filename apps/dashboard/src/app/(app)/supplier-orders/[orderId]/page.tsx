@@ -63,7 +63,7 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
   const order = await getOrderDetails(adminContext, orderId);
   if (!order) {
     return (
-      <main className="space-y-8">
+      <main className="v3-space-y-8">
         <SectionHeading eyebrow="Supplier Ops" title="Order Not Found" description="The requested order does not exist or you lack permission." />
       </main>
     );
@@ -121,7 +121,7 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
   };
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <div className="flex items-center gap-4">
         <Link href="/supplier-orders" className="text-slate-400 hover:text-white">&larr; Back to Orders</Link>
         <Link href={`/admin/tenant-vault/${encodeURIComponent(order.tenant_slug)}`} className="rounded-lg border border-violet-300/25 bg-violet-500/10 px-3 py-1.5 text-sm font-semibold text-violet-100 hover:bg-violet-500/20">
@@ -138,7 +138,7 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="p-5">
           <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4">Configuration</h3>
-          <dl className="space-y-2 text-sm">
+          <dl className="v3-space-y-2 text-sm">
             <div className="flex justify-between"><dt className="text-slate-500">Order ID</dt><dd className="text-white font-mono">{order.id}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Chip Model</dt><dd className="text-white">{order.chip_model}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Carrier Profile</dt><dd className="text-white">{order.carrier_profile_code}</dd></div>

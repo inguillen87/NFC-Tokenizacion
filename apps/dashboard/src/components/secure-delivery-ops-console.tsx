@@ -181,36 +181,36 @@ export function SecureDeliveryOpsConsole({ tenantSlug, role }: Props) {
             {!tenantLocked ? (
               <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 Tenant slug
-                <input name="tenant_slug" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="demobodega" />
+                <input name="tenant_slug" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" placeholder="demobodega" />
               </label>
             ) : null}
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Shipment code
-              <input name="shipment_code" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="Auto if blank" />
+              <input name="shipment_code" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" placeholder="Auto if blank" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Tracking / order ID
-              <input name="tracking_number" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="IT-ONBOARD-7421" />
+              <input name="tracking_number" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" placeholder="IT-ONBOARD-7421" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Carrier code
-              <input name="carrier_code" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="private-courier" />
+              <input name="carrier_code" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" placeholder="private-courier" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Origin
-              <input name="origin_address" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="Warehouse AR" />
+              <input name="origin_address" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" placeholder="Warehouse AR" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Destination
-              <input name="destination_address" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="Employee / premium buyer" />
+              <input name="destination_address" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" placeholder="Employee / premium buyer" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Product / asset
-              <input name="product_name" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" placeholder="MacBook Pro M4 sealed kit" />
+              <input name="product_name" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" placeholder="MacBook Pro M4 sealed kit" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Quantity
-              <input name="quantity" type="number" min="1" defaultValue="1" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-cyan-400" />
+              <input name="quantity" type="number" min="1" defaultValue="1" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-cyan-400" />
             </label>
           </div>
 
@@ -241,20 +241,20 @@ export function SecureDeliveryOpsConsole({ tenantSlug, role }: Props) {
             {!tenantLocked ? (
               <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 Tenant slug
-                <input name="tenant_slug" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="Optional if shipment ID resolves tenant" />
+                <input name="tenant_slug" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-emerald-400" placeholder="Optional if shipment ID resolves tenant" />
               </label>
             ) : null}
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Shipment ID
-              <input name="shipment_id" defaultValue={activeShipment?.id || ""} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="Created shipment UUID" />
+              <input name="shipment_id" defaultValue={activeShipment?.id || ""} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-emerald-400" placeholder="Created shipment UUID" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Seal UID
-              <input name="uid_hex" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm uppercase text-white outline-none focus:border-emerald-400" placeholder="04AABBCCDD1090" />
+              <input name="uid_hex" required className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm uppercase text-white outline-hidden focus:border-emerald-400" placeholder="04AABBCCDD1090" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               TTSTATUS
-              <select name="tt_raw" defaultValue="4343" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400">
+              <select name="tt_raw" defaultValue="4343" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-emerald-400">
                 <option value="4343">4343 - closed</option>
                 <option value="4F4F">4F4F - opened</option>
                 <option value="4F43">4F43 - opened previously</option>
@@ -264,19 +264,19 @@ export function SecureDeliveryOpsConsole({ tenantSlug, role }: Props) {
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Location
-              <input name="location" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="Packing bench / courier hub" />
+              <input name="location" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-emerald-400" placeholder="Packing bench / courier hub" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Operator
-              <input name="scanned_by" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400" placeholder="ops@nexid.lat" />
+              <input name="scanned_by" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-emerald-400" placeholder="ops@nexid.lat" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Recipient
-              <input name="recipient_name" disabled={context !== "VERIFY"} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400 disabled:opacity-40" placeholder="Only for verify" />
+              <input name="recipient_name" disabled={context !== "VERIFY"} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-emerald-400 disabled:opacity-40" placeholder="Only for verify" />
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Verification method
-              <input name="verification_method" disabled={context !== "VERIFY"} defaultValue="NFC_TAP" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-none focus:border-emerald-400 disabled:opacity-40" />
+              <input name="verification_method" disabled={context !== "VERIFY"} defaultValue="NFC_TAP" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case text-white outline-hidden focus:border-emerald-400 disabled:opacity-40" />
             </label>
           </div>
 

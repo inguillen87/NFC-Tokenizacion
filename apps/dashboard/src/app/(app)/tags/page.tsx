@@ -102,7 +102,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   const copy = dashboardContent[locale];
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.tags} title={copy.pages.tags.title} description={copy.pages.tags.description} />
       <ModuleAudienceHero
         ceo={{ eyebrow: "CEO / Investor read", summary: "Registro operativo por UID: volumen de mensajes, señales de riesgo y tokenización digital asociada.", decision: "Priorizás SKU/canales con más actividad y riesgo.", cta: "Úsalo para decisiones de expansión y control." }}

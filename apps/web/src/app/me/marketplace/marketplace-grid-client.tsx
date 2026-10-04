@@ -291,7 +291,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="v3-space-y-6">
       <div className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_32%),linear-gradient(135deg,rgba(2,6,23,0.96),rgba(11,18,32,0.94))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -397,7 +397,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[280px_1fr_340px]">
-        <aside className="space-y-5">
+        <aside className="v3-space-y-5">
           <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg">
             <h3 className="mb-3 text-xs font-black uppercase tracking-[0.16em] text-slate-400">Buscar</h3>
             <label className="relative block">
@@ -407,7 +407,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Buscar producto, aceite, cata..."
-                className="w-full rounded-xl border border-white/10 bg-slate-950 py-2.5 pl-9 pr-3 text-xs text-white outline-none transition focus:border-cyan-500/45"
+                className="w-full rounded-xl border border-white/10 bg-slate-950 py-2.5 pl-9 pr-3 text-xs text-white outline-hidden transition focus:border-cyan-500/45"
                 title="Filtrar productos por nombre, rubro o marca."
               />
             </label>
@@ -443,7 +443,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           </div>
         </aside>
 
-        <div className="space-y-6">
+        <div className="v3-space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             {filteredItems.map((item, idx) => {
               const status = String(item.stock_status || item.status || "not_reported");
@@ -567,7 +567,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           </div>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="v3-space-y-5">
           <div className="sticky top-4 rounded-3xl border border-cyan-300/20 bg-slate-950/85 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.35)] backdrop-blur">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -579,7 +579,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
               </div>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 v3-space-y-3">
               {cartLines.length ? cartLines.map(({ item, quantity }) => (
                 <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                   <p className="text-sm font-black text-white">{item.title}</p>
@@ -612,7 +612,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
               {cartTotals.points ? <p className="mt-1 text-xs text-cyan-100">+ {cartTotals.points} puntos aplicables</p> : null}
             </div>
 
-            <div className="mt-5 space-y-2">
+            <div className="mt-5 v3-space-y-2">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Método de pago preferido</p>
               {paymentMethods.map((method) => {
                 const Icon = method.Icon;

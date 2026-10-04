@@ -61,7 +61,7 @@ export function Sidebar({ items, title }: { title: string; items: Array<{ href: 
       </div>
 
       {/* Navigation Menu */}
-      <nav className="mt-6 space-y-1">
+      <nav className="mt-6 v3-space-y-1">
         {items.map((item) => {
           const isActive = pathname === item.href;
           const IconComponent = iconMap[item.href] || LayoutDashboard;

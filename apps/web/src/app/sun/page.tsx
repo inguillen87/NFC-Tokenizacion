@@ -1622,7 +1622,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="sun-tap-shell w-full max-w-[430px] z-10 space-y-5 mx-auto">
+      <div className="sun-tap-shell w-full max-w-[430px] z-10 v3-space-y-5 mx-auto">
         
         <SunPassportHeader
           isQrScan={isQrScan}
@@ -1633,7 +1633,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         {demoLabReturnHref ? (
           <Link
             href={demoLabReturnHref}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-400/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             {demoLabReturnLabel}
@@ -1670,7 +1670,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         >
           <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-500 opacity-10 blur-[60px]" />
 
-          <div className="relative z-10 space-y-2.5">
+          <div className="relative z-10 v3-space-y-2.5">
             <div
               data-testid="sun-summary-product"
               className="sun-summary-product grid grid-cols-[92px_minmax(0,1fr)] items-center gap-3"
@@ -1828,7 +1828,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <a
                   data-testid="sun-location-consent-cta"
                   href="#tap-location-consent"
-                  className="mt-2.5 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 text-[10px] font-black text-cyan-100 transition hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                  className="mt-2.5 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 text-[10px] font-black text-cyan-100 transition hover:bg-cyan-400/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300"
                 >
                   <span>Compartir ubicación aproximada del teléfono</span>
                   <span className="rounded-full bg-slate-950/40 px-2 py-1 text-[8px] uppercase tracking-[0.1em] text-cyan-200">Opcional · con permiso</span>
@@ -1838,7 +1838,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <summary className="min-h-8 cursor-pointer list-none py-1.5 font-bold text-slate-300 marker:hidden">
                   Ver fuente y horario
                 </summary>
-                <div className="space-y-1 pb-1 leading-4">
+                <div className="v3-space-y-1 pb-1 leading-4">
                   <p className="break-words"><span className="font-bold text-slate-500">Fuente / precisión:</span> <span data-sun-server-evidence="true">{summaryLocationEvidence}</span></p>
                   <p className="break-words"><span className="font-bold text-slate-500">Hora del tap:</span> <span data-sun-datetime={localTapTimeIso || undefined} data-sun-time-zone={result.tapContext?.timezone || undefined} data-sun-server-evidence={(!localTapTimeIso).toString()}>{summaryLocationTime}</span></p>
                   <p>Este resultado corresponde únicamente a este tag y esta lectura.</p>
@@ -1849,7 +1849,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div data-testid="sun-summary-actions" className="sun-summary-actions grid grid-cols-2 gap-2">
               <a
                 href="#product-info"
-                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl bg-white px-2.5 text-center text-[11px] font-black leading-tight text-slate-950 shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl bg-white px-2.5 text-center text-[11px] font-black leading-tight text-slate-950 shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition hover:bg-cyan-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 Ver producto
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
@@ -1858,7 +1858,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 href={!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
                   ? "#sun-condition"
                   : "#sun-origin"}
-                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-2 text-center text-[10px] font-black leading-tight text-cyan-100 transition hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-2 text-center text-[10px] font-black leading-tight text-cyan-100 transition hover:bg-cyan-500/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 {!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
                   ? "Entender apertura"
@@ -1986,7 +1986,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         {/* 3. A real geographic map: declared origin and this tap, without inferred routes. */}
         <section
           id="sun-origin"
-          className="scroll-mt-24 space-y-4 rounded-3xl border border-white/5 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md sm:p-5 md:relative md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2 md:p-6"
+          className="scroll-mt-24 v3-space-y-4 rounded-3xl border border-white/5 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md sm:p-5 md:relative md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2 md:p-6"
           aria-labelledby="sun-origin-title"
         >
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -2050,7 +2050,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           />
         </section>
 
-          <section id="sun-condition" className="scroll-mt-24 space-y-3 rounded-2xl border border-white/5 bg-slate-950/35 p-4" aria-labelledby="sun-condition-title">
+          <section id="sun-condition" className="scroll-mt-24 v3-space-y-3 rounded-2xl border border-white/5 bg-slate-950/35 p-4" aria-labelledby="sun-condition-title">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <span className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">Estado y sensores</span>
@@ -2063,7 +2063,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             {/* IoT evidence: static declarations, measured events and demo JSON remain separate. */}
             {hasSensorEvidence ? (
-            <div className="bg-gradient-to-br from-slate-950 to-slate-900/90 rounded-2xl border border-white/5 p-4 space-y-3">
+            <div className="bg-gradient-to-br from-slate-950 to-slate-900/90 rounded-2xl border border-white/5 p-4 v3-space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Datos ambientales del producto</span>
@@ -2127,7 +2127,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                         ? `Ver datos declarados del manifiesto (${sensorHistory.length})`
                         : `Ver eventos de muestra (${sensorHistory.length})`}
                   </summary>
-                  <ol className="mt-3 space-y-2">
+                  <ol className="mt-3 v3-space-y-2">
                     {sensorHistory.map((reading, index) => (
                       <li key={`${reading.at || "sensor"}-${index}`} className="rounded-lg border border-white/5 bg-slate-900/70 p-2 text-[10px] text-slate-300">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2169,13 +2169,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           {/* Wine content uses producer data, or explicitly labelled Demo Lab fixtures. */}
           {isWineProduct && (
             <div
-              className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-4"
+              className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs v3-space-y-4"
               data-sun-experience-impression={dynamicTastingNotes ? "TECHNICAL_SHEET_VIEWED" : undefined}
               data-sun-experience-placement="producer_product_sheet"
               data-sun-experience-interaction="sensory_sheet_visible"
             >
-              <div className="space-y-1">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
+              <div className="v3-space-y-1">
+                <span className="block text-[8px] leading-4 uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
                 {dynamicTastingNotes ? (
                   <p data-sun-server-evidence="true" className="text-slate-300 italic">“{dynamicTastingNotes}”</p>
                 ) : (
@@ -2187,11 +2187,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
 
               {isDemoPreview && (
-                <div className="space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <div className="v3-space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
                   <p className="text-[10px] font-semibold leading-relaxed text-amber-200">
                     Datos simulados del Demo Lab. El perfil y las distinciones siguientes ilustran el formato; no son certificaciones reales.
                   </p>
-                  <div className="space-y-2.5 border-t border-amber-500/10 pt-3">
+                  <div className="v3-space-y-2.5 border-t border-amber-500/10 pt-3">
                     <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Perfil sensorial simulado</span>
                     {[
                       { label: "Cuerpo / Intensidad", val: 85, desc: "Intenso y estructurado" },
@@ -2200,7 +2200,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       { label: "Roble", val: 75, desc: "Crianza de ejemplo" },
                       { label: "Fruta negra", val: 90, desc: "Mora y ciruela madura" },
                     ].map((attr) => (
-                      <div key={attr.label} className="space-y-1">
+                      <div key={attr.label} className="v3-space-y-1">
                         <div className="flex justify-between gap-3 text-[10px] font-medium text-slate-300">
                           <span>{attr.label}</span>
                           <span className="text-right text-[9px] text-slate-500">{attr.desc}</span>
@@ -2230,13 +2230,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           )}
 
           {/* Timeline points list */}
-          <div className="space-y-3 pt-2">
+          <div className="v3-space-y-3 pt-2">
             <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Bitácora de Eventos</span>
-            <div className="relative pl-4 space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-[2px] before:bg-slate-800">
+            <div className="relative pl-4 v3-space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-[2px] before:bg-slate-800">
               {passportStorySteps.map((step, idx) => (
                 <div key={`${step.label}-${step.title}`} className="relative text-xs">
                   <div className={`absolute -left-[14px] top-1 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${idx === 3 ? pulseClass : "bg-slate-700"}`} />
-                  <span className="block text-[9px] font-mono text-slate-500">{step.label}</span>
+                  <span className="block text-[9px] leading-4 font-mono text-slate-500">{step.label}</span>
                   <span className="block font-bold text-slate-200 mt-0.5">{step.title}</span>
                   <p className="text-slate-400 mt-0.5 leading-normal text-[11px]">{step.body}</p>
                 </div>
@@ -2245,7 +2245,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
 
         {/* 4. Services: one clear menu, with protected flows disclosed on demand. */}
-        <section id="sun-services" className="scroll-mt-24 space-y-3" aria-label="Servicios y beneficios del producto">
+        <section id="sun-services" className="scroll-mt-24 v3-space-y-3" aria-label="Servicios y beneficios del producto">
             <div id="consumer-choice" className="scroll-mt-24">
               <SunServicesHub
                 promotion={publishedPromotion}
@@ -2363,9 +2363,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span className="transition-transform group-open:rotate-180 duration-300 text-sm">▼</span>
             </summary>
             
-            <div className="p-5 pt-0 space-y-4 text-xs border-t border-white/5 bg-slate-950/40">
+            <div className="p-5 pt-0 v3-space-y-4 text-xs border-t border-white/5 bg-slate-950/40">
               
-              <div className="space-y-3 mt-4">
+              <div className="v3-space-y-3 mt-4">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-slate-500">Identificador del chip</span>
                   <span data-sun-server-evidence="true" className="font-mono text-slate-200">{result.identity?.uid || "Oculto / No disponible"}</span>
@@ -2414,11 +2414,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-cyan-300">Señal electrónica TagTamper</span>
+                      <span className="block text-[9px] leading-4 font-bold uppercase tracking-[0.18em] text-cyan-300">Señal electrónica TagTamper</span>
                       <strong className="mt-1 block text-sm text-slate-100">{ttEvidence.label}</strong>
                       <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-slate-400">{ttEvidence.summary}</p>
                     </div>
-                    <span className={`rounded-full border px-3 py-1 font-mono text-[11px] font-bold ${
+                    <span className={`rounded-full border px-3 py-1 font-mono text-[11px] leading-4 font-bold ${
                       ttEvidence.requiresReview
                         ? "border-amber-300/30 bg-amber-300/10 text-amber-200"
                         : ttEvidence.available

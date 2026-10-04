@@ -65,13 +65,13 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
       title="Pasaporte Criptográfico & Wallet"
       subtitle="Administrá certificados digitales, registros de ownership, NFT y puntos. Ninguno garantiza por sí solo autenticidad física, contenido o procedencia."
     >
-      <div className="space-y-6">
+      <div className="v3-space-y-6">
         <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} autoConnect={shouldAutoConnectMetaMask} />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
          
          {/* Left Column: Passport & Certificates */}
-         <div className="space-y-6">
+         <div className="v3-space-y-6">
             
             {/* Collector Banner with deep wine/burgundy and gold accents */}
             <section className="consumer-passport-collection rounded-3xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,rgba(153,27,27,0.3),transparent_40%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-6 shadow-2xl relative overflow-hidden">
@@ -146,14 +146,14 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
          </div>
 
          {/* Right Column: Faucet / Metamask / Sandbox & Tenant Points */}
-         <div className="space-y-6">
+         <div className="v3-space-y-6">
             
             {/* Tenant Wallets/Points summary */}
             <div className="rounded-3xl border border-white/10 bg-slate-950/65 p-5">
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Mis Puntos por Marca</h3>
               <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Saldos activos canjeables por experiencias.</p>
 
-              <div className="mt-4 space-y-2.5">
+              <div className="mt-4 v3-space-y-2.5">
                 {tenantWallets.length ? (
                   tenantWallets.map((tenant) => (
                     <div key={String(tenant.slug || tenant.name || "tenant")} className="rounded-2xl border border-white/5 bg-slate-900/30 p-4 transition hover:border-white/10">
@@ -189,7 +189,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
                <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
                  Cuando la política lo habilita, nexID puede registrar un ownership digital en Polygon. La transacción prueba ese registro y el control de la wallet; no prueba autenticidad física, procedencia ni custodia del producto.
                </p>
-               <div className="mt-4 space-y-2 text-[10px] text-slate-300 font-mono">
+               <div className="mt-4 v3-space-y-2 text-[10px] text-slate-300 font-mono">
                  {["1. Mensaje NFC Validado", "2. Identidad + Política", "3. Acuñación Confirmada", "4. Acciones Habilitadas"].map((step, idx) => (
                    <div key={step} className="rounded-xl border border-white/5 bg-slate-950/65 px-3 py-2 flex items-center justify-between">
                      <span>{step}</span>

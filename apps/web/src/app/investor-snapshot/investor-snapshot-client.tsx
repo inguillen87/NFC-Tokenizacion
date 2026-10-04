@@ -307,7 +307,7 @@ function InvestorMobileOutput() {
 function InvestorVerticalMoat() {
   return (
     <section className="grid gap-5 rounded-3xl border border-cyan-300/15 bg-slate-950/72 p-5 shadow-2xl backdrop-blur-md xl:grid-cols-[0.95fr_1.05fr]">
-      <div className="space-y-5">
+      <div className="v3-space-y-5">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Mercados atacables</p>
           <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-white md:text-3xl">La misma infraestructura para muchos rubros, no una demo aislada.</h2>
@@ -1420,9 +1420,9 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
     <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
       <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full filter blur-[100px] pointer-events-none" />
       
-      <div className="space-y-8">
+      <div className="v3-space-y-8">
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 border-b border-white/5 pb-6">
-          <div className="space-y-2">
+          <div className="v3-space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-cyan-300">
               ⚡ Simulador Financiero B2B
             </div>
@@ -1463,19 +1463,19 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Column: Sliders */}
-          <div className="lg:col-span-4 space-y-5 bg-slate-900/30 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
-            <div className="space-y-4">
+          <div className="lg:col-span-4 v3-space-y-5 bg-slate-900/30 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
+            <div className="v3-space-y-4">
               <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/5 pb-2">
                 Ajustar Variables de Marca
               </h3>
               
               {/* Chip Model Dropdown */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[9px] font-mono text-slate-400 uppercase block">Modelo de Chip NFC:</label>
                 <select
                   value={selectedChipModel}
                   onChange={(e) => handleChipModelChange(e.target.value as any)}
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-hidden focus:border-cyan-500 transition-colors"
                 >
                   <option value="tamper">NTAG 424 DNA TagTamper ($1.00 base)</option>
                   <option value="dna">NTAG 424 DNA ($0.80 base)</option>
@@ -1484,12 +1484,12 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
               </div>
 
               {/* Region Selector Dropdown */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <label className="text-[9px] font-mono text-slate-400 uppercase block">Región de Exportación:</label>
                 <select
                   value={exportRegion}
                   onChange={(e) => handleRegionChange(e.target.value as any)}
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-hidden focus:border-cyan-500 transition-colors"
                 >
                   <option value="europe_usa">Europa / EE.UU. (hipótesis 4.2%)</option>
                   <option value="latam">Mendoza / Mercosur (hipótesis 6.5%)</option>
@@ -1499,7 +1499,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
               </div>
 
               {/* Slider 1: Volume */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Volumen Anual</span>
                   <div className="flex items-center gap-1">
@@ -1511,7 +1511,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                         setVolume(val);
                         setSelectedPreset(""); // custom
                       }}
-                      className="w-[85px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-white text-xs outline-none focus:border-cyan-500/50"
+                      className="w-[85px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-white text-xs outline-hidden focus:border-cyan-500/50"
                     />
                     <span className="text-slate-400 font-mono text-[9px]">uds</span>
                   </div>
@@ -1535,7 +1535,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
               </div>
 
               {/* Slider 2: Fraud Rate (Only visible or editable for direct) */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Tasa de Fraude / Pérdida</span>
                   <div className="flex items-center gap-1">
@@ -1548,7 +1548,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                         setFraudRate(val);
                         setSelectedPreset(""); // custom
                       }}
-                      className="w-[50px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-rose-400 text-xs outline-none focus:border-rose-500/50"
+                      className="w-[50px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-rose-400 text-xs outline-hidden focus:border-rose-500/50"
                     />
                     <span className="text-rose-400 font-mono text-[9px]">%</span>
                   </div>
@@ -1571,7 +1571,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold">
                   <label htmlFor="investor-protection-rate" className="text-slate-400 uppercase">Efectividad asumida</label>
                   <span className="text-emerald-400 font-mono text-[10px]">{protectionRate}%</span>
@@ -1589,7 +1589,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                 <p className="text-[8px] text-slate-500 leading-tight">Hipótesis: porcentaje de la pérdida actual que el piloto podría evitar. No es una eficacia medida de nexID.</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold">
                   <label htmlFor="investor-engagement-rate" className="text-slate-400 uppercase">Adopción post-tap asumida</label>
                   <span className="text-cyan-400 font-mono text-[10px]">{engagementRate}%</span>
@@ -1608,7 +1608,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
               </div>
 
               {/* Slider 3: Price */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Precio de Venta Producto</span>
                   <div className="flex items-center gap-1">
@@ -1621,7 +1621,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                         setRetailPrice(val);
                         setSelectedPreset(""); // custom
                       }}
-                      className="w-[50px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-cyan-400 text-xs outline-none focus:border-cyan-500/50"
+                      className="w-[50px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-cyan-400 text-xs outline-hidden focus:border-cyan-500/50"
                     />
                     <span className="text-cyan-400 font-mono text-[9px]">USD</span>
                   </div>
@@ -1645,7 +1645,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
               </div>
 
               {/* Slider 4: Chip Cost */}
-              <div className="space-y-1">
+              <div className="v3-space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Costo Base del Chip</span>
                   <div className="flex items-center gap-1">
@@ -1658,7 +1658,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                         const val = Number(e.target.value);
                         setChipCost(val);
                       }}
-                      className="w-[60px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-amber-400 text-xs outline-none focus:border-amber-500/50"
+                      className="w-[60px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-amber-400 text-xs outline-hidden focus:border-amber-500/50"
                     />
                     <span className="text-amber-400 font-mono text-[9px]">USD</span>
                   </div>
@@ -1680,7 +1680,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
 
               {/* Slider 5: Resell Price (Reseller only) */}
               {isReseller && (
-                <div className="space-y-1">
+                <div className="v3-space-y-1">
                   <div className="flex justify-between items-center text-xs font-bold">
                     <span className="text-slate-400 uppercase">Precio Reventa del Chip</span>
                     <div className="flex items-center gap-1">
@@ -1690,7 +1690,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                         step="0.05"
                         value={resellPrice}
                         onChange={(e) => setResellPrice(Number(e.target.value))}
-                        className="w-[60px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-purple-400 text-xs outline-none focus:border-purple-500/50"
+                        className="w-[60px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-purple-400 text-xs outline-hidden focus:border-purple-500/50"
                       />
                       <span className="text-purple-400 font-mono text-[9px]">USD</span>
                     </div>
@@ -1713,7 +1713,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
             </div>
             
             {/* Cost breakdown */}
-            <div className="pt-3 border-t border-white/5 space-y-1.5 text-[9px] text-slate-400 leading-none font-mono">
+            <div className="pt-3 border-t border-white/5 v3-space-y-1.5 text-[9px] text-slate-400 leading-none font-mono">
               <div className="flex justify-between">
                 <span>Volumen Mensual Promedio:</span>
                 <span className="text-slate-200">{Math.round(monthlyVolume).toLocaleString(INVESTOR_NUMBER_LOCALE)} uds/mes</span>
@@ -1871,7 +1871,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                   </div>
                 </div>
                 
-                <div className="space-y-1.5">
+                <div className="v3-space-y-1.5">
                   <div className="flex justify-between items-end">
                     <span className="text-[10px] text-slate-400">Nuevos Clientes:</span>
                     <span className="text-xs font-black text-white font-mono">{dtcClients.toLocaleString(INVESTOR_NUMBER_LOCALE)} /año</span>
@@ -1907,7 +1907,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                   </div>
                 </div>
                 
-                <div className="space-y-1.5">
+                <div className="v3-space-y-1.5">
                   <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
                     <span>{!isReseller ? "Inversión:" : "Costo Compra:"}</span>
                     <span className="text-slate-200 font-bold">${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
@@ -1936,11 +1936,11 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
         {/* ========================================== */}
         {/* Deterministic scenario explanation */}
         {/* ========================================== */}
-        <div className="mt-8 pt-8 border-t border-white/5 space-y-6 relative">
+        <div className="mt-8 pt-8 border-t border-white/5 v3-space-y-6 relative">
           <div className="absolute top-0 left-1/4 w-72 h-72 bg-cyan-500/5 rounded-full filter blur-[80px] pointer-events-none" />
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
+            <div className="v3-space-y-1">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
@@ -1963,10 +1963,10 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
             {/* Col 1: Metrics summary */}
-            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 v3-space-y-4">
               <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider">Métricas de Amortización</span>
               
-              <div className="space-y-3">
+              <div className="v3-space-y-3">
                 {/* Metric 1 */}
                 <div className="bg-slate-950/50 border border-white/10 rounded-xl p-4 shadow-inner">
                   <span className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wide">Costo de Chips (Consumible)</span>
@@ -2001,7 +2001,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
             </div>
 
             {/* Col 2: deterministic scenario guidance */}
-            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4 h-full min-h-[190px] flex flex-col justify-between">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 v3-space-y-4 h-full min-h-[190px] flex flex-col justify-between">
               <div>
                 <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider">Recomendación Estratégica</span>
                 <p className="text-sm lg:text-base text-slate-200 leading-relaxed mt-2.5 font-medium">
@@ -2021,7 +2021,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
             </div>
 
             {/* Col 3: Interactive Q&A simulator */}
-            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4 flex flex-col justify-between min-h-[310px]">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 v3-space-y-4 flex flex-col justify-between min-h-[310px]">
               <div>
                 <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider mb-2.5">Preguntas sobre el modelo</span>
                 
@@ -2037,7 +2037,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                         handleCustomQuerySubmit();
                       }
                     }}
-                    className="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-3 py-2 text-xs lg:text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-500/40 transition-colors"
+                    className="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-3 py-2 text-xs lg:text-sm text-white placeholder-slate-500 outline-hidden focus:border-cyan-500/40 transition-colors"
                   />
                   <button
                     onClick={handleCustomQuerySubmit}
@@ -2049,7 +2049,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                 </div>
 
                 <span className="text-[10px] lg:text-xs font-bold uppercase text-slate-400 block mb-1.5 tracking-wide">Sugerencias predefinidas:</span>
-                <div className="space-y-2">
+                <div className="v3-space-y-2">
                   {[
                     { id: "non-reusable", q: "¿Por qué cada lote requiere chips nuevos?" },
                     { id: "tagtamper-cost", q: "¿Es rentable TagTamper ($1.00) vs Estándar ($0.50)?" },
@@ -2078,8 +2078,8 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                     Selecciona una pregunta para ver cómo se interpretan las fórmulas y supuestos.
                   </p>
                 ) : aiThinking ? (
-                  <div className="flex flex-col items-center justify-center space-y-2 py-4">
-                    <div className="flex space-x-1.5">
+                  <div className="flex flex-col items-center justify-center v3-space-y-2 py-4">
+                    <div className="flex v3-space-x-1.5">
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -2091,7 +2091,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.25 }}
-                    className="space-y-2"
+                    className="v3-space-y-2"
                   >
                     <div className="text-[10px] lg:text-xs font-mono text-cyan-400 uppercase tracking-widest font-black leading-none">
                       Explicación del modelo:
@@ -2447,7 +2447,7 @@ export function InvestorSnapshotClient() {
 
     return (
       <div className="flex flex-col h-full justify-between">
-        <div className="space-y-3 flex flex-col flex-1 overflow-hidden">
+        <div className="v3-space-y-3 flex flex-col flex-1 overflow-hidden">
           <div className="flex items-center gap-1.5 border-b border-white/5 pb-2">
             <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
             <div>
@@ -2495,9 +2495,9 @@ export function InvestorSnapshotClient() {
           </div>
 
           {studioTab === "designer" ? (
-            <div className="space-y-3 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
-              <div className="space-y-3">
-                <div className="space-y-1">
+            <div className="v3-space-y-3 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
+              <div className="v3-space-y-3">
+                <div className="v3-space-y-1">
                   <label className="text-[8px] font-mono text-slate-400 uppercase block">Diseño de Etiqueta / Arte:</label>
                   <textarea
                     value={labelPrompt}
@@ -2516,12 +2516,12 @@ export function InvestorSnapshotClient() {
                         : "Ej: Un pase VIP holográfico con estrellas doradas y patrón geométrico..."
                     }
                     rows={3}
-                    className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal font-sans"
+                    className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] text-white outline-hidden focus:border-cyan-500 transition-colors resize-none leading-normal font-sans"
                   />
                 </div>
 
                 {/* Styles list */}
-                <div className="space-y-1">
+                <div className="v3-space-y-1">
                   <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos Sugeridos:</span>
                   <div className="grid grid-cols-2 gap-1">
                     {[
@@ -2576,7 +2576,7 @@ export function InvestorSnapshotClient() {
             </div>
           ) : (
             <div className="flex flex-col justify-between flex-1 overflow-hidden mt-1">
-              <div className="space-y-2 flex-1 overflow-y-auto pr-1 max-h-[310px] scrollbar-thin scrollbar-thumb-slate-800">
+              <div className="v3-space-y-2 flex-1 overflow-y-auto pr-1 max-h-[310px] scrollbar-thin scrollbar-thumb-slate-800">
                 <div className="flex justify-between items-center text-[7.5px] font-mono text-slate-500 uppercase tracking-wider border-b border-white/5 pb-1">
                   <span>Feed de Consultas</span>
                   <span className="text-cyan-400 font-bold animate-pulse flex items-center gap-1">
@@ -2594,7 +2594,7 @@ export function InvestorSnapshotClient() {
                   crmQueries.map((item) => (
                     <div
                       key={item.id}
-                      className="bg-slate-900/70 border border-white/5 rounded-lg p-2 space-y-1 text-[8.5px] hover:border-slate-800 transition"
+                      className="bg-slate-900/70 border border-white/5 rounded-lg p-2 v3-space-y-1 text-[8.5px] hover:border-slate-800 transition"
                     >
                       <div className="flex justify-between items-center">
                         <span className={`px-1 rounded-[3px] text-[6.5px] font-mono font-bold leading-none py-0.5 border ${
@@ -2610,11 +2610,11 @@ export function InvestorSnapshotClient() {
                         </span>
                         <span className="text-[7px] text-slate-500 font-mono">{item.timestamp}</span>
                       </div>
-                      <div className="space-y-1">
+                      <div className="v3-space-y-1">
                         <p className="text-slate-300 font-semibold leading-snug">
                           💬 {item.query}
                         </p>
-                        <div className="pl-1.5 border-l border-cyan-500/20 text-slate-400 text-[8px] leading-snug space-y-0.5">
+                        <div className="pl-1.5 border-l border-cyan-500/20 text-slate-400 text-[8px] leading-snug v3-space-y-0.5">
                           <span className="text-cyan-400 font-bold block text-[7px] uppercase tracking-wider">
                             {shortInvestorAiProvenanceLabel(item.provenance)}
                           </span>
@@ -3008,7 +3008,7 @@ export function InvestorSnapshotClient() {
   };
 
   return (
-    <div className="investor-snapshot-shell max-w-7xl mx-auto px-4 py-8 lg:py-16 space-y-12 relative">
+    <div className="investor-snapshot-shell max-w-7xl mx-auto px-4 py-8 lg:py-16 v3-space-y-12 relative">
       
       {/* Background Neon Orbs */}
       <div className="absolute top-[10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />
@@ -3016,7 +3016,7 @@ export function InvestorSnapshotClient() {
 
       {/* Premium Header */}
       <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 border-b border-white/5 pb-10 relative">
-        <div className="space-y-3">
+        <div className="v3-space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-1 text-xs font-black uppercase tracking-widest text-cyan-300">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
@@ -3076,7 +3076,7 @@ export function InvestorSnapshotClient() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="space-y-6 flex-1 flex flex-col justify-between"
+                className="v3-space-y-6 flex-1 flex flex-col justify-between"
               >
                 <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950/90 to-slate-900/60 p-8 lg:p-10 min-h-[460px] flex flex-col justify-between shadow-2xl relative overflow-hidden backdrop-blur-md">
                   <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/5 rounded-full filter blur-[100px] pointer-events-none" />
@@ -3088,7 +3088,7 @@ export function InvestorSnapshotClient() {
                   </div>
 
                   {/* Slide core layout */}
-                  <div className="my-auto py-6 space-y-6">
+                  <div className="my-auto py-6 v3-space-y-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 block">
                       {slides[currentSlide].tagline}
                     </span>
@@ -3174,7 +3174,7 @@ export function InvestorSnapshotClient() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="space-y-6 flex-1 flex flex-col justify-between"
+                className="v3-space-y-6 flex-1 flex flex-col justify-between"
               >
                 {/* FAQ categories grid selector */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -3203,12 +3203,12 @@ export function InvestorSnapshotClient() {
                 </div>
 
                 {/* FAQs Container */}
-                <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl space-y-4 flex-1 backdrop-blur-md">
+                <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl v3-space-y-4 flex-1 backdrop-blur-md">
                   <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 mb-4">
                     <BookOpen className="w-4 h-4 text-purple-400" /> Respuestas Argumentativas de Venta
                   </h3>
 
-                  <div className="space-y-3">
+                  <div className="v3-space-y-3">
                     {faqCategories.find(c => c.id === faqCatFilter)?.items.map((item, idx) => {
                       const uniqueId = `${faqCatFilter}-${idx}`;
                       const isOpen = openFaq === uniqueId;
@@ -3233,7 +3233,7 @@ export function InvestorSnapshotClient() {
                           </button>
                           
                           {isOpen && (
-                            <div className="p-4 pt-0 border-t border-white/5 space-y-3 text-xs text-slate-300 leading-relaxed">
+                            <div className="p-4 pt-0 border-t border-white/5 v3-space-y-3 text-xs text-slate-300 leading-relaxed">
                               <p>{item.a}</p>
                               {item.ctx && (
                                 <div className="rounded-xl bg-slate-950/80 p-3.5 border-l-2 border-cyan-400/40 flex gap-3 items-start shadow-inner">
@@ -3257,13 +3257,13 @@ export function InvestorSnapshotClient() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="space-y-6 flex-1 flex flex-col justify-center"
+                className="v3-space-y-6 flex-1 flex flex-col justify-center"
               >
-                <div className="rounded-3xl border border-white/10 bg-slate-950/85 p-10 shadow-2xl text-center space-y-8 backdrop-blur-md max-w-xl mx-auto w-full">
+                <div className="rounded-3xl border border-white/10 bg-slate-950/85 p-10 shadow-2xl text-center v3-space-y-8 backdrop-blur-md max-w-xl mx-auto w-full">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 flex items-center justify-center text-3xl mx-auto shadow-[0_0_30px_rgba(6,182,212,0.1)]">
                     📂
                   </div>
-                  <div className="space-y-2">
+                  <div className="v3-space-y-2">
                     <h2 className="text-2xl font-black text-white uppercase tracking-tight">Descarga de PDFs Premium</h2>
                     <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
                       Material oficial exportado con las mejores herramientas vectoriales. Listo para adjuntar en correos comerciales o presentar en reuniones.
@@ -3344,7 +3344,7 @@ export function InvestorSnapshotClient() {
 
             {/* Collapsible Hugging Face Settings Card */}
             {showHfySettings && (
-              <div className="w-full mb-4 p-4 rounded-2xl border border-purple-500/25 bg-purple-950/10 text-slate-300 space-y-2.5 z-10 shadow-lg relative">
+              <div className="w-full mb-4 p-4 rounded-2xl border border-purple-500/25 bg-purple-950/10 text-slate-300 v3-space-y-2.5 z-10 shadow-lg relative">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                     🤗 Configuración Hugging Face API
@@ -3362,7 +3362,7 @@ export function InvestorSnapshotClient() {
                     placeholder="hf_..."
                     value={hfTokenInput}
                     onChange={(e) => handleSaveToken(e.target.value)}
-                    className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500 transition-colors font-mono"
+                    className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-hidden focus:border-purple-500 transition-colors font-mono"
                   />
                   {hfTokenInput && (
                     <button
@@ -3418,8 +3418,8 @@ export function InvestorSnapshotClient() {
                 isMobile
                   ? simStep === "active"
                     ? "absolute top-2 left-4 w-[60px] h-[90px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-xl opacity-20 pointer-events-none transition-all duration-300 z-10"
-                    : "absolute top-4 left-1/2 -translate-x-1/2 w-[140px] h-[220px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm transition-all duration-300 z-10"
-                  : "absolute left-[4%] w-[160px] h-[450px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden transition-all duration-300"
+                    : "absolute top-4 left-1/2 -translate-x-1/2 w-[140px] h-[220px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-xs transition-all duration-300 z-10"
+                  : "absolute left-[4%] w-[160px] h-[450px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-xs shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden transition-all duration-300"
               }>
                 <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 via-transparent to-transparent pointer-events-none" />
                 <ThreeDProduct 
@@ -3468,7 +3468,7 @@ export function InvestorSnapshotClient() {
                 className="investor-demo-phone-frame absolute right-[8%] w-[270px] h-[460px] border-[8px] border-slate-800 rounded-[40px] bg-slate-950 shadow-2xl z-20 flex flex-col items-center justify-between overflow-hidden shadow-cyan-500/5"
               >
                 {simStep === "idle" && (
-                  <div className="text-center p-4 my-auto space-y-4">
+                  <div className="text-center p-4 my-auto v3-space-y-4">
                     <Smartphone className="w-14 h-14 mx-auto text-slate-500 animate-pulse" />
                     <span className="text-xs font-black uppercase text-slate-400 block tracking-widest leading-none">Acercá para Tap</span>
                   </div>
@@ -3482,7 +3482,7 @@ export function InvestorSnapshotClient() {
                 )}
 
                 {simStep === "loading" && (
-                  <div className="text-center my-auto space-y-2">
+                  <div className="text-center my-auto v3-space-y-2">
                     <RefreshCw className="w-10 h-10 mx-auto text-purple-400 animate-spin" />
                     <span className="text-[10px] font-mono text-slate-400 block uppercase">Verificando...</span>
                   </div>
@@ -3498,7 +3498,7 @@ export function InvestorSnapshotClient() {
                         <span>12:00</span>
                         <div className="flex gap-1.5 items-center">
                           <span>5G</span>
-                          <div className="w-3.5 h-2.5 border border-slate-600 rounded-sm bg-emerald-500" />
+                          <div className="w-3.5 h-2.5 border border-slate-600 rounded-xs bg-emerald-500" />
                         </div>
                       </div>
 
@@ -3511,7 +3511,7 @@ export function InvestorSnapshotClient() {
                       {/* Sim Phone Screen Content */}
                       <div className="investor-demo-phone-panel flex-1 my-3 rounded-lg bg-slate-900/60 p-3 flex flex-col justify-between text-xs leading-relaxed text-slate-300 overflow-y-auto">
                         {phoneTab === "validate" && (
-                          <div className="space-y-3.5 w-full text-left my-auto">
+                          <div className="v3-space-y-3.5 w-full text-left my-auto">
                             <div className="flex items-center gap-2 border-b border-white/5 pb-2 justify-center">
                               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 filter drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]" />
                               <div>
@@ -3676,7 +3676,7 @@ export function InvestorSnapshotClient() {
                             </div>
                             
                             {/* Timeline steps */}
-                            <div className="space-y-2 relative pl-3 border-l border-white/10 ml-2 text-[9px] leading-tight">
+                            <div className="v3-space-y-2 relative pl-3 border-l border-white/10 ml-2 text-[9px] leading-tight">
                               <div className="relative">
                                 <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
                                 <span className="font-bold text-slate-300 uppercase block leading-none">{simData.steps[0].title}</span>
@@ -3697,7 +3697,7 @@ export function InvestorSnapshotClient() {
                             </div>
 
                             {/* Details card */}
-                            <div className="pt-2 border-t border-white/5 text-[9px] bg-slate-950/50 p-2 rounded-lg space-y-1.5">
+                            <div className="pt-2 border-t border-white/5 text-[9px] bg-slate-950/50 p-2 rounded-lg v3-space-y-1.5">
                               <div className="flex justify-between items-center text-[8px] text-slate-500 font-bold uppercase tracking-wider">
                                 <span>{simData.detailsTitle}</span>
                                 <span className="text-amber-400">{simData.detailsTagline}</span>
@@ -3718,15 +3718,15 @@ export function InvestorSnapshotClient() {
                         )}
 
                         {phoneTab === "mint" && (
-                          <div className="space-y-3.5 w-full text-center my-auto">
+                          <div className="v3-space-y-3.5 w-full text-center my-auto">
                             {isMinted ? (
-                              <div className="space-y-2.5 p-1 bg-slate-950/40 rounded-xl border border-white/5">
+                              <div className="v3-space-y-2.5 p-1 bg-slate-950/40 rounded-xl border border-white/5">
                                 <Award className="w-8 h-8 mx-auto text-purple-400 filter drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]" />
                                 <div>
                                   <p className="font-black text-white text-[11px] uppercase leading-none">Propiedad Digital Registrada</p>
                                   <span className="text-[8px] text-emerald-400 font-bold mt-1 block">Ownership · Polygon opcional</span>
                                 </div>
-                                <div className="text-[8px] font-mono text-slate-300 bg-slate-950 p-2 rounded border border-white/5 text-left space-y-1">
+                                <div className="text-[8px] font-mono text-slate-300 bg-slate-950 p-2 rounded border border-white/5 text-left v3-space-y-1">
                                   <div className="flex justify-between">
                                     <span>Token ID:</span>
                                     <span className="text-purple-300">#84920</span>
@@ -3749,7 +3749,7 @@ export function InvestorSnapshotClient() {
                                 </span>
                               </div>
                             ) : (
-                              <div className="space-y-3 p-1">
+                              <div className="v3-space-y-3 p-1">
                                 <Coins className="w-9 h-9 mx-auto text-purple-400" />
                                 <div>
                                   <p className="font-black text-[12px] text-white uppercase leading-none">{simData.mintTitle}</p>
@@ -3777,17 +3777,17 @@ export function InvestorSnapshotClient() {
                         )}
 
                         {phoneTab === "rewards" && (
-                          <div className="space-y-3.5 w-full text-center my-auto">
+                          <div className="v3-space-y-3.5 w-full text-center my-auto">
                             <Gift className="w-9 h-9 mx-auto text-amber-400" />
                             <div>
                               <p className="font-black text-white text-[12px] uppercase leading-none">Premios del Club VIP</p>
                               <p className="text-[8.5px] text-slate-400 mt-1">Beneficios exclusivos para propietarios</p>
                             </div>
                             
-                            <div className="space-y-2.5 pt-1 border-t border-white/5 max-h-[180px] overflow-y-auto">
+                            <div className="v3-space-y-2.5 pt-1 border-t border-white/5 max-h-[180px] overflow-y-auto">
                               {/* Reward 1 */}
                               <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
-                                <div className="text-left space-y-0.5">
+                                <div className="text-left v3-space-y-0.5">
                                   <span className="text-slate-200 font-bold text-[9px] block leading-none">{simData.reward1Title}</span>
                                   <span className="text-slate-500 text-[7px] block leading-none">{simData.reward1Sub}</span>
                                 </div>
@@ -3807,7 +3807,7 @@ export function InvestorSnapshotClient() {
 
                               {/* Reward 2 */}
                               <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
-                                <div className="text-left space-y-0.5">
+                                <div className="text-left v3-space-y-0.5">
                                   <span className="text-slate-200 font-bold text-[9px] block leading-none">{simData.reward2Title}</span>
                                   <span className="text-slate-500 text-[7px] block leading-none">{simData.reward2Sub}</span>
                                 </div>
@@ -3829,14 +3829,14 @@ export function InvestorSnapshotClient() {
                         )}
 
                         {phoneTab === "market" && (
-                          <div className="space-y-3.5 w-full text-center my-auto">
+                          <div className="v3-space-y-3.5 w-full text-center my-auto">
                             <ShoppingBag className="w-9 h-9 mx-auto text-cyan-400" />
                             <div>
                               <p className="font-black text-white text-[12px] uppercase leading-none">{simData.marketTitle}</p>
                               <p className="text-[8px] text-slate-400 mt-1">{simData.marketDesc}</p>
                             </div>
                             
-                            <div className="pt-2.5 border-t border-white/5 text-left space-y-1.5 text-[9px] font-mono bg-slate-950/40 p-2.5 rounded-lg">
+                            <div className="pt-2.5 border-t border-white/5 text-left v3-space-y-1.5 text-[9px] font-mono bg-slate-950/40 p-2.5 rounded-lg">
                               <div className="flex justify-between">
                                 <span className="text-slate-500">VALOR ESTIMADO:</span>
                                 <span className="text-white font-bold">{currentBasePrice.toFixed(3)} ETH</span>
@@ -3871,7 +3871,7 @@ export function InvestorSnapshotClient() {
                         {phoneTab === "chat" && (
                           <div className="flex flex-col h-full justify-between">
                             {/* Chat Messages */}
-                            <div className="flex-1 space-y-2 overflow-y-auto mb-2 pr-1 max-h-[160px] text-[8.5px] leading-tight text-left">
+                            <div className="flex-1 v3-space-y-2 overflow-y-auto mb-2 pr-1 max-h-[160px] text-[8.5px] leading-tight text-left">
                               {phoneChatMessages.map((msg, idx) => (
                                 <div 
                                   key={idx} 
@@ -3933,7 +3933,7 @@ export function InvestorSnapshotClient() {
                                   selectedIndustry === "pharma" ? "Preguntale al Validador..." :
                                   "Preguntale al Coordinador..."
                                 }
-                                className="flex-1 bg-slate-950/80 border border-white/10 rounded-md px-2 py-1 text-[8.5px] text-white outline-none focus:border-cyan-500 transition-colors"
+                                className="flex-1 bg-slate-950/80 border border-white/10 rounded-md px-2 py-1 text-[8.5px] text-white outline-hidden focus:border-cyan-500 transition-colors"
                               />
                               <button
                                 type="submit"
@@ -3999,7 +3999,7 @@ export function InvestorSnapshotClient() {
             </div>
 
             {/* Sim Info Box */}
-            <div className="w-full mt-4 p-4 rounded-2xl border border-white/5 bg-slate-900/30 text-[10px] text-slate-400 leading-relaxed space-y-1.5 z-10">
+            <div className="w-full mt-4 p-4 rounded-2xl border border-white/5 bg-slate-900/30 text-[10px] text-slate-400 leading-relaxed v3-space-y-1.5 z-10">
               {simStep === "idle" && (
                 <p>💡 <strong>Cómo probar:</strong> Haz clic en <strong>Simular NFC Tap</strong>. Observa el arco de traslación del móvil y escucha el \"bip\" dinámico al conectar.</p>
               )}
@@ -4050,15 +4050,15 @@ export function InvestorSnapshotClient() {
       />
 
       {/* Slide 6 VIP metal card parallax feature overlay (Premium aesthetic showcase & Innovar LATAM Ecosistema) */}
-      <section className="rounded-3xl border border-white/10 bg-slate-950 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md space-y-10">
+      <section className="rounded-3xl border border-white/10 bg-slate-950 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md v3-space-y-10">
         <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full filter blur-[120px] pointer-events-none" />
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7 space-y-4">
+          <div className="lg:col-span-7 v3-space-y-4">
             <span className="text-xs font-black uppercase tracking-[0.25em] text-cyan-400 block">Fidelización, Gamificación y Ecosistema Digital</span>
             <h2 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tight">Tarjeta VIP Gold: Fidelización Activa desde el Chip NFC</h2>
             
-            <div className="space-y-3 text-sm lg:text-base text-slate-300 leading-relaxed">
+            <div className="v3-space-y-3 text-sm lg:text-base text-slate-300 leading-relaxed">
               <p>
                 <strong>¿Para qué sirve esta tarjeta Gold digital?</strong> Si hoy vendés únicamente a través de Instagram, dependés de responder mensajes directos y de interacciones manuales. Al incorporar el chip NFC de nexID, cada botella se convierte en un punto de contacto automatizado.
               </p>
@@ -4087,7 +4087,7 @@ export function InvestorSnapshotClient() {
           </div>
 
           {/* Interactive VIP metal card mockup */}
-          <div className="lg:col-span-5 flex flex-col items-center justify-center space-y-4">
+          <div className="lg:col-span-5 flex flex-col items-center justify-center v3-space-y-4">
             <motion.div 
               whileHover={{ rotateY: 15, rotateX: -10 }}
               transition={{ type: "spring", stiffness: 150, damping: 15 }}
@@ -4107,7 +4107,7 @@ export function InvestorSnapshotClient() {
               </div>
 
               <div className="flex justify-between items-end">
-                <div className="space-y-1">
+                <div className="v3-space-y-1">
                   <span className="text-[8px] text-slate-400 block uppercase">Cuenta demo</span>
                   <span className="text-xs text-white font-mono leading-none">DEMO-SIN-OWNER</span>
                 </div>
@@ -4122,8 +4122,8 @@ export function InvestorSnapshotClient() {
         <div className="h-px bg-white/10 w-full" />
 
         {/* Innovar LATAM ecosystem services section */}
-        <div className="space-y-6">
-          <div className="space-y-2">
+        <div className="v3-space-y-6">
+          <div className="v3-space-y-2">
             <span className="text-xs font-black uppercase tracking-[0.25em] text-cyan-400 block">Tu socio tecnológico estratégico</span>
             <h3 className="text-xl lg:text-2xl font-black text-white uppercase tracking-tight">Desarrollamos toda tu línea de valor digital</h3>
             <p className="text-sm lg:text-base text-slate-300 max-w-4xl">
@@ -4133,8 +4133,8 @@ export function InvestorSnapshotClient() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Service 1 */}
-            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between v3-space-y-4">
+              <div className="v3-space-y-2">
                 <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
                   🛍️
                 </div>
@@ -4149,8 +4149,8 @@ export function InvestorSnapshotClient() {
             </div>
 
             {/* Service 2 */}
-            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between v3-space-y-4">
+              <div className="v3-space-y-2">
                 <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
                   💬
                 </div>
@@ -4165,8 +4165,8 @@ export function InvestorSnapshotClient() {
             </div>
 
             {/* Service 3 */}
-            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between v3-space-y-4">
+              <div className="v3-space-y-2">
                 <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
                   💳
                 </div>
@@ -4181,8 +4181,8 @@ export function InvestorSnapshotClient() {
             </div>
 
             {/* Service 4 */}
-            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between v3-space-y-4">
+              <div className="v3-space-y-2">
                 <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
                   🌐
                 </div>

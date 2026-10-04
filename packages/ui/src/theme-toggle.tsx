@@ -116,7 +116,7 @@ export function ThemeToggle({ initialTheme = "light", locale = "en" }: { initial
         setTheme(nextTheme);
         applyTheme(nextTheme);
       }}
-      className="theme-toggle inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-500/25"
+      className="theme-toggle inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs leading-4 font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-cyan-500/25"
       aria-label={actionLabel}
       title={actionLabel}
     >

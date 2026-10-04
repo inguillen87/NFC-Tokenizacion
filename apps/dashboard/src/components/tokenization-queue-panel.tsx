@@ -230,7 +230,7 @@ export function TokenizationQueuePanel({ canWrite = true, tenantSlug = "" }: { c
         : `La consola no habilita acciones hasta validar el runtime en vivo${readiness?.executor?.reason ? ` (${readiness.executor.reason})` : ""}.`;
 
   return (
-    <div className="space-y-4">
+    <div className="v3-space-y-4">
       <Card className="overflow-hidden p-0">
         <div className="grid gap-0 xl:grid-cols-[1.1fr_.9fr]">
           <div className="border-b border-white/10 p-5 xl:border-b-0 xl:border-r">
@@ -256,7 +256,7 @@ export function TokenizationQueuePanel({ canWrite = true, tenantSlug = "" }: { c
 
           <div className="p-5">
             <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-200">Regla de producto</p>
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 v3-space-y-3">
               <FlowRule icon={Fingerprint} title="nexID decide elegibilidad" body="Mensaje NFC válido según política, tenant, lote, titularidad digital y canal." />
               <FlowRule icon={ShieldCheck} title="IOTA conserva evidencia" body="Merkle root hash-only para auditoría de hitos; no representa propiedad." />
               <FlowRule icon={Boxes} title="Polygon registra el certificado digital" body="Esta cola puede ejecutar mint con recibo verificable. Las transferencias quedan como solicitud hasta incorporar executor, recibo y verificación ownerOf; no acredita propiedad física." />

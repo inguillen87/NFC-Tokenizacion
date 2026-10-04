@@ -2,7 +2,7 @@ import { EnterpriseOpsState } from "../../components/enterprise-ops-state";
 
 export default function DashboardWorkspaceLoading() {
   return (
-    <main className="space-y-6" aria-label="Cargando workspace operativo">
+    <main className="v3-space-y-6" aria-label="Cargando workspace operativo">
       <EnterpriseOpsState
         variant="loading"
         title="Sincronizando el workspace"

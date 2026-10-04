@@ -106,7 +106,7 @@ export default async function TapsTimelinePage() {
             <p className="mt-1 text-xs text-slate-500">Tus escaneos de etiquetas seguras nexID con tu celular móvil se detallarán aquí.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="v3-space-y-6">
             {taps.map((tap, idx) => {
               const state = tapState(tap);
               const Icon = state.Icon;
@@ -151,7 +151,7 @@ export default async function TapsTimelinePage() {
                         <p className="mt-1 text-xs text-slate-300 leading-relaxed">{state.desc}</p>
                         
                         {/* Evidence board: only fields returned by the event API */}
-                        <div className="mt-4 rounded-xl border border-white/5 bg-black/60 p-3 font-mono text-[9px] text-slate-400 space-y-1.5 shadow-inner">
+                        <div className="mt-4 rounded-xl border border-white/5 bg-black/60 p-3 font-mono text-[9px] text-slate-400 v3-space-y-1.5 shadow-inner">
                           <div className="flex items-center justify-between">
                             <span className="text-slate-600 uppercase">Event reference</span>
                             <span className="text-slate-300 select-all">{eventReference || "NO REPORTADA"}</span>

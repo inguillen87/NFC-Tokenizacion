@@ -62,7 +62,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   );
   if (!canReadSensitiveEvents) {
     return (
-      <main className="space-y-8">
+      <main className="v3-space-y-8">
         <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
         <EnterpriseOpsState
           variant="warning"
@@ -126,7 +126,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   }));
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
       <ModuleAudienceHero
         ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Vista ejecutiva del tenant con eventos reportados y alertas derivadas de la validación NFC." : "Events muestra la actividad devuelta por la fuente seleccionada y sus alertas operativas.", decision: "Priorizás mitigación de riesgo con evidencia técnica por evento.", cta: "Úsalo como feed operativo con fuente y alcance visibles." }}

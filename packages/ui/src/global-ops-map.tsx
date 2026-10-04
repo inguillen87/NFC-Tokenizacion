@@ -358,8 +358,8 @@ export function GlobalOpsMap({
           </div>
           {canToggleMapView ? (
             <div className="inline-grid grid-cols-2 rounded-xl border border-white/10 bg-white/5 p-1" role="group" aria-label="Vista del mapa">
-              <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "events"} onClick={() => setMapView("events")} className={`min-h-11 rounded-lg px-3 py-2 text-[11px] font-bold ${effectiveMapView === "events" ? "bg-white text-slate-900 shadow-sm" : "text-slate-200"}`}>Eventos</button>
-              <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "intensity"} onClick={() => setMapView("intensity")} className={`min-h-11 rounded-lg px-3 py-2 text-[11px] font-bold ${effectiveMapView === "intensity" ? "bg-cyan-400 text-slate-950 shadow-sm" : "text-slate-200"}`}>Intensidad</button>
+              <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "events"} onClick={() => setMapView("events")} className={`min-h-11 rounded-lg px-3 py-2 text-[11px] font-bold ${effectiveMapView === "events" ? "bg-white text-slate-900 shadow-xs" : "text-slate-200"}`}>Eventos</button>
+              <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "intensity"} onClick={() => setMapView("intensity")} className={`min-h-11 rounded-lg px-3 py-2 text-[11px] font-bold ${effectiveMapView === "intensity" ? "bg-cyan-400 text-slate-950 shadow-xs" : "text-slate-200"}`}>Intensidad</button>
             </div>
           ) : null}
         </div>
@@ -517,7 +517,7 @@ export function GlobalOpsMap({
         <aside className="global-ops-map-drawer h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200">
           <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Detalle del punto</p>
           {selectedPoint ? (
-            <div className="global-ops-map-selected mt-2 space-y-2 rounded-lg border border-cyan-300/25 bg-cyan-500/10 p-3">
+            <div className="global-ops-map-selected mt-2 v3-space-y-2 rounded-lg border border-cyan-300/25 bg-cyan-500/10 p-3">
               <p className="font-semibold text-cyan-100">{selectedPoint.city}, {selectedPoint.country}</p>
               <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">{roleLabel(selectedPoint.role)}</p>
               {selectedPoint.productName ? <p>Producto: <b>{selectedPoint.productName}</b></p> : null}
@@ -533,7 +533,7 @@ export function GlobalOpsMap({
           ) : <p className="mt-2 text-slate-400">Seleccioná un punto para ver detalle.</p>}
 
           {selectedJourney ? (
-            <div className="global-ops-map-journey mt-3 space-y-3 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-3">
+            <div className="global-ops-map-journey mt-3 v3-space-y-3 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-200">Origen a tap del cliente</p>
                 <p className="mt-1 font-semibold text-white">{selectedJourney.productName || selectedPoint?.productName || selectedJourney.uid}</p>
@@ -565,7 +565,7 @@ export function GlobalOpsMap({
             </div>
           ) : null}
 
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 v3-space-y-2">
             {fallbackRows.map((point) => (
               <button suppressHydrationWarning key={point.id} type="button" onClick={() => {
                 setInternalSelectedId(point.id);

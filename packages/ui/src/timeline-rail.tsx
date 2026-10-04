@@ -10,7 +10,7 @@ export type TimelineItem = {
 export function TimelineRail({ items }: { items: TimelineItem[] }) {
   if (!items.length) return null;
   return (
-    <ol className="space-y-2">
+    <ol className="v3-space-y-2">
       {items.map((item, index) => (
         <li key={item.id} className="relative rounded-lg border border-white/10 bg-slate-900/60 p-3 pl-4 text-xs text-slate-300">
           <span className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-cyan-300/40" />

@@ -544,14 +544,14 @@ export function SdkAdminConsole({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <Card className="p-4">
           <label className="text-xs uppercase tracking-[0.16em] text-slate-500" htmlFor="developer-tenant">Tenant operativo</label>
           <div className="mt-2 flex gap-2">
             <input
               id="developer-tenant"
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300"
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-300"
               value={tenantInput}
               onChange={(event) => setTenantInput(event.target.value)}
               onKeyDown={(event) => { if (event.key === "Enter") applyTenant(); }}
@@ -602,7 +602,7 @@ export function SdkAdminConsole({
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-label="Progreso de integración" aria-valuemin={0} aria-valuemax={100} aria-valuenow={readiness.percentage}>
             <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-[width]" style={{ width: `${readiness.percentage}%` }} />
           </div>
-          <ol className="mt-5 space-y-3">
+          <ol className="mt-5 v3-space-y-3">
             {readiness.steps.map((step) => (
               <li key={step.id} className="flex gap-3 rounded-lg border border-white/10 bg-slate-950/65 p-3">
                 <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.complete ? "bg-emerald-400 text-slate-950" : "border border-slate-600 text-slate-400"}`} aria-hidden="true">{step.complete ? "✓" : "·"}</span>
@@ -665,11 +665,11 @@ export function SdkAdminConsole({
           <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
             <label className="block text-sm text-slate-300" htmlFor="sdk-key-name">
               Nombre operativo
-              <input id="sdk-key-name" className="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyName} onChange={(event) => setKeyName(event.target.value)} autoComplete="off" disabled={!canManageApiKeys || !mfaVerified} />
+              <input id="sdk-key-name" className="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-300" value={keyName} onChange={(event) => setKeyName(event.target.value)} autoComplete="off" disabled={!canManageApiKeys || !mfaVerified} />
             </label>
             <label className="block text-sm text-slate-300" htmlFor="sdk-key-expiry">
               Vencimiento
-              <select id="sdk-key-expiry" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyExpiryDays} onChange={(event) => setKeyExpiryDays(event.target.value)} disabled={!canManageApiKeys || !mfaVerified}>
+              <select id="sdk-key-expiry" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-300" value={keyExpiryDays} onChange={(event) => setKeyExpiryDays(event.target.value)} disabled={!canManageApiKeys || !mfaVerified}>
                 <option value="30">30 días</option>
                 <option value="90">90 días</option>
                 <option value="180">180 días</option>
@@ -690,7 +690,7 @@ export function SdkAdminConsole({
                 disabled={!canManageApiKeys || !mfaVerified}
                 aria-pressed={profileId === profile.id}
                 onClick={() => chooseProfile(profile.id)}
-                className={`rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${profileId === profile.id ? "border-cyan-300/60 bg-cyan-400/10" : "border-white/10 bg-slate-950/65 hover:border-cyan-300/30"}`}
+                className={`rounded-xl border p-4 text-left transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${profileId === profile.id ? "border-cyan-300/60 bg-cyan-400/10" : "border-white/10 bg-slate-950/65 hover:border-cyan-300/30"}`}
               >
                 <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-cyan-200">{profile.label}</span>
                 <span className="mt-2 block text-sm font-semibold text-white">{profile.title}</span>
@@ -769,11 +769,11 @@ export function SdkAdminConsole({
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Ownership · opcional</p>
           <h2 id="claim-policy-title" className="mt-2 text-xl font-semibold text-white">Compra antes que claim</h2>
           <p className="mt-1 text-sm leading-6 text-slate-400">Para retail, exigí un POS token válido y sumá PIN sólo cuando caja u operación lo necesiten. Un tap de góndola no transfiere propiedad.</p>
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 v3-space-y-3">
             <label className="block text-sm text-slate-300" htmlFor="claim-bid">Lote / BID</label>
-            <input id="claim-bid" className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={bid} onChange={(event) => setBid(event.target.value)} autoComplete="off" />
+            <input id="claim-bid" className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-300" value={bid} onChange={(event) => setBid(event.target.value)} autoComplete="off" />
             <label className="block text-sm text-slate-300" htmlFor="claim-pin">PIN opcional</label>
-            <input id="claim-pin" className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={claimPin} onChange={(event) => setClaimPin(event.target.value)} placeholder="Ej: 4921" autoComplete="off" inputMode="numeric" />
+            <input id="claim-pin" className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-300" value={claimPin} onChange={(event) => setClaimPin(event.target.value)} placeholder="Ej: 4921" autoComplete="off" inputMode="numeric" />
             <Button type="button" onClick={saveClaimPolicy} disabled={!claimPolicyMutationsAllowed || !tenant || !bid.trim() || pendingAction !== null} aria-busy={pendingAction === "save-policy"} aria-describedby={isDemoData ? "developer-mutation-gate" : undefined} title={!claimPolicyMutationsAllowed ? claimPolicyMutationDisabledHelp : undefined}>{pendingAction === "save-policy" ? "Guardando…" : "Guardar política"}</Button>
           </div>
         </Card> : null}
@@ -784,10 +784,10 @@ export function SdkAdminConsole({
           <p className="mt-1 text-sm leading-6 text-slate-400">El receptor debe verificar la firma sobre el body crudo antes de parsear JSON y responder 2xx rápido. Sólo se aceptan destinos HTTPS públicos.</p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <label className="text-sm text-slate-300" htmlFor="webhook-name">Nombre
-              <input id="webhook-name" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={webhookName} onChange={(event) => setWebhookName(event.target.value)} autoComplete="off" />
+              <input id="webhook-name" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-300" value={webhookName} onChange={(event) => setWebhookName(event.target.value)} autoComplete="off" />
             </label>
             <label className="text-sm text-slate-300" htmlFor="webhook-url">Endpoint HTTPS
-              <input id="webhook-url" type="url" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} placeholder="https://example.com/webhooks/nexid" autoComplete="url" />
+              <input id="webhook-url" type="url" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-hidden focus:border-cyan-300" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} placeholder="https://example.com/webhooks/nexid" autoComplete="url" />
             </label>
           </div>
           <p className="mt-3 rounded-lg border border-cyan-300/20 bg-cyan-500/5 p-3 text-xs leading-5 text-slate-300">nexID genera el secreto con entropía criptográfica, lo cifra para custodia y lo muestra una sola vez. Nunca envíes un secreto elegido por una persona ni lo pegues en esta pantalla.</p>
@@ -808,7 +808,7 @@ export function SdkAdminConsole({
           </div>
           <details className="mt-5 rounded-xl border border-cyan-300/20 bg-slate-950/55 p-4">
             <summary className="cursor-pointer text-sm font-semibold text-cyan-100">Implementar verificación de firma v2</summary>
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 v3-space-y-4">
               <p className="text-xs leading-5 text-slate-400">
                 Verificá los bytes exactos antes de parsear JSON, aceptá timestamps con hasta {NEXID_WEBHOOK_SIGNATURE_CONTRACT.toleranceSeconds} segundos de diferencia y compará el HMAC en tiempo constante. v2 autentica también el key ID; v1 queda sólo para endpoints legacy y su key ID no debe usarse para seleccionar secretos. El secreto se lee de <code className="font-mono text-slate-200">NEXID_WEBHOOK_SECRET</code>; nunca se copia dentro del snippet.
               </p>
@@ -848,7 +848,7 @@ export function SdkAdminConsole({
             <div><p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Destinos</p><h2 id="webhook-list-title" className="mt-2 text-xl font-semibold text-white">Webhooks configurados</h2></div>
             <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>{loading ? "Actualizando…" : "Actualizar"}</Button>
           </div>
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 v3-space-y-3">
             {!loading ? webhooks.map((row) => (
               <article key={row.id} className="rounded-lg border border-white/10 bg-slate-950/70 p-4 text-sm">
                 <div className="flex items-center justify-between gap-3">
@@ -877,7 +877,7 @@ export function SdkAdminConsole({
             <div><p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Observabilidad</p><h2 id="delivery-list-title" className="mt-2 text-xl font-semibold text-white">Entregas recientes</h2></div>
             <span className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-400">últimas 20</span>
           </div>
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 v3-space-y-3">
             {!loading ? deliveries.map((row) => {
               const statusLabel = row.ok ? "Entregado" : row.status === "retrying" ? "Reintentando" : row.status === "dead_letter" ? "Dead letter" : "Falló";
               return (

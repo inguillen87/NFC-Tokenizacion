@@ -549,7 +549,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
       </Script>
       <SdkTopNav theme={theme} />
 
-      <div className="container-shell space-y-10 pb-16">
+      <div className="container-shell v3-space-y-10 pb-16">
         <section id="sdk-proof-hero" className="sdk-premium-hero">
           <div className="sdk-premium-copy">
             <p className="sdk-hero-eyebrow">Mensaje NFC/SUN - Evidencia - Derechos digitales</p>
@@ -618,7 +618,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
           })}
         </section>
 
-        <section aria-labelledby="sdk-delivery-contracts" className="space-y-4">
+        <section aria-labelledby="sdk-delivery-contracts" className="v3-space-y-4">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Contrato de entrega</p>
             <h2 id="sdk-delivery-contracts" className="mt-3 text-2xl font-black tracking-tight text-white">Integraciones que se recuperan sin duplicar operaciones</h2>
@@ -699,7 +699,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
           <Card className="p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Expansion</p>
             <h2 className="mt-3 text-2xl font-black tracking-tight text-white">Una plataforma para LATAM, Europa y escala global</h2>
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 v3-space-y-3">
               {strategy.map((item) => (
                 <div key={item.label} className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
                   <p className="inline-flex items-center gap-2 text-sm font-semibold text-white"><Boxes className="h-4 w-4 text-cyan-300" />{item.label}</p>

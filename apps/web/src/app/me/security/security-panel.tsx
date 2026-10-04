@@ -137,17 +137,17 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="mx-auto max-w-xl v3-space-y-6">
       <Link href="/me" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 transition hover:text-white">
         <ArrowLeft className="h-4 w-4" /> Volver al Pasaporte
       </Link>
 
       {hasBothLinkedChannels ? (
-        <div className="space-y-4 rounded-3xl border border-emerald-500/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.06)_0%,rgba(4,120,87,0.02)_100%)] p-6 text-center shadow-xl">
+        <div className="v3-space-y-4 rounded-3xl border border-emerald-500/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.06)_0%,rgba(4,120,87,0.02)_100%)] p-6 text-center shadow-xl">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 shadow-inner">
             <CheckCircle2 className="h-8 w-8" />
           </div>
-          <div className="space-y-1">
+          <div className="v3-space-y-1">
             <h2 className="text-xl font-black tracking-tight text-white">Canales de contacto vinculados</h2>
             <p className="mx-auto max-w-sm text-xs leading-relaxed text-slate-400">
               El backend reporta email y WhatsApp asociados a esta cuenta. Un código único puede enviarse a los canales configurados y cualquiera puede validarlo; esto mejora entrega y recuperación, pero no es MFA secuencial.
@@ -170,7 +170,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
           </div>
         </div>
       ) : (
-        <div className="space-y-5 rounded-3xl border border-white/10 bg-slate-900/55 p-6 shadow-lg">
+        <div className="v3-space-y-5 rounded-3xl border border-white/10 bg-slate-900/55 p-6 shadow-lg">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
               <Lock className="h-5 w-5" />
@@ -182,8 +182,8 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
           </div>
 
           {step === "input" ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
+            <div className="v3-space-y-4">
+              <div className="v3-space-y-2">
                 <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
                   {missingType === "email" ? "Vincular correo electrónico" : "Vincular WhatsApp"}
                 </label>
@@ -205,8 +205,8 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
+            <div className="v3-space-y-4">
+              <div className="v3-space-y-2">
                 <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
                   Código de verificación recibido
                 </label>
@@ -218,7 +218,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
                   maxLength={6}
                   value={code}
                   onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-                  className="block w-full rounded-xl border border-white/10 bg-slate-950 py-2.5 text-center font-mono text-lg tracking-[0.3em] text-slate-100 transition focus:border-cyan-500 focus:outline-none"
+                  className="block w-full rounded-xl border border-white/10 bg-slate-950 py-2.5 text-center font-mono text-lg tracking-[0.3em] text-slate-100 transition focus:border-cyan-500 focus:outline-hidden"
                 />
               </div>
 

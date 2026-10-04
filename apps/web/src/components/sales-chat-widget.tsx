@@ -487,12 +487,12 @@ export function SalesChatWidget({ locale, deferUntilScroll = false }: { locale: 
             </div>
           </div>
 
-          <div className="max-h-[46vh] space-y-2 overflow-y-auto p-3 md:max-h-[42vh]">
+          <div className="max-h-[46vh] v3-space-y-2 overflow-y-auto p-3 md:max-h-[42vh]">
             {messages.length <= 1 ? (
-              <div className="space-y-3">
+              <div className="v3-space-y-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{t.quickActionsLabel}</p>
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-2 v3-space-y-2">
                     {t.starter.map((q) => (
                       <button suppressHydrationWarning key={q} onClick={() => ask(q)} className="w-full rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-left text-xs text-cyan-100">
                         {q}
@@ -525,7 +525,7 @@ export function SalesChatWidget({ locale, deferUntilScroll = false }: { locale: 
             {loading ? <div className="sales-typing text-[11px] text-slate-400">Typing...</div> : null}
           </div>
 
-          <div className="space-y-2 border-t border-white/10 p-3">
+          <div className="v3-space-y-2 border-t border-white/10 p-3">
             <div className="flex items-center justify-between gap-2">
               <p className="sales-realtime-label text-[11px] text-slate-300">{t.realtimeLabel}</p>
               <span className={`rounded-full border px-2 py-1 text-[10px] ${readyContact ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-200" : "border-white/10 bg-white/5 text-slate-400"}`}>

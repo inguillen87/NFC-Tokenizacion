@@ -668,7 +668,7 @@ export function CommercialContactModal({ initialLocale = "es-AR" }: { initialLoc
   if (!open || !intent) return null;
 
   return (
-    <div ref={overlayRef} id="contact-modal" className="contact-modal-overlay fixed inset-0 z-[90] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
+    <div ref={overlayRef} id="contact-modal" className="contact-modal-overlay fixed inset-0 z-[90] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="contact-modal-title" className="contact-modal-card w-full max-w-2xl rounded-2xl border border-white/15 bg-slate-950 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>

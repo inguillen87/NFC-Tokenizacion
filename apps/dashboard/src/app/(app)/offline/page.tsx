@@ -105,7 +105,7 @@ export default async function OfflineDashboardPage({
   if (nextCursor) nextQuery.set("cursor", nextCursor);
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-6">
+    <main className="mx-auto max-w-7xl v3-space-y-6 p-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Historial de verificación offline</h1>
         <p className="mt-2 text-muted-foreground">
@@ -137,7 +137,7 @@ export default async function OfflineDashboardPage({
           <p className="mt-1">{history.reason}</p>
         </section>
       ) : (
-        <section className="space-y-3">
+        <section className="v3-space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
               Tenant <b className="text-foreground">{history.payload.tenant_slug}</b> · {events.length} eventos en esta página

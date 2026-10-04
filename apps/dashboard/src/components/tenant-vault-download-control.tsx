@@ -100,7 +100,7 @@ export function TenantVaultDownloadControl({ artifact }: { artifact: TenantVault
         onChange={(event) => setReason(event.target.value)}
         maxLength={240}
         placeholder="Ej.: recuperación de entrega cifrada aprobada para fábrica"
-        className="mt-2 min-h-11 w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/60"
+        className="mt-2 min-h-11 w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-hidden focus:border-emerald-300/60"
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
