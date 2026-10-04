@@ -291,6 +291,55 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
   return { ok: true as const, code, challengeTtlMinutes: expiresMinutes, delivery, ...(secondaryDelivery ? { secondaryDelivery } : {}) };
 }
 
+async function consumeConsumerAuthChallenges(tokenHash: string, challengeId: unknown = null, codeHash: string | null = null) {
+  // One statement owns the locks and consumption even with the HTTP SQL
+  // transport. Both verification methods lock the entire linked group in the
+  // same order. Aggregate first so clock checks run after every lock is held.
+  const rows = await sql/*sql*/`
+    WITH locked_challenges AS MATERIALIZED (
+      SELECT id, contact, code_hash, expires_at, locked_until, used_at
+      FROM consumer_auth_challenges
+      WHERE (${tokenHash} <> '' AND magic_token_hash = ${tokenHash})
+         OR (${tokenHash} = '' AND id = ${challengeId}::bigint)
+      ORDER BY id
+      FOR UPDATE
+    ), group_state AS MATERIALIZED (
+      SELECT count(*) AS challenge_count,
+             bool_or(used_at IS NOT NULL) AS already_used,
+             max(locked_until) AS locked_until,
+             min(expires_at) AS expires_at,
+             bool_or(expires_at IS NULL) AS missing_expiry,
+             bool_or(id = ${challengeId}::bigint AND code_hash = ${codeHash}) AS otp_matches
+      FROM locked_challenges
+    ), decision AS MATERIALIZED (
+      SELECT CASE
+        WHEN challenge_count = 0 OR already_used
+          OR (${challengeId}::bigint IS NOT NULL AND NOT otp_matches)
+          THEN 'invalid_code'
+        WHEN locked_until > clock_timestamp() THEN 'locked'
+        WHEN missing_expiry OR expires_at <= clock_timestamp() THEN 'expired'
+        ELSE NULL
+      END AS error
+      FROM group_state
+    ), consumed AS (
+      UPDATE consumer_auth_challenges AS challenge
+      SET used_at = clock_timestamp()
+      FROM locked_challenges, decision
+      WHERE challenge.id = locked_challenges.id
+        AND challenge.used_at IS NULL
+        AND decision.error IS NULL
+      RETURNING challenge.contact
+    )
+    SELECT contact, NULL::text AS error FROM consumed
+    UNION ALL
+    SELECT NULL::text AS contact, error FROM decision WHERE error IS NOT NULL
+  `;
+  const error = rows.find((row) => row.error)?.error;
+  if (error === "locked" || error === "expired") return { ok: false as const, error };
+  if (error || !rows.length) return { ok: false as const, error: "invalid_code" as const };
+  return { ok: true as const, contacts: [...new Set(rows.map((row) => normalizeContact(String(row.contact))))] };
+}
+
 export async function verifyConsumerAuth(contact: string, code: string, meta?: { userAgent?: string | null; ip?: string | null }) {
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
@@ -345,23 +394,11 @@ export async function verifyConsumerAuth(contact: string, code: string, meta?: {
   }
 
   const tokenHash = String(challenge.magic_token_hash || "");
-  const linkedRows = tokenHash
-    ? await sql/*sql*/`
-      SELECT contact
-      FROM consumer_auth_challenges
-      WHERE magic_token_hash = ${tokenHash}
-        AND used_at IS NULL
-    `
-    : [];
-  const contacts = linkedRows.length ? linkedRows.map((row) => String(row.contact)) : [normalizedContact];
+  const consumed = await consumeConsumerAuthChallenges(tokenHash, challenge.id, sha(code));
+  if (!consumed.ok) return consumed;
+  const contacts = consumed.contacts;
   const consumer = await getOrCreateConsumerForVerifiedContacts(contacts);
   const rawSession = await createConsumerSession(consumer, meta);
-
-  if (tokenHash) {
-    await sql/*sql*/`UPDATE consumer_auth_challenges SET used_at = now() WHERE magic_token_hash = ${tokenHash} AND used_at IS NULL`;
-  } else {
-    await sql/*sql*/`UPDATE consumer_auth_challenges SET used_at = now() WHERE id = ${challenge.id}`;
-  }
   audit("consumer_auth_verify_ok", { contact: normalizedContact, linkedContacts: contacts.length, ip, consumerId: consumer.id });
   return { ok: true as const, consumer, sessionToken: rawSession };
 }
@@ -396,10 +433,11 @@ export async function verifyConsumerAuthToken(token: string, meta?: { userAgent?
   const locked = rows.some((row) => row.locked_until && new Date(row.locked_until).getTime() > Date.now());
   if (locked) return { ok: false as const, error: "locked" };
 
-  const contacts = [...new Set(rows.map((row) => normalizeContact(String(row.contact))))];
+  const consumed = await consumeConsumerAuthChallenges(tokenHash);
+  if (!consumed.ok) return consumed;
+  const contacts = consumed.contacts;
   const consumer = await getOrCreateConsumerForVerifiedContacts(contacts);
   const rawSession = await createConsumerSession(consumer, meta);
-  await sql/*sql*/`UPDATE consumer_auth_challenges SET used_at = now() WHERE magic_token_hash = ${tokenHash} AND used_at IS NULL`;
   audit("consumer_auth_token_verify_ok", { linkedContacts: contacts.length, ip, consumerId: consumer.id });
   return { ok: true as const, consumer, sessionToken: rawSession };
 }

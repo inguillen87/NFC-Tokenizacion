@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { json } from "../../../../lib/http";
-import { requireShareToken } from "../../../../lib/public-cta-auth";
+import { requirePublicExperienceShare } from "../../../../lib/public-experience-share";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import {
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: "event_scope_required", trace_id: trace }, 409, { "cache-control": "no-store" });
   }
 
-  const auth = requireShareToken(req, target.bid, target.shareUid);
+  const auth = requirePublicExperienceShare(req, target.bid, target.shareUid);
   if (!auth.ok) {
     return json({ ok: false, reason: auth.reason, share_token_status: auth.share_token_status, trace_id: trace }, 401, { "cache-control": "no-store" });
   }

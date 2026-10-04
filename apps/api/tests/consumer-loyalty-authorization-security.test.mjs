@@ -176,7 +176,9 @@ test("reward redemption derives membership server-side and debits points, stock 
   assert.match(route, /enforceCriticalRateLimit/);
 
   const redeemService = loyalty.slice(loyalty.indexOf("export async function redeemReward"));
-  assert.match(redeemService, /WITH locked AS MATERIALIZED/);
+  assert.match(redeemService, /WITH current_tag AS MATERIALIZED/);
+  assert.match(redeemService, /FOR SHARE OF tag/);
+  assert.match(redeemService, /locked AS MATERIALIZED/);
   assert.match(redeemService, /reserved_ledger AS MATERIALIZED/);
   assert.match(redeemService, /updated_member AS MATERIALIZED/);
   assert.match(redeemService, /updated_reward AS MATERIALIZED/);

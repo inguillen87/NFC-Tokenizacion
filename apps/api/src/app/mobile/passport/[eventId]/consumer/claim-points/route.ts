@@ -28,5 +28,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }, "consumer_claim_points");
   if (!capability.ok) return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
   const result = await claimPointsForConsumer({ consumerId: consumer.id, eventId });
-  return json(result, result.ok ? 200 : 400);
+  return json(result, result.ok ? 200 : "status" in result && typeof result.status === "number" ? result.status : 400);
 }

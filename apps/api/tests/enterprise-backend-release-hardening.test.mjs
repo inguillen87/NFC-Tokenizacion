@@ -123,13 +123,25 @@ test("overview uses the canonical risk taxonomy and excludes lifecycle outcomes"
 });
 
 test("trivia completion reserves attempt, points and projections in one data-modifying CTE", () => {
-  const atomicStart = trivia.indexOf("WITH tap_rights AS MATERIALIZED");
-  const atomicEnd = trivia.indexOf("SELECT * FROM finalized_attempt", atomicStart);
+  const atomicStart = trivia.indexOf("WITH current_tag AS MATERIALIZED");
+  const finalJoin = "JOIN projected_membership ON true";
+  const atomicEnd = trivia.indexOf(finalJoin, atomicStart) + finalJoin.length;
   const atomic = trivia.slice(atomicStart, atomicEnd);
   assert.ok(atomicStart > 0 && atomicEnd > atomicStart);
-  for (const name of ["tap_rights", "locked_member", "reserved_attempt", "reserved_ledger", "updated_member", "projected_membership", "finalized_attempt"]) {
+  for (const name of ["current_tag", "tap_rights", "locked_member", "reserved_attempt", "reserved_ledger", "award_gate", "updated_member", "projected_membership"]) {
     assert.match(atomic, new RegExp(name));
   }
+  assert.match(atomic, /FOR SHARE OF tag/);
+  assert.match(atomic, /locked_member AS MATERIALIZED[\s\S]*FOR UPDATE/);
+  assert.match(atomic, /INSERT INTO loyalty_quiz_attempts[\s\S]*'completed'[\s\S]*ON CONFLICT \(idempotency_key\) DO NOTHING[\s\S]*RETURNING \*/);
+  assert.match(atomic, /locked_member\.points_balance \+ \$\{pointsToAward\}/);
+  assert.match(atomic, /projected_membership AS MATERIALIZED[\s\S]*FROM updated_member/);
+  assert.match(atomic, /FROM reserved_attempt JOIN updated_member ON updated_member\.attempt_id = reserved_attempt\.id/);
+  assert.doesNotMatch(atomic, /UPDATE (?:points_ledger|loyalty_quiz_attempts)\b/);
+  const ledgerReservation = atomic.slice(atomic.indexOf("reserved_ledger AS MATERIALIZED"), atomic.indexOf("award_gate AS MATERIALIZED"));
+  assert.doesNotMatch(ledgerReservation, /ON CONFLICT/);
+  assert.match(trivia, /pgError\?\.code === "23505" && pgError\.constraint === "points_ledger_idempotency_key_key"/);
+  assert.match(trivia, /if \(!atomicRows\) return \{ ok: false as const, status: 503, error: "quiz_completion_unavailable"/);
   assert.doesNotMatch(trivia, /points_balance = points_balance \+/);
   assert.doesNotMatch(trivia, /await awardPoints/);
 });

@@ -5,6 +5,7 @@ import { json } from "../../../../../lib/http";
 import { getActiveProgram, getTapEvent } from "../../../../../lib/loyalty-service";
 import { sql } from "../../../../../lib/db";
 import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
+import { isCurrentLoyaltyTapEligible } from "../../../../../lib/loyalty-tap-policy";
 
 const COPY: Record<string, Record<string, string>> = {
   "es-AR": {
@@ -48,6 +49,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
     LIMIT 1
   `;
   const member = memberRows[0] || null;
+  const tapEligible = isCurrentLoyaltyTapEligible(tapEvent);
   const copy = copyFor(locale);
 
   const rewards = await sql/*sql*/`
@@ -72,9 +74,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
       pointsBalance: member?.points_balance ?? null,
       lifetimePoints: member?.lifetime_points ?? null,
       pointsName: program.points_name,
-      claimTap: member ? copy.earn : copy.blocked,
+      claimTap: tapEligible && member && ["enrolled", "verified"].includes(String(member.status)) ? copy.earn : copy.blocked,
       claimStatus: "not_attempted_read_only",
-      enrollCta: member?.status === "enrolled" || member?.status === "verified" ? null : copy.enroll,
+      enrollCta: !tapEligible || member?.status === "blocked" || member?.status === "deleted" || member?.status === "enrolled" || member?.status === "verified" ? null : copy.enroll,
       rewards: rewardCards,
     },
   });

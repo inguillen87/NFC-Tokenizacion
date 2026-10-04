@@ -102,13 +102,13 @@ test("protected sinks re-check durable manual state after the fresh capability a
     source("src/lib/tokenization-engine.ts"),
   ]);
 
-  assert.match(loyalty, /WITH tap_rights AS MATERIALIZED/);
+  assert.match(loyalty, /tap_rights AS MATERIALIZED/);
   assert.match(loyalty, /LEFT JOIN tag_manual_tamper_overrides manual_override/);
-  assert.match(loyalty, /UPPER\(COALESCE\(manual_override\.tamper_status, ''\)\) NOT IN \('MANUAL_OPENED', 'OPENED'\)/);
+  assert.match(loyalty, /UPPER\(BTRIM\(COALESCE\(manual_override\.tamper_status, ''\)\)\) NOT IN \('MANUAL_OPENED', 'OPENED'\)/);
   assert.match(ownership, /readCurrentTapCommercialRights\(String\(event\.id\)\)/);
   assert.match(ownership, /const durableBlocked = isBlocked \|\| !currentRights\.allowed/);
   assert.match(ownership, /THEN 'revoked'[\s\S]*ELSE \$\{durableNextStatus\}/);
-  assert.match(trivia, /WITH tap_rights AS MATERIALIZED/);
+  assert.match(trivia, /tap_rights AS MATERIALIZED/);
   assert.match(trivia, /readCurrentTapCommercialRights\(event\.id\)/);
 
   const warrantyFresh = warranty.indexOf("consumeSunFreshHandoff(req, body");
