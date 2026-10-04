@@ -42,33 +42,56 @@ const origin=`http://127.0.0.1:${port}`;
 for(let i=0;i<120;i++){try{if((await fetch(origin+'/release.json')).ok)break;}catch{}await new Promise(r=>setTimeout(r,250));if(i===119){next.kill();throw Error('local_next_server_unavailable');}}
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||undefined});
 const report={realNextProductionPages:true,actualPrivateNextPages:true,syntheticPrivateAccountReads:true,syntheticContactsAndAcknowledgements:true,realAuthenticationCertified:false,sourceBindingStart,helperHashesStart,output,checks:[],views:[],scenarios:[],errors:[],externalWrites:0,blockedBusinessWrites:[],geolocationCalls:0};
+const observedStates=[];
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 const checkPayload=(actual,expected,name)=>check(isDeepStrictEqual(actual,expected),name);
 const productNext='/me/products?fromTap=1&eventId=900001&bid=LOT-WINE-QA&tenant=consumer-qa&action=save';
 const starts=state=>state.calls.filter(call=>call.path.endsWith('/start'));
 const afterRender=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+function requestDocumentPath(request){try{return new URL(request.frame().url()).pathname;}catch{return null;}}
+function requestSnapshot(state,name){
+ const maximum=40;
+ return{snapshotName:name,requestCount:state.calls.length,truncated:state.calls.length>maximum,
+  counts:state.calls.reduce((counts,call)=>{const key=`${call.method} ${call.path}`;counts[key]=(counts[key]||0)+1;return counts;},{}),
+  requests:structuredClone(state.calls.slice(0,maximum))};
+}
+function checkpoint(state,name){const snapshot=requestSnapshot(state,name);state.snapshots.push(snapshot);return snapshot;}
 async function open(width=390,theme='light',nextPath='/docs'){
  const context=await browser.newContext({viewport:{width,height:844},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
  await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
  await context.exposeBinding('__qaLocationCall',()=>{report.geolocationCalls++;});
  await context.addInitScript(()=>{window.__geoCalls=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__geoCalls++;void window.__qaLocationCall();throw Error('Unexpected location request');},watchPosition(){window.__geoCalls++;void window.__qaLocationCall();throw Error('Unexpected location watch');}}});});
- const page=await context.newPage(),state={calls:[],start:{ok:true,delivery:{channel:'email',status:'accepted'}},startHttp:503,verify:{ok:false},verifyHttp:400,session:{ok:true,authenticated:false},sessionHttp:200,holdStart:false,holdVerify:false,releaseVerify:null};
+ const page=await context.newPage(),state={page,identity:{name:'consumer-access',width,theme,initialNext:nextPath},calls:[],snapshots:[],navigationBoundaries:[],start:{ok:true,delivery:{channel:'email',status:'accepted'}},startHttp:503,verify:{ok:false},verifyHttp:400,session:{ok:true,authenticated:false},sessionHttp:200,holdStart:false,holdVerify:false,releaseVerify:null};
+ observedStates.push(state);const requestCalls=new WeakMap();
  page.on('pageerror',e=>report.errors.push(e.message));
+ page.on('request',request=>{
+  const url=new URL(request.url());
+  if(request.isNavigationRequest()&&request.resourceType()==='document'&&url.origin===origin&&url.pathname==='/me/products'){
+   const snapshot=checkpoint(state,'product-document-navigation-request');
+   state.navigationBoundaries.push({url:url.pathname+url.search,method:request.method(),...snapshot});
+  }
+ });
+ page.on('response',response=>{
+  const call=requestCalls.get(response.request());
+  if(call)call.receivedResponse={httpStatus:response.status(),ok:response.ok(),documentPath:requestDocumentPath(response.request())};
+ });
  await page.route('**/*',async route=>{const request=route.request(),u=new URL(request.url());if(u.origin!==origin){if(request.method()!=='GET')report.externalWrites++;return route.abort();}
   if(u.pathname.startsWith('/api/consumer/')){
-   state.calls.push({path:u.pathname,method:request.method(),...(request.postData()?{payload:request.postDataJSON()}:{})});
-   if(u.pathname.endsWith('/logout'))return route.fulfill({json:{ok:true}});
-   if(u.pathname.endsWith('/start')){if(state.holdStart)return;return route.fulfill({status:state.start.ok?200:state.startHttp,json:state.start});}
-   if(u.pathname.endsWith('/verify')){if(state.holdVerify)await new Promise(release=>{state.releaseVerify=release;});return route.fulfill(state.verify==='malformed'?{status:200,contentType:'text/html',body:'<!doctype html>upstream'}:{status:state.verifyHttp,json:state.verify});}
-   if(u.pathname.endsWith('/session'))return route.fulfill({status:state.sessionHttp,json:state.session,
-    ...(state.sessionHttp===200&&state.session.ok===true&&state.session.authenticated===true?{headers:{'set-cookie':'consumer_qa=local; Path=/; HttpOnly; SameSite=Lax'}}:{})});
+   const call={sequence:state.calls.length+1,path:u.pathname,method:request.method(),documentPath:requestDocumentPath(request),...(request.postData()?{payload:request.postDataJSON()}:{})};
+   state.calls.push(call);requestCalls.set(request,call);
+   const receipt=(body,status=200)=>{call.fixtureResponse={httpStatus:status,ok:body?.ok===true,authenticated:body?.authenticated===true};};
+   if(u.pathname.endsWith('/logout')){receipt({ok:true});return route.fulfill({json:{ok:true}});}
+   if(u.pathname.endsWith('/start')){if(state.holdStart)return;const status=state.start.ok?200:state.startHttp;receipt(state.start,status);return route.fulfill({status,json:state.start});}
+   if(u.pathname.endsWith('/verify')){if(state.holdVerify)await new Promise(release=>{state.releaseVerify=release;});receipt(state.verify,state.verify==='malformed'?200:state.verifyHttp);return route.fulfill(state.verify==='malformed'?{status:200,contentType:'text/html',body:'<!doctype html>upstream'}:{status:state.verifyHttp,json:state.verify});}
+   if(u.pathname.endsWith('/session')){receipt(state.session,state.sessionHttp);return route.fulfill({status:state.sessionHttp,json:state.session,
+    ...(state.sessionHttp===200&&state.session.ok===true&&state.session.authenticated===true?{headers:{'set-cookie':'consumer_qa=local; Path=/; HttpOnly; SameSite=Lax'}}:{})});}
    if(!['GET','HEAD'].includes(request.method()))report.blockedBusinessWrites.push({path:u.pathname,method:request.method()});
    return route.fulfill({status:404,json:{ok:false}});
   }
   if(!['GET','HEAD'].includes(request.method())){report.blockedBusinessWrites.push({path:u.pathname,method:request.method()});return route.abort();}return route.continue();
  });
  const params=new URLSearchParams({consumer:'1',next:nextPath});
- await page.goto(origin+'/login?'+params,{waitUntil:'networkidle'});return{context,page,state};
+ await page.goto(origin+'/login?'+params,{waitUntil:'networkidle'});checkpoint(state,'login-ready');return{context,page,state};
 }
 async function email(page){await page.getByRole('button',{name:'Email',exact:true}).click();await page.getByRole('textbox',{name:'Correo electrónico',exact:true}).fill('persona@example.test');}
 async function assess(page,selector,name,width,theme){await page.addScriptTag({content:axe});const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),selector);check(violations.filter(v=>['serious','critical'].includes(v.impact)).length===0,`${name} accessibility ${width} ${theme}`);check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name} no overflow ${width} ${theme}`);await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:true});report.views.push({name,width,theme,violations});}
@@ -76,6 +99,7 @@ const unavailableMeta=['meta_configuration_missing','meta_configuration_invalid'
 const uncertainMeta=['meta_delivery_timeout','meta_delivery_failed','meta_receipt_invalid'];
 async function whatsappRecovery(error,width=390,theme='dark',capture=false){
  const recovery=await open(width,theme,productNext),p=recovery.page,state=recovery.state;
+ state.identity.name=`whatsapp-error-recovery:${error}`;
  const label=`${error}/${width}/${theme}`;
  check(await p.getByRole('button',{name:'Email',exact:true}).getAttribute('aria-pressed')==='true',`${label} email is the initial channel`);
  await email(p);await p.getByRole('button',{name:'WhatsApp',exact:true}).click();
@@ -109,26 +133,47 @@ async function whatsappRecovery(error,width=390,theme='dark',capture=false){
 }
 async function magicProductContinuation(width,theme){
  const s=await open(width,theme,productNext),p=s.page,state=s.state,label=`magic-product/${width}/${theme}`;
+ state.identity.name='magic-email-product-continuation';
  await email(p);await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();
  checkPayload(starts(state)[0].payload,{email:'persona@example.test',next:productNext},`${label} email start includes product context`);
  check(await p.getByRole('button',{name:'Validar y continuar',exact:true}).count()===1,`${label} verification action explains the product return`);
  const continuation=starts(state)[0].payload.next;
  state.verify={ok:true};state.verifyHttp=200;state.session={ok:true,authenticated:true};
+ // Install this observer before authentication. The product's own session
+ // read must happen after its document navigation, and must be awaited so
+ // the historical whole-page count race is reproduced deterministically.
+ const destinationSessionRequested=p.waitForRequest(request=>new URL(request.url()).pathname==='/api/consumer/session'&&requestDocumentPath(request)==='/me/products');
+ void destinationSessionRequested.catch(()=>{}); // Report a later awaited rejection through the scenario catch.
  // Simulate the URL received in an API-generated email. The token, identity,
  // session cookie and account projections are local fixtures, not credentials.
  const link='/login?'+new URLSearchParams({consumer:'1',t:'synthetic-continuation-only',next:continuation});
  await p.evaluate(link=>history.pushState(null,'',link),link);
  await p.waitForURL(url=>url.pathname==='/me/products'&&url.searchParams.get('eventId')==='900001');
+ const destinationSessionRequest=await destinationSessionRequested,destinationSessionResponse=await destinationSessionRequest.response();
+ check(destinationSessionResponse?.status()===200&&destinationSessionRequest.method()==='GET',`${label} destination independently reads its session after navigation`);
+ check((await destinationSessionResponse.finished())===null,`${label} destination session response transfer completes`);
  const library=p.getByTestId('consumer-product-library');await library.waitFor();
  check((await library.innerText()).includes('Vino reserva QA'),`${label} actual private Next product page renders the synthetic collection`);
  const verifyCalls=state.calls.filter(call=>call.path.endsWith('/verify')),sessionCalls=state.calls.filter(call=>call.path.endsWith('/session'));
- check(verifyCalls.length===1&&sessionCalls.length===1,`${label} magic link verifies once and confirms the session before navigation`);
- checkPayload(verifyCalls[0].payload,{token:'synthetic-continuation-only'},`${label} magic verification carries only its token`);
+ check(state.navigationBoundaries.length===1,`${label} one product document navigation was requested`);
+ const boundary=state.navigationBoundaries[0],before=boundary.requests;
+ check(boundary.url===productNext&&!boundary.truncated,`${label} product navigation snapshot is exact and complete`);
+ const beforeVerify=before.filter(call=>call.path.endsWith('/verify')),beforeSession=before.filter(call=>call.path.endsWith('/session'));
+ check(beforeVerify.length===1&&beforeSession.length===1,`${label} magic link verifies once and confirms the session before navigation`);
+ check(beforeVerify[0].method==='POST'&&beforeVerify[0].receivedResponse?.httpStatus===200&&beforeVerify[0].fixtureResponse?.ok===true,`${label} successful token verification was received before navigation`);
+ check(beforeSession[0].method==='GET'&&beforeSession[0].receivedResponse?.httpStatus===200&&beforeSession[0].fixtureResponse?.ok===true&&beforeSession[0].fixtureResponse?.authenticated===true,`${label} successful authenticated session was received before navigation`);
+ check(beforeVerify[0].sequence<beforeSession[0].sequence,`${label} session confirmation follows token verification`);
+ check(verifyCalls.length===1,`${label} destination never repeats token verification`);
+ checkPayload(beforeVerify[0].payload,{token:'synthetic-continuation-only'},`${label} magic verification carries only its token`);
+ check(sessionCalls.length>1,`${label} awaiting the destination read reproduces the former whole-page count mismatch`);
+ check(state.calls.slice(boundary.requestCount).every(call=>['GET','HEAD'].includes(call.method)),`${label} destination requests after navigation remain read-only`);
+ check(starts(state).length===1,`${label} continuation preserves one explicit OTP send`);
+ checkpoint(state,'destination-session-read-confirmed');
  check(new URL(p.url()).pathname+new URL(p.url()).search===productNext,`${label} successful session restores the exact product selection`);
  check(state.calls.filter(call=>!['GET','HEAD'].includes(call.method)).every(call=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(call.path)),`${label} product continuation performs no automatic save, claim or association`);
  check(await p.evaluate(()=>window.__geoCalls)===0,`${label} product continuation requests no location`);
  await assess(p,'[data-testid="consumer-product-library"]','email-product-return',width,theme);
- report.scenarios.push({name:'magic-email-product-continuation',width,theme,requests:state.calls});await s.context.close();
+ report.scenarios.push({name:'magic-email-product-continuation',width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,legacyWholePageSingleSessionCheckWouldPass:verifyCalls.length===1&&sessionCalls.length===1});await s.context.close();
 }
 try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
@@ -178,6 +223,7 @@ try{
  ];
  for(const item of continuationCases){
   const s=await open(390,'light',item.next),p=s.page;await email(p);
+  s.state.identity.name=`email-start-continuation-contract:${item.name}`;
   check(s.state.calls.length===0,`${item.name}: opening the continuation never sends automatically`);
   await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();
   checkPayload(starts(s.state)[0].payload,item.expected==='/me'?{email:'persona@example.test'}:{email:'persona@example.test',next:item.expected},`${item.name}: actual email request has the expected sanitized payload`);
@@ -209,7 +255,7 @@ try{
   check(state.calls.length===1&&state.calls[0].path.endsWith('/verify')&&state.calls[0].method==='POST',`${kind} abandoned verification has one request and no automatic retry or session check`);await cancelled.context.close();
  }
  check(report.externalWrites===0,'No writes left local intercepted fixtures');check(report.blockedBusinessWrites.length===0,'No business mutations were attempted');check(report.geolocationCalls===0,'No location calls across access or product continuation');check(report.errors.length===0,'No client exceptions');report.status='passed';
-}catch(error){report.status='failed';report.error=error.stack;const p=browser.contexts().at(-1)?.pages().at(-1);if(p){report.visible=(await p.locator('body').innerText()).slice(0,10000);await p.screenshot({path:join(output,'failure.png'),fullPage:true}).catch(()=>{});}throw error;}
+}catch(error){report.status='failed';report.error=error.stack;const p=browser.contexts().at(-1)?.pages().at(-1);if(p){const state=observedStates.find(state=>state.page===p);if(state)report.failureRequestTrace={...state.identity,...checkpoint(state,'failure'),navigationBoundaries:structuredClone(state.navigationBoundaries),snapshots:structuredClone(state.snapshots)};report.visible=(await p.locator('body').innerText()).slice(0,10000);await p.screenshot({path:join(output,'failure.png'),fullPage:true}).catch(()=>{});}throw error;}
 finally{
  report.helperHashesEnd=await helperHashes();report.helpersUnchanged=isDeepStrictEqual(report.helperHashesStart,report.helperHashesEnd);
  report.checks.push({name:'Browser and private-fetch helpers stayed unchanged during the run',passed:report.helpersUnchanged});
@@ -217,7 +263,9 @@ finally{
  report.sourceBindingEnd=await sourceBinding();report.sourceAndBuildUnchanged=isDeepStrictEqual(report.sourceBindingStart,report.sourceBindingEnd);
  report.checks.push({name:'Source trees, dependencies, release and production build stayed unchanged during the run',passed:report.sourceAndBuildUnchanged});
  if(!report.sourceAndBuildUnchanged){report.status='failed';report.error=`${report.error||''}\nSource or production build changed during execution.`;process.exitCode=1;}
- await browser.close();next.kill();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2),{flag:'wx'});await writeFile(join(output,'next.log'),log,{flag:'wx'});
+ await browser.close();next.kill();
+ report.requestTraces=observedStates.map(state=>({...state.identity,...requestSnapshot(state,'final'),navigationBoundaries:structuredClone(state.navigationBoundaries),snapshots:structuredClone(state.snapshots)}));
+ await writeFile(join(output,'report.json'),JSON.stringify(report,null,2),{flag:'wx'});await writeFile(join(output,'next.log'),log,{flag:'wx'});
  await writeFile(join(output,'manifest.json'),JSON.stringify({qaSource:sourceBindingStart.qaSource,buildId:sourceBindingStart.buildId,release:sourceBindingStart.release,sourceFingerprint:sourceBindingStart.sourceFingerprint,sourceAndBuildUnchanged:report.sourceAndBuildUnchanged,helpersUnchanged:report.helpersUnchanged,sourceBindingStart,sourceBindingEnd:report.sourceBindingEnd,helperHashesStart,helperHashesEnd:report.helperHashesEnd},null,2),{flag:'wx'});
  console.log(JSON.stringify({status:report.status,checks:report.checks.length,views:report.views.length,scenarios:report.scenarios.length,error:report.error,errors:report.errors,blockedBusinessWrites:report.blockedBusinessWrites.length,output}));
 }
