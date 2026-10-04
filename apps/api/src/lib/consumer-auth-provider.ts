@@ -4,12 +4,14 @@ import { domainToASCII } from "node:url";
 import { getConsumerOtpTwilioStatusCallbackUrl } from "./consumer-otp-twilio-status";
 import { getConsumerOtpWhatsappFrom } from "./consumer-otp-twilio-config";
 import { ConsumerMetaOtpError, sendConsumerMetaWhatsappOtp } from "./consumer-otp-meta-whatsapp";
+import { normalizeConsumerAuthReturnPath } from "./consumer-auth-continuation";
 
 export type OtpDeliveryPayload = {
   contact: string;
   code: string;
   ttlMinutes: number;
   magicToken?: string;
+  next?: unknown;
 };
 
 export type OtpDeliveryChannel = "email" | "sms" | "whatsapp";
@@ -119,21 +121,23 @@ function getWebUrl() {
   return "https://nexid.lat";
 }
 
-function verificationLink(contact: string, code: string, magicToken?: string) {
+function verificationLink(contact: string, code: string, magicToken?: string, next?: unknown) {
   const base = getWebUrl();
+  const continuation = isEmail(contact) ? normalizeConsumerAuthReturnPath(next) : "/me";
+  const returnQuery = continuation === "/me" ? "" : `&next=${encodeURIComponent(continuation)}`;
   if (magicToken) {
-    return `${base}/login?t=${encodeURIComponent(magicToken)}`;
+    return `${base}/login?t=${encodeURIComponent(magicToken)}${returnQuery}`;
   }
-  return `${base}/login?autoverify=1&contact=${encodeURIComponent(contact)}&code=${code}`;
+  return `${base}/login?autoverify=1&contact=${encodeURIComponent(contact)}&code=${code}${returnQuery}`;
 }
 
-function otpText(contact: string, code: string, ttlMinutes: number, magicToken?: string) {
-  const link = verificationLink(contact, code, magicToken);
+function otpText(contact: string, code: string, ttlMinutes: number, magicToken?: string, next?: unknown) {
+  const link = verificationLink(contact, code, magicToken, next);
   return `Tu código nexID es ${code}. Vence en ${ttlMinutes} minutos. Ingresá el código en el portal o abrí este enlace seguro: ${link}`;
 }
 
-function otpHtml(contact: string, code: string, ttlMinutes: number, magicToken?: string) {
-  const link = verificationLink(contact, code, magicToken);
+function otpHtml(contact: string, code: string, ttlMinutes: number, magicToken?: string, next?: unknown) {
+  const link = verificationLink(contact, code, magicToken, next);
   return `
     <div style="font-family:'Inter', Arial, sans-serif; background-color:#020617; color:#f8fafc; padding:40px 20px; text-align:center;">
       <div style="max-width:500px; margin:0 auto; background-color:#0b1329; border:1px solid rgba(6,182,212,0.15); border-radius:24px; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.4); text-align:left;">
@@ -207,8 +211,8 @@ class ResendEmailOtpProvider implements ConsumerOtpProvider {
         from,
         to: [payload.contact],
         subject: "Tu codigo nexID",
-        text: otpText(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken),
-        html: otpHtml(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken),
+        text: otpText(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken, payload.next),
+        html: otpHtml(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken, payload.next),
         ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     }, "resend", "email");
@@ -256,8 +260,8 @@ class SmtpOtpProvider implements ConsumerOtpProvider {
         from,
         to: payload.contact,
         subject: "Tu código nexID",
-        text: otpText(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken),
-        html: otpHtml(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken),
+        text: otpText(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken, payload.next),
+        html: otpHtml(payload.contact, payload.code, payload.ttlMinutes, payload.magicToken, payload.next),
       });
       const acceptedAddresses = Array.isArray(info.accepted) ? info.accepted : [];
       const rejectedAddresses = Array.isArray(info.rejected) ? info.rejected : [];

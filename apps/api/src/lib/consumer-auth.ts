@@ -4,6 +4,7 @@ import { sql } from "./db";
 import { consumerOtpDeliveryChannel, consumerOtpDeliveryMode, isConsumerOtpProduction, resolveConsumerOtpProvider, type OtpDelivery, type OtpDeliveryChannel } from "./consumer-auth-provider";
 import { ensureConsumerAuthSchema } from "./commercial-runtime-schema";
 import { hitSunRateLimit, shouldFailClosedSunRateLimit } from "./sun-rate-limit-store";
+import { normalizeConsumerAuthReturnPath } from "./consumer-auth-continuation";
 
 const SESSION_COOKIE = "nexid_consumer_session";
 const ACTIVE_CONSUMER_SESSION_STATUSES = new Set(["anonymous", "registered", "verified"]);
@@ -223,10 +224,11 @@ export async function getOrCreateDemoConsumer(contact = DEMO_CONSUMER_EMAIL) {
   return consumer;
 }
 
-export async function startConsumerAuth(contact: string, meta?: { ip?: string | null }) {
+export async function startConsumerAuth(contact: string, meta?: { ip?: string | null; next?: unknown }) {
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
   const normalizedContact = normalizeContact(contact);
+  const next = normalizeConsumerAuthReturnPath(meta?.next);
   const contactHash = sha(normalizedContact).slice(0, 16);
   const [contactRate, ipRate] = await Promise.all([
     consumeAuthRate("consumer_auth_start_contact", normalizedContact, 5),
@@ -263,12 +265,12 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
 
   try {
     if (!isMockSocial) {
-      const result = await resolveConsumerOtpProvider().sendOtp({ contact: normalizedContact, code, ttlMinutes: expiresMinutes, magicToken });
+      const result = await resolveConsumerOtpProvider().sendOtp({ contact: normalizedContact, code, ttlMinutes: expiresMinutes, magicToken, ...(next !== "/me" ? { next } : {}) });
       delivery = result.delivery;
 
       for (const secondaryContact of contacts.filter((item) => item !== normalizedContact)) {
         try {
-          const result = await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes, magicToken });
+          const result = await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes, magicToken, ...(next !== "/me" ? { next } : {}) });
           secondaryDelivery = { channel: result.delivery.channel, status: result.delivery.status === "accepted" ? "accepted" : "failed" };
           audit("consumer_auth_secondary_delivery", { contactHash, mode: consumerOtpDeliveryMode(), ...result.delivery });
         } catch (err) {

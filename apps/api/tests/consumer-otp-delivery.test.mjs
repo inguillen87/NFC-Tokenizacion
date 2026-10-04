@@ -32,6 +32,8 @@ const META_RECEIPT = "wamid.FIXTURE_RECEIPT_0123456789==";
 const RAW_ERROR = `untrusted provider error ${EMAIL} ${PHONE} ${CODE} ${SMTP_ENV.SMTP_PASSWORD} ${TWILIO_ENV.TWILIO_AUTH_TOKEN}`;
 const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const compiled = Object.fromEntries(Object.entries({
+  safeReturn: source("../../../packages/config/src/safe-return-path.ts"),
+  continuation: source("../src/lib/consumer-auth-continuation.ts"),
   status: source("../src/lib/consumer-otp-twilio-status.ts"),
   twilioConfig: source("../src/lib/consumer-otp-twilio-config.ts"),
   meta: source("../src/lib/consumer-otp-meta-whatsapp.ts"),
@@ -48,7 +50,7 @@ function harness(options = {}) {
   const logs = [], requests = [], mail = [], transports = [], queries = [], rates = [], timeouts = [], closed = [];
   const pendingTimers = new Map();
   let timerId = 0;
-  let provider, auth, statusHelper, twilioConfig, meta;
+  let provider, auth, statusHelper, twilioConfig, meta, safeReturn, continuation;
   class RequestBodyTooLargeError extends Error {}
   const sql = async (parts, ...values) => {
     const text = parts.join("?").replace(/\s+/g, " ").trim();
@@ -77,6 +79,8 @@ function harness(options = {}) {
     };
     if (name === "node:net") return { isIP };
     if (name === "node:url") return { domainToASCII };
+    if (name === "../../../../packages/config/src/safe-return-path") return safeReturn;
+    if (name === "./consumer-auth-continuation") return continuation;
     if (name === "./consumer-otp-twilio-status") return statusHelper;
     if (name === "./consumer-otp-twilio-config") return twilioConfig;
     if (name === "./consumer-otp-meta-whatsapp") return meta;
@@ -117,6 +121,8 @@ function harness(options = {}) {
     );
     return loaded.exports;
   };
+  safeReturn = load("safeReturn");
+  continuation = load("continuation");
   statusHelper = load("status");
   twilioConfig = load("twilioConfig");
   meta = load("meta");
@@ -124,11 +130,11 @@ function harness(options = {}) {
   auth = load("auth");
   const route = load("route");
   return {
-    provider, auth, logs, requests, mail, transports, queries, rates, timeouts, closed, pendingTimers,
-    send: (contact = EMAIL) => provider.resolveConsumerOtpProvider().sendOtp({ contact, code: CODE, ttlMinutes: 10, magicToken: MAGIC }),
+    provider, auth, continuation, logs, requests, mail, transports, queries, rates, timeouts, closed, pendingTimers,
+    send: (contact = EMAIL, next) => provider.resolveConsumerOtpProvider().sendOtp({ contact, code: CODE, ttlMinutes: 10, magicToken: MAGIC, next }),
     fireTimers: () => { for (const callback of [...pendingTimers.values()]) callback(); },
-    post: (contact = EMAIL) => route.POST(new Request("https://otp-fixture.invalid/consumer/auth/start", {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contact }),
+    post: (contact = EMAIL, next) => route.POST(new Request("https://otp-fixture.invalid/consumer/auth/start", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contact, next }),
     })),
   };
 }
@@ -155,6 +161,93 @@ function assertPublicPayload(body) {
   assert.equal(Object.hasOwn(body, "code"), false);
   assert.doesNotMatch(text, /"(?:sid|messageId|receiptHash|magicToken|code_hash)"/);
 }
+
+test("consumer email continuation keeps only exact portal routes and canonical selection references", () => {
+  const { normalizeConsumerAuthReturnPath: normalize } = harness().continuation;
+  for (const route of [
+    "/me", "/me/products", "/me/passport", "/me/brands", "/me/wallet", "/me/marketplace",
+    "/me/rewards", "/me/experiences", "/me/sommelier", "/me/taps", "/me/privacy",
+    "/me/security", "/me/cork-analyzer", "/me/taps/1", "/me/taps/9223372036854775807",
+  ]) assert.equal(normalize(route), route);
+
+  assert.equal(
+    normalize("/me/products?action=save&tenant=demo_brand&bid=RA-2407.1:AA&focus=9223372036854775807&eventId=42&fromTap=1"),
+    "/me/products?fromTap=1&eventId=42&focus=9223372036854775807&bid=RA-2407.1%3AAA&tenant=demo_brand&action=save",
+  );
+  assert.equal(normalize("/me/products/../wallet?eventId=42"), "/me/wallet?eventId=42");
+});
+
+test("email continuation fails closed for external or administrative routes, duplicate keys and malformed selection metadata", () => {
+  const { normalizeConsumerAuthReturnPath: normalize } = harness().continuation;
+  for (const next of [
+    undefined, null, {}, ["/me/products"], "https://evil.example/steal", "//evil.example/steal",
+    "/\\evil.example/steal", "%252F%252Fevil.example/steal", "/%5C%5Cevil.example/steal",
+    "/safe/%2e%2e//evil.example/steal", "/%00evil", "/%E0%A4%A", "/admin", "/superadmin",
+    "/api/consumer/me", "/sun?uid=SIGNED", "/login?next=/me/products", "/docs", "/me/products/",
+    "/me/unknown", "/me/products/42", "/me/taps/0", "/me/taps/01", "/me/taps/9223372036854775808",
+    "/me/taps/42/", "/me/taps/%34%32", "/me/products?fromTap=true", "/me/products?fromTap=0",
+    "/me/products?eventId=01", "/me/products?eventId=-1", "/me/products?eventId=9223372036854775808",
+    "/me/products?focus=1e2", "/me/products?eventId=", "/me/products?bid=", "/me/products?tenant=demo.brand",
+    "/me/products?action=delete", "/me/products?bid=first&bid=second", "/me/products?eventId=42&eventId=43",
+    "/me/products?action=save&action=save", `/me/products?bid=${"a".repeat(201)}`, `/me/products?tenant=${"a".repeat(121)}`,
+  ]) assert.equal(normalize(next), "/me", String(next));
+});
+
+test("email continuation discards signed NFC values, precise location, credentials, nested destinations and fragments", () => {
+  const { normalizeConsumerAuthReturnPath: normalize } = harness().continuation;
+  const sensitive = new URLSearchParams({
+    eventId: "42", fromTap: "1", bid: "RA-2407", tenant: "demo", action: "save",
+    uid: "FIXTURE_UID", mac: "FIXTURE_MAC", ctr: "FIXTURE_COUNTER", picc_data: "FIXTURE_PICC",
+    freshToken: "FIXTURE_FRESH_TOKEN", share: "FIXTURE_SHARE", lat: "-32.12345678", lng: "-68.87654321",
+    geoConsent: "true", geoPrecision: "precise", contact: EMAIL, token: MAGIC, code: CODE,
+    next: "https://evil.example/steal", redirect: "https://evil.example/steal",
+  });
+  sensitive.append("unknown", "first"); sensitive.append("unknown", "second");
+  assert.equal(normalize(`/me/products?${sensitive}#token=FIXTURE_FRAGMENT`), "/me/products?fromTap=1&eventId=42&bid=RA-2407&tenant=demo&action=save");
+});
+
+test("auth start propagates sanitized product continuation into both SMTP and Resend magic links without public or audit leakage", async () => {
+  const next = "/me/products?action=save&eventId=42&fromTap=1&uid=FIXTURE_UID&mac=FIXTURE_MAC&lat=-32.12345678&freshToken=FIXTURE_FRESH#FIXTURE_FRAGMENT";
+  const expected = "/me/products?fromTap=1&eventId=42&action=save";
+  for (const configured of ["smtp", "resend"]) {
+    const h = harness({ env: { ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_AUTH_EMAIL_PROVIDER: configured }, fetch: async () => response({ id: UUID }) });
+    const result = await h.post(EMAIL, next);
+    assert.equal(result.status, 200);
+    const body = await result.json();
+    assertPublicPayload(body);
+    assert.equal(Object.hasOwn(body, "next"), false);
+    const message = configured === "smtp" ? h.mail[0] : JSON.parse(h.requests[0].init.body);
+    const textLink = new URL(message.text.match(/https:\/\/\S+$/)[0]);
+    const htmlLink = new URL(message.html.match(/<a href="([^"]+)"/)[1]);
+    for (const link of [textLink, htmlLink]) {
+      assert.equal(link.origin, "https://nexid.lat");
+      assert.equal(link.pathname, "/login");
+      assert.equal(link.searchParams.get("t"), MAGIC);
+      assert.equal(link.searchParams.get("next"), expected);
+      assert.deepEqual([...link.searchParams.keys()], ["t", "next"]);
+    }
+    assert.equal(h.queries.filter((q) => q.text.startsWith("INSERT INTO consumer_auth_challenges")).length, 1);
+    assert.equal(h.queries.some((q) => q.values.includes(next) || q.values.includes(expected)), false);
+    for (const forbidden of ["FIXTURE_UID", "FIXTURE_MAC", "FIXTURE_FRESH", "FIXTURE_FRAGMENT", "-32.12345678"]) {
+      assert.equal(JSON.stringify(message).includes(forbidden), false);
+      assertSanitizedLogs(h, [forbidden]);
+    }
+    assertSanitizedLogs(h, [next, expected]);
+  }
+});
+
+test("provider revalidates direct email continuation and leaves ordinary email and phone links unchanged", async () => {
+  for (const next of [undefined, "/me", "https://evil.example/steal", "/admin", "/me/products?eventId=42&eventId=43", { next: "/me/products" }]) {
+    const h = harness({ env: { ...SMTP_ENV, CONSUMER_AUTH_MODE: "smtp" } });
+    await h.send(EMAIL, next);
+    assert.equal(h.mail[0].text.match(/https:\/\/\S+$/)[0], `https://nexid.lat/login?t=${MAGIC}`);
+  }
+  for (const mode of ["sms", "whatsapp"]) {
+    const h = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: mode }, fetch: async () => twilioOk() });
+    await h.send(PHONE, "/me/products?eventId=42&action=save");
+    assert.equal(h.requests[0].init.body.get("Body").match(/https:\/\/\S+$/)[0], `https://nexid.lat/login?t=${MAGIC}`);
+  }
+});
 
 test("Meta is opt-in across WhatsApp modes; unset and explicit Twilio preserve the original driver", async () => {
   for (const mode of ["whatsapp", "twilio_whatsapp", "smart", "provider", "production"]) {

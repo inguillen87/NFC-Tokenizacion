@@ -52,10 +52,18 @@ La API responde 503 por selección/configuración inválida o autenticación del
 4. Generar y custodiar un token de servidor con permiso `whatsapp_business_messaging` y acceso al activo correcto. Las operaciones de administración/onboarding tienen requisitos adicionales; no se infieren desde la aceptación de un envío. Nunca introducir este token en WEB, dashboard, `NEXT_PUBLIC_*`, Git, capturas o logs.
 5. Verificar en la WABA una plantilla aprobada, categoría AUTHENTICATION, idioma exacto y botón COPY_CODE. Confirmar que el texto de caducidad coincide con el TTL del desafío. El nombre por sí solo no permite al código certificar la categoría o aprobación.
 6. Configurar las claves privadas únicamente en el API y validar una Preview antes de cualquier cambio de Production. Un deploy del código con el selector vacío conserva Twilio; una activación Meta se realiza después de estas verificaciones.
-7. Verificar la integración de los nuevos códigos `meta_*` con el UX de WEB. El frontend actual conserva el contacto y ofrece reintentar/otro canal mediante su error genérico; todavía falta la prueba específica de recuperación con Meta antes de habilitarlo.
+7. Verificar la integración de los nuevos códigos `meta_*` con el UX de WEB. La rama WEB incorpora mensajes específicos y recuperación por email; su comprobación en navegador y su publicación siguen siendo requisitos antes de activar Meta.
 8. Con destinatario de prueba autorizado, realizar una aceptación física controlada del código y del regreso al flujo cliente. Registrar aceptación del proveedor, entrega y verificación como estados distintos. Conservar rate limits y no usar clientes reales como pruebas.
 
-No hay valores de credenciales en este documento ni en `.env.example`. Si una puerta falta, el adaptador permanece sin activar. El retorno del enlace mágico al producto y la animación del portal son trabajos separados; este código no los declara resueltos.
+No hay valores de credenciales en este documento ni en `.env.example`. Si una puerta falta, el adaptador permanece sin activar. La animación del portal continúa sin reproducirse y este código no la declara resuelta.
+
+## Continuidad del producto por email
+
+El incremento posterior al candidato `fa594d70be0806d3f6f3aac7ea0285ba1e56cbdb` admite `next` opcional en el inicio del acceso. Lo valida dentro de la API y nuevamente al construir el enlace SMTP/Resend. Sólo conserva rutas existentes de `/me`, referencias canónicas de lecturas/productos/tenant y una selección de acción conocida. Duplicados o valores permitidos inválidos vuelven a `/me`; parámetros desconocidos y fragmentos se eliminan. El destino no se persiste en el desafío ni se incluye en la respuesta pública o auditoría.
+
+Los enlaces no incluyen firmas NFC, identificadores del chip, capacidades de TAP, ubicación precisa u otros parámetros del teléfono. La selección no concede autorización ni guarda un producto automáticamente: la sesión y la acción explícita siguen siendo requisitos de las rutas existentes. Abrir el correo en otro navegador no transfiere el cookie de TAP ni extiende su caducidad. Los mensajes SMS/WhatsApp y enlaces habituales sin `next` conservan su contenido anterior. Esta continuidad necesita la publicación de los candidatos WEB y API; todavía no funciona en la API publicada.
+
+Las comprobaciones del incremento se registran en recibos nuevos, vinculados a su fuente exacta. Las cifras de validación siguientes corresponden al candidato anterior y no certifican este cambio posterior.
 
 ## Validación reproducible y fuentes
 

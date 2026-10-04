@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   const contact = parsedContact.contact;
 
   const requestMeta = getRequestMeta(req);
-  const challenge = await startConsumerAuth(contact, { ip: requestMeta.ip });
+  const challenge = await startConsumerAuth(contact, { ip: requestMeta.ip, next: body.next });
   if (!challenge.ok) {
     const status = startStatus(challenge.error);
     const headers: Record<string, string> = status === 429
