@@ -1,14 +1,15 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.04-web-consumer-catalog.1",
-  "scope": "consumer-continuation-catalog-media-and-explicit-inquiries",
-  "baseCommit": "f76215265d7d7bf7a19dfb9937387f75543e7b99",
+  "version": "2026.10.04-web-experience-activity.1",
+  "scope": "isolated-post-tap-experience-activity-signing",
+  "baseCommit": "fc7502625bac1d4aba29db4261e9f9e6cec5a921",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.09.21-api-support.1",
+  "requiredApiRelease": "2026.10.04-api-consumer-integrity.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.04-web-consumer-catalog.1",
+  "release": "2026.10.04-web-experience-activity.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
-  "supportReportProtocol": "nexid.support-report.v1"
+  "supportReportProtocol": "nexid.support-report.v1",
+  "publicExperienceShareProtocol": "nexid:experience-event:v1"
 }
