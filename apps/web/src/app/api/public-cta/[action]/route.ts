@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { stripConsumerTapCapabilityCookies } from "../../_lib/consumer-tap-handoff";
 import { createDemoShareToken } from "../../../../lib/demo-share";
+import { createPublicExperienceShareToken } from "../../../../lib/public-experience-share";
 import {
   consumePublicApiRateLimit,
   isJsonRequest,
@@ -61,10 +62,12 @@ function rewriteApiCookie(cookie: string, req: Request) {
   return nextCookie;
 }
 
-function safeBuildShare(bid: string, uid: string) {
+function safeBuildShare(bid: string, uid: string, action: string) {
   const now = Math.floor(Date.now() / 1000);
   try {
-    const token = createDemoShareToken({ bid, uid, exp: now + 60 * 30 });
+    const token = action === "experience-event"
+      ? createPublicExperienceShareToken({ bid, uid, exp: now + 60 * 30 })
+      : createDemoShareToken({ bid, uid, exp: now + 60 * 30 });
     return token ? ({ token } as const) : ({ reason: "share secret missing" } as const);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "failed to create share token";
@@ -95,7 +98,7 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
     // share token cannot authorize a report about a client-supplied event.
     if (!eventId || !clean(payload?.support_token)) return errorResponse("support_capability_required", 403, trace);
   } else {
-    const share = safeBuildShare(bid, shareUid);
+    const share = safeBuildShare(bid, shareUid, action);
     const shareToken = "token" in share && typeof share.token === "string" ? share.token : "";
     if (!shareToken) return errorResponse("share_token_unavailable", 503, trace);
     url.searchParams.set("share", shareToken);
