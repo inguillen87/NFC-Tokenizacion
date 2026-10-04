@@ -261,10 +261,15 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
   ) {
     return { verdict: "sun_profile_mismatch" as const, riskLevel: "medium" as const };
   }
-  if (code === "REVOKED" || reason.includes("REVOKED")) return { verdict: "revoked" as const, riskLevel: "critical" as const };
+  if (code === "REVOKED" || state === "REVOKED" || reason.includes("REVOKED")) return { verdict: "revoked" as const, riskLevel: "critical" as const };
   if (code === "REPLAY_SUSPECT" || state === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) {
     return { verdict: "replay_suspect" as const, riskLevel: "high" as const };
   }
+  if (code === "BROKEN" || state === "BROKEN") return { verdict: "invalid" as const, riskLevel: "high" as const };
+  if (code === "NOT_ACTIVE" || state === "NOT_ACTIVE") return { verdict: "not_active" as const, riskLevel: "medium" as const };
+  if (code === "NOT_REGISTERED" || state === "NOT_REGISTERED") return { verdict: "not_registered" as const, riskLevel: "medium" as const };
+  if (code === "INVALID" || state === "INVALID") return { verdict: "invalid" as const, riskLevel: "medium" as const };
+  if (code === "TENANT_SETUP_REQUIRED" || state === "TENANT_SETUP_REQUIRED") return { verdict: "not_active" as const, riskLevel: "medium" as const };
   if (code === "TAMPER_RISK" || state === "TAMPER_RISK" || reason.includes("TAMPER_RISK") || reason.includes("INVALID_TAMPER")) {
     return { verdict: "tampered" as const, riskLevel: "high" as const };
   }
@@ -289,9 +294,6 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
   if (code === "VALID" || code === "VALID_AUTHENTIC" || code === "VALID_CLOSED" || code === "VALID_UNKNOWN_TAMPER" || code === "AUTH_OK" || state === "VALID_AUTHENTIC" || state === "VALID_CLOSED" || state === "VALID_UNKNOWN_TAMPER") {
     return { verdict: "valid" as const, riskLevel: "none" as const };
   }
-  if (code === "TENANT_SETUP_REQUIRED") return { verdict: "not_active" as const, riskLevel: "medium" as const };
-  if (code === "NOT_ACTIVE") return { verdict: "not_active" as const, riskLevel: "medium" as const };
-  if (code === "NOT_REGISTERED") return { verdict: "not_registered" as const, riskLevel: "medium" as const };
   return { verdict: "invalid" as const, riskLevel: "medium" as const };
 }
 
@@ -323,9 +325,12 @@ export function resolveConditionState(input: {
   ) {
     return "sun_profile_mismatch";
   }
-  if (code === "TENANT_SETUP_REQUIRED") return "setup_required";
   if (verdict === "replay_suspect" || code === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) return "replay_blocked";
-  if (verdict === "revoked" || code === "REVOKED") return "revoked";
+  if (code === "TENANT_SETUP_REQUIRED" || state === "TENANT_SETUP_REQUIRED") return "setup_required";
+  if (verdict === "revoked" || code === "REVOKED" || state === "REVOKED") return "revoked";
+  if (code === "BROKEN" || state === "BROKEN" || code === "INVALID" || state === "INVALID" || verdict === "invalid") return "invalid";
+  if (code === "NOT_ACTIVE" || state === "NOT_ACTIVE" || verdict === "not_active") return "inactive";
+  if (code === "NOT_REGISTERED" || state === "NOT_REGISTERED" || verdict === "not_registered") return "unregistered";
   if (verdict === "tampered" || code === "TAMPER_RISK" || state === "TAMPER_RISK") return "tamper_review";
   if (
     verdict === "manual_opened_declared"
@@ -343,9 +348,6 @@ export function resolveConditionState(input: {
   if (state === "VALID_UNKNOWN_TAMPER") return "unknown";
   if (state === "VALID_AUTHENTIC" || code === "VALID_AUTHENTIC") return "authenticated_no_tamper";
   if (verdict === "valid" || state === "VALID_CLOSED" || ["VALID", "VALID_CLOSED", "AUTH_OK"].includes(code)) return "sealed";
-  if (verdict === "not_active" || code === "NOT_ACTIVE") return "inactive";
-  if (verdict === "not_registered" || code === "NOT_REGISTERED") return "unregistered";
-  if (verdict === "invalid" || code === "INVALID") return "invalid";
   return "unknown";
 }
 

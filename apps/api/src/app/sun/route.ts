@@ -553,6 +553,22 @@ function resolveTrustState(status: string, reason: string, productState?: string
       tone: "risk" as const,
     };
   }
+  const blockedStatusCopy: Record<string, { label: string; summary: string }> = {
+    BROKEN: { label: "Etiqueta reportada dañada", summary: "La unidad tiene un estado de daño registrado. Las acciones comerciales quedan bloqueadas." },
+    REVOKED: { label: "Registro revocado", summary: "El registro fue revocado. Las acciones comerciales quedan bloqueadas." },
+    NOT_ACTIVE: { label: "Etiqueta no activa", summary: "La etiqueta no está activa para acciones comerciales." },
+    NOT_REGISTERED: { label: "Etiqueta no registrada", summary: "La etiqueta no tiene un registro autorizado para acciones comerciales." },
+    INVALID: { label: "Lectura no válida", summary: "No fue posible validar esta lectura. Las acciones comerciales quedan bloqueadas." },
+    TENANT_SETUP_REQUIRED: { label: "Configuración de marca pendiente", summary: "La marca debe completar su configuración antes de habilitar acciones comerciales." },
+    TAMPER_RISK: { label: "Riesgo de manipulación", summary: "Hay un estado de manipulación por revisar. Las acciones comerciales quedan bloqueadas." },
+  };
+  const blockedCode = blockedStatusCopy[normalizedStatus] ? normalizedStatus
+    : blockedStatusCopy[normalizedProductState] ? normalizedProductState : null;
+  const blockedStatus = blockedCode ? blockedStatusCopy[blockedCode] : null;
+  if (blockedCode && blockedStatus) {
+    // Keep physical TT evidence separate; it cannot clear a blocking verdict.
+    return { code: blockedCode, ...blockedStatus, tone: "risk" as const };
+  }
   if (claimedTtState && ttEvidence.state !== claimedTtState) {
     return {
       code: "SUN_PROFILE_MISMATCH",
@@ -569,7 +585,7 @@ function resolveTrustState(status: string, reason: string, productState?: string
       tone: "risk" as const,
     };
   }
-  if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay') || normalizedReason.includes('copied url')) {
+  if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedProductState === 'REPLAY_SUSPECT' || normalizedReason.includes('replay') || normalizedReason.includes('copied url')) {
     const isTamperOpened = ttEvidence.state === "VALID_OPENED"
       || ttEvidence.state === "VALID_OPENED_PREVIOUSLY";
     if (isTamperOpened) {

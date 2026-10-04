@@ -135,16 +135,19 @@ test("trivia completion reserves attempt, points and projections in one data-mod
 });
 
 test("marketplace mutations are bounded, idempotent and do not reward unfulfilled demand", () => {
-  assert.match(p2pList, /readBoundedJsonBody/);
-  assert.match(p2pList, /consumeSunFreshHandoff/);
-  assert.match(p2pList, /marketplace_p2p_list/);
-  assert.match(p2pList, /ON CONFLICT DO NOTHING/);
+  assert.match(p2pList, /p2p_listing_unavailable/);
+  assert.match(p2pList, /fresh_tap_consumed: false/);
+  assert.doesNotMatch(p2pList, /readBoundedJsonBody|consumeSunFreshHandoff|INSERT INTO|UPDATE|transferBlockchainToken/);
   assert.match(migration, /uq_marketplace_p2p_active_owner_uid/);
   assert.match(migration, /uq_marketplace_active_request_consumer_product/);
 
   assert.match(requestToBuy, /readBoundedJsonBody/);
   assert.match(requestToBuy, /ON CONFLICT DO NOTHING/);
   assert.match(requestToBuy, /not_awarded_for_unfulfilled_request/);
+  assert.match(requestToBuy, /request_scope: "catalog_inquiry"/);
+  assert.match(requestToBuy, /fulfills_scanned_unit: false/);
+  assert.match(requestToBuy, /purchase_executed: false/);
+  assert.match(requestToBuy, /stock_reserved: false/);
   assert.doesNotMatch(requestToBuy, /awardPoints|getOrCreateMember|points_balance \+/);
 
   assert.match(p2pBuy, /p2p_settlement_unavailable/);
