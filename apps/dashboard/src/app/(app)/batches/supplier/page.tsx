@@ -8,7 +8,7 @@ export default async function SupplierBatchPage() {
   const session = await requireDashboardSession("batches:*");
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading
         eyebrow="Supplier batches"
         title="Registro profesional de lotes reales"
@@ -54,7 +54,7 @@ export default async function SupplierBatchPage() {
 
         <Card className="border-emerald-300/20 bg-emerald-500/10 p-5">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-100">Gates obligatorios</p>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 v3-space-y-3">
             {[
               ["Pack cifrado", "ZIP .enc con TXT/JSON/PDF/checksums. Password por canal separado."],
               ["Manifiesto único", "Rechaza BID cruzado, UID duplicado global y cantidad distinta al sub-batch."],
@@ -135,7 +135,7 @@ export default async function SupplierBatchPage() {
 
       <Card className="p-5 text-sm text-slate-300">
         <p className="font-semibold text-white">Uso recomendado</p>
-        <ul className="mt-3 list-disc space-y-2 pl-5">
+        <ul className="mt-3 list-disc v3-space-y-2 pl-5">
           <li>Pedido industrial nuevo: usa Supplier Order. El sistema genera sub-batches, llaves por lote, fingerprints y evidencia batch_created.</li>
           <li>Export pack: solo superadmin/security operator, una entrega cifrada de un solo uso y clave por canal separado.</li>
           <li>Manifiesto: se importa TXT/CSV por BID y se rechaza cantidad incorrecta, batch_id cruzado o UID duplicado.</li>

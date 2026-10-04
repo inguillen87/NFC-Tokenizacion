@@ -34,7 +34,7 @@ export default async function TenantVaultPage({ params }: { params: Promise<{ te
   if (result.availability === "not_found" || result.availability === "scope_mismatch") notFound();
   if (result.availability !== "ready") {
     return (
-      <main className="space-y-8" data-testid="tenant-vault-unavailable">
+      <main className="v3-space-y-8" data-testid="tenant-vault-unavailable">
         <SectionHeading eyebrow="Tenant Vault" title="Bóveda no disponible" description="La fuente operativa no pudo confirmar el alcance o la evidencia. No se muestran datos de demostración como reemplazo." />
         <Card className="p-6">
           <div className="flex items-start gap-3"><CircleAlert className="mt-0.5 h-5 w-5 text-amber-200" /><div><h2 className="font-bold text-white">Acceso cerrado de forma segura</h2><p className="mt-2 text-sm leading-6 text-slate-300">Estado: {result.availability}. Reintente cuando la API y la base de auditoría estén disponibles. Ningún pack ni metadata sensible fue expuesto.</p></div></div>

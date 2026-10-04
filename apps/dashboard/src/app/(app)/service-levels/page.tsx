@@ -180,7 +180,7 @@ export default async function ServiceLevelsPage({ searchParams }: { searchParams
   const ticketAlerts = snapshot?.alerts.filter((alert) => alert.severity === "ticket").length ?? 0;
 
   return (
-    <main className="space-y-8" data-testid="service-level-operations">
+    <main className="v3-space-y-8" data-testid="service-level-operations">
       <SectionHeading
         eyebrow="Reliability engineering"
         title="SLOs y respuesta operativa"
@@ -240,7 +240,7 @@ export default async function ServiceLevelsPage({ searchParams }: { searchParams
       ) : (
         <>
           {snapshot.alerts.length ? (
-            <section className="space-y-3" aria-labelledby="active-alerts-title">
+            <section className="v3-space-y-3" aria-labelledby="active-alerts-title">
               <div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-300" aria-hidden="true" /><h2 id="active-alerts-title" className="text-lg font-semibold text-white">Candidatos de alerta en la ventana seleccionada</h2></div>
               <p className="text-sm text-slate-400">No son páginas enviadas: el contrato automático debe confirmar también la segunda ventana de burn rate.</p>
               <div className="grid gap-3 lg:grid-cols-2">
@@ -267,7 +267,7 @@ export default async function ServiceLevelsPage({ searchParams }: { searchParams
                   <p className="mt-4 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-sm text-slate-300">{service.reason || "query_unavailable"}. No se infiere un estado saludable.</p>
                 ) : null}
 
-                <div className="mt-5 space-y-4">
+                <div className="mt-5 v3-space-y-4">
                   {service.indicators.map((indicator) => (
                     <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4" key={indicator.id}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -300,7 +300,7 @@ export default async function ServiceLevelsPage({ searchParams }: { searchParams
         </>
       )}
 
-      <section className="space-y-4" aria-labelledby="runbooks-title">
+      <section className="v3-space-y-4" aria-labelledby="runbooks-title">
         <div className="flex items-center gap-2"><BookOpenCheck className="h-5 w-5 text-cyan-300" aria-hidden="true" /><h2 id="runbooks-title" className="text-lg font-semibold text-white">Contratos de respuesta</h2></div>
         <p className="text-sm text-slate-400">Estas acciones son runbooks operativos; la evaluación es read-only. Paging automático requiere conectar el endpoint a un scheduler/alert manager y demostrar su entrega.</p>
         <div className="grid gap-4 lg:grid-cols-2">

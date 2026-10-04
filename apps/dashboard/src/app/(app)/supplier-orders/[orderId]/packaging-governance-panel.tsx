@@ -283,7 +283,7 @@ export function PackagingGovernancePanel({ orderId, initialData }: { orderId: st
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(19rem,.65fr)]">
-        <div className={`space-y-5 ${canEdit ? "" : "pointer-events-none opacity-70"}`}>
+        <div className={`v3-space-y-5 ${canEdit ? "" : "pointer-events-none opacity-70"}`}>
           <section>
             <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">1. Construcción y aplicación</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -350,11 +350,11 @@ export function PackagingGovernancePanel({ orderId, initialData }: { orderId: st
           </section>
         </div>
 
-        <aside className="space-y-4">
+        <aside className="v3-space-y-4">
           <div className="rounded-xl border border-white/10 bg-slate-950/65 p-4">
             <h3 className="text-xs font-black uppercase tracking-[0.14em] text-cyan-100">Evidencia independiente</h3>
             <p className="mt-1 text-[11px] leading-5 text-slate-500">Una referencia por línea: ID de ensayo, hash, URL de documento controlado o artefacto del Tenant Vault. No pegues claves ni secretos.</p>
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 v3-space-y-3">
               {evidenceKinds.map(([kind, label]) => (
                 <label key={kind} className="block text-[11px] text-slate-400">{label}
                   <textarea value={refs[kind] || ""} onChange={(event) => setRefs({ ...refs, [kind]: event.target.value })} className="mt-1 min-h-16 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="evidence://... o sha256:..." />
@@ -366,7 +366,7 @@ export function PackagingGovernancePanel({ orderId, initialData }: { orderId: st
           <div className="rounded-xl border border-white/10 bg-slate-950/65 p-4">
             <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">Readiness</h3>
             <p className="mt-2 text-xs text-slate-400">Hash: <span className="font-mono text-slate-300">{governance.spec_hash || "todavía no emitido"}</span></p>
-            {issues.length ? <ul className="mt-3 space-y-2 text-xs text-amber-100">{issues.map((issue, index) => <li key={`${issue.code}-${index}`} className="rounded-lg border border-amber-300/20 bg-amber-500/10 p-2"><b>{issue.field || issue.code}:</b> {issue.message || issue.code}</li>)}</ul> : <p className="mt-3 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs text-emerald-100">Sin gaps registrados en la última validación.</p>}
+            {issues.length ? <ul className="mt-3 v3-space-y-2 text-xs text-amber-100">{issues.map((issue, index) => <li key={`${issue.code}-${index}`} className="rounded-lg border border-amber-300/20 bg-amber-500/10 p-2"><b>{issue.field || issue.code}:</b> {issue.message || issue.code}</li>)}</ul> : <p className="mt-3 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs text-emerald-100">Sin gaps registrados en la última validación.</p>}
             {(validation?.warnings || []).map((issue, index) => <p key={`${issue.code}-${index}`} className="mt-2 text-xs text-slate-400">Advertencia: {issue.message || issue.code}</p>)}
           </div>
 
@@ -374,7 +374,7 @@ export function PackagingGovernancePanel({ orderId, initialData }: { orderId: st
             <label className="block text-[11px] text-slate-400">Motivo de decisión
               <textarea value={decisionReason} onChange={(event) => setDecisionReason(event.target.value)} className="mt-1 min-h-16 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" />
             </label>
-            {status === "submitted" && canApprove ? <div className="mt-3 space-y-2"><Toggle label="Excepción: aprueba el mismo operador" checked={override} onChange={setOverride} />{override ? <textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} className="min-h-16 w-full rounded-lg border border-amber-300/25 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="Justificación auditada obligatoria" /> : null}</div> : null}
+            {status === "submitted" && canApprove ? <div className="mt-3 v3-space-y-2"><Toggle label="Excepción: aprueba el mismo operador" checked={override} onChange={setOverride} />{override ? <textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} className="min-h-16 w-full rounded-lg border border-amber-300/25 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="Justificación auditada obligatoria" /> : null}</div> : null}
             <div className="mt-4 grid gap-2">
               {status === "submitted" ? (
                 <>

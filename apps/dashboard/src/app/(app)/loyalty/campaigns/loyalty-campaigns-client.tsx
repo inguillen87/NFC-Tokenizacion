@@ -1147,7 +1147,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
 
   return (
     <div
-      className="space-y-8 pb-12"
+      className="v3-space-y-8 pb-12"
       data-tenant-scope={tenantScope || "unavailable"}
       data-demo-data-allowed={String(allowDemoData)}
     >
@@ -1323,7 +1323,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   {triviaGuideEnabled ? `Guía demo · ${visibleTriviaQuestions.length}` : `${visibleTriviaQuestions.length} señales`}
                 </span>
               </div>
-              <div className="space-y-2">
+              <div className="v3-space-y-2">
                 {visibleTriviaQuestions.slice(0, 4).map((question, index) => (
                   <div key={`${question.prompt}-${index}`} className="rounded-xl border border-white/10 bg-slate-900/45 p-3">
                     <div className="flex items-start justify-between gap-3">
@@ -1359,7 +1359,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 </div>
                 <MapPin className="h-5 w-5 text-violet-200" />
               </div>
-              <div className="space-y-2">
+              <div className="v3-space-y-2">
                 {measuredTriviaCities.slice(0, 4).map((city) => (
                   <button
                     key={city.city}
@@ -1453,7 +1453,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   title="Filtra la audiencia por ciudad detectada en las lecturas"
                   value={selectedCity}
                   onChange={(event) => setSelectedCity(event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-hidden focus:border-cyan-400"
                 >
                   <option value="all">Todas las ciudades</option>
                   {cityOptions.map((city) => (
@@ -1467,7 +1467,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   title="Nombre que se usa en el saludo del mensaje de prueba"
                   value={sandboxRecipientName}
                   onChange={(event) => setSandboxRecipientName(event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-hidden focus:border-cyan-400"
                 />
               </label>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1476,7 +1476,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   title="Número WhatsApp de prueba con opt-in confirmado"
                   value={twilioRecipient}
                   onChange={(event) => setTwilioRecipient(event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-hidden focus:border-cyan-400"
                 />
               </label>
             </div>
@@ -1571,7 +1571,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 placeholder="12345678"
                 value={voucherCode}
                 onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-hidden focus:border-emerald-400"
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1581,7 +1581,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 placeholder="opcional"
                 value={voucherSeal}
                 onChange={(event) => setVoucherSeal(event.target.value.toUpperCase())}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-hidden focus:border-emerald-400"
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1591,7 +1591,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 placeholder="8608"
                 value={voucherPhoneLast4}
                 onChange={(event) => setVoucherPhoneLast4(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-hidden focus:border-emerald-400"
               />
             </label>
             <div className="flex items-end gap-2">
@@ -1812,10 +1812,10 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         {/* Main Column */}
-        <div className="space-y-6">
+        <div className="v3-space-y-6">
           {activeTab === "campaigns" ? (
             /* Tab 1: Campaigns List */
-            <div className="space-y-4">
+            <div className="v3-space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Listado de Campañas</h2>
                 <Button 
@@ -1915,14 +1915,14 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
             /* Tab 2: AI Optimizer Workspace */
             <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
               {/* Left Side: Text Editor */}
-              <div className="space-y-4">
-                <div className="space-y-1">
+              <div className="v3-space-y-4">
+                <div className="v3-space-y-1">
                   <h3 className="text-sm font-bold text-white">Redacción de Campaña</h3>
                   <p className="text-xs text-slate-400">Escribí tu propuesta comercial y revisá scores estimados, reglas aplicadas y procedencia de la reescritura.</p>
                 </div>
 
                 {/* AI provider settings */}
-                <div className="rounded-xl border border-purple-500/20 bg-purple-950/5 p-4 space-y-2.5">
+                <div className="rounded-xl border border-purple-500/20 bg-purple-950/5 p-4 v3-space-y-2.5">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                       Motor IA de campañas
@@ -1945,7 +1945,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                       placeholder="hf_..."
                       value={hfTokenInput}
                       onChange={(e) => handleSaveToken(e.target.value)}
-                      className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500 transition-colors font-mono"
+                      className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-hidden focus:border-purple-500 transition-colors font-mono"
                     />
                     {hfTokenInput && (
                       <button
@@ -1959,7 +1959,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   </div>
 
                   {/* Model Selector below the token input */}
-                  <div className="space-y-1.5 pt-1 border-t border-white/5">
+                  <div className="v3-space-y-1.5 pt-1 border-t border-white/5">
                     <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-400">
                       Modelo LLM
                     </label>
@@ -1968,7 +1968,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                         value={selectedModel}
                         title="Modelo solicitado al proveedor LLM cuando el modo IA este activo"
                         onChange={(e) => setSelectedModel(e.target.value)}
-                        className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-200 outline-none focus:border-purple-500 transition-colors cursor-pointer w-full"
+                        className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-200 outline-hidden focus:border-purple-500 transition-colors cursor-pointer w-full"
                       >
                         <option value="Qwen/Qwen2.5-7B-Instruct">Qwen 2.5 7B Instruct (Recomendado)</option>
                         <option value="google/gemma-2-9b-it">Gemma 2 9B Instruct (Creativo)</option>
@@ -1983,7 +1983,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="v3-space-y-3">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                       Nombre de la Campaña
@@ -1993,7 +1993,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                       placeholder="Ej. Cosecha Especial VIP o Lanzamiento Reserva"
                       value={draftTitle}
                       onChange={(e) => setDraftTitle(e.target.value)}
-                      className="w-full bg-slate-950/70 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500 transition-colors"
+                      className="w-full bg-slate-950/70 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-hidden focus:border-purple-500 transition-colors"
                     />
                   </div>
 
@@ -2048,10 +2048,10 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                           value={draftText}
                           onChange={(e) => setDraftText(e.target.value)}
                           rows={6}
-                          className="w-full bg-slate-950/70 border border-white/10 rounded-xl p-3.5 text-xs text-white outline-none focus:border-purple-500 transition-all placeholder:text-slate-600 resize-none font-sans leading-relaxed"
+                          className="w-full bg-slate-950/70 border border-white/10 rounded-xl p-3.5 text-xs text-white outline-hidden focus:border-purple-500 transition-all placeholder:text-slate-600 resize-none font-sans leading-relaxed"
                         />
                       ) : (
-                        <div className="space-y-4">
+                        <div className="v3-space-y-4">
                           {/* Side by side comparison */}
                           <div className="grid gap-3 md:grid-cols-2">
                             <div>
@@ -2071,7 +2071,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
 
                           {/* Improvements checklist */}
                           {appliedImprovements.length > 0 && (
-                            <div className="rounded-xl border border-white/5 bg-slate-950/40 p-3.5 space-y-2">
+                            <div className="rounded-xl border border-white/5 bg-slate-950/40 p-3.5 v3-space-y-2">
                               <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">
                                 Traducciones y Mejoras Semánticas Aplicadas:
                               </span>
@@ -2156,15 +2156,15 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
               </div>
 
               {/* Right Side: AI Cognitive Analysis Suite */}
-              <div className="space-y-4">
-                <div className="space-y-1">
+              <div className="v3-space-y-4">
+                <div className="v3-space-y-1">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Gauge className="w-4 h-4 text-purple-400" /> Heurísticas locales de copy
                   </h3>
                   <p className="text-xs text-slate-400">Scores de 0 a 100 calculados con palabras, longitud, CTA, emoji y puntuación. No son CTR, conversión, sentimiento medido ni telemetría de campaña.</p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-900/30 p-5 space-y-5">
+                <div className="rounded-2xl border border-white/10 bg-slate-900/30 p-5 v3-space-y-5">
                   {/* Prestige score radial SVG */}
                   <div className="flex items-center gap-4">
                     <div className="relative h-20 w-20 shrink-0 flex items-center justify-center">
@@ -2215,7 +2215,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   </div>
 
                   {/* Local action-copy heuristic. Never present it as observed CTR. */}
-                  <div className="pt-2 border-t border-white/5 space-y-2">
+                  <div className="pt-2 border-t border-white/5 v3-space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] flex items-center gap-1">
                         <TrendingUp className="w-3.5 h-3.5 text-purple-400" /> Heurística de acción del copy · 0–100
@@ -2238,19 +2238,19 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                   </div>
 
                   {/* Emotion Distribution Breakdown */}
-                  <div className="pt-2 border-t border-white/5 space-y-3">
+                  <div className="pt-2 border-t border-white/5 v3-space-y-3">
                     <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] block">
                       Distribución heurística de palabras del copy
                     </span>
 
-                    <div className="space-y-2.5">
+                    <div className="v3-space-y-2.5">
                       {[
                         { name: "Exclusividad / Lujo", value: analysis.emotions.exclusivity, color: "bg-purple-500" },
                         { name: "Confianza / origen declarado", value: analysis.emotions.trust, color: "bg-emerald-500" },
                         { name: "Curiosidad / Experiencia", value: analysis.emotions.curiosity, color: "bg-cyan-500" },
                         { name: "Urgencia / Deseo", value: analysis.emotions.urgency, color: "bg-amber-500" }
                       ].map((item, idx) => (
-                        <div key={idx} className="space-y-1">
+                        <div key={idx} className="v3-space-y-1">
                           <div className="flex justify-between text-[10px]">
                             <span className="text-slate-300 font-medium">{item.name}</span>
                             <span className="font-mono text-slate-400">{item.value}%</span>
@@ -2290,7 +2290,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
           </div>
 
           {/* Messages Container */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 scrollbar-thin text-xs">
+          <div className="flex-1 p-4 overflow-y-auto v3-space-y-3.5 scrollbar-thin text-xs">
             {chatMessages.map((msg) => (
               <div
                 key={msg.id}
@@ -2375,7 +2375,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData }: L
                 placeholder="Preguntale a la IA comercial..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                className="w-full bg-slate-950 border border-white/10 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-slate-950 border border-white/10 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white outline-hidden focus:border-cyan-500 transition-colors"
               />
               <button
                 type="submit"

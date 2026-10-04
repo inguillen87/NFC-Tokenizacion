@@ -661,10 +661,10 @@ export function MobileDemoClient({
 
   return (
     <>
-    <main ref={mainRef} className="mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
+    <main ref={mainRef} className="mx-auto max-w-5xl v3-space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
       <div className="mx-auto w-full max-w-[430px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
-        <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
+        <div className="v3-space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
           <Card className="border border-white/10 bg-slate-950/95 p-4">
             <p className="mb-3 rounded-lg border border-rose-300/35 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-100">
               SIMULACIÓN · NO ES UN TAP NFC FÍSICO
@@ -869,7 +869,7 @@ export function MobileDemoClient({
           {timelineOpen ? (
             <Card className="p-4 text-xs text-slate-300">
               <h3 className="text-sm font-semibold text-white">Provenance timeline</h3>
-              <div className="mt-2 space-y-2">
+              <div className="mt-2 v3-space-y-2">
                 {events.length ? events.map((event, index) => (
                   <div key={`${event.type}-${index}`} className="rounded-lg border border-white/10 bg-slate-900 p-2">
                     <p className="font-semibold text-white">{event.type}</p>
@@ -899,7 +899,7 @@ export function MobileDemoClient({
             aria-describedby={activeDialog === "token" ? "mobile-token-dialog-description" : "mobile-lead-dialog-description"}
             aria-busy={leadPending}
             tabIndex={-1}
-            className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-[430px] overflow-y-auto outline-none"
+            className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-[430px] overflow-y-auto outline-hidden"
           >
             {activeDialog === "token" ? (
               <Card className="border border-cyan-300/25 bg-slate-950 p-4 text-xs text-slate-300 shadow-2xl">

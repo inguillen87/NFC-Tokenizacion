@@ -3,7 +3,7 @@ import { DemoPublicExperience } from "../../../components/demo-public-experience
 
 export default function DemoPage() {
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading
         eyebrow="Public Demo"
         title="Probá un toque NFC simulado"

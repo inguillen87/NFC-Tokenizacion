@@ -17,7 +17,7 @@ export default async function Web3SignInPage({ searchParams }: { searchParams?: 
         <section>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <BrandHomeLink size={72} />
-            <Link href="/me/wallet" className="inline-flex min-h-11 items-center rounded-full border border-white/15 bg-white/5 px-4 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/35">
+            <Link href="/me/wallet" className="inline-flex min-h-11 items-center rounded-full border border-white/15 bg-white/5 px-4 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-cyan-300/35">
               Volver a Wallet
             </Link>
           </div>
@@ -39,7 +39,7 @@ export default async function Web3SignInPage({ searchParams }: { searchParams?: 
         </section>
         <section className="rounded-3xl border border-white/10 bg-slate-950/78 p-4 shadow-[0_30px_100px_rgba(6,182,212,0.16)] backdrop-blur">
           {isClerkConfiguredForRuntime() ? (
-            <div className="space-y-4">
+            <div className="v3-space-y-4">
               <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.07] p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Accion recomendada</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">

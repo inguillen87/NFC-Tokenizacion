@@ -233,7 +233,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="v3-space-y-3">
           <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
             <label className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Estrellas</label>
             <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Puntaje">
@@ -263,7 +263,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
                 onChange={(event) => setTitle(event.target.value)}
                 maxLength={96}
                 placeholder="Ej: Excelente guarda"
-                className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
+                className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold text-white outline-hidden transition placeholder:text-slate-600 focus:border-cyan-300/40"
               />
             </label>
             <div className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">
@@ -315,7 +315,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
                   setPhotoUrl(event.target.value);
                 }}
                 placeholder="https://..."
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold text-white outline-hidden transition placeholder:text-slate-600 focus:border-cyan-300/40 disabled:cursor-not-allowed disabled:opacity-50"
               />
               {photoError ? <p className="mt-2 text-xs font-semibold text-rose-200">{photoError}</p> : null}
             </div>
@@ -332,7 +332,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
               maxLength={1200}
               rows={5}
               placeholder="Contale a otra persona que va a comprar: como lo viviste, que te gusto, si lo recomendarias y para que ocasion."
-              className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
+              className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold leading-6 text-white outline-hidden transition placeholder:text-slate-600 focus:border-cyan-300/40"
             />
           </label>
 

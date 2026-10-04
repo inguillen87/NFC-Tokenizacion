@@ -54,7 +54,7 @@ export default async function ConsumerExperiencesPage({ searchParams }: { search
       title="Mis Experiencias & Reseñas"
       subtitle="Opiniones, check-ins y feedback con evidencia de interacción y moderación. No prueban uso, procedencia ni autenticidad física del producto."
     >
-      <div className="space-y-6">
+      <div className="v3-space-y-6">
         
         {/* Review Form Container */}
         <VerifiedExperienceForm initialEventId={eventId} initialProductName={productName} tenant={tenant} />

@@ -97,7 +97,7 @@ export default function CorkClient() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       {/* Top navigation */}
       <header className="flex items-center justify-between border-b border-white/5 pb-4">
         <Link 
@@ -129,7 +129,7 @@ export default function CorkClient() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-center space-y-4 w-full"
+                className="text-center v3-space-y-4 w-full"
               >
                 <div className="mx-auto w-16 h-16 rounded-3xl bg-slate-900 border border-white/10 flex items-center justify-center text-slate-400">
                   <Camera className="w-8 h-8" />
@@ -202,8 +202,8 @@ export default function CorkClient() {
         </Card>
 
         {/* Results / Telemetry */}
-        <div className="space-y-4">
-          <div className="space-y-1">
+        <div className="v3-space-y-4">
+          <div className="v3-space-y-1">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Gauge className="w-4 h-4 text-purple-400" /> Simulador visual de corcho y cápsula
             </h3>
@@ -212,7 +212,7 @@ export default function CorkClient() {
 
           <Card className="p-5 min-h-[300px] flex flex-col justify-center">
             {isScanning ? (
-              <div className="text-center space-y-3">
+              <div className="text-center v3-space-y-3">
                 <span className="mx-auto block h-8 w-8 animate-spin rounded-full border-3 border-purple-500 border-t-transparent" />
                 <p className="text-xs text-slate-300 font-mono">Generando escenario visual aleatorio...</p>
                 <p className="text-[10px] text-slate-500 font-mono">No se está analizando la imagen.</p>
@@ -221,7 +221,7 @@ export default function CorkClient() {
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
+                className="v3-space-y-4"
               >
                 {/* Header state verdict */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-3">
@@ -240,9 +240,9 @@ export default function CorkClient() {
                 </div>
 
                 {/* Metrics */}
-                <div className="space-y-3 pt-1">
+                <div className="v3-space-y-3 pt-1">
                   {/* Score */}
-                  <div className="space-y-1">
+                  <div className="v3-space-y-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] flex items-center gap-1">
                         <ShieldCheck className="w-3.5 h-3.5 text-purple-400" /> Score aleatorio simulado
@@ -258,7 +258,7 @@ export default function CorkClient() {
                   </div>
 
                   {/* Humidity */}
-                  <div className="space-y-1">
+                  <div className="v3-space-y-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] flex items-center gap-1">
                         <Droplet className="w-3.5 h-3.5 text-cyan-400" /> Humedad aleatoria simulada
@@ -275,7 +275,7 @@ export default function CorkClient() {
                   </div>
 
                   {/* Seal tightness */}
-                  <div className="space-y-1">
+                  <div className="v3-space-y-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] flex items-center gap-1">
                         <Compass className="w-3.5 h-3.5 text-amber-400" /> Hermeticidad aleatoria simulada
@@ -309,7 +309,7 @@ export default function CorkClient() {
                 </Button>
               </motion.div>
             ) : (
-              <div className="text-center text-slate-500 space-y-2 py-8">
+              <div className="text-center text-slate-500 v3-space-y-2 py-8">
                 <HelpCircle className="w-8 h-8 text-slate-600 mx-auto" />
                 <p className="text-xs max-w-xs mx-auto">
                   {demoEnabled ? "Cargá una imagen para ejecutar la simulación visual." : "Demo deshabilitada. No hay análisis disponible."}

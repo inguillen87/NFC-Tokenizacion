@@ -465,13 +465,13 @@ export function QREngagementSuite({
           </label>
         ) : null}
         {activeTab === "sommelier" && (
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
               <span>Asistente de orientación enológica</span>
               <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3" /> Fuente visible por respuesta</span>
             </div>
 
-            <div className="h-[200px] space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 text-xs">
+            <div className="h-[200px] v3-space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 text-xs">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-xl px-3.5 py-2.5 leading-relaxed ${
@@ -504,7 +504,7 @@ export function QREngagementSuite({
                 placeholder="Preguntale al sommelier, por ejemplo: ¿con qué comida marida?"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                className="flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-none"
+                className="flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden"
               />
               <button
                 type="submit"
@@ -519,9 +519,9 @@ export function QREngagementSuite({
         )}
 
         {activeTab === "trivia" && (
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             {!triviaDone ? (
-              <div className="space-y-4">
+              <div className="v3-space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   <span className="flex items-center gap-1 text-cyan-200"><Brain className="h-3.5 w-3.5" /> Market quiz</span>
                   <span>{triviaLoading ? "Cargando" : `Pregunta ${triviaStep + 1} de ${triviaQuestions.length}`}</span>
@@ -566,7 +566,7 @@ export function QREngagementSuite({
                 </button>
               </div>
             ) : (
-              <div className="space-y-4 py-2 text-center">
+              <div className="v3-space-y-4 py-2 text-center">
                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
                   <Trophy className="h-6 w-6" />
                 </div>
@@ -577,7 +577,7 @@ export function QREngagementSuite({
                   </p>
                 </div>
 
-                <div className="mx-auto max-w-sm space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs">
+                <div className="mx-auto max-w-sm v3-space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs">
                   <p className="font-bold leading-relaxed text-slate-200">
                     {triviaResult?.isLocal
                       ? "Resultado educativo local: no se otorgaron puntos ni premios."
@@ -603,7 +603,7 @@ export function QREngagementSuite({
                 </div>
 
                 {triviaResult?.explanations?.length ? (
-                  <div className="space-y-2 text-left">
+                  <div className="v3-space-y-2 text-left">
                     {triviaResult.explanations.slice(0, 3).map((item) => (
                       <div key={item.id} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
                         <div className="text-[10px] font-black uppercase tracking-wider text-cyan-200">
@@ -629,9 +629,9 @@ export function QREngagementSuite({
         )}
 
         {activeTab === "feedback" && (
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             {!feedbackSubmitted ? (
-              <div className="space-y-4">
+              <div className="v3-space-y-4">
                 <div>
                   <h4 className="text-sm font-bold text-white">¿Qué te parece este {productName}?</h4>
                   <p className="mt-0.5 text-[11px] text-slate-400">Tu opinión queda asociada al contexto del tap para analítica del tenant.</p>
@@ -651,7 +651,7 @@ export function QREngagementSuite({
                   ))}
                 </div>
 
-                <div className="space-y-2">
+                <div className="v3-space-y-2">
                   <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Comentario corto</label>
                   <textarea
                     rows={3}
@@ -659,7 +659,7 @@ export function QREngagementSuite({
                     placeholder="Contanos qué te pareció en boca, temperatura, aroma o presentación."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-none"
+                    className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden"
                   />
                 </div>
 
@@ -685,7 +685,7 @@ export function QREngagementSuite({
                 {leadError ? <p role="alert" className="text-center text-[11px] text-rose-300">{leadError}</p> : null}
               </div>
             ) : (
-              <div className="space-y-4 py-4 text-center">
+              <div className="v3-space-y-4 py-4 text-center">
                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
@@ -712,9 +712,9 @@ export function QREngagementSuite({
         )}
 
         {activeTab === "contact" && (
-          <div className="space-y-4">
+          <div className="v3-space-y-4">
             {!optInSubmitted ? (
-              <div className="space-y-4">
+              <div className="v3-space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
                     <Gift className="h-5 w-5" />
@@ -725,8 +725,8 @@ export function QREngagementSuite({
                   </div>
                 </div>
 
-                <div className="space-y-3.5">
-                  <label className="block space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <div className="v3-space-y-3.5">
+                  <label className="block v3-space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
                     Nombre
                     <input
                       type="text"
@@ -734,10 +734,10 @@ export function QREngagementSuite({
                       placeholder="Tu nombre completo"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-none"
+                      className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden"
                     />
                   </label>
-                  <label className="block space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  <label className="block v3-space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
                     WhatsApp o email
                     <input
                       type="text"
@@ -745,17 +745,17 @@ export function QREngagementSuite({
                       placeholder="ej. +549261... o mail@ejemplo.com"
                       value={contact}
                       onChange={(e) => setContact(e.target.value)}
-                      className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-none"
+                      className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden"
                     />
                   </label>
                   <div className="grid grid-cols-2 gap-3">
-                    <label className="block space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <label className="block v3-space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
                       Ocasión
                       <select
                         title="Contexto de compra o consumo"
                         value={occasion}
                         onChange={(e) => setOccasion(e.target.value)}
-                        className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 transition focus:border-amber-500 focus:outline-none"
+                        className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 transition focus:border-amber-500 focus:outline-hidden"
                       >
                         <option value="regalo">Regalo</option>
                         <option value="fiesta">Fiesta</option>
@@ -763,13 +763,13 @@ export function QREngagementSuite({
                         <option value="festejo_especial">Festejo especial</option>
                       </select>
                     </label>
-                    <label className="block space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <label className="block v3-space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
                       Género
                       <select
                         title="Dato opcional para segmentación agregada"
                         value={gender}
                         onChange={(e) => setGender(e.target.value)}
-                        className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 transition focus:border-amber-500 focus:outline-none"
+                        className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 transition focus:border-amber-500 focus:outline-hidden"
                       >
                         <option value="prefiero_no_decir">Prefiero no decir</option>
                         <option value="mujer">Mujer</option>
@@ -802,7 +802,7 @@ export function QREngagementSuite({
                 {leadError ? <p role="alert" className="text-center text-[11px] text-rose-300">{leadError}</p> : null}
               </div>
             ) : (
-              <div className="space-y-4 py-4 text-center">
+              <div className="v3-space-y-4 py-4 text-center">
                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>

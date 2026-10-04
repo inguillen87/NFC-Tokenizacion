@@ -255,7 +255,7 @@ export function DocsSectionNavigation({ locale }: { locale: Locale }) {
               id="docs-mobile-section-nav"
               value={activeItem.id}
               onChange={onMobileSectionChange}
-              className="mt-1 min-h-10 w-full rounded-xl border border-white/10 bg-slate-900 px-3 text-sm font-bold text-white outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20"
+              className="mt-1 min-h-10 w-full rounded-xl border border-white/10 bg-slate-900 px-3 text-sm font-bold text-white outline-hidden focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20"
             >
               {docsSectionItems.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -277,7 +277,7 @@ export function DocsSectionNavigation({ locale }: { locale: Locale }) {
             <p className="mt-1 text-xs leading-5 text-slate-400">{copy.navBody}</p>
           </div>
         </div>
-        <nav className="space-y-1" aria-label={copy.navAriaLabel}>
+        <nav className="v3-space-y-1" aria-label={copy.navAriaLabel}>
           {docsSectionItems.map((item) => {
             const isActive = item.id === activeSection;
             return (

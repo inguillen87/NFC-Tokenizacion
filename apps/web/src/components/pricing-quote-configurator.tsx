@@ -231,7 +231,7 @@ function SelectField({
         id={id}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
-        className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
+        className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 outline-hidden transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
       >
         {values.map((option) => <option key={option} value={option}>{labels[option]}</option>)}
       </select>
@@ -324,7 +324,7 @@ export function PricingQuoteConfigurator({ locale }: { locale: PricingLocale }) 
                   value={quantityDraft}
                   onChange={(event) => updateQuantity(event.currentTarget.value)}
                   onBlur={commitQuantity}
-                  className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
+                  className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 outline-hidden transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
                 />
               </label>
               <SelectField id="quote-carrier" label={copy.fields.carrier} value={input.carrier} values={QUOTE_CARRIERS} labels={copy.carriers} onChange={(value) => updateInput({ carrier: value as QuoteCarrier })} />
@@ -404,7 +404,7 @@ export function PricingQuoteConfigurator({ locale }: { locale: PricingLocale }) 
               ))}
             </ul>
             <p className="border-l-2 border-amber-300 pl-3 text-xs leading-5 text-slate-400">{copy.disclaimer}</p>
-            <a href={leadHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-5 text-sm font-black text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-4 focus:ring-cyan-200">
+            <a href={leadHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-5 text-sm font-black text-slate-950 transition hover:bg-cyan-200 focus:outline-hidden focus:ring-4 focus:ring-cyan-200">
               {copy.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
             <p className="-mt-3 text-center text-[0.68rem] text-slate-500">{copy.ctaHint}</p>

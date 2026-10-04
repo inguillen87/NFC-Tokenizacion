@@ -2,7 +2,7 @@ import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state"
 
 export default function ConsumerNetworkOverviewLoading() {
   return (
-    <main className="space-y-6" aria-label="Cargando clientes y campañas">
+    <main className="v3-space-y-6" aria-label="Cargando clientes y campañas">
       <EnterpriseOpsState
         variant="loading"
         title="Consultando clientes y campañas"

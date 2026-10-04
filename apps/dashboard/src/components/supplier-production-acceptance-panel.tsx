@@ -590,7 +590,7 @@ export function SupplierProductionAcceptancePanel({
       {acceptance?.blockers.length ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/55 p-3 text-xs text-slate-300">
           <b className="text-white">Gates autoritativos</b>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
+          <ul className="mt-2 list-disc v3-space-y-1 pl-5">
             {acceptance.blockers.map((blocker) => <li key={blocker}>{humanToken(blocker)}</li>)}
           </ul>
         </div>
@@ -696,7 +696,7 @@ export function SupplierProductionAcceptancePanel({
             </div>
             <span className="rounded-full border border-emerald-300/25 px-3 py-1 text-xs font-black text-emerald-100">{displayedSamples.length} unidades</span>
           </div>
-          <div className="mt-3 max-h-[34rem] space-y-2 overflow-auto pr-1" style={{ contentVisibility: "auto" }}>
+          <div className="mt-3 max-h-[34rem] v3-space-y-2 overflow-auto pr-1" style={{ contentVisibility: "auto" }}>
             {displayedSamples.map((sample) => {
               const draft = observations[sample.tag_id] || { outcome: "", defectCodes: "" };
               return (

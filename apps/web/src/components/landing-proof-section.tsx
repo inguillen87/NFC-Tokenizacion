@@ -60,7 +60,7 @@ export function LandingProofSection({ proof }: { proof: ProofSummary }) {
               <p className="text-xs text-slate-400">Fuente operativa reportada</p>
             )}
           </div>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 v3-space-y-2">
             {proof.latestPublicEvents.length === 0 ? (
               <div className="rounded-lg border border-dashed border-white/15 bg-slate-900/60 p-4">
                 <p className="text-sm font-medium text-slate-200">Todavía no hay eventos públicos recientes.</p>

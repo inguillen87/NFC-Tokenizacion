@@ -186,7 +186,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
 
   if (!tenant) {
     return (
-      <main className="space-y-6">
+      <main className="v3-space-y-6">
         <SectionHeading eyebrow="Tenants" title={slug} description="Cuenta no encontrada en el directorio demo." />
         <Card className="p-6 text-sm text-rose-200">
           <p>Tenant no encontrado. Volve a la lista y elegi una cuenta disponible.</p>
@@ -230,7 +230,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
     + operationalLinkCandidates.length - operationalLinks.length;
 
   return (
-    <main className="space-y-8" data-testid="tenant-detail-enterprise-profile" data-tenant-source={tenant.source}>
+    <main className="v3-space-y-8" data-testid="tenant-detail-enterprise-profile" data-tenant-source={tenant.source}>
       <SectionHeading
         eyebrow={`Tenant account cockpit · ${tenant.source.toUpperCase()}`}
         title={tenant.tenant}

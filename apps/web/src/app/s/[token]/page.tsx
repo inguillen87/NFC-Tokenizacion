@@ -136,7 +136,7 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(rgba(148,163,184,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.035)_1px,transparent_1px)] bg-[size:72px_72px]" />
 
       <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5">
-        <Link href="/" className="flex items-center gap-3 rounded-2xl outline-none ring-cyan-300/30 transition focus-visible:ring-4">
+        <Link href="/" className="flex items-center gap-3 rounded-2xl outline-hidden ring-cyan-300/30 transition focus-visible:ring-4">
           <BrandLockup size={48} variant="ripple" theme="dark" />
           <div className="hidden flex-col leading-none sm:flex">
             <span className="text-sm font-black text-white">nexID</span>
@@ -246,7 +246,7 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
               <ClipboardCheck className="mt-0.5 h-5 w-5 text-emerald-300" aria-hidden="true" />
               <div>
                 <p className="text-sm font-black text-white">Checklist de canje</p>
-                <div className="mt-3 space-y-2">
+                <div className="mt-3 v3-space-y-2">
                   {checklist.map((item) => (
                     <div key={item.label} className={`flex items-start gap-2 text-xs font-bold leading-relaxed ${item.ready ? "text-slate-300" : "text-amber-200"}`}>
                       {item.ready ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" /> : <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />}

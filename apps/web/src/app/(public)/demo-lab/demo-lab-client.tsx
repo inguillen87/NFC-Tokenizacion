@@ -1618,7 +1618,7 @@ export function DemoLabClient({
               key={toast.id}
               className={`pointer-events-auto flex gap-3 rounded-2xl border p-4 shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-0 opacity-100 animate-slideInRight ${typeColors[toast.type]}`}
             >
-              <div className="flex-shrink-0 mt-0.5">
+              <div className="shrink-0 mt-0.5">
                 <Icon className={`h-5 w-5 ${
                   toast.type === "success" ? "text-emerald-400" :
                   toast.type === "warn" ? "text-amber-400" :
@@ -5041,7 +5041,7 @@ function DemoCrmDashboard({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       {/* KPI Stats Grid */}
       <div className="demo-lab-crm-kpis grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="demo-lab-crm-kpi demo-lab-crm-kpi--cyan rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
@@ -5177,7 +5177,7 @@ function DemoCrmDashboard({
               </div>
             </div>
 
-            <div className="mt-4 space-y-2 overflow-y-auto max-h-[380px] pr-2">
+            <div className="mt-4 v3-space-y-2 overflow-y-auto max-h-[380px] pr-2">
               {liveEvents.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-xs text-slate-500">
                   Esperando toques en el SDK o aplicación móvil...
@@ -5354,7 +5354,7 @@ function DemoCrmDashboard({
                             {statusOverride}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right space-x-1">
+                        <td className="py-3 px-4 text-right v3-space-x-1">
                           <button
                             type="button"
                             onClick={() => handleLeadAction(lead.id, "Contactado")}

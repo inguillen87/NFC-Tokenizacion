@@ -109,7 +109,7 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
   };
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       {/* Top navigation */}
       <header className="flex items-center justify-between border-b border-white/5 pb-4">
         <Link 
@@ -140,7 +140,7 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
           </div>
 
           {/* Messages list */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs scrollbar-thin">
+          <div className="flex-1 p-4 overflow-y-auto v3-space-y-4 text-xs scrollbar-thin">
             <AnimatePresence initial={false}>
               {messages.map((msg) => (
                 <motion.div
@@ -187,7 +187,7 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
               placeholder="Preguntale al sommelier (ej. ¿Con qué comida combina?)..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500 transition-colors"
+              className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-hidden focus:border-purple-500 transition-colors"
             />
             <button
               type="submit"
@@ -200,8 +200,8 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
         </div>
 
         {/* Suggestion Chips and Bottle HUD */}
-        <div className="space-y-4">
-          <Card className="p-5 space-y-4">
+        <div className="v3-space-y-4">
+          <Card className="p-5 v3-space-y-4">
             <div>
               <h4 className="text-xs font-black text-white uppercase tracking-wider">Consultas Sugeridas</h4>
               <p className="text-[10px] text-slate-400 mt-0.5">Hacé clic para preguntarle al Sommelier sobre tu botella.</p>
@@ -227,14 +227,14 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
           </Card>
 
           {/* Declared identity card: this route has no SUN/tamper evidence. */}
-          <div className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-3">
+          <div className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-5 v3-space-y-3">
             <div className="flex items-center gap-2.5">
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400/15 text-amber-200">
                 <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-200">Identidad declarada</span>
             </div>
-            <div className="text-xs text-slate-300 space-y-1">
+            <div className="text-xs text-slate-300 v3-space-y-1">
               <p>Producto indicado: <strong className="text-white">{productName}</strong></p>
               <p>Marca indicada: <strong className="text-white">{brandName}</strong></p>
               <p>Estado SUN/tamper: <strong className="text-amber-200">No disponible en esta pantalla</strong></p>

@@ -194,7 +194,7 @@ export function DemoPublicExperience() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="v3-space-y-4">
       <Card className="p-4 text-sm text-slate-300">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -223,7 +223,7 @@ export function DemoPublicExperience() {
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
-        <div className="space-y-4">
+        <div className="v3-space-y-4">
           <Card className="p-4">
             <h3 className="text-sm font-semibold text-white">1) Elegir vertical</h3>
             <div className="mt-2 grid gap-2 md:grid-cols-3">
@@ -276,7 +276,7 @@ export function DemoPublicExperience() {
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="v3-space-y-4">
           <Card className="p-4 text-sm text-slate-300">
             <h3 className="font-semibold text-white">Historia / passport</h3>
             <p className="mt-2">Item: {latest?.product_name || "Demo product"}</p>
@@ -308,7 +308,7 @@ export function DemoPublicExperience() {
               </div>
               <Badge tone="amber">{events.length} events</Badge>
             </div>
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 v3-space-y-2">
               {(events.slice(0, 4).length ? events.slice(0, 4) : [{ id: 0 } as EventItem]).map((event) => (
                 <div key={event.id || `empty-${event.product_name || "demo"}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
                   <p className={`font-medium ${resultTone(event.result)}`}>{event.result || "Sin actividad todavía"}</p>

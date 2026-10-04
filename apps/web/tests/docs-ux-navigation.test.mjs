@@ -20,7 +20,7 @@ test("docs use one complete section model for sticky desktop and mobile navigati
 
   const layoutStart = page.indexOf('className="grid min-w-0 items-start gap-4 lg:grid-cols');
   const navIndex = page.indexOf("<DocsSectionNavigation", layoutStart);
-  const contentIndex = page.indexOf('className="min-w-0 space-y-8"', navIndex);
+  const contentIndex = page.indexOf('className="min-w-0 v3-space-y-8"', navIndex);
   const consoleIndex = page.indexOf("<DocsIntegrationConsole", contentIndex);
   const strategyIndex = page.indexOf('id="strategy"', consoleIndex);
   const actionsIndex = page.indexOf('id="actions"', strategyIndex);

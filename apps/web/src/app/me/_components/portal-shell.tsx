@@ -68,7 +68,7 @@ export function PortalShell({
         <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
           <div className="flex items-center gap-2">
             <BrandHomeLink size={40} brandClassName="consumer-portal-brand" className="shrink-0" />
-            <Link href="/me" className="hidden min-h-11 items-center rounded-xl px-2 text-sm font-black tracking-tight text-white transition hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/35 sm:inline-flex">
+            <Link href="/me" className="hidden min-h-11 items-center rounded-xl px-2 text-sm font-black tracking-tight text-white transition hover:text-cyan-200 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-cyan-300/35 sm:inline-flex">
               nexID Passport
             </Link>
           </div>
@@ -107,7 +107,7 @@ export function PortalShell({
         </div>
       </nav>
 
-      <main className="relative mx-auto w-full space-y-6 px-4 py-6 pb-32 md:w-[calc(100%-2rem)] md:max-w-[1480px] md:px-0 md:py-8 md:pb-12">
+      <main className="relative mx-auto w-full v3-space-y-6 px-4 py-6 pb-32 md:w-[calc(100%-2rem)] md:max-w-[1480px] md:px-0 md:py-8 md:pb-12">
         <header className="consumer-portal-hero relative z-10 overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/60 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] md:p-7 lg:p-8">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(390px,0.44fr)] lg:items-end">
@@ -135,7 +135,7 @@ export function PortalShell({
           </div>
         </header>
 
-        <div className="relative z-10 space-y-6">
+        <div className="relative z-10 v3-space-y-6">
           <TapAssociationBanner />
           {children}
         </div>

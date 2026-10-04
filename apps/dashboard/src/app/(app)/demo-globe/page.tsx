@@ -49,7 +49,7 @@ export default function DemoGlobePage() {
   };
 
   return (
-    <main className="space-y-8 pb-12">
+    <main className="v3-space-y-8 pb-12">
       {/* Cabecera */}
       <SectionHeading 
         eyebrow="Laboratorio de Visualización" 
@@ -59,7 +59,7 @@ export default function DemoGlobePage() {
 
       <div className="grid gap-8 lg:grid-cols-12">
         {/* COLUMNA MAPA: GLOBO 3D */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 v3-space-y-6">
           <Card className="border border-cyan-500/20 bg-slate-950/80 p-6 flex flex-col items-center relative overflow-hidden">
             <div className="absolute top-0 right-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-cyan-500/5 blur-2xl" />
             
@@ -101,8 +101,8 @@ export default function DemoGlobePage() {
         </div>
 
         {/* COLUMNA COMPAÑÍA: SECTORES SINCRONIZADOS */}
-        <div className="lg:col-span-5 space-y-6">
-          <Card className="border border-white/5 bg-slate-950 p-6 space-y-6">
+        <div className="lg:col-span-5 v3-space-y-6">
+          <Card className="border border-white/5 bg-slate-950 p-6 v3-space-y-6">
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Pilares de Rubros Unificados</h3>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
@@ -110,7 +110,7 @@ export default function DemoGlobePage() {
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="v3-space-y-4">
               {/* Agro */}
               <div className="flex items-start gap-4 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">

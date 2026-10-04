@@ -627,7 +627,7 @@ export default async function GlossaryPage() {
   return (
     <>
       <PublicSiteHeader />
-      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface container-shell space-y-8 pb-16 pt-8 md:py-16">
+      <main id="main-content" tabIndex={-1} data-nav-inert className="knowledge-page-surface container-shell v3-space-y-8 pb-16 pt-8 md:py-16">
       <MarketingPageIntro
         eyebrow={copy.eyebrow}
         title={copy.title}
@@ -663,8 +663,8 @@ export default async function GlossaryPage() {
         </Card>
       </div>
 
-      <div className="space-y-4">
-        <div className="space-y-3">
+      <div className="v3-space-y-4">
+        <div className="v3-space-y-3">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
             <Sparkles className="h-4 w-4 text-cyan-300" />
             {copy.jumpTitle}

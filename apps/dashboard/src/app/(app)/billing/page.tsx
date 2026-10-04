@@ -4,7 +4,7 @@ import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 
 export default function BillingPage() {
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow="Plans" title="Subscriptions" description="Referencias recurrentes de software. Setup, hardware, encoding, rollout y gas se cotizan por alcance." />
       <section role="note" className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">
         <strong className="block text-amber-100">Una suscripción no es el costo total de un piloto.</strong>
@@ -24,7 +24,7 @@ export default function BillingPage() {
             <p className="mt-2 text-lg font-black text-cyan-100">{p.monthlyLabel}</p>
             <p className="mt-2 text-sm leading-6 text-slate-300">{p.description}</p>
             <p className="mt-3 rounded-lg border border-white/10 bg-slate-950/45 p-3 text-xs leading-5 text-slate-400">{p.unitExample}</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            <ul className="mt-4 v3-space-y-2 text-sm text-slate-300">
               {p.features.map((feature) => <li key={feature} className="flex gap-2"><span aria-hidden="true" className="text-emerald-300">✓</span><span>{feature}</span></li>)}
             </ul>
           </Card>

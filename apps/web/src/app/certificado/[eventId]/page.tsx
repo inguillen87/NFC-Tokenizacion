@@ -144,7 +144,7 @@ export default async function PublicCertificatePage({
 
           <aside className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 backdrop-blur-xl">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Como recuperarlo</p>
-            <ol className="mt-4 space-y-3 text-sm">
+            <ol className="mt-4 v3-space-y-3 text-sm">
               {[
                 ["1", "Abrir Wallet", "Si ya reclamaste el producto, el certificado correcto aparece en Wallet."],
                 ["2", "Ver productos", "El portal lista el ultimo tap valido y evita IDs viejos."],
@@ -221,7 +221,7 @@ export default async function PublicCertificatePage({
         </header>
 
         <section className="grid min-w-0 flex-1 gap-5 py-6 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 v3-space-y-5">
             <div className="min-w-0 max-w-[calc(100vw-2rem)] rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 shadow-[0_30px_90px_rgba(0,0,0,.35)] backdrop-blur-xl sm:max-w-none">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Certificado #{tap.eventId || eventId}</p>
               <h1 className="mt-3 max-w-full break-words text-3xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-6xl">
@@ -330,7 +330,7 @@ export default async function PublicCertificatePage({
             </div>
           </div>
 
-          <aside className="min-w-0 space-y-4">
+          <aside className="min-w-0 v3-space-y-4">
             <section className="max-w-[calc(100vw-2rem)] rounded-[2rem] border border-emerald-300/20 bg-emerald-950/20 p-5 backdrop-blur-xl sm:max-w-none">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Link permanente</p>
               <h2 className="mt-2 text-xl font-black text-white">Certificado digital compartible</h2>
@@ -366,7 +366,7 @@ export default async function PublicCertificatePage({
 
             <section className="max-w-[calc(100vw-2rem)] rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 backdrop-blur-xl sm:max-w-none">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Historia verificable</p>
-              <ol className="mt-4 space-y-3">
+              <ol className="mt-4 v3-space-y-3">
                 {[
                   ["Origen", cert.origin?.label || "Origen registrado", "La marca cargo lote, producto y reglas antes del canal."],
                   ["Tap", `${tap.city || "Ciudad"}${tap.country ? `, ${tap.country}` : ""}`, fmtDate(tap.at)],

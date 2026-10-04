@@ -68,7 +68,7 @@ const FRESHNESS_LABEL: Record<SunServicesFreshnessState, string> = {
   unknown: "Frescura no informada",
 };
 
-const ACTION_CLASS_NAME = "sun-services-action group flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white transition hover:border-cyan-300/30 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+const ACTION_CLASS_NAME = "sun-services-action group flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white transition hover:border-cyan-300/30 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300";
 const DEMO_ACTION_CLASS_NAME = "sun-services-action flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white";
 
 const DEMO_ACTION_ICONS: Readonly<Record<DemoExperienceAction, typeof ShieldCheck>> = {

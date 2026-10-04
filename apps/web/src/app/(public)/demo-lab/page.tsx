@@ -1039,7 +1039,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
         <details className="demo-lab-hub-advanced mt-8 rounded-3xl border border-cyan-200/15 bg-slate-950/55 p-3 backdrop-blur-md">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-3 py-2 text-left text-sm font-black text-cyan-100 marker:hidden">
             <span>
-              <small className="block text-[10px] uppercase tracking-[0.16em] text-cyan-300">{hubShellCopy.optional}</small>
+              <small className="block text-[10px] leading-5 uppercase tracking-[0.16em] text-cyan-300">{hubShellCopy.optional}</small>
               {hubShellCopy.advancedDisclosure}
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" />

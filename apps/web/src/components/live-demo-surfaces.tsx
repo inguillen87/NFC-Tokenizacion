@@ -276,7 +276,7 @@ export function LiveDemoSurfaces({ locale = "es-AR" }: { locale?: AppLocale }) {
   );
 
   return (
-    <section className="demo-live-surfaces container-shell space-y-6 py-16" data-demo-api-state={loadState} data-demo-api-stale={loadState === "error" && hasValidSnapshot ? "true" : "false"} data-demo-api-points={points.length} data-demo-api-source={feedMetadata.source} data-demo-location-precision={feedMetadata.locationPrecision}>
+    <section className="demo-live-surfaces container-shell v3-space-y-6 py-16" data-demo-api-state={loadState} data-demo-api-stale={loadState === "error" && hasValidSnapshot ? "true" : "false"} data-demo-api-points={points.length} data-demo-api-source={feedMetadata.source} data-demo-location-precision={feedMetadata.locationPrecision}>
       <div className="demo-live-heading">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">{copy.eyebrow}</p>
@@ -340,7 +340,7 @@ export function LiveDemoSurfaces({ locale = "es-AR" }: { locale?: AppLocale }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="demo-live-card p-5">
           <h3 className="text-sm font-semibold text-white">{copy.feedTitle}</h3>
-          <div className="mt-4 space-y-2 text-sm text-slate-300">
+          <div className="mt-4 v3-space-y-2 text-sm text-slate-300">
             {items.length ? items.slice(0, 8).map((event) => (
               <div key={event.id} className="demo-live-feed-item rounded-lg border border-white/10 bg-slate-900/70 p-3">
                 <div className="font-medium text-white">{stateLabel(event.result, locale)} · {event.product_name || event.uid_masked || "Item"}</div>
@@ -360,7 +360,7 @@ export function LiveDemoSurfaces({ locale = "es-AR" }: { locale?: AppLocale }) {
               <div className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-400/10 p-2 text-xs">
                 {latest ? `${latest.city || "N/D"}, ${latest.country_code || "N/D"}` : "N/D · demo source"}
               </div>
-              <ul className="mt-3 space-y-1 text-xs text-slate-300">
+              <ul className="mt-3 v3-space-y-1 text-xs text-slate-300">
                 <li>Varietal: {latest?.grape_varietal || "N/A"}</li>
                 <li>Barrel: {latest?.barrel_months ?? "N/A"} months</li>
                 <li>Alcohol: {latest?.alcohol_pct ?? "N/A"}%</li>

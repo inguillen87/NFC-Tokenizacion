@@ -108,7 +108,7 @@ function DeviceBucket({ title, items }: { title: string; items: Array<{ label: s
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">
       <p className="font-semibold text-slate-100">{title}</p>
-      <div className="mt-2 space-y-1">
+      <div className="mt-2 v3-space-y-1">
         {(items.length ? items : [{ label: "Unknown", count: 0 }]).slice(0, 5).map((item) => <p key={item.label}>{item.label}: <b>{item.count}</b></p>)}
       </div>
     </div>
@@ -151,7 +151,7 @@ function SignalBucket({ title, coverage, items }: { title: string; coverage: num
           Cobertura {formatAnalyticsPercentage(coverage * 100)}
         </span>
       </div>
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 v3-space-y-2">
         {(items.length ? items : [{ label: "unknown", count: 0 }]).slice(0, 5).map((item) => (
           <div key={item.label} className="flex items-center justify-between gap-3 text-xs text-slate-300">
             <span className="min-w-0 truncate">{friendlySignalLabel(item.label)}</span>
@@ -347,7 +347,7 @@ function GamificationGeoOfferStudio({
               locationNote={hasLocationProvenance ? "GPS consentido y red/IP no son equivalentes" : undefined}
             />
           </div>
-          <div className="space-y-3">
+          <div className="v3-space-y-3">
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
                 <p className="uppercase tracking-[0.12em] text-cyan-200/80">Taps base</p>
@@ -362,7 +362,7 @@ function GamificationGeoOfferStudio({
                 <p className="mt-1 text-lg font-semibold">{projectedPoints}</p>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="v3-space-y-2">
               {rows.slice(0, 6).map((row) => (
                 <div key={row.key} className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">
                   <div className="flex items-center justify-between gap-2">
@@ -622,7 +622,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
 
   if (!hasOperationalData) {
     return (
-      <div className="space-y-6">
+      <div className="v3-space-y-6">
         {sourceBanner}
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -666,7 +666,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
               {dynamicSummary}
             </div>
           ) : (
-            <div className="space-y-2 text-xs text-slate-300">
+            <div className="v3-space-y-2 text-xs text-slate-300">
               {aiSummary.map((line) => <p key={line}>- {line}</p>)}
             </div>
           )}
@@ -678,7 +678,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
 
         <OpsPanel title="Dataset vacío confirmado" subtitle={`No hay escaneos en ${sourceLabel.toLowerCase()} para el scope elegido.`}>
-          <ul className="space-y-2 text-sm text-slate-300">
+          <ul className="v3-space-y-2 text-sm text-slate-300">
             <li>- Revisar tenant, source, rango y pais en filtros.</li>
             <li>- Confirmar que existan eventos SUN reales para este tenant.</li>
             <li>- Escanear 1 NFC activo para inicializar feed, mapa y analytics.</li>
@@ -689,7 +689,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
   }
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       {sourceBanner}
       <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -749,7 +749,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
             {dynamicSummary}
           </div>
         ) : (
-          <div className="space-y-2 text-xs text-slate-300">
+          <div className="v3-space-y-2 text-xs text-slate-300">
             {aiSummary.map((line) => <p key={line}>- {line}</p>)}
           </div>
         )}
@@ -817,7 +817,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         title="Señales comerciales agregadas"
         subtitle="Lectura por tenant para segmentación y experiencia. Mide cobertura de señales reportadas; no identifica personas ni estima ingresos."
       >
-        <div data-commercial-signals-aggregate-only="true" className="space-y-4">
+        <div data-commercial-signals-aggregate-only="true" className="v3-space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Muestra del filtro</p>
@@ -899,7 +899,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
               </select>
             </label>
           </div>
-          <div className="space-y-2">
+          <div className="v3-space-y-2">
             {(filteredFeed.length ? filteredFeed : []).slice(0, 10).map((item) => {
               const severity = classifyEventAlertSeverity(item.result);
               const tone = severity === "critical" ? "risk" : severity === "high" ? "warn" : severity === "medium" ? "neutral" : "good";
@@ -926,7 +926,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         </OpsPanel>
 
         <OpsPanel title="Device intelligence" subtitle="Modelos y combinaciones con mayor riesgo relativo.">
-          <div className="space-y-2">
+          <div className="v3-space-y-2">
             {deviceSignals.map((device) => (
               <div key={device.device} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
                 <div className="flex items-center justify-between gap-2"><p className="font-semibold text-white">{device.device}</p><p>{device.scans} taps</p></div>
@@ -938,7 +938,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         </OpsPanel>
 
         <OpsPanel title="Tag journey" subtitle="Distingue origen declarado de primer tap reportado; no reconstruye un recorrido fisico.">
-          <div className="space-y-2">
+          <div className="v3-space-y-2">
             {tagJourney.map((item) => {
               const product = productByUid.get(String(item.uid || "").toUpperCase());
               const declaredOrigin = isDeclaredProductOrigin(item.originSource);
@@ -967,7 +967,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
       </div>
 
       <OpsPanel title="Traceability lane by UID" subtitle="Comparacion de puntos reportados por activo; solo un origen de pasaporte se etiqueta como declarado.">
-        <div className="space-y-3">
+        <div className="v3-space-y-3">
           {tagJourney.slice(0, 8).map((item) => {
             const declaredOrigin = isDeclaredProductOrigin(item.originSource);
             return <div key={`lane-${item.uid}`} className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">

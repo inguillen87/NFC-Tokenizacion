@@ -209,7 +209,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
   };
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading
         eyebrow="Batch CRM"
         title={bid}
@@ -282,7 +282,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
             <Card className="p-6">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Seguridad del lote</p>
               <h2 className="mt-2 text-xl font-black text-white">{text(batchData.carrier_label || batchData.carrier_profile_code, "Carrier pendiente")}</h2>
-              <dl className="mt-5 space-y-4">
+              <dl className="mt-5 v3-space-y-4">
                 <Fact label="Status" value={batchData.status} />
                 <Fact label="Security level" value={batchData.carrier_security_level ? `L${text(batchData.carrier_security_level)}` : ""} />
                 <Fact label="Profile" value={batchData.batch_profile || "custom"} />

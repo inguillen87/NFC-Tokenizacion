@@ -239,7 +239,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
                 <p className="mt-3 text-sm font-semibold text-white">{active.title}</p>
                 <p className="text-xs text-slate-400">{active.subtitle}</p>
                 <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">{active.productHint}</div>
-                <div className="mt-3 space-y-1 text-[11px] text-slate-300">
+                <div className="mt-3 v3-space-y-1 text-[11px] text-slate-300">
                   {active.passport.map((row) => <p key={row}>• {row}</p>)}
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
@@ -253,7 +253,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
 
         <Card className="p-5">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{t.enterprise}</p>
-          <div className="mt-3 space-y-3 text-sm text-slate-300">
+          <div className="mt-3 v3-space-y-3 text-sm text-slate-300">
             <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">{active.secureHint}</div>
             <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-violet-100">{active.ntagHint}</div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
@@ -263,7 +263,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
               <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">{t.timeline}</p>
-              <div className="mt-2 space-y-2">
+              <div className="mt-2 v3-space-y-2">
                 {timeline.length === 0 ? <p className="text-xs text-slate-500">—</p> : null}
                 {timeline.map((ev) => <div key={ev.id} className="rounded-md border border-white/10 px-2 py-1 text-xs">{ev.label}</div>)}
               </div>

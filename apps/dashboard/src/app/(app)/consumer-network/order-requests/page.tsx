@@ -113,7 +113,7 @@ export default async function OrderRequestsPage({
 
   if (!canReadConsumerPii) {
     return (
-      <main className="space-y-6" data-order-requests-availability="access_denied" data-order-requests-source="unavailable">
+      <main className="v3-space-y-6" data-order-requests-availability="access_denied" data-order-requests-source="unavailable">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <SectionHeading
             eyebrow="Marketplace"
@@ -155,7 +155,7 @@ export default async function OrderRequestsPage({
 
   return (
     <main
-      className="space-y-6"
+      className="v3-space-y-6"
       data-order-requests-availability={result.availability}
       data-order-requests-source={result.source}
       data-tenant-scope={adminContext.tenantSlug || "global-authorized"}

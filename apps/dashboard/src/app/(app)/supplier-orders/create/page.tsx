@@ -107,7 +107,7 @@ export default function CreateSupplierOrderPage() {
   };
 
   return (
-    <main className="space-y-8">
+    <main className="v3-space-y-8">
       <SectionHeading eyebrow="Supplier Ops" title="Create Supplier Order" description="Order creation is independent from batch-key generation and encrypted factory-pack export." />
 
       <Card className="p-6 max-w-2xl">
@@ -115,7 +115,7 @@ export default function CreateSupplierOrderPage() {
           This session {canGenerateBatchKeys ? "also has batch.keys.generate" : "does not have batch.keys.generate"}. The backend evaluates key generation separately; creating an order never grants factory-pack export.
         </p>
         {error && <div role="alert" className="mb-4 p-3 bg-red-500/20 border border-red-500/50 text-red-200 rounded">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="v3-space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="supplier-order-tenant-slug" className="block text-xs font-bold text-slate-400 mb-1">Tenant Slug</label>

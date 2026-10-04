@@ -222,7 +222,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.logsTitle}</p>
             <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">{events.length} {txt.feedCounter}</span>
           </div>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 v3-space-y-2">
             {events.map((ev) => (
               <div key={ev.id} className="rounded-lg border border-white/15 bg-slate-900/75 p-2 text-xs shadow-[0_6px_20px_rgba(2,6,23,.35)]">
                 <div className="flex items-center justify-between text-slate-300">

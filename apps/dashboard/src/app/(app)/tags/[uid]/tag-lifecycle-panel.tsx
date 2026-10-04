@@ -183,7 +183,7 @@ export function TagLifecyclePanel({
           </div>
 
           {canWrite && tag.allowed_transitions.length ? (
-            <div className="mt-4 space-y-3 rounded-xl border border-white/10 bg-slate-950/55 p-4">
+            <div className="mt-4 v3-space-y-3 rounded-xl border border-white/10 bg-slate-950/55 p-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="text-xs text-slate-300">Próximo estado
                   <select value={nextState} onChange={(event) => setNextState(event.target.value as LifecycleState)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">

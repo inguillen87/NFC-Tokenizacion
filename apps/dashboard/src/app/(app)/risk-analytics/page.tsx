@@ -93,7 +93,7 @@ export default async function RiskAnalyticsPage({ searchParams }: { searchParams
   const iotTrackerEvidenceSelected = isIotTrackerEvidenceCarrier(filters.carrier);
 
   return (
-    <main className="space-y-6">
+    <main className="v3-space-y-6">
       <SectionHeading
         eyebrow="Enterprise Risk Operations"
         title="Risk Analytics explicable"

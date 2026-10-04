@@ -4,6 +4,7 @@ import { sql } from "./db";
 import { consumerOtpDeliveryChannel, consumerOtpDeliveryMode, isConsumerOtpProduction, resolveConsumerOtpProvider, type OtpDelivery, type OtpDeliveryChannel } from "./consumer-auth-provider";
 import { ensureConsumerAuthSchema } from "./commercial-runtime-schema";
 import { hitSunRateLimit, shouldFailClosedSunRateLimit } from "./sun-rate-limit-store";
+import { normalizeConsumerAuthReturnPath } from "./consumer-auth-continuation";
 
 const SESSION_COOKIE = "nexid_consumer_session";
 const ACTIVE_CONSUMER_SESSION_STATUSES = new Set(["anonymous", "registered", "verified"]);
@@ -68,7 +69,7 @@ function audit(event: string, payload: Record<string, unknown>) {
 
 function normalizeOtpDeliveryError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "");
-  const deliveryErrors = ["consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "consumer_auth_email_provider_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "twilio_content_sid_invalid", "twilio_status_callback_url_invalid", "twilio_whatsapp_sandbox_forbidden", "twilio_consumer_otp_whatsapp_from_invalid"];
+  const deliveryErrors = ["consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "consumer_auth_email_provider_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "twilio_content_sid_invalid", "twilio_status_callback_url_invalid", "twilio_whatsapp_sandbox_forbidden", "twilio_consumer_otp_whatsapp_from_invalid", "consumer_whatsapp_provider_invalid", "meta_configuration_missing", "meta_configuration_invalid", "meta_payload_invalid", "meta_authentication_failed", "meta_delivery_failed", "meta_delivery_timeout", "meta_receipt_invalid"];
   if (deliveryErrors.includes(message)) return message;
   if (message.includes("email_contact_required")) return "email_contact_required";
   if (message.includes("resend_api_key_missing")) return "resend_api_key_missing";
@@ -223,10 +224,11 @@ export async function getOrCreateDemoConsumer(contact = DEMO_CONSUMER_EMAIL) {
   return consumer;
 }
 
-export async function startConsumerAuth(contact: string, meta?: { ip?: string | null }) {
+export async function startConsumerAuth(contact: string, meta?: { ip?: string | null; next?: unknown }) {
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
   const normalizedContact = normalizeContact(contact);
+  const next = normalizeConsumerAuthReturnPath(meta?.next);
   const contactHash = sha(normalizedContact).slice(0, 16);
   const [contactRate, ipRate] = await Promise.all([
     consumeAuthRate("consumer_auth_start_contact", normalizedContact, 5),
@@ -263,12 +265,12 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
 
   try {
     if (!isMockSocial) {
-      const result = await resolveConsumerOtpProvider().sendOtp({ contact: normalizedContact, code, ttlMinutes: expiresMinutes, magicToken });
+      const result = await resolveConsumerOtpProvider().sendOtp({ contact: normalizedContact, code, ttlMinutes: expiresMinutes, magicToken, ...(next !== "/me" ? { next } : {}) });
       delivery = result.delivery;
 
       for (const secondaryContact of contacts.filter((item) => item !== normalizedContact)) {
         try {
-          const result = await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes, magicToken });
+          const result = await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes, magicToken, ...(next !== "/me" ? { next } : {}) });
           secondaryDelivery = { channel: result.delivery.channel, status: result.delivery.status === "accepted" ? "accepted" : "failed" };
           audit("consumer_auth_secondary_delivery", { contactHash, mode: consumerOtpDeliveryMode(), ...result.delivery });
         } catch (err) {

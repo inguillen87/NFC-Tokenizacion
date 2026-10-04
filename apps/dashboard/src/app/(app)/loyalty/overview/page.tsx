@@ -70,7 +70,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
   const rewards = rewardsReady ? rewardsRaw.rewards : [];
 
   return (
-    <div className="space-y-6">
+    <div className="v3-space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Actividad post-tap</h1>
@@ -127,7 +127,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
             <h3 className="text-sm font-bold text-white mb-4">Catálogo de Beneficios Activos</h3>
             {rewards.length ? (
-              <ul className="space-y-4">
+              <ul className="v3-space-y-4">
                  {rewards.slice(0, 5).map((item: any, idx: number) => (
                     <li key={`${item.code}-${idx}`} className="flex justify-between items-center border-b border-white/5 pb-2">
                        <div>
@@ -149,7 +149,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
             <h3 className="text-sm font-bold text-white mb-2">Cobertura de relación y permisos</h3>
             <p className="mb-5 text-xs text-slate-400">Actividad, actores conocidos y permisos son métricas independientes. Un UID o dispositivo no se cuenta como persona.</p>
-            <div className="space-y-5">
+            <div className="v3-space-y-5">
                <div>
                   <div className="flex justify-between text-xs mb-1">
                      <span className="text-slate-300">Actividad registrada</span>

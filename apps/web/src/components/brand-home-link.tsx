@@ -38,7 +38,7 @@ export function BrandHomeLink({
   variant = "ripple",
 }: BrandHomeLinkProps) {
   const linkClassName = [
-    "inline-flex min-h-11 min-w-11 items-center rounded-2xl outline-none transition focus-visible:ring-4 focus-visible:ring-cyan-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+    "inline-flex min-h-11 min-w-11 items-center rounded-2xl outline-hidden transition focus-visible:ring-4 focus-visible:ring-cyan-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
     className,
   ].filter(Boolean).join(" ");
 

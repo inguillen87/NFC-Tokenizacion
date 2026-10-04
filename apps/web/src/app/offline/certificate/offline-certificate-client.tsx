@@ -207,7 +207,7 @@ export function OfflineCertificateClient() {
                 La firma se comprobó localmente con una clave pública. Este resultado cubre la instantánea informativa; no reemplaza una validación SUN/SDM en línea.
               </p>
             </div>
-            <div className="space-y-5 p-6 sm:p-8">
+            <div className="v3-space-y-5 p-6 sm:p-8">
               <dl className="grid gap-4 sm:grid-cols-2">
                 {publicText(state.payload, "display_name") ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Producto</dt><dd className="mt-1 font-black text-white">{publicText(state.payload, "display_name")}</dd></div> : null}
                 {publicText(state.payload, "brand") ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Marca declarada</dt><dd className="mt-1 font-black text-white">{publicText(state.payload, "brand")}</dd></div> : null}
