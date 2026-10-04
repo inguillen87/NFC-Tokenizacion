@@ -325,6 +325,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reason: created ? "request_created" : "active_marketplace_request_exists",
     orderRequest,
     checkout: "request_only",
+    request_scope: "catalog_inquiry",
+    fulfills_scanned_unit: false,
+    purchase_executed: false,
+    stock_reserved: false,
     access: checkoutAccess.mode,
     loyalty: {
       pointsAwarded: 0,

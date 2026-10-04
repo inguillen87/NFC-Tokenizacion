@@ -1,7 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import ts from "typescript";
 
 const { mapVerdictAndRisk, resolveActionMatrix, resolveRightsPolicy } = await import("../src/lib/sun-passport-policy.ts");
+const { resolveTagTamperPresentationEvidence } = await import("../src/lib/sun-carrier-trust-state.ts");
+
+// Execute only the exact pure presentation functions and freshTap expression
+// from the real route. The API module, host environment and DB are not loaded.
+const routeSource = readFileSync(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
+const routeAst = ts.createSourceFile("route.ts", routeSource, ts.ScriptTarget.Latest, true);
+const declarations = ["isSunProfileMismatchReason", "resolveTrustState"].map(name => {
+  const node = routeAst.statements.find(entry => ts.isFunctionDeclaration(entry) && entry.name?.text === name);
+  assert.ok(node, `Missing production function ${name}`);
+  return node.getText(routeAst);
+});
+const compile = text => ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+const trustState = new Function("resolveTagTamperPresentationEvidence", `${compile(declarations.join("\n"))}\nreturn resolveTrustState;`)(resolveTagTamperPresentationEvidence);
+const publicContract = routeAst.statements.find(entry => ts.isFunctionDeclaration(entry) && entry.name?.text === "buildPublicContract");
+assert.ok(publicContract);
+const freshDeclarations = [];
+const freshExpressions = [];
+function visitFresh(node) {
+  if (ts.isVariableStatement(node) && node.declarationList.declarations.some(entry => ts.isIdentifier(entry.name) && ["isVerifiedOpenedTap", "hasValidatedTagMessage"].includes(entry.name.text))) freshDeclarations.push(node.getText(routeAst));
+  if (ts.isPropertyAssignment(node) && node.name.getText(routeAst) === "freshTap" && node.initializer.getText(routeAst).includes("hasValidatedTagMessage")) freshExpressions.push(node.initializer.getText(routeAst));
+  ts.forEachChild(node, visitFresh);
+}
+visitFresh(publicContract);
+assert.equal(freshDeclarations.length, 2);
+assert.equal(freshExpressions.length, 1);
+const freshTap = new Function("verdictRisk", "trust", `${compile(freshDeclarations.join("\n"))}\nreturn (${freshExpressions[0]});`);
 
 test("view=json contract keys mapping remains stable for valid verdict", () => {
   const mapped = mapVerdictAndRisk({ statusCode: "VALID", productState: "VALID_CLOSED", reason: "sun_ok" });
@@ -224,4 +252,68 @@ test("unknown seal state does not become a physical authenticity claim", () => {
   assert.match(policy.statusSummary, /no informa el estado de apertura/i);
   assert.match(policy.statusSummary, /no certifica por sí solo/i);
   assert.doesNotMatch(`${policy.statusTitle} ${policy.statusSummary}`, /autenticidad confirmada|producto aut[eé]ntico/i);
+});
+
+const physicalStates = [
+  ["VALID_CLOSED", "4343"], ["VALID_OPENED", "4F4F"], ["VALID_OPENED_PREVIOUSLY", "4F43"],
+];
+const blockingStates = ["BROKEN", "REVOKED", "NOT_ACTIVE", "NOT_REGISTERED", "INVALID", "TENANT_SETUP_REQUIRED", "TAMPER_RISK"];
+
+for (const blocked of blockingStates) test(`synthetic ${blocked} contradictions block actions and freshTap in either status/state orientation`, () => {
+  for (const [validState, raw] of physicalStates) for (const reversed of [false, true]) {
+    const status = reversed ? validState : blocked;
+    const productState = reversed ? blocked : validState;
+    const evidence = { carrier_profile_code: "ntag424_dna_tt", ttstatus_raw: raw };
+    const before = structuredClone(evidence);
+    const trust = trustState(status, "synthetic_conflicting_state", productState, evidence);
+    assert.equal(trust.code, blocked, `${status}/${productState}`);
+    assert.deepEqual(evidence, before, "physical TT evidence must remain unchanged");
+    const mapped = mapVerdictAndRisk({ statusCode: trust.code, productState, reason: "synthetic_conflicting_state" });
+    const matrix = resolveActionMatrix(mapped.verdict);
+    const rights = resolveRightsPolicy({ verdict: mapped.verdict, statusCode: trust.code, productState, vertical: "wine" });
+    assert.deepEqual(rights.allowedActions, ["provenance"]);
+    for (const action of ["claim", "save", "join", "warranty", "rewards", "tokenization"]) assert.equal(matrix.allowedActions.includes(action), false, action);
+    assert.equal(freshTap(mapped, trust), false);
+    // The exported policy must also reject conflicting state without relying
+    // on the presentation resolver having rewritten the status first.
+    const direct = mapVerdictAndRisk({ statusCode: status, productState, reason: "synthetic_conflicting_state" });
+    const directRights = resolveRightsPolicy({ verdict: "valid", statusCode: status, productState, vertical: "wine" });
+    assert.deepEqual(directRights.allowedActions, ["provenance"]);
+    assert.equal(resolveActionMatrix(direct.verdict).allowedActions.includes("claim"), false);
+  }
+});
+
+test("authentic closed/opened/previously-opened TT preserves fresh save and configured inside-pack claim", () => {
+  for (const [state, raw] of physicalStates) {
+    const trust = trustState(state, "sun_ok", state, { carrier_profile_code: "ntag424_dna_tt", ttstatus_raw: raw });
+    assert.equal(trust.code, state);
+    const mapped = mapVerdictAndRisk({ statusCode: state, productState: state, reason: "sun_ok" });
+    const rights = resolveRightsPolicy({ verdict: mapped.verdict, statusCode: state, productState: state, vertical: "wine", claimPolicy: "inside_pack_secret" });
+    assert.equal(freshTap(mapped, trust), true);
+    assert.equal(rights.allowedActions.includes("save"), true);
+    assert.equal(rights.allowedActions.includes("claim"), true);
+    assert.equal(rights.claimMode, "inside_pack_secret");
+  }
+});
+
+test("synthetic replay in either status/state orientation blocks freshTap and commercial actions despite valid TT", () => {
+  for (const [validState, raw] of physicalStates) for (const reversed of [false, true]) {
+    const status = reversed ? "VALID" : "REPLAY_SUSPECT";
+    const productState = reversed ? "REPLAY_SUSPECT" : validState;
+    const trust = trustState(status, "sun_ok", productState, { carrier_profile_code: "ntag424_dna_tt", ttstatus_raw: raw });
+    assert.equal(trust.code, "REPLAY_SUSPECT");
+    const mapped = mapVerdictAndRisk({ statusCode: trust.code, productState, reason: "sun_ok" });
+    const rights = resolveRightsPolicy({ verdict: mapped.verdict, statusCode: trust.code, productState, vertical: "wine" });
+    assert.equal(freshTap(mapped, trust), false);
+    assert.deepEqual(rights.allowedActions, ["provenance"]);
+    assert.equal(rights.conditionState, "replay_blocked");
+  }
+});
+
+test("invalid cryptographic evidence remains a profile mismatch rather than valid TT presentation", () => {
+  const trust = trustState("INVALID", "cmac mismatch", "VALID_CLOSED", { carrier_profile_code: "ntag424_dna_tt", ttstatus_raw: "4343" });
+  assert.equal(trust.code, "SUN_PROFILE_MISMATCH");
+  const mapped = mapVerdictAndRisk({ statusCode: trust.code, productState: "VALID_CLOSED", reason: "cmac mismatch" });
+  assert.equal(freshTap(mapped, trust), false);
+  assert.deepEqual(resolveRightsPolicy({ verdict: mapped.verdict, statusCode: trust.code, productState: "VALID_CLOSED", vertical: "wine" }).allowedActions, ["provenance"]);
 });

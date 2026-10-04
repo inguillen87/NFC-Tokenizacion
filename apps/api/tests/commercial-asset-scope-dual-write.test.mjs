@@ -79,25 +79,18 @@ test("SUN simulator persists only simulation evidence and never dispatches a cha
   assert.doesNotMatch(route, /'live_chain'/);
 });
 
-test("P2P listing binds the exact ownership and requires commercial release", async () => {
+test("P2P listing and public resale offers stay closed without consuming asset capabilities", async () => {
   const route = await source("../src/app/marketplace/p2p/list/route.ts");
   const publicCatalog = await source("../src/app/marketplace/offers/route.ts");
 
-  assert.match(route, /requireCommercialAssetScopeSchema\(\)/);
-  assert.doesNotMatch(route, /ensureConsumerPortalSchema\(\)/);
-  assert.match(route, /batch\.id AS batch_id/);
-  assert.match(route, /nexid_assert_supplier_commercial_release_v1/);
-  assert.match(route, /tenant_id,\s*ownership_id,\s*marketplace_product_id/);
-  assert.match(route, /ownership\.tenant_id,\s*ownership\.id,\s*NULL/);
-  assert.match(route, /AND ownership_id = \$\{evidence\.ownership_id\}/);
+  assert.match(route, /p2p_listing_unavailable/);
+  assert.match(route, /listing_created: false/);
+  assert.match(route, /fresh_tap_consumed: false/);
   assert.match(route, /custody_unchanged: true/);
-  assert.doesNotMatch(route, /body\.ownership_id|body\.ownershipId/);
-  assert.match(publicCatalog, /o\.type <> 'p2p_resale'[\s\S]*consumer_product_ownerships ownership/);
-  assert.match(publicCatalog, /ownership\.status = 'claimed'/);
-  assert.match(publicCatalog, /tag\.status::text = 'active'/);
-  assert.match(publicCatalog, /batch\.status::text IN \('active', 'active_in_market'\)/);
-  assert.match(publicCatalog, /event\.cmac_ok IS TRUE[\s\S]*event\.allowlisted IS TRUE[\s\S]*COALESCE\(event\.result/);
-  assert.match(publicCatalog, /supplier_sub_batches supplier_sub_batch/);
+  assert.doesNotMatch(route, /readBoundedJsonBody|consumeSunFreshHandoff|requireCommercialAssetScopeSchema|INSERT INTO|UPDATE|transferBlockchainToken/);
+  assert.match(publicCatalog, /AND o\.type <> 'p2p_resale'/);
+  assert.match(publicCatalog, /p2p_resale_available: false/);
+  assert.doesNotMatch(publicCatalog, /consumer_product_ownerships|OR EXISTS/);
 });
 
 test("request-to-buy records full physical attribution or a valid generic lead, never partial custody", async () => {
