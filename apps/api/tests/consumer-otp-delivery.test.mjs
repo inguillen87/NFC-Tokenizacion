@@ -24,11 +24,17 @@ const TWILIO_ENV = {
   TWILIO_ACCOUNT_SID: `AC${"b".repeat(32)}`, TWILIO_AUTH_TOKEN: "fixture-twilio-secret",
   TWILIO_FROM_NUMBER: "+12025550124", TWILIO_WHATSAPP_FROM: "whatsapp:+12025550125",
 };
+const META_ENV = {
+  CONSUMER_WHATSAPP_PROVIDER: "meta", META_CONSUMER_OTP_GRAPH_VERSION: "v25.0", META_CONSUMER_OTP_PHONE_NUMBER_ID: "123456789012345",
+  META_CONSUMER_OTP_ACCESS_TOKEN: "fixtureMetaAccessToken0123456789", META_CONSUMER_OTP_TEMPLATE_NAME: "fixture_login_code", META_CONSUMER_OTP_TEMPLATE_LANGUAGE: "es_AR",
+};
+const META_RECEIPT = "wamid.FIXTURE_RECEIPT_0123456789==";
 const RAW_ERROR = `untrusted provider error ${EMAIL} ${PHONE} ${CODE} ${SMTP_ENV.SMTP_PASSWORD} ${TWILIO_ENV.TWILIO_AUTH_TOKEN}`;
 const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const compiled = Object.fromEntries(Object.entries({
   status: source("../src/lib/consumer-otp-twilio-status.ts"),
   twilioConfig: source("../src/lib/consumer-otp-twilio-config.ts"),
+  meta: source("../src/lib/consumer-otp-meta-whatsapp.ts"),
   provider: source("../src/lib/consumer-auth-provider.ts"),
   auth: source("../src/lib/consumer-auth.ts"),
   route: source("../src/app/consumer/auth/start/route.ts"),
@@ -42,7 +48,7 @@ function harness(options = {}) {
   const logs = [], requests = [], mail = [], transports = [], queries = [], rates = [], timeouts = [], closed = [];
   const pendingTimers = new Map();
   let timerId = 0;
-  let provider, auth, statusHelper, twilioConfig;
+  let provider, auth, statusHelper, twilioConfig, meta;
   class RequestBodyTooLargeError extends Error {}
   const sql = async (parts, ...values) => {
     const text = parts.join("?").replace(/\s+/g, " ").trim();
@@ -73,6 +79,7 @@ function harness(options = {}) {
     if (name === "node:url") return { domainToASCII };
     if (name === "./consumer-otp-twilio-status") return statusHelper;
     if (name === "./consumer-otp-twilio-config") return twilioConfig;
+    if (name === "./consumer-otp-meta-whatsapp") return meta;
     if (name === "nodemailer" && options.realSmtp) return localRequire("nodemailer");
     if (name === "nodemailer") return { createTransport: (config) => {
       transports.push(config);
@@ -112,6 +119,7 @@ function harness(options = {}) {
   };
   statusHelper = load("status");
   twilioConfig = load("twilioConfig");
+  meta = load("meta");
   provider = load("provider");
   auth = load("auth");
   const route = load("route");
@@ -135,18 +143,105 @@ function assertSanitizedLogs(h, extra = []) {
   const serialized = h.logs.join("\n");
   for (const forbidden of [EMAIL, PHONE, CODE, MAGIC, SID, UUID, SMTP_RECEIPT,
     SMTP_ENV.SMTP_PASSWORD, RESEND_ENV.RESEND_API_KEY, TWILIO_ENV.TWILIO_ACCOUNT_SID, TWILIO_ENV.TWILIO_AUTH_TOKEN,
-    RAW_ERROR, ...extra]) {
+    RAW_ERROR, META_ENV.META_CONSUMER_OTP_ACCESS_TOKEN, META_RECEIPT, ...extra]) {
     assert.equal(serialized.includes(forbidden), false, "audit output contains a sensitive fixture value");
   }
 }
 function assertPublicPayload(body) {
   const text = JSON.stringify(body);
-  for (const value of [CODE, MAGIC, SID, UUID, SMTP_RECEIPT, SMTP_ENV.SMTP_PASSWORD, RESEND_ENV.RESEND_API_KEY, TWILIO_ENV.TWILIO_AUTH_TOKEN]) {
+  for (const value of [CODE, MAGIC, SID, UUID, SMTP_RECEIPT, SMTP_ENV.SMTP_PASSWORD, RESEND_ENV.RESEND_API_KEY, TWILIO_ENV.TWILIO_AUTH_TOKEN, META_ENV.META_CONSUMER_OTP_ACCESS_TOKEN, META_RECEIPT]) {
     assert.equal(text.includes(value), false, "public response contains a private delivery fixture value");
   }
   assert.equal(Object.hasOwn(body, "code"), false);
   assert.doesNotMatch(text, /"(?:sid|messageId|receiptHash|magicToken|code_hash)"/);
 }
+
+test("Meta is opt-in across WhatsApp modes; unset and explicit Twilio preserve the original driver", async () => {
+  for (const mode of ["whatsapp", "twilio_whatsapp", "smart", "provider", "production"]) {
+    for (const selection of [undefined, "", "twilio", "meta", ' " MeTa " ']) {
+      const metaSelected = selection?.toLowerCase().includes("meta");
+      const h = harness({ env: { ...TWILIO_ENV, ...META_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_PHONE_OTP_CHANNEL: "whatsapp", CONSUMER_WHATSAPP_PROVIDER: selection },
+        fetch: () => metaSelected ? response({ messaging_product: "whatsapp", messages: [{ id: META_RECEIPT }] }, 200) : twilioOk(),
+      });
+      assert.deepEqual(await h.send(PHONE), delivery(metaSelected ? "meta" : "twilio", "whatsapp"));
+      assert.equal(h.requests.length, 1);
+      assert.equal(new URL(h.requests[0].url).hostname, metaSelected ? "graph.facebook.com" : "api.twilio.com");
+      assertSanitizedLogs(h);
+    }
+  }
+});
+
+test("Meta and invalid WhatsApp choices never change email, SMS or local demo delivery", async () => {
+  for (const selection of ["meta", "invalid"]) {
+    for (const mode of ["sms", "twilio", "smart"]) {
+      const h = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: mode, CONSUMER_PHONE_OTP_CHANNEL: "sms", CONSUMER_WHATSAPP_PROVIDER: selection }, fetch: () => twilioOk() });
+      assert.deepEqual(await h.send(PHONE), delivery("twilio", "sms")); assert.equal(h.requests.length, 1);
+    }
+    const email = harness({ env: { ...RESEND_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_PHONE_OTP_CHANNEL: "whatsapp", CONSUMER_WHATSAPP_PROVIDER: selection }, fetch: () => response({ id: UUID }) });
+    assert.deepEqual(await email.send(), delivery("resend", "email")); assert.equal(email.requests.length, 1);
+    const demo = harness({ env: { NODE_ENV: "test", CONSUMER_AUTH_MODE: "demo", CONSUMER_WHATSAPP_PROVIDER: selection } });
+    assert.deepEqual(await demo.send(PHONE), delivery("demo", "sms", "simulated")); assert.equal(demo.requests.length, 0);
+  }
+});
+
+test("explicit Meta misconfiguration never falls back to usable Twilio credentials", async () => {
+  for (const [extra, code] of [
+    [{ META_CONSUMER_OTP_ACCESS_TOKEN: undefined }, "meta_configuration_missing"],
+    [{ META_CONSUMER_OTP_PHONE_NUMBER_ID: "123/../me" }, "meta_configuration_invalid"],
+    [{ CONSUMER_WHATSAPP_PROVIDER: "invalid" }, "consumer_whatsapp_provider_invalid"],
+  ]) {
+    const h = harness({ env: { ...TWILIO_ENV, ...META_ENV, CONSUMER_AUTH_MODE: "whatsapp", ...extra } });
+    await fails(h, code, PHONE); assert.equal(h.requests.length, 0);
+    const res = await h.post(PHONE); assert.equal(res.status, 503); const body = await res.json();
+    assert.equal(body.error, code); assertPublicPayload(body); assertSanitizedLogs(h);
+  }
+});
+
+test("Meta start requires its receipt and exposes only acceptance; failed auth/HTTP/schema map honestly", async () => {
+  for (const [factory, status, code] of [
+    [() => response({ messaging_product: "whatsapp", messages: [{ id: META_RECEIPT, message_status: "accepted" }] }, 200), 200, null],
+    [() => response({ error: { code: 190, message: RAW_ERROR } }, 401), 503, "meta_authentication_failed"],
+    [() => response({ error: { code: 190, message: RAW_ERROR } }, 403), 503, "meta_authentication_failed"],
+    [() => response({ error: { code: 190, type: "OAuthException", message: RAW_ERROR } }, 400), 503, "meta_authentication_failed"],
+    [() => response({ error: { code: 132001, message: RAW_ERROR } }, 400), 502, "meta_delivery_failed"],
+    [() => response({ messaging_product: "whatsapp", messages: [] }, 200), 502, "meta_receipt_invalid"],
+    [() => { throw new Error(RAW_ERROR); }, 502, "meta_delivery_failed"],
+  ]) {
+    const h = harness({ env: { ...TWILIO_ENV, ...META_ENV, CONSUMER_AUTH_MODE: "whatsapp" }, fetch: factory });
+    const res = await h.post(PHONE); assert.equal(res.status, status); const body = await res.json();
+    if (code) assert.equal(body.error, code); else { assert.equal(body.ok, true); assert.deepEqual(body.delivery, { provider: "meta", channel: "whatsapp", status: "accepted" }); }
+    assert.equal(h.requests.length, 1); assert.equal(new URL(h.requests[0].url).hostname, "graph.facebook.com");
+    assertPublicPayload(body); assertSanitizedLogs(h);
+    assert.equal(h.pendingTimers.size, 0);
+  }
+});
+
+test("secondary Meta failure preserves successful email without claiming WhatsApp delivery or retrying Twilio", async () => {
+  const h = harness({ env: { ...TWILIO_ENV, ...RESEND_ENV, ...META_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_PHONE_OTP_CHANNEL: "whatsapp" }, secondaryContact: PHONE,
+    fetch: (url) => new URL(url).hostname === "api.resend.com" ? response({ id: UUID }) : response({ error: { code: 190, message: RAW_ERROR } }, 401),
+  });
+  const res = await h.post(); assert.equal(res.status, 200); const body = await res.json();
+  assert.deepEqual(body.delivery, { channel: "email", provider: "resend", status: "accepted" });
+  assert.deepEqual(body.secondaryDelivery, { channel: "whatsapp", status: "failed" }); assert.equal(body.multiChannelDelivery, false);
+  assert.equal(h.requests.length, 2); assert.equal(h.requests.some((entry) => new URL(entry.url).hostname === "api.twilio.com"), false);
+  assertPublicPayload(body); assertSanitizedLogs(h);
+});
+
+test("Meta start body-read timeout returns no-store 504 with one Graph attempt and no fallback", async () => {
+  let signal, pullStarted;
+  const reading = new Promise((resolve) => { pullStarted = resolve; });
+  const h = harness({ env: { ...TWILIO_ENV, ...META_ENV, CONSUMER_AUTH_MODE: "whatsapp" }, fetch: (_url, init) => {
+    signal = init.signal;
+    return new Response(new ReadableStream({ pull() { pullStarted(); return new Promise(() => {}); } }, { highWaterMark: 0 }));
+  } });
+  const pending = h.post(PHONE); await reading;
+  assert.equal(h.pendingTimers.size, 1); h.fireTimers();
+  const res = await pending; assert.equal(res.status, 504); assert.equal(res.headers.get("cache-control"), "no-store");
+  const body = await res.json(); assert.deepEqual(body, { ok: false, error: "meta_delivery_timeout" });
+  assert.equal(signal.aborted, true); assert.equal(h.requests.length, 1);
+  assert.equal(new URL(h.requests[0].url).hostname, "graph.facebook.com"); assert.equal(h.pendingTimers.size, 0);
+  assertSanitizedLogs(h); assertPublicPayload(body);
+});
 
 test("unknown, noop and malformed quoted modes fail closed; one matched quote pair remains valid", async () => {
   for (const mode of ["unknown", "noop", '""smart""', "''smart''", "'smart\"", '"smart', 'smart"']) {

@@ -14,7 +14,7 @@ import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/b
 function startStatus(error: string) {
   if (error === "rate_limited") return 429;
   if (error === "unavailable") return 503;
-  if (error === "email_contact_required" || error === "phone_contact_required") return 422;
+  if (error === "email_contact_required" || error === "phone_contact_required" || error === "meta_payload_invalid") return 422;
   if (
     error === "resend_api_key_missing" ||
     error === "consumer_auth_from_email_missing" ||
@@ -29,11 +29,15 @@ function startStatus(error: string) {
     error === "twilio_content_sid_invalid" ||
     error === "twilio_status_callback_url_invalid" ||
     error === "twilio_whatsapp_sandbox_forbidden" ||
-    error === "twilio_consumer_otp_whatsapp_from_invalid"
+    error === "twilio_consumer_otp_whatsapp_from_invalid" ||
+    error === "consumer_whatsapp_provider_invalid" ||
+    error === "meta_configuration_missing" ||
+    error === "meta_configuration_invalid" ||
+    error === "meta_authentication_failed"
   ) return 503;
-  if (["smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout"].includes(error)) return 504;
-  if (["smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid"].includes(error)) return 502;
-  if (error === "twilio_delivery_failed" || error === "resend_delivery_failed" || error === "smtp_delivery_failed") return 502;
+  if (["smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "meta_delivery_timeout"].includes(error)) return 504;
+  if (["smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "meta_receipt_invalid"].includes(error)) return 502;
+  if (error === "twilio_delivery_failed" || error === "resend_delivery_failed" || error === "smtp_delivery_failed" || error === "meta_delivery_failed") return 502;
   return 500;
 }
 

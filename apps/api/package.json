@@ -50,7 +50,7 @@
     "test:passport": "node --import tsx --test tests/passport-editorial-policy.test.mjs tests/passport-studio-integration-contract.test.mjs",
     "test:logistics": "node --import tsx --test tests/secure-delivery.test.mjs tests/logistics-atomic-contract.test.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
-    "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs tests/consumer-otp-twilio-status.test.mjs tests/consumer-otp-twilio-inbound.test.mjs",
+    "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs tests/consumer-otp-meta-whatsapp.test.mjs tests/consumer-otp-twilio-status.test.mjs tests/consumer-otp-twilio-inbound.test.mjs",
     "test:rewards": "node --import tsx --test tests/reward-public-links-security.test.mjs tests/consumer-reward-postgres-harness.test.mjs tests/consumer-rewards-read-model.test.mjs tests/consumer-rewards-read-postgres-harness.test.mjs",
     "test:sun": "node --import tsx --test tests/sun-*.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",

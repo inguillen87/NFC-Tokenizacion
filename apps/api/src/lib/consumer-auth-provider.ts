@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { domainToASCII } from "node:url";
 import { getConsumerOtpTwilioStatusCallbackUrl } from "./consumer-otp-twilio-status";
 import { getConsumerOtpWhatsappFrom } from "./consumer-otp-twilio-config";
+import { ConsumerMetaOtpError, sendConsumerMetaWhatsappOtp } from "./consumer-otp-meta-whatsapp";
 
 export type OtpDeliveryPayload = {
   contact: string;
@@ -12,7 +13,7 @@ export type OtpDeliveryPayload = {
 };
 
 export type OtpDeliveryChannel = "email" | "sms" | "whatsapp";
-export type OtpDelivery = { channel: OtpDeliveryChannel; provider: "smtp" | "resend" | "twilio" | "demo"; status: "accepted" | "simulated" };
+export type OtpDelivery = { channel: OtpDeliveryChannel; provider: "smtp" | "resend" | "twilio" | "meta" | "demo"; status: "accepted" | "simulated" };
 export type OtpDeliveryResult = { ok: true; delivery: OtpDelivery };
 export interface ConsumerOtpProvider { sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult>; }
 
@@ -372,10 +373,27 @@ class EmailOtpProvider implements ConsumerOtpProvider {
   }
 }
 
+class WhatsappOtpProvider implements ConsumerOtpProvider {
+  private readonly twilio = new TwilioOtpProvider("whatsapp");
+
+  async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
+    const selected = env("CONSUMER_WHATSAPP_PROVIDER").toLowerCase();
+    if (!selected || selected === "twilio") return this.twilio.sendOtp(payload);
+    if (selected !== "meta") throw new Error("consumer_whatsapp_provider_invalid");
+    try {
+      const receipt = await sendConsumerMetaWhatsappOtp(process.env, payload);
+      return accepted("meta", "whatsapp", receipt);
+    } catch (error) {
+      auditDelivery("meta", "whatsapp", "failed", error instanceof ConsumerMetaOtpError ? error.diagnostics : { providerStatus: "request_failed" });
+      throw new Error(error instanceof ConsumerMetaOtpError ? error.code : "meta_delivery_failed");
+    }
+  }
+}
+
 class SmartOtpProvider implements ConsumerOtpProvider {
   private readonly email = new EmailOtpProvider();
   private readonly sms = new TwilioOtpProvider("sms");
-  private readonly whatsapp = new TwilioOtpProvider("whatsapp");
+  private readonly whatsapp = new WhatsappOtpProvider();
 
   async sendOtp(payload: OtpDeliveryPayload): Promise<OtpDeliveryResult> {
     if (isEmail(payload.contact)) {
@@ -398,6 +416,6 @@ export function resolveConsumerOtpProvider() {
   if (mode === "smtp") return new EmailOtpProvider(true);
   if (mode === "email" || mode === "resend") return new EmailOtpProvider();
   if (mode === "sms" || mode === "twilio") return new TwilioOtpProvider("sms");
-  if (mode === "whatsapp" || mode === "twilio_whatsapp") return new TwilioOtpProvider("whatsapp");
+  if (mode === "whatsapp" || mode === "twilio_whatsapp") return new WhatsappOtpProvider();
   return new SmartOtpProvider();
 }
