@@ -303,18 +303,30 @@ try {
       await page.evaluate(() => scrollTo(0,0)); await settle(page);
       const file='landing-'+name+'.png'; await page.screenshot({ path:join(output,file),fullPage:true });
       const workflowHeading=page.locator('.simple-trust-flow-intro h2');
-      let workflowViewportEdge=null;
+      let workflowViewportEdge=null,workflowEdgePlacement=null;
       if(width===768&&reducedMotion==='no-preference'){
         // Enter at the demonstrated viewport edge directly. Centering first
         // could already complete the observer's entry animation and hide a bug.
-        await workflowHeading.evaluate(element=>{const rect=element.getBoundingClientRect();scrollTo({top:scrollY+rect.bottom-innerHeight+8,behavior:'instant'});});
+        workflowEdgePlacement=await workflowHeading.evaluate(element=>{
+          const rect=element.getBoundingClientRect(),documentBottom=scrollY+rect.bottom;
+          const requestedScrollY=documentBottom-innerHeight+8;
+          const maximumScrollY=Math.max(0,document.documentElement.scrollHeight-innerHeight);
+          // A compact layout can already place this heading above the edge at
+          // scrollY0. The browser clamps negative scroll requests to zero.
+          const reachableScrollY=Math.min(maximumScrollY,Math.max(0,requestedScrollY));
+          const expectedBottomMargin=innerHeight-documentBottom+reachableScrollY;
+          scrollTo({top:requestedScrollY,behavior:'instant'});
+          return{documentBottom,requestedScrollY,maximumScrollY,reachableScrollY,expectedBottomMargin};
+        });
       }else await workflowHeading.scrollIntoViewIfNeeded();
       await page.waitForTimeout(1100);
       if(width===768&&reducedMotion==='no-preference'){
-        workflowViewportEdge=await workflowHeading.evaluate(element=>{const rect=element.getBoundingClientRect();return{top:rect.top,right:rect.right,bottom:rect.bottom,left:rect.left,width:rect.width,height:rect.height,viewportWidth:innerWidth,viewportHeight:innerHeight,bottomMargin:innerHeight-rect.bottom};});
+        workflowViewportEdge=await workflowHeading.evaluate(element=>{const rect=element.getBoundingClientRect();return{top:rect.top,right:rect.right,bottom:rect.bottom,left:rect.left,width:rect.width,height:rect.height,viewportWidth:innerWidth,viewportHeight:innerHeight,scrollY,bottomMargin:innerHeight-rect.bottom};});
         const edge=workflowViewportEdge;
-        check(edge.width>0&&edge.height>0&&edge.top>=0&&edge.left>=0&&edge.right<=edge.viewportWidth&&edge.bottom<=edge.viewportHeight&&Math.abs(edge.bottomMargin-8)<=1,
-          'Workflow heading fully inside viewport at natural8px edge '+name,edge);
+        check(edge.width>0&&edge.height>0&&edge.top>=0&&edge.left>=0&&edge.right<=edge.viewportWidth&&edge.bottom<=edge.viewportHeight
+          &&Math.abs(edge.scrollY-workflowEdgePlacement.reachableScrollY)<=1
+          &&Math.abs(edge.bottomMargin-workflowEdgePlacement.expectedBottomMargin)<=1,
+          'Workflow heading fully inside viewport at reachable8px edge '+name,{...edge,placement:workflowEdgePlacement});
       }
       const workflowInk=await workflowHeading.evaluate(element=>[element,...element.querySelectorAll('.simple-trust-flow-title-line__inner')].map(node=>{
         const cs=getComputedStyle(node),rect=node.getBoundingClientRect();return{text:node.textContent.trim(),visible:rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<innerHeight,
@@ -337,7 +349,7 @@ try {
         check(phaseChanged(returned), 'Hero resumes after viewport return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
       }
       check(await page.evaluate(() => window.__geoRequests === 0), 'No geolocation request ' + name);
-      report.views.push({ width,height:viewport.height,theme,reducedMotion,file,heading,lede,workflowViewportEdge,workflowInk,workflowContrast,axe:axeResult,dimensions });
+      report.views.push({ width,height:viewport.height,theme,reducedMotion,file,heading,lede,workflowEdgePlacement,workflowViewportEdge,workflowInk,workflowContrast,axe:axeResult,dimensions });
     } catch (error) {
       check(false,'View completed ' + name,{ message:String(error.message).replace(/https?:\/\/\S+/g,'[url]').slice(0,220) });
     } finally { await context.close(); await save(); }
