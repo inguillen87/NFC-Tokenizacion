@@ -18,13 +18,14 @@ export function authStartErrorMessage(error: unknown) {
   if (reason === "resend_api_key_missing" || reason === "consumer_auth_from_email_missing" || reason === "smtp_credentials_missing") {
     return "No pudimos solicitar el código por email. Podés continuar con WhatsApp o intentar más tarde.";
   }
-  if (["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed"].includes(reason)) {
+  if (["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed",
+    "consumer_whatsapp_provider_invalid", "meta_configuration_missing", "meta_configuration_invalid", "meta_authentication_failed", "meta_payload_invalid"].includes(reason)) {
     return "WhatsApp no está disponible ahora. Continuá con email para recibir tu código.";
   }
-  if (reason === "twilio_delivery_failed" || reason === "resend_delivery_failed" || reason === "smtp_delivery_failed") {
+  if (reason === "twilio_delivery_failed" || reason === "resend_delivery_failed" || reason === "smtp_delivery_failed" || reason === "meta_delivery_failed") {
     return "No se pudo confirmar el envío. Podés continuar con el otro medio de acceso. Si el código llega más tarde, usá el más reciente.";
   }
-  if (["otp_provider_unavailable", "consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout"].includes(reason)) return "Este canal no pudo confirmar el envío del código. Probá el otro medio de acceso. Si el mensaje llega más tarde, usá siempre el código más reciente.";
+  if (["otp_provider_unavailable", "consumer_auth_mode_invalid", "consumer_auth_demo_forbidden", "consumer_phone_otp_channel_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "meta_receipt_invalid", "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "meta_delivery_timeout"].includes(reason)) return "Este canal no pudo confirmar el envío del código. Probá el otro medio de acceso. Si el mensaje llega más tarde, usá siempre el código más reciente.";
   return CONSUMER_ACCESS_UNKNOWN_ERROR;
 }
 

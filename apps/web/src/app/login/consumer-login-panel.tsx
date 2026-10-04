@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
 import { requestConsumerJson } from "../../lib/consumer-request";
 import { authStartErrorMessage, consumerDeliveryIsSimulation, consumerDeliveryMessage } from "./consumer-login-delivery";
+import { consumerAuthStartPayload } from "./consumer-login-continuation";
 import {
   ConsumerContactInput,
   consumerContactDraftFromValue,
@@ -147,7 +148,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       return;
     }
     const response = await requestConsumerJson("/api/consumer/auth/start", {
-      method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(contactPayload),
+      method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(consumerAuthStartPayload(contactPayload, safeNextPath)),
     });
     if (!mounted.current) return;
     setPending(false); requestInFlight.current = false;

@@ -41,12 +41,12 @@ test("channel failures offer recovery without blaming the contact or exposing co
   const groups = [
     [["rate_limited"], "Demasiados intentos. Esperá unos minutos y probá de nuevo."],
     [["resend_api_key_missing", "consumer_auth_from_email_missing", "smtp_credentials_missing"], "No pudimos solicitar el código por email. Podés continuar con WhatsApp o intentar más tarde."],
-    [["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed"], "WhatsApp no está disponible ahora. Continuá con email para recibir tu código."],
-    [["twilio_delivery_failed", "resend_delivery_failed", "smtp_delivery_failed"], "No se pudo confirmar el envío. Podés continuar con el otro medio de acceso. Si el código llega más tarde, usá el más reciente."],
+    [["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed", "consumer_whatsapp_provider_invalid", "meta_configuration_missing", "meta_configuration_invalid", "meta_authentication_failed", "meta_payload_invalid"], "WhatsApp no está disponible ahora. Continuá con email para recibir tu código."],
+    [["twilio_delivery_failed", "resend_delivery_failed", "smtp_delivery_failed", "meta_delivery_failed"], "No se pudo confirmar el envío. Podés continuar con el otro medio de acceso. Si el código llega más tarde, usá el más reciente."],
     [[
       "otp_provider_unavailable", "consumer_auth_mode_invalid", "consumer_auth_demo_forbidden",
       "consumer_phone_otp_channel_invalid", "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid",
-      "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout",
+      "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "meta_delivery_timeout", "meta_receipt_invalid",
     ], "Este canal no pudo confirmar el envío del código. Probá el otro medio de acceso. Si el mensaje llega más tarde, usá siempre el código más reciente."],
   ];
   for (const [errors, expected] of groups) {
