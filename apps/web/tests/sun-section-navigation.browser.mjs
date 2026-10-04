@@ -188,19 +188,45 @@ try {
       check(!(await dockShown(page)), "Normal-motion dock starts hidden before slide restoration");
       const properties = await page.locator(".sun-mobile-dock").evaluate(node => {
         window.dockTransitionProperties = [];
-        node.addEventListener("transitionrun", event => window.dockTransitionProperties.push(event.propertyName));
+        window.dockMotionSamples = [];
+        window.dockMotionCaptureStarted = false;
+        node.addEventListener("transitionrun", event => {
+          if (event.target !== node) return;
+          window.dockTransitionProperties.push(event.propertyName);
+          if (event.propertyName !== "translate" || window.dockMotionCaptureStarted) return;
+          window.dockMotionCaptureStarted = true;
+          const capture = () => {
+            const animation = node.getAnimations().find(item => item.transitionProperty === "translate");
+            const style = getComputedStyle(node);
+            window.dockMotionSamples.push({
+              translate: style.translate,
+              opacity: Number(style.opacity),
+              progress: animation?.effect?.getComputedTiming().progress ?? null,
+              playState: animation?.playState ?? "finished",
+            });
+            if (window.dockMotionSamples.length < 24 && animation?.playState === "running") {
+              requestAnimationFrame(capture);
+            }
+          };
+          requestAnimationFrame(capture);
+        });
         return getComputedStyle(node).transitionProperty.split(",").map(value => value.trim());
       });
       check(properties.includes("translate"), "Normal-motion dock transitions its individual translate property");
       await page.evaluate(() => window.scrollBy(0, -24));
-      await page.waitForFunction(() => window.dockTransitionProperties.includes("translate"), null, { timeout: 1200 });
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+      await page.waitForFunction(() => window.dockMotionSamples.some(sample =>
+        typeof sample.progress === "number" && sample.progress > 0 && sample.progress < 1 &&
+        sample.opacity > 0 && sample.opacity < 1
+      ), null, { timeout: 1200 });
       const motion = await page.locator(".sun-mobile-dock").evaluate(node => {
-        const animation = node.getAnimations().find(item => item.transitionProperty === "translate");
-        return { properties: window.dockTransitionProperties, translate: getComputedStyle(node).translate, progress: animation?.effect?.getComputedTiming().progress };
+        const samples = window.dockMotionSamples.slice(0, 24);
+        const interpolated = samples.find(sample => typeof sample.progress === "number" &&
+          sample.progress > 0 && sample.progress < 1 && sample.opacity > 0 && sample.opacity < 1);
+        return { properties: window.dockTransitionProperties, samples, ...interpolated };
       });
       check(motion.properties.includes("opacity") && motion.properties.includes("translate"), "Actual dock restoration runs opacity and sliding transitions");
-      check(typeof motion.progress === "number" && motion.progress > 0 && motion.progress < 1, "Dock translation interpolates during normal motion");
+      check(typeof motion.progress === "number" && motion.progress > 0 && motion.progress < 1 &&
+        motion.opacity > 0 && motion.opacity < 1, "Dock translation interpolates during normal motion");
       report.motion.push({ width, reducedMotion: "no-preference", ...motion });
       await idle(page);
     }
