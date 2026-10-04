@@ -53,7 +53,7 @@ test("experience event route verifies fresh capability after public scope auth a
   assert.doesNotMatch(source, /consumeSunFreshHandoff/);
   assert.doesNotMatch(source, /body\.(?:freshTap|isFreshCommercialTap|allowSensitiveEvents)/);
 
-  const shareAuth = source.indexOf("const auth = requireShareToken(");
+  const shareAuth = source.indexOf("const auth = requirePublicExperienceShare(");
   const capability = source.indexOf("const fresh = requireSunFreshHandoff(");
   const context = source.indexOf("const context = await loadPublicExperienceContext(");
   const sink = source.indexOf("const saved = await recordPublicExperienceEvent(");

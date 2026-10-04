@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { sql } from "./db";
 import { getActiveProgram, getTapEvent } from "./loyalty-service";
-import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "./tap-commercial-rights";
-import { ensureTenantMembership } from "./consumer-portal-service";
+import { readCurrentTapCommercialRights } from "./tap-commercial-rights";
+import { ensureConsumerPortalSchema } from "./commercial-runtime-schema";
+import { isCurrentLoyaltyTapEligible, LOYALTY_TAP_RESULTS } from "./loyalty-tap-policy";
 
 export type TriviaQuestion = {
   id: string;
@@ -306,7 +307,7 @@ export async function getTriviaForTap(input: {
 
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false as const, status: 404, error: "event_not_found" as const };
-  if (!evaluateTapCommercialRights(event).allowed) {
+  if (!isCurrentLoyaltyTapEligible(event)) {
     return { ok: false as const, status: 403, error: "tap_commercial_rights_blocked" as const };
   }
   const program = await getActiveProgram(event.tenant_id);
@@ -400,6 +401,7 @@ export async function submitTriviaForTap(input: {
   const event = await getTapEvent(input.eventId);
   const program = event ? await getActiveProgram(event.tenant_id) : null;
   if (!event || !program) return { ok: false as const, status: 404, error: "event_not_found" as const };
+  if (!isCurrentLoyaltyTapEligible(event)) return { ok: false as const, status: 403, error: "tap_commercial_rights_blocked" as const };
   const currentRights = await readCurrentTapCommercialRights(event.id);
   if (!currentRights.allowed) {
     return { ok: false as const, status: currentRights.reason === "manual_opening_declared" ? 403 : 503, error: currentRights.reason };
@@ -424,7 +426,7 @@ export async function submitTriviaForTap(input: {
   const pointsPerCorrect = Number(quiz.points_per_correct || 10);
   const completionBonus = scoring.score >= Number(quiz.pass_threshold || 1) ? Number(quiz.completion_bonus || 0) : 0;
   const pointsToAward = scoring.score * pointsPerCorrect + completionBonus;
-  await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "trivia" });
+  await ensureConsumerPortalSchema();
   const awardMetadata = JSON.stringify({
     quizId: quiz.id,
     score: scoring.score,
@@ -445,19 +447,35 @@ export async function submitTriviaForTap(input: {
     completionBonus,
   });
   const atomicRows = await sql/*sql*/`
-    WITH tap_rights AS MATERIALIZED (
+    WITH current_tag AS MATERIALIZED (
+      SELECT tag.id
+      FROM events source_event
+      JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
+      JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
+      WHERE source_event.id = ${event.id}::bigint
+        AND source_event.tenant_id = ${event.tenant_id}
+        AND UPPER(source_event.result) = ANY(${[...LOYALTY_TAP_RESULTS]}::text[])
+        AND BTRIM(COALESCE(source_event.uid_hex, '')) <> ''
+        AND tag.status = 'active'
+        AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
+        AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
+      FOR SHARE OF tag
+    ), tap_rights AS MATERIALIZED (
       SELECT true AS allowed
       FROM events source_event
+      JOIN current_tag ON true
       LEFT JOIN tag_manual_tamper_overrides manual_override
         ON manual_override.batch_id = source_event.batch_id
        AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
       WHERE source_event.id = ${event.id}::bigint
         AND UPPER(COALESCE(source_event.result, '')) NOT IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
-        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
-        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_OPENED%'
-        AND UPPER(COALESCE(manual_override.tamper_status, '')) NOT IN ('MANUAL_OPENED', 'OPENED')
-        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
-        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
+        AND UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) NOT IN ('MANUAL_OPENED', 'OPENED')
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
     ),
     locked_member AS MATERIALIZED (
       SELECT id, points_balance, lifetime_points
@@ -477,11 +495,14 @@ export async function submitTriviaForTap(input: {
       )
       SELECT
         ${event.tenant_id}, ${program.id}, ${quiz.id}, locked_member.id, ${event.id}, ${input.consumerId},
-        ${scoring.score}, ${scoring.total}, 0, ${JSON.stringify(scoring.details)}::jsonb,
-        'processing', ${idempotencyKey}, ${attemptMetadata}::jsonb
+        ${scoring.score}, ${scoring.total}, ${pointsToAward}, ${JSON.stringify(scoring.details)}::jsonb,
+        'completed', ${idempotencyKey}, ${attemptMetadata}::jsonb
       FROM locked_member
+      WHERE ${pointsToAward} = 0 OR NOT EXISTS (
+        SELECT 1 FROM points_ledger WHERE idempotency_key = ${ledgerIdempotencyKey}
+      )
       ON CONFLICT (idempotency_key) DO NOTHING
-      RETURNING id
+      RETURNING *
     ),
     reserved_ledger AS MATERIALIZED (
       INSERT INTO points_ledger (
@@ -490,11 +511,10 @@ export async function submitTriviaForTap(input: {
       )
       SELECT
         ${event.tenant_id}, ${program.id}, locked_member.id, ${event.id},
-        'QUIZ_COMPLETED'::points_source, ${pointsToAward}, 0, ${ledgerIdempotencyKey},
+        'QUIZ_COMPLETED'::points_source, ${pointsToAward}, locked_member.points_balance + ${pointsToAward}, ${ledgerIdempotencyKey},
         ${`Trivia ${quiz.code}`}, ${awardMetadata}::jsonb
       FROM locked_member, reserved_attempt
       WHERE ${pointsToAward} > 0
-      ON CONFLICT (idempotency_key) DO NOTHING
       RETURNING id
     ),
     award_gate AS MATERIALIZED (
@@ -516,37 +536,41 @@ export async function submitTriviaForTap(input: {
       WHERE loyalty_member.id = award_gate.member_id
       RETURNING loyalty_member.id, loyalty_member.points_balance, loyalty_member.lifetime_points, award_gate.attempt_id, award_gate.awarded_points
     ),
-    finalized_ledger AS MATERIALIZED (
-      UPDATE points_ledger ledger
-      SET balance_after = updated_member.points_balance
-      FROM reserved_ledger, updated_member
-      WHERE ledger.id = reserved_ledger.id
-      RETURNING ledger.id
-    ),
     projected_membership AS MATERIALIZED (
-      UPDATE tenant_consumer_memberships membership_projection
-      SET points_balance = updated_member.points_balance,
-          lifetime_points = updated_member.lifetime_points,
-          loyalty_program_id = ${program.id},
-          last_tap_event_id = ${event.id},
-          last_activity_at = now(),
-          metadata_json = COALESCE(membership_projection.metadata_json, '{}'::jsonb) || '{"pointsProjectionSource":"loyalty_members"}'::jsonb,
-          updated_at = now()
+      INSERT INTO tenant_consumer_memberships (
+        tenant_id, consumer_id, loyalty_program_id, source, first_tap_event_id,
+        last_tap_event_id, status, points_balance, lifetime_points, metadata_json
+      )
+      SELECT ${event.tenant_id}, ${input.consumerId}, ${program.id}, 'trivia', ${event.id},
+        ${event.id}, 'active', updated_member.points_balance, updated_member.lifetime_points,
+        '{"pointsProjectionSource":"loyalty_members"}'::jsonb
       FROM updated_member
-      WHERE membership_projection.tenant_id = ${event.tenant_id}
-        AND membership_projection.consumer_id = ${input.consumerId}
-      RETURNING membership_projection.id
-    ),
-    finalized_attempt AS (
-      UPDATE loyalty_quiz_attempts attempt
-      SET points_awarded = updated_member.awarded_points,
-          status = 'completed'
-      FROM updated_member, projected_membership
-      WHERE attempt.id = updated_member.attempt_id
-      RETURNING attempt.id, attempt.score, attempt.total_questions, attempt.points_awarded, attempt.status, attempt.created_at, updated_member.points_balance
+      WHERE true
+      ON CONFLICT (tenant_id, consumer_id) DO UPDATE SET
+        points_balance = EXCLUDED.points_balance,
+        lifetime_points = EXCLUDED.lifetime_points,
+        loyalty_program_id = EXCLUDED.loyalty_program_id,
+        last_tap_event_id = EXCLUDED.last_tap_event_id,
+        last_activity_at = now(),
+        status = 'active',
+        metadata_json = COALESCE(tenant_consumer_memberships.metadata_json, '{}'::jsonb) || EXCLUDED.metadata_json,
+        updated_at = now()
+      RETURNING id
     )
-    SELECT * FROM finalized_attempt
-  `;
+    SELECT reserved_attempt.id, reserved_attempt.score, reserved_attempt.total_questions,
+           reserved_attempt.points_awarded, reserved_attempt.status, reserved_attempt.created_at,
+           updated_member.points_balance
+    FROM reserved_attempt JOIN updated_member ON updated_member.attempt_id = reserved_attempt.id
+    JOIN projected_membership ON true
+  `.catch((error: unknown) => {
+    const pgError = error as { code?: string; constraint?: string };
+    // A colliding ledger reservation must roll back the entire statement,
+    // including its new completed attempt and projection. Normal repeats are
+    // already handled by the attempt reservation's ON CONFLICT above.
+    if (pgError?.code === "23505" && pgError.constraint === "points_ledger_idempotency_key_key") return null;
+    throw error;
+  });
+  if (!atomicRows) return { ok: false as const, status: 503, error: "quiz_completion_unavailable" as const };
   const attempt = atomicRows[0] || (await sql/*sql*/`
     SELECT attempt.id, attempt.score, attempt.total_questions, attempt.points_awarded, attempt.status, attempt.created_at,
            loyalty_member.points_balance

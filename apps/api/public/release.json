@@ -1,13 +1,13 @@
 {
-  "release": "2026.09.23-api-supplier-requests.3",
-  "scope": "supplier-request-assignment-and-limited-operator",
-  "baseCommit": "fca60584bbbcc8ab18e1f06e578f0286723204ef",
+  "release": "2026.10.04-api-consumer-integrity.1",
+  "scope": "consumer-single-use-verification-current-tag-benefits-and-isolated-activity",
+  "baseCommit": "daded91e5dd04be988ba5a541eee75d73ac02ab5",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
-  "databaseMigrationsIncluded": true,
+  "databaseMigrationsIncluded": false,
   "requiredMigration": "20260923180100_0116_supplier_request_assignments.sql",
-  "realtimeChangesIncluded": true,
+  "realtimeChangesIncluded": false,
   "realtimeBrokerChanged": false,
   "campaignDeliveryIncluded": false,
   "physicalLiveCertification": "not-included-in-this-release",
@@ -54,10 +54,11 @@
   "supportReportProtocol": "nexid.support-report.v1",
   "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
   "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1",
-  "dependencyMaintenance": true,
+  "dependencyMaintenance": false,
   "compatibleApiProtocolRelease": "2026.09.22-api-support-workflow.1",
   "supplierRequestProtocol": "nexid.supplier-request.v1",
   "supplierRequestReviewProtocol": "nexid.supplier-request-review.v1",
   "supplierDispatchIncluded": false,
-  "supplierRequestAssignmentProtocol": "nexid.supplier-request-assignment.v1"
+  "supplierRequestAssignmentProtocol": "nexid.supplier-request-assignment.v1",
+  "publicExperienceShareProtocol": "nexid:experience-event:v1"
 }

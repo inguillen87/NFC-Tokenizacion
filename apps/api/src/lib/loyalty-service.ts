@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "./db";
 import { ensureLoyaltySchema } from "./loyalty-schema";
-import { evaluateTapCommercialRights } from "./tap-commercial-rights";
+import { isCurrentLoyaltyTapEligible, LOYALTY_TAP_RESULTS } from "./loyalty-tap-policy";
 
 type TapEligibility = {
   award: boolean;
@@ -17,10 +17,24 @@ export async function getTapEvent(eventId: string) {
            manual_override.reason AS manual_tamper_reason,
            manual_override.source AS manual_tamper_source,
            manual_override.updated_at AS manual_tamper_updated_at,
-           t.slug AS tenant_slug, b.bid
+           t.slug AS tenant_slug, b.bid,
+           current_tag.id AS current_tag_id,
+           b.tenant_id AS current_tag_tenant_id,
+           current_tag.batch_id AS current_tag_batch_id,
+           current_tag.uid_hex AS current_tag_uid_hex,
+           current_tag.status AS current_tag_status,
+           current_tag.lifecycle_state AS current_tag_lifecycle_state,
+           current_tag.identity_count AS current_tag_identity_count
     FROM events e
     JOIN tenants t ON t.id = e.tenant_id
     LEFT JOIN batches b ON b.id = e.batch_id
+    LEFT JOIN LATERAL (
+      SELECT tag.id, tag.batch_id, tag.uid_hex, tag.status, tag.lifecycle_state,
+             count(*) OVER () AS identity_count
+      FROM tags tag
+      WHERE tag.batch_id = e.batch_id
+        AND UPPER(tag.uid_hex) = UPPER(e.uid_hex)
+    ) current_tag ON b.tenant_id = e.tenant_id
     LEFT JOIN tag_manual_tamper_overrides manual_override
       ON manual_override.batch_id = e.batch_id
      AND UPPER(manual_override.uid_hex) = UPPER(e.uid_hex)
@@ -48,8 +62,33 @@ export async function getActiveProgram(tenantId: string) {
 export async function getOrCreateMember(input: { tenantId: string; programId: string; eventId: string; memberKey: string; consumerId?: string | null; locale?: string; email?: string | null; phone?: string | null; displayName?: string | null; country?: string | null }) {
   await ensureLoyaltySchema();
   const rows = await sql/*sql*/`
+    WITH current_tag AS MATERIALIZED (
+      SELECT tag.id
+      FROM events source_event
+      JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
+      JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
+      LEFT JOIN tag_manual_tamper_overrides manual_override
+        ON manual_override.batch_id = source_event.batch_id AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
+      WHERE source_event.id = ${input.eventId}::bigint
+        AND source_event.tenant_id = ${input.tenantId}
+        AND UPPER(source_event.result) = ANY(${[...LOYALTY_TAP_RESULTS]}::text[])
+        AND BTRIM(COALESCE(source_event.uid_hex, '')) <> ''
+        AND tag.status = 'active'
+        AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
+        AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
+        AND UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) NOT IN ('MANUAL_OPENED', 'OPENED')
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
+      FOR SHARE OF tag
+    )
     INSERT INTO loyalty_members (tenant_id, program_id, event_id, member_key, consumer_id, preferred_locale, email, phone, display_name, country, status, first_tap_at, last_tap_at)
-    VALUES (${input.tenantId}, ${input.programId}, ${input.eventId}, ${input.memberKey}, ${input.consumerId || null}, ${input.locale || "es-AR"}, ${input.email || null}, ${input.phone || null}, ${input.displayName || null}, ${input.country || null}, ${input.email || input.phone || input.consumerId ? "enrolled" : "anonymous"}, now(), now())
+    SELECT ${input.tenantId}, ${input.programId}, ${input.eventId}, ${input.memberKey}, ${input.consumerId || null}, ${input.locale || "es-AR"}, ${input.email || null}, ${input.phone || null}, ${input.displayName || null}, ${input.country || null}, ${input.email || input.phone || input.consumerId ? "enrolled" : "anonymous"}, now(), now()
+    FROM current_tag
+    WHERE true
     ON CONFLICT (program_id, member_key)
     DO UPDATE SET
       event_id = EXCLUDED.event_id,
@@ -62,14 +101,14 @@ export async function getOrCreateMember(input: { tenantId: string; programId: st
       status = CASE WHEN EXCLUDED.email IS NOT NULL OR EXCLUDED.phone IS NOT NULL OR EXCLUDED.consumer_id IS NOT NULL THEN 'enrolled'::loyalty_member_status ELSE loyalty_members.status END,
       updated_at = now(),
       last_tap_at = now()
+    WHERE loyalty_members.status IN ('anonymous', 'enrolled', 'verified')
     RETURNING *
   `;
   return rows[0];
 }
 
 export async function evaluateLoyaltyForTap(input: { eventId: string; memberId: string; program: any; event: any }): Promise<TapEligibility> {
-  const commercialRights = evaluateTapCommercialRights(input.event);
-  if (!input.event || !commercialRights.allowed || BLOCKED_RESULTS.has(String(input.event.result || "").toUpperCase())) {
+  if (!isCurrentLoyaltyTapEligible(input.event)) {
     return { award: false, reason: "blocked_validation" };
   }
   await ensureLoyaltySchema();
@@ -114,23 +153,39 @@ export async function awardPoints(input: { tenantId: string; programId: string; 
   const idempotencyKey = String(input.idempotencyKey || "").trim().slice(0, 240);
   if (!idempotencyKey) return { awarded: false, duplicate: false, entry: null, error: "idempotency_key_required" as const };
   const rows = await sql/*sql*/`
-    WITH tap_rights AS MATERIALIZED (
+    WITH current_tag AS MATERIALIZED (
+      SELECT tag.id
+      FROM events source_event
+      JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
+      JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
+      WHERE source_event.id = ${input.tapEventId || null}::bigint
+        AND source_event.tenant_id = ${input.tenantId}
+        AND UPPER(source_event.result) = ANY(${[...LOYALTY_TAP_RESULTS]}::text[])
+        AND BTRIM(COALESCE(source_event.uid_hex, '')) <> ''
+        AND tag.status = 'active'
+        AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
+        AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
+      FOR SHARE OF tag
+    ), tap_rights AS MATERIALIZED (
       SELECT true AS allowed
       WHERE ${delta} < 0
          OR ${input.tapEventId || null}::bigint IS NULL
          OR EXISTS (
            SELECT 1
            FROM events source_event
+            JOIN current_tag ON true
            LEFT JOIN tag_manual_tamper_overrides manual_override
              ON manual_override.batch_id = source_event.batch_id
             AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
            WHERE source_event.id = ${input.tapEventId || null}::bigint
              AND UPPER(COALESCE(source_event.result, '')) NOT IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
-             AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
-             AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_OPENED%'
-             AND UPPER(COALESCE(manual_override.tamper_status, '')) NOT IN ('MANUAL_OPENED', 'OPENED')
-             AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
-             AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+             AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+             AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+             AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
+             AND UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) NOT IN ('MANUAL_OPENED', 'OPENED')
+             AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+             AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+             AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
          )
     ),
     locked_member AS MATERIALIZED (
@@ -140,6 +195,7 @@ export async function awardPoints(input: { tenantId: string; programId: string; 
       WHERE id = ${input.memberId}
         AND tenant_id = ${input.tenantId}
         AND program_id = ${input.programId}
+        AND (${delta} < 0 OR ${input.tapEventId || null}::bigint IS NULL OR status IN ('anonymous', 'enrolled', 'verified'))
         AND (${delta} >= 0 OR points_balance >= abs(${delta}))
       FOR UPDATE
     ),
@@ -150,11 +206,11 @@ export async function awardPoints(input: { tenantId: string; programId: string; 
       )
       SELECT
         ${input.tenantId}, ${input.programId}, id, ${input.tapEventId || null},
-        ${input.source}::points_source, ${delta}, 0, ${idempotencyKey},
+        ${input.source}::points_source, ${delta}, locked_member.points_balance + ${delta}, ${idempotencyKey},
         ${input.reason || null}, ${JSON.stringify(input.metadata || {})}::jsonb
       FROM locked_member
       ON CONFLICT (idempotency_key) DO NOTHING
-      RETURNING id
+      RETURNING *
     ),
     updated_member AS MATERIALIZED (
       UPDATE loyalty_members member
@@ -164,15 +220,8 @@ export async function awardPoints(input: { tenantId: string; programId: string; 
       FROM locked_member, reserved_ledger
       WHERE member.id = locked_member.id
       RETURNING member.points_balance
-    ),
-    finalized_ledger AS (
-      UPDATE points_ledger ledger
-      SET balance_after = updated_member.points_balance
-      FROM reserved_ledger, updated_member
-      WHERE ledger.id = reserved_ledger.id
-      RETURNING ledger.*
     )
-    SELECT * FROM finalized_ledger
+    SELECT reserved_ledger.* FROM reserved_ledger JOIN updated_member ON true
   `;
   if (rows[0]) return { awarded: true, duplicate: false, entry: rows[0] };
   const existing = await sql/*sql*/`
@@ -191,6 +240,7 @@ export async function awardPoints(input: { tenantId: string; programId: string; 
 export async function claimTapPoints(input: { eventId: string; memberKey?: string; consumerId?: string | null; email?: string | null; phone?: string | null; locale?: string }) {
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false, status: 404, error: "event_not_found" as const };
+  if (!isCurrentLoyaltyTapEligible(event)) return { ok: false, status: 403, error: "event_security_blocked" as const };
 
   const program = await getActiveProgram(event.tenant_id);
   if (!program) return { ok: false, status: 404, error: "program_not_found" as const };
@@ -206,6 +256,7 @@ export async function claimTapPoints(input: { eventId: string; memberKey?: strin
     phone: input.phone || null,
     country: event.country_code || null,
   });
+  if (!member) return { ok: false, status: 403, error: "event_security_blocked" as const };
 
   const tap = await evaluateLoyaltyForTap({ eventId: String(event.id), memberId: member.id, event, program });
   if (!tap.award) return { ok: true, status: 200, awarded: false, reason: tap.reason, member, memberId: member.id, points: 0 };
@@ -231,14 +282,27 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
   await ensureLoyaltySchema();
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false, status: 404, error: "event_not_found" as const };
-  if (!evaluateTapCommercialRights(event).allowed || BLOCKED_RESULTS.has(String(event.result || "").toUpperCase())) {
+  if (!isCurrentLoyaltyTapEligible(event)) {
     return { ok: false, status: 403, error: "tap_blocked" as const };
   }
 
   const code = `NX-${randomUUID().split("-")[0].toUpperCase()}`;
   const spendIdem = `redeem:${input.rewardId}:member:${input.memberId}:event:${event.id}`;
   const redemptionRows = await sql/*sql*/`
-    WITH locked AS MATERIALIZED (
+    WITH current_tag AS MATERIALIZED (
+      SELECT tag.id
+      FROM events source_event
+      JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
+      JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
+      WHERE source_event.id = ${String(event.id)}::bigint
+        AND source_event.tenant_id = ${event.tenant_id}
+        AND UPPER(source_event.result) = ANY(${[...LOYALTY_TAP_RESULTS]}::text[])
+        AND BTRIM(COALESCE(source_event.uid_hex, '')) <> ''
+        AND tag.status = 'active'
+        AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
+        AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
+      FOR SHARE OF tag
+    ), locked AS MATERIALIZED (
       SELECT
         reward.id AS reward_id,
         reward.tenant_id,
@@ -246,13 +310,15 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         reward.code,
         reward.title,
         reward.points_cost,
-        member.id AS member_id
+        member.id AS member_id,
+        member.points_balance AS member_points_balance
       FROM rewards reward
       JOIN loyalty_members member
         ON member.id = ${input.memberId}
        AND member.tenant_id = reward.tenant_id
        AND member.program_id = reward.program_id
       JOIN events source_event ON source_event.id = ${String(event.id)}::bigint
+      JOIN current_tag ON true
       LEFT JOIN tag_manual_tamper_overrides manual_override
         ON manual_override.batch_id = source_event.batch_id
        AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
@@ -265,11 +331,13 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         AND (reward.ends_at IS NULL OR reward.ends_at >= now())
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
         AND UPPER(COALESCE(source_event.result, '')) NOT IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
-        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
-        AND UPPER(COALESCE(source_event.reason, '')) NOT LIKE '%MANUAL_OPENED%'
-        AND UPPER(COALESCE(manual_override.tamper_status, '')) NOT IN ('MANUAL_OPENED', 'OPENED')
-        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_TAMPER_OPENED%'
-        AND UPPER(COALESCE(manual_override.reason, '')) NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
+        AND UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) NOT IN ('MANUAL_OPENED', 'OPENED')
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
+        AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
       FOR UPDATE OF reward, member
     ),
     reserved_ledger AS MATERIALIZED (
@@ -279,7 +347,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
       )
       SELECT
         tenant_id, program_id, member_id, ${String(event.id)}, 'REWARD_REDEEMED'::points_source,
-        -abs(points_cost), 0, ${spendIdem}, 'Authenticated reward redemption',
+        -abs(points_cost), member_points_balance - points_cost, ${spendIdem}, 'Authenticated reward redemption',
         jsonb_build_object('rewardId', reward_id, 'title', title)
       FROM locked
       ON CONFLICT (idempotency_key) DO NOTHING
@@ -303,13 +371,6 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
       RETURNING reward.id
     ),
-    finalized_ledger AS MATERIALIZED (
-      UPDATE points_ledger ledger
-      SET balance_after = updated_member.points_balance
-      FROM reserved_ledger, updated_member
-      WHERE ledger.id = reserved_ledger.id
-      RETURNING ledger.id
-    ),
     inserted_redemption AS (
       INSERT INTO reward_redemptions (
         tenant_id, program_id, reward_id, member_id, status,
@@ -319,7 +380,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         locked.tenant_id, locked.program_id, locked.reward_id, locked.member_id,
         'confirmed', abs(locked.points_cost), ${code},
         ${JSON.stringify({ locale: input.locale || "es-AR", idempotencyKey: spendIdem })}::jsonb
-      FROM locked, updated_member, updated_reward, finalized_ledger
+      FROM locked, updated_member, updated_reward, reserved_ledger
       RETURNING *
     )
     SELECT * FROM inserted_redemption
