@@ -19,10 +19,16 @@ function compile(source, overrides = {}) {
 const taps = compile(readFileSync(new URL("_components/consumer-taps-model.ts", root), "utf8"));
 const home = compile(readFileSync(new URL("_components/consumer-home-model.ts", root), "utf8"));
 const styles = new Proxy({}, { get: (_, name) => String(name) });
+const editorialModel = compile(readFileSync(new URL("../sun/current-editorial-resources-model.ts", root), "utf8"));
+const editorial = compile(readFileSync(new URL("../sun/current-editorial-resources-view.tsx", root), "utf8"), {
+  "./current-editorial-resources-model": editorialModel,
+  "./current-editorial-resources.module.css": { __esModule: true, default: styles },
+});
 function page(payload, denied = false) {
   const calls = [];
   const Page = compile(source, {
     "../../_components/reading-current-notices":{ReadingCurrentNotices:()=>null},
+    "../../../sun/current-editorial-resources-view": editorial,
     "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
     "../../_components/consumer-api": { requireConsumerSession: async (next) => { calls.push(["auth", next]); if (denied) throw new Error("redirect-login"); }, fetchConsumerPath: async (path) => { calls.push(["fetch", path]); return payload; } },
     "../../_components/consumer-home-model": home,
@@ -86,4 +92,39 @@ test("detail provides both themes, touch controls, mobile layout and reduced mot
   assert.match(css,/html\[data-theme="dark"\]/); assert.match(css,/:focus-visible/);
   assert.match(css,/min-height: 46px/); assert.match(css,/@media \(max-width: 520px\)/); assert.match(css,/prefers-reduced-motion/);
   assert.doesNotMatch(source,/setInterval|Math\.random|window\.location|public\/certificates|shareToken/);
+});
+
+const publication = { protocol: "nexid.current-editorial.v1", source: "passport_studio", state: "published", observedAt: "2026-10-05T15:00:00Z", version: 3,
+  publishedAt: "2026-10-04T15:00:00Z", contentDigest: "a".repeat(64), document: { schemaVersion: "nexid.passport-editorial.v1", template: "agro", locale: "es-AR",
+    identity: { product_name: "Producto actual publicado", public_lot_label: "PUBLICADO-3", sku: null, winery: "Empresa actual publicada", region: null, image_url: null },
+    agro_product_profile: { technicalSheetUrl: "https://docs.example.test/current.pdf", safetySheetUrl: null } } };
+test("the current tenant publication is separate from the unchanged saved reading and adds no request", async () => {
+  const subject = page({ ...valid, currentEditorial: publication, item: { ...valid.item, product_name: "Producto actual publicado", brand_name: "Empresa actual publicada",
+    historical_product_name: "Producto histórico", historical_brand_name: "Empresa histórica" } });
+  const html = await subject.render();
+  assert.deepEqual(subject.calls, [["auth", "/me/taps/566"], ["fetch", "taps/566"]]);
+  assert.match(html, /<h2>Producto histórico<\/h2>/);
+  assert.match(html, /Empresa histórica/);
+  assert.match(html, /Ficha editorial vigente/);
+  assert.match(html, /Producto actual publicado/);
+  assert.match(html, /data-editorial-state="published"/);
+  assert.match(html, /No modifica su resultado ni habilita acciones protegidas/);
+  assert.match(html, /current\.pdf/);
+  assert.doesNotMatch(html, /fresh_token|freshToken|Guardar puntos|canje/);
+});
+test("withdrawn, invalid and unavailable editorial content never fall back to historical documents", async () => {
+  for (const state of ["withdrawn", "unpublished", "legacy", "invalid", "unavailable"]) {
+    const html = await page({ ...valid, item: { ...valid.item, currentEditorial: { ...publication, state }, technicalSheetUrl: "https://docs.example.test/historical.pdf" } }).render();
+    assert.match(html, new RegExp(`data-editorial-state="${state}"`));
+    assert.match(html, /Producto de prueba/);
+    assert.doesNotMatch(html, /Producto actual publicado|current\.pdf|historical\.pdf/);
+  }
+  const unavailable = await page(valid).render();
+  assert.match(unavailable, /data-editorial-state="unavailable"/);
+});
+test("unauthorized or mismatched details never render a current publication", async () => {
+  for (const payload of [{ ok: false, currentEditorial: publication, item: valid.item }, { ok: true, currentEditorial: publication, item: { ...valid.item, tap_event_id: "567" } }]) {
+    const html = await page(payload).render();
+    assert.doesNotMatch(html, /Producto actual publicado|current\.pdf|Ficha editorial vigente/);
+  }
 });

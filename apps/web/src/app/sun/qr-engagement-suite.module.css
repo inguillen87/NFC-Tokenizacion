@@ -48,3 +48,12 @@
   outline: 3px solid currentColor;
   outline-offset: 2px;
 }
+
+.triviaButton {
+  min-height: 44px;
+}
+
+.triviaButton:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}

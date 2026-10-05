@@ -12,6 +12,7 @@ import {
 } from "../../lib/sommelier-guidance";
 import { useSunLocale } from "./sun-locale-provider";
 import styles from "./qr-engagement-suite.module.css";
+import { configuredTriviaQuestions, confirmedPreviousTrivia, confirmedTriviaResult, triviaContextAvailable, triviaRecoveryDescription, triviaSubmissionBody, type ClientTriviaQuestion, type TriviaResult } from "./sun-trivia-model";
 
 const FEEDBACK_COPY = {
   "es-AR": { explanation: "Tu opinión se envía a la marca junto con esta lectura.", rating: (star: number) => `Calificar con ${star} estrella${star > 1 ? "s" : ""}`, comment: "Comentario corto", commentHint: "Comentario opcional para la marca", send: "Enviar opinión", saving: "Guardando..." },
@@ -28,30 +29,13 @@ interface ChatMessage {
   provenance?: SommelierProvenance;
 }
 
-type ClientTriviaQuestion = {
-  id: string;
-  prompt: string;
-  options: string[];
-  explanation?: string;
-  insightTag?: string;
-  correctIndex?: number;
-};
-
-type TriviaResult = {
-  score: number;
-  total: number;
-  pointsAwarded: number;
-  isLocal?: boolean;
-  requiresLogin?: boolean;
-  alreadyCompleted?: boolean;
-  explanations?: Array<ClientTriviaQuestion & { correct?: boolean; answerIndex?: number; correctIndex?: number }>;
-};
-
 type QREngagementSuiteProps = {
   wineryName: string;
   productName: string;
   tenantSlug?: string | null;
   eventId?: string | null;
+  freshToken?: string;
+  isDemoPreview?: boolean;
   bid?: string | null;
   allowedActions?: string[];
   blockedActions?: string[];
@@ -107,8 +91,10 @@ function asResultFromLocal(questions: ClientTriviaQuestion[], answers: Record<st
 export function QREngagementSuite({
   wineryName,
   productName,
-  tenantSlug = "demobodega",
+  tenantSlug = null,
   eventId = null,
+  freshToken = "",
+  isDemoPreview = false,
   bid = null,
   allowedActions = [],
   blockedActions = [],
@@ -123,15 +109,21 @@ export function QREngagementSuite({
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const fallbackTrivia = useMemo(() => localTrivia(productName, wineryName), [locale, productName, wineryName]);
+  const fallbackTrivia = useMemo(() => isDemoPreview ? localTrivia(productName, wineryName) : [], [isDemoPreview, productName, wineryName]);
   const [triviaQuestions, setTriviaQuestions] = useState<ClientTriviaQuestion[]>(fallbackTrivia);
+  const triviaScope = JSON.stringify([eventId, tenantSlug]);
+  const [configuredTriviaScope, setConfiguredTriviaScope] = useState<string | null>(null);
   const [triviaStep, setTriviaStep] = useState(0);
   const [triviaAnswers, setTriviaAnswers] = useState<Record<string, number>>({});
   const [triviaDone, setTriviaDone] = useState(false);
   const [triviaLoading, setTriviaLoading] = useState(false);
   const [triviaSubmitting, setTriviaSubmitting] = useState(false);
+  const [triviaSubmissionLocked, setTriviaSubmissionLocked] = useState(false);
   const [triviaError, setTriviaError] = useState<string | null>(null);
   const [triviaResult, setTriviaResult] = useState<TriviaResult | null>(null);
+  const canSubmitTrivia = triviaContextAvailable(eventId, tenantSlug, freshToken);
+  const canPlayTrivia = isDemoPreview || canSubmitTrivia && !triviaSubmissionLocked && configuredTriviaScope === triviaScope && triviaQuestions.length > 0 && !triviaError;
+  const showTriviaResult = triviaDone && (isDemoPreview || configuredTriviaScope === triviaScope);
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -204,6 +196,10 @@ export function QREngagementSuite({
     rating?: number;
     extra?: Record<string, unknown>;
   }, quiet = false) => {
+    if (!tenantSlug || !/^[a-z0-9][a-z0-9._-]{0,119}$/.test(tenantSlug)) {
+      if (!quiet) setLeadError("No se informó una empresa válida para esta lectura. Realizá una nueva lectura del producto.");
+      return false;
+    }
     if (!quiet) {
       setSubmittingLead(true);
       setLeadError(null);
@@ -263,15 +259,17 @@ export function QREngagementSuite({
 
   useEffect(() => {
     setTriviaQuestions(fallbackTrivia);
+    setConfiguredTriviaScope(null);
     setTriviaStep(0);
     setTriviaAnswers({});
     setTriviaDone(false);
     setTriviaResult(null);
     setTriviaError(null);
-  }, [fallbackTrivia, eventId]);
+    setTriviaSubmissionLocked(false);
+  }, [fallbackTrivia, triviaScope, freshToken]);
 
   useEffect(() => {
-    if (activeTab !== "trivia" || !eventId) return;
+    if (activeTab !== "trivia" || isDemoPreview || triviaSubmissionLocked || !canSubmitTrivia || !eventId) return;
     const triviaEventId = eventId;
     let cancelled = false;
     async function loadTrivia() {
@@ -281,29 +279,26 @@ export function QREngagementSuite({
         const triviaParams = new URLSearchParams({
           locale,
           tenant: tenantSlug || "",
-          product: productName,
-          winery: wineryName,
         });
         const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia?${triviaParams.toString()}`, { cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload?.ok === false || !Array.isArray(payload?.quiz?.questions)) {
+        const questions = configuredTriviaQuestions(payload);
+        if (!response.ok || !questions) {
           throw new Error(payload?.error || "trivia_unavailable");
         }
         if (cancelled) return;
-        setTriviaQuestions(payload.quiz.questions as ClientTriviaQuestion[]);
+        setTriviaQuestions(questions);
+        setConfiguredTriviaScope(triviaScope);
         if (payload.previousAttempt) {
-          setTriviaResult({
-            score: Number(payload.previousAttempt.score || 0),
-            total: Number(payload.previousAttempt.total_questions || payload.quiz.questions.length || 0),
-            pointsAwarded: Number(payload.previousAttempt.points_awarded || 0),
-            alreadyCompleted: true,
-            requiresLogin: !payload.member?.consumerLinked,
-          });
+          const previous = confirmedPreviousTrivia(payload.previousAttempt, questions.length, payload.member?.consumerLinked);
+          if (!previous) throw new Error("trivia_result_unconfirmed");
+          setTriviaResult(previous);
           setTriviaDone(true);
         }
       } catch (error) {
         if (!cancelled) {
-          setTriviaQuestions(fallbackTrivia);
+          setTriviaQuestions([]);
+          setConfiguredTriviaScope(null);
           setTriviaError(error instanceof Error ? error.message : "trivia_unavailable");
         }
       } finally {
@@ -314,7 +309,7 @@ export function QREngagementSuite({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, eventId, fallbackTrivia, locale, productName, tenantSlug, wineryName]);
+  }, [activeTab, eventId, freshToken, isDemoPreview, triviaSubmissionLocked, canSubmitTrivia, locale, tenantSlug, triviaScope]);
 
   const handleSendChat = async (textToSend: string) => {
     if (!textToSend.trim()) return;
@@ -380,7 +375,7 @@ export function QREngagementSuite({
   };
 
   const handleNextQuestion = async () => {
-    if (!currentQuestion || selectedAnswer === null) return;
+    if (!canPlayTrivia || triviaSubmitting || !currentQuestion || selectedAnswer === null) return;
     if (triviaStep < triviaQuestions.length - 1) {
       setTriviaStep((prev) => prev + 1);
       return;
@@ -394,39 +389,38 @@ export function QREngagementSuite({
         answerIndex: triviaAnswers[question.id] ?? -1,
       }));
       const triviaEventId = eventId;
-      if (!triviaEventId) {
+      if (isDemoPreview) {
         setTriviaResult(asResultFromLocal(triviaQuestions, triviaAnswers));
         setTriviaDone(true);
         return;
       }
+      const submission = triviaSubmissionBody({ eventId: triviaEventId, tenantSlug, freshToken, locale, answers });
+      if (!triviaEventId || !submission) throw new Error("fresh_tap_capability_required");
+      setTriviaSubmissionLocked(true);
       const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, tenantSlug, productName, brandName: wineryName, answers }),
+        body: JSON.stringify(submission),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload?.ok === false) {
         throw new Error(payload?.error || "trivia_submit_failed");
       }
-      setTriviaResult({
-        score: Number(payload.score || 0),
-        total: Number(payload.total || triviaQuestions.length),
-        pointsAwarded: Number(payload.pointsAwarded || 0),
-        requiresLogin: Boolean(payload.requiresLogin),
-        alreadyCompleted: Boolean(payload.alreadyCompleted),
-        explanations: Array.isArray(payload.explanations) ? payload.explanations : [],
-      });
+      const confirmed = confirmedTriviaResult(payload, triviaQuestions.length);
+      if (!confirmed) throw new Error("trivia_result_unconfirmed");
+      setTriviaResult(confirmed);
       setTriviaDone(true);
     } catch (error) {
-      setTriviaError(error instanceof Error ? error.message : "trivia_submit_failed");
-      setTriviaResult(asResultFromLocal(triviaQuestions, triviaAnswers));
-      setTriviaDone(true);
+      const reason = error instanceof Error ? error.message : "";
+      setTriviaError(reason === "fresh_tap_capability_required" ? reason : "trivia_submit_failed");
+      setTriviaResult(null);
     } finally {
       setTriviaSubmitting(false);
     }
   };
 
   const handleRestartTrivia = () => {
+    if (!isDemoPreview) return;
     setTriviaStep(0);
     setTriviaAnswers({});
     setTriviaResult(null);
@@ -531,18 +525,18 @@ export function QREngagementSuite({
 
         {activeTab === "trivia" && (
           <div className="v3-space-y-4">
-            {!triviaDone ? (
+            {!canPlayTrivia && !showTriviaResult ? <div role="status" data-testid="sun-trivia-unavailable" className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-xs leading-relaxed text-slate-200">
+              <strong>{triviaSubmitting ? "Confirmando el envío" : triviaLoading ? "Consultando la trivia publicada" : "Trivia no disponible en esta lectura"}</strong>
+              <p className="mt-2">{triviaSubmitting ? "Esperá la confirmación. El envío no se repite." : triviaLoading ? "Esperá a que la marca confirme sus preguntas y condiciones." : triviaRecoveryDescription(triviaError, canSubmitTrivia)}</p>
+              <Link href="/me/rewards" className="mt-3 inline-flex min-h-11 items-center underline">Consultar mis beneficios</Link>
+            </div> : !showTriviaResult ? (
               <div className="v3-space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   <span className="flex items-center gap-1 text-cyan-200"><Brain className="h-3.5 w-3.5" /> Market quiz</span>
                   <span>{triviaLoading ? "Cargando" : `Pregunta ${triviaStep + 1} de ${triviaQuestions.length}`}</span>
                 </div>
 
-                {triviaError ? (
-                  <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-[11px] leading-relaxed text-amber-100">
-                    Trivia funcionando en modo local por falta de conexión con API. El flujo real guarda intentos y puntos cuando el tap tiene evento válido.
-                  </div>
-                ) : null}
+                {isDemoPreview ? <p className="text-xs text-slate-300">Trivia ilustrativa de demostración. No guarda respuestas ni otorga puntos o premios.</p> : null}
 
                 <h4 className="text-sm font-bold leading-normal text-white">
                   {currentQuestion?.prompt || "Cargando pregunta del producto..."}
@@ -555,7 +549,7 @@ export function QREngagementSuite({
                       type="button"
                       title={`Elegir respuesta ${idx + 1}`}
                       onClick={() => setTriviaAnswers((prev) => ({ ...prev, [currentQuestion.id]: idx }))}
-                      className={`w-full rounded-xl border p-3.5 text-left text-xs transition-all ${
+                      className={`${styles.triviaButton} w-full rounded-xl border p-3.5 text-left text-xs transition-all ${
                         selectedAnswer === idx
                           ? "border-amber-500 bg-amber-500/10 font-bold text-white"
                           : "border-white/5 bg-black/30 text-slate-300 hover:bg-white/5"
@@ -569,9 +563,9 @@ export function QREngagementSuite({
                 <button
                   type="button"
                   title={triviaStep === triviaQuestions.length - 1 ? "Enviar respuestas y calcular puntos" : "Pasar a la siguiente pregunta"}
-                  disabled={selectedAnswer === null || triviaSubmitting || triviaLoading}
+                  disabled={!canPlayTrivia || selectedAnswer === null || triviaSubmitting || triviaLoading}
                   onClick={handleNextQuestion}
-                  className="w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
+                  className={`${styles.triviaButton} w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50`}
                 >
                   {triviaSubmitting ? "Guardando..." : triviaStep === triviaQuestions.length - 1 ? "Finalizar trivia" : "Siguiente pregunta"}
                 </button>
@@ -626,14 +620,14 @@ export function QREngagementSuite({
                   </div>
                 ) : null}
 
-                <button
+                {isDemoPreview ? <button
                   type="button"
                   title="Reiniciar la trivia en este navegador"
                   onClick={handleRestartTrivia}
                   className="mx-auto block text-xs font-bold text-slate-400 underline transition hover:text-white"
                 >
                   Intentar de nuevo
-                </button>
+                </button> : null}
               </div>
             )}
           </div>

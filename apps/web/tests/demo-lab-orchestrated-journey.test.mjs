@@ -171,7 +171,8 @@ test("SUN reuses its existing demo preview for Demo Lab product handoffs", async
   assert.match(sun, /handoffProfile\.brand/);
   assert.match(sun, /handoffProfile\.lot/);
   assert.match(sun, /const isDemoPreview = !isQrScan && query\.toString\(\)\.length === 0 && !snapshotId/);
-  assert.match(sun, /const requestedBrandDisplay = isDemoPreview\s*\? ""\s*:\s*readParam\(params, "winery"\) \|\| readParam\(params, "brand"\)/);
+  assert.match(sun, /resolveSunTenantIdentity\(result\)/);
+  assert.doesNotMatch(sun, /const requestedBrandDisplay|const engagementTenantSlug = readParam/);
   assert.match(sun, /const engagementBaseEligible = !isDemoPreview/);
   assert.match(sun, /const primaryPostTapAction = isDemoPreview\s*\? isDemoLabHandoff\s*\? \{ label: "Ver opciones de muestra", href: "#sun-services"[\s\S]*?: \{ label: "Conocer el producto", href: "#product-info"/);
   assert.match(sun, /\{!isDemoPreview && hasSourceResult \? <details className="group rounded-2xl/);
