@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import ts from 'typescript';
-import { readCurrentPassportEditorial, projectCurrentPassportEditorial } from '../src/lib/current-passport-editorial.ts';
+import { readCurrentPassportEditorial, readCurrentPassportEditorialCollection, projectCurrentPassportEditorial } from '../src/lib/current-passport-editorial.ts';
 import { editorialContentDigest, parseEditorialDocument } from '../src/lib/passport-editorial-policy.ts';
 
 const observed = '2026-09-21T23:00:00.000Z';
@@ -58,15 +58,43 @@ test('legacy, version-zero baseline, withdrawn batch and missing event are separ
 test('event references stay exact and invalid references never reach SQL', async () => {
   let calls = 0;
   const execute = async (strings, ...values) => {
-    calls++; assert.equal(values.length, 1); assert.equal(values[0], '9223372036854775807');
+    calls++; assert.equal(values.length, 1); assert.deepEqual(values[0], ['9223372036854775807']);
     const query = strings.join('?'); assert.match(query, /batch\.id = event\.batch_id AND batch\.tenant_id = event\.tenant_id/);
     assert.doesNotMatch(query, /\bdraft\b|\bbid\b|\buid_hex\b|\b(?:INSERT|UPDATE|CREATE|ALTER|DELETE)\b/i);
-    return [row()];
+    return [{ ...row(), event_id: '9223372036854775807' }];
   };
   for (const value of [null, 715, '0', '-1', '01', '1.2', '1e2', '9223372036854775808', '715 OR 1=1']) empty(await readCurrentPassportEditorial(value, execute), 'unavailable');
   assert.equal(calls, 0);
   assert.equal((await readCurrentPassportEditorial('9223372036854775807', execute)).state, 'published');
   assert.equal(calls, 1);
+});
+
+test('collection current content uses batched reads and exact persisted tenant, never another tenant or ambiguous event', async () => {
+  const tenantId = row().tenant_id;
+  let calls = 0;
+  const values = await readCurrentPassportEditorialCollection([
+    { eventId: '715', tenantId }, { eventId: '715', tenantId: '10000000-0000-4000-8000-000000000002' },
+    { eventId: '716', tenantId }, { eventId: '717', tenantId }, { eventId: '0', tenantId },
+  ], async (strings, ...parameters) => {
+    calls++; assert.deepEqual(parameters, [['715', '716', '717']]);
+    assert.match(strings.join('?'), /WHERE event\.id = ANY\(\?::bigint\[\]\)/);
+    return [row(), { ...row(), event_id: '716' }, { ...row(), event_id: '716' }];
+  });
+  assert.equal(calls, 1); assert.equal(values[0].state, 'published');
+  assert.deepEqual(values.slice(1).map(value => value.state), ['invalid', 'invalid', 'unavailable', 'unavailable']);
+});
+
+test('collection batching is bounded, deduplicated, and source errors do not affect historical access', async () => {
+  const scopes = Array.from({ length: 205 }, (_, i) => ({ eventId: String(i + 1), tenantId: row().tenant_id }));
+  const sizes = [];
+  const values = await readCurrentPassportEditorialCollection(scopes, async (_strings, ids) => {
+    sizes.push(ids.length);
+    if (sizes.length === 2) throw Error('private SQL detail');
+    return ids.map(id => ({ ...row(), event_id: id }));
+  });
+  assert.deepEqual(sizes, [100, 100, 5]);
+  assert.equal(values.filter(value => value.state === 'published').length, 105);
+  assert.equal(values.filter(value => value.state === 'unavailable').length, 100);
 });
 
 test('source failures, absent events and duplicate rows cannot produce current content', async () => {
@@ -119,7 +147,7 @@ test('actual snapshot reader adds current projection without changing historical
 test('actual snapshot route denies missing access before calling the reader', async () => {
   const source = await readFile(new URL('../src/app/sun/snapshot/[diagnosticId]/route.ts', import.meta.url), 'utf8');
   let calls = 0;
-  const route = functionFrom(source, 'GET', { json: (body, status, headers) => Response.json(body, { status, headers }),
+  const route = functionFrom(source, 'readSnapshot', { json: (body, status, headers) => Response.json(body, { status, headers }),
     verifySunSnapshotAccessToken: () => ({ ok: false }), getSunDiagnosticSnapshot: () => { calls++; throw new Error('not authorized'); } });
   const response = await route(new Request('https://api.example/sun/snapshot/510?trace=trace'), { params: Promise.resolve({ diagnosticId: '510' }) });
   assert.equal(response.status, 404); assert.equal(calls, 0);

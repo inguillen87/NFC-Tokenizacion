@@ -1,5 +1,12 @@
 name: Current published passport editorial
 on:
+  pull_request:
+    paths:
+      - apps/api/src/lib/current-passport-editorial.ts
+      - apps/api/src/lib/consumer-current-editorial.ts
+      - apps/api/src/app/consumer/**
+      - apps/api/tests/*editorial*.test.mjs
+      - .github/workflows/current-editorial-api-qa.yml
   push:
     branches: [codex/nexid-s8-current-editorial-api-20260921]
     paths:

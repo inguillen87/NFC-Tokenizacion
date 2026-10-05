@@ -110,7 +110,7 @@ function fixtureExecutor(options = {}) {
 
 function harness(options = {}) {
   const fixture = fixtureExecutor(options);
-  const events = [], logs = [];
+  const events = [], logs = [], editorialCalls = [];
   const loaded = {};
   const bindings = {
     process: { env: {} }, fetch: () => { throw new Error("unexpected_network_blocked"); },
@@ -119,6 +119,10 @@ function harness(options = {}) {
   const fakeRequire = (name) => {
     if (name === "./db") return { sql: fixture.executor };
     if (name.endsWith("/consumer-tap-detail")) return loaded.detail;
+    if (name.endsWith("/current-passport-editorial")) return { readCurrentPassportEditorial: async eventId => {
+      editorialCalls.push(eventId);
+      return options.currentEditorial || { protocol: "nexid.current-editorial.v1", source: "passport_studio", state: "unavailable", observedAt: null };
+    } };
     if (name.endsWith("/consumer-auth")) return { getConsumerFromRequest: async () => {
       events.push("authenticate");
       if (options.authError) throw options.authError;
@@ -135,7 +139,7 @@ function harness(options = {}) {
     loaded[name] = module.exports;
   }
   return {
-    ...loaded, ...fixture, events, logs,
+    ...loaded, ...fixture, events, logs, editorialCalls,
     get: (eventId = EVENT_ID, headers = {}) => loaded.route.GET(new Request(`https://api.nexid.test/consumer/taps/${encodeURIComponent(String(eventId))}`, { headers }), {
       params: { then(resolve, reject) {
         events.push("params");
@@ -154,8 +158,27 @@ async function responseBody(h, status, eventId = EVENT_ID, headers = {}) {
   const output = JSON.stringify(body);
   for (const value of [UID, PRIVATE_TOKEN, PRIVATE_ERROR]) assert.equal(output.includes(value), false, "private detail leaked in API output");
   assert.equal(h.logs.length, 0);
+  if (body.item) {
+    assert.deepEqual(body.item.currentEditorial, { protocol: "nexid.current-editorial.v1", source: "passport_studio", state: "unavailable", observedAt: null });
+    assert.deepEqual(h.editorialCalls, [eventId]);
+    // Existing assertions below continue to pin every historical field.
+    delete body.item.currentEditorial;
+  } else assert.equal(h.editorialCalls.length, 0, "unauthorized lookups must never read editorial content");
   return body;
 }
+
+test("authorized private reading attaches current publication without replacing the saved reading", async () => {
+  const currentEditorial = { protocol: "nexid.current-editorial.v1", source: "passport_studio", state: "published", version: 2,
+    document: { identity: { product_name: "New published name" } } };
+  const h = harness({ products: [product()], currentEditorial });
+  const response = await h.get();
+  const { item } = await response.json();
+  assert.deepEqual(item.currentEditorial, currentEditorial);
+  assert.equal(item.product_name, product().product_name);
+  assert.equal(item.verdict, history().verdict);
+  assert.equal(item.created_at, HISTORY_TIME);
+  assert.deepEqual(h.editorialCalls, [EVENT_ID]);
+});
 
 test("consumer authentication precedes awaiting parameters and all tap queries, including malformed IDs", async () => {
   for (const id of [EVENT_ID, "invalid", "01", "9223372036854775808"]) {

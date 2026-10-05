@@ -32,14 +32,27 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
         member.id AS member_id,
         member.points_balance AS balance_before
       FROM rewards reward
+      JOIN loyalty_programs program
+        ON program.id = reward.program_id
+       AND program.tenant_id = reward.tenant_id
+      JOIN tenant_consumer_memberships membership
+        ON membership.consumer_id = ${input.consumerId}
+       AND membership.tenant_id = reward.tenant_id
       JOIN loyalty_members member
         ON member.consumer_id = ${input.consumerId}
        AND member.tenant_id = reward.tenant_id
        AND member.program_id = reward.program_id
       WHERE reward.id = ${input.rewardId}
+        AND program.status = 'active'
+        AND program.start_at <= now()
+        AND (program.end_at IS NULL OR program.end_at > now())
+        AND membership.status = 'active'
         AND reward.status = 'active'
         AND reward.starts_at <= now()
-        AND (reward.ends_at IS NULL OR reward.ends_at >= now())
+        AND (reward.ends_at IS NULL OR reward.ends_at > now())
+        -- No supported verified-age authorization exists for this writer.
+        AND program.age_gate_required = false
+        AND reward.requires_age_gate = false
         AND reward.points_cost >= 0
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
         AND member.status IN ('enrolled', 'verified')
@@ -49,6 +62,7 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
           WHERE existing.idempotency_key = ${input.idempotencyKey}
         )
       FOR UPDATE OF reward, member
+      FOR SHARE OF program, membership
     ),
     reserved_ledger AS MATERIALIZED (
       INSERT INTO points_ledger (

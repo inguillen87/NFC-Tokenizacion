@@ -57,10 +57,8 @@ export function projectCurrentPassportEditorial(raw: unknown): CurrentPassportEd
 
 /** One read snapshot, keyed by persisted event scope. No schema installation or
  * secret/configuration projection. The caller must authorize access to the event. */
-export async function readCurrentPassportEditorial(eventId: unknown, execute: SqlExecutor = sql): Promise<CurrentPassportEditorial> {
-  if (typeof eventId !== "string" || !/^[1-9]\d{0,18}$/.test(eventId) || BigInt(eventId) > 9_223_372_036_854_775_807n) return empty("unavailable");
-  try {
-    const rows = await execute`
+async function readEditorialRows(eventIds: string[], execute: SqlExecutor) {
+  return execute`
       SELECT event.id::text AS event_id, event.tenant_id::text AS tenant_id, event.batch_id::text AS batch_id,
         (batch.id IS NOT NULL AND tenant.id IS NOT NULL) AS scope_valid,
         batch.status::text AS batch_status, batch.editorial_managed,
@@ -104,10 +102,49 @@ export async function readCurrentPassportEditorial(eventId: unknown, execute: Sq
         WHERE history.batch_id = batch.id AND history.tenant_id = event.tenant_id AND history.action = 'publish'
         ORDER BY history.revision DESC LIMIT 1
       ) latest ON true
-      WHERE event.id = ${eventId}::bigint
-      LIMIT 2
+      WHERE event.id = ANY(${eventIds}::bigint[])
     `;
+}
+
+function canonicalEventId(value: unknown): value is string {
+  return typeof value === "string" && /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9_223_372_036_854_775_807n;
+}
+
+export async function readCurrentPassportEditorial(eventId: unknown, execute: SqlExecutor = sql): Promise<CurrentPassportEditorial> {
+  if (!canonicalEventId(eventId)) return empty("unavailable");
+  try {
+    const rows = await readEditorialRows([eventId], execute);
     if (rows.length !== 1) return empty(rows.length ? "invalid" : "unavailable");
+    if (String(rows[0].event_id) !== eventId) return empty("invalid");
     return projectCurrentPassportEditorial(rows[0]);
   } catch { return empty("unavailable"); }
+}
+
+/** Call only after collection authorization. Each requested event is matched
+ * against its persisted tenant; ambiguous IDs never disclose current content.
+ * Batches of 100 avoid one database request per product and oversized arrays. */
+export async function readCurrentPassportEditorialCollection(
+  scopes: Array<{ eventId: unknown; tenantId: unknown }>, execute: SqlExecutor = sql,
+): Promise<Array<CurrentPassportEditorial>> {
+  const results = scopes.map(() => empty("unavailable") as CurrentPassportEditorial);
+  const ids = [...new Set(scopes.filter(scope => canonicalEventId(scope.eventId)
+    && typeof scope.tenantId === "string" && UUID.test(scope.tenantId)).map(scope => scope.eventId as string))];
+  for (let offset = 0; offset < ids.length; offset += 100) {
+    const chunk = ids.slice(offset, offset + 100), requested = new Set(chunk);
+    const byEvent = new Map<string, Array<Record<string, unknown>>>();
+    try {
+      for (const row of await readEditorialRows(chunk, execute)) {
+        const id = String(row.event_id);
+        if (requested.has(id)) byEvent.set(id, [...(byEvent.get(id) || []), row]);
+      }
+      scopes.forEach((scope, index) => {
+        if (!canonicalEventId(scope.eventId) || !requested.has(scope.eventId)) return;
+        const rows = byEvent.get(scope.eventId) || [];
+        if (rows.length !== 1 || rows[0].tenant_id !== scope.tenantId) {
+          results[index] = empty(rows.length ? "invalid" : "unavailable");
+        } else results[index] = projectCurrentPassportEditorial(rows[0]);
+      });
+    } catch { /* Keep unavailable; never fall back to unpublished content. */ }
+  }
+  return results;
 }
