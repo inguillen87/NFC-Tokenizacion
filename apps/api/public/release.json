@@ -1,7 +1,7 @@
 {
-  "release": "2026.10.04-api-consumer-integrity.1",
-  "scope": "consumer-single-use-verification-current-tag-benefits-and-isolated-activity",
-  "baseCommit": "daded91e5dd04be988ba5a541eee75d73ac02ab5",
+  "release": "2026.10.05-api-current-tag-collection.1",
+  "scope": "current-tag-ownership-eligibility-and-serialized-consumer-collection",
+  "baseCommit": "a467072c74f3b0b952bb846c0a8bb903cc866681",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },

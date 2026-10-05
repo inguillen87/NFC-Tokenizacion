@@ -14,6 +14,8 @@ import { startEnterpriseEphemeralHttpHarness } from "./lib/enterprise-ephemeral-
 
 import {runSupplierRuntimeAcceptance} from "./lib/supplier-runtime-acceptance.mjs";
 import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
+import { runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
+import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { Client, Pool } = pg;
@@ -136,6 +138,27 @@ class SseProbe {
 async function run() {
   config = readEnterpriseEphemeralE2eConfig(process.env);
   const emptyTarget = await assertDatabaseStartsEmpty();
+  // Run focused real-SQL regressions only after the existing target/version
+  // deny guards pass, before migrations or the application executor exists.
+  // Each harness owns and drops a random schema; no application table is used.
+  const connectCurrentTagQa = async () => {
+    const client = new Client({ connectionString: config.databaseUrl, connectionTimeoutMillis: 5_000 });
+    try { await client.connect(); return client; }
+    catch (error) { await client.end().catch(() => {}); throw error; }
+  };
+  const ownershipCurrentState = await runOwnershipCurrentStatePostgresQa({ connect: connectCurrentTagQa });
+  assert.ok(ownershipCurrentState.ok && ownershipCurrentState.cleanup.schemaDropped && ownershipCurrentState.cleanup.connectionsClosed, "Ownership current-state SQL regression or cleanup failed");
+  assert.equal(ownershipCurrentState.checks.length, 51);
+  assert.ok(ownershipCurrentState.checks.every(check => check.ok));
+  assert.equal(ownershipCurrentState.lockObservations.length, 4);
+  const collectionConcurrency = await runConsumerCollectionPostgresQa({ connect: connectCurrentTagQa });
+  assert.ok(collectionConcurrency.ok && collectionConcurrency.cleanup.schemaDropped && collectionConcurrency.cleanup.connectionsClosed, "Collection concurrent-save SQL regression or cleanup failed");
+  assert.equal(collectionConcurrency.checks.length, 11);
+  assert.ok(collectionConcurrency.checks.every(check => check.passed));
+  assert.equal(collectionConcurrency.lockObservations.length, 3);
+  assert.ok(collectionConcurrency.serializationConflicts >= 3);
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, ownership: ownershipCurrentState, collection: collectionConcurrency };
+  assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 
   process.env.NODE_ENV = "test";
@@ -2212,6 +2235,7 @@ async function run() {
         consumer_network_routes: Object.keys(consumerNetworkPayloads).length,
       },
       bootstrap_prerequisites: bootstrapPrerequisites,
+      current_tag_regressions: currentTagRegressionEvidence,
       supplier_chain_acceptance: supplierChainEvidence,
       supplier_runtime_acceptance: supplierRuntimeEvidence,
       consumer_network_query_plans: consumerNetworkExplainEvidence,

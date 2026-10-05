@@ -1,6 +1,6 @@
-import { sql } from "./db";
+import { sql, sqlSerializable } from "./db";
 import { claimTapPoints, getTapEvent } from "./loyalty-service";
-import { evaluateOwnershipEligibility } from "./ownership-policy";
+import { CLAIMABLE_OWNERSHIP_RESULTS, evaluateOwnershipEligibility } from "./ownership-policy";
 import { ensureConsumerPortalSchema } from "./commercial-runtime-schema";
 import { CanonicalEventWriteError, writeCanonicalEvent } from "./canonical-event-writer";
 import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "./tap-commercial-rights";
@@ -109,50 +109,53 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
   const brandName = String(tagProfile?.winery || event.tenant_slug || "Tenant").trim();
   const imageUrl = String(tagProfile?.image_url || "").trim() || null;
 
-  const existingProduct = (await sql/*sql*/`
-    SELECT id
-    FROM consumer_products
-    WHERE consumer_id = ${input.consumerId}
-      AND tenant_id = ${event.tenant_id}
-      AND (
-        product_passport_id = ${event.uid_hex || null}
-        OR (${tagProfile?.id || null}::uuid IS NOT NULL AND tag_id = ${tagProfile?.id || null})
-      )
-    ORDER BY updated_at DESC
-    LIMIT 1
-  `)[0];
-
-  if (existingProduct?.id) {
-    await sql/*sql*/`
-      UPDATE consumer_products
-      SET latest_tap_event_id = ${event.id},
-          tag_id = COALESCE(${tagProfile?.id || null}, tag_id),
-          product_name = COALESCE(NULLIF(${productName}, ''), product_name),
-          brand_name = COALESCE(NULLIF(${brandName}, ''), brand_name),
-          image_url = COALESCE(${imageUrl}, image_url),
-          updated_at = now()
-      WHERE id = ${existingProduct.id}
-    `;
-    return event;
+  // Keep the identity predicate and the historical association separate from
+  // ownership or benefit eligibility. SERIALIZABLE protects the absent-row
+  // predicate too; a row lock or ON CONFLICT without a unit key cannot do that.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const productRows = await sqlSerializable/*sql*/`
+        WITH existing AS MATERIALIZED (
+          SELECT id
+          FROM consumer_products
+          WHERE consumer_id = ${input.consumerId}
+            AND tenant_id = ${event.tenant_id}
+            AND (
+              product_passport_id = ${event.uid_hex || null}
+              OR (${tagProfile?.id || null}::uuid IS NOT NULL AND tag_id = ${tagProfile?.id || null})
+            )
+          ORDER BY updated_at DESC
+          LIMIT 1
+        ), updated AS (
+          UPDATE consumer_products product
+          SET latest_tap_event_id = ${event.id},
+              tag_id = COALESCE(${tagProfile?.id || null}, product.tag_id),
+              product_name = COALESCE(NULLIF(${productName}, ''), product.product_name),
+              brand_name = COALESCE(NULLIF(${brandName}, ''), product.brand_name),
+              image_url = COALESCE(${imageUrl}, product.image_url),
+              updated_at = now()
+          FROM existing
+          WHERE product.id = existing.id
+          RETURNING product.id
+        ), inserted AS (
+          INSERT INTO consumer_products (consumer_id, tenant_id, product_passport_id, tag_id, first_tap_event_id, latest_tap_event_id, ownership_status, collection_type, product_name, brand_name, image_url)
+          SELECT ${input.consumerId}, ${event.tenant_id}, ${event.uid_hex || null}, ${tagProfile?.id || null},
+                 ${event.id}, ${event.id}, 'viewed', 'wine', ${productName}, ${brandName}, ${imageUrl}
+          WHERE NOT EXISTS (SELECT 1 FROM existing)
+          RETURNING id
+        )
+        SELECT id FROM updated
+        UNION ALL
+        SELECT id FROM inserted
+      `;
+      if (!productRows[0]?.id) throw new Error("consumer_product_save_failed");
+      break;
+    } catch (error) {
+      if (attempt === 2 || typeof error !== "object" || error === null || !("code" in error) || error.code !== "40001") throw error;
+      // Retry only the rolled-back product statement. Membership, history and
+      // realtime publication already committed and must not be repeated here.
+    }
   }
-
-  await sql/*sql*/`
-    INSERT INTO consumer_products (consumer_id, tenant_id, product_passport_id, tag_id, first_tap_event_id, latest_tap_event_id, ownership_status, collection_type, product_name, brand_name, image_url)
-    VALUES (
-      ${input.consumerId},
-      ${event.tenant_id},
-      ${event.uid_hex || null},
-      ${tagProfile?.id || null},
-      ${event.id},
-      ${event.id},
-      'viewed',
-      'wine',
-      ${productName},
-      ${brandName},
-      ${imageUrl}
-    )
-    ON CONFLICT DO NOTHING
-  `;
 
   return event;
 }
@@ -181,33 +184,27 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
   await ensureConsumerPortalSchema();
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false as const, status: 404, error: "event_not_found" as const };
-  if (!event.tenant_id || !event.uid_hex) return { ok: false as const, status: 400, error: "event_missing_identity" as const };
+  if (!event.tenant_id || !event.batch_id || !event.uid_hex) return { ok: false as const, status: 400, error: "event_missing_identity" as const };
   if (input.uidHex && String(input.uidHex).toUpperCase() !== String(event.uid_hex).toUpperCase()) {
     return { ok: false as const, status: 403, error: "uid_mismatch" as const };
   }
 
-  const tagRows = await sql/*sql*/`
-    SELECT t.id, t.status, b.id AS batch_id, b.bid
-    FROM tags t
-    JOIN batches b ON b.id = t.batch_id
-    WHERE b.tenant_id = ${event.tenant_id}
-      AND t.uid_hex = ${event.uid_hex}
-    ORDER BY t.created_at ASC
-    LIMIT 1
-  `;
-  const tag = tagRows[0];
-  if (!tag) return { ok: false as const, status: 404, error: "tag_not_found" as const };
+  const tag = {
+    id: event.current_tag_id,
+    status: event.current_tag_status,
+    lifecycle_state: event.current_tag_lifecycle_state,
+    batch_id: event.batch_id,
+    bid: event.bid,
+  };
+  if (!tag.id) return { ok: false as const, status: 404, error: "tag_not_found" as const };
   if (input.bid && String(input.bid).trim() !== String(tag.bid || "").trim()) {
     return { ok: false as const, status: 403, error: "tenant_batch_mismatch" as const };
   }
   const result = String(event.result || "").toUpperCase();
   const currentRights = await readCurrentTapCommercialRights(String(event.id));
   const { isBlocked, nextStatus } = evaluateOwnershipEligibility({
+    ...event,
     result,
-    reason: event.reason,
-    manual_tamper_status: event.manual_tamper_status,
-    manual_tamper_reason: event.manual_tamper_reason,
-    tagStatus: tag.status || null,
   });
   const durableBlocked = isBlocked || !currentRights.allowed;
   const durableNextStatus = durableBlocked ? "revoked" : nextStatus;
@@ -223,6 +220,7 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     city: event.city || null,
     country: event.country_code || null,
     tag_status: tag.status || null,
+    tag_lifecycle_state: tag.lifecycle_state || tag.status || null,
     blocked: durableBlocked,
     commercial_rights_reason: currentRights.reason,
     ...(input.trustSnapshot || {}),
@@ -254,13 +252,29 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
   let ownershipRows;
   if (existingClaim && sameConsumerClaim) {
     ownershipRows = await sql/*sql*/`
+      WITH current_tag AS MATERIALIZED (
+        SELECT tag.id
+        FROM events source_event
+        JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
+        JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
+        WHERE source_event.id = ${event.id}::bigint
+          AND source_event.tenant_id = ${event.tenant_id}
+          AND source_event.batch_id = ${tag.batch_id}
+          AND UPPER(source_event.uid_hex) = ${uidHex}
+          AND tag.id = ${tag.id}
+          AND UPPER(source_event.result) = ANY(${[...CLAIMABLE_OWNERSHIP_RESULTS]}::text[])
+          AND tag.status = 'active'
+          AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
+          AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
+        FOR SHARE OF tag, bound_batch, source_event
+      )
       UPDATE consumer_product_ownerships
       SET consumer_id = ${input.consumerId},
           batch_id = ${tag.batch_id},
           tag_id = ${tag.id || null},
           event_id = ${event.id},
           status = CASE
-            WHEN EXISTS (
+            WHEN NOT EXISTS (SELECT 1 FROM current_tag) OR EXISTS (
               SELECT 1
               FROM events source_event
               LEFT JOIN tag_manual_tamper_overrides manual_override
@@ -269,11 +283,13 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
               WHERE source_event.id = ${event.id}::bigint
                 AND (
                   UPPER(COALESCE(source_event.result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
-                  OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
-                  OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_OPENED%'
-                  OR UPPER(COALESCE(manual_override.tamper_status, '')) IN ('MANUAL_OPENED', 'OPENED')
-                  OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
-                  OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_OPENED%'
+                  OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
+                  OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
+                  OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
+                  OR UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) IN ('MANUAL_OPENED', 'OPENED')
+                  OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
+                  OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
+                  OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
                 )
             ) THEN 'revoked'
             ELSE ${durableNextStatus}
@@ -288,18 +304,37 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
   } else {
     try {
       ownershipRows = await sql/*sql*/`
+        WITH current_tag AS MATERIALIZED (
+          SELECT tag.id
+          FROM events source_event
+          JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
+          JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
+          WHERE source_event.id = ${event.id}::bigint
+            AND source_event.tenant_id = ${event.tenant_id}
+            AND source_event.batch_id = ${tag.batch_id}
+            AND UPPER(source_event.uid_hex) = ${uidHex}
+            AND tag.id = ${tag.id}
+            AND UPPER(source_event.result) = ANY(${[...CLAIMABLE_OWNERSHIP_RESULTS]}::text[])
+            AND tag.status = 'active'
+            AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
+            AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
+          FOR SHARE OF tag, bound_batch, source_event
+        )
         INSERT INTO consumer_product_ownerships (
           tenant_id, consumer_id, batch_id, tag_id, uid_hex, event_id, status, source, trust_snapshot
         )
         SELECT
           ${event.tenant_id}, ${input.consumerId}, ${tag.batch_id}, ${tag.id || null}, ${uidHex}, ${event.id},
           CASE
-            WHEN UPPER(COALESCE(source_event.result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
-              OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
-              OR UPPER(COALESCE(source_event.reason, '')) LIKE '%MANUAL_OPENED%'
-              OR UPPER(COALESCE(manual_override.tamper_status, '')) IN ('MANUAL_OPENED', 'OPENED')
-              OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_TAMPER_OPENED%'
-              OR UPPER(COALESCE(manual_override.reason, '')) LIKE '%MANUAL_OPENED%'
+            WHEN NOT EXISTS (SELECT 1 FROM current_tag)
+              OR UPPER(COALESCE(source_event.result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
+              OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
+              OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
+              OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
+              OR UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) IN ('MANUAL_OPENED', 'OPENED')
+              OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
+              OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
+              OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
             THEN 'revoked'
             ELSE ${durableNextStatus}
           END,
@@ -330,7 +365,7 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     }
   }
   const ownership = ownershipRows[0];
-  const persistedNextStatus = String(ownership?.status || durableNextStatus);
+  const persistedNextStatus = String(ownership?.status || "revoked");
 
   await sql/*sql*/`
     UPDATE consumer_products

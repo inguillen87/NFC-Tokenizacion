@@ -39,13 +39,41 @@ export function isClaimableOwnershipResult(result: string) {
   return CLAIMABLE_OWNERSHIP_RESULTS.has(String(result || "").toUpperCase());
 }
 
-export function evaluateOwnershipEligibility(input: { result: string; tagStatus?: string | null } & TapCommercialRightsEvidence) {
+export type OwnershipTapEvidence = TapCommercialRightsEvidence & {
+  tenant_id?: unknown;
+  batch_id?: unknown;
+  uid_hex?: unknown;
+  current_tag_id?: unknown;
+  current_tag_tenant_id?: unknown;
+  current_tag_batch_id?: unknown;
+  current_tag_uid_hex?: unknown;
+  current_tag_status?: unknown;
+  current_tag_lifecycle_state?: unknown;
+  current_tag_identity_count?: unknown;
+};
+
+// A historical chip verdict cannot establish the current administrative state
+// or select another tag carrying the same UID in a different batch.
+export function isCurrentOwnershipTagEligible(input: OwnershipTapEvidence) {
+  const normalized = (value: unknown) => String(value ?? "").trim();
+  const tenant = normalized(input.tenant_id).toLowerCase();
+  const batch = normalized(input.batch_id).toLowerCase();
+  const uid = normalized(input.uid_hex).toUpperCase();
+  if (!tenant || !batch || !uid || !normalized(input.current_tag_id)) return false;
+  if (Number(input.current_tag_identity_count) !== 1) return false;
+  if (tenant !== normalized(input.current_tag_tenant_id).toLowerCase()
+    || batch !== normalized(input.current_tag_batch_id).toLowerCase()
+    || uid !== normalized(input.current_tag_uid_hex).toUpperCase()) return false;
+  return normalized(input.current_tag_status).toLowerCase() === "active"
+    && normalized(input.current_tag_lifecycle_state ?? input.current_tag_status).toLowerCase() === "active";
+}
+
+export function evaluateOwnershipEligibility(input: { result: string } & OwnershipTapEvidence) {
   const result = String(input.result || "").toUpperCase();
-  const tagStatus = String(input.tagStatus || "").toLowerCase();
   const isBlocked = !evaluateTapCommercialRights(input).allowed
     || BLOCKED_OWNERSHIP_RESULTS.has(result)
     || !isClaimableOwnershipResult(result)
-    || tagStatus === "revoked";
+    || !isCurrentOwnershipTagEligible(input);
   const nextStatus = isBlocked
     ? (result === "REPLAY_SUSPECT" || result === "DUPLICATE" ? "blocked_replay" : "revoked")
     : "claimed";
