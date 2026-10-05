@@ -46,7 +46,7 @@
       "lib/depth-limit.js": "d45f566f072c100edd3c6afe01782cb4c734240b84b411a61d5d9cba407ab0a6",
       "lib/expand.js": "8feb5efede213786049bc802702432bedef423c6765f517d8435b32971914c0e",
       "lib/parse.js": "be951193f33cdebfb7cc6b27d31b9d70585c101d166dd67ced05503ed6b6046e",
-      "lib/stringify.js": "d3d186e283f7e32074368a6b786e736538ffaff91cda4bba348f9b0dd1d80ec7",
+      "lib/stringify.js": "30133d988d6aea0f0ffaec4378e0b5188a6b1958d139bb6d3e3a678fff0c3d0c",
       "lib/utils.js": "0a891da16c2f7260799a3b571c50f3d4de903582c7192094c263c233a3096ef7",
       "package.json": "f6f4ef7cb7cc0e470d42fb6c29529202e3b4c09d11bf2459c2f04f392cb97984"
     }
