@@ -9,6 +9,11 @@ export const TENANT_SYNC_REVIEWED_SOURCES=Object.freeze({
   after:'8863655cf2f4466b79f24a89e87cde85b1d9ab4636d8e6ccd2b2f59deae6e5ba',
   reason:'Persisted reward identity and flags; consumed-stock preservation; accessible recoverable form.'
  }),
+ 'apps/dashboard/src/app/sign-in/[[...sign-in]]/page.tsx':Object.freeze({
+  before:'63c4f9f4e733569dfee628418c5dc4b98ce725e0ef0f7a42604c5267d42af013',
+  after:'63c9cd2be811556a79849b147f26e74422d021d98e0d5e516277562a8cd0cfbd',
+  reason:'Restore readable disabled-demo label contrast on the anonymous dark sign-in surface.'
+ }),
  'apps/dashboard/src/lib/dashboard-release.ts':Object.freeze({
   before:'8b5ec8e8c4827ab5a1f3aac3ed94e3129ad10dabdfc6e683e3b9725e3676fa2e',
   after:'c54a573641e1803b2d915980007348cd5f4747fad23e1555109d922c3cad89ab',

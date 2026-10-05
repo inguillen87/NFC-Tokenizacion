@@ -61,7 +61,7 @@ test('every merged source file retains its immutable origin except the exact rev
 });
 test('tenant-sync review allows exactly two pinned source increments and rejects changed origin or unreviewed content',()=>{
  assert.equal(TENANT_SYNC_SOURCE_BASE,'4d976d385e75d1e9139ebc44f5ba820eaaebb591');
- assert.deepEqual(Object.keys(TENANT_SYNC_REVIEWED_SOURCES).sort(),['apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx','apps/dashboard/src/lib/dashboard-release.ts']);
+ assert.deepEqual(Object.keys(TENANT_SYNC_REVIEWED_SOURCES).sort(),['apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx','apps/dashboard/src/app/sign-in/[[...sign-in]]/page.tsx','apps/dashboard/src/lib/dashboard-release.ts']);
  for(const [path,reviewed]of Object.entries(TENANT_SYNC_REVIEWED_SOURCES)){
   assert.equal(tenantSyncHistoricalSourceHash(path,reviewed.after,reviewed.before),reviewed.before);
   assert.throws(()=>tenantSyncHistoricalSourceHash(path,'0'.repeat(64),reviewed.before),/exact reviewed increment/);
