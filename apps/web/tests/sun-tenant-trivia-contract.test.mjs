@@ -79,8 +79,23 @@ test("only a completed previous attempt can confirm existing points", () => {
   for (const points_awarded of [null, "", " ", -1]) assert.equal(trivia.confirmedPreviousTrivia({ ...attempt, points_awarded }, 2, true), null);
 });
 test("missing configuration, expired authorization and uncertain submissions have honest recovery", () => {
-  assert.match(trivia.triviaRecoveryDescription("quiz_not_configured", true), /no tiene una trivia publicada/);
-  assert.match(trivia.triviaRecoveryDescription("fresh_tap_capability_required", true), /autorización vigente/);
+  assert.match(trivia.triviaRecoveryDescription("quiz_not_configured", true), /todavía no publicó una trivia/);
+  assert.match(trivia.triviaRecoveryDescription("fresh_tap_capability_required", true), /Acercá de nuevo el teléfono/);
   assert.match(trivia.triviaRecoveryDescription("unauthorized", true), /Ingresá a tu cuenta/);
-  assert.match(trivia.triviaRecoveryDescription("trivia_submit_failed", true), /ni se repite el envío/);
+  assert.match(trivia.triviaRecoveryDescription("trivia_submit_failed", true), /Revisá tu cuenta antes de volver a intentarlo/);
+});
+test("trivia recovery localizes the next step without exposing implementation or promising an award", () => {
+  for (const [locale, unpublished, newReading, uncertain] of [
+    ["es-AR", /todavía no publicó/, /Acercá de nuevo el teléfono/, /Revisá tu cuenta antes/],
+    ["en", /has not published/, /Hold your phone near/, /Check your account before/],
+    ["pt-BR", /ainda não publicou/, /Aproxime novamente o telefone/, /Confira sua conta antes/],
+  ]) {
+    assert.match(trivia.triviaRecoveryDescription("quiz_not_configured", true, locale), unpublished);
+    assert.match(trivia.triviaRecoveryDescription("fresh_tap_capability_required", true, locale), newReading);
+    assert.match(trivia.triviaRecoveryDescription(null, false, locale), newReading);
+    assert.match(trivia.triviaRecoveryDescription("trivia_submit_failed", true, locale), uncertain);
+    const messages = Object.values(trivia.triviaRecoveryCopy[locale]).join(" ");
+    assert.doesNotMatch(messages, /capability|autorización vigente|authorization|API|fallback|sustituyen|points awarded|puntos otorgados|pontos concedidos/i);
+    assert.match(source, /triviaRecoveryDescription\(triviaError, canSubmitTrivia, locale\)/);
+  }
 });

@@ -12,7 +12,7 @@ import {
 } from "../../lib/sommelier-guidance";
 import { useSunLocale } from "./sun-locale-provider";
 import styles from "./qr-engagement-suite.module.css";
-import { configuredTriviaQuestions, confirmedPreviousTrivia, confirmedTriviaResult, triviaContextAvailable, triviaRecoveryDescription, triviaSubmissionBody, type ClientTriviaQuestion, type TriviaResult } from "./sun-trivia-model";
+import { configuredTriviaQuestions, confirmedPreviousTrivia, confirmedTriviaResult, triviaContextAvailable, triviaRecoveryCopy, triviaRecoveryDescription, triviaSubmissionBody, type ClientTriviaQuestion, type TriviaResult } from "./sun-trivia-model";
 
 const FEEDBACK_COPY = {
   "es-AR": { explanation: "Tu opinión se envía a la marca junto con esta lectura.", rating: (star: number) => `Calificar con ${star} estrella${star > 1 ? "s" : ""}`, comment: "Comentario corto", commentHint: "Comentario opcional para la marca", send: "Enviar opinión", saving: "Guardando..." },
@@ -102,6 +102,7 @@ export function QREngagementSuite({
 }: QREngagementSuiteProps) {
   const { locale } = useSunLocale();
   const feedbackCopy = FEEDBACK_COPY[locale];
+  const triviaCopy = triviaRecoveryCopy[locale];
   const commentId = useId();
   const [activeTab, setActiveTab] = useState<EngagementTab>(initialTab);
 
@@ -526,9 +527,9 @@ export function QREngagementSuite({
         {activeTab === "trivia" && (
           <div className="v3-space-y-4">
             {!canPlayTrivia && !showTriviaResult ? <div role="status" data-testid="sun-trivia-unavailable" className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-xs leading-relaxed text-slate-200">
-              <strong>{triviaSubmitting ? "Confirmando el envío" : triviaLoading ? "Consultando la trivia publicada" : "Trivia no disponible en esta lectura"}</strong>
-              <p className="mt-2">{triviaSubmitting ? "Esperá la confirmación. El envío no se repite." : triviaLoading ? "Esperá a que la marca confirme sus preguntas y condiciones." : triviaRecoveryDescription(triviaError, canSubmitTrivia)}</p>
-              <Link href="/me/rewards" className="mt-3 inline-flex min-h-11 items-center underline">Consultar mis beneficios</Link>
+              <strong>{triviaSubmitting ? triviaCopy.submittingTitle : triviaLoading ? triviaCopy.loadingTitle : triviaCopy.unavailableTitle}</strong>
+              <p className="mt-2">{triviaSubmitting ? triviaCopy.submittingHelp : triviaLoading ? triviaCopy.loadingHelp : triviaRecoveryDescription(triviaError, canSubmitTrivia, locale)}</p>
+              <Link href="/me/rewards" className="mt-3 inline-flex min-h-11 items-center underline">{triviaCopy.benefits}</Link>
             </div> : !showTriviaResult ? (
               <div className="v3-space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">

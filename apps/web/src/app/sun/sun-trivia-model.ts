@@ -67,12 +67,43 @@ export function triviaContextAvailable(eventId: string | null, tenantSlug: strin
     && tenantSlug && /^[a-z0-9][a-z0-9._-]{0,119}$/.test(tenantSlug) && freshToken.trim());
 }
 
-export function triviaRecoveryDescription(error: string | null, canSubmit: boolean) {
-  if (error === "unauthorized") return "Ingresá a tu cuenta para consultar la trivia publicada por la marca. Después realizá una nueva lectura NFC para participar.";
-  if (!canSubmit || error === "fresh_tap_capability_required") return "Para participar necesitás una lectura NFC nueva con autorización vigente. Esta consulta no confirma respuestas, puntos ni premios.";
-  if (error === "quiz_not_configured") return "La marca no tiene una trivia publicada para este producto. No se sustituyen sus preguntas por ejemplos.";
-  if (error === "trivia_submit_failed" || error === "trivia_result_unconfirmed") return "No pudimos confirmar el envío. Conservamos tus respuestas en esta pantalla; no se confirman puntos ni se repite el envío. Consultá tu cuenta o realizá una nueva lectura NFC.";
-  return "No pudimos consultar la trivia publicada. No se muestran preguntas ni beneficios sin confirmar su fuente.";
+export const triviaRecoveryCopy = {
+  "es-AR": {
+    unavailableTitle: "Trivia no disponible", loadingTitle: "Cargando la trivia", loadingHelp: "En un momento podés consultar las preguntas de la marca.",
+    submittingTitle: "Enviando tus respuestas", submittingHelp: "Esperá la confirmación del envío.", benefits: "Consultar mis beneficios",
+    login: "Ingresá a tu cuenta para participar. Después acercá de nuevo el teléfono a la etiqueta del producto.",
+    freshReading: "Acercá de nuevo el teléfono a la etiqueta del producto para participar.",
+    unpublished: "La marca todavía no publicó una trivia para este producto.",
+    uncertain: "No pudimos confirmar el envío. Conservamos tus respuestas. Revisá tu cuenta antes de volver a intentarlo.",
+    unavailable: "La trivia no está disponible por el momento. Volvé a consultar más tarde.",
+  },
+  en: {
+    unavailableTitle: "Trivia unavailable", loadingTitle: "Loading the trivia", loadingHelp: "The brand's questions will be available in a moment.",
+    submittingTitle: "Sending your answers", submittingHelp: "Please wait for confirmation.", benefits: "View my benefits",
+    login: "Sign in to participate. Then hold your phone near the product's tag again.",
+    freshReading: "Hold your phone near the product's tag again to participate.",
+    unpublished: "The brand has not published trivia for this product yet.",
+    uncertain: "We could not confirm your submission. Your answers are saved here. Check your account before trying again.",
+    unavailable: "Trivia is temporarily unavailable. Please check again later.",
+  },
+  "pt-BR": {
+    unavailableTitle: "Trivia indisponível", loadingTitle: "Carregando a trivia", loadingHelp: "Em instantes você poderá consultar as perguntas da marca.",
+    submittingTitle: "Enviando suas respostas", submittingHelp: "Aguarde a confirmação do envio.", benefits: "Consultar meus benefícios",
+    login: "Entre na sua conta para participar. Depois aproxime novamente o telefone da etiqueta do produto.",
+    freshReading: "Aproxime novamente o telefone da etiqueta do produto para participar.",
+    unpublished: "A marca ainda não publicou uma trivia para este produto.",
+    uncertain: "Não foi possível confirmar o envio. Suas respostas foram mantidas aqui. Confira sua conta antes de tentar novamente.",
+    unavailable: "A trivia está temporariamente indisponível. Consulte novamente mais tarde.",
+  },
+} as const;
+
+export function triviaRecoveryDescription(error: string | null, canSubmit: boolean, locale: keyof typeof triviaRecoveryCopy = "es-AR") {
+  const copy = triviaRecoveryCopy[locale];
+  if (error === "unauthorized") return copy.login;
+  if (!canSubmit || error === "fresh_tap_capability_required") return copy.freshReading;
+  if (error === "quiz_not_configured") return copy.unpublished;
+  if (error === "trivia_submit_failed" || error === "trivia_result_unconfirmed") return copy.uncertain;
+  return copy.unavailable;
 }
 
 export function triviaSubmissionBody({ eventId, tenantSlug, freshToken, locale, answers }: {

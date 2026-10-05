@@ -4,6 +4,8 @@ import { marketplaceFixtureItems } from './consumer-marketplace-fixture.mjs';
 if(process.env.CONSUMER_PORTAL_QA!=='1')throw Error('consumer_portal_fixture_requires_explicit_local_qa');
 const original=globalThis.fetch;
 const date='2026-10-01T12:00:00Z';
+const currentEditorial=(state='published')=>({protocol:'nexid.current-editorial.v1',source:'passport_studio',state,observedAt:'2026-10-05T15:00:00Z',version:3,publishedAt:'2026-10-04T15:00:00Z',contentDigest:'a'.repeat(64),
+ document:{schemaVersion:'nexid.passport-editorial.v1',template:'agro',locale:'es-AR',identity:{product_name:'Ficha actual de ensayo',public_lot_label:'LOTE-PUBLICADO-QA',sku:null,winery:'Empresa publicada de ensayo',region:null,image_url:null},agro_product_profile:{technicalSheetUrl:'https://docs.example.test/current-qa.pdf',safetySheetUrl:null}}});
 const items=[
  {product_name:'Vino reserva QA',brand_name:'Bodega de ensayo',tenant_slug:'consumer-qa',bid:'LOT-WINE-QA',latest_tap_event_id:'900001',latest_verdict:'VALID_CLOSED',latest_tap_at:date,created_at:date,ownership_status:'viewed'},
  {product_name:'Aceite de oliva QA',brand_name:'Oliva de ensayo',tenant_slug:'olive-qa',bid:'LOT-OLIVE-QA',latest_tap_event_id:'900002',latest_verdict:'QR_VIEW',latest_tap_at:date,created_at:date,ownership_status:'viewed'},
@@ -32,7 +34,7 @@ globalThis.fetch=async(input,init)=>{
    if(url.pathname==='/consumer/taps')return reply({ok:true,items:items.slice(0,3).map(p=>({tap_event_id:p.latest_tap_event_id,tenant_slug:p.tenant_slug,product_name:p.product_name,bid:p.bid,verdict:p.latest_verdict,created_at:date}))});
    if(/^\/consumer\/taps\/90000[123]$/.test(url.pathname)){
     const p=items.find(p=>p.latest_tap_event_id===url.pathname.split('/').at(-1));
-    return reply({ok:true,item:{tap_event_id:p.latest_tap_event_id,tenant_slug:p.tenant_slug,brand_name:p.brand_name,product_name:p.product_name,bid:p.bid,verdict:p.latest_verdict,created_at:date,risk_level:'low'}});
+    return reply({ok:true,currentEditorial:currentEditorial(p.latest_tap_event_id==='900001'?'published':p.latest_tap_event_id==='900002'?'withdrawn':'unavailable'),item:{tap_event_id:p.latest_tap_event_id,tenant_slug:p.tenant_slug,brand_name:p.brand_name,product_name:p.product_name,historical_brand_name:p.brand_name??null,historical_product_name:p.product_name??null,bid:p.bid,verdict:p.latest_verdict,created_at:date,risk_level:'low'}});
    }
    return reply({ok:false},404);
   }
