@@ -15,6 +15,17 @@ export function withConsumerCurrentEditorial(row: Record<string, unknown>, curre
       brand_name: identity.winery,
       image_url: identity.image_url,
     } : {}),
-    currentEditorial,
+    // Collection cards need identity and publication state, not a copy of the
+    // complete document for every saved unit. Detail returns the full document.
+    currentEditorialSummary: {
+      protocol: "nexid.current-editorial-summary.v1",
+      source: currentEditorial.source,
+      state: currentEditorial.state,
+      observedAt: currentEditorial.observedAt,
+      ...(currentEditorial.state === "published" ? {
+        version: currentEditorial.version,
+        publishedAt: currentEditorial.publishedAt,
+      } : {}),
+    },
   };
 }

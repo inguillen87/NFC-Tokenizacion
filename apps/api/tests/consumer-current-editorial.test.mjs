@@ -17,6 +17,9 @@ test('published identity updates the collection while preserving historical evid
   for (const key of ['latest_verdict', 'ownership_status', 'latest_tap_at']) assert.equal(result[key], row[key]);
   assert.equal('editorial_tenant_id' in result, false);
   assert.equal(row.product_name, 'Saved name');
+  assert.equal('currentEditorial' in result, false);
+  assert.equal('document' in result.currentEditorialSummary, false);
+  assert.equal(result.currentEditorialSummary.state, 'published');
 });
 
 test('unpublished, withdrawn, invalid and unavailable content never replaces the saved copy', () => {
@@ -24,7 +27,7 @@ test('unpublished, withdrawn, invalid and unavailable content never replaces the
     const current = { protocol: publication.protocol, source: publication.source, state, observedAt: null };
     const result = withConsumerCurrentEditorial(row, current);
     for (const key of ['product_name', 'brand_name', 'image_url']) assert.equal(result[key], row[key]);
-    assert.deepEqual(result.currentEditorial, current);
-    assert.equal('document' in result.currentEditorial, false);
+    assert.equal(result.currentEditorialSummary.state, state);
+    assert.equal('document' in result.currentEditorialSummary, false);
   }
 });
