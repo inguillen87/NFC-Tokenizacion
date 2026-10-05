@@ -22,10 +22,11 @@ report.marketplaceBindingBefore=await marketplaceBinding(repo,web);
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 async function assessment(page,selector,name,width,theme){
  await page.addScriptTag({content:axe});
- const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),selector);
+ const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target),failures:v.nodes.map(n=>n.failureSummary)})),selector);
+ // Retain the failing rule and target even when the assertion stops the run.
+ report.views.push({width,theme,name,selector,violations});
  check(violations.length===0,`${width}/${theme} ${name}: zero axe violations`);
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
- report.views.push({width,theme,name,selector,violations});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
 async function introContrast(surface){return surface.evaluate(root=>{

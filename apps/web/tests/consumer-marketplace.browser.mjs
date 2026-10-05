@@ -80,6 +80,9 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   check(await card('market-experience-qa').getByRole('button',{name:'Solicitar contacto',exact:true}).isDisabled(),`${label} unavailable product cannot be requested`);
   check(await card('market-no-photo-qa').getByRole('button',{name:'Solicitar contacto',exact:true}).isDisabled(),`${label} disabled request capability stays disabled`);
   const text=await catalog.innerText();check(!/Passport item|ownership|MetaMask|MercadoPago|Stripe|assets|Sumaste|Gran Reserva Malbec/.test(text),`${label} no simulated promotional, payment or points-award claims`);
+  const alternatives=page.getByTestId('tap-association').locator('details').filter({has:page.getByTestId('tap-association-option-claim')});
+  if(!await alternatives.evaluate(element=>element.open))await alternatives.locator('summary').click();
+  check(await alternatives.evaluate(element=>element.open),`${label} additional tap options are explicitly open`);
   const radio=page.getByTestId('tap-association-option-claim'),choice=radio.locator('..');
   const readChoice=()=>choice.evaluate(el=>{
    const rect=element=>{const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};};

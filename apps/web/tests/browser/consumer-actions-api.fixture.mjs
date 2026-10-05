@@ -59,7 +59,7 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname === '/qa-issue') { const eventId = String(++sequence); return reply(200, { eventId, token: capability(eventId) }); }
   calls.push({ method: req.method, path: u.pathname, hasCapability: Boolean(body.fresh_token), leakedCookie: String(req.headers.cookie || '').includes('nexid_tap_'), keys: Object.keys(body), ...(u.pathname.endsWith('/report-problem') ? { requestId: body.request_id, eventId: body.event_id, hasSupport: Boolean(body.support_token), hasShare: u.searchParams.has('share'), forwardedSession: Boolean(req.headers.cookie || req.headers.authorization) } : {}) });
   if (u.pathname === '/sun') return reply(200, contract(u));
-  if (u.pathname.startsWith('/sun/snapshot/')) return reply(200, { contract: contract(u) });
+  if (u.pathname.startsWith('/sun/snapshot/')) return reply(200, { ok: true, contract: contract(u) });
   if (u.pathname === '/public/product-notices/v2') return reply(200, { ok: true, protocol: 'nexid.product-notices.v2', scope: { tenant: 'qa-brand', bid: 'QA-ONLY' }, observedAt: new Date().toISOString(), notices: [], total: 0, hasMore: false, doesNotDetermineNfcAuthenticity: true, closureDoesNotReleaseProduct: true, liftingNoticeDoesNotReleaseProduct: true });
   if (u.pathname.startsWith('/public/certificates/')) return reply(403, { ok: false, error: 'share_token_expired' });
   if (u.pathname === '/public/cta/experience-event') return reply(200, { ok: true, qaOnly: true });

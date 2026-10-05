@@ -45,7 +45,10 @@ async function fresh(page, action = 'products') {
   await page.waitForURL(u => u.pathname === '/me/products', { timeout: 60000 });
   assert.ok(!page.url().includes(issued.token) && !page.url().includes('fresh='));
   await page.getByTestId('tap-association-confirm').waitFor();
-  if (action !== 'products') await page.locator(`input[name="tap-association-action"][value="${action}"]`).check();
+  if (action !== 'products') {
+    await page.getByTestId('tap-association').getByText('Otras opciones', { exact: true }).click();
+    await page.locator(`input[name="tap-association-action"][value="${action}"]`).check();
+  }
   return issued;
 }
 async function confirm(page, outcome) {
@@ -103,7 +106,7 @@ try {
   await page.goto(base + '/sun?qr=1&bid=QA-ONLY', { waitUntil: 'load' });
   await evidence.waitFor(); assert.equal(await evidence.getAttribute('data-evidence-mode'), 'qr');
   assert.equal(await evidence.locator('[data-resource-kind="certificate"]').count(), 0);
-  await page.goto(base + '/sun', { waitUntil: 'load' });
+  await page.goto(base + '/sun?demo=1', { waitUntil: 'load' });
   await evidence.waitFor(); assert.equal(await evidence.getAttribute('data-evidence-mode'), 'demo');
   assert.equal(await evidence.locator('a').count(), 0);
   report.checks.push('Three languages retain the evidence reference; absent share tokens, QR and demo do not invent certificate access');
@@ -164,6 +167,7 @@ try {
   const writes = actions(await state()).slice(before);
   assert.equal(writes.length, 1); assert.ok(writes[0].path.endsWith('/consumer/save-product')); assert.equal(writes[0].hasCapability, true); assert.equal(writes[0].leakedCookie, false);
   assert.equal(await page.getByTestId('tap-association-confirm').isDisabled(), true);
+  await page.getByTestId('tap-association').getByText('Otras opciones', { exact: true }).click();
   for (const [action, outcome] of [['join', 'linked'], ['claim', 'claimed'], ['rewards', 'enrolled']]) {
     await page.locator(`input[name="tap-association-action"][value="${action}"]`).check();
     const count = actions(await state()).length; await confirm(page, outcome); assert.equal(actions(await state()).length, count + 1);
