@@ -48,6 +48,7 @@ import {
 } from "../../lib/demo-product-profiles";
 import passportStyles from "./sun-passport-experience.module.css";
 import { resolveSunDemoPhotography } from "./sun-demo-photography";
+import { resolveSunTenantIdentity } from "./sun-tenant-identity";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -713,7 +714,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || isInvalidSealState || (!isTechnicallyAuthentic && !isQrScan);
   const agroProfile = normalizeAgroDppProfile(result.product?.agro);
   const isAgroDpp = Boolean(agroProfile);
+  const sunTenantIdentity = resolveSunTenantIdentity(result);
+  const tenantSlug = sunTenantIdentity.tenantSlug || "";
   const engagementBaseEligible = !isDemoPreview
+    && result.ok === true
+    && Boolean(tenantSlug)
     && (isQrScan || isFreshCommercialTap || isVerifiedOpenedState)
     && !isManualOpenedState
     && !isRiskBlocked
@@ -967,7 +972,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : !isRiskBlocked && isTechnicallyAuthentic
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá origen, fuente y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
-  const tenantSlug = String(result.identity?.tenantSlug || "").trim();
   // Browser geolocation is posted through the same-origin BFF. Calling the API
   // origin directly would trigger a JSON CORS preflight and fail closed.
   const telemetryEndpoint = "/api/sun-context";
@@ -1131,7 +1135,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const protectedBannerCopy = isSnapshotView
     ? "Evidencia NFC y trazabilidad declarada visibles. Puntos, club, garantia y tokenizacion quedan protegidos hasta un nuevo tap fisico."
     : isSunProfileMismatch
-      ? "El lote fue detectado como Bodega Balmec, pero la lectura SUN no descifra a un UID autorizado. Hay que corregir claves/layout o registrar el payload fisico del proveedor."
+    ? "El lote fue detectado, pero la lectura SUN no corresponde a una etiqueta autorizada. La marca debe revisar el perfil SUN o el registro del proveedor antes de habilitar acciones protegidas."
     : isReplay
       ? "La URL/SUN ya fue usada. Conservamos la evidencia y pedimos un nuevo tap fisico para acciones comerciales."
       : "Por seguridad, este producto no puede guardarse en la coleccion ni sumar puntos con esta lectura.";
@@ -1300,14 +1304,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : Array.isArray(productMedia.gallery_urls)
       ? productMedia.gallery_urls.map((item) => String(item || "").trim()).filter(Boolean)
       : [];
-  // Demo previews resolve their product and brand only from the allowlisted
-  // server-side fixture. Free URL fields must never override that contract.
-  const requestedBrandDisplay = isDemoPreview
-    ? ""
-    : readParam(params, "winery") || readParam(params, "brand") || "";
+  // The API or explicit demo fixture supplies identity; free URL fields cannot
+  // change the brand, media selection or destination of consumer information.
   const assetProfile = resolveProductAssetProfile({
-    tenantSlug: result.tenant?.slug || result.identity?.tenantSlug,
-    brandName: requestedBrandDisplay || result.product?.winery || result.tenant?.name || result.tenant?.slug,
+    tenantSlug,
+    brandName: sunTenantIdentity.brandName,
     productName,
     bid: result.identity?.bid,
     vertical: result.product?.vertical || result.rightsPolicy?.vertical || verticalLabel,
@@ -1336,9 +1337,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     claimOrManage: postTapQuickActions.primary && !isRiskBlocked,
     warranty: postTapQuickActions.warranty && !isRiskBlocked,
   };
-  const consumerBrandName = requestedBrandDisplay || result.product?.winery || result.tenant?.name || result.tenant?.slug || "la marca";
+  const consumerBrandName = sunTenantIdentity.brandName || "la marca";
   const engagementWineryName = consumerBrandName;
-  const engagementTenantSlug = readParam(params, "tenant") || tenantSlug || "demobodega";
+  const engagementTenantSlug = tenantSlug;
   // Stock photography belongs to the labelled demo. A real reading shows only
   // media supplied in its product contract, never a guessed product or vertical.
   const productHeroImageUrl = isDemoPreview
@@ -1417,7 +1418,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ? 5
             : 0;
 
-  const tenantDisplayName = requestedBrandDisplay || result.tenant?.name || result.product?.winery || result.tenant?.slug || result.identity?.tenantSlug || "Marca no informada";
+  const tenantDisplayName = sunTenantIdentity.brandName || "Marca no informada";
   const publicLotDisplay = String(result.product?.lotLabel || result.identity?.displayLot || "").trim() || null;
   const batchDisplay = publicLotDisplay || (isDemoPreview ? bid || result.identity?.bid || "Batch de muestra" : null);
   const technicalBid = bid || result.identity?.bid || "N/A";
@@ -2433,6 +2434,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   productName={productDisplayName}
                   tenantSlug={engagementTenantSlug}
                   eventId={eventId || null}
+                  freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
+                  isDemoPreview={isDemoPreview}
                   bid={bid || null}
                   allowedActions={allowedActions}
                   blockedActions={blockedActions}

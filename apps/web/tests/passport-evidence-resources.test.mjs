@@ -24,8 +24,13 @@ const currentModel = load("app/sun/current-editorial-resources-model.ts");
 const base = { mode: "historical", carrierCode: "ntag424_dna_tt", occurredAt: "2026-09-20T17:15:00Z", eventReference: "713",
   statusLabel: "Mensaje validado", certificateHref: "/certificado/713?share=v1.fixture_signature" };
 function markup(props = {}, locale = "es-AR") {
+  const currentView = load("app/sun/current-editorial-resources-view.tsx", {
+    "./current-editorial-resources-model": currentModel,
+    "./current-editorial-resources.module.css": { __esModule: true, default: styles },
+  });
   const currentComponent = load("app/sun/current-editorial-resources.tsx", {
     "./current-editorial-resources-model": currentModel,
+    "./current-editorial-resources-view": currentView,
     "./sun-locale-provider": { useSunLocale: () => ({ locale, text: value => value }) },
     "./current-editorial-resources.module.css": { __esModule: true, default: styles },
   });

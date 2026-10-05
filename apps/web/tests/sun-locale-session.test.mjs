@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { formatSunDateTime, translateSunUiText } from "../src/app/sun/sun-locale.ts";
 import { resolveSunConsumerStatus } from "../src/app/sun/sun-consumer-status.ts";
 import { resolveSunTtEvidence } from "../src/app/sun/sun-tt-evidence.ts";
+import { triviaSubmissionBody } from "../src/app/sun/sun-trivia-model.ts";
 
 const urls = {
   locale: new URL("../src/lib/locale.ts", import.meta.url),
@@ -102,7 +103,14 @@ test("SUN API engagement uses the active presentation locale instead of hardcode
     assert.match(source, /useSunLocale\(\)/);
     assert.doesNotMatch(source, /locale:\s*"es-AR"/);
   }
-  assert.match(qr, /JSON\.stringify\(\{ locale, tenantSlug, productName/);
+  assert.match(qr, /triviaSubmissionBody\(\{ eventId: triviaEventId, tenantSlug, freshToken, locale, answers \}\)/);
+  assert.match(qr, /body: JSON\.stringify\(submission\)/);
+  const answers = [{ questionId: "qa-question", answerIndex: 1 }];
+  for (const locale of ["es-AR", "en", "pt-BR"]) {
+    assert.deepEqual(triviaSubmissionBody({ eventId: "715", tenantSlug: "tenant-qa", freshToken: "verified-fixture-capability", locale, answers }), {
+      locale, tenantSlug: "tenant-qa", fresh_token: "verified-fixture-capability", answers,
+    });
+  }
   assert.match(optIn, /locale,/);
 });
 

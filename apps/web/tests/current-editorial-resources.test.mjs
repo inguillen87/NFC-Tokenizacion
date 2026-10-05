@@ -28,8 +28,13 @@ const base = {
 };
 function changedDocument(change) { return { ...base, document: { ...base.document, ...change } }; }
 function markup(value = base, locale = "es-AR") {
+  const view = load("current-editorial-resources-view.tsx", {
+    "./current-editorial-resources-model": modelModule,
+    "./current-editorial-resources.module.css": { __esModule: true, default: styles },
+  });
   const component = load("current-editorial-resources.tsx", {
     "./current-editorial-resources-model": modelModule,
+    "./current-editorial-resources-view": view,
     "./sun-locale-provider": { useSunLocale: () => ({ locale, text: () => assert.fail("editorial data must not be translated") }) },
     "./current-editorial-resources.module.css": { __esModule: true, default: styles },
   }).CurrentEditorialResources;
@@ -179,7 +184,7 @@ test("rendered identity is escaped and only public allowlisted fields are shown"
 });
 
 test("presentation performs no requests, mutations, current-time inference or automatic translation", () => {
-  const source = ["current-editorial-resources.tsx", "current-editorial-resources-model.ts"].map(file => readFileSync(new URL(`../src/app/sun/${file}`, import.meta.url), "utf8")).join("\n");
+  const source = ["current-editorial-resources.tsx", "current-editorial-resources-view.tsx", "current-editorial-resources-model.ts"].map(file => readFileSync(new URL(`../src/app/sun/${file}`, import.meta.url), "utf8")).join("\n");
   assert.doesNotMatch(source, /fetch\(|XMLHttpRequest|localStorage|sessionStorage|Date\.now|new Date\(\)|create.*Token|onClick|<form|dangerouslySetInnerHTML/);
   const before = JSON.stringify(base);
   model(base);
