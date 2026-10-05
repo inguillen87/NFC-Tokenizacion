@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import pg from 'pg';
-import { readCurrentPassportEditorial } from '../src/lib/current-passport-editorial.ts';
+import { readCurrentPassportEditorial, readCurrentPassportEditorialCollection } from '../src/lib/current-passport-editorial.ts';
 import { editorialContentDigest, parseEditorialDocument } from '../src/lib/passport-editorial-policy.ts';
 
 function qaTarget(value) {
@@ -73,6 +73,16 @@ test('actual PostgreSQL projection separates published content, history, scope, 
     assert.equal((await read('717')).state, 'invalid');
     assert.equal((await read('718')).state, 'invalid');
     assert.equal((await read('999')).state, 'unavailable');
+    const beforeCollection = reads;
+    const collection = await readCurrentPassportEditorialCollection([
+      { eventId: '715', tenantId: tenantA }, { eventId: '716', tenantId: tenantA },
+      { eventId: '716', tenantId: tenantB }, { eventId: '999', tenantId: tenantA },
+    ], execute);
+    assert.equal(reads - beforeCollection, 1, 'collection shares one SQL read rather than a request per product');
+    assert.deepEqual(collection.map(value => value.state), ['published', 'invalid', 'published', 'unavailable']);
+    assert.equal(collection[0].document.identity.product_name, 'Current v2');
+    assert.equal(collection[2].document.identity.product_name, 'Other tenant');
+    assert.doesNotMatch(JSON.stringify(collection[1]), /Other tenant|document/);
     let cases = 0;
     async function scenario(name, mutate, expected, inspect) {
       await client.query('SAVEPOINT scenario');

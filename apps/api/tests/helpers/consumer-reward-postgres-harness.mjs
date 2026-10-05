@@ -29,12 +29,25 @@ async function createFixtureSchema(client, schema) {
       'ADMIN_ADJUSTMENT', 'FRAUD_REVERSAL', 'EXPIRATION'
     );
     CREATE TYPE ${s}.loyalty_member_status AS ENUM ('anonymous', 'enrolled', 'verified', 'blocked', 'deleted');
+    CREATE TYPE ${s}.loyalty_program_status AS ENUM ('draft', 'active', 'paused', 'archived');
+    CREATE TYPE ${s}.tenant_membership_status AS ENUM ('invited', 'active', 'paused', 'blocked', 'left');
     CREATE TYPE ${s}.consumer_reward_claim_status AS ENUM ('claimed', 'redeemed', 'cancelled', 'expired');
     CREATE TABLE ${s}.tenants (id uuid PRIMARY KEY);
     CREATE TABLE ${s}.consumers (id uuid PRIMARY KEY);
     CREATE TABLE ${s}.loyalty_programs (
       id uuid PRIMARY KEY,
-      tenant_id uuid NOT NULL REFERENCES ${s}.tenants(id) ON DELETE CASCADE
+      tenant_id uuid NOT NULL REFERENCES ${s}.tenants(id) ON DELETE CASCADE,
+      status ${s}.loyalty_program_status NOT NULL DEFAULT 'draft',
+      age_gate_required boolean NOT NULL DEFAULT false,
+      start_at timestamptz NOT NULL DEFAULT now(), end_at timestamptz
+    );
+    CREATE TABLE ${s}.tenant_consumer_memberships (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL REFERENCES ${s}.tenants(id) ON DELETE CASCADE,
+      consumer_id uuid NOT NULL REFERENCES ${s}.consumers(id) ON DELETE CASCADE,
+      loyalty_program_id uuid REFERENCES ${s}.loyalty_programs(id) ON DELETE SET NULL,
+      status ${s}.tenant_membership_status NOT NULL DEFAULT 'active',
+      UNIQUE(tenant_id, consumer_id)
     );
     CREATE TABLE ${s}.loyalty_members (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -57,6 +70,7 @@ async function createFixtureSchema(client, schema) {
       program_id uuid NOT NULL REFERENCES ${s}.loyalty_programs(id) ON DELETE CASCADE,
       code text NOT NULL, title text NOT NULL,
       status text NOT NULL DEFAULT 'draft', points_cost integer NOT NULL DEFAULT 0,
+      requires_age_gate boolean NOT NULL DEFAULT false,
       stock_total integer, stock_remaining integer,
       starts_at timestamptz NOT NULL DEFAULT now(), ends_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now(),
@@ -146,10 +160,17 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
     await createFixtureSchema(admin, schema);
 
     async function fixture(options = {}) {
-      const f = Object.fromEntries(["tenantId", "otherTenantId", "programId", "otherProgramId", "consumerId", "memberId", "rewardId"].map((key) => [key, randomUUID()]));
+      const f = Object.fromEntries(["tenantId", "otherTenantId", "programId", "otherProgramId", "consumerId", "memberId", "membershipId", "rewardId"].map((key) => [key, randomUUID()]));
       await admin.query(`INSERT INTO ${s}.tenants(id) VALUES ($1), ($2)`, [f.tenantId, f.otherTenantId]);
-      await admin.query(`INSERT INTO ${s}.loyalty_programs(id, tenant_id) VALUES ($1, $3), ($2, $3)`, [f.programId, f.otherProgramId, f.tenantId]);
+      await admin.query(`INSERT INTO ${s}.loyalty_programs(id, tenant_id, status, start_at, end_at, age_gate_required)
+        VALUES ($1, $2, $3, now() + $4::interval, CASE WHEN $5::boolean THEN now() - interval '1 day' ELSE NULL END, $6)`,
+      [f.programId, options.wrongProgramTenant ? f.otherTenantId : f.tenantId, options.programStatus ?? "active", options.futureProgram ? "1 day" : "-1 day", options.expiredProgram ?? false, options.programAgeGate ?? false]);
+      await admin.query(`INSERT INTO ${s}.loyalty_programs(id, tenant_id, status, start_at) VALUES ($1, $2, 'active', now() - interval '1 day')`, [f.otherProgramId, f.tenantId]);
       await admin.query(`INSERT INTO ${s}.consumers(id) VALUES ($1)`, [f.consumerId]);
+      if (!options.missingMembership) {
+        await admin.query(`INSERT INTO ${s}.tenant_consumer_memberships(id, tenant_id, consumer_id, loyalty_program_id, status) VALUES ($1, $2, $3, $4, $5)`,
+        [f.membershipId, options.wrongMembershipTenant ? f.otherTenantId : f.tenantId, f.consumerId, f.programId, options.membershipStatus ?? "active"]);
+      }
       await admin.query(`INSERT INTO ${s}.loyalty_members(id, tenant_id, program_id, consumer_id, status, points_balance, lifetime_points)
         VALUES ($1, $2, $3, $4, $5, $6, $6)`, [f.memberId, options.wrongTenant ? f.otherTenantId : f.tenantId, options.wrongProgram ? f.otherProgramId : f.programId, f.consumerId, options.memberStatus ?? "enrolled", options.points ?? 100]);
       await addReward(f, f.rewardId, options);
@@ -158,9 +179,9 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
 
     async function addReward(f, rewardId, options = {}) {
       const stock = options.stock === undefined ? 2 : options.stock;
-      await admin.query(`INSERT INTO ${s}.rewards(id, tenant_id, program_id, code, title, status, points_cost, stock_total, stock_remaining, starts_at, ends_at)
-        VALUES ($1::uuid, $2::uuid, $3::uuid, ($1::uuid)::text, 'Synthetic QA reward', $4, $5, $6, $6, now() + $7::interval, CASE WHEN $8::boolean THEN now() - interval '1 day' ELSE NULL END)`,
-      [rewardId, f.tenantId, f.programId, options.rewardStatus ?? "active", options.cost ?? 40, stock, options.future ? "1 day" : "-1 day", options.expired ?? false]);
+      await admin.query(`INSERT INTO ${s}.rewards(id, tenant_id, program_id, code, title, status, points_cost, stock_total, stock_remaining, starts_at, ends_at, requires_age_gate)
+        VALUES ($1::uuid, $2::uuid, $3::uuid, ($1::uuid)::text, 'Synthetic QA reward', $4, $5, $6, $6, now() + $7::interval, CASE WHEN $8::boolean THEN now() - interval '1 day' ELSE NULL END, $9)`,
+      [rewardId, f.tenantId, f.programId, options.rewardStatus ?? "active", options.cost ?? 40, stock, options.future ? "1 day" : "-1 day", options.expired ?? false, options.rewardAgeGate ?? false]);
     }
 
     function claim(f, query = firstQuery, overrides = {}) {
@@ -181,9 +202,12 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
 
     async function state(f) {
       const tables = ["loyalty_members", "rewards", "points_ledger", "consumer_reward_claims"];
-      const rows = await Promise.all(tables.map(async (table) => (await admin.query(
-        `SELECT * FROM ${s}."${table}" WHERE tenant_id = ANY($1::uuid[]) ORDER BY id`, [ [f.tenantId, f.otherTenantId] ],
-      )).rows));
+      const rows = [];
+      for (const table of tables) {
+        rows.push((await admin.query(
+          `SELECT * FROM ${s}."${table}" WHERE tenant_id = ANY($1::uuid[]) ORDER BY id`, [ [f.tenantId, f.otherTenantId] ],
+        )).rows);
+      }
       return { members: rows[0], rewards: rows[1], ledger: rows[2], claims: rows[3] };
     }
 
@@ -205,10 +229,11 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
     // Hold a real row lock while both independent backends enter their query.
     // Observe both waiting in PostgreSQL before release; Promise.all alone does
     // not prove overlap. The barrier and SQL timeouts are deliberately bounded.
-    async function concurrent(table, id, operations) {
-      assert.ok(["loyalty_members", "rewards", "consumer_reward_claims"].includes(table));
+    async function concurrent(table, id, operations, changeBeforeRelease) {
+      assert.ok(["loyalty_members", "rewards", "consumer_reward_claims", "loyalty_programs", "tenant_consumer_memberships"].includes(table));
       let pending;
       let barrierError;
+      let commitChange = false;
       await admin.query("BEGIN");
       try {
         await admin.query(`SELECT id FROM ${s}."${table}" WHERE id = $1 FOR UPDATE`, [id]);
@@ -223,10 +248,14 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
           await new Promise((resolve) => setTimeout(resolve, 20));
         }
         assert.ok(bothWaiting, "Both PostgreSQL backends must overlap while waiting for the fixture lock");
+        if (changeBeforeRelease) {
+          await changeBeforeRelease();
+          commitChange = true;
+        }
       } catch (error) {
         barrierError = error;
       } finally {
-        await admin.query("ROLLBACK");
+        await admin.query(commitChange ? "COMMIT" : "ROLLBACK");
       }
       const results = pending ? await pending : [];
       if (barrierError) throw barrierError;
@@ -264,6 +293,7 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
       const f = await fixture({ stock: 1 });
       const otherConsumerId = randomUUID();
       await admin.query(`INSERT INTO ${s}.consumers(id) VALUES ($1)`, [otherConsumerId]);
+      await admin.query(`INSERT INTO ${s}.tenant_consumer_memberships(tenant_id, consumer_id, loyalty_program_id, status) VALUES ($1, $2, $3, 'active')`, [f.tenantId, otherConsumerId, f.programId]);
       await admin.query(`INSERT INTO ${s}.loyalty_members(tenant_id, program_id, consumer_id, status, points_balance) VALUES ($1, $2, $3, 'enrolled', 100)`, [f.tenantId, f.programId, otherConsumerId]);
       const results = await concurrent("rewards", f.rewardId, [() => claim(f, firstQuery), () => claim(f, secondQuery, { consumerId: otherConsumerId })]);
       assert.equal(results.flat().length, 1);
@@ -330,12 +360,58 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
       ["blocked_member", { memberStatus: "blocked" }], ["deleted_member", { memberStatus: "deleted" }],
       ["empty_stock", { stock: 0 }], ["wrong_tenant", { wrongTenant: true }],
       ["wrong_program", { wrongProgram: true }], ["negative_cost", { cost: -40 }],
+      ["draft_program", { programStatus: "draft" }], ["paused_program", { programStatus: "paused" }],
+      ["archived_program", { programStatus: "archived" }], ["future_program", { futureProgram: true }],
+      ["expired_program", { expiredProgram: true }], ["cross_tenant_program", { wrongProgramTenant: true }],
+      ["missing_tenant_membership", { missingMembership: true }], ["cross_tenant_membership", { wrongMembershipTenant: true }],
+      ...["invited", "paused", "blocked", "left"].map((membershipStatus) => [`${membershipStatus}_tenant_membership`, { membershipStatus }]),
+      ["age_gated_reward_without_verified_age", { rewardAgeGate: true }], ["age_gated_program_without_verified_age", { programAgeGate: true }],
     ]) {
       await check(`${name}_claim_has_no_writes`, async () => {
         const f = await fixture(options);
         await unchanged(f, () => claim(f));
       });
     }
+
+    for (const [name, table, key, change] of [
+      ["program_pause", "loyalty_programs", "programId", "status = 'paused'"],
+      ["program_future_start", "loyalty_programs", "programId", "start_at = now() + interval '1 day'"],
+      ["program_expiration", "loyalty_programs", "programId", "end_at = now() - interval '1 day'"],
+      ["program_tenant_change", "loyalty_programs", "programId", "tenant_id = $2"],
+      ["program_age_gate", "loyalty_programs", "programId", "age_gate_required = true"],
+      ["reward_age_gate", "rewards", "rewardId", "requires_age_gate = true"],
+      ["tenant_membership_pause", "tenant_consumer_memberships", "membershipId", "status = 'paused'"],
+      ["tenant_membership_tenant_change", "tenant_consumer_memberships", "membershipId", "tenant_id = $2"],
+    ]) {
+      await check(`${name}_committed_while_claims_wait_prevents_all_claim_writes`, async () => {
+        const f = await fixture();
+        const before = await state(f);
+        if (table === "rewards") before.rewards.find((reward) => reward.id === f.rewardId).requires_age_gate = true;
+        const results = await concurrent(table, f[key], [() => claim(f, firstQuery), () => claim(f, secondQuery)], async () => {
+          await admin.query(`UPDATE ${s}."${table}" SET ${change} WHERE id = $1`, change.includes("$2") ? [f[key], f.otherTenantId] : [f[key]]);
+        });
+        assert.equal(results.flat().length, 0, "Committed tenant restrictions must win over claims waiting for their authority row");
+        assert.deepEqual(await state(f), before, "Revocation must prevent balances, stock, claims and ledger writes");
+      });
+    }
+
+    await check("existing_claim_remains_refundable_after_program_and_membership_revocation", async () => {
+      const f = await fixture();
+      const [created] = await claim(f);
+      assert.ok(created?.id);
+      await admin.query(`UPDATE ${s}.loyalty_programs SET status = 'paused', end_at = now() - interval '1 day', age_gate_required = true WHERE id = $1`, [f.programId]);
+      await admin.query(`UPDATE ${s}.tenant_consumer_memberships SET status = 'blocked' WHERE id = $1`, [f.membershipId]);
+      await admin.query(`UPDATE ${s}.rewards SET status = 'disabled', requires_age_gate = true WHERE id = $1`, [f.rewardId]);
+      await unchanged(f, () => claim(f));
+      assert.equal((await refund(f, created.id)).length, 1);
+      const current = await state(f);
+      assert.equal(current.members[0].points_balance, 100);
+      assert.equal(current.rewards[0].stock_remaining, 2);
+      assert.equal(current.claims[0].status, "cancelled");
+      assert.equal(current.ledger.length, 2);
+      assert.equal(current.ledger.find((entry) => entry.source === "ADMIN_ADJUSTMENT")?.delta, 40);
+      await unchanged(f, () => refund(f, created.id));
+    });
 
     await check("wrong_consumer_cannot_claim_or_cancel", async () => {
       const f = await fixture();

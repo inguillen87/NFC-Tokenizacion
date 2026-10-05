@@ -1,7 +1,7 @@
 {
-  "release": "2026.10.05-api-current-tag-collection.1",
-  "scope": "current-tag-ownership-eligibility-and-serialized-consumer-collection",
-  "baseCommit": "a467072c74f3b0b952bb846c0a8bb903cc866681",
+  "release": "2026.10.05-api-tenant-sync.1",
+  "scope": "tenant-published-editorial-and-authoritative-reward-configuration",
+  "baseCommit": "5fbb163acc0d0ffb11eb3f24150c62c517a602da",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },

@@ -6,6 +6,8 @@ import { sql } from "../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../lib/commercial-runtime-schema";
 import { ensureTokenizationRequestsSchema } from "../../../lib/tokenization-schema";
 import { normalizeTokenizationStatus } from "../../../lib/tokenization-status";
+import { readCurrentPassportEditorialCollection } from "../../../lib/current-passport-editorial";
+import { withConsumerCurrentEditorial } from "../../../lib/consumer-current-editorial";
 export async function GET(req: Request) {
   await ensureConsumerPortalSchema();
   await ensureTokenizationRequestsSchema();
@@ -14,6 +16,7 @@ export async function GET(req: Request) {
   const rows = await sql/*sql*/`
     SELECT
       cp.id,
+      cp.tenant_id::text AS editorial_tenant_id,
       cp.product_name,
       cp.brand_name,
       cp.image_url,
@@ -38,12 +41,13 @@ export async function GET(req: Request) {
     FROM consumer_products cp
     JOIN tenants t ON t.id = cp.tenant_id
     LEFT JOIN batches b ON b.id = (
-      SELECT e.batch_id FROM events e WHERE e.id = cp.latest_tap_event_id LIMIT 1
-    )
+      SELECT e.batch_id FROM events e WHERE e.id = cp.latest_tap_event_id AND e.tenant_id = cp.tenant_id LIMIT 1
+    ) AND b.tenant_id = cp.tenant_id
     LEFT JOIN LATERAL (
       SELECT e.result, e.city, e.country_code, e.created_at
       FROM events e
       WHERE e.id = cp.latest_tap_event_id
+        AND e.tenant_id = cp.tenant_id
       LIMIT 1
     ) latest_evt ON TRUE
     LEFT JOIN LATERAL (
@@ -74,10 +78,13 @@ export async function GET(req: Request) {
     WHERE cp.consumer_id = ${consumer.id}
     ORDER BY (cp.ownership_status = 'claimed') DESC, cp.updated_at DESC
   `;
+  const editorials = await readCurrentPassportEditorialCollection(rows.map(row => ({
+    eventId: row.latest_tap_event_id == null ? null : String(row.latest_tap_event_id), tenantId: row.editorial_tenant_id,
+  })));
   return json({
     ok: true,
-    items: rows.map((row) => ({
-      ...row,
+    items: rows.map((row, index) => ({
+      ...withConsumerCurrentEditorial(row, editorials[index]),
       ownership_record_scope: "nexid_off_chain_digital_title",
       chain_transfer_status: "not_executed",
       nft_transfer_executed: false,
