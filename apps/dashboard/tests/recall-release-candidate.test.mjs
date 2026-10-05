@@ -5,21 +5,30 @@ import test from 'node:test';
 import {DASHBOARD_RELEASE,releaseCopy} from '../src/lib/dashboard-release.ts';
 const json=async(path)=>JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'));
 const candidate=()=>json('../../../docs/releases/2026-09-21-dashboard.28.candidate.json');
-test('S9 ticket lookup retains immutable S6 evidence and identifies its paired API',async()=>{
+test('tenant-sync release retains immutable S6 evidence and identifies its paired API',async()=>{
  const [m,c]=await Promise.all([json('../public/release.json'),candidate()]);
  assert.equal(c.release,'2026.09.21-dashboard.28');
  assert.equal(createHash('sha256').update(JSON.stringify(c)).digest('hex'),'9be2d2d515dfcd3e43780c713dc51b2fb4f56a8e3a7f33df0f17d41532e11259');
- assert.equal(m.release,'2026.09.23-dashboard.42');
+ assert.equal(m.release,'2026.10.05-dashboard-tenant-sync.1');
  assert.equal(m.reconciliationBaseRelease,c.release);
- assert.equal(m.baseCommit,'71b3248dcd3d6d40d8eb6668c30ee5442b64195b');
- assert.equal(m.scope,'supplier-request-assignment-and-limited-operator');
+ assert.equal(m.baseCommit,'4d976d385e75d1e9139ebc44f5ba820eaaebb591');
+ assert.equal(m.scope,'reward-policy-and-consumed-stock-preservation');
  assert.equal(m.realTapCertification,'not-included');
- assert.equal(m.requiredApiRelease,'2026.09.23-api-supplier-requests.3');
+ assert.equal(m.requiredApiRelease,'2026.10.05-api-tenant-sync.1');
  assert.equal(m.supplierRequestAssignmentProtocol,'nexid.supplier-request-assignment.v1');
  assert.equal(m.supplierRequestReviewProtocol,'nexid.supplier-request-review.v1');
  assert.equal(m.requiredWebRelease,'2026.09.21-web-support.1');
  assert.equal(m.apiChangesIncluded,false);assert.equal(m.databaseMigrationsIncluded,false);
  assert.equal(c.application,'dashboard');
+});
+test('tenant-sync public marker preserves every unrelated production-baseline contract',async()=>{
+ const text=await readFile(new URL('./fixtures/tenant-sync-public-release-baseline.json',import.meta.url),'utf8');
+ assert.equal(createHash('sha256').update(text.replaceAll('\r\n','\n')).digest('hex'),'cd7f96a7c92cce2f1ec4ba527c880a8671704fab108bb58024e99af93e676f73');
+ const baseline=JSON.parse(text),marker=await json('../public/release.json');
+ assert.equal(baseline.release,'2026.09.23-dashboard.42');
+ const changed=['release','scope','baseCommit','requiredApiRelease'];
+ const unchanged=value=>Object.fromEntries(Object.entries(value).filter(([key])=>!changed.includes(key)));
+ assert.deepEqual(unchanged(marker),unchanged(baseline));
 });
 test('historical S6 review records no production promotion at capture time',async()=>{
  const c=await candidate();assert.equal(c.status,'candidate-not-deployed');

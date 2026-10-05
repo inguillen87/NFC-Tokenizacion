@@ -7,6 +7,7 @@ import {dashboardHighImpactPermissionMatches,dashboardPermissionMatches,dashboar
 import {supplierOperatorCan} from '../src/lib/supplier-operator-access.ts';
 import {canReadRuntimeConsole} from '../src/lib/runtime-readiness-access.ts';
 import {canReadGlobalNotifications} from '../src/lib/admin-notification-access.ts';
+import {readHistoricalBaseline,TENANT_SYNC_REVIEWED_SOURCES,TENANT_SYNC_SOURCE_BASE,tenantSyncHistoricalSourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 const source=await readFile(new URL('../src/lib/supplier-request-proxy.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source.replace(/^import .*;\r?$/gm,''),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const moduleExports={};
@@ -48,15 +49,27 @@ for(const patch of [{isDemo:true},{deniedPermissions:['*']}])test('shared forbid
 test('cross-company selection cannot piggyback on the explanatory runtime page',async()=>{const r=await call(company(),[id],{query:'?tenant=other-company'});assert.equal(r.status,403);assert.equal(r.calls.length,0);});
 test('authoritative commercial access loss is still returned, not hidden by the new global access explanation',async()=>{for(const status of [401,403,404]){const r=await call(company(),[id],{status});assert.equal(r.status,status);assert.equal(r.calls.length,1);}});
 
-test('every merged source file matches its immutable reviewed origin, including advanced request read-safety',async()=>{
- const baseline=JSON.parse(await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
+test('every merged source file retains its immutable origin except the exact reviewed tenant-sync increment',async()=>{
+ const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
  assert.equal(baseline.protocol,'nexid.release-convergence-source.v1');assert.equal(baseline.baselineSourceFiles,487);assert.equal(baseline.replaced.length,3);assert.equal(baseline.added.length,2);
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
  await walk(root);assert.deepEqual(actual.sort(),Object.keys(baseline.expected).sort());
- for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');assert.equal(createHash('sha256').update(text).digest('hex'),expected,path);}
+ for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,actual,expected),expected,path);}
  assert.ok(baseline.expected['apps/dashboard/src/components/supplier-request-workspace.tsx']);
  assert.ok(baseline.expected['apps/dashboard/src/lib/supplier-service-client.ts']);
+});
+test('tenant-sync review allows exactly two pinned source increments and rejects changed origin or unreviewed content',()=>{
+ assert.equal(TENANT_SYNC_SOURCE_BASE,'4d976d385e75d1e9139ebc44f5ba820eaaebb591');
+ assert.deepEqual(Object.keys(TENANT_SYNC_REVIEWED_SOURCES).sort(),['apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx','apps/dashboard/src/app/sign-in/[[...sign-in]]/page.tsx','apps/dashboard/src/lib/dashboard-release.ts']);
+ for(const [path,reviewed]of Object.entries(TENANT_SYNC_REVIEWED_SOURCES)){
+  assert.equal(tenantSyncHistoricalSourceHash(path,reviewed.after,reviewed.before),reviewed.before);
+  assert.throws(()=>tenantSyncHistoricalSourceHash(path,'0'.repeat(64),reviewed.before),/exact reviewed increment/);
+  assert.throws(()=>tenantSyncHistoricalSourceHash(path,reviewed.after,'0'.repeat(64)),/reviewed origin/);
+ }
+ assert.equal(tenantSyncHistoricalSourceHash('apps/dashboard/src/lib/permission-policy.ts','unreviewed-change','baseline'),'unreviewed-change');
+ assert.throws(()=>assert.equal(tenantSyncHistoricalSourceHash('apps/dashboard/src/lib/permission-policy.ts','unreviewed-change','baseline'),'baseline'));
+ assert.throws(()=>readHistoricalBaseline('runtime-console','{}'),/historical fixture remains immutable/);
 });
 test('merged CI keeps all prior operational and production-hotfix browser suites',async()=>{
  const w=await readFile(new URL('../../../.github/workflows/ticket-deadline-qa.yml',import.meta.url),'utf8');

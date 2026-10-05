@@ -80,7 +80,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </form>
             ) : (
               <div className="dashboard-auth-panel dashboard-auth-panel--soft rounded-2xl border border-white/10 p-4 text-left opacity-80">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Demo deshabilitada</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-300">Demo deshabilitada</p>
                 <h2 className="mt-2 text-lg font-black text-white">Demo Bodega Balmec</h2>
                 <p className="mt-2 text-sm leading-5 text-slate-400">Este entorno requiere credenciales de tenant.</p>
               </div>

@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import ts from 'typescript';
 import {runtimeFixture} from './fixtures/runtime-console.mjs';
+import {readHistoricalBaseline,tenantSyncHistoricalSourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 import {canReadRuntimeConsole,runtimeConsoleScopeKey} from '../src/lib/runtime-readiness-access.ts';
 import {parseRuntimeSnapshot,runtimeSupportSummary,runtimeObservedTime,runtimeSnapshotExpiresAt,RUNTIME_CONSOLE_FEATURES} from '../src/lib/runtime-readiness-contract.ts';
 import {readRuntimeSnapshot,fetchRuntimeSnapshot,RuntimeConsoleError} from '../src/lib/runtime-readiness-transport.ts';
@@ -39,7 +40,18 @@ test('client transport performs only opt-in same-origin GET and requires provena
 test('streaming response is bounded and invalid UTF8/JSON never produces a partial report',async()=>{let cancelled=false;const stream=new ReadableStream({pull(c){c.enqueue(new Uint8Array(32769));},cancel(){cancelled=true;}});await assert.rejects(readRuntimeSnapshot(new Response(stream,{headers:{'content-type':'application/json'}})),e=>e.code==='invalid');assert.equal(cancelled,true);for(const body of ['{bad',new Uint8Array([255,254])])await assert.rejects(readRuntimeSnapshot(new Response(body,{headers:{'content-type':'application/json'}})),e=>e.code==='invalid');});
 test('client cancellation is forwarded without retries',async()=>{const c=new AbortController();let count=0;const call=fetchRuntimeSnapshot(c.signal,async(url,init)=>{count++;return new Promise((resolve,reject)=>init.signal.addEventListener('abort',()=>reject(new Error('abort'))));});c.abort();await assert.rejects(call,e=>e.code==='cancelled');assert.equal(count,1);});
 test('page and settings navigation use the same policy; only GET is exported by the route',async()=>{const page=await readFile(new URL('../src/app/(app)/settings/runtime/page.tsx',import.meta.url),'utf8'),settings=await readFile(new URL('../src/app/(app)/settings/page.tsx',import.meta.url),'utf8'),route=await readFile(new URL('../src/app/api/admin/diagnostics/runtime-readiness/route.ts',import.meta.url),'utf8');assert.match(page,/requireDashboardSession/);assert.match(page,/canReadRuntimeConsole\(session\)/);assert.match(page,/notFound\(\)/);assert.match(settings,/canReadRuntimeConsole\(session\)/);assert.match(route,/export async function GET/);assert.doesNotMatch(route,/export (?:async )?function (?:POST|PATCH|PUT|DELETE)/);});
-test('the diagnostic UI does not replace existing operational features or change the release contracts',async()=>{const baseline=JSON.parse(await readFile(new URL('./fixtures/runtime-console-baseline.json',import.meta.url),'utf8'));const digest=createHash('sha256');for(const p of baseline.paths){const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');digest.update(p+'\0'+createHash('sha256').update(content).digest('hex')+'\n');}assert.equal(digest.digest('hex'),baseline.digest);});
+test('the diagnostic UI preserves all operational sources outside the exact reviewed tenant-sync increment',async()=>{
+ const baseline=readHistoricalBaseline('runtime-console',await readFile(new URL('./fixtures/runtime-console-baseline.json',import.meta.url),'utf8'));
+ const origins=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
+ const digest=createHash('sha256');
+ assert.equal(baseline.paths.length,483);
+ for(const p of baseline.paths){
+  const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
+  const actual=createHash('sha256').update(content).digest('hex');
+  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,actual,origins.expected[p])+'\n');
+ }
+ assert.equal(digest.digest('hex'),baseline.digest);
+});
 
 test('UTC time is unambiguous at midnight and future clock tolerance cannot extend client visibility past 60 seconds',()=>{
   assert.match(runtimeObservedTime('2026-09-25T00:01:02.000Z'),/00:01:02/);
