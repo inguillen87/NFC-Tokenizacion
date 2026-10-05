@@ -1,9 +1,9 @@
-export const DASHBOARD_RELEASE='2026.09.23-dashboard.42';
-export const DASHBOARD_RELEASE_DATE='2026-09-23';
+export const DASHBOARD_RELEASE='2026.10.05-dashboard-tenant-sync.1';
+export const DASHBOARD_RELEASE_DATE='2026-10-05';
 export const RELEASE_NOTES={
 'es-AR':{
  link:'Novedades y versión',eyebrow:'Equipo NexID',title:'Cada solicitud, con su responsable.',
- summary:'NexID puede asignar la revisión de una solicitud a un integrante de su equipo. El responsable consulta sólo sus asignaciones y pide aclaraciones en el mismo expediente; tu empresa responde desde su acceso habitual.',
+ summary:'El editor de beneficios conserva la condición de edad y la visibilidad en la red. Cambiar el stock total mantiene las unidades ya canjeadas; un error conserva el formulario para corregirlo. Las solicitudes siguen con sus responsables y permisos habituales.',
  back:'Solicitar etiquetas',href:'/supplier-orders/requests',site:'Sitio de nexID',label:'Versión de esta interfaz',changes:'Qué cambió',guide:'Recorrido de trabajo',
  steps:['Tu empresa prepara y envía la solicitud con producto, tipo de etiqueta, cantidad y uso previsto.','El administrador de NexID puede asignar la revisión a un responsable de su equipo.','El responsable consulta sus solicitudes asignadas y pide los detalles que falten. Tu empresa responde en el mismo expediente.','El administrador continúa la preparación técnica cuando corresponde. Asignar un responsable no confirma una compra ni un envío a fábrica.'],
  boundary:'El origen real no certifica el soporte físico, el estado TT ni la autenticidad criptográfica. Cerrar el seguimiento no levanta el aviso, libera producto ni certifica una devolución física. La conciliación usa declaraciones y comprobantes, no el número de TAP.',
@@ -21,7 +21,7 @@ export const RELEASE_NOTES={
 },
 'en':{
  link:'What is new and version',eyebrow:'NexID team',title:'A responsible teammate for every request.',
- summary:'NexID can assign a request for review by a teammate. Operators see only their assigned requests and ask for clarification in the same case; your company replies through its usual account.',
+ summary:'The reward editor retains the age requirement and network visibility. Changing total stock preserves units already redeemed; an error keeps the form available for correction. Requests retain their assigned teammates and existing permissions.',
  back:'Request labels',href:'/supplier-orders/requests',site:'nexID website',label:'Interface version',changes:'Changes',guide:'Workflow',
  steps:['Your company prepares and submits the product, label type, quantity and intended use.','A NexID administrator can assign the review to a teammate.','The operator checks assigned requests and asks for missing details. Your company replies in the same case.','The administrator continues technical preparation when appropriate. Assigning a teammate does not confirm a purchase or factory dispatch.'],
  boundary:'Real origin does not certify the physical carrier, TT state or cryptographic authenticity. Closing tracking does not lift the product notice, release stock or certify physical returns. Reconciliation uses declarations and references, not TAP counts.',
@@ -39,7 +39,7 @@ export const RELEASE_NOTES={
 },
 'pt-BR':{
  link:'Novidades e versão',eyebrow:'Equipe NexID',title:'Cada solicitação com seu responsável.',
- summary:'A NexID pode atribuir a revisão de uma solicitação a uma pessoa da equipe. O responsável consulta apenas suas atribuições e pede esclarecimentos no mesmo caso; sua empresa responde pelo acesso habitual.',
+ summary:'O editor de benefícios preserva a condição de idade e a visibilidade na rede. Alterar o estoque total mantém as unidades já resgatadas; um erro conserva o formulário para correção. As solicitações mantêm seus responsáveis e permissões habituais.',
  back:'Solicitar etiquetas',href:'/supplier-orders/requests',site:'Site da nexID',label:'Versão da interface',changes:'Mudanças',guide:'Fluxo de trabalho',
  steps:['Sua empresa prepara e envia a solicitação com produto, tipo de etiqueta, quantidade e uso previsto.','O administrador da NexID pode atribuir a revisão a uma pessoa da equipe.','O responsável consulta as solicitações atribuídas e pede os detalhes que faltam. Sua empresa responde no mesmo caso.','O administrador continua a preparação técnica quando apropriado. A atribuição não confirma uma compra ou envio à fábrica.'],
  boundary:'A origem real não certifica o suporte físico, o estado TT nem a autenticidade criptográfica. Encerrar o acompanhamento não retira o aviso, libera produtos nem certifica devoluções físicas. A conciliação usa declarações e comprovantes, não a contagem de TAP.',
