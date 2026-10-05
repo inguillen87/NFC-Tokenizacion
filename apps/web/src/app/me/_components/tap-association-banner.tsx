@@ -79,33 +79,43 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   const selectedResult = selected ? state.results[selected] : null;
   const hasResults = Object.keys(state.results).length > 0;
   const loginHref = tapAssociationLoginHref({ ...context, preferred: selected });
+  const renderChoice = (action: TapAssociationAction) => <label key={action} className={styles.choice} data-selected={selected === action} data-primary={action === "save"}>
+    <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => setSelected(action)} />
+    <span><strong>{copy.actions[action].label}</strong><small>{copy.actions[action].detail}</small></span>
+  </label>;
   return <section className={styles.panel} data-testid="tap-association" aria-labelledby="tap-association-title" lang={locale}>
     <header><span className={styles.eyebrow}>{copy.eyebrow}</span><h2 id="tap-association-title">{copy.title}</h2>
-      <p>{copy.intro}</p><p className={styles.reference}>{copy.reference}: <span>{context.eventId}</span></p></header>
+      <p>{copy.subtitle}</p></header>
     <fieldset className={styles.choices} disabled={Boolean(state.pending)}>
       <legend>{copy.choose}</legend>
-      {TAP_ASSOCIATION_ACTIONS.map(action => <label key={action} className={styles.choice} data-selected={selected === action}>
-        <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => setSelected(action)} />
-        <span><strong>{copy.actions[action].label}</strong><small>{copy.actions[action].detail}</small></span>
-      </label>)}
+      {renderChoice("save")}
+      <details className={styles.alternatives} open={context.preferred !== null && context.preferred !== "save"}>
+        <summary>{copy.alternatives}</summary>
+        <div className={styles.alternativeChoices}>{TAP_ASSOCIATION_ACTIONS.filter(action => action !== "save").map(renderChoice)}</div>
+      </details>
     </fieldset>
     <div className={styles.confirmation}>
-      <p role="status">{session === "checking" ? copy.checking : session === "active" ? copy.active : session === "none" ? copy.loginNeeded : copy.checkError}</p>
+      <p role="status">{state.pending ? copy.sending : session === "checking" ? copy.checking : session === "active" ? copy.active : session === "none" ? copy.loginNeeded : copy.checkError}</p>
       {session === "none" ? <Link className={styles.primary} href={loginHref} data-testid="tap-association-login" prefetch={false}>{copy.login}</Link> : null}
       {session === "unavailable" ? <button type="button" className={styles.secondary} onClick={() => setSessionRevision(value => value + 1)}>{copy.checkAgain}</button> : null}
       {session === "active" && selected ? <button type="button" className={styles.primary} disabled={Boolean(state.pending) || selectedResult?.retryable === false}
         onClick={() => void confirm()} data-testid="tap-association-confirm">
-        {state.pending ? copy.sending : selectedResult?.retryable === false ? copy.done : selectedResult ? `${copy.retry}: ${copy.actions[selected].label}` : copy.actions[selected].button}
+        {state.pending ? copy.sending : selectedResult?.retryable === false ? copy.titles[selectedResult.outcome] : selectedResult ? `${copy.retry}: ${copy.actions[selected].label}` : copy.actions[selected].button}
       </button> : null}
-      <p className={styles.help}>{copy.freshHelp}</p>
     </div>
     {hasResults ? <section className={styles.results} aria-labelledby="tap-association-results">
       <h3 id="tap-association-results" tabIndex={-1} ref={resultFocus}>{copy.results}</h3>
       <ul aria-live="polite">{TAP_ASSOCIATION_ACTIONS.map(action => state.results[action] ? <li key={action} data-testid={`tap-association-result-${action}`} data-outcome={state.results[action]?.outcome}>
-        <strong>{copy.actions[action].label}</strong><p>{copy.outcomes[state.results[action]!.outcome]}</p>
+        <span className={styles.resultAction}>{copy.actions[action].label}</span><h4>{copy.titles[state.results[action]!.outcome]}</h4><p>{copy.outcomes[state.results[action]!.outcome]}</p>
       </li> : null)}</ul>
-      <Link href="/me/products" className={styles.collectionLink} prefetch={false}>{copy.products}</Link>
+      <Link href={`/me/products?focus=${context.eventId}`} className={styles.collectionLink} prefetch={false}>{copy.products}</Link>
+      <Link href="/me/taps" className={styles.historyLink} prefetch={false}>{copy.history}</Link>
     </section> : null}
+    <details className={styles.readingDetails}>
+      <summary>{copy.readingDetails}</summary>
+      <div><p>{copy.intro}</p><p className={styles.help}>{copy.freshHelp}</p>
+        <p className={styles.reference}>{copy.reference}: <span>{context.eventId}</span></p></div>
+    </details>
   </section>;
 }
 

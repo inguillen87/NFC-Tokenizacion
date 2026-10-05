@@ -297,10 +297,28 @@ test("all supported locales contain every action and result with truthful member
     for (const action of model.TAP_ASSOCIATION_ACTIONS) for (const text of Object.values(strings.actions[action])) assert.ok(text.trim());
     assert.deepEqual(Object.keys(strings.outcomes).sort(), Object.keys(copy.associationCopy["es-AR"].outcomes).sort());
     for (const text of Object.values(strings.outcomes)) assert.ok(text.trim());
+    assert.deepEqual(Object.keys(strings.titles).sort(), Object.keys(strings.outcomes).sort());
+    for (const text of Object.values(strings.titles)) assert.ok(text.trim());
+    assert.notEqual(strings.titles.saved, strings.titles.unconfirmed);
+    assert.notEqual(strings.titles.saved, strings.titles.fresh_expired);
     assert.match(strings.actions.claim.detail, /NFT/);
     assert.match(strings.outcomes.claimed, /NFT/);
   }
   assert.match(copy.associationCopy["es-AR"].actions.save.detail, /vincula.*empresa/);
   assert.match(copy.associationCopy["es-AR"].actions.join.detail, /guarda el producto/);
   assert.match(copy.associationCopy["es-AR"].outcomes.review_required, /no creó una solicitud/);
+});
+
+test("default save keeps alternatives and technical context collapsed; a specific alternative stays discoverable", () => {
+  const save = render("fromTap=1&eventId=715&action=products");
+  assert.match(save, /<details class="alternatives"><summary>Otras opciones<\/summary>/);
+  assert.match(save, /<details class="readingDetails"><summary>Sobre esta lectura<\/summary>/);
+  assert.ok(save.indexOf('value="save"') < save.indexOf('<details class="alternatives">'));
+  for (const action of ["join", "claim", "rewards"]) {
+    const html = render(`fromTap=1&eventId=715&action=${action}`);
+    assert.match(html, /<details class="alternatives" open="">/);
+    const checked = [...html.matchAll(/<input\b([^>]*\bchecked=""[^>]*)>/g)];
+    assert.equal(checked.length, 1);
+    assert.ok(checked[0][1].includes(`value="${action}"`));
+  }
 });

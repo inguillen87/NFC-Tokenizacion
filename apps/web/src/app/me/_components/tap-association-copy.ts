@@ -4,6 +4,8 @@ type Copy = {
   eyebrow: string; title: string; intro: string; reference: string; choose: string; checking: string; active: string;
   loginNeeded: string; login: string; checkError: string; checkAgain: string; sending: string; retry: string;
   results: string; done: string; products: string; freshHelp: string;
+  alternatives: string; readingDetails: string; history: string; subtitle: string;
+  titles: Record<TapAssociationOutcome, string>;
   actions: Record<TapAssociationAction, { label: string; detail: string; button: string }>;
   outcomes: Record<TapAssociationOutcome, string>;
 };
@@ -12,7 +14,14 @@ export function associationLocale(value: string): AssociationLocale {
 }
 export const associationCopy: Record<AssociationLocale, Copy> = {
   "es-AR": {
-    eyebrow: "Opciones de esta lectura", title: "Elegí qué querés hacer", reference: "Referencia recibida",
+    eyebrow: "Después de tu TAP", title: "Guardá tu producto en tu cuenta", reference: "Referencia de lectura",
+    subtitle: "Guardá su historia para volver cuando quieras.", alternatives: "Otras opciones", readingDetails: "Sobre esta lectura", history: "Ver historial de lecturas",
+    titles: {
+      saved: "Producto guardado", linked: "Vínculo confirmado", claimed: "Titularidad registrada", enrolled: "Inscripción confirmada",
+      recorded_pending: "Registro pendiente de confirmación", committed_unknown: "Revisá el registro en tu cuenta", review_required: "Hace falta una revisión",
+      fresh_required: "Necesitás otra lectura", fresh_expired: "La lectura venció", fresh_used: "Esta lectura ya se usó", session_required: "Iniciá sesión para continuar",
+      no_program: "Beneficios no disponibles", blocked: "Acción no confirmada", unconfirmed: "Falta confirmar el resultado",
+    },
     intro: "La referencia del enlace no confirma autenticidad ni permisos. Cada acción se valida con tu sesión y la política de la empresa.",
     choose: "Una acción por vez", checking: "Comprobando tu sesión…", active: "Se usará tu sesión actual.",
     loginNeeded: "Iniciá sesión para continuar. Después tendrás que confirmar la acción elegida.", login: "Iniciar sesión",
@@ -40,7 +49,14 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     },
   },
   en: {
-    eyebrow: "Options for this reading", title: "Choose what you want to do", reference: "Received reference",
+    eyebrow: "After your tap", title: "Save your product to your account", reference: "Reading reference",
+    subtitle: "Save its story and come back whenever you like.", alternatives: "Other options", readingDetails: "About this reading", history: "View reading history",
+    titles: {
+      saved: "Product saved", linked: "Connection confirmed", claimed: "Digital title registered", enrolled: "Enrollment confirmed",
+      recorded_pending: "Record awaiting confirmation", committed_unknown: "Review the record in your account", review_required: "Additional review needed",
+      fresh_required: "A new reading is needed", fresh_expired: "This reading has expired", fresh_used: "This reading was already used", session_required: "Sign in to continue",
+      no_program: "Benefits unavailable", blocked: "Action not confirmed", unconfirmed: "Result awaiting confirmation",
+    },
     intro: "The link reference does not confirm authenticity or permissions. Each action is checked against your session and company policy.",
     choose: "One action at a time", checking: "Checking your session…", active: "Your current session will be used.", loginNeeded: "Sign in to continue. You will then need to confirm your chosen action.", login: "Sign in",
     checkError: "We could not check your session. No new action was sent.", checkAgain: "Check session", sending: "Waiting for confirmation…", retry: "Retry only this action", results: "Result of each action", done: "Response received", products: "Review my products",
@@ -61,7 +77,14 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     },
   },
   "pt-BR": {
-    eyebrow: "Opções desta leitura", title: "Escolha o que deseja fazer", reference: "Referência recebida",
+    eyebrow: "Depois do seu toque", title: "Guarde seu produto na sua conta", reference: "Referência da leitura",
+    subtitle: "Guarde a história e volte quando quiser.", alternatives: "Outras opções", readingDetails: "Sobre esta leitura", history: "Ver histórico de leituras",
+    titles: {
+      saved: "Produto guardado", linked: "Vínculo confirmado", claimed: "Titularidade registrada", enrolled: "Inscrição confirmada",
+      recorded_pending: "Registro aguardando confirmação", committed_unknown: "Revise o registro na sua conta", review_required: "Análise adicional necessária",
+      fresh_required: "É necessária outra leitura", fresh_expired: "A leitura expirou", fresh_used: "Esta leitura já foi usada", session_required: "Entre para continuar",
+      no_program: "Benefícios indisponíveis", blocked: "Ação não confirmada", unconfirmed: "Resultado aguardando confirmação",
+    },
     intro: "A referência do link não confirma autenticidade nem permissões. Cada ação é validada com sua sessão e a política da empresa.",
     choose: "Uma ação por vez", checking: "Verificando sua sessão…", active: "Sua sessão atual será utilizada.", loginNeeded: "Entre para continuar. Depois, confirme a ação escolhida.", login: "Entrar",
     checkError: "Não foi possível verificar a sessão. Nenhuma nova ação foi enviada.", checkAgain: "Verificar sessão", sending: "Aguardando confirmação…", retry: "Repetir somente esta ação", results: "Resultado de cada ação", done: "Resposta recebida", products: "Revisar meus produtos",
