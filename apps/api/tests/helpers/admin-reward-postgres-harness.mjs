@@ -3,22 +3,26 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { saveAdminReward } from "../../src/lib/admin-reward-service.ts";
 import { parseAdminRewardCommand } from "../../src/lib/admin-reward-policy.ts";
+import { assertQaPostgresClientIdentity } from "./ownership-current-state-postgres-harness.mjs";
 
 const files = ["../../src/lib/admin-reward-policy.ts", "../../src/lib/admin-reward-service.ts", "../../src/app/admin/loyalty/rewards/route.ts"];
 const hashes = async () => Object.fromEntries(await Promise.all(files.map(async file => [file, createHash("sha256").update(await readFile(new URL(file, import.meta.url))).digest("hex")])));
 
-export async function runAdminRewardPostgresQa({ connect } = {}) {
+export function validateAdminRewardQaIdentity(identity, client = null, options = {}) {
+  return assertQaPostgresClientIdentity(client, { ...identity, database: identity.database ?? identity.db }, options);
+}
+
+export async function runAdminRewardPostgresQa({ connect, dockerAttestation } = {}) {
   if (typeof connect !== "function") throw new Error("explicit_owned_qa_connection_factory_required");
   const sourceHashes = await hashes();
   const schema = `qa_admin_reward_${randomUUID().replaceAll("-", "")}`;
-  const clients = []; const cases = [];
+  const clients = []; const cases = []; const connectionEvidence = [];
   let schemaCreated = false;
   async function open() {
     const client = await connect(); clients.push(client);
-    const identity = (await client.query("SELECT current_database() AS db,current_user AS role,host(inet_server_addr()) AS address")).rows[0];
-    assert.match(identity.db, /^nexid_e2e_[a-z0-9_]+$/); assert.equal(identity.role, "nexid_e2e");
-    assert.ok(["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(identity.address), "owned loopback QA only");
-    if (clients.length > 1) assert.equal(identity.db, (await clients[0].query("SELECT current_database() AS db")).rows[0].db);
+    const identity = (await client.query("SELECT current_database() AS database,current_user AS role,pg_backend_pid() AS pid,host(inet_server_addr()) AS address,current_setting('server_version_num')::integer AS server_version_number,current_setting('neon.endpoint_id',true) AS neon_endpoint_id,current_setting('transaction_read_only') AS transaction_read_only")).rows[0];
+    connectionEvidence.push(validateAdminRewardQaIdentity(identity, client, { dockerAttestation }));
+    if (clients.length > 1) assert.equal(identity.database, (await clients[0].query("SELECT current_database() AS db")).rows[0].db);
     await client.query("SET statement_timeout='15000'"); await client.query("SET lock_timeout='10000'");
     return client;
   }
@@ -71,7 +75,7 @@ export async function runAdminRewardPostgresQa({ connect } = {}) {
     assert.equal(concurrent.stock_total, 20); assert.equal(concurrent.stock_remaining, 10); cases.push("concurrent_redemption_lock_preserves_actual_consumption");
     assert.equal((await first.query("SELECT status FROM loyalty_programs WHERE id=$1", [oldProgram])).rows[0].status, "paused");
     assert.deepEqual(await hashes(), sourceHashes, "source must remain pinned throughout SQL verification");
-    return { ok: true, evidence: "synthetic_owned_loopback_postgresql", cases, sourceHashes, schemaCleaned: true };
+    return { ok: true, evidence: "synthetic_owned_postgresql", cases, sourceHashes, connectionEvidence, schemaCleaned: true };
   } finally {
     for (const client of clients) await client.query("ROLLBACK").catch(() => {});
     if (schemaCreated) await clients[0].query(`DROP SCHEMA "${schema}" CASCADE`);
