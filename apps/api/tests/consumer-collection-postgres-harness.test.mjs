@@ -45,3 +45,17 @@ test("collection PostgreSQL harness closes opened clients if the next connection
   } }), /Synthetic connection failure/);
   assert.equal(closed, true);
 });
+
+for (const address of ["172.18.0.2", "10.0.0.2", "192.168.1.2"]) test(`collection does not allow private server ${address} without local Docker attestation`, async () => {
+  let closed = false; const statements = [];
+  await assert.rejects(runConsumerCollectionPostgresQa({ connect: async () => ({ query: async text => { statements.push(text); return { rows: [{ database: "nexid_e2e", role: "nexid_e2e", pid: 1, address }] }; }, end: async () => { closed = true; } }) }), /non-loopback/);
+  assert.equal(closed, true); assert.equal(statements.length, 1);
+  assert.doesNotMatch(statements.join("\n"), /CREATE|INSERT|UPDATE|DELETE|DROP/);
+});
+
+test("collection refuses a fabricated Docker descriptor before writes and closes the client", async () => {
+  let closed = false; const statements = [];
+  await assert.rejects(runConsumerCollectionPostgresQa({ dockerAttestation: { expectedServerAddress: "172.18.0.2" }, connect: async () => ({ query: async text => { statements.push(text); return { rows: [{ database: "nexid_e2e", role: "nexid_e2e", pid: 1, address: "172.18.0.2" }] }; }, end: async () => { closed = true; } }) }), /Unissued/);
+  assert.equal(closed, true); assert.equal(statements.length, 1);
+  assert.doesNotMatch(statements.join("\n"), /CREATE|INSERT|UPDATE|DELETE|DROP/);
+});

@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { randomUUID, randomBytes, createHash } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { assertQaPostgresClientIdentity } from "./ownership-current-state-postgres-harness.mjs";
 
 const OWN_SCHEMA = /^consumer_collection_qa_[0-9a-f]{32}$/;
-const QA_DATABASE = /^nexid_e2e(?:_[a-z0-9][a-z0-9_-]{0,48})?$/;
 
 // No connections, configuration or application imports occur at import time.
 // The caller supplies already-connected clients to an empty local QA database.
-export async function runConsumerCollectionPostgresQa({ connect } = {}) {
+export async function runConsumerCollectionPostgresQa({ connect, dockerAttestation } = {}) {
   assert.equal(typeof connect, "function", "An explicit disposable QA connection factory is required");
   const schema = `consumer_collection_qa_${randomUUID().replaceAll("-", "")}`;
   assert.match(schema, OWN_SCHEMA);
@@ -16,7 +16,7 @@ export async function runConsumerCollectionPostgresQa({ connect } = {}) {
   const lockKey = randomBytes(6).readUIntBE(0, 6);
   const report = {
     kind: "synthetic-postgresql-consumer-collection", ok: false, schema,
-    checks: [], lockObservations: [], serializationConflicts: 0,
+    checks: [], lockObservations: [], connectionEvidence: [], serializationConflicts: 0,
     productStatements: [], compatibilitySeedsSkipped: 0, projectionReturnsSuppressed: 0,
     cleanup: { schemaDropped: false, connectionsClosed: false },
     limits: [
@@ -38,10 +38,8 @@ export async function runConsumerCollectionPostgresQa({ connect } = {}) {
       clients.push(client);
       assert.ok(typeof client?.query === "function" && typeof client?.end === "function");
       assert.equal(clients.filter(row => row === client).length, 1, "Independent QA clients required");
-      const { rows: [identity] } = await client.query("SELECT current_database() AS database, current_user AS role, pg_backend_pid() AS pid, host(inet_server_addr()) AS address");
-      assert.match(identity.database, QA_DATABASE);
-      assert.equal(identity.role, "nexid_e2e", "A dedicated nexid_e2e QA role is required");
-      assert.ok(["127.0.0.1", "::1"].includes(identity.address), "Refusing a non-loopback PostgreSQL server");
+      const { rows: [identity] } = await client.query("SELECT current_database() AS database, current_user AS role, pg_backend_pid() AS pid, host(inet_server_addr()) AS address, current_setting('server_version_num')::integer AS server_version_number, current_setting('neon.endpoint_id', true) AS neon_endpoint_id, current_setting('transaction_read_only') AS transaction_read_only");
+      report.connectionEvidence.push(assertQaPostgresClientIdentity(client, identity, { dockerAttestation }));
       database ??= identity.database;
       assert.equal(identity.database, database, "All clients must use the same QA database");
       assert.ok(Number.isInteger(identity.pid) && !pids.includes(identity.pid), "Separate PostgreSQL backends required");
