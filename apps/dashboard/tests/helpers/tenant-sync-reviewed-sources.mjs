@@ -11,7 +11,7 @@ export const TENANT_SYNC_REVIEWED_SOURCES=Object.freeze({
  }),
  'apps/dashboard/src/lib/dashboard-release.ts':Object.freeze({
   before:'8b5ec8e8c4827ab5a1f3aac3ed94e3129ad10dabdfc6e683e3b9725e3676fa2e',
-  after:'401023067eecf3e6363219f1d09126f21f2d973df135ffbf34c9f87d2bfe419d',
+  after:'c54a573641e1803b2d915980007348cd5f4747fad23e1555109d922c3cad89ab',
   reason:'Align visible release/date and localized benefit summary with the committed public marker.'
  })
 });

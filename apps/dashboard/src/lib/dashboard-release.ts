@@ -2,7 +2,7 @@ export const DASHBOARD_RELEASE='2026.10.05-dashboard-tenant-sync.1';
 export const DASHBOARD_RELEASE_DATE='2026-10-05';
 export const RELEASE_NOTES={
 'es-AR':{
- link:'Novedades y versión',eyebrow:'Equipo NexID',title:'Cada solicitud, con su responsable.',
+ link:'Novedades y versión',eyebrow:'Equipo NexID',title:'Beneficios con reglas y stock claros.',
  summary:'El editor de beneficios conserva la condición de edad y la visibilidad en la red. Cambiar el stock total mantiene las unidades ya canjeadas; un error conserva el formulario para corregirlo. Las solicitudes siguen con sus responsables y permisos habituales.',
  back:'Solicitar etiquetas',href:'/supplier-orders/requests',site:'Sitio de nexID',label:'Versión de esta interfaz',changes:'Qué cambió',guide:'Recorrido de trabajo',
  steps:['Tu empresa prepara y envía la solicitud con producto, tipo de etiqueta, cantidad y uso previsto.','El administrador de NexID puede asignar la revisión a un responsable de su equipo.','El responsable consulta sus solicitudes asignadas y pide los detalles que falten. Tu empresa responde en el mismo expediente.','El administrador continúa la preparación técnica cuando corresponde. Asignar un responsable no confirma una compra ni un envío a fábrica.'],
@@ -20,7 +20,7 @@ export const RELEASE_NOTES={
   {title:'Conciliación conservada',text:'Se mantienen los acuses, cantidades, comprobantes y reintentos de la versión .28. Solicitar cierre y aprobarlo siguen siendo acciones independientes; otra cuenta autorizada revisa el cierre.',tag:'Retiros'}]
 },
 'en':{
- link:'What is new and version',eyebrow:'NexID team',title:'A responsible teammate for every request.',
+ link:'What is new and version',eyebrow:'NexID team',title:'Rewards with clear rules and stock.',
  summary:'The reward editor retains the age requirement and network visibility. Changing total stock preserves units already redeemed; an error keeps the form available for correction. Requests retain their assigned teammates and existing permissions.',
  back:'Request labels',href:'/supplier-orders/requests',site:'nexID website',label:'Interface version',changes:'Changes',guide:'Workflow',
  steps:['Your company prepares and submits the product, label type, quantity and intended use.','A NexID administrator can assign the review to a teammate.','The operator checks assigned requests and asks for missing details. Your company replies in the same case.','The administrator continues technical preparation when appropriate. Assigning a teammate does not confirm a purchase or factory dispatch.'],
@@ -38,7 +38,7 @@ export const RELEASE_NOTES={
   {title:'Reconciliation retained',text:'Acknowledgements, quantities, references and retries from version .28 remain available. Requesting closure and approving it remain independent actions; another authorized account reviews closure.',tag:'Recalls'}]
 },
 'pt-BR':{
- link:'Novidades e versão',eyebrow:'Equipe NexID',title:'Cada solicitação com seu responsável.',
+ link:'Novidades e versão',eyebrow:'Equipe NexID',title:'Benefícios com regras e estoque claros.',
  summary:'O editor de benefícios preserva a condição de idade e a visibilidade na rede. Alterar o estoque total mantém as unidades já resgatadas; um erro conserva o formulário para correção. As solicitações mantêm seus responsáveis e permissões habituais.',
  back:'Solicitar etiquetas',href:'/supplier-orders/requests',site:'Site da nexID',label:'Versão da interface',changes:'Mudanças',guide:'Fluxo de trabalho',
  steps:['Sua empresa prepara e envia a solicitação com produto, tipo de etiqueta, quantidade e uso previsto.','O administrador da NexID pode atribuir a revisão a uma pessoa da equipe.','O responsável consulta as solicitações atribuídas e pede os detalhes que faltam. Sua empresa responde no mesmo caso.','O administrador continua a preparação técnica quando apropriado. A atribuição não confirma uma compra ou envio à fábrica.'],
