@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -14,6 +15,8 @@ import { startEnterpriseEphemeralHttpHarness } from "./lib/enterprise-ephemeral-
 
 import {runSupplierRuntimeAcceptance} from "./lib/supplier-runtime-acceptance.mjs";
 import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
+import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
+import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { Client, Pool } = pg;
@@ -136,6 +139,39 @@ class SseProbe {
 async function run() {
   config = readEnterpriseEphemeralE2eConfig(process.env);
   const emptyTarget = await assertDatabaseStartsEmpty();
+  const dockerAttestation = process.env.GITHUB_ACTIONS === "true" ? attestGithubPostgresDocker({
+    config, env: process.env, platform: process.platform,
+    workflowText: await readFile(path.resolve(apiRoot, "../../.github/workflows/enterprise-ephemeral-e2e.yml"), "utf8"),
+    runDocker: args => {
+      // Pin the local Unix daemon and discard Docker environment overrides.
+      // Raw inspect can contain environment values; never print child output.
+      const dockerEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("DOCKER_")));
+      const result = spawnSync("docker", args, { env: dockerEnv, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 10_000, maxBuffer: 1024 * 1024 });
+      if (result.error || result.status !== 0) throw new Error("Local Docker PostgreSQL attestation read failed");
+      return String(result.stdout || "");
+    },
+  }) : null;
+  // Run focused real-SQL regressions only after the existing target/version
+  // deny guards pass, before migrations or the application executor exists.
+  // Each harness owns and drops a random schema; no application table is used.
+  const connectCurrentTagQa = async () => {
+    const client = new Client({ connectionString: config.databaseUrl, connectionTimeoutMillis: 5_000 });
+    try { await client.connect(); return client; }
+    catch (error) { await client.end().catch(() => {}); throw error; }
+  };
+  const ownershipCurrentState = await runOwnershipCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(ownershipCurrentState.ok && ownershipCurrentState.cleanup.schemaDropped && ownershipCurrentState.cleanup.connectionsClosed, "Ownership current-state SQL regression or cleanup failed");
+  assert.equal(ownershipCurrentState.checks.length, 51);
+  assert.ok(ownershipCurrentState.checks.every(check => check.ok));
+  assert.equal(ownershipCurrentState.lockObservations.length, 4);
+  const collectionConcurrency = await runConsumerCollectionPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(collectionConcurrency.ok && collectionConcurrency.cleanup.schemaDropped && collectionConcurrency.cleanup.connectionsClosed, "Collection concurrent-save SQL regression or cleanup failed");
+  assert.equal(collectionConcurrency.checks.length, 11);
+  assert.ok(collectionConcurrency.checks.every(check => check.passed));
+  assert.equal(collectionConcurrency.lockObservations.length, 3);
+  assert.ok(collectionConcurrency.serializationConflicts >= 3);
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency };
+  assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 
   process.env.NODE_ENV = "test";
@@ -2212,6 +2248,7 @@ async function run() {
         consumer_network_routes: Object.keys(consumerNetworkPayloads).length,
       },
       bootstrap_prerequisites: bootstrapPrerequisites,
+      current_tag_regressions: currentTagRegressionEvidence,
       supplier_chain_acceptance: supplierChainEvidence,
       supplier_runtime_acceptance: supplierRuntimeEvidence,
       consumer_network_query_plans: consumerNetworkExplainEvidence,
