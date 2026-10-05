@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Card, StatusChip } from "@product/ui";
 import {
@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 
 interface Reward {
+  id?: string;
+  program_id?: string;
+  tenant_slug?: string;
   code: string;
   title: string;
   points: number;
@@ -27,10 +30,48 @@ interface Reward {
   description?: string;
   type?: string;
   image_url?: string;
-  stock_total?: number;
-  stock_remaining?: number;
+  stock_total?: number | null;
+  stock_remaining?: number | null;
   requires_age_gate?: boolean;
   network_visible?: boolean;
+}
+
+type RewardForm = { code: string; title: string; description: string; type: string; points_cost: number; stock_total: number | null; image_url: string; status: string; requires_age_gate: boolean; network_visible: boolean };
+
+export function buildRewardSavePayload(tenant: string, form: RewardForm, editing: Reward | null) {
+  const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+  const scope = (editing?.tenant_slug || tenant).trim().toLowerCase();
+  if (!scope) throw new Error("tenant_required");
+  if (!Number.isSafeInteger(form.points_cost) || form.points_cost < 0 || form.points_cost > 2_147_483_647) throw new Error("invalid_points_cost");
+  if (form.stock_total !== null && (!Number.isSafeInteger(form.stock_total) || form.stock_total < 0 || form.stock_total > 2_147_483_647)) throw new Error("invalid_stock_total");
+  if (editing && (!uuid.test(editing.id || "") || !uuid.test(editing.program_id || "")
+    || typeof editing.requires_age_gate !== "boolean" || typeof editing.network_visible !== "boolean")) throw new Error("reward_configuration_unavailable");
+  if (!editing && form.stock_total === null) throw new Error("invalid_stock_total");
+  const { stock_total, ...metadata } = form;
+  return {
+    tenant_slug: scope, ...metadata,
+    ...(editing ? { reward_id: editing.id, program_id: editing.program_id } : {}),
+    ...(!editing || stock_total !== (editing.stock_total ?? null) ? { stock_total } : {}),
+    ...(!editing ? { stock_remaining: stock_total } : {}),
+  };
+}
+
+export function rewardSaveErrorCopy(code: unknown): string {
+  const messages: Record<string, string> = {
+    tenant_required: "Seleccioná la empresa antes de guardar. Tu formulario sigue aquí.",
+    invalid_points_cost: "El costo debe ser un número entero desde cero. Revisalo; tu formulario sigue aquí.",
+    invalid_stock_total: "El stock total debe ser un número entero desde cero. Revisalo; tu formulario sigue aquí.",
+    invalid_stock_remaining: "No pudo validarse el stock. Volvé a consultar el beneficio antes de guardar.",
+    stock_total_below_consumed: "El total no puede ser menor que las unidades ya consumidas. Puede haber nuevos canjes; revisá el stock y conservá tu formulario.",
+    reward_stock_unavailable: "No pudo confirmarse el stock guardado. Volvé a consultar; tu formulario sigue aquí.",
+    reward_configuration_unavailable: "Falta la configuración guardada del beneficio. Volvé a consultar antes de editar; tu formulario sigue aquí.",
+    reward_program_ambiguous: "Este código existe en más de un programa. Volvé a consultar y elegí el beneficio exacto.",
+    loyalty_program_not_found: "La empresa necesita un programa de beneficios configurado. Contactá al administrador; tu formulario sigue aquí.",
+    reward_not_found: "El beneficio ya no está disponible en este programa. Volvé a consultar; tu formulario sigue aquí.",
+    reward_update_conflict: "El beneficio cambió mientras guardabas. Volvé a consultar; tu formulario sigue aquí.",
+    reward_create_conflict: "Este código ya fue guardado en el programa. Consultá el catálogo antes de intentar otro guardado.",
+  };
+  return typeof code === "string" && messages[code] ? messages[code] : "No se pudo confirmar el guardado. Tu formulario sigue aquí; revisá los datos y reintentá la consulta.";
 }
 
 interface RewardsClientProps {
@@ -82,15 +123,37 @@ export default function RewardsClient({
   const [description, setDescription] = useState("");
   const [type, setType] = useState("WINE_BOX");
   const [pointsCost, setPointsCost] = useState(500);
-  const [stockTotal, setStockTotal] = useState(100);
+  const [stockTotal, setStockTotal] = useState<number | null>(100);
   const [imageUrl, setImageUrl] = useState("/images/wine_tasting.png");
   const [status, setStatus] = useState("active");
   const [requiresAgeGate, setRequiresAgeGate] = useState(false);
   const [networkVisible, setNetworkVisible] = useState(true);
-  const [customTenant, setCustomTenant] = useState("demobodega");
+  const [customTenant, setCustomTenant] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isModalOpen && !dialogRef.current?.open) dialogRef.current?.showModal();
+  }, [isModalOpen]);
+  useEffect(() => {
+    if (message?.type === "error") feedbackRef.current?.focus();
+  }, [message]);
+  const closeModal = () => {
+    dialogRef.current?.close();
+    setIsModalOpen(false);
+  };
+  const containModalFocus = (event: React.KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key !== "Tab") return;
+    const targets = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])")];
+    const first = targets[0], last = targets[targets.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey ? active === first || !targets.includes(active as HTMLElement) : active === last || !targets.includes(active as HTMLElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
+    }
+  };
 
   const openCreateModal = () => {
     if (!canWrite) return;
@@ -117,8 +180,8 @@ export default function RewardsClient({
     setDescription(reward.description || "");
     setType(reward.type || "WINE_BOX");
     setPointsCost(reward.points);
-    setStockTotal(reward.stock_total || 100);
-    setImageUrl(reward.image_url || "/images/wine_tasting.png");
+    setStockTotal(reward.stock_total ?? null);
+    setImageUrl(reward.image_url ?? "");
     setStatus(reward.status || "active");
     setRequiresAgeGate(!!reward.requires_age_gate);
     setNetworkVisible(reward.network_visible !== false);
@@ -135,22 +198,11 @@ export default function RewardsClient({
     setLoading(true);
     setMessage(null);
 
-    const payload = {
-      tenant_slug: tenantScope || customTenant,
-      code,
-      title,
-      description,
-      type,
-      points_cost: pointsCost,
-      stock_total: stockTotal,
-      stock_remaining: stockTotal,
-      image_url: imageUrl,
-      status,
-      requires_age_gate: requiresAgeGate,
-      network_visible: networkVisible
-    };
-
     try {
+      const payload = buildRewardSavePayload(tenantScope || customTenant, {
+        code, title, description, type, points_cost: pointsCost, stock_total: stockTotal,
+        image_url: imageUrl, status, requires_age_gate: requiresAgeGate, network_visible: networkVisible,
+      }, editingReward);
       const response = await fetch("/api/admin/loyalty/rewards", {
         method: "POST",
         headers: {
@@ -166,19 +218,19 @@ export default function RewardsClient({
           text: editingReward ? "Beneficio actualizado con éxito" : "Nuevo beneficio creado con éxito"
         });
         setTimeout(() => {
-          setIsModalOpen(false);
+          closeModal();
           router.refresh();
         }, 1500);
       } else {
         setMessage({
           type: "error",
-          text: data.error || "Error al procesar la solicitud"
+          text: rewardSaveErrorCopy(data.error)
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({
         type: "error",
-        text: "Error de red al conectar con el servidor"
+        text: err instanceof Error ? rewardSaveErrorCopy(err.message) : rewardSaveErrorCopy(null)
       });
     } finally {
       setLoading(false);
@@ -208,7 +260,7 @@ export default function RewardsClient({
           <button
             type="button"
             onClick={openCreateModal}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white text-sm font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(6,182,212,0.15)] hover:shadow-[0_4px_25px_rgba(6,182,212,0.3)] hover:-translate-y-0.5"
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-800 hover:bg-cyan-700 text-[#ffffff] text-sm font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(6,182,212,0.15)] hover:shadow-[0_4px_25px_rgba(6,182,212,0.3)] hover:-translate-y-0.5"
           >
             <Plus className="h-4 w-4" />
             Nuevo Beneficio
@@ -348,15 +400,17 @@ export default function RewardsClient({
 
       {/* MODAL */}
       {isModalOpen && canWrite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+        <dialog ref={dialogRef} aria-labelledby="reward-edit-heading" onKeyDown={containModalFocus} onCancel={(event) => { event.preventDefault(); closeModal(); }} className="fixed inset-0 z-50 m-0 h-dvh max-h-none w-screen max-w-none border-0 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl animate-in fade-in zoom-in duration-200">
             <header className="flex items-center justify-between border-b border-white/10 bg-slate-900/50 px-6 py-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 id="reward-edit-heading" className="text-lg font-bold text-white flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-cyan-400" />
                 {editingReward ? "Editar Beneficio" : "Crear Nuevo Beneficio"}
               </h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                type="button"
+                aria-label="Cerrar edición del beneficio"
+                onClick={closeModal}
                 className="rounded-lg p-1 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
               >
                 <X className="h-5 w-5" />
@@ -366,6 +420,9 @@ export default function RewardsClient({
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               {message && (
                 <div
+                  ref={feedbackRef}
+                  role={message.type === "error" ? "alert" : "status"}
+                  tabIndex={-1}
                   className={`flex items-start gap-3 p-3 rounded-xl border text-sm ${
                     message.type === "success"
                       ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
@@ -384,10 +441,11 @@ export default function RewardsClient({
               {/* Scope Selection for Super Admin */}
               {!tenantScope && !editingReward && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="reward-edit-tenant" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                     Tenant Responsable
                   </label>
                   <select
+                    id="reward-edit-tenant"
                     value={customTenant}
                     onChange={(e) => setCustomTenant(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
@@ -401,10 +459,11 @@ export default function RewardsClient({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="reward-edit-code" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                     Código de Control
                   </label>
                   <input
+                    id="reward-edit-code"
                     type="text"
                     required
                     value={code}
@@ -416,10 +475,11 @@ export default function RewardsClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="reward-edit-type" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                     Tipo de Beneficio
                   </label>
                   <select
+                    id="reward-edit-type"
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
@@ -434,10 +494,11 @@ export default function RewardsClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                <label htmlFor="reward-edit-title" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                   Título del Beneficio
                 </label>
                 <input
+                  id="reward-edit-title"
                   type="text"
                   required
                   value={title}
@@ -448,10 +509,11 @@ export default function RewardsClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                <label htmlFor="reward-edit-description" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                   Descripción Detallada
                 </label>
                 <textarea
+                  id="reward-edit-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Explicá claramente qué incluye y cómo se reclama..."
@@ -462,38 +524,50 @@ export default function RewardsClient({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="reward-edit-points" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                     Costo en Puntos
                   </label>
                   <input
+                    id="reward-edit-points"
                     type="number"
                     min={0}
                     required
-                    value={pointsCost}
-                    onChange={(e) => setPointsCost(parseInt(e.target.value, 10) || 0)}
+                    value={Number.isNaN(pointsCost) ? "" : pointsCost}
+                    step={1}
+                    max={2_147_483_647}
+                    onChange={(e) => setPointsCost(e.target.value === "" ? NaN : Number(e.target.value))}
                     className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    Stock Disponible
+                  <label htmlFor="reward-edit-stock" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Stock total
                   </label>
                   <input
+                    id="reward-edit-stock"
+                    aria-describedby="reward-edit-stock-help"
                     type="number"
                     min={0}
                     required
-                    value={stockTotal}
-                    onChange={(e) => setStockTotal(parseInt(e.target.value, 10) || 0)}
+                    step={1}
+                    max={2_147_483_647}
+                    disabled={Boolean(editingReward && editingReward.stock_total == null)}
+                    value={stockTotal === null || Number.isNaN(stockTotal) ? "" : stockTotal}
+                    onChange={(e) => setStockTotal(e.target.value === "" ? NaN : Number(e.target.value))}
                     className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   />
+                  <p id="reward-edit-stock-help" className="mt-2 text-xs text-slate-400">{editingReward
+                    ? editingReward.stock_total == null ? "Sin límite de stock registrado. Esta edición conserva el stock existente."
+                      : `Disponible en la última consulta: ${editingReward.stock_remaining ?? "sin confirmar"}. Cambiar el total agrega o quita unidades; conserva las ya consumidas, incluidos los nuevos canjes.`
+                    : "Al crear el beneficio, el total es su disponibilidad inicial."}</p>
                 </div>
               </div>
 
               {/* Image selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                  Imagen Realista (Imágenes premium generadas)
+                <label htmlFor="reward-edit-image" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Imagen del beneficio
                 </label>
                 <div className="grid grid-cols-1 gap-2 mb-2">
                   {PRESET_IMAGES.map((img) => (
@@ -513,6 +587,7 @@ export default function RewardsClient({
                   ))}
                 </div>
                 <input
+                  id="reward-edit-image"
                   type="text"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
@@ -523,10 +598,11 @@ export default function RewardsClient({
 
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="reward-edit-status" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                     Estado
                   </label>
                   <select
+                    id="reward-edit-status"
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
@@ -563,7 +639,7 @@ export default function RewardsClient({
               <footer className="flex items-center justify-end gap-3 pt-6 border-t border-white/10">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeModal}
                   className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
                 >
                   Cancelar
@@ -571,14 +647,14 @@ export default function RewardsClient({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex items-center gap-2 px-5 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.1)]"
+                  className="flex items-center gap-2 px-5 py-2 bg-cyan-800 hover:bg-cyan-700 disabled:opacity-50 text-[#ffffff] text-sm font-semibold rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.1)]"
                 >
                   {loading ? "Guardando..." : "Guardar Beneficio"}
                 </button>
               </footer>
             </form>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );
