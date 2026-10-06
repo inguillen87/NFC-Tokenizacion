@@ -60,6 +60,10 @@ function accepted(provider: OtpDelivery["provider"], channel: OtpDeliveryChannel
   return { ok: true, delivery: { provider, channel, status: "accepted" } };
 }
 
+class TwilioAuthenticationError extends Error {
+  constructor() { super("twilio_authentication_failed"); }
+}
+
 async function providerRequest(url: string, init: RequestInit, provider: "resend" | "twilio", channel: OtpDeliveryChannel) {
   try {
     const response = await fetch(url, { ...init, signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS) });
@@ -70,10 +74,14 @@ async function providerRequest(url: string, init: RequestInit, provider: "resend
     if (!response.ok) {
       const errorCode = typeof data?.code === "number" && Number.isSafeInteger(data.code) ? data.code : undefined;
       auditDelivery(provider, channel, "failed", { httpStatus: response.status, ...(errorCode !== undefined ? { errorCode } : {}) });
+      if (provider === "twilio" && (response.status === 401 || response.status === 403 || errorCode === 20003)) {
+        throw new TwilioAuthenticationError();
+      }
       throw new Error(`${provider}_delivery_failed`);
     }
     return { response, data };
   } catch (error) {
+    if (error instanceof TwilioAuthenticationError) throw error;
     if (error instanceof Error && error.message === `${provider}_delivery_failed`) throw error;
     const timedOut = error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name);
     auditDelivery(provider, channel, "failed", { providerStatus: timedOut ? "timeout" : "request_failed" });
@@ -350,7 +358,7 @@ class TwilioOtpProvider implements ConsumerOtpProvider {
     const validSid = typeof data?.sid === "string" && /^(SM|MM)[a-f\d]{32}$/i.test(data.sid);
     const errorCode = typeof data?.error_code === "number" && Number.isSafeInteger(data.error_code) ? data.error_code : undefined;
     const details = { httpStatus: response.status, providerStatus: knownStatuses.includes(status) ? status : "invalid_receipt", ...(validSid ? { receiptHash: receiptHash(data!.sid as string) } : {}), ...(errorCode !== undefined ? { errorCode } : {}) };
-    if (!validSid || !allowedStatuses.includes(status) || (data?.error_code !== null && data?.error_code !== undefined)) {
+    if (!validSid || !allowedStatuses.includes(status) || data?.code === 20003 || (data?.error_code !== null && data?.error_code !== undefined)) {
       auditDelivery("twilio", this.channel, "failed", details);
       throw new Error("twilio_receipt_invalid");
     }

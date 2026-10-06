@@ -20,6 +20,7 @@ function startStatus(error: string) {
     error === "consumer_auth_from_email_missing" ||
     error === "twilio_credentials_missing" ||
     error === "twilio_sender_missing" ||
+    error === "twilio_authentication_failed" ||
     error === "otp_provider_api_key_missing" ||
     error === "smtp_credentials_missing" ||
     error === "consumer_auth_mode_invalid" ||
