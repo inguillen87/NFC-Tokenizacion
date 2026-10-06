@@ -1,5 +1,6 @@
 import { BadgeCheck, Coins, PackageCheck, ShieldCheck, Store, WalletCards } from "lucide-react";
-import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { asArray, buildConsumerNextPath, fetchConsumerPath, readConsumerSession } from "../_components/consumer-api";
+import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import type { ConsumerPortalProduct } from "../_components/consumer-portal-model";
 import { buildConsumerWalletPointsModel } from "../_components/consumer-wallet-points-model";
 import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
@@ -26,7 +27,8 @@ function hasOnChainProof(product: ConsumerPortalProduct) {
 
 export default async function WalletLedgerPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
-  await requireConsumerSession(buildConsumerNextPath("/me/wallet", params));
+  const session = await readConsumerSession(buildConsumerNextPath("/me/wallet", params));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   
   const [wallet, productsPayload] = await Promise.all([
     fetchConsumerPath("wallet") as Promise<WalletPayload | null>,

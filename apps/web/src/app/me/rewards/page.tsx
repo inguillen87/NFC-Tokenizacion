@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Coins, Store } from "lucide-react";
-import { buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerPath, readConsumerSession } from "../_components/consumer-api";
+import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { buildConsumerWalletPointsModel } from "../_components/consumer-wallet-points-model";
 import { buildConsumerRewardsModel, findRequestedVoucher, rewardTenant } from "../_components/consumer-rewards-model";
 import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
@@ -11,7 +12,8 @@ import styles from "./rewards.module.css";
 export default async function RewardsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   const tenant = rewardTenant(params.tenant);
-  await requireConsumerSession(buildConsumerNextPath("/me/rewards", params));
+  const session = await readConsumerSession(buildConsumerNextPath("/me/rewards", params));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const [rewardsPayload, walletPayload] = await Promise.all([fetchConsumerPath("rewards"), fetchConsumerPath("wallet")]);
   const rewards = buildConsumerRewardsModel(rewardsPayload, new Date().toISOString());
   const points = buildConsumerWalletPointsModel(walletPayload).brands;

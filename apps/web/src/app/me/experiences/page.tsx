@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, MessageSquareText, Sparkles, Star, Store, TicketCheck } from "lucide-react";
-import { buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerPath, readConsumerSession } from "../_components/consumer-api";
+import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
 import { PortalShell } from "../_components/portal-shell";
 import { VerifiedExperienceForm } from "./verified-experience-form";
@@ -9,7 +10,8 @@ import styles from "./experiences.module.css";
 
 export default async function ConsumerExperiencesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
-  await requireConsumerSession(buildConsumerNextPath("/me/experiences", params));
+  const session = await readConsumerSession(buildConsumerNextPath("/me/experiences", params));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const tenant = experienceTenant(params.tenant);
   const eventId = experienceEventId(params.eventId);
   const productName = typeof params.product === "string" ? params.product.slice(0, 240) : "";

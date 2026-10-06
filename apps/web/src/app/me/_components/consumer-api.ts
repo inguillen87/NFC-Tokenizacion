@@ -48,16 +48,22 @@ export async function fetchConsumerSession() {
   return fetchJson("/consumer/session");
 }
 
-export type ConsumerHomeSessionRead = { status: "ready" } | { status: "unavailable" };
+export type ConsumerSessionRead = { status: "ready" } | { status: "unavailable" };
+export type ConsumerHomeSessionRead = ConsumerSessionRead;
 
-/** The home page handles an unavailable session as a recoverable read state. */
-export async function readConsumerHomeSession(nextPath = "/me"): Promise<ConsumerHomeSessionRead> {
+/** Expected lookup failures are recoverable; only confirmed sessions open private pages. */
+export async function readConsumerSession(nextPath = "/me"): Promise<ConsumerSessionRead> {
   const result = await readJson("/consumer/session");
   const state = consumerSessionState(result);
   if (state === "unauthenticated") {
     redirect(`/login?consumer=1&next=${encodeURIComponent(nextPath)}`);
   }
   return { status: state === "authenticated" ? "ready" : "unavailable" };
+}
+
+/** Retain the home reader's public contract for independently maintained callers. */
+export async function readConsumerHomeSession(nextPath = "/me"): Promise<ConsumerHomeSessionRead> {
+  return readConsumerSession(nextPath);
 }
 
 export async function requireConsumerSession(nextPath = "/me") {

@@ -56,13 +56,14 @@ function loadPage(payload, options = {}) {
     ...shared,
     "../_components/consumer-api": {
       ...api,
-      requireConsumerSession: async (next) => { calls.push(["session", next]); if (options.authorize) await options.authorize(); },
+      readConsumerSession: async (next) => { calls.push(["session", next]); if (options.authorize) await options.authorize(); return { status: "ready" }; },
       fetchConsumerPath: async (path) => {
         calls.push(["fetch", path]);
         if (options.fetch) return options.fetch(path);
         return path === "rewards" ? payload : Object.hasOwn(options, "wallet") ? options.wallet : wallet();
       },
     },
+    "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
     "../_components/consumer-wallet-points-model": walletModel,
     "../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", { type: "button" }, "Reintentar carga") },
     "../_components/portal-shell": { PortalShell: ({ children }) => React.createElement("main", null, children) },

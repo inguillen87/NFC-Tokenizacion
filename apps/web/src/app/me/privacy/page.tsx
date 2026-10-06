@@ -1,10 +1,13 @@
-import { fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerPath, readConsumerSession } from "../_components/consumer-api";
+import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { PortalShell } from "../_components/portal-shell";
 
 type Privacy = { consumer?: { email?: string; display_name?: string; preferred_locale?: string }; consents?: Array<{ tenant_id?: string; scope?: string; granted?: boolean }> };
 
-export default async function PrivacyPage() {
-  await requireConsumerSession("/me/privacy");
+export default async function PrivacyPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = (await searchParams) || {};
+  const session = await readConsumerSession(buildConsumerNextPath("/me/privacy", params));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const privacy = (await fetchConsumerPath("privacy")) as Privacy | null;
   const consentRows = Array.isArray(privacy?.consents) ? privacy!.consents! : [];
 

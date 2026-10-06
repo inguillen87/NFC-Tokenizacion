@@ -6,6 +6,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { CONSUMER_READ_TIMEOUT_MS, consumerSessionState, fetchConsumerJson } from "../src/app/me/_components/consumer-bounded-fetch.ts";
+import { homeReadingHref } from "../src/app/me/_components/consumer-home-model.ts";
+import { rewardTenant } from "../src/app/me/_components/consumer-rewards-model.ts";
 
 test("consumer reads time out stalled headers, even when the transport ignores abort", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
@@ -164,12 +166,92 @@ test("home session reads preserve genuine 401 login and authenticate only a veri
   assert.equal(accepted.calls[0].init.headers.cookie, "session=private");
 });
 
-test("home session unavailability is typed; other consumer gates still throw fail closed", async () => {
+test("generic and compatible home session readers return typed unavailability; legacy strict gates stay fail closed", async () => {
   for (const result of [{ status: "unavailable", reason: "network" }, { status: "unavailable", reason: "timeout" }, { status: "unavailable", reason: "invalid-json" }, { status: "http-error", httpStatus: 500 }, { status: "http-error", httpStatus: 503 }, { status: "ready", data: {} }, { status: "ready", data: { ok: true, authenticated: "true" } }]) {
     const loaded = loadApi(result);
+    assert.deepEqual(await loaded.api.readConsumerSession(), { status: "unavailable" });
     assert.deepEqual(await loaded.api.readConsumerHomeSession(), { status: "unavailable" });
     await assert.rejects(() => loaded.api.requireConsumerSession(), /consumer_session_unavailable/);
   }
+});
+
+const consumerDestinations = [
+  { file: "page.tsx", next: "/me?fromTap=1&eventId=732&tenant=balmec&action=save", query: { fromTap: "1", eventId: "732", tenant: "balmec", action: "save" } },
+  { file: "products/page.tsx", next: "/me/products?focus=9007199254740993&tenant=balmec", query: { focus: "9007199254740993", tenant: "balmec" } },
+  { file: "rewards/page.tsx", next: "/me/rewards?fromTap=1&eventId=732&tenant=balmec&action=rewards&voucher=claim-8", query: { fromTap: "1", eventId: "732", tenant: "balmec", action: "rewards", voucher: "claim-8" } },
+  { file: "marketplace/page.tsx", next: "/me/marketplace?fromTap=1&eventId=732&tenant=balmec&action=marketplace", query: { fromTap: "1", eventId: "732", tenant: "balmec", action: "marketplace" } },
+  { file: "wallet/page.tsx", next: "/me/wallet?tenant=balmec&connect=metamask", query: { tenant: "balmec", connect: "metamask" } },
+  { file: "passport/page.tsx", next: "/me/passport?tenant=balmec&eventId=732", query: { tenant: "balmec", eventId: "732" } },
+  { file: "brands/page.tsx", next: "/me/brands?tenant=balmec&fromTap=1&action=join", query: { tenant: "balmec", fromTap: "1", action: "join" } },
+  { file: "experiences/page.tsx", next: "/me/experiences?tenant=balmec&eventId=732&product=Vino+de+reserva", query: { tenant: "balmec", eventId: "732", product: "Vino de reserva" } },
+  { file: "sommelier/page.tsx", next: "/me/sommelier?tenant=balmec&product=Vino+de+reserva", query: { tenant: "balmec", product: "Vino de reserva" } },
+  { file: "cork-analyzer/page.tsx", next: "/me/cork-analyzer?tenant=balmec&eventId=732", query: { tenant: "balmec", eventId: "732" } },
+  { file: "privacy/page.tsx", next: "/me/privacy?tenant=balmec&scope=brand_updates&scope=marketing", query: { tenant: "balmec", scope: ["brand_updates", "marketing"] } },
+  { file: "security/page.tsx", next: "/me/security?fromTap=1&eventId=732", query: { fromTap: "1", eventId: "732" } },
+  { file: "taps/page.tsx", next: "/me/taps?tenant=balmec&from=2026-09-01&to=2026-10-06&event=VALID_CLOSED", query: { tenant: "balmec", from: "2026-09-01", to: "2026-10-06", event: "VALID_CLOSED" } },
+  { file: "taps/[eventId]/page.tsx", next: "/me/taps/9007199254740993?tenant=balmec&fromTap=1", query: { tenant: "balmec", fromTap: "1" }, params: { eventId: "9007199254740993" } },
+  { file: "taps/[eventId]/page.tsx", next: "/me/taps?tenant=balmec", query: { tenant: "balmec" }, params: { eventId: "invalid-reference" } },
+];
+
+/** Execute each real server page with the real session reader. Other imports
+ * fail loudly if a private model or action is reached before confirmation.
+ */
+function loadSessionOnlyPage(destination, loaded) {
+  const source = readFileSync(new URL(destination.file, root), "utf8");
+  const ConsumerPortalUnavailable = () => null;
+  const forbidden = (name) => () => { throw new Error(`Reached private page dependency before session confirmation: ${name}`); };
+  const overrides = Object.fromEntries(ts.preProcessFile(source).importedFiles.map(({ fileName }) => {
+    if (fileName.endsWith("/consumer-api")) return [fileName, loaded.api];
+    if (fileName.endsWith("/consumer-portal-recovery")) return [fileName, { ConsumerPortalUnavailable }];
+    return [fileName, new Proxy({}, { get: (_, name) => {
+      if (fileName.endsWith("/consumer-home-model") && name === "homeReadingHref") return homeReadingHref;
+      if (fileName.endsWith("/consumer-rewards-model") && name === "rewardTenant") return rewardTenant;
+      if (name === "__esModule") return true;
+      return forbidden(`${fileName}/${String(name)}`);
+    } })];
+  }));
+  return { page: compile(source, overrides).default, ConsumerPortalUnavailable };
+}
+
+function destinationInput(destination) {
+  return { searchParams: Promise.resolve(destination.query), ...(destination.params ? { params: Promise.resolve(destination.params) } : {}) };
+}
+
+test("every customer destination renders recoverable session unavailability before private reads or actions", async (t) => {
+  for (const destination of consumerDestinations) await t.test(destination.file, async () => {
+    for (const result of [
+      { status: "unavailable", reason: "timeout" }, { status: "unavailable", reason: "network" }, { status: "unavailable", reason: "invalid-json" },
+      { status: "http-error", httpStatus: 403 }, { status: "http-error", httpStatus: 429 }, { status: "http-error", httpStatus: 500 },
+      { status: "ready", data: {} }, { status: "ready", data: { ok: true, authenticated: "true" } },
+    ]) {
+      const loaded = loadApi(result);
+      const { page, ConsumerPortalUnavailable } = loadSessionOnlyPage(destination, loaded);
+      assert.equal((await page(destinationInput(destination))).type, ConsumerPortalUnavailable);
+      assert.deepEqual(loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session"]);
+      assert.equal(loaded.calls[0].init.headers.cookie, "session=private");
+    }
+  });
+});
+
+test("every customer destination preserves its exact return context on confirmed unauthentication", async (t) => {
+  for (const destination of consumerDestinations) await t.test(destination.file, async () => {
+    for (const result of [{ status: "http-error", httpStatus: 401 }, { status: "ready", data: { ok: true, authenticated: false } }]) {
+      const loaded = loadApi(result);
+      const { page } = loadSessionOnlyPage(destination, loaded);
+      await assert.rejects(() => page(destinationInput(destination)), (error) => error.message === `redirect:/login?consumer=1&next=${encodeURIComponent(destination.next)}`);
+      assert.deepEqual(loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session"]);
+    }
+  });
+});
+
+test("every customer destination leaves unexpected exceptions to the genuine route error boundary", async (t) => {
+  for (const destination of consumerDestinations) await t.test(destination.file, async () => {
+    const failure = new Error("unexpected request context failure");
+    const loaded = loadApi(failure);
+    const { page } = loadSessionOnlyPage(destination, loaded);
+    await assert.rejects(() => page(destinationInput(destination)), (error) => error === failure);
+    assert.equal(loaded.calls.length, 0);
+  });
 });
 
 test("an unknown session stops the page before any private account, collection or brand lookup", async () => {
@@ -213,6 +295,7 @@ test("unexpected session read exceptions still propagate to the real route error
   const failure = new Error("unexpected request context failure");
   const loaded = loadApi(failure);
   await assert.rejects(() => loaded.api.readConsumerHomeSession(), (error) => error === failure);
+  await assert.rejects(() => loaded.api.readConsumerSession(), (error) => error === failure);
   await assert.rejects(() => loaded.api.requireConsumerSession(), (error) => error === failure);
   assert.equal(loaded.calls.length, 0);
 });

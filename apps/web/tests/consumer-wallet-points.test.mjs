@@ -44,9 +44,10 @@ function loadPage(payload, options = {}) {
   const page = compile(pageSource, {
     "../_components/consumer-api": {
       ...api,
-      requireConsumerSession: async (next) => { calls.push(["session", next]); if (options.authorize) await options.authorize(); },
+      readConsumerSession: async (next) => { calls.push(["session", next]); if (options.authorize) await options.authorize(); return { status: "ready" }; },
       fetchConsumerPath: async (path) => { calls.push(["fetch", path]); if (options.fetch) return options.fetch(path); return path === "wallet" ? payload : options.products || list(); },
     },
+    "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
     "../_components/consumer-wallet-points-model": model,
     "../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", { type: "button" }, "Reintentar carga") },
     "../_components/portal-shell": { PortalShell: ({ children }) => React.createElement("main", null, children) },

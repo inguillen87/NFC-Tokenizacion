@@ -1,7 +1,8 @@
 import { ConsumerProductLibrary } from "./product-library";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ArrowUpRight, CircleAlert, History, MessageSquareText, Package, ScanLine, ShoppingBag } from "lucide-react";
-import { buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerPath, readConsumerSession } from "../_components/consumer-api";
+import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { buildHomeProductsSource, homeOwnershipLabel, homeProductExperienceHref, homeVerdictLabel } from "../_components/consumer-home-model";
 import { ConsumerDataRetryButton, ConsumerProductImage } from "../_components/me-portal-interactive-client";
 import { PortalShell } from "../_components/portal-shell";
@@ -9,7 +10,8 @@ import styles from "./products.module.css";
 
 export default async function ProductsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
-  await requireConsumerSession(buildConsumerNextPath("/me/products", params));
+  const session = await readConsumerSession(buildConsumerNextPath("/me/products", params));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const source = buildHomeProductsSource(await fetchConsumerPath("products"));
 
   return (

@@ -263,9 +263,10 @@ function loadProductsPage(payload, denied = false) {
     "./product-library":library,
     "../_components/consumer-api": {
       buildConsumerNextPath: (path) => path,
-      requireConsumerSession: async () => { calls.push("session"); if (denied) throw new Error("redirect-login"); },
+      readConsumerSession: async () => { calls.push("session"); if (denied) throw new Error("redirect-login"); return { status: "ready" }; },
       fetchConsumerPath: async (path) => { calls.push(path); return payload; },
     },
+    "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
     "../_components/consumer-home-model": model,
     "../_components/me-portal-interactive-client": client,
     "../_components/portal-shell": { PortalShell: ({ title, subtitle, children }) => React.createElement("main", null, React.createElement("h1", null, title), React.createElement("p", null, subtitle), children) },
