@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
-import { ClerkProvider } from "@clerk/nextjs";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./generated/root-base.css";
 import { siteConfig } from "@product/config";
@@ -11,7 +10,6 @@ import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
 import { StructuredData } from "../components/structured-data";
-import { getClerkPublishableKey } from "../lib/clerk-env";
 import { getWebI18n } from "../lib/locale";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 
@@ -192,7 +190,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const theme = resolveThemePreference(themeCookie, themeVersionCookie);
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
-  const clerkKey = getClerkPublishableKey();
   const content = (
     <>
       <MisconfigurationBanner />
@@ -214,13 +211,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
-        {clerkKey ? (
-          <ClerkProvider publishableKey={clerkKey}>
-            {content}
-          </ClerkProvider>
-        ) : (
-          content
-        )}
+        {content}
       </body>
     </html>
   );

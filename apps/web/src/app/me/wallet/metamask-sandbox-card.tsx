@@ -399,6 +399,7 @@ export function MetamaskSandboxCard({
         <div className="v3-space-y-3 p-5">
           <Link
             href="/web3/sign-in?next=/me/wallet"
+            prefetch={false}
             className="group flex items-center justify-between gap-4 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-left transition hover:border-cyan-200/60 hover:bg-cyan-300/15"
           >
             <div className="flex items-start gap-3">
