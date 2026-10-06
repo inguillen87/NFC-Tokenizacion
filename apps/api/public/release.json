@@ -1,7 +1,8 @@
 {
-  "release": "2026.10.05-api-engagement-governance.1",
-  "scope": "tenant-explicit-services-programs-trivia-and-atomic-loyalty-policy",
-  "baseCommit": "240d0f54fa807d4dd1240fbd1bdf5df5260c45e4",
+  "release": "2026.10.06-api-tenant-marketplace.1",
+  "scope": "tenant-authorized-durable-catalog-draft-publish-withdraw",
+  "baseCommit": "8bbd5defdeb0ff6ced7c884788cb688028df6729",
+  "tenantMarketplaceProtocol": "nexid.tenant-marketplace-catalog.v1",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },

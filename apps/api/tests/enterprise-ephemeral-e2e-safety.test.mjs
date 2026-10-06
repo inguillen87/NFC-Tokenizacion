@@ -538,6 +538,19 @@ test("ephemeral E2E CI pins every external action and service image", async () =
   assert.doesNotMatch(workflow, /\n\s+paths:/);
 });
 
+test('durable tenant catalog SQL QA runs behind verified target guards on both existing CI versions before migrations',async()=>{
+  const source=await readFile(new URL('../scripts/enterprise-ephemeral-e2e.mjs',import.meta.url),'utf8');
+  const call=source.indexOf('await runTenantMarketplaceCatalogPostgresQa({ connect: connectCurrentTagQa, dockerAttestation })');
+  assert(call>source.indexOf('const emptyTarget = await assertDatabaseStartsEmpty()'));
+  assert(call>source.indexOf('attestGithubPostgresDocker({'));
+  assert(call<source.indexOf('const bootstrapPrerequisites = applyMigrations()'));
+  assert.match(source,/tenantMarketplaceCatalog\.accepted && tenantMarketplaceCatalog\.cleanup\.schemaDropped && tenantMarketplaceCatalog\.cleanup\.connectionsClosed/);
+  assert.match(source,/currentTagRegressionEvidence = \{[^\n]+tenantMarketplaceCatalog \}/);
+  const harness=await readFile(new URL('./helpers/tenant-marketplace-catalog-postgres-qa.mjs',import.meta.url),'utf8');
+  assert(harness.indexOf('assertQaPostgresClientIdentity(client,identity,{dockerAttestation})')<harness.indexOf("'CREATE SCHEMA '"));
+  assert.match(harness,/SET search_path TO '\+s\+', pg_catalog/);
+});
+
 // The Windows QA host carries this exact installed build. Keep all other target
 // checks (loopback, role, confirmation, empty database) intact.
 test('local PostgreSQL 17.10 is accepted only at its exact server version',async()=>{
