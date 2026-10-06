@@ -31,6 +31,7 @@ type NavigationCopy = {
   ariaLabel: string;
   passport: string;
   about: string;
+  account: string;
   login: string;
   demo: string;
   menu: string;
@@ -52,7 +53,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
       ariaLabel: "Main navigation",
       passport: "Digital product passport",
       about: "About us",
-      login: "Sign in",
+      account: "My account",
+      login: "Business sign in",
       demo: "Book a demo",
       menu: "Open navigation",
       close: "Close navigation",
@@ -97,7 +99,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Verify public evidence", description: "Check public evidence without exposing private data.", href: "/proof/verify" },
             { label: "NFC security", description: "Review fresh-message validation for provisioned NFC tags.", href: "/sun" },
             { label: "Offline field mode", description: "Review the controlled workflow for low-connectivity sites.", href: "/offline" },
-            { label: "Consumer portal", description: "Access passports, certificates, rewards and ownership.", href: "/login?next=/me" },
+            { label: "Consumer portal", description: "Access passports, certificates, rewards and ownership.", href: "/me" },
             { label: "SDK and APIs", description: "Integrate the platform when your technical team is ready.", href: "/sdk" },
           ],
         },
@@ -125,7 +127,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
       ariaLabel: "Navegação principal",
       passport: "Passaporte digital",
       about: "Quem somos",
-      login: "Entrar",
+      account: "Minha conta",
+      login: "Acesso para empresas",
       demo: "Agendar demo",
       menu: "Abrir navegação",
       close: "Fechar navegação",
@@ -170,7 +173,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Verificar evidência pública", description: "Confira evidência pública sem expor dados privados.", href: "/proof/verify" },
             { label: "Segurança NFC", description: "Revise a validação de mensagens frescas em tags NFC provisionadas.", href: "/sun" },
             { label: "Modo de campo offline", description: "Revise o fluxo controlado para locais sem conectividade.", href: "/offline" },
-            { label: "Portal do consumidor", description: "Acesse passaportes, certificados, benefícios e ownership.", href: "/login?next=/me" },
+            { label: "Portal do consumidor", description: "Acesse passaportes, certificados, benefícios e ownership.", href: "/me" },
             { label: "SDK e APIs", description: "Integre a plataforma quando sua equipe técnica estiver pronta.", href: "/sdk" },
           ],
         },
@@ -197,7 +200,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
     ariaLabel: "Navegación principal",
     passport: "Pasaporte digital",
     about: "Quiénes somos",
-    login: "Ingresar",
+    account: "Mi cuenta",
+    login: "Ingresar empresas",
     demo: "Agendar demo",
     menu: "Abrir navegación",
     close: "Cerrar navegación",
@@ -242,7 +246,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           { label: "Verificar evidencia pública", description: "Comprobá evidencia pública sin exponer datos privados.", href: "/proof/verify" },
           { label: "Seguridad NFC", description: "Revisá la validación de mensajes frescos en tags NFC provisionados.", href: "/sun" },
           { label: "Modo de campo offline", description: "Revisá el flujo controlado para lugares sin conectividad.", href: "/offline" },
-          { label: "Portal del consumidor", description: "Accedé a pasaportes, certificados, beneficios y propiedad.", href: "/login?next=/me" },
+          { label: "Portal del consumidor", description: "Accedé a pasaportes, certificados, beneficios y propiedad.", href: "/me" },
           { label: "SDK y APIs", description: "Integrá la plataforma cuando tu equipo técnico esté listo.", href: "/sdk" },
         ],
       },
@@ -300,7 +304,7 @@ function MenuLink({ item, currentPath, featured = false, onNavigate }: { item: N
   }
 
   return (
-    <Link href={item.href} className={className} data-menu-link aria-current={isCurrent ? "page" : undefined} onClick={onNavigate}>
+    <Link href={item.href} prefetch={item.href === "/me" ? false : undefined} className={className} data-menu-link aria-current={isCurrent ? "page" : undefined} onClick={onNavigate}>
       {content}
     </Link>
   );
@@ -602,6 +606,9 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       <div className={styles.headerUtilities}>
         <div className={styles.desktopUtility}><LocaleSwitcher value={locale} options={[...locales]} /></div>
         <div className={styles.desktopUtility}><ThemeToggle initialTheme={initialTheme} locale={locale} /></div>
+        <Link href="/me" prefetch={false} className={styles.accountLink} data-consumer-entry="header" onClick={closeDesktopMenu}>
+          {copy.account}
+        </Link>
         <a href={loginHref} className={styles.loginLink}>{copy.login}</a>
         <Link href="/?contact=demo#contact-modal" className={styles.headerCta}>{copy.demo}</Link>
         <button
@@ -635,6 +642,10 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
 
             <div className={styles.mobileGroups}>
+              <Link href="/me" prefetch={false} className={`${styles.mobileAboutLink} ${styles.mobileAccountLink}`} data-consumer-entry="menu" onClick={() => closeMobileMenu("navigate")}>
+                <span>{copy.account}</span>
+                <ArrowRight aria-hidden="true" />
+              </Link>
               <a href="/#pasaporte-digital" className={styles.mobileAboutLink} onClick={handlePassportNavigation}>
                 <span>{copy.passport}</span>
                 <ArrowRight aria-hidden="true" />
