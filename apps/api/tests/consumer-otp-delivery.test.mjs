@@ -633,6 +633,67 @@ test("HTTP, malformed JSON, network and timeout errors remain sanitized for both
   }
 });
 
+test("Twilio authentication rejection stays typed through start without fallback or delivery claims", async () => {
+  for (const env of [
+    { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_PHONE_OTP_CHANNEL: "whatsapp" },
+    { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "sms" },
+  ]) {
+    for (const fetch of [
+      async () => response({ code: 20003, message: RAW_ERROR }, 401),
+      async () => response({ code: 20005, message: RAW_ERROR }, 403),
+      async () => response({ code: 20003, message: RAW_ERROR }, 400),
+      async () => new Response("invalid provider response", { status: 401 }),
+      async () => new Response(null, { status: 403 }),
+    ]) {
+      const h = harness({ env, fetch, secondaryContact: EMAIL });
+      const result = await h.post(PHONE);
+      assert.equal(result.status, 503);
+      const body = await result.json();
+      assert.deepEqual(body, { ok: false, error: "twilio_authentication_failed" });
+      assert.equal(result.headers.get("cache-control"), "no-store");
+      assert.equal(h.requests.length, 1, "a rejected primary must not fall back or retry");
+      assert.equal(h.mail.length, 0);
+      assert.equal(h.logs.filter((line) => line.startsWith("[consumer_auth_delivery_audit]")).length, 1, "the typed rejection must survive catch without a second transport-failure audit");
+      assertPublicPayload(body);
+      assertSanitizedLogs(h);
+    }
+  }
+});
+
+test("Twilio uncertain failures and contradictory success receipts never become authentication rejection or acceptance", async () => {
+  for (const [fetch, status, error] of [
+    [async () => response({ code: 20429, message: RAW_ERROR }, 429), 502, "twilio_delivery_failed"],
+    [async () => response({ code: 21211, message: RAW_ERROR }, 400), 502, "twilio_delivery_failed"],
+    [async () => response({ code: "20003", message: RAW_ERROR }, 400), 502, "twilio_delivery_failed"],
+    [async () => new Response("invalid provider response", { status: 500 }), 502, "twilio_delivery_failed"],
+    [async () => new Response("invalid provider response", { status: 200 }), 502, "twilio_receipt_invalid"],
+    [async () => response({ code: 20003, message: RAW_ERROR }, 200), 502, "twilio_receipt_invalid"],
+    [async () => twilioOk({ code: 20003 }), 502, "twilio_receipt_invalid"],
+    [async () => twilioOk({ error_code: 20003 }), 502, "twilio_receipt_invalid"],
+    [async () => { throw new Error("twilio_authentication_failed"); }, 502, "twilio_delivery_failed"],
+    [async () => { throw new Error(RAW_ERROR); }, 502, "twilio_delivery_failed"],
+    [async () => { const timeout = new Error(RAW_ERROR); timeout.name = "TimeoutError"; throw timeout; }, 504, "twilio_delivery_timeout"],
+    [async () => { const abort = new Error(RAW_ERROR); abort.name = "AbortError"; throw abort; }, 504, "twilio_delivery_timeout"],
+  ]) {
+    const h = harness({ env: { ...TWILIO_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_PHONE_OTP_CHANNEL: "whatsapp" }, fetch });
+    const result = await h.post(PHONE);
+    assert.equal(result.status, status);
+    const body = await result.json();
+    assert.deepEqual(body, { ok: false, error });
+    assert.equal(result.headers.get("cache-control"), "no-store");
+    assert.equal(h.requests.length, 1);
+    assertPublicPayload(body);
+    assertSanitizedLogs(h);
+  }
+
+  const email = harness({ env: { ...RESEND_ENV, CONSUMER_AUTH_MODE: "resend" }, fetch: async () => response({ code: 20003, message: RAW_ERROR }, 401) });
+  const result = await email.post(EMAIL);
+  assert.equal(result.status, 502);
+  assert.deepEqual(await result.json(), { ok: false, error: "resend_delivery_failed" });
+  assert.equal(email.requests.length, 1);
+  assertSanitizedLogs(email);
+});
+
 test("smart routes email and phones to configured drivers, including Whatsapp; local demo is simulated", async () => {
   for (const [env, contact, expected] of [
     [{ ...SMTP_ENV, CONSUMER_AUTH_MODE: "smart" }, EMAIL, delivery("smtp", "email")],

@@ -1,7 +1,7 @@
 {
-  "release": "2026.10.06-api-tenant-marketplace.1",
-  "scope": "tenant-authorized-durable-catalog-draft-publish-withdraw",
-  "baseCommit": "8bbd5defdeb0ff6ced7c884788cb688028df6729",
+  "release": "2026.10.06-api-otp-provider-rejection.1",
+  "scope": "explicit-twilio-authentication-rejection-without-accepting-message-delivery",
+  "baseCommit": "5add287a1d3462503d42e989b706e1df1030eb9c",
   "tenantMarketplaceProtocol": "nexid.tenant-marketplace-catalog.v1",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
