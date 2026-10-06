@@ -232,6 +232,12 @@ async function consumerEntryCase(width,theme,locale){
    check(await menuAccount.innerText()===copy.account&&await menuAccount.getAttribute('href')==='/me'&&details.menuAccount.height>=44&&details.menuAccount.withinViewport&&details.menuAccount.unobstructed,'Open menu exposes immediate direct consumer account '+name,details.menuAccount);
    const business=dialog.getByRole('link',{name:copy.business,exact:true});check(await business.getAttribute('href')==='https://business.example.invalid/login','Business login stays separate from consumer account '+name);
    check(await dialog.getByRole('link',{name:copy.demo,exact:true}).getAttribute('href')==='/?contact=demo#contact-modal','Commercial demo remains available in mobile menu '+name);
+   details.scrolledTargets=[];
+   for(const [label,target] of [['featured',dialog.locator('details[open] > div > a[href="/demo-lab"]')],['business',business],['demo',dialog.getByRole('link',{name:copy.demo,exact:true})]]){
+    await target.scrollIntoViewIfNeeded();await frames(page);const geometry=await bounds(target);details.scrolledTargets.push({label,...geometry});
+    check(geometry.width>=44&&geometry.height>=44&&geometry.withinViewport&&geometry.unobstructed,'Scrolled menu target stays reachable without footer overlap '+label+' '+name,geometry);
+   }
+   await menuAccount.scrollIntoViewIfNeeded();await frames(page);
    await page.screenshot({path:join(output,name+'-menu-viewport.png')});
    await menuAccount.press('Enter');await page.waitForURL(origin+'/me');
    check(await page.getByRole('dialog').count()===0&&await page.locator('#main-content').evaluate(node=>!node.inert),'Menu account closes dialog and releases inert content on navigation '+name);

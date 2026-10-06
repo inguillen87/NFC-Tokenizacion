@@ -648,8 +648,6 @@
   }
 
   .mobileActions {
-    position: sticky;
-    bottom: 0;
     background: color-mix(in srgb, var(--nav-surface) 96%, transparent);
     backdrop-filter: blur(16px);
   }
