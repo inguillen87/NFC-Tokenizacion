@@ -216,6 +216,7 @@
 @media (max-width: 389px) {
   .header .brand { min-height: 4.5rem; }
   .homeLink { min-height: 4.5rem; }
+  .header .brand [data-sun-brand-identity][data-sun-brand-variant="passport"] { min-height: 4.5rem; }
 }
 @media (max-width: 299px) {
   .header .utilities { grid-template-columns: minmax(0, 1fr) 2.75rem; }
