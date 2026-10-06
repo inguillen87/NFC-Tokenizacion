@@ -12,6 +12,7 @@
 }
 
 .intro,
+.selectionBar,
 .panel,
 .product,
 .wallet {
@@ -124,7 +125,7 @@
 }
 
 .button:hover:not(:disabled),
-.iconButton:hover,
+.iconButton:hover:not(:disabled),
 .walletLink:hover {
   background: var(--portal-subtle, #edf5f3);
   border-color: var(--portal-accent, #08755d);
@@ -138,7 +139,8 @@
   outline-offset: 3px;
 }
 
-.button:disabled {
+.button:disabled,
+.iconButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -151,7 +153,6 @@
 }
 
 .resultCount {
-  padding-bottom: 0.75rem;
   color: var(--portal-muted, #486071);
   font-size: 0.875rem;
 }
@@ -160,6 +161,34 @@
   position: relative;
   min-width: 0;
   overflow: hidden;
+}
+
+.selectionBar,
+.resultBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.selectionBar {
+  padding: 1rem;
+}
+
+.resultBar {
+  margin-bottom: 0.75rem;
+}
+
+.listHeading h3 {
+  scroll-margin-block: 6rem;
+}
+
+.listHeading h3:focus {
+  outline: 3px solid var(--portal-accent, #08755d);
+  outline-offset: 4px;
+  border-radius: 0.25rem;
 }
 
 .media {
