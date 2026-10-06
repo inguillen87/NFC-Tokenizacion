@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { authStartErrorMessage, consumerDeliveryMessage, consumerDeliveryIsSimulation } from "../src/app/login/consumer-login-delivery.ts";
+import { authStartErrorMessage, consumerAuthStartMayHaveDeliveredCode, consumerDeliveryMessage, consumerDeliveryIsSimulation } from "../src/app/login/consumer-login-delivery.ts";
 
 for (const channel of ["whatsapp", "sms", "email"]) {
   test(`OTP ${channel} reports provider acceptance, not handset delivery`, () => {
@@ -58,6 +58,19 @@ test("unknown or absent login errors use a safe message without exposing provide
   const privateMessage = "provider-detail recipient@example.test OTP 654321";
   for (const error of [undefined, null, "", false, 0, "unknown_provider_error", privateMessage, new Error(privateMessage), { message: privateMessage }]) {
     assert.equal(authStartErrorMessage(error), "No pudimos iniciar el acceso. Tu contacto se conserva; volvé a intentar o elegí el otro medio.");
+  }
+});
+
+test("only uncertain provider transport outcomes offer entry of a late code", () => {
+  for (const provider of ["twilio", "resend", "smtp", "meta"]) {
+    for (const suffix of ["delivery_failed", "receipt_invalid", "delivery_timeout"]) {
+      assert.equal(consumerAuthStartMayHaveDeliveredCode(`${provider}_${suffix}`), true);
+    }
+  }
+  for (const error of [undefined, null, {}, new Error("meta_delivery_timeout"), "", "rate_limited",
+    "meta_configuration_missing", "meta_configuration_invalid", "meta_authentication_failed", "meta_payload_invalid",
+    "twilio_whatsapp_sandbox_forbidden", "resend_api_key_missing", "consumer_auth_demo_forbidden", "unknown_provider_reply"]) {
+    assert.equal(consumerAuthStartMayHaveDeliveredCode(error), false);
   }
 });
 

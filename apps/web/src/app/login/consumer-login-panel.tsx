@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
 import { requestConsumerJson } from "../../lib/consumer-request";
-import { authStartErrorMessage, consumerDeliveryIsSimulation, consumerDeliveryMessage } from "./consumer-login-delivery";
+import { authStartErrorMessage, consumerAuthStartMayHaveDeliveredCode, consumerDeliveryIsSimulation, consumerDeliveryMessage } from "./consumer-login-delivery";
 import { consumerAuthStartPayload } from "./consumer-login-continuation";
 import {
   ConsumerContactInput,
@@ -25,6 +25,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [contactDraft, setContactDraft] = useState<ConsumerContactDraft>(() => ({ ...createEmptyConsumerContactDraft(), channel: "email" }));
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"start" | "verify">("start");
+  const [lateCodeAvailable, setLateCodeAvailable] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; tone: "info" | "error"; field?: "contact" | "code" }>({ message: "", tone: "info" });
   const [pending, setPending] = useState(false);
   const requestInFlight = useRef(false);
@@ -50,6 +51,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   function changeContact(nextDraft: ConsumerContactDraft) {
     setContactDraft(nextDraft);
     setStep("start");
+    setLateCodeAvailable(false);
     setCode("");
     setStatus("");
   }
@@ -140,6 +142,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     requestInFlight.current = true;
     setPending(true);
     setStatus("Estamos solicitando tu código…");
+    setLateCodeAvailable(false);
     const logout = await logoutConsumerSession();
     if (!mounted.current) return;
     if (logout.status !== "received" || !logout.ok || logout.payload?.ok !== true) {
@@ -153,11 +156,16 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     if (!mounted.current) return;
     setPending(false); requestInFlight.current = false;
     if (response.status !== "received") {
+      setLateCodeAvailable(true);
       setStatus("No pudimos confirmar la solicitud. Puede que el mensaje llegue igualmente. Esperá unos instantes; si pedís otro código, usá el más reciente.", "error");
       return;
     }
     const payload = response.payload;
-    if (!response.ok || payload?.ok !== true) { setStatus(authStartErrorMessage(payload?.error), "error"); return; }
+    if (!response.ok || payload?.ok !== true) {
+      setLateCodeAvailable(consumerAuthStartMayHaveDeliveredCode(payload?.error));
+      setStatus(authStartErrorMessage(payload?.error), "error");
+      return;
+    }
     if (consumerDeliveryIsSimulation(payload)) {
       setStatus("Este acceso está en modo de prueba y no envió un código real. Probá el otro canal o consultá a la marca.", "error");
       return;
@@ -205,6 +213,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         <li aria-current={step === "verify" ? "step" : undefined}><span aria-hidden="true">2</span>Tu código</li>
       </ol>
       <p className={styles.intro}>{tapReturnCopy}</p>
+      <p id="consumer-access-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!status} className={styles.feedback} data-tone={feedback.tone}>{status}</p>
       <form ref={formRef} className={styles.form} aria-busy={pending} onSubmit={(event) => { event.preventDefault(); if (!pending) void (step === "start" ? start() : verify()); }}>
         <ConsumerContactInput draft={contactDraft} onChange={changeContact} disabled={pending} idPrefix="consumer-login"
           invalid={feedback.field === "contact" && feedback.tone === "error"} describedBy={feedback.field === "contact" ? "consumer-access-feedback" : undefined} />
@@ -217,7 +226,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           <p id="consumer-code-hint" className={styles.hint}>Ingresá el código del mensaje más reciente.</p>
         </div> : null}
         <button type="submit" disabled={pending || (step === "start" ? !contactIsValid : !code.trim())} className={styles.primary}>
-          {pending ? step === "start" ? "Solicitando código…" : "Comprobando acceso…" : step === "start" ? "Recibir código" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
+          {pending ? step === "start" ? "Solicitando código…" : "Comprobando acceso…" : step === "start" ? lateCodeAvailable ? "Volver a pedir código" : "Recibir código" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
         </button>
         {step === "verify" ? <>
           <div className={styles.secondaryActions}>
@@ -227,11 +236,18 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           </div>
           <p className={styles.hint}>Puede demorar unos instantes. En email, revisá también Spam. Si pedís otro código, usá el más reciente.</p>
         </> : null}
+        {step === "start" && lateCodeAvailable && contactIsValid ? <div className={styles.lateCodeRecovery}>
+          <p>Si ya recibiste el código, podés ingresarlo sin pedir otro.</p>
+          <button type="button" disabled={pending} className={styles.secondary} aria-describedby="consumer-access-feedback" onClick={() => {
+            setCode("");
+            setStep("verify");
+            setStatus("Ingresá el código más reciente que recibiste. Todavía no confirmamos el envío ni tu acceso.");
+          }}>Ya tengo un código</button>
+        </div> : null}
         {step === "start" && feedback.tone === "error" && !feedback.field ? <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary} aria-describedby="consumer-access-feedback">
           {contactDraft.channel === "email" ? "Continuar con WhatsApp" : "Continuar con email"}
         </button> : null}
       </form>
-      <p id="consumer-access-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!status} className={styles.feedback} data-tone={feedback.tone}>{status}</p>
     </div>
   );
 }

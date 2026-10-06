@@ -122,3 +122,21 @@ test("without a capability, secondary consumer links remain unprefetched read-on
   assert.equal((view.html.match(/data-prefetch="false"/g) || []).length, 3);
   assert.doesNotMatch(view.html, /consumer-passport-handoff|<button/);
 });
+
+test("read-only collection remains an ordinary link without hydration or a capability", () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = () => assert.fail("a read-only render cannot prepare access");
+  try {
+    const html = renderToStaticMarkup(React.createElement(consumerLink, { href: "/me/products", eventId, freshToken: "" }, "Productos guardados"));
+    assert.match(html, /<a[^>]*href="\/me\/products"[^>]*data-prefetch="false"/);
+    assert.match(html, />Productos guardados<\/a>/);
+    assert.doesNotMatch(html, /<button|role="alert"|freshToken|private-fixture-capability/);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("server render never labels a handoff as failed before a deliberate request", () => {
+  const html = renderToStaticMarkup(React.createElement(consumerLink, { href: "/me/products?fromTap=1", eventId, freshToken }, "Abrir colección"));
+  assert.match(html, />Abrir colección<\/button>/);
+  assert.doesNotMatch(html, /role="alert"|data-handoff-failure|Reintentar acceso|Nueva lectura necesaria/);
+  assert.doesNotMatch(html, /href="\/me\/products\?fromTap=1"/);
+});

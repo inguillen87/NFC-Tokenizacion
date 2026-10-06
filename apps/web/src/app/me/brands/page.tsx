@@ -1,320 +1,82 @@
 import Link from "next/link";
-import { Bell, Gift, PackageCheck, Radio, Sparkles, Trophy, Star, ChevronRight, MessageSquareText } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { buildConsumerNextPath, fetchConsumerPath, fetchMarketplacePath, readConsumerSession } from "../_components/consumer-api";
 import { hasConsumerBrandIdentity, hasConsumerProductIdentity, hasConsumerTapIdentity, hasMarketplaceListingIdentity, readConsumerListSource } from "../_components/consumer-list-availability";
 import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
 import recoveryStyles from "../_components/consumer-list-recovery.module.css";
-import {
-  buildBrandEngagement,
-  flattenBrandNotifications,
-  type ConsumerBrand,
-  type ConsumerPortalProduct,
-  type ConsumerTap,
-  type MarketplaceListing,
-} from "../_components/consumer-portal-model";
+import type { ConsumerBrand, ConsumerPortalProduct, ConsumerTap, MarketplaceListing } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
-import { BrandsVotingClient } from "./brands-voting-client";
+import { brandActivityText, brandDateLabel, brandTapStatus, buildConsumerBrands, filterConsumerBrands } from "./brands-model";
+import styles from "./brands.module.css";
 
-function statusLabel(status: string) {
-  return status === "active" ? "CLUB ACTIVO" : status.toUpperCase();
-}
-
-function tierVisualTheme(tier: string) {
-  const t = String(tier || "").toLowerCase();
-  if (t.includes("oro") || t.includes("gold")) return {
-    border: "border-amber-500/35 shadow-[0_8px_30px_rgba(245,158,11,0.08)]",
-    badge: "border-amber-400/30 bg-amber-500/10 text-amber-300",
-    gradient: "from-amber-600 to-yellow-400",
-    glow: "bg-amber-500"
-  };
-  if (t.includes("platino") || t.includes("platinum")) return {
-    border: "border-slate-300/35 shadow-[0_8px_30px_rgba(226,232,240,0.08)]",
-    badge: "border-slate-300/30 bg-slate-300/10 text-slate-100",
-    gradient: "from-slate-500 to-slate-200",
-    glow: "bg-slate-300"
-  };
-  return {
-    border: "border-cyan-500/20 shadow-[0_8px_30px_rgba(6,182,212,0.05)]",
-    badge: "border-cyan-400/20 bg-cyan-500/5 text-cyan-300",
-    gradient: "from-cyan-600 to-indigo-400",
-    glow: "bg-cyan-500"
-  };
-}
-
-export default async function BrandsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
+export default async function BrandsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   const session = await readConsumerSession(buildConsumerNextPath("/me/brands", params));
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
-  const [brandsPayload, productsPayload, tapsPayload, marketplacePayload] = await Promise.all([
-    fetchConsumerPath("brands"),
-    fetchConsumerPath("products"),
-    fetchConsumerPath("taps"),
-    fetchMarketplacePath("products"),
+  const [brandsPayload, productsPayload, tapsPayload, listingsPayload] = await Promise.all([
+    fetchConsumerPath("brands"), fetchConsumerPath("products"), fetchConsumerPath("taps"), fetchMarketplacePath("products"),
   ]);
-  
-  const brandsSource = readConsumerListSource<ConsumerBrand>(brandsPayload, hasConsumerBrandIdentity);
-  const productsSource = readConsumerListSource<ConsumerPortalProduct>(productsPayload, hasConsumerProductIdentity);
-  const tapsSource = readConsumerListSource<ConsumerTap>(tapsPayload, hasConsumerTapIdentity);
-  const listingsSource = readConsumerListSource<MarketplaceListing>(marketplacePayload, hasMarketplaceListingIdentity);
-  const brands = brandsSource.data || [];
-  const products = productsSource.data || [];
-  const taps = tapsSource.data || [];
-  const listings = listingsSource.data || [];
-  const notificationsAvailable = productsSource.status === "ready" && tapsSource.status === "ready" && listingsSource.status === "ready";
-  
-  const engagement = buildBrandEngagement({ brands, products, taps, listings });
-  const notifications = flattenBrandNotifications(engagement);
-  const reportedPointBalances = engagement.map((item) => item.points).filter((value): value is number => value !== null);
-  const totalPoints = reportedPointBalances.length ? reportedPointBalances.reduce((sum, value) => sum + value, 0) : null;
-  const totalPromos = engagement.reduce((sum, item) => sum + item.activePromoCount, 0);
-  const totalClaimed = engagement.reduce((sum, item) => sum + item.claimedCount, 0);
-  
-  const overviewMetrics: Array<{ label: string; value: number | string; Icon: LucideIcon; color: string }> = [
-    { label: "Mis Clubes", value: engagement.length, Icon: Sparkles, color: "text-amber-400" },
-    { label: "Puntos reportados", value: totalPoints ?? "N/D", Icon: Trophy, color: "text-amber-300" },
-    { label: "Botellas", value: productsSource.status === "ready" ? totalClaimed : "N/D", Icon: PackageCheck, color: "text-emerald-400" },
-    { label: "Drops Habilitados", value: listingsSource.status === "ready" ? totalPromos : "N/D", Icon: Gift, color: "text-cyan-400" },
-  ];
-
+  const brands = readConsumerListSource<ConsumerBrand>(brandsPayload, hasConsumerBrandIdentity);
+  const products = readConsumerListSource<ConsumerPortalProduct>(productsPayload, hasConsumerProductIdentity);
+  const taps = readConsumerListSource<ConsumerTap>(tapsPayload, hasConsumerTapIdentity);
+  const listings = readConsumerListSource<MarketplaceListing>(listingsPayload, hasMarketplaceListingIdentity);
+  const model = buildConsumerBrands({ brands, products, taps, listings });
+  const selected = filterConsumerBrands(model.items, params.tenant);
+  const unavailable = [products.status === "unavailable" && "productos guardados", taps.status === "unavailable" && "lecturas", listings.status === "unavailable" && "catálogo"].filter(Boolean);
   return (
-    <PortalShell
-      title="Marcas, Fidelización & Clubes"
-      subtitle="Consultá los clubes, puntos y propuestas que tus marcas publican para esta cuenta."
-      notificationCount={notifications.length}
-    >
-      {brandsSource.status === "unavailable" ? (
-        <section role="status" data-testid="consumer-brands-unavailable" className={recoveryStyles.notice}>
-          <h2>No pudimos cargar tus clubes de marcas</h2>
-          <p>Reintentá la consulta para ver tus membresías y puntos.</p>
-          <ConsumerDataRetryButton />
+    <PortalShell title="Mis marcas y clubes" subtitle="Consultá tu membresía y los puntos reportados por cada marca, con acceso a su catálogo y a tus lecturas.">
+      {model.status === "unavailable" ? (
+        <section data-testid="consumer-brands-unavailable" className={recoveryStyles.notice} role="status">
+          <h2>No pudimos cargar tus membresías</h2><p>Reintentá la consulta para ver las marcas vinculadas a tu cuenta.</p><ConsumerDataRetryButton />
         </section>
-      ) : !engagement.length ? (
-        <section className="rounded-3xl border border-dashed border-white/10 bg-slate-950/25 p-8 text-center text-slate-400">
-          <Sparkles className="mx-auto h-8 w-8 text-slate-600 animate-pulse" />
-          <h3 className="mt-3 text-sm font-black text-white">No perteneces a ningún club de marcas</h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Desde el pasaporte de un producto podés consultar si la marca ofrece un club y cuáles son sus condiciones para sumarte.
-          </p>
+      ) : model.items.length === 0 ? (
+        <section data-testid="consumer-brands-empty" className={styles.empty}>
+          <h2>No hay membresías registradas en esta cuenta</h2><p>Podés consultar tus productos y lecturas guardadas. Una lectura no implica una membresía ni un beneficio nuevo.</p>
+          <Link className={`${styles.link} ${styles.primary}`} href="/me/products">Ver mis productos</Link>
         </section>
       ) : (
         <>
-          {!notificationsAvailable && <div role="status" data-testid="consumer-brands-partial" className={recoveryStyles.notice}>
-            <p>No pudimos cargar {[
-              productsSource.status === "unavailable" ? "tus productos" : null,
-              tapsSource.status === "unavailable" ? "tus lecturas" : null,
-              listingsSource.status === "unavailable" ? "las propuestas publicadas" : null,
-            ].filter(Boolean).join(", ")}. Las membresías y los datos disponibles siguen visibles.</p>
-            <ConsumerDataRetryButton />
-          </div>}
-          {/* Header Dashboard Metrics */}
-          <section className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,#121215_0%,#0e0e10_100%)] p-6 shadow-xl">
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/5 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Membresías Conectadas
+          <section className={styles.intro} aria-labelledby="brands-intro-title">
+            <h2 id="brands-intro-title">Tu relación con cada marca</h2>
+            <p>Cada marca tiene su propio saldo y condiciones. El catálogo muestra productos publicados; consultar un beneficio no confirma que puedas canjearlo.</p>
+            <nav className={styles.filters} aria-label="Filtrar mis marcas">
+              <Link className={styles.link} href="/me/brands" aria-current={selected.state === "all" ? "page" : undefined}>Todas mis marcas</Link>
+              {model.items.filter(item => item.slug).map(item => <Link key={item.key} className={styles.link} href={`/me/brands?${new URLSearchParams({ tenant: item.slug! })}`} aria-current={selected.slug === item.slug ? "page" : undefined}>{item.name}</Link>)}
+            </nav>
+          </section>
+          {unavailable.length > 0 && <section data-testid="consumer-brands-partial" className={recoveryStyles.notice} role="status"><h2>Consulta incompleta</h2><p>No pudimos cargar {unavailable.join(", ")}. Las membresías y los datos disponibles siguen visibles.</p><ConsumerDataRetryButton /></section>}
+          {(selected.state === "invalid" || selected.state === "missing") && <section data-testid="consumer-brands-filter-unavailable" className={styles.empty} role="status"><h2>No encontramos esa marca en tus membresías</h2><p>Elegí una de tus marcas o volvé a la vista completa.</p><Link className={`${styles.link} ${styles.primary}`} href="/me/brands">Ver todas mis marcas</Link></section>}
+          <div className={styles.cards} data-testid="consumer-brand-cards">
+            {selected.items.map(card => (
+              <article key={card.key} className={styles.card} data-testid="consumer-brand-card" data-brand-tenant={card.slug || undefined} aria-labelledby={`${card.key}-title`}>
+                <header className={styles.heading}>
+                  <div className={styles.identity}><h2 id={`${card.key}-title`}>{card.name}</h2><span className={styles.status}>{card.status}</span>{card.joined && <p>Membresía registrada el {card.joined}</p>}</div>
+                  <div className={styles.balanceBlock}><span>Puntos reportados</span><p className={styles.balance}>{card.balance === null ? "No informado" : card.balance}</p><span>Saldo de esta marca</span></div>
+                </header>
+                {!card.links && <p role="status">No se informó una identidad única para consultar los datos de esta marca.</p>}
+                <div><p>En esta consulta</p><dl className={styles.stats}>
+                  <div><dt>Productos guardados</dt><dd>{card.products.status === "ready" ? card.products.data.length : "N/D"}</dd></div>
+                  <div><dt>Lecturas guardadas</dt><dd>{card.taps.status === "ready" ? card.taps.data.length : "N/D"}</dd></div>
+                  <div><dt>Productos del catálogo</dt><dd>{card.catalog.status === "ready" ? card.catalog.data.length : "N/D"}</dd></div>
+                </dl></div>
+                {card.links && <nav className={styles.actions} aria-label={`Consultar ${card.name}`}>
+                  <Link className={`${styles.link} ${styles.primary}`} href={card.links.catalog}>Ver catálogo de la marca</Link>
+                  {card.links.rewards && <Link className={styles.link} href={card.links.rewards}>Ver puntos y beneficios</Link>}
+                  <Link className={styles.link} href={card.links.history}>Ver lecturas de la marca</Link>
+                </nav>}
+                {card.links && !card.links.rewards && <p>La consulta de beneficios no está disponible para esta identidad de marca.</p>}
+                <p>{card.catalog.status === "unavailable" ? "Catálogo no disponible para consulta." : card.catalog.data.length === 0 ? "No hay productos publicados de esta marca en el catálogo consultado." : "El catálogo y las condiciones se consultan en la página de la marca."}</p>
+                <div className={styles.activity}>
+                  <section aria-labelledby={`${card.key}-products`}><h3 id={`${card.key}-products`}>Tus productos de esta marca</h3>
+                    {card.products.status === "unavailable" ? <p>Productos no disponibles para consulta.</p> : card.products.data.length === 0 ? <p>No hay productos guardados de esta marca.</p> : <ul className={styles.list}>{card.products.data.slice(0, 3).map((product, index) => <li key={index}><strong>{brandActivityText(product.product_name) || "Producto sin nombre informado"}</strong>{brandActivityText(product.bid) && <span>Lote reportado: {brandActivityText(product.bid)}</span>}</li>)}</ul>}
+                  </section>
+                  <section aria-labelledby={`${card.key}-taps`}><h3 id={`${card.key}-taps`}>Tus lecturas de esta marca</h3>
+                    {card.taps.status === "unavailable" ? <p>Lecturas no disponibles para consulta.</p> : card.taps.data.length === 0 ? <p>No hay lecturas guardadas de esta marca.</p> : <ul className={styles.list}>{card.taps.data.slice(0, 3).map((tap, index) => <li key={index}><strong>{brandTapStatus(tap)}</strong><span>{brandDateLabel(tap.created_at) || "Fecha no informada"}</span></li>)}</ul>}
+                  </section>
                 </div>
-                <h2 className="mt-4 max-w-xl text-2xl font-black tracking-tight text-white leading-tight">
-                  Tus interacciones reales activan canales exclusivos de confianza.
-                </h2>
-                <p className="mt-3 max-w-xl text-xs leading-relaxed text-slate-400">
-                  Cada marca define cómo obtener puntos y qué beneficios ofrece. Consultá el saldo reportado y las condiciones de su programa antes de pedir un canje.
-                </p>
-              </div>
-              <div className="grid gap-2.5 grid-cols-2">
-                {overviewMetrics.map(({ label, value, Icon, color }) => (
-                  <div key={label} className="rounded-2xl border border-white/5 bg-slate-900/30 p-4 transition duration-300 hover:border-white/10">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{label}</p>
-                      <Icon className={`h-4 w-4 ${color}`} />
-                    </div>
-                    <p className="mt-2 text-2xl font-black text-white">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Live Notification Center */}
-          <section className="rounded-3xl border border-purple-500/20 bg-purple-950/10 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-purple-300">Mensajes de Fidelización</p>
-                <h2 className="mt-1 text-base font-black text-white">Promociones Directas & Actualizaciones del Club</h2>
-              </div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[10px] font-bold text-rose-300">
-                <Bell className="h-3.5 w-3.5" />
-                {notificationsAvailable ? `${notifications.length} Novedades` : "Consulta incompleta"}
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {notifications.slice(0, 6).map((notification) => (
-                <Link
-                  key={`${notification.brandSlug}-${notification.id}`}
-                  href={notification.href}
-                  className="rounded-2xl border border-white/5 bg-slate-950/50 p-4 transition duration-300 hover:-translate-y-0.5 hover:border-purple-500/30 hover:bg-slate-950/80"
-                >
-                  <span className="text-[9px] font-black uppercase tracking-wider text-purple-400">{notification.brandName}</span>
-                  <p className="mt-1.5 text-xs font-black text-white">{notification.title}</p>
-                  <p className="mt-1 text-[10px] leading-relaxed text-slate-400">{notification.detail}</p>
-                </Link>
-              ))}
-              {!notifications.length && (
-                <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-4 text-xs text-slate-400 lg:col-span-3 text-center">
-                  {notificationsAvailable ? "No hay notificaciones ni actualizaciones pendientes de tus marcas." : "No pudimos consultar todas las novedades de tus marcas."}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Brands List */}
-          <section className="grid gap-6">
-            {engagement.map((item) => {
-              const theme = tierVisualTheme(item.tier || "");
-              return (
-                <article key={item.key} className={`overflow-hidden rounded-3xl border ${theme.border} bg-slate-950/70 p-5 transition duration-300 hover:border-white/10`}>
-                  <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                    
-                    {/* Left Panel: Membership Info & Milestone progression */}
-                    <div className="flex flex-col justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${theme.badge}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${theme.glow} animate-pulse`} />
-                              {statusLabel(item.status)}
-                            </div>
-                            <h2 className="mt-3 text-xl font-black text-white tracking-tight">{item.name}</h2>
-                            <p className="mt-1 text-[10px] text-slate-400">
-                              Tenant: <span className="font-mono">{item.slug || "n/a"}</span> · Actividad: {item.lastActivityLabel}
-                            </p>
-                          </div>
-                          
-                          <div className={`rounded-xl border ${theme.badge} px-3 py-1 text-center shrink-0`}>
-                            <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Nivel</span>
-                            <span className="text-xs font-black text-white flex items-center gap-1 mt-0.5">
-                              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                              {item.tier || "N/D"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Progression bar */}
-                        <div className="mt-6">
-                          <div className="flex items-center justify-between gap-3 text-[10px] font-bold">
-                            <span className="text-slate-400">{item.nextMilestone ? `Progreso a ${item.nextMilestone}` : "Progreso no reportado"}</span>
-                            <span className="text-white">{item.progress === null ? "N/D" : `${item.progress}%`}</span>
-                          </div>
-                          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-900 border border-white/5">
-                            <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000`} style={{ width: `${item.progress || 0}%` }} />
-                          </div>
-                        </div>
-
-                        {/* Summary Grid stats */}
-                        <div className="mt-6 grid grid-cols-4 gap-2">
-                          {[
-                            { label: "Botellas", value: productsSource.status === "ready" ? item.productCount : "N/D", Icon: PackageCheck, color: "text-emerald-400" },
-                            { label: "Escaneos", value: tapsSource.status === "ready" ? item.tapCount : "N/D", Icon: Radio, color: "text-cyan-400" },
-                            { label: "Drops Live", value: listingsSource.status === "ready" ? item.activePromoCount : "N/D", Icon: Gift, color: "text-amber-400" },
-                            { label: "Alertas", value: notificationsAvailable ? item.unreadCount : "N/D", Icon: Bell, color: "text-rose-400" },
-                          ].map(({ label, value, Icon, color }) => (
-                            <div key={label} className="rounded-xl border border-white/5 bg-slate-900/30 p-2 text-center">
-                              <Icon className={`h-3.5 w-3.5 mx-auto ${color}`} />
-                              <p className="mt-1 text-sm font-black text-white leading-tight">{value}</p>
-                              <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold">{label}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Brand Links */}
-                      <div className="mt-6 flex flex-wrap gap-2.5">
-                        <Link href={`/me/marketplace?tenant=${encodeURIComponent(item.slug)}`} className="rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20 transition">
-                          Ver Drops & Promos
-                        </Link>
-                        <Link href="/me/products" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 transition">
-                          Mis Botellas
-                        </Link>
-                        <Link href="/me/taps" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 transition">
-                          Historial
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Right Panel: Feed & Recent Collections */}
-                    <div className="border-t border-white/5 pt-5 lg:border-l lg:border-t-0 lg:pt-0 lg:pl-6 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                          <h3 className="text-xs font-bold text-white uppercase tracking-wider">Últimos Mensajes del Viñedo</h3>
-                          <span className="rounded bg-rose-500/15 border border-rose-500/25 px-1.5 py-0.5 text-[8px] font-bold text-rose-300">
-                            {notificationsAvailable ? `${item.unreadCount} Nuevos` : "Consulta incompleta"}
-                          </span>
-                        </div>
-
-                        {/* Chat / Feed list */}
-                        <div className="mt-3 v3-space-y-2">
-                          {item.notifications.slice(0, 2).map((notification) => (
-                            <Link key={notification.id} href={notification.href} className="block rounded-xl border border-white/5 bg-slate-900/35 p-3 hover:bg-slate-900/50 transition">
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-xs font-bold text-white leading-snug">{notification.title}</p>
-                                  <p className="mt-0.5 text-[10px] leading-relaxed text-slate-400">{notification.detail}</p>
-                                </div>
-                                <span className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[7px] font-bold uppercase text-slate-400">
-                                  {notification.type}
-                                </span>
-                              </div>
-                            </Link>
-                          ))}
-                          {!item.notifications.length && (
-                            <p className="text-[10px] text-slate-500 py-3 text-center italic">{notificationsAvailable ? "Sin mensajes de fidelización por el momento." : "No pudimos consultar todos los mensajes de la marca."}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Linked Products & Recent Scan Timeline */}
-                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl border border-white/5 bg-slate-900/20 p-3">
-                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 block mb-2">Mis Vinos Registrados</span>
-                          <div className="v3-space-y-1.5">
-                            {item.products.slice(0, 2).map((product, idx) => (
-                              <div key={idx} className="rounded-lg border border-white/5 bg-slate-950/40 p-2 text-[10px]">
-                                <p className="font-bold text-white leading-normal truncate">{product.product_name || "Vino"}</p>
-                                <p className="text-slate-400 mt-0.5">BID {product.bid || "n/a"}</p>
-                              </div>
-                            ))}
-                            {!item.products.length && <p className="text-[9px] text-slate-600">{productsSource.status === "ready" ? "Ninguno todavía." : "Productos no disponibles para consulta."}</p>}
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-white/5 bg-slate-900/20 p-3">
-                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 block mb-2">Escaneos Recientes</span>
-                          <div className="v3-space-y-1.5">
-                            {item.taps.slice(0, 2).map((tap, idx) => (
-                              <div key={idx} className="rounded-lg border border-white/5 bg-slate-950/40 p-2 text-[10px] flex items-center justify-between gap-1.5">
-                                <div className="truncate">
-                                  <p className="font-bold text-emerald-400 leading-normal uppercase text-[9px]">{String(tap.verdict || "tap").toUpperCase()}</p>
-                                  <p className="text-slate-400 mt-0.5 truncate">{tap.city || "Ubicación"}</p>
-                                </div>
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0" />
-                              </div>
-                            ))}
-                            {!item.taps.length && <p className="text-[9px] text-slate-600">{tapsSource.status === "ready" ? "Ninguno todavía." : "Lecturas no disponibles para consulta."}</p>}
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-
-          <BrandsVotingClient />
+              </article>
+            ))}
+          </div>
         </>
       )}
     </PortalShell>

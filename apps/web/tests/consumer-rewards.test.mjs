@@ -80,6 +80,28 @@ async function render(payload, options = {}) {
 const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, initialTenant: "", selectedVoucher: null, ...props }));
 const pointsSection = (html) => html.match(/<section aria-labelledby="benefits-points-title"[\s\S]*?<\/section>/)?.[0] || "";
 
+test("canonical API tenant slugs retain dots and underscores without collapsing homonymous brands or widening voucher lookup", () => {
+  const slugs = ["brand-a", "branda", "brand_a", "brand.a", "a".repeat(120)];
+  const source = readModel(list(slugs.map((tenant_slug, index) => claim({ id: `reward-${index}`, claim_id: `claim-${index}`, tenant_slug, tenant_name: "Mismo nombre", redemption_code: "SAME-CODE" }))));
+  assert.equal(source.status, "ready");
+  assert.deepEqual(source.items.map(item => item.tenant), slugs);
+  for (const [index, slug] of slugs.entries()) {
+    assert.equal(model.rewardTenant(slug), slug);
+    assert.equal(model.findRequestedVoucher(source, "SAME-CODE", slug), `claim-claim-${index}`);
+    const html = renderClient(source.items, { initialTenant: slug });
+    assert.equal((html.match(/data-reward-state="claimed"/g) || []).length, 1);
+  }
+  for (const invalid of [null, [], ["brand-a", "branda"], "BRAND_A", "BRAND.A", "A".repeat(61), " brand-a ", "../brand-a", "brand/a", "brand-a&tenant=branda", "a".repeat(121)]) {
+    assert.equal(model.rewardTenant(invalid), "");
+    assert.equal(model.findRequestedVoucher(source, "SAME-CODE", invalid), null);
+  }
+  assert.equal(model.findRequestedVoucher(source, "SAME-CODE", undefined), null, "duplicate vouchers across tenant scopes remain ambiguous");
+  const legacy = readModel(list([claim({ tenant_slug: "Balmec-AR" })]));
+  assert.equal(legacy.status, "ready");assert.equal(model.rewardTenant("Balmec-AR"), "Balmec-AR");assert.equal(legacy.items[0].tenant, "Balmec-AR");
+  assert.equal(model.findRequestedVoucher(legacy, "BALMEC-1234", "Balmec-AR"), "claim-claim-1");
+  assert.equal(model.findRequestedVoucher(legacy, "BALMEC-1234", "balmec-ar"), null, "legacy casing remains exact without aliasing");
+});
+
 test("failed, missing and malformed rewards sources are unavailable; only an explicit successful empty list is empty", () => {
   for (const payload of [null, undefined, [], {}, { ok: false, items: [] }, { items: [] }, { ok: "true", items: [] }, { ok: true }, { ok: true, items: null }, { ok: true, items: {} }]) {
     assert.deepEqual(readModel(payload), { status: "unavailable", items: null });

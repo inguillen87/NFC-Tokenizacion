@@ -17,7 +17,7 @@ function identifier(value: unknown): string | null {
   return typeof value === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(value) ? value : null;
 }
 export function rewardTenant(value: unknown): string {
-  return typeof value === "string" && /^[a-zA-Z0-9-]{1,60}$/.test(value) ? value : "";
+  return typeof value === "string" && (/^[a-z0-9][a-z0-9._-]{0,119}$/.test(value) || /^[a-zA-Z0-9-]{1,60}$/.test(value)) ? value : "";
 }
 function instant(value: unknown): string | null {
   if (typeof value !== "string") return null;
