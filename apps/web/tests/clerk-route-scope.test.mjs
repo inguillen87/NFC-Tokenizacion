@@ -88,8 +88,8 @@ test("Web3 UI, verified bridge and reserved routes retain the real guard seam an
 
 test("canonical redirects preserve all query entries and bypass Clerk on public hosts and localhost alike", () => {
   const loaded = loadProxy();
-  for (const [path, host, expectedPath] of [["/sun?cmac=QA_ONE&cmac=QA_TWO&tenant=qa-brand", "www.nexid.lat", "/sun"], ["/landing?x=1&x=2", "nexid.lat", "/"], ["/landing/?locale=pt-BR", "www.nexid.lat", "/"]]) {
-    const req = request(path, host), expectedEntries = [...req.nextUrl.searchParams];
+  for (const [path, host, expectedPath] of [["/sun?cmac=QA_ONE&cmac=QA_TWO&tenant=qa-brand", "www.nexid.lat", "/sun"], ["/landing?x=1&x=2", "nexid.lat", "/"], ["/landing/?locale=pt-BR", "www.nexid.lat", "/"]]) for (const method of ["GET", "POST"]) {
+    const req = request(path, host, method), expectedEntries = [...req.nextUrl.searchParams];
     const result = loaded.proxy(req, {}), target = new URL(result.location);
     assert.equal(result.kind, "redirect"); assert.equal(result.status, 308);
     assert.equal(target.origin, "https://nexid.lat"); assert.equal(target.pathname, expectedPath);
@@ -108,7 +108,12 @@ test("unconfigured Web3 keeps its existing fallback; configured guard errors nev
   assert.equal(unconfigured.factories.length, 0); assert.equal(unconfigured.calls.length, 0);
   const failure = Error("synthetic SDK failure"), configured = loadProxy({ guardError: failure });
   assert.throws(() => configured.proxy(request("/api/consumer/auth/web3"), {}), error => error === failure);
-  assert.deepEqual(configured.proxy(request("/sun?cmac=QA_NOT_A_CMAC"), {}), { kind: "next" });
+  for (const path of ["/", "/sun?cmac=QA_ONE&cmac=QA_TWO", "/login?consumer=1&next=%2Fme", "/me", "/api/consumer/auth/start", "/api/consumer/auth/session"]) for (const method of ["GET", "POST"]) {
+    const req = request(path, "nexid.lat", method), before = req.nextUrl.href;
+    assert.deepEqual(configured.proxy(req, {}), { kind: "next" });
+    assert.equal(req.nextUrl.href, before);
+  }
+  assert.equal(configured.calls.length, 1);
 });
 
 test("root layout renders public/consumer content and theme without importing or instantiating Clerk", async () => {
