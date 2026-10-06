@@ -6,7 +6,7 @@ import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../..
 import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-limit";
 import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
-import { awardPoints, evaluateLoyaltyForTap, getActiveProgram, getTapEvent } from "../../../../../../lib/loyalty-service";
+import { awardPoints, evaluateLoyaltyForTap, getActiveProgram, getTapEvent, readTapPointsPolicy } from "../../../../../../lib/loyalty-service";
 import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
 import { readCurrentTapCommercialRights } from "../../../../../../lib/tap-commercial-rights";
 
@@ -48,6 +48,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }
   const program = await getActiveProgram(event.tenant_id);
   if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
+  const policy = readTapPointsPolicy(program);
+  if (!policy) return json({ ok: false, reason: 'tap_points_not_configured', pointsAwarded: 0 }, 409);
   const memberRows = await sql/*sql*/`
     SELECT id, status
     FROM loyalty_members
@@ -64,9 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     const duplicate = eligibility.reason === "already_awarded";
     return json({ ok: false, reason: eligibility.reason, pointsAwarded: 0 }, duplicate ? 409 : 403);
   }
-  const rules = typeof program.rules_json === "string" ? JSON.parse(program.rules_json || "{}") : (program.rules_json || {});
-  const configuredDelta = Number(rules.pointsPerValidTap || 10);
-  const delta = Number.isSafeInteger(configuredDelta) && configuredDelta > 0 && configuredDelta <= 10_000 ? configuredDelta : 10;
+  const delta = policy.points;
   const award = await awardPoints({
     tenantId: event.tenant_id,
     programId: program.id,
@@ -77,7 +77,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     idempotencyKey: `tap:${event.id}:member:${member.id}`,
     reason: "Eligible NFC event claimed by authenticated member",
     metadata: { result: event.result || null },
+    expectedRules: policy.rules,
   });
-  if (!award.awarded) return json({ ok: false, reason: "already_claimed", pointsAwarded: 0 }, 409);
-  return json({ ok: true, pointsAwarded: delta, claim_status: "awarded" });
+  if (award.duplicate) return json({ ok: false, reason: 'already_claimed', pointsAwarded: 0, originalPointsAwarded: award.entry?.delta ?? 0, receipt: award.entry }, 409);
+  if (!award.awarded) return json({ ok: false, reason: 'loyalty_configuration_changed', pointsAwarded: 0 }, 409);
+  return json({ ok: true, pointsAwarded: award.entry?.delta ?? 0, claim_status: "awarded", receipt: award.entry });
 }

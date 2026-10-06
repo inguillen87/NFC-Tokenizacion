@@ -124,19 +124,25 @@ test("overview uses the canonical risk taxonomy and excludes lifecycle outcomes"
 
 test("trivia completion reserves attempt, points and projections in one data-modifying CTE", () => {
   const atomicStart = trivia.indexOf("WITH current_tag AS MATERIALIZED");
-  const finalJoin = "JOIN projected_membership ON true";
-  const atomicEnd = trivia.indexOf(finalJoin, atomicStart) + finalJoin.length;
+  const atomicEnd = trivia.indexOf("`.catch((error: unknown)", atomicStart);
   const atomic = trivia.slice(atomicStart, atomicEnd);
   assert.ok(atomicStart > 0 && atomicEnd > atomicStart);
-  for (const name of ["current_tag", "tap_rights", "locked_member", "reserved_attempt", "reserved_ledger", "award_gate", "updated_member", "projected_membership"]) {
+  for (const name of ["current_tag", "tap_rights", "locked_program", "locked_quiz", "locked_member", "locked_membership", "eligible_member", "reserved_attempt", "reserved_ledger", "award_gate", "updated_member", "projected_membership"]) {
     assert.match(atomic, new RegExp(name));
   }
   assert.match(atomic, /FOR SHARE OF tag/);
+  assert.match(atomic, /FOR SHARE OF current_program/);
+  assert.match(atomic, /FOR SHARE OF current_quiz/);
+  assert.match(atomic, /locked_program\.status = 'active'[\s\S]*clock_timestamp\(\)/);
+  assert.match(atomic, /locked_quiz\.updated_at IS NOT DISTINCT FROM/);
   assert.match(atomic, /locked_member AS MATERIALIZED[\s\S]*FOR UPDATE/);
   assert.match(atomic, /INSERT INTO loyalty_quiz_attempts[\s\S]*'completed'[\s\S]*ON CONFLICT \(idempotency_key\) DO NOTHING[\s\S]*RETURNING \*/);
   assert.match(atomic, /locked_member\.points_balance \+ \$\{pointsToAward\}/);
   assert.match(atomic, /projected_membership AS MATERIALIZED[\s\S]*FROM updated_member/);
   assert.match(atomic, /FROM reserved_attempt JOIN updated_member ON updated_member\.attempt_id = reserved_attempt\.id/);
+  assert.match(atomic, /1 \/ \(SELECT count\(\*\)::integer FROM projected_membership\) AS membership_projection_guard/);
+  assert.match(atomic, /WHERE tenant_consumer_memberships\.status = 'active'/);
+  assert.doesNotMatch(atomic, /status = 'active',/);
   assert.doesNotMatch(atomic, /UPDATE (?:points_ledger|loyalty_quiz_attempts)\b/);
   const ledgerReservation = atomic.slice(atomic.indexOf("reserved_ledger AS MATERIALIZED"), atomic.indexOf("award_gate AS MATERIALIZED"));
   assert.doesNotMatch(ledgerReservation, /ON CONFLICT/);

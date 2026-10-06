@@ -1,7 +1,7 @@
 {
-  "release": "2026.10.05-api-tenant-sync.1",
-  "scope": "tenant-published-editorial-and-authoritative-reward-configuration",
-  "baseCommit": "5fbb163acc0d0ffb11eb3f24150c62c517a602da",
+  "release": "2026.10.05-api-engagement-governance.1",
+  "scope": "tenant-explicit-services-programs-trivia-and-atomic-loyalty-policy",
+  "baseCommit": "240d0f54fa807d4dd1240fbd1bdf5df5260c45e4",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
   },
@@ -54,11 +54,12 @@
   "supportReportProtocol": "nexid.support-report.v1",
   "supportTicketLookupProtocol": "nexid.support-ticket-lookup.v1",
   "supportTicketWorkflowProtocol": "nexid.support-ticket-workflow.v1",
-  "dependencyMaintenance": false,
+  "dependencyMaintenance": true,
   "compatibleApiProtocolRelease": "2026.09.22-api-support-workflow.1",
   "supplierRequestProtocol": "nexid.supplier-request.v1",
   "supplierRequestReviewProtocol": "nexid.supplier-request-review.v1",
   "supplierDispatchIncluded": false,
   "supplierRequestAssignmentProtocol": "nexid.supplier-request-assignment.v1",
-  "publicExperienceShareProtocol": "nexid:experience-event:v1"
+  "publicExperienceShareProtocol": "nexid:experience-event:v1",
+  "tenantActionConfigurationProtocol": "nexid.tenant-actions.v1"
 }

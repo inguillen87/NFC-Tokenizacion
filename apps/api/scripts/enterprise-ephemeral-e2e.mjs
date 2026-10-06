@@ -19,6 +19,9 @@ import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "
 import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
 import { runConsumerRewardPostgresQa } from "../tests/helpers/consumer-reward-postgres-harness.mjs";
 import { runAdminRewardPostgresQa } from "../tests/helpers/admin-reward-postgres-harness.mjs";
+import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuration-postgres-harness.mjs";
+import { runLoyaltyCurrentStatePostgresQa } from '../tests/helpers/loyalty-current-state-postgres-harness.mjs';
+import { runMarketplaceContextualPostgresQa } from '../tests/helpers/marketplace-contextual-postgres-harness.mjs';
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { Client, Pool } = pg;
@@ -175,9 +178,24 @@ async function run() {
   const rewardConfiguration = await runConsumerRewardPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardConfiguration.ok && rewardConfiguration.cleanup.schemaDropped && rewardConfiguration.cleanup.connectionsClosed, "Consumer reward configuration SQL regression or cleanup failed");
   assert.ok(rewardConfiguration.checks.every(check => check.ok));
+  assert.equal(rewardConfiguration.checks.length, 52);
   const adminRewardConfiguration = await runAdminRewardPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(adminRewardConfiguration.ok && adminRewardConfiguration.schemaCleaned, "Admin reward configuration SQL regression or cleanup failed");
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, adminRewardConfiguration };
+  const tenantConfiguration = await runConfigurationPostgresQa(connectCurrentTagQa);
+  assert.ok(tenantConfiguration.accepted && tenantConfiguration.cleanup.schemaDropped && tenantConfiguration.cleanup.connectionsClosed, "Tenant configuration SQL regression or cleanup failed");
+  assert.ok(tenantConfiguration.checks.every(check => check.passed));
+  assert.equal(tenantConfiguration.checks.length, 18);
+  const loyaltyGovernance = await runLoyaltyCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(loyaltyGovernance.ok && loyaltyGovernance.cleanup.schemaDropped && loyaltyGovernance.cleanup.connectionsClosed, 'Loyalty governance SQL regression or cleanup failed');
+  assert.equal(loyaltyGovernance.checks.length, 88);
+  assert.ok(loyaltyGovernance.checks.every(check => check.ok));
+  assert.equal(loyaltyGovernance.lockObservations.length, 24);
+  const marketplaceGovernance = await runMarketplaceContextualPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(marketplaceGovernance.ok && marketplaceGovernance.cleanup.schemaDropped && marketplaceGovernance.cleanup.connectionsClosed, 'Contextual marketplace SQL regression or cleanup failed');
+  assert.equal(marketplaceGovernance.checks.length, 59);
+  assert.ok(marketplaceGovernance.checks.every(check => check.ok));
+  assert.equal(marketplaceGovernance.lockObservations.length, 13);
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 

@@ -96,5 +96,5 @@ test("manifest promotion JSON rejects unsupported or secret fields", () => {
 test("SUN contract emits declared promotions from the passport locale data", async () => {
   const route = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
   assert.match(route, /publishedPromotionsFromLocaleData\(params\.passport\?\.locale_data\)/);
-  assert.match(route, /engagement: \{ promotions: publishedPromotions \}/);
+  assert.match(route, /engagement: \{ promotions: publishedPromotions, configuration: params.customerConfiguration \}/);
 });

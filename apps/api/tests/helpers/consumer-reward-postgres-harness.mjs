@@ -226,6 +226,16 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
       assert.deepEqual(await state(f), before, "Rejected operations must not change balances, stock, claims, or ledger");
     }
 
+    await check("server_owned_free_campaign_receipt_uses_current_reward_writer", async () => {
+      const f = await fixture({cost:0});
+      const [receipt] = await claim(f, firstQuery, {maximumPointsCost:0,metadata:{source:"twilio_whatsapp_campaign",locale:"wrong",points_source:"wrong",expires_at:"2026-10-07T00:00:00Z"}});
+      assert.ok(receipt?.id);assert.equal(receipt.points_spent,0);
+      assert.equal(receipt.metadata_json.source,"twilio_whatsapp_campaign");assert.equal(receipt.metadata_json.locale,"es-AR");assert.equal(receipt.metadata_json.points_source,"loyalty_members");
+      const current = await state(f);assert.equal(current.members[0].points_balance,100);assert.equal(current.rewards[0].stock_remaining,1);
+    });
+    await check("free_campaign_cannot_debit_a_priced_reward", async () => {
+      const f = await fixture({cost:40});await unchanged(f, () => claim(f,firstQuery,{maximumPointsCost:0}));
+    });
     // Hold a real row lock while both independent backends enter their query.
     // Observe both waiting in PostgreSQL before release; Promise.all alone does
     // not prove overlap. The barrier and SQL timeouts are deliberately bounded.
@@ -306,6 +316,13 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
       assert.equal(current.ledger[0].balance_after, 60);
     });
 
+    await check("free_campaign_cannot_debit_after_concurrent_price_change", async () => {
+      const f = await fixture({cost:0});
+      const results = await concurrent("rewards",f.rewardId,[()=>claim(f,firstQuery,{maximumPointsCost:0}),()=>claim(f,secondQuery,{maximumPointsCost:0})],async()=>{
+        await admin.query(`UPDATE ${s}.rewards SET points_cost=40 WHERE id=$1`,[f.rewardId]);
+      });
+      assert.equal(results.flat().length,0);const current=await state(f);assert.equal(current.members[0].points_balance,100);assert.equal(current.claims.length,0);assert.equal(current.rewards[0].stock_remaining,2);assert.equal(current.ledger.length,0);
+    });
     await check("two_rewards_cannot_overdraw_one_member", async () => {
       const f = await fixture({ cost: 70 });
       const otherRewardId = randomUUID();

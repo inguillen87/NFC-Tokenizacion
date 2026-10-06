@@ -277,47 +277,6 @@ export async function ensureDefaultLoyaltyProgram(input: { tenantId: string; ten
   `)[0];
   if (existing) return existing;
 
-  const profile = (await sql/*sql*/`
-    SELECT club_name, vertical, metadata
-    FROM tenant_sun_profiles
-    WHERE tenant_id = ${input.tenantId}
-      AND NULLIF(club_name, '') IS NOT NULL
-      AND NULLIF(vertical, '') IS NOT NULL
-    LIMIT 1
-  `)[0] as { club_name?: string; vertical?: string; metadata?: Record<string, unknown> } | undefined;
-
-  if (!profile) return null;
-  const loyalty = profile.metadata && typeof profile.metadata === "object" ? (profile.metadata.loyalty as Record<string, unknown> | undefined) : undefined;
-  const pointsName = typeof loyalty?.pointsName === "string" && loyalty.pointsName.trim() ? loyalty.pointsName.trim() : "Puntos";
-  const rules = loyalty?.rules && typeof loyalty.rules === "object" ? loyalty.rules : { pointsPerValidTap: 10, cooldownSeconds: 3600 };
-  const rewards = Array.isArray(loyalty?.rewards) ? loyalty.rewards as Array<Record<string, unknown>> : [];
-  const program = (await sql/*sql*/`
-    INSERT INTO loyalty_programs (tenant_id, name, vertical, status, mode, points_name, default_locale, allow_experience_booking, rules_json)
-    VALUES (${input.tenantId}, ${String(profile.club_name)}, ${String(profile.vertical)}, 'active', 'production', ${pointsName}, 'es-AR', true, ${JSON.stringify(rules)}::jsonb)
-    ON CONFLICT DO NOTHING
-    RETURNING id, name, points_name
-  `)[0] || (await sql/*sql*/`
-    SELECT id, name, points_name
-    FROM loyalty_programs
-    WHERE tenant_id = ${input.tenantId}
-      AND status = 'active'
-    ORDER BY created_at DESC
-    LIMIT 1
-  `)[0];
-
-  if (program?.id) {
-    for (const reward of rewards) {
-      const code = typeof reward.code === "string" ? reward.code : "";
-      const title = typeof reward.title === "string" ? reward.title : "";
-      const type = typeof reward.type === "string" ? reward.type : "";
-      if (!code || !title || !type) continue;
-      await sql/*sql*/`
-        INSERT INTO rewards (tenant_id, program_id, code, title, description, type, status, points_cost, stock_total, stock_remaining, network_visible)
-        VALUES (${input.tenantId}, ${program.id}, ${code}, ${title}, ${String(reward.description || "")}, ${type}::reward_type, 'active', ${Number(reward.points || 0)}, ${Number(reward.stock || 0)}, ${Number(reward.stock || 0)}, true)
-        ON CONFLICT (program_id, code) DO NOTHING
-      `;
-    }
-  }
-
-  return program || null;
+  // Publication is an explicit tenant admin action. A missing active program never creates one.
+  return null;
 }

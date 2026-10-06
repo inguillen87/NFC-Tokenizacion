@@ -1608,6 +1608,7 @@ function buildPublicSunTechnicalEvidence(
 }
 
 function buildPublicContract(params: {
+  customerConfiguration?: import('../../lib/published-customer-configuration').PublishedCustomerConfiguration;
   bid: string;
   uid: string | null;
   ctr: number | null;
@@ -2178,7 +2179,7 @@ function buildPublicContract(params: {
       sensorHistory,
       declaredStatic: sensorEvidence.declaredStatic,
     },
-    engagement: { promotions: publishedPromotions },
+    engagement: { promotions: publishedPromotions, configuration: params.customerConfiguration },
     tapContext: {
       os: ua.os,
       browser: ua.browser,
@@ -3302,6 +3303,8 @@ async function handleSunRequest(req: Request): Promise<Response> {
       );
     }
   }
+  const configurationPromise = import('../../lib/published-customer-configuration').then(({getPublishedCustomerConfiguration, unavailableCustomerConfiguration}) =>
+    eventId ? withTimeout(getPublishedCustomerConfiguration(String(eventId)),1500,'sun_customer_configuration').catch(() => unavailableCustomerConfiguration()) : unavailableCustomerConfiguration());
   const {passport,timeline,sdkSensorTimeline,hasTokenizeRequest}=await readSunPresentation({
     passport:()=>withTimeout(getPassportSnapshot(bid,uid||undefined),2500,"sun_passport_snapshot").catch(()=>null),
     fallback:()=>withTimeout(getBatchSunContext(bid),2500,"sun_batch_context").catch(()=>null),
@@ -3309,7 +3312,9 @@ async function handleSunRequest(req: Request): Promise<Response> {
     sensors:(passport)=>withTimeout(getSdkSensorTimelineSummary({tenantId:passport?.tenant_id,bid,uid}),2500,"sun_sdk_sensor_timeline").catch(()=>[] as TimelineEvent[]),
     actions:()=>uid?withTimeout(listDemoCta(bid, uid),2500,"sun_cta_status").then(actions=>actions.some((item) => String(item.action || "") === "tokenize_request")).catch(()=>false):Promise.resolve(false),
   });
+  const customerConfiguration = await configurationPromise;
   const contract = buildPublicContract({
+    customerConfiguration,
     bid,
     uid,
     ctr,

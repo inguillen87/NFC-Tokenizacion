@@ -22,9 +22,15 @@ test("local PostgreSQL loyalty harness refuses remote server before mutations an
   const statements = [];
   let closed = false;
   await assert.rejects(runLoyaltyCurrentStatePostgresQa({ connect: async () => ({
-    query: async text => { statements.push(text); return { rows: [{ database: "nexid_e2e", pid: 1, address: "192.0.2.1" }] }; },
+    query: async text => { statements.push(text); return { rows: [{ database: "nexid_e2e", role:'nexid_e2e', pid: 1, address: "192.0.2.1" }] }; },
     end: async () => { closed = true; },
   }) }), /non-loopback/);
   assert.equal(closed, true);
   assert.equal(statements.length, 1);
+});
+
+test('loyalty harness refuses a forged Docker descriptor before any mutation',async()=>{
+  let closed=false;const statements=[];
+  await assert.rejects(runLoyaltyCurrentStatePostgresQa({dockerAttestation:{kind:'github-actions-local-docker'},connect:async()=>({query:async text=>{statements.push(text);return {rows:[{database:'nexid_e2e',role:'nexid_e2e',pid:1,address:'172.18.0.2'}]};},end:async()=>{closed=true;}})}),/Unissued Docker/);
+  assert.equal(closed,true);assert.equal(statements.length,1);assert.doesNotMatch(statements[0],/CREATE|INSERT|UPDATE|DELETE|DROP/);
 });

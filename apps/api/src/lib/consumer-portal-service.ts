@@ -35,8 +35,8 @@ export async function ensureTenantMembership(input: { consumerId: string; tenant
     DO UPDATE SET
       last_tap_event_id = COALESCE(EXCLUDED.last_tap_event_id, tenant_consumer_memberships.last_tap_event_id),
       last_activity_at = now(),
-      status = 'active',
       updated_at = now()
+    WHERE tenant_consumer_memberships.status = 'active'
     RETURNING *
   `;
   return rows[0];
@@ -441,8 +441,7 @@ export async function claimPointsForConsumer(input: { consumerId: string; eventI
   if (!currentRights.allowed) {
     return { ok: false, error: "tap_commercial_rights_blocked", reason: currentRights.reason };
   }
-  const event = await saveTapForConsumer(input);
-  if (!event) return { ok: false, error: "event_not_found" };
+  const event = rightsEvent;
   const claim = await claimTapPoints({
     eventId: input.eventId,
     locale: input.locale || "es-AR",
@@ -450,8 +449,10 @@ export async function claimPointsForConsumer(input: { consumerId: string; eventI
     consumerId: input.consumerId,
   });
 
+  if (!claim.ok) return claim;
+  await saveTapForConsumer(input);
   const membership = await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
-  if (claim.ok && claim.memberId) {
+  if (membership && claim.memberId) {
     await sql/*sql*/`
       UPDATE tenant_consumer_memberships membership
       SET points_balance = member.points_balance,
@@ -461,10 +462,12 @@ export async function claimPointsForConsumer(input: { consumerId: string; eventI
           updated_at = now()
       FROM loyalty_members member
       WHERE membership.id = ${membership.id}
+        AND membership.status = 'active'
+        AND membership.tenant_id = ${event.tenant_id}
         AND member.id = ${claim.memberId}
         AND member.consumer_id = ${input.consumerId}
     `;
   }
 
-  return { ...claim, membershipId: membership.id, pointsSource: "loyalty_members" };
+  return { ...claim, membershipId: membership?.id ?? null, pointsSource: "loyalty_members" };
 }

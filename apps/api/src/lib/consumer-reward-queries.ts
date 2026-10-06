@@ -6,6 +6,10 @@ type ClaimInput = {
   idempotencyKey: string;
   redemptionCode: string;
   locale: string;
+  /** Server-owned context; never copied directly from a consumer request body. */
+  metadata?: Record<string, unknown>;
+  /** A free campaign response cannot debit points after a concurrent price change. */
+  maximumPointsCost?: 0;
 };
 
 type RefundInput = {
@@ -54,6 +58,7 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
         AND program.age_gate_required = false
         AND reward.requires_age_gate = false
         AND reward.points_cost >= 0
+        AND (${input.maximumPointsCost ?? null}::integer IS NULL OR reward.points_cost <= ${input.maximumPointsCost ?? null}::integer)
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
         AND member.status IN ('enrolled', 'verified')
         AND member.points_balance >= reward.points_cost
@@ -101,7 +106,7 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
       )
       SELECT ${input.consumerId}, locked.tenant_id, locked.reward_id, NULL, 'claimed',
         locked.points_cost, ${input.redemptionCode}, ${input.idempotencyKey},
-        ${JSON.stringify({ locale: input.locale, points_source: "loyalty_members" })}::jsonb
+        ${JSON.stringify({ ...input.metadata, locale: input.locale, points_source: "loyalty_members" })}::jsonb
       FROM locked, reserved_ledger, updated_member, updated_reward
       RETURNING *
     )
