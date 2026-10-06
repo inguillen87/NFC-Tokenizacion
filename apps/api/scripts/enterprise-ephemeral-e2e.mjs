@@ -187,7 +187,7 @@ async function run() {
   assert.equal(tenantConfiguration.checks.length, 18);
   const loyaltyGovernance = await runLoyaltyCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(loyaltyGovernance.ok && loyaltyGovernance.cleanup.schemaDropped && loyaltyGovernance.cleanup.connectionsClosed, 'Loyalty governance SQL regression or cleanup failed');
-  assert.equal(loyaltyGovernance.checks.length, 129);
+  assert.equal(loyaltyGovernance.checks.length, 139);
   assert.ok(loyaltyGovernance.checks.every(check => check.ok));
   assert.equal(loyaltyGovernance.lockObservations.length, 37);
   const marketplaceGovernance = await runMarketplaceContextualPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });

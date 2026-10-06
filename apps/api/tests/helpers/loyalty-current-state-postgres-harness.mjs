@@ -280,6 +280,35 @@ export async function runLoyaltyCurrentStatePostgresQa({ connect, dockerAttestat
     await check("active legacy tag with NULL lifecycle preserves eligibility",async()=>{const f=await fixture({lifecycle:null,points:0}); assert.equal((await award(f)).awarded,true);});
     await check("genuine hardware opening: TAP redemption records receipt and spends once",async()=>{const f=await fixture({result:"VALID_OPENED",redemption:true}); const first=await redeem(f); assert.equal(first.ok,true); const duplicate=await redeem(f); assert.equal(duplicate.status,409); const current=await state(f); assert.equal(current.loyalty_members[0].points_balance,60); assert.equal(current.rewards[0].stock_remaining,1); assert.equal(current.reward_redemptions.length,1); assert.equal(current.points_ledger.length,1); assert.equal(current.points_ledger[0].balance_after,60);});
     await check("genuine hardware opening: configured trivia completes once with ledger and projection",async()=>{const f=await fixture({result:"VALID_OPENED",points:0}); const first=await submit(f); assert.equal(first.ok,true,"Legitimate configured trivia must complete"); assert.equal(first.pointsAwarded,15); const second=await submit(f); assert.equal(second.duplicateAttempt,true); const current=await state(f); assert.equal(current.loyalty_members[0].points_balance,15); assert.equal(current.points_ledger.length,1); assert.equal(current.points_ledger[0].balance_after,15); assert.equal(current.loyalty_quiz_attempts[0].status,"completed"); assert.equal(current.tenant_consumer_memberships[0].points_balance,15);});
+    for (const consumerStatus of ['anonymous','registered','verified']) await check(`trivia GET: ${consumerStatus} account with active membership receives the configured quiz read-only`, async () => {
+      const f=await fixture({redemption:true});
+      await admin.query(`UPDATE ${s}.consumers SET status=$1 WHERE id=$2`,[consumerStatus,f.consumerId]);
+      const setup=await unchanged(f,()=>trivia.getTriviaForTap({eventId:f.eventId,memberKey:f.memberKey,consumerId:f.consumerId}));
+      assert.equal(setup.ok,true);assert.equal(setup.quiz.id,f.quizId);assert.equal(setup.quiz.questions.length,1);
+      assert.equal(Object.hasOwn(setup.quiz.questions[0],'correctIndex'),false);
+      return {consumerStatus,membershipStatus:'active',readOnly:true,questionsReturned:true};
+    });
+    await check('trivia GET: missing tenant membership remains readable without creating or enrolling it', async () => {
+      const f=await fixture();
+      const setup=await unchanged(f,()=>trivia.getTriviaForTap({eventId:f.eventId,memberKey:f.memberKey,consumerId:f.consumerId}));
+      assert.equal(setup.ok,true);assert.equal(setup.quiz.id,f.quizId);
+      assert.equal((await state(f)).tenant_consumer_memberships.length,0);
+      return {membershipStatus:'absent',readOnly:true,bootstrapPreserved:true};
+    });
+    for (const membershipStatus of ['invited','paused','blocked','left']) await check(`trivia GET: existing ${membershipStatus} membership returns consumer_not_enrolled without quiz or mutations`, async () => {
+      const f=await fixture();
+      await admin.query(`INSERT INTO ${s}.tenant_consumer_memberships(tenant_id,consumer_id,status) VALUES ($1,$2,$3)`,[f.tenantId,f.consumerId,membershipStatus]);
+      const setup=await unchanged(f,()=>trivia.getTriviaForTap({eventId:f.eventId,memberKey:f.memberKey,consumerId:f.consumerId}));
+      assert.deepEqual(setup,{ok:false,status:409,error:'consumer_not_enrolled'});
+      return {membershipStatus,readOnly:true,questionsReturned:false};
+    });
+    for (const consumerStatus of ['blocked','deleted']) await check(`trivia GET: ${consumerStatus} account returns consumer_not_enrolled without quiz or mutations`, async () => {
+      const f=await fixture({redemption:true});
+      await admin.query(`UPDATE ${s}.consumers SET status=$1 WHERE id=$2`,[consumerStatus,f.consumerId]);
+      const setup=await unchanged(f,()=>trivia.getTriviaForTap({eventId:f.eventId,memberKey:f.memberKey,consumerId:f.consumerId}));
+      assert.deepEqual(setup,{ok:false,status:409,error:'consumer_not_enrolled'});
+      return {consumerStatus,readOnly:true,questionsReturned:false};
+    });
     await check("two concurrent TAP awards: one successful receipt, one duplicate, one credit",async()=>{const f=await fixture({points:0}); const results=await concurrentOnMember(f,award); assert.equal(results.filter(r=>r.awarded).length,1); assert.equal(results.filter(r=>r.duplicate).length,1); const current=await state(f); assert.equal(current.loyalty_members[0].points_balance,10); assert.equal(current.points_ledger.length,1); assert.equal(current.points_ledger[0].balance_after,10); return {results};});
     await check("two concurrent TAP redemptions: one receipt, one duplicate, one spend and stock decrement",async()=>{const f=await fixture({redemption:true}); const results=await concurrentOnMember(f,redeem); assert.equal(results.filter(r=>r.ok).length,1); assert.equal(results.filter(r=>r.error==="already_redeemed").length,1); const current=await state(f); assert.equal(current.loyalty_members[0].points_balance,60); assert.equal(current.points_ledger.length,1); assert.equal(current.points_ledger[0].balance_after,60); assert.equal(current.reward_redemptions.length,1); assert.equal(current.rewards[0].stock_remaining,1); return {results};});
     await check("two concurrent configured trivia submits: one completed attempt and credit",async()=>{const f=await fixture({points:0}); const results=await concurrentOnMember(f,submit); assert.ok(results.every(r=>r.ok)); assert.equal(results.filter(r=>r.duplicateAttempt).length,1); const current=await state(f); assert.equal(current.loyalty_members[0].points_balance,15); assert.equal(current.points_ledger.length,1); assert.equal(current.points_ledger[0].balance_after,15); assert.equal(current.loyalty_quiz_attempts.length,1); assert.equal(current.loyalty_quiz_attempts[0].status,"completed"); assert.equal(current.tenant_consumer_memberships.length,1); return {results};});

@@ -362,12 +362,20 @@ export async function getTriviaForTap(input: {
   if (!quiz) return { ok: false as const, status: 404, error: "quiz_not_configured" as const };
   if (!hasValidQuizPolicy(quiz)) return { ok: false as const, status: 409, error: 'quiz_configuration_changed' as const };
   const member = (await sql/*sql*/`
-    SELECT *
-    FROM loyalty_members
-    WHERE tenant_id = ${event.tenant_id}
-      AND program_id = ${program.id}
-      AND consumer_id = ${input.consumerId}
-      AND status IN ('enrolled', 'verified')
+    SELECT member.*
+    FROM loyalty_members member
+    JOIN consumers consumer ON consumer.id = member.consumer_id
+    WHERE member.tenant_id = ${event.tenant_id}
+      AND member.program_id = ${program.id}
+      AND member.consumer_id = ${input.consumerId}
+      AND member.status IN ('enrolled', 'verified')
+      AND consumer.status IN ('anonymous', 'registered', 'verified')
+      AND NOT EXISTS (
+        SELECT 1 FROM tenant_consumer_memberships membership
+        WHERE membership.tenant_id = member.tenant_id
+          AND membership.consumer_id = member.consumer_id
+          AND membership.status IS DISTINCT FROM 'active'
+      )
     LIMIT 1
   `)[0];
   if (!member) return { ok: false as const, status: 409, error: "consumer_not_enrolled" as const };
