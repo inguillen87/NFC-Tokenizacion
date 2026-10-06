@@ -25,7 +25,7 @@ export function membershipLabel(value: unknown) {
     inactive: "Membresía inactiva", suspended: "Membresía suspendida", blocked: "Membresía bloqueada",
     withdrawn: "Membresía retirada", cancelled: "Membresía cancelada",
   };
-  return status ? labels[status] || `Estado reportado: ${status}` : "Estado de membresía no informado";
+  return status ? (Object.hasOwn(labels, status) ? labels[status] : `Estado reportado: ${status}`) : "Estado de membresía no informado";
 }
 
 export function brandDateLabel(value: unknown): string | null {

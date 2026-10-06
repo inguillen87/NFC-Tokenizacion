@@ -77,7 +77,10 @@ test("all and selected membership views are explicit; malformed, repeated and un
 });
 
 test("membership labels and dates report supplied state without promoting pending, paused or unknown states", () => {
-  assert.equal(model.membershipLabel("paused"), "Membresía pausada"); assert.equal(model.membershipLabel("pending"), "Membresía pendiente");
+  for (const [status, expected] of [["active", "Membresía activa"], ["pending", "Membresía pendiente"], ["paused", "Membresía pausada"], ["inactive", "Membresía inactiva"], ["suspended", "Membresía suspendida"], ["blocked", "Membresía bloqueada"], ["withdrawn", "Membresía retirada"], ["cancelled", "Membresía cancelada"]]) assert.equal(model.membershipLabel(status), expected);
+  for (const status of ["__proto__", "constructor", "toString", "hasOwnProperty", "valueOf"]) {
+    const label = model.membershipLabel(status); assert.equal(typeof label, "string"); assert.equal(label, `Estado reportado: ${status}`);
+  }
   assert.equal(model.membershipLabel("tenant_review"), "Estado reportado: tenant_review"); assert.equal(model.membershipLabel(null), "Estado de membresía no informado");
   assert.ok(model.brandDateLabel("2026-10-01T12:00:00.123456Z"));
   for (const value of ["", "not-a-date", "2026-02-30T12:00:00Z", "2026-13-01T12:00:00Z", "2026-10-01T25:00:00Z", null]) assert.equal(model.brandDateLabel(value), null);
@@ -120,6 +123,10 @@ test("SSR shows separate balances, real state and exact existing destination sco
   assert.doesNotMatch(html, /Drops|Promos|Mensajes del Viñedo|unread|Nivel|Progreso|checkout|Votar|Emisor verificado/);
   assert.equal(Object.hasOwn(subject.shells[0], "notificationCount"), false);
   assert.deepEqual(subject.calls, [["session", "/me/brands"], ["private", "brands"], ["private", "products"], ["private", "taps"], ["catalog", "products"]]);
+  for (const status of ["__proto__", "constructor", "toString", "hasOwnProperty", "valueOf"]) {
+    const unknown = await page({ brands: { ok: true, items: [brand("brand-a", { status })] } }).render();
+    assert.ok(unknown.includes(`Estado reportado: ${status}`)); assert.doesNotMatch(unknown, /Membresía activa|\[object Object\]/);
+  }
 });
 
 test("SSR selection hides other brand cards and gives an explicit complete-view recovery for unknown or repeated tenant filters", async () => {
