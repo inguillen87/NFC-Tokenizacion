@@ -22,6 +22,7 @@ import { runAdminRewardPostgresQa } from "../tests/helpers/admin-reward-postgres
 import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuration-postgres-harness.mjs";
 import { runLoyaltyCurrentStatePostgresQa } from '../tests/helpers/loyalty-current-state-postgres-harness.mjs';
 import { runMarketplaceContextualPostgresQa } from '../tests/helpers/marketplace-contextual-postgres-harness.mjs';
+import { runTenantMarketplaceCatalogPostgresQa } from '../tests/helpers/tenant-marketplace-catalog-postgres-qa.mjs';
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { Client, Pool } = pg;
@@ -195,7 +196,13 @@ async function run() {
   assert.equal(marketplaceGovernance.checks.length, 59);
   assert.ok(marketplaceGovernance.checks.every(check => check.ok));
   assert.equal(marketplaceGovernance.lockObservations.length, 13);
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance };
+  const tenantMarketplaceCatalog = await runTenantMarketplaceCatalogPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(tenantMarketplaceCatalog.accepted && tenantMarketplaceCatalog.cleanup.schemaDropped && tenantMarketplaceCatalog.cleanup.connectionsClosed, 'Tenant marketplace catalog SQL regression or cleanup failed');
+  assert.equal(tenantMarketplaceCatalog.checks.length, 17);
+  assert.ok(tenantMarketplaceCatalog.checks.every(check => check.passed));
+  assert.equal(tenantMarketplaceCatalog.lockObservations.length, 1);
+  assert.ok(tenantMarketplaceCatalog.lockObservations.every(observation => observation.observed && observation.waitEventType === 'Lock'));
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 
