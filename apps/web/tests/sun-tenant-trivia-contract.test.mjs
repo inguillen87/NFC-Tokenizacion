@@ -109,6 +109,19 @@ test("missing configuration, expired authorization and uncertain submissions hav
   assert.match(trivia.triviaRecoveryDescription("unauthorized", true), /Ingresá a tu cuenta/);
   assert.match(trivia.triviaRecoveryDescription("trivia_submit_failed", true), /Revisá tu cuenta antes de volver a intentarlo/);
 });
+
+test("definitive participation denial has localized account recovery even without a fresh capability", () => {
+  for (const [locale, account, nextStep] of [["es-AR", /participación de tu cuenta no está habilitada/, /Consultá tus beneficios o contactá a la marca/], ["en", /account is not enabled/, /Check your benefits or contact the brand/], ["pt-BR", /conta não está habilitada/, /Consulte seus benefícios ou entre em contato com a marca/]]) {
+    for (const canSubmit of [true, false]) {
+      const description = trivia.triviaRecoveryDescription("consumer_not_enrolled", canSubmit, locale);
+      assert.equal(description, trivia.triviaRecoveryCopy[locale].notEnrolled);
+      assert.match(description, account);
+      assert.match(description, nextStep);
+      assert.doesNotMatch(description, /bloque|deleted|blocked|eliminad|Acercá|Hold your phone|Aproxime|confirmar el envío|confirm your submission|confirmar o envio/i);
+    }
+  }
+  assert.match(source, /setTriviaError\(\[[^\]]*"consumer_not_enrolled"[^\]]*\]\.includes\(reason\) \? reason : "trivia_submit_failed"\)/);
+});
 test("trivia recovery localizes the next step without exposing implementation or promising an award", () => {
   for (const [locale, unpublished, newReading, uncertain] of [
     ["es-AR", /todavía no publicó/, /Acercá de nuevo el teléfono/, /Revisá tu cuenta antes/],

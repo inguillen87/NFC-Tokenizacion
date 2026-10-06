@@ -148,11 +148,10 @@ async function expectUnavailable(page, context, name, width, theme, capture = tr
     check(await loading.locator("animate,animateTransform,img,video").count() === 0, `${name}: no carousel, photos or SVG timelines in loading`);
     check(await loading.locator("*").evaluateAll((nodes) => nodes.every((node) => getComputedStyle(node).animationName === "none")), `${name}: static loading under reduced motion`);
   }
-  const error = page.getByTestId("consumer-portal-error");
+  const error = page.getByTestId("consumer-portal-unavailable");
   await error.waitFor({ timeout: 12_000 });
-  observation.phase = "error-visible";
-  observation.expectedBoundaryWasVisible = true;
-  observation.boundaryVisibleElapsedMs = Math.round(performance.now() - started);
+  observation.phase = "unavailable-visible";
+  observation.expectedUnavailableWasVisible = true;
   const elapsedMs = Math.round(performance.now() - started);
   report.timings.push({ name, width, theme, elapsedMs, syntheticStall: name.includes("stall") });
   if (name.includes("stall")) check(elapsedMs < 11_000, `${name}: bounded request leaves loading within 11 seconds including rendering`);
@@ -161,20 +160,46 @@ async function expectUnavailable(page, context, name, width, theme, capture = tr
   check(await page.getByTestId("consumer-home").count() === 0 && !(await page.locator("body").innerText()).includes("Producto local QA"), `${name}: unknown session exposes no private account products`);
   observation.privateDenialConfirmed = true;
   check(await error.getByRole("button", { name: "Reintentar", exact: true }).evaluate((node) => node.getBoundingClientRect().height >= 44), `${name}: retry touch target is at least 44 pixels`);
-  await page.waitForFunction(() => document.activeElement?.id === "consumer-error-title");
-  check(true, `${name}: error heading receives keyboard focus`);
-  if (capture) await assess(page, '[data-testid="consumer-portal-error"]', "error", width, theme);
+  await page.waitForFunction(() => document.activeElement?.id === "consumer-session-unavailable-title");
+  check(true, `${name}: unavailable heading receives keyboard focus`);
+  if (capture) await assess(page, '[data-testid="consumer-portal-unavailable"]', "unavailable", width, theme);
   const reads = fixture.requests.slice(before);
   check(reads.length === 1 && reads[0].path === "/consumer/session", `${name}: no private data lookups start before session confirmation`);
   observation.initialPrivateReadCount = reads.filter((read) => read.path !== "/consumer/session").length;
   observation.initialSessionFailure = { ...reads[0] };
   await documentEvidence;
   observation.initialDomTemplateDigests = await page.evaluate(() => { window.__qaInitialDocument = false; return window.__qaInitialTemplateDigests; });
+  check(observation.initialDocument?.readFailed !== true && observation.initialDocument?.templateDigests.length === 0 && observation.initialDocument?.streamedSuspenseDigests.length === 0 && observation.initialDocument?.rscErrorDigests.length === 0 && observation.initialDomTemplateDigests.length === 0, `${name}: expected unavailability renders no failed SSR, RSC or DOM error boundary`);
   const retryReadStart = fixture.requests.length;
   observation.phase = "retry-requested";
   await scenario(context, "ready");
-  await error.getByRole("button", { name: "Reintentar", exact: true }).click();
-  await page.getByTestId("consumer-home").waitFor({ timeout: 12_000 });
+  // Click immediately. Hold only the new refresh read so its pending feedback
+  // can be inspected deterministically; no hydration delay, sleep or retry.
+  let releaseRefresh;
+  const refreshGate = new Promise((resolve) => { releaseRefresh = resolve; });
+  const refreshUrl = (url) => url.origin === origin && url.pathname === "/me";
+  const refreshReads = [];
+  const holdRefresh = async (route) => {
+    if (route.request().method() === "GET" && route.request().headers().rsc === "1") {
+      refreshReads.push({ path: new URL(route.request().url()).pathname, method: "GET", rsc: true });
+      await refreshGate;
+    }
+    return route.fallback();
+  };
+  // Page routes take precedence over context routes. Use the most recent page
+  // route and fall back to the original same-origin/read-only safety handler.
+  await page.route(refreshUrl, holdRefresh);
+  const refreshStarted = page.waitForRequest((request) => refreshUrl(new URL(request.url())) && request.method() === "GET" && request.headers().rsc === "1", { timeout: 12_000 });
+  try {
+    await Promise.all([refreshStarted, error.getByRole("button", { name: "Reintentar", exact: true }).click()]);
+    const pending = error.getByRole("button", { name: "Consultando…", exact: true });
+    await pending.waitFor({ timeout: 12_000 });
+    check(await pending.isDisabled() && await pending.getAttribute("aria-busy") === "true", `${name}: immediate retry is disabled and reports the active refresh`);
+    check(refreshReads.length === 1, `${name}: exactly one actual RSC refresh GET is held for pending inspection`);
+    observation.retryRefreshReads = refreshReads;
+    releaseRefresh();
+    await page.getByTestId("consumer-home").waitFor({ timeout: 12_000 });
+  } finally { releaseRefresh(); await page.unroute(refreshUrl, holdRefresh); }
   observation.phase = "retry-ready-visible";
   check((await page.getByTestId("consumer-home").innerText()).includes("Producto local QA"), `${name}: explicit retry restores the actual account projection`);
   check(new URL(page.url()).searchParams.get("tapEventId") === "900001", `${name}: retry preserves return context`);
@@ -241,8 +266,9 @@ try {
   check(report.geolocationCalls === 0, "zero location permission calls");
   report.errorClassification = classifyPortalLoadingErrors(report);
   report.errorCounts = { expectedFrameworkRecoveries: report.errorClassification.expectedFrameworkRecoveries.length, unexpectedClientErrors: report.errorClassification.unexpectedClientErrors.length, unexpectedNativeWindowErrors: report.errorClassification.unexpectedNativeWindowErrors.length };
-  check(report.errorClassification.unexpectedClientErrors.length === 0, "zero unexpected client exceptions; only initial-boundary digest-linked React419 recovery receipts qualify");
-  check(report.errorClassification.unexpectedNativeWindowErrors.length === 0, "zero unexpected native window errors; all raw events remain in the report");
+  check(report.clientErrors.length === 0, "zero client exceptions, including framework recoveries");
+  check(report.nativeWindowErrors.length === 0, "zero native window errors, including framework recoveries");
+  check(report.errorClassification.expectedFrameworkRecoveries.length === 0, "expected session unavailability needs no React error recovery classification");
   report.status = "passed";
 } catch (error) {
   report.status = "failed"; report.error = String(error.stack);

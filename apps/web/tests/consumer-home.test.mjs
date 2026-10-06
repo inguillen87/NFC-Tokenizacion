@@ -182,12 +182,13 @@ test("server authenticates before starting its four parallel reads and preserves
   const page = compile(pageSource, {
     "./_components/consumer-api": {
       buildConsumerNextPath: (path, params) => { nextParams = { path, params }; return "preserved-next"; },
-      requireConsumerSession: async (next) => { assert.equal(next, "preserved-next"); await session; },
+      readConsumerHomeSession: async (next) => { assert.equal(next, "preserved-next"); await session; return { status: "ready" }; },
       fetchConsumerMe: () => fetch("account"), fetchConsumerPath: fetch,
     },
     "./_components/consumer-home-model": model,
     "./_components/portal-shell": { PortalShell: () => null },
     "./_components/me-portal-interactive-client": { MePortalInteractiveClient: () => null },
+    "./_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
   }).default;
   const pending = page({ searchParams: Promise.resolve({ fromTap: "1", tenant: "actual-tenant", eventId: "702" }) });
   await new Promise(setImmediate);
@@ -204,10 +205,11 @@ test("server authenticates before starting its four parallel reads and preserves
 test("a denied session prevents all consumer home source reads", async () => {
   let fetches = 0;
   const page = compile(pageSource, {
-    "./_components/consumer-api": { buildConsumerNextPath: () => "/me", requireConsumerSession: async () => { throw new Error("redirect-login"); }, fetchConsumerMe: () => { fetches++; }, fetchConsumerPath: () => { fetches++; } },
+    "./_components/consumer-api": { buildConsumerNextPath: () => "/me", readConsumerHomeSession: async () => { throw new Error("redirect-login"); }, fetchConsumerMe: () => { fetches++; }, fetchConsumerPath: () => { fetches++; } },
     "./_components/consumer-home-model": model,
     "./_components/portal-shell": { PortalShell: () => null },
     "./_components/me-portal-interactive-client": { MePortalInteractiveClient: () => null },
+    "./_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
   }).default;
   await assert.rejects(() => page({}), /redirect-login/);
   assert.equal(fetches, 0);

@@ -127,7 +127,10 @@ function compile(source, overrides = {}) {
 function loadApi(result) {
   const calls = [];
   const api = compile(readFileSync(new URL("consumer-api.ts", components), "utf8"), {
-    "next/headers": { headers: async () => new Headers({ cookie: "session=private; capability=one-use", "user-agent": "test" }) },
+    "next/headers": { headers: async () => {
+      if (result instanceof Error) throw result;
+      return new Headers({ cookie: "session=private; capability=one-use", "user-agent": "test" });
+    } },
     "next/navigation": { redirect: (url) => { throw new Error(`redirect:${url}`); } },
     "../../api/_lib/consumer-tap-handoff": { stripConsumerTapCapabilityCookies: () => "session=private" },
     "./consumer-bounded-fetch": {
@@ -148,8 +151,30 @@ test("session lookup preserves next and strips single-use capabilities from priv
   assert.equal(accepted.calls[0].init.headers.cookie, "session=private");
 });
 
+test("home session reads preserve genuine 401 login and authenticate only a verified envelope", async () => {
+  const next = "/me?fromTap=1&tapEventId=732&action=rewards";
+  for (const result of [{ status: "http-error", httpStatus: 401 }, { status: "ready", data: { ok: true, authenticated: false } }]) {
+    const loaded = loadApi(result);
+    await assert.rejects(() => loaded.api.readConsumerHomeSession(next), (error) => error.message === `redirect:/login?consumer=1&next=${encodeURIComponent(next)}`);
+    assert.equal(loaded.calls.length, 1);
+  }
+  const accepted = loadApi({ status: "ready", data: { ok: true, authenticated: true } });
+  assert.deepEqual(await accepted.api.readConsumerHomeSession(next), { status: "ready" });
+  assert.equal(accepted.calls[0].init.cache, "no-store");
+  assert.equal(accepted.calls[0].init.headers.cookie, "session=private");
+});
+
+test("home session unavailability is typed; other consumer gates still throw fail closed", async () => {
+  for (const result of [{ status: "unavailable", reason: "network" }, { status: "unavailable", reason: "timeout" }, { status: "unavailable", reason: "invalid-json" }, { status: "http-error", httpStatus: 500 }, { status: "http-error", httpStatus: 503 }, { status: "ready", data: {} }, { status: "ready", data: { ok: true, authenticated: "true" } }]) {
+    const loaded = loadApi(result);
+    assert.deepEqual(await loaded.api.readConsumerHomeSession(), { status: "unavailable" });
+    await assert.rejects(() => loaded.api.requireConsumerSession(), /consumer_session_unavailable/);
+  }
+});
+
 test("an unknown session stops the page before any private account, collection or brand lookup", async () => {
   const pageSource = readFileSync(new URL("page.tsx", root), "utf8");
+  const ConsumerPortalUnavailable = () => null;
   for (const result of [{ status: "unavailable", reason: "timeout" }, { status: "http-error", httpStatus: 503 }, { status: "ready", data: {} }]) {
     const loaded = loadApi(result);
     const page = compile(pageSource, {
@@ -157,11 +182,39 @@ test("an unknown session stops the page before any private account, collection o
       "./_components/portal-shell": { PortalShell: () => null },
       "./_components/consumer-home-model": { buildConsumerHomeModel: () => { throw new Error("private model must not render"); } },
       "./_components/me-portal-interactive-client": { MePortalInteractiveClient: () => null },
+      "./_components/consumer-portal-recovery": { ConsumerPortalUnavailable },
     }).default;
-    await assert.rejects(() => page({ searchParams: Promise.resolve({ fromTap: "1", tapEventId: "732" }) }), /consumer_session_unavailable/);
+    assert.equal((await page({ searchParams: Promise.resolve({ fromTap: "1", tapEventId: "732" }) })).type, ConsumerPortalUnavailable);
     assert.equal(loaded.calls.length, 1);
     assert.ok(loaded.calls[0].url.endsWith("/consumer/session"));
   }
+});
+
+test("home page reads all four private sources only after its session is confirmed", async () => {
+  const loaded = loadApi({ status: "ready", data: { ok: true, authenticated: true, consumer: { id: "qa-only" }, stats: {}, items: [] } });
+  const models = [];
+  const MePortalInteractiveClient = () => null;
+  const page = compile(readFileSync(new URL("page.tsx", root), "utf8"), {
+    "./_components/consumer-api": loaded.api,
+    "./_components/portal-shell": { PortalShell: () => null },
+    "./_components/consumer-home-model": { buildConsumerHomeModel: (sources) => { models.push(sources); return "model-qa"; } },
+    "./_components/me-portal-interactive-client": { MePortalInteractiveClient },
+    "./_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => { throw new Error("unavailable must not render"); } },
+  }).default;
+  const element = await page({});
+  assert.deepEqual(loaded.calls.map((call) => new URL(call.url).pathname), ["/consumer/session", "/consumer/me", "/consumer/products", "/consumer/taps", "/consumer/brands"]);
+  assert.equal(models.length, 1);
+  assert.equal(models[0].account.consumer.id, "qa-only");
+  assert.equal(element.props.children.type, MePortalInteractiveClient);
+  assert.equal(element.props.children.props.model, "model-qa");
+});
+
+test("unexpected session read exceptions still propagate to the real route error boundary", async () => {
+  const failure = new Error("unexpected request context failure");
+  const loaded = loadApi(failure);
+  await assert.rejects(() => loaded.api.readConsumerHomeSession(), (error) => error === failure);
+  await assert.rejects(() => loaded.api.requireConsumerSession(), (error) => error === failure);
+  assert.equal(loaded.calls.length, 0);
 });
 
 test("portal reads reject non-object JSON and validate nested contact and detail records", async () => {
@@ -224,8 +277,57 @@ test("portal loading and recovery use readable themes and focusable 44-pixel act
   assert.match(css, /:focus-visible/);
   assert.match(css, /min-height: 2\.75rem/);
   assert.match(css, /safe-area-inset-bottom/);
-  const error = readFileSync(new URL("error.tsx", root), "utf8");
-  assert.match(error, /heading\.current\?\.focus\(\)/);
-  assert.match(error, /no confirma si el último producto quedó guardado/);
-  assert.doesNotMatch(error, /error\.message|error\.stack|error\.digest|setInterval|fetch\(/);
+  const recovery = readFileSync(new URL("consumer-portal-recovery.tsx", components), "utf8");
+  assert.match(recovery, /heading\.current\?\.focus\(\)/);
+  assert.match(recovery, /no confirma si el último producto quedó guardado/);
+  assert.doesNotMatch(recovery, /error\.message|error\.stack|error\.digest|setInterval|fetch\(/);
+});
+
+function loadRecovery(pending) {
+  let refreshes = 0;
+  let transitions = 0;
+  const recovery = compile(readFileSync(new URL("consumer-portal-recovery.tsx", components), "utf8"), {
+    react: { ...React, useTransition: () => [pending, (callback) => { transitions += 1; callback(); }] },
+    "next/navigation": { useRouter: () => ({ refresh: () => { refreshes += 1; } }) },
+    "next/link": { __esModule: true, default: ({ children, prefetch, ...props }) => React.createElement("a", props, children) },
+    "../../../components/brand-home-link-static": brand,
+    "../portal-state.module.css": { __esModule: true, default: styles },
+  });
+  return { recovery, counts: () => ({ refreshes, transitions }) };
+}
+
+test("session-unavailable retry only refreshes the router and disables itself with visible pending feedback", () => {
+  const idle = loadRecovery(false);
+  const state = idle.recovery.ConsumerPortalUnavailable();
+  const html = renderToStaticMarkup(state);
+  assert.match(html, /data-testid="consumer-portal-unavailable"/);
+  assert.match(html, /id="consumer-session-unavailable-title"/);
+  assert.match(html, /aria-busy="false"/);
+  assert.match(html, />Reintentar<\/button>/);
+  state.props.retry();
+  assert.deepEqual(idle.counts(), { refreshes: 1, transitions: 1 });
+
+  const active = loadRecovery(true);
+  const pending = active.recovery.ConsumerPortalUnavailable();
+  const pendingHtml = renderToStaticMarkup(pending);
+  assert.match(pendingHtml, /disabled="" aria-busy="true"/);
+  assert.match(pendingHtml, />Consultando…<\/button>/);
+  pending.props.retry();
+  assert.deepEqual(active.counts(), { refreshes: 0, transitions: 0 });
+});
+
+test("the genuine route error boundary retains its reset or supplied retry contract", () => {
+  const { recovery } = loadRecovery(false);
+  const boundary = compile(readFileSync(new URL("error.tsx", root), "utf8"), {
+    "./_components/consumer-portal-recovery": recovery,
+  }).default;
+  const reset = () => {};
+  const retry = () => {};
+  assert.equal(boundary({ error: new Error("unexpected"), reset }).props.retry, reset);
+  const element = boundary({ error: new Error("unexpected"), reset, retry });
+  assert.equal(element.props.retry, retry);
+  const html = renderToStaticMarkup(element);
+  assert.match(html, /data-testid="consumer-portal-error"/);
+  assert.match(html, /id="consumer-error-title"/);
+  assert.doesNotMatch(html, /consumer-portal-unavailable|unexpected/);
 });

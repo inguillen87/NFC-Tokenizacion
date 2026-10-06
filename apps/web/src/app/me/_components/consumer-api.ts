@@ -48,6 +48,18 @@ export async function fetchConsumerSession() {
   return fetchJson("/consumer/session");
 }
 
+export type ConsumerHomeSessionRead = { status: "ready" } | { status: "unavailable" };
+
+/** The home page handles an unavailable session as a recoverable read state. */
+export async function readConsumerHomeSession(nextPath = "/me"): Promise<ConsumerHomeSessionRead> {
+  const result = await readJson("/consumer/session");
+  const state = consumerSessionState(result);
+  if (state === "unauthenticated") {
+    redirect(`/login?consumer=1&next=${encodeURIComponent(nextPath)}`);
+  }
+  return { status: state === "authenticated" ? "ready" : "unavailable" };
+}
+
 export async function requireConsumerSession(nextPath = "/me") {
   const result = await readJson("/consumer/session");
   const state = consumerSessionState(result);

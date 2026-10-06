@@ -35,7 +35,8 @@ test("cork analyzer is a disabled-by-default random UI simulation, not a diagnos
 test("consumer home separates backend empty and unavailable states without arbitrary readiness scores", () => {
   assert.match(mePage, /buildConsumerHomeModel/);
   assert.match(mePage, /Promise\.all/);
-  assert.match(mePage, /requireConsumerSession/);
+  assert.match(mePage, /readConsumerHomeSession/);
+  assert.ok(mePage.indexOf('if (session.status === "unavailable") return <ConsumerPortalUnavailable') < mePage.indexOf("await Promise.all"));
   assert.doesNotMatch(mePage, /readinessChecks|passportReadiness|summarizeAssetReadiness|premium_magnum|asArray/);
   assert.match(mePortal, /model\.products\.status === "unavailable"/);
   assert.match(mePortal, /model\.taps\.status === "unavailable"/);

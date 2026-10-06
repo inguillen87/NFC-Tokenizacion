@@ -479,7 +479,7 @@ export function QREngagementSuite({
     } catch (error) {
       if (currentScope.current !== capturedScope) return;
       const reason = error instanceof Error ? error.message : "";
-      setTriviaError(["fresh_tap_capability_required", "quiz_configuration_changed", "unauthorized"].includes(reason) ? reason : "trivia_submit_failed");
+      setTriviaError(["fresh_tap_capability_required", "quiz_configuration_changed", "unauthorized", "consumer_not_enrolled"].includes(reason) ? reason : "trivia_submit_failed");
       setTriviaResult(null);
     } finally {
       if (currentScope.current === capturedScope) setTriviaSubmitting(false);

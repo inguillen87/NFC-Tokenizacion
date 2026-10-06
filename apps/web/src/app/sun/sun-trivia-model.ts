@@ -84,6 +84,7 @@ export const triviaRecoveryCopy = {
     unpublished: "La marca todavía no publicó una trivia para este producto.",
     uncertain: "No pudimos confirmar el envío. Conservamos tus respuestas. Revisá tu cuenta antes de volver a intentarlo.",
     unavailable: "La trivia no está disponible por el momento. Volvé a consultar más tarde.",
+    notEnrolled: "La participación de tu cuenta no está habilitada para esta trivia. Consultá tus beneficios o contactá a la marca.",
     changed: "La marca cambió o retiró esta trivia. Conservamos tus respuestas para que las revises. Cargá la versión actual antes de participar de nuevo.",
     reload: "Cargar trivia actualizada", savedAnswers: "Tus respuestas anteriores", previous: "Estas respuestas se conservan como referencia. No se envían a una trivia nueva.",
   },
@@ -95,6 +96,7 @@ export const triviaRecoveryCopy = {
     unpublished: "The brand has not published trivia for this product yet.",
     uncertain: "We could not confirm your submission. Your answers are saved here. Check your account before trying again.",
     unavailable: "Trivia is temporarily unavailable. Please check again later.",
+    notEnrolled: "Your account is not enabled to participate in this trivia. Check your benefits or contact the brand.",
     changed: "The brand changed or withdrew this trivia. Your answers are preserved for review. Load the current version before participating again.",
     reload: "Load updated trivia", savedAnswers: "Your previous answers", previous: "These answers are kept for reference. They are not submitted to a new quiz.",
   },
@@ -106,6 +108,7 @@ export const triviaRecoveryCopy = {
     unpublished: "A marca ainda não publicou uma trivia para este produto.",
     uncertain: "Não foi possível confirmar o envio. Suas respostas foram mantidas aqui. Confira sua conta antes de tentar novamente.",
     unavailable: "A trivia está temporariamente indisponível. Consulte novamente mais tarde.",
+    notEnrolled: "Sua conta não está habilitada para participar desta trivia. Consulte seus benefícios ou entre em contato com a marca.",
     changed: "A marca alterou ou retirou esta trivia. Suas respostas foram preservadas para revisão. Carregue a versão atual antes de participar novamente.",
     reload: "Carregar trivia atualizada", savedAnswers: "Suas respostas anteriores", previous: "Estas respostas são mantidas como referência. Elas não são enviadas a uma nova trivia.",
   },
@@ -115,6 +118,7 @@ export function triviaRecoveryDescription(error: string | null, canSubmit: boole
   const copy = triviaRecoveryCopy[locale];
   if (error === "quiz_configuration_changed") return copy.changed;
   if (error === "unauthorized") return copy.login;
+  if (error === "consumer_not_enrolled") return copy.notEnrolled;
   if (!canSubmit || error === "fresh_tap_capability_required") return copy.freshReading;
   if (error === "quiz_not_configured") return copy.unpublished;
   if (error === "trivia_submit_failed" || error === "trivia_result_unconfirmed") return copy.uncertain;

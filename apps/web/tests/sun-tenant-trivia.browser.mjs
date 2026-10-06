@@ -95,17 +95,34 @@ try {
     ['unauthorized', { status: 401, payload: { ok: false, error: 'unauthorized' } }, undefined, ''],
     ['invalid-quiz', { status: 200, payload: { ok: true, quiz: { id: 'qa', questions: [] } } }, undefined, ''],
     ['missing-capability', undefined, undefined, 'noCapability=1'],
+    ['not-enrolled-get', { status: 409, payload: { ok: false, error: 'consumer_not_enrolled' } }, undefined, ''],
+    ['not-enrolled-submit', { status: 200, payload: quiz }, { status: 409, payload: { ok: false, error: 'consumer_not_enrolled' } }, ''],
     ['expired-capability', { status: 200, payload: quiz }, { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required' } }, ''],
     ['uncertain-submit', { status: 200, payload: quiz }, { status: 503, payload: { ok: false, error: 'backend_unavailable' } }, ''],
   ]) {
     const t = await scenario({ read, submit, query });
     if (submit) { await t.page.getByTitle('Elegir respuesta 1').click(); await t.page.getByRole('button', { name: 'Finalizar trivia' }).click(); }
     await t.page.getByTestId('sun-trivia-unavailable').waitFor();
+    if (name.startsWith('not-enrolled-')) await t.page.getByText('La participación de tu cuenta no está habilitada para esta trivia. Consultá tus beneficios o contactá a la marca.', { exact: true }).waitFor();
     const text = await t.page.locator('.sun-engagement-suite').innerText();
     check(!/Resultado educativo local|Trivia completada|Puntos guardados|Cata, visita o voucher/.test(text), `${name}: no invented score, question or award`);
     check(await t.page.getByTitle('Elegir respuesta 1').count() === 0, `${name}: recovery prevents repeat submission`);
     if (name === 'missing-capability') check(t.calls.length === 0, 'missing capability makes no API request');
     if (submit) check(t.calls.filter(c => c.method === 'POST').length === 1, `${name}: one attempt only`);
+    if (name.startsWith('not-enrolled-')) {
+      check(text.includes('La participación de tu cuenta no está habilitada para esta trivia. Consultá tus beneficios o contactá a la marca.'), `${name}: definitive participation recovery`);
+      check(!/No pudimos confirmar|Acercá de nuevo|bloqueada|eliminada/.test(text), `${name}: no uncertain result or private account reason`);
+      check(await t.page.getByTestId('sun-trivia-unavailable').getByRole('link', { name: 'Consultar mis beneficios', exact: true }).getAttribute('href') === '/me/rewards', `${name}: existing benefits recovery link`);
+      check(t.calls.filter(c => c.method === 'GET').length === 1, `${name}: one bounded quiz read`);
+      if (submit) {
+        check((await t.page.getByTestId('sun-trivia-saved-answers').innerText()).includes('Respuesta de ensayo uno'), `${name}: selected answer stays available`);
+        check(await t.page.getByRole('button', { name: 'Finalizar trivia', exact: true }).count() === 0, `${name}: send lock remains closed`);
+      } else {
+        check(t.calls.filter(c => c.method === 'POST').length === 0, `${name}: denied setup submits nothing`);
+        check(await t.page.getByTestId('sun-trivia-saved-answers').count() === 0, `${name}: no fabricated answer draft`);
+      }
+      await assess(t.page, 390, 'light', name);
+    }
     await t.close();
   }
   check(report.geolocationCalls === 0, 'zero GPS calls');
