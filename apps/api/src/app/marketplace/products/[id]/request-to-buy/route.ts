@@ -8,6 +8,7 @@ import { canUseConsumerDemoBypass } from "../../../../../lib/consumer-demo-polic
 import { evaluateMarketplaceCheckoutAccess, parseRequestToBuyPayload } from "../../../../../lib/marketplace-policy";
 import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../lib/bounded-request-body";
+import { createContextualMarketplaceInquiry, validPostTapEventId } from "../../../../../lib/marketplace-contextual-request";
 import {
   COMMERCIAL_ASSET_SCOPE_MIGRATION_REQUIRED,
   isCommercialAssetScopeSchemaError,
@@ -49,6 +50,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } catch (error) {
     return json({ ok: false, error: error instanceof RequestBodyTooLargeError ? "request_body_too_large" : "invalid_json" }, error instanceof RequestBodyTooLargeError ? 413 : 400);
   }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ ok: false, error: 'invalid_json' }, 400);
   const { id } = await params;
   try {
     await requireCommercialAssetScopeSchema();
@@ -66,6 +68,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const parsed = parseRequestToBuyPayload(body);
   if (!parsed.ok) return json({ ok: false, error: parsed.error }, 400);
+  const contextual = Object.hasOwn(body, 'postTapEventId');
+  if (contextual && !validPostTapEventId(body.postTapEventId)) return json({ ok: false, error: 'invalid_post_tap_event_id' }, 400);
 
   const product = await sql/*sql*/`
     SELECT
@@ -86,6 +90,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!product[0]) return json({ ok: false, error: "product_not_found" }, 404);
 
   const record = product[0];
+  if (contextual) {
+    if (record.age_gate_required && !parsed.value.ageGateAccepted) return json({ ok: false, error: 'age_gate_ack_required' }, 400);
+    const result = await createContextualMarketplaceInquiry({ eventId: body.postTapEventId as string, consumerId: consumer.id,
+      tenantId: record.tenant_id, productId: record.id, quantity: parsed.value.quantity, message: parsed.value.message, ageGateAccepted: parsed.value.ageGateAccepted });
+    if (!result.ok) return json({ ok: false, error: result.error }, result.status, { 'cache-control': 'no-store' });
+    return marketplaceInquiryResponse(result.request, 'contextual_saved_tap');
+  }
   if (String(record.status || "") !== "active") return json({ ok: false, error: "product_not_active" }, 409);
   if (String(record.brand_status || "") !== "active" || record.visible_in_network !== true) {
     return json({ ok: false, error: "brand_not_visible_in_network" }, 409);
@@ -308,7 +319,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     LIMIT 1
   `)[0];
   if (!selectedRequest) return json({ ok: false, error: "request_creation_conflict" }, 409);
-  const { was_created: _wasCreated, crm_request_id: _crmRequestId, ...orderRequest } = selectedRequest;
+  return marketplaceInquiryResponse({ ...selectedRequest, was_created: created }, checkoutAccess.mode);
+}
+
+function marketplaceInquiryResponse(selectedRequest: any, access: string) {
+  const { was_created: created, crm_request_id: _crmRequestId, ...orderRequest } = selectedRequest;
 
   const persistedAttributionTuple = Boolean(
     orderRequest.source_tap_event_id
@@ -329,7 +344,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     fulfills_scanned_unit: false,
     purchase_executed: false,
     stock_reserved: false,
-    access: checkoutAccess.mode,
+    access,
     loyalty: {
       pointsAwarded: 0,
       state: "not_awarded_for_unfulfilled_request",

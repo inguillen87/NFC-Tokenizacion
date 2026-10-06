@@ -59,6 +59,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     eventId,
     memberKey,
     answers,
+    expectedQuizId: typeof body.expectedQuizId === 'string' ? body.expectedQuizId : undefined,
+    expectedQuizRevision: typeof body.expectedQuizRevision === 'string' ? body.expectedQuizRevision : undefined,
     consumerId: consumer.id,
     email: consumer.email || null,
     phone: consumer.phone || null,

@@ -6,7 +6,7 @@ import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../..
 import { enforceCriticalRateLimit } from "../../../../../../../../lib/critical-rate-limit";
 import { sql } from "../../../../../../../../lib/db";
 import { json } from "../../../../../../../../lib/http";
-import { getActiveProgram, getTapEvent, redeemReward } from "../../../../../../../../lib/loyalty-service";
+import { getTapEvent, redeemReward } from "../../../../../../../../lib/loyalty-service";
 import { consumeSunFreshHandoff } from "../../../../../../../../lib/sun-fresh-handoff";
 
 const MAX_BODY_BYTES = 16 * 1024;
@@ -27,9 +27,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     const tooLarge = error instanceof RequestBodyTooLargeError;
     return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ok:false,error:'invalid_body'},400);
 
   const { eventId, rewardId } = await params;
   if (!/^\d+$/.test(eventId)) return json({ ok: false, error: "invalid_event_id" }, 400);
+  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(rewardId)) return json({ok:false,error:'invalid_reward_id'},400);
   const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, error: "event_not_found" }, 404);
   const capability = await consumeSunFreshHandoff(req, body, {
@@ -41,15 +43,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   if (!capability.ok) {
     return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
   }
-  const program = await getActiveProgram(event.tenant_id);
-  if (!program) return json({ ok: false, error: "program_not_found" }, 404);
   const memberRows = await sql/*sql*/`
-    SELECT id
-    FROM loyalty_members
-    WHERE tenant_id = ${event.tenant_id}
-      AND program_id = ${program.id}
-      AND consumer_id = ${consumer.id}
-      AND status IN ('enrolled', 'verified')
+    SELECT member.id FROM loyalty_members member
+    JOIN rewards reward ON reward.program_id=member.program_id AND reward.tenant_id=member.tenant_id
+    WHERE member.tenant_id = ${event.tenant_id} AND reward.id=${rewardId}
+      AND member.consumer_id = ${consumer.id}
     LIMIT 1
   `;
   const memberId = String(memberRows[0]?.id || "");
@@ -58,6 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     eventId: String(event.id),
     rewardId,
     memberId,
+    consumerId: consumer.id,
     locale: String(body.locale || consumer.preferred_locale || "es-AR").slice(0, 12),
   });
   return json(redemption, redemption.status);

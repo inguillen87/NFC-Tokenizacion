@@ -473,9 +473,18 @@ export async function POST(req: Request) {
   }
 
   async function insertFullLead() {
+    const engagementAction = /feedback/i.test(source) || asRecord(meta.engagement).type === "feedback" ? "feedback" : "lead";
     return sql/*sql*/`
+      WITH permitted_profile AS MATERIALIZED (
+        SELECT tenant_id FROM tenant_sun_profiles WHERE tenant_id=${tenantId}::uuid
+          AND metadata #>> '{postTap,version}'='nexid.tenant-actions.v1'
+          AND metadata #>> '{postTap,status}'='published'
+          AND COALESCE(metadata #> '{postTap,allowedActions}','[]'::jsonb) ? ${engagementAction}
+        FOR UPDATE
+      )
       INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes, tenant_id, meta)
-      VALUES (${locale}, ${contact}, ${name}, ${email}, ${phone}, ${company}, ${country}, ${vertical}, ${roleInterest}, ${estimatedVolume}, ${tagType}, ${volume}, ${source}, 'new', ${message}, ${notes}, ${tenantId}, ${JSON.stringify(meta)}::jsonb)
+      SELECT ${locale}, ${contact}, ${name}, ${email}, ${phone}, ${company}, ${country}, ${vertical}, ${roleInterest}, ${estimatedVolume}, ${tagType}, ${volume}, ${source}, 'new', ${message}, ${notes}, ${tenantId}, ${JSON.stringify(meta)}::jsonb
+      WHERE ${eventContext === null} OR EXISTS(SELECT 1 FROM permitted_profile)
       RETURNING *
     `;
   }
@@ -490,12 +499,14 @@ export async function POST(req: Request) {
 
   try {
     const rows = await insertFullLead();
+    if (!rows[0]) return json({ok:false,reason:"customer_action_unpublished"},403,{"cache-control":"no-store"});
     return finishLead(rows[0] as Record<string, unknown>);
   } catch (error) {
     if (isMissingRelation(error)) {
       await ensureCrmOpsSchema();
       try {
         const rows = await insertFullLead();
+        if (!rows[0]) return json({ok:false,reason:"customer_action_unpublished"},403,{"cache-control":"no-store"});
         return finishLead(rows[0] as Record<string, unknown>);
       } catch (retryError) {
         if (eventContext) {

@@ -5,6 +5,7 @@ import ts from "typescript";
 
 const { json } = await import("../src/lib/http.ts");
 const marketplacePolicy = await import("../src/lib/marketplace-policy.ts");
+const contextualPolicy = await import("../src/lib/marketplace-contextual-request.ts");
 
 const publicRoute = await readFile(new URL("../src/app/marketplace/offers/route.ts", import.meta.url), "utf8");
 const adminRoute = await readFile(new URL("../src/app/admin/consumer-network/offers/route.ts", import.meta.url), "utf8");
@@ -64,6 +65,7 @@ async function routeHarness(path, options = {}) {
     },
     "consumer-demo-policy": { canUseConsumerDemoBypass: () => false },
     "marketplace-policy": marketplacePolicy,
+    "marketplace-contextual-request": { validPostTapEventId: contextualPolicy.validPostTapEventId, createContextualMarketplaceInquiry: input => { calls.contextualInput=input; if(options.contextualInquiry)return options.contextualInquiry(input); throw new Error('unexpected_contextual_inquiry'); } },
   };
   const module = { exports: {} };
   new Function("require", "module", "exports", "process", "fetch", compiled)(
@@ -207,4 +209,18 @@ test("an opened-product consumer may inquire about catalog stock without buying 
     assert.equal(h.calls.queries.length, 4);
     assert.equal(h.calls.capability + h.calls.settlement, 0);
   }
+});
+
+test('contextual marketplace handler forwards only authenticated/canonical scope and returns gate failures unchanged',async()=>{
+  for(const [status,error]of [[403,'marketplace_tap_context_required'],[409,'marketplace_configuration_changed']]){
+    const h=await routeHarness('../src/app/marketplace/products/[id]/request-to-buy/route.ts',{query(statement){assert.match(statement,/FROM marketplace_products p/);return [{id:'canonical-product',tenant_id:'canonical-tenant',age_gate_required:false}];},contextualInquiry:async()=>({ok:false,status,error})});
+    const response=await h.api.POST(new Request('https://fixture.invalid/marketplace/products/canonical-product/request-to-buy',{method:'POST',body:JSON.stringify({postTapEventId:'99001',tenantId:'forged',consumerId:'forged',productId:'forged',fresh_token:'unused',quantity:2})}),{params:Promise.resolve({id:'canonical-product'})});
+    assert.equal(response.status,status);assert.equal((await response.json()).error,error);assert.deepEqual(h.calls.contextualInput,{eventId:'99001',consumerId:'synthetic-consumer',tenantId:'canonical-tenant',productId:'canonical-product',quantity:2,message:null,ageGateAccepted:false});assert.equal(h.calls.queries.length,1);assert.equal(h.calls.capability+h.calls.settlement,0);
+  }
+});
+test('contextual marketplace handler never falls back to generic mode for malformed explicit context',async()=>{
+  for(const postTapEventId of [null,99001,'099001','1e3']){
+    const h=await routeHarness('../src/app/marketplace/products/[id]/request-to-buy/route.ts');const response=await h.api.POST(new Request('https://fixture.invalid/marketplace/products/p/request-to-buy',{method:'POST',body:JSON.stringify({postTapEventId})}),{params:Promise.resolve({id:'p'})});assert.equal(response.status,400);assert.equal((await response.json()).error,'invalid_post_tap_event_id');assert.equal(h.calls.queries.length,0);
+  }
+  for(const body of ['null','[]']){const h=await routeHarness('../src/app/marketplace/products/[id]/request-to-buy/route.ts');const response=await h.api.POST(new Request('https://fixture.invalid/marketplace/products/p/request-to-buy',{method:'POST',body}),{params:Promise.resolve({id:'p'})});assert.equal(response.status,400);assert.equal(h.calls.schema+h.calls.auth+h.calls.queries.length,0);}
 });

@@ -2,6 +2,7 @@ name: Current published passport editorial
 on:
   pull_request:
     paths:
+      - apps/api/**
       - apps/api/src/lib/current-passport-editorial.ts
       - apps/api/src/lib/consumer-current-editorial.ts
       - apps/api/src/app/consumer/**

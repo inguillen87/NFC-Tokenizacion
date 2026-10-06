@@ -1,3 +1,4 @@
+import { insertConsumerRewardClaim } from "../../../../lib/consumer-reward-queries";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -315,78 +316,13 @@ async function recordCampaignIntent(input: {
   return rows[0];
 }
 
-async function ensureCampaignReward(tenantId: string, tenantSlug: string) {
-  const programRows = await sql/*sql*/`
-    SELECT id
-    FROM loyalty_programs
-    WHERE tenant_id = ${tenantId}
-      AND status = 'active'
-    ORDER BY created_at DESC
-    LIMIT 1
-  `;
-  const programId = programRows[0]?.id || (await sql/*sql*/`
-    INSERT INTO loyalty_programs (tenant_id, name, vertical, status, mode, points_name, default_locale, allow_experience_booking, rules_json)
-    VALUES (${tenantId}, ${`Club CRM ${displayTenantName(tenantSlug)}`}, 'winery', 'active', 'production', 'Puntos', 'es-AR', true, '{"source":"twilio_whatsapp_campaign"}'::jsonb)
-    RETURNING id
-  `)[0]?.id;
-
-  const rewardRows = await sql/*sql*/`
-    INSERT INTO rewards (
-      tenant_id,
-      program_id,
-      code,
-      title,
-      description,
-      type,
-      status,
-      points_cost,
-      stock_total,
-      stock_remaining,
-      starts_at,
-      ends_at,
-      redemption_limit_per_member,
-      eligibility_json,
-      fulfillment_json,
-      image_url,
-      requires_age_gate,
-      network_visible
-    )
-    VALUES (
-      ${tenantId},
-      ${programId},
-      ${CRM_VOUCHER_CODE},
-      ${WELCOME_REWARD_TITLE},
-      'Voucher post-tap emitido por nexID CRM para convertir un tap real en visita, lead y fidelizacion.',
-      'TASTING'::reward_type,
-      'active',
-      0,
-      5000,
-      5000,
-      now(),
-      now() + interval '365 days',
-      1,
-      '{"requiresVerifiedPhone":true,"requiresTenantMembership":true,"source":"whatsapp"}'::jsonb,
-      '{"mode":"staff_code_validation","channel":"crm","instructions":"Validar código, teléfono y sello nexID en bodega."}'::jsonb,
-      ${getLogoUrl()},
-      false,
-      true
-    )
-    ON CONFLICT (program_id, code) DO UPDATE SET
-      title = EXCLUDED.title,
-      description = EXCLUDED.description,
-      status = 'active',
-      points_cost = 0,
-      stock_total = GREATEST(COALESCE(rewards.stock_total, 0), EXCLUDED.stock_total),
-      stock_remaining = GREATEST(COALESCE(rewards.stock_remaining, 0), EXCLUDED.stock_remaining),
-      ends_at = GREATEST(COALESCE(rewards.ends_at, now()), EXCLUDED.ends_at),
-      eligibility_json = EXCLUDED.eligibility_json,
-      fulfillment_json = EXCLUDED.fulfillment_json,
-      image_url = EXCLUDED.image_url,
-      network_visible = true,
-      updated_at = now()
-    RETURNING *
-  `;
-  return rewardRows[0];
+async function ensureCampaignReward(tenantId: string, _tenantSlug: string) {
+  // Inbound messages may consume an already published reward; they never create or restore a program/reward.
+  return (await sql`SELECT r.* FROM rewards r JOIN loyalty_programs p ON p.id=r.program_id AND p.tenant_id=r.tenant_id
+    WHERE r.tenant_id=${tenantId}::uuid AND r.code=${CRM_VOUCHER_CODE} AND r.status='active' AND r.points_cost=0
+      AND r.starts_at<=now() AND (r.ends_at IS NULL OR r.ends_at>=now())
+      AND p.status='active' AND p.start_at<=now() AND (p.end_at IS NULL OR p.end_at>=now())
+    ORDER BY p.created_at DESC LIMIT 1`)[0] || null;
 }
 
 async function sendVoucherEmail(input: {
@@ -608,6 +544,7 @@ async function claimCampaignVoucher(input: {
   if (!consumerId || !tenantId) return null;
 
   const reward = await ensureCampaignReward(tenantId, tenantSlug);
+  if (!reward) return null;
   const activeRows = await sql/*sql*/`
     SELECT c.*, r.title AS reward_title
     FROM consumer_reward_claims c
@@ -695,37 +632,10 @@ async function claimCampaignVoucher(input: {
     verification_seal: seal,
     staff_instruction: "Validar código, teléfono y sello nexID antes de entregar beneficio.",
   };
-  const claimRows = await sql/*sql*/`
-    WITH locked_reward AS MATERIALIZED (
-      SELECT id
-      FROM rewards
-      WHERE id = ${reward.id}
-        AND (stock_remaining IS NULL OR stock_remaining > 0)
-      FOR UPDATE
-    ),
-    inserted_claim AS MATERIALIZED (
-      INSERT INTO consumer_reward_claims (
-        consumer_id, tenant_id, reward_id, tap_event_id, status,
-        points_spent, redemption_code, idempotency_key, metadata_json
-      )
-      SELECT ${consumerId}, ${tenantId}, locked_reward.id, ${input.context.last_tap_event_id || null},
-        'claimed', 0, ${code}, ${idempotencyKey}, ${JSON.stringify(metadata)}::jsonb
-      FROM locked_reward
-      ON CONFLICT (idempotency_key) DO NOTHING
-      RETURNING *
-    ),
-    updated_stock AS MATERIALIZED (
-      UPDATE rewards reward_row
-      SET stock_remaining = CASE WHEN reward_row.stock_remaining IS NULL THEN NULL ELSE reward_row.stock_remaining - 1 END,
-          updated_at = now()
-      FROM inserted_claim
-      WHERE reward_row.id = inserted_claim.reward_id
-        AND (reward_row.stock_remaining IS NULL OR reward_row.stock_remaining > 0)
-      RETURNING reward_row.id
-    )
-    SELECT inserted_claim.*
-    FROM inserted_claim, updated_stock
-  `;
+  const claimRows = await insertConsumerRewardClaim(sql, {
+    consumerId, rewardId: String(reward.id), idempotencyKey, redemptionCode: code,
+    locale: 'es-AR', maximumPointsCost: 0, metadata,
+  });
   let claim = claimRows[0] || null;
   let duplicate = false;
   if (!claim) {

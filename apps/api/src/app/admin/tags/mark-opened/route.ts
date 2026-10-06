@@ -6,6 +6,7 @@ import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { logAuditEvent } from "../../../../lib/audit-logger";
+import { markTagManuallyOpened } from "../../../../lib/mark-tag-manually-opened";
 
 type Body = {
   uid_hex?: string;
@@ -45,12 +46,9 @@ export async function POST(req: Request) {
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
 
-  await sql/*sql*/`
-    INSERT INTO tag_manual_tamper_overrides (batch_id, uid_hex, tamper_status, reason, evidence_note, source, updated_at)
-    VALUES (${batch.id}, ${uidHex}, 'MANUAL_OPENED', ${String(body.reason || 'physical seal broken during demo').slice(0, 1000)}, ${String(body.evidence_note || '').slice(0, 2000)}, ${String(body.source || 'operator').slice(0, 80)}, now())
-    ON CONFLICT (batch_id, uid_hex)
-    DO UPDATE SET tamper_status='MANUAL_OPENED', reason=EXCLUDED.reason, evidence_note=EXCLUDED.evidence_note, source=EXCLUDED.source, updated_at=now()
-  `;
+  const marked = await markTagManuallyOpened({ batchId: String(batch.id), tenantId: String(batch.tenant_id), uidHex,
+    reason: String(body.reason || 'physical seal broken during demo').slice(0, 1000), evidenceNote: String(body.evidence_note || '').slice(0, 2000), source: String(body.source || 'operator').slice(0, 80) });
+  if (!marked) return json({ ok: false, reason: 'tag_identity_not_found_or_ambiguous' }, 409);
 
   const actor = getAdminActor(req);
   await logAuditEvent({
