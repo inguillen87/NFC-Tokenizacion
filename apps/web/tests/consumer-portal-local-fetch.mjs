@@ -21,6 +21,10 @@ globalThis.fetch=async(input,init)=>{
   const headers=new Headers(init?.headers||(input instanceof Request?input.headers:undefined));
   const authorized=(headers.get('cookie')||'').includes('consumer_qa=local');
   if(url.pathname==='/consumer/session')return reply({ok:true,authenticated:authorized});
+  if(/^\/public\/passport\/90000[123]\/configuration$/.test(url.pathname)){
+   if(headers.has('cookie')||headers.has('authorization'))throw Error('public_configuration_must_not_forward_account_credentials');
+   return reply({ok:true,configuration:{version:'nexid.tenant-actions.v1',status:'published',allowedActions:['marketplace'],program:null,trivia:null,catalogAvailable:true,tenantSlug:items.find(item=>item.latest_tap_event_id===url.pathname.split('/')[3])?.tenant_slug||null}});
+  }
   if(url.pathname==='/marketplace/products'){
    if(!authorized)return reply({ok:false},401);
    return reply({ok:true,items:url.searchParams.get('tenant')==='qa-empty'?[]:marketplaceFixtureItems});

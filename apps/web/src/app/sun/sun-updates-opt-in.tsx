@@ -3,6 +3,7 @@
 import { BellRing, CheckCircle2, ChevronDown, Send } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useSunLocale } from "./sun-locale-provider";
+import { resolveTenantActionAvailability, TENANT_ACTION_COPY } from "./tenant-action-availability";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
 
@@ -12,6 +13,8 @@ type SunUpdatesOptInProps = {
   tenantSlug?: string | null;
   eventId?: string | null;
   bid?: string | null;
+  configuration?: unknown;
+  canEngage?: boolean;
 };
 
 export function SunUpdatesOptIn({
@@ -20,6 +23,8 @@ export function SunUpdatesOptIn({
   tenantSlug = null,
   eventId = null,
   bid = null,
+  configuration,
+  canEngage = true,
 }: SunUpdatesOptInProps) {
   const { locale } = useSunLocale();
   const [open, setOpen] = useState(false);
@@ -27,10 +32,12 @@ export function SunUpdatesOptIn({
   const [contact, setContact] = useState("");
   const [consent, setConsent] = useState(false);
   const [state, setState] = useState<SubmitState>("idle");
+  const available = resolveTenantActionAvailability({ configuration, verifiedTenant: Boolean(tenantSlug), canEngage }).lead;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (state === "submitting" || !consent || contact.trim().length < 5) return;
+    if (!available || !eventId || !tenantSlug) return;
     setState("submitting");
 
     try {
@@ -66,6 +73,7 @@ export function SunUpdatesOptIn({
     }
   }
 
+  if (!available) return <p role="status" className="text-sm text-slate-300">{TENANT_ACTION_COPY[locale].empty}</p>;
   return (
     <section
       id="sun-updates-opt-in"

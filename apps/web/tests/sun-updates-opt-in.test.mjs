@@ -8,7 +8,7 @@ const [page, optIn] = await Promise.all([
 ]);
 
 test("SUN exposes a policy-aware generic brand opt-in without inferring consent from the tap", () => {
-  assert.match(page, /const canSubscribeToBrand = engagementBaseEligible/);
+  assert.match(page, /const canSubscribeToBrand = tenantActions\.lead/);
   assert.match(page, /subscribeHref=\{canSubscribeToBrand \? \(showEngagementSuite \? "#qr-engagement" : "#sun-updates-opt-in"\) : null\}/);
   assert.match(page, /canSubscribeToBrand && !showEngagementSuite \? \(/);
   assert.match(page, /<SunUpdatesOptIn/);

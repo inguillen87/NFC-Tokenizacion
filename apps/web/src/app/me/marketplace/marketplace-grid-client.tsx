@@ -77,7 +77,11 @@ function availabilityLabel(status: string) {
   return "Disponibilidad no informada";
 }
 
-export function MarketplaceGridClient({ items }: { items: Listing[] }) {
+export function MarketplaceGridClient({ items, postTapEventId }: { items: Listing[]; postTapEventId?: string }) {
+  const validTapContext = typeof postTapEventId === "string" && /^[1-9]\d{0,15}$/.test(postTapEventId) && Number.isSafeInteger(Number(postTapEventId));
+  const [tapContextDenied, setTapContextDenied] = useState(false);
+  const tapContextDeniedRef = useRef(false);
+  const contextUnavailable = postTapEventId !== undefined && (!validTapContext || tapContextDenied);
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, string>>({});
   const [ageGateById, setAgeGateById] = useState<Record<string, boolean>>({});
@@ -123,7 +127,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   }, [cartLines]);
 
   function addToCart(item: Listing, ageGateAccepted = acceptedAgeById[item.id] === true) {
-    if (!item.id) return;
+    if (contextUnavailable || !item.id) return;
     if (item.age_gate_required === true && !ageGateAccepted) {
       setAgeGateById((prev) => ({ ...prev, [item.id]: true }));
       setAgeGateActionById((prev) => ({ ...prev, [item.id]: "list" }));
@@ -145,7 +149,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   }
 
   async function requestToBuy(item: Listing, options: { ageGateAccepted?: boolean; quantity?: number; message?: string } = {}) {
-    if (!item.id || inFlight.current.has(item.id) || requestedById[item.id]) return false;
+    if (contextUnavailable || tapContextDeniedRef.current || !item.id || inFlight.current.has(item.id) || requestedById[item.id]) return false;
     const needsAgeGate = item.age_gate_required === true;
     const ageGateAccepted = options.ageGateAccepted === true || acceptedAgeById[item.id] === true;
     if (needsAgeGate && !ageGateAccepted) {
@@ -162,6 +166,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     try {
       const result = await sendMarketplaceRequest(`/api/marketplace/products/${encodeURIComponent(item.id)}/request-to-buy`, {
         quantity: options.quantity || 1, message: options.message || null, ageGateAccepted,
+        ...(validTapContext ? { postTapEventId } : {}),
       });
       if (result.kind === "uncertain") {
         setFeedbackById((prev) => ({ ...prev, [item.id]: "No pudimos confirmar si se registró. Revisá tus solicitudes antes de volver a enviar." }));
@@ -177,6 +182,12 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
         return false;
       }
       if (!ok || !payload.ok) {
+        if (validTapContext && ["marketplace_configuration_changed", "marketplace_tap_context_required", "invalid_post_tap_event_id"].includes(payload.error || "")) {
+          tapContextDeniedRef.current = true;
+          setTapContextDenied(true);
+          setFeedbackById(prev => ({ ...prev, [item.id]: "Esta consulta ya no está habilitada para tu lectura. Conservamos tu lista; revisá el catálogo antes de volver a enviar." }));
+          return false;
+        }
         const errorLabel = status === 403 && payload.error === "passport_context_required"
           ? "Primero asociá una lectura a tu Passport desde el formulario de esta página y luego volvé a intentar."
           : status === 429
@@ -200,7 +211,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     }
   }
   async function checkoutCart() {
-    if (!cartLines.length || cartBusy) return;
+    if (contextUnavailable || !cartLines.length || cartBusy) return;
     const unconfirmed = cartLines.find(({ item }) => item.age_gate_required === true && acceptedAgeById[item.id] !== true);
     if (unconfirmed) {
       setAgeGateById((prev) => ({ ...prev, [unconfirmed.item.id]: true }));
@@ -256,6 +267,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
         </div>
         <p className={styles.note}>Las solicitudes no realizan un pago ni reservan stock.</p>
       </header>
+      {contextUnavailable ? <div role="status" className={styles.intro}><p>Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.</p><a href="/me/marketplace" className={styles.button}>Consultar el catálogo general</a></div> : null}
       <div className={styles.layout}>
         <aside className={styles.filters} aria-label="Filtros del catálogo">
           <div className={styles.panel}>
@@ -278,7 +290,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           <div className={styles.products}>
             {filteredItems.map((item, idx) => {
               const status = String(item.stock_status || item.status || "not_reported");
-              const requestDisabled = !["available", "active", "in_stock"].includes(status.toLowerCase()) || item.request_to_buy_enabled !== true;
+              const requestDisabled = contextUnavailable || !["available", "active", "in_stock"].includes(status.toLowerCase()) || item.request_to_buy_enabled !== true;
               const requestAlreadySent = requestedById[item.id] === true;
               const displayImg = item.imageUrl || item.image_url || item.photoUrl || item.photo_url;
               return (
@@ -344,7 +356,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
                 <p className={styles.note}>La marca confirma el precio final y la disponibilidad. No se realiza ningún cobro desde esta lista.</p>
               </div>
             ) : null}
-            <button type="button" disabled={!cartLines.length || cartBusy} onClick={checkoutCart} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
+            <button type="button" disabled={contextUnavailable || !cartLines.length || cartBusy} onClick={checkoutCart} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
             {cartStatus ? <p className={styles.feedback} role="status">{cartStatus}</p> : null}
           </div>
         </aside>

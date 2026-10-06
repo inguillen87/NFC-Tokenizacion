@@ -1,18 +1,17 @@
 "use client";
 
-import { useId, useMemo, useState, useEffect } from "react";
+import { useId, useMemo, useState, useEffect, useRef } from "react";
 import { Sparkles, HelpCircle, Star, Send, Gift, CheckCircle2, Bot, ArrowRight, Brain, Trophy } from "lucide-react";
 import Link from "next/link";
-import { isPostTapPolicyActionAllowed } from "./post-tap-policy";
+import { parseTenantActionConfiguration, resolveTenantActionAvailability, TENANT_ACTION_COPY } from "./tenant-action-availability";
 import {
   classifySommelierResponse,
-  safeSommelierGuidance,
   sommelierProvenanceLabel,
   type SommelierProvenance,
 } from "../../lib/sommelier-guidance";
 import { useSunLocale } from "./sun-locale-provider";
 import styles from "./qr-engagement-suite.module.css";
-import { configuredTriviaQuestions, confirmedPreviousTrivia, confirmedTriviaResult, triviaContextAvailable, triviaRecoveryCopy, triviaRecoveryDescription, triviaSubmissionBody, type ClientTriviaQuestion, type TriviaResult } from "./sun-trivia-model";
+import { configuredTriviaQuiz, confirmedPreviousTrivia, confirmedTriviaResult, triviaContextAvailable, triviaRecoveryCopy, triviaRecoveryDescription, triviaSubmissionBody, type ClientTriviaQuestion, type TriviaResult } from "./sun-trivia-model";
 
 const FEEDBACK_COPY = {
   "es-AR": { explanation: "Tu opinión se envía a la marca junto con esta lectura.", rating: (star: number) => `Calificar con ${star} estrella${star > 1 ? "s" : ""}`, comment: "Comentario corto", commentHint: "Comentario opcional para la marca", send: "Enviar opinión", saving: "Guardando..." },
@@ -40,6 +39,8 @@ type QREngagementSuiteProps = {
   allowedActions?: string[];
   blockedActions?: string[];
   initialTab?: EngagementTab;
+  configuration?: unknown;
+  canEngage?: boolean;
 };
 
 function localTrivia(productName: string, wineryName: string): ClientTriviaQuestion[] {
@@ -99,31 +100,48 @@ export function QREngagementSuite({
   allowedActions = [],
   blockedActions = [],
   initialTab = "sommelier",
+  configuration,
+  canEngage = true,
 }: QREngagementSuiteProps) {
   const { locale } = useSunLocale();
   const feedbackCopy = FEEDBACK_COPY[locale];
   const triviaCopy = triviaRecoveryCopy[locale];
   const commentId = useId();
-  const [activeTab, setActiveTab] = useState<EngagementTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<EngagementTab | null>(initialTab);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [configurationOverride, setConfigurationOverride] = useState<{ base: unknown; value: unknown } | null>(null);
+  const effectiveConfiguration = configurationOverride && configurationOverride.base === configuration ? configurationOverride.value : configuration;
+  const availability = resolveTenantActionAvailability({ configuration: effectiveConfiguration,
+    verifiedTenant: Boolean(tenantSlug && /^[a-z0-9][a-z0-9._-]{0,119}$/.test(tenantSlug)), canEngage,
+    isDemoPreview, allowedActions, blockedActions });
+  const currentAvailability = useRef(availability);
+  currentAvailability.current = availability;
 
   const fallbackTrivia = useMemo(() => isDemoPreview ? localTrivia(productName, wineryName) : [], [isDemoPreview, productName, wineryName]);
   const [triviaQuestions, setTriviaQuestions] = useState<ClientTriviaQuestion[]>(fallbackTrivia);
   const triviaScope = JSON.stringify([eventId, tenantSlug]);
   const [configuredTriviaScope, setConfiguredTriviaScope] = useState<string | null>(null);
+  const [loadedQuiz, setLoadedQuiz] = useState<{ id: string; revision: string } | null>(null);
+  const [previousTriviaDraft, setPreviousTriviaDraft] = useState<{ prompt: string; answer: string }[]>([]);
+  const currentScope = useRef(triviaScope);
+  currentScope.current = triviaScope;
   const [triviaStep, setTriviaStep] = useState(0);
   const [triviaAnswers, setTriviaAnswers] = useState<Record<string, number>>({});
   const [triviaDone, setTriviaDone] = useState(false);
   const [triviaLoading, setTriviaLoading] = useState(false);
   const [triviaSubmitting, setTriviaSubmitting] = useState(false);
   const [triviaSubmissionLocked, setTriviaSubmissionLocked] = useState(false);
+  const triviaSendLock = useRef(false);
   const [triviaError, setTriviaError] = useState<string | null>(null);
   const [triviaResult, setTriviaResult] = useState<TriviaResult | null>(null);
   const canSubmitTrivia = triviaContextAvailable(eventId, tenantSlug, freshToken);
-  const canPlayTrivia = isDemoPreview || canSubmitTrivia && !triviaSubmissionLocked && configuredTriviaScope === triviaScope && triviaQuestions.length > 0 && !triviaError;
+  const quizChanged = Boolean(loadedQuiz && (!availability.trivia || loadedQuiz.id !== availability.quiz?.id || loadedQuiz.revision !== availability.quiz?.revision));
+  const hasDraft = configuredTriviaScope === triviaScope && Object.keys(triviaAnswers).length > 0;
+  const canPlayTrivia = isDemoPreview || availability.trivia && !quizChanged && canSubmitTrivia && !triviaSubmissionLocked && configuredTriviaScope === triviaScope && triviaQuestions.length > 0 && !triviaError;
   const showTriviaResult = triviaDone && (isDemoPreview || configuredTriviaScope === triviaScope);
 
   const [rating, setRating] = useState(0);
@@ -135,30 +153,29 @@ export function QREngagementSuite({
   const [occasion, setOccasion] = useState("regalo");
   const [gender, setGender] = useState("prefiero_no_decir");
   const [optInSubmitted, setOptInSubmitted] = useState(false);
+  const [brandContactConsent, setBrandContactConsent] = useState(false);
   const [submittingLead, setSubmittingLead] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
   const [shareApproximateLocation, setShareApproximateLocation] = useState(false);
+  useEffect(() => {
+    setFeedbackSubmitted(false); setOptInSubmitted(false); setBrandContactConsent(false);
+    setShareApproximateLocation(false); setLeadError(null); setChatError(null);
+    setIsTyping(false); setSubmittingLead(false);
+  }, [triviaScope]);
 
   const currentQuestion = triviaQuestions[triviaStep] || triviaQuestions[0];
   const selectedAnswer = currentQuestion ? triviaAnswers[currentQuestion.id] ?? null : null;
-  const normalizedAllowedActions = allowedActions.map((action) => String(action).trim().toLowerCase());
-  const normalizedBlockedActions = blockedActions.map((action) => String(action).trim().toLowerCase());
-  const hasEngagementAllowList = normalizedAllowedActions.some((action) => ["lead", "feedback", "sommelier"].includes(action));
-  const engagementActionAllowed = (action: "lead" | "feedback" | "sommelier") => (
-    !normalizedBlockedActions.includes(action)
-    && (!hasEngagementAllowList || normalizedAllowedActions.includes(action))
-  );
-  const canUseRewards = isPostTapPolicyActionAllowed("rewards", allowedActions, blockedActions);
   const engagementTabs = useMemo(() => [
-    ...(engagementActionAllowed("sommelier") ? [{ id: "sommelier" as const, label: "Sommelier", Icon: Bot, title: "Consultar maridajes, cata, temperatura y recomendaciones" }] : []),
-    ...(canUseRewards ? [{ id: "trivia" as const, label: "Trivia", Icon: HelpCircle, title: "Responder preguntas del producto; los puntos dependen de la política del tenant" }] : []),
-    ...(engagementActionAllowed("feedback") ? [{ id: "feedback" as const, label: "Calificar", Icon: Star, title: "Enviar opinión breve del producto o experiencia" }] : []),
-    ...(engagementActionAllowed("lead") || canUseRewards ? [{ id: "contact" as const, label: "Novedades", Icon: Gift, title: "Autorizar contacto para novedades reales publicadas por la marca" }] : []),
-  ], [canUseRewards, hasEngagementAllowList, normalizedAllowedActions.join("|"), normalizedBlockedActions.join("|")]);
+    ...(availability.sommelier ? [{ id: "sommelier" as const, label: "Sommelier", Icon: Bot, title: "Consultar maridajes, cata, temperatura y recomendaciones" }] : []),
+    ...(availability.trivia || hasDraft || previousTriviaDraft.length || showTriviaResult ? [{ id: "trivia" as const, label: availability.trivia ? "Trivia" : triviaCopy.savedAnswers, Icon: HelpCircle, title: triviaCopy.savedAnswers }] : []),
+    ...(availability.feedback ? [{ id: "feedback" as const, label: "Calificar", Icon: Star, title: "Enviar opinión breve del producto o experiencia" }] : []),
+    ...(availability.lead ? [{ id: "contact" as const, label: "Novedades", Icon: Gift, title: "Autorizar contacto para novedades reales publicadas por la marca" }] : []),
+  ], [availability.sommelier, availability.trivia, availability.feedback, availability.lead, hasDraft, previousTriviaDraft.length, showTriviaResult, triviaCopy.savedAnswers]);
+  const visibleTab = engagementTabs.some(tab => tab.id === activeTab) ? activeTab : engagementTabs[0]?.id ?? null;
 
   useEffect(() => {
     if (!engagementTabs.some((tab) => tab.id === activeTab)) {
-      setActiveTab(engagementTabs[0]?.id || "sommelier");
+      setActiveTab(engagementTabs[0]?.id ?? null);
     }
   }, [activeTab, engagementTabs]);
 
@@ -196,17 +213,19 @@ export function QREngagementSuite({
     roleInterest?: string;
     rating?: number;
     extra?: Record<string, unknown>;
-  }, quiet = false) => {
-    if (!tenantSlug || !/^[a-z0-9][a-z0-9._-]{0,119}$/.test(tenantSlug)) {
-      if (!quiet) setLeadError("No se informó una empresa válida para esta lectura. Realizá una nueva lectura del producto.");
+  }) => {
+    const actionAllowed = payload.source === "qr_feedback" ? availability.feedback : payload.source === "qr_brand_opt_in" && availability.lead && brandContactConsent;
+    if (!actionAllowed || !eventId || !tenantSlug || !/^[a-z0-9][a-z0-9._-]{0,119}$/.test(tenantSlug)) {
+      setLeadError(TENANT_ACTION_COPY[locale].empty);
       return false;
     }
-    if (!quiet) {
-      setSubmittingLead(true);
-      setLeadError(null);
-    }
+    // An explicit demo never writes customer or company records.
+    if (isDemoPreview) { setLeadError(TENANT_ACTION_COPY[locale].empty); return false; }
+    setSubmittingLead(true);
+    setLeadError(null);
     try {
       const gps = await getGps();
+      if (currentScope.current !== triviaScope || !(payload.source === "qr_feedback" ? currentAvailability.current.feedback : currentAvailability.current.lead)) return false;
       const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -238,12 +257,12 @@ export function QREngagementSuite({
       if (!response.ok || result?.ok !== true) {
         throw new Error(String(result?.error || result?.reason || "lead_save_failed"));
       }
-      return true;
+      return currentScope.current === triviaScope;
     } catch {
-      if (!quiet) setLeadError("No pudimos guardar la información. Reintentá en unos segundos.");
+      if (currentScope.current === triviaScope) setLeadError(triviaCopy.uncertain);
       return false;
     } finally {
-      if (!quiet) setSubmittingLead(false);
+      if (currentScope.current === triviaScope) setSubmittingLead(false);
     }
   };
 
@@ -261,16 +280,21 @@ export function QREngagementSuite({
   useEffect(() => {
     setTriviaQuestions(fallbackTrivia);
     setConfiguredTriviaScope(null);
+    setLoadedQuiz(null);
+    setPreviousTriviaDraft([]);
     setTriviaStep(0);
     setTriviaAnswers({});
     setTriviaDone(false);
     setTriviaResult(null);
     setTriviaError(null);
     setTriviaSubmissionLocked(false);
-  }, [fallbackTrivia, triviaScope, freshToken]);
+    triviaSendLock.current = false;
+    setTriviaSubmitting(false);
+    setTriviaLoading(false);
+  }, [fallbackTrivia, triviaScope]);
 
   useEffect(() => {
-    if (activeTab !== "trivia" || isDemoPreview || triviaSubmissionLocked || !canSubmitTrivia || !eventId) return;
+    if (visibleTab !== "trivia" || isDemoPreview || !availability.trivia || triviaSubmissionLocked || !canSubmitTrivia || !eventId || loadedQuiz) return;
     const triviaEventId = eventId;
     let cancelled = false;
     async function loadTrivia() {
@@ -283,15 +307,17 @@ export function QREngagementSuite({
         });
         const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia?${triviaParams.toString()}`, { cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
-        const questions = configuredTriviaQuestions(payload);
-        if (!response.ok || !questions) {
+        const quiz = configuredTriviaQuiz(payload);
+        if (!response.ok || !quiz) {
           throw new Error(payload?.error || "trivia_unavailable");
         }
+        if (quiz.id !== availability.quiz?.id || quiz.revision !== availability.quiz?.revision) throw new Error("quiz_configuration_changed");
         if (cancelled) return;
-        setTriviaQuestions(questions);
+        setTriviaQuestions(quiz.questions);
+        setLoadedQuiz({ id: quiz.id, revision: quiz.revision });
         setConfiguredTriviaScope(triviaScope);
         if (payload.previousAttempt) {
-          const previous = confirmedPreviousTrivia(payload.previousAttempt, questions.length, payload.member?.consumerLinked);
+          const previous = confirmedPreviousTrivia(payload.previousAttempt, quiz.questions.length, payload.member?.consumerLinked);
           if (!previous) throw new Error("trivia_result_unconfirmed");
           setTriviaResult(previous);
           setTriviaDone(true);
@@ -310,10 +336,50 @@ export function QREngagementSuite({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, eventId, freshToken, isDemoPreview, triviaSubmissionLocked, canSubmitTrivia, locale, tenantSlug, triviaScope]);
+  }, [visibleTab, eventId, freshToken, isDemoPreview, triviaSubmissionLocked, canSubmitTrivia, locale, tenantSlug, triviaScope, availability.trivia, availability.quiz?.id, availability.quiz?.revision, loadedQuiz]);
+
+  const handleReloadTrivia = async () => {
+    if (isDemoPreview || triviaLoading || triviaSubmitting || !canSubmitTrivia || !eventId || !canEngage) return;
+    const capturedScope = triviaScope;
+    setTriviaLoading(true);
+    setTriviaError(null);
+    try {
+      const configResponse = await fetch(`/api/public/passport/${encodeURIComponent(eventId)}/configuration`, { cache: "no-store" });
+      const configPayload = await configResponse.json().catch(() => ({}));
+      const updated = configPayload?.ok === true ? parseTenantActionConfiguration(configPayload.configuration) : null;
+      if (currentScope.current !== capturedScope) return;
+      if (!configResponse.ok || !updated) throw new Error("trivia_unavailable");
+      setConfigurationOverride({ base: configuration, value: updated });
+      const updatedAvailability = resolveTenantActionAvailability({ configuration: updated, verifiedTenant: true, canEngage, allowedActions, blockedActions });
+      if (!updatedAvailability.trivia || !updatedAvailability.quiz) throw new Error("quiz_not_configured");
+      const params = new URLSearchParams({ locale, tenant: tenantSlug || "" });
+      const response = await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/loyalty/trivia?${params}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      const quiz = configuredTriviaQuiz(payload);
+      if (!response.ok || !quiz) throw new Error(payload?.error || "trivia_unavailable");
+      if (quiz.id !== updatedAvailability.quiz.id || quiz.revision !== updatedAvailability.quiz.revision) throw new Error("quiz_configuration_changed");
+      if (currentScope.current !== capturedScope) return;
+      const draft = triviaQuestions.filter(question => triviaAnswers[question.id] !== undefined)
+        .map(question => ({ prompt: question.prompt, answer: question.options[triviaAnswers[question.id]] }));
+      if (draft.length) setPreviousTriviaDraft(draft);
+      setTriviaQuestions(quiz.questions);
+      setLoadedQuiz({ id: quiz.id, revision: quiz.revision });
+      setConfiguredTriviaScope(triviaScope);
+      setTriviaAnswers({});
+      setTriviaStep(0);
+      setTriviaSubmissionLocked(false);
+      triviaSendLock.current = false;
+      setTriviaResult(null);
+      setTriviaDone(false);
+    } catch (error) {
+      if (currentScope.current === capturedScope) setTriviaError(error instanceof Error ? error.message : "trivia_unavailable");
+    } finally {
+      if (currentScope.current === capturedScope) setTriviaLoading(false);
+    }
+  };
 
   const handleSendChat = async (textToSend: string) => {
-    if (!textToSend.trim()) return;
+    if (!availability.sommelier || isTyping || !textToSend.trim()) return;
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -323,28 +389,29 @@ export function QREngagementSuite({
 
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
-    void submitLead({
-      source: "qr_sommelier",
-      contact: "anonymous_qr_sommelier",
-      message: textToSend,
-      roleInterest: "sommelier_ai_question",
-      extra: { question: textToSend },
-    }, true);
+    setChatError(null);
+    const capturedScope = triviaScope;
 
     try {
+      if (isDemoPreview) {
+        setMessages(prev => [...prev, { id: `demo-${Date.now()}`, sender: "sommelier", text: "Esta es una demostración del asistente. No envía tu pregunta a la marca.", provenance: { mode: "context" } }]);
+        return;
+      }
       const res = await fetch("/api/cognitive-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: textToSend,
           tone: "sommelier-chat",
+          postTapEventId: eventId,
           productContext: { productName, brandName: wineryName },
         }),
       });
 
-      if (!res.ok) throw new Error("AI failed");
+      if (!res.ok) throw new Error("sommelier_unavailable");
       const data = await res.json();
       if (!data?.optimizedText) throw new Error("Empty AI response");
+      if (currentScope.current !== capturedScope) return;
       const provenance = classifySommelierResponse(data);
 
       setMessages((prev) => [...prev, {
@@ -354,29 +421,24 @@ export function QREngagementSuite({
         provenance,
       }]);
     } catch {
-      const replyText = safeSommelierGuidance(textToSend, { productName, brandName: wineryName });
-
-      setMessages((prev) => [...prev, {
-        id: Date.now().toString(),
-        sender: "sommelier",
-        text: replyText,
-        provenance: { mode: "local-fallback" },
-      }]);
+      if (currentScope.current !== capturedScope) return;
+      setChatError(TENANT_ACTION_COPY[locale].unavailable);
+      setChatInput(previous => previous || textToSend);
     } finally {
-      setIsTyping(false);
+      if (currentScope.current === capturedScope) setIsTyping(false);
     }
   };
 
   const onChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!availability.sommelier || !chatInput.trim() || isTyping) return;
     const text = chatInput;
     setChatInput("");
     void handleSendChat(text);
   };
 
   const handleNextQuestion = async () => {
-    if (!canPlayTrivia || triviaSubmitting || !currentQuestion || selectedAnswer === null) return;
+    if (!canPlayTrivia || triviaSubmitting || triviaSendLock.current || !currentQuestion || selectedAnswer === null) return;
     if (triviaStep < triviaQuestions.length - 1) {
       setTriviaStep((prev) => prev + 1);
       return;
@@ -384,6 +446,7 @@ export function QREngagementSuite({
 
     setTriviaSubmitting(true);
     setTriviaError(null);
+    const capturedScope = triviaScope;
     try {
       const answers = triviaQuestions.map((question) => ({
         questionId: question.id,
@@ -395,8 +458,9 @@ export function QREngagementSuite({
         setTriviaDone(true);
         return;
       }
-      const submission = triviaSubmissionBody({ eventId: triviaEventId, tenantSlug, freshToken, locale, answers });
+      const submission = triviaSubmissionBody({ eventId: triviaEventId, tenantSlug, freshToken, locale, answers, expectedQuizId: loadedQuiz?.id, expectedQuizRevision: loadedQuiz?.revision });
       if (!triviaEventId || !submission) throw new Error("fresh_tap_capability_required");
+      triviaSendLock.current = true;
       setTriviaSubmissionLocked(true);
       const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia`, {
         method: "POST",
@@ -404,6 +468,7 @@ export function QREngagementSuite({
         body: JSON.stringify(submission),
       });
       const payload = await response.json().catch(() => ({}));
+      if (currentScope.current !== capturedScope) return;
       if (!response.ok || payload?.ok === false) {
         throw new Error(payload?.error || "trivia_submit_failed");
       }
@@ -412,11 +477,12 @@ export function QREngagementSuite({
       setTriviaResult(confirmed);
       setTriviaDone(true);
     } catch (error) {
+      if (currentScope.current !== capturedScope) return;
       const reason = error instanceof Error ? error.message : "";
-      setTriviaError(reason === "fresh_tap_capability_required" ? reason : "trivia_submit_failed");
+      setTriviaError(["fresh_tap_capability_required", "quiz_configuration_changed", "unauthorized"].includes(reason) ? reason : "trivia_submit_failed");
       setTriviaResult(null);
     } finally {
-      setTriviaSubmitting(false);
+      if (currentScope.current === capturedScope) setTriviaSubmitting(false);
     }
   };
 
@@ -431,6 +497,7 @@ export function QREngagementSuite({
 
   return (
     <div className="sun-engagement-suite mt-4 w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 shadow-xl backdrop-blur-md" data-sun-dock-avoid>
+      {engagementTabs.length === 0 ? <p role="status" data-testid="sun-actions-unavailable" className="p-5 text-sm leading-relaxed text-slate-300">{TENANT_ACTION_COPY[locale][availability.state === "unavailable" ? "unavailable" : availability.state === "unpublished" ? "unpublished" : "empty"]}</p> : <>
       <div className={`${styles.tabs} sun-engagement-tabs border-b border-white/5 bg-black/40 text-[11px] md:text-xs`}
         style={{ gridTemplateColumns: `repeat(${Math.max(1, engagementTabs.length)}, minmax(0, 1fr))` }}>
         {engagementTabs.map((tab) => (
@@ -438,13 +505,13 @@ export function QREngagementSuite({
             key={tab.id}
             type="button"
             title={tab.title}
-            aria-pressed={activeTab === tab.id}
+            aria-pressed={visibleTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
             data-sun-experience-event={tab.id === "trivia" ? "TRAINING_STARTED" : undefined}
             data-sun-experience-placement={tab.id === "trivia" ? "wine_education" : undefined}
             data-sun-experience-interaction={tab.id === "trivia" ? "trivia_opened" : undefined}
             className={`flex-1 border-b-2 py-3.5 font-bold uppercase tracking-wider transition ${
-              activeTab === tab.id
+              visibleTab === tab.id
                 ? "border-amber-500 bg-amber-500/5 text-amber-300"
                 : "border-transparent text-slate-400 hover:text-white"
             }`}
@@ -457,7 +524,7 @@ export function QREngagementSuite({
       </div>
 
       <div className="p-5">
-        {(activeTab === "feedback" || activeTab === "contact") ? (
+        {(visibleTab === "feedback" || visibleTab === "contact") ? (
           <label className="mb-4 flex items-start gap-2 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-300">
             <input
               type="checkbox"
@@ -470,14 +537,14 @@ export function QREngagementSuite({
             </span>
           </label>
         ) : null}
-        {activeTab === "sommelier" && (
+        {visibleTab === "sommelier" && availability.sommelier && (
           <div className="v3-space-y-4">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
               <span>Asistente de orientación enológica</span>
               <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3" /> Fuente visible por respuesta</span>
             </div>
 
-            <div className="h-[200px] v3-space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 text-xs">
+            <div role="log" aria-label="Conversación con el Sommelier" tabIndex={0} className="h-[200px] v3-space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 text-xs focus-visible:outline-2 focus-visible:outline-amber-400">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-xl px-3.5 py-2.5 leading-relaxed ${
@@ -510,25 +577,27 @@ export function QREngagementSuite({
                 placeholder="Preguntale al sommelier, por ejemplo: ¿con qué comida marida?"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                className="flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden"
+                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden"
               />
               <button
                 type="submit"
                 title="Enviar pregunta"
                 disabled={!chatInput.trim() || isTyping}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500 text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-500 text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
               </button>
             </form>
+            {chatError ? <p role="alert" className="text-xs leading-relaxed text-rose-300">{chatError}</p> : null}
           </div>
         )}
 
-        {activeTab === "trivia" && (
+        {visibleTab === "trivia" && (
           <div className="v3-space-y-4">
             {!canPlayTrivia && !showTriviaResult ? <div role="status" data-testid="sun-trivia-unavailable" className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-xs leading-relaxed text-slate-200">
               <strong>{triviaSubmitting ? triviaCopy.submittingTitle : triviaLoading ? triviaCopy.loadingTitle : triviaCopy.unavailableTitle}</strong>
-              <p className="mt-2">{triviaSubmitting ? triviaCopy.submittingHelp : triviaLoading ? triviaCopy.loadingHelp : triviaRecoveryDescription(triviaError, canSubmitTrivia, locale)}</p>
+              <p className="mt-2">{triviaSubmitting ? triviaCopy.submittingHelp : triviaLoading ? triviaCopy.loadingHelp : triviaRecoveryDescription(quizChanged ? "quiz_configuration_changed" : triviaError, canSubmitTrivia, locale)}</p>
+              {(quizChanged || triviaError === "quiz_configuration_changed") && canSubmitTrivia ? <button type="button" onClick={handleReloadTrivia} disabled={triviaLoading || triviaSubmitting} className="mt-3 block min-h-11 rounded-lg border border-amber-400/40 px-3 text-amber-200">{triviaCopy.reload}</button> : null}
               <Link href="/me/rewards" className="mt-3 inline-flex min-h-11 items-center underline">{triviaCopy.benefits}</Link>
             </div> : !showTriviaResult ? (
               <div className="v3-space-y-4">
@@ -549,7 +618,8 @@ export function QREngagementSuite({
                       key={`${currentQuestion.id}-${idx}`}
                       type="button"
                       title={`Elegir respuesta ${idx + 1}`}
-                      onClick={() => setTriviaAnswers((prev) => ({ ...prev, [currentQuestion.id]: idx }))}
+                      aria-pressed={selectedAnswer === idx}
+                      onClick={() => { if (canPlayTrivia && !triviaSubmitting && !triviaLoading) setTriviaAnswers((prev) => ({ ...prev, [currentQuestion.id]: idx })); }}
                       className={`${styles.triviaButton} w-full rounded-xl border p-3.5 text-left text-xs transition-all ${
                         selectedAnswer === idx
                           ? "border-amber-500 bg-amber-500/10 font-bold text-white"
@@ -563,7 +633,7 @@ export function QREngagementSuite({
 
                 <button
                   type="button"
-                  title={triviaStep === triviaQuestions.length - 1 ? "Enviar respuestas y calcular puntos" : "Pasar a la siguiente pregunta"}
+                  title={triviaStep === triviaQuestions.length - 1 ? "Enviar respuestas" : "Pasar a la siguiente pregunta"}
                   disabled={!canPlayTrivia || selectedAnswer === null || triviaSubmitting || triviaLoading}
                   onClick={handleNextQuestion}
                   className={`${styles.triviaButton} w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50`}
@@ -589,7 +659,7 @@ export function QREngagementSuite({
                       ? "Resultado educativo local: no se otorgaron puntos ni premios."
                       : triviaResult?.alreadyCompleted
                         ? "Este tap ya tenía la trivia registrada."
-                        : `El backend confirmó ${triviaResult?.pointsAwarded || 0} puntos de conocimiento.`}
+                        : `Se confirmaron ${triviaResult?.pointsAwarded ?? 0} puntos.`}
                   </p>
                   <p className="text-[11px] leading-normal text-slate-400">
                     Tus respuestas ayudan a {wineryName} a entender interés por ciudad, producto y experiencia sin mostrar datos privados.
@@ -631,10 +701,14 @@ export function QREngagementSuite({
                 </button> : null}
               </div>
             )}
+            {((hasDraft && !canPlayTrivia && !showTriviaResult) || previousTriviaDraft.length > 0) ? <section data-testid="sun-trivia-saved-answers" className="rounded-xl border border-white/10 p-3 text-xs text-slate-300" aria-label={triviaCopy.savedAnswers}>
+              <h4 className="font-bold">{triviaCopy.savedAnswers}</h4><p className="mt-1 leading-relaxed">{triviaCopy.previous}</p>
+              <ol className="mt-3 grid gap-3">{(previousTriviaDraft.length ? previousTriviaDraft : triviaQuestions.filter(question => triviaAnswers[question.id] !== undefined).map(question => ({ prompt: question.prompt, answer: question.options[triviaAnswers[question.id]] }))).map((answer, index) => <li key={index}><p>{answer.prompt}</p><p className="mt-1 font-semibold">{answer.answer}</p></li>)}</ol>
+            </section> : null}
           </div>
         )}
 
-        {activeTab === "feedback" && (
+        {visibleTab === "feedback" && availability.feedback && (
           <div className="v3-space-y-4">
             {!feedbackSubmitted ? (
               <div className="v3-space-y-4">
@@ -687,7 +761,7 @@ export function QREngagementSuite({
                     });
                     if (saved) setFeedbackSubmitted(true);
                   }}
-                  className="w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
+                  className="min-h-11 w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
                 >
                   {submittingLead ? feedbackCopy.saving : feedbackCopy.send}
                 </button>
@@ -711,7 +785,7 @@ export function QREngagementSuite({
                     setComment("");
                     setFeedbackSubmitted(false);
                   }}
-                  className="text-xs font-bold text-amber-400 transition hover:text-amber-300"
+                  className="min-h-11 text-xs font-bold text-amber-400 transition hover:text-amber-300"
                 >
                   Enviar otra opinión
                 </button>
@@ -720,7 +794,7 @@ export function QREngagementSuite({
           </div>
         )}
 
-        {activeTab === "contact" && (
+        {visibleTab === "contact" && availability.lead && (
           <div className="v3-space-y-4">
             {!optInSubmitted ? (
               <div className="v3-space-y-4">
@@ -789,10 +863,14 @@ export function QREngagementSuite({
                   </div>
                 </div>
 
+                <label className="flex min-h-11 items-start gap-2 text-xs leading-relaxed text-slate-300">
+                  <input type="checkbox" checked={brandContactConsent} onChange={event => setBrandContactConsent(event.target.checked)} className="mt-1 h-4 w-4 accent-indigo-400" />
+                  <span>Autorizo a la marca a contactarme por este canal para sus novedades. Puedo pedir la baja.</span>
+                </label>
                 <button
                   type="button"
                   title="Registrar contacto para novedades de la marca"
-                  disabled={!name.trim() || !contact.trim() || submittingLead}
+                  disabled={!brandContactConsent || !name.trim() || !contact.trim() || submittingLead}
                   onClick={async () => {
                     const saved = await submitLead({
                       source: "qr_brand_opt_in",
@@ -804,7 +882,7 @@ export function QREngagementSuite({
                     });
                     if (saved) setOptInSubmitted(true);
                   }}
-                  className="w-full rounded-xl bg-indigo-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-indigo-400 disabled:opacity-50"
+                  className="min-h-11 w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
                 >
                   {submittingLead ? "Registrando..." : "Registrarme"}
                 </button>
@@ -826,9 +904,10 @@ export function QREngagementSuite({
                   onClick={() => {
                     setContact("");
                     setName("");
+                    setBrandContactConsent(false);
                     setOptInSubmitted(false);
                   }}
-                  className="text-xs font-bold text-indigo-400 transition hover:text-indigo-300"
+                  className="min-h-11 text-xs font-bold text-violet-300 transition hover:text-violet-200"
                 >
                   Registrar otro contacto
                 </button>
@@ -837,6 +916,7 @@ export function QREngagementSuite({
           </div>
         )}
       </div>
+      </>}
     </div>
   );
 }

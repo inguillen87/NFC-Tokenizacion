@@ -34,9 +34,12 @@ test("consumer and post-tap sommelier surfaces disclose provenance and remove fa
   for (const source of [consumerSource, qrSource]) {
     assert.match(source, /classifySommelierResponse\(data\)/);
     assert.match(source, /sommelierProvenanceLabel\(msg\.provenance\)/);
-    assert.match(source, /safeSommelierGuidance\(textToSend/);
     assert.doesNotMatch(source, /95 puntos|James Suckling|medalla de oro Decanter|5 a 8 años|16 ?°?C y 18 ?°?C/i);
   }
+  assert.match(consumerSource, /safeSommelierGuidance\(textToSend/);
+  assert.doesNotMatch(qrSource, /safeSommelierGuidance|qr_sommelier/);
+  assert.match(qrSource, /postTapEventId: eventId/);
+  assert.match(qrSource, /setChatError\(TENANT_ACTION_COPY\[locale\]\.unavailable\)/);
   assert.match(apiSource, /unverified_product_claim_blocked/);
   assert.doesNotMatch(apiSource, /Menciona que este Gran Reserva|prestigiosa bodega de Mendoza|95 puntos James Suckling/);
 });

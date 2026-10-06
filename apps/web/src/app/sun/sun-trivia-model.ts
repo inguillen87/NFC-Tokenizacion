@@ -1,3 +1,5 @@
+import { publishedQuizIdentity } from "./tenant-action-availability";
+
 export type ClientTriviaQuestion = {
   id: string;
   prompt: string;
@@ -54,6 +56,12 @@ export function confirmedTriviaResult(value: unknown, expectedTotal: number): Tr
     requiresLogin: payload.requiresLogin, alreadyCompleted: payload.alreadyCompleted };
 }
 
+export function configuredTriviaQuiz(value: unknown) {
+  const payload = record(value), quiz = record(payload?.quiz), questions = configuredTriviaQuestions(value);
+  return quiz && publishedQuizIdentity(quiz.id, quiz.revision) && questions
+    ? { id: quiz.id, revision: quiz.revision as string, questions } : null;
+}
+
 export function confirmedPreviousTrivia(value: unknown, expectedTotal: number, consumerLinked: unknown): TriviaResult | null {
   const attempt = record(value);
   if (!attempt || attempt.status !== "completed" || typeof consumerLinked !== "boolean") return null;
@@ -76,6 +84,8 @@ export const triviaRecoveryCopy = {
     unpublished: "La marca todavía no publicó una trivia para este producto.",
     uncertain: "No pudimos confirmar el envío. Conservamos tus respuestas. Revisá tu cuenta antes de volver a intentarlo.",
     unavailable: "La trivia no está disponible por el momento. Volvé a consultar más tarde.",
+    changed: "La marca cambió o retiró esta trivia. Conservamos tus respuestas para que las revises. Cargá la versión actual antes de participar de nuevo.",
+    reload: "Cargar trivia actualizada", savedAnswers: "Tus respuestas anteriores", previous: "Estas respuestas se conservan como referencia. No se envían a una trivia nueva.",
   },
   en: {
     unavailableTitle: "Trivia unavailable", loadingTitle: "Loading the trivia", loadingHelp: "The brand's questions will be available in a moment.",
@@ -85,6 +95,8 @@ export const triviaRecoveryCopy = {
     unpublished: "The brand has not published trivia for this product yet.",
     uncertain: "We could not confirm your submission. Your answers are saved here. Check your account before trying again.",
     unavailable: "Trivia is temporarily unavailable. Please check again later.",
+    changed: "The brand changed or withdrew this trivia. Your answers are preserved for review. Load the current version before participating again.",
+    reload: "Load updated trivia", savedAnswers: "Your previous answers", previous: "These answers are kept for reference. They are not submitted to a new quiz.",
   },
   "pt-BR": {
     unavailableTitle: "Trivia indisponível", loadingTitle: "Carregando a trivia", loadingHelp: "Em instantes você poderá consultar as perguntas da marca.",
@@ -94,11 +106,14 @@ export const triviaRecoveryCopy = {
     unpublished: "A marca ainda não publicou uma trivia para este produto.",
     uncertain: "Não foi possível confirmar o envio. Suas respostas foram mantidas aqui. Confira sua conta antes de tentar novamente.",
     unavailable: "A trivia está temporariamente indisponível. Consulte novamente mais tarde.",
+    changed: "A marca alterou ou retirou esta trivia. Suas respostas foram preservadas para revisão. Carregue a versão atual antes de participar novamente.",
+    reload: "Carregar trivia atualizada", savedAnswers: "Suas respostas anteriores", previous: "Estas respostas são mantidas como referência. Elas não são enviadas a uma nova trivia.",
   },
 } as const;
 
 export function triviaRecoveryDescription(error: string | null, canSubmit: boolean, locale: keyof typeof triviaRecoveryCopy = "es-AR") {
   const copy = triviaRecoveryCopy[locale];
+  if (error === "quiz_configuration_changed") return copy.changed;
   if (error === "unauthorized") return copy.login;
   if (!canSubmit || error === "fresh_tap_capability_required") return copy.freshReading;
   if (error === "quiz_not_configured") return copy.unpublished;
@@ -106,11 +121,13 @@ export function triviaRecoveryDescription(error: string | null, canSubmit: boole
   return copy.unavailable;
 }
 
-export function triviaSubmissionBody({ eventId, tenantSlug, freshToken, locale, answers }: {
+export function triviaSubmissionBody({ eventId, tenantSlug, freshToken, locale, answers, expectedQuizId, expectedQuizRevision }: {
   eventId: string | null; tenantSlug: string | null; freshToken: string; locale: string;
   answers: { questionId: string; answerIndex: number }[];
+  expectedQuizId?: string; expectedQuizRevision?: string;
 }) {
   if (!triviaContextAvailable(eventId, tenantSlug, freshToken)
+    || !publishedQuizIdentity(expectedQuizId, expectedQuizRevision)
     || !answers.length || answers.length > 30 || answers.some(answer => !text(answer.questionId, 100) || !natural(answer.answerIndex) || answer.answerIndex > 9)) return null;
-  return { locale: ["es-AR", "en", "pt-BR"].includes(locale) ? locale : "es-AR", tenantSlug, fresh_token: freshToken, answers };
+  return { locale: ["es-AR", "en", "pt-BR"].includes(locale) ? locale : "es-AR", tenantSlug, fresh_token: freshToken, expectedQuizId, expectedQuizRevision, answers };
 }

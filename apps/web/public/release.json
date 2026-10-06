@@ -1,15 +1,16 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.05-web-tenant-sync.1",
-  "scope": "canonical-tenant-configured-trivia-and-current-portal-editorial",
-  "baseCommit": "d43fc066b77dd839645aead0621196308acdb45b",
+  "version": "2026.10.05-web-engagement-governance.1",
+  "scope": "published-tenant-services-and-revision-bound-consumer-trivia",
+  "baseCommit": "a37e9a57e7e345b96ae4f64ffcacc7f502a9ed1c",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.10.05-api-tenant-sync.1",
+  "requiredApiRelease": "2026.10.05-api-engagement-governance.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.05-web-tenant-sync.1",
+  "release": "2026.10.05-web-engagement-governance.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1",
-  "publicExperienceShareProtocol": "nexid:experience-event:v1"
+  "publicExperienceShareProtocol": "nexid:experience-event:v1",
+  "tenantActionConfigurationProtocol": "nexid.tenant-actions.v1"
 }

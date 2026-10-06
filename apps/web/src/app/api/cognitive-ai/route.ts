@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { configurationEventId, readPublicTenantConfiguration } from "../../../lib/public-tenant-configuration";
+import { resolveTenantActionAvailability } from "../../sun/tenant-action-availability";
 import {
   containsUnverifiedSommelierClaim,
   normalizeSommelierProductContext,
@@ -180,6 +182,13 @@ export async function POST(req: Request) {
 
     if (!text) {
       return json({ error: "Text is required" }, 400);
+    }
+
+    if (Object.hasOwn(payload, "postTapEventId")) {
+      if (tone !== "sommelier-chat" || !configurationEventId(payload.postTapEventId)) return json({ ok: false, error: "invalid_event_id" }, 400);
+      const configuration = await readPublicTenantConfiguration(payload.postTapEventId);
+      if (!configuration || configuration.status === "unavailable") return json({ ok: false, error: "tenant_configuration_unavailable" }, 503);
+      if (!resolveTenantActionAvailability({ configuration, verifiedTenant: true }).sommelier) return json({ ok: false, error: "tenant_action_not_enabled" }, 403);
     }
 
     if (!allowLocalServerFundedProviderCalls()) {

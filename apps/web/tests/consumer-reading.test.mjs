@@ -5,6 +5,7 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import * as availability from "../src/app/sun/tenant-action-availability.ts";
 
 const require = createRequire(import.meta.url);
 const root = new URL("../src/app/me/", import.meta.url);
@@ -24,11 +25,17 @@ const editorial = compile(readFileSync(new URL("../sun/current-editorial-resourc
   "./current-editorial-resources-model": editorialModel,
   "./current-editorial-resources.module.css": { __esModule: true, default: styles },
 });
-function page(payload, denied = false) {
+const publishedConfiguration = { version: availability.TENANT_ACTIONS_VERSION, status: "published", allowedActions: ["marketplace"], catalogAvailable: true, program: null, trivia: null };
+function page(payload, denied = false, configuration = publishedConfiguration) {
   const calls = [];
   const Page = compile(source, {
     "../../_components/reading-current-notices":{ReadingCurrentNotices:()=>null},
     "../../../sun/current-editorial-resources-view": editorial,
+    "../../../sun/tenant-action-availability": availability,
+    "../../../../lib/public-tenant-configuration": { readPublicTenantConfiguration: async eventId => {
+      if (!Number.isSafeInteger(Number(eventId))) return null;
+      calls.push(["configuration", eventId]); return configuration;
+    } },
     "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
     "../../_components/consumer-api": { requireConsumerSession: async (next) => { calls.push(["auth", next]); if (denied) throw new Error("redirect-login"); }, fetchConsumerPath: async (path) => { calls.push(["fetch", path]); return payload; } },
     "../../_components/consumer-home-model": home,
@@ -41,9 +48,9 @@ function page(payload, denied = false) {
 }
 const valid = {ok:true,item:{tap_event_id:"566",verdict:"VALID_CLOSED",risk_level:"low",created_at:"2026-09-08T13:30:00.000Z",tenant_slug:"qa-local",tenant_name:"Empresa de prueba",product_name:"Producto de prueba",bid:"LOTE-QA",city:"Mendoza",country:"AR"}};
 
-test("private reading authenticates before its only read and preserves the intended destination", async () => {
+test("private reading authenticates and validates its detail before reading public options", async () => {
   const subject = page(valid); await subject.render();
-  assert.deepEqual(subject.calls, [["auth","/me/taps/566"],["fetch","taps/566"]]);
+  assert.deepEqual(subject.calls, [["auth","/me/taps/566"],["fetch","taps/566"],["configuration","566"]]);
   const denied = page(valid,true); await assert.rejects(denied.render, /redirect-login/);
   assert.deepEqual(denied.calls, [["auth","/me/taps/566"]]);
 });
@@ -98,11 +105,11 @@ const publication = { protocol: "nexid.current-editorial.v1", source: "passport_
   publishedAt: "2026-10-04T15:00:00Z", contentDigest: "a".repeat(64), document: { schemaVersion: "nexid.passport-editorial.v1", template: "agro", locale: "es-AR",
     identity: { product_name: "Producto actual publicado", public_lot_label: "PUBLICADO-3", sku: null, winery: "Empresa actual publicada", region: null, image_url: null },
     agro_product_profile: { technicalSheetUrl: "https://docs.example.test/current.pdf", safetySheetUrl: null } } };
-test("the current tenant publication is separate from the unchanged saved reading and adds no request", async () => {
+test("the current tenant publication stays separate from the saved reading and options", async () => {
   const subject = page({ ...valid, currentEditorial: publication, item: { ...valid.item, product_name: "Producto actual publicado", brand_name: "Empresa actual publicada",
     historical_product_name: "Producto histórico", historical_brand_name: "Empresa histórica" } });
   const html = await subject.render();
-  assert.deepEqual(subject.calls, [["auth", "/me/taps/566"], ["fetch", "taps/566"]]);
+  assert.deepEqual(subject.calls, [["auth", "/me/taps/566"], ["fetch", "taps/566"], ["configuration", "566"]]);
   assert.match(html, /<h2>Producto histórico<\/h2>/);
   assert.match(html, /Empresa histórica/);
   assert.match(html, /Ficha editorial vigente/);
@@ -111,6 +118,12 @@ test("the current tenant publication is separate from the unchanged saved readin
   assert.match(html, /No modifica su resultado ni habilita acciones protegidas/);
   assert.match(html, /current\.pdf/);
   assert.doesNotMatch(html, /fresh_token|freshToken|Guardar puntos|canje/);
+});
+test("withdrawn or missing contextual catalog settings preserve account history without a brand CTA", async () => {
+  for (const configuration of [null, { ...publishedConfiguration, status: "unpublished" }, { ...publishedConfiguration, catalogAvailable: false }, { ...publishedConfiguration, allowedActions: [] }]) {
+    const html = await page(valid, false, configuration).render();
+    assert.match(html, /Producto de prueba/); assert.match(html, /href="\/me\/products"/); assert.doesNotMatch(html, /Ver catálogo de la marca/);
+  }
 });
 test("withdrawn, invalid and unavailable editorial content never fall back to historical documents", async () => {
   for (const state of ["withdrawn", "unpublished", "legacy", "invalid", "unavailable"]) {

@@ -32,6 +32,7 @@ import { AgroDppExperience } from "./agro-dpp-experience";
 import { WineExperienceEvents } from "./wine-experience-events";
 import { normalizeAgroDppProfile } from "./agro-dpp-model";
 import { resolveCommercialTapFreshness, resolvePostTapQuickActionAvailability } from "./post-tap-policy";
+import { resolveTenantActionAvailability } from "./tenant-action-availability";
 import { fmtDistance, haversineKm } from "./sun-route-distance";
 import { resolveSunTtEvidence, type SunTtTechnicalInput } from "./sun-tt-evidence";
 import { selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
@@ -192,6 +193,7 @@ type SunContract = {
     }>;
   };
   engagement?: {
+    configuration?: unknown;
     promotions?: Array<{
       title?: string | null;
       description?: string | null;
@@ -638,7 +640,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || Boolean(result.tag_tamper?.available);
   const blockedActions = result.blockedActions || [];
   const allowedActions = result.allowedActions || [];
-  const postTapQuickActions = resolvePostTapQuickActionAvailability({ allowedActions, blockedActions });
   const rightsPolicy = result.rightsPolicy || {};
   const condition = result.condition || {};
   const conditionState = String(rightsPolicy.conditionState || condition.state || result.tapSecurity?.conditionState || "");
@@ -723,6 +724,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     && !isManualOpenedState
     && !isRiskBlocked
     && !isSnapshotView;
+  const tenantActions = resolveTenantActionAvailability({ configuration: result.engagement?.configuration,
+    verifiedTenant: Boolean(tenantSlug), canEngage: engagementBaseEligible, isDemoPreview, allowedActions, blockedActions });
+  const postTapQuickActions = resolvePostTapQuickActionAvailability({ allowedActions, blockedActions,
+    configuration: result.engagement?.configuration, verifiedTenant: Boolean(tenantSlug), canEngage: engagementBaseEligible, isDemoPreview });
   const troubleshooting = result.troubleshooting || [];
   const wineryCoordinates = result.iot?.wineryCoordinates;
   const resolvedOriginCoords = isUsableCoordinate(wineryCoordinates?.lat, wineryCoordinates?.lng)
@@ -1323,15 +1328,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const productDisplayName = assetProfile.productName || productName;
   const isWineProduct = [result.product?.vertical, result.tenant?.vertical, productDisplayName]
     .some((value) => /\b(wine|vino|malbec|reserva|bodega)\b/i.test(String(value || "")));
-  const showEngagementSuite = engagementBaseEligible && isWineProduct;
-  const normalizedEngagementAllowed = allowedActions.map((action) => String(action).trim().toLowerCase());
-  const normalizedEngagementBlocked = blockedActions.map((action) => String(action).trim().toLowerCase());
-  const hasEngagementAllowList = normalizedEngagementAllowed.some((action) => ["lead", "feedback", "sommelier"].includes(action));
-  const canSubscribeToBrand = engagementBaseEligible
-    && !normalizedEngagementBlocked.includes("lead")
-    && (!hasEngagementAllowList || normalizedEngagementAllowed.includes("lead"));
+  const showEngagementSuite = (engagementBaseEligible || isDemoPreview) && isWineProduct;
+  const canSubscribeToBrand = tenantActions.lead;
   const servicePolicyAvailability = {
-    promotion: !isRiskBlocked,
+    promotion: !isRiskBlocked && (isDemoPreview || tenantActions.state !== "unavailable"),
     purchase: postTapQuickActions.marketplace && !isRiskBlocked,
     subscribe: canSubscribeToBrand && !isRiskBlocked,
     claimOrManage: postTapQuickActions.primary && !isRiskBlocked,
@@ -2335,6 +2335,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 riskState={servicesRiskState}
                 freshnessState={servicesFreshnessState}
                 policyAvailability={servicePolicyAvailability}
+                configuration={result.engagement?.configuration}
+                verifiedTenant={Boolean(tenantSlug)}
                 locale={locale}
                 demoIntent={demoLabAction}
               /> : <section id="sun-availability-help" data-testid="sun-availability-help" className="scroll-mt-24 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4" aria-labelledby="sun-availability-help-title">
@@ -2347,6 +2349,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             {canSubscribeToBrand && !showEngagementSuite ? (
               <SunUpdatesOptIn
+                configuration={result.engagement?.configuration}
+                canEngage={engagementBaseEligible}
                 brandName={consumerBrandName}
                 productName={productDisplayName}
                 tenantSlug={tenantSlug || null}
@@ -2393,6 +2397,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   reportProblemHref={reportProblemHref}
                   allowedActions={allowedActions}
                   blockedActions={blockedActions}
+                  configuration={result.engagement?.configuration}
+                  verifiedTenant={Boolean(tenantSlug)}
                 />
               </div>
             </details> : null}
@@ -2439,6 +2445,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   bid={bid || null}
                   allowedActions={allowedActions}
                   blockedActions={blockedActions}
+                  configuration={result.engagement?.configuration}
+                  canEngage={engagementBaseEligible || isDemoPreview}
                   initialTab="contact"
                 />
               </div>
