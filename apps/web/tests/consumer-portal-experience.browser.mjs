@@ -29,6 +29,24 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+async function nativeCloseRegression(page,more,menu,width,theme){
+ const result={width,theme};report.nativeCloseRegression??=[];report.nativeCloseRegression.push(result);
+ result.focus=await page.evaluate(async()=>{
+  const dialog=document.querySelector('dialog[open]'),close=dialog.querySelector('button[aria-label="Cerrar más opciones"]'),search=document.querySelector('input[type="search"]');
+  const closed=new Promise(resolve=>dialog.addEventListener('close',event=>requestAnimationFrame(()=>resolve({trusted:event.isTrusted,activeIsSearch:document.activeElement===search,dialogOpen:dialog.open})),{once:true}));
+  close.click();search.focus();const immediatelyFocusedSearch=document.activeElement===search;
+  return {immediatelyFocusedSearch,afterNativeClose:await closed};
+ });
+ check(result.focus.immediatelyFocusedSearch&&result.focus.afterNativeClose.trusted&&result.focus.afterNativeClose.activeIsSearch&&!result.focus.afterNativeClose.dialogOpen,`${width}/${theme} native queued close preserves the customer's subsequent search focus`);
+ await more.click();await menu.waitFor();
+ result.reopen=await page.evaluate(async()=>{
+  const dialog=document.querySelector('dialog[open]'),close=dialog.querySelector('button[aria-label="Cerrar más opciones"]'),trigger=document.querySelector('button[aria-controls="'+dialog.id+'"]');
+  const closed=new Promise(resolve=>dialog.addEventListener('close',event=>requestAnimationFrame(()=>resolve({trusted:event.isTrusted,dialogOpen:dialog.open,expanded:trigger.getAttribute('aria-expanded')})),{once:true}));
+  close.click();trigger.click();const immediatelyReopened=dialog.open;
+  return {immediatelyReopened,afterNativeClose:await closed};
+ });
+ check(result.reopen.immediatelyReopened&&result.reopen.afterNativeClose.trusted&&result.reopen.afterNativeClose.dialogOpen&&result.reopen.afterNativeClose.expanded==='true',`${width}/${theme} stale native close preserves reopened More dialog and expanded state`);
+}
 async function introContrast(surface){return surface.evaluate(root=>{
  const channels=color=>color.match(/[\d.]+/g)?.map(Number)||[],luminance=rgb=>rgb.slice(0,3).map(value=>value/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4).reduce((value,channel,index)=>value+channel*[.2126,.7152,.0722][index],0);
  const style=getComputedStyle(root),background=channels(style.backgroundColor),heading=root.querySelector('h2'),paragraph=heading?.nextElementSibling,headingStyle=getComputedStyle(heading);
@@ -52,7 +70,7 @@ try{
   }
   assert.ok(ready,'isolated production test server must become ready');
  }
- for(const theme of ['light','dark'])for(const width of [320,390,768,1440]){
+ for(const theme of ['light','dark'])for(const width of [320,390,768,1280,1440]){
   const context=await browser.newContext({viewport:{width,height:900},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
   await context.addCookies([{name:'consumer_qa',value:'local',url:base,httpOnly:true,sameSite:'Lax'},{name:'theme',value:theme,url:base},{name:'nexid_theme_version',value:'white-first-v2',url:base}]);
   await context.exposeBinding('__qaLocationCall',()=>{report.geolocationCalls++;});
@@ -72,7 +90,11 @@ try{
   for(const label of ['Productos y marcas','Herramientas','Mi cuenta'])check(await menu.getByRole('heading',{name:label,exact:true}).count()===1,`${width}/${theme} More group ${label}`);
   check(await menu.getByRole('link').count()===9,`${width}/${theme} all nine More destinations retained`);
   await assessment(page,'dialog[open]','more',width,theme);
+  await nativeCloseRegression(page,more,menu,width,theme);
   await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});check(await more.evaluate(element=>element===document.activeElement),`${width}/${theme} More returns keyboard focus`);
+  await more.click();await menu.waitFor();
+  const menuBounds=await menu.boundingBox();check(menuBounds.x>1||menuBounds.y>1,`${width}/${theme} backdrop test point is outside the dialog`);
+  await page.mouse.click(1,1);await menu.waitFor({state:'hidden'});check(await more.evaluate(element=>element===document.activeElement),`${width}/${theme} backdrop dismissal still restores keyboard focus`);
 
   const search=library.getByRole('searchbox',{name:'Buscar producto, marca o lote'});await search.fill('reserva');
   const open=library.getByRole('button',{name:'Abrir ficha y avisos de Vino reserva QA',exact:true});await open.focus();await page.keyboard.press('Enter');

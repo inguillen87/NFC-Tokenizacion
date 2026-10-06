@@ -91,7 +91,7 @@ export function PortalNavigation() {
         className={styles.moreDialog}
         aria-labelledby={headingId}
         onCancel={(event) => { event.preventDefault(); closeMenu(); }}
-        onClose={() => { setMenuOpen(false); triggerRef.current?.focus(); }}
+        onClose={() => { if (!dialogRef.current?.open) setMenuOpen(false); }}
         onClick={(event) => {
           if (event.target !== event.currentTarget) return;
           const bounds = event.currentTarget.getBoundingClientRect();
