@@ -48,16 +48,17 @@ test("public version marker agrees with the displayed release", async () => {
   const marker = JSON.parse(await source("../public/release.json"));
   assert.equal(marker.release, DASHBOARD_RELEASE);
   assert.equal(marker.apiChangesIncluded, false);
-  assert.equal(marker.release, "2026.10.05-dashboard-tenant-sync.1");
-  assert.equal(marker.baseCommit, "4d976d385e75d1e9139ebc44f5ba820eaaebb591");
-  assert.equal(marker.requiredApiRelease, "2026.10.05-api-tenant-sync.1");
+  assert.equal(marker.release, "2026.10.05-dashboard-engagement-governance.1");
+  assert.equal(marker.baseCommit, "7ba66c97fcbcf1b45d994cd673f14ebb8e01d649");
+  assert.equal(marker.requiredApiRelease, "2026.10.05-api-engagement-governance.1");
+  assert.equal(marker.tenantActionConfigurationProtocol, "nexid.tenant-actions.v1");
   assert.equal(marker.requiredWebRelease, "2026.09.21-web-support.1");
   assert.equal(marker.supportTicketLookupProtocol, "nexid.support-ticket-lookup.v1");
   assert.equal(marker.supportTicketWorkflowProtocol, "nexid.support-ticket-workflow.v1");
   assert.equal(marker.databaseMigrationsIncluded, false);
   assert.equal(marker.campaignDeliveryIncluded, false);
   assert.equal(marker.realTapCertification, "not-included");
-  assert.equal(marker.scope, "reward-policy-and-consumed-stock-preservation");
+  assert.equal(marker.scope, "tenant-services-and-loyalty-publication-editor");
   assert.equal(marker.reconciliationBaseRelease, "2026.09.21-dashboard.28");
 });
 
