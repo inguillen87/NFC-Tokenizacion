@@ -86,7 +86,8 @@ test("technical bytes and action availability use structured contracts on the cl
   assert.match(webPassport, /Byte \{byte\.index\}/);
   assert.match(webPassport, /allowedActions=\{allowedActions\}/);
   assert.match(webPassport, /blockedActions=\{blockedActions\}/);
-  assert.match(webPassport, /resolvePostTapQuickActionAvailability\(\{ allowedActions, blockedActions \}\)/);
+  // Tenant publication adds options while preserving the original NFC allow/block inputs.
+  assert.match(webPassport, /resolvePostTapQuickActionAvailability\(\{ allowedActions, blockedActions(?:\s*,[\s\S]*?)?\s*\}\)/);
 });
 
 test("technical SUN evidence follows canonical cryptographic verification for every valid TT state", () => {
