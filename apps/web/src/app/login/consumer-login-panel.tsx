@@ -31,6 +31,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const requestInFlight = useRef(false);
   const mounted = useRef(true);
   const codeRef = useRef<HTMLInputElement>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const emailRecoveryRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const status = feedback.message;
   const searchParams = useSearchParams();
@@ -40,9 +42,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const codeParam = searchParams.get("code");
   const autoverify = searchParams.get("autoverify");
   const isTapReturn = safeNextPath.includes("fromTap=1") || safeNextPath.includes("eventId=");
-  const tapReturnCopy = isTapReturn
-    ? "Recibí un código y volvé al producto que estabas consultando. Tus beneficios mantienen las condiciones de la marca."
-    : "Elegí dónde recibir tu código para entrar a tus productos y beneficios. No necesitás una contraseña.";
+  const preferEmailRecovery = step === "start" && contactDraft.channel === "whatsapp" && feedback.tone === "error" && !feedback.field;
 
   function setStatus(message: string, tone: "info" | "error" = "info", field?: "contact" | "code") {
     setFeedback({ message, tone, field });
@@ -71,7 +71,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     if (feedback.tone !== "error" || pending) return;
     if (feedback.field === "code") codeRef.current?.focus();
     if (feedback.field === "contact") formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus();
-  }, [feedback, pending]);
+    if (preferEmailRecovery && (document.activeElement === submitRef.current || document.activeElement === document.body)) emailRecoveryRef.current?.focus();
+  }, [feedback, pending, preferEmailRecovery]);
 
   useEffect(() => {
     if (!forceOtp) return;
@@ -161,6 +162,11 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       return;
     }
     const payload = response.payload;
+    if (!payload) {
+      setLateCodeAvailable(true);
+      setStatus("No pudimos confirmar la solicitud. Puede que el mensaje llegue igualmente. Esperá unos instantes; si pedís otro código, usá el más reciente.", "error");
+      return;
+    }
     if (!response.ok || payload?.ok !== true) {
       setLateCodeAvailable(consumerAuthStartMayHaveDeliveredCode(payload?.error));
       setStatus(authStartErrorMessage(payload?.error), "error");
@@ -212,11 +218,14 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         <li aria-current={step === "start" ? "step" : undefined}><span aria-hidden="true">1</span>Tu contacto</li>
         <li aria-current={step === "verify" ? "step" : undefined}><span aria-hidden="true">2</span>Tu código</li>
       </ol>
-      <p className={styles.intro}>{tapReturnCopy}</p>
-      <p id="consumer-access-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!status} className={styles.feedback} data-tone={feedback.tone}>{status}</p>
+      <p className={styles.intro}>Elegí email o WhatsApp. No necesitás contraseña.</p>
       <form ref={formRef} className={styles.form} aria-busy={pending} onSubmit={(event) => { event.preventDefault(); if (!pending) void (step === "start" ? start() : verify()); }}>
-        <ConsumerContactInput draft={contactDraft} onChange={changeContact} disabled={pending} idPrefix="consumer-login"
+        <ConsumerContactInput draft={contactDraft} onChange={changeContact} disabled={pending} idPrefix="consumer-login" compact
           invalid={feedback.field === "contact" && feedback.tone === "error"} describedBy={feedback.field === "contact" ? "consumer-access-feedback" : undefined} />
+        <p id="consumer-access-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!status} className={styles.feedback} data-tone={feedback.tone}>{status}</p>
+        {preferEmailRecovery ? <button ref={emailRecoveryRef} type="button" disabled={pending} onClick={changeChannel} className={styles.primary} data-consumer-email-recovery="primary" aria-describedby="consumer-access-feedback">
+          Continuar con email
+        </button> : null}
         {step === "verify" ? <div className={styles.codeGroup}>
           <label htmlFor="consumer-access-code">Código de acceso</label>
           <input ref={codeRef} id="consumer-access-code" value={code} onChange={(event) => { setCode(event.target.value); if (feedback.field === "code") setStatus(""); }}
@@ -225,8 +234,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             aria-describedby={`consumer-code-hint${feedback.field === "code" ? " consumer-access-feedback" : ""}`} className={styles.codeInput} />
           <p id="consumer-code-hint" className={styles.hint}>Ingresá el código del mensaje más reciente.</p>
         </div> : null}
-        <button type="submit" disabled={pending || (step === "start" ? !contactIsValid : !code.trim())} className={styles.primary}>
-          {pending ? step === "start" ? "Solicitando código…" : "Comprobando acceso…" : step === "start" ? lateCodeAvailable ? "Volver a pedir código" : "Recibir código" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
+        <button ref={submitRef} type="submit" disabled={pending || (step === "start" ? !contactIsValid : !code.trim())} className={preferEmailRecovery ? styles.secondary : styles.primary}>
+          {pending ? step === "start" ? "Solicitando código…" : "Comprobando acceso…" : step === "start" ? preferEmailRecovery ? "Reintentar WhatsApp" : lateCodeAvailable ? "Volver a pedir código" : "Recibir código" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
         </button>
         {step === "verify" ? <>
           <div className={styles.secondaryActions}>
@@ -244,8 +253,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             setStatus("Ingresá el código más reciente que recibiste. Todavía no confirmamos el envío ni tu acceso.");
           }}>Ya tengo un código</button>
         </div> : null}
-        {step === "start" && feedback.tone === "error" && !feedback.field ? <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary} aria-describedby="consumer-access-feedback">
-          {contactDraft.channel === "email" ? "Continuar con WhatsApp" : "Continuar con email"}
+        {step === "start" && contactDraft.channel === "email" && feedback.tone === "error" && !feedback.field ? <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary} aria-describedby="consumer-access-feedback">
+          Continuar con WhatsApp
         </button> : null}
       </form>
     </div>

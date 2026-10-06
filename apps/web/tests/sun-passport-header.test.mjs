@@ -1,12 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ts from "typescript";
 import postcss from "postcss";
+import { translateSunUiText } from "../src/app/sun/sun-locale.ts";
 
 const headerUrl = new URL("../src/app/sun/sun-passport-header.tsx", import.meta.url);
 const pageUrl = new URL("../src/app/sun/page.tsx", import.meta.url);
 
-test("SUN header gives the existing brand priority and puts status and locale in a bounded secondary row", async () => {
+test("SUN header gives account access priority beside preferences while preserving brand and a bounded status row", async () => {
   const [source, css] = await Promise.all([
     readFile(headerUrl, "utf8"),
     readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8"),
@@ -18,11 +26,14 @@ test("SUN header gives the existing brand priority and puts status and locale in
   assert.match(source, /<SunBrandIdentity variant="passport" \/>/);
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("<ThemeToggle"));
   assert.ok(source.indexOf("sun-topbar-actions") < source.indexOf("sun-live-tap-pill"));
-  assert.ok(source.indexOf("sun-live-tap-pill") < source.indexOf("<SunLocaleSwitcher"));
+  assert.ok(source.indexOf('href="/me"') < source.indexOf("<SunLocaleSwitcher"));
   assert.ok(source.indexOf("<SunLocaleSwitcher") < source.indexOf("<ThemeToggle"));
+  assert.ok(source.indexOf("<ThemeToggle") < source.indexOf("sun-live-tap-pill"));
   assert.match(css, /grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(css, /\.header \.utilities\s*\{[^}]*grid-column: 1 \/ -1;[^}]*grid-template-columns: minmax\(0, 1fr\) 7\.625rem 2\.75rem;/);
-  assert.match(css, /@media \(max-width: 299px\)[\s\S]*?\.header \.status \{ grid-column: 1 \/ -1; grid-row: 2;/);
+  assert.match(css, /\.header \.status\s*\{[^}]*grid-column: 1 \/ -1;[^}]*grid-row: 2;/);
+  assert.match(css, /@media \(max-width: 299px\)[\s\S]*?\.header \.accountLink \{ grid-column: 1 \/ -1; grid-row: 1;/);
+  assert.match(css, /@media \(max-width: 299px\)[\s\S]*?\.header \.status \{ grid-column: 1 \/ -1; grid-row: 3;/);
   assert.match(css, /\.header \.status\s*\{[^}]*max-width: 100%;[^}]*white-space: normal;/);
 });
 
@@ -31,6 +42,8 @@ test("SUN header keeps the web home identity and real controls touch-safe", asyn
 
   assert.match(css, /\.header \.brand \[data-brand-home-link\]\s*\{[^}]*min-width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
   assert.match(css, /\.homeLink:focus-visible\s*\{[^}]*outline: 2px solid var\(--header-accent\)/);
+  assert.match(css, /\.header \.accountLink\s*\{[^}]*min-width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
+  assert.match(css, /\.accountLink:focus-visible\s*\{[^}]*outline: 2px solid var\(--header-accent\)/);
   assert.doesNotMatch(css, /brand-wordmark-svg|margin-inline-end:\s*-/);
   assert.match(css, /\.header \.theme :global\(\.theme-toggle\)\s*\{[^}]*width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
   assert.match(css, /\.header \.locale select\s*\{[^}]*min-width: 0;[^}]*min-height: 2\.75rem;/);
@@ -52,9 +65,54 @@ test("SUN passport header preserves identity, evidence labels and the existing p
   assert.match(header, /<SunLocaleSwitcher \/>/);
   assert.doesNotMatch(header, /<LocaleSwitcher|router\.refresh|router\.push/);
   assert.match(header, /<ThemeToggle locale=\{locale\} \/>/);
+  assert.match(header, /<Link href="\/me" prefetch=\{false\} className=\{styles\.accountLink\}/);
   assert.match(header, /\{translatedLivePillLabel\}/);
   assert.doesNotMatch(header, /fetch\(|getCurrentPosition|freshToken|cmac|telemetry|<img|<Image/);
   assert.match(page, /<SunLocaleProvider initialLocale=\{locale\}>[\s\S]*?<SunPassportHeader[\s\S]*?pulseClass=\{pulseClass\}[\s\S]*?\/>/);
+  assert.match(page, /!isDemoPreview && <ConsumerPassportLink href=\{isFreshCommercialTap && freshToken \? withTapQuery\("\/me\/products","products"\) : "\/me\/products"\} eventId=\{eventId\} freshToken=\{isFreshCommercialTap \? freshToken : ""\}/);
+});
+
+// Render the production header, brand and ThemeToggle with real Next Link. The
+// locale context is selected explicitly; preferences are not changed in SSR.
+function renderHeader(locale, props) {
+  const require = createRequire(import.meta.url), modules = new Map();
+  const css = { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
+  function load(filename) {
+    if (modules.has(filename)) return modules.get(filename).exports;
+    const module = { exports: {} }; modules.set(filename, module);
+    const source = readFileSync(filename, "utf8");
+    const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
+    const localRequire = name => {
+      if (name.endsWith(".module.css")) return css;
+      if (name === "./sun-locale-provider") return {
+        useSunLocale: () => ({ locale, text: value => translateSunUiText(value, locale) }),
+        SunLocaleSwitcher: () => React.createElement("select", { "aria-label": "Language", defaultValue: locale }, React.createElement("option", { value: locale }, locale)),
+      };
+      if (!name.startsWith(".")) return require(name);
+      const base = resolve(dirname(filename), name);
+      const dependency = [base, `${base}.tsx`, `${base}.ts`].find(path => existsSync(path));
+      assert.ok(dependency, `Production dependency exists: ${name}`);
+      return load(dependency);
+    };
+    new Function("require", "module", "exports", js)(localRequire, module, module.exports);
+    return module.exports;
+  }
+  const { SunPassportHeader } = load(fileURLToPath(headerUrl));
+  return renderToStaticMarkup(React.createElement(SunPassportHeader, props));
+}
+
+test("SUN rendered account link is always plain portal access across locales and QR/NFC states, without a reading capability", () => {
+  for (const [locale, label] of [["es-AR", "Mi cuenta"], ["en", "My account"], ["pt-BR", "Minha conta"]]) {
+    for (const isQrScan of [false, true]) for (const livePillLabel of ["Muestra demo", "Tap físico activo", "Consulta segura", "Consulta pendiente"]) {
+      const html = renderHeader(locale, { isQrScan, livePillLabel, pulseClass: "bg-emerald-300" });
+      assert.match(html, new RegExp(`<a[^>]*data-testid="sun-account-link"[^>]*href="/me"[^>]*>${label}</a>`));
+      assert.match(html, new RegExp(`aria-label="${translateSunUiText("Estado", locale)}: ${translateSunUiText(livePillLabel, locale)}"`));
+      assert.ok(html.includes(translateSunUiText(isQrScan ? "Pasaporte QR" : "Pasaporte NFC", locale)));
+      assert.match(html, /data-sun-brand-variant="passport"/);
+      assert.doesNotMatch(html, /href="\/me\?|tap-handoff|freshToken|eventId|claim|purchase|<form/);
+      assert.equal((html.match(/data-testid="sun-account-link"/g) || []).length, 1);
+    }
+  }
 });
 
 test("SUN header presentation has one local owner without changing shared brand assets", async () => {

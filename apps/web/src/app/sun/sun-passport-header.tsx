@@ -38,6 +38,15 @@ export function SunPassportHeader({
       </div>
 
       <div className={`sun-topbar-actions ${styles.utilities}`}>
+        <Link href="/me" prefetch={false} className={styles.accountLink} data-testid="sun-account-link">
+          {text("Mi cuenta")}
+        </Link>
+        <div className={styles.locale}>
+          <SunLocaleSwitcher />
+        </div>
+        <div className={styles.theme}>
+          <ThemeToggle locale={locale} />
+        </div>
         <div
           className={`sun-live-tap-pill ${styles.status}`}
           role="status"
@@ -45,12 +54,6 @@ export function SunPassportHeader({
         >
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${pulseClass} ${styles.signal}`} aria-hidden="true" />
           <span>{translatedLivePillLabel}</span>
-        </div>
-        <div className={styles.locale}>
-          <SunLocaleSwitcher />
-        </div>
-        <div className={styles.theme}>
-          <ThemeToggle locale={locale} />
         </div>
       </div>
     </header>

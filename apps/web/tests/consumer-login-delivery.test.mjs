@@ -41,7 +41,7 @@ test("channel failures offer recovery without blaming the contact or exposing co
   const groups = [
     [["rate_limited"], "Demasiados intentos. Esperá unos minutos y probá de nuevo."],
     [["resend_api_key_missing", "consumer_auth_from_email_missing", "smtp_credentials_missing"], "No pudimos solicitar el código por email. Podés continuar con WhatsApp o intentar más tarde."],
-    [["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed", "consumer_whatsapp_provider_invalid", "meta_configuration_missing", "meta_configuration_invalid", "meta_authentication_failed", "meta_payload_invalid"], "WhatsApp no está disponible ahora. Continuá con email para recibir tu código."],
+    [["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed", "twilio_consumer_otp_whatsapp_from_invalid", "consumer_whatsapp_provider_invalid", "meta_configuration_missing", "meta_configuration_invalid", "meta_authentication_failed", "meta_payload_invalid"], "WhatsApp no está disponible ahora. Continuá con email para recibir tu código."],
     [["twilio_delivery_failed", "resend_delivery_failed", "smtp_delivery_failed", "meta_delivery_failed"], "No se pudo confirmar el envío. Podés continuar con el otro medio de acceso. Si el código llega más tarde, usá el más reciente."],
     [[
       "otp_provider_unavailable", "consumer_auth_mode_invalid", "consumer_auth_demo_forbidden",
@@ -69,9 +69,20 @@ test("only uncertain provider transport outcomes offer entry of a late code", ()
   }
   for (const error of [undefined, null, {}, new Error("meta_delivery_timeout"), "", "rate_limited",
     "meta_configuration_missing", "meta_configuration_invalid", "meta_authentication_failed", "meta_payload_invalid",
-    "twilio_whatsapp_sandbox_forbidden", "resend_api_key_missing", "consumer_auth_demo_forbidden", "unknown_provider_reply"]) {
+    "twilio_whatsapp_sandbox_forbidden", "twilio_authentication_failed", "twilio_consumer_otp_whatsapp_from_invalid", "resend_api_key_missing", "consumer_auth_demo_forbidden", "unknown_provider_reply"]) {
     assert.equal(consumerAuthStartMayHaveDeliveredCode(error), false);
   }
+});
+
+test("a rejected WhatsApp sender is a channel failure, not evidence of a deliverable challenge", () => {
+  const rejected = "twilio_consumer_otp_whatsapp_from_invalid";
+  assert.equal(authStartErrorMessage(rejected), "WhatsApp no está disponible ahora. Continuá con email para recibir tu código.");
+  assert.equal(consumerAuthStartMayHaveDeliveredCode(rejected), false);
+  for (const reason of [rejected.toUpperCase(), `${rejected}_extra`, { error: rejected }]) {
+    assert.equal(authStartErrorMessage(reason), "No pudimos iniciar el acceso. Tu contacto se conserva; volvé a intentar o elegí el otro medio.");
+    assert.equal(consumerAuthStartMayHaveDeliveredCode(reason), false);
+  }
+  assert.equal(consumerAuthStartMayHaveDeliveredCode("twilio_delivery_failed"), true);
 });
 
 test("login panel uses the shared error mapper and has no duplicate implementation", async () => {

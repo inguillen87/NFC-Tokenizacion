@@ -9,6 +9,7 @@ import { BackLink } from "../../components/back-link";
 import { BrandHomeLink } from "../../components/brand-home-link";
 import { getWebI18n } from "../../lib/locale";
 import { ConsumerLoginPanel } from "./consumer-login-panel";
+import styles from "./consumer-login.module.css";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -33,7 +34,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
   return (
     <main className="auth-surface web-auth-surface relative min-h-screen overflow-hidden bg-slate-950">
       <div className="web-auth-backdrop pointer-events-none absolute inset-0" />
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[980px] flex-col justify-center gap-4 px-3 py-8 sm:px-6">
+      <div className={`relative z-10 mx-auto flex min-h-screen w-full max-w-[980px] flex-col gap-4 px-3 sm:px-6 ${isConsumerAccess ? styles.consumerShell : "justify-center py-8"}`}>
         <div className="flex items-center justify-between gap-3">
           <BackLink />
           <div className="web-auth-theme-control flex items-center gap-2">
@@ -48,39 +49,37 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
               <BrandHomeLink locale={locale} markOnly size={34} />
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Acceso nexID</p>
-                <p className="text-sm font-black text-white">{isConsumerAccess ? "Pasaporte digital" : "Elegí tu espacio"}</p>
+                <p className="text-sm font-black text-white">{isConsumerAccess ? "Mi cuenta" : "Elegí tu espacio"}</p>
               </div>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-              Acceso protegido
+              {isConsumerAccess ? "Protegido" : "Acceso protegido"}
             </span>
           </div>
 
           {isConsumerAccess ? (
-            <div className="mt-7 grid gap-6 lg:grid-cols-[1fr_0.78fr] lg:items-start">
+            <div className={styles.consumerLayout}>
               <section aria-labelledby="consumer-login-title">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-                  {isTapReturn ? "Continuar desde el producto" : "Portal del consumidor"}
-                </p>
-                <h1 id="consumer-login-title" className="brand-editorial-gradient mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
-                  {isTapReturn ? "Volvé a tu producto sin perder el recorrido." : "Entrá a tu Pasaporte nexID."}
+                <h1 id="consumer-login-title" className={`brand-editorial-gradient font-black text-white ${styles.consumerTitle}`}>
+                  {isTapReturn ? "Continuá tu recorrido" : "Entrá a tu cuenta"}
                 </h1>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-                  Pedí un código por email o teléfono. Al confirmar tu acceso, volvés al producto, beneficio o servicio que estabas consultando.
+                <p className={styles.consumerSummary}>
+                  {isTapReturn ? "Confirmá tu acceso para seguir donde estabas." : "Consultá tus productos y los servicios que habilita cada marca."}
                 </p>
                 <ConsumerLoginPanel nextPath={nextPath} />
               </section>
 
-              <aside className="auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 p-5">
-                <Fingerprint className="h-7 w-7 text-cyan-200" aria-hidden="true" />
-                <h2 className="mt-4 text-xl font-black text-white">Tus productos y beneficios, en un solo lugar.</h2>
-                <ul className="mt-4 grid gap-3 text-sm leading-5 text-slate-300">
-                  <li>Consultá la historia y el pasaporte digital de cada producto.</li>
-                  <li>Accedé a garantías, beneficios o contacto cuando la marca los habilita.</li>
-                  <li>La marca informa qué condiciones necesitás cumplir para cada servicio.</li>
-                </ul>
-                <Link href="/login" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-cyan-200 hover:text-cyan-100">
+              <aside className={`auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 ${styles.consumerDetails}`}>
+                <details>
+                  <summary>¿Qué puedo consultar?</summary>
+                  <ul className="grid gap-3 text-sm leading-5 text-slate-300">
+                    <li>La historia y el pasaporte digital de tus productos.</li>
+                    <li>Garantías, beneficios o contacto cuando la marca los habilita.</li>
+                    <li>Las condiciones de la marca para cada servicio.</li>
+                  </ul>
+                </details>
+                <Link href="/login" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-cyan-200 hover:text-cyan-100">
                   Cambiar tipo de acceso <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </aside>
