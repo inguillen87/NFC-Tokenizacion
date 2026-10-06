@@ -170,16 +170,25 @@ test("reward redemption derives membership server-side and debits points, stock 
   const redeem = route.indexOf("await redeemReward({");
 
   assert.ok(auth >= 0 && capability > auth && memberLookup > capability && redeem > memberLookup);
-  assert.match(route, /tenant_id = \$\{event\.tenant_id\}[\s\S]*program_id = \$\{program\.id\}[\s\S]*consumer_id = \$\{consumer\.id\}/);
+  assert.match(route, /JOIN rewards reward ON reward\.program_id=member\.program_id AND reward\.tenant_id=member\.tenant_id/);
+  assert.match(route, /WHERE member\.tenant_id = \$\{event\.tenant_id\} AND reward\.id=\$\{rewardId\}[\s\S]*AND member\.consumer_id = \$\{consumer\.id\}/);
+  assert.match(route.slice(redeem), /consumerId:\s*consumer\.id/);
   assert.doesNotMatch(route, /body\.memberId|body\[\s*["']memberId/);
   assert.match(route, /readBoundedJsonBody/);
   assert.match(route, /enforceCriticalRateLimit/);
 
-  const redeemService = loyalty.slice(loyalty.indexOf("export async function redeemReward"));
+  const redeemService = loyalty.slice(loyalty.indexOf("export async function redeemReward")).split("\nexport async function ")[0];
   assert.match(redeemService, /WITH current_tag AS MATERIALIZED/);
   assert.match(redeemService, /FOR SHARE OF tag/);
+  assert.match(redeemService, /locked_program AS MATERIALIZED[\s\S]*program\.tenant_id=\$\{event\.tenant_id\}[\s\S]*FOR SHARE OF program/);
   assert.match(redeemService, /locked AS MATERIALIZED/);
+  assert.match(redeemService, /FOR UPDATE OF reward, member[\s\S]*FOR SHARE OF consumer, membership/);
+  assert.match(redeemService, /member\.consumer_id=\$\{input\.consumerId \?\? null\}::uuid/);
+  assert.match(redeemService, /eligible_redemption AS MATERIALIZED[\s\S]*program_status='active'[\s\S]*program_end_at>clock_timestamp\(\)[\s\S]*reward_ends_at>clock_timestamp\(\)/);
+  assert.match(redeemService, /program_age_gate_required=false AND requires_age_gate=false[\s\S]*eligibility_json='\{\}'::jsonb[\s\S]*consumer_status IN \('anonymous','registered','verified'\) AND membership_status='active'/);
+  assert.doesNotMatch(redeemService, /consumer\.session_revoked_at/, 'Revocation belongs to the authenticated request session, not a consumers column');
   assert.match(redeemService, /reserved_ledger AS MATERIALIZED/);
+  assert.match(redeemService, /FROM eligible_redemption locked[\s\S]*ON CONFLICT \(idempotency_key\) DO NOTHING/);
   assert.match(redeemService, /updated_member AS MATERIALIZED/);
   assert.match(redeemService, /updated_reward AS MATERIALIZED/);
   assert.match(redeemService, /inserted_redemption AS/);

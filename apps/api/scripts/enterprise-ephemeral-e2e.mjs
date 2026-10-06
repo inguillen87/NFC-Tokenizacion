@@ -178,7 +178,7 @@ async function run() {
   const rewardConfiguration = await runConsumerRewardPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardConfiguration.ok && rewardConfiguration.cleanup.schemaDropped && rewardConfiguration.cleanup.connectionsClosed, "Consumer reward configuration SQL regression or cleanup failed");
   assert.ok(rewardConfiguration.checks.every(check => check.ok));
-  assert.equal(rewardConfiguration.checks.length, 57);
+  assert.equal(rewardConfiguration.checks.length, 61);
   const adminRewardConfiguration = await runAdminRewardPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(adminRewardConfiguration.ok && adminRewardConfiguration.schemaCleaned, "Admin reward configuration SQL regression or cleanup failed");
   const tenantConfiguration = await runConfigurationPostgresQa(connectCurrentTagQa);

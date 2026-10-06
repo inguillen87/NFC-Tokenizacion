@@ -32,8 +32,9 @@ async function createFixtureSchema(client, schema) {
     CREATE TYPE ${s}.loyalty_program_status AS ENUM ('draft', 'active', 'paused', 'archived');
     CREATE TYPE ${s}.tenant_membership_status AS ENUM ('invited', 'active', 'paused', 'blocked', 'left');
     CREATE TYPE ${s}.consumer_reward_claim_status AS ENUM ('claimed', 'redeemed', 'cancelled', 'expired');
+    CREATE TYPE ${s}.consumer_status AS ENUM ('anonymous', 'registered', 'verified', 'blocked', 'deleted');
     CREATE TABLE ${s}.tenants (id uuid PRIMARY KEY);
-    CREATE TABLE ${s}.consumers (id uuid PRIMARY KEY);
+    CREATE TABLE ${s}.consumers (id uuid PRIMARY KEY, status ${s}.consumer_status NOT NULL DEFAULT 'anonymous');
     CREATE TABLE ${s}.loyalty_programs (
       id uuid PRIMARY KEY,
       tenant_id uuid NOT NULL REFERENCES ${s}.tenants(id) ON DELETE CASCADE,
@@ -127,7 +128,7 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
   const clients = [];
   const schema = `consumer_rewards_qa_${randomUUID().replaceAll("-", "")}`;
   const s = identifier(schema);
-  const report = { kind: "synthetic-postgresql-integration", ok: false, checks: [], expiryLockWaits: [], cleanup: { schemaDropped: false, connectionsClosed: false } };
+  const report = { kind: "synthetic-postgresql-integration", ok: false, checks: [], expiryLockWaits: [], consumerLockWaits: [], cleanup: { schemaDropped: false, connectionsClosed: false } };
   let schemaCreated = false;
   let executionError;
   try {
@@ -167,7 +168,7 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
         VALUES ($1, $2, $3, now() + $4::interval, CASE WHEN $5::boolean THEN now() - interval '1 day' ELSE NULL END, $6)`,
       [f.programId, options.wrongProgramTenant ? f.otherTenantId : f.tenantId, options.programStatus ?? "active", options.futureProgram ? "1 day" : "-1 day", options.expiredProgram ?? false, options.programAgeGate ?? false]);
       await admin.query(`INSERT INTO ${s}.loyalty_programs(id, tenant_id, status, start_at) VALUES ($1, $2, 'active', now() - interval '1 day')`, [f.otherProgramId, f.tenantId]);
-      await admin.query(`INSERT INTO ${s}.consumers(id) VALUES ($1)`, [f.consumerId]);
+      await admin.query(`INSERT INTO ${s}.consumers(id, status) VALUES ($1, $2)`, [f.consumerId, options.consumerStatus ?? 'registered']);
       if (!options.missingMembership) {
         await admin.query(`INSERT INTO ${s}.tenant_consumer_memberships(id, tenant_id, consumer_id, loyalty_program_id, status) VALUES ($1, $2, $3, $4, $5)`,
         [f.membershipId, options.wrongMembershipTenant ? f.otherTenantId : f.tenantId, f.consumerId, f.programId, options.membershipStatus ?? "active"]);
@@ -255,11 +256,24 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
         await unchanged(f, () => claim(f));
       }
     });
+    await check("inactive_consumers_cannot_create_paid_or_free_reward_claims", async () => {
+      for (const consumerStatus of ['blocked', 'deleted']) for (const cost of [0, 40]) {
+        const f = await fixture({ consumerStatus, cost });
+        await unchanged(f, () => claim(f, firstQuery, cost === 0 ? { maximumPointsCost: 0 } : {}));
+      }
+    });
+    await check("current_auth_supported_consumer_statuses_preserve_reward_claims", async () => {
+      for (const consumerStatus of ['anonymous', 'registered', 'verified']) {
+        const f = await fixture({ consumerStatus });
+        assert.equal((await claim(f)).length, 1);
+        assertSingleClaim(await state(f));
+      }
+    });
     // Hold a real row lock while both independent backends enter their query.
     // Observe both waiting in PostgreSQL before release; Promise.all alone does
     // not prove overlap. The barrier and SQL timeouts are deliberately bounded.
     async function concurrent(table, id, operations, changeBeforeRelease) {
-      assert.ok(["loyalty_members", "rewards", "consumer_reward_claims", "loyalty_programs", "tenant_consumer_memberships"].includes(table));
+      assert.ok(["loyalty_members", "rewards", "consumer_reward_claims", "loyalty_programs", "tenant_consumer_memberships", "consumers"].includes(table));
       let pending;
       let barrierError;
       let commitChange = false;
@@ -290,6 +304,47 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
       if (barrierError) throw barrierError;
       for (const result of results) if (result.status === "rejected") throw result.reason;
       return results.map((result) => result.value);
+    }
+
+    for (const consumerStatus of ['blocked', 'deleted']) {
+      await check(`${consumerStatus}_consumer_committed_during_member_lock_wait_prevents_all_claim_writes`, async () => {
+        const f = await fixture({ cost: consumerStatus === 'blocked' ? 0 : 40 });
+        const before = await state(f);
+        let pending;
+        let barrierError;
+        let commitChange = false;
+        await admin.query('BEGIN');
+        try {
+          await admin.query(`SELECT id FROM ${s}.loyalty_members WHERE id = $1 FOR UPDATE`, [f.memberId]);
+          pending = Promise.allSettled([claim(f, firstQuery, consumerStatus === 'blocked' ? {
+            maximumPointsCost: 0, metadata: { source: 'twilio_whatsapp_campaign' },
+          } : {})]);
+          const deadline = Date.now() + 6000;
+          let waiting = false;
+          while (Date.now() < deadline) {
+            await admin.query('SELECT pg_stat_clear_snapshot()');
+            const { rows } = await admin.query("SELECT pid FROM pg_stat_activity WHERE pid = $1 AND wait_event_type = 'Lock' AND $2 = ANY(pg_blocking_pids(pid))", [pids[1], pids[0]]);
+            if (rows.length === 1) { waiting = true; break; }
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          assert.equal(waiting, true, 'Observe the actual claim backend waiting on this member lock');
+          const { rows: [changed] } = await admin.query(`UPDATE ${s}.consumers SET status = $2 WHERE id = $1 RETURNING status`, [f.consumerId, consumerStatus]);
+          assert.equal(changed.status, consumerStatus);
+          commitChange = true;
+        } catch (error) {
+          barrierError = error;
+        } finally {
+          await admin.query(commitChange ? 'COMMIT' : 'ROLLBACK');
+        }
+        const [result] = pending ? await pending : [];
+        if (barrierError) throw barrierError;
+        if (result?.status === 'rejected') throw result.reason;
+        assert.equal(result?.value.length, 0, 'A current inactive account must receive no new claim');
+        assert.deepEqual(await state(f), before, 'Account restriction must preserve balance, stock, ledger and claims');
+        const { rows: [current] } = await admin.query(`SELECT status FROM ${s}.consumers WHERE id = $1`, [f.consumerId]);
+        assert.equal(current.status, consumerStatus, 'The restriction must persist, not merely be rolled back');
+        report.consumerLockWaits.push({ consumerStatus, waitEventType: 'Lock', blockedByHarnessMemberLock: true, restrictionCommittedBeforeRelease: true });
+      });
     }
 
     await check("reward_eligibility_committed_while_claims_wait_prevents_all_claim_writes", async () => {

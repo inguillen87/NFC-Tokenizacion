@@ -37,6 +37,23 @@ test('legacy reward eligibility admits only the supported empty object, includin
  for(const eligibility_json of [{requiresVerifiedTap:true},{requiresOwnership:true},{unknown:false},null,[],['rule'],'rule',false,0,undefined])for(const points_cost of [0,40])assert.equal(rewardRedemptionUnavailableReason({...valid,reward:{...reward,points_cost,eligibility_json}},now),'reward_eligibility_not_supported');
 });
 
+test('legacy consumer SQL uses actual account columns; session revocation remains an authenticated DTO field',async()=>{
+ const runtime=await readFile(new URL('../src/lib/commercial-runtime-schema.ts',import.meta.url),'utf8');
+ const loyaltySchema=await readFile(new URL('../src/lib/loyalty-schema.ts',import.meta.url),'utf8');
+ const auth=await readFile(new URL('../src/lib/consumer-auth.ts',import.meta.url),'utf8');
+ const service=await readFile(new URL('../src/lib/loyalty-service.ts',import.meta.url),'utf8');
+ const harness=await readFile(new URL('./helpers/loyalty-current-state-postgres-harness.mjs',import.meta.url),'utf8');
+ const actualConsumerTable=runtime.match(/CREATE TABLE IF NOT EXISTS consumers \(([\s\S]*?)\n\s*\)/)?.[1];
+ assert.ok(actualConsumerTable);assert.match(actualConsumerTable,/status consumer_status NOT NULL DEFAULT 'anonymous'/);assert.doesNotMatch(actualConsumerTable,/session_revoked_at/);
+ assert.match(auth,/s\.revoked_at AS session_revoked_at/);assert.doesNotMatch(service.slice(service.indexOf('export async function redeemReward')).split('\nexport async function ')[0],/consumer\.session_revoked_at/);
+ assert.match(harness,/CREATE TABLE \$\{s\}\.consumers\(id uuid PRIMARY KEY, status \$\{s\}\.consumer_status NOT NULL DEFAULT 'anonymous'\)/);
+ for(const [ddl,table,fields] of [[loyaltySchema,'loyalty_programs',['status','start_at','end_at','age_gate_required']],[loyaltySchema,'rewards',['status','starts_at','ends_at','requires_age_gate','eligibility_json']],[loyaltySchema,'loyalty_members',['status','consumer_id']],[runtime,'consumers',['status']],[runtime,'tenant_consumer_memberships',['status']]]){
+  const tableBody=ddl.match(new RegExp('CREATE TABLE IF NOT EXISTS '+table+' \\(([\\s\\S]*?)\\n\\s*\\)'))?.[1];assert.ok(tableBody,table);
+  const columns=new Set([...tableBody.matchAll(/^\s*(\w+)\s+/gm)].map(match=>match[1]));for(const field of fields)assert.ok(columns.has(field),`${table}.${field} must be an actual stored field`);
+ }
+ assert.equal(rewardRedemptionUnavailableReason({...valid,consumer:{...consumer,session_revoked_at:new Date(now)}},now),'consumer_unavailable');
+});
+
 async function loadHandler(kind,options={}){
  const file=kind==='GET'?'../src/app/mobile/passport/[eventId]/loyalty/route.ts':'../src/app/mobile/passport/[eventId]/loyalty/rewards/[rewardId]/redeem/route.ts';
  const code=ts.transpileModule(await readFile(new URL(file,import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;

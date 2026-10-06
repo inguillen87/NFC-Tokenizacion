@@ -76,14 +76,23 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
       FOR UPDATE OF reward, member
       FOR SHARE OF program, membership
     ),
+    locked_consumer AS MATERIALIZED (
+      -- Acquire account authority after the balance lock. A block committed
+      -- while that lock was pending must win over this new claim.
+      SELECT consumer.status AS consumer_status
+      FROM consumers consumer
+      JOIN locked ON consumer.id = ${input.consumerId}
+      FOR SHARE OF consumer
+    ),
     eligible AS MATERIALIZED (
       -- now() is the transaction-start clock. Recheck after every authority
       -- and balance lock, since either validity window can expire while waiting.
-      SELECT * FROM locked
+      SELECT locked.* FROM locked JOIN locked_consumer ON true
       WHERE program_start_at <= clock_timestamp()
         AND (program_end_at IS NULL OR program_end_at > clock_timestamp())
         AND reward_starts_at <= clock_timestamp()
         AND (reward_ends_at IS NULL OR reward_ends_at > clock_timestamp())
+        AND consumer_status IN ('anonymous', 'registered', 'verified')
     ),
     reserved_ledger AS MATERIALIZED (
       INSERT INTO points_ledger (

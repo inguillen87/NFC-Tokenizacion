@@ -447,7 +447,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         locked_program.status AS program_status, locked_program.start_at AS program_start_at, locked_program.end_at AS program_end_at,
         locked_program.age_gate_required AS program_age_gate_required,
         reward.status AS reward_status, reward.starts_at AS reward_starts_at, reward.ends_at AS reward_ends_at, reward.requires_age_gate, reward.eligibility_json,
-        consumer.status AS consumer_status, consumer.session_revoked_at,
+        consumer.status AS consumer_status,
         membership.status AS membership_status
       FROM rewards reward
       JOIN loyalty_members member
@@ -484,7 +484,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         AND reward_status='active' AND reward_starts_at<=clock_timestamp() AND (reward_ends_at IS NULL OR reward_ends_at>clock_timestamp())
         AND program_age_gate_required=false AND requires_age_gate=false
         AND eligibility_json='{}'::jsonb
-        AND consumer_status IN ('anonymous','registered','verified') AND session_revoked_at IS NULL AND membership_status='active'
+        AND consumer_status IN ('anonymous','registered','verified') AND membership_status='active'
     ),
     reserved_ledger AS MATERIALIZED (
       INSERT INTO points_ledger (
@@ -542,7 +542,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         reward.stock_remaining,
         reward.status AS reward_status,reward.starts_at,reward.ends_at,reward.requires_age_gate,reward.eligibility_json,
         program.status AS program_status,program.start_at,program.end_at,program.age_gate_required,
-        member.status AS member_status,consumer.status AS consumer_status,consumer.session_revoked_at,membership.status AS membership_status
+        member.status AS member_status,consumer.status AS consumer_status,membership.status AS membership_status
       FROM rewards reward
       LEFT JOIN loyalty_members member
         ON member.id = ${input.memberId}
@@ -557,7 +557,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
     `;
     const row = eligibility[0];
     if (!row) return { ok: false, status: 404, error: "reward_not_found" as const };
-    const reason=rewardRedemptionUnavailableReason({tapEligible:true,program:{status:row.program_status,start_at:row.start_at,end_at:row.end_at,age_gate_required:row.age_gate_required},reward:{...row,status:row.reward_status},member:{status:row.member_status,points_balance:row.points_balance},membershipStatus:row.membership_status,consumer:{status:row.consumer_status,session_revoked_at:row.session_revoked_at}});
+    const reason=rewardRedemptionUnavailableReason({tapEligible:true,program:{status:row.program_status,start_at:row.start_at,end_at:row.end_at,age_gate_required:row.age_gate_required},reward:{...row,status:row.reward_status},member:{status:row.member_status,points_balance:row.points_balance},membershipStatus:row.membership_status,consumer:{status:row.consumer_status}});
     return { ok: false, status: 409, error: reason || "redemption_conflict" as const };
   }
   return { ok: true, status: 200, redemption: redemptionRows[0] };
