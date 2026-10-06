@@ -5,16 +5,17 @@ import test from 'node:test';
 import {DASHBOARD_RELEASE,releaseCopy} from '../src/lib/dashboard-release.ts';
 const json=async(path)=>JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'));
 const candidate=()=>json('../../../docs/releases/2026-09-21-dashboard.28.candidate.json');
-test('governance release retains immutable S6 evidence and identifies its paired API',async()=>{
+test('marketplace release retains immutable S6 evidence and identifies its paired API',async()=>{
  const [m,c]=await Promise.all([json('../public/release.json'),candidate()]);
  assert.equal(c.release,'2026.09.21-dashboard.28');
  assert.equal(createHash('sha256').update(JSON.stringify(c)).digest('hex'),'9be2d2d515dfcd3e43780c713dc51b2fb4f56a8e3a7f33df0f17d41532e11259');
- assert.equal(m.release,'2026.10.05-dashboard-engagement-governance.1');
+ assert.equal(m.release,'2026.10.06-dashboard-tenant-marketplace.1');
  assert.equal(m.reconciliationBaseRelease,c.release);
- assert.equal(m.baseCommit,'7ba66c97fcbcf1b45d994cd673f14ebb8e01d649');
- assert.equal(m.scope,'tenant-services-and-loyalty-publication-editor');
+ assert.equal(m.baseCommit,'2958f8cac3f06ff23dd43782d49f9e15310e0806');
+ assert.equal(m.scope,'tenant-durable-catalog-editor-and-explicit-network-publication');
  assert.equal(m.realTapCertification,'not-included');
- assert.equal(m.requiredApiRelease,'2026.10.05-api-engagement-governance.1');
+ assert.equal(m.requiredApiRelease,'2026.10.06-api-tenant-marketplace.1');
+ assert.equal(m.tenantMarketplaceProtocol,'nexid.tenant-marketplace-catalog.v1');
  assert.equal(m.tenantActionConfigurationProtocol,'nexid.tenant-actions.v1');
  assert.equal(m.supplierRequestAssignmentProtocol,'nexid.supplier-request-assignment.v1');
  assert.equal(m.supplierRequestReviewProtocol,'nexid.supplier-request-review.v1');
@@ -22,12 +23,12 @@ test('governance release retains immutable S6 evidence and identifies its paired
  assert.equal(m.apiChangesIncluded,false);assert.equal(m.databaseMigrationsIncluded,false);
  assert.equal(c.application,'dashboard');
 });
-test('tenant-sync public marker preserves every unrelated production-baseline contract',async()=>{
+test('marketplace public marker preserves every unrelated production-baseline contract',async()=>{
  const text=await readFile(new URL('./fixtures/tenant-sync-public-release-baseline.json',import.meta.url),'utf8');
  assert.equal(createHash('sha256').update(text.replaceAll('\r\n','\n')).digest('hex'),'cd7f96a7c92cce2f1ec4ba527c880a8671704fab108bb58024e99af93e676f73');
  const baseline=JSON.parse(text),marker=await json('../public/release.json');
  assert.equal(baseline.release,'2026.09.23-dashboard.42');
- const changed=['release','scope','baseCommit','requiredApiRelease','tenantActionConfigurationProtocol'];
+ const changed=['release','scope','baseCommit','requiredApiRelease','tenantActionConfigurationProtocol','tenantMarketplaceProtocol'];
  const unchanged=value=>Object.fromEntries(Object.entries(value).filter(([key])=>!changed.includes(key)));
  assert.deepEqual(unchanged(marker),unchanged(baseline));
  for(const field of ['apiChangesIncluded','databaseMigrationsIncluded','campaignDeliveryIncluded'])assert.throws(()=>assert.deepEqual(unchanged({...marker,[field]:true}),unchanged(baseline)));

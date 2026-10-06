@@ -6,6 +6,7 @@ const experiencesPage = await readFile(new URL("../src/app/(app)/loyalty/experie
 const adminExperiencesPage = await readFile(new URL("../src/app/(app)/experiences/page.tsx", import.meta.url), "utf8");
 const experiencesPanel = await readFile(new URL("../src/components/verified-experiences-panel.tsx", import.meta.url), "utf8");
 const marketplace = await readFile(new URL("../src/app/(app)/consumer-network/marketplace/page.tsx", import.meta.url), "utf8");
+const workspace = await readFile(new URL("../src/components/tenant-marketplace-workspace.tsx", import.meta.url), "utf8");
 const marketplaceRoute = await readFile(new URL("../src/app/api/tenant-marketplace/route.ts", import.meta.url), "utf8");
 const marketplaceItemRoute = await readFile(new URL("../src/app/api/tenant-marketplace/[id]/route.ts", import.meta.url), "utf8");
 const marketplaceHelpers = await readFile(new URL("../src/app/api/tenant-marketplace/route-helpers.ts", import.meta.url), "utf8");
@@ -44,62 +45,45 @@ test("admin experiences treats reviews and taps as governed digital evidence", (
   assert.doesNotMatch(adminExperiencesPage, /escaneo de productos auténticos|Check-ins verificados/);
 });
 
-test("club and marketplace fixtures are explicit examples without invented production metrics", () => {
+test("club fixtures remain explicit examples and the operational catalog claims no invented production metrics", () => {
   assert.match(experiencesPage, /Clubes de ejemplo por vertical/);
   assert.match(experiencesPage, /no representan miembros, ratings, compras ni check-ins observados/);
-  assert.match(marketplace, /Vista previa · ejemplos de prueba social/);
-  assert.match(marketplace, /fixtures de UX, no reviews del tenant/);
+  assert.match(workspace, /Vista previa del formulario · sin publicar/);
+  assert.match(workspace, /Una consulta no realiza un pago ni reserva stock/);
   assert.doesNotMatch(experiencesPage, /842 miembros|510 miembros|1\.120 miembros|4\.9 estrellas verificadas|87% compra validada|Check-in real|Clubes vivos/);
-  assert.doesNotMatch(marketplace, /Estado de la Red: Activo|Marketplace con prueba social real/);
+  assert.doesNotMatch(workspace, /Estado de la Red: Activo|Marketplace con prueba social real|Trust 0-100|Flujo directo simulado|Reviews/);
 });
 
-test("marketplace discloses source, withholds false zeroes and marks the in-memory API as demo", () => {
-  assert.match(marketplace, /MarketplaceAvailability/);
-  assert.match(marketplace, /setAvailability\("unreachable"\)/);
-  assert.match(marketplace, /setAvailability\("upstream_error"\)/);
-  assert.match(marketplace, /setAvailability\("invalid_payload"\)/);
-  assert.match(marketplace, /availability === "ready" \? totals\.total : "—"/);
-  assert.match(marketplace, /Este estado no representa inventario cero/);
-  assert.match(marketplace, /Catálogo temporal del sandbox/);
-  assert.match(marketplaceRoute, /demoMode: true,[\s\S]*dataSource: "demo"/);
-  assert.match(marketplace, /setCanWrite\(data\.canWrite === true\)/);
-  assert.match(marketplace, /Solo lectura · falta marketplace:write/);
-  assert.match(marketplace, /isEditorOpen && canWrite/);
-  assert.match(marketplace, /Catálogo conectado · Sandbox/);
-  assert.match(marketplace, /Simulación no persistente/);
-  assert.match(marketplace, /Nada de esta vista publica inventario ni ventas reales/);
-  assert.ok(
-    marketplace.indexOf("Simulación no persistente") < marketplace.indexOf("Productos en este escenario"),
-    "the sandbox disclosure must appear before any demo totals",
-  );
+test("operational marketplace rejects unavailable sources instead of substituting demo inventories or zeroes", () => {
+  assert.match(marketplace, /parseTenantCatalog\(body, context\.tenantSlug\)/);
+  assert.match(marketplace, /context\.tenantSlug && !session\.isDemo/);
+  assert.match(workspace, /este estado no significa que no haya productos/);
+  assert.match(workspace, /La fuente confirmó que todavía no hay productos/);
+  assert.match(workspace, /La demostración no consulta ni modifica el catálogo/);
+  assert.match(marketplaceRoute, /forwardTenantMarketplace\(req\)/);
+  assert.doesNotMatch(marketplace + marketplaceRoute + marketplaceHelpers, /__tenantMarketplaceStores|initialItems|demoMode: true|dataSource: "demo"/);
 });
 
-test("tenant marketplace demo mutations are authenticated, permissioned and tenant isolated", () => {
-  assert.match(marketplaceHelpers, /getDashboardSession\(\)/);
+test("tenant marketplace forwards a validated credential with permission and canonical company boundaries", () => {
+  assert.match(marketplaceHelpers, /getDashboardSessionCredential\(/);
   assert.match(marketplaceHelpers, /dashboardPermissionMatches\(session\.permissions, permission, session\.deniedPermissions\)/);
-  assert.match(marketplaceHelpers, /queryTenant && queryTenant !== sessionTenant/);
-  assert.match(marketplaceHelpers, /__tenantMarketplaceStores\?: Map<string, MarketplaceStore>/);
-  assert.match(marketplaceRoute, /authorizeTenantMarketplaceMutation\(req\)/);
-  assert.match(marketplaceRoute, /tenantMarketplaceSameOrigin\(req\)/);
-  assert.match(marketplaceRoute, /MAX_IMPORT_ITEMS = 100/);
-  assert.match(marketplaceItemRoute, /authorizeTenantMarketplaceMutation\(req\)/);
-  assert.match(marketplaceItemRoute, /tenantMarketplaceSameOrigin\(req\)/);
-  assert.doesNotMatch(marketplaceRoute + marketplaceItemRoute, /__tenantMarketplaceStore\?: MarketplaceStore/);
+  assert.match(marketplaceHelpers, /resolveDashboardTenantScope\(session, requested\)/);
+  assert.match(marketplaceHelpers, /catalog_same_origin_required/);
+  assert.match(marketplaceHelpers, /catalog_body_too_large/);
+  assert.match(marketplaceHelpers, /session\.isDemo/);
+  assert.match(marketplaceItemRoute, /marketplaceMethodUnavailable\(\)/);
+  assert.doesNotMatch(marketplaceItemRoute, /fetch\(|DELETE FROM|store\.items/);
 });
 
 test("tenantless administrators must choose one explicit tenant for every marketplace request", () => {
-  assert.match(marketplace, /tenant_required/);
-  assert.match(marketplace, /new URLSearchParams\(window\.location\.search\)\.get\("tenant"\)/);
-  assert.match(marketplace, /Tenant requerido para aislar el catálogo/);
-  assert.match(marketplace, /href="\/tenants"/);
-  assert.match(marketplace, /\?tenant=\$\{encodeURIComponent\(tenantScope\)\}/);
-  assert.match(marketplace, /fetch\(marketplaceApiUrl\(\), \{ cache: "no-store" \}\)/);
-  assert.match(marketplace, /fetch\(marketplaceApiUrl\(editingId\),/);
-  assert.match(marketplace, /fetch\(marketplaceApiUrl\(item\.id\),/);
-  assert.match(marketplace, /fetch\(marketplaceApiUrl\(id\), \{ method: "DELETE" \}\)/);
-  assert.match(marketplace, /window\.history\.replaceState\(\{\}, "", url\)/);
+  assert.match(marketplace, /createAdminPageContext\(session, query\.tenant\)/);
+  assert.match(workspace, /Empresa autorizada/);
+  assert.match(workspace, /href="\/tenants"/);
+  assert.match(workspace, /new URLSearchParams\(\{ tenant \}\)/);
+  assert.match(workspace, /No se usa un catálogo global como reemplazo/);
+  assert.match(marketplaceHelpers, /if \(!tenant\) return deny\("catalog_tenant_required", 400\)/);
 });
 
 test("experiences and marketplace surfaces remain UTF-8 without visible mojibake", () => {
-  assert.doesNotMatch(experiencesPage + experiencesPanel + marketplace, /Ã.|Â.|â.|�/u);
+  assert.doesNotMatch(experiencesPage + experiencesPanel + marketplace + workspace, /Ã.|Â.|â.|�/u);
 });

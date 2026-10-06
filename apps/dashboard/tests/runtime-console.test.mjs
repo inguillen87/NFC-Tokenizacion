@@ -6,6 +6,7 @@ import ts from 'typescript';
 import {runtimeFixture} from './fixtures/runtime-console.mjs';
 import {readHistoricalBaseline,tenantSyncHistoricalSourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 import {ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
+import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,assertMarketplaceAddedSource} from './helpers/tenant-marketplace-reviewed-sources.mjs';
 import {canReadRuntimeConsole,runtimeConsoleScopeKey} from '../src/lib/runtime-readiness-access.ts';
 import {parseRuntimeSnapshot,runtimeSupportSummary,runtimeObservedTime,runtimeSnapshotExpiresAt,RUNTIME_CONSOLE_FEATURES} from '../src/lib/runtime-readiness-contract.ts';
 import {readRuntimeSnapshot,fetchRuntimeSnapshot,RuntimeConsoleError} from '../src/lib/runtime-readiness-transport.ts';
@@ -49,10 +50,11 @@ test('the diagnostic UI preserves all operational sources outside the exact revi
  for(const p of baseline.paths){
   const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
   const actual=createHash('sha256').update(content).digest('hex');
-  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,actual),origins.expected[p])+'\n');
+  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,actual)),origins.expected[p])+'\n');
  }
  assert.equal(digest.digest('hex'),baseline.digest);
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+ for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
 });
 
 test('UTC time is unambiguous at midnight and future clock tolerance cannot extend client visibility past 60 seconds',()=>{
