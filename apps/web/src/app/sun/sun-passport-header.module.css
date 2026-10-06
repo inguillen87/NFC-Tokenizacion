@@ -214,6 +214,7 @@
   .header .caption { left: 5.75rem; bottom: 1rem; }
 }
 @media (max-width: 389px) {
+  .header:global(.sun-passport-header) { padding-block: 0.25rem; }
   .header .brand { min-height: 4.5rem; }
   .homeLink { min-height: 4.5rem; }
   .header .brand [data-sun-brand-identity][data-sun-brand-variant="passport"] { min-height: 4.5rem; }

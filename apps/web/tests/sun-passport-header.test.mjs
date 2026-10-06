@@ -41,6 +41,8 @@ test("SUN header keeps the web home identity and real controls touch-safe", asyn
   const css = await readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8");
   const parsedCss = postcss.parse(css);
   const compact = parsedCss.nodes.find(node => node.type === "atrule" && node.name === "media" && node.params === "(max-width: 389px)");
+  const compactHeader = compact.nodes.find(node => node.type === "rule" && node.selector === ".header:global(.sun-passport-header)");
+  assert.equal(compactHeader.nodes.find(node => node.type === "decl" && node.prop === "padding-block").value, "0.25rem");
   for (const selector of [".header .brand", ".homeLink", '.header .brand [data-sun-brand-identity][data-sun-brand-variant="passport"]']) {
     const selected = compact.nodes.find(node => node.type === "rule" && node.selector === selector);
     assert.equal(selected.nodes.find(node => node.type === "decl" && node.prop === "min-height").value, "4.5rem");
