@@ -1,4 +1,5 @@
 import { SectionHeading } from "@product/ui";
+import Link from "next/link";
 import { DataTable } from "../../../components/data-table";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
@@ -81,6 +82,7 @@ export default async function LoyaltyPage({ searchParams }: { searchParams?: Pro
   return (
     <main className="space-y-8" data-loyalty-availability={availability} data-loyalty-source={source}>
       <SectionHeading eyebrow={copy.nav.loyalty} title={copy.pages.loyalty.title} description={copy.pages.loyalty.description} />
+      <Link href={`/loyalty/configuration${tenantScope ? `?${new URLSearchParams({ tenant: tenantScope })}` : ""}`} className="inline-flex min-h-11 items-center rounded-lg border border-cyan-300/30 px-4 py-2 text-sm font-semibold text-cyan-200">Configurar servicios, puntos y trivias</Link>
 
       {availability === "forbidden" ? (
         <div role="alert" className="rounded-2xl border border-amber-300/30 bg-amber-400/[0.07] p-5 text-sm text-amber-100">

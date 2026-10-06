@@ -8,6 +8,7 @@ import {supplierOperatorCan} from '../src/lib/supplier-operator-access.ts';
 import {canReadRuntimeConsole} from '../src/lib/runtime-readiness-access.ts';
 import {canReadGlobalNotifications} from '../src/lib/admin-notification-access.ts';
 import {readHistoricalBaseline,TENANT_SYNC_REVIEWED_SOURCES,TENANT_SYNC_SOURCE_BASE,tenantSyncHistoricalSourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
+import {ENGAGEMENT_GOVERNANCE_BASE,ENGAGEMENT_GOVERNANCE_CHANGED,ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceInventory,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
 const source=await readFile(new URL('../src/lib/supplier-request-proxy.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source.replace(/^import .*;\r?$/gm,''),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const moduleExports={};
@@ -54,8 +55,9 @@ test('every merged source file retains its immutable origin except the exact rev
  assert.equal(baseline.protocol,'nexid.release-convergence-source.v1');assert.equal(baseline.baselineSourceFiles,487);assert.equal(baseline.replaced.length,3);assert.equal(baseline.added.length,2);
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
- await walk(root);assert.deepEqual(actual.sort(),Object.keys(baseline.expected).sort());
- for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,actual,expected),expected,path);}
+ await walk(root);assertGovernanceInventory(actual,baseline.expected);
+ for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,actual),expected),expected,path);}
+ for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  assert.ok(baseline.expected['apps/dashboard/src/components/supplier-request-workspace.tsx']);
  assert.ok(baseline.expected['apps/dashboard/src/lib/supplier-service-client.ts']);
 });
@@ -70,6 +72,22 @@ test('tenant-sync review allows exactly two pinned source increments and rejects
  assert.equal(tenantSyncHistoricalSourceHash('apps/dashboard/src/lib/permission-policy.ts','unreviewed-change','baseline'),'unreviewed-change');
  assert.throws(()=>assert.equal(tenantSyncHistoricalSourceHash('apps/dashboard/src/lib/permission-policy.ts','unreviewed-change','baseline'),'baseline'));
  assert.throws(()=>readHistoricalBaseline('runtime-console','{}'),/historical fixture remains immutable/);
+});
+test('governance overlay pins exact published origin and an independent four-changed/four-added allowlist',async()=>{
+ assert.equal(ENGAGEMENT_GOVERNANCE_BASE,'7ba66c97fcbcf1b45d994cd673f14ebb8e01d649');
+ assert.deepEqual(Object.keys(ENGAGEMENT_GOVERNANCE_CHANGED).sort(),['apps/dashboard/src/app/(app)/loyalty/overview/page.tsx','apps/dashboard/src/app/(app)/loyalty/page.tsx','apps/dashboard/src/lib/dashboard-release.ts','apps/dashboard/src/lib/permission-policy.ts']);
+ assert.deepEqual(Object.keys(ENGAGEMENT_GOVERNANCE_ADDED).sort(),['apps/dashboard/src/app/(app)/loyalty/configuration/page.tsx','apps/dashboard/src/components/loyalty-configuration-workspace.module.css','apps/dashboard/src/components/loyalty-configuration-workspace.tsx','apps/dashboard/src/lib/loyalty-configuration.ts']);
+ const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
+ for(const [path,pin]of Object.entries(ENGAGEMENT_GOVERNANCE_CHANGED)){
+  assert.equal(tenantSyncHistoricalSourceHash(path,pin.before,baseline.expected[path]),baseline.expected[path],path+' independently retained prior origin');
+  assert.equal(governancePublishedSourceHash(path,pin.after),pin.before);
+  assert.throws(()=>governancePublishedSourceHash(path,'0'.repeat(64)),/exact reviewed governance increment/);
+ }
+ const inventory=[...Object.keys(baseline.expected),...Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)];assertGovernanceInventory(inventory,baseline.expected);
+ assert.throws(()=>assertGovernanceInventory(inventory.slice(1),baseline.expected));assert.throws(()=>assertGovernanceInventory([...inventory,'apps/dashboard/src/unreviewed.ts'],baseline.expected));
+ assert.throws(()=>assertGovernanceAddedSource('apps/dashboard/src/unreviewed.ts','0'.repeat(64)),/known governance source addition/);
+ for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assert.throws(()=>assertGovernanceAddedSource(path,'0'.repeat(64)),/exact reviewed governance addition/);
+ assert.equal(governancePublishedSourceHash('apps/dashboard/src/lib/enterprise-runtime-rbac.ts','unreviewed'),'unreviewed');
 });
 test('merged CI keeps all prior operational and production-hotfix browser suites',async()=>{
  const w=await readFile(new URL('../../../.github/workflows/ticket-deadline-qa.yml',import.meta.url),'utf8');
