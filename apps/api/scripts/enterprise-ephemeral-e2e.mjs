@@ -178,7 +178,7 @@ async function run() {
   const rewardConfiguration = await runConsumerRewardPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardConfiguration.ok && rewardConfiguration.cleanup.schemaDropped && rewardConfiguration.cleanup.connectionsClosed, "Consumer reward configuration SQL regression or cleanup failed");
   assert.ok(rewardConfiguration.checks.every(check => check.ok));
-  assert.equal(rewardConfiguration.checks.length, 52);
+  assert.equal(rewardConfiguration.checks.length, 57);
   const adminRewardConfiguration = await runAdminRewardPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(adminRewardConfiguration.ok && adminRewardConfiguration.schemaCleaned, "Admin reward configuration SQL regression or cleanup failed");
   const tenantConfiguration = await runConfigurationPostgresQa(connectCurrentTagQa);
@@ -187,9 +187,9 @@ async function run() {
   assert.equal(tenantConfiguration.checks.length, 18);
   const loyaltyGovernance = await runLoyaltyCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(loyaltyGovernance.ok && loyaltyGovernance.cleanup.schemaDropped && loyaltyGovernance.cleanup.connectionsClosed, 'Loyalty governance SQL regression or cleanup failed');
-  assert.equal(loyaltyGovernance.checks.length, 88);
+  assert.equal(loyaltyGovernance.checks.length, 129);
   assert.ok(loyaltyGovernance.checks.every(check => check.ok));
-  assert.equal(loyaltyGovernance.lockObservations.length, 24);
+  assert.equal(loyaltyGovernance.lockObservations.length, 37);
   const marketplaceGovernance = await runMarketplaceContextualPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(marketplaceGovernance.ok && marketplaceGovernance.cleanup.schemaDropped && marketplaceGovernance.cleanup.connectionsClosed, 'Contextual marketplace SQL regression or cleanup failed');
   assert.equal(marketplaceGovernance.checks.length, 59);

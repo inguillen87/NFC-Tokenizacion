@@ -378,16 +378,41 @@ export async function claimTapPoints(input: { eventId: string; memberKey?: strin
   return { ok: true, status: 200, awarded: award.awarded, reason: award.duplicate ? 'already_awarded' : tap.reason, memberId: member.id, points: award.entry?.delta ?? 0 };
 }
 
-export async function redeemReward(input: { eventId: string; memberId: string; rewardId: string; locale?: string }) {
+export function rewardRedemptionUnavailableReason(input: { tapEligible: boolean; program: any; reward: any; member: any; membershipStatus: unknown; consumer: any }, now = Date.now()) {
+  const { program, reward, member, consumer } = input;
+  if (!input.tapEligible) return 'tap_blocked' as const;
+  if (!consumer || !['anonymous','registered','verified'].includes(String(consumer.status)) || consumer.session_revoked_at) return 'consumer_unavailable' as const;
+  if (input.membershipStatus !== 'active' || !member || !['enrolled','verified'].includes(String(member.status))) return 'consumer_not_enrolled' as const;
+  const timestamp = (value: unknown) => value instanceof Date ? value.getTime() : typeof value === 'string' ? Date.parse(value) : NaN;
+  const validPeriod = (status: unknown, start: unknown, end: unknown) => status === 'active' && Number.isFinite(timestamp(start)) && timestamp(start) <= now && (end === null || end === undefined || (Number.isFinite(timestamp(end)) && timestamp(end) > now));
+  if (!program || !validPeriod(program.status, program.start_at, program.end_at) || !validPeriod(reward?.status, reward?.starts_at, reward?.ends_at)) return 'reward_configuration_changed' as const;
+  if (program.age_gate_required !== false || reward.requires_age_gate !== false) return 'age_verification_not_supported' as const;
+  if (!reward.eligibility_json || typeof reward.eligibility_json !== 'object' || Array.isArray(reward.eligibility_json) || Object.keys(reward.eligibility_json).length !== 0) return 'reward_eligibility_not_supported' as const;
+  if (!Number.isSafeInteger(reward.points_cost) || reward.points_cost < 0) return 'reward_configuration_changed' as const;
+  if (reward.stock_remaining !== null && (!Number.isSafeInteger(reward.stock_remaining) || reward.stock_remaining <= 0)) return 'out_of_stock' as const;
+  if (!Number.isSafeInteger(member.points_balance) || member.points_balance < reward.points_cost) return 'insufficient_points' as const;
+  return null;
+}
+
+export async function redeemReward(input: { eventId: string; memberId: string; rewardId: string; consumerId?: string; locale?: string }) {
   await ensureLoyaltySchema();
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false, status: 404, error: "event_not_found" as const };
+  const spendIdem = `redeem:${input.rewardId}:member:${input.memberId}:event:${event.id}`;
+  const existingReceipt = async () => (await sql/*sql*/`
+    SELECT receipt.* FROM reward_redemptions receipt
+    JOIN loyalty_members member ON member.id=receipt.member_id AND member.tenant_id=receipt.tenant_id AND member.program_id=receipt.program_id
+    WHERE receipt.tenant_id=${event.tenant_id} AND receipt.member_id=${input.memberId} AND receipt.reward_id=${input.rewardId}
+      AND receipt.metadata_json->>'idempotencyKey'=${spendIdem}
+      AND (${input.consumerId ?? null}::uuid IS NULL OR member.consumer_id=${input.consumerId ?? null}::uuid)
+    ORDER BY receipt.created_at DESC LIMIT 1`)[0];
+  const recovered = await existingReceipt();
+  if (recovered) return { ok: false, status: 409, error: 'already_redeemed' as const, redemption: recovered };
   if (!isCurrentLoyaltyTapEligible(event)) {
     return { ok: false, status: 403, error: "tap_blocked" as const };
   }
 
   const code = `NX-${randomUUID().split("-")[0].toUpperCase()}`;
-  const spendIdem = `redeem:${input.rewardId}:member:${input.memberId}:event:${event.id}`;
   const redemptionRows = await sql/*sql*/`
     WITH current_tag AS MATERIALIZED (
       SELECT tag.id
@@ -403,6 +428,12 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
         AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
       FOR SHARE OF tag
+    ), locked_program AS MATERIALIZED (
+      SELECT program.* FROM loyalty_programs program
+      JOIN rewards configured_reward ON configured_reward.program_id=program.id AND configured_reward.tenant_id=program.tenant_id
+      JOIN current_tag ON true
+      WHERE configured_reward.id=${input.rewardId} AND program.tenant_id=${event.tenant_id}
+      FOR SHARE OF program
     ), locked AS MATERIALIZED (
       SELECT
         reward.id AS reward_id,
@@ -412,12 +443,20 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         reward.title,
         reward.points_cost,
         member.id AS member_id,
-        member.points_balance AS member_points_balance
+        member.points_balance AS member_points_balance,
+        locked_program.status AS program_status, locked_program.start_at AS program_start_at, locked_program.end_at AS program_end_at,
+        locked_program.age_gate_required AS program_age_gate_required,
+        reward.status AS reward_status, reward.starts_at AS reward_starts_at, reward.ends_at AS reward_ends_at, reward.requires_age_gate, reward.eligibility_json,
+        consumer.status AS consumer_status, consumer.session_revoked_at,
+        membership.status AS membership_status
       FROM rewards reward
       JOIN loyalty_members member
         ON member.id = ${input.memberId}
        AND member.tenant_id = reward.tenant_id
        AND member.program_id = reward.program_id
+      JOIN locked_program ON locked_program.id=reward.program_id AND locked_program.tenant_id=reward.tenant_id
+      JOIN consumers consumer ON consumer.id=member.consumer_id
+      JOIN tenant_consumer_memberships membership ON membership.consumer_id=consumer.id AND membership.tenant_id=reward.tenant_id
       JOIN events source_event ON source_event.id = ${String(event.id)}::bigint
       JOIN current_tag ON true
       LEFT JOIN tag_manual_tamper_overrides manual_override
@@ -426,10 +465,9 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
       WHERE reward.id = ${input.rewardId}
         AND reward.tenant_id = ${event.tenant_id}
         AND member.status IN ('enrolled', 'verified')
+        AND (${input.consumerId ?? null}::uuid IS NULL OR member.consumer_id=${input.consumerId ?? null}::uuid)
         AND member.points_balance >= reward.points_cost
-        AND reward.status = 'active'
-        AND reward.starts_at <= now()
-        AND (reward.ends_at IS NULL OR reward.ends_at >= now())
+        AND reward.points_cost >= 0
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
         AND UPPER(COALESCE(source_event.result, '')) NOT IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
         AND regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_TAMPER_OPENED%'
@@ -440,6 +478,13 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%MANUAL_OPENED%'
         AND regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') NOT LIKE '%OPERATOR_DECLARED_OPEN%'
       FOR UPDATE OF reward, member
+      FOR SHARE OF consumer, membership
+    ), eligible_redemption AS MATERIALIZED (
+      SELECT * FROM locked WHERE program_status='active' AND program_start_at<=clock_timestamp() AND (program_end_at IS NULL OR program_end_at>clock_timestamp())
+        AND reward_status='active' AND reward_starts_at<=clock_timestamp() AND (reward_ends_at IS NULL OR reward_ends_at>clock_timestamp())
+        AND program_age_gate_required=false AND requires_age_gate=false
+        AND eligibility_json='{}'::jsonb
+        AND consumer_status IN ('anonymous','registered','verified') AND session_revoked_at IS NULL AND membership_status='active'
     ),
     reserved_ledger AS MATERIALIZED (
       INSERT INTO points_ledger (
@@ -450,7 +495,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
         tenant_id, program_id, member_id, ${String(event.id)}, 'REWARD_REDEEMED'::points_source,
         -abs(points_cost), member_points_balance - points_cost, ${spendIdem}, 'Authenticated reward redemption',
         jsonb_build_object('rewardId', reward_id, 'title', title)
-      FROM locked
+      FROM eligible_redemption locked
       ON CONFLICT (idempotency_key) DO NOTHING
       RETURNING id
     ),
@@ -487,36 +532,33 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
     SELECT * FROM inserted_redemption
   `;
   if (!redemptionRows[0]) {
-    const existing = await sql/*sql*/`
-      SELECT *
-      FROM reward_redemptions
-      WHERE member_id = ${input.memberId}
-        AND reward_id = ${input.rewardId}
-        AND metadata_json->>'idempotencyKey' = ${spendIdem}
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    if (existing[0]) return { ok: false, status: 409, error: "already_redeemed" as const, redemption: existing[0] };
+    const existing = await existingReceipt();
+    if (existing) return { ok: false, status: 409, error: "already_redeemed" as const, redemption: existing };
     const eligibility = await sql/*sql*/`
       SELECT
         reward.id,
         member.points_balance,
         reward.points_cost,
-        reward.stock_remaining
+        reward.stock_remaining,
+        reward.status AS reward_status,reward.starts_at,reward.ends_at,reward.requires_age_gate,reward.eligibility_json,
+        program.status AS program_status,program.start_at,program.end_at,program.age_gate_required,
+        member.status AS member_status,consumer.status AS consumer_status,consumer.session_revoked_at,membership.status AS membership_status
       FROM rewards reward
       LEFT JOIN loyalty_members member
         ON member.id = ${input.memberId}
        AND member.tenant_id = reward.tenant_id
        AND member.program_id = reward.program_id
+      LEFT JOIN loyalty_programs program ON program.id=reward.program_id AND program.tenant_id=reward.tenant_id
+      LEFT JOIN consumers consumer ON consumer.id=member.consumer_id
+      LEFT JOIN tenant_consumer_memberships membership ON membership.tenant_id=reward.tenant_id AND membership.consumer_id=consumer.id
       WHERE reward.id = ${input.rewardId}
         AND reward.tenant_id = ${event.tenant_id}
       LIMIT 1
     `;
     const row = eligibility[0];
     if (!row) return { ok: false, status: 404, error: "reward_not_found" as const };
-    if (Number(row.points_balance || 0) < Number(row.points_cost || 0)) return { ok: false, status: 409, error: "insufficient_points" as const };
-    if (row.stock_remaining !== null && Number(row.stock_remaining) <= 0) return { ok: false, status: 409, error: "out_of_stock" as const };
-    return { ok: false, status: 409, error: "redemption_conflict" as const };
+    const reason=rewardRedemptionUnavailableReason({tapEligible:true,program:{status:row.program_status,start_at:row.start_at,end_at:row.end_at,age_gate_required:row.age_gate_required},reward:{...row,status:row.reward_status},member:{status:row.member_status,points_balance:row.points_balance},membershipStatus:row.membership_status,consumer:{status:row.consumer_status,session_revoked_at:row.session_revoked_at}});
+    return { ok: false, status: 409, error: reason || "redemption_conflict" as const };
   }
   return { ok: true, status: 200, redemption: redemptionRows[0] };
 }

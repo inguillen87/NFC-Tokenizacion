@@ -71,6 +71,7 @@ async function createFixtureSchema(client, schema) {
       code text NOT NULL, title text NOT NULL,
       status text NOT NULL DEFAULT 'draft', points_cost integer NOT NULL DEFAULT 0,
       requires_age_gate boolean NOT NULL DEFAULT false,
+      eligibility_json jsonb NOT NULL DEFAULT '{}'::jsonb,
       stock_total integer, stock_remaining integer,
       starts_at timestamptz NOT NULL DEFAULT now(), ends_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now(),
@@ -126,7 +127,7 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
   const clients = [];
   const schema = `consumer_rewards_qa_${randomUUID().replaceAll("-", "")}`;
   const s = identifier(schema);
-  const report = { kind: "synthetic-postgresql-integration", ok: false, checks: [], cleanup: { schemaDropped: false, connectionsClosed: false } };
+  const report = { kind: "synthetic-postgresql-integration", ok: false, checks: [], expiryLockWaits: [], cleanup: { schemaDropped: false, connectionsClosed: false } };
   let schemaCreated = false;
   let executionError;
   try {
@@ -179,9 +180,9 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
 
     async function addReward(f, rewardId, options = {}) {
       const stock = options.stock === undefined ? 2 : options.stock;
-      await admin.query(`INSERT INTO ${s}.rewards(id, tenant_id, program_id, code, title, status, points_cost, stock_total, stock_remaining, starts_at, ends_at, requires_age_gate)
-        VALUES ($1::uuid, $2::uuid, $3::uuid, ($1::uuid)::text, 'Synthetic QA reward', $4, $5, $6, $6, now() + $7::interval, CASE WHEN $8::boolean THEN now() - interval '1 day' ELSE NULL END, $9)`,
-      [rewardId, f.tenantId, f.programId, options.rewardStatus ?? "active", options.cost ?? 40, stock, options.future ? "1 day" : "-1 day", options.expired ?? false, options.rewardAgeGate ?? false]);
+      await admin.query(`INSERT INTO ${s}.rewards(id, tenant_id, program_id, code, title, status, points_cost, stock_total, stock_remaining, starts_at, ends_at, requires_age_gate, eligibility_json)
+        VALUES ($1::uuid, $2::uuid, $3::uuid, ($1::uuid)::text, 'Synthetic QA reward', $4, $5, $6, $6, now() + $7::interval, CASE WHEN $8::boolean THEN now() - interval '1 day' ELSE NULL END, $9, $10::jsonb)`,
+      [rewardId, f.tenantId, f.programId, options.rewardStatus ?? "active", options.cost ?? 40, stock, options.future ? "1 day" : "-1 day", options.expired ?? false, options.rewardAgeGate ?? false, JSON.stringify(Object.hasOwn(options, "eligibility") ? options.eligibility : {})]);
     }
 
     function claim(f, query = firstQuery, overrides = {}) {
@@ -236,6 +237,24 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
     await check("free_campaign_cannot_debit_a_priced_reward", async () => {
       const f = await fixture({cost:40});await unchanged(f, () => claim(f,firstQuery,{maximumPointsCost:0}));
     });
+    await check("configured_reward_eligibility_rules_prevent_new_paid_and_free_claims", async () => {
+      for (const eligibility of [
+        { requiresVerifiedTap: true }, { requiresVerifiedPhone: true },
+        { requiresContact: true }, { requiresRequestToBuy: true },
+        { requiresEmail: true }, { unknownRule: false },
+      ]) {
+        const f = await fixture({ eligibility });
+        await unchanged(f, () => claim(f));
+        const free = await fixture({ cost: 0, eligibility });
+        await unchanged(free, () => claim(free, firstQuery, { maximumPointsCost: 0, metadata: { source: "twilio_whatsapp_campaign" } }));
+      }
+    });
+    await check("invalid_reward_eligibility_json_shapes_prevent_all_claim_writes", async () => {
+      for (const eligibility of [null, [], ["requiresVerifiedTap"], "unknown", 0, true]) {
+        const f = await fixture({ eligibility });
+        await unchanged(f, () => claim(f));
+      }
+    });
     // Hold a real row lock while both independent backends enter their query.
     // Observe both waiting in PostgreSQL before release; Promise.all alone does
     // not prove overlap. The barrier and SQL timeouts are deliberately bounded.
@@ -271,6 +290,83 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
       if (barrierError) throw barrierError;
       for (const result of results) if (result.status === "rejected") throw result.reason;
       return results.map((result) => result.value);
+    }
+
+    await check("reward_eligibility_committed_while_claims_wait_prevents_all_claim_writes", async () => {
+      const f = await fixture({ cost: 0 });
+      const eligibility = { requiresVerifiedPhone: true };
+      const before = await state(f);
+      before.rewards.find(reward => reward.id === f.rewardId).eligibility_json = eligibility;
+      const results = await concurrent("rewards", f.rewardId, [
+        () => claim(f, firstQuery, { maximumPointsCost: 0, metadata: { source: "twilio_whatsapp_campaign" } }),
+        () => claim(f, secondQuery),
+      ], async () => {
+        await admin.query(`UPDATE ${s}.rewards SET eligibility_json = $2::jsonb WHERE id = $1`, [f.rewardId, JSON.stringify(eligibility)]);
+      });
+      assert.equal(results.flat().length, 0, "A committed rule must deny both waiting claim paths");
+      assert.deepEqual(await state(f), before, "Only the deliberate eligibility change may persist");
+    });
+
+    for (const scope of ["reward", "program"]) {
+      await check(`${scope}_expiry_while_waiting_for_member_lock_prevents_all_claim_writes`, async () => {
+        // Exercise both the paid consumer path and the server-owned free
+        // campaign path. Only the clock advances after the deadline is stored.
+        const f = await fixture({ cost: scope === "reward" ? 0 : 40 });
+        const table = scope === "reward" ? "rewards" : "loyalty_programs";
+        const endColumn = scope === "reward" ? "ends_at" : "end_at";
+        const id = scope === "reward" ? f.rewardId : f.programId;
+        const { rows: [deadlineRow] } = await admin.query(
+          `UPDATE ${s}."${table}" SET ${endColumn} = clock_timestamp() + interval '1500 milliseconds' WHERE id = $1 RETURNING ${endColumn}::text AS expires_at`, [id],
+        );
+        const expiresAt = deadlineRow.expires_at;
+        const before = await state(f);
+        const { rows: [authorityBefore] } = await admin.query(`SELECT to_jsonb(program) AS program FROM ${s}.loyalty_programs program WHERE id = $1`, [f.programId]);
+        let pending;
+        let barrierError;
+        await admin.query("BEGIN");
+        try {
+          await admin.query(`SELECT id FROM ${s}.loyalty_members WHERE id = $1 FOR UPDATE`, [f.memberId]);
+          pending = Promise.allSettled([claim(f, firstQuery, scope === "reward" ? {
+            maximumPointsCost: 0, metadata: { source: "twilio_whatsapp_campaign" },
+          } : {})]);
+          const waitDeadline = Date.now() + 6000;
+          let waiting;
+          while (Date.now() < waitDeadline) {
+            await admin.query("SELECT pg_stat_clear_snapshot()");
+            const { rows } = await admin.query(
+              "SELECT query_start < $2::timestamptz AS started_before_expiry, clock_timestamp() < $2::timestamptz AS before_expiry FROM pg_stat_activity WHERE pid = $1 AND wait_event_type = 'Lock' AND $3 = ANY(pg_blocking_pids(pid))",
+              [pids[1], expiresAt, pids[0]],
+            );
+            if (rows.length === 1) { waiting = rows[0]; break; }
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          assert.ok(waiting, "The claim backend must wait on this harness's actual member lock");
+          assert.equal(waiting.started_before_expiry, true, "The claim must start while the validity window is open");
+          assert.equal(waiting.before_expiry, true, "Observe the member-lock wait before the validity window expires");
+          let expired = false;
+          while (Date.now() < waitDeadline) {
+            const { rows: [clock] } = await admin.query("SELECT clock_timestamp() >= $1::timestamptz AS expired", [expiresAt]);
+            if (clock.expired) { expired = true; break; }
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          assert.equal(expired, true, "The actual PostgreSQL clock must pass the unchanged stored expiry");
+          await admin.query("SELECT pg_stat_clear_snapshot()");
+          const { rows } = await admin.query("SELECT pid FROM pg_stat_activity WHERE pid = $1 AND wait_event_type = 'Lock' AND $2 = ANY(pg_blocking_pids(pid))", [pids[1], pids[0]]);
+          assert.equal(rows.length, 1, "The member lock must still hold the claim until after expiry");
+          report.expiryLockWaits.push({ scope, waitEventType: "Lock", blockedByHarnessMemberLock: true, startedBeforeExpiry: true, expiredBeforeRelease: true, noAuthorityUpdatesWhileWaiting: true });
+        } catch (error) {
+          barrierError = error;
+        } finally {
+          await admin.query("ROLLBACK");
+        }
+        const [result] = pending ? await pending : [];
+        if (barrierError) throw barrierError;
+        if (result?.status === "rejected") throw result.reason;
+        assert.equal(result?.value.length, 0, "A claim released after expiry must not issue a receipt");
+        assert.deepEqual(await state(f), before, "Expiry during a member-lock wait must preserve balance, stock, ledger and claims");
+        const { rows: [authorityAfter] } = await admin.query(`SELECT to_jsonb(program) AS program FROM ${s}.loyalty_programs program WHERE id = $1`, [f.programId]);
+        assert.deepEqual(authorityAfter, authorityBefore, "No program row may change during the expiry wait");
+      });
     }
 
     function assertSingleClaim(current, { balance = 60, stock = 1, cost = 40 } = {}) {
@@ -418,7 +514,7 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
       assert.ok(created?.id);
       await admin.query(`UPDATE ${s}.loyalty_programs SET status = 'paused', end_at = now() - interval '1 day', age_gate_required = true WHERE id = $1`, [f.programId]);
       await admin.query(`UPDATE ${s}.tenant_consumer_memberships SET status = 'blocked' WHERE id = $1`, [f.membershipId]);
-      await admin.query(`UPDATE ${s}.rewards SET status = 'disabled', requires_age_gate = true WHERE id = $1`, [f.rewardId]);
+      await admin.query(`UPDATE ${s}.rewards SET status = 'disabled', requires_age_gate = true, eligibility_json = '{"requiresVerifiedPhone":true}'::jsonb WHERE id = $1`, [f.rewardId]);
       await unchanged(f, () => claim(f));
       assert.equal((await refund(f, created.id)).length, 1);
       const current = await state(f);

@@ -33,6 +33,10 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
         reward.tenant_id,
         reward.program_id,
         reward.points_cost,
+        program.start_at AS program_start_at,
+        program.end_at AS program_end_at,
+        reward.starts_at AS reward_starts_at,
+        reward.ends_at AS reward_ends_at,
         member.id AS member_id,
         member.points_balance AS balance_before
       FROM rewards reward
@@ -57,6 +61,9 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
         -- No supported verified-age authorization exists for this writer.
         AND program.age_gate_required = false
         AND reward.requires_age_gate = false
+        -- Stored eligibility rules require a supported verifier; never ignore
+        -- configured restrictions or interpret unknown JSON as unrestricted.
+        AND reward.eligibility_json = '{}'::jsonb
         AND reward.points_cost >= 0
         AND (${input.maximumPointsCost ?? null}::integer IS NULL OR reward.points_cost <= ${input.maximumPointsCost ?? null}::integer)
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
@@ -69,6 +76,15 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
       FOR UPDATE OF reward, member
       FOR SHARE OF program, membership
     ),
+    eligible AS MATERIALIZED (
+      -- now() is the transaction-start clock. Recheck after every authority
+      -- and balance lock, since either validity window can expire while waiting.
+      SELECT * FROM locked
+      WHERE program_start_at <= clock_timestamp()
+        AND (program_end_at IS NULL OR program_end_at > clock_timestamp())
+        AND reward_starts_at <= clock_timestamp()
+        AND (reward_ends_at IS NULL OR reward_ends_at > clock_timestamp())
+    ),
     reserved_ledger AS MATERIALIZED (
       INSERT INTO points_ledger (
         tenant_id, program_id, member_id, tap_event_id, source, delta,
@@ -77,7 +93,7 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
       SELECT tenant_id, program_id, member_id, NULL, 'REWARD_REDEEMED'::points_source,
         -points_cost, balance_before - points_cost, ${input.idempotencyKey}, 'Authenticated consumer reward claim',
         jsonb_build_object('rewardId', reward_id, 'consumerId', ${input.consumerId}::text)
-      FROM locked
+      FROM eligible
       ON CONFLICT (idempotency_key) DO NOTHING
       RETURNING id
     ),
