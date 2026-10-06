@@ -9,7 +9,7 @@ globalThis.fetch = async function(input, init) {
     if(failure==='malformed')return Response.json({ok:true,contract:{}});
     return Response.json({ok:false},{status:failure==='denied'?403:503});
   }
-  if (url.hostname === 'api.nexid.lat' && /^\/sun\/snapshot\/qa-(closed|opened|replay|missing|photo-failure|missing-date|history-only|seal-unknown|unsupported|historical-closed|manual-opened|invalid|location-closed)$/.test(url.pathname) && url.searchParams.get('trace') === 'synthetic' && url.searchParams.get('access') === 'invalid') {
+  if (url.hostname === 'api.nexid.lat' && /^\/sun\/snapshot\/qa-(closed|opened|replay|missing|photo-failure|missing-date|history-only|seal-unknown|unsupported|historical-closed|manual-opened|invalid|location-closed|opinion)$/.test(url.pathname) && url.searchParams.get('trace') === 'synthetic' && url.searchParams.get('access') === 'invalid') {
     const state = url.pathname.split('qa-')[1];
     const statusCode=state==='manual-opened'?'MANUAL_OPENED':state==='replay'?'REPLAY_SUSPECT':state==='invalid'?'INVALID':state==='opened'?'VALID_OPENED':state==='seal-unknown'?'VALID_UNKNOWN_TAMPER':state==='unsupported'?'AUTH_OK':'VALID_CLOSED';
     const seal=state==='seal-unknown'?'unknown':state==='unsupported'?'not_available':state==='opened'?'opened':'closed';
@@ -20,6 +20,14 @@ globalThis.fetch = async function(input, init) {
       product:{name:state==='location-closed'?'Gran Reserva Malbec':'Producto de ensayo',winery:state==='location-closed'?'Bodega de ensayo':'Marca de ensayo',vertical:'wine',...(state==='missing'?{}:{imageUrl:state==='location-closed'?'/images/premium_wine_mendoza_nfc.png':'/qa-product.svg'})},
       snapshot:{mode:state==='historical-closed'?'readonly':'fresh_handoff'},tapSecurity:{actionability:state==='historical-closed'?'snapshot':'fresh_handoff',replayDetected:state==='replay'},
       trustSignals:{antiReplay:state!=='replay'},
+      // Opinion QA explicitly declares published synthetic services. Other
+      // snapshot cases retain their original unavailable configuration.
+      ...(state==='opinion'?{allowedActions:['rewards'],engagement:{configuration:{
+        version:'nexid.tenant-actions.v1',status:'published',allowedActions:['lead','feedback','sommelier'],
+        tenantSlug:'qa',catalogAvailable:false,
+        program:{id:'synthetic-program',name:'Programa de ensayo',pointsName:'Puntos',pointsPerValidTap:0},
+        trivia:{id:'11111111-1111-4111-8111-111111111111',title:'Trivia de ensayo',revision:'a'.repeat(64),pointsPerCorrect:0,completionBonus:0},
+      }}}:{}),
       tag_tamper:{available:state!=='unsupported',status:seal},
       provenance:{origin:'Origen de ensayo',timelineSummary:state==='history-only'?[{eventId:'older-synthetic-event',at:'2020-01-02T03:04:00.000Z',result:'VALID_CLOSED',city:'Montevideo',country:'UY'}]:[],...(state==='history-only'?{lastVerifiedLocation:{at:'2021-02-03T04:05:00.000Z',city:'Montevideo',country:'UY'}}:{})},
       ...(state==='missing-date'?{tapContext:{timezone:'UTC'}}:state==='history-only'?{}:{tapContext:{utcTime:'2026-09-30T14:25:00.000Z',timezone:'UTC'}}),
