@@ -54,7 +54,7 @@ const server=createServer((req,res)=>{
  const locale=requestedLocale||'es-AR';
  const nativeKind=path==='/'?/\bnav_load_case=([^;]+)/.exec(req.headers.cookie||'')?.[1]:null;
  if(['late-heading','late-asset','early-input'].includes(nativeKind)){
-  const head=`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Native fragment loading fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><script async src="/fixture.js"></script><main id="main-content" data-nav-inert><h1>Home — synthetic delayed content</h1><button class="fixture-action" id="native-early-control">Conservar mi foco</button><div id="prelude"></div>`;
+  const head=`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Native fragment loading fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><script async src="/fixture.js"></script><main id="main-content" data-nav-inert><h1>Home — synthetic delayed content</h1><button class="fixture-action" id="native-early-control">Conservar mi foco</button><div id="prelude"></div>`;
   const destination='<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section><div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside>';
   res.setHeader('content-type','text/html;charset=utf-8');
   if(nativeKind==='late-heading'){
@@ -65,7 +65,9 @@ const server=createServer((req,res)=>{
   }
   return;
  }
- res.setHeader('content-type','text/html;charset=utf-8');res.end(`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navigation component fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><main id="main-content" data-nav-inert><h1>${path==='/'?'Home':path==='/me'?'Me — synthetic routing destination':'About'} — synthetic content</h1><div id="prelude"></div>${path==='/'?'<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section>':''}<div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside><script src="/fixture.js"></script></body></html>`);
+ // The React mount adapter is layout-transparent, matching the production
+ // header's body-level containing block without overriding its sticky CSS.
+ res.setHeader('content-type','text/html;charset=utf-8');res.end(`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navigation component fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><main id="main-content" data-nav-inert><h1>${path==='/'?'Home':path==='/me'?'Me — synthetic routing destination':'About'} — synthetic content</h1><div id="prelude"></div>${path==='/'?'<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section>':''}<div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside><script src="/fixture.js"></script></body></html>`);
 });
 await new Promise((ok,fail)=>{server.once('error',fail);server.listen(Number(process.env.QA_PORT||3302),'127.0.0.1',ok)});
 const origin=`http://127.0.0.1:${server.address().port}`;
@@ -103,7 +105,7 @@ async function retained(page,name){
  check(await page.locator('#foreign-inert').evaluate(node=>node.inert&&node.getAttribute('aria-hidden')==='false'),'Existing inert and aria preserved '+name);
 }
 async function passportGeometry(page){
- return page.locator('#pasaporte-digital h2').evaluate(node=>{const h=node.getBoundingClientRect(),header=document.querySelector('body > #navigation > header').getBoundingClientRect(),hit=document.elementFromPoint(h.left+h.width/2,h.top+Math.min(h.height/2,16));return{headingTop:h.top,headerBottom:header.bottom,unobstructed:hit===node||node.contains(hit),scrollMargin:getComputedStyle(node.closest('section')).scrollMarginTop};});
+ return page.locator('#pasaporte-digital h2').evaluate(node=>{const h=node.getBoundingClientRect(),headerNode=document.querySelector('body > #navigation > header'),header=headerNode.getBoundingClientRect(),hit=document.elementFromPoint(h.left+h.width/2,h.top+Math.min(h.height/2,16));return{headingTop:h.top,headerTop:header.top,headerBottom:header.bottom,headerPosition:getComputedStyle(headerNode).position,headerIsStickyAtViewportTop:getComputedStyle(headerNode).position==='sticky'&&Math.abs(header.top)<=1&&header.bottom>=44,unobstructed:hit===node||node.contains(hit),scrollMargin:getComputedStyle(node.closest('section')).scrollMarginTop};});
 }
 async function earlyMenuInteraction(page,name){
  // Focus a real menu link as soon as React mounts it, before the scheduled
@@ -184,7 +186,7 @@ async function nativeLoadCase(width,theme,kind){
    check(nativeDestination&&await page.locator('#destination-action').evaluate(node=>node===document.activeElement)
     &&await page.locator('#pasaporte-digital h2').getAttribute('tabindex')===null,
     'Completed native load focuses destination and continues local Tab '+name);
-   const geometry=await passportGeometry(page);check(geometry.headingTop>=geometry.headerBottom&&geometry.unobstructed,'Native destination stays unobstructed below real header with production fragment margin '+name,geometry);
+   const geometry=await passportGeometry(page);check(geometry.headerIsStickyAtViewportTop&&geometry.headingTop>=geometry.headerBottom&&geometry.unobstructed,'Native destination stays unobstructed below real header with production fragment margin '+name,geometry);
   }
   details.afterRelease=await failureSnapshot(page);
   await page.goBack({waitUntil:'networkidle'});await frames(page);
@@ -274,7 +276,7 @@ try{
    if(width>520){trigger=await openMenu(page);await page.mouse.click(8,350);await frames(page);check(await trigger.evaluate(node=>node===document.activeElement)&&await page.getByRole('dialog').count()===0,'Exposed scrim returns trigger focus '+name);await retained(page,'scrim '+name);}
    await openMenu(page);await page.getByRole('dialog').getByRole('link',{name:'Pasaporte digital',exact:true}).press('Enter');
    await page.waitForFunction(()=>location.hash==='#pasaporte-digital'&&document.activeElement?.matches('#pasaporte-digital h2'));await frames(page);
-   const homeGeometry=await passportGeometry(page);check(await page.evaluate(()=>scrollY>500)&&homeGeometry.headingTop>=homeGeometry.headerBottom&&homeGeometry.unobstructed,'Home native anchor scrolls to unobstructed destination below real header '+name,homeGeometry);
+   const homeGeometry=await passportGeometry(page);check(await page.evaluate(()=>scrollY>500)&&homeGeometry.headerIsStickyAtViewportTop&&homeGeometry.headingTop>=homeGeometry.headerBottom&&homeGeometry.unobstructed,'Home native anchor scrolls to unobstructed destination below real header '+name,homeGeometry);
    check(await page.locator('#pasaporte-digital h2').getAttribute('tabindex')==='-1','Home keyboard focus moves to destination heading '+name);
    await page.keyboard.press('Tab');check(await page.locator('#destination-action').evaluate(node=>node===document.activeElement),'Tab continues in destination content '+name);
    check(await page.locator('#pasaporte-digital h2').getAttribute('tabindex')===null,'Temporary heading tabindex removed on blur '+name);await retained(page,'anchor '+name);
@@ -283,7 +285,7 @@ try{
    await page.waitForURL(origin+'/#pasaporte-digital');await page.waitForFunction(()=>document.activeElement?.matches('#pasaporte-digital h2'));await frames(page);
    check(await page.evaluate(()=>location.pathname==='/'&&location.hash==='#pasaporte-digital'&&scrollY>500),'Cross-route native fragment keeps URL and destination '+name);
    check(await page.locator('#pasaporte-digital h2').evaluate(node=>node===document.activeElement),'About→Home destination receives focus '+name);
-   const crossGeometry=await passportGeometry(page);check(crossGeometry.headingTop>=crossGeometry.headerBottom&&crossGeometry.unobstructed,'Cross-route passport destination stays unobstructed below real header '+name,crossGeometry);
+   const crossGeometry=await passportGeometry(page);check(crossGeometry.headerIsStickyAtViewportTop&&crossGeometry.headingTop>=crossGeometry.headerBottom&&crossGeometry.unobstructed,'Cross-route passport destination stays unobstructed below real header '+name,crossGeometry);
    await page.goBack({waitUntil:'networkidle'});check(new URL(page.url()).pathname==='/about','Native Back retains About route '+name);
    report.views.push({width,theme,paths:['/','/about'],closedDetailsTabStops:visibleCount});
   }catch(error){report.errors.push({name,error:error.message.slice(0,180),snapshot:await failureSnapshot(page)})}finally{await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2))}
