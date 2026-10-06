@@ -81,7 +81,7 @@ async function open(width=390,theme='light',nextPath='/docs'){
    state.calls.push(call);requestCalls.set(request,call);
    const receipt=(body,status=200)=>{call.fixtureResponse={httpStatus:status,ok:body?.ok===true,authenticated:body?.authenticated===true};};
    if(u.pathname.endsWith('/logout')){receipt({ok:true});return route.fulfill({json:{ok:true}});}
-   if(u.pathname.endsWith('/start')){if(state.holdStart)return;if(state.abortStart)return route.abort('failed');const status=state.start.ok?200:state.startHttp;receipt(state.start,status);return route.fulfill({status,json:state.start});}
+   if(u.pathname.endsWith('/start')){if(state.holdStart)return;if(state.abortStart)return route.abort('failed');const status=state.startHtml?state.startHttp:state.start.ok?200:state.startHttp;receipt(state.startHtml?null:state.start,status);return route.fulfill(state.startHtml?{status,contentType:'text/html',body:'<!doctype html><title>Local synthetic upstream unavailable</title>'}:{status,json:state.start});}
    if(u.pathname.endsWith('/verify')){if(state.holdVerify)await new Promise(release=>{state.releaseVerify=release;});receipt(state.verify,state.verify==='malformed'?200:state.verifyHttp);return route.fulfill(state.verify==='malformed'?{status:200,contentType:'text/html',body:'<!doctype html>upstream'}:{status:state.verifyHttp,json:state.verify});}
    if(u.pathname.endsWith('/session')){receipt(state.session,state.sessionHttp);return route.fulfill({status:state.sessionHttp,json:state.session,
     ...(state.sessionHttp===200&&state.session.ok===true&&state.session.authenticated===true?{headers:{'set-cookie':'consumer_qa=local; Path=/; HttpOnly; SameSite=Lax'}}:{})});}
@@ -96,6 +96,7 @@ async function open(width=390,theme='light',nextPath='/docs'){
 async function email(page){await page.getByRole('button',{name:'Email',exact:true}).click();await page.getByRole('textbox',{name:'Correo electrónico',exact:true}).fill('persona@example.test');}
 async function assess(page,selector,name,width,theme){await page.addScriptTag({content:axe});const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),selector);check(violations.filter(v=>['serious','critical'].includes(v.impact)).length===0,`${name} accessibility ${width} ${theme}`);check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name} no overflow ${width} ${theme}`);await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:true});report.views.push({name,width,theme,violations});}
 const unavailableMeta=['meta_configuration_missing','meta_configuration_invalid','meta_authentication_failed','consumer_whatsapp_provider_invalid','meta_payload_invalid'];
+const unavailableWhatsApp=[...unavailableMeta,'twilio_authentication_failed','twilio_consumer_otp_whatsapp_from_invalid'];
 const uncertainMeta=['meta_delivery_timeout','meta_delivery_failed','meta_receipt_invalid'];
 async function whatsappRecovery(error,width=390,theme='dark',capture=false){
  const recovery=await open(width,theme,productNext),p=recovery.page,state=recovery.state;
@@ -108,13 +109,17 @@ async function whatsappRecovery(error,width=390,theme='dark',capture=false){
  await p.getByRole('button',{name:'Recibir código',exact:true}).click();
  const alternative=p.getByRole('button',{name:'Continuar con email',exact:true});await alternative.waitFor();
  const message=await p.getByRole('status').innerText();
- if(unavailableMeta.includes(error))check(message.includes('WhatsApp no está disponible ahora.')&&message.includes('email'),`${label} unavailable provider explains email alternative`);
+ if(unavailableWhatsApp.includes(error))check(message.includes('WhatsApp no está disponible ahora.')&&message.includes('email'),`${label} unavailable provider explains email alternative`);
  if(uncertainMeta.includes(error))check(message.includes('confirmar el envío')&&/más (tarde|reciente)/.test(message),`${label} uncertain delivery warns that a code may still arrive`);
  if(error==='unexpected_provider_reply')check(message.includes('No pudimos iniciar el acceso.')&&message.includes('Tu contacto se conserva'),`${label} unknown response gives actionable generic recovery`);
  check(!message.includes(error)&&!message.includes('Meta')&&!message.includes('Graph'),`${label} recovery copy does not expose implementation details`);
  check(await p.getByRole('textbox',{name:'Código de acceso',exact:true}).count()===0,`${label} never claims a sent challenge`);
  check(await p.getByRole('button',{name:'Ya tengo un código',exact:true}).count()===(uncertainMeta.includes(error)||error==='twilio_delivery_failed'?1:0),`${label} late-code recovery exists only for uncertain delivery`);
  check(await phone.inputValue()==='1155551234',`${label} failure preserves phone draft`);
+ check(await alternative.getAttribute('data-consumer-email-recovery')==='primary',`${label} email is the primary recovery action`);
+ await p.waitForFunction(()=>document.activeElement?.dataset.consumerEmailRecovery==='primary');
+ check(await alternative.evaluate(n=>{const r=n.getBoundingClientRect();return r.height>=44&&r.width>=44&&r.top>=0&&r.bottom<=innerHeight&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===n;}),`${label} primary email recovery is focused and unobstructed`);
+ check(await p.getByRole('button',{name:'Reintentar WhatsApp',exact:true}).count()===1,`${label} WhatsApp remains a manual retry option`);
  check(await p.locator('form').getAttribute('aria-busy')==='false',`${label} failure restores form controls`);
  check(starts(state).length===1,`${label} failure causes one explicit send`);
  checkPayload(starts(state)[0].payload,{phone:'+5491155551234'},`${label} phone request carries only the normalized phone`);
@@ -131,6 +136,30 @@ async function whatsappRecovery(error,width=390,theme='dark',capture=false){
  check(await phone.inputValue()==='1155551234',`${label} phone draft survives the completed email fallback`);
  check(starts(state).length===2,`${label} returning to phone never starts another request`);
  report.scenarios.push({name:'whatsapp-error-recovery',error,width,theme,requests:state.calls});await recovery.context.close();
+}
+async function nonJsonWhatsAppRecovery(httpStatus,theme){
+ const s=await open(390,theme,productNext),p=s.page,state=s.state,label=`whatsapp-non-json/${httpStatus}/${theme}`;
+ state.identity.name=label;await email(p);await p.getByRole('button',{name:'WhatsApp',exact:true}).click();
+ const phone=p.getByRole('textbox',{name:'Número de teléfono sin código de país',exact:true});await phone.fill('1155551234');
+ state.startHtml=true;state.startHttp=httpStatus;
+ await p.getByRole('button',{name:'Recibir código',exact:true}).click();
+ const alternative=p.getByRole('button',{name:'Continuar con email',exact:true});await alternative.waitFor();
+ const message=await p.getByRole('status').innerText();
+ check(message.includes('No pudimos confirmar la solicitud.')&&message.includes('Puede que el mensaje llegue igualmente.'),`${label} malformed body explains uncertainty`);
+ check(!/WhatsApp no está disponible|código enviado|entrega confirmada|Local synthetic upstream/i.test(message),`${label} status alone does not certify delivery or configuration failure`);
+ check(await phone.inputValue()==='1155551234'&&new URL(p.url()).searchParams.get('next')===productNext,`${label} contact and destination survive a non-JSON response`);
+ check(await alternative.getAttribute('data-consumer-email-recovery')==='primary',`${label} email recovery remains primary`);
+ check(await p.getByRole('textbox',{name:'Código de acceso',exact:true}).count()===0&&starts(state).length===1,`${label} error never auto-enters verification or resends`);
+ await p.getByRole('button',{name:'Ya tengo un código',exact:true}).click();
+ const code=p.getByRole('textbox',{name:'Código de acceso',exact:true});await code.waitFor();await code.fill('135791');
+ check(starts(state).length===1,`${label} manual code entry creates no new challenge`);
+ await p.getByRole('button',{name:'Validar y continuar',exact:true}).click();
+ await p.getByRole('status').filter({hasText:'No pudimos validar ese código.'}).waitFor();
+ check(await code.inputValue()==='135791'&&new URL(p.url()).pathname==='/login',`${label} rejected manual code preserves draft without granting access`);
+ await p.getByRole('button',{name:'Continuar con email',exact:true}).click();await p.waitForFunction(()=>document.activeElement?.type==='email');
+ check(await p.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='persona@example.test'&&starts(state).length===1,`${label} fallback preserves email and does not send automatically`);
+ check(new URL(p.url()).searchParams.get('next')===productNext,`${label} fallback keeps exact TAP continuation`);
+ report.scenarios.push({name:'non-json-whatsapp-recovery',httpStatus,width:390,theme,requests:state.calls});await s.context.close();
 }
 async function lateCodeRecovery(width,theme,transportInterrupted=false){
  const s=await open(width,theme,productNext),p=s.page,state=s.state,label=`late-code/${transportInterrupted?'connection':'provider'}/${width}/${theme}`;
@@ -223,7 +252,14 @@ try{
   check(await p.locator('html').getAttribute('data-theme')===theme,`Requested login theme ${width} ${theme}`);
   const controls=await p.locator('.consumer-login-panel button,.consumer-login-panel input,.consumer-login-panel select').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().height>0).map(n=>({height:n.getBoundingClientRect().height,font:getComputedStyle(n).fontSize,tag:n.tagName})));
   check(controls.every(c=>c.height>=44),`Login controls at least 44px ${width} ${theme}`);check(controls.filter(c=>c.tag==='INPUT').every(c=>parseFloat(c.font)>=16),`Login inputs prevent mobile zoom ${width} ${theme}`);
-  await assess(p,'.consumer-login-panel','login-contact',width,theme);await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();await p.waitForFunction(()=>document.activeElement?.id==='consumer-access-code');
+  check(await p.getByRole('heading',{name:'Entrá a tu cuenta',exact:true}).count()===1,`Generic consumer destination does not promise a product return ${width} ${theme}`);
+  check(await p.locator('aside details').getAttribute('open')===null,`Optional service information starts collapsed ${width} ${theme}`);
+  if(width<=390){
+   const earlyForm=await p.locator('.consumer-login-panel').evaluate(panel=>{const field=panel.querySelector('input[type="email"]'),submit=panel.querySelector('button[type="submit"]');const input=field.getBoundingClientRect(),button=submit.getBoundingClientRect();return{scrollY,fieldBottom:input.bottom,submitBottom:button.bottom,viewport:innerHeight};});
+   check(earlyForm.scrollY===0&&earlyForm.fieldBottom<=earlyForm.viewport&&earlyForm.submitBottom<=earlyForm.viewport,`Mobile contact and submit appear without scrolling ${width} ${theme}`);
+   await p.screenshot({path:join(output,`login-first-viewport-${width}-${theme}.png`),fullPage:false});
+  }
+  await assess(p,'main','login-contact',width,theme);await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();await p.waitForFunction(()=>document.activeElement?.id==='consumer-access-code');
   checkPayload(starts(s.state)[0].payload,{email:'persona@example.test'},`Generic navigation is omitted from email delivery ${width} ${theme}`);
   check((await p.locator('[aria-current="step"]').innerText()).replace(/\s/g,'')==='2Tucódigo',`OTP step and focus ${width} ${theme}`);
   await assess(p,'.consumer-login-panel','login-code',width,theme);await p.goto(origin+'/register',{waitUntil:'networkidle'});
@@ -246,7 +282,8 @@ try{
   coveredMeta.add(unavailable);coveredMeta.add(uncertain);await magicProductContinuation(width,theme);variant++;
  }
  for(const error of [...unavailableMeta,...uncertainMeta].filter(error=>!coveredMeta.has(error)))await whatsappRecovery(error);
- for(const error of ['twilio_delivery_failed','twilio_authentication_failed','unexpected_provider_reply'])await whatsappRecovery(error);
+ for(const error of ['twilio_delivery_failed','twilio_authentication_failed','twilio_consumer_otp_whatsapp_from_invalid','unexpected_provider_reply'])await whatsappRecovery(error);
+ for(const httpStatus of [502,503])for(const theme of ['light','dark'])await nonJsonWhatsAppRecovery(httpStatus,theme);
  for(const width of [320,390,768,1440])for(const theme of ['light','dark'])await lateCodeRecovery(width,theme,width===390);
  for(const theme of ['light','dark'])await lateCodeSuccessfulReturn(theme);
  const continuationCases=[

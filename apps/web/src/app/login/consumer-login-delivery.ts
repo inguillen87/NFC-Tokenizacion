@@ -28,7 +28,7 @@ export function authStartErrorMessage(error: unknown) {
   if (reason === "resend_api_key_missing" || reason === "consumer_auth_from_email_missing" || reason === "smtp_credentials_missing") {
     return "No pudimos solicitar el código por email. Podés continuar con WhatsApp o intentar más tarde.";
   }
-  if (["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed",
+  if (["twilio_credentials_missing", "twilio_sender_missing", "twilio_authentication_failed", "twilio_consumer_otp_whatsapp_from_invalid",
     "consumer_whatsapp_provider_invalid", "meta_configuration_missing", "meta_configuration_invalid", "meta_authentication_failed", "meta_payload_invalid"].includes(reason)) {
     return "WhatsApp no está disponible ahora. Continuá con email para recibir tu código.";
   }
