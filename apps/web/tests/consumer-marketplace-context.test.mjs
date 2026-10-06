@@ -9,6 +9,7 @@ import * as availability from '../src/app/sun/tenant-action-availability.ts';
 import { normalizeSafeReturnPath } from '@product/config/safe-return-path';
 import { normalizeConsumerAuthReturnPath } from '../src/app/login/consumer-login-continuation.ts';
 import { sendMarketplaceRequest } from '../src/app/me/marketplace/marketplace-request.ts';
+import * as lists from '../src/app/me/_components/consumer-list-availability.ts';
 
 const require=createRequire(import.meta.url),css={__esModule:true,default:new Proxy({},{get:(_,key)=>String(key)})};
 function compile(path,overrides){const source=readFileSync(new URL(path,import.meta.url),'utf8'),m={exports:{}};const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;new Function('require','module','exports',js)(name=>name in overrides?overrides[name]:require(name),m,m.exports);return m.exports;}
@@ -17,7 +18,11 @@ const item={id:'synthetic-item',title:'Producto de ensayo',tenant_slug:'tenant-q
 const canonical=value=>typeof value==='string'&&/^[1-9]\d{0,15}$/.test(value)&&Number.isSafeInteger(Number(value));
 function page(configuration=config){const calls=[],grids=[];const Page=compile('../src/app/me/marketplace/page.tsx',{
   'next/link':{__esModule:true,default:({children,...props})=>React.createElement('a',props,children)},
-  '../_components/consumer-api':{buildConsumerNextPath:()=>'/me/marketplace',requireConsumerSession:async()=>calls.push('auth'),fetchConsumerPath:async()=>{calls.push('products');return{ok:true,items:[]};},fetchMarketplacePath:async path=>{calls.push(path);return{ok:true,items:[item]};},asArray:payload=>payload?.ok===true?payload.items||[]:[]},
+  '../_components/consumer-api':{buildConsumerNextPath:()=>'/me/marketplace',readConsumerSession:async()=>{calls.push('auth');return{status:'ready'};},fetchConsumerPath:async()=>{calls.push('products');return{ok:true,items:[]};},fetchMarketplacePath:async path=>{calls.push(path);return{ok:true,items:[item]};}},
+  '../_components/consumer-list-availability':lists,
+  '../_components/consumer-portal-recovery':{ConsumerPortalUnavailable:()=>{throw new Error('authenticated context must not become unavailable');}},
+  '../_components/me-portal-interactive-client':{ConsumerDataRetryButton:()=>React.createElement('button',null,'Reintentar carga')},
+  '../_components/consumer-list-recovery.module.css':css,
   '../_components/consumer-portal-model':{resolveMarketplaceTenant:({tenantFromQuery})=>tenantFromQuery},
   '../_components/portal-shell':{PortalShell:({children})=>React.createElement('main',null,children)},
   './marketplace-grid-client':{MarketplaceGridClient:props=>{grids.push(props);return React.createElement('div',null,'Synthetic catalog');}},

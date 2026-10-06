@@ -37,7 +37,8 @@ function page(payload, denied = false, configuration = publishedConfiguration) {
       calls.push(["configuration", eventId]); return configuration;
     } },
     "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
-    "../../_components/consumer-api": { requireConsumerSession: async (next) => { calls.push(["auth", next]); if (denied) throw new Error("redirect-login"); }, fetchConsumerPath: async (path) => { calls.push(["fetch", path]); return payload; } },
+    "../../_components/consumer-api": { buildConsumerNextPath: (path) => path, readConsumerSession: async (next) => { calls.push(["auth", next]); if (denied) throw new Error("redirect-login"); return { status: "ready" }; }, fetchConsumerPath: async (path) => { calls.push(["fetch", path]); return payload; } },
+    "../../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
     "../../_components/consumer-home-model": home,
     "../../_components/consumer-taps-model": taps,
     "../../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", null, "Reintentar carga") },

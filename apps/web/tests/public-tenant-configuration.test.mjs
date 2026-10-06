@@ -63,7 +63,11 @@ test("published SUN and generic portal guidance stay separate without creating l
 });
 test("BFF only fetches configuration after a private reading has been authorized and validated", () => {
   const page = readFileSync(new URL("../src/app/me/taps/[eventId]/page.tsx", import.meta.url), "utf8");
-  assert.ok(page.indexOf("await requireConsumerSession") < page.indexOf("await readPublicTenantConfiguration"));
+  const sessionRead = page.indexOf("await readConsumerSession");
+  const unavailableGuard = page.indexOf('if (session.status === "unavailable") return <ConsumerPortalUnavailable');
+  const privateRead = page.indexOf("await fetchConsumerPath");
+  const publicRead = page.indexOf("await readPublicTenantConfiguration");
+  assert.ok(sessionRead >= 0 && unavailableGuard > sessionRead && privateRead > unavailableGuard && publicRead > privateRead);
   assert.match(page, /const configuration = reading \? await readPublicTenantConfiguration\(eventId\) : null/);
   assert.match(page, /reading\.tenantSlug && contextualActions\.marketplace/);
 });

@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Bell, Gift, PackageCheck, Radio, Sparkles, Trophy, Star, ChevronRight, MessageSquareText } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { asArray, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerPath, fetchMarketplacePath, readConsumerSession } from "../_components/consumer-api";
+import { hasConsumerBrandIdentity, hasConsumerProductIdentity, hasConsumerTapIdentity, hasMarketplaceListingIdentity, readConsumerListSource } from "../_components/consumer-list-availability";
+import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
+import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
+import recoveryStyles from "../_components/consumer-list-recovery.module.css";
 import {
   buildBrandEngagement,
   flattenBrandNotifications,
@@ -39,8 +43,10 @@ function tierVisualTheme(tier: string) {
   };
 }
 
-export default async function BrandsPage() {
-  await requireConsumerSession("/me/brands");
+export default async function BrandsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
+  const params = (await searchParams) || {};
+  const session = await readConsumerSession(buildConsumerNextPath("/me/brands", params));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const [brandsPayload, productsPayload, tapsPayload, marketplacePayload] = await Promise.all([
     fetchConsumerPath("brands"),
     fetchConsumerPath("products"),
@@ -48,10 +54,15 @@ export default async function BrandsPage() {
     fetchMarketplacePath("products"),
   ]);
   
-  const brands = asArray<ConsumerBrand>(brandsPayload);
-  const products = asArray<ConsumerPortalProduct>(productsPayload);
-  const taps = asArray<ConsumerTap>(tapsPayload);
-  const listings = asArray<MarketplaceListing>(marketplacePayload);
+  const brandsSource = readConsumerListSource<ConsumerBrand>(brandsPayload, hasConsumerBrandIdentity);
+  const productsSource = readConsumerListSource<ConsumerPortalProduct>(productsPayload, hasConsumerProductIdentity);
+  const tapsSource = readConsumerListSource<ConsumerTap>(tapsPayload, hasConsumerTapIdentity);
+  const listingsSource = readConsumerListSource<MarketplaceListing>(marketplacePayload, hasMarketplaceListingIdentity);
+  const brands = brandsSource.data || [];
+  const products = productsSource.data || [];
+  const taps = tapsSource.data || [];
+  const listings = listingsSource.data || [];
+  const notificationsAvailable = productsSource.status === "ready" && tapsSource.status === "ready" && listingsSource.status === "ready";
   
   const engagement = buildBrandEngagement({ brands, products, taps, listings });
   const notifications = flattenBrandNotifications(engagement);
@@ -63,8 +74,8 @@ export default async function BrandsPage() {
   const overviewMetrics: Array<{ label: string; value: number | string; Icon: LucideIcon; color: string }> = [
     { label: "Mis Clubes", value: engagement.length, Icon: Sparkles, color: "text-amber-400" },
     { label: "Puntos reportados", value: totalPoints ?? "N/D", Icon: Trophy, color: "text-amber-300" },
-    { label: "Botellas", value: totalClaimed, Icon: PackageCheck, color: "text-emerald-400" },
-    { label: "Drops Habilitados", value: totalPromos, Icon: Gift, color: "text-cyan-400" },
+    { label: "Botellas", value: productsSource.status === "ready" ? totalClaimed : "N/D", Icon: PackageCheck, color: "text-emerald-400" },
+    { label: "Drops Habilitados", value: listingsSource.status === "ready" ? totalPromos : "N/D", Icon: Gift, color: "text-cyan-400" },
   ];
 
   return (
@@ -73,7 +84,13 @@ export default async function BrandsPage() {
       subtitle="Consultá los clubes, puntos y propuestas que tus marcas publican para esta cuenta."
       notificationCount={notifications.length}
     >
-      {!engagement.length ? (
+      {brandsSource.status === "unavailable" ? (
+        <section role="status" data-testid="consumer-brands-unavailable" className={recoveryStyles.notice}>
+          <h2>No pudimos cargar tus clubes de marcas</h2>
+          <p>Reintentá la consulta para ver tus membresías y puntos.</p>
+          <ConsumerDataRetryButton />
+        </section>
+      ) : !engagement.length ? (
         <section className="rounded-3xl border border-dashed border-white/10 bg-slate-950/25 p-8 text-center text-slate-400">
           <Sparkles className="mx-auto h-8 w-8 text-slate-600 animate-pulse" />
           <h3 className="mt-3 text-sm font-black text-white">No perteneces a ningún club de marcas</h3>
@@ -83,6 +100,14 @@ export default async function BrandsPage() {
         </section>
       ) : (
         <>
+          {!notificationsAvailable && <div role="status" data-testid="consumer-brands-partial" className={recoveryStyles.notice}>
+            <p>No pudimos cargar {[
+              productsSource.status === "unavailable" ? "tus productos" : null,
+              tapsSource.status === "unavailable" ? "tus lecturas" : null,
+              listingsSource.status === "unavailable" ? "las propuestas publicadas" : null,
+            ].filter(Boolean).join(", ")}. Las membresías y los datos disponibles siguen visibles.</p>
+            <ConsumerDataRetryButton />
+          </div>}
           {/* Header Dashboard Metrics */}
           <section className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,#121215_0%,#0e0e10_100%)] p-6 shadow-xl">
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -121,7 +146,7 @@ export default async function BrandsPage() {
               </div>
               <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[10px] font-bold text-rose-300">
                 <Bell className="h-3.5 w-3.5" />
-                {notifications.length} Novedades
+                {notificationsAvailable ? `${notifications.length} Novedades` : "Consulta incompleta"}
               </div>
             </div>
 
@@ -139,7 +164,7 @@ export default async function BrandsPage() {
               ))}
               {!notifications.length && (
                 <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-4 text-xs text-slate-400 lg:col-span-3 text-center">
-                  No hay notificaciones ni actualizaciones pendientes de tus marcas.
+                  {notificationsAvailable ? "No hay notificaciones ni actualizaciones pendientes de tus marcas." : "No pudimos consultar todas las novedades de tus marcas."}
                 </div>
               )}
             </div>
@@ -191,10 +216,10 @@ export default async function BrandsPage() {
                         {/* Summary Grid stats */}
                         <div className="mt-6 grid grid-cols-4 gap-2">
                           {[
-                            { label: "Botellas", value: item.productCount, Icon: PackageCheck, color: "text-emerald-400" },
-                            { label: "Escaneos", value: item.tapCount, Icon: Radio, color: "text-cyan-400" },
-                            { label: "Drops Live", value: item.activePromoCount, Icon: Gift, color: "text-amber-400" },
-                            { label: "Alertas", value: item.unreadCount, Icon: Bell, color: "text-rose-400" },
+                            { label: "Botellas", value: productsSource.status === "ready" ? item.productCount : "N/D", Icon: PackageCheck, color: "text-emerald-400" },
+                            { label: "Escaneos", value: tapsSource.status === "ready" ? item.tapCount : "N/D", Icon: Radio, color: "text-cyan-400" },
+                            { label: "Drops Live", value: listingsSource.status === "ready" ? item.activePromoCount : "N/D", Icon: Gift, color: "text-amber-400" },
+                            { label: "Alertas", value: notificationsAvailable ? item.unreadCount : "N/D", Icon: Bell, color: "text-rose-400" },
                           ].map(({ label, value, Icon, color }) => (
                             <div key={label} className="rounded-xl border border-white/5 bg-slate-900/30 p-2 text-center">
                               <Icon className={`h-3.5 w-3.5 mx-auto ${color}`} />
@@ -225,7 +250,7 @@ export default async function BrandsPage() {
                         <div className="flex items-center justify-between pb-2 border-b border-white/5">
                           <h3 className="text-xs font-bold text-white uppercase tracking-wider">Últimos Mensajes del Viñedo</h3>
                           <span className="rounded bg-rose-500/15 border border-rose-500/25 px-1.5 py-0.5 text-[8px] font-bold text-rose-300">
-                            {item.unreadCount} Nuevos
+                            {notificationsAvailable ? `${item.unreadCount} Nuevos` : "Consulta incompleta"}
                           </span>
                         </div>
 
@@ -245,7 +270,7 @@ export default async function BrandsPage() {
                             </Link>
                           ))}
                           {!item.notifications.length && (
-                            <p className="text-[10px] text-slate-500 py-3 text-center italic">Sin mensajes de fidelización por el momento.</p>
+                            <p className="text-[10px] text-slate-500 py-3 text-center italic">{notificationsAvailable ? "Sin mensajes de fidelización por el momento." : "No pudimos consultar todos los mensajes de la marca."}</p>
                           )}
                         </div>
                       </div>
@@ -261,7 +286,7 @@ export default async function BrandsPage() {
                                 <p className="text-slate-400 mt-0.5">BID {product.bid || "n/a"}</p>
                               </div>
                             ))}
-                            {!item.products.length && <p className="text-[9px] text-slate-600">Ninguno todavía.</p>}
+                            {!item.products.length && <p className="text-[9px] text-slate-600">{productsSource.status === "ready" ? "Ninguno todavía." : "Productos no disponibles para consulta."}</p>}
                           </div>
                         </div>
 
@@ -277,7 +302,7 @@ export default async function BrandsPage() {
                                 <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0" />
                               </div>
                             ))}
-                            {!item.taps.length && <p className="text-[9px] text-slate-600">Ninguno todavía.</p>}
+                            {!item.taps.length && <p className="text-[9px] text-slate-600">{tapsSource.status === "ready" ? "Ninguno todavía." : "Lecturas no disponibles para consulta."}</p>}
                           </div>
                         </div>
                       </div>

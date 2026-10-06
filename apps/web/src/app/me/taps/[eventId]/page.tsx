@@ -1,7 +1,8 @@
 import { ReadingCurrentNotices } from "../../_components/reading-current-notices";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CircleAlert, Clock3, LockKeyhole, MapPin, Package, ScanLine } from "lucide-react";
-import { fetchConsumerPath, requireConsumerSession } from "../../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerPath, readConsumerSession } from "../../_components/consumer-api";
+import { ConsumerPortalUnavailable } from "../../_components/consumer-portal-recovery";
 import { homeReadingHref } from "../../_components/consumer-home-model";
 import { parseConsumerTap } from "../../_components/consumer-taps-model";
 import { ConsumerDataRetryButton } from "../../_components/me-portal-interactive-client";
@@ -15,10 +16,12 @@ function reportedText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export default async function ConsumerReadingPage({ params }: { params: Promise<{ eventId: string }> }) {
+export default async function ConsumerReadingPage({ params, searchParams }: { params: Promise<{ eventId: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { eventId } = await params;
   const nextPath = homeReadingHref(eventId);
-  await requireConsumerSession(nextPath || "/me/taps");
+  const query = (await searchParams) || {};
+  const session = await readConsumerSession(buildConsumerNextPath(nextPath || "/me/taps", query));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const payload = nextPath ? await fetchConsumerPath(`taps/${encodeURIComponent(eventId)}`) : null;
   const item = payload?.ok === true && payload.item && typeof payload.item === "object" && !Array.isArray(payload.item) ? payload.item : null;
   const parsed = parseConsumerTap(item);

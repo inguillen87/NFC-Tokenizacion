@@ -41,7 +41,8 @@ function loadPage(payload,denied=false){
  const source=readFileSync(new URL('../src/app/me/experiences/page.tsx',import.meta.url),'utf8');
  const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  const overrides={
-  '../_components/consumer-api':{buildConsumerNextPath:(path,params)=>path+'?'+new URLSearchParams(params),requireConsumerSession:async next=>{calls.push(['session',next]);if(denied)throw Error('denied');},fetchConsumerPath:async path=>{calls.push(['read',path]);return payload;}},
+  '../_components/consumer-api':{buildConsumerNextPath:(path,params)=>path+'?'+new URLSearchParams(params),readConsumerSession:async next=>{calls.push(['session',next]);if(denied)throw Error('denied');return {status:'ready'};},fetchConsumerPath:async path=>{calls.push(['read',path]);return payload;}},
+  '../_components/consumer-portal-recovery':{ConsumerPortalUnavailable:()=>null},
   '../_components/portal-shell':{PortalShell:({children})=>React.createElement('main',null,children)},
   '../_components/me-portal-interactive-client':{ConsumerDataRetryButton:()=>React.createElement('button',null,'Reintentar carga')},
   './verified-experience-form':{VerifiedExperienceForm:props=>React.createElement('form',{'data-event':props.initialEventId},props.initialProductName)},

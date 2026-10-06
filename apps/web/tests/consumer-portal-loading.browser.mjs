@@ -133,7 +133,7 @@ async function expectUnavailable(page, context, name, width, theme, capture = tr
   observation.phase = "initial-request";
   observation.started = started;
   observation.requestStart = before;
-  const initialResponse = await page.goto(`${origin}/me?fromTap=1&tapEventId=900001`, { waitUntil: "commit" });
+  const initialResponse = await page.goto(`${origin}/me?fromTap=1&eventId=900001`, { waitUntil: "commit" });
   const documentEvidence = initialResponse.text().then((html) => {
     const evidence = { path: new URL(initialResponse.url()).pathname, responseStatus: initialResponse.status(), sha256: createHash("sha256").update(html).digest("hex"), ...extractInitialDocumentDigests(html) };
     observation.initialDocument = evidence;
@@ -156,7 +156,7 @@ async function expectUnavailable(page, context, name, width, theme, capture = tr
   report.timings.push({ name, width, theme, elapsedMs, syntheticStall: name.includes("stall") });
   if (name.includes("stall")) check(elapsedMs < 11_000, `${name}: bounded request leaves loading within 11 seconds including rendering`);
   check(new URL(page.url()).pathname === "/me", `${name}: temporary error does not redirect to login`);
-  check(new URL(page.url()).searchParams.get("tapEventId") === "900001", `${name}: return context survives failure`);
+  check(new URL(page.url()).searchParams.get("eventId") === "900001", `${name}: return context survives failure`);
   check(await page.getByTestId("consumer-home").count() === 0 && !(await page.locator("body").innerText()).includes("Producto local QA"), `${name}: unknown session exposes no private account products`);
   observation.privateDenialConfirmed = true;
   check(await error.getByRole("button", { name: "Reintentar", exact: true }).evaluate((node) => node.getBoundingClientRect().height >= 44), `${name}: retry touch target is at least 44 pixels`);
@@ -202,7 +202,7 @@ async function expectUnavailable(page, context, name, width, theme, capture = tr
   } finally { releaseRefresh(); await page.unroute(refreshUrl, holdRefresh); }
   observation.phase = "retry-ready-visible";
   check((await page.getByTestId("consumer-home").innerText()).includes("Producto local QA"), `${name}: explicit retry restores the actual account projection`);
-  check(new URL(page.url()).searchParams.get("tapEventId") === "900001", `${name}: retry preserves return context`);
+  check(new URL(page.url()).searchParams.get("eventId") === "900001", `${name}: retry preserves return context`);
   observation.retryReadyReads = fixture.requests.slice(retryReadStart).map(({ path, method, scenario, responseStatus, injectedFailure }) => ({ path, method, scenario, responseStatus, injectedFailure }));
   observation.retrySucceeded = ["/consumer/session", "/consumer/me", "/consumer/products", "/consumer/taps", "/consumer/brands"].every((path) => observation.retryReadyReads.some((read) => read.path === path && read.scenario === "ready" && read.responseStatus === 200 && read.injectedFailure === null));
   check(observation.retrySucceeded, `${name}: retry confirms all five ready account reads`);
@@ -231,10 +231,10 @@ try {
   const anonymous = await open(390, "light", "session-401");
   const anonymousBefore = fixture.requests.length;
   observations.get(anonymous.page).phase = "anonymous-request";
-  await anonymous.page.goto(`${origin}/me?fromTap=1&tapEventId=900001`, { waitUntil: "domcontentloaded" });
+  await anonymous.page.goto(`${origin}/me?fromTap=1&eventId=900001`, { waitUntil: "domcontentloaded" });
   await anonymous.page.waitForURL((url) => url.pathname === "/login");
   observations.get(anonymous.page).phase = "login-visible";
-  check(new URL(anonymous.page.url()).searchParams.get("next") === "/me?fromTap=1&tapEventId=900001", "genuine 401 redirects to login with exact return context");
+  check(new URL(anonymous.page.url()).searchParams.get("next") === "/me?fromTap=1&eventId=900001", "genuine 401 redirects to login with exact return context");
   check(await anonymous.page.getByTestId("consumer-home").count() === 0 && !(await anonymous.page.locator("body").innerText()).includes("Producto local QA"), "anonymous session never displays private account products");
   check(fixture.requests.slice(anonymousBefore).every((item) => item.path === "/consumer/session"), "anonymous access reads no private account sources");
   await anonymous.page.evaluate(() => Promise.all(window.__qaErrorDeliveries));

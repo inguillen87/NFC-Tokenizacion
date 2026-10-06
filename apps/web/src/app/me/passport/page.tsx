@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { buildConsumerNextPath, fetchConsumerMe, requireConsumerSession } from "../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerMe, readConsumerSession } from "../_components/consumer-api";
+import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { PortalShell } from "../_components/portal-shell";
 import { ShieldCheck, UserCheck, Award, Sparkles, WalletCards, PackageCheck, ChevronRight } from "lucide-react";
 
@@ -7,7 +8,8 @@ type Passport = { ok?: boolean; consumer?: { display_name?: string | null; email
 
 export default async function PassportPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
-  await requireConsumerSession(buildConsumerNextPath("/me/passport", params));
+  const session = await readConsumerSession(buildConsumerNextPath("/me/passport", params));
+  if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const payload = (await fetchConsumerMe()) as Passport | null;
   const status = String(payload?.consumer?.passport_status || "pending").toLowerCase();
   
