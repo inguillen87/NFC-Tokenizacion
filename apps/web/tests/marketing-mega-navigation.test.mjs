@@ -4,6 +4,25 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
+test("consumer account entry is direct and distinct from business sign in in every locale", async () => {
+  const navigation = await read("../src/components/marketing-mega-nav.tsx");
+  for (const [account, business] of [
+    ["Mi cuenta", "Ingresar empresas"],
+    ["My account", "Business sign in"],
+    ["Minha conta", "Acesso para empresas"],
+  ]) {
+    assert.ok(navigation.includes(`account: "${account}"`));
+    assert.ok(navigation.includes(`login: "${business}"`));
+  }
+  for (const entry of ["header", "menu"]) {
+    assert.match(navigation, new RegExp(`<Link href="/me" prefetch=\\{false\\}[^>]*data-consumer-entry="${entry}"`));
+  }
+  assert.equal(navigation.match(/href: "\/me"/g)?.length, 3);
+  assert.doesNotMatch(navigation, /\/login\?next=\/me/);
+  assert.match(navigation, /<a href=\{loginHref\} className=\{styles\.loginLink\}>\{copy\.login\}/);
+  assert.match(navigation, /href="\/\?contact=demo#contact-modal" className=\{styles\.headerCta\}/);
+});
+
 test("mega navigation groups commercial and technical depth on existing routes", async () => {
   const navigation = await read("../src/components/marketing-mega-nav.tsx");
 
