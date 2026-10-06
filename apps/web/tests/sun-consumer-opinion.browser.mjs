@@ -141,7 +141,7 @@ try {
         return route.continue();
       });
       phase('navigate');
-      await page.goto(origin + '/sun?snapshot=qa-closed&trace=synthetic&access=invalid', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.goto(origin + '/sun?snapshot=qa-opinion&trace=synthetic&access=invalid', { waitUntil: 'networkidle', timeout: 30000 });
       await page.getByTestId('sun-summary-product').waitFor();
       phase('summary ready');
       check(await page.locator('html').getAttribute('data-theme') === theme, 'Requested real theme ' + name);

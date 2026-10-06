@@ -46,6 +46,8 @@ type PostTapNextStepProps = {
   blockedActions?: string[];
   eventId?: string;
   freshToken?: string;
+  configuration?: unknown;
+  verifiedTenant?: boolean;
 };
 
 const JOURNEY_COPY: Record<JourneyKind, JourneyCopy> = {
@@ -127,10 +129,12 @@ export function PostTapNextStep({
   blockedActions = [],
   eventId = "",
   freshToken = "",
+  configuration,
+  verifiedTenant = false,
 }: PostTapNextStepProps) {
   const journeyKind = resolveJourneyKind(vertical, productName);
   const copy = JOURNEY_COPY[journeyKind];
-  const available = resolvePostTapQuickActionAvailability({ allowedActions, blockedActions });
+  const available = resolvePostTapQuickActionAvailability({ allowedActions, blockedActions, configuration, verifiedTenant, canEngage: isFreshTap && !isSnapshotView });
   const supportsRewards = (journeyKind === "wine" || journeyKind === "consumer") && available.rewards;
   const supportsWallet = (journeyKind === "wine" || journeyKind === "consumer")
     && available.wallet;

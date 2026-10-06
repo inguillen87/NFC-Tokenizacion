@@ -16,7 +16,7 @@ const styles = new Proxy({}, { get: (_, name) => String(name) });
 // Compile the production components without a browser, auth or API calls. Only
 // router context, CSS and unrelated shell children are replaced. React renders
 // the actual destination links, current-page state and dialog markup.
-function loadComponents(pathname) {
+function loadComponents(pathname, hooks = null) {
   let navigation;
   const stubRequire = (request) => {
     if (request === "next/link") return {
@@ -38,6 +38,7 @@ function loadComponents(pathname) {
     if (request === "@product/ui") return {
       ThemeToggle: ({ locale }) => React.createElement("button", { "data-test-theme-toggle": "preserved", "data-test-locale": locale }, "Tema"),
     };
+    if (request === "react" && hooks) return hooks;
     if (["react", "react/jsx-runtime", "lucide-react"].includes(request)) return require(request);
     throw new Error(`Unexpected portal dependency: ${request}`);
   };
@@ -74,6 +75,37 @@ function renderNavigation(pathname) {
   const { PortalNavigation } = loadComponents(pathname);
   return renderToStaticMarkup(React.createElement(PortalNavigation));
 }
+
+test("queued More close handlers preserve later focus and an already reopened dialog", () => {
+  const refs = [], states = [];
+  let focusCalls = 0;
+  const hooks = {
+    ...React,
+    useCallback: (callback) => callback,
+    useEffect: () => {},
+    useId: () => "focus-regression",
+    useRef: (current) => { const ref = { current }; refs.push(ref); return ref; },
+    useState: (initial) => [initial, (value) => states.push(value)],
+  };
+  const { PortalNavigation } = loadComponents("/me/products", hooks);
+  const tree = PortalNavigation(), [nav, dialog] = tree.props.children;
+  const trigger = nav.props.children.props.children[1];
+  const closeButton = dialog.props.children[0].props.children[1];
+  refs[0].current = { open: true, close() { this.open = false; }, showModal() { this.open = true; } };
+  refs[1].current = { focus() { focusCalls++; } };
+  closeButton.props.onClick();
+  assert.equal(refs[0].current.open, false);
+  assert.equal(focusCalls, 1, "explicit dismissal restores trigger focus once");
+  dialog.props.onClose();
+  assert.equal(focusCalls, 1, "a queued native close must not steal later focus");
+  trigger.props.onClick();
+  assert.equal(refs[0].current.open, true);
+  assert.equal(states.at(-1), true);
+  const stateUpdates = states.length;
+  dialog.props.onClose();
+  assert.equal(states.length, stateUpdates, "a stale close cannot mark the reopened dialog collapsed");
+  assert.equal(focusCalls, 1);
+});
 
 test("portal destinations preserve four primary routes and every existing secondary route exactly once", () => {
   assert.deepEqual(primary.map(({ label, href }) => ({ label, href })), expectedPrimary);

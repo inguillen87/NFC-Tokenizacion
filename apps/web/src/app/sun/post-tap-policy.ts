@@ -1,3 +1,5 @@
+import { resolveTenantActionAvailability } from "./tenant-action-availability";
+
 export type PostTapPolicyAction =
   | "claim"
   | "save"
@@ -73,10 +75,19 @@ export function isSecurePostTapActionAllowed(
 export function resolvePostTapQuickActionAvailability({
   allowedActions = [],
   blockedActions = [],
+  configuration,
+  verifiedTenant = false,
+  canEngage = true,
+  isDemoPreview = false,
 }: {
   allowedActions?: readonly string[];
   blockedActions?: readonly string[];
+  configuration?: unknown;
+  verifiedTenant?: boolean;
+  canEngage?: boolean;
+  isDemoPreview?: boolean;
 }): PostTapQuickActionAvailability {
+  const configured = resolveTenantActionAvailability({ configuration, verifiedTenant, canEngage, isDemoPreview, allowedActions, blockedActions });
   const primary = isPostTapPolicyActionAllowed("claim", allowedActions, blockedActions);
   const warranty = isPostTapPolicyActionAllowed("warranty", allowedActions, blockedActions);
   const provenance = isPostTapPolicyActionAllowed("provenance", allowedActions, blockedActions);
@@ -86,11 +97,8 @@ export function resolvePostTapQuickActionAvailability({
     warranty,
     trace: provenance,
     certificate: provenance,
-    rewards: isPostTapPolicyActionAllowed("rewards", allowedActions, blockedActions),
-    // Marketplace browsing is not part of the canonical SUN mutation matrix.
-    // Honor an explicit block without hiding a read-only catalog merely because
-    // older allow-lists omit this optional capability.
-    marketplace: !normalizeActions(blockedActions).has("marketplace"),
+    rewards: configured.loyalty,
+    marketplace: configured.marketplace && isPostTapPolicyActionAllowed("marketplace", allowedActions, blockedActions),
     wallet: isAnyPostTapPolicyActionAllowed(["claim", "tokenization"], allowedActions, blockedActions),
   };
 }

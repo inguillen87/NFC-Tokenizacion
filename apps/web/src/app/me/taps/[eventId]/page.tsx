@@ -8,6 +8,8 @@ import { ConsumerDataRetryButton } from "../../_components/me-portal-interactive
 import { PortalShell } from "../../_components/portal-shell";
 import styles from "./reading.module.css";
 import { CurrentEditorialResourcesView } from "../../../sun/current-editorial-resources-view";
+import { resolveTenantActionAvailability, TENANT_ACTION_COPY } from "../../../sun/tenant-action-availability";
+import { readPublicTenantConfiguration } from "../../../../lib/public-tenant-configuration";
 
 function reportedText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -24,6 +26,8 @@ export default async function ConsumerReadingPage({ params }: { params: Promise<
   const product = reading ? reportedText(Object.hasOwn(item!, "historical_product_name") ? item?.historical_product_name : item?.product_name) : null;
   const brand = reading ? reportedText(Object.hasOwn(item!, "historical_brand_name") ? item?.historical_brand_name : item?.brand_name) || reading.tenantName || reading.tenantSlug : null;
   const batch = reading ? reportedText(item?.bid) : null;
+  const configuration = reading ? await readPublicTenantConfiguration(eventId) : null;
+  const contextualActions = resolveTenantActionAvailability({ configuration, verifiedTenant: Boolean(reading?.tenantSlug) });
 
   return <PortalShell title="Tu lectura guardada" subtitle="Consultá el registro que está vinculado a tu cuenta.">
     <div className={styles.reading}>
@@ -35,7 +39,8 @@ export default async function ConsumerReadingPage({ params }: { params: Promise<
           <ReadingCurrentNotices tenant={reading.tenantSlug} bid={batch}/>
           <CurrentEditorialResourcesView currentEditorial={payload?.currentEditorial ?? item?.currentEditorial} />
           <dl className={styles.facts}><div><dt><Clock3 size={18} aria-hidden="true" />Fecha y hora</dt><dd>{reading.dateTime ? <time dateTime={reading.dateTime}>{reading.date}</time> : reading.date}</dd></div><div><dt><MapPin size={18} aria-hidden="true" />Zona reportada</dt><dd>{reading.location || "No informada"}</dd></div></dl>
-          <nav className={styles.actions} aria-label="Continuar desde esta lectura"><Link className={styles.primary} href="/me/products"><Package size={18} aria-hidden="true" />Ver mis productos<ArrowRight size={18} aria-hidden="true" /></Link>{reading.tenantSlug && <Link className={styles.secondary} href={`/me/marketplace?tenant=${encodeURIComponent(reading.tenantSlug)}`}>Ver catálogo de la marca<ArrowRight size={18} aria-hidden="true" /></Link>}</nav>
+          <nav className={styles.actions} aria-label="Continuar desde esta lectura"><Link className={styles.primary} href="/me/products"><Package size={18} aria-hidden="true" />Ver mis productos<ArrowRight size={18} aria-hidden="true" /></Link>{reading.tenantSlug && contextualActions.marketplace && <Link className={styles.secondary} href={`/me/marketplace?tenant=${encodeURIComponent(reading.tenantSlug)}`}>Ver catálogo de la marca<ArrowRight size={18} aria-hidden="true" /></Link>}</nav>
+          {reading.tenantSlug && contextualActions.state !== "published" ? <p role="status" className={styles.muted}>{TENANT_ACTION_COPY["es-AR"][contextualActions.state === "unavailable" ? "unavailable" : "unpublished"]}</p> : null}
           <details className={styles.details}><summary>Ver datos y alcance del registro</summary><dl><div><dt>Resultado original</dt><dd>{reading.verdict || "No informado"}</dd></div><div><dt>Empresa del registro</dt><dd>{reading.tenantSlug || "No informada"}</dd></div><div><dt>Referencia</dt><dd>#{reading.id}</dd></div></dl><p>Esta es una lectura guardada, no un tap nuevo. La ubicación y el resultado corresponden al evento reportado; no certifican por sí solos el contenido o la custodia física del producto. Los horarios se muestran en UTC.</p></details>
         </article>}
     </div>

@@ -35,10 +35,10 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   const entry={path:url.pathname,method:request.method(),id,mode,body,status:null};requests.push(entry);
   if(mode==='headers-hang'){held.push(route);return;}
   if(mode==='connection'){entry.networkAborted=true;return route.abort('failed');}
-  const status=mode==='unauthorized'?401:mode==='context-denied'?403:mode==='rate-limit'?429:mode==='partial'&&id==='market-olive-qa'?503:200;
+  const status=mode==='configuration-changed'?409:mode==='unauthorized'?401:mode==='context-denied'?403:mode==='rate-limit'?429:mode==='partial'&&id==='market-olive-qa'?503:200;
   entry.status=status;
   if(mode==='invalid-json')return route.fulfill({status,contentType:'application/json',body:'not JSON'});
-  return route.fulfill({status,contentType:'application/json',body:JSON.stringify({ok:status===200,error:status===403?'passport_context_required':status===429?'internal_rate_limit_qa':status!==200?'internal_provider_error_qa':undefined,deduplicated:false,request_mode:'request_only'})});
+  return route.fulfill({status,contentType:'application/json',body:JSON.stringify({ok:status===200,error:status===409?'marketplace_configuration_changed':status===403?'passport_context_required':status===429?'internal_rate_limit_qa':status!==200?'internal_provider_error_qa':undefined,deduplicated:false,request_mode:'request_only'})});
  };
  await page.route(endpoint,handler);
  await page.addInitScript(()=>{
@@ -145,11 +145,22 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   await list.getByText(/2 solicitudes registradas/).waitFor();
   const sent=requests.slice(start);record.scenarios.push({name:'explicit-age-and-list',requests:sent});
   check(sent.length===2&&sent.every(r=>r.status===200),`${label} exactly one synthetic request per selected product`);
+  check(sent.every(r=>r.body.postTapEventId==='900001'&&!('fresh_token' in r.body)),`${label} contextual inquiries retain the durable event without an NFC assertion`);
   check(sent.find(r=>r.id==='market-wine-qa')?.body.ageGateAccepted===true&&sent.find(r=>r.id==='market-olive-qa')?.body.ageGateAccepted===false,`${label} each request carries the product-specific explicit age decision`);
   check(sent.every(r=>!JSON.stringify(r.body).match(/MercadoPago|Stripe|MetaMask|Método elegido/)),`${label} request messages do not invent payment integration`);
   check(await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).isDisabled(),`${label} successful list is cleared`);
 
   if(width===390&&theme==='light'){
+   await page.goto(route.replace('tenant=consumer-qa','tenant=qa-empty'),{waitUntil:'networkidle'});await catalog.waitFor();
+   check(await catalog.locator('[data-marketplace-product]').count()===4,`${label} a URL brand override cannot replace the event's canonical published catalogue`);
+   await page.goto(base+'/me/marketplace?fromTap=1&eventId=900003&action=marketplace&tenant=consumer-qa',{waitUntil:'networkidle'});
+   check(await catalog.count()===0&&await page.getByText('Las consultas desde esta lectura no están disponibles. La marca pudo cambiar sus opciones o la lectura requiere revisión.',{exact:true}).count()===1,`${label} missing canonical brand never falls back to owned or URL-selected products`);
+   check(await page.getByRole('link',{name:'Consultar el catálogo general',exact:true}).getAttribute('href')==='/me/marketplace',`${label} independent browsing requires an explicit safe link`);
+   await reload();mode='configuration-changed';await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();const withdrawnStart=requests.length;
+   await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();await catalog.getByText('Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.',{exact:true}).waitFor();
+   check(requests.length===withdrawnStart+1&&requests.at(-1).body.postTapEventId==='900001',`${label} withdrawn context makes one bound inquiry with no global fallback`);
+   check(await list.getByText('Oliva QA',{exact:true}).count()===1&&await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).isDisabled(),`${label} withdrawal preserves draft and prevents resubmission`);
+   record.scenarios.push({name:'contextual-withdrawal',requests:requests.slice(withdrawnStart),draftPreserved:true});mode='success';
    for(const failureMode of ['context-denied','rate-limit','invalid-json','connection','headers-hang','body-hang']){
     await reload();mode=failureMode;await page.evaluate(value=>{window.__marketplaceBodyHang=value;},failureMode==='body-hang');
     await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();const before=requests.length;

@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import ts from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as availability from "../src/app/sun/tenant-action-availability.ts";
 
 const require = createRequire(import.meta.url);
 const Link = ({ prefetch, children, ...props }) => React.createElement("a", { ...props, "data-prefetch": String(prefetch) }, children);
@@ -28,7 +29,8 @@ function render(componentFile, componentName, props) {
   const component = load(componentFile, {
     "next/link": { __esModule: true, default: Link },
     "./sun-locale-provider": locale,
-    "./post-tap-policy": load("post-tap-policy.ts"),
+    "./post-tap-policy": load("post-tap-policy.ts", { "./tenant-action-availability": availability }),
+    "./tenant-action-availability": availability,
     "./sun-services-hub-model": load("sun-services-hub-model.ts"),
     "./consumer-passport-link": { ConsumerTapLink: (props) => { seen.push(props); return React.createElement(consumerLink, props); } },
   })[componentName];
@@ -38,7 +40,10 @@ function render(componentFile, componentName, props) {
   finally { globalThis.fetch = originalFetch; }
 }
 const eventId = "9007199254740993", freshToken = "private-fixture-capability";
+const configuration = { version: availability.TENANT_ACTIONS_VERSION, status: "published", allowedActions: ["marketplace", "lead"], catalogAvailable: true,
+  program: { id: "program-a", name: "Programa", pointsName: "Puntos", pointsPerValidTap: 0 }, trivia: null };
 const base = {
+  configuration, verifiedTenant: true, allowedActions: ["claim", "tokenization", "provenance", "rewards", "marketplace"],
   vertical: "wine", productName: "Vino", isFreshTap: true, isSnapshotView: false,
   protectedTitle: "Consulta", protectedCopy: "Nuevo tap requerido", primaryActionHref: "#protected-actions",
   rewardsHref: "/me/rewards?fromTap=1", marketplaceHref: "/me/marketplace?fromTap=1", walletHref: "/me/wallet?fromTap=1",
@@ -47,6 +52,7 @@ const base = {
 };
 const nextStep = (props = {}) => render("post-tap-next-step.tsx", "PostTapNextStep", { ...base, ...props });
 const serviceBase = {
+  configuration, verifiedTenant: true,
   purchaseHref: "/me/marketplace?fromTap=1", subscribeHref: "#subscribe", claimOrManageHref: "#protected-actions",
   warrantyHref: "https://brand.example/warranty", riskState: "clear", freshnessState: "fresh", locale: "es-AR",
   policyAvailability: { promotion: true, purchase: true, subscribe: true, claimOrManage: true, warranty: true },
@@ -84,7 +90,7 @@ test("historical and contradictory snapshot states cannot pass a fresh capabilit
   const snapshot = nextStep({ isSnapshotView: true });
   assert.ok(snapshot.seen.every(link => link.freshToken === ""));
   assert.doesNotMatch(snapshot.html, /consumer-passport-handoff|<button/);
-  assert.match(snapshot.html, /href="\/me\/rewards\?fromTap=1"[^>]*data-prefetch="false"/);
+  assert.doesNotMatch(snapshot.html, /href="\/me\/rewards\?fromTap=1"|href="\/me\/marketplace/);
 });
 
 test("services marketplace navigation uses the bridge while in-page and external resources stay links", () => {

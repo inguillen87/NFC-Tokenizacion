@@ -103,12 +103,13 @@ test("SUN API engagement uses the active presentation locale instead of hardcode
     assert.match(source, /useSunLocale\(\)/);
     assert.doesNotMatch(source, /locale:\s*"es-AR"/);
   }
-  assert.match(qr, /triviaSubmissionBody\(\{ eventId: triviaEventId, tenantSlug, freshToken, locale, answers \}\)/);
+  assert.match(qr, /triviaSubmissionBody\(\{ eventId: triviaEventId, tenantSlug, freshToken, locale, answers, expectedQuizId: loadedQuiz\?\.id, expectedQuizRevision: loadedQuiz\?\.revision \}\)/);
   assert.match(qr, /body: JSON\.stringify\(submission\)/);
   const answers = [{ questionId: "qa-question", answerIndex: 1 }];
+  const expectedQuizId = "10000000-0000-4000-8000-000000000001", expectedQuizRevision = "a".repeat(64);
   for (const locale of ["es-AR", "en", "pt-BR"]) {
-    assert.deepEqual(triviaSubmissionBody({ eventId: "715", tenantSlug: "tenant-qa", freshToken: "verified-fixture-capability", locale, answers }), {
-      locale, tenantSlug: "tenant-qa", fresh_token: "verified-fixture-capability", answers,
+    assert.deepEqual(triviaSubmissionBody({ eventId: "715", tenantSlug: "tenant-qa", freshToken: "verified-fixture-capability", locale, answers, expectedQuizId, expectedQuizRevision }), {
+      locale, tenantSlug: "tenant-qa", fresh_token: "verified-fixture-capability", answers, expectedQuizId, expectedQuizRevision,
     });
   }
   assert.match(optIn, /locale,/);

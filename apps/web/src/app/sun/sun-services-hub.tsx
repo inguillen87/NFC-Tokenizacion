@@ -21,6 +21,7 @@ import {
 } from "./sun-services-hub-model";
 import { useSunLocale } from "./sun-locale-provider";
 import { ConsumerTapLink } from "./consumer-passport-link";
+import { resolveTenantActionAvailability, TENANT_ACTION_COPY } from "./tenant-action-availability";
 
 export type SunPublishedPromotion = {
   title: string;
@@ -43,6 +44,8 @@ export type SunServicesHubProps = {
   demoIntent?: DemoExperienceAction | null;
   eventId?: string;
   freshToken?: string;
+  configuration?: unknown;
+  verifiedTenant?: boolean;
 };
 
 const RISK_COPY: Record<SunServicesRiskState, { label: string; detail: string; className: string }> = {
@@ -187,14 +190,20 @@ export function SunServicesHub({
   demoIntent,
   eventId = "",
   freshToken = "",
+  configuration,
+  verifiedTenant = false,
 }: SunServicesHubProps) {
   const { locale: activeLocale, text } = useSunLocale();
   const isDemo = freshnessState === "demo";
+  const configured = resolveTenantActionAvailability({ configuration, verifiedTenant, isDemoPreview: isDemo });
   const demoCopy = DEMO_COPY[activeLocale || locale];
-  const promotionPublished = typeof promotion?.title === "string" && Boolean(promotion.title.trim());
+  const promotionPublished = typeof promotion?.title === "string" && Boolean(promotion.title.trim()) && (isDemo || promotion.state === "published");
   const available = resolveSunServicesHubAvailability({
     riskState,
-    policyAvailability,
+    policyAvailability: { ...policyAvailability,
+      promotion: policyAvailability.promotion && (isDemo || configured.state !== "unavailable"),
+      purchase: policyAvailability.purchase && configured.marketplace,
+      subscribe: policyAvailability.subscribe && configured.lead },
     promotionPublished,
     purchaseHref,
     subscribeHref,
@@ -365,7 +374,7 @@ export function SunServicesHub({
           })}
         </nav>
       ) : (
-        <p className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">La marca no habilitó servicios adicionales para este producto.</p>
+        <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">{TENANT_ACTION_COPY[activeLocale || locale][configured.state === "unavailable" ? "unavailable" : configured.state === "unpublished" ? "unpublished" : "empty"]}</p>
       )}
     </section>
   );

@@ -35,6 +35,9 @@ test("one blocked commercial action never invalidates an otherwise fresh authent
 
 test("quick post-tap CTAs independently honor allow and block policy", () => {
   const available = resolvePostTapQuickActionAvailability({
+    verifiedTenant: true,
+    configuration: { version: "nexid.tenant-actions.v1", status: "published", allowedActions: [], catalogAvailable: false,
+      program: { id: "program-a", name: "Programa", pointsName: "Puntos", pointsPerValidTap: 0 }, trivia: null },
     allowedActions: ["claim", "provenance", "rewards"],
     blockedActions: ["warranty", "tokenization", "marketplace"],
   });
@@ -59,7 +62,7 @@ test("quick post-tap CTAs independently honor allow and block policy", () => {
     trace: true,
     certificate: true,
     rewards: false,
-    marketplace: true,
+    marketplace: false,
     wallet: false,
   });
 });
@@ -73,7 +76,7 @@ test("post-tap journey adapts the next action without implying ownership from a 
   assert.ok(component.indexOf("if (/logistic") < component.indexOf("if (/wine"), "operational carriers must not inherit consumer wine actions");
   assert.match(component, /el tap por s[ií] solo no transfiere custodia ni propiedad/i);
   assert.match(component, /Ninguna ocurre s[oó]lo por acercar el tel[eé]fono/i);
-  assert.match(component, /resolvePostTapQuickActionAvailability\(\{ allowedActions, blockedActions \}\)/);
+  assert.match(component, /resolvePostTapQuickActionAvailability\(\{ allowedActions, blockedActions, configuration, verifiedTenant, canEngage: isFreshTap && !isSnapshotView \}\)/);
   assert.match(component, /const supportsRewards = \(journeyKind === "wine" \|\| journeyKind === "consumer"\) && available\.rewards/);
   assert.match(component, /const supportsWallet = \(journeyKind === "wine" \|\| journeyKind === "consumer"\)/);
   assert.match(component, /available\.primary \? \(/);
@@ -133,7 +136,7 @@ test("QR engagement is wine-only, policy-aware and never confirms local rewards 
 
   assert.match(page, /!isQrScan && trustSignals\.antiReplay === false/);
   assert.match(page, /\(!isTechnicallyAuthentic && !isQrScan\)/);
-  assert.match(page, /const showEngagementSuite = engagementBaseEligible && isWineProduct/);
+  assert.match(page, /const showEngagementSuite = \(engagementBaseEligible \|\| isDemoPreview\) && isWineProduct/);
   assert.match(page, /<DeferredQREngagementSuite[\s\S]*allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
   assert.match(page, /purchase: postTapQuickActions\.marketplace && !isRiskBlocked/);
   assert.match(page, /<SunLocationExperience/);
@@ -141,7 +144,8 @@ test("QR engagement is wine-only, policy-aware and never confirms local rewards 
   assert.match(page, /showRoute=\{isDemoPreview\}/);
   assert.match(page, /La fuente y la precisión quedan explicadas sin inventar una ruta/);
 
-  assert.match(engagement, /const canUseRewards = isPostTapPolicyActionAllowed\("rewards", allowedActions, blockedActions\)/);
+  assert.match(engagement, /resolveTenantActionAvailability\(\{ configuration: effectiveConfiguration/);
+  assert.doesNotMatch(engagement, /hasEngagementAllowList|qr_sommelier|anonymous_qr_sommelier/);
   assert.match(engagement, /pointsAwarded: 0/);
   assert.match(engagement, /isLocal: true/);
   assert.match(engagement, /Resultado educativo local: no se otorgaron puntos ni premios/);

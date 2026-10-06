@@ -17,8 +17,9 @@ const publication = { protocol: 'nexid.current-editorial.v1', source: 'passport_
   publishedAt: '2026-10-04T15:00:00Z', contentDigest: 'a'.repeat(64), document: { schemaVersion: 'nexid.passport-editorial.v1', template: 'agro', locale: 'es-AR',
     identity: { product_name: 'Producto publicado de ensayo', public_lot_label: 'QA-3', sku: null, winery: 'Empresa de ensayo', region: null, image_url: null },
     agro_product_profile: { technicalSheetUrl: 'https://docs.example.test/current.pdf', safetySheetUrl: null } } };
-const quiz = { ok: true, quiz: { id: 'qa-configured-quiz', questions: [{ id: 'q1', prompt: 'Pregunta publicada de ensayo', options: ['Respuesta de ensayo uno', 'Respuesta de ensayo dos'] }] }, previousAttempt: null };
-const fixture = `import React from 'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{CurrentEditorialResourcesView}from'./src/app/sun/current-editorial-resources-view';import shell from'./src/app/me/_components/portal-shell.module.css';const p=new URLSearchParams(location.search),editorial=${JSON.stringify(publication)};editorial.state=p.get('editorial')||'published';createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale='es-AR'><main className={shell.portal} style={{padding:16,boxSizing:'border-box'}}><h1>Sincronización del tenant · ensayo local</h1><p>Datos sintéticos. Sin tap físico ni operaciones reales.</p><CurrentEditorialResourcesView currentEditorial={editorial}/><section className="sun-tap-experience"><QREngagementSuite wineryName='Empresa de ensayo' productName='Producto de ensayo' tenantSlug='tenant-qa' eventId='715' freshToken={p.has('noCapability')?'':'synthetic-verified-capability'} initialTab='trivia' allowedActions={['rewards']}/></section></main></SunLocaleProvider>);`;
+const quiz = { ok: true, quiz: { id: '10000000-0000-4000-8000-000000000001', revision: 'a'.repeat(64), questions: [{ id: 'q1', prompt: 'Pregunta publicada de ensayo', options: ['Respuesta de ensayo uno', 'Respuesta de ensayo dos'] }] }, previousAttempt: null };
+const configuration = { version: 'nexid.tenant-actions.v1', status: 'published', allowedActions: [], catalogAvailable: false, program: { id: '10000000-0000-4000-8000-000000000002', name: 'Programa de ensayo', pointsName: 'Puntos', pointsPerValidTap: 0 }, trivia: { id: quiz.quiz.id, revision: quiz.quiz.revision, title: 'Trivia de ensayo', pointsPerCorrect: 0, completionBonus: 0 } };
+const fixture = `import React from 'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{CurrentEditorialResourcesView}from'./src/app/sun/current-editorial-resources-view';import shell from'./src/app/me/_components/portal-shell.module.css';const p=new URLSearchParams(location.search),editorial=${JSON.stringify(publication)};editorial.state=p.get('editorial')||'published';createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale='es-AR'><main className={shell.portal} style={{padding:16,boxSizing:'border-box'}}><h1>Sincronización del tenant · ensayo local</h1><p>Datos sintéticos. Sin tap físico ni operaciones reales.</p><CurrentEditorialResourcesView currentEditorial={editorial}/><section className="sun-tap-experience"><QREngagementSuite wineryName='Empresa de ensayo' productName='Producto de ensayo' tenantSlug='tenant-qa' eventId='715' freshToken={p.has('noCapability')?'':'synthetic-verified-capability'} initialTab='trivia' allowedActions={['rewards']} configuration={${JSON.stringify(configuration)}}/></section></main></SunLocaleProvider>);`;
 const bundled = await build({ stdin: { contents: fixture, resolveDir: web, loader: 'tsx' }, bundle: true, write: false, outfile: 'fixture.js', format: 'esm', platform: 'browser', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'inert-fixture-navigation', setup(b) { b.onResolve({ filter: /^next\/link$/ }, () => ({ path: 'link', namespace: 'navigation' })); b.onLoad({ filter: /.*/, namespace: 'navigation' }, () => ({ contents: "import React from 'react';export default function Link({prefetch,...props}){return <a {...props}/>}", loader: 'tsx', resolveDir: web })); } }], logLevel: 'error' });
 const globalCss = await postcss([tailwind()]).process(await readFile(join(web, 'src/app/globals.css'), 'utf8'), { from: join(web, 'src/app/globals.css') });
 const js = bundled.outputFiles.find(file => file.path.endsWith('.js'));
@@ -83,10 +84,10 @@ try {
     await assess(configured.page, width, theme, 'configured-withdrawn');
     await configured.page.getByTitle('Elegir respuesta 1').click();
     await configured.page.getByRole('button', { name: 'Finalizar trivia' }).click();
-    await configured.page.getByText('El backend confirmó 10 puntos de conocimiento.').waitFor();
+    await configured.page.getByText('Se confirmaron 10 puntos.').waitFor();
     check(configured.calls.filter(c => c.method === 'POST').length === 1, `${width}/${theme}: exactly one explicit submission`);
     const posted = configured.calls.find(c => c.method === 'POST').body;
-    check(posted.fresh_token === 'synthetic-verified-capability' && posted.tenantSlug === 'tenant-qa' && !('brandName' in posted), `${width}/${theme}: scoped capability in body without guessed product context`);
+    check(posted.fresh_token === 'synthetic-verified-capability' && posted.tenantSlug === 'tenant-qa' && posted.expectedQuizId === quiz.quiz.id && posted.expectedQuizRevision === quiz.quiz.revision && !('brandName' in posted), `${width}/${theme}: scoped capability and quiz publication in body without guessed product context`);
     check(await configured.page.getByRole('button', { name: 'Intentar de nuevo' }).count() === 0, `${width}/${theme}: no replay action after completion`);
     await configured.close();
   }
@@ -94,17 +95,34 @@ try {
     ['unauthorized', { status: 401, payload: { ok: false, error: 'unauthorized' } }, undefined, ''],
     ['invalid-quiz', { status: 200, payload: { ok: true, quiz: { id: 'qa', questions: [] } } }, undefined, ''],
     ['missing-capability', undefined, undefined, 'noCapability=1'],
+    ['not-enrolled-get', { status: 409, payload: { ok: false, error: 'consumer_not_enrolled' } }, undefined, ''],
+    ['not-enrolled-submit', { status: 200, payload: quiz }, { status: 409, payload: { ok: false, error: 'consumer_not_enrolled' } }, ''],
     ['expired-capability', { status: 200, payload: quiz }, { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required' } }, ''],
     ['uncertain-submit', { status: 200, payload: quiz }, { status: 503, payload: { ok: false, error: 'backend_unavailable' } }, ''],
   ]) {
     const t = await scenario({ read, submit, query });
     if (submit) { await t.page.getByTitle('Elegir respuesta 1').click(); await t.page.getByRole('button', { name: 'Finalizar trivia' }).click(); }
     await t.page.getByTestId('sun-trivia-unavailable').waitFor();
+    if (name.startsWith('not-enrolled-')) await t.page.getByText('La participación de tu cuenta no está habilitada para esta trivia. Consultá tus beneficios o contactá a la marca.', { exact: true }).waitFor();
     const text = await t.page.locator('.sun-engagement-suite').innerText();
     check(!/Resultado educativo local|Trivia completada|Puntos guardados|Cata, visita o voucher/.test(text), `${name}: no invented score, question or award`);
     check(await t.page.getByTitle('Elegir respuesta 1').count() === 0, `${name}: recovery prevents repeat submission`);
     if (name === 'missing-capability') check(t.calls.length === 0, 'missing capability makes no API request');
     if (submit) check(t.calls.filter(c => c.method === 'POST').length === 1, `${name}: one attempt only`);
+    if (name.startsWith('not-enrolled-')) {
+      check(text.includes('La participación de tu cuenta no está habilitada para esta trivia. Consultá tus beneficios o contactá a la marca.'), `${name}: definitive participation recovery`);
+      check(!/No pudimos confirmar|Acercá de nuevo|bloqueada|eliminada/.test(text), `${name}: no uncertain result or private account reason`);
+      check(await t.page.getByTestId('sun-trivia-unavailable').getByRole('link', { name: 'Consultar mis beneficios', exact: true }).getAttribute('href') === '/me/rewards', `${name}: existing benefits recovery link`);
+      check(t.calls.filter(c => c.method === 'GET').length === 1, `${name}: one bounded quiz read`);
+      if (submit) {
+        check((await t.page.getByTestId('sun-trivia-saved-answers').innerText()).includes('Respuesta de ensayo uno'), `${name}: selected answer stays available`);
+        check(await t.page.getByRole('button', { name: 'Finalizar trivia', exact: true }).count() === 0, `${name}: send lock remains closed`);
+      } else {
+        check(t.calls.filter(c => c.method === 'POST').length === 0, `${name}: denied setup submits nothing`);
+        check(await t.page.getByTestId('sun-trivia-saved-answers').count() === 0, `${name}: no fabricated answer draft`);
+      }
+      await assess(t.page, 390, 'light', name);
+    }
     await t.close();
   }
   check(report.geolocationCalls === 0, 'zero GPS calls');
