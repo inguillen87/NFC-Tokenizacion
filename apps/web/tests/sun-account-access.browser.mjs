@@ -58,6 +58,16 @@ report.helperHashesBefore={browser:digest(await readFile(fileURLToPath(import.me
 const axe=await readFile(process.env.AXE_MODULE_PATH,'utf8');
 const photo='<svg xmlns="http://www.w3.org/2000/svg" width="320" height="480" viewBox="0 0 320 480"><rect width="320" height="480" fill="#faf7ed"/><rect x="105" y="60" width="110" height="355" rx="24" fill="#233c32"/><text x="160" y="230" text-anchor="middle" fill="white">ENSAYO SUN</text></svg>';
 let browser=null,next=null,base='',serverFailed=false;const contexts=new Set(),pending=new Set();
+let cleanupStage=null;
+function exceptionCategory(error){
+ try{
+  const name=Object.getOwnPropertyDescriptor(error,'name')?.value,code=Object.getOwnPropertyDescriptor(error,'code')?.value;
+  if(code==='ERR_ASSERTION')return'assertion';
+  if(name==='TimeoutError')return'timeout';
+  if(name==='Error')return'error';
+  return'unknown';
+ }catch{return'unreadable';}
+}
 function track(promise){pending.add(promise);return promise.finally(()=>pending.delete(promise));}
 async function drain(){await Promise.race([Promise.allSettled([...pending]),new Promise(done=>setTimeout(done,10000))]);assert.equal(pending.size,0,'All guarded routes finish before context teardown');}
 const frames=['es-AR','en','pt-BR'].flatMap(locale=>['light','dark'].flatMap(theme=>[320,390,768,1440].flatMap(width=>['snapshot','demo'].map(mode=>({locale,theme,width,mode})))));
@@ -113,10 +123,13 @@ try{
   await page.goto(base+path,{waitUntil:'networkidle'});await page.getByTestId('sun-account-link').click();await page.waitForURL(url=>url.pathname==='/me'&&url.search==='');await page.locator('#consumer-portal-content').waitFor();
   check((await page.locator('#consumer-portal-content').innerText()).includes('Cuenta sintética SUN'),`${name}: explicit synthetic account opens the actual portal without enrollment`);
   check(report.blockedWrites.length===0&&report.geolocationCalls===0,`${name}: account navigation never performs a write or location request`);
-  await drain();closing=true;await page.close();await drain();await context.close();contexts.delete(context);
+  cleanupStage='drain_before_page_close';await drain();closing=true;
+  cleanupStage='page_close';await page.close();
+  cleanupStage='drain_after_page_close';await drain();
+  cleanupStage='context_close';await context.close();contexts.delete(context);cleanupStage=null;
  }
  check(report.frames.length===48,'All 48 real/demo viewport/theme/locale frames completed');check(report.errors.length===0,'Zero application, route and console errors');check(report.blockedWrites.length===0,'Zero write attempts');check(report.blockedExternal.length===0,'Zero external requests');check(report.geolocationCalls===0,'Zero GPS calls');report.status='passed';
-}catch{report.status='failed';report.failureReason='bounded_sun_account_qa_failed';}
+}catch(error){report.status='failed';report.failureReason='bounded_sun_account_qa_failed';report.failureCategory=exceptionCategory(error);if(cleanupStage)report.cleanupFailure={stage:cleanupStage,category:report.failureCategory};}
 finally{
  for(const context of contexts)try{await context.close();}catch{report.errors.push({reason:'context_close_failed'});report.status='failed';}
  if(browser)try{await browser.close();}catch{report.errors.push({reason:'browser_close_failed'});report.status='failed';}

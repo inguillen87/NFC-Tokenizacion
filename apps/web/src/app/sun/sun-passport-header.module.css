@@ -213,6 +213,10 @@
   .header .brand { min-height: 6rem; }
   .header .caption { left: 5.75rem; bottom: 1rem; }
 }
+@media (max-width: 389px) {
+  .header .brand { min-height: 4.5rem; }
+  .homeLink { min-height: 4.5rem; }
+}
 @media (max-width: 299px) {
   .header .utilities { grid-template-columns: minmax(0, 1fr) 2.75rem; }
   .header .accountLink { grid-column: 1 / -1; grid-row: 1; }

@@ -39,6 +39,14 @@ test("SUN header gives account access priority beside preferences while preservi
 
 test("SUN header keeps the web home identity and real controls touch-safe", async () => {
   const css = await readFile(new URL("../src/app/sun/sun-passport-header.module.css", import.meta.url), "utf8");
+  const parsedCss = postcss.parse(css);
+  const compact = parsedCss.nodes.find(node => node.type === "atrule" && node.name === "media" && node.params === "(max-width: 389px)");
+  for (const selector of [".header .brand", ".homeLink"]) {
+    const selected = compact.nodes.find(node => node.type === "rule" && node.selector === selector);
+    assert.equal(selected.nodes.find(node => node.type === "decl" && node.prop === "min-height").value, "4.5rem");
+  }
+  const regular = parsedCss.nodes.find(node => node.type === "atrule" && node.name === "media" && node.params === "(min-width: 390px)");
+  assert.equal(regular.nodes.find(node => node.type === "rule" && node.selector === ".header .brand").nodes.find(node => node.type === "decl" && node.prop === "min-height").value, "6rem");
 
   assert.match(css, /\.header \.brand \[data-brand-home-link\]\s*\{[^}]*min-width: 2\.75rem;[^}]*min-height: 2\.75rem;/);
   assert.match(css, /\.homeLink:focus-visible\s*\{[^}]*outline: 2px solid var\(--header-accent\)/);
