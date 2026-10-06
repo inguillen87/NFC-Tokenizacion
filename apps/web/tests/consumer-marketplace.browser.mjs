@@ -223,7 +223,7 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   await reload();mode='held-success';await wine().getByRole('button',{name:'Solicitar contacto',exact:true}).click();await wine().getByRole('button',{name:'Soy mayor de edad',exact:true}).waitFor();
   await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();const busyStart=requests.length;
   await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();await list.getByRole('button',{name:'Enviando...',exact:true}).waitFor();
-  check(await catalog.locator('article button[aria-busy]').evaluateAll(buttons=>buttons.length===marketplaceFixtureItems.length&&buttons.every(button=>button.disabled)),`${label} pending list freezes every contact mutation control`);
+  check(await catalog.locator('article button[aria-busy]').evaluateAll((buttons,expectedCount)=>buttons.length===expectedCount&&buttons.every(button=>button.disabled),marketplaceFixtureItems.length),`${label} pending list freezes every contact mutation control`);
   check(await catalog.getByRole('button',{name:'Agregar a la lista',exact:true}).evaluateAll(buttons=>buttons.length>0&&buttons.every(button=>button.disabled)),`${label} pending list freezes all additional selection mutations`);
   check(await list.locator('button').evaluateAll(buttons=>buttons.length>=4&&buttons.every(button=>button.disabled)),`${label} pending list freezes quantity, remove and send controls`);
   const age=wine().getByRole('button',{name:'Soy mayor de edad',exact:true});check(await age.isDisabled(),`${label} pending list disables an age-confirmation action opened beforehand`);
