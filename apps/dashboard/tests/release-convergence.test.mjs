@@ -9,6 +9,7 @@ import {canReadRuntimeConsole} from '../src/lib/runtime-readiness-access.ts';
 import {canReadGlobalNotifications} from '../src/lib/admin-notification-access.ts';
 import {readHistoricalBaseline,TENANT_SYNC_REVIEWED_SOURCES,TENANT_SYNC_SOURCE_BASE,tenantSyncHistoricalSourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 import {ENGAGEMENT_GOVERNANCE_BASE,ENGAGEMENT_GOVERNANCE_CHANGED,ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceInventory,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
+import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,marketplacePriorInventory,assertMarketplaceAddedSource} from './helpers/tenant-marketplace-reviewed-sources.mjs';
 const source=await readFile(new URL('../src/lib/supplier-request-proxy.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source.replace(/^import .*;\r?$/gm,''),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const moduleExports={};
@@ -55,9 +56,10 @@ test('every merged source file retains its immutable origin except the exact rev
  assert.equal(baseline.protocol,'nexid.release-convergence-source.v1');assert.equal(baseline.baselineSourceFiles,487);assert.equal(baseline.replaced.length,3);assert.equal(baseline.added.length,2);
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
- await walk(root);assertGovernanceInventory(actual,baseline.expected);
- for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,actual),expected),expected,path);}
+ await walk(root);assertGovernanceInventory(marketplacePriorInventory(actual,baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
+ for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,actual)),expected),expected,path);}
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+ for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  assert.ok(baseline.expected['apps/dashboard/src/components/supplier-request-workspace.tsx']);
  assert.ok(baseline.expected['apps/dashboard/src/lib/supplier-service-client.ts']);
 });

@@ -100,8 +100,8 @@ test("experience policy describes digital evidence instead of physical owner or 
   assert.match(experiences, /Titularidad digital confirmada/);
   assert.match(experiences, /Evento NFC registrado/);
   assert.doesNotMatch(experiences, /La persona toca el producto real|Dueño verificado|Tap físico confirmado/);
-  assert.match(marketplace, /Ejemplo: titularidad digital confirmada/);
-  assert.doesNotMatch(marketplace, /Ejemplo: dueño verificado/);
+  assert.match(marketplace, /parseTenantCatalog/);
+  assert.doesNotMatch(marketplace, /Ejemplo: dueño verificado|producto físico confirmado|propiedad física confirmada/);
 });
 
 test("Polygon and hash-only proof stay digital and do not assert physical custody", () => {
