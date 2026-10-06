@@ -6,6 +6,16 @@ type DeliveryPayload = {
 
 export const CONSUMER_ACCESS_UNKNOWN_ERROR = "No pudimos iniciar el acceso. Tu contacto se conserva; volvé a intentar o elegí el otro medio.";
 
+/** A transport failure can follow creation of a valid challenge. Verification
+ * stays explicit and the API still decides whether that challenge is usable. */
+export function consumerAuthStartMayHaveDeliveredCode(error: unknown) {
+  return typeof error === "string" && [
+    "twilio_delivery_failed", "resend_delivery_failed", "smtp_delivery_failed", "meta_delivery_failed",
+    "smtp_receipt_invalid", "resend_receipt_invalid", "twilio_receipt_invalid", "meta_receipt_invalid",
+    "smtp_delivery_timeout", "resend_delivery_timeout", "twilio_delivery_timeout", "meta_delivery_timeout",
+  ].includes(error);
+}
+
 export function authStartErrorMessage(error: unknown) {
   const reason = String(error || "");
   if (reason === "twilio_whatsapp_sandbox_forbidden") {

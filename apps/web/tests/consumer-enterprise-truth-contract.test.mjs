@@ -69,7 +69,8 @@ test("club voting and loyalty values are tenant-reported or explicitly simulated
   assert.match(model, /next_milestone/);
   assert.doesNotMatch(model, /tierFromScore|claimedCount \* 120|Math\.max\(8/);
   assert.match(brands, /Puntos reportados/);
-  assert.match(brands, /Progreso no reportado/);
+  assert.match(brands, /buildConsumerBrands/);
+  assert.doesNotMatch(brands, /Drops|Promos|Mensajes del Viñedo|tierVisualTheme|nextMilestone|membership_progress|notificationCount/);
   assert.match(rewards, /import \{ buildConsumerRewardsModel, findRequestedVoucher, rewardTenant \} from "\.\.\/_components\/consumer-rewards-model"/);
   assert.match(rewards, /buildConsumerRewardsModel\(rewardsPayload,/);
   assert.match(rewards, /buildConsumerWalletPointsModel\(walletPayload\)/);

@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as lists from "../src/app/me/_components/consumer-list-availability.ts";
 import * as engagement from "../src/app/me/_components/consumer-portal-model.ts";
+import * as brandsModel from "../src/app/me/brands/brands-model.ts";
 import * as availability from "../src/app/sun/tenant-action-availability.ts";
 
 const require = createRequire(import.meta.url);
@@ -49,6 +50,8 @@ function setup(destination, options = {}) {
     "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => React.createElement("h1", { "data-testid": "consumer-portal-unavailable" }, "Sesión no disponible") },
     "../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", { type: "button" }, "Reintentar carga") },
     "../_components/consumer-list-recovery.module.css": css,
+    "./brands-model": brandsModel,
+    "./brands.module.css": css,
     "./brands-voting-client": { BrandsVotingClient: () => React.createElement("div", { "data-testid": "voting" }) },
     "./marketplace.module.css": css,
     "./marketplace-grid-client": { MarketplaceGridClient: props => { grids.push(props); return React.createElement("div", { "data-testid": "catalog-grid" }, props.items.map(entry => entry.title).join(", ")); } },
@@ -97,18 +100,18 @@ test("failed and malformed memberships show recovery rather than claiming no clu
   for (const brands of [null, { ok: false, items: [] }, { ok: true, other: [] }, list([{}])]) {
     const subject = setup("brands", { brands }), html = await subject.render();
     assert.match(html, /consumer-brands-unavailable/); assert.match(html, /Reintentar carga/);
-    assert.doesNotMatch(html, /No perteneces a ningún club|Puntos reportados|Membresías Conectadas/);
+    assert.doesNotMatch(html, /No hay membresías registradas|Puntos reportados|consumer-brands-empty/);
   }
 });
 test("validated empty memberships retain the true empty state", async () => {
   const html = await setup("brands", { brands: list() }).render();
-  assert.match(html, /No perteneces a ningún club/); assert.doesNotMatch(html, /consumer-brands-unavailable/);
+  assert.match(html, /No hay membresías registradas/); assert.doesNotMatch(html, /consumer-brands-unavailable/);
 });
 test("partial brand reads keep reported membership points and available products without false empty feeds or failed-source zeroes", async () => {
   const html = await setup("brands", { products: list([product]), taps: null, catalog: null }).render();
   assert.match(html, /Marca sintética QA/); assert.match(html, />540<\/p>/);
   assert.match(html, /Producto sintético guardado/); assert.match(html, /consumer-brands-partial/);
-  assert.match(html, /Lecturas no disponibles para consulta/); assert.match(html, /Consulta incompleta/); assert.match(html, />N\/D<\/p>/);
+  assert.match(html, /Lecturas no disponibles para consulta/); assert.match(html, /Consulta incompleta/); assert.match(html, /<dt>Lecturas guardadas<\/dt><dd>N\/D<\/dd>/);
   assert.doesNotMatch(html, /No hay notificaciones ni actualizaciones pendientes|Sin mensajes de fidelización|0 Novedades|0 Nuevos/);
 });
 test("malformed ancillary brand rows stay unavailable independently of successful empty sources", async () => {

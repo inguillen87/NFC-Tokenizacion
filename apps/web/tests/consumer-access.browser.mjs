@@ -61,7 +61,7 @@ async function open(width=390,theme='light',nextPath='/docs'){
  await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
  await context.exposeBinding('__qaLocationCall',()=>{report.geolocationCalls++;});
  await context.addInitScript(()=>{window.__geoCalls=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__geoCalls++;void window.__qaLocationCall();throw Error('Unexpected location request');},watchPosition(){window.__geoCalls++;void window.__qaLocationCall();throw Error('Unexpected location watch');}}});});
- const page=await context.newPage(),state={page,identity:{name:'consumer-access',width,theme,initialNext:nextPath},calls:[],snapshots:[],navigationBoundaries:[],start:{ok:true,delivery:{channel:'email',status:'accepted'}},startHttp:503,verify:{ok:false},verifyHttp:400,session:{ok:true,authenticated:false},sessionHttp:200,holdStart:false,holdVerify:false,releaseVerify:null};
+ const page=await context.newPage(),state={page,identity:{name:'consumer-access',width,theme,initialNext:nextPath},calls:[],snapshots:[],navigationBoundaries:[],start:{ok:true,delivery:{channel:'email',status:'accepted'}},startHttp:503,verify:{ok:false},verifyHttp:400,session:{ok:true,authenticated:false},sessionHttp:200,holdStart:false,abortStart:false,holdVerify:false,releaseVerify:null};
  observedStates.push(state);const requestCalls=new WeakMap();
  page.on('pageerror',e=>report.errors.push(e.message));
  page.on('request',request=>{
@@ -81,7 +81,7 @@ async function open(width=390,theme='light',nextPath='/docs'){
    state.calls.push(call);requestCalls.set(request,call);
    const receipt=(body,status=200)=>{call.fixtureResponse={httpStatus:status,ok:body?.ok===true,authenticated:body?.authenticated===true};};
    if(u.pathname.endsWith('/logout')){receipt({ok:true});return route.fulfill({json:{ok:true}});}
-   if(u.pathname.endsWith('/start')){if(state.holdStart)return;const status=state.start.ok?200:state.startHttp;receipt(state.start,status);return route.fulfill({status,json:state.start});}
+   if(u.pathname.endsWith('/start')){if(state.holdStart)return;if(state.abortStart)return route.abort('failed');const status=state.start.ok?200:state.startHttp;receipt(state.start,status);return route.fulfill({status,json:state.start});}
    if(u.pathname.endsWith('/verify')){if(state.holdVerify)await new Promise(release=>{state.releaseVerify=release;});receipt(state.verify,state.verify==='malformed'?200:state.verifyHttp);return route.fulfill(state.verify==='malformed'?{status:200,contentType:'text/html',body:'<!doctype html>upstream'}:{status:state.verifyHttp,json:state.verify});}
    if(u.pathname.endsWith('/session')){receipt(state.session,state.sessionHttp);return route.fulfill({status:state.sessionHttp,json:state.session,
     ...(state.sessionHttp===200&&state.session.ok===true&&state.session.authenticated===true?{headers:{'set-cookie':'consumer_qa=local; Path=/; HttpOnly; SameSite=Lax'}}:{})});}
@@ -113,6 +113,7 @@ async function whatsappRecovery(error,width=390,theme='dark',capture=false){
  if(error==='unexpected_provider_reply')check(message.includes('No pudimos iniciar el acceso.')&&message.includes('Tu contacto se conserva'),`${label} unknown response gives actionable generic recovery`);
  check(!message.includes(error)&&!message.includes('Meta')&&!message.includes('Graph'),`${label} recovery copy does not expose implementation details`);
  check(await p.getByRole('textbox',{name:'Código de acceso',exact:true}).count()===0,`${label} never claims a sent challenge`);
+ check(await p.getByRole('button',{name:'Ya tengo un código',exact:true}).count()===(uncertainMeta.includes(error)||error==='twilio_delivery_failed'?1:0),`${label} late-code recovery exists only for uncertain delivery`);
  check(await phone.inputValue()==='1155551234',`${label} failure preserves phone draft`);
  check(await p.locator('form').getAttribute('aria-busy')==='false',`${label} failure restores form controls`);
  check(starts(state).length===1,`${label} failure causes one explicit send`);
@@ -130,6 +131,47 @@ async function whatsappRecovery(error,width=390,theme='dark',capture=false){
  check(await phone.inputValue()==='1155551234',`${label} phone draft survives the completed email fallback`);
  check(starts(state).length===2,`${label} returning to phone never starts another request`);
  report.scenarios.push({name:'whatsapp-error-recovery',error,width,theme,requests:state.calls});await recovery.context.close();
+}
+async function lateCodeRecovery(width,theme,transportInterrupted=false){
+ const s=await open(width,theme,productNext),p=s.page,state=s.state,label=`late-code/${transportInterrupted?'connection':'provider'}/${width}/${theme}`;
+ state.identity.name=label;await email(p);
+ state.start={ok:false,error:'resend_delivery_timeout'};state.startHttp=504;state.abortStart=transportInterrupted;
+ await p.getByRole('button',{name:'Recibir código',exact:true}).click();
+ const recovery=p.getByRole('button',{name:'Ya tengo un código',exact:true});await recovery.waitFor();
+ check(await p.getByRole('textbox',{name:'Código de acceso',exact:true}).count()===0,`${label} failed send never claims an accepted challenge`);
+ check(await p.getByRole('button',{name:'Volver a pedir código',exact:true}).count()===1,`${label} retry label describes another explicit request`);
+ check(starts(state).length===1&&state.calls.every(c=>!c.path.endsWith('/verify')),`${label} uncertain result does not resend or verify automatically`);
+ const callsBefore=state.calls.length;await recovery.click();
+ const code=p.getByRole('textbox',{name:'Código de acceso',exact:true});await code.waitFor();
+ check(state.calls.length===callsBefore,`${label} choosing code entry is local and sends no requests`);
+ check(await code.evaluate(n=>n===document.activeElement),`${label} explicit recovery focuses the code field`);
+ check((await p.getByRole('status').innerText()).includes('Todavía no confirmamos el envío ni tu acceso.'),`${label} recovery makes no delivery or authentication claim`);
+ check(await p.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='persona@example.test',`${label} recovery preserves contact`);
+ check(new URL(p.url()).searchParams.get('next')===productNext,`${label} recovery preserves product continuation`);
+ await code.fill('135791');await p.getByRole('button',{name:'Validar y continuar',exact:true}).click();
+ await p.getByRole('status').filter({hasText:'No pudimos validar ese código.'}).waitFor();
+ check(new URL(p.url()).pathname==='/login'&&await code.inputValue()==='135791',`${label} rejected challenge cannot navigate and preserves code`);
+ checkPayload(state.calls.filter(c=>c.path.endsWith('/verify'))[0].payload,{email:'persona@example.test',code:'135791'},`${label} explicit verification uses the unchanged API contract`);
+ await assess(p,'.consumer-login-panel','late-code-recovery-'+(transportInterrupted?'connection':'provider'),width,theme);
+ await p.getByRole('button',{name:'Cambiar contacto',exact:true}).click();
+ check(await code.count()===0&&await recovery.count()===0,`${label} changing contact discards late-code recovery`);
+ check(starts(state).length===1&&state.calls.filter(c=>c.path.endsWith('/verify')).length===1,`${label} changing contact causes no automatic mutation`);
+ report.scenarios.push({name:'late-code-recovery',width,theme,transportInterrupted,requests:state.calls});await s.context.close();
+}
+async function lateCodeSuccessfulReturn(theme){
+ const s=await open(390,theme,productNext),p=s.page,state=s.state,label=`late-code-return/${theme}`;
+ state.identity.name=label;await email(p);state.start={ok:false,error:'resend_receipt_invalid'};
+ await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('button',{name:'Ya tengo un código',exact:true}).click();
+ await p.getByRole('textbox',{name:'Código de acceso',exact:true}).fill('135791');state.verify={ok:true};state.verifyHttp=200;
+ await p.getByRole('button',{name:'Validar y continuar',exact:true}).click();await p.getByRole('status').filter({hasText:'No pudimos confirmar tu sesión'}).waitFor();
+ check(new URL(p.url()).pathname==='/login',`${label} code acknowledgement cannot enter without a confirmed session`);
+ state.session={ok:true,authenticated:true};await p.getByRole('button',{name:'Validar y continuar',exact:true}).click();
+ await p.waitForURL(url=>url.pathname==='/me/products'&&url.searchParams.get('eventId')==='900001');await p.getByTestId('consumer-product-library').waitFor();
+ check(new URL(p.url()).pathname+new URL(p.url()).search===productNext,`${label} late-code entry restores the exact product selection after session confirmation`);
+ check(starts(state).length===1,`${label} successful late-code entry never requests another code`);
+ check(state.calls.filter(c=>c.path.endsWith('/verify')).length===2,`${label} both checks follow explicit user verification`);
+ check(state.calls.filter(c=>!['GET','HEAD'].includes(c.method)).every(c=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(c.path)),`${label} restored destination does not save, associate or redeem automatically`);
+ report.scenarios.push({name:'late-code-successful-return',theme,requests:state.calls});await s.context.close();
 }
 async function magicProductContinuation(width,theme){
  const s=await open(width,theme,productNext),p=s.page,state=s.state,label=`magic-product/${width}/${theme}`;
@@ -205,6 +247,8 @@ try{
  }
  for(const error of [...unavailableMeta,...uncertainMeta].filter(error=>!coveredMeta.has(error)))await whatsappRecovery(error);
  for(const error of ['twilio_delivery_failed','twilio_authentication_failed','unexpected_provider_reply'])await whatsappRecovery(error);
+ for(const width of [320,390,768,1440])for(const theme of ['light','dark'])await lateCodeRecovery(width,theme,width===390);
+ for(const theme of ['light','dark'])await lateCodeSuccessfulReturn(theme);
  const continuationCases=[
   {name:'sensitive capability and device fields are removed',next:'/me/products?fromTap=1&eventId=900001&token=SYNTHETIC&tapAccess=SYNTHETIC&ctr=17&latitude=-34&unknown=1#private',expected:'/me/products?fromTap=1&eventId=900001'},
   {name:'safe keys receive stable canonical order',next:'/me/products?action=save&tenant=consumer-qa&bid=LOT.WINE-QA:1&focus=900001&eventId=9223372036854775807&fromTap=1',expected:'/me/products?fromTap=1&eventId=9223372036854775807&focus=900001&bid=LOT.WINE-QA%3A1&tenant=consumer-qa&action=save'},

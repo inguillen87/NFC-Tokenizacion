@@ -41,8 +41,10 @@
 .primary:disabled, .secondary:disabled { opacity: .6; cursor: wait; }
 .secondaryActions { display: grid; grid-template-columns: 1fr; gap: .65rem; }
 .secondary { border: 1px solid var(--access-border); border-radius: .75rem; padding: .65rem .85rem; background: var(--access-surface); color: var(--access-text); font-weight: 600; cursor: pointer; touch-action: manipulation; }
-.feedback { margin: 1rem 0 0; border: 1px solid var(--access-border); border-radius: .8rem; padding: .85rem 1rem; background: var(--access-subtle); color: var(--access-text) !important; font-size: .9375rem; line-height: 1.6; overflow-wrap: anywhere; }
+.feedback { margin: 0 0 1rem; border: 1px solid var(--access-border); border-radius: .8rem; padding: .85rem 1rem; background: var(--access-subtle); color: var(--access-text) !important; font-size: .9375rem; line-height: 1.6; overflow-wrap: anywhere; }
 .feedback[data-tone="error"] { border-color: var(--access-error); background: var(--access-error-bg); color: var(--access-error) !important; }
+.lateCodeRecovery { display: grid; gap: .65rem; border: 1px solid var(--access-border); border-radius: .8rem; padding: .85rem; background: var(--access-subtle); }
+.lateCodeRecovery p { margin: 0; font-size: .875rem; line-height: 1.6; }
 .register { display: grid; place-content: center; gap: 1.4rem; min-height: 100vh; padding: 1.5rem max(1rem, env(safe-area-inset-left)); background: var(--access-subtle); }
 .registerHeader { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: min(100%, 46rem); }
 .registerCard { width: min(100%, 46rem); border: 1px solid var(--access-border); border-radius: 1.4rem; padding: clamp(1.2rem, 5vw, 2.5rem); background: var(--access-surface); }
