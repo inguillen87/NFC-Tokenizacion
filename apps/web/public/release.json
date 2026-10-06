@@ -1,7 +1,7 @@
 {
   "application": "nexid-web",
   "version": "2026.10.06-web-consumer-entry.1",
-  "scope": "direct-consumer-portal-entry-and-distinct-business-access",
+  "scope": "consumer-entry-mobile-menu-accessibility-and-patched-image-processing",
   "baseCommit": "1cade40bf488f4153953c198601da0b945a9c61a",
   "physicalTapCertification": "not-included",
   "requiredApiRelease": "2026.10.06-api-tenant-marketplace.1",
