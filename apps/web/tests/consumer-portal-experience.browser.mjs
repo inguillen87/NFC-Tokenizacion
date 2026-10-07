@@ -29,6 +29,38 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+async function productPhotoRecovery(page,context,width,theme){
+ const observed={width,theme,failedRequests:0,updatedRequests:0,sameProductCard:false};
+ report.productPhotoRecovery??=[];report.productPhotoRecovery.push(observed);
+ await page.route('**/qa-photo/*',route=>{
+  const request=route.request(),url=new URL(request.url());
+  assert(url.origin===base&&request.method()==='GET'&&!url.search);
+  if(url.pathname==='/qa-photo/failed.svg'){observed.failedRequests++;return route.fulfill({status:404,contentType:'text/plain',body:'Synthetic missing photo'});}
+  assert.equal(url.pathname,'/qa-photo/updated.svg');observed.updatedRequests++;
+  return route.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="104" height="112"><rect width="104" height="112" fill="#17745d"/><title>Local synthetic replacement image</title></svg>'});
+ });
+ await context.addCookies([{name:'consumer_photo_qa',value:'failed',url:base,httpOnly:true,sameSite:'Lax'}]);
+ await page.goto(base+'/me',{waitUntil:'networkidle'});
+ const home=page.getByTestId('consumer-home'),card=home.locator('li').filter({has:page.getByRole('heading',{name:'Vino reserva QA',exact:true})});
+ await card.waitFor();
+ await page.waitForFunction(()=>!Array.from(document.querySelectorAll('[data-testid="consumer-home"] li')).find(node=>node.querySelector('h3')?.textContent==='Vino reserva QA')?.querySelector('img'));
+ // Next Image reassigns img.src during hydration to replay a pre-hydration
+ // error to onError. A missing SSR image can therefore make two bounded GETs.
+ const failedRequestsAtFallback=observed.failedRequests;
+ check(failedRequestsAtFallback>=1&&failedRequestsAtFallback<=2&&await card.locator('img').count()===0,`${width}/${theme} failed product photo has a stable fallback`);
+ await card.evaluate(node=>{window.__photoRecoveryCard=node;});
+ await context.addCookies([{name:'consumer_photo_qa',value:'updated',url:base,httpOnly:true,sameSite:'Lax'}]);
+ await home.getByRole('button',{name:'Reintentar carga',exact:true}).click();
+ const image=card.getByRole('img',{name:'Vino reserva QA',exact:true});await image.waitFor();
+ await page.waitForFunction(()=>{const node=document.querySelector('img[src$="/qa-photo/updated.svg"]');return node?.complete&&node.naturalWidth===104&&node.naturalHeight===112;});
+ observed.sameProductCard=await card.evaluate(node=>node===window.__photoRecoveryCard);
+ check(observed.sameProductCard,`${width}/${theme} actual Next refresh keeps the same mounted product card`);
+ check(new URL(await image.getAttribute('src'),base).href===base+'/qa-photo/updated.svg'&&await image.evaluate(node=>node.complete&&node.naturalWidth===104&&node.naturalHeight===112),`${width}/${theme} newly reported product photo replaces the failed source`);
+ check(observed.failedRequests===failedRequestsAtFallback&&observed.updatedRequests===1,`${width}/${theme} recovery loads the new source once without retrying the failed URL`);
+ await noOverflow(page,`${width}/${theme} recovered photo fits viewport`);
+ await assessment(page,'[data-testid="consumer-home"]','photo-recovered',width,theme);
+ await context.clearCookies({name:'consumer_photo_qa'});
+}
 async function nativeCloseRegression(page,more,menu,width,theme){
  const result={width,theme};report.nativeCloseRegression??=[];report.nativeCloseRegression.push(result);
  result.focus=await page.evaluate(async()=>{
@@ -77,6 +109,7 @@ try{
   await context.addInitScript(()=>{Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location request');},watchPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location watch');}}});});
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({width,theme,message:error.message}));
   await page.route('**/*',route=>{const request=route.request(),url=new URL(request.url());if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}return ['localhost','127.0.0.1'].includes(url.hostname)||['data:','blob:'].includes(url.protocol)?route.continue():route.abort();});
+  await productPhotoRecovery(page,context,width,theme);
   await page.goto(base+'/me/products',{waitUntil:'networkidle',timeout:90000});
   const library=page.getByTestId('consumer-product-library');await library.waitFor();
   check(await library.getByRole('button',{name:/Abrir ficha y avisos de /}).count()===12,`${width}/${theme} first page has 12 product actions`);

@@ -20,6 +20,7 @@ globalThis.fetch=async(input,init)=>{
   if(method!=='GET'&&method!=='HEAD')throw Error('consumer_portal_business_write_blocked');
   const headers=new Headers(init?.headers||(input instanceof Request?input.headers:undefined));
   const authorized=(headers.get('cookie')||'').includes('consumer_qa=local');
+  const photoQa=/(?:^|;\s*)consumer_photo_qa=(failed|updated)(?:;|$)/.exec(headers.get('cookie')||'')?.[1];
   if(url.pathname==='/consumer/session')return reply({ok:true,authenticated:authorized});
   if(/^\/public\/passport\/90000[123]\/configuration$/.test(url.pathname)){
    if(headers.has('cookie')||headers.has('authorization'))throw Error('public_configuration_must_not_forward_account_credentials');
@@ -31,9 +32,11 @@ globalThis.fetch=async(input,init)=>{
   }
   if(url.pathname.startsWith('/consumer/')){
    if(!authorized)return reply({ok:false},401);
-   if(url.pathname==='/consumer/products')return reply({ok:true,items});
+   if(url.pathname==='/consumer/products')return reply({ok:true,items:photoQa?items.map((item,index)=>index===0?{...item,image_url:photoQa==='failed'?'/qa-photo/failed.svg':'/qa-photo/updated.svg'}:item):items});
    if(url.pathname==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',status:'verified'},stats:{products:items.length,taps:3}});
-   if(url.pathname==='/consumer/brands')return reply({ok:true,items:[]});
+   // An explicit local-only partial-load state exposes the real router.refresh
+   // control for the image recovery regression. No production data is queried.
+   if(url.pathname==='/consumer/brands')return photoQa?reply({ok:false},503):reply({ok:true,items:[]});
    if(url.pathname==='/consumer/experiences')return reply({ok:true,verifiedExperiences:[]});
    if(url.pathname==='/consumer/taps')return reply({ok:true,items:items.slice(0,3).map(p=>({tap_event_id:p.latest_tap_event_id,tenant_slug:p.tenant_slug,product_name:p.product_name,bid:p.bid,verdict:p.latest_verdict,created_at:date}))});
    if(/^\/consumer\/taps\/90000[123]$/.test(url.pathname)){
