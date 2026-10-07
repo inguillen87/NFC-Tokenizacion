@@ -1993,11 +1993,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               data-sun-experience-interaction="sensory_sheet_visible"
             >
               <div className="v3-space-y-1">
-                <span className="block text-[8px] leading-4 uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
+                <span className="block text-[8px] leading-4 uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Ficha sensorial del productor</span>
                 {dynamicTastingNotes ? (
                   <p data-sun-server-evidence="true" className="text-slate-300 italic">“{dynamicTastingNotes}”</p>
                 ) : (
-                  <p className="text-[11px] leading-relaxed text-slate-500">La marca todavía no cargó una ficha sensorial para este producto.</p>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">La marca todavía no cargó una ficha sensorial para este producto.</p>
                 )}
                 {dynamicMaridaje && (
                   <p className="pt-1 text-[10px] font-medium text-amber-300">Maridaje sugerido: <span data-sun-server-evidence="true">{dynamicMaridaje}</span></p>
@@ -2010,7 +2010,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     Datos simulados del Demo Lab. El perfil y las distinciones siguientes ilustran el formato; no son certificaciones reales.
                   </p>
                   <div className="v3-space-y-2.5 border-t border-amber-500/10 pt-3">
-                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Perfil sensorial simulado</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Perfil sensorial simulado</span>
                     {[
                       { label: "Cuerpo / Intensidad", val: 85, desc: "Intenso y estructurado" },
                       { label: "Taninos", val: 70, desc: "Sedosos y redondos" },
@@ -2021,7 +2021,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       <div key={attr.label} className="v3-space-y-1">
                         <div className="flex justify-between gap-3 text-[10px] font-medium text-slate-300">
                           <span>{attr.label}</span>
-                          <span className="text-right text-[9px] text-slate-500">{attr.desc}</span>
+                          <span className="text-right text-[9px] text-slate-600 dark:text-slate-300">{attr.desc}</span>
                         </div>
                         <div className="h-1.5 w-full overflow-hidden rounded-full border border-white/5 bg-slate-950">
                           <div
@@ -2033,7 +2033,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     ))}
                   </div>
                   <div className="border-t border-amber-500/10 pt-3">
-                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Distinciones ilustrativas</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Distinciones ilustrativas</span>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                       {["Puntaje demo", "Premio simulado", "Origen de ejemplo"].map((label) => (
                         <span key={label} className="rounded-xl border border-amber-500/20 bg-slate-950/40 p-2 text-[8px] font-bold uppercase tracking-wide text-amber-200">
@@ -2052,19 +2052,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             {/* Spec grid for fast reading */}
             <div className={`${passportStyles.productSpecs} w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left`}>
               <div>
-                <span className="text-[9px] uppercase text-slate-500 block">Lote comercial</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">Lote comercial</span>
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay || "No informado"}</span>
               </div>
               <div>
-                <span className="text-[9px] uppercase text-slate-500 block">UID del Tag</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">UID del Tag</span>
                 <span data-sun-server-evidence="true" className="text-xs font-mono text-slate-200 mt-0.5 block">{visibleUid}</span>
               </div>
               <div className="border-t border-white/5 pt-2.5">
-                <span className="text-[9px] uppercase text-slate-500 block">Origen declarado</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">Origen declarado</span>
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{originDisplay}</span>
               </div>
               <div className="border-t border-white/5 pt-2.5">
-                <span className="text-[9px] uppercase text-slate-500 block">Lectura</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">Lectura</span>
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{tapDisplay}</span>
               </div>
             </div>
@@ -2227,23 +2227,23 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="bg-gradient-to-br from-slate-950 to-slate-900/90 rounded-2xl border border-white/5 p-4 v3-space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Condiciones de conservación</span>
+                  <span className="block text-xs uppercase tracking-wider text-amber-300 font-bold">Condiciones de conservación</span>
                   <span className="text-xs font-bold text-slate-200 mt-0.5 block">
                     {hasReportedSensorEvidence ? "Ultima lectura reportada" : hasDeclaredSensorEvidence ? "Ficha del lote · no es lectura en vivo" : "Muestra demo · no es lectura en vivo"}
                   </span>
-                  <span className="mt-1 block text-[9px] text-slate-500">{sensorEvidenceLabel}</span>
+                  <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">{sensorEvidenceLabel}</span>
                 </div>
-                <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${usesDemoSensorEvidence ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : hasDeclaredSensorEvidence ? "border-violet-500/30 bg-violet-500/10 text-violet-200" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"}`}>
+                <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${usesDemoSensorEvidence ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : hasDeclaredSensorEvidence ? "border-violet-500/30 bg-violet-500/10 text-violet-200" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"}`}>
                   {sensorEvidenceBadge}
                 </span>
               </div>
-              <dl className="grid gap-2 rounded-xl border border-white/5 bg-slate-950/45 p-3 text-[9px] sm:grid-cols-3">
+              <dl className="grid gap-2 rounded-xl border border-white/5 bg-slate-950/45 p-3 text-xs sm:grid-cols-3">
                 <div className="min-w-0">
-                  <dt className="font-bold uppercase tracking-wider text-slate-500">Fuente</dt>
+                  <dt className="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Fuente</dt>
                   <dd data-sun-server-evidence="true" className="mt-1 break-words font-semibold text-slate-200">{sensorSource || "No informada"}</dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="font-bold uppercase tracking-wider text-slate-500">Observada</dt>
+                  <dt className="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Observada</dt>
                   <dd
                     data-sun-datetime={sensorObservedAt || undefined}
                     data-sun-time-zone={result.tapContext?.timezone || undefined}
@@ -2253,7 +2253,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="font-bold uppercase tracking-wider text-slate-500">Modo</dt>
+                  <dt className="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Modo</dt>
                   <dd data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 break-words font-semibold text-slate-200">{sensorMode}</dd>
                 </div>
               </dl>
@@ -2265,23 +2265,23 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   { label: "Impacto", value: dynamicShock },
                 ].map((metric) => (
                   <div key={metric.label} className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
-                    <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-500">{metric.label}</span>
-                    <span data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 block text-[11px] font-semibold text-slate-200">{metric.value}</span>
+                    <span className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{metric.label}</span>
+                    <span data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 block text-xs font-semibold text-slate-200">{metric.value}</span>
                   </div>
                 ))}
               </div>
-              <p className="text-[9px] leading-relaxed text-slate-500">
+              <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                 {hasReportedSensorEvidence
                   ? "Un evento recibido identifica fuente y fecha cuando la integración las aporta. No asumimos conexión directa con hardware, tiempo real ni medición del chip NFC pasivo."
                   : "Este bloque proviene de datos configurados, no de un sensor en vivo. Un historial solo aparece cuando llegan eventos con fuente y fecha."}
               </p>
               <details className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
-                <summary className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-violet-100">Ver JSON normalizado</summary>
-                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-[9px] leading-4 text-slate-400">{JSON.stringify(sensorJsonPreview, null, 2)}</pre>
+                <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-violet-100">Ver JSON normalizado</summary>
+                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-xs leading-4 text-slate-400">{JSON.stringify(sensorJsonPreview, null, 2)}</pre>
               </details>
               {sensorHistory.length ? (
                 <details className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
-                  <summary className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-cyan-100">
+                  <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-cyan-100">
                     {hasReportedSensorEvidence
                       ? `Ver lecturas recibidas (${sensorHistory.length})`
                       : hasDeclaredSensorEvidence
@@ -2290,13 +2290,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </summary>
                   <ol className="mt-3 v3-space-y-2">
                     {sensorHistory.map((reading, index) => (
-                      <li key={`${reading.at || "sensor"}-${index}`} className="rounded-lg border border-white/5 bg-slate-900/70 p-2 text-[10px] text-slate-300">
+                      <li key={`${reading.at || "sensor"}-${index}`} className="rounded-lg border border-white/5 bg-slate-900/70 p-2 text-xs text-slate-300">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <strong data-sun-server-evidence="true" className="text-white">{reading.source || "Fuente no informada"}</strong>
                           <span
                             data-sun-datetime={reading.at || undefined}
                             data-sun-time-zone={result.tapContext?.timezone || undefined}
-                            className="text-slate-500"
+                            className="text-slate-600 dark:text-slate-300"
                           >
                             {reading.at ? fmtDate(reading.at, result.tapContext?.timezone, locale) : "Fecha no informada"}
                           </span>
@@ -2309,7 +2309,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                             reading.transitShock || null,
                           ].filter(Boolean).join(" · ") || (hasDeclaredSensorEvidence ? "Ficha sin metricas publicas" : "Evento sin metricas publicas")}
                         </p>
-                        {reading.deviceId ? <span className="mt-1 block font-mono text-[9px] text-slate-500">device: {reading.deviceId}</span> : null}
+                        {reading.deviceId ? <span className="mt-1 block font-mono text-xs text-slate-600 dark:text-slate-300">device: {reading.deviceId}</span> : null}
                       </li>
                     ))}
                   </ol>
@@ -2318,9 +2318,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           ) : (
             <div role="status" className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4">
-              <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-500">Monitoreo IoT</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Monitoreo IoT</span>
               <p className="mt-1 text-xs font-semibold text-slate-300">Sin telemetría IoT asociada a este lote.</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+              <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                 La identidad NFC y la bitácora de eventos siguen disponibles; no inferimos temperatura, humedad ni golpes sin evidencia.
               </p>
             </div>
@@ -2497,28 +2497,28 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               
               <div className="v3-space-y-3 mt-4">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Identificador del chip</span>
+                  <span className="text-slate-600 dark:text-slate-300">Identificador del chip</span>
                   <span data-sun-server-evidence="true" className="font-mono text-slate-200">{result.identity?.uid || "Oculto / No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Lote (Batch ID)</span>
+                  <span className="text-slate-600 dark:text-slate-300">Lote (Batch ID)</span>
                   <span data-sun-server-evidence="true" className="font-mono text-slate-200">{technicalBid}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Número de lectura</span>
+                  <span className="text-slate-600 dark:text-slate-300">Número de lectura</span>
                   <span className="font-mono text-slate-200">{result.identity?.readCounter ?? "N/A"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Evidencia CMAC</span>
+                  <span className="text-slate-600 dark:text-slate-300">Evidencia CMAC</span>
                   <span data-sun-server-evidence="true" className="font-mono text-slate-200">{result.technical?.raw?.cmacPrefix || "No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Registro público opcional</span>
+                  <span className="text-slate-600 dark:text-slate-300">Registro público opcional</span>
                   <span className="font-semibold text-slate-200">{tokenEvidenceLabel}</span>
                 </div>
                 {hasOnChainTx && (
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Hash de Transacción</span>
+                    <span className="text-slate-600 dark:text-slate-300">Hash de Transacción</span>
                     <a 
                       href={tokenExplorerHref} 
                       target="_blank" 
@@ -2564,7 +2564,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       {ttEvidence.bytes.map((byte) => (
                         <div key={byte.role} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Byte {byte.index}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Byte {byte.index}</span>
                             <code className="rounded-md bg-white/5 px-2 py-0.5 text-xs font-bold text-cyan-200">0x{byte.hex}</code>
                           </div>
                           <span className="mt-2 block text-[10px] text-slate-400">{byte.title}</span>
@@ -2582,12 +2582,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     </div>
                   )}
 
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[9px] text-slate-500">
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[9px] text-slate-600 dark:text-slate-300">
                     {ttEvidence.source && <span>fuente: {ttEvidence.source}</span>}
                     {ttEvidence.offset !== null && <span>offset: {ttEvidence.offset}</span>}
                     {ttEvidence.length !== null && <span>longitud: {ttEvidence.length} bytes</span>}
                   </div>
-                  <p className="mt-3 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-slate-500">
+                  <p className="mt-3 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-slate-600 dark:text-slate-300">
                     Este detalle describe la señal electrónica TT reportada por la etiqueta. Por sí solo no prueba el contenido, la custodia ni la integridad física del producto.
                   </p>
                 </div>
