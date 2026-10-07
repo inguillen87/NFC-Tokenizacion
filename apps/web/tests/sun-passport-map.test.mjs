@@ -21,8 +21,11 @@ test("SUN uses a real lazy-loaded MapLibre map and keeps the landing map untouch
   assert.match(map, /IntersectionObserver/);
   assert.match(map, /new maplibre\.Map/);
   assert.match(map, /fitBounds/);
-  assert.match(map, /style: mapStyleForTheme\(isLightTheme\(\)\)/);
-  assert.match(map, /data-basemap="configured-raster"/);
+  assert.match(map, /style: cartography === "reference" \? sunReferenceMapStyle\(isLightTheme\(\)\) : mapStyleForTheme\(isLightTheme\(\)\)/);
+  assert.match(map, /data-basemap=\{cartography === "reference" \? "local-reference" : "configured-raster"\}/);
+  assert.match(map, /cartography\?: "reference"/);
+  assert.match(map, /map\.setStyle\(cartography === "reference" \? sunReferenceMapStyle\(nextLightTheme\) : mapStyleForTheme\(nextLightTheme\)\)/);
+  assert.match(map, /function mapStyleForTheme\(light: boolean\): StyleSpecification \{[\s\S]*?return configuredRasterStyle\(light\);/);
   assert.match(map, /data-basemap-state=\{isDegraded && loadState === "ready" \? "degraded" : loadState\}/);
   assert.doesNotMatch(locationExperience, /externalTiles=\{showRoute\}/);
   assert.doesNotMatch(map, /localCoordinateStyle|data-external-tiles/);

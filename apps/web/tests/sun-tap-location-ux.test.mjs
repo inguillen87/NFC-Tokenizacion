@@ -109,7 +109,8 @@ test("SUN summary exposes truthful location evidence before the origin map", () 
   assert.notEqual(summaryEnd, -1);
   assert.ok(summaryStart < originStart);
   assert.match(page, /const summaryLocationLabel = isDemoPreview[\s\S]*?"Zona aproximada confirmada"[\s\S]*?"Zona de red · no es GPS"[\s\S]*?"Ubicación de esta lectura"/);
-  assert.match(page, /const summaryLocationDisplay = hasCurrentTapCoords \? tapDisplay : "Sin ubicación registrada"/);
+  assert.match(page, /const valleDemo = selectedValleSecretoDemo\(isDemoPreview, readParam\(params, "profile"\)\)/);
+  assert.match(page, /const summaryLocationDisplay = valleDemo \? "Mendoza, Argentina · ejemplo" : hasCurrentTapCoords \? tapDisplay : "Sin ubicación registrada"/);
   assert.match(summary, /!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic[\s\S]*?\? "#sun-condition"/);
   assert.match(summary, /Fuente \/ precisión/);
   assert.match(summary, /Hora del tap/);
@@ -166,7 +167,7 @@ test("city-only network and historical hints never become a physical tap locatio
 
 test("SUN headings and distance claims follow the current location evidence", () => {
   assert.match(page, /const locationSectionTitle = isDemoPreview[\s\S]*?"Origen declarado"[\s\S]*?"Origen y zona estimada por red"[\s\S]*?"Origen y zona compartida"/);
-  assert.match(page, /const locationSectionDescription = !hasSourceResult[\s\S]*?Las ciudades del historial o de la red no se atribuyen a este tap[\s\S]*?isDemoPreview[\s\S]*?Esta lectura no informó coordenadas[\s\S]*?no es GPS, no ubica el producto y no prueba dónde ocurrió el tap/);
+  assert.match(page, /const locationSectionDescription = valleDemo\s*\? "La viña en Chile y una lectura de ejemplo en Mendoza\. Probá tu zona aproximada con permiso, sin crear una lectura real\."\s*: !hasSourceResult[\s\S]*?Las ciudades del historial o de la red no se atribuyen a este tap[\s\S]*?isDemoPreview[\s\S]*?Esta lectura no informó coordenadas[\s\S]*?no es GPS, no ubica el producto y no prueba dónde ocurrió el tap/);
   assert.match(page, /\.\.\.\(hasConsumerComparableDistance \? \[\{ label: "Separación lineal", value: distanceDisplay \}\] : \[\]\)/);
   assert.match(page, /detail: wineryPoint\.length \? "Disponible" : "Pendiente"/);
   assert.match(page, /\{locationSectionTitle\}/);

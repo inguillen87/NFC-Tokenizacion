@@ -1,0 +1,13 @@
+# Valle Secreto: demo de ubicación
+
+Ruta: `/sun?demo=1&profile=valle-secreto&scenario=closed#sun-origin` (también escenario `opened`).
+
+El mapa combina el punto público de navegación de la viña y un punto de ejemplo en Mendoza (-32.89, -68.84). No son lecturas NFC, registros de clientes ni un recorrido demostrado. El punto de la viña (-34.482672, -70.837119) proviene del [Waze enlazado por su sitio oficial](https://waze.com/ul/h63veu49gz), verificado el 7/10/2026. Es un destino publicado; no informa precisión medida ni límites de la propiedad.
+
+“Usar mi ubicación en la demo” solicita permiso sólo al pulsar. El navegador obtiene una observación aproximada, redondeada a dos decimales antes de mostrarse, con incertidumbre que incluye el redondeo y la precisión declarada. Es opcional y vive únicamente en memoria. No utiliza `/sun/context`, no crea eventos NFC, no escribe en CRM/tenant, no cambia derechos comerciales y no exporta la zona del visitante a enlaces de mapas. Rechazo, indisponibilidad y timeout conservan el ejemplo. Volver a Mendoza cancela lógicamente la solicitud pendiente y descarta callbacks tardíos. Salir desmonta el componente y descarta la observación.
+
+La cartografía [Natural Earth 1:110m](https://www.naturalearthdata.com/about/terms-of-use/) es de dominio público. El archivo mundial estático (193317 bytes sin compresión) se sirve desde NexID al acercarse al mapa, mediante el motor y worker existentes. No solicita tiles, fuentes, geocodificación ni estilos externos, incluso después de compartir ubicación. Es un mapa general sin calles ni detalle parcelario; consultar Waze es una acción externa explícita sobre el punto público de la viña. La procedencia y hashes del dataset están junto al recurso público.
+
+El perfil sólo se monta en una entrada demo explícita sin parámetros NFC, QR, snapshot o handoff real. El resultado SUN conserva UID null, contador cero, historial vacío, ubicación IoT null, ausencia de tapContext y acciones comerciales bloqueadas. API, dashboard, permisos NFC y anti-replay se conservan independientes. El mapa real mantiene su cartografía habitual.
+
+Validación requerida: unidades, tipos/build, CI nativa y navegador responsive en claro/oscuro, permisos sintéticos, cancelación/timeout, accesibilidad, carga diferida y ausencia de escrituras. CI/Preview/publicación y recepción física de GPS se documentan por separado en el informe externo de entrega, con el commit y deployment concretos. Este documento describe la implementación; no certifica publicación ni GPS físico.

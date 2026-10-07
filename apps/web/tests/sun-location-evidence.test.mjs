@@ -89,7 +89,9 @@ test("SUN mobile map renders only declared origin and the current consented tap"
   assert.doesNotMatch(locationExperience, /externalTiles=\{showRoute\}/);
   assert.match(passportMap, /const showDemoConnection = Boolean\(showRoute && origin && tap\?\.source === "demo"\)/);
   assert.match(passportMap, /data-route-mode=\{showDemoConnection \? "demo" : "no-route"\}/);
-  assert.match(passportMap, /style: mapStyleForTheme\(isLightTheme\(\)\)/);
+  assert.match(sunPage, /const valleDemo = selectedValleSecretoDemo\(isDemoPreview, readParam\(params, "profile"\)\)/);
+  assert.match(sunPage, /\{valleDemo \? <ValleSecretoDemoMap \/> : <SunLocationExperience/);
+  assert.match(passportMap, /style: cartography === "reference" \? sunReferenceMapStyle\(isLightTheme\(\)\) : mapStyleForTheme\(isLightTheme\(\)\)/);
   assert.doesNotMatch(passportMap, /localCoordinateStyle|data-external-tiles/);
   assert.doesNotMatch(sunPage, /GlobalOpsMap|opsMapPoints|consumerCurrentTapMapPoints/);
 });
