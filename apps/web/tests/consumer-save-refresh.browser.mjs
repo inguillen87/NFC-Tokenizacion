@@ -202,7 +202,10 @@ async function open(width, theme, scenario) {
   const reviewBeforeScroll = await viewportHitTest(reviewLink);
   const focusedViewport = `${scenario}-${width}-${theme}-viewport-focused.png`;
   await page.screenshot({ path: join(output, focusedViewport) });
-  await reviewLink.scrollIntoViewIfNeeded();
+  // An element may be fully inside the viewport while the fixed portal dock
+  // covers it. Explicit user-intent scrolling must clear that dock on every
+  // Chromium version; scrollIntoViewIfNeeded alone need not move such a link.
+  await reviewLink.evaluate(link => link.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
   await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
   const reviewAfterScroll = await viewportHitTest(reviewLink);
   const reviewViewport = `${scenario}-${width}-${theme}-viewport-review-action.png`;
@@ -239,6 +242,22 @@ async function open(width, theme, scenario) {
   report.views.push({ width, theme, scenario, violations });
   report.cases.push({ width, theme, scenario, interceptedSavePosts: postCount, automaticRscRefreshes: refreshCount - initialRefreshes, expectedOutcome,
     newerInteraction, feedbackFocus: await page.evaluate(() => ({ ...window.__saveFeedbackFocus })) });
+  await reviewLink.click();
+  await page.waitForURL(url => url.pathname === '/me/products' && url.searchParams.get('focus') === eventId);
+  await page.getByRole('heading', { name: 'Tus productos guardados', exact: true }).waitFor();
+  check(true, `${width}/${theme}/${scenario}: explicit collection review navigates through the actual Next router`);
+  if (confirmed) {
+    await page.getByTestId('consumer-product-library').waitFor();
+    await page.getByRole('dialog').getByRole('heading', { name: productName, exact: true }).waitFor();
+    check(true, `${width}/${theme}/${scenario}: confirmed collection review opens the actual saved-product library and focused product`);
+  } else {
+    await page.getByRole('heading', { name: 'Todavía no hay productos guardados.', exact: true }).waitFor();
+    check(await page.getByTestId('consumer-product-library').count() === 0,
+      `${width}/${theme}/${scenario}: unconfirmed collection review preserves the empty account projection`);
+  }
+  check(postCount === 1 && report.unexpectedWrites.length === 0,
+    `${width}/${theme}/${scenario}: collection navigation neither repeats the save nor submits another write`);
+  report.cases[report.cases.length - 1].collectionReviewOpened = true;
   await context.close();
 }
 
