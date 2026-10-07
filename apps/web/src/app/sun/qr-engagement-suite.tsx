@@ -10,6 +10,10 @@ import {
   type SommelierProvenance,
 } from "../../lib/sommelier-guidance";
 import { useSunLocale } from "./sun-locale-provider";
+import { requestSommelierAnswer, SOMMELIER_QUESTION_MAX_CHARS } from "../../lib/sommelier-conversation";
+import { demoSommelierAnswer, demoSommelierCopy } from "./sun-demo-sommelier";
+import { demoWineTrivia } from "./sun-demo-wine-quiz";
+import type { DemoWineProfile } from "./valle-secreto-demo";
 import styles from "./qr-engagement-suite.module.css";
 import { configuredTriviaQuiz, confirmedPreviousTrivia, confirmedTriviaResult, triviaContextAvailable, triviaRecoveryCopy, triviaRecoveryDescription, triviaSubmissionBody, type ClientTriviaQuestion, type TriviaResult } from "./sun-trivia-model";
 
@@ -19,6 +23,45 @@ const FEEDBACK_COPY = {
   "pt-BR": { explanation: "Sua opinião é enviada à marca junto com esta leitura.", rating: (star: number) => `Avaliar com ${star} estrela${star > 1 ? "s" : ""}`, comment: "Comentário curto", commentHint: "Comentário opcional para a marca", send: "Enviar opinião", saving: "Salvando..." },
 } as const;
 
+const QUIZ_COPY = {
+  "es-AR": {
+    demoTitle: "Descubrí este vino", title: "Trivia de la marca", loading: "Cargando pregunta...",
+    question: (step: number, total: number) => `Pregunta ${step} de ${total}`,
+    demo: "Tres preguntas para conocer el vino. Las respuestas quedan en este navegador; no otorgan puntos ni premios.",
+    answer: (index: number) => `Elegir respuesta ${index}`, next: "Siguiente pregunta", finish: "Finalizar trivia", saving: "Guardando...",
+    result: "Trivia completada", localTitle: "Lo que aprendiste",
+    score: (score: number, total: number, product: string) => `Acertaste ${score} de ${total} preguntas sobre ${product}.`,
+    localResult: "Resultado educativo local: no se otorgaron puntos ni premios.", already: "Este tap ya tenía la trivia registrada.",
+    points: (points: number) => `Se confirmaron ${points} puntos.`, localHelp: "Podés repasar las respuestas y consultar la información de la viña.",
+    realHelp: "Resultado confirmado del programa de la marca.", save: "Guardar puntos en mi Pasaporte", saved: "Puntos guardados en tu Pasaporte nexID.",
+    correct: "Respuesta correcta", learn: "Para recordar", restart: "Intentar de nuevo", source: "Consultar la ficha de la viña",
+  },
+  en: {
+    demoTitle: "Discover this wine", title: "Brand quiz", loading: "Loading question...",
+    question: (step: number, total: number) => `Question ${step} of ${total}`,
+    demo: "Three questions to discover the wine. Answers stay in this browser and award no points or prizes.",
+    answer: (index: number) => `Choose answer ${index}`, next: "Next question", finish: "Finish quiz", saving: "Saving...",
+    result: "Quiz completed", localTitle: "What you learned",
+    score: (score: number, total: number, product: string) => `You answered ${score} of ${total} questions about ${product} correctly.`,
+    localResult: "Local educational result: no points or prizes awarded.", already: "This tap already had a recorded quiz.",
+    points: (points: number) => `${points} points confirmed.`, localHelp: "Review your answers and explore the producer's information.",
+    realHelp: "Confirmed result from the brand's program.", save: "Save points to my Passport", saved: "Points saved to your nexID Passport.",
+    correct: "Correct answer", learn: "Something to remember", restart: "Try again", source: "View the producer's technical sheet",
+  },
+  "pt-BR": {
+    demoTitle: "Descubra este vinho", title: "Quiz da marca", loading: "Carregando pergunta...",
+    question: (step: number, total: number) => `Pergunta ${step} de ${total}`,
+    demo: "Três perguntas para conhecer o vinho. As respostas ficam neste navegador e não dão pontos nem prêmios.",
+    answer: (index: number) => `Escolher resposta ${index}`, next: "Próxima pergunta", finish: "Finalizar quiz", saving: "Salvando...",
+    result: "Quiz concluído", localTitle: "O que você aprendeu",
+    score: (score: number, total: number, product: string) => `Você acertou ${score} de ${total} perguntas sobre ${product}.`,
+    localResult: "Resultado educativo local: sem pontos nem prêmios.", already: "Este tap já tinha um quiz registrado.",
+    points: (points: number) => `${points} pontos confirmados.`, localHelp: "Revise as respostas e consulte as informações da vinícola.",
+    realHelp: "Resultado confirmado do programa da marca.", save: "Guardar pontos no meu Passaporte", saved: "Pontos guardados no seu Passaporte nexID.",
+    correct: "Resposta correta", learn: "Para lembrar", restart: "Tentar novamente", source: "Consultar a ficha da vinícola",
+  },
+} as const;
+
 type EngagementTab = "sommelier" | "trivia" | "feedback" | "contact";
 
 interface ChatMessage {
@@ -26,6 +69,9 @@ interface ChatMessage {
   sender: "sommelier" | "user";
   text: string;
   provenance?: SommelierProvenance;
+  sourceUrl?: string;
+  sourceLabel?: string;
+  sample?: boolean;
 }
 
 type QREngagementSuiteProps = {
@@ -35,6 +81,7 @@ type QREngagementSuiteProps = {
   eventId?: string | null;
   freshToken?: string;
   isDemoPreview?: boolean;
+  demoWineProfile?: DemoWineProfile | null;
   bid?: string | null;
   allowedActions?: string[];
   blockedActions?: string[];
@@ -42,35 +89,6 @@ type QREngagementSuiteProps = {
   configuration?: unknown;
   canEngage?: boolean;
 };
-
-function localTrivia(productName: string, wineryName: string): ClientTriviaQuestion[] {
-  return [
-    {
-      id: "local-origin",
-      prompt: `¿Qué evidencia digital frena mejor el replay de ${productName}?`,
-      options: ["Un mensaje SUN fresco validado contra el batch", "Una captura reenviada", "Un comentario anónimo", "Un precio escrito a mano"],
-      correctIndex: 0,
-      explanation: "Un SUN fresco permite validar el mensaje dinámico asociado al tag y al batch. Por sí solo no certifica contenido físico, origen, compra ni propiedad.",
-      insightTag: "origin-literacy",
-    },
-    {
-      id: "local-experience",
-      prompt: `¿Qué beneficio tiene más sentido activar para clientes interesados en ${wineryName}?`,
-      options: ["Cata, visita o voucher del club", "Un formulario largo", "Un mensaje sin contexto", "Un bloqueo sin explicación"],
-      correctIndex: 0,
-      explanation: "El mejor momento para fidelizar es justo después del interés real: el cliente tocó el producto.",
-      insightTag: "experience-fit",
-    },
-    {
-      id: "local-market",
-      prompt: "¿Qué dato ayuda más a crear campañas útiles sin invadir al cliente?",
-      options: ["Ciudad y producto consultado", "Contraseña del usuario", "Variables internas de la base", "Historial privado completo"],
-      correctIndex: 0,
-      explanation: "Ciudad y producto permiten campañas por cercanía, preferencias y contexto sin exponer información sensible.",
-      insightTag: "market-research",
-    },
-  ];
-}
 
 function asResultFromLocal(questions: ClientTriviaQuestion[], answers: Record<string, number>): TriviaResult {
   const score = questions.reduce((sum, question) => sum + (answers[question.id] === question.correctIndex ? 1 : 0), 0);
@@ -96,6 +114,7 @@ export function QREngagementSuite({
   eventId = null,
   freshToken = "",
   isDemoPreview = false,
+  demoWineProfile = null,
   bid = null,
   allowedActions = [],
   blockedActions = [],
@@ -106,6 +125,9 @@ export function QREngagementSuite({
   const { locale } = useSunLocale();
   const feedbackCopy = FEEDBACK_COPY[locale];
   const triviaCopy = triviaRecoveryCopy[locale];
+  const quizCopy = QUIZ_COPY[locale];
+  const chatCopy = demoSommelierCopy(locale);
+  const activeDemoWineProfile = isDemoPreview ? demoWineProfile : null;
   const commentId = useId();
   const [activeTab, setActiveTab] = useState<EngagementTab | null>(initialTab);
 
@@ -113,6 +135,14 @@ export function QREngagementSuite({
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const chatRequest = useRef<AbortController | null>(null);
+  const chatSendLock = useRef(false);
+  const chatSequence = useRef(0);
+  const chatLog = useRef<HTMLDivElement | null>(null);
+  const followChat = useRef(true);
+  const chatScope = JSON.stringify([productName, wineryName, locale, eventId, tenantSlug, isDemoPreview, activeDemoWineProfile?.key]);
+  const currentChatScope = useRef(chatScope);
+  currentChatScope.current = chatScope;
   const [configurationOverride, setConfigurationOverride] = useState<{ base: unknown; value: unknown } | null>(null);
   const effectiveConfiguration = configurationOverride && configurationOverride.base === configuration ? configurationOverride.value : configuration;
   const availability = resolveTenantActionAvailability({ configuration: effectiveConfiguration,
@@ -121,7 +151,8 @@ export function QREngagementSuite({
   const currentAvailability = useRef(availability);
   currentAvailability.current = availability;
 
-  const fallbackTrivia = useMemo(() => isDemoPreview ? localTrivia(productName, wineryName) : [], [isDemoPreview, productName, wineryName]);
+  const fallbackTrivia = useMemo(() => isDemoPreview ? demoWineTrivia({ productName, wineryName, locale,
+    facts: activeDemoWineProfile ? { region: activeDemoWineProfile.region, vintage: activeDemoWineProfile.vintage, barrelMonths: activeDemoWineProfile.barrelMonths } : undefined }) : [], [isDemoPreview, productName, wineryName, locale, activeDemoWineProfile]);
   const [triviaQuestions, setTriviaQuestions] = useState<ClientTriviaQuestion[]>(fallbackTrivia);
   const triviaScope = JSON.stringify([eventId, tenantSlug]);
   const [configuredTriviaScope, setConfiguredTriviaScope] = useState<string | null>(null);
@@ -168,9 +199,9 @@ export function QREngagementSuite({
   const engagementTabs = useMemo(() => [
     ...(availability.sommelier ? [{ id: "sommelier" as const, label: "Sommelier", Icon: Bot, title: "Consultar maridajes, cata, temperatura y recomendaciones" }] : []),
     ...(availability.trivia || hasDraft || previousTriviaDraft.length || showTriviaResult ? [{ id: "trivia" as const, label: availability.trivia ? "Trivia" : triviaCopy.savedAnswers, Icon: HelpCircle, title: triviaCopy.savedAnswers }] : []),
-    ...(availability.feedback ? [{ id: "feedback" as const, label: "Calificar", Icon: Star, title: "Enviar opinión breve del producto o experiencia" }] : []),
-    ...(availability.lead ? [{ id: "contact" as const, label: "Novedades", Icon: Gift, title: "Autorizar contacto para novedades reales publicadas por la marca" }] : []),
-  ], [availability.sommelier, availability.trivia, availability.feedback, availability.lead, hasDraft, previousTriviaDraft.length, showTriviaResult, triviaCopy.savedAnswers]);
+    ...(availability.feedback && !activeDemoWineProfile ? [{ id: "feedback" as const, label: "Calificar", Icon: Star, title: "Enviar opinión breve del producto o experiencia" }] : []),
+    ...(availability.lead && !activeDemoWineProfile ? [{ id: "contact" as const, label: "Novedades", Icon: Gift, title: "Autorizar contacto para novedades reales publicadas por la marca" }] : []),
+  ], [availability.sommelier, availability.trivia, availability.feedback, availability.lead, hasDraft, previousTriviaDraft.length, showTriviaResult, triviaCopy.savedAnswers, activeDemoWineProfile]);
   const visibleTab = engagementTabs.some(tab => tab.id === activeTab) ? activeTab : engagementTabs[0]?.id ?? null;
 
   useEffect(() => {
@@ -267,15 +298,41 @@ export function QREngagementSuite({
   };
 
   useEffect(() => {
+    chatRequest.current?.abort();
+    chatRequest.current = null;
+    chatSendLock.current = false;
+    setIsTyping(false);
+    setChatError(null);
+    setChatInput("");
+    followChat.current = true;
     setMessages([
       {
         id: "welcome",
         sender: "sommelier",
-        text: `Hola. Puedo darte orientación general sobre "${productName}" de ${wineryName}. Estos datos identifican la pantalla actual, pero no reemplazan una ficha técnica validada por la marca.`,
+        text: chatCopy.welcome,
         provenance: { mode: "context" },
+        sample: isDemoPreview,
       },
     ]);
-  }, [productName, wineryName]);
+    return () => {
+      chatRequest.current?.abort();
+      chatRequest.current = null;
+      chatSendLock.current = false;
+    };
+  }, [chatScope, chatCopy.welcome, isDemoPreview]);
+
+  useEffect(() => {
+    if (!availability.sommelier) {
+      chatRequest.current?.abort();
+      chatRequest.current = null;
+      chatSendLock.current = false;
+      setIsTyping(false);
+    }
+  }, [availability.sommelier]);
+
+  useEffect(() => {
+    if (followChat.current && chatLog.current) chatLog.current.scrollTop = chatLog.current.scrollHeight;
+  }, [messages, isTyping, visibleTab]);
 
   useEffect(() => {
     setTriviaQuestions(fallbackTrivia);
@@ -379,62 +436,58 @@ export function QREngagementSuite({
   };
 
   const handleSendChat = async (textToSend: string) => {
-    if (!availability.sommelier || isTyping || !textToSend.trim()) return;
+    const question = textToSend.trim().slice(0, SOMMELIER_QUESTION_MAX_CHARS);
+    if (!currentAvailability.current.sommelier || chatSendLock.current || !question) return;
+    chatSendLock.current = true;
+    const controller = new AbortController();
+    chatRequest.current = controller;
 
     const userMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: `chat-${++chatSequence.current}`,
       sender: "user",
-      text: textToSend,
+      text: question,
     };
 
     setMessages((prev) => [...prev, userMsg]);
+    setChatInput("");
     setIsTyping(true);
     setChatError(null);
-    const capturedScope = triviaScope;
+    const capturedScope = chatScope;
 
     try {
       if (isDemoPreview) {
-        setMessages(prev => [...prev, { id: `demo-${Date.now()}`, sender: "sommelier", text: "Esta es una demostración del asistente. No envía tu pregunta a la marca.", provenance: { mode: "context" } }]);
+        const answer = demoSommelierAnswer(question, locale, activeDemoWineProfile);
+        setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", ...answer, sample: true }]);
         return;
       }
-      const res = await fetch("/api/cognitive-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: textToSend,
-          tone: "sommelier-chat",
-          postTapEventId: eventId,
-          productContext: { productName, brandName: wineryName },
-        }),
-      });
-
-      if (!res.ok) throw new Error("sommelier_unavailable");
-      const data = await res.json();
-      if (!data?.optimizedText) throw new Error("Empty AI response");
-      if (currentScope.current !== capturedScope) return;
+      const result = await requestSommelierAnswer(question, { productName, brandName: wineryName }, { signal: controller.signal, postTapEventId: eventId });
+      if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
+      if (result.status !== "received") throw new Error("sommelier_unavailable");
+      const data = result.data;
       const provenance = classifySommelierResponse(data);
 
       setMessages((prev) => [...prev, {
-        id: Date.now().toString(),
+        id: `chat-${++chatSequence.current}`,
         sender: "sommelier",
         text: data.optimizedText,
         provenance,
       }]);
     } catch {
-      if (currentScope.current !== capturedScope) return;
+      if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
       setChatError(TENANT_ACTION_COPY[locale].unavailable);
-      setChatInput(previous => previous || textToSend);
+      setChatInput(previous => previous || question);
     } finally {
-      if (currentScope.current === capturedScope) setIsTyping(false);
+      if (chatRequest.current === controller) {
+        chatRequest.current = null;
+        chatSendLock.current = false;
+        if (currentChatScope.current === capturedScope) setIsTyping(false);
+      }
     }
   };
 
   const onChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!availability.sommelier || !chatInput.trim() || isTyping) return;
-    const text = chatInput;
-    setChatInput("");
-    void handleSendChat(text);
+    void handleSendChat(chatInput);
   };
 
   const handleNextQuestion = async () => {
@@ -540,22 +593,30 @@ export function QREngagementSuite({
         {visibleTab === "sommelier" && availability.sommelier && (
           <div className="v3-space-y-4">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              <span>Asistente de orientación enológica</span>
-              <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3" /> Fuente visible por respuesta</span>
+              <span>{chatCopy.label}</span>
+              <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3" aria-hidden="true" /> {chatCopy.general}</span>
             </div>
 
-            <div role="log" aria-label="Conversación con el Sommelier" tabIndex={0} className="h-[200px] v3-space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 text-xs focus-visible:outline-2 focus-visible:outline-amber-400">
+            {isDemoPreview ? <p data-testid="sun-sommelier-demo-notice" className="text-xs leading-relaxed text-slate-300">{chatCopy.demo}</p> : null}
+
+            <div className="flex flex-wrap gap-2" data-testid="sun-sommelier-prompts">
+              {chatCopy.prompts.map(prompt => <button key={prompt} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt); }} className="min-h-11 rounded-xl border border-amber-300/25 px-3 py-2 text-sm leading-snug text-amber-200 transition hover:bg-amber-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400">{prompt}</button>)}
+            </div>
+
+            <div ref={chatLog} role="log" aria-label={chatCopy.log} aria-live="polite" aria-relevant="additions text" aria-busy={isTyping} tabIndex={0}
+              onScroll={event => { const log = event.currentTarget; followChat.current = log.scrollHeight - log.scrollTop - log.clientHeight < 64; }}
+              className={`${styles.chatLog} v3-space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 focus-visible:outline-2 focus-visible:outline-amber-400`}>
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-xl px-3.5 py-2.5 leading-relaxed ${
+                  <div className={`min-w-0 max-w-[90%] break-words rounded-xl px-3.5 py-2.5 leading-relaxed ${
                     msg.sender === "user" ? "bg-amber-500 font-semibold text-slate-950" : "border border-white/5 bg-slate-900 text-slate-200"
                   }`}>
                     {msg.sender === "sommelier" ? (
-                      <span className="mb-1 block text-[9px] font-black uppercase tracking-wide text-cyan-300">
-                        {sommelierProvenanceLabel(msg.provenance)}
-                      </span>
+                      msg.sample ? <span className="mb-1 block text-xs font-semibold text-cyan-300">{msg.sourceLabel || chatCopy.sample}</span> :
+                        <details className="mb-2 text-xs text-cyan-300"><summary className="min-h-11 cursor-pointer font-semibold">{msg.provenance?.mode === "live" ? chatCopy.label : chatCopy.general}</summary><p className="mt-1 leading-relaxed text-slate-400">{sommelierProvenanceLabel(msg.provenance)}</p></details>
                     ) : null}
                     {msg.text}
+                    {msg.sourceUrl ? <a href={msg.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{msg.sourceLabel} ↗</a> : null}
                   </div>
                 </div>
               ))}
@@ -573,19 +634,22 @@ export function QREngagementSuite({
             <form onSubmit={onChatSubmit} className="flex gap-2">
               <input
                 type="text"
-                title="Escribí una pregunta para el sommelier virtual"
-                placeholder="Preguntale al sommelier, por ejemplo: ¿con qué comida marida?"
+                title={chatCopy.placeholder}
+                aria-label={chatCopy.placeholder}
+                placeholder={chatCopy.placeholder}
+                maxLength={SOMMELIER_QUESTION_MAX_CHARS}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden"
+                className={`${styles.chatInput} min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden`}
               />
               <button
                 type="submit"
-                title="Enviar pregunta"
+                title={chatCopy.send}
+                aria-label={chatCopy.send}
                 disabled={!chatInput.trim() || isTyping}
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-500 text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-4 w-4" aria-hidden="true" />
               </button>
             </form>
             {chatError ? <p role="alert" className="text-xs leading-relaxed text-rose-300">{chatError}</p> : null}
@@ -602,14 +666,14 @@ export function QREngagementSuite({
             </div> : !showTriviaResult ? (
               <div className="v3-space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <span className="flex items-center gap-1 text-cyan-200"><Brain className="h-3.5 w-3.5" /> Market quiz</span>
-                  <span>{triviaLoading ? "Cargando" : `Pregunta ${triviaStep + 1} de ${triviaQuestions.length}`}</span>
+                  <span className="flex items-center gap-1 text-cyan-200"><Brain className="h-3.5 w-3.5" aria-hidden="true" /> {isDemoPreview ? quizCopy.demoTitle : quizCopy.title}</span>
+                  <span>{triviaLoading ? quizCopy.loading : quizCopy.question(triviaStep + 1, triviaQuestions.length)}</span>
                 </div>
 
-                {isDemoPreview ? <p className="text-xs text-slate-300">Trivia ilustrativa de demostración. No guarda respuestas ni otorga puntos o premios.</p> : null}
+                {isDemoPreview ? <p data-testid="sun-trivia-demo-notice" className="text-xs text-slate-300">{quizCopy.demo}</p> : null}
 
                 <h4 className="text-sm font-bold leading-normal text-white">
-                  {currentQuestion?.prompt || "Cargando pregunta del producto..."}
+                  {currentQuestion?.prompt || quizCopy.loading}
                 </h4>
 
                 <div className="grid gap-2">
@@ -617,7 +681,7 @@ export function QREngagementSuite({
                     <button
                       key={`${currentQuestion.id}-${idx}`}
                       type="button"
-                      title={`Elegir respuesta ${idx + 1}`}
+                      title={quizCopy.answer(idx + 1)}
                       aria-pressed={selectedAnswer === idx}
                       onClick={() => { if (canPlayTrivia && !triviaSubmitting && !triviaLoading) setTriviaAnswers((prev) => ({ ...prev, [currentQuestion.id]: idx })); }}
                       className={`${styles.triviaButton} w-full rounded-xl border p-3.5 text-left text-xs transition-all ${
@@ -633,12 +697,12 @@ export function QREngagementSuite({
 
                 <button
                   type="button"
-                  title={triviaStep === triviaQuestions.length - 1 ? "Enviar respuestas" : "Pasar a la siguiente pregunta"}
+                  title={triviaStep === triviaQuestions.length - 1 ? quizCopy.finish : quizCopy.next}
                   disabled={!canPlayTrivia || selectedAnswer === null || triviaSubmitting || triviaLoading}
                   onClick={handleNextQuestion}
                   className={`${styles.triviaButton} w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50`}
                 >
-                  {triviaSubmitting ? "Guardando..." : triviaStep === triviaQuestions.length - 1 ? "Finalizar trivia" : "Siguiente pregunta"}
+                  {triviaSubmitting ? quizCopy.saving : triviaStep === triviaQuestions.length - 1 ? quizCopy.finish : quizCopy.next}
                 </button>
               </div>
             ) : (
@@ -647,33 +711,34 @@ export function QREngagementSuite({
                   <Trophy className="h-6 w-6" />
                 </div>
                 <div>
-                  <h4 className="text-base font-black text-white">Trivia completada</h4>
+                  <h4 data-testid="sun-trivia-result-title" className="text-base font-black text-white">{triviaResult?.isLocal ? quizCopy.localTitle : quizCopy.result}</h4>
                   <p className="mt-1 text-xs text-slate-400">
-                    Acertaste {triviaResult?.score ?? 0} de {triviaResult?.total ?? triviaQuestions.length} preguntas sobre {productName}.
+                    {quizCopy.score(triviaResult?.score ?? 0, triviaResult?.total ?? triviaQuestions.length, productName)}
                   </p>
                 </div>
 
                 <div className="mx-auto max-w-sm v3-space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs">
                   <p className="font-bold leading-relaxed text-slate-200">
                     {triviaResult?.isLocal
-                      ? "Resultado educativo local: no se otorgaron puntos ni premios."
+                      ? quizCopy.localResult
                       : triviaResult?.alreadyCompleted
-                        ? "Este tap ya tenía la trivia registrada."
-                        : `Se confirmaron ${triviaResult?.pointsAwarded ?? 0} puntos.`}
+                        ? quizCopy.already
+                        : quizCopy.points(triviaResult?.pointsAwarded ?? 0)}
                   </p>
                   <p className="text-[11px] leading-normal text-slate-400">
-                    Tus respuestas ayudan a {wineryName} a entender interés por ciudad, producto y experiencia sin mostrar datos privados.
+                    {triviaResult?.isLocal ? quizCopy.localHelp : quizCopy.realHelp}
                   </p>
+                  {triviaResult?.isLocal && activeDemoWineProfile ? <a href={activeDemoWineProfile.technicalSheet} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center text-cyan-300 underline">{quizCopy.source} ↗</a> : null}
                   {!triviaResult?.isLocal && triviaResult?.requiresLogin ? (
                     <Link
                       href="/login?next=/me"
                       className="block w-full rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 py-2.5 text-center text-[11px] font-black uppercase tracking-wider text-slate-950"
                     >
-                      Guardar puntos en mi Pasaporte
+                      {quizCopy.save}
                     </Link>
                   ) : !triviaResult?.isLocal ? (
                     <div className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[11px] font-bold text-emerald-200">
-                      Puntos guardados en tu Pasaporte nexID.
+                      {quizCopy.saved}
                     </div>
                   ) : null}
                 </div>
@@ -683,7 +748,7 @@ export function QREngagementSuite({
                     {triviaResult.explanations.slice(0, 3).map((item) => (
                       <div key={item.id} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
                         <div className="text-[10px] font-black uppercase tracking-wider text-cyan-200">
-                          {item.correct ? "Respuesta correcta" : "Insight para mejorar"}
+                          {item.correct ? quizCopy.correct : quizCopy.learn}
                         </div>
                         <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{item.explanation}</p>
                       </div>
@@ -693,11 +758,11 @@ export function QREngagementSuite({
 
                 {isDemoPreview ? <button
                   type="button"
-                  title="Reiniciar la trivia en este navegador"
+                  title={quizCopy.restart}
                   onClick={handleRestartTrivia}
-                  className="mx-auto block text-xs font-bold text-slate-400 underline transition hover:text-white"
+                  className="mx-auto block min-h-11 text-xs font-bold text-slate-400 underline transition hover:text-white"
                 >
-                  Intentar de nuevo
+                  {quizCopy.restart}
                 </button> : null}
               </div>
             )}

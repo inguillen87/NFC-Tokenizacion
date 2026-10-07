@@ -23,7 +23,7 @@ type SommelierResponse =
 export async function requestSommelierAnswer(
   question: string,
   context: SommelierProductContext,
-  options: { signal?: AbortSignal; fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+  options: { signal?: AbortSignal; fetchImpl?: typeof fetch; timeoutMs?: number; postTapEventId?: string | null } = {},
 ): Promise<SommelierResponse> {
   const controller = new AbortController();
   let response: Response | undefined;
@@ -44,7 +44,8 @@ export async function requestSommelierAnswer(
       response = await (options.fetchImpl ?? fetch)("/api/cognitive-ai", {
         method: "POST", credentials: "same-origin", cache: "no-store",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: question, tone: "sommelier-chat", productContext: normalizeSommelierProductContext(context) }),
+        body: JSON.stringify({ text: question, tone: "sommelier-chat", productContext: normalizeSommelierProductContext(context),
+          ...(Object.hasOwn(options, "postTapEventId") ? { postTapEventId: options.postTapEventId } : {}) }),
         signal: controller.signal,
       });
       if (controller.signal.aborted) return interrupted;

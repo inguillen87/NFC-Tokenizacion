@@ -22,6 +22,7 @@ import {
 import { useSunLocale } from "./sun-locale-provider";
 import { ConsumerTapLink } from "./consumer-passport-link";
 import { resolveTenantActionAvailability, TENANT_ACTION_COPY } from "./tenant-action-availability";
+import styles from "./sun-services-hub.module.css";
 
 export type SunPublishedPromotion = {
   title: string;
@@ -75,7 +76,13 @@ const FRESHNESS_LABEL: Record<SunServicesFreshnessState, string> = {
 };
 
 const ACTION_CLASS_NAME = "sun-services-action group flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white transition hover:border-cyan-300/30 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300";
-const DEMO_ACTION_CLASS_NAME = "sun-services-action flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white";
+const DEMO_ACTION_CLASS_NAME = "sun-services-action min-h-20 rounded-2xl border border-white/10 bg-slate-950/55 text-left text-white";
+
+const PARTIAL_CONFIGURATION_COPY: Readonly<Record<AppLocale, string>> = {
+  "es-AR": "No pudimos cargar algunas opciones de la marca. Podés continuar con las opciones que aparecen abajo.",
+  en: "We could not load some of the brand's options. You can continue with the options shown below.",
+  "pt-BR": "Não foi possível carregar algumas opções da marca. Você pode continuar com as opções exibidas abaixo.",
+};
 
 const DEMO_ACTION_ICONS: Readonly<Record<DemoExperienceAction, typeof ShieldCheck>> = {
   warranty: ShieldCheck,
@@ -286,7 +293,7 @@ export function SunServicesHub({
         )}
         <div>
           <strong className="block text-xs font-black">{riskCopy.label}</strong>
-          <p className="mt-0.5 text-[11px] leading-4 opacity-80">{riskCopy.detail}</p>
+          <p className="mt-0.5 text-[11px] leading-4">{riskCopy.detail}</p>
         </div>
       </div>
 
@@ -331,8 +338,14 @@ export function SunServicesHub({
         <p className="mt-3 text-[11px] leading-4 text-amber-100/75">Las acciones protegidas pueden pedir una nueva lectura NFC antes de continuar.</p>
       ) : null}
 
+      {!isDemo && configured.state === "unavailable" ? (
+        <p role="status" data-testid="sun-services-unavailable" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">
+          {liveActions.length ? PARTIAL_CONFIGURATION_COPY[activeLocale || locale] : TENANT_ACTION_COPY[activeLocale || locale].unavailable}
+        </p>
+      ) : null}
+
       {isDemo ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-3" role="list" aria-label={demoCopy.actionsLabel}>
+        <div className={styles.actions} role="list" aria-label={demoCopy.actionsLabel}>
           {demoActions.map((action) => {
             const Icon = action.icon;
             return (
@@ -340,16 +353,16 @@ export function SunServicesHub({
                 key={action.key}
                 role="listitem"
                 data-demo-selected-intent={action.selected ? action.key : undefined}
-                className={`${DEMO_ACTION_CLASS_NAME} ${action.selected ? "border-cyan-200/50 bg-cyan-400/15 ring-1 ring-cyan-300/25" : ""}`}
+                className={`${DEMO_ACTION_CLASS_NAME} ${styles.demoAction} ${action.selected ? "border-cyan-200/50 bg-cyan-400/15 ring-1 ring-cyan-300/25" : ""}`}
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">
                   <Icon className="h-4 w-4" aria-hidden="true" />
                 </span>
-                <span className="min-w-0 flex-1">
+                <span className={`${styles.actionCopy} min-w-0`}>
                   <strong className="block text-xs font-black leading-4">{action.label}</strong>
                   <small className="mt-1 block text-[10px] font-medium leading-4 text-slate-400">{action.detail}</small>
                 </span>
-                {action.selected ? <span className="rounded-full bg-cyan-300 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-slate-950">{demoCopy.selectedBadge}</span> : null}
+                {action.selected ? <span className={`${styles.selectedBadge} rounded-full bg-cyan-300 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-slate-950`}>{demoCopy.selectedBadge}</span> : null}
               </div>
             );
           })}
@@ -373,9 +386,9 @@ export function SunServicesHub({
               : <a key={action.key} href={action.href} className={ACTION_CLASS_NAME}>{content}</a>;
           })}
         </nav>
-      ) : (
-        <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">{TENANT_ACTION_COPY[activeLocale || locale][configured.state === "unavailable" ? "unavailable" : configured.state === "unpublished" ? "unpublished" : "empty"]}</p>
-      )}
+      ) : configured.state !== "unavailable" ? (
+        <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">{TENANT_ACTION_COPY[activeLocale || locale][configured.state === "unpublished" ? "unpublished" : "empty"]}</p>
+      ) : null}
     </section>
   );
 }

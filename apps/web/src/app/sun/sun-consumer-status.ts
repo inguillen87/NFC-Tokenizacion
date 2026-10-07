@@ -14,6 +14,7 @@ export type SunConsumerStatus = {
 type ResolveSunConsumerStatusInput = {
   availability?: SunAvailability;
   isDemoPreview: boolean;
+  demoSealState?: "closed" | "opened";
   isQrScan: boolean;
   isTechnicallyAuthentic: boolean;
   isVerifiedClosedState: boolean;
@@ -27,13 +28,16 @@ type ResolveSunConsumerStatusInput = {
 
 function resolveSunConsumerStatusEs(input: ResolveSunConsumerStatusInput): SunConsumerStatus {
   if (input.isDemoPreview) {
+    const closed = input.demoSealState === "closed";
     return {
-      tone: "opened",
+      tone: closed ? "closed" : "opened",
       label: "Ejemplo del Demo Lab",
-      headline: "El tag de muestra informa: sello abierto",
-      copy: "Simulación sin tap físico: muestra cómo se comunica una apertura sin crear evidencia real.",
+      headline: closed ? "El tag de muestra informa: sello cerrado" : "El tag de muestra informa: sello abierto",
+      copy: closed
+        ? "Simulación sin tap físico: muestra cómo se comunica un sello cerrado sin crear evidencia real."
+        : "Simulación sin tap físico: muestra cómo se comunica una apertura sin crear evidencia real.",
       identityLabel: "Simulada",
-      sealLabel: "Abierto (demo)",
+      sealLabel: closed ? "Cerrado (demo)" : "Abierto (demo)",
     };
   }
 

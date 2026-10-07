@@ -50,6 +50,8 @@ import {
 import passportStyles from "./sun-passport-experience.module.css";
 import { resolveSunDemoPhotography } from "./sun-demo-photography";
 import { resolveSunTenantIdentity } from "./sun-tenant-identity";
+import { selectedValleSecretoDemo, valleSecretoDemoResult, valleSecretoDemoScenario } from "./valle-secreto-demo";
+import { ValleSecretoExperience, ValleSecretoDemoServices } from "./valle-secreto-experience";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -382,6 +384,9 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     };
   }
 
+  const valleResult = valleSecretoDemoResult(isDemoPreview, readParam(params, "profile"), readParam(params, "scenario"));
+  if (valleResult) return valleResult;
+
   const isDemoLabHandoff = readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
   const handoffProfile = resolveDemoProductProfile(readParam(params, "profile"));
@@ -508,6 +513,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     dynamic: ["v", "bid", "picc_data", "enc", "cmac"].map((key) => query.get(key) || ""),
   });
   const isDemoPreview = !isQrScan && query.toString().length === 0 && !snapshotId && entry === "demo";
+  const valleDemo = selectedValleSecretoDemo(isDemoPreview, readParam(params, "profile"));
+  const valleScenario = valleSecretoDemoScenario(readParam(params, "scenario"));
+  const demoTruthCopy = valleDemo ? {
+    ...SUN_DEMO_COPY,
+    decision: `Escenario de muestra: sello ${valleScenario === "opened" ? "abierto" : "cerrado"}. No se realizó un tap físico ni existe evidencia real en esta vista.`,
+    trust: "La ficha y la fotografía provienen de información pública de Valle Secreto. El sello, los sensores y las acciones son simulados; no verifican una botella real.",
+    productStatusTitle: "Profundo · experiencia de muestra",
+    productStatusBody: "Conocé la ficha pública del vino y probá el recorrido. La verificación de una botella requiere su etiqueta NFC real.",
+    stageTitle: `Sello ${valleScenario === "opened" ? "abierto" : "cerrado"} en esta simulación`,
+    stageBody: "Escenario ilustrativo para la presentación. No se realizó un toque NFC ni se inspeccionó un envase físico.",
+    passportEventBody: "Esta presentación combina la ficha pública de la viña con un escenario de lectura simulado.",
+    passportNowTitle: "Descubrir Valle Secreto",
+    passportNowBody: "Consultá el vino, seguí las pistas y conocé la viña. Esta muestra no activa compras, beneficios ni propiedad.",
+  } : SUN_DEMO_COPY;
   const isDemoLabHandoff = isDemoPreview
     && readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
@@ -882,7 +901,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       shock: dynamicShock,
     },
   };
-  const demoPhotography = resolveSunDemoPhotography({ isDemoPreview, isDemoLabHandoff, visual: readParam(params, "visual"), vertical: result.product?.vertical || "" });
+  const demoPhotography = valleDemo ? {
+    name: valleDemo.name, brand: valleDemo.brand, region: valleDemo.region, imageUrl: valleDemo.imageUrl,
+    sourceUrl: valleDemo.photoSource, sourceLabel: "Fotografía: Valle Secreto", lot: "MUESTRA-VS-2019",
+  } : resolveSunDemoPhotography({ isDemoPreview, isDemoLabHandoff, visual: readParam(params, "visual"), vertical: result.product?.vertical || "" });
   const hasDeclaredTastingProfile = Boolean(result.product?.notes || result.product?.tasting_notes || result.product?.maridaje);
   const usesDemoTastingProfile = isDemoPreview && !demoPhotography && !hasDeclaredTastingProfile;
   const dynamicTastingNotes = result.product?.notes
@@ -894,6 +916,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const consumerStatus = resolveSunConsumerStatus({
     availability,
     isDemoPreview,
+    demoSealState: valleDemo ? valleScenario : undefined,
     isQrScan,
     isTechnicallyAuthentic,
     isVerifiedClosedState,
@@ -1089,7 +1112,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? `/certificado/${encodeURIComponent(eventId)}${certificateShareToken ? `?share=${encodeURIComponent(certificateShareToken)}` : ""}`
     : "";
   const declaredPromotion = result.engagement?.promotions?.find((promotion) => String(promotion?.title || "").trim());
-  const publishedPromotion: SunPublishedPromotion | null = declaredPromotion
+  const publishedPromotion: SunPublishedPromotion | null = valleDemo ? null : declaredPromotion
     ? {
         title: String(declaredPromotion.title || "").trim(),
         description: declaredPromotion.description ? String(declaredPromotion.description) : null,
@@ -1281,7 +1304,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : isVerifiedOpenedState && isTechnicallyAuthentic
               ? rightsSummary || "Mensaje SUN válido y estado TT abierto reportado. Podés iniciar una validación de compra separada para cuenta, puntos o club."
                : rightsSummary || "No pudimos confirmar la identidad digital en esta lectura. Las acciones protegidas siguen sin habilitarse; podés consultar el resultado o avisar a la marca.";
-  const replayDecisionText = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.decision, realReplayDecisionText);
+  const replayDecisionText = selectSunTruthCopy(isDemoPreview, demoTruthCopy.decision, realReplayDecisionText);
   const tokenEvidenceLabel = hasOnChainProof
     ? `On-chain ${tokenNetwork}`
     : tokenPending
@@ -1369,7 +1392,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : trustScore != null
         ? "Lectura de riesgo: no habilitamos acciones sensibles hasta repetir el tap."
         : "Lectura técnica sin score reportado: revisá la evidencia y la política antes de activar beneficios.";
-  const trustCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.trust, realTrustCopy);
+  const trustCopy = selectSunTruthCopy(isDemoPreview, demoTruthCopy.trust, realTrustCopy);
   const effectiveTrustCopy = isDemoPreview ? trustCopy : !isReplay && !isSnapshotView && rightsSummary ? rightsSummary : trustCopy;
   const rightsModeCards = [
     { label: "Rubro", value: verticalLabel },
@@ -1437,7 +1460,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "review"
         : "visible";
   const productFirstStatusTitle = isDemoPreview
-    ? SUN_DEMO_COPY.productStatusTitle
+    ? demoTruthCopy.productStatusTitle
     : isQrScan
       ? "Ficha QR del producto"
       : isFreshCommercialTap
@@ -1448,7 +1471,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "Producto visible, acciones protegidas"
         : "Identidad NFC validada";
   const productFirstStatusBody = isDemoPreview
-    ? SUN_DEMO_COPY.productStatusBody
+    ? demoTruthCopy.productStatusBody
     : isQrScan
       ? "Canal de bajo costo para informar, captar leads, medir interes y activar fidelizacion. No prueba autenticidad criptografica NFC ni activa propiedad automaticamente."
       : isFreshCommercialTap
@@ -1469,7 +1492,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ...(hasConsumerComparableDistance ? [{ label: "Separación lineal", value: distanceDisplay }] : []),
   ].filter((item) => item.value);
   const productFirstBadges = [
-    isDemoPreview ? SUN_DEMO_COPY.productBadge : isQrScan ? "Ficha QR" : "Lectura NFC registrada",
+    isDemoPreview ? demoTruthCopy.productBadge : isQrScan ? "Ficha QR" : "Lectura NFC registrada",
     batchDisplay,
     carrierLabel,
     isQrScan ? "Sin propiedad automatica" : isFreshCommercialTap ? "Ficha abierta" : "Acciones protegidas",
@@ -1478,7 +1501,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const friendlyStageTitle = !hasSourceResult
     ? consumerStatus.headline
     : isDemoPreview
-    ? SUN_DEMO_COPY.stageTitle
+    ? demoTruthCopy.stageTitle
     : isQrScan
       ? "Ficha publica del producto"
       : isSunProfileMismatch
@@ -1495,7 +1518,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const friendlyStageBody = !hasSourceResult
     ? consumerStatus.copy
     : isDemoPreview
-    ? SUN_DEMO_COPY.stageBody
+    ? demoTruthCopy.stageBody
     : isQrScan
       ? "Con el QR podés conocer el producto y acceder a las opciones que la marca dejó disponibles. Garantía o titularidad requieren una validación adicional."
       : isSunProfileMismatch
@@ -1565,8 +1588,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : "verified";
   const simpleJourneySteps = [
     {
-      label: isDemoPreview ? SUN_DEMO_COPY.journeyLabel : isQrScan ? "Producto informado" : "Identidad NFC",
-      detail: isDemoPreview ? SUN_DEMO_COPY.journeyDetail : isQrScan ? "QR / SDK" : isSunProfileMismatch ? "Batch detectado" : isTechnicallyAuthentic ? "Mensaje validado" : "En revisión",
+      label: isDemoPreview ? demoTruthCopy.journeyLabel : isQrScan ? "Producto informado" : "Identidad NFC",
+      detail: isDemoPreview ? demoTruthCopy.journeyDetail : isQrScan ? "QR / SDK" : isSunProfileMismatch ? "Batch detectado" : isTechnicallyAuthentic ? "Mensaje validado" : "En revisión",
       state: isQrScan ? "done" : isSunProfileMismatch ? "warn" : isTechnicallyAuthentic ? "done" : "warn",
     },
     {
@@ -1621,14 +1644,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     },
     tapLocationStoryStep,
     {
-      label: isDemoPreview ? SUN_DEMO_COPY.passportEventLabel : isQrScan ? "Se consultó" : "Se analizó",
-      title: isDemoPreview ? SUN_DEMO_COPY.passportEventTitle : isQrScan ? "Ficha QR abierta" : isTechnicallyAuthentic ? "Identidad NFC validada" : "Lectura en revisión",
-      body: isDemoPreview ? SUN_DEMO_COPY.passportEventBody : isQrScan ? "La consulta permite leer la ficha publicada. Compartir ubicación o datos de contacto requiere una acción separada." : isTechnicallyAuthentic ? "El mensaje del chip y la política del tenant sostienen el resultado técnico; no certifican el contenido físico." : "El sistema conserva evidencia, pero protege acciones sensibles.",
+      label: isDemoPreview ? demoTruthCopy.passportEventLabel : isQrScan ? "Se consultó" : "Se analizó",
+      title: isDemoPreview ? demoTruthCopy.passportEventTitle : isQrScan ? "Ficha QR abierta" : isTechnicallyAuthentic ? "Identidad NFC validada" : "Lectura en revisión",
+      body: isDemoPreview ? demoTruthCopy.passportEventBody : isQrScan ? "La consulta permite leer la ficha publicada. Compartir ubicación o datos de contacto requiere una acción separada." : isTechnicallyAuthentic ? "El mensaje del chip y la política del tenant sostienen el resultado técnico; no certifican el contenido físico." : "El sistema conserva evidencia, pero protege acciones sensibles.",
     },
     {
       label: "Ahora",
-      title: isDemoPreview ? SUN_DEMO_COPY.passportNowTitle : isQrScan ? "Siguiente paso opcional" : isFreshCommercialTap ? "Ficha publica abierta" : "Acciones protegidas",
-      body: isDemoPreview ? SUN_DEMO_COPY.passportNowBody : isQrScan ? "Si la persona compró, puede validar la compra o usar el NFC seguro. Si sólo está mirando en góndola, puede informarse sin reclamar nada." : isFreshCommercialTap ? "El lector puede informarse sin registrarse. Si compró, activa garantía o beneficios mediante una validación separada." : "Podés consultar la evidencia disponible. Las acciones protegidas requieren una lectura NFC nueva y sus validaciones correspondientes.",
+      title: isDemoPreview ? demoTruthCopy.passportNowTitle : isQrScan ? "Siguiente paso opcional" : isFreshCommercialTap ? "Ficha publica abierta" : "Acciones protegidas",
+      body: isDemoPreview ? demoTruthCopy.passportNowBody : isQrScan ? "Si la persona compró, puede validar la compra o usar el NFC seguro. Si sólo está mirando en góndola, puede informarse sin reclamar nada." : isFreshCommercialTap ? "El lector puede informarse sin registrarse. Si compró, activa garantía o beneficios mediante una validación separada." : "Podés consultar la evidencia disponible. Las acciones protegidas requieren una lectura NFC nueva y sus validaciones correspondientes.",
     },
   ];
 
@@ -1970,11 +1993,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               data-sun-experience-interaction="sensory_sheet_visible"
             >
               <div className="v3-space-y-1">
-                <span className="block text-[8px] leading-4 uppercase tracking-wider text-slate-500 font-bold">Ficha sensorial del productor</span>
+                <span className="block text-[8px] leading-4 uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Ficha sensorial del productor</span>
                 {dynamicTastingNotes ? (
                   <p data-sun-server-evidence="true" className="text-slate-300 italic">“{dynamicTastingNotes}”</p>
                 ) : (
-                  <p className="text-[11px] leading-relaxed text-slate-500">La marca todavía no cargó una ficha sensorial para este producto.</p>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">La marca todavía no cargó una ficha sensorial para este producto.</p>
                 )}
                 {dynamicMaridaje && (
                   <p className="pt-1 text-[10px] font-medium text-amber-300">Maridaje sugerido: <span data-sun-server-evidence="true">{dynamicMaridaje}</span></p>
@@ -1987,7 +2010,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     Datos simulados del Demo Lab. El perfil y las distinciones siguientes ilustran el formato; no son certificaciones reales.
                   </p>
                   <div className="v3-space-y-2.5 border-t border-amber-500/10 pt-3">
-                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Perfil sensorial simulado</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Perfil sensorial simulado</span>
                     {[
                       { label: "Cuerpo / Intensidad", val: 85, desc: "Intenso y estructurado" },
                       { label: "Taninos", val: 70, desc: "Sedosos y redondos" },
@@ -1998,7 +2021,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       <div key={attr.label} className="v3-space-y-1">
                         <div className="flex justify-between gap-3 text-[10px] font-medium text-slate-300">
                           <span>{attr.label}</span>
-                          <span className="text-right text-[9px] text-slate-500">{attr.desc}</span>
+                          <span className="text-right text-[9px] text-slate-600 dark:text-slate-300">{attr.desc}</span>
                         </div>
                         <div className="h-1.5 w-full overflow-hidden rounded-full border border-white/5 bg-slate-950">
                           <div
@@ -2010,7 +2033,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     ))}
                   </div>
                   <div className="border-t border-amber-500/10 pt-3">
-                    <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Distinciones ilustrativas</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Distinciones ilustrativas</span>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                       {["Puntaje demo", "Premio simulado", "Origen de ejemplo"].map((label) => (
                         <span key={label} className="rounded-xl border border-amber-500/20 bg-slate-950/40 p-2 text-[8px] font-bold uppercase tracking-wide text-amber-200">
@@ -2029,19 +2052,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             {/* Spec grid for fast reading */}
             <div className={`${passportStyles.productSpecs} w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left`}>
               <div>
-                <span className="text-[9px] uppercase text-slate-500 block">Lote comercial</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">Lote comercial</span>
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay || "No informado"}</span>
               </div>
               <div>
-                <span className="text-[9px] uppercase text-slate-500 block">UID del Tag</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">UID del Tag</span>
                 <span data-sun-server-evidence="true" className="text-xs font-mono text-slate-200 mt-0.5 block">{visibleUid}</span>
               </div>
               <div className="border-t border-white/5 pt-2.5">
-                <span className="text-[9px] uppercase text-slate-500 block">Origen declarado</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">Origen declarado</span>
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{originDisplay}</span>
               </div>
               <div className="border-t border-white/5 pt-2.5">
-                <span className="text-[9px] uppercase text-slate-500 block">Lectura</span>
+                <span className="text-[9px] uppercase text-slate-600 dark:text-slate-300 block">Lectura</span>
                 <span data-sun-server-evidence="true" className="text-xs font-semibold text-slate-200 mt-0.5 block">{tapDisplay}</span>
               </div>
             </div>
@@ -2136,6 +2159,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
           </SunLocationOriginHeading>
 
+          {valleDemo ? <div className="rounded-2xl border border-white/10 p-4 text-sm">
+            <p>{valleDemo.address}</p>
+            <a href={valleDemo.mapUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="mt-2 inline-flex min-h-11 items-center text-sm font-bold underline">{locale === "en" ? "Find the vineyard on Google Maps ↗" : locale === "pt-BR" ? "Buscar a vinícola no Google Maps ↗" : "Buscar la viña en Google Maps ↗"}</a>
+            <p className="mt-2 text-xs">{locale === "en" ? "Public address search. The demo does not measure your location or claim a precise vineyard coordinate." : locale === "pt-BR" ? "Busca pelo endereço público. A demo não mede sua localização nem afirma uma coordenada exata da vinícola." : "Búsqueda por domicilio público. La demo no mide tu ubicación ni afirma una coordenada exacta de la viña."}</p>
+          </div> : null}
+
           <SunLocationExperience
             origin={wineryPoint[0] ? {
                 id: `origin-${uid || eventId || bid || "public"}`,
@@ -2198,23 +2227,23 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="bg-gradient-to-br from-slate-950 to-slate-900/90 rounded-2xl border border-white/5 p-4 v3-space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Datos ambientales del producto</span>
+                  <span className="block text-xs uppercase tracking-wider text-amber-300 font-bold">Condiciones de conservación</span>
                   <span className="text-xs font-bold text-slate-200 mt-0.5 block">
                     {hasReportedSensorEvidence ? "Ultima lectura reportada" : hasDeclaredSensorEvidence ? "Ficha del lote · no es lectura en vivo" : "Muestra demo · no es lectura en vivo"}
                   </span>
-                  <span className="mt-1 block text-[9px] text-slate-500">{sensorEvidenceLabel}</span>
+                  <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">{sensorEvidenceLabel}</span>
                 </div>
-                <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${usesDemoSensorEvidence ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : hasDeclaredSensorEvidence ? "border-violet-500/30 bg-violet-500/10 text-violet-200" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"}`}>
+                <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${usesDemoSensorEvidence ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : hasDeclaredSensorEvidence ? "border-violet-500/30 bg-violet-500/10 text-violet-200" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"}`}>
                   {sensorEvidenceBadge}
                 </span>
               </div>
-              <dl className="grid gap-2 rounded-xl border border-white/5 bg-slate-950/45 p-3 text-[9px] sm:grid-cols-3">
+              <dl className="grid gap-2 rounded-xl border border-white/5 bg-slate-950/45 p-3 text-xs sm:grid-cols-3">
                 <div className="min-w-0">
-                  <dt className="font-bold uppercase tracking-wider text-slate-500">Fuente</dt>
+                  <dt className="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Fuente</dt>
                   <dd data-sun-server-evidence="true" className="mt-1 break-words font-semibold text-slate-200">{sensorSource || "No informada"}</dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="font-bold uppercase tracking-wider text-slate-500">Observada</dt>
+                  <dt className="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Observada</dt>
                   <dd
                     data-sun-datetime={sensorObservedAt || undefined}
                     data-sun-time-zone={result.tapContext?.timezone || undefined}
@@ -2224,7 +2253,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="font-bold uppercase tracking-wider text-slate-500">Modo</dt>
+                  <dt className="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Modo</dt>
                   <dd data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 break-words font-semibold text-slate-200">{sensorMode}</dd>
                 </div>
               </dl>
@@ -2236,23 +2265,23 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   { label: "Impacto", value: dynamicShock },
                 ].map((metric) => (
                   <div key={metric.label} className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
-                    <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-500">{metric.label}</span>
-                    <span data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 block text-[11px] font-semibold text-slate-200">{metric.value}</span>
+                    <span className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{metric.label}</span>
+                    <span data-sun-server-evidence={(!usesDemoSensorEvidence).toString()} className="mt-1 block text-xs font-semibold text-slate-200">{metric.value}</span>
                   </div>
                 ))}
               </div>
-              <p className="text-[9px] leading-relaxed text-slate-500">
+              <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                 {hasReportedSensorEvidence
                   ? "Un evento recibido identifica fuente y fecha cuando la integración las aporta. No asumimos conexión directa con hardware, tiempo real ni medición del chip NFC pasivo."
                   : "Este bloque proviene de datos configurados, no de un sensor en vivo. Un historial solo aparece cuando llegan eventos con fuente y fecha."}
               </p>
               <details className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
-                <summary className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-violet-100">Ver JSON normalizado</summary>
-                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-[9px] leading-4 text-slate-400">{JSON.stringify(sensorJsonPreview, null, 2)}</pre>
+                <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-violet-100">Ver JSON normalizado</summary>
+                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-xs leading-4 text-slate-400">{JSON.stringify(sensorJsonPreview, null, 2)}</pre>
               </details>
               {sensorHistory.length ? (
                 <details className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
-                  <summary className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-cyan-100">
+                  <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-cyan-100">
                     {hasReportedSensorEvidence
                       ? `Ver lecturas recibidas (${sensorHistory.length})`
                       : hasDeclaredSensorEvidence
@@ -2261,13 +2290,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </summary>
                   <ol className="mt-3 v3-space-y-2">
                     {sensorHistory.map((reading, index) => (
-                      <li key={`${reading.at || "sensor"}-${index}`} className="rounded-lg border border-white/5 bg-slate-900/70 p-2 text-[10px] text-slate-300">
+                      <li key={`${reading.at || "sensor"}-${index}`} className="rounded-lg border border-white/5 bg-slate-900/70 p-2 text-xs text-slate-300">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <strong data-sun-server-evidence="true" className="text-white">{reading.source || "Fuente no informada"}</strong>
                           <span
                             data-sun-datetime={reading.at || undefined}
                             data-sun-time-zone={result.tapContext?.timezone || undefined}
-                            className="text-slate-500"
+                            className="text-slate-600 dark:text-slate-300"
                           >
                             {reading.at ? fmtDate(reading.at, result.tapContext?.timezone, locale) : "Fecha no informada"}
                           </span>
@@ -2280,7 +2309,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                             reading.transitShock || null,
                           ].filter(Boolean).join(" · ") || (hasDeclaredSensorEvidence ? "Ficha sin metricas publicas" : "Evento sin metricas publicas")}
                         </p>
-                        {reading.deviceId ? <span className="mt-1 block font-mono text-[9px] text-slate-500">device: {reading.deviceId}</span> : null}
+                        {reading.deviceId ? <span className="mt-1 block font-mono text-xs text-slate-600 dark:text-slate-300">device: {reading.deviceId}</span> : null}
                       </li>
                     ))}
                   </ol>
@@ -2289,9 +2318,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           ) : (
             <div role="status" className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4">
-              <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-500">Monitoreo IoT</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Monitoreo IoT</span>
               <p className="mt-1 text-xs font-semibold text-slate-300">Sin telemetría IoT asociada a este lote.</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+              <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                 La identidad NFC y la bitácora de eventos siguen disponibles; no inferimos temperatura, humedad ni golpes sin evidencia.
               </p>
             </div>
@@ -2300,12 +2329,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           {/* Timeline points list */}
           <div className="v3-space-y-3 pt-2">
-            <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Cómo leer este pasaporte</span>
+            <span className="block text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Cómo leer este pasaporte</span>
             <div className="relative pl-4 v3-space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-[2px] before:bg-slate-800">
               {passportStorySteps.map((step, idx) => (
                 <div key={`${step.label}-${step.title}`} className="relative text-xs">
                   <div className={`absolute -left-[14px] top-1 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${idx === 3 ? pulseClass : "bg-slate-700"}`} />
-                  <span className="block text-[9px] leading-4 font-mono text-slate-500">{step.label}</span>
+                  <span className="block text-xs leading-5 font-medium text-slate-600 dark:text-slate-300">{step.label}</span>
                   <span data-sun-server-evidence={hasSourceResult && idx === 0 ? "true" : undefined} className="block font-bold text-slate-200 mt-0.5">{step.title}</span>
                   <p className="text-slate-400 mt-0.5 leading-normal text-[11px]">{step.body}</p>
                 </div>
@@ -2314,17 +2343,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
 
         {/* 4. Services: one clear menu, with protected flows disclosed on demand. */}
+        {valleDemo ? <ValleSecretoExperience key={locale} locale={locale} /> : null}
+
         <section id="sun-services" className="scroll-mt-24 v3-space-y-3" aria-label="Servicios y beneficios del producto">
-            <ReportProblemForm
+            {!valleDemo ? <ReportProblemForm
               bid={bid}
               eventId={eventId}
               supportToken={result.supportReport?.eventId === eventId ? result.supportReport.token || "" : ""}
               productName={productDisplayName}
               locale={locale}
               isDemoPreview={isDemoPreview}
-            />
+            /> : null}
             <div id="consumer-choice" className="scroll-mt-24">
-              {hasSourceResult ? <SunServicesHub
+              {valleDemo ? <ValleSecretoDemoServices locale={locale} /> : hasSourceResult ? <SunServicesHub
                 eventId={eventId}
                 freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                 promotion={publishedPromotion}
@@ -2442,12 +2473,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   eventId={eventId || null}
                   freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                   isDemoPreview={isDemoPreview}
+                  demoWineProfile={valleDemo}
                   bid={bid || null}
                   allowedActions={allowedActions}
                   blockedActions={blockedActions}
                   configuration={result.engagement?.configuration}
                   canEngage={engagementBaseEligible || isDemoPreview}
-                  initialTab="contact"
+                  initialTab={valleDemo ? "sommelier" : "contact"}
                 />
               </div>
             ) : null}
@@ -2465,28 +2497,28 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               
               <div className="v3-space-y-3 mt-4">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Identificador del chip</span>
+                  <span className="text-slate-600 dark:text-slate-300">Identificador del chip</span>
                   <span data-sun-server-evidence="true" className="font-mono text-slate-200">{result.identity?.uid || "Oculto / No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Lote (Batch ID)</span>
+                  <span className="text-slate-600 dark:text-slate-300">Lote (Batch ID)</span>
                   <span data-sun-server-evidence="true" className="font-mono text-slate-200">{technicalBid}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Número de lectura</span>
+                  <span className="text-slate-600 dark:text-slate-300">Número de lectura</span>
                   <span className="font-mono text-slate-200">{result.identity?.readCounter ?? "N/A"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Evidencia CMAC</span>
+                  <span className="text-slate-600 dark:text-slate-300">Evidencia CMAC</span>
                   <span data-sun-server-evidence="true" className="font-mono text-slate-200">{result.technical?.raw?.cmacPrefix || "No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Registro público opcional</span>
+                  <span className="text-slate-600 dark:text-slate-300">Registro público opcional</span>
                   <span className="font-semibold text-slate-200">{tokenEvidenceLabel}</span>
                 </div>
                 {hasOnChainTx && (
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Hash de Transacción</span>
+                    <span className="text-slate-600 dark:text-slate-300">Hash de Transacción</span>
                     <a 
                       href={tokenExplorerHref} 
                       target="_blank" 
@@ -2532,7 +2564,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       {ttEvidence.bytes.map((byte) => (
                         <div key={byte.role} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Byte {byte.index}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Byte {byte.index}</span>
                             <code className="rounded-md bg-white/5 px-2 py-0.5 text-xs font-bold text-cyan-200">0x{byte.hex}</code>
                           </div>
                           <span className="mt-2 block text-[10px] text-slate-400">{byte.title}</span>
@@ -2550,12 +2582,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     </div>
                   )}
 
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[9px] text-slate-500">
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[9px] text-slate-600 dark:text-slate-300">
                     {ttEvidence.source && <span>fuente: {ttEvidence.source}</span>}
                     {ttEvidence.offset !== null && <span>offset: {ttEvidence.offset}</span>}
                     {ttEvidence.length !== null && <span>longitud: {ttEvidence.length} bytes</span>}
                   </div>
-                  <p className="mt-3 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-slate-500">
+                  <p className="mt-3 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-slate-600 dark:text-slate-300">
                     Este detalle describe la señal electrónica TT reportada por la etiqueta. Por sí solo no prueba el contenido, la custodia ni la integridad física del producto.
                   </p>
                 </div>

@@ -24,6 +24,7 @@ export function SunPassportHeader({
 
   return (
     <header
+      role="group"
       className={`sun-passport-header sun-topbar ${styles.header}`}
       aria-label={text("Controles del pasaporte")}
       data-testid="sun-passport-header"

@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 import { resolveSunConsumerStatus } from "../src/app/sun/sun-consumer-status.ts";
+import { translateSunUiText } from "../src/app/sun/sun-locale.ts";
 
 const base = {
   isDemoPreview: false,
@@ -16,6 +17,26 @@ const base = {
   isSunProfileMismatch: false,
   isSnapshotView: false,
 };
+
+test("demo scenarios show the selected seal without claiming real verification", () => {
+  for (const demoSealState of ["closed", "opened"]) {
+    const status = resolveSunConsumerStatus({ ...base, isDemoPreview: true, demoSealState });
+    assert.equal(status.tone, demoSealState);
+    assert.equal(status.identityLabel, "Simulada");
+    assert.equal(status.sealLabel, demoSealState === "closed" ? "Cerrado (demo)" : "Abierto (demo)");
+    assert.match(status.copy, /sin tap físico.*sin crear evidencia real/);
+    for (const locale of ["en", "pt-BR"]) {
+      const localized = resolveSunConsumerStatus({ ...base, isDemoPreview: true, demoSealState }, value => translateSunUiText(value, locale));
+      for (const field of ["headline", "copy", "sealLabel"]) assert.notEqual(localized[field], status[field]);
+    }
+  }
+  assert.equal(resolveSunConsumerStatus({ ...base, isDemoPreview: true }).tone, "opened");
+});
+
+test("a demo seal hint cannot change a real reading", () => {
+  assert.deepEqual(resolveSunConsumerStatus({ ...base, isReplay: true, demoSealState: "closed" }), resolveSunConsumerStatus({ ...base, isReplay: true }));
+  assert.equal(resolveSunConsumerStatus({ ...base, isVerifiedOpenedState: true, demoSealState: "closed" }).tone, "opened");
+});
 
 test("a verified closed tag is green and never becomes a security alert", () => {
   const status = resolveSunConsumerStatus({ ...base, isVerifiedClosedState: true });

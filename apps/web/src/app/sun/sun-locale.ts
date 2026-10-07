@@ -15,6 +15,16 @@ export const SUN_LOCALE_COOKIE = "locale";
  * the evidence returned by the server.
  */
 export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
+  { es: "Sello cerrado en esta simulación", pt: "Lacre fechado nesta simulação", en: "Seal closed in this simulation" },
+  { es: "Escenario ilustrativo para la presentación. No se realizó un toque NFC ni se inspeccionó un envase físico.", pt: "Cenário ilustrativo para a apresentação. Não houve leitura NFC nem inspeção física da embalagem.", en: "Illustrative presentation scenario. No NFC tap or physical package inspection took place." },
+  { es: "Escenario de muestra: sello cerrado. No se realizó un tap físico ni existe evidencia real en esta vista.", pt: "Cenário de exemplo: lacre fechado. Não houve leitura física nem evidência real nesta tela.", en: "Sample scenario: closed seal. There was no physical tap or real evidence in this view." },
+  { es: "Escenario de muestra: sello abierto. No se realizó un tap físico ni existe evidencia real en esta vista.", pt: "Cenário de exemplo: lacre aberto. Não houve leitura física nem evidência real nesta tela.", en: "Sample scenario: opened seal. There was no physical tap or real evidence in this view." },
+  { es: "La ficha y la fotografía provienen de información pública de Valle Secreto. El sello, los sensores y las acciones son simulados; no verifican una botella real.", pt: "A ficha e a fotografia vêm de informações públicas da Valle Secreto. O lacre, os sensores e as ações são simulados; não verificam uma garrafa real.", en: "The sheet and photograph come from Valle Secreto's public information. The seal, sensors and actions are simulated; they do not verify a real bottle." },
+  { es: "Profundo · experiencia de muestra", pt: "Profundo · experiência de exemplo", en: "Profundo · sample experience" },
+  { es: "Conocé la ficha pública del vino y probá el recorrido. La verificación de una botella requiere su etiqueta NFC real.", pt: "Conheça a ficha pública do vinho e experimente o percurso. Verificar uma garrafa requer sua etiqueta NFC real.", en: "Discover the public wine sheet and try the journey. Verifying a bottle requires its real NFC tag." },
+  { es: "Esta presentación combina la ficha pública de la viña con un escenario de lectura simulado.", pt: "Esta apresentação combina a ficha pública da vinícola com um cenário de leitura simulado.", en: "This presentation combines the producer's public sheet with a simulated reading scenario." },
+  { es: "Descubrir Valle Secreto", pt: "Descobrir Valle Secreto", en: "Discover Valle Secreto" },
+  { es: "Consultá el vino, seguí las pistas y conocé la viña. Esta muestra no activa compras, beneficios ni propiedad.", pt: "Consulte o vinho, siga as pistas e conheça a vinícola. Esta demonstração não ativa compras, benefícios nem propriedade.", en: "Ask about the wine, follow the clues and discover the vineyard. This sample activates no purchases, benefits or ownership." },
   { es: "Abrí el pasaporte del producto", pt: "Abra o passaporte do produto", en: "Open the product passport" },
   { es: "Todavía no hay una lectura para consultar", pt: "Ainda não há uma leitura para consultar", en: "There is no reading to view yet" },
   { es: "Acercá el teléfono a la etiqueta NFC y abrí el enlace que aparezca. También podés explorar una demostración identificada como muestra.", pt: "Aproxime o telefone da etiqueta NFC e abra o link exibido. Você também pode explorar uma demonstração identificada como exemplo.", en: "Hold your phone near the NFC tag and open the link that appears. You can also explore a clearly labelled demonstration." },
@@ -244,7 +254,7 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
 
   { es: "Estado y sensores", pt: "Estado e sensores", en: "Status and sensors" },
   { es: "Condicion informada del producto", pt: "Condição informada do produto", en: "Reported product condition" },
-  { es: "Datos ambientales del producto", pt: "Dados ambientais do produto", en: "Product environmental data" },
+  { es: "Condiciones de conservación", pt: "Condições de conservação", en: "Storage conditions" },
   { es: "Ultima lectura reportada", pt: "Última leitura informada", en: "Latest reported reading" },
   { es: "Ficha del lote · no es lectura en vivo", pt: "Ficha do lote · não é leitura ao vivo", en: "Batch record · not a live reading" },
   { es: "Muestra demo · no es lectura en vivo", pt: "Demonstração · não é leitura ao vivo", en: "Demo sample · not a live reading" },
@@ -372,6 +382,7 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
 
   { es: "Ejemplo del Demo Lab", pt: "Exemplo do Demo Lab", en: "Demo Lab example" },
   { es: "El tag de muestra informa: sello abierto", pt: "A tag de demonstração informa: lacre aberto", en: "The demo tag reports: seal open" },
+  { es: "El tag de muestra informa: sello cerrado", pt: "A tag de demonstração informa: lacre fechado", en: "The demo tag reports: seal closed" },
   { es: "Sello abierto en esta simulación", pt: "Lacre aberto nesta simulação", en: "Seal open in this simulation" },
   { es: "La etiqueta digital de muestra informa una apertura. No se realizó un toque NFC real ni se inspeccionó un envase físico.", pt: "A etiqueta digital de demonstração informa uma abertura. Nenhum toque NFC real foi realizado e nenhuma embalagem física foi inspecionada.", en: "The demo digital tag reports an opening. No real NFC tap was made, and no physical package was inspected." },
   { es: "Producto físico de muestra", pt: "Produto físico de demonstração", en: "Demo physical product" },
@@ -385,6 +396,8 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "Simulación sin tap físico: muestra cómo se comunica una apertura sin crear evidencia real.", pt: "Simulação sem toque físico: mostra como uma abertura é comunicada sem criar evidência real.", en: "Simulation without a physical tap: it shows how an opening is communicated without creating real evidence." },
   { es: "Simulada", pt: "Simulada", en: "Simulated" },
   { es: "Abierto (demo)", pt: "Aberto (demo)", en: "Open (demo)" },
+  { es: "Cerrado (demo)", pt: "Fechado (demo)", en: "Closed (demo)" },
+  { es: "Simulación sin tap físico: muestra cómo se comunica un sello cerrado sin crear evidencia real.", pt: "Simulação sem toque físico: mostra como um lacre fechado é comunicado sem criar evidência real.", en: "Simulation without a physical tap: it shows how a closed seal is communicated without creating real evidence." },
   { es: "Ficha informativa", pt: "Ficha informativa", en: "Information page" },
   { es: "Información pública del producto", pt: "Informações públicas do produto", en: "Public product information" },
   { es: "El QR abre la ficha del producto; las acciones protegidas requieren un tap NFC nuevo.", pt: "O QR abre a ficha do produto; as ações protegidas exigem um novo toque NFC.", en: "The QR opens the product page; protected actions require a new NFC tap." },

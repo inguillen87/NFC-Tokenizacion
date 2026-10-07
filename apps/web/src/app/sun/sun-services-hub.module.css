@@ -1,0 +1,32 @@
+.actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.demoAction {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 12px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.actionCopy strong {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.actionCopy small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.selectedBadge {
+  grid-column: 2;
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}
