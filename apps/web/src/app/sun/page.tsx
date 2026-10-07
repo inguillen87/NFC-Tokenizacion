@@ -916,6 +916,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const consumerStatus = resolveSunConsumerStatus({
     availability,
     isDemoPreview,
+    demoSealState: valleDemo ? valleScenario : undefined,
     isQrScan,
     isTechnicallyAuthentic,
     isVerifiedClosedState,

@@ -382,6 +382,7 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
 
   { es: "Ejemplo del Demo Lab", pt: "Exemplo do Demo Lab", en: "Demo Lab example" },
   { es: "El tag de muestra informa: sello abierto", pt: "A tag de demonstração informa: lacre aberto", en: "The demo tag reports: seal open" },
+  { es: "El tag de muestra informa: sello cerrado", pt: "A tag de demonstração informa: lacre fechado", en: "The demo tag reports: seal closed" },
   { es: "Sello abierto en esta simulación", pt: "Lacre aberto nesta simulação", en: "Seal open in this simulation" },
   { es: "La etiqueta digital de muestra informa una apertura. No se realizó un toque NFC real ni se inspeccionó un envase físico.", pt: "A etiqueta digital de demonstração informa uma abertura. Nenhum toque NFC real foi realizado e nenhuma embalagem física foi inspecionada.", en: "The demo digital tag reports an opening. No real NFC tap was made, and no physical package was inspected." },
   { es: "Producto físico de muestra", pt: "Produto físico de demonstração", en: "Demo physical product" },
@@ -395,6 +396,8 @@ export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
   { es: "Simulación sin tap físico: muestra cómo se comunica una apertura sin crear evidencia real.", pt: "Simulação sem toque físico: mostra como uma abertura é comunicada sem criar evidência real.", en: "Simulation without a physical tap: it shows how an opening is communicated without creating real evidence." },
   { es: "Simulada", pt: "Simulada", en: "Simulated" },
   { es: "Abierto (demo)", pt: "Aberto (demo)", en: "Open (demo)" },
+  { es: "Cerrado (demo)", pt: "Fechado (demo)", en: "Closed (demo)" },
+  { es: "Simulación sin tap físico: muestra cómo se comunica un sello cerrado sin crear evidencia real.", pt: "Simulação sem toque físico: mostra como um lacre fechado é comunicado sem criar evidência real.", en: "Simulation without a physical tap: it shows how a closed seal is communicated without creating real evidence." },
   { es: "Ficha informativa", pt: "Ficha informativa", en: "Information page" },
   { es: "Información pública del producto", pt: "Informações públicas do produto", en: "Public product information" },
   { es: "El QR abre la ficha del producto; las acciones protegidas requieren un tap NFC nuevo.", pt: "O QR abre a ficha do produto; as ações protegidas exigem um novo toque NFC.", en: "The QR opens the product page; protected actions require a new NFC tap." },
