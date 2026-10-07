@@ -205,7 +205,9 @@ async function open(width, theme, scenario) {
   // An element may be fully inside the viewport while the fixed portal dock
   // covers it. Explicit user-intent scrolling must clear that dock on every
   // Chromium version; scrollIntoViewIfNeeded alone need not move such a link.
-  await reviewLink.evaluate(link => link.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+  if (!reviewBeforeScroll.completelyInViewport || !reviewBeforeScroll.centerHitsTarget) {
+    await reviewLink.evaluate(link => link.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+  }
   await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
   const reviewAfterScroll = await viewportHitTest(reviewLink);
   const reviewViewport = `${scenario}-${width}-${theme}-viewport-review-action.png`;
@@ -236,10 +238,10 @@ async function open(width, theme, scenario) {
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}/${theme}/${scenario}: no horizontal overflow`);
   check(await banner.getByRole('link', { name: 'Revisar mis productos', exact: true }).evaluate(link => link.getBoundingClientRect().height >= 44), `${width}/${theme}/${scenario}: collection action has a 44px target`);
   await page.addScriptTag({ content: axe });
-  const violations = await page.evaluate(async () => (await axe.run('[data-testid="tap-association"]', { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } })).violations.map(item => ({ id: item.id, impact: item.impact, targets: item.nodes.map(node => node.target) })));
+  const violations = await page.evaluate(async () => (await axe.run('[data-testid="tap-association"]', { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } })).violations.map(item => ({ id: item.id, impact: item.impact, targets: item.nodes.map(node => node.target), failures: item.nodes.map(node => node.failureSummary) })));
+  report.views.push({ width, theme, scenario, violations });
   check(violations.length === 0, `${width}/${theme}/${scenario}: zero axe violations in action feedback`);
   await banner.screenshot({ path: join(output, `${scenario}-${width}-${theme}.png`) });
-  report.views.push({ width, theme, scenario, violations });
   report.cases.push({ width, theme, scenario, interceptedSavePosts: postCount, automaticRscRefreshes: refreshCount - initialRefreshes, expectedOutcome,
     newerInteraction, feedbackFocus: await page.evaluate(() => ({ ...window.__saveFeedbackFocus })) });
   await reviewLink.click();
