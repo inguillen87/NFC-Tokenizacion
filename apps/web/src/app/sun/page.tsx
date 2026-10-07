@@ -2329,12 +2329,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           {/* Timeline points list */}
           <div className="v3-space-y-3 pt-2">
-            <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Cómo leer este pasaporte</span>
+            <span className="block text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 font-bold">Cómo leer este pasaporte</span>
             <div className="relative pl-4 v3-space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-[2px] before:bg-slate-800">
               {passportStorySteps.map((step, idx) => (
                 <div key={`${step.label}-${step.title}`} className="relative text-xs">
                   <div className={`absolute -left-[14px] top-1 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${idx === 3 ? pulseClass : "bg-slate-700"}`} />
-                  <span className="block text-[9px] leading-4 font-mono text-slate-500">{step.label}</span>
+                  <span className="block text-xs leading-5 font-medium text-slate-600 dark:text-slate-300">{step.label}</span>
                   <span data-sun-server-evidence={hasSourceResult && idx === 0 ? "true" : undefined} className="block font-bold text-slate-200 mt-0.5">{step.title}</span>
                   <p className="text-slate-400 mt-0.5 leading-normal text-[11px]">{step.body}</p>
                 </div>
