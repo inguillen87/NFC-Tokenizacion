@@ -32,6 +32,7 @@ function render(componentFile, componentName, props, activeLocale = "es-AR") {
     "./post-tap-policy": load("post-tap-policy.ts", { "./tenant-action-availability": availability }),
     "./tenant-action-availability": availability,
     "./sun-services-hub-model": load("sun-services-hub-model.ts"),
+    "./sun-services-hub.module.css": { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) },
     "./consumer-passport-link": { ConsumerTapLink: (props) => { seen.push(props); return React.createElement(consumerLink, props); } },
   })[componentName];
   const originalFetch = globalThis.fetch;

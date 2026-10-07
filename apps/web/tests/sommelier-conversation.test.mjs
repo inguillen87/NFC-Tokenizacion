@@ -33,6 +33,22 @@ test("an HTTP denial cannot become received even if it contains text and live pr
   assert.deepEqual(result, { status: "unavailable", reason: "http-error" });
 });
 
+test("post-tap requests keep their event binding while the generic contract remains unchanged", async () => {
+  const bodies = [];
+  const fetchImpl = async (_url, init) => {
+    bodies.push(JSON.parse(init.body));
+    return new Response(JSON.stringify({ optimizedText: "Synthetic guidance", fallback: true }));
+  };
+  await requestSommelierAnswer("QA", {}, { fetchImpl, postTapEventId: "715" });
+  await requestSommelierAnswer("QA", {}, { fetchImpl, postTapEventId: null });
+  await requestSommelierAnswer("QA", {}, { fetchImpl });
+  await requestSommelierAnswer("QA", {}, Object.assign(Object.create({ postTapEventId: "inherited-event" }), { fetchImpl }));
+  assert.equal(bodies[0].postTapEventId, "715");
+  assert.equal(bodies[1].postTapEventId, null, "explicit missing event retains server fail-closed behavior");
+  assert.equal(Object.hasOwn(bodies[2], "postTapEventId"), false);
+  assert.equal(Object.hasOwn(bodies[3], "postTapEventId"), false, "prototype values cannot add a post-tap binding");
+});
+
 test("malformed, empty and non-text answers remain unavailable", async () => {
   for (const body of ["not json", "null", "[]", "{}", '{"optimizedText":" "}', '{"optimizedText":42}']) {
     const result = await requestSommelierAnswer("QA", {}, { fetchImpl: async () => new Response(body) });

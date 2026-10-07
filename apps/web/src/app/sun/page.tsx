@@ -50,6 +50,8 @@ import {
 import passportStyles from "./sun-passport-experience.module.css";
 import { resolveSunDemoPhotography } from "./sun-demo-photography";
 import { resolveSunTenantIdentity } from "./sun-tenant-identity";
+import { selectedValleSecretoDemo, valleSecretoDemoResult, valleSecretoDemoScenario } from "./valle-secreto-demo";
+import { ValleSecretoExperience, ValleSecretoDemoServices } from "./valle-secreto-experience";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -382,6 +384,9 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     };
   }
 
+  const valleResult = valleSecretoDemoResult(isDemoPreview, readParam(params, "profile"), readParam(params, "scenario"));
+  if (valleResult) return valleResult;
+
   const isDemoLabHandoff = readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
   const handoffProfile = resolveDemoProductProfile(readParam(params, "profile"));
@@ -508,6 +513,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     dynamic: ["v", "bid", "picc_data", "enc", "cmac"].map((key) => query.get(key) || ""),
   });
   const isDemoPreview = !isQrScan && query.toString().length === 0 && !snapshotId && entry === "demo";
+  const valleDemo = selectedValleSecretoDemo(isDemoPreview, readParam(params, "profile"));
+  const valleScenario = valleSecretoDemoScenario(readParam(params, "scenario"));
+  const demoTruthCopy = valleDemo ? {
+    ...SUN_DEMO_COPY,
+    decision: `Escenario de muestra: sello ${valleScenario === "opened" ? "abierto" : "cerrado"}. No se realizó un tap físico ni existe evidencia real en esta vista.`,
+    trust: "La ficha y la fotografía provienen de información pública de Valle Secreto. El sello, los sensores y las acciones son simulados; no verifican una botella real.",
+    productStatusTitle: "Profundo · experiencia de muestra",
+    productStatusBody: "Conocé la ficha pública del vino y probá el recorrido. La verificación de una botella requiere su etiqueta NFC real.",
+    stageTitle: `Sello ${valleScenario === "opened" ? "abierto" : "cerrado"} en esta simulación`,
+    stageBody: "Escenario ilustrativo para la presentación. No se realizó un toque NFC ni se inspeccionó un envase físico.",
+    passportEventBody: "Esta presentación combina la ficha pública de la viña con un escenario de lectura simulado.",
+    passportNowTitle: "Descubrir Valle Secreto",
+    passportNowBody: "Consultá el vino, seguí las pistas y conocé la viña. Esta muestra no activa compras, beneficios ni propiedad.",
+  } : SUN_DEMO_COPY;
   const isDemoLabHandoff = isDemoPreview
     && readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
@@ -882,7 +901,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       shock: dynamicShock,
     },
   };
-  const demoPhotography = resolveSunDemoPhotography({ isDemoPreview, isDemoLabHandoff, visual: readParam(params, "visual"), vertical: result.product?.vertical || "" });
+  const demoPhotography = valleDemo ? {
+    name: valleDemo.name, brand: valleDemo.brand, region: valleDemo.region, imageUrl: valleDemo.imageUrl,
+    sourceUrl: valleDemo.photoSource, sourceLabel: "Fotografía: Valle Secreto", lot: "MUESTRA-VS-2019",
+  } : resolveSunDemoPhotography({ isDemoPreview, isDemoLabHandoff, visual: readParam(params, "visual"), vertical: result.product?.vertical || "" });
   const hasDeclaredTastingProfile = Boolean(result.product?.notes || result.product?.tasting_notes || result.product?.maridaje);
   const usesDemoTastingProfile = isDemoPreview && !demoPhotography && !hasDeclaredTastingProfile;
   const dynamicTastingNotes = result.product?.notes
@@ -1089,7 +1111,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? `/certificado/${encodeURIComponent(eventId)}${certificateShareToken ? `?share=${encodeURIComponent(certificateShareToken)}` : ""}`
     : "";
   const declaredPromotion = result.engagement?.promotions?.find((promotion) => String(promotion?.title || "").trim());
-  const publishedPromotion: SunPublishedPromotion | null = declaredPromotion
+  const publishedPromotion: SunPublishedPromotion | null = valleDemo ? null : declaredPromotion
     ? {
         title: String(declaredPromotion.title || "").trim(),
         description: declaredPromotion.description ? String(declaredPromotion.description) : null,
@@ -1281,7 +1303,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : isVerifiedOpenedState && isTechnicallyAuthentic
               ? rightsSummary || "Mensaje SUN válido y estado TT abierto reportado. Podés iniciar una validación de compra separada para cuenta, puntos o club."
                : rightsSummary || "No pudimos confirmar la identidad digital en esta lectura. Las acciones protegidas siguen sin habilitarse; podés consultar el resultado o avisar a la marca.";
-  const replayDecisionText = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.decision, realReplayDecisionText);
+  const replayDecisionText = selectSunTruthCopy(isDemoPreview, demoTruthCopy.decision, realReplayDecisionText);
   const tokenEvidenceLabel = hasOnChainProof
     ? `On-chain ${tokenNetwork}`
     : tokenPending
@@ -1369,7 +1391,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : trustScore != null
         ? "Lectura de riesgo: no habilitamos acciones sensibles hasta repetir el tap."
         : "Lectura técnica sin score reportado: revisá la evidencia y la política antes de activar beneficios.";
-  const trustCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.trust, realTrustCopy);
+  const trustCopy = selectSunTruthCopy(isDemoPreview, demoTruthCopy.trust, realTrustCopy);
   const effectiveTrustCopy = isDemoPreview ? trustCopy : !isReplay && !isSnapshotView && rightsSummary ? rightsSummary : trustCopy;
   const rightsModeCards = [
     { label: "Rubro", value: verticalLabel },
@@ -1437,7 +1459,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "review"
         : "visible";
   const productFirstStatusTitle = isDemoPreview
-    ? SUN_DEMO_COPY.productStatusTitle
+    ? demoTruthCopy.productStatusTitle
     : isQrScan
       ? "Ficha QR del producto"
       : isFreshCommercialTap
@@ -1448,7 +1470,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "Producto visible, acciones protegidas"
         : "Identidad NFC validada";
   const productFirstStatusBody = isDemoPreview
-    ? SUN_DEMO_COPY.productStatusBody
+    ? demoTruthCopy.productStatusBody
     : isQrScan
       ? "Canal de bajo costo para informar, captar leads, medir interes y activar fidelizacion. No prueba autenticidad criptografica NFC ni activa propiedad automaticamente."
       : isFreshCommercialTap
@@ -1469,7 +1491,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ...(hasConsumerComparableDistance ? [{ label: "Separación lineal", value: distanceDisplay }] : []),
   ].filter((item) => item.value);
   const productFirstBadges = [
-    isDemoPreview ? SUN_DEMO_COPY.productBadge : isQrScan ? "Ficha QR" : "Lectura NFC registrada",
+    isDemoPreview ? demoTruthCopy.productBadge : isQrScan ? "Ficha QR" : "Lectura NFC registrada",
     batchDisplay,
     carrierLabel,
     isQrScan ? "Sin propiedad automatica" : isFreshCommercialTap ? "Ficha abierta" : "Acciones protegidas",
@@ -1478,7 +1500,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const friendlyStageTitle = !hasSourceResult
     ? consumerStatus.headline
     : isDemoPreview
-    ? SUN_DEMO_COPY.stageTitle
+    ? demoTruthCopy.stageTitle
     : isQrScan
       ? "Ficha publica del producto"
       : isSunProfileMismatch
@@ -1495,7 +1517,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const friendlyStageBody = !hasSourceResult
     ? consumerStatus.copy
     : isDemoPreview
-    ? SUN_DEMO_COPY.stageBody
+    ? demoTruthCopy.stageBody
     : isQrScan
       ? "Con el QR podés conocer el producto y acceder a las opciones que la marca dejó disponibles. Garantía o titularidad requieren una validación adicional."
       : isSunProfileMismatch
@@ -1565,8 +1587,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : "verified";
   const simpleJourneySteps = [
     {
-      label: isDemoPreview ? SUN_DEMO_COPY.journeyLabel : isQrScan ? "Producto informado" : "Identidad NFC",
-      detail: isDemoPreview ? SUN_DEMO_COPY.journeyDetail : isQrScan ? "QR / SDK" : isSunProfileMismatch ? "Batch detectado" : isTechnicallyAuthentic ? "Mensaje validado" : "En revisión",
+      label: isDemoPreview ? demoTruthCopy.journeyLabel : isQrScan ? "Producto informado" : "Identidad NFC",
+      detail: isDemoPreview ? demoTruthCopy.journeyDetail : isQrScan ? "QR / SDK" : isSunProfileMismatch ? "Batch detectado" : isTechnicallyAuthentic ? "Mensaje validado" : "En revisión",
       state: isQrScan ? "done" : isSunProfileMismatch ? "warn" : isTechnicallyAuthentic ? "done" : "warn",
     },
     {
@@ -1621,14 +1643,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     },
     tapLocationStoryStep,
     {
-      label: isDemoPreview ? SUN_DEMO_COPY.passportEventLabel : isQrScan ? "Se consultó" : "Se analizó",
-      title: isDemoPreview ? SUN_DEMO_COPY.passportEventTitle : isQrScan ? "Ficha QR abierta" : isTechnicallyAuthentic ? "Identidad NFC validada" : "Lectura en revisión",
-      body: isDemoPreview ? SUN_DEMO_COPY.passportEventBody : isQrScan ? "La consulta permite leer la ficha publicada. Compartir ubicación o datos de contacto requiere una acción separada." : isTechnicallyAuthentic ? "El mensaje del chip y la política del tenant sostienen el resultado técnico; no certifican el contenido físico." : "El sistema conserva evidencia, pero protege acciones sensibles.",
+      label: isDemoPreview ? demoTruthCopy.passportEventLabel : isQrScan ? "Se consultó" : "Se analizó",
+      title: isDemoPreview ? demoTruthCopy.passportEventTitle : isQrScan ? "Ficha QR abierta" : isTechnicallyAuthentic ? "Identidad NFC validada" : "Lectura en revisión",
+      body: isDemoPreview ? demoTruthCopy.passportEventBody : isQrScan ? "La consulta permite leer la ficha publicada. Compartir ubicación o datos de contacto requiere una acción separada." : isTechnicallyAuthentic ? "El mensaje del chip y la política del tenant sostienen el resultado técnico; no certifican el contenido físico." : "El sistema conserva evidencia, pero protege acciones sensibles.",
     },
     {
       label: "Ahora",
-      title: isDemoPreview ? SUN_DEMO_COPY.passportNowTitle : isQrScan ? "Siguiente paso opcional" : isFreshCommercialTap ? "Ficha publica abierta" : "Acciones protegidas",
-      body: isDemoPreview ? SUN_DEMO_COPY.passportNowBody : isQrScan ? "Si la persona compró, puede validar la compra o usar el NFC seguro. Si sólo está mirando en góndola, puede informarse sin reclamar nada." : isFreshCommercialTap ? "El lector puede informarse sin registrarse. Si compró, activa garantía o beneficios mediante una validación separada." : "Podés consultar la evidencia disponible. Las acciones protegidas requieren una lectura NFC nueva y sus validaciones correspondientes.",
+      title: isDemoPreview ? demoTruthCopy.passportNowTitle : isQrScan ? "Siguiente paso opcional" : isFreshCommercialTap ? "Ficha publica abierta" : "Acciones protegidas",
+      body: isDemoPreview ? demoTruthCopy.passportNowBody : isQrScan ? "Si la persona compró, puede validar la compra o usar el NFC seguro. Si sólo está mirando en góndola, puede informarse sin reclamar nada." : isFreshCommercialTap ? "El lector puede informarse sin registrarse. Si compró, activa garantía o beneficios mediante una validación separada." : "Podés consultar la evidencia disponible. Las acciones protegidas requieren una lectura NFC nueva y sus validaciones correspondientes.",
     },
   ];
 
@@ -2136,6 +2158,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
           </SunLocationOriginHeading>
 
+          {valleDemo ? <div className="rounded-2xl border border-white/10 p-4 text-sm">
+            <p>{valleDemo.address}</p>
+            <a href={valleDemo.mapUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="mt-2 inline-flex min-h-11 items-center text-sm font-bold underline">{locale === "en" ? "Find the vineyard on Google Maps ↗" : locale === "pt-BR" ? "Buscar a vinícola no Google Maps ↗" : "Buscar la viña en Google Maps ↗"}</a>
+            <p className="mt-2 text-xs">{locale === "en" ? "Public address search. The demo does not measure your location or claim a precise vineyard coordinate." : locale === "pt-BR" ? "Busca pelo endereço público. A demo não mede sua localização nem afirma uma coordenada exata da vinícola." : "Búsqueda por domicilio público. La demo no mide tu ubicación ni afirma una coordenada exacta de la viña."}</p>
+          </div> : null}
+
           <SunLocationExperience
             origin={wineryPoint[0] ? {
                 id: `origin-${uid || eventId || bid || "public"}`,
@@ -2198,7 +2226,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="bg-gradient-to-br from-slate-950 to-slate-900/90 rounded-2xl border border-white/5 p-4 v3-space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Datos ambientales del producto</span>
+                  <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Condiciones de conservación</span>
                   <span className="text-xs font-bold text-slate-200 mt-0.5 block">
                     {hasReportedSensorEvidence ? "Ultima lectura reportada" : hasDeclaredSensorEvidence ? "Ficha del lote · no es lectura en vivo" : "Muestra demo · no es lectura en vivo"}
                   </span>
@@ -2314,17 +2342,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
 
         {/* 4. Services: one clear menu, with protected flows disclosed on demand. */}
+        {valleDemo ? <ValleSecretoExperience key={locale} locale={locale} /> : null}
+
         <section id="sun-services" className="scroll-mt-24 v3-space-y-3" aria-label="Servicios y beneficios del producto">
-            <ReportProblemForm
+            {!valleDemo ? <ReportProblemForm
               bid={bid}
               eventId={eventId}
               supportToken={result.supportReport?.eventId === eventId ? result.supportReport.token || "" : ""}
               productName={productDisplayName}
               locale={locale}
               isDemoPreview={isDemoPreview}
-            />
+            /> : null}
             <div id="consumer-choice" className="scroll-mt-24">
-              {hasSourceResult ? <SunServicesHub
+              {valleDemo ? <ValleSecretoDemoServices locale={locale} /> : hasSourceResult ? <SunServicesHub
                 eventId={eventId}
                 freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                 promotion={publishedPromotion}
@@ -2442,12 +2472,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   eventId={eventId || null}
                   freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                   isDemoPreview={isDemoPreview}
+                  demoWineProfile={valleDemo}
                   bid={bid || null}
                   allowedActions={allowedActions}
                   blockedActions={blockedActions}
                   configuration={result.engagement?.configuration}
                   canEngage={engagementBaseEligible || isDemoPreview}
-                  initialTab="contact"
+                  initialTab={valleDemo ? "sommelier" : "contact"}
                 />
               </div>
             ) : null}

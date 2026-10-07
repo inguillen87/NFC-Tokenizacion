@@ -9,6 +9,9 @@ import { resolveSunTenantIdentity } from "../src/app/sun/sun-tenant-identity.ts"
 import * as trivia from "../src/app/sun/sun-trivia-model.ts";
 import * as policy from "../src/app/sun/post-tap-policy.ts";
 import * as sommelier from "../src/lib/sommelier-guidance.ts";
+import * as sommelierConversation from "../src/lib/sommelier-conversation.ts";
+import * as demoSommelier from "../src/app/sun/sun-demo-sommelier.ts";
+import * as demoWineQuiz from "../src/app/sun/sun-demo-wine-quiz.ts";
 import * as availability from "../src/app/sun/tenant-action-availability.ts";
 
 const require = createRequire(import.meta.url);
@@ -16,6 +19,7 @@ const source = readFileSync(new URL("../src/app/sun/qr-engagement-suite.tsx", im
 const module = { exports: {} };
 const overrides = {
   "./sun-trivia-model": trivia, "./post-tap-policy": policy, "./tenant-action-availability": availability, "../../lib/sommelier-guidance": sommelier,
+  "../../lib/sommelier-conversation": sommelierConversation, "./sun-demo-sommelier": demoSommelier, "./sun-demo-wine-quiz": demoWineQuiz,
   "./sun-locale-provider": { useSunLocale: () => ({ locale: "es-AR" }) },
   "./qr-engagement-suite.module.css": { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) },
   "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
@@ -59,8 +63,9 @@ test("real trivia without confirmed questions renders recovery and no invented e
 });
 test("local illustration is opt-in only and labels its lack of award or persistence", () => {
   const html = suite({ isDemoPreview: true, eventId: null, tenantSlug: null });
-  assert.match(html, /Trivia ilustrativa de demostración/);
-  assert.match(html, /No guarda respuestas ni otorga puntos o premios/);
+  assert.match(html, /data-testid="sun-trivia-demo-notice"/);
+  assert.match(html, /Las respuestas quedan en este navegador/);
+  assert.match(html, /no otorgan puntos ni premios/);
   assert.match(html, /Elegir respuesta/);
 });
 test("submission requires exact event scope and a capability while leaving it out of navigation", () => {
