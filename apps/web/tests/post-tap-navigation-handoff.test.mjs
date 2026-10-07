@@ -24,11 +24,11 @@ const consumerLink = load("consumer-passport-link.tsx", {
   "next/navigation": { useRouter: () => ({ push: () => assert.fail("render cannot navigate") }) },
   "./sun-locale-provider": locale,
 }).ConsumerTapLink;
-function render(componentFile, componentName, props) {
+function render(componentFile, componentName, props, activeLocale = "es-AR") {
   const seen = [];
   const component = load(componentFile, {
     "next/link": { __esModule: true, default: Link },
-    "./sun-locale-provider": locale,
+    "./sun-locale-provider": { useSunLocale: () => ({ locale: activeLocale, text: value => value }) },
     "./post-tap-policy": load("post-tap-policy.ts", { "./tenant-action-availability": availability }),
     "./tenant-action-availability": availability,
     "./sun-services-hub-model": load("sun-services-hub-model.ts"),
@@ -58,7 +58,7 @@ const serviceBase = {
   policyAvailability: { promotion: true, purchase: true, subscribe: true, claimOrManage: true, warranty: true },
   eventId, freshToken,
 };
-const services = (props = {}) => render("sun-services-hub.tsx", "SunServicesHub", { ...serviceBase, ...props });
+const services = (props = {}, activeLocale = "es-AR") => render("sun-services-hub.tsx", "SunServicesHub", { ...serviceBase, ...props }, activeLocale);
 
 test("server-rendered handoff buttons wait for hydration before accepting a click", () => {
   const html = renderToStaticMarkup(React.createElement(consumerLink, { href: "/me/products", eventId, freshToken }, "Mis productos"));
@@ -102,6 +102,45 @@ test("services marketplace navigation uses the bridge while in-page and external
   assert.match(html, /href="#protected-actions"/);
   assert.match(html, /href="https:\/\/brand\.example\/warranty"/);
   assert.doesNotMatch(html, /private-fixture-capability/);
+});
+
+test("unavailable company options remain visible as a partial notice beside independent services", () => {
+  for (const configuration of [null, {}, { ...serviceBase.configuration, status: "unavailable" }]) {
+    const { html, seen } = services({ configuration });
+    assert.match(html, /data-testid="sun-services-unavailable"/);
+    assert.match(html, /No pudimos cargar algunas opciones de la marca/);
+    assert.match(html, /href="#protected-actions"/);
+    assert.match(html, /href="https:\/\/brand\.example\/warranty"/);
+    assert.doesNotMatch(html, /Solicitar compra|Suscribirme a novedades/);
+    assert.equal(seen.length, 0, "an unavailable projection cannot prepare marketplace access");
+    assert.equal((html.match(/data-testid="sun-services-unavailable"/g) || []).length, 1);
+  }
+});
+
+test("unavailable notices distinguish no services, legitimate empty publication and demo", () => {
+  const policyAvailability = { promotion: false, purchase: false, subscribe: false, claimOrManage: false, warranty: false };
+  const unavailable = services({ configuration: null, policyAvailability }).html;
+  assert.match(unavailable, /data-testid="sun-services-unavailable"/);
+  assert.equal((unavailable.match(/No pudimos cargar las opciones de la marca/g) || []).length, 1);
+  assert.doesNotMatch(unavailable, /No pudimos cargar algunas opciones|href="#protected-actions"|href="https:\/\/brand\.example\/warranty"/);
+  for (const status of ["published", "unpublished"]) {
+    const html = services({ configuration: { ...serviceBase.configuration, status, allowedActions: [], catalogAvailable: false }, policyAvailability }).html;
+    assert.doesNotMatch(html, /data-testid="sun-services-unavailable"|No pudimos cargar/);
+    assert.match(html, status === "unpublished" ? /todavía no habilitó experiencias/ : /No hay experiencias habilitadas/);
+  }
+  assert.doesNotMatch(services({ configuration: null, freshnessState: "demo" }).html, /data-testid="sun-services-unavailable"|No pudimos cargar/);
+  const blocked = services({ configuration: null, riskState: "blocked" }).html;
+  assert.doesNotMatch(blocked, /href="#protected-actions"|href="https:\/\/brand\.example\/warranty"|Solicitar compra/);
+});
+
+test("partial configuration feedback follows the active language without changing independent rights", () => {
+  for (const [activeLocale, expected] of [["es-AR", /No pudimos cargar algunas opciones/], ["en", /We could not load some of the brand&#x27;s options/], ["pt-BR", /Não foi possível carregar algumas opções/]]) {
+    const { html } = services({ configuration: null, freshnessState: "snapshot" }, activeLocale);
+    assert.match(html, expected);
+    assert.match(html, /href="#protected-actions"/);
+    assert.match(html, /href="https:\/\/brand\.example\/warranty"/);
+    assert.doesNotMatch(html, /Solicitar compra|consumer-passport-handoff|private-fixture-capability/);
+  }
 });
 
 test("services stale, blocked and demo states never prepare navigation with a fresh capability", () => {

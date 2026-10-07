@@ -77,6 +77,12 @@ const FRESHNESS_LABEL: Record<SunServicesFreshnessState, string> = {
 const ACTION_CLASS_NAME = "sun-services-action group flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white transition hover:border-cyan-300/30 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300";
 const DEMO_ACTION_CLASS_NAME = "sun-services-action flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white";
 
+const PARTIAL_CONFIGURATION_COPY: Readonly<Record<AppLocale, string>> = {
+  "es-AR": "No pudimos cargar algunas opciones de la marca. Podés continuar con las opciones que aparecen abajo.",
+  en: "We could not load some of the brand's options. You can continue with the options shown below.",
+  "pt-BR": "Não foi possível carregar algumas opções da marca. Você pode continuar com as opções exibidas abaixo.",
+};
+
 const DEMO_ACTION_ICONS: Readonly<Record<DemoExperienceAction, typeof ShieldCheck>> = {
   warranty: ShieldCheck,
   benefit: Gift,
@@ -331,6 +337,12 @@ export function SunServicesHub({
         <p className="mt-3 text-[11px] leading-4 text-amber-100/75">Las acciones protegidas pueden pedir una nueva lectura NFC antes de continuar.</p>
       ) : null}
 
+      {!isDemo && configured.state === "unavailable" ? (
+        <p role="status" data-testid="sun-services-unavailable" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">
+          {liveActions.length ? PARTIAL_CONFIGURATION_COPY[activeLocale || locale] : TENANT_ACTION_COPY[activeLocale || locale].unavailable}
+        </p>
+      ) : null}
+
       {isDemo ? (
         <div className="mt-4 grid gap-2 sm:grid-cols-3" role="list" aria-label={demoCopy.actionsLabel}>
           {demoActions.map((action) => {
@@ -373,9 +385,9 @@ export function SunServicesHub({
               : <a key={action.key} href={action.href} className={ACTION_CLASS_NAME}>{content}</a>;
           })}
         </nav>
-      ) : (
-        <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">{TENANT_ACTION_COPY[activeLocale || locale][configured.state === "unavailable" ? "unavailable" : configured.state === "unpublished" ? "unpublished" : "empty"]}</p>
-      )}
+      ) : configured.state !== "unavailable" ? (
+        <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">{TENANT_ACTION_COPY[activeLocale || locale][configured.state === "unpublished" ? "unpublished" : "empty"]}</p>
+      ) : null}
     </section>
   );
 }
