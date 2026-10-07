@@ -9,9 +9,10 @@ import { homeMembershipLabel, homeVerdictLabel, type ConsumerHomeModel, type Hom
 import styles from "./consumer-home.module.css";
 
 export function ConsumerProductImage({ product, className = "" }: { product: HomeProduct; className?: string }) {
-  const [failed, setFailed] = useState(false);
-  return <span className={`${styles.productImage} ${className}`}>{product.imageUrl && !failed
-    ? <Image src={product.imageUrl} alt={product.name} width={104} height={112} sizes="104px" unoptimized onError={() => setFailed(true)} />
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const source = product.imageUrl;
+  return <span className={`${styles.productImage} ${className}`}>{source && failedSource !== source
+    ? <Image key={source} src={source} alt={product.name} width={104} height={112} sizes="104px" unoptimized onError={() => setFailedSource(source)} />
     : <Package size={28} aria-hidden="true" />}</span>;
 }
 

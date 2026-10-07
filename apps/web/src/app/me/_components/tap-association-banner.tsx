@@ -25,6 +25,8 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   const [state, setState] = useState<TapAssociationState>({ pending: null, results: {} });
   const runner = useRef<ReturnType<typeof createTapAssociationRunner> | null>(null);
   const resultFocus = useRef<HTMLHeadingElement>(null);
+  const feedbackFocus = useRef<{ owner: ReturnType<typeof createTapAssociationRunner>; action: TapAssociationAction;
+    trigger: HTMLButtonElement; permitted: boolean; release: () => void } | null>(null);
   const copy = associationCopy[locale];
 
   useEffect(() => {
@@ -42,7 +44,11 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
     });
     runner.current = current;
     const unsubscribe = current.subscribe(setState);
-    return () => { unsubscribe(); current.dispose(); if (runner.current === current) runner.current = null; };
+    return () => {
+      unsubscribe(); current.dispose();
+      if (feedbackFocus.current?.owner === current) { feedbackFocus.current.release(); feedbackFocus.current = null; }
+      if (runner.current === current) runner.current = null;
+    };
     // The parent keys this card by the complete context, so unrelated renders
     // cannot reset completed actions and allow them to be submitted twice.
   }, [context.key]);
@@ -62,17 +68,51 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   }, [sessionRevision]);
 
   useEffect(() => {
-    if (!state.pending && Object.keys(state.results).length) {
+    const request = feedbackFocus.current;
+    if (!state.pending && request && state.results[request.action]) {
+      feedbackFocus.current = null;
+      request.release();
+      // Announce every result, but move only the initiating user's focus. A
+      // delayed receipt must not undo a newer interaction elsewhere in the portal.
+      if (runner.current !== request.owner || !request.permitted
+        || (document.activeElement !== request.trigger && document.activeElement !== document.body)) return;
       resultFocus.current?.scrollIntoView({ block: "start", inline: "nearest", behavior: "instant" });
       resultFocus.current?.focus({ preventScroll: true });
     }
   }, [state]);
 
-  async function confirm() {
+  async function confirm(trigger: HTMLButtonElement) {
     const current = runner.current;
-    if (!current || !selected || session !== "active") return;
+    if (!current || !selected || session !== "active" || current.state().pending || current.state().results[selected]?.retryable === false) return;
+    feedbackFocus.current?.release();
+    const request = { owner: current, action: selected, trigger,
+      permitted: document.activeElement === trigger || document.activeElement === document.body, release: () => {} };
+    const movedFocus = (event: FocusEvent) => {
+      if (event.target !== document.body && event.target !== trigger && !trigger.contains(event.target as Node)) request.permitted = false;
+    };
+    const movedPointer = (event: PointerEvent) => {
+      if (event.target !== trigger && !trigger.contains(event.target as Node)) request.permitted = false;
+    };
+    const movedScroll = () => { request.permitted = false; };
+    const scrollKey = (event: KeyboardEvent) => { if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) movedScroll(); };
+    document.addEventListener("focusin", movedFocus, true);
+    document.addEventListener("pointerdown", movedPointer, true);
+    document.addEventListener("touchmove", movedScroll, { capture: true, passive: true });
+    document.addEventListener("keydown", scrollKey, true);
+    window.addEventListener("wheel", movedScroll, { capture: true, passive: true });
+    request.release = () => {
+      document.removeEventListener("focusin", movedFocus, true);
+      document.removeEventListener("pointerdown", movedPointer, true);
+      document.removeEventListener("touchmove", movedScroll, true);
+      document.removeEventListener("keydown", scrollKey, true);
+      window.removeEventListener("wheel", movedScroll, true);
+    };
+    feedbackFocus.current = request;
     const result = await current.run(selected, locale);
-    if (!result || runner.current !== current) return;
+    if (!result || runner.current !== current) {
+      if (feedbackFocus.current === request) { request.release(); feedbackFocus.current = null; }
+      return;
+    }
     if (result.outcome === "session_required") setSession("none");
   }
 
@@ -99,7 +139,7 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
       {session === "none" ? <Link className={styles.primary} href={loginHref} data-testid="tap-association-login" prefetch={false}>{copy.login}</Link> : null}
       {session === "unavailable" ? <button type="button" className={styles.secondary} onClick={() => setSessionRevision(value => value + 1)}>{copy.checkAgain}</button> : null}
       {session === "active" && selected ? <button type="button" className={styles.primary} disabled={Boolean(state.pending) || selectedResult?.retryable === false}
-        onClick={() => void confirm()} data-testid="tap-association-confirm">
+        onClick={event => void confirm(event.currentTarget)} data-testid="tap-association-confirm">
         {state.pending ? copy.sending : selectedResult?.retryable === false ? copy.titles[selectedResult.outcome] : selectedResult ? `${copy.retry}: ${copy.actions[selected].label}` : copy.actions[selected].button}
       </button> : null}
     </div>
