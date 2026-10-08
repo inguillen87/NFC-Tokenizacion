@@ -15,6 +15,19 @@ export const SUN_LOCALE_COOKIE = "locale";
  * the evidence returned by the server.
  */
 export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
+  { es: "Este punto es ilustrativo y no representa un teléfono ni una lectura física.", pt: "Este ponto é ilustrativo e não representa um celular nem uma leitura física.", en: "This is an illustrative point, not a phone or a physical reading." },
+  { es: "Mendoza, Argentina · ejemplo", pt: "Mendoza, Argentina · exemplo", en: "Mendoza, Argentina · example" },
+  { es: "Punto de ejemplo en Mendoza; no es una lectura física.", pt: "Ponto de exemplo em Mendoza; não é uma leitura física.", en: "Sample point in Mendoza; not a physical reading." },
+  { es: "La viña en Chile y una lectura de ejemplo en Mendoza. Probá tu zona aproximada con permiso, sin crear una lectura real.", pt: "A vinícola no Chile e uma leitura de exemplo em Mendoza. Experimente sua área aproximada com permissão, sem criar uma leitura real.", en: "The vineyard in Chile and a sample reading in Mendoza. Try your approximate area with permission, without creating a real reading." },
+  { es: "Viña · punto público", pt: "Vinícola · ponto público", en: "Vineyard · public point" },
+  { es: "Referencia del sitio oficial", pt: "Referência do site oficial", en: "Official website reference" },
+  { es: "Tu zona · sólo en esta demo", pt: "Sua área · só nesta demo", en: "Your area · in this demo only" },
+  { es: "Con permiso · demo", pt: "Com permissão · demo", en: "With permission · demo" },
+  { es: "Tu zona aproximada", pt: "Sua área aproximada", en: "Your approximate area" },
+  { es: "Esta zona aproximada sólo se muestra en la demo. No se guarda ni crea una lectura NFC o un registro del CRM.", pt: "Esta área aproximada aparece apenas na demo. Não é salva nem cria uma leitura NFC ou um registro do CRM.", en: "This approximate area is shown only in the demo. It is not saved and creates no NFC reading or CRM record." },
+  { es: "VIÑA Y EXPERIENCIA DE MUESTRA", pt: "VINÍCOLA E EXPERIÊNCIA DE EXEMPLO", en: "VINEYARD AND SAMPLE EXPERIENCE" },
+  { es: "Mapa general, sin calles. Explorá ambos puntos.", pt: "Mapa geral, sem ruas. Explore os dois pontos.", en: "Overview map, without streets. Explore both points." },
+  { es: "Mapa general servido desde NexID; sin consultas cartográficas externas.", pt: "Mapa geral servido pelo NexID; sem consultas cartográficas externas.", en: "Overview map served by NexID; no external map requests." },
   { es: "Sello cerrado en esta simulación", pt: "Lacre fechado nesta simulação", en: "Seal closed in this simulation" },
   { es: "Escenario ilustrativo para la presentación. No se realizó un toque NFC ni se inspeccionó un envase físico.", pt: "Cenário ilustrativo para a apresentação. Não houve leitura NFC nem inspeção física da embalagem.", en: "Illustrative presentation scenario. No NFC tap or physical package inspection took place." },
   { es: "Escenario de muestra: sello cerrado. No se realizó un tap físico ni existe evidencia real en esta vista.", pt: "Cenário de exemplo: lacre fechado. Não houve leitura física nem evidência real nesta tela.", en: "Sample scenario: closed seal. There was no physical tap or real evidence in this view." },

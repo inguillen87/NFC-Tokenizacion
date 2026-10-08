@@ -75,16 +75,17 @@ test("SUN passport header preserves identity, evidence labels and the existing p
   assert.match(header, /<SunLocaleSwitcher \/>/);
   assert.doesNotMatch(header, /<LocaleSwitcher|router\.refresh|router\.push/);
   assert.match(header, /<ThemeToggle locale=\{locale\} \/>/);
-  assert.match(header, /<Link href="\/me" prefetch=\{false\} className=\{styles\.accountLink\}/);
+  assert.match(header, /<a href="\/me" className=\{styles\.accountLink\} data-testid="sun-account-link" referrerPolicy="no-referrer">/);
+  assert.doesNotMatch(header, /<Link[^>]*href="\/me"|onClick=|router\./);
   assert.match(header, /\{translatedLivePillLabel\}/);
   assert.doesNotMatch(header, /fetch\(|getCurrentPosition|freshToken|cmac|telemetry|<img|<Image/);
   assert.match(page, /<SunLocaleProvider initialLocale=\{locale\}>[\s\S]*?<SunPassportHeader[\s\S]*?pulseClass=\{pulseClass\}[\s\S]*?\/>/);
   assert.match(page, /!isDemoPreview && <ConsumerPassportLink href=\{isFreshCommercialTap && freshToken \? withTapQuery\("\/me\/products","products"\) : "\/me\/products"\} eventId=\{eventId\} freshToken=\{isFreshCommercialTap \? freshToken : ""\}/);
 });
 
-// Render the production header, brand and ThemeToggle with real Next Link. The
+// Render the production header, brand, documentary account anchor and ThemeToggle. The
 // locale context is selected explicitly; preferences are not changed in SSR.
-function renderHeader(locale, props) {
+function renderSunComponent(locale, props, componentUrl = headerUrl, exportName = "SunPassportHeader") {
   const require = createRequire(import.meta.url), modules = new Map();
   const css = { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
   function load(filename) {
@@ -107,15 +108,89 @@ function renderHeader(locale, props) {
     new Function("require", "module", "exports", js)(localRequire, module, module.exports);
     return module.exports;
   }
-  const { SunPassportHeader } = load(fileURLToPath(headerUrl));
-  return renderToStaticMarkup(React.createElement(SunPassportHeader, props));
+  const Component = load(fileURLToPath(componentUrl))[exportName];
+  return renderToStaticMarkup(React.createElement(Component, props));
 }
+const renderHeader = (locale, props) => renderSunComponent(locale, props);
+
+test("SUN loading provides localized documentary account access outside its busy state only through noscript", () => {
+  const expected = [
+    ["es-AR", "Mi cuenta", "Activá JavaScript para continuar", "El pasaporte y el acceso a tu cuenta necesitan JavaScript", "Abriendo el pasaporte"],
+    ["en", "My account", "Enable JavaScript to continue", "The passport and account sign-in require JavaScript", "Opening the passport"],
+    ["pt-BR", "Minha conta", "Ative o JavaScript para continuar", "O passaporte e o acesso à sua conta precisam de JavaScript", "Abrindo o passaporte"],
+    ["unknown", "Mi cuenta", "Activá JavaScript para continuar", "El pasaporte y el acceso a tu cuenta necesitan JavaScript", "Abriendo el pasaporte"],
+  ];
+  for (const [locale, label, title, explanation, loading] of expected) {
+    const html = renderSunComponent(locale, { locale }, new URL("../src/app/sun/sun-loading-view.tsx", import.meta.url), "SunLoadingView");
+    const main = html.match(/<main\b[^>]*>[\s\S]*?<\/main>/)?.[0];
+    const fallback = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+    assert.ok(main && fallback);
+    assert.match(main, /data-testid="sun-loading" aria-busy="true"/);
+    assert.ok(main.includes(loading) && main.includes('role="status"'));
+    assert.doesNotMatch(main, /sun-nojs-account-link/);
+    assert.ok(html.indexOf("</main>") < html.indexOf("<noscript>"), "fallback is a sibling of the busy passport loader");
+    assert.ok(fallback.includes(title) && fallback.includes(explanation));
+    assert.match(fallback, /aria-labelledby="sun-nojs-title"/);
+    assert.match(fallback, /\[data-testid=sun-loading\] \{ display: none !important; \}/);
+    const link = fallback.match(/<a\b[^>]*data-testid="sun-nojs-account-link"[^>]*>[\s\S]*?<\/a>/)?.[0];
+    assert.ok(link && link.endsWith(`>${label}</a>`));
+    assert.match(link, /href="\/me"/);
+    assert.match(link, /referrerPolicy="no-referrer"/i);
+    assert.doesNotMatch(fallback, /aria-busy|href="\/me\?|<script|<form|onClick|eventId|freshToken|tap-handoff/);
+    assert.equal((html.match(/data-testid="sun-nojs-account-link"/g) || []).length, 1);
+  }
+});
+
+test("account loading explains JavaScript requirement in each locale without an OTP promise or a documentary navigation loop", async () => {
+  for (const [locale, title, loading] of [["es-AR", "Tu cuenta necesita JavaScript", "Abriendo tu cuenta"], ["en", "Your account requires JavaScript", "Opening your account"], ["pt-BR", "Sua conta precisa de JavaScript", "Abrindo sua conta"]]) {
+    const html = renderSunComponent(locale, { locale, mode: "account" }, new URL("../src/app/sun/sun-loading-view.tsx", import.meta.url), "SunLoadingView");
+    const main = html.match(/<main\b[^>]*>[\s\S]*?<\/main>/)?.[0];
+    const fallback = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+    assert.ok(main && fallback && main.includes(loading));
+    assert.match(main, /data-testid="account-loading" aria-busy="true"/);
+    assert.match(main, /role="status"/);
+    assert.ok(html.indexOf("</main>") < html.indexOf("<noscript>"));
+    assert.ok(fallback.includes(title));
+    assert.match(fallback, /data-testid="account-nojs-fallback"/);
+    assert.match(fallback, /\[data-testid=account-loading\] \{ display: none !important; \}/);
+    assert.doesNotMatch(fallback, /<a\b|<button\b|<form\b|<input\b|aria-busy|sun-nojs-account-link|href=|onClick|eventId|freshToken/);
+    assert.doesNotMatch(main, /sun-loading-product-placeholder|NFC|Ubicación|Location|Localização/);
+  }
+  const loader = await readFile(new URL("../src/app/login/loading.tsx", import.meta.url), "utf8");
+  assert.match(loader, /getWebI18n\(\)/);
+  assert.match(loader, /<SunLoadingView locale=\{locale\} mode="account"\s*\/>/);
+  assert.doesNotMatch(loader, /cookies\(|fetch\(|redirect\(|auth|session|token|code|contact/);
+});
+
+test("SUN no-script account action has a touch target, keyboard focus and readable solid colors in both themes", async () => {
+  const css = postcss.parse(await readFile(new URL("../src/app/sun/sun-loading.module.css", import.meta.url), "utf8"));
+  const rule = selector => css.nodes.find(node => node.type === "rule" && node.selector === selector);
+  const value = (selector, property) => rule(selector).nodes.find(node => node.type === "decl" && node.prop === property).value;
+  assert.equal(value(".accountLink", "min-height"), "2.75rem");
+  assert.equal(value(".accountLink", "font-size"), "16px");
+  assert.equal(value(".accountLink", "max-width"), "100%");
+  assert.equal(value(".accountLink:focus-visible", "outline"), "3px solid #8bd8c3");
+  assert.equal(value(":global(html[data-theme=light]) .accountLink:focus-visible", "outline-color"), "#086f62");
+  const luminance = hex => {
+    const normalized = hex.length === 4 ? '#' + [...hex.slice(1)].map(value => value + value).join('') : hex;
+    const linear = normalized.slice(1).match(/.{2}/g).map(value => Number.parseInt(value, 16) / 255).map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  };
+  for (const selector of [".accountLink", ":global(html[data-theme=light]) .accountLink"]) {
+    const a = luminance(value(selector, "color")), b = luminance(value(selector, "background"));
+    assert.ok((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 4.5, selector);
+  }
+});
 
 test("SUN rendered account link is always plain portal access across locales and QR/NFC states, without a reading capability", () => {
   for (const [locale, label] of [["es-AR", "Mi cuenta"], ["en", "My account"], ["pt-BR", "Minha conta"]]) {
     for (const isQrScan of [false, true]) for (const livePillLabel of ["Muestra demo", "Tap físico activo", "Consulta segura", "Consulta pendiente"]) {
       const html = renderHeader(locale, { isQrScan, livePillLabel, pulseClass: "bg-emerald-300" });
-      assert.match(html, new RegExp(`<a[^>]*data-testid="sun-account-link"[^>]*href="/me"[^>]*>${label}</a>`));
+      const account = html.match(/<a\b[^>]*data-testid="sun-account-link"[^>]*>[\s\S]*?<\/a>/g) || [];
+      assert.equal(account.length, 1);
+      assert.match(account[0], /\bhref="\/me"/);
+      assert.match(account[0], /\breferrerPolicy="no-referrer"/i);
+      assert.match(account[0], new RegExp(`>${label}</a>$`));
       assert.match(html, new RegExp(`aria-label="${translateSunUiText("Estado", locale)}: ${translateSunUiText(livePillLabel, locale)}"`));
       assert.ok(html.includes(translateSunUiText(isQrScan ? "Pasaporte QR" : "Pasaporte NFC", locale)));
       assert.match(html, /data-sun-brand-variant="passport"/);

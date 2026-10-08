@@ -52,6 +52,7 @@ import { resolveSunDemoPhotography } from "./sun-demo-photography";
 import { resolveSunTenantIdentity } from "./sun-tenant-identity";
 import { selectedValleSecretoDemo, valleSecretoDemoResult, valleSecretoDemoScenario } from "./valle-secreto-demo";
 import { ValleSecretoExperience, ValleSecretoDemoServices } from "./valle-secreto-experience";
+import { ValleSecretoDemoMap } from "./valle-secreto-demo-map";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -1022,8 +1023,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : rawLocationSource === "ip_geo" || rawLocationSource === "edge_ip_approx"
         ? "Zona de red · no es GPS"
         : "Ubicación de esta lectura";
-  const summaryLocationDisplay = hasCurrentTapCoords ? tapDisplay : "Sin ubicación registrada";
-  const summaryLocationEvidence = hasCurrentTapCoords
+  const summaryLocationDisplay = valleDemo ? translateSunUiText("Mendoza, Argentina · ejemplo", locale) : hasCurrentTapCoords ? tapDisplay : "Sin ubicación registrada";
+  const summaryLocationEvidence = valleDemo ? translateSunUiText("Punto de ejemplo en Mendoza; no es una lectura física.", locale) : hasCurrentTapCoords
     ? tapLocationPrecisionLabel
     : isDemoPreview
       ? "Sin coordenadas en esta simulación"
@@ -1040,7 +1041,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         : hasConfirmedBrowserLocation
           ? "Origen y zona compartida"
           : "Origen y ubicación reportada";
-  const locationSectionDescription = !hasSourceResult
+  const locationSectionDescription = valleDemo
+    ? "La viña en Chile y una lectura de ejemplo en Mendoza. Probá tu zona aproximada con permiso, sin crear una lectura real."
+    : !hasSourceResult
     ? "No hay coordenadas informadas para esta lectura. Las ciudades del historial o de la red no se atribuyen a este tap."
     : isDemoPreview
     ? "Los puntos y la conexión son simulados y no representan un recorrido físico."
@@ -2159,13 +2162,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
           </SunLocationOriginHeading>
 
-          {valleDemo ? <div className="rounded-2xl border border-white/10 p-4 text-sm">
-            <p>{valleDemo.address}</p>
-            <a href={valleDemo.mapUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="mt-2 inline-flex min-h-11 items-center text-sm font-bold underline">{locale === "en" ? "Find the vineyard on Google Maps ↗" : locale === "pt-BR" ? "Buscar a vinícola no Google Maps ↗" : "Buscar la viña en Google Maps ↗"}</a>
-            <p className="mt-2 text-xs">{locale === "en" ? "Public address search. The demo does not measure your location or claim a precise vineyard coordinate." : locale === "pt-BR" ? "Busca pelo endereço público. A demo não mede sua localização nem afirma uma coordenada exata da vinícola." : "Búsqueda por domicilio público. La demo no mide tu ubicación ni afirma una coordenada exacta de la viña."}</p>
-          </div> : null}
-
-          <SunLocationExperience
+          {valleDemo ? <ValleSecretoDemoMap /> : <SunLocationExperience
             origin={wineryPoint[0] ? {
                 id: `origin-${uid || eventId || bid || "public"}`,
                 lat: wineryPoint[0].lat,
@@ -2208,7 +2205,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               readCounter: telemetryReadCounter,
               contextStatus: result.status?.code || null,
             }}
-          />
+          />}
         </section>
 
           <section id="sun-condition" className="scroll-mt-24 v3-space-y-3 rounded-2xl border border-white/5 bg-slate-950/35 p-4" aria-labelledby="sun-condition-title">

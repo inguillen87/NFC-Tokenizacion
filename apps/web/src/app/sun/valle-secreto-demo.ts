@@ -13,6 +13,9 @@ export const VALLE_SECRETO_DEMO = {
   blend: "34% Cabernet Sauvignon · 23% Cabernet Franc · 23% Carmenere · 15% Petit Verdot · 5% Malbec",
   pairing: "Cordero, carnes de caza y pato",
   address: "Ruta H-711, Los Maquis, Pelequén, Malloa, Chile",
+  // Public navigation destination from the producer's Waze link, not a measured origin or estate boundary.
+  coordinates: { lat: -34.482672, lng: -70.837119 },
+  navigationSource: "https://waze.com/ul/h63veu49gz",
   imageUrl: "/sun/valle-secreto/profundo.webp",
   logoDark: "/sun/valle-secreto/logo-dark.webp",
   logoLight: "/sun/valle-secreto/logo-light.png",

@@ -39,9 +39,9 @@ export function SunPassportHeader({
       </div>
 
       <div className={`sun-topbar-actions ${styles.utilities}`}>
-        <Link href="/me" prefetch={false} className={styles.accountLink} data-testid="sun-account-link">
+        <a href="/me" className={styles.accountLink} data-testid="sun-account-link" referrerPolicy="no-referrer">
           {text("Mi cuenta")}
-        </Link>
+        </a>
         <div className={styles.locale}>
           <SunLocaleSwitcher />
         </div>

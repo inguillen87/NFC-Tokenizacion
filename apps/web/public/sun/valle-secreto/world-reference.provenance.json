@@ -1,0 +1,16 @@
+{
+  "dataset": "Natural Earth 1:110m Admin 0 — Countries",
+  "license": "Public domain",
+  "licenseUrl": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "sourceRepository": "https://github.com/nvkelso/natural-earth-vector",
+  "sourceCommit": "ca96624a56bd078437bca8184e78163e5039ad19",
+  "sourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_110m_admin_0_countries.geojson",
+  "sourceSha256": "6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f",
+  "outputFile": "world-reference.geojson",
+  "outputSha256": "4a05dddaa4c9347b9f9b6bec379f39ee0bbd118535b7bf886583649edcda7418",
+  "outputBytes": 193317,
+  "features": 177,
+  "transformation": "All source features retained. Properties limited to ADM0_A3 as code and NAME_EN/NAME as name. Coordinates rounded to three decimal places; collapsed rings retain greater source precision. Consecutive duplicate positions removed. No inferred geometry, road or parcel data added.",
+  "limits": "Generalized geographic overview; some small states and islands are absent. Numeric precision does not establish surveyed positional accuracy. No street, city, provincial or cadastral detail. Natural Earth uses de facto country boundaries.",
+  "delivery": "Static same-origin file. No visitor-specific URLs, external tiles, glyphs or sprites."
+}

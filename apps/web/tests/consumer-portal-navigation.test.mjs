@@ -16,12 +16,15 @@ const styles = new Proxy({}, { get: (_, name) => String(name) });
 // Compile the production components without a browser, auth or API calls. Only
 // router context, CSS and unrelated shell children are replaced. React renders
 // the actual destination links, current-page state and dialog markup.
-function loadComponents(pathname, hooks = null) {
+function loadComponents(pathname, hooks = null, observedLinks = null) {
   let navigation;
   const stubRequire = (request) => {
     if (request === "next/link") return {
       __esModule: true,
-      default: ({ children, ...props }) => React.createElement("a", props, children),
+      default: ({ children, prefetch, ...props }) => {
+        observedLinks?.push({ href: props.href, prefetch });
+        return React.createElement("a", props, children);
+      },
     };
     if (request === "next/navigation") return { usePathname: () => pathname };
     if (request.endsWith(".module.css")) return { __esModule: true, default: styles };
@@ -116,6 +119,14 @@ test("portal destinations preserve four primary routes and every existing second
     assert.ok(typeof label === "string" && label.trim(), `${href} has a visible label`);
     assert.ok(existsSync(new URL(`../src/app${href}/page.tsx`, import.meta.url)), `${href} resolves to an implemented page`);
   }
+});
+
+test("visible and More destinations load on demand without changing their routes", () => {
+  const observed = [];
+  const { PortalNavigation } = loadComponents("/me", null, observed);
+  renderToStaticMarkup(React.createElement(PortalNavigation));
+  assert.deepEqual(observed.map(link => link.href).sort(), [...expectedPrimary.map(link => link.href), ...expectedMore].sort());
+  assert.ok(observed.every(link => link.prefetch === false), "home, private destinations and More do not schedule automatic prefetch");
 });
 
 test("More groups existing destinations by customer intent with accessible group headings", () => {

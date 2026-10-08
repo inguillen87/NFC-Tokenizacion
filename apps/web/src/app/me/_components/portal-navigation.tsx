@@ -73,7 +73,7 @@ export function PortalNavigation() {
           {PORTAL_PRIMARY_DESTINATIONS.map((item) => {
             const Icon = item.icon;
             return (
-              <Link key={item.href} href={item.href} className={styles.navigationItem} aria-current={isPortalDestinationActive(pathname, item.href) ? "page" : undefined}>
+              <Link key={item.href} href={item.href} prefetch={false} className={styles.navigationItem} aria-current={isPortalDestinationActive(pathname, item.href) ? "page" : undefined}>
                 <Icon aria-hidden="true" /><span>{item.label}</span>
               </Link>
             );
@@ -109,7 +109,7 @@ export function PortalNavigation() {
             const item = PORTAL_MORE_DESTINATIONS.find((destination) => destination.href === href)!;
             const Icon = item.icon;
             return (
-              <Link key={item.href} href={item.href} className={styles.moreLink} onClick={closeMenu} aria-current={isPortalDestinationActive(pathname, item.href) ? "page" : undefined}>
+              <Link key={item.href} href={item.href} prefetch={false} className={styles.moreLink} onClick={closeMenu} aria-current={isPortalDestinationActive(pathname, item.href) ? "page" : undefined}>
                 <Icon aria-hidden="true" /><span><strong>{item.label}</strong><small>{item.detail}</small></span>
               </Link>
             );

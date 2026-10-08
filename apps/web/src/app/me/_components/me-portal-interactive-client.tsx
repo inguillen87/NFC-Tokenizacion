@@ -23,7 +23,7 @@ export function ConsumerDataRetryButton() {
 }
 
 function SectionHeading({ id, title, href, link }: { id: string; title: string; href: string; link: string }) {
-  return <div className={styles.sectionHeading}><h2 id={id}>{title}</h2><Link href={href}>{link}<ArrowUpRight size={16} aria-hidden="true" /></Link></div>;
+  return <div className={styles.sectionHeading}><h2 id={id}>{title}</h2><Link href={href} prefetch={false}>{link}<ArrowUpRight size={16} aria-hidden="true" /></Link></div>;
 }
 
 function SectionState({ unavailable, children }: { unavailable?: boolean; children: ReactNode }) {
@@ -40,12 +40,12 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
           <span className={styles.eyebrow}>Un espacio para lo que elegís</span>
           <h2 id="home-welcome-title">{account?.name ? `Hola, ${account.name}.` : "Tu cuenta"}</h2>
           <p>La información de tus productos y tus vínculos con las marcas, siempre a mano.</p>
-          <Link className={styles.primaryAction} href="/me/products">Ver mis productos<ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link prefetch={false} className={styles.primaryAction} href="/me/products">Ver mis productos<ArrowRight size={18} aria-hidden="true" /></Link>
         </div>
         <nav className={styles.quickLinks} aria-label="Accesos de tu cuenta">
-          <Link href="/me/products"><span className={styles.quickIcon}><Package size={22} aria-hidden="true" /></span><span><strong>Productos guardados</strong><small>{account?.products != null ? `${account.products} en tu cuenta` : "Tu colección de productos"}</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
-          <Link href="/me/taps"><span className={styles.quickIcon}><History size={22} aria-hidden="true" /></span><span><strong>Historial de lecturas</strong><small>{account?.taps != null ? `${account.taps} registradas en tu cuenta` : "Volvé a una lectura anterior"}</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
-          <Link href="/me/rewards"><span className={styles.quickIcon}><Gift size={22} aria-hidden="true" /></span><span><strong>Mis beneficios</strong><small>Consultá condiciones y vigencia</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link href="/me/products" prefetch={false}><span className={styles.quickIcon}><Package size={22} aria-hidden="true" /></span><span><strong>Productos guardados</strong><small>{account?.products != null ? `${account.products} en tu cuenta` : "Tu colección de productos"}</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link href="/me/taps" prefetch={false}><span className={styles.quickIcon}><History size={22} aria-hidden="true" /></span><span><strong>Historial de lecturas</strong><small>{account?.taps != null ? `${account.taps} registradas en tu cuenta` : "Volvé a una lectura anterior"}</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link href="/me/rewards" prefetch={false}><span className={styles.quickIcon}><Gift size={22} aria-hidden="true" /></span><span><strong>Mis beneficios</strong><small>Consultá condiciones y vigencia</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
         </nav>
       </section>
 
@@ -59,7 +59,7 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
           <section className={styles.panel} aria-labelledby="home-products-title">
             <SectionHeading id="home-products-title" title="Tus productos" href="/me/products" link="Ver todos" />
             {model.products.status === "unavailable" ? <SectionState unavailable><strong>No se pudieron cargar tus productos.</strong><p>Reintentá la carga para consultar tu colección.</p></SectionState>
-              : model.products.data.length === 0 ? <SectionState><span className={styles.emptyIcon}><Package size={28} aria-hidden="true" /></span><strong>Tu próximo producto empieza con un tap.</strong><p>Acercá el teléfono a una etiqueta NFC o escaneá el QR del producto. Desde su pasaporte podés vincular la lectura a tu cuenta.</p><Link className={styles.textAction} href="/me/products">Ver cómo empezar<ArrowRight size={16} aria-hidden="true" /></Link></SectionState>
+              : model.products.data.length === 0 ? <SectionState><span className={styles.emptyIcon}><Package size={28} aria-hidden="true" /></span><strong>Tu próximo producto empieza con un tap.</strong><p>Acercá el teléfono a una etiqueta NFC o escaneá el QR del producto. Desde su pasaporte podés vincular la lectura a tu cuenta.</p><Link prefetch={false} className={styles.textAction} href="/me/products">Ver cómo empezar<ArrowRight size={16} aria-hidden="true" /></Link></SectionState>
               : <ul className={styles.productList}>{model.products.data.slice(0, 4).map((product, index) => <li key={`${product.readingHref || product.batch || product.name}-${index}`} className={styles.productCard}>
                 <ConsumerProductImage product={product} /><div className={styles.productContent}>
                   <span className={styles.itemEyebrow}>{product.brand || "Marca no informada"}</span><h3>{product.name}</h3>
@@ -79,7 +79,7 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
                   <p className={styles.metadata}>{tap.location || "Zona no reportada"}</p>
                   {tap.dateTime ? <time dateTime={tap.dateTime}>{tap.date}</time> : <span className={styles.metadata}>{tap.date}</span>}
                 </div>
-                <Link className={styles.readingAction} href={tap.href || "/me/taps"} aria-label={tap.id ? `Abrir lectura ${tap.id}` : "Consultar lectura en el historial"}><span>Ver lectura</span><ArrowUpRight size={18} aria-hidden="true" /></Link>
+                <Link prefetch={false} className={styles.readingAction} href={tap.href || "/me/taps"} aria-label={tap.id ? `Abrir lectura ${tap.id}` : "Consultar lectura en el historial"}><span>Ver lectura</span><ArrowUpRight size={18} aria-hidden="true" /></Link>
               </li>)}</ul><p className={styles.footnote}>Hasta 5 lecturas recientes. Horarios en UTC; no representan la zona horaria del teléfono.</p></>}
           </section>
         </div>
@@ -88,18 +88,18 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
           <section className={styles.panel} aria-labelledby="home-brands-title">
             <SectionHeading id="home-brands-title" title="Tus marcas y clubes" href="/me/brands" link="Ver todos" />
             {model.brands.status === "unavailable" ? <SectionState unavailable><strong>No pudimos consultar tus membresías.</strong><p>Reintentá para ver sus estados y puntos reportados.</p></SectionState>
-              : model.brands.data.length === 0 ? <SectionState><span className={styles.emptyIcon}><Building2 size={26} aria-hidden="true" /></span><strong>Elegí con qué marcas conectar.</strong><p>Cuando te sumes a un club, su membresía aparecerá en este espacio.</p><Link className={styles.textAction} href="/me/brands">Explorar mis marcas<ArrowRight size={16} aria-hidden="true" /></Link></SectionState>
+              : model.brands.data.length === 0 ? <SectionState><span className={styles.emptyIcon}><Building2 size={26} aria-hidden="true" /></span><strong>Elegí con qué marcas conectar.</strong><p>Cuando te sumes a un club, su membresía aparecerá en este espacio.</p><Link prefetch={false} className={styles.textAction} href="/me/brands">Explorar mis marcas<ArrowRight size={16} aria-hidden="true" /></Link></SectionState>
               : <ul className={styles.brandList}>{model.brands.data.slice(0, 3).map((brand, index) => <li key={`${brand.href}-${index}`}>
                 <div className={styles.brandTitle}><span className={styles.brandIcon}><Building2 size={20} aria-hidden="true" /></span><div><h3>{brand.name}</h3><p className={styles.metadata}>{homeMembershipLabel(brand.status)}</p></div></div>
-                <div className={styles.brandFooter}><span>{brand.points != null ? <><strong>{brand.points}</strong> puntos reportados</> : "Puntos no informados"}</span><Link href={brand.href} aria-label={`Ver opciones de ${brand.name}`}>Ver opciones<ArrowUpRight size={16} aria-hidden="true" /></Link></div>
+                <div className={styles.brandFooter}><span>{brand.points != null ? <><strong>{brand.points}</strong> puntos reportados</> : "Puntos no informados"}</span><Link href={brand.href} prefetch={false} aria-label={`Ver opciones de ${brand.name}`}>Ver opciones<ArrowUpRight size={16} aria-hidden="true" /></Link></div>
               </li>)}</ul>}
           </section>
 
           <section className={styles.benefitCard} aria-labelledby="home-benefits-title">
             <span className={styles.benefitIcon}><Gift size={24} aria-hidden="true" /></span><span className={styles.eyebrow}>Seguí explorando</span><h2 id="home-benefits-title">Más de tus marcas.</h2>
             <p>Revisá tus beneficios o descubrí el catálogo publicado por cada empresa.</p>
-            <Link className={styles.primaryAction} href="/me/rewards">Consultar beneficios<ArrowRight size={18} aria-hidden="true" /></Link>
-            <Link className={styles.textAction} href="/me/marketplace"><ShoppingBag size={17} aria-hidden="true" />Explorar catálogo<ArrowUpRight size={16} aria-hidden="true" /></Link>
+            <Link prefetch={false} className={styles.primaryAction} href="/me/rewards">Consultar beneficios<ArrowRight size={18} aria-hidden="true" /></Link>
+            <Link prefetch={false} className={styles.textAction} href="/me/marketplace"><ShoppingBag size={17} aria-hidden="true" />Explorar catálogo<ArrowUpRight size={16} aria-hidden="true" /></Link>
           </section>
 
           <section className={styles.panel} aria-labelledby="home-account-title">
@@ -107,9 +107,9 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
             {model.account.status === "unavailable" ? <SectionState unavailable><strong>No se pudieron cargar tus datos.</strong><p>Reintentá para consultar el correo y el estado de tu cuenta.</p></SectionState>
               : <div className={styles.accountDetails}><span className={styles.itemEyebrow}>Correo de tu cuenta</span><p className={styles.accountEmail}><Mail size={16} aria-hidden="true" />{account?.email || "Correo no informado"}</p><p className={styles.metadata}>Estado: {account?.status === "verified" ? "verificada" : account?.status === "active" ? "activa" : account?.status || "no informado"}</p></div>}
             <nav className={styles.accountLinks} aria-label="Gestionar tu cuenta">
-              <Link href="/me/privacy"><ShieldCheck size={18} aria-hidden="true" /><span>Privacidad y permisos</span><ArrowRight size={16} aria-hidden="true" /></Link>
-              <Link href="/me/security"><UserRound size={18} aria-hidden="true" /><span>Seguridad de la cuenta</span><ArrowRight size={16} aria-hidden="true" /></Link>
-              <Link href="/me/wallet"><Wallet size={18} aria-hidden="true" /><span>Mi wallet</span><ArrowRight size={16} aria-hidden="true" /></Link>
+              <Link href="/me/privacy" prefetch={false}><ShieldCheck size={18} aria-hidden="true" /><span>Privacidad y permisos</span><ArrowRight size={16} aria-hidden="true" /></Link>
+              <Link href="/me/security" prefetch={false}><UserRound size={18} aria-hidden="true" /><span>Seguridad de la cuenta</span><ArrowRight size={16} aria-hidden="true" /></Link>
+              <Link href="/me/wallet" prefetch={false}><Wallet size={18} aria-hidden="true" /><span>Mi wallet</span><ArrowRight size={16} aria-hidden="true" /></Link>
             </nav>
           </section>
         </aside>
