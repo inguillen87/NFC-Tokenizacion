@@ -1,7 +1,7 @@
 {
-  "release": "2026.10.06-api-otp-provider-rejection.1",
-  "scope": "explicit-twilio-authentication-rejection-without-accepting-message-delivery",
-  "baseCommit": "5add287a1d3462503d42e989b706e1df1030eb9c",
+  "release": "2026.10.08-api-sommelier-managed.1",
+  "scope": "bounded-sommelier-provider-demo-grants-consumer-authorization-and-fixed-window-spend-reservations",
+  "baseCommit": "8cda02b643cb506a1315a4aa26881fc7be5bf3fc",
   "tenantMarketplaceProtocol": "nexid.tenant-marketplace-catalog.v1",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
@@ -62,5 +62,7 @@
   "supplierDispatchIncluded": false,
   "supplierRequestAssignmentProtocol": "nexid.supplier-request-assignment.v1",
   "publicExperienceShareProtocol": "nexid:experience-event:v1",
-  "tenantActionConfigurationProtocol": "nexid.tenant-actions.v1"
+  "tenantActionConfigurationProtocol": "nexid.tenant-actions.v1",
+  "sommelierProtocol": "nexid.sommelier.v1",
+  "sommelierProviderActivation": "explicit-server-flags-required"
 }

@@ -56,7 +56,8 @@ export function classifyFleetRateLimit(pathname: string, method: string): FleetR
   const path = String(pathname || "").trim().toLowerCase().replace(/\/+$/, "") || "/";
   const verb = String(method || "GET").toUpperCase();
   if (
-    path === "/auth/login"
+    path === "/public/sommelier/demo/session"
+    || path === "/auth/login"
     || path === "/api/session/login"
     || path.startsWith("/auth/")
     || path.startsWith("/consumer/auth/")
@@ -74,7 +75,7 @@ export function classifyFleetRateLimit(pathname: string, method: string): FleetR
     path === "/admin/observability/service-levels"
     || path === "/admin/risk-analytics"
   )) return "observability_read";
-  if (path === "/assistant/chat" || path === "/realtime/session" || path === "/admin/campaigns/test-whatsapp") return "ai_expensive";
+  if (path === "/sommelier/chat" || path === "/assistant/chat" || path === "/realtime/session" || path === "/admin/campaigns/test-whatsapp") return "ai_expensive";
   if (verb !== "GET" && (
     path === "/admin/leads"
     || path === "/admin/orders"
