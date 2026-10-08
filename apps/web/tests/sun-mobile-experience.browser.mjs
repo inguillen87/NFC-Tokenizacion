@@ -113,7 +113,7 @@ try {
  // Availability is tested against the built server and real UI in all three
  // languages. The fixture counts server fetches and the browser blocks writes.
  const unavailableCases=[
-  ['empty','', 'empty',0],
+  ['empty','', 'gallery',0],
   ['demo','demo=1','ready',0],
   ['partial-trace','trace=synthetic&demo=1','incomplete',0],
   ['partial-access','access=invalid&demo=1','incomplete',0],
@@ -140,13 +140,25 @@ try {
   await page.route('**/*',r=>{const u=new URL(r.request().url());if(r.request().method()!=='GET'){writes++;report.blockedWrites++;return r.abort();}if(u.origin!==origin)return r.abort();if(u.pathname.startsWith('/api/'))return r.fulfill({status:404,contentType:'application/json',body:'{"ok":false}'});return r.continue();});
   const readsBefore=(log.match(/SUN_QA_READ /g)||[]).length;
   await page.goto(origin+'/sun?'+query+(query?'&':'')+'lang='+locale,{waitUntil:'networkidle'});
-  const status=page.getByTestId('sun-summary-status');await status.waitFor();
-  check(await status.getAttribute('data-availability')===availability,`Availability ${name} ${locale}`);
+  const status=page.getByTestId('sun-summary-status');
+  if(name==='empty')await page.getByTestId('sun-demo-gallery').waitFor();
+  else {await status.waitFor();check(await status.getAttribute('data-availability')===availability,`Availability ${name} ${locale}`);}
   check((log.match(/SUN_QA_READ /g)||[]).length-readsBefore===expectedReads,`Single source read or no consumption ${name} ${locale}`);
   check(writes===0,`No write ${name} ${locale}`);
   check(await page.evaluate(()=>window.__geoCalls)===0,`No location request ${name} ${locale}`);
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`No availability overflow ${name} ${locale}`);
-  if(name==='demo'){
+  if(name==='empty'){
+    const gallery=page.getByTestId('sun-demo-gallery');
+    const title=locale==='en'?'Choose an experience':locale==='pt-BR'?'Escolha uma experiência':'Elegí una experiencia';
+    check(await gallery.locator('h1').innerText()===title,`Empty entry offers localized demo gallery ${locale}`);
+    check(await gallery.locator('a[data-demo-profile]').count()===4,`Four curated demo destinations ${locale}`);
+    for(const link of await gallery.locator('a[data-demo-profile]').all()){
+      const u=new URL(await link.getAttribute('href'),origin);
+      check(u.origin===origin&&u.pathname==='/sun'&&u.searchParams.get('demo')==='1'&&u.searchParams.get('scenario')==='closed'&&!['bid','snapshot','trace','access','picc_data','enc','cmac'].some(key=>u.searchParams.has(key)),`Gallery route is explicitly simulated ${locale}`);
+    }
+    check(await status.count()===0&&await page.getByTestId('sun-summary-product').count()===0,`Empty entry invents no product reading ${locale}`);
+    check(await page.getByTestId('passport-evidence-resources').count()===0&&await page.locator('#protected-actions').count()===0&&await page.locator('[data-sun-datetime]').count()===0,`Gallery has no reading evidence or protected action ${locale}`);
+  }else if(name==='demo'){
     check((await page.locator('body').innerText()).includes(locale==='en'?'DEMO PREVIEW · NO PHYSICAL TAP':locale==='pt-BR'?'DEMONSTRAÇÃO · SEM TOQUE FÍSICO':'MUESTRA DEMO · SIN TAP FÍSICO'),`Demo truth label ${locale}`);
   }else{
     check(await status.locator('h2').innerText()===headlines[locale][availability],`Clear availability headline ${name} ${locale}`);
@@ -162,7 +174,7 @@ try {
     check(await page.locator('#fresh-tap-required').count()===0,`No risk recovery prescribed without a result ${name} ${locale}`);
     if(['inaccessible','unavailable'].includes(availability))check(!/Desbloqueá el teléfono|Unlock your phone|Desbloqueie o telefone/.test(await page.getByTestId('sun-availability-help').innerText()),`No unnecessary new tap for source failure ${name} ${locale}`);
   }
-  if(axe&&locale==='es-AR'){await page.addScriptTag({content:axe});const violations=await page.evaluate(async()=>(await axe.run('#sun-summary',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));check(!violations.length,`Availability accessibility ${name}`);report.views.push({width:390,state:name,locale,violations});}
+  if(axe&&locale==='es-AR'){await page.addScriptTag({content:axe});const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),name==='empty'?'[data-testid="sun-demo-gallery"]':'#sun-summary');check(!violations.length,`Availability accessibility ${name}`);report.views.push({width:390,state:name,locale,violations});}
   await context.close();
  }
  for(const [state,tone,headline] of [
