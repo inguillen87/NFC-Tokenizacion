@@ -8,6 +8,7 @@ import { LocaleSwitcher, ThemeToggle, type Theme } from "@product/ui";
 import type { AppLocale } from "@product/config";
 import { BrandHomeLink } from "./brand-home-link";
 import { focusInitialPassportFragment } from "./passport-fragment-restoration";
+import { SUN_DEMO_GALLERY_HREF } from "../lib/sun-demo-links";
 import styles from "./marketing-mega-nav.module.css";
 
 type NavItem = {
@@ -51,7 +52,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "en") {
     return {
       ariaLabel: "Main navigation",
-      passport: "Digital product passport",
+      passport: "Demos by industry",
       about: "About us",
       account: "My account",
       login: "Business sign in",
@@ -97,7 +98,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           items: [
             { label: "Demo Lab", description: "Run transparent, scope-labelled product scenarios.", href: "/demo-lab" },
             { label: "Verify public evidence", description: "Check public evidence without exposing private data.", href: "/proof/verify" },
-            { label: "NFC security", description: "Review fresh-message validation for provisioned NFC tags.", href: "/sun" },
+            { label: "NFC passport demos", description: "Explore sample experiences for different industries.", href: SUN_DEMO_GALLERY_HREF },
             { label: "Offline field mode", description: "Review the controlled workflow for low-connectivity sites.", href: "/offline" },
             { label: "Consumer portal", description: "Access passports, certificates, rewards and ownership.", href: "/me" },
             { label: "SDK and APIs", description: "Integrate the platform when your technical team is ready.", href: "/sdk" },
@@ -125,7 +126,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "pt-BR") {
     return {
       ariaLabel: "Navegação principal",
-      passport: "Passaporte digital",
+      passport: "Demos por setor",
       about: "Quem somos",
       account: "Minha conta",
       login: "Acesso para empresas",
@@ -171,7 +172,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           items: [
             { label: "Demo Lab", description: "Execute cenários transparentes com escopo declarado.", href: "/demo-lab" },
             { label: "Verificar evidência pública", description: "Confira evidência pública sem expor dados privados.", href: "/proof/verify" },
-            { label: "Segurança NFC", description: "Revise a validação de mensagens frescas em tags NFC provisionadas.", href: "/sun" },
+            { label: "Demos do passaporte NFC", description: "Explore experiências de exemplo para diferentes setores.", href: SUN_DEMO_GALLERY_HREF },
             { label: "Modo de campo offline", description: "Revise o fluxo controlado para locais sem conectividade.", href: "/offline" },
             { label: "Portal do consumidor", description: "Acesse passaportes, certificados, benefícios e ownership.", href: "/me" },
             { label: "SDK e APIs", description: "Integre a plataforma quando sua equipe técnica estiver pronta.", href: "/sdk" },
@@ -198,7 +199,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
 
   return {
     ariaLabel: "Navegación principal",
-    passport: "Pasaporte digital",
+    passport: "Demos por rubro",
     about: "Quiénes somos",
     account: "Mi cuenta",
     login: "Ingresar empresas",
@@ -244,7 +245,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         items: [
           { label: "Demo Lab", description: "Probá escenarios transparentes con alcance declarado.", href: "/demo-lab" },
           { label: "Verificar evidencia pública", description: "Comprobá evidencia pública sin exponer datos privados.", href: "/proof/verify" },
-          { label: "Seguridad NFC", description: "Revisá la validación de mensajes frescos en tags NFC provisionados.", href: "/sun" },
+          { label: "Demos del pasaporte NFC", description: "Explorá experiencias de muestra para distintos rubros.", href: SUN_DEMO_GALLERY_HREF },
           { label: "Modo de campo offline", description: "Revisá el flujo controlado para lugares sin conectividad.", href: "/offline" },
           { label: "Portal del consumidor", description: "Accedé a pasaportes, certificados, beneficios y propiedad.", href: "/me" },
           { label: "SDK y APIs", description: "Integrá la plataforma cuando tu equipo técnico esté listo.", href: "/sdk" },
@@ -304,7 +305,7 @@ function MenuLink({ item, currentPath, featured = false, onNavigate }: { item: N
   }
 
   return (
-    <Link href={item.href} prefetch={item.href === "/me" ? false : undefined} className={className} data-menu-link aria-current={isCurrent ? "page" : undefined} onClick={onNavigate}>
+    <Link href={item.href} prefetch={false} className={className} data-menu-link aria-current={isCurrent ? "page" : undefined} onClick={onNavigate}>
       {content}
     </Link>
   );
@@ -321,8 +322,6 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const groupButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const closeTimerRef = useRef<number | null>(null);
-  const passportFocusFrameRef = useRef<number | null>(null);
-  const pendingPassportFocusRef = useRef(false);
   const mobileCloseReasonRef = useRef<"dismiss" | "navigate">("dismiss");
   const openMenuSourceRef = useRef<"hover" | "click" | null>(null);
 
@@ -331,30 +330,10 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     setMobileOpen(false);
   }
 
-  function focusPassportContent() {
-    if (passportFocusFrameRef.current !== null) window.cancelAnimationFrame(passportFocusFrameRef.current);
-    passportFocusFrameRef.current = window.requestAnimationFrame(() => {
-      passportFocusFrameRef.current = null;
-      const section = document.getElementById("pasaporte-digital");
-      const heading = section?.querySelector<HTMLElement>("h1, h2, h3") ?? section;
-      if (!heading) return;
-      if (!heading.hasAttribute("tabindex")) {
-        heading.setAttribute("tabindex", "-1");
-        heading.addEventListener("blur", () => heading.removeAttribute("tabindex"), { once: true });
-      }
-      heading.focus({ preventScroll: true });
-    });
-  }
-
-  function handlePassportNavigation(event: ReactMouseEvent<HTMLAnchorElement>) {
+  function handleDemoNavigation(event: ReactMouseEvent<HTMLAnchorElement>) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     closeDesktopMenu();
     closeMobileMenu("navigate");
-    // Let the native fragment perform the scroll and retain cross-route/back behavior.
-    if (window.location.pathname === "/" && event.detail === 0) {
-      if (mobileOpen) pendingPassportFocusRef.current = true;
-      else focusPassportContent();
-    }
   }
 
   function cancelScheduledClose() {
@@ -414,7 +393,6 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
 
   useEffect(() => () => {
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
-    if (passportFocusFrameRef.current !== null) window.cancelAnimationFrame(passportFocusFrameRef.current);
   }, []);
 
   useEffect(() => {
@@ -472,10 +450,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
         if (ariaValue === null) target.removeAttribute("aria-hidden");
         else target.setAttribute("aria-hidden", ariaValue);
       });
-      if (pendingPassportFocusRef.current) {
-        pendingPassportFocusRef.current = false;
-        focusPassportContent();
-      } else if (mobileCloseReasonRef.current === "dismiss") {
+      if (mobileCloseReasonRef.current === "dismiss") {
         mobileTriggerRef.current?.focus({ preventScroll: true });
       }
     };
@@ -516,7 +491,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   return (
     <div ref={navigationRef} className={styles.navigation}>
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
-        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={handlePassportNavigation}>
+        <a href={SUN_DEMO_GALLERY_HREF} className={styles.navDirectLink} onClick={handleDemoNavigation} data-demo-entry="gallery">
           {copy.passport}
         </a>
         {copy.groups.map((group) => {
@@ -527,6 +502,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
               {group.id === "resources" ? (
                 <Link
                   href="/about"
+                  prefetch={false}
                   className={styles.navDirectLink}
                   aria-current={pathname === "/about" ? "page" : undefined}
                   onClick={closeDesktopMenu}
@@ -590,11 +566,12 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       </nav>
 
       <nav className={styles.compactNav} aria-label={copy.ariaLabel}>
-        <a href="/#pasaporte-digital" className={styles.navDirectLink} onClick={handlePassportNavigation}>
+        <a href={SUN_DEMO_GALLERY_HREF} className={styles.navDirectLink} onClick={handleDemoNavigation} data-demo-entry="gallery">
           {copy.passport}
         </a>
         <Link
           href="/about"
+          prefetch={false}
           className={styles.navDirectLink}
           aria-current={pathname === "/about" ? "page" : undefined}
           onClick={closeDesktopMenu}
@@ -610,7 +587,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
           {copy.account}
         </Link>
         <a href={loginHref} className={styles.loginLink}>{copy.login}</a>
-        <Link href="/?contact=demo#contact-modal" className={styles.headerCta}>{copy.demo}</Link>
+        <Link href="/?contact=demo#contact-modal" prefetch={false} className={styles.headerCta}>{copy.demo}</Link>
         <button
           ref={mobileTriggerRef}
           type="button"
@@ -646,12 +623,13 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                 <span>{copy.account}</span>
                 <ArrowRight aria-hidden="true" />
               </Link>
-              <a href="/#pasaporte-digital" className={styles.mobileAboutLink} onClick={handlePassportNavigation}>
+              <a href={SUN_DEMO_GALLERY_HREF} className={styles.mobileAboutLink} onClick={handleDemoNavigation} data-demo-entry="gallery">
                 <span>{copy.passport}</span>
                 <ArrowRight aria-hidden="true" />
               </a>
               <Link
                 href="/about"
+                prefetch={false}
                 className={styles.mobileAboutLink}
                 aria-current={pathname === "/about" ? "page" : undefined}
                 onClick={() => closeMobileMenu("navigate")}
@@ -681,7 +659,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
             <div className={styles.mobileActions}>
               <a href={loginHref}>{copy.login}</a>
-              <Link href="/?contact=demo#contact-modal" onClick={() => closeMobileMenu("navigate")}>{copy.demo}</Link>
+              <Link href="/?contact=demo#contact-modal" prefetch={false} onClick={() => closeMobileMenu("navigate")}>{copy.demo}</Link>
             </div>
           </div>
         </div>

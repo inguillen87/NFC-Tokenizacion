@@ -34,20 +34,22 @@ export function selectedValleSecretoDemo(isDemoPreview: boolean, profile: unknow
   return isDemoPreview && profile === VALLE_SECRETO_DEMO.key ? VALLE_SECRETO_DEMO : null;
 }
 
-export function valleSecretoDemoScenario(value: unknown): "closed" | "opened" {
-  return value === "opened" ? "opened" : "closed";
+export function valleSecretoDemoScenario(value: unknown): "closed" | "opened" | "invalid" {
+  return value === "opened" || value === "invalid" ? value : "closed";
 }
 
 export function valleSecretoDemoResult(isDemoPreview: boolean, profile: unknown, scenario: unknown) {
   const wine = selectedValleSecretoDemo(isDemoPreview, profile);
   if (!wine) return null;
-  const opened = valleSecretoDemoScenario(scenario) === "opened";
+  const state = valleSecretoDemoScenario(scenario);
+  const opened = state === "opened";
+  const invalid = state === "invalid";
   return {
-    ok: true,
+    ok: !invalid,
     status: {
-      code: "AUTH_OK", label: opened ? "Sello abierto · demo" : "Sello cerrado · demo", tone: "good" as const,
+      code: invalid ? "DEMO_READ_INVALID" : "AUTH_OK", label: invalid ? "Lectura no válida · demo" : opened ? "Sello abierto · demo" : "Sello cerrado · demo", tone: invalid ? "risk" as const : opened ? "warn" as const : "good" as const,
       summary: "Escenario ilustrativo para la presentación. No corresponde a una lectura NFC ni a una botella verificada.",
-      reason: "demo_preview", productState: opened ? "VALID_OPENED" : "VALID_CLOSED", tamperSupported: true, tamperStatus: opened ? "OPENED" : "CLOSED",
+      reason: "demo_preview", productState: invalid ? "INVALID" : opened ? "VALID_OPENED" : "VALID_CLOSED", tamperSupported: !invalid, tamperStatus: invalid ? "UNKNOWN" : opened ? "OPENED" : "CLOSED",
     },
     identity: { bid: "MUESTRA-VS-2019", uid: null, readCounter: 0, scanCount: 0, eventId: "demo-sun-preview", tenantSlug: "demo-valle-secreto" },
     product: {
@@ -59,7 +61,7 @@ export function valleSecretoDemoResult(isDemoPreview: boolean, profile: unknown,
       wineryLocation: wine.region, wineryCoordinates: null, sensorEvidenceKind: "simulated",
       sensorSnapshot: { cellarTemperature: "15.2 °C", humidity: "62%", lightExposure: "Exposición baja (simulada)", transitShock: "Sin golpes críticos en la simulación", source: "valle_secreto_demo_simulation", deviceId: null, observedAt: null },
     },
-    tag_tamper: { available: true, status: opened ? "opened" : "closed", raw: null },
+    tag_tamper: { available: !invalid, status: invalid ? "unknown" : opened ? "opened" : "closed", raw: null },
     cta: { claimOwnership: false, registerWarranty: false, provenance: false, tokenize: false },
     allowedActions: [], blockedActions: ["claim", "warranty", "tokenize", "purchase", "rewards"], troubleshooting: [],
   };

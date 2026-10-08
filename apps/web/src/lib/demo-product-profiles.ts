@@ -1,4 +1,4 @@
-export type DemoProductProfileKey = "wine" | "perfume" | "agro";
+export type DemoProductProfileKey = "wine" | "perfume" | "agro" | "agrochem" | "fragrance";
 export type DemoExperienceAction = "warranty" | "benefit" | "support";
 
 export type DemoProductProfile = {
@@ -85,10 +85,49 @@ export const DEMO_PRODUCT_PROFILES: Readonly<Record<DemoProductProfileKey, DemoP
       "/landing/connected-journey/agro-journey-03.webp",
     ],
   },
+  agrochem: {
+    key: "agrochem",
+    label: "Agroquímicos",
+    name: "Protección de cultivos · muestra",
+    brand: "CampoNexo",
+    region: "Pergamino, Buenos Aires",
+    lot: "CN-DEMO-01",
+    vertical: "agro",
+    category: "Agroquímicos · ejemplo ilustrativo",
+    origin: { city: "Pergamino", country: "AR", lat: -33.8908, lng: -60.5736 },
+    sampleTap: { city: "Rosario", country: "AR", lat: -32.9442, lng: -60.6505 },
+    // Illustrative container artwork already used by Demo Lab. This fixture
+    // does not describe a registered chemical, dosage or application advice.
+    images: [
+      "/landing/connected-journey/agro-journey-01.webp",
+      "/landing/connected-journey/agro-journey-02.webp",
+      "/landing/connected-journey/agro-journey-03.webp",
+      "/landing/connected-journey/agro-journey-03.webp",
+    ],
+  },
+  fragrance: {
+    key: "fragrance",
+    label: "Perfumería",
+    name: "Bruma · Eau de Parfum",
+    brand: "Casa Bruma",
+    region: "Buenos Aires, Argentina",
+    lot: "BR-DEMO-01",
+    vertical: "perfume",
+    category: "Fragancia · ejemplo ilustrativo",
+    origin: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
+    sampleTap: { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 },
+    // Licensed reference photography, not a photograph of this fictional brand.
+    images: [
+      "/demo/cosmetics-secure/real-luxury-perfume-pexels.jpg",
+      "/demo/cosmetics-secure/real-perfume-bottle-pexels.jpg",
+      "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg",
+      "/demo/cosmetics-secure/real-luxury-perfume-pexels.jpg",
+    ],
+  },
 };
 
 export function isDemoProductProfileKey(value: string): value is DemoProductProfileKey {
-  return value === "wine" || value === "perfume" || value === "agro";
+  return value === "wine" || value === "perfume" || value === "agro" || value === "agrochem" || value === "fragrance";
 }
 
 export function resolveDemoProductProfile(value: string | null | undefined): DemoProductProfile {
