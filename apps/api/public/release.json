@@ -1,5 +1,5 @@
 {
-  "release": "2026.10.08-api-sommelier-managed.2",
+  "release": "2026.10.08-api-sommelier-managed.3",
   "scope": "bounded-sommelier-provider-demo-grants-consumer-authorization-and-fixed-window-spend-reservations",
   "baseCommit": "8cda02b643cb506a1315a4aa26881fc7be5bf3fc",
   "tenantMarketplaceProtocol": "nexid.tenant-marketplace-catalog.v1",

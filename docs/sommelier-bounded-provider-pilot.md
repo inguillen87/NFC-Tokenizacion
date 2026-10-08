@@ -34,6 +34,8 @@ Provider selects approved fact IDs; the server renders their exact public text a
 
 Each rejected provider attempt emits at most one internal diagnostic with only the pinned provider, a closed validation stage/category and a whitelisted HTTP status or null. It distinguishes transport/body, model/choice/usage receipt and answer-validation failures, including a model repeating a numeric temperature in free advice instead of selecting the approved `serving` fact. It never logs prompts, history, response text, error objects, keys, fact IDs or customer/tenant dimensions. An HTTP 200 from this API can still be an explicit fallback; these diagnostics do not certify the provider's quality. Public responses, validation rules, reservations, retry behavior and deadlines remain unchanged even if the logger throws.
 
+The prompt separates conversational guidance from factual answers explicitly and supplies localized response examples only for fact IDs present in the server context. Serving and aging examples select approved IDs; the server appends their exact text. A missing fact produces an honest explanation without a numerical substitute. General consumer guidance has no demo product facts. This is a prompt quality change, not a relaxation of the parser or a guarantee that a model will comply. In the observed diagnostic Preview, the serving answer was rejected as `advice_unverified_claim`; its raw text was not retained, so the specific prohibited statement is unknown. Fresh provider acceptance is required for this revision.
+
 ## Flags and enablement
 
 - `NEXID_SOMMELIER_ENABLED=true`: opt in; default off.
