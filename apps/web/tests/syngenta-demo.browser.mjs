@@ -18,6 +18,12 @@ const LABEL = 'https://www.syngenta.com.ar/sites/g/files/kgtney396/files/media/d
 const SAFETY = 'https://www.syngenta.com.ar/sites/g/files/kgtney396/files/media/document/2024/02/28/AMISTAR%20XTRA_hoja_de_seguridad.pdf';
 const LOCALES = ['es-AR', 'en', 'pt-BR'];
 const SYSTEM = /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|TMPDIR|USERPROFILE|APPDATA|LOCALAPPDATA|CI)$/i;
+const safeRoute = value => {
+  const url = new URL(value), safe = new URLSearchParams();
+  const allowed = { demo: ['1'], profile: ['syngenta', 'valle-secreto', 'agrochem', 'fragrance', 'perfume'], scenario: ['closed', 'opened', 'invalid'], source: ['demo-lab'], lang: LOCALES };
+  for (const [key, values] of Object.entries(allowed)) if (values.includes(url.searchParams.get(key)) && url.searchParams.getAll(key).length === 1) safe.set(key, url.searchParams.get(key));
+  return url.pathname + (safe.size ? '?' + safe : '');
+};
 
 async function runInternal({ origin, phase = 'local', source = git('rev-parse', 'HEAD'), tree = git('rev-parse', 'HEAD^{tree}'), deploymentId = null, runtimeSHA = null, protectionHeader = null, protectionValue = '', output } = {}) {
   assert.equal(new URL(origin).origin, origin);
@@ -62,7 +68,7 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
       const excluded = new Set();
       page.on('pageerror', () => report.failures.push({ view, kind: 'pageerror' }));
       page.on('console', message => { if (message.type() === 'error') report.failures.push({ view, kind: 'consoleerror' }); });
-      page.on('requestfailed', request => { if (!(excluded.has(request.url()) && request.failure()?.errorText === 'net::ERR_BLOCKED_BY_CLIENT')) report.failures.push({ view, kind: 'requestfailed', path: new URL(request.url()).pathname, route: request.url().startsWith(origin + '/sun?') ? new URL(request.url()).search : null, resource: request.resourceType(), pageRoute: new URL(page.url()).pathname + new URL(page.url()).search, navigation: request.isNavigationRequest(), code: request.failure()?.errorText || 'unknown' }); });
+      page.on('requestfailed', request => { if (!(excluded.has(request.url()) && request.failure()?.errorText === 'net::ERR_BLOCKED_BY_CLIENT')) report.failures.push({ view, kind: 'requestfailed', path: new URL(request.url()).pathname, route: safeRoute(request.url()), resource: request.resourceType(), pageRoute: safeRoute(page.url()), navigation: request.isNavigationRequest(), code: request.failure()?.errorText || 'unknown' }); });
       page.on('response', response => { if (response.status() >= 400) report.failures.push({ view, kind: 'http', status: response.status(), path: new URL(response.url()).pathname }); });
       await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
