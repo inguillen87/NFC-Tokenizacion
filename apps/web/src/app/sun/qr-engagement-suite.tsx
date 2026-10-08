@@ -11,7 +11,8 @@ import {
 } from "../../lib/sommelier-guidance";
 import { useSunLocale } from "./sun-locale-provider";
 import { requestSommelierAnswer, SOMMELIER_QUESTION_MAX_CHARS } from "../../lib/sommelier-conversation";
-import { demoSommelierAnswer, demoSommelierCopy } from "./sun-demo-sommelier";
+import { requestManagedSommelierAnswer, sommelierHistory, MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../lib/managed-sommelier";
+import { demoSommelierAnswer, demoSommelierCopy, demoSommelierPrompts, type DemoSommelierContext, type DemoSommelierFollowUp } from "./sun-demo-sommelier";
 import { demoWineTrivia } from "./sun-demo-wine-quiz";
 import type { DemoWineProfile } from "./valle-secreto-demo";
 import styles from "./qr-engagement-suite.module.css";
@@ -72,6 +73,8 @@ interface ChatMessage {
   sourceUrl?: string;
   sourceLabel?: string;
   sample?: boolean;
+  followUps?: DemoSommelierFollowUp[];
+  sources?: SommelierSource[];
 }
 
 type QREngagementSuiteProps = {
@@ -140,6 +143,7 @@ export function QREngagementSuite({
   const chatSequence = useRef(0);
   const chatLog = useRef<HTMLDivElement | null>(null);
   const followChat = useRef(true);
+  const demoChatContext = useRef<DemoSommelierContext>({});
   const chatScope = JSON.stringify([productName, wineryName, locale, eventId, tenantSlug, isDemoPreview, activeDemoWineProfile?.key]);
   const currentChatScope = useRef(chatScope);
   currentChatScope.current = chatScope;
@@ -150,6 +154,16 @@ export function QREngagementSuite({
     isDemoPreview, allowedActions, blockedActions });
   const currentAvailability = useRef(availability);
   currentAvailability.current = availability;
+  const chatPrompts = isDemoPreview ? demoSommelierPrompts(locale, activeDemoWineProfile) : chatCopy.prompts;
+  const demoFollowUps = activeDemoWineProfile?.key === "valle-secreto"
+    ? [...messages].reverse().find(message => message.sender === "sommelier")?.followUps ?? [] : [];
+
+  useEffect(() => {
+    if (activeDemoWineProfile?.key !== "valle-secreto" || !availability.sommelier) return;
+    const openGuide = () => setActiveTab("sommelier");
+    window.addEventListener("sun:demo-wine-guide", openGuide);
+    return () => window.removeEventListener("sun:demo-wine-guide", openGuide);
+  }, [activeDemoWineProfile?.key, availability.sommelier]);
 
   const fallbackTrivia = useMemo(() => isDemoPreview ? demoWineTrivia({ productName, wineryName, locale,
     facts: activeDemoWineProfile ? { region: activeDemoWineProfile.region, vintage: activeDemoWineProfile.vintage, barrelMonths: activeDemoWineProfile.barrelMonths } : undefined }) : [], [isDemoPreview, productName, wineryName, locale, activeDemoWineProfile]);
@@ -304,6 +318,7 @@ export function QREngagementSuite({
     setIsTyping(false);
     setChatError(null);
     setChatInput("");
+    demoChatContext.current = {};
     followChat.current = true;
     setMessages([
       {
@@ -436,7 +451,7 @@ export function QREngagementSuite({
   };
 
   const handleSendChat = async (textToSend: string) => {
-    const question = textToSend.trim().slice(0, SOMMELIER_QUESTION_MAX_CHARS);
+    const question = textToSend.trim().slice(0, activeDemoWineProfile?.key === "valle-secreto" ? MANAGED_SOMMELIER_QUESTION_MAX_CHARS : SOMMELIER_QUESTION_MAX_CHARS);
     if (!currentAvailability.current.sommelier || chatSendLock.current || !question) return;
     chatSendLock.current = true;
     const controller = new AbortController();
@@ -456,8 +471,21 @@ export function QREngagementSuite({
 
     try {
       if (isDemoPreview) {
-        const answer = demoSommelierAnswer(question, locale, activeDemoWineProfile);
-        setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", ...answer, sample: true }]);
+        const answer = demoSommelierAnswer(question, locale, activeDemoWineProfile, demoChatContext.current);
+        if (activeDemoWineProfile?.key === "valle-secreto") {
+          const result = await requestManagedSommelierAnswer(question, { locale, history: sommelierHistory(messages), demoProfile: "valle-secreto", signal: controller.signal });
+          if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
+          if (result.status === "received" && !result.data.fallback) {
+            const data = result.data;
+            demoChatContext.current = answer.topic ? { topic: answer.topic } : {};
+            setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", text: data.optimizedText,
+              provenance: classifySommelierResponse(data), sample: true, sources: data.sources,
+              followUps: data.suggestedQuestions.length ? data.suggestedQuestions.map(question => ({ label: question, question })) : answer.followUps }]);
+            return;
+          }
+        }
+        demoChatContext.current = answer.topic ? { topic: answer.topic } : {};
+        setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", ...answer, sample: true, provenance: { mode: "local-fallback" } }]);
         return;
       }
       const result = await requestSommelierAnswer(question, { productName, brandName: wineryName }, { signal: controller.signal, postTapEventId: eventId });
@@ -597,10 +625,10 @@ export function QREngagementSuite({
               <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3" aria-hidden="true" /> {chatCopy.general}</span>
             </div>
 
-            {isDemoPreview ? <p data-testid="sun-sommelier-demo-notice" className="text-xs leading-relaxed text-slate-300">{chatCopy.demo}</p> : null}
+            {isDemoPreview ? <p data-testid="sun-sommelier-demo-notice" className="text-xs leading-relaxed text-slate-300">{activeDemoWineProfile?.key === "valle-secreto" ? chatCopy.managedDemo : chatCopy.demo}</p> : null}
 
             <div className="flex flex-wrap gap-2" data-testid="sun-sommelier-prompts">
-              {chatCopy.prompts.map(prompt => <button key={prompt} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt); }} className="min-h-11 rounded-xl border border-amber-300/25 px-3 py-2 text-sm leading-snug text-amber-200 transition hover:bg-amber-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400">{prompt}</button>)}
+              {chatPrompts.map(prompt => <button key={prompt} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt); }} className="min-h-11 rounded-xl border border-amber-300/25 px-3 py-2 text-sm leading-snug text-amber-200 transition hover:bg-amber-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400">{prompt}</button>)}
             </div>
 
             <div ref={chatLog} role="log" aria-label={chatCopy.log} aria-live="polite" aria-relevant="additions text" aria-busy={isTyping} tabIndex={0}
@@ -612,11 +640,12 @@ export function QREngagementSuite({
                     msg.sender === "user" ? "bg-amber-500 font-semibold text-slate-950" : "border border-white/5 bg-slate-900 text-slate-200"
                   }`}>
                     {msg.sender === "sommelier" ? (
-                      msg.sample ? <span className="mb-1 block text-xs font-semibold text-cyan-300">{msg.sourceLabel || chatCopy.sample}</span> :
-                        <details className="mb-2 text-xs text-cyan-300"><summary className="min-h-11 cursor-pointer font-semibold">{msg.provenance?.mode === "live" ? chatCopy.label : chatCopy.general}</summary><p className="mt-1 leading-relaxed text-slate-400">{sommelierProvenanceLabel(msg.provenance)}</p></details>
+                      msg.sample ? <><span className="mb-1 block text-xs font-semibold text-cyan-300">{msg.provenance?.mode === "live" ? `${chatCopy.live} · ${chatCopy.sample}` : msg.sourceLabel || chatCopy.sample}</span>{msg.provenance ? <details className="mb-2 text-xs text-cyan-300"><summary className="min-h-11 cursor-pointer font-semibold">{chatCopy.responseOrigin}</summary><p className="mt-1 leading-relaxed text-slate-400">{sommelierProvenanceLabel(msg.provenance, locale)}</p></details> : null}</> :
+                        <details className="mb-2 text-xs text-cyan-300"><summary className="min-h-11 cursor-pointer font-semibold">{msg.provenance?.mode === "live" ? chatCopy.label : chatCopy.general}</summary><p className="mt-1 leading-relaxed text-slate-400">{sommelierProvenanceLabel(msg.provenance, locale)}</p></details>
                     ) : null}
                     {msg.text}
-                    {msg.sourceUrl ? <a href={msg.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{msg.sourceLabel} ↗</a> : null}
+                    {msg.sourceUrl ? <a href={msg.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="mt-2 flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{msg.sourceLabel} ↗</a> : null}
+                    {msg.sources?.map(source => source.url ? <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="mt-2 flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{source.label} ↗</a> : <span key={source.id} className="mt-2 block text-xs text-cyan-300">{source.label}</span>)}
                   </div>
                 </div>
               ))}
@@ -631,13 +660,18 @@ export function QREngagementSuite({
               )}
             </div>
 
+            {demoFollowUps.length ? <div data-testid="sun-sommelier-follow-ups" className="space-y-2">
+              <p className="text-xs font-semibold text-slate-300">{chatCopy.continue}</p>
+              <div className="flex flex-wrap gap-2">{demoFollowUps.map(prompt => <button key={prompt.question} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt.question); }} className="min-h-11 rounded-xl border border-cyan-300/25 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">{prompt.label}</button>)}</div>
+            </div> : null}
+
             <form onSubmit={onChatSubmit} className="flex gap-2">
               <input
                 type="text"
                 title={chatCopy.placeholder}
                 aria-label={chatCopy.placeholder}
                 placeholder={chatCopy.placeholder}
-                maxLength={SOMMELIER_QUESTION_MAX_CHARS}
+                maxLength={activeDemoWineProfile?.key === "valle-secreto" ? MANAGED_SOMMELIER_QUESTION_MAX_CHARS : SOMMELIER_QUESTION_MAX_CHARS}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 className={`${styles.chatInput} min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden`}

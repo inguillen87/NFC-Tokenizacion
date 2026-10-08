@@ -1,16 +1,18 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.08-web-valle-secreto-map.2",
-  "scope": "valle-secreto-public-winery-reference-mendoza-example-and-optional-local-approximate-location",
-  "baseCommit": "1de9e292d3dfe2a781d0d5521d507e4875462865",
+  "version": "2026.10.08-web-sommelier-managed.1",
+  "scope": "valle-secreto-contextual-managed-wine-guide-with-bounded-history-sources-and-offline-recovery",
+  "baseCommit": "9defc0206f43d3a6bcff829a733665801938c9df",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.10.06-api-otp-provider-rejection.1",
+  "requiredApiRelease": "2026.10.08-api-sommelier-managed.1",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.08-web-valle-secreto-map.2",
+  "release": "2026.10.08-web-sommelier-managed.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1",
   "publicExperienceShareProtocol": "nexid:experience-event:v1",
-  "tenantActionConfigurationProtocol": "nexid.tenant-actions.v1"
+  "tenantActionConfigurationProtocol": "nexid.tenant-actions.v1",
+  "sommelierProtocol": "nexid.sommelier.v1",
+  "managedSommelierUiScope": "valle-secreto-demo-only"
 }

@@ -46,7 +46,11 @@ export function ValleSecretoDemoServices({ locale }: { locale: SunLocale }) {
   const copy = COPY[locale];
   return <section className={styles.services} aria-labelledby="valle-secreto-services-title" data-testid="valle-secreto-services">
     <h2 id="valle-secreto-services-title">{copy.optionsTitle}</h2>
-    <a className={styles.service} href="#qr-engagement"><Wine aria-hidden="true" /><span><strong>{copy.guide}</strong><small>{copy.guideText}</small></span><ArrowUpRight aria-hidden="true" /></a>
+    <a className={styles.service} href="#qr-engagement" data-testid="valle-secreto-guide-link" onClick={event => {
+      if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+        window.dispatchEvent(new Event("sun:demo-wine-guide"));
+      }
+    }}><Wine aria-hidden="true" /><span><strong>{copy.guide}</strong><small>{copy.guideText}</small></span><ArrowUpRight aria-hidden="true" /></a>
     <a className={styles.service} href="#valle-secreto-treasure"><Compass aria-hidden="true" /><span><strong>{copy.play}</strong><small>{copy.playText}</small></span><ArrowUpRight aria-hidden="true" /></a>
     <a className={styles.service} href={wine.experiences} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"><MapPin aria-hidden="true" /><span><strong>{copy.visitAction}</strong><small>{copy.visitActionText} {copy.external} ↗</small></span><ArrowUpRight aria-hidden="true" /></a>
   </section>;
