@@ -74,7 +74,7 @@ test("SUN passport header preserves identity, evidence labels and the existing p
   assert.match(header, /role="status"/);
   assert.match(header, /<SunLocaleSwitcher \/>/);
   assert.doesNotMatch(header, /<LocaleSwitcher|router\.refresh|router\.push/);
-  assert.match(header, /<ThemeToggle locale=\{locale\} \/>/);
+  assert.match(header, /<ThemeToggle locale=\{locale\} waitForClientReady \/>/);
   assert.match(header, /<a href="\/me" className=\{styles\.accountLink\} data-testid="sun-account-link" referrerPolicy="no-referrer">/);
   assert.doesNotMatch(header, /<Link[^>]*href="\/me"|onClick=|router\./);
   assert.match(header, /\{translatedLivePillLabel\}/);
@@ -112,6 +112,17 @@ function renderSunComponent(locale, props, componentUrl = headerUrl, exportName 
   return renderToStaticMarkup(React.createElement(Component, props));
 }
 const renderHeader = (locale, props) => renderSunComponent(locale, props);
+
+test("SUN theme starts disabled in SSR while other ThemeToggle consumers retain their existing enabled default", () => {
+  for (const locale of ["es-AR", "en", "pt-BR"]) {
+    const html = renderHeader(locale, { isQrScan: false, livePillLabel: "Muestra demo", pulseClass: "bg-emerald-300" });
+    const button = html.match(/<button\b[^>]*class="theme-toggle[^>]*>/)?.[0];
+    assert.ok(button && /\bdisabled=""/.test(button), "SUN must not expose an interactive button before its listeners are ready");
+    const shared = renderSunComponent(locale, { locale, initialTheme: "dark" }, new URL("../../../packages/ui/src/theme-toggle.tsx", import.meta.url), "ThemeToggle");
+    assert.doesNotMatch(shared, /\bdisabled=/, "the readiness guard is opt-in for SUN, not a shared-platform behavior change");
+    assert.match(shared, /theme-toggle__glyph--dark/);
+  }
+});
 
 test("SUN loading provides localized documentary account access outside its busy state only through noscript", () => {
   const expected = [

@@ -46,7 +46,7 @@ export function SunPassportHeader({
           <SunLocaleSwitcher />
         </div>
         <div className={styles.theme}>
-          <ThemeToggle locale={locale} />
+          <ThemeToggle locale={locale} waitForClientReady />
         </div>
         <div
           className={`sun-live-tap-pill ${styles.status}`}
