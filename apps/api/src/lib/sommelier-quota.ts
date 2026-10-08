@@ -4,9 +4,18 @@ import type { SommelierEnv } from "./sommelier-access";
 type QuotaBucket = { scope: string; key: string; window: number; limit: number; charge: number };
 export type SommelierQuotaResult = { ok: true } | { ok: false; reason: "sommelier_rate_limited" | "sommelier_budget_exhausted" | "sommelier_quota_unavailable"; retryAfter: number };
 export const SOMMELIER_DAILY_BUDGET_MICRO_USD = 500_000;
+const TRANSPORT_FAILURE_CATEGORIES = {
+  401: "transport_http_auth", 402: "transport_http_payment_required", 403: "transport_http_auth",
+  404: "transport_http_endpoint_unavailable", 405: "transport_http_request_rejected",
+  408: "transport_http_timeout", 409: "transport_http_conflict", 410: "transport_http_endpoint_unavailable",
+  413: "transport_http_request_rejected", 415: "transport_http_request_rejected", 422: "transport_http_request_rejected",
+  429: "transport_http_rate_limited", 500: "transport_http_unavailable", 501: "transport_http_unavailable",
+  502: "transport_http_unavailable", 503: "transport_http_unavailable", 504: "transport_http_timeout",
+} as const;
 export type SommelierQuotaFailure = {
-  category: "database_not_configured" | "database_connection_string_invalid" | "required_schema_migration_missing" | "required_schema_migration_config_invalid" | "undefined_relation" | "undefined_column" | "permission_denied" | "connection_failure" | "authentication_failure" | "database_not_found" | "database_temporarily_unavailable" | "database_capacity_exhausted" | "query_cancelled" | "transaction_conflict" | "constraint_violation" | "invalid_database_input" | "malformed_quota_receipt" | "quota_configuration_invalid" | "unknown";
-  sqlState: "42P01" | "42703" | "42501" | "08000" | "08001" | "08003" | "08004" | "08006" | "08007" | "08P01" | "28P01" | "28000" | "3D000" | "57P03" | "53300" | "57014" | "40001" | "40P01" | "23505" | "23514" | "22P02" | null;
+  category: "database_not_configured" | "database_connection_string_invalid" | "required_schema_migration_missing" | "required_schema_migration_config_invalid" | "undefined_relation" | "undefined_column" | "permission_denied" | "connection_failure" | "authentication_failure" | "database_not_found" | "database_temporarily_unavailable" | "database_capacity_exhausted" | "query_cancelled" | "transaction_conflict" | "constraint_violation" | "invalid_database_input" | "parameter_type_ambiguous" | "parameter_type_mismatch" | "malformed_quota_receipt" | "quota_configuration_invalid" | (typeof TRANSPORT_FAILURE_CATEGORIES)[keyof typeof TRANSPORT_FAILURE_CATEGORIES] | "unknown";
+  sqlState: "42P01" | "42703" | "42501" | "08000" | "08001" | "08003" | "08004" | "08006" | "08007" | "08P01" | "28P01" | "28000" | "3D000" | "57P03" | "53300" | "57014" | "40001" | "40P01" | "23505" | "23514" | "22P02" | "42P18" | "42725" | "42P08" | "42804" | null;
+  transportStatus?: keyof typeof TRANSPORT_FAILURE_CATEGORIES;
 };
 /** Closed diagnostic vocabulary only; never serialize the error, SQL or caller. */
 export function classifySommelierQuotaFailure(error: unknown): SommelierQuotaFailure {
@@ -32,12 +41,18 @@ export function classifySommelierQuotaFailure(error: unknown): SommelierQuotaFai
     if (code === "40001" || code === "40P01") return { category: "transaction_conflict", sqlState: code };
     if (code === "23505" || code === "23514") return { category: "constraint_violation", sqlState: code };
     if (code === "22P02") return { category: "invalid_database_input", sqlState: code };
+    if (code === "42P18" || code === "42725" || code === "42P08") return { category: "parameter_type_ambiguous", sqlState: code };
+    if (code === "42804") return { category: "parameter_type_mismatch", sqlState: code };
     // These exact installed-driver prefixes can contain credentials afterward.
     // Classify without extracting, retaining or logging any suffix or sourceError.
     if (typeof message === "string") {
       if (message.startsWith("No database connection string was provided to `neon()`.")) return { category: "database_not_configured", sqlState: null };
       if (message.startsWith("Database connection string provided to `neon()` is not a valid URL. Connection string:") || message.startsWith("Database connection string format for `neon()` should be:")) return { category: "database_connection_string_invalid", sqlState: null };
       if (message.startsWith("Error connecting to database:")) return { category: "connection_failure", sqlState: null };
+      // Compare fixed prefixes, so no regexp capture retains the private body.
+      for (const [status, category] of Object.entries(TRANSPORT_FAILURE_CATEGORIES)) {
+        if (message.startsWith(`Server error (HTTP status ${status}): `)) return { category, sqlState: null, transportStatus: Number(status) as keyof typeof TRANSPORT_FAILURE_CATEGORIES };
+      }
     }
   } catch { /* Malformed diagnostic input must not affect quota admission. */ }
   return { category: "unknown", sqlState: null };

@@ -8,6 +8,7 @@ import { classifySommelierDatabaseTarget, classifySommelierQuotaFailure, reserve
 import { classifyFleetRateLimit } from '../src/lib/fleet-rate-limit-policy.ts';
 import { editorialContentDigest, parseEditorialDocument } from '../src/lib/passport-editorial-policy.ts';
 import { ACTIONS_VERSION } from '../src/lib/tenant-loyalty-configuration.ts';
+import { NeonDbError } from '@neondatabase/serverless';
 const env = { NODE_ENV:'production', RATE_LIMIT_KEY_PEPPER:'sommelier-synthetic-test-pepper-0123456789abcdef', NEXID_SOMMELIER_ENABLED:'true', NEXID_SOMMELIER_DEMO_ENABLED:'true' };
 const headers = { origin:'https://nexid.lat', 'user-agent':'Synthetic QA', 'x-vercel-forwarded-for':'203.0.113.7' };
 const request = (overrides={}) => new Request('https://api.nexid.lat/sommelier/chat',{headers:{...headers,...overrides}});
@@ -142,6 +143,38 @@ test('quota failure logs only the coarse configured target and never URL credent
     }
     assert.doesNotMatch(JSON.stringify(lines),/postgresql|synthetic-user|synthetic_private|private-|neon\.tech|synthetic\.invalid/);
   } finally {console.warn=previous}
+});
+for(const [code,category] of [['42P18','parameter_type_ambiguous'],['42725','parameter_type_ambiguous'],['42P08','parameter_type_ambiguous'],['42804','parameter_type_mismatch']]) test(`quota telemetry recognizes parameter SQLSTATE ${code} without query or bind values`,async()=>{
+  const events=[],error=Object.assign(new NeonDbError('private parameter details'),{code,detail:'private query values',position:'private-position'});
+  assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing'}]);
+});
+for(const [status,category] of [[401,'transport_http_auth'],[402,'transport_http_payment_required'],[403,'transport_http_auth'],[404,'transport_http_endpoint_unavailable'],[405,'transport_http_request_rejected'],[408,'transport_http_timeout'],[409,'transport_http_conflict'],[410,'transport_http_endpoint_unavailable'],[413,'transport_http_request_rejected'],[415,'transport_http_request_rejected'],[422,'transport_http_request_rejected'],[429,'transport_http_rate_limited'],[500,'transport_http_unavailable'],[501,'transport_http_unavailable'],[502,'transport_http_unavailable'],[503,'transport_http_unavailable'],[504,'transport_http_timeout']]) test(`quota telemetry recognizes installed Neon HTTP ${status} wrapping without private response body`,async()=>{
+  const events=[],error=new NeonDbError(`Server error (HTTP status ${status}): private-response-body ${syntheticDatabaseUrl('synthetic.invalid')}`);
+  assert.equal(Object.getOwnPropertyDescriptor(error,'code').value,undefined);
+  assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+  assert.deepEqual(events,[{category,sqlState:null,transportStatus:status,databaseTarget:'missing'}]);
+});
+test('Neon HTTP failure logger never serializes its private body, cause or stack',async()=>{
+  const lines=[],previous=console.warn;
+  console.warn=(...args)=>lines.push(args);
+  try {
+    const error=Object.assign(new NeonDbError('Server error (HTTP status 503): private-body '+syntheticDatabaseUrl('synthetic.invalid')),{sourceError:new Error('private-cause'),stack:'private-stack',toJSON(){throw Error('must-not-serialize')}});
+    assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error}),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+    assert.deepEqual(lines,[['[sommelier_quota_unavailable]',JSON.stringify({category:'transport_http_unavailable',sqlState:null,transportStatus:503,databaseTarget:'missing'})]]);
+    assert.doesNotMatch(JSON.stringify(lines),/private-|postgresql|synthetic-user|synthetic\.invalid|Server error/);
+  } finally {console.warn=previous}
+});
+test('HTTP diagnostics require the exact installed prefix and a whitelisted integer status',()=>{
+  for(const message of ['Server error (HTTP status 400): private-body','Server error (HTTP status 999): private-body','Server error (HTTP status 200): private-body','Server error (HTTP status 0503): private-body','Server error (HTTP status 503.0): private-body','Server error (HTTP status 503 private-token): private-body','Wrapped: Server error (HTTP status 503): private-body','Server error (HTTP status 503):private-body']) assert.deepEqual(classifySommelierQuotaFailure(new NeonDbError(message)),{category:'unknown',sqlState:null});
+  assert.deepEqual(classifySommelierQuotaFailure(new NeonDbError('Server error (HTTP status 503): ')),{category:'transport_http_unavailable',sqlState:null,transportStatus:503});
+});
+test('known SQLSTATE wins over a misleading HTTP message and logger failure remains closed',async()=>{
+  const error=Object.assign(new NeonDbError('Server error (HTTP status 503): private-body'),{code:'42P18'});
+  assert.deepEqual(classifySommelierQuotaFailure(error),{category:'parameter_type_ambiguous',sqlState:'42P18'});
+  let reads=0;
+  assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('caller','tenant'),env,async()=>{reads++;throw error},()=>{throw Error('private logger failure')}),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+  assert.equal(reads,1);
 });
 test('quota telemetry accepts only explicit connection SQLSTATE codes',()=>{
   for(const code of ['08000','08001','08003','08004','08006','08007','08P01']) assert.deepEqual(classifySommelierQuotaFailure({code}),{category:'connection_failure',sqlState:code});
