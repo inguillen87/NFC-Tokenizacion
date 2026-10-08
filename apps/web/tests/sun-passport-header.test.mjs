@@ -85,7 +85,7 @@ test("SUN passport header preserves identity, evidence labels and the existing p
 
 // Render the production header, brand, documentary account anchor and ThemeToggle. The
 // locale context is selected explicitly; preferences are not changed in SSR.
-function renderHeader(locale, props) {
+function renderSunComponent(locale, props, componentUrl = headerUrl, exportName = "SunPassportHeader") {
   const require = createRequire(import.meta.url), modules = new Map();
   const css = { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
   function load(filename) {
@@ -108,9 +108,58 @@ function renderHeader(locale, props) {
     new Function("require", "module", "exports", js)(localRequire, module, module.exports);
     return module.exports;
   }
-  const { SunPassportHeader } = load(fileURLToPath(headerUrl));
-  return renderToStaticMarkup(React.createElement(SunPassportHeader, props));
+  const Component = load(fileURLToPath(componentUrl))[exportName];
+  return renderToStaticMarkup(React.createElement(Component, props));
 }
+const renderHeader = (locale, props) => renderSunComponent(locale, props);
+
+test("SUN loading provides localized documentary account access outside its busy state only through noscript", () => {
+  const expected = [
+    ["es-AR", "Mi cuenta", "Tu cuenta sigue disponible", "Activá JavaScript", "Abriendo el pasaporte"],
+    ["en", "My account", "Your account is still available", "Enable JavaScript", "Opening the passport"],
+    ["pt-BR", "Minha conta", "Sua conta continua disponível", "Ative o JavaScript", "Abrindo o passaporte"],
+    ["unknown", "Mi cuenta", "Tu cuenta sigue disponible", "Activá JavaScript", "Abriendo el pasaporte"],
+  ];
+  for (const [locale, label, title, explanation, loading] of expected) {
+    const html = renderSunComponent(locale, { locale }, new URL("../src/app/sun/sun-loading-view.tsx", import.meta.url), "SunLoadingView");
+    const main = html.match(/<main\b[^>]*>[\s\S]*?<\/main>/)?.[0];
+    const fallback = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+    assert.ok(main && fallback);
+    assert.match(main, /data-testid="sun-loading" aria-busy="true"/);
+    assert.ok(main.includes(loading) && main.includes('role="status"'));
+    assert.doesNotMatch(main, /sun-nojs-account-link/);
+    assert.ok(html.indexOf("</main>") < html.indexOf("<noscript>"), "fallback is a sibling of the busy passport loader");
+    assert.ok(fallback.includes(title) && fallback.includes(explanation));
+    assert.match(fallback, /aria-labelledby="sun-nojs-title"/);
+    assert.match(fallback, /\[data-testid=sun-loading\] \{ display: none !important; \}/);
+    const link = fallback.match(/<a\b[^>]*data-testid="sun-nojs-account-link"[^>]*>[\s\S]*?<\/a>/)?.[0];
+    assert.ok(link && link.endsWith(`>${label}</a>`));
+    assert.match(link, /href="\/me"/);
+    assert.match(link, /referrerPolicy="no-referrer"/i);
+    assert.doesNotMatch(fallback, /aria-busy|href="\/me\?|<script|<form|onClick|eventId|freshToken|tap-handoff/);
+    assert.equal((html.match(/data-testid="sun-nojs-account-link"/g) || []).length, 1);
+  }
+});
+
+test("SUN no-script account action has a touch target, keyboard focus and readable solid colors in both themes", async () => {
+  const css = postcss.parse(await readFile(new URL("../src/app/sun/sun-loading.module.css", import.meta.url), "utf8"));
+  const rule = selector => css.nodes.find(node => node.type === "rule" && node.selector === selector);
+  const value = (selector, property) => rule(selector).nodes.find(node => node.type === "decl" && node.prop === property).value;
+  assert.equal(value(".accountLink", "min-height"), "2.75rem");
+  assert.equal(value(".accountLink", "font-size"), "16px");
+  assert.equal(value(".accountLink", "max-width"), "100%");
+  assert.equal(value(".accountLink:focus-visible", "outline"), "3px solid #8bd8c3");
+  assert.equal(value(":global(html[data-theme=light]) .accountLink:focus-visible", "outline-color"), "#086f62");
+  const luminance = hex => {
+    const normalized = hex.length === 4 ? '#' + [...hex.slice(1)].map(value => value + value).join('') : hex;
+    const linear = normalized.slice(1).match(/.{2}/g).map(value => Number.parseInt(value, 16) / 255).map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  };
+  for (const selector of [".accountLink", ":global(html[data-theme=light]) .accountLink"]) {
+    const a = luminance(value(selector, "color")), b = luminance(value(selector, "background"));
+    assert.ok((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 4.5, selector);
+  }
+});
 
 test("SUN rendered account link is always plain portal access across locales and QR/NFC states, without a reading capability", () => {
   for (const [locale, label] of [["es-AR", "Mi cuenta"], ["en", "My account"], ["pt-BR", "Minha conta"]]) {

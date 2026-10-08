@@ -37,7 +37,7 @@ let ancestor=outputParent;
 while(true){try{const entry=await lstat(ancestor);assert.ok(entry.isDirectory()&&!entry.isSymbolicLink(),'Output ancestors must be real directories');assert.equal(resolve(await realpath(ancestor)),resolve(ancestor),'Output ancestors cannot traverse a symlink');break;}catch(error){if(error.code!=='ENOENT')throw error;const parent=resolve(ancestor,'..');assert.notEqual(parent,ancestor);ancestor=parent;}}
 for(let current=ancestor;current!==resolve(current,'..');current=resolve(current,'..')){const entry=await lstat(current);assert.ok(!entry.isSymbolicLink(),'Output ancestors cannot contain a symlink or junction');}
 await mkdir(outputParent,{recursive:true});const output=await mkdtemp(join(outputParent,'run-'));
-const report={schemaVersion:'nexid.sun-account-access-next-qa/v2',status:'failed',localOnly:true,realProductionBuild:true,actualNextRouter:true,syntheticSunContract:true,syntheticConsumerAccount:true,realAuthenticationCertified:false,otpDeliveryCertified:false,physicalTapMeasured:false,customerWrites:0,providerMutations:0,checks:[],frames:[],views:[],cases:[],documentNavigations:[],accountRequests:[],serverReads:[],errors:[],blockedWrites:[],blockedExternal:[],blockedCapabilities:[],geolocationCalls:0,contactSeeded:false,capabilityTransferred:false};
+const report={schemaVersion:'nexid.sun-account-access-next-qa/v2',status:'failed',viewOrder:'scriptless-first',localOnly:true,realProductionBuild:true,actualNextRouter:true,syntheticSunContract:true,syntheticConsumerAccount:true,realAuthenticationCertified:false,otpDeliveryCertified:false,physicalTapMeasured:false,customerWrites:0,providerMutations:0,checks:[],frames:[],views:[],cases:[],documentNavigations:[],accountRequests:[],serverReads:[],errors:[],blockedWrites:[],blockedExternal:[],blockedCapabilities:[],geolocationCalls:0,contactSeeded:false,capabilityTransferred:false};
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 const snapshotFixture=join(web,'tests/sun-mobile-local-fetch.mjs');
 const preload=join(output,'local-fetch.mjs');
@@ -91,6 +91,10 @@ function safeRequestEvidence(request){
  const url=new URL(request.url()),headers=request.headers();
  return{path:url.origin===base&&knownRoutePaths.has(url.pathname)?url.pathname:'[redacted]',rsc:headers.rsc==='1',prefetch:Boolean(headers['next-router-prefetch']),segment:Boolean(headers['next-router-segment-prefetch'])};
 }
+function safeNetworkError(request){
+ const value=request.failure()?.errorText;
+ return typeof value==='string'?value.match(/^net::(ERR_[A-Z0-9_]{1,80})$/)?.[1]||'UNKNOWN':'UNKNOWN';
+}
 function sunPath(entry){return entry.mode==='demo'?`/sun?demo=1&lang=${entry.locale}`:`/sun?snapshot=qa-closed&trace=synthetic&access=invalid&lang=${entry.locale}`;}
 async function open(entry,javaScriptEnabled=true){
  const name=`${entry.mode}-${entry.width}-${entry.theme}-${entry.locale}${javaScriptEnabled?'':'-no-js'}`;
@@ -119,15 +123,15 @@ async function open(entry,javaScriptEnabled=true){
  }});
  // Every failed request is fatal, including cancellation during a redirect or
  // context teardown. This native loopback suite has no telemetry exclusions.
- page.on('requestfailed',request=>report.errors.push({view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing,...safeRequestEvidence(request)}));
+ page.on('requestfailed',request=>report.errors.push({view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',errorEnum:safeNetworkError(request),resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing,...safeRequestEvidence(request)}));
  page.on('pageerror',()=>report.errors.push({view:name,reason:'page_error'}));page.on('console',event=>{if(event.type()==='error')report.errors.push({view:name,reason:'console_error'});});
- return{context,page,name,state,entry};
+ return{context,page,name,state,entry,javaScriptEnabled};
 }
 async function settle(page){await page.waitForLoadState('networkidle',{timeout:20000});await drain();}
 async function navigateAccount(current,kind,keyboard=false){
  const{page,name,state}=current;state.phase=kind;const start=state.requests.length;
  const firstRequest=page.waitForRequest(request=>new URL(request.url()).pathname==='/me');
- const account=page.getByTestId('sun-account-link');
+ const account=page.getByTestId(current.javaScriptEnabled?'sun-account-link':'sun-nojs-account-link');
  if(keyboard)await account.focus();
  const[first]=await Promise.all([firstRequest,keyboard?account.press('Enter'):account.click()]);
  const observation={view:name,kind,method:first.method(),resourceType:first.resourceType(),navigation:first.isNavigationRequest(),referrerSuppressed:!first.headers().referer,...safeRequestEvidence(first)};
@@ -163,6 +167,18 @@ try{
  let nextOutput='';next.stdout.on('data',chunk=>{nextOutput+=chunk;let end;while((end=nextOutput.indexOf('\n'))!==-1){const line=nextOutput.slice(0,end).trim();nextOutput=nextOutput.slice(end+1);if(line.startsWith('SUN_ACCOUNT_QA_READ ')){try{const row=JSON.parse(line.slice(20));assert.ok(['/consumer/session','/consumer/me','/consumer/products','/consumer/taps','/consumer/brands'].includes(row.path));assert.equal(row.method,'GET');assert.ok(['anonymous','authenticated','unavailable'].includes(row.scenario));report.serverReads.push(row);}catch{report.errors.push({reason:'invalid_synthetic_server_read'});}}}});next.stderr.on('data',()=>{});next.on('error',()=>{serverFailed=true;});
  let ready=false;for(let attempt=0;attempt<120;attempt++){if(serverFailed||next.exitCode!==null)break;try{const response=await fetch(base+'/release.json',{signal:AbortSignal.timeout(1000),credentials:'omit',redirect:'manual'});if(response.ok){ready=true;break;}}catch{}await new Promise(done=>setTimeout(done,250));}check(ready,'Own loopback production server is ready');
  const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright-core');browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
+ // Check the previously observed no-JavaScript blocker first; every scenario
+ // and final completeness/error gate below is still required for acceptance.
+ for(const entry of scriptlessFrames){
+  const current=await open(entry,false),{page,name}=current;await page.goto(base+sunPath(entry),{waitUntil:'networkidle'});const fallback=page.getByTestId('sun-nojs-fallback'),account=page.getByTestId('sun-nojs-account-link');await fallback.waitFor();await account.waitFor();
+  check(await account.getAttribute('href')==='/me'&&await account.innerText()===labels[entry.locale]&&await account.getAttribute('referrerpolicy')==='no-referrer',`${name}: visible no-script account anchor preserves documentary access`);
+  const geometry=await account.evaluate(element=>{const b=element.getBoundingClientRect(),hit=document.elementFromPoint((b.left+b.right)/2,(b.top+b.bottom)/2);return{width:b.width,height:b.height,withinViewport:b.left>=0&&b.right<=innerWidth&&b.top>=0&&b.bottom<=innerHeight,unobstructed:hit===element||element.contains(hit),overflow:document.documentElement.scrollWidth>innerWidth+1};});
+  check(geometry.width>=44&&geometry.height>=44&&geometry.withinViewport&&geometry.unobstructed&&!geometry.overflow,`${name}: no-script account action is visible, touch-safe and unobstructed`);
+  check(await fallback.getByRole('heading',{name:'Tu cuenta sigue disponible',exact:true}).count()===1&&(await fallback.innerText()).includes('Activá JavaScript')&&!(await page.getByTestId('sun-loading').isVisible()),`${name}: no-script copy explains the full passport requirement without a busy loader`);
+  await page.screenshot({path:join(output,`${name}.png`),fullPage:false});
+  const start=await navigateAccount(current,'scriptless');await assertLogin(current,'scriptless');assertNoAutomaticAccountPrefetch(current,start,'scriptless');
+  report.views.push({...entry,name,javaScriptEnabled:false,geometry,accessibilityScope:'no-script fallback, navigation and server-rendered form; no JavaScript accessibility scan'});report.cases.push({view:name,kind:'scriptless',passed:true,completed:true,fallback:true,otpWithoutJavaScriptCertified:false});await finish(current);
+ }
  for(const entry of frames){
   const current=await open(entry),{name,context,page,state}=current;report.frames.push({...entry,name});const path=sunPath(entry);
   await page.goto(base+path,{waitUntil:'networkidle',timeout:90000});
@@ -203,12 +219,6 @@ try{
   }
   check(report.blockedWrites.length===0&&report.geolocationCalls===0,`${name}: account navigation never performs a write or location request`);
   await finish(current);
- }
- for(const entry of scriptlessFrames){
-  const current=await open(entry,false),{page,name}=current;await page.goto(base+sunPath(entry),{waitUntil:'networkidle'});const account=page.getByTestId('sun-account-link');await account.waitFor();
-  check(await account.getAttribute('href')==='/me'&&await account.innerText()===labels[entry.locale],`${name}: public account anchor renders without JavaScript`);
-  const start=await navigateAccount(current,'scriptless');await assertLogin(current,'scriptless');assertNoAutomaticAccountPrefetch(current,start,'scriptless');
-  report.views.push({...entry,name,javaScriptEnabled:false,accessibilityScope:'navigation and server-rendered form; no JavaScript accessibility scan'});report.cases.push({view:name,kind:'scriptless',passed:true,completed:true,otpWithoutJavaScriptCertified:false});await finish(current);
  }
  check(report.frames.length===48,'All 48 real/demo viewport/theme/locale frames completed');check(report.views.length===frames.length+scriptlessFrames.length,'All responsive and scriptless views completed');
  check(report.cases.filter(item=>item.kind==='anonymous').length===frames.length&&report.cases.filter(item=>item.kind==='authenticated').length===frames.length&&report.cases.filter(item=>item.kind==='unavailable').length===frames.filter(item=>item.width<=390).length&&report.cases.filter(item=>item.kind==='back').length===frames.filter(item=>item.width===390&&item.mode==='demo').length&&report.cases.filter(item=>item.kind==='scriptless').length===scriptlessFrames.length,'Every required account scenario completed');
