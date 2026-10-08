@@ -5,8 +5,8 @@ type QuotaBucket = { scope: string; key: string; window: number; limit: number; 
 export type SommelierQuotaResult = { ok: true } | { ok: false; reason: "sommelier_rate_limited" | "sommelier_budget_exhausted" | "sommelier_quota_unavailable"; retryAfter: number };
 export const SOMMELIER_DAILY_BUDGET_MICRO_USD = 500_000;
 export type SommelierQuotaFailure = {
-  category: "database_not_configured" | "required_schema_migration_missing" | "required_schema_migration_config_invalid" | "undefined_relation" | "undefined_column" | "permission_denied" | "connection_failure" | "malformed_quota_receipt" | "quota_configuration_invalid" | "unknown";
-  sqlState: "42P01" | "42703" | "42501" | "08000" | "08001" | "08003" | "08004" | "08006" | "08007" | "08P01" | null;
+  category: "database_not_configured" | "database_connection_string_invalid" | "required_schema_migration_missing" | "required_schema_migration_config_invalid" | "undefined_relation" | "undefined_column" | "permission_denied" | "connection_failure" | "authentication_failure" | "database_not_found" | "database_temporarily_unavailable" | "database_capacity_exhausted" | "query_cancelled" | "transaction_conflict" | "constraint_violation" | "invalid_database_input" | "malformed_quota_receipt" | "quota_configuration_invalid" | "unknown";
+  sqlState: "42P01" | "42703" | "42501" | "08000" | "08001" | "08003" | "08004" | "08006" | "08007" | "08P01" | "28P01" | "28000" | "3D000" | "57P03" | "53300" | "57014" | "40001" | "40P01" | "23505" | "23514" | "22P02" | null;
 };
 /** Closed diagnostic vocabulary only; never serialize the error, SQL or caller. */
 export function classifySommelierQuotaFailure(error: unknown): SommelierQuotaFailure {
@@ -24,10 +24,40 @@ export function classifySommelierQuotaFailure(error: unknown): SommelierQuotaFai
     if (code === "42703") return { category: "undefined_column", sqlState: code };
     if (code === "42501") return { category: "permission_denied", sqlState: code };
     if (code === "08000" || code === "08001" || code === "08003" || code === "08004" || code === "08006" || code === "08007" || code === "08P01") return { category: "connection_failure", sqlState: code };
+    if (code === "28P01" || code === "28000") return { category: "authentication_failure", sqlState: code };
+    if (code === "3D000") return { category: "database_not_found", sqlState: code };
+    if (code === "57P03") return { category: "database_temporarily_unavailable", sqlState: code };
+    if (code === "53300") return { category: "database_capacity_exhausted", sqlState: code };
+    if (code === "57014") return { category: "query_cancelled", sqlState: code };
+    if (code === "40001" || code === "40P01") return { category: "transaction_conflict", sqlState: code };
+    if (code === "23505" || code === "23514") return { category: "constraint_violation", sqlState: code };
+    if (code === "22P02") return { category: "invalid_database_input", sqlState: code };
+    // These exact installed-driver prefixes can contain credentials afterward.
+    // Classify without extracting, retaining or logging any suffix or sourceError.
+    if (typeof message === "string") {
+      if (message.startsWith("No database connection string was provided to `neon()`.")) return { category: "database_not_configured", sqlState: null };
+      if (message.startsWith("Database connection string provided to `neon()` is not a valid URL. Connection string:") || message.startsWith("Database connection string format for `neon()` should be:")) return { category: "database_connection_string_invalid", sqlState: null };
+      if (message.startsWith("Error connecting to database:")) return { category: "connection_failure", sqlState: null };
+    }
   } catch { /* Malformed diagnostic input must not affect quota admission. */ }
   return { category: "unknown", sqlState: null };
 }
-type QuotaFailureLogger = (failure: SommelierQuotaFailure) => void;
+export type SommelierDatabaseTarget = "nexid_main" | "nexid_staging" | "unverified" | "missing" | "invalid";
+/** A coarse configured-host label only, not database or credential validation. */
+export function classifySommelierDatabaseTarget(env: SommelierEnv): SommelierDatabaseTarget {
+  try {
+    const connection = env.DATABASE_URL;
+    if (!connection) return "missing";
+    if (typeof connection !== "string" || connection.length > 16_384) return "invalid";
+    const parsed = new URL(connection);
+    if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") return "invalid";
+    const host = parsed.hostname;
+    if (host === "ep-fancy-morning-ai5gdrnd.c-4.us-east-1.aws.neon.tech" || host === "ep-fancy-morning-ai5gdrnd-pooler.c-4.us-east-1.aws.neon.tech") return "nexid_main";
+    if (host === "ep-solitary-surf-aiixcsmk.c-4.us-east-1.aws.neon.tech" || host === "ep-solitary-surf-aiixcsmk-pooler.c-4.us-east-1.aws.neon.tech") return "nexid_staging";
+    return "unverified";
+  } catch { return "invalid"; }
+}
+type QuotaFailureLogger = (failure: SommelierQuotaFailure & { databaseTarget: SommelierDatabaseTarget }) => void;
 const logQuotaFailure: QuotaFailureLogger = (failure) => console.warn("[sommelier_quota_unavailable]", JSON.stringify(failure));
 /** Existing table only. No DDL, repairs, releases or local fail-open fallback.
  * Admission failures may consume quotas; this conservative reservation is never
@@ -52,7 +82,7 @@ export async function reserveSommelierBuckets(buckets: QuotaBucket[], env: Somme
     }
     return { ok: true };
   } catch (error) {
-    try { logFailure(classifySommelierQuotaFailure(error)); } catch { /* Logging failure never opens admission. */ }
+    try { logFailure({ ...classifySommelierQuotaFailure(error), databaseTarget: classifySommelierDatabaseTarget(env) }); } catch { /* Logging failure never opens admission. */ }
     return { ok: false, reason: "sommelier_quota_unavailable", retryAfter: 30 };
   }
 }
