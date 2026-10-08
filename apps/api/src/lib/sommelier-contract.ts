@@ -43,17 +43,29 @@ export function sommelierMessages(input: SommelierRequest, context: SommelierCon
 }
 const URL_OR_SECRET = /https?:|www\.|mailto:|(?:sk-proj-|hf_)[a-z0-9_-]+|\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
 const UNVERIFIED_CLAIM = /\b(?:autenticidad garantizada|authenticity guaranteed|autenticidade garantida|puntos acreditados|points awarded|pontos creditados|compra confirmada|purchase completed|reserva confirmada|booking confirmed|huella de carbono|carbon footprint|pegada de carbono|CO2)\b|\b\d{2,4}\s*(?:puntos|points|pontos|meses|months|anos|years)\b|\b\d{1,2}\s*[°º]\s*C|\b(?:añada|vintage|cosecha|safra|barrica|barrel|carvalho|crianza|terroir|certificad|certified|medalla|medal|James Suckling|Decanter)\b/i;
-export function parseSommelierAnswer(value: unknown, context: SommelierContext) {
+export type SommelierAnswerRejection = "answer_shape_invalid" | "advice_invalid" | "advice_too_long" | "advice_contains_url_or_secret" | "advice_unverified_claim" | "selected_facts_invalid" | "unknown_fact" | "duplicate_fact" | "suggested_questions_invalid" | "answer_too_long";
+type ParsedSommelierAnswer = { answer: string; sources: Array<Pick<SommelierFact, "id" | "label" | "url">>; suggestedQuestions: string[] };
+export function validateSommelierAnswer(value: unknown, context: SommelierContext): { ok: true; value: ParsedSommelierAnswer } | { ok: false; reason: SommelierAnswerRejection } {
   const body = record(value);
-  if (!body || Object.keys(body).some(k => !["advice", "selectedFactIds", "suggestedQuestions"].includes(k)) || typeof body.advice !== "string" || !body.advice.trim() || body.advice.length > 650 || URL_OR_SECRET.test(body.advice) || UNVERIFIED_CLAIM.test(body.advice)) return null;
-  if (!Array.isArray(body.selectedFactIds) || body.selectedFactIds.length > 3 || !Array.isArray(body.suggestedQuestions) || body.suggestedQuestions.length > 3) return null;
+  if (!body || Object.keys(body).some(k => !["advice", "selectedFactIds", "suggestedQuestions"].includes(k))) return { ok: false, reason: "answer_shape_invalid" };
+  if (typeof body.advice !== "string" || !body.advice.trim()) return { ok: false, reason: "advice_invalid" };
+  if (body.advice.length > 650) return { ok: false, reason: "advice_too_long" };
+  if (URL_OR_SECRET.test(body.advice)) return { ok: false, reason: "advice_contains_url_or_secret" };
+  if (UNVERIFIED_CLAIM.test(body.advice)) return { ok: false, reason: "advice_unverified_claim" };
+  if (!Array.isArray(body.selectedFactIds) || body.selectedFactIds.length > 3) return { ok: false, reason: "selected_facts_invalid" };
+  if (!Array.isArray(body.suggestedQuestions) || body.suggestedQuestions.length > 3) return { ok: false, reason: "suggested_questions_invalid" };
   const ids = body.selectedFactIds;
-  if (ids.some(id => typeof id !== "string" || !context.facts.some(f => f.id === id)) || new Set(ids).size !== ids.length) return null;
-  if (body.suggestedQuestions.some(q => typeof q !== "string" || !q.trim() || q.length > 120 || URL_OR_SECRET.test(q))) return null;
+  if (ids.some(id => typeof id !== "string" || !context.facts.some(f => f.id === id))) return { ok: false, reason: "unknown_fact" };
+  if (new Set(ids).size !== ids.length) return { ok: false, reason: "duplicate_fact" };
+  if (body.suggestedQuestions.some(q => typeof q !== "string" || !q.trim() || q.length > 120 || URL_OR_SECRET.test(q))) return { ok: false, reason: "suggested_questions_invalid" };
   const selected = ids.map(id => context.facts.find(f => f.id === id)!);
   const answer = [body.advice.trim(), ...selected.map(f => `${f.label}: ${f.text}`)].join("\n\n");
-  if (answer.length > 1200) return null;
-  return { answer, sources: selected.map(({ id, label, url }) => ({ id, label, url })), suggestedQuestions: (body.suggestedQuestions as string[]).map(q => q.trim()) };
+  if (answer.length > 1200) return { ok: false, reason: "answer_too_long" };
+  return { ok: true, value: { answer, sources: selected.map(({ id, label, url }) => ({ id, label, url })), suggestedQuestions: (body.suggestedQuestions as string[]).map(q => q.trim()) } };
+}
+export function parseSommelierAnswer(value: unknown, context: SommelierContext) {
+  const result = validateSommelierAnswer(value, context);
+  return result.ok ? result.value : null;
 }
 export function sommelierFallback(locale: SommelierLocale) {
   return { "es-AR": "La guía en vivo no está disponible ahora. Podés consultar la ficha de la bodega. Para elegir un regalo o maridaje, contame qué le gusta a la persona o qué comida vas a preparar.", en: "The live guide is unavailable right now. Check the producer's sheet. To choose a gift or pairing, tell me the recipient's preferences or the meal you are planning.", "pt-BR": "O guia ao vivo está indisponível agora. Consulte a ficha da vinícola. Para escolher um presente ou harmonização, conte o gosto da pessoa ou a refeição que vai preparar." }[locale];

@@ -2,10 +2,78 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { requestLiveSommelier, sommelierProviderBody, sommelierReservedCost, SOMMELIER_HF_MODEL, SOMMELIER_OPENAI_MODEL } from '../src/lib/sommelier-provider.ts';
 import { valleSecretoSommelierFacts } from '../src/lib/sommelier-demo-facts.ts';
+import { parseSommelierAnswer, validateSommelierAnswer } from '../src/lib/sommelier-contract.ts';
 const env={NEXID_SOMMELIER_ENABLED:'true',HF_TOKEN:'synthetic-hf-not-a-real-key',OPENAI_API_KEY:'synthetic-openai-not-a-real-key'};
 const input={mode:'demo',locale:'es-AR',question:'Un regalo para quien disfruta tintos',history:[{role:'user',content:'Es un regalo'}]};
 const context=valleSecretoSommelierFacts('es-AR');
 const receipt=(model=SOMMELIER_HF_MODEL,overrides={})=>Response.json({model,usage:{prompt_tokens:1200,completion_tokens:150,total_tokens:1350},choices:[{finish_reason:'stop',message:{content:JSON.stringify({advice:'Contame si la persona prefiere un vino suave o con más cuerpo.',selectedFactIds:['wine'],suggestedQuestions:['¿Qué comida va a acompañar?']})}}],...overrides});
+const answerReceipt=answer=>receipt(SOMMELIER_HF_MODEL,{choices:[{finish_reason:'stop',message:{content:JSON.stringify(answer)}}]});
+const validAnswer={advice:'Consultá la recomendación publicada por la bodega.',selectedFactIds:['serving'],suggestedQuestions:[]};
+test('service facts stay exact and permitted while numeric temperature in advice remains rejected',async()=>{
+  const events=[];
+  const live=await requestLiveSommelier(input,context,env,{reserve:async()=>({ok:true}),fetch:async()=>answerReceipt(validAnswer),diagnostic:e=>events.push(e)});
+  assert.equal(live.source,'live');assert.match(live.answer,/16–18 °C/);assert.equal(live.sources[0].id,'serving');assert.deepEqual(events,[]);
+  const rewritten={...validAnswer,advice:'Servilo a 16–18 °C según la ficha.'};
+  assert.equal(parseSommelierAnswer(rewritten,context),null);assert.deepEqual(validateSommelierAnswer(rewritten,context),{ok:false,reason:'advice_unverified_claim'});
+  const fallback=await requestLiveSommelier(input,context,env,{reserve:async()=>({ok:true}),fetch:async()=>answerReceipt(rewritten),diagnostic:e=>events.push(e)});
+  assert.equal(fallback.source,'fallback');assert.equal(fallback.reason,'sommelier_provider_unavailable');assert.equal(fallback.provider,undefined);
+  assert.deepEqual(events,[{provider:'huggingface',stage:'answer_parse',category:'advice_unverified_claim',httpStatus:200}]);
+});
+for(const [answer,category] of [
+  [null,'answer_shape_invalid'],[{...validAnswer,untrusted:'private'},'answer_shape_invalid'],
+  [{...validAnswer,advice:''},'advice_invalid'],[{...validAnswer,advice:'x'.repeat(651)},'advice_too_long'],
+  [{...validAnswer,advice:'Visit https://private.invalid/?key=synthetic-private-key'},'advice_contains_url_or_secret'],
+  [{...validAnswer,selectedFactIds:['private-fact-id']},'unknown_fact'],[{...validAnswer,selectedFactIds:['serving','serving']},'duplicate_fact'],
+  [{...validAnswer,selectedFactIds:null},'selected_facts_invalid'],[{...validAnswer,suggestedQuestions:['https://private.invalid/']},'suggested_questions_invalid'],
+]) test('closed answer rejection diagnostic '+category,async()=>{
+  const events=[];let reservations=0,calls=0;
+  const result=await requestLiveSommelier(input,context,env,{reserve:async()=>{reservations++;return{ok:true}},fetch:async()=>{calls++;return answerReceipt(answer)},diagnostic:e=>events.push(e)});
+  assert.equal(result.reason,'sommelier_provider_unavailable');assert.equal(reservations,1);assert.equal(calls,1);
+  assert.deepEqual(events,[{provider:'huggingface',stage:'answer_parse',category,httpStatus:200}]);
+  assert.doesNotMatch(JSON.stringify(events),/private|serving|synthetic-private-key|https?:/);
+});
+test('final answer length rejection is a closed enum and does not render excessive server facts',()=>{
+  const longContext={...context,facts:[{id:'synthetic',label:'Approved',text:'x'.repeat(1200),url:null}]};
+  const value={...validAnswer,selectedFactIds:['synthetic']};
+  assert.deepEqual(validateSommelierAnswer(value,longContext),{ok:false,reason:'answer_too_long'});assert.equal(parseSommelierAnswer(value,longContext),null);
+});
+for(const status of [401,402,403,429,503,599]) test('HTTP diagnostics whitelist status '+status+' without body',async()=>{
+  const events=[];
+  const result=await requestLiveSommelier(input,context,env,{reserve:async()=>({ok:true}),fetch:async()=>new Response('synthetic-private-key and credential body',{status}),diagnostic:e=>events.push(e)});
+  assert.equal(result.source,'fallback');assert.deepEqual(events,[{provider:'huggingface',stage:'http',category:'http_rejected',httpStatus:status===599?null:status}]);
+  assert.doesNotMatch(JSON.stringify(events),/private|credential|key/);
+});
+for(const [make,stage,category]of [
+  [()=>Response.json({model:'synthetic-private-model'}),'receipt_model','receipt_model_mismatch'],
+  [()=>receipt(SOMMELIER_HF_MODEL,{choices:[{finish_reason:'stop',message:{refusal:'synthetic-private-refusal',content:'{}'}}]}),'receipt_choice','receipt_choice_invalid'],
+  [()=>receipt(SOMMELIER_HF_MODEL,{usage:{prompt_tokens:'synthetic-private-usage',completion_tokens:1,total_tokens:2}}),'receipt_usage','receipt_usage_invalid'],
+  [()=>new Response('synthetic-private-body',{headers:{'content-type':'application/json'}}),'body','body_invalid'],
+  [()=>receipt(SOMMELIER_HF_MODEL,{choices:[{finish_reason:'stop',message:{content:'synthetic-private-invalid-json'}}]}),'answer_parse','answer_json_invalid'],
+]) test('one sanitized diagnostic for '+stage,async()=>{
+  const events=[];const result=await requestLiveSommelier(input,context,env,{reserve:async()=>({ok:true}),fetch:async()=>make(),diagnostic:e=>events.push(e)});
+  assert.equal(result.source,'fallback');assert.deepEqual(events,[{provider:'huggingface',stage,category,httpStatus:200}]);assert.doesNotMatch(JSON.stringify(events),/private|synthetic/);
+});
+test('default internal logger never reads or serializes transport error, prompt, credentials or dimensions',async()=>{
+  const lines=[],old=console.warn;console.warn=(...args)=>lines.push(args);
+  const privateError={get message(){throw Error('must-not-read')},get name(){throw Error('must-not-read')},toJSON(){throw Error('must-not-serialize')}};
+  try {
+    const result=await requestLiveSommelier({...input,question:'synthetic-private-prompt'},context,env,{reserve:async()=>({ok:true}),fetch:async()=>{throw privateError}});
+    assert.equal(result.source,'fallback');assert.deepEqual(lines,[['[sommelier_provider_rejected]',JSON.stringify({provider:'huggingface',stage:'fetch',category:'fetch_failed',httpStatus:null})]]);
+    assert.doesNotMatch(JSON.stringify(lines),/private|prompt|tenant|synthetic|key|must-not/);
+  } finally {console.warn=old;}
+});
+test('throwing diagnostic logger cannot change rejection, retry count, reservation or fallback output',async()=>{
+  let reservations=0,calls=0,logs=0;
+  const result=await requestLiveSommelier(input,context,env,{reserve:async()=>{reservations++;return{ok:true}},fetch:async()=>{calls++;return answerReceipt({...validAnswer,advice:'Servicio 18°C'})},diagnostic:()=>{logs++;throw Error('synthetic-private-logger')}});
+  assert.equal(result.reason,'sommelier_provider_unavailable');assert.equal(reservations,1);assert.equal(calls,1);assert.equal(logs,1);assert.equal(result.provider,undefined);
+});
+test('each rejected candidate is logged once and fallback still reserves separately',async()=>{
+  const events=[];let reservations=0,calls=0;
+  const config={...env,NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  const result=await requestLiveSommelier(input,context,config,{reserve:async()=>{reservations++;return{ok:true}},fetch:async()=>{calls++;return new Response('synthetic-private-body',{status:503})},diagnostic:e=>events.push(e)});
+  assert.equal(result.source,'fallback');assert.equal(reservations,2);assert.equal(calls,2);
+  assert.deepEqual(events,[{provider:'huggingface',stage:'http',category:'http_rejected',httpStatus:503},{provider:'openai',stage:'http',category:'http_rejected',httpStatus:503}]);
+});
 test('valid provider receipt gives honest live provenance with pinned model/facts/history/locale',async()=>{
   const calls=[];let reserved=0;
   const response=await requestLiveSommelier(input,context,env,{reserve:async(tenant,cost)=>{assert.equal(tenant,'demo:valle-secreto');assert.ok(cost>0);reserved++;return{ok:true}},fetch:async(url,options)=>{calls.push({url,body:JSON.parse(options.body)});assert.equal(options.redirect,'error');return receipt()}});

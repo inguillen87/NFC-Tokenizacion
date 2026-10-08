@@ -32,6 +32,8 @@ HTTP deadline is eleven seconds; provider deadline is at most nine seconds over 
 
 Provider selects approved fact IDs; the server renders their exact public text and known source URLs. Free advice has structural and forbidden-claim checks; those checks do not prove every semantic statement true. Unknown IDs, arbitrary URLs, prohibited claims, malformed/truncated receipts or timeouts produce honest general guidance with `source:"fallback"`, not false live provenance. Live responses report provider/model and non-private token/reservation counts. Demo context remains explicitly demo even when its guide uses a real LLM. Published producer practices are not bottle-level sensor measurements or carbon footprints.
 
+Each rejected provider attempt emits at most one internal diagnostic with only the pinned provider, a closed validation stage/category and a whitelisted HTTP status or null. It distinguishes transport/body, model/choice/usage receipt and answer-validation failures, including a model repeating a numeric temperature in free advice instead of selecting the approved `serving` fact. It never logs prompts, history, response text, error objects, keys, fact IDs or customer/tenant dimensions. An HTTP 200 from this API can still be an explicit fallback; these diagnostics do not certify the provider's quality. Public responses, validation rules, reservations, retry behavior and deadlines remain unchanged even if the logger throws.
+
 ## Flags and enablement
 
 - `NEXID_SOMMELIER_ENABLED=true`: opt in; default off.
