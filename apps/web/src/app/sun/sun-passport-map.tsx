@@ -814,6 +814,15 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
       : tap
         ? "Mapa interactivo de la zona informada para esta lectura; no hay origen geolocalizado"
         : "Mapa interactivo sin ubicaciones informadas";
+  const mapLegend = (
+    <div className={`${styles.mapLegend} ${cartography === "reference" ? styles.referenceLegend : ""}`} data-map-legend aria-hidden="true">
+      {origin ? <span className={styles.legendItem}><i className={styles.legendDot} />{cartography === "reference" ? (locale === "en" ? "Vineyard" : locale === "pt-BR" ? "Vinícola" : "Viña") : "Origen"}</span> : null}
+      {tap ? <span className={styles.legendItem}><i className={`${styles.legendDot} ${styles.legendDotTap}`} />{cartography === "reference" ? (tap.source === "demo" ? "Mendoza" : locale === "en" ? "Your area" : locale === "pt-BR" ? "Sua área" : "Tu zona") : tapPresentation.legend}</span> : null}
+      {origin && !tap ? <span className={styles.missingTapBadge}>Solo origen · lectura sin coordenadas</span> : null}
+      {showDemoConnection && cartography !== "reference" ? <span className={styles.demoBadge}>Demo · conexión ilustrativa</span> : null}
+      {isDegraded ? <span className={styles.degradedBadge}>Cartografía parcial</span> : null}
+    </div>
+  );
 
   return (
     <div
@@ -897,17 +906,12 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         ) : null}
         {loadState === "ready" ? (
           <>
-            <div className={styles.mapLegend} aria-hidden="true">
-              {origin ? <span className={styles.legendItem}><i className={styles.legendDot} />{cartography === "reference" ? (locale === "en" ? "Vineyard" : locale === "pt-BR" ? "Vinícola" : "Viña") : "Origen"}</span> : null}
-              {tap ? <span className={styles.legendItem}><i className={`${styles.legendDot} ${styles.legendDotTap}`} />{cartography === "reference" ? (tap.source === "demo" ? "Mendoza" : locale === "en" ? "Your area" : locale === "pt-BR" ? "Sua área" : "Tu zona") : tapPresentation.legend}</span> : null}
-              {origin && !tap ? <span className={styles.missingTapBadge}>Solo origen · lectura sin coordenadas</span> : null}
-              {showDemoConnection && cartography !== "reference" ? <span className={styles.demoBadge}>Demo · conexión ilustrativa</span> : null}
-              {isDegraded ? <span className={styles.degradedBadge}>Cartografía parcial</span> : null}
-            </div>
+            {cartography !== "reference" ? mapLegend : null}
             {points.length > 1 && cartography !== "reference" ? <button type="button" className={styles.fitButton} title="Reencuadrar origen y zona dentro de este mapa" onClick={centerPoints}>Centrar puntos</button> : null}
           </>
         ) : null}
       </div>
+      {loadState === "ready" && cartography === "reference" ? mapLegend : null}
       {loadState === "ready" && points.length > 1 && cartography === "reference" ? <button type="button" className={`${styles.fitButton} ${styles.referenceFitButton}`} data-sun-dock-avoid title="Reencuadrar viña y zona de la demo" onClick={centerPoints}>Centrar puntos</button> : null}
       <div className={styles.details} data-sun-dock-avoid>
         {renderLocation("origin", origin)}

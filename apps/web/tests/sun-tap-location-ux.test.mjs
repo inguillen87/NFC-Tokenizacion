@@ -110,7 +110,7 @@ test("SUN summary exposes truthful location evidence before the origin map", () 
   assert.ok(summaryStart < originStart);
   assert.match(page, /const summaryLocationLabel = isDemoPreview[\s\S]*?"Zona aproximada confirmada"[\s\S]*?"Zona de red · no es GPS"[\s\S]*?"Ubicación de esta lectura"/);
   assert.match(page, /const valleDemo = selectedValleSecretoDemo\(isDemoPreview, readParam\(params, "profile"\)\)/);
-  assert.match(page, /const summaryLocationDisplay = valleDemo \? "Mendoza, Argentina · ejemplo" : hasCurrentTapCoords \? tapDisplay : "Sin ubicación registrada"/);
+  assert.match(page, /const summaryLocationDisplay = valleDemo \? translateSunUiText\("Mendoza, Argentina · ejemplo", locale\) : hasCurrentTapCoords \? tapDisplay : "Sin ubicación registrada"/);
   assert.match(summary, /!isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic[\s\S]*?\? "#sun-condition"/);
   assert.match(summary, /Fuente \/ precisión/);
   assert.match(summary, /Hora del tap/);

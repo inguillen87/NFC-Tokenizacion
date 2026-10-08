@@ -692,3 +692,5 @@
 .shell[data-basemap="local-reference"] .map :global(.maplibregl-ctrl-attrib),.shell[data-basemap="local-reference"] .map :global(.maplibregl-ctrl-attrib-inner){color:var(--map-ui-ink);background:var(--map-ui-bg)}
 .shell[data-basemap="local-reference"] .map :global(.maplibregl-ctrl-attrib-button){filter:var(--map-control-icon)}
 .shell[data-basemap="local-reference"] .referenceFitButton{position:relative;right:auto;bottom:auto;width:calc(100% - 2rem);margin:.75rem 1rem;box-shadow:none}
+.shell[data-basemap="local-reference"] .referenceLegend{position:static;max-width:none;padding:.65rem 1rem 0;gap:.5rem}
+.shell[data-basemap="local-reference"] .referenceLegend .legendItem{white-space:nowrap;box-shadow:none}

@@ -1023,8 +1023,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : rawLocationSource === "ip_geo" || rawLocationSource === "edge_ip_approx"
         ? "Zona de red · no es GPS"
         : "Ubicación de esta lectura";
-  const summaryLocationDisplay = valleDemo ? "Mendoza, Argentina · ejemplo" : hasCurrentTapCoords ? tapDisplay : "Sin ubicación registrada";
-  const summaryLocationEvidence = valleDemo ? "Punto de ejemplo en Mendoza; no es una lectura física." : hasCurrentTapCoords
+  const summaryLocationDisplay = valleDemo ? translateSunUiText("Mendoza, Argentina · ejemplo", locale) : hasCurrentTapCoords ? tapDisplay : "Sin ubicación registrada";
+  const summaryLocationEvidence = valleDemo ? translateSunUiText("Punto de ejemplo en Mendoza; no es una lectura física.", locale) : hasCurrentTapCoords
     ? tapLocationPrecisionLabel
     : isDemoPreview
       ? "Sin coordenadas en esta simulación"
