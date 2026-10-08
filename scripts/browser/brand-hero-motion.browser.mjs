@@ -263,7 +263,7 @@ try {
       const legibility=await logoLegibility(logo);
       check(legibility.supported && legibility.minimumRatio >= 4.5, 'Wordmark has readable theme colors ' + name, legibility);
       const actions=page.getByRole('group', { name:'Acciones principales' }), primary=actions.locator('a').first();
-      check(await primary.getAttribute('href') === '/demo-lab?profile=wine' && await primary.innerText() === 'Probar un pasaporte', 'Direct illustrative primary CTA retained ' + name);
+      check(await primary.getAttribute('href') === '/sun?demo=1&profile=valle-secreto&scenario=closed' && await primary.getAttribute('data-demo-entry') === 'valle-secreto' && await primary.innerText() === 'Explorar Valle Secreto', 'Direct closed Valle sample CTA retained ' + name);
       check(await actions.locator('a[href*="contact=demo"]').innerText() === 'Agendar una demo', 'Contact CTA retained ' + name);
       check(/Tu marca publica/.test(await page.locator('h1 + p').innerText()) && /NFC o QR/.test(await page.locator('h1 + p').innerText()), 'Published information copy retained ' + name);
       check(await media.getAttribute('aria-hidden') === 'true', 'Animated hero remains decorative ' + name);

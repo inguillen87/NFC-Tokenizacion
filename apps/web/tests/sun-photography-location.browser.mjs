@@ -15,9 +15,10 @@ const env=Object.fromEntries(Object.entries(process.env).filter(([k])=>/^(PATH|P
 const next=spawn(process.execPath,['--import',pathToFileURL(join(web,'tests/sun-mobile-local-fetch.mjs')).href,join(repo,'node_modules/next/dist/bin/next'),'start','-p',String(port),'-H','127.0.0.1'],{cwd:web,env,windowsHide:true});let log='';next.stdout.on('data',d=>log+=d);next.stderr.on('data',d=>log+=d);
 const origin='http://127.0.0.1:'+port;
 const cases=[
- ...['es-AR','en','pt-BR'].flatMap(locale=>['light','dark'].flatMap(theme=>[320,390,430].map(width=>({locale,theme,width,kind:'reference',url:'/sun?demo=1&visual=rutini'})))),
+ ...['es-AR','en','pt-BR'].flatMap(locale=>['light','dark'].flatMap(theme=>[320,390,430].map(width=>({locale,theme,width,kind:'reference',url:'/sun?demo=1&profile=wine&visual=rutini'})))),
  ...['es-AR','en','pt-BR'].flatMap(locale=>['light','dark'].flatMap(theme=>[320,390].map(width=>({locale,theme,width,kind:'location',url:'/sun?snapshot=qa-location-closed&trace=synthetic&access=invalid&fresh=synthetic-only'})))),
  ...['light','dark'].map(theme=>({locale:'es-AR',theme,width:390,kind:'default',url:'/sun?demo=1'})),
+ ...['light','dark'].map(theme=>({locale:'es-AR',theme,width:390,kind:'legacy-wine',url:'/sun?demo=1&profile=wine'})),
  ...['wine','perfume','agro'].map(profile=>({locale:'es-AR',theme:'light',width:390,kind:'handoff',url:'/sun?demo=1&source=demo-lab&visual=rutini&profile='+profile})),
  ...['&snapshot=','&bid=','&channel=qr','&visual=unknown'].map((suffix,index)=>({locale:'es-AR',theme:'light',width:390,kind:'excluded',url:index===3?'/sun?demo=1'+suffix:'/sun?demo=1&visual=rutini'+suffix})),
 ];
@@ -52,8 +53,12 @@ try {
    await page.screenshot({path:join(output,name+'.png'),fullPage:false});
    if(entry.width===390&&entry.locale==='es-AR'){await page.locator('#product-info').scrollIntoViewIfNeeded();await page.screenshot({path:join(output,name+'-product.png'),fullPage:false});}
   }else{
-   check(await credit.count()===0,'Reference isolated from other entries '+name);
-   if(entry.kind==='default')check(await page.locator('[data-testid="sun-summary-product"] img').getAttribute('src')==='/images/premium_wine_mendoza_nfc.png','Previous Balmec demo media preserved '+name);
+   if(entry.kind==='default'){
+    check(await credit.count()===1&&await credit.getAttribute('href')==='https://vallesecreto.cl/wp-content/uploads/2026/05/PROFUNDO-scaled.webp'&&await credit.innerText()==='Fotografía: Valle Secreto · Referencia visual','Plain demo attributes its own producer photograph '+name);
+    check(await page.locator('#sun-summary-product-title').innerText()==='Profundo 2019','Plain demo selects Valle Secreto '+name);
+    check(await page.locator('[data-testid="sun-summary-product"] img').getAttribute('src')==='/sun/valle-secreto/profundo.webp','Official Valle Secreto demo media '+name);
+   }else check(await credit.count()===0,'Reference isolated from other entries '+name);
+   if(entry.kind==='legacy-wine')check(await page.locator('[data-testid="sun-summary-product"] img').getAttribute('src')==='/images/premium_wine_mendoza_nfc.png','Explicit legacy wine demo media preserved '+name);
   }
   if(entry.kind==='location'){
    const b=observed.locationButton;

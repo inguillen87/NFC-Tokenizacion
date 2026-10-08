@@ -26,7 +26,12 @@ test("demo scenarios preserve an empty real trace and disable every business act
   for (const scenario of ["closed", "opened", "invalid", undefined]) {
     const result = valleSecretoDemoResult(true, "valle-secreto", scenario);
     assert.equal(result.status.reason, "demo_preview");
-    assert.equal(result.status.productState, scenario === "opened" ? "VALID_OPENED" : "VALID_CLOSED");
+    assert.equal(result.status.productState, scenario === "invalid" ? "INVALID" : scenario === "opened" ? "VALID_OPENED" : "VALID_CLOSED");
+    assert.equal(result.ok, scenario !== "invalid");
+    assert.equal(result.status.tamperStatus, scenario === "invalid" ? "UNKNOWN" : scenario === "opened" ? "OPENED" : "CLOSED");
+    assert.equal(result.tag_tamper.available, scenario !== "invalid");
+    assert.equal(result.tag_tamper.status, scenario === "invalid" ? "unknown" : scenario === "opened" ? "opened" : "closed");
+    assert.equal(result.tag_tamper.raw, null);
     assert.equal(result.identity.uid, null);
     assert.equal(result.identity.scanCount, 0);
     assert.equal(result.identity.eventId, "demo-sun-preview");
@@ -71,7 +76,7 @@ test("branded guidance provides producer facts without inventing stock, prizes o
 
 test("page passes the named profile only to demo content while real permissions remain independent", async () => {
   const page = await readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /selectedValleSecretoDemo\(isDemoPreview, readParam\(params, "profile"\)\)/);
+  assert.match(page, /selectedValleSecretoDemo\(isDemoPreview, resolveSunDemoProfile\(isDemoPreview, params\)\)/);
   assert.match(page, /const publishedPromotion: SunPublishedPromotion \| null = valleDemo \? null : declaredPromotion/);
   assert.match(page, /isDemoPreview=\{isDemoPreview\}\s+demoWineProfile=\{valleDemo\}/);
   assert.match(page, /!isDemoPreview && bid && \(uid \|\| eventId\)/);
