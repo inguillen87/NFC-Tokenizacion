@@ -89,6 +89,17 @@
   text-wrap: balance;
 }
 
+.passport[data-demo-profile="syngenta"]:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual) {
+  background: #fff !important;
+}
+.passport[data-demo-profile="syngenta"] :global(.sun-summary-product__title) {
+  font-family: inherit;
+  font-weight: 750;
+}
+.passport[data-demo-profile="syngenta"] :global(.sun-summary-product__visual) img {
+  filter: none;
+}
+
 .passport :global(.sun-summary-product__copy) > p:last-of-type {
   font-size: 0.8125rem;
   line-height: 1.5;

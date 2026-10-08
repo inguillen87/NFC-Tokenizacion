@@ -77,8 +77,8 @@ test("branded guidance provides producer facts without inventing stock, prizes o
 test("page passes the named profile only to demo content while real permissions remain independent", async () => {
   const page = await readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8");
   assert.match(page, /selectedValleSecretoDemo\(isDemoPreview, resolveSunDemoProfile\(isDemoPreview, params\)\)/);
-  assert.match(page, /const publishedPromotion: SunPublishedPromotion \| null = valleDemo \? null : declaredPromotion/);
+  assert.match(page, /const publishedPromotion: SunPublishedPromotion \| null = valleDemo \|\| syngentaDemo \? null : declaredPromotion/);
   assert.match(page, /isDemoPreview=\{isDemoPreview\}\s+demoWineProfile=\{valleDemo\}/);
   assert.match(page, /!isDemoPreview && bid && \(uid \|\| eventId\)/);
-  assert.match(page, /\{valleDemo \? <ValleSecretoDemoServices locale=\{locale\} \/> : hasSourceResult \? <SunServicesHub/);
+  assert.match(page, /valleDemo \? <ValleSecretoDemoServices locale=\{locale\} \/> : syngentaDemo \? <SyngentaDemoServices locale=\{locale\} scenario=\{demoScenario\} \/> : hasSourceResult \? <SunServicesHub/);
 });

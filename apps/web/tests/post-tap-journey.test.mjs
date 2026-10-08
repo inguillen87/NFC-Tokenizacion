@@ -109,7 +109,7 @@ test("real taps never fabricate sensor history, tasting awards or chain-of-custo
   assert.match(page, /const hasReportedSensorEvidence = Boolean\(/);
   assert.match(page, /const sensorEvidenceKind = String\(result\.iot\?\.sensorEvidenceKind \|\| "none"\)/);
   assert.match(page, /sensorEvidenceKind === "reported"/);
-  assert.match(page, /const usesDemoSensorEvidence = isDemoPreview && !hasReportedSensorEvidence/);
+  assert.match(page, /const usesDemoSensorEvidence = isDemoPreview && !syngentaDemo && !hasReportedSensorEvidence/);
   assert.match(page, /usesDemoSensorEvidence \? "15\.2°C" : "N\/A"/);
   assert.match(page, /Sin telemetr[ií]a IoT asociada a este lote/i);
   assert.match(page, /no inferimos temperatura, humedad ni golpes sin evidencia/i);
