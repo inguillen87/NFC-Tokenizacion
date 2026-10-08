@@ -1,6 +1,6 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.07-web-valle-secreto-map.1",
+  "version": "2026.10.08-web-valle-secreto-map.2",
   "scope": "valle-secreto-public-winery-reference-mendoza-example-and-optional-local-approximate-location",
   "baseCommit": "1de9e292d3dfe2a781d0d5521d507e4875462865",
   "physicalTapCertification": "not-included",
@@ -8,7 +8,7 @@
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.07-web-valle-secreto-map.1",
+  "release": "2026.10.08-web-valle-secreto-map.2",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1",
   "publicExperienceShareProtocol": "nexid:experience-event:v1",

@@ -75,14 +75,15 @@ test("SUN passport header preserves identity, evidence labels and the existing p
   assert.match(header, /<SunLocaleSwitcher \/>/);
   assert.doesNotMatch(header, /<LocaleSwitcher|router\.refresh|router\.push/);
   assert.match(header, /<ThemeToggle locale=\{locale\} \/>/);
-  assert.match(header, /<Link href="\/me" prefetch=\{false\} className=\{styles\.accountLink\}/);
+  assert.match(header, /<a href="\/me" className=\{styles\.accountLink\} data-testid="sun-account-link" referrerPolicy="no-referrer">/);
+  assert.doesNotMatch(header, /<Link[^>]*href="\/me"|onClick=|router\./);
   assert.match(header, /\{translatedLivePillLabel\}/);
   assert.doesNotMatch(header, /fetch\(|getCurrentPosition|freshToken|cmac|telemetry|<img|<Image/);
   assert.match(page, /<SunLocaleProvider initialLocale=\{locale\}>[\s\S]*?<SunPassportHeader[\s\S]*?pulseClass=\{pulseClass\}[\s\S]*?\/>/);
   assert.match(page, /!isDemoPreview && <ConsumerPassportLink href=\{isFreshCommercialTap && freshToken \? withTapQuery\("\/me\/products","products"\) : "\/me\/products"\} eventId=\{eventId\} freshToken=\{isFreshCommercialTap \? freshToken : ""\}/);
 });
 
-// Render the production header, brand and ThemeToggle with real Next Link. The
+// Render the production header, brand, documentary account anchor and ThemeToggle. The
 // locale context is selected explicitly; preferences are not changed in SSR.
 function renderHeader(locale, props) {
   const require = createRequire(import.meta.url), modules = new Map();
@@ -115,7 +116,11 @@ test("SUN rendered account link is always plain portal access across locales and
   for (const [locale, label] of [["es-AR", "Mi cuenta"], ["en", "My account"], ["pt-BR", "Minha conta"]]) {
     for (const isQrScan of [false, true]) for (const livePillLabel of ["Muestra demo", "Tap físico activo", "Consulta segura", "Consulta pendiente"]) {
       const html = renderHeader(locale, { isQrScan, livePillLabel, pulseClass: "bg-emerald-300" });
-      assert.match(html, new RegExp(`<a[^>]*data-testid="sun-account-link"[^>]*href="/me"[^>]*>${label}</a>`));
+      const account = html.match(/<a\b[^>]*data-testid="sun-account-link"[^>]*>[\s\S]*?<\/a>/g) || [];
+      assert.equal(account.length, 1);
+      assert.match(account[0], /\bhref="\/me"/);
+      assert.match(account[0], /\breferrerPolicy="no-referrer"/i);
+      assert.match(account[0], new RegExp(`>${label}</a>$`));
       assert.match(html, new RegExp(`aria-label="${translateSunUiText("Estado", locale)}: ${translateSunUiText(livePillLabel, locale)}"`));
       assert.ok(html.includes(translateSunUiText(isQrScan ? "Pasaporte QR" : "Pasaporte NFC", locale)));
       assert.match(html, /data-sun-brand-variant="passport"/);
