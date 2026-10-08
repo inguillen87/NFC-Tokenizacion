@@ -34,8 +34,24 @@ test("demo scenarios show the selected seal without claiming real verification",
 });
 
 test("a demo seal hint cannot change a real reading", () => {
-  assert.deepEqual(resolveSunConsumerStatus({ ...base, isReplay: true, demoSealState: "closed" }), resolveSunConsumerStatus({ ...base, isReplay: true }));
-  assert.equal(resolveSunConsumerStatus({ ...base, isVerifiedOpenedState: true, demoSealState: "closed" }).tone, "opened");
+  for (const demoSealState of ["closed", "opened", "invalid"]) {
+    for (const actual of [{ isReplay: true }, { isVerifiedClosedState: true }, { isVerifiedOpenedState: true }, { isInvalidSealState: true }, { isTechnicallyAuthentic: false }, { isQrScan: true }, { availability: "incomplete" }]) {
+      assert.deepEqual(resolveSunConsumerStatus({ ...base, ...actual, demoSealState }), resolveSunConsumerStatus({ ...base, ...actual }));
+    }
+  }
+});
+
+test("invalid demo is a red simulated read without inferring a seal or counterfeit product", () => {
+  const status = resolveSunConsumerStatus({ ...base, isDemoPreview: true, demoSealState: "invalid" });
+  assert.equal(status.tone, "risk");
+  assert.equal(status.headline, "La lectura de muestra no es válida");
+  assert.equal(status.sealLabel, "No informado (demo)");
+  assert.match(status.copy, /sin tap físico.*acciones protegidas permanecen bloqueadas/);
+  assert.doesNotMatch(`${status.headline} ${status.copy}`, /falsificad|sello abierto|sello cerrado/i);
+  for (const locale of ["en", "pt-BR"]) {
+    const localized = resolveSunConsumerStatus({ ...base, isDemoPreview: true, demoSealState: "invalid" }, value => translateSunUiText(value, locale));
+    for (const field of ["label", "headline", "copy", "identityLabel", "sealLabel"]) assert.notEqual(localized[field], status[field]);
+  }
 });
 
 test("a verified closed tag is green and never becomes a security alert", () => {

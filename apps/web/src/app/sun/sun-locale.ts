@@ -15,6 +15,14 @@ export const SUN_LOCALE_COOKIE = "locale";
  * the evidence returned by the server.
  */
 export const SUN_UI_TRANSLATIONS: readonly SunTranslation[] = [
+  { es: "Lectura no válida · demo", pt: "Leitura inválida · demo", en: "Invalid reading · demo" },
+  { es: "La lectura de muestra no es válida", pt: "A leitura de exemplo é inválida", en: "The sample reading is invalid" },
+  { es: "Simulación sin tap físico: la lectura no permite confirmar identidad ni sello. Las acciones protegidas permanecen bloqueadas; no se evaluó un producto real.", pt: "Simulação sem toque físico: a leitura não confirma identidade nem lacre. As ações protegidas permanecem bloqueadas; nenhum produto real foi avaliado.", en: "Simulation without a physical tap: the reading cannot confirm identity or seal. Protected actions remain blocked; no real product was assessed." },
+  { es: "No confirmada (demo)", pt: "Não confirmada (demo)", en: "Unconfirmed (demo)" },
+  { es: "No informado (demo)", pt: "Não informado (demo)", en: "Not reported (demo)" },
+  { es: "Lectura no válida en esta simulación", pt: "Leitura inválida nesta simulação", en: "Invalid reading in this simulation" },
+  { es: "La lectura de muestra no permite confirmar identidad ni sello. Las acciones protegidas están bloqueadas.", pt: "A leitura de exemplo não confirma identidade nem lacre. As ações protegidas estão bloqueadas.", en: "The sample reading cannot confirm identity or seal. Protected actions are blocked." },
+  { es: "Escenario de muestra: lectura no válida. La identidad y el sello no se confirmaron; las acciones protegidas están bloqueadas. No se evaluó un producto real.", pt: "Cenário de exemplo: leitura inválida. A identidade e o lacre não foram confirmados; as ações protegidas estão bloqueadas. Nenhum produto real foi avaliado.", en: "Sample scenario: invalid reading. Identity and seal were not confirmed; protected actions are blocked. No real product was assessed." },
   { es: "Este punto es ilustrativo y no representa un teléfono ni una lectura física.", pt: "Este ponto é ilustrativo e não representa um celular nem uma leitura física.", en: "This is an illustrative point, not a phone or a physical reading." },
   { es: "Mendoza, Argentina · ejemplo", pt: "Mendoza, Argentina · exemplo", en: "Mendoza, Argentina · example" },
   { es: "Punto de ejemplo en Mendoza; no es una lectura física.", pt: "Ponto de exemplo em Mendoza; não é uma leitura física.", en: "Sample point in Mendoza; not a physical reading." },

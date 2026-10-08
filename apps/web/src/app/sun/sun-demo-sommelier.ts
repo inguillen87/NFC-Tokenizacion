@@ -1,13 +1,25 @@
 import type { SunLocale } from "./sun-locale";
 import type { DemoWineProfile } from "./valle-secreto-demo";
 
+export type DemoSommelierTopic = "gift" | "pairing" | "serving" | "storage" | "barrel" | "facts" | "visit" | "sustainability";
+export type DemoSommelierFollowUp = { label: string; question: string };
+export type DemoSommelierContext = { topic?: DemoSommelierTopic };
+
 const COPY = {
   "es-AR": {
     welcome: "¿Lo vas a regalar o compartir en una comida? Probá una pregunta abajo o escribí la tuya.",
     demo: "Demo interactiva · respuestas de muestra, sin enviar consultas a la marca.",
+    managedDemo: "Demo educativa. Tus consultas pueden usar IA; no envían pedidos ni activan servicios de la marca.",
     label: "Guía de vinos", source: "Información de la viña", general: "Orientación general", sample: "Respuesta de muestra",
+    live: "Respuesta con IA", responseOrigin: "Origen de la respuesta",
     placeholder: "¿Qué te gustaría saber de este vino?", send: "Enviar pregunta", log: "Conversación sobre el vino",
     prompts: ["¿Qué regalo puedo elegir?", "¿Con qué comida lo acompaño?", "¿Cómo lo sirvo?"],
+    sustainabilityPrompt: "¿Qué prácticas sustentables publica la viña?", visitPrompt: "¿Cómo puedo visitar la viña?", continue: "Seguí explorando",
+    followUpLabels: ["Para regalar", "Maridajes", "Cómo servirlo", "Sustentabilidad", "Visitar la viña", "Voy a preparar cordero", "Conservar la botella"] as const,
+    lambQuestion: "Voy a preparar cordero", storageQuestion: "¿Cómo guardo esta botella?",
+    clarify: "¿Querés elegir un regalo, pensar un maridaje, preparar el servicio o conocer la viña? Elegí un tema abajo y seguimos. Esta muestra no confirma precios, stock ni reservas.",
+    pairingClarify: "¿Cómo vas a preparar el plato y qué salsa lo acompaña? Puedo ayudarte a leer los maridajes publicados. Esta muestra no tiene una recomendación específica para todos los platos.",
+    pairingDish: (p: DemoWineProfile, dish: string) => `${dish} aparece entre los maridajes publicados para ${p.name}. La preparación y la salsa también importan. Podés consultar la ficha de la viña y preparar el servicio a su temperatura recomendada.`,
     gift: "Para elegir un regalo, empezá por el gusto de la persona: ¿prefiere vinos suaves o con más cuerpo? Elegí después la presentación y tu presupuesto. La disponibilidad y el precio se consultan con la bodega.",
     pairing: "Para pensar un maridaje, contame qué vas a cocinar. La intensidad del plato, su salsa y la ocasión ayudan a elegir un estilo. La recomendación de este producto depende de la ficha de la bodega.",
     serving: "Consultá la temperatura recomendada en la ficha. Usá una copa limpia y dejá que el vino se abra de a poco; podés probarlo primero antes de decidir si necesita aireación.",
@@ -23,8 +35,16 @@ const COPY = {
   },
   en: {
     welcome: "A gift or a meal with friends? Try a question below or write your own.", demo: "Interactive demo · sample answers, with no question sent to the brand.",
+    managedDemo: "Educational demo. Your questions may use AI; they do not place orders or activate the brand's services.",
     label: "Wine guide", source: "Producer information", general: "General guidance", sample: "Sample answer", placeholder: "What would you like to know about this wine?", send: "Send question", log: "Wine conversation",
+    live: "AI response", responseOrigin: "Response origin",
     prompts: ["How do I choose a gift?", "What food can I pair it with?", "How should I serve it?"],
+    sustainabilityPrompt: "What sustainability practices does the winery publish?", visitPrompt: "How can I visit the vineyard?", continue: "Keep exploring",
+    followUpLabels: ["Choosing a gift", "Food pairings", "How to serve it", "Sustainability", "Visit the vineyard", "I'm preparing lamb", "Store the bottle"] as const,
+    lambQuestion: "I'm preparing lamb", storageQuestion: "How should I store this bottle?",
+    clarify: "Would you like help choosing a gift, pairing a meal, preparing the serving or exploring the vineyard? Choose a topic below. This sample does not confirm prices, stock or bookings.",
+    pairingClarify: "How will you prepare the dish, and what sauce goes with it? I can help you read the published pairings. This sample has no specific recommendation for every dish.",
+    pairingDish: (p: DemoWineProfile, dish: string) => `${dish} is among the published pairings for ${p.name}. The preparation and sauce also matter. You can check the producer's sheet and prepare the serving at its recommended temperature.`,
     gift: "Start with the recipient's preferences: lighter wines or more body? Then choose a presentation and budget. Ask the winery for availability and prices.",
     pairing: "Tell me what you plan to cook. The dish, sauce and occasion can help you choose a style. Product-specific pairings need the producer's technical sheet.",
     serving: "Check the producer's recommended serving temperature. Use a clean glass and taste the wine before deciding whether to aerate it.",
@@ -40,8 +60,16 @@ const COPY = {
   },
   "pt-BR": {
     welcome: "Um presente ou uma refeição com amigos? Experimente uma pergunta abaixo ou escreva a sua.", demo: "Demo interativa · respostas de exemplo, sem enviar consultas à marca.",
+    managedDemo: "Demo educativa. Suas perguntas podem usar IA; não fazem pedidos nem ativam serviços da marca.",
     label: "Guia de vinhos", source: "Informações da vinícola", general: "Orientação geral", sample: "Resposta de exemplo", placeholder: "O que gostaria de saber sobre este vinho?", send: "Enviar pergunta", log: "Conversa sobre o vinho",
+    live: "Resposta com IA", responseOrigin: "Origem da resposta",
     prompts: ["Como escolher um presente?", "Com que comida posso harmonizar?", "Como devo servir?"],
+    sustainabilityPrompt: "Que práticas sustentáveis a vinícola publica?", visitPrompt: "Como posso visitar a vinícola?", continue: "Continue explorando",
+    followUpLabels: ["Para presentear", "Harmonizações", "Como servir", "Sustentabilidade", "Visitar a vinícola", "Vou preparar cordeiro", "Conservar a garrafa"] as const,
+    lambQuestion: "Vou preparar cordeiro", storageQuestion: "Como devo guardar esta garrafa?",
+    clarify: "Quer escolher um presente, pensar numa harmonização, preparar o serviço ou conhecer a vinícola? Escolha um tema abaixo e seguimos. Esta demo não confirma preços, estoque nem reservas.",
+    pairingClarify: "Como vai preparar o prato e que molho o acompanha? Posso ajudar a ler as harmonizações publicadas. Esta demo não tem uma recomendação específica para todos os pratos.",
+    pairingDish: (p: DemoWineProfile, dish: string) => `${dish} aparece entre as harmonizações publicadas para ${p.name}. O preparo e o molho também importam. Consulte a ficha da vinícola e prepare o serviço na temperatura recomendada.`,
     gift: "Comece pelo gosto da pessoa: vinhos mais leves ou encorpados? Depois escolha a apresentação e o orçamento. Consulte disponibilidade e preço com a vinícola.",
     pairing: "Conte o que vai cozinhar. A intensidade do prato, o molho e a ocasião ajudam a escolher um estilo. A harmonização deste produto depende da ficha da vinícola.",
     serving: "Confira a temperatura de serviço recomendada pelo produtor. Use uma taça limpa e prove antes de decidir se precisa de aeração.",
@@ -59,19 +87,50 @@ const COPY = {
 
 export function demoSommelierCopy(locale: SunLocale) { return COPY[locale]; }
 
-export function demoSommelierAnswer(question: string, locale: SunLocale, wine?: DemoWineProfile | null) {
+export function demoSommelierPrompts(locale: SunLocale, wine?: DemoWineProfile | null): readonly string[] {
+  const copy = COPY[locale];
+  return wine?.key === "valle-secreto" ? [...copy.prompts, copy.sustainabilityPrompt, copy.visitPrompt] : copy.prompts;
+}
+
+function followUps(locale: SunLocale, topic: DemoSommelierTopic | null): DemoSommelierFollowUp[] {
+  const copy = COPY[locale];
+  const choices = [
+    ...copy.prompts.map((question, index) => ({ label: copy.followUpLabels[index], question })),
+    { label: copy.followUpLabels[3], question: copy.sustainabilityPrompt },
+    { label: copy.followUpLabels[4], question: copy.visitPrompt },
+    { label: copy.followUpLabels[5], question: copy.lambQuestion },
+    { label: copy.followUpLabels[6], question: copy.storageQuestion },
+  ];
+  const indexes = topic === "pairing" ? [5, 2, 4] : topic === "gift" ? [1, 2, 4]
+    : topic === "serving" ? [6, 1, 3] : topic === "visit" ? [1, 2, 3]
+      : topic === "sustainability" ? [4, 1, 2] : [0, 1, 2];
+  return indexes.map(index => choices[index]);
+}
+
+/** Demo context is local UI state, never a verified profile or an LLM response. */
+export function demoSommelierAnswer(question: string, locale: SunLocale, wine?: DemoWineProfile | null, context: DemoSommelierContext = {}) {
   const text = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const copy = COPY[locale];
   let answer: string;
   let sourceUrl: string | undefined;
-  if (wine && /tesoro|treasure|pista|caminata|tour|visita/.test(text)) { answer = copy.treasure; sourceUrl = wine.experiences; }
-  else if (wine && /sustent|sustain|solar|agua|water|carbon|co2|recicl/.test(text)) { answer = copy.sustainability; sourceUrl = wine.practices; }
-  else if (/regalo|present|gift|comprar|buy|compra/.test(text)) { answer = wine ? copy.officialGift(wine) : copy.gift; sourceUrl = wine?.technicalSheet; }
-  else if (/marida|comida|comer|food|pair|harmon|plato|prato|meal/.test(text)) { answer = wine ? copy.officialPairing(wine) : copy.pairing; sourceUrl = wine?.technicalSheet; }
-  else if (/serv|sirv|temper|frio|cold/.test(text)) { answer = wine ? copy.officialServing(wine) : copy.serving; sourceUrl = wine?.technicalSheet; }
-  else if (wine && /barrica|barrel|oak|crianza|matur|meses|months/.test(text)) { answer = copy.barrel(wine); sourceUrl = wine.technicalSheet; }
-  else if (/guard|stor|tiempo|aging/.test(text)) { answer = copy.storage; }
-  else if (wine && /origen|origin|cepa|grape|vino|wine|safra|cosecha|profundo/.test(text)) { answer = copy.facts(wine); sourceUrl = wine.technicalSheet; }
-  else { answer = copy.unknown; }
-  return { text: answer, sourceUrl, sourceLabel: sourceUrl ? copy.source : copy.general };
+  let topic: DemoSommelierTopic | null = null;
+  if (wine && /tesoro|tesouro|treasure|pista|caminata|tour|visit/.test(text)) { topic = "visit"; answer = copy.treasure; sourceUrl = wine.experiences; }
+  else if (wine && /sustent|sustain|solar|agua|water|carbon|co2|recicl/.test(text)) { topic = "sustainability"; answer = copy.sustainability; sourceUrl = wine.practices; }
+  else if (/regalo|present|gift|comprar|buy|compra/.test(text)) { topic = "gift"; answer = wine ? copy.officialGift(wine) : copy.gift; sourceUrl = wine?.technicalSheet; }
+  else if (/marida|comida|comer|food|pair|harmon|plato|prato|meal/.test(text)) { topic = "pairing"; answer = wine ? copy.officialPairing(wine) : copy.pairing; sourceUrl = wine?.technicalSheet; }
+  else if (/serv|sirv|temper|frio|cold/.test(text)) { topic = "serving"; answer = wine ? copy.officialServing(wine) : copy.serving; sourceUrl = wine?.technicalSheet; }
+  else if (wine && /barrica|barrel|oak|crianza|matur|meses|months/.test(text)) { topic = "barrel"; answer = copy.barrel(wine); sourceUrl = wine.technicalSheet; }
+  else if (/guard|stor|tiempo|aging/.test(text)) { topic = "storage"; answer = copy.storage; }
+  else if (wine && /origen|origin|cepa|grape|safra|cosecha|de donde|where.+from/.test(text)) { topic = "facts"; answer = copy.facts(wine); sourceUrl = wine.technicalSheet; }
+  else if (wine?.key === "valle-secreto" && context.topic === "pairing") {
+    topic = "pairing";
+    const dish = /\b(cordero|lamb|cordeiro)\b/.test(text) ? { "es-AR": "Cordero", en: "Lamb", "pt-BR": "Cordeiro" }[locale]
+      : /\b(pato|duck)\b/.test(text) ? { "es-AR": "Pato", en: "Duck", "pt-BR": "Pato" }[locale] : null;
+    answer = dish ? copy.pairingDish(wine, dish) : copy.pairingClarify;
+    sourceUrl = dish ? wine.technicalSheet : undefined;
+  }
+  else if (wine && /vino|wine|profundo/.test(text)) { topic = "facts"; answer = copy.facts(wine); sourceUrl = wine.technicalSheet; }
+  else { answer = wine?.key === "valle-secreto" ? copy.clarify : copy.unknown; }
+  return { text: answer, sourceUrl, sourceLabel: sourceUrl ? copy.source : copy.general, topic,
+    followUps: wine?.key === "valle-secreto" ? followUps(locale, topic) : [] };
 }

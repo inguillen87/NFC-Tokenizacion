@@ -20,7 +20,7 @@ test("consumer account entry is direct and distinct from business sign in in eve
   assert.equal(navigation.match(/href: "\/me"/g)?.length, 3);
   assert.doesNotMatch(navigation, /\/login\?next=\/me/);
   assert.match(navigation, /<a href=\{loginHref\} className=\{styles\.loginLink\}>\{copy\.login\}/);
-  assert.match(navigation, /href="\/\?contact=demo#contact-modal" className=\{styles\.headerCta\}/);
+  assert.match(navigation, /href="\/\?contact=demo#contact-modal" prefetch=\{false\} className=\{styles\.headerCta\}/);
 });
 
 test("mega navigation groups commercial and technical depth on existing routes", async () => {
@@ -139,25 +139,24 @@ test("public headers give the brand a responsive, prominent lockup on every view
   }
 });
 
-test("desktop, compact and mobile navigation keep a direct route to the passport explanation", async () => {
+test("desktop, compact and mobile navigation give demos a direct entry while the passport explanation stays on the landing", async () => {
   const [navigation, css, home, globalCss] = await Promise.all([
     read("../src/components/marketing-mega-nav.tsx"),
     read("../src/components/marketing-mega-nav.module.css"),
     read("../src/components/home-sections.tsx"),
     read("../src/app/globals.css"),
   ]);
-  assert.match(navigation, /passport: "Pasaporte digital"/);
-  assert.match(navigation, /passport: "Passaporte digital"/);
-  assert.match(navigation, /passport: "Digital product passport"/);
-  assert.equal(navigation.match(/href="\/#pasaporte-digital"/g)?.length, 3);
-  // Native fragments also work after leaving the home route; client route
-  // restoration can otherwise retain the hero scroll position on return.
-  assert.equal(navigation.match(/<a href="\/#pasaporte-digital"/g)?.length, 3);
-  assert.doesNotMatch(navigation, /<Link href="\/#pasaporte-digital"/);
+  assert.match(navigation, /passport: "Demos por rubro"/);
+  assert.match(navigation, /passport: "Demos por setor"/);
+  assert.match(navigation, /passport: "Demos by industry"/);
+  assert.equal(navigation.match(/data-demo-entry="gallery"/g)?.length, 3);
+  assert.equal(navigation.match(/<a href=\{SUN_DEMO_GALLERY_HREF\}/g)?.length, 3);
+  assert.match(navigation, /focusInitialPassportFragment\(\)/);
   assert.match(navigation, /<nav className=\{styles\.compactNav\}/);
-  assert.match(navigation, /href="\/#pasaporte-digital" className=\{styles\.mobileAboutLink\} onClick=\{handlePassportNavigation\}/);
+  assert.match(navigation, /href=\{SUN_DEMO_GALLERY_HREF\} className=\{styles\.mobileAboutLink\} onClick=\{handleDemoNavigation\}/);
   assert.match(css, /@media \(min-width: 980px\) and \(max-width: 1599px\)\s*\{\s*\.compactNav\s*\{\s*display: flex/);
   assert.match(home, /id="pasaporte-digital"/);
+  assert.match(home, /href=\{VALLE_SECRETO_DEMO_HREF\} prefetch=\{false\}[^>]*data-demo-entry="valle-secreto"/);
   assert.match(globalCss, /width: clamp\(8\.75rem, calc\(100vw - 200px\), 12rem\) !important/);
 });
 

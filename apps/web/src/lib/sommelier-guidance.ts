@@ -31,7 +31,17 @@ export function classifySommelierResponse(payload: unknown): SommelierProvenance
   return { mode: "server-fallback" };
 }
 
-export function sommelierProvenanceLabel(provenance?: SommelierProvenance) {
+export function sommelierProvenanceLabel(provenance?: SommelierProvenance, locale: "es-AR" | "en" | "pt-BR" = "es-AR") {
+  if (locale === "en") {
+    if (!provenance || provenance.mode === "context") return "General guidance · product not verified";
+    if (provenance.mode === "live") return `Confirmed provider · ${provenance.provider} / ${provenance.model} · not a technical sheet`;
+    return provenance.mode === "local-fallback" ? "Local guide · general advice, not a technical sheet" : "Server guide · general advice, not a technical sheet";
+  }
+  if (locale === "pt-BR") {
+    if (!provenance || provenance.mode === "context") return "Orientação geral · produto não verificado";
+    if (provenance.mode === "live") return `Provedor confirmado · ${provenance.provider} / ${provenance.model} · não é ficha técnica`;
+    return provenance.mode === "local-fallback" ? "Guia local · orientação geral, não é ficha técnica" : "Guia do servidor · orientação geral, não é ficha técnica";
+  }
   if (!provenance || provenance.mode === "context") return "Orientación general · producto no verificado";
   if (provenance.mode === "live") return `Proveedor confirmado · ${provenance.provider} / ${provenance.model} · no es ficha técnica`;
   if (provenance.mode === "local-fallback") return "Fallback local · orientación general, no ficha técnica";

@@ -15,9 +15,10 @@ await mkdir(output, { recursive: true });
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
 const axe = await readFile(process.env.AXE_MODULE_PATH, "utf8");
 const paths = ["tests/sun-wine-demo.browser.mjs", "src/app/sun/sun-services-hub.tsx", "src/app/sun/sun-services-hub.module.css", "src/app/sun/qr-engagement-suite.tsx", "src/app/sun/qr-engagement-suite.module.css", "src/app/sun/sun-demo-wine-quiz.ts", "src/app/sun/sun-demo-sommelier.ts", "src/app/sun/valle-secreto-demo.ts", "src/app/sun/valle-secreto-experience.tsx", "src/app/sun/valle-secreto-experience.module.css", "src/app/globals.css", "src/app/sun/sun-passport-experience.module.css", "public/sun/valle-secreto/profundo.webp", "public/sun/valle-secreto/logo-dark.webp", "public/sun/valle-secreto/logo-light.png"];
+paths.push("src/lib/managed-sommelier.ts", "src/lib/sommelier-conversation.ts", "src/lib/sommelier-guidance.ts");
 const hashes = async () => Object.fromEntries(await Promise.all(paths.map(async path => [path, createHash("sha256").update(await readFile(join(web, path))).digest("hex")])));
 const startHashes = await hashes();
-const fixture = `import React from 'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{SunServicesHub}from'./src/app/sun/sun-services-hub';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{VALLE_SECRETO_DEMO}from'./src/app/sun/valle-secreto-demo';import{ValleSecretoExperience,ValleSecretoDemoServices}from'./src/app/sun/valle-secreto-experience';import{demoWineTrivia}from'./src/app/sun/sun-demo-wine-quiz';import{demoSommelierCopy}from'./src/app/sun/sun-demo-sommelier';import passport from'./src/app/sun/sun-passport-experience.module.css';const params=new URLSearchParams(location.search),locale=params.get('locale')||'es-AR',wine=params.get('profile')==='generic'?null:VALLE_SECRETO_DEMO,productName=wine?.name||'Gran Reserva Malbec',wineryName=wine?.brand||'Bodega Balmec';window.__wineQuiz=demoWineTrivia({productName,wineryName,locale,facts:wine||undefined});window.__wineChatCopy=demoSommelierCopy(locale);createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={locale}><main className='sun-tap-experience' style={{maxWidth:430,margin:'0 auto',padding:12}}><h1>Vino · muestra local</h1><div className={passport.passport+' sun-tap-shell'}>{wine?<><ValleSecretoExperience locale={locale}/><ValleSecretoDemoServices locale={locale}/></>:<SunServicesHub locale={locale} freshnessState='demo' riskState='clear' demoIntent='benefit' policyAvailability={{promotion:false,purchase:false,subscribe:false,claimOrManage:false,warranty:false}}/>}<section id='qr-engagement'><QREngagementSuite productName={productName} wineryName={wineryName} isDemoPreview demoWineProfile={wine} initialTab='sommelier'/></section></div></main></SunLocaleProvider>);`;
+const fixture = `import React from 'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{SunServicesHub}from'./src/app/sun/sun-services-hub';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{VALLE_SECRETO_DEMO}from'./src/app/sun/valle-secreto-demo';import{ValleSecretoExperience,ValleSecretoDemoServices}from'./src/app/sun/valle-secreto-experience';import{demoWineTrivia}from'./src/app/sun/sun-demo-wine-quiz';import{demoSommelierCopy,demoSommelierPrompts}from'./src/app/sun/sun-demo-sommelier';import passport from'./src/app/sun/sun-passport-experience.module.css';const params=new URLSearchParams(location.search),locale=params.get('locale')||'es-AR',wine=params.get('profile')==='generic'?null:VALLE_SECRETO_DEMO,productName=wine?.name||'Gran Reserva Malbec',wineryName=wine?.brand||'Bodega Balmec';window.__wineQuiz=demoWineTrivia({productName,wineryName,locale,facts:wine||undefined});window.__wineChatCopy=demoSommelierCopy(locale);window.__wineChatPrompts=demoSommelierPrompts(locale,wine);createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={locale}><main className='sun-tap-experience' style={{maxWidth:430,margin:'0 auto',padding:12}}><h1>Vino · muestra local</h1><div className={passport.passport+' sun-tap-shell'}>{wine?<><ValleSecretoExperience locale={locale}/><ValleSecretoDemoServices locale={locale}/></>:<SunServicesHub locale={locale} freshnessState='demo' riskState='clear' demoIntent='benefit' policyAvailability={{promotion:false,purchase:false,subscribe:false,claimOrManage:false,warranty:false}}/>}<section id='qr-engagement'><QREngagementSuite productName={productName} wineryName={wineryName} isDemoPreview demoWineProfile={wine} initialTab='sommelier'/></section></div></main></SunLocaleProvider>);`;
 const bundled = await build({ stdin: { contents: fixture, resolveDir: web, loader: "tsx" }, bundle: true, write: false, outfile: "fixture.js", format: "esm", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"production"' }, plugins: [{ name: "inert-next", setup(b) {
   b.onResolve({ filter: /^next\/(link|navigation)$/ }, args => ({ path: args.path, namespace: "nav" }));
   b.onLoad({ filter: /.*/, namespace: "nav" }, args => ({ contents: args.path === "next/navigation" ? "export function useRouter(){return {push(){throw Error('Navigation must stay inert')}}}" : "import React from'react';export default function Link({prefetch,...props}){return <a {...props}/>}", loader: "tsx", resolveDir: web }));
@@ -42,18 +43,47 @@ const server = createServer((req, res) => {
 await new Promise(r => server.listen(0, "127.0.0.1", r));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH });
-const report = { localOnly: true, actualProductionComponentsAndCss: true, actualNextServer: false, nextNavigationInert: true, physicalTapMeasured: false, realBusinessWrites: 0, selectedCase: process.env.QA_ONLY || null, externalRequests: [], apiRequests: [], errors: [], geolocationCalls: 0, checks: [], views: [], sourceHashes: startHashes };
+const report = { localOnly: true, actualProductionComponentsAndCss: true, actualNextServer: false, nextNavigationInert: true, physicalTapMeasured: false, realBusinessWrites: 0, managedServiceDisabledMock: true, managedDemoRequests: [], selectedCase: process.env.QA_ONLY || null, externalRequests: [], apiRequests: [], errors: [], geolocationCalls: 0, checks: [], views: [], sourceHashes: startHashes };
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
 async function playWineDemo(page, label, locale, hasProfile) {
   const copy = await page.evaluate(() => window.__wineChatCopy);
+  const prompts = await page.evaluate(() => window.__wineChatPrompts);
   const chat = page.getByRole("log", { name: copy.log });
-  const topics = [/(prefer|taste|gust)/i, /cordero|lamb|cordeiro|cocin|cook|cozin|prato/i, /16.18|temperatur/i];
-  for (const [index, prompt] of copy.prompts.entries()) {
-    await page.getByRole("button", { name: prompt, exact: true }).click();
-    await page.waitForFunction(expected => document.querySelectorAll('[role="log"] > div').length === expected, 3 + 2 * index);
+  const topics = [/(prefer|taste|gust)/i, /cordero|lamb|cordeiro|cocin|cook|cozin|prato/i, /16.18|temperatur/i, /solar/i, /Tesoro|Treasure|Tesouro/i];
+  const waitForAnswer = async before => page.waitForFunction(expected => {
+    const log = document.querySelector('[role="log"]');
+    return log?.getAttribute('aria-busy') === 'false' && log.children.length === expected;
+  }, before + 2);
+  check(prompts.length === (hasProfile ? 5 : 3), `${label}: useful entries match the selected demo`);
+  for (const [index, prompt] of prompts.entries()) {
+    const before = await chat.locator(":scope > div").count();
+    await page.getByTestId("sun-sommelier-prompts").getByRole("button", { name: prompt, exact: true }).click();
+    await waitForAnswer(before);
     const answer = await chat.locator(":scope > div").last().innerText();
     check(answer.length > 90 && topics[index].test(answer), `${label}: prompt ${index + 1} gives useful guidance about its topic`);
-    if (hasProfile) check(await chat.locator('a[href*="Ficha-Tecnica-PROFUNDO-2019.pdf"]').count() === index + 1, `${label}: prompt ${index + 1} links the producer source`);
+    if (hasProfile) {
+      const path = index < 3 ? "Ficha-Tecnica-PROFUNDO-2019.pdf" : index === 3 ? "Practicas-Sustentables-Formato-VVS-Aprobada_VS.pdf" : "/experiencias/";
+      check(await chat.locator(":scope > div").last().locator(`a[href*="${path}"]`).count() === 1, `${label}: prompt ${index + 1} links its own producer source`);
+      check(await page.getByTestId("sun-sommelier-follow-ups").getByRole("button").count() === 3, `${label}: three clear continuations after prompt ${index + 1}`);
+      if (index === 1) {
+        const dish = { "es-AR": "Cordero", en: "Lamb", "pt-BR": "Cordeiro" }[locale];
+        const beforeReply = await chat.locator(":scope > div").count();
+        await page.getByRole("textbox", { name: copy.placeholder, exact: true }).fill(dish);
+        await page.getByRole("textbox", { name: copy.placeholder, exact: true }).press("Enter");
+        await waitForAnswer(beforeReply);
+        const reply = await chat.locator(":scope > div").last().innerText();
+        check(reply.includes(dish) && /Profundo 2019/.test(reply), `${label}: brief dish reply continues the pairing conversation`);
+        check(await chat.locator(":scope > div").last().locator('a[href*="Ficha-Tecnica-PROFUNDO-2019.pdf"]').count() === 1, `${label}: contextual pairing keeps its public source`);
+      }
+    }
+  }
+  if (hasProfile) {
+    const before = await chat.locator(":scope > div").count();
+    await page.getByRole("textbox", { name: copy.placeholder, exact: true }).fill("???");
+    await page.getByRole("textbox", { name: copy.placeholder, exact: true }).press("Enter");
+    await waitForAnswer(before);
+    check((await chat.locator(":scope > div").last().innerText()).includes("?"), `${label}: an ambiguous question gives useful clarification`);
+    check(await chat.locator(":scope > div").last().locator("a").count() === 0, `${label}: clarification does not invent a producer source`);
   }
   await page.screenshot({ path: join(output, `${label.replaceAll("/", "-")}-sommelier.png`), fullPage: true });
   await page.locator(".sun-engagement-tabs button").nth(1).click();
@@ -66,6 +96,28 @@ async function playWineDemo(page, label, locale, hasProfile) {
     const advance = page.getByRole("button", { name: index === questions.length - 1 ? finish : next, exact: true });
     check(await advance.isDisabled(), `${label}: unanswered question cannot advance`);
     await page.getByRole("button", { name: question.options[question.correctIndex], exact: true }).click();
+    if (index === 0) {
+      if (hasProfile) {
+        const guide = page.getByTestId("valle-secreto-guide-link"), tabs = page.locator(".sun-engagement-tabs button");
+        await guide.click();
+        check(new URL(page.url()).hash === "#qr-engagement", `${label}: guide retains the native section destination`);
+        check(await tabs.first().getAttribute("aria-pressed") === "true", `${label}: service opens Sommelier from Trivia`);
+        await tabs.nth(1).click();
+        await guide.focus();
+        await guide.press("Enter");
+        check(await tabs.first().getAttribute("aria-pressed") === "true", `${label}: Enter reopens Sommelier with the same hash`);
+        await tabs.nth(1).click();
+        await page.evaluate(() => { window.__guideEvents = 0; window.addEventListener("sun:demo-wine-guide", () => window.__guideEvents++); });
+        for (const modifier of ["ctrlKey", "metaKey", "shiftKey", "altKey"]) await guide.dispatchEvent("click", { button: 0, [modifier]: true });
+        await guide.dispatchEvent("click", { button: 2 });
+        check(await page.evaluate(() => window.__guideEvents) === 0, `${label}: modified clicks do not activate a local tool`);
+        check(await tabs.nth(1).getAttribute("aria-pressed") === "true", `${label}: modified clicks preserve the current panel`);
+      } else {
+        await page.evaluate(() => window.dispatchEvent(new Event("sun:demo-wine-guide")));
+        check(await page.locator(".sun-engagement-tabs button").nth(1).getAttribute("aria-pressed") === "true", `${label}: Valle navigation event is inert in the generic demo`);
+      }
+      check(await page.getByRole("button", { name: question.options[question.correctIndex], exact: true }).getAttribute("aria-pressed") === "true" && await advance.isEnabled(), `${label}: returning to Trivia preserves the selected answer`);
+    }
     await advance.click();
   }
   const resultTitle = { "es-AR": "Lo que aprendiste", en: "What you learned", "pt-BR": "O que você aprendeu" }[locale];
@@ -75,6 +127,18 @@ async function playWineDemo(page, label, locale, hasProfile) {
   check(/no se otorgaron puntos ni premios|no points or prizes awarded|sem pontos nem prêmios/.test(result), `${label}: local education awards no points or prizes`);
   check(!/Tus respuestas ayudan|interés por ciudad|Market quiz|Insight para mejorar/.test(result), `${label}: demo does not claim to send brand research`);
   check(await page.locator('.sun-engagement-suite a[href^="/me"],.sun-engagement-suite a[href^="/login"]').count() === 0, `${label}: demo result does not pretend to save real rewards`);
+  if (hasProfile) {
+    const guide = page.getByTestId("valle-secreto-guide-link"), before = await page.evaluate(() => window.__guideEvents);
+    // A native fragment jump moves the viewport. A coordinate double-click can hit a different control.
+    // Two Enter activations address this same anchor and verify repeatability without suppressing native navigation.
+    await guide.press("Enter");
+    await guide.press("Enter");
+    await page.waitForFunction(() => document.querySelector(".sun-engagement-tabs button")?.getAttribute("aria-pressed") === "true");
+    check(await page.evaluate(() => window.__guideEvents) === before + 2, `${label}: both repeated activations target the guide`);
+    check(await page.locator(".sun-engagement-tabs button").first().getAttribute("aria-pressed") === "true", `${label}: repeated guide activations select Sommelier`);
+    await page.locator(".sun-engagement-tabs button").nth(1).click();
+    check(await page.getByRole("heading", { name: resultTitle, exact: true }).isVisible(), `${label}: the completed quiz result survives guide navigation`);
+  }
 }
 async function playTreasure(page, label) {
   await page.getByTestId("wine-treasure-start").click();
@@ -110,10 +174,17 @@ try {
     await page.route("**/*", route => {
       const request = route.request(), url = new URL(request.url());
       if (url.origin !== origin) { report.externalRequests.push(url.hostname); return route.abort(); }
+      if (profile === "valle-secreto" && url.pathname === "/api/sommelier/demo/session" && request.method() === "POST" && !url.search) {
+        const body = request.postDataJSON();
+        check(body && Object.keys(body).sort().join(",") === "locale,profile" && body.profile === "valle-secreto" && body.locale === locale, `${label}: the mock session receives only the explicit demo profile and locale`);
+        report.managedDemoRequests.push({ view: label, path: url.pathname, method: request.method(), profile: body.profile, locale: body.locale, mocked: true, status: 503 });
+        return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false, error: "sommelier_unavailable" }) });
+      }
       if (url.pathname.startsWith("/api/") || request.method() !== "GET") { report.apiRequests.push({ path: url.pathname, method: request.method() }); return route.abort(); }
       return route.continue();
     });
     await page.goto(`${origin}/?locale=${locale}&profile=${profile}`, { waitUntil: "networkidle" });
+    check(report.managedDemoRequests.filter(request => request.view === label).length === 0, `${label}: opening a demo does not automatically send a question or initialize an AI session`);
     const cards = await page.locator('.sun-services-card [role="listitem"]').evaluateAll(elements => elements.map(el => {
       const r = el.getBoundingClientRect(), text = el.querySelector("strong").getBoundingClientRect(), badge = el.querySelector('[class*="selectedBadge"]')?.getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height, textWidth: text.width, textBottom: text.bottom, badgeY: badge?.y, display: getComputedStyle(el).display };
@@ -141,7 +212,7 @@ try {
     report.geolocationCalls += await page.evaluate(() => window.__gpsCalls);
     await context.close();
   }
-  check(report.apiRequests.length === 0 && report.externalRequests.length === 0, "zero API, external or business operations");
+  check(report.apiRequests.length === 0 && report.externalRequests.length === 0, "zero unexpected API, external or business operations; demo session responses are local disabled mocks");
   check(report.views.length === (process.env.QA_ONLY ? 1 : 32), "all requested views executed");
   check(report.geolocationCalls === 0 && report.errors.length === 0, "zero GPS calls or browser exceptions");
   report.endSourceHashes = await hashes();
