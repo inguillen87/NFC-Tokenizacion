@@ -34,6 +34,7 @@ export default async function HomePage() {
     ? {
         home: "nexID home",
         summary: "Connected products. Closer brands.",
+        legalIdentity: "NexID is a commercial brand operated by GUILLEN MARCELO ARIEL, the service's legal owner.",
         product: "Product",
         how: "How it works",
         demoLab: "Demo Lab",
@@ -58,6 +59,7 @@ export default async function HomePage() {
     ? {
         home: "Início da nexID",
         summary: "Produtos conectados. Marcas mais próximas.",
+        legalIdentity: "NexID é uma marca comercial operada por GUILLEN MARCELO ARIEL, titular legal do serviço.",
         product: "Produto",
         how: "Como funciona",
         demoLab: "Demo Lab",
@@ -81,6 +83,7 @@ export default async function HomePage() {
     : {
         home: "Inicio de nexID",
         summary: "Productos conectados. Marcas más cerca.",
+        legalIdentity: "NexID es una marca comercial operada por GUILLEN MARCELO ARIEL, titular legal del servicio.",
         product: "Producto",
         how: "Cómo funciona",
         demoLab: "Demo Lab",
@@ -149,6 +152,7 @@ export default async function HomePage() {
               className="site-footer-brand"
             />
             <p className="site-footer-summary text-sm site-muted">{footerCopy.summary}</p>
+            <p className="text-sm site-muted">{footerCopy.legalIdentity}</p>
           </div>
           <nav className="site-footer-columns" aria-label={locale === "en" ? "Footer links" : locale === "pt-BR" ? "Links do rodapé" : "Enlaces del pie de página"}>
             <section>

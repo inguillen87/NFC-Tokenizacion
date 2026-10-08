@@ -1,0 +1,86 @@
+{
+  "schema": "nexid.public-demo-asset-provenance/v1",
+  "observedAt": "2026-10-08T21:12:36.361Z",
+  "observationMethod": "Official public Syngenta Argentina page rendered in Chrome; observed page assets bundled and copied without transformation.",
+  "packshotFound": false,
+  "packshotScope": "No container photograph or packshot found in the two requested official product and campaign pages and their observed assets.",
+  "assets": [
+    {
+      "path": "/sun/syngenta/logo.svg",
+      "assetKind": "logo",
+      "brand": "Syngenta",
+      "sourcePage": "https://www.syngenta.com.ar/product/crop-protection/fungicida/amistar-xtra",
+      "sourceUrl": "https://www.syngenta.com.ar/themes/custom/syn_global_theme/logo.svg",
+      "contentType": "image/svg+xml",
+      "bytes": 5558,
+      "width": 133,
+      "height": 44,
+      "viewBox": [
+        0,
+        0,
+        641,
+        182
+      ],
+      "sha256": "4ab2e4b863547adca377f1e40c005e0bc260c88a17740937d938e11ceef02841",
+      "modified": false,
+      "svgInspection": {
+        "allowedElements": [
+          "svg",
+          "path"
+        ],
+        "scripts": false,
+        "embeddedResources": false,
+        "eventAttributes": false,
+        "externalLinks": false
+      }
+    },
+    {
+      "path": "/sun/syngenta/amistar-xtra.gif",
+      "assetKind": "logo",
+      "brand": "AMISTAR XTRA",
+      "sourcePage": "https://www.syngenta.com.ar/product/crop-protection/fungicida/amistar-xtra",
+      "sourceUrl": "https://www.syngenta.com.ar/sites/g/files/kgtney396/files/styles/brand_logo/public/media/image/2016/08/31/400x135_amistar_xtra_logo.gif?itok=4nPaoZbR",
+      "contentType": "image/gif",
+      "bytes": 4952,
+      "width": 400,
+      "height": 135,
+      "sha256": "429449490c55496386a301dda8efacf03c625c826bb38ddce71fc8bdd9bec692",
+      "modified": false
+    },
+    {
+      "path": "/sun/syngenta/amistar-xtra-5l.webp",
+      "assetKind": "commercial_reference_container_photo",
+      "brand": "Syngenta",
+      "product": "AMISTAR XTRA",
+      "presentation": "5 litros",
+      "observedAt": "2026-10-08T21:25:54.286Z",
+      "sourcePage": "https://www.mercadolibre.com.ar/syngenta-amistar-xtra-fungicida-5-litro/up/MLAU2913854648",
+      "sourceUrl": "https://http2.mlstatic.com/D_NQ_NP_2X_878393-MLA81551482535_122024-F.webp",
+      "sourceKind": "Public Argentine commercial marketplace listing",
+      "sourceCredit": "Agroinsumos Mercofrut",
+      "contentType": "image/webp",
+      "bytes": 24006,
+      "width": 622,
+      "height": 1118,
+      "sha256": "263ef9cf4604932a5bdd004df815ec61757730206f879e1640b9b94d43026487",
+      "modified": false,
+      "watermarkPreserved": true,
+      "visibleMarks": [
+        "Syngenta",
+        "AMISTAR XTRA",
+        "5 litros",
+        "SENASA34.011"
+      ],
+      "brandApprovalEstablished": false,
+      "permissionEstablished": false,
+      "nfcTagVisible": false,
+      "limitations": [
+        "Commercial reference photo, not an official Syngenta packshot",
+        "Current label design, actual lot and expiry are not certified",
+        "No NFC/NTAG424DNA TT installation or tamper measurement is shown or certified"
+      ],
+      "recommendedCaption": "Foto de referencia comercial · fuente Agroinsumos Mercofrut. Consultar documentación argentina vigente."
+    }
+  ],
+  "commercialContainerPhotoFound": true
+}

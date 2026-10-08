@@ -30,6 +30,7 @@ type AboutCopy = {
   eyebrow: string;
   title: string;
   lead: string;
+  legalIdentity: string;
   nexidLabel: string;
   nexidTitle: string;
   nexidBody: string;
@@ -75,6 +76,7 @@ const copyByLocale: Record<AppLocale, AboutCopy> = {
     lead:
       "nexID es una plataforma de Pasaporte Digital de Producto (DPP) y trazabilidad del ecosistema Inmovar Latam. Organiza identidad, datos declarados, documentos, uso, circularidad y evidencia en un registro que evoluciona durante el ciclo de vida. NFC y QR son puertas de acceso; los permisos definen qué ve cada persona o equipo.",
     nexidLabel: "Infraestructura de producto",
+    legalIdentity: "NexID es una marca comercial operada por GUILLEN MARCELO ARIEL, titular legal del servicio.",
     nexidTitle: "nexID",
     nexidBody:
       "Conecta el producto físico con un pasaporte gobernado por modelo, lote o unidad. La misma base alimenta experiencias públicas, operación empresarial e integraciones sin convertir cada lectura en una promesa que los datos no respaldan.",
@@ -142,6 +144,7 @@ const copyByLocale: Record<AppLocale, AboutCopy> = {
     lead:
       "A nexID é uma plataforma de Passaporte Digital de Produto (DPP) e rastreabilidade do ecossistema Inmovar Latam. Organiza identidade, dados declarados, documentos, uso, circularidade e evidência em um registro que evolui durante o ciclo de vida. NFC e QR são portas de acesso; as permissões definem o que cada pessoa ou equipe pode ver.",
     nexidLabel: "Infraestrutura de produto",
+    legalIdentity: "NexID é uma marca comercial operada por GUILLEN MARCELO ARIEL, titular legal do serviço.",
     nexidTitle: "nexID",
     nexidBody:
       "Conecta o produto físico a um passaporte governado por modelo, lote ou unidade. A mesma base alimenta experiências públicas, operação empresarial e integrações sem transformar cada leitura em uma promessa que os dados não sustentam.",
@@ -209,6 +212,7 @@ const copyByLocale: Record<AppLocale, AboutCopy> = {
     lead:
       "nexID is a Digital Product Passport (DPP) and traceability platform within the Inmovar Latam ecosystem. It organizes identity, declared data, documents, use, circularity and evidence in a record that evolves across the product lifecycle. NFC and QR are access points; permissions determine what each person or team can see.",
     nexidLabel: "Product infrastructure",
+    legalIdentity: "NexID is a commercial brand operated by GUILLEN MARCELO ARIEL, the service's legal owner.",
     nexidTitle: "nexID",
     nexidBody:
       "It connects the physical product to a passport governed by model, batch or unit. The same foundation serves public experiences, enterprise operations and integrations without turning every scan into a claim the data cannot support.",
@@ -344,6 +348,7 @@ export default async function AboutPage() {
             <p className={styles.eyebrow}>{copy.eyebrow}</p>
             <h1 id="about-title" className="brand-editorial-gradient">{copy.title}</h1>
             <p className={styles.heroLead}>{copy.lead}</p>
+            <p>{copy.legalIdentity}</p>
 
             <div className={styles.relationship}>
               <article>

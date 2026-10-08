@@ -51,7 +51,8 @@ test("SUN demo copy never asserts a fresh physical tap or a real verification", 
   assert.match(page, /showRoute=\{isDemoPreview\}/);
   assert.match(page, /label: isDemoPreview \? demoTruthCopy\.passportEventLabel : isQrScan \? "Se consultó" : "Se analizó"/);
   assert.match(page, /title: isDemoPreview \? demoTruthCopy\.passportEventTitle : isQrScan \? "Ficha QR abierta" : isTechnicallyAuthentic \? "Identidad NFC validada"/);
-  assert.match(page, /const demoTruthCopy = valleDemo \? \{[\s\S]*?\.\.\.SUN_DEMO_COPY/);
+  assert.match(page, /const baseDemoTruthCopy = valleDemo \? \{[\s\S]*?\.\.\.SUN_DEMO_COPY/);
+  assert.match(page, /const demoTruthCopy = syngentaCopy \? \{ \.\.\.baseDemoTruthCopy, \.\.\.syngentaCopy \} : baseDemoTruthCopy/);
   assert.doesNotMatch(page, /AUTÉNTICO &|Producto auténtico|Producto autentico|Autenticidad confirmada/);
   assert.doesNotMatch(page, /Auténtico, sello abierto|Autenticidad y trazabilidad visibles|autenticidad visible|Producto Verificado|Apertura verificada|Ruta de Confianza|Ver ruta de confianza/i);
   assert.doesNotMatch(page, /Riesgo bajo \| sello abierto|Sello intacto|NFT certificado en blockchain|Comprador verificado|Firma Criptográfica CMAC[\s\S]{0,160}\|\| "verificada"/i);

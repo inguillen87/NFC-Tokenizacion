@@ -53,6 +53,8 @@ import { resolveSunTenantIdentity } from "./sun-tenant-identity";
 import { selectedValleSecretoDemo, valleSecretoDemoResult } from "./valle-secreto-demo";
 import { ValleSecretoExperience, ValleSecretoDemoServices } from "./valle-secreto-experience";
 import { ValleSecretoDemoMap } from "./valle-secreto-demo-map";
+import { selectedSyngentaDemo, syngentaDemoCopy, syngentaDemoResult } from "./syngenta-demo";
+import { SyngentaDemoExperience, SyngentaDemoServices, SyngentaDemoOrigin } from "./syngenta-demo-experience";
 import { isSunDemoGalleryEntry, resolveSunDemoProfile } from "./sun-demo-entry";
 import { SunDemoGallery } from "./sun-demo-gallery";
 import { resolveSunDemoScenario, sunDemoScenarioSignals } from "./sun-demo-scenario";
@@ -391,6 +393,8 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
 
   const valleResult = valleSecretoDemoResult(isDemoPreview, resolveSunDemoProfile(isDemoPreview, params), readParam(params, "scenario"));
   if (valleResult) return valleResult;
+  const syngentaResult = syngentaDemoResult(isDemoPreview, resolveSunDemoProfile(isDemoPreview, params), readParam(params, "scenario"));
+  if (syngentaResult) return syngentaResult;
 
   const isDemoLabHandoff = readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
@@ -528,7 +532,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     return <SunLocaleProvider initialLocale={locale}><SunDemoGallery /></SunLocaleProvider>;
   }
   const valleDemo = selectedValleSecretoDemo(isDemoPreview, resolveSunDemoProfile(isDemoPreview, params));
-  const demoScenario = resolveSunDemoScenario(readParam(params, "scenario"), valleDemo ? "closed" : "opened");
+  const syngentaDemo = selectedSyngentaDemo(isDemoPreview, resolveSunDemoProfile(isDemoPreview, params));
+  const demoScenario = resolveSunDemoScenario(readParam(params, "scenario"), valleDemo || syngentaDemo ? "closed" : "opened");
   const scenarioTruth = {
     decision: demoScenario === "invalid"
       ? "Escenario de muestra: lectura no válida. La identidad y el sello no se confirmaron; las acciones protegidas están bloqueadas. No se evaluó un producto real."
@@ -538,7 +543,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "La lectura de muestra no permite confirmar identidad ni sello. Las acciones protegidas están bloqueadas."
       : "Escenario ilustrativo para la presentación. No se realizó un toque NFC ni se inspeccionó un envase físico.",
   };
-  const demoTruthCopy = valleDemo ? {
+  const baseDemoTruthCopy = valleDemo ? {
     ...SUN_DEMO_COPY,
     ...scenarioTruth,
     trust: "La ficha y la fotografía provienen de información pública de Valle Secreto. El sello, los sensores y las acciones son simulados; no verifican una botella real.",
@@ -555,6 +560,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const requestedLanguage = readParam(params, "lang");
   const webI18n = await getWebI18n(requestedLanguage || (isDemoLabHandoff ? requestedDemoLocale : null));
   const locale = webI18n.locale;
+  const syngentaCopy = syngentaDemo ? syngentaDemoCopy(locale, demoScenario) : null;
+  const demoTruthCopy = syngentaCopy ? { ...baseDemoTruthCopy, ...syngentaCopy } : baseDemoTruthCopy;
   query.set("lang", locale);
   const demoLabProfile = isDemoLabHandoff
     ? resolveDemoProductProfile(readParam(params, "profile"))
@@ -889,7 +896,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     sensorEvidenceKind === "declared_static"
     && (sensorSnapshot?.cellarTemperature || sensorSnapshot?.humidity || sensorSnapshot?.lightExposure || sensorSnapshot?.transitShock),
   );
-  const usesDemoSensorEvidence = isDemoPreview && !hasReportedSensorEvidence && !hasDeclaredSensorEvidence;
+  const usesDemoSensorEvidence = isDemoPreview && !syngentaDemo && !hasReportedSensorEvidence && !hasDeclaredSensorEvidence;
   const hasSensorEvidence = hasReportedSensorEvidence || hasDeclaredSensorEvidence || usesDemoSensorEvidence;
   const sensorEvidenceLabel = hasReportedSensorEvidence
     ? "Evento recibido por API o integración"
@@ -925,6 +932,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const demoPhotography = valleDemo ? {
     name: valleDemo.name, brand: valleDemo.brand, region: valleDemo.region, imageUrl: valleDemo.imageUrl,
     sourceUrl: valleDemo.photoSource, sourceLabel: "Fotografía: Valle Secreto", lot: "MUESTRA-VS-2019",
+  } : syngentaDemo ? {
+    name: syngentaDemo.name, brand: syngentaDemo.brand, region: "", imageUrl: syngentaDemo.imageUrl,
+    sourceUrl: syngentaDemo.photoSource, sourceLabel: syngentaCopy!.photoCredit, lot: syngentaDemo.lot,
   } : resolveSunDemoPhotography({ isDemoPreview, isDemoLabHandoff, visual: readParam(params, "visual"), vertical: result.product?.vertical || "" });
   const hasDeclaredTastingProfile = Boolean(result.product?.notes || result.product?.tasting_notes || result.product?.maridaje);
   const usesDemoTastingProfile = isDemoPreview && !demoPhotography && !hasDeclaredTastingProfile;
@@ -1135,7 +1145,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? `/certificado/${encodeURIComponent(eventId)}${certificateShareToken ? `?share=${encodeURIComponent(certificateShareToken)}` : ""}`
     : "";
   const declaredPromotion = result.engagement?.promotions?.find((promotion) => String(promotion?.title || "").trim());
-  const publishedPromotion: SunPublishedPromotion | null = valleDemo ? null : declaredPromotion
+  const publishedPromotion: SunPublishedPromotion | null = valleDemo || syngentaDemo ? null : declaredPromotion
     ? {
         title: String(declaredPromotion.title || "").trim(),
         description: declaredPromotion.description ? String(declaredPromotion.description) : null,
@@ -1729,15 +1739,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className={`${passportStyles.passport} sun-tap-shell w-full max-w-[430px] z-10 v3-space-y-5 mx-auto`}>
+      <div className={`${passportStyles.passport} sun-tap-shell w-full max-w-[430px] z-10 v3-space-y-5 mx-auto`} data-demo-profile={syngentaDemo ? "syngenta" : undefined}>
         
         <SunPassportHeader
           isQrScan={isQrScan}
           livePillLabel={livePillLabel}
           pulseClass={pulseClass}
         />
-        {isDemoPreview && (valleDemo || (isDemoLabHandoff && ["agrochem", "fragrance", "perfume"].includes(readParam(params, "profile")))) ? (
-          <SunDemoScenarioSelector profile={valleDemo ? "valle-secreto" : readParam(params, "profile") as "agrochem" | "fragrance" | "perfume"} scenario={demoScenario} />
+        {isDemoPreview && (valleDemo || syngentaDemo || (isDemoLabHandoff && ["agrochem", "fragrance", "perfume"].includes(readParam(params, "profile")))) ? (
+          <SunDemoScenarioSelector profile={valleDemo ? "valle-secreto" : syngentaDemo ? "syngenta" : readParam(params, "profile") as "agrochem" | "fragrance" | "perfume"} scenario={demoScenario} />
         ) : null}
         <ProductNotices tenant={String(result.identity?.tenantSlug||"")} bid={String(result.identity?.bid||"")} enabled={!isDemoPreview && result.ok===true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}/>
 
@@ -1909,7 +1919,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               >
                 {!hasSourceResult ? "Explorar una demostración" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
                   ? "Entender apertura"
-                  : "Ver origen y mapa"}
+                  : syngentaCopy?.originAction || "Ver origen y mapa"}
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
               </a>
             </div>
@@ -1998,7 +2008,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
 
             {demoPhotography ? <a data-testid="sun-demo-photo-source" href={demoPhotography.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className={passportStyles.photoCredit}>
-              {translateSunUiText(`${demoPhotography.sourceLabel} · Referencia visual`, locale)}
+              {syngentaCopy?.photoCredit || translateSunUiText(`${demoPhotography.sourceLabel} · Referencia visual`, locale)}
             </a> : null}
 
             <div className="text-center w-full">
@@ -2170,9 +2180,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         {/* 3. A real geographic map: declared origin and this tap, without inferred routes. */}
         <section
           id="sun-origin"
-          className="scroll-mt-24 v3-space-y-4 rounded-3xl border border-white/5 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md sm:p-5 md:relative md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2 md:p-6"
-          aria-labelledby="sun-origin-title"
+          className={syngentaDemo ? "scroll-mt-24" : "scroll-mt-24 v3-space-y-4 rounded-3xl border border-white/5 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md sm:p-5 md:relative md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2 md:p-6"}
+          aria-labelledby={syngentaDemo ? undefined : "sun-origin-title"}
+          aria-label={syngentaCopy?.originLabel}
         >
+          {syngentaDemo ? <SyngentaDemoOrigin locale={locale} /> : <>
           <SunLocationOriginHeading titleClassName={passportStyles.originTitle}>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="max-w-2xl">
@@ -2234,8 +2246,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               contextStatus: result.status?.code || null,
             }}
           />}
+          </>}
         </section>
 
+          {syngentaCopy ? <section id="sun-condition" aria-labelledby="syngenta-demo-condition-title" className={`${passportStyles.productProfile} scroll-mt-24 rounded-2xl p-4`}>
+            <h2 id="syngenta-demo-condition-title" className="text-lg font-bold text-white">{syngentaCopy.conditionTitle}</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-200">{syngentaCopy.state}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{syngentaCopy.conditionBody}</p>
+          </section> : (
           <section id="sun-condition" className="scroll-mt-24 v3-space-y-3 rounded-2xl border border-white/5 bg-slate-950/35 p-4" aria-labelledby="sun-condition-title">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -2351,6 +2369,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           )}
           </section>
+          )}
 
           {/* Timeline points list */}
           <div className="v3-space-y-3 pt-2">
@@ -2369,9 +2388,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
         {/* 4. Services: one clear menu, with protected flows disclosed on demand. */}
         {valleDemo ? <ValleSecretoExperience key={locale} locale={locale} /> : null}
+        {syngentaDemo ? <SyngentaDemoExperience key={locale} locale={locale} scenario={demoScenario} /> : null}
 
         <section id="sun-services" className="scroll-mt-24 v3-space-y-3" aria-label="Servicios y beneficios del producto">
-            {!valleDemo ? <ReportProblemForm
+            {!valleDemo && !syngentaDemo ? <ReportProblemForm
               bid={bid}
               eventId={eventId}
               supportToken={result.supportReport?.eventId === eventId ? result.supportReport.token || "" : ""}
@@ -2380,7 +2400,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               isDemoPreview={isDemoPreview}
             /> : null}
             <div id="consumer-choice" className="scroll-mt-24">
-              {valleDemo ? <ValleSecretoDemoServices locale={locale} /> : hasSourceResult ? <SunServicesHub
+              {valleDemo ? <ValleSecretoDemoServices locale={locale} /> : syngentaDemo ? <SyngentaDemoServices locale={locale} scenario={demoScenario} /> : hasSourceResult ? <SunServicesHub
                 eventId={eventId}
                 freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                 promotion={publishedPromotion}
@@ -2415,8 +2435,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               />
             ) : null}
 
-            {hasSourceResult && isRiskBlocked ? (
-              <Link
+            {hasSourceResult && isRiskBlocked && !isDemoPreview ? (
+              <a
                 href={reportProblemHref}
                 data-sun-experience-event="PROBLEM_REPORTED"
                 data-sun-experience-placement="risk_notice"
@@ -2425,7 +2445,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               >
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 Reportar esta lectura a la marca
-              </Link>
+              </a>
             ) : null}
 
             {!isDemoPreview && hasSourceResult ? <details className="group rounded-2xl border border-white/10 bg-slate-950/45 p-3">
