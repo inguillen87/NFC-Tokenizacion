@@ -43,6 +43,68 @@ test('a transport ignoring AbortSignal cannot keep the caller waiting or start a
 test('body cap rejects oversized provider receipts without echoing them',async()=>{
   const result=await requestLiveSommelier(input,context,env,{reserve:async()=>({ok:true}),fetch:async()=>Response.json({privateError:'x'.repeat(17000)})});assert.equal(result.source,'fallback');assert.doesNotMatch(JSON.stringify(result),/privateError|xxxxx/);
 });
+for(const status of [401,402,403]) test(`HF ${status} opens only a five-minute warm cooldown and reserves every OpenAI attempt`,async()=>{
+  const config={...env,HF_TOKEN:'synthetic-circuit-status-'+status,NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  const sequence=[];
+  const deps={nowMs:()=>1000,reserve:async()=>{sequence.push('reserve');return{ok:true}},fetch:async(url)=>{sequence.push(url.includes('huggingface')?'hf':'openai');return url.includes('huggingface')?new Response('private rejection body',{status}):receipt(SOMMELIER_OPENAI_MODEL)}};
+  const first=await requestLiveSommelier(input,context,config,deps);
+  assert.equal(first.provider,'openai');assert.deepEqual(sequence,['reserve','hf','reserve','openai']);
+  sequence.length=0;
+  const warm=await requestLiveSommelier(input,context,config,deps);
+  assert.equal(warm.provider,'openai');assert.deepEqual(sequence,['reserve','openai']);
+  assert.doesNotMatch(JSON.stringify([first,warm]),/synthetic-circuit|private rejection/);
+});
+test('HF cooldown expires at five minutes and a different key retries immediately',async()=>{
+  let time=1000;
+  const calls=[],config={...env,HF_TOKEN:'synthetic-circuit-expiry',NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  let reject=true;
+  const deps={nowMs:()=>time,reserve:async()=>({ok:true}),fetch:async(url)=>{calls.push(url.includes('huggingface')?'hf':'openai');return url.includes('huggingface')?(reject?new Response(null,{status:402}):receipt()):receipt(SOMMELIER_OPENAI_MODEL)}};
+  assert.equal((await requestLiveSommelier(input,context,config,deps)).provider,'openai');
+  reject=false;calls.length=0;time=300999;
+  assert.equal((await requestLiveSommelier(input,context,config,deps)).provider,'openai');assert.deepEqual(calls,['openai']);
+  calls.length=0;
+  assert.equal((await requestLiveSommelier(input,context,{...config,HF_TOKEN:'synthetic-circuit-changed-key'},deps)).provider,'huggingface');assert.deepEqual(calls,['hf']);
+  calls.length=0;time=301000;
+  assert.equal((await requestLiveSommelier(input,context,config,deps)).provider,'huggingface');assert.deepEqual(calls,['hf']);
+});
+test('HF cooldown never skips primary when fallback flag or fallback key is absent',async()=>{
+  const calls=[],config={...env,HF_TOKEN:'synthetic-circuit-fallback-gate',NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  let reject=true;
+  const deps={nowMs:()=>1000,reserve:async()=>({ok:true}),fetch:async(url)=>{calls.push(url.includes('huggingface')?'hf':'openai');return url.includes('huggingface')?(reject?new Response(null,{status:403}):receipt()):receipt(SOMMELIER_OPENAI_MODEL)}};
+  assert.equal((await requestLiveSommelier(input,context,config,deps)).provider,'openai');
+  reject=false;
+  for(const disabled of [{...config,NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'false'},{...config,OPENAI_API_KEY:''}]){calls.length=0;assert.equal((await requestLiveSommelier(input,context,disabled,deps)).provider,'huggingface');assert.deepEqual(calls,['hf'])}
+});
+test('warm HF cooldown cannot bypass a denied fallback reservation',async()=>{
+  const config={...env,HF_TOKEN:'synthetic-circuit-budget',NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  assert.equal((await requestLiveSommelier(input,context,config,{nowMs:()=>1000,reserve:async()=>({ok:true}),fetch:async(url)=>url.includes('huggingface')?new Response(null,{status:401}):receipt(SOMMELIER_OPENAI_MODEL)})).provider,'openai');
+  let fetches=0,reservations=0;
+  const denied=await requestLiveSommelier(input,context,config,{nowMs:()=>1001,reserve:async()=>{reservations++;return{ok:false,reason:'sommelier_budget_exhausted',retryAfter:2}},fetch:async()=>{fetches++;return receipt()}});
+  assert.equal(denied.reason,'sommelier_budget_exhausted');assert.equal(reservations,1);assert.equal(fetches,0);
+});
+for(const status of [404,429,500,503]) test(`HF ${status} never opens the authentication/payment cooldown`,async()=>{
+  const calls=[],config={...env,HF_TOKEN:'synthetic-circuit-not-cached-'+status,NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  const deps={nowMs:()=>1000,reserve:async()=>({ok:true}),fetch:async(url)=>{calls.push(url.includes('huggingface')?'hf':'openai');return url.includes('huggingface')?new Response(null,{status}):receipt(SOMMELIER_OPENAI_MODEL)}};
+  for(let i=0;i<2;i++) assert.equal((await requestLiveSommelier(input,context,config,deps)).provider,'openai');
+  assert.deepEqual(calls,['hf','openai','hf','openai']);
+});
+test('HF transport exceptions never open the cooldown',async()=>{
+  const calls=[],config={...env,HF_TOKEN:'synthetic-circuit-network-error',NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  const deps={nowMs:()=>1000,reserve:async()=>({ok:true}),fetch:async(url)=>{calls.push(url.includes('huggingface')?'hf':'openai');if(url.includes('huggingface'))throw new TypeError('private transport failure');return receipt(SOMMELIER_OPENAI_MODEL)}};
+  for(let i=0;i<2;i++) assert.equal((await requestLiveSommelier(input,context,config,deps)).provider,'openai');
+  assert.deepEqual(calls,['hf','openai','hf','openai']);
+});
+test('HF rejection arriving after deadline cannot open a cooldown or start a late fallback',async()=>{
+  const config={...env,HF_TOKEN:'synthetic-circuit-late-rejection',NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
+  const calls=[];
+  const delayed=await requestLiveSommelier(input,context,config,{nowMs:()=>1000,deadlineMs:10,reserve:async()=>({ok:true}),fetch:async(url)=>{calls.push(url.includes('huggingface')?'hf':'openai');await new Promise(resolve=>setTimeout(resolve,25));return new Response(null,{status:402})}});
+  assert.equal(delayed.reason,'sommelier_provider_timeout');
+  await new Promise(resolve=>setTimeout(resolve,35));assert.deepEqual(calls,['hf']);
+  calls.length=0;
+  assert.equal((await requestLiveSommelier(input,context,config,{nowMs:()=>1001,reserve:async()=>({ok:true}),fetch:async(url)=>{calls.push(url.includes('huggingface')?'hf':'openai');return receipt()}})).provider,'huggingface');
+  assert.deepEqual(calls,['hf']);
+});
+
 test('cost reservation counts full UTF8 request bytes and all 1024 output tokens',()=>{
   for(const provider of ['huggingface','openai']){const body=JSON.stringify(sommelierProviderBody(provider,input,context));assert.ok(sommelierReservedCost(provider,body)>0);assert.ok(sommelierReservedCost(provider,body+'水')>=sommelierReservedCost(provider,body));}
 });

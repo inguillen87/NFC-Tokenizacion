@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { parseSommelierAnswer, sommelierFallback, sommelierMessages, SOMMELIER_OUTPUT_SCHEMA, SOMMELIER_VERSION, type SommelierContext, type SommelierRequest } from "./sommelier-contract";
 import { reserveSommelierBuckets, sommelierProviderBuckets, type SommelierQuotaResult } from "./sommelier-quota";
 import type { SommelierEnv } from "./sommelier-access";
@@ -9,8 +10,15 @@ const PROVIDERS = {
   huggingface: { url: "https://router.huggingface.co/v1/chat/completions", model: SOMMELIER_HF_MODEL, inputMicroUsdPerMillion: 30_000, outputMicroUsdPerMillion: 140_000 },
   openai: { url: "https://api.openai.com/v1/chat/completions", model: SOMMELIER_OPENAI_MODEL, inputMicroUsdPerMillion: 100_000, outputMicroUsdPerMillion: 500_000 },
 } as const;
+// Warm-instance optimization only; distributed quota admission stays mandatory.
+// One bounded entry, no credentials, response bodies, logging or persistence.
+const HF_REJECTION_COOLDOWN_MS = 5 * 60 * 1000;
+let hfRejectionCooldown: { fingerprint: string; until: number } | null = null;
+function hfKeyFingerprint(key: string) {
+  return createHash("sha256").update("nexid-sommelier-hf:v1\0").update(SOMMELIER_HF_MODEL).update("\0").update(key).digest("hex");
+}
 type ProviderName = keyof typeof PROVIDERS;
-type Dependencies = { fetch?: typeof fetch; reserve?: (tenant: string, charge: number) => Promise<SommelierQuotaResult>; signal?: AbortSignal; deadlineMs?: number };
+type Dependencies = { fetch?: typeof fetch; reserve?: (tenant: string, charge: number) => Promise<SommelierQuotaResult>; signal?: AbortSignal; deadlineMs?: number; nowMs?: () => number };
 export function sommelierProviderBody(provider: ProviderName, input: SommelierRequest, context: SommelierContext) {
   return { model: PROVIDERS[provider].model, messages: sommelierMessages(input, context), stream: false, ...(provider === "huggingface" ? { max_tokens: SOMMELIER_OUTPUT_TOKENS, reasoning_effort: "low" } : { max_completion_tokens: SOMMELIER_OUTPUT_TOKENS, reasoning_effort: "none", store: false }), response_format: { type: "json_schema", json_schema: { name: "nexid_sommelier_answer", strict: true, schema: SOMMELIER_OUTPUT_SCHEMA } } };
 }
@@ -47,8 +55,12 @@ export async function requestLiveSommelier(input: SommelierRequest, context: Som
   if (env.NEXID_SOMMELIER_ENABLED !== "true") return fallback(input, context, "sommelier_disabled");
   const candidates: Array<{ name: ProviderName; key: string }> = [];
   const hf = env.HF_TOKEN || env.HUGGINGFACE_API_KEY;
-  if (hf) candidates.push({ name: "huggingface", key: hf });
-  if (env.NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED === "true" && env.OPENAI_API_KEY) candidates.push({ name: "openai", key: env.OPENAI_API_KEY });
+  const openAiFallbackReady = env.NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED === "true" && !!env.OPENAI_API_KEY;
+  const now = dependencies.nowMs || Date.now;
+  const hfFingerprint = hf && openAiFallbackReady ? hfKeyFingerprint(hf) : null;
+  const hfCoolingDown = hfFingerprint !== null && hfRejectionCooldown?.fingerprint === hfFingerprint && now() < hfRejectionCooldown.until;
+  if (hf && !hfCoolingDown) candidates.push({ name: "huggingface", key: hf });
+  if (openAiFallbackReady) candidates.push({ name: "openai", key: env.OPENAI_API_KEY! });
   if (!candidates.length) return fallback(input, context, "sommelier_provider_not_configured");
   const controller = new AbortController();
   const deadlineMs = Math.min(SOMMELIER_PROVIDER_DEADLINE_MS, Math.max(1, dependencies.deadlineMs ?? SOMMELIER_PROVIDER_DEADLINE_MS));
@@ -73,7 +85,10 @@ export async function requestLiveSommelier(input: SommelierRequest, context: Som
       const attemptTimer = setTimeout(() => perAttempt.abort(), candidate.name === "huggingface" && candidates.length > 1 ? 5500 : deadlineMs);
       try {
         const response = await (dependencies.fetch || fetch)(PROVIDERS[candidate.name].url, { method: "POST", headers: { "authorization": `Bearer ${candidate.key}`, "content-type": "application/json" }, body, signal: perAttempt.signal, cache: "no-store", redirect: "error" });
-        if (!response.ok) { void response.body?.cancel().catch(() => undefined); continue; }
+        if (!response.ok) {
+          if (!controller.signal.aborted && !perAttempt.signal.aborted && candidate.name === "huggingface" && openAiFallbackReady && hfFingerprint && [401, 402, 403].includes(response.status)) hfRejectionCooldown = { fingerprint: hfFingerprint, until: now() + HF_REJECTION_COOLDOWN_MS };
+          void response.body?.cancel().catch(() => undefined); continue;
+        }
         const receipt = await boundedResponse(response, perAttempt.signal);
         const choice = receipt?.choices?.[0];
         if (receipt?.model !== PROVIDERS[candidate.name].model && receipt?.model !== PROVIDERS[candidate.name].model.split(":")[0]) continue;
