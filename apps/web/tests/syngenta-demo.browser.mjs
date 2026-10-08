@@ -62,7 +62,7 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
       const excluded = new Set();
       page.on('pageerror', () => report.failures.push({ view, kind: 'pageerror' }));
       page.on('console', message => { if (message.type() === 'error') report.failures.push({ view, kind: 'consoleerror' }); });
-      page.on('requestfailed', request => { if (!(excluded.has(request.url()) && request.failure()?.errorText === 'net::ERR_BLOCKED_BY_CLIENT')) report.failures.push({ view, kind: 'requestfailed', path: new URL(request.url()).pathname, code: request.failure()?.errorText || 'unknown' }); });
+      page.on('requestfailed', request => { if (!(excluded.has(request.url()) && request.failure()?.errorText === 'net::ERR_BLOCKED_BY_CLIENT')) report.failures.push({ view, kind: 'requestfailed', path: new URL(request.url()).pathname, route: request.url().startsWith(origin + '/sun?') ? new URL(request.url()).search : null, resource: request.resourceType(), pageRoute: new URL(page.url()).pathname + new URL(page.url()).search, navigation: request.isNavigationRequest(), code: request.failure()?.errorText || 'unknown' }); });
       page.on('response', response => { if (response.status() >= 400) report.failures.push({ view, kind: 'http', status: response.status(), path: new URL(response.url()).pathname }); });
       await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
