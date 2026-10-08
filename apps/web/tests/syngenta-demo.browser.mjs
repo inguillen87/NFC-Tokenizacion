@@ -18,6 +18,16 @@ const LABEL = 'https://www.syngenta.com.ar/sites/g/files/kgtney396/files/media/d
 const SAFETY = 'https://www.syngenta.com.ar/sites/g/files/kgtney396/files/media/document/2024/02/28/AMISTAR%20XTRA_hoja_de_seguridad.pdf';
 const LOCALES = ['es-AR', 'en', 'pt-BR'];
 const SYSTEM = /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|TMPDIR|USERPROFILE|APPDATA|LOCALAPPDATA|CI)$/i;
+export function expectedTelemetryFailure({ url, code, declared, excluded, method, resourceType }) {
+  return declared === true && excluded === true && method === 'GET' && resourceType === 'script' && [BEACON, TOOLBAR].includes(url) && (code === 'net::ERR_BLOCKED_BY_CLIENT' || url === TOOLBAR && code === 'net::ERR_BLOCKED_BY_CLIENT.Inspector');
+}
+export function expectedTelemetryConsole({ url, text, declared, excluded }) {
+  return url === TOOLBAR && declared === true && excluded === true && ['Failed to load resource: net::ERR_BLOCKED_BY_CLIENT', 'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector'].includes(text);
+}
+export function currentSyngentaRscPrefetch({ origin, currentUrl, requestUrl, rsc, routerPrefetch, segmentPrefetch }) {
+  const current = new URL(currentUrl), request = new URL(requestUrl);
+  return current.origin === origin && current.pathname === '/sun' && current.searchParams.get('demo') === '1' && current.searchParams.get('profile') === 'syngenta' && request.origin === origin && request.pathname === '/sun' && (rsc === true || request.searchParams.has('_rsc')) && (routerPrefetch === true || segmentPrefetch === true);
+}
 const safeRoute = value => {
   const url = new URL(value), safe = new URLSearchParams();
   const allowed = { demo: ['1'], profile: ['syngenta', 'valle-secreto', 'agrochem', 'fragrance', 'perfume'], scenario: ['closed', 'opened', 'invalid'], source: ['demo-lab'], lang: LOCALES };
@@ -39,7 +49,7 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
     assert(phase === 'public' ? !protectionHeader : ['x-vercel-trusted-oidc-idp-token', 'x-vercel-protection-bypass'].includes(protectionHeader) && protectionValue.length > 0);
   }
   await mkdir(output, { recursive: true });
-  const report = { schema: 'nexid.syngenta-actual-next-qa/v1', phase, origin, source, tree, deploymentId, actualNextServer: true, syntheticResponses: false, customerAuthenticationProven: false, physicalTapMeasured: false, customerWrites: 0, apiRequests: 0, gpsCalls: 0, checks: [], views: [], stateRoutes: [], accessibility: [], requests: [], excludedTelemetry: [], failures: [], accepted: false, startedAt: new Date().toISOString() };
+  const report = { schema: 'nexid.syngenta-actual-next-qa/v1', phase, origin, source, tree, deploymentId, actualNextServer: true, syntheticResponses: false, customerAuthenticationProven: false, physicalTapMeasured: false, customerWrites: 0, apiRequests: 0, gpsCalls: 0, checks: [], views: [], stateRoutes: [], accessibility: [], requests: [], excludedTelemetry: [], expectedExcludedConsole: [], expectedExcludedFailures: [], failures: [], accepted: false, startedAt: new Date().toISOString() };
   const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert(value, name); };
   const headers = path => ({ accept: path.startsWith('/sun') ? 'text/html' : '*/*', 'user-agent': USER_AGENT, 'cache-control': 'no-cache', ...(protectionHeader ? { [protectionHeader]: protectionValue } : {}) });
   const get = async path => { const response = await fetch(origin + path, { headers: headers(path), redirect: 'manual', signal: AbortSignal.timeout(20000) }); assert.equal(response.status, 200, 'own_preflight_http'); const bytes = Buffer.from(await response.arrayBuffer()); assert(bytes.length <= 8 * 1024 * 1024); return bytes; };
@@ -68,8 +78,17 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
       let qaStage = 'gallery';
       const excluded = new Set();
       page.on('pageerror', () => report.failures.push({ view, kind: 'pageerror' }));
-      page.on('console', message => { if (message.type() === 'error') report.failures.push({ view, kind: 'consoleerror' }); });
-      page.on('requestfailed', request => { if (!(excluded.has(request.url()) && request.failure()?.errorText === 'net::ERR_BLOCKED_BY_CLIENT')) report.failures.push({ view, kind: 'requestfailed', path: new URL(request.url()).pathname, route: safeRoute(request.url()), resource: request.resourceType(), pageRoute: safeRoute(page.url()), navigation: request.isNavigationRequest(), rsc: request.headers()['rsc'] === '1', routerPrefetch: request.headers()['next-router-prefetch'] === '1', rscQuery: new URL(request.url()).searchParams.has('_rsc'), stage: qaStage, code: request.failure()?.errorText || 'unknown' }); });
+      page.on('console', message => {
+        if (message.type() !== 'error') return;
+        const url = message.location().url, text = message.text();
+        if (expectedTelemetryConsole({ url, text, declared: declaredTelemetry.has(url), excluded: excluded.has(url) })) report.expectedExcludedConsole.push({ view, href: url, code: text.slice('Failed to load resource: '.length) });
+        else report.failures.push({ view, kind: 'consoleerror' });
+      });
+      page.on('requestfailed', request => {
+        const url = request.url(), code = request.failure()?.errorText || 'unknown';
+        if (expectedTelemetryFailure({ url, code, declared: declaredTelemetry.has(url), excluded: excluded.has(url), method: request.method(), resourceType: request.resourceType() })) report.expectedExcludedFailures.push({ view, href: url, code });
+        else report.failures.push({ view, kind: 'requestfailed', path: new URL(url).pathname, route: safeRoute(url), resource: request.resourceType(), pageRoute: safeRoute(page.url()), navigation: request.isNavigationRequest(), rsc: request.headers()['rsc'] === '1', routerPrefetch: request.headers()['next-router-prefetch'] === '1', segmentPrefetch: typeof request.headers()['next-router-segment-prefetch'] === 'string', rscQuery: new URL(url).searchParams.has('_rsc'), stage: qaStage, code });
+      });
       page.on('response', response => { if (response.status() >= 400) report.failures.push({ view, kind: 'http', status: response.status(), path: new URL(response.url()).pathname }); });
       await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
@@ -78,6 +97,8 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
           report.failures.push({ view, kind: 'external_request', origin: url.origin, path: url.pathname }); return route.abort('blockedbyclient');
         }
         if (request.method() !== 'GET' || url.pathname.startsWith('/api/')) { report.apiRequests++; report.failures.push({ view, kind: 'unexpected_api_or_write', path: url.pathname }); return route.abort('blockedbyclient'); }
+        const requestHeaders = request.headers(), rsc = requestHeaders.rsc === '1', routerPrefetch = requestHeaders['next-router-prefetch'] === '1', segmentPrefetch = typeof requestHeaders['next-router-segment-prefetch'] === 'string';
+        if (currentSyngentaRscPrefetch({ origin, currentUrl: page.url(), requestUrl: url.href, rsc, routerPrefetch, segmentPrefetch })) { report.failures.push({ view, kind: 'unexpected_rsc_prefetch', path: url.pathname, route: safeRoute(url.href), pageRoute: safeRoute(page.url()), rsc, routerPrefetch, segmentPrefetch, rscQuery: url.searchParams.has('_rsc'), stage: qaStage }); return route.abort('blockedbyclient'); }
         const ownedAsset = /^\/_next\/static\/[A-Za-z0-9_./-]+\.(?:js|css|woff2?|png|webp|svg)$/.test(url.pathname) || /^\/(?:sun|brand|assets|images|fonts|icons|landing|demo|maplibre)\/[A-Za-z0-9_./-]+\.(?:svg|gif|png|jpe?g|webp|avif|woff2?|geojson|mjs|mp4|webm)$/.test(url.pathname) || ['/favicon.ico', '/nexid-favicon.svg', '/release.json', '/_next/image', '/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js'].includes(url.pathname);
         let allowedDocument = false;
         if (url.pathname === '/sun') {

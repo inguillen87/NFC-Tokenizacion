@@ -169,4 +169,7 @@ test("SUN integrates the demo behind source guards without the live agro or wine
   assert.match(page, /SyngentaDemoServices locale=\{locale\} scenario=\{demoScenario\}/);
   assert.match(page, /showEngagementSuite = \(engagementBaseEligible \|\| isDemoPreview\) && isWineProduct/);
   assert.match(page, /!valleDemo && !syngentaDemo \? <ReportProblemForm/);
+  const riskNotice = page.match(/hasSourceResult && isRiskBlocked && !isDemoPreview \? \(([\s\S]*?)\) : null/)[1];
+  assert.match(riskNotice, /<a\s+href=\{reportProblemHref\}/);
+  assert.doesNotMatch(riskNotice, /<Link\b/);
 });

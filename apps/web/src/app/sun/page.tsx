@@ -2435,8 +2435,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               />
             ) : null}
 
-            {hasSourceResult && isRiskBlocked ? (
-              <Link
+            {hasSourceResult && isRiskBlocked && !isDemoPreview ? (
+              <a
                 href={reportProblemHref}
                 data-sun-experience-event="PROBLEM_REPORTED"
                 data-sun-experience-placement="risk_notice"
@@ -2445,7 +2445,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               >
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 Reportar esta lectura a la marca
-              </Link>
+              </a>
             ) : null}
 
             {!isDemoPreview && hasSourceResult ? <details className="group rounded-2xl border border-white/10 bg-slate-950/45 p-3">

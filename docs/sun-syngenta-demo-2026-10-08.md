@@ -18,6 +18,8 @@ Se propone NTAG 424 DNA TagTamper sobre el cierre del bidón, con detalle técni
 
 La selección depende del modo demo resuelto después de las reglas de entrada SUN. Los marcadores NFC/QR/snapshot conservan su precedencia. No se modifica el catálogo interno de Demo Lab, AgroDppExperience, API, dashboard, permisos, contratos ni controles NFC/anti-replay. El asistente de Valle Secreto permanece acotado a vino; Syngenta no recibe un sommelier ni recomendaciones agronómicas generadas.
 
+La simulación no ofrece el reporte de una lectura real: ese formulario requiere evidencia NFC. En lecturas reales, el acceso al reporte usa un ancla dentro de la página y evita precargar otra consulta SUN.
+
 ## Verificación y publicación
 
 Las pruebas del modelo comprueban fuentes fijas, estados y ausencia de permisos/evidencia física. La suite `syngenta-demo.browser.mjs` ejecuta un servidor Next real y recorre galería, estados, documentos y actividad en tres idiomas, dos temas y anchos de 320, 390 y 1440 px. Registra fallos de red/consola, desbordamientos, targets táctiles, foco, comprobaciones AXE y ausencia de GPS/APIs de negocio. La detección automática de accesibilidad no constituye certificación WCAG.
