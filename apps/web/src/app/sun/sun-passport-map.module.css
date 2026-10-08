@@ -691,3 +691,4 @@
 .shell[data-basemap="local-reference"] .externalMenu>summary{font-size:.75rem}
 .shell[data-basemap="local-reference"] .map :global(.maplibregl-ctrl-attrib),.shell[data-basemap="local-reference"] .map :global(.maplibregl-ctrl-attrib-inner){color:var(--map-ui-ink);background:var(--map-ui-bg)}
 .shell[data-basemap="local-reference"] .map :global(.maplibregl-ctrl-attrib-button){filter:var(--map-control-icon)}
+.shell[data-basemap="local-reference"] .referenceFitButton{position:relative;right:auto;bottom:auto;width:calc(100% - 2rem);margin:.75rem 1rem;box-shadow:none}

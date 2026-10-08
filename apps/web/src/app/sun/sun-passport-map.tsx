@@ -321,6 +321,13 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           zoom: points.length === 1 ? 10 : 4,
           minZoom: cartography === "reference" ? -2 : 2,
           maxZoom: cartography === "reference" ? 8 : 17,
+          renderWorldCopies: cartography !== "reference",
+          // The overview needs room outside the world edge for readable pins.
+          // Default Mercator constraints can discard fitBounds padding near a pole.
+          transformConstrain: cartography === "reference" ? (center, zoom) => ({
+            center: new maplibre.LngLat(center.lng, Math.max(-85, Math.min(85, center.lat))),
+            zoom: Math.max(-2, Math.min(8, zoom)),
+          }) : undefined,
           maxPitch: 0,
           dragRotate: false,
           pitchWithRotate: false,
@@ -406,11 +413,13 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
             const radiusM = effectiveAccuracyRadiusM(tap);
             const latitudeDelta = radiusM / 111_320;
             const longitudeDelta = radiusM / (111_320 * Math.max(0.05, Math.abs(Math.cos(tap.lat * Math.PI / 180))));
-            bounds.extend([tap.lng - longitudeDelta, tap.lat - latitudeDelta]);
-            bounds.extend([tap.lng + longitudeDelta, tap.lat + latitudeDelta]);
+            const south = tap.lat - latitudeDelta;
+            const north = tap.lat + latitudeDelta;
+            bounds.extend([tap.lng - longitudeDelta, cartography === "reference" ? Math.max(-85, south) : south]);
+            bounds.extend([tap.lng + longitudeDelta, cartography === "reference" ? Math.min(85, north) : north]);
           }
           mapRef.current.fitBounds(bounds, {
-            padding: cartography === "reference" ? { top: 96, bottom: 64, left: 48, right: 64 } : sunMapInsets(container.clientWidth, container.clientHeight),
+            padding: cartography === "reference" ? { top: 96, bottom: 64, left: 48, right: 96 } : sunMapInsets(container.clientWidth, container.clientHeight),
             maxZoom: cartography === "reference" ? 7 : points.length === 1 && tap ? focusZoom(tap) : 10.5,
             duration: animated ? duration(550) : 0,
           });
@@ -640,6 +649,10 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
   const comparisonHref = googleComparisonLink(origin, tap);
   const originHref = googlePointLink(origin, "origin");
   const tapHref = googlePointLink(tap, "tap");
+  function centerPoints() {
+    fitAllRef.current();
+    setControlNotice("Origen y zona centrados en este mapa.");
+  }
   function toggleExpanded() {
     setExpanded(value => !value);
     setControlNotice(expanded ? "Mapa reducido dentro del pasaporte." : "Mapa ampliado dentro de NexID. Los puntos conservan su ubicación.");
@@ -783,10 +796,11 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
               {showDemoConnection && cartography !== "reference" ? <span className={styles.demoBadge}>Demo · conexión ilustrativa</span> : null}
               {isDegraded ? <span className={styles.degradedBadge}>Cartografía parcial</span> : null}
             </div>
-            {points.length > 1 ? <button type="button" className={styles.fitButton} title="Reencuadrar origen y zona dentro de este mapa" onClick={() => { fitAllRef.current(); setControlNotice("Origen y zona centrados en este mapa."); }}>Centrar puntos</button> : null}
+            {points.length > 1 && cartography !== "reference" ? <button type="button" className={styles.fitButton} title="Reencuadrar origen y zona dentro de este mapa" onClick={centerPoints}>Centrar puntos</button> : null}
           </>
         ) : null}
       </div>
+      {loadState === "ready" && points.length > 1 && cartography === "reference" ? <button type="button" className={`${styles.fitButton} ${styles.referenceFitButton}`} data-sun-dock-avoid title="Reencuadrar viña y zona de la demo" onClick={centerPoints}>Centrar puntos</button> : null}
       <div className={styles.details} data-sun-dock-avoid>
         {renderLocation("origin", origin)}
         {renderLocation("tap", tap)}

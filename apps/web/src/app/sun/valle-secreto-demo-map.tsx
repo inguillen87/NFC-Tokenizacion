@@ -33,10 +33,10 @@ export function ValleSecretoDemoMap() {
   };
   const request = () => {
     if (requestRef.current.pending) return;
-    if (!navigator.geolocation) { setState("unavailable"); return; }
     const sequence = ++requestRef.current.sequence;
-    requestRef.current.pending = true;
     setPosition(null);
+    if (!navigator.geolocation) { setState("unavailable"); return; }
+    requestRef.current.pending = true;
     setState("pending");
     const finish = (next: State, value: ReturnType<typeof approximateDemoPosition> = null) => {
       if (sequence !== requestRef.current.sequence || !requestRef.current.pending) return;
