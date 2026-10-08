@@ -19,10 +19,10 @@ const SAFETY = 'https://www.syngenta.com.ar/sites/g/files/kgtney396/files/media/
 const LOCALES = ['es-AR', 'en', 'pt-BR'];
 const SYSTEM = /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|TMPDIR|USERPROFILE|APPDATA|LOCALAPPDATA|CI)$/i;
 export function expectedTelemetryFailure({ url, code, declared, excluded, method, resourceType }) {
-  return declared === true && excluded === true && method === 'GET' && resourceType === 'script' && [BEACON, TOOLBAR].includes(url) && (code === 'net::ERR_BLOCKED_BY_CLIENT' || url === TOOLBAR && code === 'net::ERR_BLOCKED_BY_CLIENT.Inspector');
+  return declared === true && excluded === true && method === 'GET' && resourceType === 'script' && [BEACON, TOOLBAR].includes(url) && ['net::ERR_BLOCKED_BY_CLIENT', 'net::ERR_BLOCKED_BY_CLIENT.Inspector'].includes(code);
 }
 export function expectedTelemetryConsole({ url, text, declared, excluded }) {
-  return url === TOOLBAR && declared === true && excluded === true && ['Failed to load resource: net::ERR_BLOCKED_BY_CLIENT', 'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector'].includes(text);
+  return [BEACON, TOOLBAR].includes(url) && declared === true && excluded === true && ['Failed to load resource: net::ERR_BLOCKED_BY_CLIENT', 'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector'].includes(text);
 }
 export function currentSyngentaRscPrefetch({ origin, currentUrl, requestUrl, rsc, routerPrefetch, segmentPrefetch }) {
   const current = new URL(currentUrl), request = new URL(requestUrl);

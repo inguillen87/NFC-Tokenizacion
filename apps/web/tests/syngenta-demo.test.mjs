@@ -12,6 +12,36 @@ import { resolveSunDemoProfile } from "../src/app/sun/sun-demo-entry.ts";
 import { sunDemoScenarioHref, SYNGENTA_DEMO_HREF } from "../src/lib/sun-demo-links.ts";
 import { resolveDemoProductProfile, isDemoProductProfileKey } from "../src/lib/demo-product-profiles.ts";
 import { valleSecretoDemoResult } from "../src/app/sun/valle-secreto-demo.ts";
+import { expectedTelemetryFailure, expectedTelemetryConsole } from "./syngenta-demo.browser.mjs";
+
+test("only deliberate exclusions of the two declared telemetry scripts accept Chrome's blocked-client variants", () => {
+  const scripts = [
+    "https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920",
+    "https://vercel.live/_next-live/feedback/feedback.js",
+  ];
+  for (const url of scripts) {
+    const request = { url, declared: true, excluded: true, method: "GET", resourceType: "script" };
+    for (const code of ["net::ERR_BLOCKED_BY_CLIENT", "net::ERR_BLOCKED_BY_CLIENT.Inspector"]) {
+      assert.equal(expectedTelemetryFailure({ ...request, code }), true);
+      assert.equal(expectedTelemetryConsole({ ...request, text: `Failed to load resource: ${code}` }), true);
+      for (const flag of ["declared", "excluded"]) {
+        assert.equal(expectedTelemetryFailure({ ...request, code, [flag]: false }), false);
+        assert.equal(expectedTelemetryConsole({ ...request, text: `Failed to load resource: ${code}`, [flag]: false }), false);
+      }
+      assert.equal(expectedTelemetryFailure({ ...request, code, method: "POST" }), false);
+      assert.equal(expectedTelemetryFailure({ ...request, code, resourceType: "fetch" }), false);
+      for (const otherUrl of [url + "?extra=1", "https://nexid.lat/_next/static/app.js", "https://api.nexid.lat/sun"]) {
+        assert.equal(expectedTelemetryFailure({ ...request, code, url: otherUrl }), false);
+        assert.equal(expectedTelemetryConsole({ ...request, text: `Failed to load resource: ${code}`, url: otherUrl }), false);
+      }
+    }
+    for (const code of ["net::ERR_ABORTED", "net::ERR_NETWORK_CHANGED", "net::ERR_NAME_NOT_RESOLVED"]) {
+      assert.equal(expectedTelemetryFailure({ ...request, code }), false);
+      assert.equal(expectedTelemetryConsole({ ...request, text: `Failed to load resource: ${code}` }), false);
+    }
+    assert.equal(expectedTelemetryConsole({ ...request, text: "Application error" }), false);
+  }
+});
 
 const empty = { isQrScan: false, demoRequested: true, snapshotId: "", snapshotTrace: "", snapshotAccess: "", freshToken: "", dynamic: ["", "", "", "", ""] };
 
