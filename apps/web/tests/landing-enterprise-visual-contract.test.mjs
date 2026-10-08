@@ -25,7 +25,7 @@ test("the home hero restores the immersive scene while keeping semantic copy and
   assert.match(hero, /sizes="100vw"/);
   assert.match(hero, /<HeroImmersiveSignal locale=\{locale\} \/>/);
   assert.equal((hero.match(/src=\{nexIdDppHero\}/g) ?? []).length, 1);
-  assert.match(hero, /href="\/demo-lab\?profile=wine" prefetch=\{false\}/);
+  assert.match(hero, /href=\{VALLE_SECRETO_DEMO_HREF\} prefetch=\{false\}/);
   assert.match(hero, /href="\/\?contact=demo#contact-modal" prefetch=\{false\}/);
   assert.doesNotMatch(hero, /bg-slate-950|border-white\/5|text-slate-400|text-white/);
   assert.match(hero, /styles\.eyebrow/);

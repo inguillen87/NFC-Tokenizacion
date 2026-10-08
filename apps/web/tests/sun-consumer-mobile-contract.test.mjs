@@ -83,7 +83,7 @@ test("real SUN maps keep evidence sources separate while the basemap remains vis
   assert.match(page, /rawLocationSource === "ip_geo" \|\| rawLocationSource === "edge_ip_approx"/);
   assert.match(locationExperience, /const effectiveTap = confirmedTap \|\| tap/);
   assert.doesNotMatch(locationExperience, /externalTiles=\{showRoute\}/);
-  assert.match(page, /const valleDemo = selectedValleSecretoDemo\(isDemoPreview, readParam\(params, "profile"\)\)/);
+  assert.match(page, /const valleDemo = selectedValleSecretoDemo\(isDemoPreview, resolveSunDemoProfile\(isDemoPreview, params\)\)/);
   assert.match(page, /\{valleDemo \? <ValleSecretoDemoMap \/> : <SunLocationExperience/);
   assert.match(passportMap, /style: cartography === "reference" \? sunReferenceMapStyle\(isLightTheme\(\)\) : mapStyleForTheme\(isLightTheme\(\)\)/);
   assert.match(passportMap, /data-basemap=\{cartography === "reference" \? "local-reference" : "configured-raster"\}/);

@@ -50,9 +50,13 @@ import {
 import passportStyles from "./sun-passport-experience.module.css";
 import { resolveSunDemoPhotography } from "./sun-demo-photography";
 import { resolveSunTenantIdentity } from "./sun-tenant-identity";
-import { selectedValleSecretoDemo, valleSecretoDemoResult, valleSecretoDemoScenario } from "./valle-secreto-demo";
+import { selectedValleSecretoDemo, valleSecretoDemoResult } from "./valle-secreto-demo";
 import { ValleSecretoExperience, ValleSecretoDemoServices } from "./valle-secreto-experience";
 import { ValleSecretoDemoMap } from "./valle-secreto-demo-map";
+import { isSunDemoGalleryEntry, resolveSunDemoProfile } from "./sun-demo-entry";
+import { SunDemoGallery } from "./sun-demo-gallery";
+import { resolveSunDemoScenario, sunDemoScenarioSignals } from "./sun-demo-scenario";
+import { SunDemoScenarioSelector } from "./sun-demo-scenario-selector";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -385,7 +389,7 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     };
   }
 
-  const valleResult = valleSecretoDemoResult(isDemoPreview, readParam(params, "profile"), readParam(params, "scenario"));
+  const valleResult = valleSecretoDemoResult(isDemoPreview, resolveSunDemoProfile(isDemoPreview, params), readParam(params, "scenario"));
   if (valleResult) return valleResult;
 
   const isDemoLabHandoff = readParam(params, "demo") === "1"
@@ -405,18 +409,22 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
   const demoTap = isDemoLabHandoff
     ? handoffProfile.sampleTap
     : { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 };
+  // This branch is reachable only after the explicit demo gate above.
+  const scenario = resolveSunDemoScenario(readParam(params, "scenario"), "opened");
+  const signals = sunDemoScenarioSignals(scenario);
+  const invalid = scenario === "invalid";
 
   return {
-    ok: true,
+    ok: signals.ok,
     status: {
-      code: "AUTH_OK",
-      label: "Etiqueta digital válida · apertura informada",
-      tone: "good",
-      summary: "La etiqueta digital de muestra informa una apertura y un origen declarado dentro de la simulación.",
+      code: signals.code,
+      label: signals.label,
+      tone: signals.tone,
+      summary: signals.summary,
       reason: "demo_preview",
-      productState: "VALID_OPENED",
-      tamperSupported: true,
-      tamperStatus: "OPENED",
+      productState: signals.productState,
+      tamperSupported: !invalid,
+      tamperStatus: signals.tamperStatus,
     },
     identity: {
       bid: demoLot,
@@ -429,7 +437,7 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     },
     product: {
       name: demoProduct.name,
-      imageUrl: photography?.imageUrl || null,
+      imageUrl: photography?.imageUrl || (isDemoLabHandoff ? handoffProfile.images[0] : null),
       winery: demoBrand,
       region: demoRegion,
       varietal: demoProduct.vertical === "vino" ? "Malbec" : demoProduct.category,
@@ -442,9 +450,9 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     provenance: {
       origin: demoRegion,
       firstVerified: { at: "2026-04-24T14:00:00.000Z", city: demoOrigin.city, country: demoOrigin.country },
-      lastVerifiedLocation: { at: "2026-05-01T18:30:00.000Z", city: demoTap.city, country: demoTap.country, result: "VALID_OPENED" },
+      lastVerifiedLocation: { at: "2026-05-01T18:30:00.000Z", city: demoTap.city, country: demoTap.country, result: signals.productState },
       timelineSummary: [
-        { at: "2026-05-01T18:30:00.000Z", result: "VALID_OPENED", city: demoTap.city, country: demoTap.country, device: "mobile", lat: demoTap.lat, lng: demoTap.lng },
+        { at: "2026-05-01T18:30:00.000Z", result: signals.productState, city: demoTap.city, country: demoTap.country, device: "mobile", lat: demoTap.lat, lng: demoTap.lng },
         { at: "2026-04-30T22:20:00.000Z", result: "VALID_CLOSED", city: demoOrigin.city, country: demoOrigin.country, device: "mobile", lat: demoOrigin.lat, lng: demoOrigin.lng },
       ],
     },
@@ -453,9 +461,10 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
       wineryCoordinates: { lat: demoOrigin.lat, lng: demoOrigin.lng },
     },
     tapContext: { city: demoTap.city, country: demoTap.country, lat: demoTap.lat, lng: demoTap.lng },
-    tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: null, tokenId: null },
-    tag_tamper: { available: true, status: "opened", raw: "4F4F" },
-    cta: { claimOwnership: true, registerWarranty: true, provenance: true, tokenize: true },
+    tokenization: { status: invalid ? "blocked" : "sandbox_ready", network: "Polygon Amoy", txHash: null, tokenId: null },
+    tag_tamper: { available: signals.tagAvailable, status: signals.tagStatus, raw: null },
+    cta: { claimOwnership: !invalid, registerWarranty: !invalid, provenance: !invalid, tokenize: !invalid },
+    ...(invalid ? { allowedActions: [], blockedActions: ["claim", "warranty", "tokenize", "purchase", "rewards"] } : {}),
     troubleshooting: [],
     technical: { raw: { piccDataPrefix: "04A7", encPrefix: "4F4F", cmacPrefix: "SUN" } },
   };
@@ -514,20 +523,31 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     dynamic: ["v", "bid", "picc_data", "enc", "cmac"].map((key) => query.get(key) || ""),
   });
   const isDemoPreview = !isQrScan && query.toString().length === 0 && !snapshotId && entry === "demo";
-  const valleDemo = selectedValleSecretoDemo(isDemoPreview, readParam(params, "profile"));
-  const valleScenario = valleSecretoDemoScenario(readParam(params, "scenario"));
+  if (isSunDemoGalleryEntry(entry, params)) {
+    const { locale } = await getWebI18n(readParam(params, "lang") || readParam(params, "locale"));
+    return <SunLocaleProvider initialLocale={locale}><SunDemoGallery /></SunLocaleProvider>;
+  }
+  const valleDemo = selectedValleSecretoDemo(isDemoPreview, resolveSunDemoProfile(isDemoPreview, params));
+  const demoScenario = resolveSunDemoScenario(readParam(params, "scenario"), valleDemo ? "closed" : "opened");
+  const scenarioTruth = {
+    decision: demoScenario === "invalid"
+      ? "Escenario de muestra: lectura no válida. La identidad y el sello no se confirmaron; las acciones protegidas están bloqueadas. No se evaluó un producto real."
+      : `Escenario de muestra: sello ${demoScenario === "opened" ? "abierto" : "cerrado"}. No se realizó un tap físico ni existe evidencia real en esta vista.`,
+    stageTitle: demoScenario === "invalid" ? "Lectura no válida en esta simulación" : `Sello ${demoScenario === "opened" ? "abierto" : "cerrado"} en esta simulación`,
+    stageBody: demoScenario === "invalid"
+      ? "La lectura de muestra no permite confirmar identidad ni sello. Las acciones protegidas están bloqueadas."
+      : "Escenario ilustrativo para la presentación. No se realizó un toque NFC ni se inspeccionó un envase físico.",
+  };
   const demoTruthCopy = valleDemo ? {
     ...SUN_DEMO_COPY,
-    decision: `Escenario de muestra: sello ${valleScenario === "opened" ? "abierto" : "cerrado"}. No se realizó un tap físico ni existe evidencia real en esta vista.`,
+    ...scenarioTruth,
     trust: "La ficha y la fotografía provienen de información pública de Valle Secreto. El sello, los sensores y las acciones son simulados; no verifican una botella real.",
     productStatusTitle: "Profundo · experiencia de muestra",
     productStatusBody: "Conocé la ficha pública del vino y probá el recorrido. La verificación de una botella requiere su etiqueta NFC real.",
-    stageTitle: `Sello ${valleScenario === "opened" ? "abierto" : "cerrado"} en esta simulación`,
-    stageBody: "Escenario ilustrativo para la presentación. No se realizó un toque NFC ni se inspeccionó un envase físico.",
     passportEventBody: "Esta presentación combina la ficha pública de la viña con un escenario de lectura simulado.",
     passportNowTitle: "Descubrir Valle Secreto",
     passportNowBody: "Consultá el vino, seguí las pistas y conocé la viña. Esta muestra no activa compras, beneficios ni propiedad.",
-  } : SUN_DEMO_COPY;
+  } : { ...SUN_DEMO_COPY, ...scenarioTruth };
   const isDemoLabHandoff = isDemoPreview
     && readParam(params, "demo") === "1"
     && readParam(params, "source") === "demo-lab";
@@ -917,7 +937,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const consumerStatus = resolveSunConsumerStatus({
     availability,
     isDemoPreview,
-    demoSealState: valleDemo ? valleScenario : undefined,
+    demoSealState: isDemoPreview ? demoScenario : undefined,
     isQrScan,
     isTechnicallyAuthentic,
     isVerifiedClosedState,
@@ -1716,11 +1736,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           livePillLabel={livePillLabel}
           pulseClass={pulseClass}
         />
+        {isDemoPreview && (valleDemo || (isDemoLabHandoff && ["agrochem", "fragrance", "perfume"].includes(readParam(params, "profile")))) ? (
+          <SunDemoScenarioSelector profile={valleDemo ? "valle-secreto" : readParam(params, "profile") as "agrochem" | "fragrance" | "perfume"} scenario={demoScenario} />
+        ) : null}
         <ProductNotices tenant={String(result.identity?.tenantSlug||"")} bid={String(result.identity?.bid||"")} enabled={!isDemoPreview && result.ok===true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}/>
 
         {demoLabReturnHref ? (
           <Link
             href={demoLabReturnHref}
+            prefetch={false}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-400/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -1806,6 +1830,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               data-testid="sun-summary-status"
               data-availability={availability}
               data-status-tone={consumerStatus.tone}
+              data-demo-scenario={isDemoPreview ? demoScenario : undefined}
+              data-demo-product-state={isDemoPreview ? result.status?.productState : undefined}
+              data-demo-tamper-state={isDemoPreview ? result.status?.tamperStatus : undefined}
+              data-demo-protected-actions={isDemoPreview && demoScenario === "invalid" ? "blocked" : undefined}
               className={`sun-summary-status rounded-2xl border border-l-4 p-3.5 ${
                 consumerStatus.tone === "closed"
                   ? "border-emerald-300/25 border-l-emerald-400 bg-emerald-500/[0.07]"

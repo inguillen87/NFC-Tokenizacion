@@ -14,7 +14,7 @@ export type SunConsumerStatus = {
 type ResolveSunConsumerStatusInput = {
   availability?: SunAvailability;
   isDemoPreview: boolean;
-  demoSealState?: "closed" | "opened";
+  demoSealState?: "closed" | "opened" | "invalid";
   isQrScan: boolean;
   isTechnicallyAuthentic: boolean;
   isVerifiedClosedState: boolean;
@@ -28,6 +28,13 @@ type ResolveSunConsumerStatusInput = {
 
 function resolveSunConsumerStatusEs(input: ResolveSunConsumerStatusInput): SunConsumerStatus {
   if (input.isDemoPreview) {
+    if (input.demoSealState === "invalid") {
+      return {
+        tone: "risk", label: "Lectura no válida · demo", headline: "La lectura de muestra no es válida",
+        copy: "Simulación sin tap físico: la lectura no permite confirmar identidad ni sello. Las acciones protegidas permanecen bloqueadas; no se evaluó un producto real.",
+        identityLabel: "No confirmada (demo)", sealLabel: "No informado (demo)",
+      };
+    }
     const closed = input.demoSealState === "closed";
     return {
       tone: closed ? "closed" : "opened",

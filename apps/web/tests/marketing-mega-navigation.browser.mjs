@@ -1,4 +1,4 @@
-// Real navigation/brand/theme components and CSS; synthetic Home/About/Me content.
+// Real navigation/brand/theme components and CSS; synthetic Home/About/Me/SUN content.
 // Native browser anchors exercise cross-document navigation. No Next routing/API,
 // full marketing-page acceptance, customer writes, NFC or GPS evidence is claimed.
 import assert from 'node:assert/strict';
@@ -48,7 +48,7 @@ const server=createServer((req,res)=>{
   return;
  }
  if(path==='/favicon.ico'){res.writeHead(204);return res.end();}
- if(!['/','/about','/me'].includes(path)){res.writeHead(404);return res.end();}
+ if(!['/','/about','/me','/sun'].includes(path)){res.writeHead(404);return res.end();}
  const theme=/(?:^|;\s*)theme=dark(?:;|$)/.test(req.headers.cookie||'')?'dark':'light';
  const requestedLocale=/\bnav_locale=(es-AR|en|pt-BR)(?:;|$)/.exec(req.headers.cookie||'')?.[1];
  const locale=requestedLocale||'es-AR';
@@ -67,11 +67,11 @@ const server=createServer((req,res)=>{
  }
  // The React mount adapter is layout-transparent, matching the production
  // header's body-level containing block without overriding its sticky CSS.
- res.setHeader('content-type','text/html;charset=utf-8');res.end(`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navigation component fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><main id="main-content" data-nav-inert><h1>${path==='/'?'Home':path==='/me'?'Me — synthetic routing destination':'About'} — synthetic content</h1><div id="prelude"></div>${path==='/'?'<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section>':''}<div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside><script src="/fixture.js"></script></body></html>`);
+ res.setHeader('content-type','text/html;charset=utf-8');res.end(`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navigation component fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><main id="main-content" data-nav-inert><h1>${path==='/'?'Home':path==='/me'?'Me — synthetic routing destination':path==='/sun'?'SUN gallery':'About'} — synthetic content</h1>${path==='/about'?'<a id="saved-passport-link" class="fixture-action" href="/#pasaporte-digital">Abrir fragmento guardado</a>':''}<div id="prelude"></div>${path==='/'?'<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section>':''}<div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside><script src="/fixture.js"></script></body></html>`);
 });
 await new Promise((ok,fail)=>{server.once('error',fail);server.listen(Number(process.env.QA_PORT||3302),'127.0.0.1',ok)});
 const origin=`http://127.0.0.1:${server.address().port}`;
-const report={realComponents:true,realCss:true,realHeaderBrand:true,syntheticHomeAboutContent:true,syntheticConsumerDestination:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,customerAuthenticationAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,sourceHashesStart,origin,checks:[],views:[],consumerEntryCases:[],earlyFocusedMenuCases:[],nativeLoadCases:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
+const report={realComponents:true,realCss:true,realHeaderBrand:true,syntheticHomeAboutContent:true,syntheticConsumerDestination:true,syntheticGalleryDestination:true,savedFragmentFixtureLink:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,customerAuthenticationAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,sourceHashesStart,origin,checks:[],views:[],consumerEntryCases:[],earlyFocusedMenuCases:[],nativeLoadCases:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
 const check=(passed,name,details)=>report.checks.push({name,passed:Boolean(passed),...(details===undefined?{}:{details})});
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 const visibleSelector='a[href],button:not([disabled]),select,summary,[tabindex]:not([tabindex="-1"])';
@@ -114,7 +114,7 @@ async function earlyMenuInteraction(page,name){
  await page.evaluate(()=>{
   window.__earlyMenuFocus={focusedOnMount:false};
   const observer=new MutationObserver(()=>{
-   const link=document.querySelector('[role="dialog"] a[href="/#pasaporte-digital"]');
+   const link=document.querySelector('[role="dialog"] a[data-demo-entry="gallery"]');
    if(!link)return;
    link.focus();window.__earlyMenuFocus.focusedOnMount=document.activeElement===link;
    observer.disconnect();
@@ -124,9 +124,9 @@ async function earlyMenuInteraction(page,name){
  const trigger=page.getByRole('button',{name:'Abrir navegación',exact:true});
  await trigger.focus();await page.keyboard.press('Enter');await page.getByRole('dialog').waitFor();await frames(page);
  const initial=await page.evaluate(()=>({focusedOnMount:window.__earlyMenuFocus.focusedOnMount,
-  retainedThroughAutofocus:document.activeElement?.matches('[role="dialog"] a[href="/#pasaporte-digital"]')}));
+  retainedThroughAutofocus:document.activeElement?.matches('[role="dialog"] a[data-demo-entry="gallery"]')}));
  await page.keyboard.press('Enter');
- const destination=await page.waitForFunction(()=>location.hash==='#pasaporte-digital'&&document.activeElement?.matches('#pasaporte-digital h2'),null,{timeout:3000}).then(()=>true,()=>false);
+ const destination=await page.waitForFunction(()=>location.pathname==='/sun'&&!location.hash&&document.querySelector('#main-content h1')?.textContent.includes('SUN'),null,{timeout:3000}).then(()=>true,()=>false);
  const details={name,...initial,nativeDestinationFocused:destination};report.earlyFocusedMenuCases.push(details);
  check(initial.focusedOnMount&&initial.retainedThroughAutofocus&&destination,'Early menu interaction keeps link focus and native destination '+name,details);
 }
@@ -156,12 +156,12 @@ async function nativeLoadCase(width,theme,kind){
   observer.observe(document,{childList:true,subtree:true});
  });
  const page=await context.newPage();page.on('pageerror',error=>report.errors.push({name,error:error.message.slice(0,180)}));
- await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||/^\/(?:api|sun)(?:\/|$)/.test(url.pathname)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
+ await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||(/^\/api(?:\/|$)/.test(url.pathname)||url.pathname==='/sun'&&url.search)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
  try{
-  await page.goto(origin+'/about',{waitUntil:'networkidle'});await openMenu(page);
+  await page.goto(origin+'/about',{waitUntil:'networkidle'});
   await context.addCookies([{name:'nav_load_case',value:kind,url:origin}]);
   const committed=page.waitForURL(origin+'/#pasaporte-digital',{waitUntil:'commit'});
-  await page.getByRole('dialog').getByRole('link',{name:'Pasaporte digital',exact:true}).press('Enter',{noWaitAfter:true});
+  await page.locator('#saved-passport-link').press('Enter',{noWaitAfter:true});
   await committed;
   await page.getByRole('button',{name:'Abrir navegación',exact:true}).waitFor({state:'attached'});await frames(page);
   details.beforeRelease=await page.evaluate(()=>({readyState:document.readyState,destinationPresent:Boolean(document.querySelector('#pasaporte-digital h2')),probe:window.__nativeLoadProbe}));
@@ -207,7 +207,7 @@ async function consumerEntryCase(width,theme,locale){
  const details={name,width,theme,locale,completed:false};report.consumerEntryCases.push(details);
  await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin},{name:'nav_locale',value:locale,url:origin}]);
  const page=await context.newPage();page.on('pageerror',error=>report.errors.push({name,error:error.message.slice(0,180)}));
- await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||/^\/(?:api|sun)(?:\/|$)/.test(url.pathname)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
+ await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||(/^\/api(?:\/|$)/.test(url.pathname)||url.pathname==='/sun'&&url.search)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
  const bounds=locator=>locator.evaluate(node=>{const r=node.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return{width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom,fontSize:parseFloat(getComputedStyle(node).fontSize),unobstructed:Boolean(hit&&(hit===node||node.contains(hit))),withinViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight};});
  try{
   await page.goto(origin+'/',{waitUntil:'networkidle'});
@@ -255,14 +255,14 @@ try{
   const name=`${width} ${theme}`,context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'});
   await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({name,error:error.message.slice(0,180)}));
-  await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||/^\/(?:api|sun)(?:\/|$)/.test(url.pathname)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
+  await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(req.method()!=='GET'||url.origin!==origin||(/^\/api(?:\/|$)/.test(url.pathname)||url.pathname==='/sun'&&url.search)){report.blockedRequests.push({name,method:req.method(),path:url.pathname});return route.abort()}return route.continue()});
   try{
    await page.goto(origin+'/',{waitUntil:'networkidle'});await earlyMenuInteraction(page,name);
    await page.goto(origin+'/',{waitUntil:'networkidle'});let trigger=await openMenu(page);
    check(await page.getByRole('button',{name:'Cerrar navegación',exact:true}).evaluate(node=>node===document.activeElement),'Open focuses close '+name);
    check(await page.locator('#main-content').evaluate(node=>node.inert),'Open makes content inert '+name);
    const dialog=page.getByRole('dialog'),brand=dialog.locator('[data-brand-home-link]');
-   for(const [label,locator]of [['brand',brand],['close',dialog.getByRole('button',{name:'Cerrar navegación',exact:true})],['account',dialog.locator('[data-consumer-entry="menu"]')],['passport',dialog.getByRole('link',{name:'Pasaporte digital',exact:true})],['about',dialog.getByRole('link',{name:'Quiénes somos',exact:true})],['item',dialog.locator('[data-menu-link]').first()],['summary',dialog.locator('summary').first()],['login',dialog.getByRole('link',{name:'Ingresar empresas',exact:true})],['demo',dialog.getByRole('link',{name:'Agendar demo',exact:true})]]){
+   for(const [label,locator]of [['brand',brand],['close',dialog.getByRole('button',{name:'Cerrar navegación',exact:true})],['account',dialog.locator('[data-consumer-entry="menu"]')],['gallery',dialog.locator('[data-demo-entry="gallery"]')],['about',dialog.getByRole('link',{name:'Quiénes somos',exact:true})],['item',dialog.locator('[data-menu-link]').first()],['summary',dialog.locator('summary').first()],['login',dialog.getByRole('link',{name:'Ingresar empresas',exact:true})],['demo',dialog.getByRole('link',{name:'Agendar demo',exact:true})]]){
     const ring=await focusRing(locator);check(ring.alpha===1&&ring.outline==='solid'&&ring.width>=3&&ring.ratio>=3,'Solid visible focus '+label+' '+name,ring);
    }
    const summary=dialog.locator('summary').first();await summary.focus();await page.keyboard.press('Enter');await frames(page);
@@ -280,18 +280,23 @@ try{
    trigger=await openMenu(page);await page.getByRole('button',{name:'Cerrar navegación',exact:true}).press('Enter');await frames(page);
    check(await trigger.evaluate(node=>node===document.activeElement),'Close button returns trigger focus '+name);await retained(page,'X '+name);
    if(width>520){trigger=await openMenu(page);await page.mouse.click(8,350);await frames(page);check(await trigger.evaluate(node=>node===document.activeElement)&&await page.getByRole('dialog').count()===0,'Exposed scrim returns trigger focus '+name);await retained(page,'scrim '+name);}
-   await openMenu(page);await page.getByRole('dialog').getByRole('link',{name:'Pasaporte digital',exact:true}).press('Enter');
-   await page.waitForFunction(()=>location.hash==='#pasaporte-digital'&&document.activeElement?.matches('#pasaporte-digital h2'));await frames(page);
-   const homeGeometry=await passportGeometry(page);check(await page.evaluate(()=>scrollY>500)&&homeGeometry.headerIsStickyAtViewportTop&&homeGeometry.headingTop>=homeGeometry.headerBottom&&homeGeometry.unobstructed,'Home native anchor scrolls to unobstructed destination below real header '+name,homeGeometry);
-   check(await page.locator('#pasaporte-digital h2').getAttribute('tabindex')==='-1','Home keyboard focus moves to destination heading '+name);
-   await page.keyboard.press('Tab');check(await page.locator('#destination-action').evaluate(node=>node===document.activeElement),'Tab continues in destination content '+name);
-   check(await page.locator('#pasaporte-digital h2').getAttribute('tabindex')===null,'Temporary heading tabindex removed on blur '+name);await retained(page,'anchor '+name);
-   await page.screenshot({path:join(output,`home-anchor-${name.replace(' ','-')}.png`)});
-   await page.goto(origin+'/about',{waitUntil:'networkidle'});await openMenu(page);await page.getByRole('dialog').getByRole('link',{name:'Pasaporte digital',exact:true}).press('Enter');
+   await openMenu(page);const galleryLink=page.getByRole('dialog').locator('[data-demo-entry="gallery"]');check(await galleryLink.getAttribute('href')==='/sun','Menu opens explicit SUN gallery '+name);await galleryLink.press('Enter');
+   await page.waitForURL(origin+'/sun');await frames(page);
+   check(await page.locator('#main-content h1').innerText()==='SUN gallery — synthetic content'&&await page.getByRole('dialog').count()===0,'Home menu keyboard reaches native gallery document '+name);await retained(page,'gallery '+name);
+   await page.screenshot({path:join(output,`home-gallery-${name.replace(' ','-')}.png`)});
+   await page.goto(origin+'/about',{waitUntil:'networkidle'});await openMenu(page);await page.getByRole('dialog').locator('[data-demo-entry="gallery"]').press('Enter');await page.waitForURL(origin+'/sun');
+   check(new URL(page.url()).pathname==='/sun'&&!new URL(page.url()).hash,'About menu reaches the same gallery without old fragment '+name);
+   await page.goBack({waitUntil:'networkidle'});check(new URL(page.url()).pathname==='/about','Native Back from gallery retains About route '+name);
+   // A saved legacy URL still receives the original fragment restoration.
+   // This fixture link is independent of the new real navigation destination.
+   await page.locator('#saved-passport-link').press('Enter');
    await page.waitForURL(origin+'/#pasaporte-digital');await page.waitForFunction(()=>document.activeElement?.matches('#pasaporte-digital h2'));await frames(page);
    check(await page.evaluate(()=>location.pathname==='/'&&location.hash==='#pasaporte-digital'&&scrollY>500),'Cross-route native fragment keeps URL and destination '+name);
    check(await page.locator('#pasaporte-digital h2').evaluate(node=>node===document.activeElement),'About→Home destination receives focus '+name);
    const crossGeometry=await passportGeometry(page);check(crossGeometry.headerIsStickyAtViewportTop&&crossGeometry.headingTop>=crossGeometry.headerBottom&&crossGeometry.unobstructed,'Cross-route passport destination stays unobstructed below real header '+name,crossGeometry);
+   check(await page.locator('#pasaporte-digital h2').getAttribute('tabindex')==='-1','Saved fragment keyboard focus moves to destination heading '+name);
+   await page.keyboard.press('Tab');check(await page.locator('#destination-action').evaluate(node=>node===document.activeElement),'Tab continues in saved destination content '+name);
+   check(await page.locator('#pasaporte-digital h2').getAttribute('tabindex')===null,'Temporary heading tabindex removed on blur '+name);await retained(page,'saved fragment '+name);
    await page.goBack({waitUntil:'networkidle'});check(new URL(page.url()).pathname==='/about','Native Back retains About route '+name);
    report.views.push({width,theme,paths:['/','/about'],closedDetailsTabStops:visibleCount});
   }catch(error){report.errors.push({name,error:error.message.slice(0,180),snapshot:await failureSnapshot(page)})}finally{await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2))}
