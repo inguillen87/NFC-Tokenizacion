@@ -82,15 +82,20 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
         await route.continue({ headers: { ...request.headers(), ...(protectionHeader ? { [protectionHeader]: protectionValue } : {}) } });
       });
       const goto = path => page.goto(origin + path, { waitUntil: 'networkidle' });
+      const navigate = async link => {
+        const href = await link.getAttribute('href');
+        const destination = new URL(href, origin).href;
+        await Promise.all([page.waitForURL(destination, { waitUntil: 'networkidle' }), link.press('Enter')]);
+      };
       const noOverflow = async name => check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${view}/${name}: no horizontal overflow`);
       await goto(`/sun?lang=${locale}`);
       const gallery = page.getByTestId('sun-demo-gallery'); await gallery.waitFor();
       check(await gallery.locator('a[data-demo-profile]').count() === 4, view + ': four curated profiles');
       const card = gallery.locator('a[data-demo-profile="syngenta"]');
       check((await card.innerText()).includes('AMISTAR XTRA'), view + ': Syngenta product card');
-      await noOverflow('gallery'); await card.press('Enter');
+      await noOverflow('gallery'); await navigate(card);
       for (const scenario of ['closed', 'opened', 'invalid']) {
-        if (scenario !== 'closed') await page.getByTestId('sun-demo-scenario-selector').locator(`a[data-demo-scenario="${scenario}"]`).press('Enter');
+        if (scenario !== 'closed') await navigate(page.getByTestId('sun-demo-scenario-selector').locator(`a[data-demo-scenario="${scenario}"]`));
         await page.getByTestId('syngenta-demo-experience').waitFor(); await page.waitForLoadState('networkidle');
         const status = page.getByTestId('sun-summary-status');
         check((await page.locator('#sun-summary').innerText()).includes('AMISTAR XTRA'), `${view}/${scenario}: correct product`);
