@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 
 if (!process.env.QA_ORIGIN) throw Error('QA_ORIGIN_required_use_public_visual_next_wrapper_to_start_server');
 const origin = new URL(process.env.QA_ORIGIN).origin;
+const VALLE_DEMO_HREF = '/sun?demo=1&profile=valle-secreto&scenario=closed';
 if (!['localhost','127.0.0.1'].includes(new URL(origin).hostname)) throw Error('acceptance_requires_local_production_server');
 const output = resolve(process.env.QA_OUTPUT || 'artifacts/public-visual-local');
 await mkdir(output, { recursive:true });
@@ -37,7 +38,7 @@ async function audit(page, contextSelector, name) {
   const result=await page.evaluate(async selector=>{const r=await window.axe.run(selector?document.querySelector(selector):document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}});return{violations:r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary})).slice(0,8)})),incomplete:r.incomplete.map(v=>({id:v.id,nodes:v.nodes.length}))};},contextSelector);
   check(result.violations.length===0,'Axe AA '+name,result); return result;
 }
-async function menu(page, name) {
+async function menu(page, name, allowSunDestination) {
   const trigger=page.getByRole('button',{name:'Abrir navegación',exact:true});
   if(await trigger.isVisible()) {
     await trigger.focus(); await page.keyboard.press('Enter');
@@ -71,7 +72,16 @@ async function menu(page, name) {
       await page.keyboard.press('Escape'); await dialog.waitFor({state:'detached'}); await stable(page);
     }
     await trigger.focus(); await page.keyboard.press('Enter'); await dialog.waitFor();
-    await dialog.locator('a[href="/#pasaporte-digital"]').focus(); await page.keyboard.press('Enter'); await dialog.waitFor({state:'detached'}); await stable(page);
+    const galleryLink=dialog.locator('a[data-demo-entry="gallery"]');
+    check(await galleryLink.getAttribute('href')==='/sun','Menu offers the public demo gallery '+name);
+    allowSunDestination('gallery');await galleryLink.focus();await page.keyboard.press('Enter');
+    await page.getByTestId('sun-demo-gallery').waitFor();await stable(page);
+    check(new URL(page.url()).pathname==='/sun'&&!new URL(page.url()).search,'Keyboard menu navigation reaches the empty public demo gallery '+name);
+    check(await page.getByTestId('sun-demo-gallery').locator('a[data-demo-profile]').count()===4,'Gallery exposes four curated product choices '+name);
+    const firstDemo=page.getByTestId('sun-demo-gallery').locator('a[data-demo-profile="valle-secreto"]');await firstDemo.focus();
+    check(await firstDemo.evaluate(el=>el===document.activeElement),'Gallery product choice is keyboard reachable '+name);
+    // Saved fragment destinations still work, independently of the new gallery menu link.
+    allowSunDestination(null);await page.goto(origin+'/#pasaporte-digital',{waitUntil:'networkidle',timeout:45000});await stable(page);
     const destination=page.locator('#pasaporte-digital h2').first();
     try {
       await page.waitForFunction(()=>document.activeElement===document.querySelector('#pasaporte-digital h2'),null,{timeout:5000});
@@ -81,10 +91,15 @@ async function menu(page, name) {
       await page.screenshot({path:join(output,'passport-focus-failure-'+page.viewportSize().width+'.png')});
       throw error;
     }
-    check(new URL(page.url()).hash==='#pasaporte-digital'&&await destination.evaluate(el=>el===document.activeElement),'Native passport link moves keyboard focus to its content '+name);
+    check(new URL(page.url()).hash==='#pasaporte-digital'&&await destination.evaluate(el=>el===document.activeElement),'Saved passport fragment moves keyboard focus to its content '+name);
     await page.keyboard.press('Tab'); await stable(page);
-    check(await page.locator('#pasaporte-digital').evaluate(el=>el.contains(document.activeElement)),'Tab continues within passport content after menu navigation '+name);
+    check(await page.locator('#pasaporte-digital').evaluate(el=>el.contains(document.activeElement)),'Tab continues within saved passport content '+name);
+    const skip=page.locator('a[href="#main-content"]').first();await skip.focus();await page.keyboard.press('Enter');await stable(page);
+    check(new URL(page.url()).hash==='#main-content','Native skip link retains a valid content fragment '+name);
+    await page.keyboard.press('Tab');await stable(page);
+    check(await page.locator('#main-content').evaluate(el=>el.contains(document.activeElement)),'Skip-link Tab continues within main content '+name);
     await page.evaluate(()=>scrollTo(0,0)); await stable(page);
+    return true;
   } else {
     for(const group of ['solutions','industries','platform','resources']) {
       const button=page.locator(`[data-mega-nav-group="${group}"] > button`); await button.focus(); await page.keyboard.press('ArrowDown'); await stable(page);
@@ -95,6 +110,7 @@ async function menu(page, name) {
       await page.keyboard.press('Escape'); await stable(page);
       check(await button.evaluate(e=>e===document.activeElement)&&await button.getAttribute('aria-expanded')==='false','Desktop Escape restores trigger '+group+' '+name);
     }
+    return false;
   }
 }
 async function journey(page,name) {
@@ -144,9 +160,14 @@ try {
   for(const width of [320,390,768,1440]) for(const theme of ['light','dark']) for(const path of ['/','/demo-lab','/demo-lab?profile=wine']) {
     const context=await browser.newContext({viewport:{width,height:width<768?844:900},locale:'es-AR',serviceWorkers:'block',reducedMotion:'reduce',isMobile:width<768,hasTouch:width<768});
     await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
-    const page=await context.newPage(),name=`${path} ${width} ${theme}`;
+    const page=await context.newPage(),name=`${path} ${width} ${theme}`;let allowedSunDestination=null;
     page.on('pageerror',e=>report.errors.push({name,error:e.message.replace(/https?:\/\/\S+/g,'[url]').slice(0,180)}));
-    await page.route('**/*',route=>{const req=route.request(),u=new URL(req.url()); if(req.method()!=='GET'){report.blockedWrites.push({name,method:req.method(),path:u.pathname});return route.abort();}if(/^\/sun(?:\/|$)/.test(u.pathname)||u.searchParams.has('snapshot')||u.searchParams.has('access')){report.blockedSensitiveReads.push({name,path:u.pathname});return route.abort();} if(u.origin!==origin)return route.abort();return route.continue();});
+    await page.route('**/*',route=>{const req=route.request(),u=new URL(req.url()); if(req.method()!=='GET'){report.blockedWrites.push({name,method:req.method(),path:u.pathname});return route.abort();}
+      const keys=[...u.searchParams.keys()],rscValid=!u.searchParams.has('_rsc')||u.searchParams.getAll('_rsc').length===1&&/^[A-Za-z0-9_-]{1,100}$/.test(u.searchParams.get('_rsc'));
+      const galleryAllowed=allowedSunDestination==='gallery'&&keys.every(k=>k==='_rsc')&&rscValid;
+      const valleAllowed=allowedSunDestination==='valle-closed'&&keys.every(k=>['demo','profile','scenario','_rsc'].includes(k))&&['demo','profile','scenario'].every(k=>u.searchParams.getAll(k).length===1)&&u.searchParams.get('demo')==='1'&&u.searchParams.get('profile')==='valle-secreto'&&u.searchParams.get('scenario')==='closed'&&rscValid;
+      const sunAssetAllowed=Boolean(allowedSunDestination)&&u.origin===origin&&!u.search&&['/sun/valle-secreto/logo-light.png','/sun/valle-secreto/logo-dark.webp','/sun/valle-secreto/profundo.webp','/sun/valle-secreto/world-reference.geojson'].includes(u.pathname);
+      if((/^\/sun(?:\/|$)/.test(u.pathname)&&!(u.origin===origin&&u.pathname==='/sun'&&(galleryAllowed||valleAllowed))&&!sunAssetAllowed)||u.pathname.startsWith('/api/')||u.searchParams.has('snapshot')||u.searchParams.has('access')){report.blockedSensitiveReads.push({name,path:u.pathname});return route.abort();} if(u.origin!==origin)return route.abort();return route.continue();});
     await page.addInitScript(()=>{window.__geoRequests=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__geoRequests++;},watchPosition(){window.__geoRequests++;},clearWatch(){}}});});
     try {
       const response=await page.goto(origin+path,{waitUntil:'networkidle',timeout:45000}); await page.waitForTimeout(300); await stable(page);
@@ -166,12 +187,19 @@ try {
       const targets=await page.locator('header button, header [data-brand-home-link], .demo-lab-hub-nav button, .demo-lab-hub-nav [data-brand-home-link], main [role="group"][aria-label="Acciones principales"] a').evaluateAll(nodes=>nodes.filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({label:e.getAttribute('aria-label')||e.textContent.trim().slice(0,50),width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height})));
       check(targets.every(e=>e.width>=44&&e.height>=44),'Primary header and hero targets are at least 44px '+name,targets);
       if(path==='/') {
-        await menu(page,name);
+        const galleryReached=await menu(page,name,destination=>{allowedSunDestination=destination;});
         const actions=main.getByRole('group',{name:'Acciones principales'});
-        const primary=actions.locator('a').first(); check(await primary.getAttribute('href')==='/demo-lab?profile=wine','Hero opens illustrative product directly '+name);
+        const primary=actions.locator('a').first(); check(await primary.getAttribute('href')===VALLE_DEMO_HREF&&await primary.getAttribute('data-demo-entry')==='valle-secreto'&&await primary.innerText()==='Explorar Valle Secreto','Hero opens the explicit closed Valle demo directly '+name);
         await primary.focus(); await page.keyboard.press('Tab');
         const focus=await page.evaluate(()=>{const cs=getComputedStyle(document.activeElement);return{tag:document.activeElement.tagName,outlineStyle:cs.outlineStyle,outlineWidth:parseFloat(cs.outlineWidth),boxShadow:cs.boxShadow};});
         check(focus.outlineStyle!=='none'&&focus.outlineWidth>=2||focus.boxShadow!=='none','Hero keyboard focus indicator is visible '+name,focus);
+        allowedSunDestination='valle-closed';await primary.focus();await page.keyboard.press('Enter');await page.getByTestId('sun-summary-status').waitFor();await stable(page);
+        const passportUrl=new URL(page.url()),status=page.getByTestId('sun-summary-status');
+        check(passportUrl.pathname==='/sun'&&passportUrl.searchParams.get('demo')==='1'&&passportUrl.searchParams.get('profile')==='valle-secreto'&&passportUrl.searchParams.get('scenario')==='closed','Keyboard primary CTA reaches explicit Valle demo '+name);
+        check(await status.getAttribute('data-demo-product-state')==='VALID_CLOSED'&&await status.getAttribute('data-demo-tamper-state')==='CLOSED'&&(await page.locator('#sun-summary').innerText()).includes('Profundo 2019'),'Valle demo exposes the labelled closed sample '+name);
+        check(await page.evaluate(()=>window.__geoRequests===0),'Gallery and Valle navigation request no geolocation '+name);
+        report.interactions.push({name,galleryReached,valleProfile:'valle-secreto',scenario:'closed',physicalTapMeasured:false});
+        allowedSunDestination=null;await page.goto(origin+'/',{waitUntil:'networkidle',timeout:45000});await stable(page);
         await actions.locator('a[href*="contact=demo"]').click(); const dialog=page.getByRole('dialog');await dialog.waitFor();await stable(page);
         check(await dialog.evaluate(e=>e.contains(document.activeElement)),'Contact opens with focus inside '+name);
         await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});check(true,'Contact is dismissible by keyboard '+name);
