@@ -71,7 +71,7 @@ test("brand synergy remains a reusable truthful surface but does not crowd the h
   assert.match(page, /initialTheme=\{initialTheme\}/);
   assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
-  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en" \}/);
+  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en", waitForClientReady = false \}/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
   assert.ok(
     themeToggle.indexOf('document.documentElement.getAttribute("data-theme")') < themeToggle.indexOf('localStorage.getItem("theme")'),

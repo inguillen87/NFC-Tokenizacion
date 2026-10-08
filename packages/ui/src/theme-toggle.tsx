@@ -83,13 +83,15 @@ function readTheme(): Theme {
   return "light";
 }
 
-export function ThemeToggle({ initialTheme = "light", locale = "en" }: { initialTheme?: Theme; locale?: string }) {
+export function ThemeToggle({ initialTheme = "light", locale = "en", waitForClientReady = false }: { initialTheme?: Theme; locale?: string; waitForClientReady?: boolean }) {
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [clientReady, setClientReady] = useState(false);
 
   useEffect(() => {
     const initial = readTheme();
     setTheme(initial);
     applyTheme(initial);
+    setClientReady(true);
 
     const onStorage = (event: StorageEvent) => {
       if (event.key !== "theme") return;
@@ -112,9 +114,14 @@ export function ThemeToggle({ initialTheme = "light", locale = "en" }: { initial
     <button
       suppressHydrationWarning
       type="button"
+      disabled={waitForClientReady && !clientReady}
       onClick={() => {
-        setTheme(nextTheme);
-        applyTheme(nextTheme);
+        // In ready-gated controls each activation follows the applied DOM theme,
+        // including a second activation before React commits the first update.
+        const currentTheme = waitForClientReady ? readTheme() : theme;
+        const selectedTheme = waitForClientReady ? (currentTheme === "dark" ? "light" : "dark") : nextTheme;
+        setTheme(selectedTheme);
+        applyTheme(selectedTheme);
       }}
       className="theme-toggle inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs leading-4 font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-cyan-500/25"
       aria-label={actionLabel}
