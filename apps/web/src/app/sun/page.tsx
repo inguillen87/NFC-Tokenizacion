@@ -1919,7 +1919,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               >
                 {!hasSourceResult ? "Explorar una demostración" : !isDemoPreview && isVerifiedOpenedState && isTechnicallyAuthentic
                   ? "Entender apertura"
-                  : "Ver origen y mapa"}
+                  : syngentaCopy?.originAction || "Ver origen y mapa"}
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
               </a>
             </div>

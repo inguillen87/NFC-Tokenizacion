@@ -65,10 +65,11 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
       await context.addCookies([{ name: 'theme', value: theme, url: origin }, { name: 'nexid_theme_version', value: 'white-first-v2', url: origin }]);
       await context.addInitScript(() => { window.__qaGps = 0; Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition() { window.__qaGps++; }, watchPosition() { window.__qaGps++; }, clearWatch() {} } }); });
       const page = await context.newPage(); active.page = page; page.setDefaultTimeout(20000);
+      let qaStage = 'gallery';
       const excluded = new Set();
       page.on('pageerror', () => report.failures.push({ view, kind: 'pageerror' }));
       page.on('console', message => { if (message.type() === 'error') report.failures.push({ view, kind: 'consoleerror' }); });
-      page.on('requestfailed', request => { if (!(excluded.has(request.url()) && request.failure()?.errorText === 'net::ERR_BLOCKED_BY_CLIENT')) report.failures.push({ view, kind: 'requestfailed', path: new URL(request.url()).pathname, route: safeRoute(request.url()), resource: request.resourceType(), pageRoute: safeRoute(page.url()), navigation: request.isNavigationRequest(), code: request.failure()?.errorText || 'unknown' }); });
+      page.on('requestfailed', request => { if (!(excluded.has(request.url()) && request.failure()?.errorText === 'net::ERR_BLOCKED_BY_CLIENT')) report.failures.push({ view, kind: 'requestfailed', path: new URL(request.url()).pathname, route: safeRoute(request.url()), resource: request.resourceType(), pageRoute: safeRoute(page.url()), navigation: request.isNavigationRequest(), rsc: request.headers()['rsc'] === '1', routerPrefetch: request.headers()['next-router-prefetch'] === '1', rscQuery: new URL(request.url()).searchParams.has('_rsc'), stage: qaStage, code: request.failure()?.errorText || 'unknown' }); });
       page.on('response', response => { if (response.status() >= 400) report.failures.push({ view, kind: 'http', status: response.status(), path: new URL(response.url()).pathname }); });
       await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
@@ -101,6 +102,7 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
       check((await card.innerText()).includes('AMISTAR XTRA'), view + ': Syngenta product card');
       await noOverflow('gallery'); await navigate(card);
       for (const scenario of ['closed', 'opened', 'invalid']) {
+        qaStage = scenario;
         if (scenario !== 'closed') await navigate(page.getByTestId('sun-demo-scenario-selector').locator(`a[data-demo-scenario="${scenario}"]`));
         await page.getByTestId('syngenta-demo-experience').waitFor(); await page.waitForLoadState('networkidle');
         const status = page.getByTestId('sun-summary-status');
@@ -141,7 +143,7 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
         report.stateRoutes.push({ view, scenario, route: new URL(page.url()).pathname + new URL(page.url()).search });
         if (width === 390 && locale === 'es-AR') { await page.locator('#sun-summary').scrollIntoViewIfNeeded(); await page.screenshot({ path: join(output, `${theme}-${scenario}-summary.png`) }); }
       }
-      await page.getByTestId('syngenta-checklist-start').click();
+      qaStage = 'checklist'; await page.getByTestId('syngenta-checklist-start').click();
       for (let step = 0; step < 3; step++) {
         const next = page.getByTestId('syngenta-checklist-next'); check(await next.isDisabled(), `${view}/step${step}: cannot skip unanswered step`);
         await page.getByTestId('syngenta-checklist-option').nth((step + 1) % 3).click(); check(await next.isDisabled(), `${view}/step${step}: wrong answer does not advance`);
@@ -153,13 +155,13 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
       await page.keyboard.press('Tab'); await page.getByTestId('syngenta-checklist-option').first().focus();
       check(await page.getByTestId('syngenta-checklist-option').first().evaluate(el => parseFloat(getComputedStyle(el).outlineWidth) >= 2), view + ': visible keyboard focus');
       await noOverflow('checklist');
-      await page.addScriptTag({ content: axe });
+      qaStage = 'axe'; await page.addScriptTag({ content: axe });
       const ax = await page.evaluate(async () => { const result = await axe.run('main', { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }); return { violations: result.violations.map(rule => ({ id: rule.id, targets: rule.nodes.map(node => node.target) })), incomplete: result.incomplete.map(rule => ({ id: rule.id, targets: rule.nodes.map(node => node.target) })) }; });
       report.accessibility.push({ view, ...ax }); check(ax.violations.length === 0, view + ': AXE automatic checks pass');
       report.gpsCalls += await page.evaluate(() => window.__qaGps);
       await page.waitForTimeout(150); check(report.failures.length === 0, view + ': no unexpected request or runtime failure');
       report.views.push({ view, width, theme, locale, states: 3, checklistCompleted: true });
-      await context.close(); active = null;
+      qaStage = 'closing'; await context.close(); active = null;
     }
     check(report.views.length === 18 && report.stateRoutes.length === 54, 'Eighteen contexts and fifty-four state routes complete');
     check(report.apiRequests === 0 && report.gpsCalls === 0 && report.failures.length === 0, 'No business API, geolocation or unexpected failure');
