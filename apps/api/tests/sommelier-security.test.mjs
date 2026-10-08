@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { parseSommelierRequest, parseSommelierAnswer, sommelierMessages } from '../src/lib/sommelier-contract.ts';
 import { allowedSommelierOrigin, sommelierCallerHash, sommelierIssuanceHash, issueSommelierDemoGrant, verifySommelierDemoGrant, sommelierDemoCookie, resolveConsumerSommelierContext } from '../src/lib/sommelier-access.ts';
 import { valleSecretoSommelierFacts } from '../src/lib/sommelier-demo-facts.ts';
-import { classifySommelierDatabaseTarget, classifySommelierQuotaFailure, reserveSommelierBuckets, sommelierProviderBuckets, sommelierChatBuckets, sommelierIssuanceBuckets } from '../src/lib/sommelier-quota.ts';
+import { classifySommelierDatabaseTarget, classifySommelierQuotaErrorKind, classifySommelierQuotaFailure, reserveSommelierBuckets, sommelierProviderBuckets, sommelierChatBuckets, sommelierIssuanceBuckets } from '../src/lib/sommelier-quota.ts';
 import { classifyFleetRateLimit } from '../src/lib/fleet-rate-limit-policy.ts';
 import { editorialContentDigest, parseEditorialDocument } from '../src/lib/passport-editorial-policy.ts';
 import { ACTIONS_VERSION } from '../src/lib/tenant-loyalty-configuration.ts';
@@ -85,12 +85,12 @@ for(const [code,category] of [['42P01','undefined_relation'],['42703','undefined
   const events=[];
   const error=Object.assign(new Error('private SQL, values and credentials must not be logged'),{code,detail:'private-detail',query:'SELECT private-value',cause:{token:'private-token'}});
   assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing'}]);
+  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing',errorKind:'Error',failureStage:'execute_bucket'}]);
 });
 for(const [code,category] of [['28P01','authentication_failure'],['28000','authentication_failure'],['3D000','database_not_found'],['57P03','database_temporarily_unavailable'],['53300','database_capacity_exhausted'],['57014','query_cancelled'],['40001','transaction_conflict'],['40P01','transaction_conflict'],['23505','constraint_violation'],['23514','constraint_violation'],['22P02','invalid_database_input']]) test(`quota telemetry classifies known database SQLSTATE ${code} without private fields`,async()=>{
   const events=[],error=Object.assign(new Error('private SQL and credentials'),{code,detail:'private-database-value',constraint:'private-constraint',sourceError:new Error('private-network-secret')});
   assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing'}]);
+  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing',errorKind:'Error',failureStage:'execute_bucket'}]);
 });
 for(const [prefix,category] of [
   ['No database connection string was provided to `neon()`.','database_not_configured'],
@@ -100,7 +100,7 @@ for(const [prefix,category] of [
 ]) test(`quota telemetry recognizes the installed Neon prefix for ${category}: ${prefix.split(' ')[0]}`,async()=>{
   const events=[],error=Object.assign(new Error(prefix+' private-credential-and-query-value'),{sourceError:new Error('private-source-error')});
   assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-  assert.deepEqual(events,[{category,sqlState:null,databaseTarget:'missing'}]);
+  assert.deepEqual(events,[{category,sqlState:null,databaseTarget:'missing',errorKind:'Error',failureStage:'execute_bucket'}]);
 });
 test('invalid Neon URL diagnostics never log its credential-bearing suffix or source error',async()=>{
   const lines=[],previous=console.warn;
@@ -109,7 +109,7 @@ test('invalid Neon URL diagnostics never log its credential-bearing suffix or so
     const message='Database connection string provided to `neon()` is not a valid URL. Connection string: '+syntheticDatabaseUrl('synthetic.invalid');
     const error=Object.assign(new Error(message),{sourceError:new Error('private-provider-token'),stack:'private-stack',toJSON(){throw Error('must-not-serialize')}});
     assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error}),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-    assert.deepEqual(lines,[['[sommelier_quota_unavailable]',JSON.stringify({category:'database_connection_string_invalid',sqlState:null,databaseTarget:'missing'})]]);
+    assert.deepEqual(lines,[['[sommelier_quota_unavailable]',JSON.stringify({category:'database_connection_string_invalid',sqlState:null,databaseTarget:'missing',errorKind:'Error',failureStage:'execute_bucket'})]]);
     assert.doesNotMatch(JSON.stringify(lines),/postgresql|synthetic-user|private-|database\?|Connection string/);
   } finally {console.warn=previous}
 });
@@ -139,7 +139,7 @@ test('quota failure logs only the coarse configured target and never URL credent
   try {
     for(const [connection,label] of [[syntheticDatabaseUrl('ep-solitary-surf-aiixcsmk-pooler.c-4.us-east-1.aws.neon.tech'),'nexid_staging'],[syntheticDatabaseUrl('synthetic.invalid'),'unverified'],['private-invalid-uri','invalid']]) {
       assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),{...env,DATABASE_URL:connection},async()=>{throw Object.assign(new Error('private-error'),{code:'28P01'})}),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-      assert.deepEqual(lines.at(-1),['[sommelier_quota_unavailable]',JSON.stringify({category:'authentication_failure',sqlState:'28P01',databaseTarget:label})]);
+      assert.deepEqual(lines.at(-1),['[sommelier_quota_unavailable]',JSON.stringify({category:'authentication_failure',sqlState:'28P01',databaseTarget:label,errorKind:'Error',failureStage:'execute_bucket'})]);
     }
     assert.doesNotMatch(JSON.stringify(lines),/postgresql|synthetic-user|synthetic_private|private-|neon\.tech|synthetic\.invalid/);
   } finally {console.warn=previous}
@@ -147,13 +147,13 @@ test('quota failure logs only the coarse configured target and never URL credent
 for(const [code,category] of [['42P18','parameter_type_ambiguous'],['42725','parameter_type_ambiguous'],['42P08','parameter_type_ambiguous'],['42804','parameter_type_mismatch']]) test(`quota telemetry recognizes parameter SQLSTATE ${code} without query or bind values`,async()=>{
   const events=[],error=Object.assign(new NeonDbError('private parameter details'),{code,detail:'private query values',position:'private-position'});
   assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing'}]);
+  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing',errorKind:'NeonDbError',failureStage:'execute_bucket'}]);
 });
 for(const [status,category] of [[401,'transport_http_auth'],[402,'transport_http_payment_required'],[403,'transport_http_auth'],[404,'transport_http_endpoint_unavailable'],[405,'transport_http_request_rejected'],[408,'transport_http_timeout'],[409,'transport_http_conflict'],[410,'transport_http_endpoint_unavailable'],[413,'transport_http_request_rejected'],[415,'transport_http_request_rejected'],[422,'transport_http_request_rejected'],[429,'transport_http_rate_limited'],[500,'transport_http_unavailable'],[501,'transport_http_unavailable'],[502,'transport_http_unavailable'],[503,'transport_http_unavailable'],[504,'transport_http_timeout']]) test(`quota telemetry recognizes installed Neon HTTP ${status} wrapping without private response body`,async()=>{
   const events=[],error=new NeonDbError(`Server error (HTTP status ${status}): private-response-body ${syntheticDatabaseUrl('synthetic.invalid')}`);
   assert.equal(Object.getOwnPropertyDescriptor(error,'code').value,undefined);
   assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-  assert.deepEqual(events,[{category,sqlState:null,transportStatus:status,databaseTarget:'missing'}]);
+  assert.deepEqual(events,[{category,sqlState:null,transportStatus:status,databaseTarget:'missing',errorKind:'NeonDbError',failureStage:'execute_bucket'}]);
 });
 test('Neon HTTP failure logger never serializes its private body, cause or stack',async()=>{
   const lines=[],previous=console.warn;
@@ -161,7 +161,7 @@ test('Neon HTTP failure logger never serializes its private body, cause or stack
   try {
     const error=Object.assign(new NeonDbError('Server error (HTTP status 503): private-body '+syntheticDatabaseUrl('synthetic.invalid')),{sourceError:new Error('private-cause'),stack:'private-stack',toJSON(){throw Error('must-not-serialize')}});
     assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error}),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-    assert.deepEqual(lines,[['[sommelier_quota_unavailable]',JSON.stringify({category:'transport_http_unavailable',sqlState:null,transportStatus:503,databaseTarget:'missing'})]]);
+    assert.deepEqual(lines,[['[sommelier_quota_unavailable]',JSON.stringify({category:'transport_http_unavailable',sqlState:null,transportStatus:503,databaseTarget:'missing',errorKind:'NeonDbError',failureStage:'execute_bucket'})]]);
     assert.doesNotMatch(JSON.stringify(lines),/private-|postgresql|synthetic-user|synthetic\.invalid|Server error/);
   } finally {console.warn=previous}
 });
@@ -178,7 +178,7 @@ test('known SQLSTATE wins over a misleading HTTP message and logger failure rema
 });
 test('quota telemetry accepts only explicit connection SQLSTATE codes',()=>{
   for(const code of ['08000','08001','08003','08004','08006','08007','08P01']) assert.deepEqual(classifySommelierQuotaFailure({code}),{category:'connection_failure',sqlState:code});
-  for(const code of ['08XXX','08private-value','42703 private-value','P0001',123,null]) assert.deepEqual(classifySommelierQuotaFailure({code}),{category:'unknown',sqlState:null});
+  for(const code of ['08XXX','08private-value','42703 private-value','P0000 private-value',123,null]) assert.deepEqual(classifySommelierQuotaFailure({code}),{category:'unknown',sqlState:null});
 });
 test('quota telemetry never evaluates error accessors, cause or serializers',()=>{
   let accessed=0;
@@ -194,21 +194,21 @@ test('quota default logger emits only the safe category and whitelisted SQLSTATE
     const error=Object.assign(new Error('private-password SELECT secret-value'),{code:'42703',detail:'private-provider-token',toJSON(){throw Error('must-not-serialize')}});
     const result=await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error});
     assert.deepEqual(result,{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-    assert.deepEqual(lines,[['[sommelier_quota_unavailable]',JSON.stringify({category:'undefined_column',sqlState:'42703',databaseTarget:'missing'})]]);
+    assert.deepEqual(lines,[['[sommelier_quota_unavailable]',JSON.stringify({category:'undefined_column',sqlState:'42703',databaseTarget:'missing',errorKind:'Error',failureStage:'execute_bucket'})]]);
     assert.doesNotMatch(JSON.stringify(lines),/private-|SELECT|secret-value/);
   } finally {console.warn=previous}
 });
 test('quota receipt failure logs once and keeps its public fail-closed response',async()=>{
   const events=[];
   assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('caller','tenant'),env,async()=>[{hits:'NaN',retry_after:1}],event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
-  assert.deepEqual(events,[{category:'malformed_quota_receipt',sqlState:null,databaseTarget:'missing'}]);
+  assert.deepEqual(events,[{category:'malformed_quota_receipt',sqlState:null,databaseTarget:'missing',errorKind:'Error',failureStage:'validate_receipt'}]);
 });
 test('quota configuration diagnostics do not expose pepper or dimensions and do not query',async()=>{
   const events=[];let queries=0;
   const execute=async()=>{queries++;return []};
   assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),{...env,RATE_LIMIT_KEY_PEPPER:'private-short-pepper'},execute,event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
   assert.equal(queries,0);
-  assert.deepEqual(events,[{category:'quota_configuration_invalid',sqlState:null,databaseTarget:'missing'}]);
+  assert.deepEqual(events,[{category:'quota_configuration_invalid',sqlState:null,databaseTarget:'missing',errorKind:'Error',failureStage:'validate_configuration'}]);
   for(const message of ['quota_invalid','rate_limit_key_pepper_invalid','rate_limit_key_pepper_required','sun_rate_limit_invalid_scope','sun_rate_limit_invalid_scope_key']) assert.deepEqual(classifySommelierQuotaFailure(new Error(message)),{category:'quota_configuration_invalid',sqlState:null});
 });
 test('quota success and expected rate or budget exhaustion produce no failure telemetry',async()=>{
@@ -229,7 +229,63 @@ test('unrecognized quota failures never log untrusted strings or SQLSTATE values
   for(const error of [new Error('private raw SQL and credentials'),{code:'private-provider-key',message:'private-server-error'},'private-thrown-string',null]) {
     assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
   }
-  assert.deepEqual(events,Array(4).fill({category:'unknown',sqlState:null,databaseTarget:'missing'}));
+  assert.deepEqual(events,['Error','unknown','unknown','unknown'].map(errorKind=>({category:'unknown',sqlState:null,databaseTarget:'missing',errorKind,failureStage:'execute_bucket'})));
+});
+
+for(const [code,category] of [['XX000','database_internal_error'],['0A000','database_feature_unsupported'],['42601','database_query_syntax_error'],['42883','database_function_undefined'],['42P02','database_parameter_undefined'],['22023','invalid_database_parameter'],['22021','invalid_database_encoding'],['P0001','database_user_exception']]) test(`quota diagnostics recognize only the approved database SQLSTATE ${code}`,async()=>{
+  const events=[],error=Object.assign(new NeonDbError('private SQL, hostname and credentials'),{code,detail:'private-detail',where:'private-query'});
+  assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('private-caller','private-tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+  assert.deepEqual(events,[{category,sqlState:code,databaseTarget:'missing',errorKind:'NeonDbError',failureStage:'execute_bucket'}]);
+  assert.doesNotMatch(JSON.stringify(events),/private-|hostname|credentials/);
+});
+test('additional database codes remain a strict whitelist, not arbitrary five-character strings',()=>{
+  for(const code of ['XX001','0A001','42602','42884','42P03','22024','22022','P0000','XX000 private-secret','xx000']) assert.deepEqual(classifySommelierQuotaFailure({code}),{category:'unknown',sqlState:null});
+});
+for(const [Constructor,errorKind] of [[Error,'Error'],[TypeError,'TypeError'],[RangeError,'RangeError'],[NeonDbError,'NeonDbError']]) test(`quota error kind ${errorKind} uses its runtime class without reading untrusted names or accessors`,async()=>{
+  let accessed=0;
+  const error=new Constructor('private-value');
+  for(const field of ['name','message','cause']) Object.defineProperty(error,field,{get(){accessed++;throw Error('private-accessor')},configurable:true});
+  assert.equal(classifySommelierQuotaErrorKind(error),errorKind);
+  const events=[];
+  assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('caller','tenant'),env,async()=>{throw error},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+  assert.deepEqual(events,[{category:'unknown',sqlState:null,databaseTarget:'missing',errorKind,failureStage:'execute_bucket'}]);
+  assert.equal(accessed,0);
+});
+test('error kind rejects name spoofing and hostile prototype traps',()=>{
+  let accessed=0;
+  assert.equal(classifySommelierQuotaErrorKind({get name(){accessed++;throw Error('private-name')}}),'unknown');
+  assert.equal(classifySommelierQuotaErrorKind({name:'NeonDbError'}),'unknown');
+  assert.equal(classifySommelierQuotaErrorKind(new Proxy({}, {getPrototypeOf(){throw Error('private-prototype')}})),'unknown');
+  assert.equal(accessed,0);
+  for(const value of ['private-secret',null,undefined,1]) assert.equal(classifySommelierQuotaErrorKind(value),'unknown');
+});
+test('quota stage identifies configuration, key derivation, execution and malformed receipt without dimensions',async()=>{
+  const good={scope:'sommelier:stage',key:'private-caller',window:60,limit:2,charge:1};
+  for(const [bucket,configuration,execute,stage,errorKind] of [
+    [good,{...env,RATE_LIMIT_KEY_PEPPER:'private-short'},async()=>{throw Error('should-not-query')},'validate_configuration','Error'],
+    [{...good,scope:'private-invalid scope'},env,async()=>{throw Error('should-not-query')},'derive_bucket_key','Error'],
+    [good,env,async()=>{throw new TypeError('private execution failure')},'execute_bucket','TypeError'],
+    [good,env,async()=>[{hits:'private-invalid',retry_after:1}],'validate_receipt','Error'],
+  ]) {
+    const events=[];
+    assert.deepEqual(await reserveSommelierBuckets([bucket],configuration,execute,event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+    assert.equal(events.length,1);
+    assert.equal(events[0].failureStage,stage);
+    assert.equal(events[0].errorKind,errorKind);
+    assert.doesNotMatch(JSON.stringify(events),/private-|should-not/);
+  }
+});
+test('quota stage resets configuration validation for every bucket',async()=>{
+  const events=[];let queries=0;
+  const buckets=[{scope:'sommelier:stage',key:'caller',window:60,limit:2,charge:1},{scope:'sommelier:stage',key:'caller',window:0,limit:2,charge:1}];
+  assert.deepEqual(await reserveSommelierBuckets(buckets,env,async()=>{queries++;return [{hits:'1',retry_after:1}]},event=>events.push(event)),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+  assert.equal(queries,1);
+  assert.deepEqual(events,[{category:'quota_configuration_invalid',sqlState:null,databaseTarget:'missing',errorKind:'Error',failureStage:'validate_configuration'}]);
+});
+test('a malformed receipt TypeError stays fail closed even if the diagnostic logger throws',async()=>{
+  let queries=0,events=0;
+  assert.deepEqual(await reserveSommelierBuckets(sommelierChatBuckets('caller','tenant'),env,async()=>{queries++;return null},event=>{events++;assert.equal(event.failureStage,'validate_receipt');assert.equal(event.errorKind,'TypeError');throw Error('private-logger')}),{ok:false,reason:'sommelier_quota_unavailable',retryAfter:30});
+  assert.equal(queries,1);assert.equal(events,1);
 });
 
 test('budget reserves weighted charge without persisting nominal dimensions or DDL',async()=>{
