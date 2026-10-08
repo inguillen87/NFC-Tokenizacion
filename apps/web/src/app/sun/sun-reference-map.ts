@@ -4,7 +4,7 @@ import type { StyleSpecification } from "maplibre-gl";
 export function sunReferenceMapStyle(light: boolean): StyleSpecification {
   return {
     version: 8,
-    sources: { geography: { type: "geojson", data: "/sun/valle-secreto/world-reference.geojson", attribution: '© <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noopener noreferrer">Natural Earth</a> · mapa de referencia' } },
+    sources: { geography: { type: "geojson", data: "/sun/valle-secreto/world-reference.geojson", attribution: '<a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noopener noreferrer">Natural Earth</a> · mapa de referencia' } },
     layers: [
       { id: "reference-ocean", type: "background", paint: { "background-color": light ? "#dcebef" : "#102c3a" } },
       { id: "reference-land", type: "fill", source: "geography", paint: { "fill-color": light ? "#f4efe2" : "#273c3c", "fill-outline-color": light ? "#8dada6" : "#637d77" } },

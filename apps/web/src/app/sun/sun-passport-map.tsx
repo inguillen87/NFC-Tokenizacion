@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { Map as MapLibreMap, Marker, Popup, StyleSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap, Popup, StyleSpecification } from "maplibre-gl";
 import { resolveTrustMapSource } from "@product/ui/trust-map-source";
 import styles from "./sun-passport-map.module.css";
 import {configureSunMapWorker} from "../../lib/sun-map-worker";
@@ -161,6 +161,95 @@ function popupContent(kind: "origin" | "tap", point: SunPassportMapLocation) {
   return container;
 }
 
+// Reference geography has one canonical world. MapLibre's smart-wrapped Marker
+// and Popup overlays may choose another copy even when world copies are hidden.
+// These local overlays use only the public projection API and the original point.
+function referenceAnchor(map: MapLibreMap, element: HTMLElement, coordinate: [number, number], anchor: "bottom" | "center") {
+  element.classList.add("maplibregl-marker", `maplibregl-marker-anchor-${anchor}`);
+  const update = () => {
+    const point = map.project(coordinate);
+    element.style.transform = `translate(${point.x}px, ${point.y}px) translate(-50%, ${anchor === "bottom" ? "-100%" : "-50%"})`;
+    if (anchor === "center" && element.getAttribute("aria-hidden") === "true") {
+      const canvas = map.getCanvas();
+      const halfWidth = element.offsetWidth / 2;
+      const halfHeight = element.offsetHeight / 2;
+      // Hide a clipped decorative country label; never move its canonical point
+      // or apply this visibility rule to the interactive evidence pins.
+      element.style.visibility = point.x - halfWidth >= 8 && point.x + halfWidth <= canvas.clientWidth - 8
+        && point.y - halfHeight >= 8 && point.y + halfHeight <= canvas.clientHeight - 8 ? "visible" : "hidden";
+    }
+  };
+  map.getCanvasContainer().append(element);
+  map.on("move", update);
+  map.on("resize", update);
+  update();
+  return { remove: () => {
+    map.off("move", update);
+    map.off("resize", update);
+    element.remove();
+  } };
+}
+
+type ReferenceMapPopup = {
+  open: () => void;
+  remove: () => void;
+  getElement: () => HTMLDivElement;
+  onClose: (listener: () => void) => void;
+};
+
+function referencePopup(map: MapLibreMap, coordinate: [number, number], content: HTMLElement, closeLabel: string): ReferenceMapPopup {
+  const element = document.createElement("div");
+  element.className = "maplibregl-popup maplibregl-popup-anchor-bottom";
+  element.style.zIndex = "3";
+  const tip = document.createElement("div");
+  tip.className = "maplibregl-popup-tip";
+  const body = document.createElement("div");
+  body.className = "maplibregl-popup-content";
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "maplibregl-popup-close-button";
+  closeButton.setAttribute("aria-label", closeLabel);
+  closeButton.textContent = "×";
+  body.append(content, closeButton);
+  element.append(tip, body);
+  let opened = false;
+  let onClose: () => void = () => undefined;
+  const update = () => {
+    const point = map.project(coordinate);
+    const width = map.getCanvas().clientWidth;
+    element.style.maxWidth = `${Math.max(0, Math.min(260, width - 24))}px`;
+    const halfWidth = element.offsetWidth / 2;
+    const x = Math.max(halfWidth + 8, Math.min(width - halfWidth - 8, point.x));
+    const below = point.y - 24 - element.offsetHeight < 8;
+    element.className = `maplibregl-popup maplibregl-popup-anchor-${below ? "top" : "bottom"}`;
+    element.style.transform = `translate(${x}px, ${point.y + (below ? 24 : -24)}px) translate(-50%, ${below ? "0%" : "-100%"})`;
+    tip.style.transform = `translateX(${point.x - x}px)`;
+  };
+  const remove = () => {
+    if (!opened) return;
+    opened = false;
+    map.off("move", update);
+    map.off("resize", update);
+    closeButton.removeEventListener("click", remove);
+    element.remove();
+    onClose();
+  };
+  return {
+    open: () => {
+      if (opened) return;
+      opened = true;
+      map.getContainer().append(element);
+      closeButton.addEventListener("click", remove);
+      map.on("move", update);
+      map.on("resize", update);
+      update();
+    },
+    remove,
+    getElement: () => element,
+    onClose: (listener) => { onClose = listener; },
+  };
+}
+
 function originPresentation(point: SunPassportMapLocation | null) {
   return point?.source === "public_producer_reference"
     ? { eyebrow: "Viña · punto público", meta: "Referencia del sitio oficial" }
@@ -247,8 +336,8 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
   const [controlNotice, setControlNotice] = useState("");
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<Marker[]>([]);
-  const popupsRef = useRef<Record<string, Popup>>({});
+  const markersRef = useRef<Array<{ remove: () => void }>>([]);
+  const popupsRef = useRef<Record<string, Popup | ReferenceMapPopup>>({});
   const fitAllRef = useRef<() => void>(() => undefined);
   const focusRef = useRef<(point: SunPassportMapLocation, trigger: HTMLButtonElement, keyboard: boolean) => void>(() => undefined);
   const closePopupRef = useRef<() => boolean>(() => false);
@@ -282,7 +371,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
     let fullyReady = false;
     let rasterTileLoaded = false;
     let activePopup: {
-      popup: Popup;
+      popup: Popup | ReferenceMapPopup;
       trigger: HTMLButtonElement;
       closeButton: HTMLButtonElement | null;
       onDismiss: (event: Event) => void;
@@ -319,14 +408,14 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           style: cartography === "reference" ? sunReferenceMapStyle(isLightTheme()) : mapStyleForTheme(isLightTheme()),
           center: [points[0].point.lng, points[0].point.lat],
           zoom: points.length === 1 ? 10 : 4,
-          minZoom: cartography === "reference" ? -2 : 2,
+          minZoom: cartography === "reference" ? -3 : 2,
           maxZoom: cartography === "reference" ? 8 : 17,
           renderWorldCopies: cartography !== "reference",
           // The overview needs room outside the world edge for readable pins.
           // Default Mercator constraints can discard fitBounds padding near a pole.
           transformConstrain: cartography === "reference" ? (center, zoom) => ({
             center: new maplibre.LngLat(center.lng, Math.max(-85, Math.min(85, center.lat))),
-            zoom: Math.max(-2, Math.min(8, zoom)),
+            zoom: Math.max(-3, Math.min(8, zoom)),
           }) : undefined,
           maxPitch: 0,
           dragRotate: false,
@@ -419,7 +508,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
             bounds.extend([tap.lng + longitudeDelta, cartography === "reference" ? Math.min(85, north) : north]);
           }
           mapRef.current.fitBounds(bounds, {
-            padding: cartography === "reference" ? { top: 96, bottom: 64, left: 48, right: 96 } : sunMapInsets(container.clientWidth, container.clientHeight),
+            padding: cartography === "reference" ? { top: 96, bottom: 64, left: 48, right: 108 } : sunMapInsets(container.clientWidth, container.clientHeight),
             maxZoom: cartography === "reference" ? 7 : points.length === 1 && tap ? focusZoom(tap) : 10.5,
             duration: animated ? duration(550) : 0,
           });
@@ -432,7 +521,14 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           if (disposed || !popup) return;
           closePopup();
           Object.values(popupsRef.current).forEach((openPopup) => openPopup.remove());
-          popup.setLngLat([point.lng, point.lat]).addTo(map);
+          if ("open" in popup) {
+            // jumpTo preserves the raw reference longitude; animated camera
+            // normalization must not move a public point to an unseen world copy.
+            map.jumpTo({ center: [point.lng, point.lat], zoom: focusZoom(point), padding: { top: 0, bottom: 0, left: 0, right: 0 } });
+            popup.open();
+          } else {
+            popup.setLngLat([point.lng, point.lat]).addTo(map);
+          }
           const closeButton = popup.getElement().querySelector<HTMLButtonElement>(".maplibregl-popup-close-button");
           const onDismiss = (event: Event) => {
             event.preventDefault();
@@ -443,11 +539,13 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           activePopup = { popup, trigger, closeButton, onDismiss };
           // Pointer activation keeps its natural focus; keyboard users enter the detail.
           if (keyboard) closeButton?.focus({ preventScroll: true });
-          map.easeTo({
-            center: [point.lng, point.lat],
-            zoom: Math.min(Math.max(map.getZoom(), 8), focusZoom(point)),
-            duration: duration(350),
-          });
+          if (cartography !== "reference") {
+            map.easeTo({
+              center: [point.lng, point.lat],
+              zoom: Math.min(Math.max(map.getZoom(), 8), focusZoom(point)),
+              duration: duration(350),
+            });
+          }
         };
         focusRef.current = openPopup;
 
@@ -464,21 +562,31 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           element.append(markerCode);
           markerAnchor.append(element);
 
-          const popup = new maplibre.Popup({ offset: 24, closeButton: true, closeOnClick: false, focusAfterOpen: false, maxWidth: "260px" })
-            .setDOMContent(popupContent(kind, point));
+          const popup = cartography === "reference"
+            ? referencePopup(map, [point.lng, point.lat], popupContent(kind, point), locale === "en" ? "Close" : locale === "pt-BR" ? "Fechar" : "Cerrar")
+            : new maplibre.Popup({ offset: 24, closeButton: true, closeOnClick: false, focusAfterOpen: false, maxWidth: "260px" })
+                .setDOMContent(popupContent(kind, point));
           popupsRef.current[point.id] = popup;
-          popup.on("close", () => {
+          const onClose = () => {
             if (activePopup?.popup !== popup) return;
             const session = activePopup;
             activePopup = null;
             session.closeButton?.removeEventListener("click", session.onDismiss, true);
-          });
-          element.addEventListener("click", (event) => openPopup(point, element, event.detail === 0));
+          };
+          if ("onClose" in popup) popup.onClose(onClose);
+          else popup.on("close", onClose);
+          const onMarkerClick = (event: MouseEvent) => openPopup(point, element, event.detail === 0);
+          element.addEventListener("click", onMarkerClick);
 
-          const marker = new maplibre.Marker({ element: markerAnchor, anchor: "bottom" })
-            .setLngLat([point.lng, point.lat])
-            .addTo(map);
-          markersRef.current.push(marker);
+          const marker = cartography === "reference"
+            ? referenceAnchor(map, markerAnchor, [point.lng, point.lat], "bottom")
+            : new maplibre.Marker({ element: markerAnchor, anchor: "bottom" })
+                .setLngLat([point.lng, point.lat])
+                .addTo(map);
+          markersRef.current.push(cartography === "reference" ? { remove: () => {
+            element.removeEventListener("click", onMarkerClick);
+            marker.remove();
+          } } : marker);
         });
 
         if (cartography === "reference") {
@@ -488,7 +596,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
             element.className = styles.countryLabel;
             element.textContent = place.label;
             element.setAttribute("aria-hidden", "true");
-            markersRef.current.push(new maplibre.Marker({ element }).setLngLat([place.lng, place.lat]).addTo(map));
+            markersRef.current.push(referenceAnchor(map, element, [place.lng, place.lat], "center"));
           }
         }
 
