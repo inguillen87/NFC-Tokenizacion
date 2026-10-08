@@ -172,6 +172,31 @@ test("home destinations exist, wallet/catalog stay accessible, and no demo/check
   assert.doesNotMatch(clientSource, /window\.ethereum|NEXT_PUBLIC_ME_PORTAL_COMMERCE_DEMO_ENABLED|setTrades|passportReadiness|Math\.random|setInterval|setTimeout|checkout|NFTs|P2P/);
 });
 
+test("home cards preserve their reported destinations and load only when selected", () => {
+  const observed = [];
+  const { MePortalInteractiveClient: Home } = compile(clientSource, {
+    "./consumer-home-model": model,
+    "./consumer-home.module.css": { __esModule: true, default: styles },
+    "next/link": { __esModule: true, default: ({ children, prefetch, ...props }) => {
+      observed.push({ href: props.href, prefetch });
+      return React.createElement("a", props, children);
+    } },
+    "next/image": { __esModule: true, default: ({ unoptimized, sizes, onError, ...props }) => React.createElement("img", props) },
+    "next/navigation": { useRouter: () => ({ refresh: () => {} }) },
+  });
+  for (const payloads of [empty(), { ...empty(), products: list([{ product_name: "Producto de ensayo", latest_tap_event_id: "9007199254740993" }]), taps: list([{ tap_event_id: "703" }]), brands: list([{ name: "Marca de ensayo", slug: "marca-qa" }]) }]) {
+    observed.length = 0;
+    const html = renderToStaticMarkup(React.createElement(Home, { model: model.buildConsumerHomeModel(payloads) }));
+    assert.ok(observed.length > 0 && observed.every(link => link.prefetch === false));
+    for (const path of ["/me/products", "/me/taps", "/me/rewards", "/me/marketplace", "/me/privacy", "/me/security", "/me/wallet"]) assert.ok(observed.some(link => link.href === path), path);
+    if (payloads.products.items.length) {
+      assert.match(html, /href="\/me\/taps\/9007199254740993"/);
+      assert.match(html, /href="\/me\/taps\/703"/);
+      assert.match(html, /href="\/me\/marketplace\?tenant=marca-qa"/);
+    }
+  }
+});
+
 test("server authenticates before starting its four parallel reads and preserves the continuation query", async () => {
   let authorize;
   const session = new Promise((resolve) => { authorize = resolve; });

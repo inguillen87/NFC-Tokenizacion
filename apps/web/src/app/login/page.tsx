@@ -36,7 +36,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
       <div className="web-auth-backdrop pointer-events-none absolute inset-0" />
       <div className={`relative z-10 mx-auto flex min-h-screen w-full max-w-[980px] flex-col gap-4 px-3 sm:px-6 ${isConsumerAccess ? styles.consumerShell : "justify-center py-8"}`}>
         <div className="flex items-center justify-between gap-3">
-          <BackLink />
+          <BackLink prefetch={false} />
           <div className="web-auth-theme-control flex items-center gap-2">
             <span className="hidden text-xs font-semibold text-slate-400 sm:inline">Apariencia</span>
             <ThemeToggle initialTheme={initialTheme} locale={locale} />
@@ -79,7 +79,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
                     <li>Las condiciones de la marca para cada servicio.</li>
                   </ul>
                 </details>
-                <Link href="/login" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-cyan-200 hover:text-cyan-100">
+                <Link href="/login" prefetch={false} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-cyan-200 hover:text-cyan-100">
                   Cambiar tipo de acceso <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </aside>
@@ -112,6 +112,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
 
                 <Link
                   href={consumerLoginHref}
+                  prefetch={false}
                   className="web-auth-choice group rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-5 transition hover:-translate-y-0.5 hover:border-emerald-200/60"
                 >
                   <span className="grid h-11 w-11 place-items-center rounded-2xl border border-emerald-300/25 bg-emerald-400/10 text-emerald-200">

@@ -1,6 +1,54 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ts from "typescript";
 import { consumerAuthStartPayload, normalizeConsumerAuthReturnPath } from "../src/app/login/consumer-login-continuation.ts";
+
+test("consumer login disables its automatic return and access-choice prefetch while BackLink preserves other callers", async () => {
+  const require = createRequire(import.meta.url), observed = [];
+  const link = { __esModule: true, default: ({ children, prefetch, ...props }) => {
+    observed.push({ href: props.href, prefetch });
+    return React.createElement("a", props, children);
+  } };
+  const compile = (path, overrides) => {
+    const source = readFileSync(new URL(path, import.meta.url), "utf8");
+    const { outputText } = ts.transpileModule(source, { fileName: path, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } });
+    const loaded = { exports: {} };
+    new Function("require", "module", "exports", outputText)(name => Object.hasOwn(overrides, name) ? overrides[name] : require(name), loaded, loaded.exports);
+    return loaded.exports;
+  };
+  const { BackLink } = compile("../src/components/back-link.tsx", { "next/link": link });
+  for (const props of [{}, { href: "/docs", prefetch: false }, { href: "/docs", prefetch: true }]) {
+    observed.length = 0;
+    renderToStaticMarkup(React.createElement(BackLink, props));
+    assert.deepEqual(observed, [{ href: props.href ?? "/", prefetch: props.prefetch }]);
+  }
+  const Page = compile("../src/app/login/page.tsx", {
+    "next/link": link,
+    "next/headers": { cookies: async () => ({ get: () => undefined }) },
+    "@product/config": { productUrls: { app: "https://dashboard.example.test" } },
+    "@product/config/safe-return-path": { normalizeSafeReturnPath: value => value === "/me" ? value : "/me" },
+    "@product/ui": { Card: ({ children }) => React.createElement("div", null, children), ThemeToggle: () => null },
+    "@product/ui/theme-preference": { THEME_PREFERENCE_VERSION_COOKIE: "theme-version", resolveThemePreference: () => "light" },
+    "../../components/back-link": { BackLink },
+    "../../components/brand-home-link": { BrandHomeLink: () => null },
+    "../../lib/locale": { getWebI18n: async () => ({ locale: "es-AR" }) },
+    "./consumer-login-panel": { ConsumerLoginPanel: () => null },
+    "./consumer-login.module.css": { __esModule: true, default: new Proxy({}, { get: (_, name) => String(name) }) },
+  }).default;
+  for (const params of [{ consumer: "1", next: "/me" }, {}]) {
+    observed.length = 0;
+    renderToStaticMarkup(await Page({ searchParams: Promise.resolve(params) }));
+    const controlled = observed.filter(link => link.href === "/" || link.href === "/login" || link.href === "/login?consumer=1&next=%2Fme");
+    assert.equal(controlled.length, 2);
+    assert.ok(controlled.every(link => link.prefetch === false));
+    assert.deepEqual(controlled.map(link => link.href), ["/", params.consumer ? "/login" : "/login?consumer=1&next=%2Fme"]);
+    if (!params.consumer) assert.ok(observed.find(link => link.href === "/docs").prefetch === undefined, "unrelated access choices preserve their existing default");
+  }
+});
 
 test("email continuation preserves product selection without transmitting TAP or device credentials", () => {
   const next = "/me/products?tenant=balmec&bid=RA-2407&eventId=9007199254740993&fromTap=1&action=products&focus=9007199254740993&freshToken=private-capability&uid=tag-secret&mac=nfc-signature&ctr=000001&picc_data=private&lat=-32.9&lng=-68.8&contact=private%40example.test#history";

@@ -86,6 +86,11 @@ const frames=['es-AR','en','pt-BR'].flatMap(locale=>['light','dark'].flatMap(the
 const scriptlessFrames=['light','dark'].map(theme=>({locale:'es-AR',theme,width:390,mode:'demo',javaScriptEnabled:false}));
 const labels={'es-AR':'Mi cuenta',en:'My account','pt-BR':'Minha conta'};
 const accountPath='/login?consumer=1&next=%2Fme';
+const knownRoutePaths=new Set(['/','/sun','/me','/login','/me/products','/me/taps','/me/rewards','/me/passport','/me/brands','/me/wallet','/me/marketplace','/me/experiences','/me/sommelier','/me/cork-analyzer','/me/privacy','/me/security']);
+function safeRequestEvidence(request){
+ const url=new URL(request.url()),headers=request.headers();
+ return{path:url.origin===base&&knownRoutePaths.has(url.pathname)?url.pathname:'[redacted]',rsc:headers.rsc==='1',prefetch:Boolean(headers['next-router-prefetch']),segment:Boolean(headers['next-router-segment-prefetch'])};
+}
 function sunPath(entry){return entry.mode==='demo'?`/sun?demo=1&lang=${entry.locale}`:`/sun?snapshot=qa-closed&trace=synthetic&access=invalid&lang=${entry.locale}`;}
 async function open(entry,javaScriptEnabled=true){
  const name=`${entry.mode}-${entry.width}-${entry.theme}-${entry.locale}${javaScriptEnabled?'':'-no-js'}`;
@@ -110,11 +115,11 @@ async function open(entry,javaScriptEnabled=true){
  })()));
  const page=await context.newPage();page.setDefaultTimeout(15000);
  page.on('request',request=>{const url=new URL(request.url());if(url.pathname==='/me'||url.pathname==='/login'){
-  const row={view:name,phase:state.phase,path:url.pathname,method:request.method(),resourceType:request.resourceType(),navigation:request.isNavigationRequest(),rsc:request.headers().rsc==='1'};state.requests.push(row);report.accountRequests.push(row);
+  const row={view:name,phase:state.phase,method:request.method(),resourceType:request.resourceType(),navigation:request.isNavigationRequest(),...safeRequestEvidence(request)};state.requests.push(row);report.accountRequests.push(row);
  }});
  // Every failed request is fatal, including cancellation during a redirect or
  // context teardown. This native loopback suite has no telemetry exclusions.
- page.on('requestfailed',request=>report.errors.push({view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing}));
+ page.on('requestfailed',request=>report.errors.push({view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing,...safeRequestEvidence(request)}));
  page.on('pageerror',()=>report.errors.push({view:name,reason:'page_error'}));page.on('console',event=>{if(event.type()==='error')report.errors.push({view:name,reason:'console_error'});});
  return{context,page,name,state,entry};
 }
@@ -125,14 +130,16 @@ async function navigateAccount(current,kind,keyboard=false){
  const account=page.getByTestId('sun-account-link');
  if(keyboard)await account.focus();
  const[first]=await Promise.all([firstRequest,keyboard?account.press('Enter'):account.click()]);
- const observation={view:name,kind,path:new URL(first.url()).pathname,method:first.method(),resourceType:first.resourceType(),navigation:first.isNavigationRequest(),rsc:first.headers().rsc==='1',referrerSuppressed:!first.headers().referer};
+ const observation={view:name,kind,method:first.method(),resourceType:first.resourceType(),navigation:first.isNavigationRequest(),referrerSuppressed:!first.headers().referer,...safeRequestEvidence(first)};
  report.documentNavigations.push(observation);
- check(observation.path==='/me'&&observation.method==='GET'&&observation.resourceType==='document'&&observation.navigation&&!observation.rsc&&observation.referrerSuppressed&&new URL(first.url()).search==='',`${name}/${kind}: first /me is an exact document GET without RSC or referrer`);
+ check(observation.path==='/me'&&observation.method==='GET'&&observation.resourceType==='document'&&observation.navigation&&!observation.rsc&&!observation.prefetch&&!observation.segment&&observation.referrerSuppressed&&new URL(first.url()).search==='',`${name}/${kind}: first /me is an exact document GET without RSC, prefetch or referrer`);
  return start;
 }
-function assertNoAccountRsc(current,start,kind){
- const requests=current.state.requests.slice(start).filter(row=>row.path==='/me');
- check(requests.length>=1&&requests.every(row=>row.navigation&&row.resourceType==='document'&&!row.rsc),`${current.name}/${kind}: account entry never fetches /me through RSC`);
+function assertNoAutomaticAccountPrefetch(current,start,kind){
+ const requests=current.state.requests.slice(start);
+ // Entry is checked at its first /me request above. A later user-triggered
+ // refresh may use RSC; only automatic account/login prefetch is prohibited.
+ check(requests.length>=1&&requests.every(row=>!row.prefetch&&!row.segment),`${current.name}/${kind}: settled account access has no automatic /me or /login prefetch`);
 }
 async function assertLogin(current,kind){
  const{page,name,context}=current;
@@ -175,7 +182,7 @@ try{
   if(entry.width===390&&entry.locale==='es-AR'){await account.evaluate(element=>element.blur());await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:join(output,`${name}.png`),fullPage:false});}
   // Anonymous account navigation is an ordinary /me GET. Next enforces the
   // existing consumer continuation; no OTP request, save or association here.
-  const anonymousStart=await navigateAccount(current,'anonymous',true);await assertLogin(current,'anonymous');assertNoAccountRsc(current,anonymousStart,'anonymous');
+  const anonymousStart=await navigateAccount(current,'anonymous',true);await assertLogin(current,'anonymous');assertNoAutomaticAccountPrefetch(current,anonymousStart,'anonymous');
   report.cases.push({view:name,kind:'anonymous',passed:true,completed:true,keyboard:true});
   if(entry.mode==='demo'&&entry.width===390){
    state.phase='back';await page.goBack({waitUntil:'networkidle'});await page.waitForURL(base+path);await page.getByTestId('sun-account-link').waitFor();await settle(page);
@@ -183,13 +190,13 @@ try{
    report.cases.push({view:name,kind:'back',passed:true,completed:true,physicalFreshnessCertified:false});
   }
   await context.addCookies([{name:'sun_account_qa',value:'local',url:base,httpOnly:true,sameSite:'Lax'}]);
-  state.phase='sun-readiness';await page.goto(base+path,{waitUntil:'networkidle'});const authenticatedStart=await navigateAccount(current,'authenticated');await page.waitForURL(base+'/me');await page.locator('#consumer-portal-content').waitFor();await settle(page);assertNoAccountRsc(current,authenticatedStart,'authenticated');
+  state.phase='sun-readiness';await page.goto(base+path,{waitUntil:'networkidle'});const authenticatedStart=await navigateAccount(current,'authenticated');await page.waitForURL(base+'/me');await page.locator('#consumer-portal-content').waitFor();await settle(page);assertNoAutomaticAccountPrefetch(current,authenticatedStart,'authenticated');
   check((await page.locator('#consumer-portal-content').innerText()).includes('Cuenta sintética SUN'),`${name}: explicit synthetic account opens the actual portal without enrollment`);
   check((await context.cookies()).every(cookie=>['theme','nexid_theme_version','locale','sun_account_qa'].includes(cookie.name)),`${name}: only the explicit synthetic session and appearance cookies exist`);
   report.cases.push({view:name,kind:'authenticated',passed:true,completed:true,synthetic:true});
   if(entry.width<=390){
    await context.addCookies([{name:'sun_account_qa',value:'unavailable',url:base,httpOnly:true,sameSite:'Lax'}]);state.phase='sun-readiness';await page.goto(base+path,{waitUntil:'networkidle'});
-   const unavailableStart=await navigateAccount(current,'unavailable');await page.waitForURL(base+'/me');await page.getByTestId('consumer-portal-unavailable').waitFor();await settle(page);assertNoAccountRsc(current,unavailableStart,'unavailable');
+   const unavailableStart=await navigateAccount(current,'unavailable');await page.waitForURL(base+'/me');await page.getByTestId('consumer-portal-unavailable').waitFor();await settle(page);assertNoAutomaticAccountPrefetch(current,unavailableStart,'unavailable');
    check(page.url()===base+'/me'&&await page.getByRole('heading',{name:'No pudimos abrir tu espacio',exact:true}).count()===1&&await page.getByRole('button',{name:'Reintentar',exact:true}).count()===1,`${name}: an unavailable session preserves recovery without forcing a login`);
    check(await page.locator('#consumer-portal-content').count()===0,`${name}: unavailable sessions do not show private account content`);
    report.cases.push({view:name,kind:'unavailable',passed:true,completed:true,synthetic:true});
@@ -200,12 +207,12 @@ try{
  for(const entry of scriptlessFrames){
   const current=await open(entry,false),{page,name}=current;await page.goto(base+sunPath(entry),{waitUntil:'networkidle'});const account=page.getByTestId('sun-account-link');await account.waitFor();
   check(await account.getAttribute('href')==='/me'&&await account.innerText()===labels[entry.locale],`${name}: public account anchor renders without JavaScript`);
-  const start=await navigateAccount(current,'scriptless');await assertLogin(current,'scriptless');assertNoAccountRsc(current,start,'scriptless');
+  const start=await navigateAccount(current,'scriptless');await assertLogin(current,'scriptless');assertNoAutomaticAccountPrefetch(current,start,'scriptless');
   report.views.push({...entry,name,javaScriptEnabled:false,accessibilityScope:'navigation and server-rendered form; no JavaScript accessibility scan'});report.cases.push({view:name,kind:'scriptless',passed:true,completed:true,otpWithoutJavaScriptCertified:false});await finish(current);
  }
  check(report.frames.length===48,'All 48 real/demo viewport/theme/locale frames completed');check(report.views.length===frames.length+scriptlessFrames.length,'All responsive and scriptless views completed');
  check(report.cases.filter(item=>item.kind==='anonymous').length===frames.length&&report.cases.filter(item=>item.kind==='authenticated').length===frames.length&&report.cases.filter(item=>item.kind==='unavailable').length===frames.filter(item=>item.width<=390).length&&report.cases.filter(item=>item.kind==='back').length===frames.filter(item=>item.width===390&&item.mode==='demo').length&&report.cases.filter(item=>item.kind==='scriptless').length===scriptlessFrames.length,'Every required account scenario completed');
- check(report.documentNavigations.length===frames.length*2+frames.filter(item=>item.width<=390).length+scriptlessFrames.length&&report.documentNavigations.every(item=>item.path==='/me'&&item.navigation&&item.resourceType==='document'&&!item.rsc&&item.referrerSuppressed),'All account entries began as documents without a SUN referrer');
+ check(report.documentNavigations.length===frames.length*2+frames.filter(item=>item.width<=390).length+scriptlessFrames.length&&report.documentNavigations.every(item=>item.path==='/me'&&item.navigation&&item.resourceType==='document'&&!item.rsc&&!item.prefetch&&!item.segment&&item.referrerSuppressed),'All account entries began as documents without prefetch or a SUN referrer');
  check(report.serverReads.length>0&&report.serverReads.every(row=>row.scenario==='authenticated'||row.path==='/consumer/session'),'Only confirmed synthetic sessions read private consumer resources');
  check(report.errors.length===0,'Zero application, route, request and console errors');check(report.blockedWrites.length===0&&report.customerWrites===0,'Zero write attempts');check(report.blockedExternal.length===0,'Zero external requests');check(report.blockedCapabilities.length===0,'Zero capability or contact transfers');check(report.geolocationCalls===0,'Zero GPS calls');report.status='passed';
 }catch(error){report.status='failed';report.failureReason='bounded_sun_account_qa_failed';report.failureCategory=exceptionCategory(error);if(cleanupStage)report.cleanupFailure={stage:cleanupStage,category:report.failureCategory};}
