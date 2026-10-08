@@ -115,10 +115,10 @@ const renderHeader = (locale, props) => renderSunComponent(locale, props);
 
 test("SUN loading provides localized documentary account access outside its busy state only through noscript", () => {
   const expected = [
-    ["es-AR", "Mi cuenta", "Tu cuenta sigue disponible", "Activá JavaScript", "Abriendo el pasaporte"],
-    ["en", "My account", "Your account is still available", "Enable JavaScript", "Opening the passport"],
-    ["pt-BR", "Minha conta", "Sua conta continua disponível", "Ative o JavaScript", "Abrindo o passaporte"],
-    ["unknown", "Mi cuenta", "Tu cuenta sigue disponible", "Activá JavaScript", "Abriendo el pasaporte"],
+    ["es-AR", "Mi cuenta", "Activá JavaScript para continuar", "El pasaporte y el acceso a tu cuenta necesitan JavaScript", "Abriendo el pasaporte"],
+    ["en", "My account", "Enable JavaScript to continue", "The passport and account sign-in require JavaScript", "Opening the passport"],
+    ["pt-BR", "Minha conta", "Ative o JavaScript para continuar", "O passaporte e o acesso à sua conta precisam de JavaScript", "Abrindo o passaporte"],
+    ["unknown", "Mi cuenta", "Activá JavaScript para continuar", "El pasaporte y el acceso a tu cuenta necesitan JavaScript", "Abriendo el pasaporte"],
   ];
   for (const [locale, label, title, explanation, loading] of expected) {
     const html = renderSunComponent(locale, { locale }, new URL("../src/app/sun/sun-loading-view.tsx", import.meta.url), "SunLoadingView");
@@ -139,6 +139,27 @@ test("SUN loading provides localized documentary account access outside its busy
     assert.doesNotMatch(fallback, /aria-busy|href="\/me\?|<script|<form|onClick|eventId|freshToken|tap-handoff/);
     assert.equal((html.match(/data-testid="sun-nojs-account-link"/g) || []).length, 1);
   }
+});
+
+test("account loading explains JavaScript requirement in each locale without an OTP promise or a documentary navigation loop", async () => {
+  for (const [locale, title, loading] of [["es-AR", "Tu cuenta necesita JavaScript", "Abriendo tu cuenta"], ["en", "Your account requires JavaScript", "Opening your account"], ["pt-BR", "Sua conta precisa de JavaScript", "Abrindo sua conta"]]) {
+    const html = renderSunComponent(locale, { locale, mode: "account" }, new URL("../src/app/sun/sun-loading-view.tsx", import.meta.url), "SunLoadingView");
+    const main = html.match(/<main\b[^>]*>[\s\S]*?<\/main>/)?.[0];
+    const fallback = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+    assert.ok(main && fallback && main.includes(loading));
+    assert.match(main, /data-testid="account-loading" aria-busy="true"/);
+    assert.match(main, /role="status"/);
+    assert.ok(html.indexOf("</main>") < html.indexOf("<noscript>"));
+    assert.ok(fallback.includes(title));
+    assert.match(fallback, /data-testid="account-nojs-fallback"/);
+    assert.match(fallback, /\[data-testid=account-loading\] \{ display: none !important; \}/);
+    assert.doesNotMatch(fallback, /<a\b|<button\b|<form\b|<input\b|aria-busy|sun-nojs-account-link|href=|onClick|eventId|freshToken/);
+    assert.doesNotMatch(main, /sun-loading-product-placeholder|NFC|Ubicación|Location|Localização/);
+  }
+  const loader = await readFile(new URL("../src/app/login/loading.tsx", import.meta.url), "utf8");
+  assert.match(loader, /getWebI18n\(\)/);
+  assert.match(loader, /<SunLoadingView locale=\{locale\} mode="account"\s*\/>/);
+  assert.doesNotMatch(loader, /cookies\(|fetch\(|redirect\(|auth|session|token|code|contact/);
 });
 
 test("SUN no-script account action has a touch target, keyboard focus and readable solid colors in both themes", async () => {

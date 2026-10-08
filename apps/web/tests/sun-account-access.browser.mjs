@@ -7,6 +7,7 @@ import {createServer} from 'node:http';
 import {mkdir,mkdtemp,readFile,readdir,writeFile,realpath,lstat} from 'node:fs/promises';
 import {join,relative,resolve,sep,isAbsolute} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {disabledScriptFailureDecision,htmlCspMetaStatus} from './browser/disabled-script-policy.mjs';
 
 const web=fileURLToPath(new URL('../',import.meta.url)),repo=resolve(web,'../..');
 assert.equal(process.env.QA_SUN_ACCOUNT_AUTHORIZED,'1','Explicit bounded local SUN account QA authorization required');
@@ -21,9 +22,14 @@ async function binding(){
  assert.equal(observedSource,process.env.QA_SOURCE);assert.ok(sourceWorktreeClean,'Source-bound QA requires a clean worktree');
  const paths=git(['ls-files','-z']).split('\0').filter(Boolean).sort();
  const sourceRows=await Promise.all(paths.map(async path=>({path,sha256:digest(await readFile(join(repo,path)))})));
- const compiled=[join(web,'.next/BUILD_ID'),...['sun','me','login'].map(route=>join(web,`.next/server/app/${route}/page.js`)),...(await files(join(web,'.next/static'))).filter(path=>/\.(js|css)$/.test(path))].sort();
+ const manifestBytes=await readFile(join(web,'.next/build-manifest.json'));
+ const rootMainFiles=JSON.parse(manifestBytes).rootMainFiles;
+ assert.ok(Array.isArray(rootMainFiles)&&rootMainFiles.length&&new Set(rootMainFiles).size===rootMainFiles.length&&rootMainFiles.every(file=>typeof file==='string'&&/^static\/chunks\/[A-Za-z0-9_.-]+\.js$/.test(file)&&!file.includes('..')),'Compiled root-main preload catalog must be exact and contained');
+ const compiled=[join(web,'.next/BUILD_ID'),join(web,'.next/build-manifest.json'),...['sun','me','login'].map(route=>join(web,`.next/server/app/${route}/page.js`)),...(await files(join(web,'.next/static'))).filter(path=>/\.(js|css)$/.test(path))].sort();
  const hashes=Object.fromEntries(await Promise.all(compiled.map(async path=>{const key=relative(repo,path).split(sep).join('/');assert.ok(key.startsWith('apps/web/.next/')&&!key.includes('../'));return[key,digest(await readFile(path))];})));
- return{qaSource:process.env.QA_SOURCE,observedSource,observedTree,sourceWorktreeClean,sourceClaimBound:true,buildId:(await readFile(join(web,'.next/BUILD_ID'),'utf8')).trim(),sourceRows,sourceManifestSha256:digest(JSON.stringify(sourceRows)),hashes};
+ const rootMainPreloads=rootMainFiles.map(file=>({path:'/_next/'+file,sha256:hashes['apps/web/.next/'+file]}));
+ assert.ok(rootMainPreloads.every(row=>/^[a-f0-9]{64}$/.test(row.sha256)),'Every root-main preload has physical compiled bytes');
+ return{qaSource:process.env.QA_SOURCE,observedSource,observedTree,sourceWorktreeClean,sourceClaimBound:true,buildId:(await readFile(join(web,'.next/BUILD_ID'),'utf8')).trim(),sourceRows,sourceManifestSha256:digest(JSON.stringify(sourceRows)),hashes,buildManifestSha256:digest(manifestBytes),rootMainFiles,rootMainPreloads};
 }
 const outputParent=resolve(process.env.QA_OUTPUT||join(repo,'artifacts/tap-access-simplification-20261006/sun-account'));
 function within(root,path){const child=relative(root,path);return child===''||(!isAbsolute(child)&&child!=='..'&&!child.startsWith('..'+sep));}
@@ -37,9 +43,10 @@ let ancestor=outputParent;
 while(true){try{const entry=await lstat(ancestor);assert.ok(entry.isDirectory()&&!entry.isSymbolicLink(),'Output ancestors must be real directories');assert.equal(resolve(await realpath(ancestor)),resolve(ancestor),'Output ancestors cannot traverse a symlink');break;}catch(error){if(error.code!=='ENOENT')throw error;const parent=resolve(ancestor,'..');assert.notEqual(parent,ancestor);ancestor=parent;}}
 for(let current=ancestor;current!==resolve(current,'..');current=resolve(current,'..')){const entry=await lstat(current);assert.ok(!entry.isSymbolicLink(),'Output ancestors cannot contain a symlink or junction');}
 await mkdir(outputParent,{recursive:true});const output=await mkdtemp(join(outputParent,'run-'));
-const report={schemaVersion:'nexid.sun-account-access-next-qa/v2',status:'failed',viewOrder:'scriptless-first',localOnly:true,realProductionBuild:true,actualNextRouter:true,syntheticSunContract:true,syntheticConsumerAccount:true,realAuthenticationCertified:false,otpDeliveryCertified:false,physicalTapMeasured:false,customerWrites:0,providerMutations:0,checks:[],frames:[],views:[],cases:[],documentNavigations:[],accountRequests:[],serverReads:[],errors:[],blockedWrites:[],blockedExternal:[],blockedCapabilities:[],geolocationCalls:0,contactSeeded:false,capabilityTransferred:false};
+const report={schemaVersion:'nexid.sun-account-access-next-qa/v3',status:'failed',viewOrder:'scriptless-first',localOnly:true,realProductionBuild:true,actualNextRouter:true,syntheticSunContract:true,syntheticConsumerAccount:true,realAuthenticationCertified:false,otpDeliveryCertified:false,physicalTapMeasured:false,customerWrites:0,providerMutations:0,checks:[],frames:[],views:[],cases:[],documentNavigations:[],accountRequests:[],serverReads:[],errors:[],requestFailures:[],expectedDisabledScriptBlocks:[],documentPolicies:[],blockedWrites:[],blockedExternal:[],blockedCapabilities:[],geolocationCalls:0,contactSeeded:false,capabilityTransferred:false};
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 const snapshotFixture=join(web,'tests/sun-mobile-local-fetch.mjs');
+const disabledScriptPolicy=join(web,'tests/browser/disabled-script-policy.mjs');
 const preload=join(output,'local-fetch.mjs');
 // The existing SUN fixture alone supplies the snapshot. Only explicit local
 // consumer GETs are added. No capability, account enrollment or business POST.
@@ -66,10 +73,10 @@ globalThis.fetch=async function(input,init){
 };
 `;
 await writeFile(preload,preloadSource,{flag:'wx'});
-report.helperHashesBefore={browser:digest(await readFile(fileURLToPath(import.meta.url))),snapshotFixture:digest(await readFile(snapshotFixture)),preload:digest(preloadSource)};
+report.helperHashesBefore={browser:digest(await readFile(fileURLToPath(import.meta.url))),snapshotFixture:digest(await readFile(snapshotFixture)),preload:digest(preloadSource),disabledScriptPolicy:digest(await readFile(disabledScriptPolicy))};
 const axe=await readFile(process.env.AXE_MODULE_PATH,'utf8');
 const photo='<svg xmlns="http://www.w3.org/2000/svg" width="320" height="480" viewBox="0 0 320 480"><rect width="320" height="480" fill="#faf7ed"/><rect x="105" y="60" width="110" height="355" rx="24" fill="#233c32"/><text x="160" y="230" text-anchor="middle" fill="white">ENSAYO SUN</text></svg>';
-let browser=null,next=null,base='',serverFailed=false;const contexts=new Set(),pending=new Set();
+let browser=null,next=null,base='',serverFailed=false;const contexts=new Set(),contextStates=new WeakMap(),pending=new Set();
 let cleanupStage=null;
 function exceptionCategory(error){
  try{
@@ -89,10 +96,12 @@ const accountPath='/login?consumer=1&next=%2Fme';
 const knownRoutePaths=new Set(['/','/sun','/me','/login','/me/products','/me/taps','/me/rewards','/me/passport','/me/brands','/me/wallet','/me/marketplace','/me/experiences','/me/sommelier','/me/cork-analyzer','/me/privacy','/me/security']);
 function safeRequestEvidence(request){
  const url=new URL(request.url()),headers=request.headers();
- return{path:url.origin===base&&knownRoutePaths.has(url.pathname)?url.pathname:'[redacted]',rsc:headers.rsc==='1',prefetch:Boolean(headers['next-router-prefetch']),segment:Boolean(headers['next-router-segment-prefetch'])};
+ const knownPreload=report.entryBindingBefore?.rootMainPreloads?.some(row=>row.path===url.pathname);
+ return{path:url.origin===base&&(knownRoutePaths.has(url.pathname)||knownPreload)?url.pathname:'[redacted]',rsc:headers.rsc==='1',prefetch:Boolean(headers['next-router-prefetch']),segment:Boolean(headers['next-router-segment-prefetch'])};
 }
 function safeNetworkError(request){
  const value=request.failure()?.errorText;
+ if(value==='csp')return'CSP';
  return typeof value==='string'?value.match(/^net::(ERR_[A-Z0-9_]{1,80})$/)?.[1]||'UNKNOWN':'UNKNOWN';
 }
 function sunPath(entry){return entry.mode==='demo'?`/sun?demo=1&lang=${entry.locale}`:`/sun?snapshot=qa-closed&trace=synthetic&access=invalid&lang=${entry.locale}`;}
@@ -102,7 +111,8 @@ async function open(entry,javaScriptEnabled=true){
  await context.addCookies([{name:'theme',value:entry.theme,url:base},{name:'nexid_theme_version',value:'white-first-v2',url:base},{name:'locale',value:entry.locale,url:base}]);
  await context.exposeBinding('__sunAccountGeo',()=>{report.geolocationCalls++;});
  await context.addInitScript(()=>{Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__sunAccountGeo();throw Error('qa_location_blocked');},watchPosition(){void window.__sunAccountGeo();throw Error('qa_location_blocked');}}});});
- const state={closing:false,phase:'sun-readiness',requests:[]};
+ const state={closing:false,phase:'sun-readiness',requests:[],documentSequence:0,currentDocument:null,documentSlots:new Set(),requestDocuments:new WeakMap()};
+ contextStates.set(context,state);
  await context.route('**/*',route=>track((async()=>{try{
   const request=route.request(),url=new URL(request.url());
   if(!['GET','HEAD'].includes(request.method())){report.customerWrites++;report.blockedWrites.push({view:name,method:request.method(),path:url.pathname});return route.abort('failed');}
@@ -118,12 +128,44 @@ async function open(entry,javaScriptEnabled=true){
  }catch{report.errors.push({view:name,reason:'route_failed'});try{await route.abort('failed');}catch{report.errors.push({view:name,reason:'route_abort_failed'});}}
  })()));
  const page=await context.newPage();page.setDefaultTimeout(15000);
- page.on('request',request=>{const url=new URL(request.url());if(url.pathname==='/me'||url.pathname==='/login'){
+ page.on('request',request=>{const url=new URL(request.url());
+  if(!javaScriptEnabled&&request.isNavigationRequest()&&request.resourceType()==='document'&&request.frame()===page.mainFrame()){
+   if(state.currentDocument&&!state.currentDocument.responseObserved)state.currentDocument.resolve(null);
+   const slot={id:`${name}/doc-${++state.documentSequence}`,sequence:state.documentSequence,request,phase:state.phase,responseObserved:false,policy:null,resolve:null,promise:null};
+   slot.promise=new Promise(done=>{slot.resolve=done;});state.currentDocument=slot;state.documentSlots.add(slot);
+  }
+  state.requestDocuments.set(request,state.currentDocument);
+  if(url.pathname==='/me'||url.pathname==='/login'){
   const row={view:name,phase:state.phase,method:request.method(),resourceType:request.resourceType(),navigation:request.isNavigationRequest(),...safeRequestEvidence(request)};state.requests.push(row);report.accountRequests.push(row);
  }});
- // Every failed request is fatal, including cancellation during a redirect or
- // context teardown. This native loopback suite has no telemetry exclusions.
- page.on('requestfailed',request=>report.errors.push({view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',errorEnum:safeNetworkError(request),resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing,...safeRequestEvidence(request)}));
+ page.on('response',response=>{
+  const request=response.request(),slot=state.requestDocuments.get(request);
+  if(javaScriptEnabled||!slot||slot.request!==request)return;
+  slot.responseObserved=true;
+  void track((async()=>{try{
+   const url=new URL(request.url()),headers=await response.allHeaders(),html=Boolean(headers['content-type']?.toLowerCase().includes('text/html'));
+   const body=html?await response.text():null;
+   const policy={id:slot.id,view:name,sequence:slot.sequence,phase:slot.phase,documentSha256:digest(request.url()),path:url.origin===base&&knownRoutePaths.has(url.pathname)?url.pathname:'[redacted]',originOwned:url.origin===base,status:response.status(),html,cspPresent:Object.hasOwn(headers,'content-security-policy'),cspReportOnlyPresent:Object.hasOwn(headers,'content-security-policy-report-only'),cspMetaPresent:htmlCspMetaStatus(body),htmlSha256:typeof body==='string'?digest(body):null};
+   slot.policy=policy;report.documentPolicies.push(policy);slot.resolve(policy);
+  }catch{slot.resolve(null);report.errors.push({view:name,reason:'document_policy_observation_failed'});}})());
+ });
+ // Every failure stays in the ledger. Only the exact, hash-bound intentional
+ // JS-disabled preload control can be expected; all aborts remain fatal.
+ page.on('requestfailed',request=>{
+  const url=new URL(request.url()),slot=state.requestDocuments.get(request),current=state.currentDocument;
+  const row={view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',errorEnum:safeNetworkError(request),resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing,...safeRequestEvidence(request),javaScriptEnabled,mainFrame:request.frame()===page.mainFrame(),originOwned:url.origin===base,queryEmpty:url.search===''&&!request.url().includes('?'),fragmentEmpty:url.hash===''&&!request.url().includes('#'),requestDocumentPolicyId:slot?.id||null,currentDocumentPolicyId:current?.id||null,currentDocumentSha256:digest(page.url())};
+  const errorText=request.failure()?.errorText;
+  void track((async()=>{
+   const potential=!javaScriptEnabled&&errorText==='csp'&&row.closing===false&&slot&&slot===current;
+   const policy=potential?await slot.promise:null;
+   // Classification uses the document and closing state at the failure event,
+   // never a different document reached while its policy body was pending.
+   const decision=disabledScriptFailureDecision({javaScriptEnabled,closing:row.closing,errorText,method:row.method,resourceType:row.resourceType,navigation:row.navigation,mainFrame:row.mainFrame,origin:base,requestUrl:request.url(),binding:report.entryBindingBefore,documentPolicy:policy,requestDocumentPolicyId:row.requestDocumentPolicyId,currentDocumentPolicyId:row.currentDocumentPolicyId,currentDocumentSha256:row.currentDocumentSha256});
+   const evidence={...row,classification:decision.expected?'expected_disabled_script_block':'fatal',...(decision.expected?decision:{policyReason:decision.reason})};
+   report.requestFailures.push(evidence);if(decision.expected)report.expectedDisabledScriptBlocks.push(evidence);else report.errors.push(evidence);
+  })());
+ });
+ page.on('close',()=>{for(const slot of state.documentSlots)if(!slot.policy)slot.resolve(null);});
  page.on('pageerror',()=>report.errors.push({view:name,reason:'page_error'}));page.on('console',event=>{if(event.type()==='error')report.errors.push({view:name,reason:'console_error'});});
  return{context,page,name,state,entry,javaScriptEnabled};
 }
@@ -147,11 +189,21 @@ function assertNoAutomaticAccountPrefetch(current,start,kind){
 }
 async function assertLogin(current,kind){
  const{page,name,context}=current;
- await page.waitForURL(base+accountPath);await page.getByRole('heading',{name:'Entrá a tu cuenta',exact:true}).waitFor();await settle(page);
+ await page.waitForURL(base+accountPath);
+ if(current.javaScriptEnabled)await page.getByRole('heading',{name:'Entrá a tu cuenta',exact:true}).waitFor();
+ else await page.getByTestId('account-nojs-fallback').waitFor();
+ await settle(page);
  check(page.url()===base+accountPath,`${name}/${kind}: exact anonymous consumer continuation`);
- check(await page.getByRole('button',{name:'WhatsApp',exact:true}).count()===1&&await page.getByRole('button',{name:'Email',exact:true}).count()===1,`${name}/${kind}: both sign-in channels remain visible`);
- const inputs=page.locator('input[type="email"],input[type="tel"],input[autocomplete="one-time-code"]');
- check(await inputs.count()>=1&&(await inputs.evaluateAll(nodes=>nodes.map(node=>node.value))).every(value=>value===''),`${name}/${kind}: contact fields exist without a seeded contact or code`);
+ if(current.javaScriptEnabled){
+  check(await page.getByRole('button',{name:'WhatsApp',exact:true}).count()===1&&await page.getByRole('button',{name:'Email',exact:true}).count()===1,`${name}/${kind}: both sign-in channels remain visible`);
+  const inputs=page.locator('input[type="email"],input[type="tel"],input[autocomplete="one-time-code"]');
+  check(await inputs.count()>=1&&(await inputs.evaluateAll(nodes=>nodes.map(node=>node.value))).every(value=>value===''),`${name}/${kind}: contact fields exist without a seeded contact or code`);
+ }else{
+  const fallback=page.getByTestId('account-nojs-fallback');
+  check(await fallback.getByRole('heading',{name:'Tu cuenta necesita JavaScript',exact:true}).isVisible()&&(await fallback.innerText()).includes('Activá JavaScript')&&!(await page.getByTestId('account-loading').isVisible()),`${name}/${kind}: visible account explanation requires JavaScript without a perpetual loader`);
+  check(await fallback.locator('a,button,form,input').count()===0,`${name}/${kind}: no-script account explanation does not promise OTP or create a navigation loop`);
+  await page.screenshot({path:join(output,`${name}-account.png`),fullPage:false});
+ }
  check((await context.cookies()).every(cookie=>['theme','nexid_theme_version','locale'].includes(cookie.name)),`${name}/${kind}: account entry never creates a session or capability cookie`);
 }
 async function finish(current){
@@ -174,10 +226,10 @@ try{
   check(await account.getAttribute('href')==='/me'&&await account.innerText()===labels[entry.locale]&&await account.getAttribute('referrerpolicy')==='no-referrer',`${name}: visible no-script account anchor preserves documentary access`);
   const geometry=await account.evaluate(element=>{const b=element.getBoundingClientRect(),hit=document.elementFromPoint((b.left+b.right)/2,(b.top+b.bottom)/2);return{width:b.width,height:b.height,withinViewport:b.left>=0&&b.right<=innerWidth&&b.top>=0&&b.bottom<=innerHeight,unobstructed:hit===element||element.contains(hit),overflow:document.documentElement.scrollWidth>innerWidth+1};});
   check(geometry.width>=44&&geometry.height>=44&&geometry.withinViewport&&geometry.unobstructed&&!geometry.overflow,`${name}: no-script account action is visible, touch-safe and unobstructed`);
-  check(await fallback.getByRole('heading',{name:'Tu cuenta sigue disponible',exact:true}).count()===1&&(await fallback.innerText()).includes('Activá JavaScript')&&!(await page.getByTestId('sun-loading').isVisible()),`${name}: no-script copy explains the full passport requirement without a busy loader`);
+  check(await fallback.getByRole('heading',{name:'Activá JavaScript para continuar',exact:true}).count()===1&&(await fallback.innerText()).includes('El pasaporte y el acceso a tu cuenta necesitan JavaScript')&&!(await page.getByTestId('sun-loading').isVisible()),`${name}: no-script copy explains passport and account requirements without a busy loader`);
   await page.screenshot({path:join(output,`${name}.png`),fullPage:false});
   const start=await navigateAccount(current,'scriptless');await assertLogin(current,'scriptless');assertNoAutomaticAccountPrefetch(current,start,'scriptless');
-  report.views.push({...entry,name,javaScriptEnabled:false,geometry,accessibilityScope:'no-script fallback, navigation and server-rendered form; no JavaScript accessibility scan'});report.cases.push({view:name,kind:'scriptless',passed:true,completed:true,fallback:true,otpWithoutJavaScriptCertified:false});await finish(current);
+  report.views.push({...entry,name,javaScriptEnabled:false,geometry,accessibilityScope:'no-script fallback, document navigation and visible account JavaScript requirement; no JavaScript accessibility scan'});report.cases.push({view:name,kind:'scriptless',passed:true,completed:true,fallback:true,accountJavaScriptRequired:true,otpWithoutJavaScriptCertified:false});await finish(current);
  }
  for(const entry of frames){
   const current=await open(entry),{name,context,page,state}=current;report.frames.push({...entry,name});const path=sunPath(entry);
@@ -224,13 +276,15 @@ try{
  check(report.cases.filter(item=>item.kind==='anonymous').length===frames.length&&report.cases.filter(item=>item.kind==='authenticated').length===frames.length&&report.cases.filter(item=>item.kind==='unavailable').length===frames.filter(item=>item.width<=390).length&&report.cases.filter(item=>item.kind==='back').length===frames.filter(item=>item.width===390&&item.mode==='demo').length&&report.cases.filter(item=>item.kind==='scriptless').length===scriptlessFrames.length,'Every required account scenario completed');
  check(report.documentNavigations.length===frames.length*2+frames.filter(item=>item.width<=390).length+scriptlessFrames.length&&report.documentNavigations.every(item=>item.path==='/me'&&item.navigation&&item.resourceType==='document'&&!item.rsc&&!item.prefetch&&!item.segment&&item.referrerSuppressed),'All account entries began as documents without prefetch or a SUN referrer');
  check(report.serverReads.length>0&&report.serverReads.every(row=>row.scenario==='authenticated'||row.path==='/consumer/session'),'Only confirmed synthetic sessions read private consumer resources');
- check(report.errors.length===0,'Zero application, route, request and console errors');check(report.blockedWrites.length===0&&report.customerWrites===0,'Zero write attempts');check(report.blockedExternal.length===0,'Zero external requests');check(report.blockedCapabilities.length===0,'Zero capability or contact transfers');check(report.geolocationCalls===0,'Zero GPS calls');report.status='passed';
+ check(report.requestFailures.length===report.expectedDisabledScriptBlocks.length+report.errors.filter(row=>row.reason==='request_failed').length&&report.expectedDisabledScriptBlocks.every(row=>report.requestFailures.includes(row)), 'Every failed request remains in the complete expected-or-fatal ledger');
+ check(report.errors.length===0,'Zero unexpected application, route, request and console errors');check(report.blockedWrites.length===0&&report.customerWrites===0,'Zero write attempts');check(report.blockedExternal.length===0,'Zero external requests');check(report.blockedCapabilities.length===0,'Zero capability or contact transfers');check(report.geolocationCalls===0,'Zero GPS calls');report.status='passed';
 }catch(error){report.status='failed';report.failureReason='bounded_sun_account_qa_failed';report.failureCategory=exceptionCategory(error);if(cleanupStage)report.cleanupFailure={stage:cleanupStage,category:report.failureCategory};}
 finally{
- for(const context of contexts)try{await context.close();}catch{report.errors.push({reason:'context_close_failed'});report.status='failed';}
+ for(const context of contexts)try{const state=contextStates.get(context);if(state)state.closing=true;await context.close();}catch{report.errors.push({reason:'context_close_failed'});report.status='failed';}
+ try{await drain();}catch{report.errors.push({reason:'final_pending_observation_failed'});report.status='failed';}
  if(browser)try{await browser.close();}catch{report.errors.push({reason:'browser_close_failed'});report.status='failed';}
  if(next&&next.exitCode===null&&next.signalCode===null){next.kill();await Promise.race([new Promise(done=>next.once('exit',done)),new Promise(done=>setTimeout(done,1500))]);if(next.exitCode===null&&next.signalCode===null){report.errors.push({reason:'local_server_close_failed'});report.status='failed';}}
- try{report.entryBindingAfter=await binding();report.sourceBuildStable=JSON.stringify(report.entryBindingBefore)===JSON.stringify(report.entryBindingAfter);report.helperHashesAfter={browser:digest(await readFile(fileURLToPath(import.meta.url))),snapshotFixture:digest(await readFile(snapshotFixture)),preload:digest(await readFile(preload))};if(!report.sourceBuildStable||JSON.stringify(report.helperHashesBefore)!==JSON.stringify(report.helperHashesAfter))report.status='failed';}catch{report.sourceBuildStable=false;report.status='failed';report.errors.push({reason:'source_binding_failed'});}
+ try{report.entryBindingAfter=await binding();report.sourceBuildStable=JSON.stringify(report.entryBindingBefore)===JSON.stringify(report.entryBindingAfter);report.helperHashesAfter={browser:digest(await readFile(fileURLToPath(import.meta.url))),snapshotFixture:digest(await readFile(snapshotFixture)),preload:digest(await readFile(preload)),disabledScriptPolicy:digest(await readFile(disabledScriptPolicy))};if(!report.sourceBuildStable||JSON.stringify(report.helperHashesBefore)!==JSON.stringify(report.helperHashesAfter))report.status='failed';}catch{report.sourceBuildStable=false;report.status='failed';report.errors.push({reason:'source_binding_failed'});}
  if(report.errors.length)report.status='failed';
  await writeFile(join(output,'report.json'),JSON.stringify(report,null,2),{flag:'wx'});
  console.log(JSON.stringify({status:report.status,checks:report.checks.length,views:report.views.length,frames:report.frames.length,errors:report.errors.length,blockedWrites:report.blockedWrites.length,blockedExternal:report.blockedExternal.length,geolocationCalls:report.geolocationCalls,sourceBuildStable:report.sourceBuildStable,output}));
