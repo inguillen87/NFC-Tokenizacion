@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { validateSommelierAnswer, sommelierFallback, sommelierMessages, SOMMELIER_OUTPUT_SCHEMA, SOMMELIER_VERSION, type SommelierAnswerRejection, type SommelierContext, type SommelierRequest } from "./sommelier-contract";
 import { reserveSommelierBuckets, sommelierProviderBuckets, type SommelierQuotaResult } from "./sommelier-quota";
 import type { SommelierEnv } from "./sommelier-access";
+import { syngentaGuideMessages, validateSyngentaGuideAnswer, syngentaGuideFallback, SYNGENTA_GUIDE_OUTPUT_SCHEMA, SYNGENTA_GUIDE_VERSION } from "./syngenta-guide-contract";
 export const SOMMELIER_HF_MODEL = "openai/gpt-oss-20b:deepinfra";
 export const SOMMELIER_OPENAI_MODEL = "gpt-6-luna";
 export const SOMMELIER_PROVIDER_DEADLINE_MS = 9000;
@@ -27,7 +28,8 @@ function providerDiagnostic(event: SommelierProviderDiagnostic, logger?: Depende
   try { if (logger) logger(event); else console.warn("[sommelier_provider_rejected]", JSON.stringify(event)); } catch { /* Diagnostics cannot alter fail-closed handling. */ }
 }
 export function sommelierProviderBody(provider: ProviderName, input: SommelierRequest, context: SommelierContext) {
-  return { model: PROVIDERS[provider].model, messages: sommelierMessages(input, context), stream: false, ...(provider === "huggingface" ? { max_tokens: SOMMELIER_OUTPUT_TOKENS, reasoning_effort: "low" } : { max_completion_tokens: SOMMELIER_OUTPUT_TOKENS, reasoning_effort: "none", store: false }), response_format: { type: "json_schema", json_schema: { name: "nexid_sommelier_answer", strict: true, schema: SOMMELIER_OUTPUT_SCHEMA } } };
+  const agro = context.source === "syngenta_demo";
+  return { model: PROVIDERS[provider].model, messages: agro ? syngentaGuideMessages(input, context) : sommelierMessages(input, context), stream: false, ...(provider === "huggingface" ? { max_tokens: SOMMELIER_OUTPUT_TOKENS, reasoning_effort: "low" } : { max_completion_tokens: SOMMELIER_OUTPUT_TOKENS, reasoning_effort: "none", store: false }), response_format: { type: "json_schema", json_schema: { name: agro ? "nexid_product_guide_answer" : "nexid_sommelier_answer", strict: true, schema: agro ? SYNGENTA_GUIDE_OUTPUT_SCHEMA : SOMMELIER_OUTPUT_SCHEMA } } };
 }
 /** One UTF-8 request byte reserves one input token, plus the complete output
  * cap (including reasoning). Pinned price caps are configuration-era estimates,
@@ -38,7 +40,8 @@ export function sommelierReservedCost(provider: ProviderName, body: string) {
   return Math.max(1, Math.ceil((Buffer.byteLength(body, "utf8") * price.inputMicroUsdPerMillion + SOMMELIER_OUTPUT_TOKENS * price.outputMicroUsdPerMillion) / 1_000_000));
 }
 function fallback(input: SommelierRequest, context: SommelierContext, reason: string) {
-  return { ok: true, version: SOMMELIER_VERSION, answer: sommelierFallback(input.locale), source: "fallback" as const, fallback: true, reason, contextSource: context.source, demo: context.demo, sources: [], suggestedQuestions: [] };
+  const agro = context.source === "syngenta_demo";
+  return { ok: true, version: agro ? SYNGENTA_GUIDE_VERSION : SOMMELIER_VERSION, answer: agro ? syngentaGuideFallback(input.locale) : sommelierFallback(input.locale), source: "fallback" as const, fallback: true, reason, contextSource: context.source, demo: context.demo, ...(agro ? { demoProfile: "syngenta" as const } : {}), sources: [], suggestedQuestions: [] };
 }
 async function boundedResponse(response: Response, signal: AbortSignal) {
   if (!response.body || !response.headers.get("content-type")?.toLowerCase().includes("application/json")) throw new Error("provider_receipt_invalid");
@@ -115,11 +118,12 @@ export async function requestLiveSommelier(input: SommelierRequest, context: Som
           || usage.completion_tokens < 1 || usage.completion_tokens > SOMMELIER_OUTPUT_TOKENS
           || usage.total_tokens !== usage.prompt_tokens + usage.completion_tokens) { reject("receipt_usage_invalid"); continue; }
         stage = "answer_parse";
-        const validated = validateSommelierAnswer(JSON.parse(choice.message.content), context);
+        const agro = context.source === "syngenta_demo";
+        const validated = agro ? validateSyngentaGuideAnswer(JSON.parse(choice.message.content), context, input.locale) : validateSommelierAnswer(JSON.parse(choice.message.content), context);
         if (!validated.ok) { reject(validated.reason); continue; }
         if (controller.signal.aborted) { reject("attempt_timeout"); continue; }
         const answer = validated.value;
-        return { ok: true, version: SOMMELIER_VERSION, ...answer, source: "live" as const, fallback: false, provider: candidate.name, model: PROVIDERS[candidate.name].model, contextSource: context.source, demo: context.demo,
+        return { ok: true, version: agro ? SYNGENTA_GUIDE_VERSION : SOMMELIER_VERSION, ...answer, source: "live" as const, fallback: false, provider: candidate.name, model: PROVIDERS[candidate.name].model, contextSource: context.source, demo: context.demo, ...(agro ? { demoProfile: "syngenta" as const } : {}),
           usage: { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens, reservedMicroUsd: charge } };
       } catch { reject(controller.signal.aborted || perAttempt.signal.aborted ? "attempt_timeout" : stage === "answer_parse" ? "answer_json_invalid" : stage === "body" ? "body_invalid" : "fetch_failed"); }
       finally { clearTimeout(attemptTimer); controller.signal.removeEventListener("abort", onAbort); }

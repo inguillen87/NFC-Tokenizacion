@@ -1,7 +1,7 @@
 {
-  "release": "2026.10.08-api-sommelier-managed.3",
-  "scope": "bounded-sommelier-provider-demo-grants-consumer-authorization-and-fixed-window-spend-reservations",
-  "baseCommit": "8cda02b643cb506a1315a4aa26881fc7be5bf3fc",
+  "release": "2026.10.09-api-syngenta-guide.1",
+  "scope": "profile-bound-public-product-guide-with-shared-managed-provider-and-unchanged-consumer-sommelier-authorization",
+  "baseCommit": "0a5316f1a6cabbdca0f6e8c84364720dcafaa105",
   "tenantMarketplaceProtocol": "nexid.tenant-marketplace-catalog.v1",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
@@ -64,5 +64,7 @@
   "publicExperienceShareProtocol": "nexid:experience-event:v1",
   "tenantActionConfigurationProtocol": "nexid.tenant-actions.v1",
   "sommelierProtocol": "nexid.sommelier.v1",
+  "productGuideProtocol": "nexid.product-guide.v1",
+  "productGuideDemoProfiles": ["syngenta"],
   "sommelierProviderActivation": "explicit-server-flags-required"
 }

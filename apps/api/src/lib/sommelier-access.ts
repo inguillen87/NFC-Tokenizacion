@@ -4,7 +4,7 @@ import { consumerSessionTokenFromRequest, isConsumerSessionAccountActive } from 
 import { readCurrentPassportEditorialCollection } from "./current-passport-editorial";
 import { ACTIONS_VERSION } from "./tenant-loyalty-configuration";
 import { resolveRequestClientIp } from "./request-meta";
-import type { SommelierContext, SommelierLocale } from "./sommelier-contract";
+import type { SommelierContext, SommelierLocale, SommelierDemoProfile } from "./sommelier-contract";
 export type SommelierEnv = Record<string, string | undefined>;
 export const DEMO_GRANT_SECONDS = 900;
 const UUID = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
@@ -47,14 +47,16 @@ export function sommelierIssuanceHash(req: Request, env: SommelierEnv): string |
   if (!ip) return null;
   try { return hmac(env, "issuance-ip", ip); } catch { return null; }
 }
-export type SommelierDemoGrant = { purpose: "nexid.sommelier.demo.v1"; profile: "valle-secreto"; origin: string; caller: string; jti: string; iat: number; exp: number };
-export function issueSommelierDemoGrant(origin: string, caller: string, env: SommelierEnv, now = Math.floor(Date.now() / 1000), id = randomUUID()) {
+export type SommelierDemoGrant = { purpose: "nexid.sommelier.demo.v1"; profile: SommelierDemoProfile; origin: string; caller: string; jti: string; iat: number; exp: number };
+export function issueSommelierDemoGrant(origin: string, caller: string, env: SommelierEnv, now = Math.floor(Date.now() / 1000), id = randomUUID(), profile: SommelierDemoProfile = "valle-secreto") {
   if (!HASH.test(caller) || !UUID.test(id) || !Number.isSafeInteger(now)) throw new Error("sommelier_grant_input_invalid");
-  const grant: SommelierDemoGrant = { purpose: "nexid.sommelier.demo.v1", profile: "valle-secreto", origin, caller, jti: id, iat: now, exp: now + DEMO_GRANT_SECONDS };
+  if (profile !== "valle-secreto" && profile !== "syngenta") throw new Error("sommelier_grant_input_invalid");
+  const grant: SommelierDemoGrant = { purpose: "nexid.sommelier.demo.v1", profile, origin, caller, jti: id, iat: now, exp: now + DEMO_GRANT_SECONDS };
   const payload = Buffer.from(JSON.stringify(grant)).toString("base64url");
   return `${payload}.${hmac(env, "grant", payload)}`;
 }
-export function verifySommelierDemoGrant(token: unknown, origin: string, caller: string, env: SommelierEnv, now = Math.floor(Date.now() / 1000)): SommelierDemoGrant | null {
+export function verifySommelierDemoGrant(token: unknown, origin: string, caller: string, env: SommelierEnv, now = Math.floor(Date.now() / 1000), profile: SommelierDemoProfile = "valle-secreto"): SommelierDemoGrant | null {
+  if (profile !== "valle-secreto" && profile !== "syngenta") return null;
   if (typeof token !== "string" || token.length > 1600 || !HASH.test(caller)) return null;
   const match = /^([A-Za-z0-9_-]+)\.([a-f0-9]{64})$/.exec(token);
   if (!match) return null;
@@ -62,18 +64,18 @@ export function verifySommelierDemoGrant(token: unknown, origin: string, caller:
     const expected = hmac(env, "grant", match[1]);
     if (!timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(match[2], "hex"))) return null;
     const grant = JSON.parse(Buffer.from(match[1], "base64url").toString("utf8")) as SommelierDemoGrant;
-    if (Object.keys(grant).sort().join() !== "caller,exp,iat,jti,origin,profile,purpose" || grant.purpose !== "nexid.sommelier.demo.v1" || grant.profile !== "valle-secreto" || grant.origin !== origin || grant.caller !== caller || !UUID.test(grant.jti) || !Number.isSafeInteger(grant.iat) || !Number.isSafeInteger(grant.exp) || grant.iat > now || grant.exp <= now || grant.exp - grant.iat !== DEMO_GRANT_SECONDS) return null;
+    if (Object.keys(grant).sort().join() !== "caller,exp,iat,jti,origin,profile,purpose" || grant.purpose !== "nexid.sommelier.demo.v1" || grant.profile !== profile || grant.origin !== origin || grant.caller !== caller || !UUID.test(grant.jti) || !Number.isSafeInteger(grant.iat) || !Number.isSafeInteger(grant.exp) || grant.iat > now || grant.exp <= now || grant.exp - grant.iat !== DEMO_GRANT_SECONDS) return null;
     return grant;
   } catch { return null; }
 }
-export const sommelierDemoCookieName = (env: SommelierEnv) => productionSommelier(env) ? "__Host-nexid_sommelier_demo" : "nexid_sommelier_demo";
-export function readSommelierDemoCookie(req: Request, env: SommelierEnv) {
-  const parts = (req.headers.get("cookie") || "").split(";").map(s => s.trim()).filter(s => s.startsWith(`${sommelierDemoCookieName(env)}=`));
+export const sommelierDemoCookieName = (env: SommelierEnv, profile: SommelierDemoProfile = "valle-secreto") => `${productionSommelier(env) ? "__Host-" : ""}nexid_${profile === "syngenta" ? "syngenta" : "sommelier"}_demo`;
+export function readSommelierDemoCookie(req: Request, env: SommelierEnv, profile: SommelierDemoProfile = "valle-secreto") {
+  const parts = (req.headers.get("cookie") || "").split(";").map(s => s.trim()).filter(s => s.startsWith(`${sommelierDemoCookieName(env, profile)}=`));
   if (parts.length !== 1) return null;
-  return parts[0].slice(sommelierDemoCookieName(env).length + 1);
+  return parts[0].slice(sommelierDemoCookieName(env, profile).length + 1);
 }
-export function sommelierDemoCookie(token: string, env: SommelierEnv) {
-  return `${sommelierDemoCookieName(env)}=${token}; Path=/; Max-Age=${DEMO_GRANT_SECONDS}; HttpOnly; SameSite=Lax${productionSommelier(env) ? "; Secure" : ""}`;
+export function sommelierDemoCookie(token: string, env: SommelierEnv, profile: SommelierDemoProfile = "valle-secreto") {
+  return `${sommelierDemoCookieName(env, profile)}=${token}; Path=/; Max-Age=${DEMO_GRANT_SECONDS}; HttpOnly; SameSite=Lax${productionSommelier(env) ? "; Secure" : ""}`;
 }
 /** Same normal consumer cookie/hash/status/expiry rules, with SELECTs only.
  * Missing tables, revoked accounts and unresolved/foreign events fail closed.
