@@ -199,7 +199,14 @@ export async function run({ origin, output = join(ROOT, 'artifacts/syngenta-clie
         check(await location.getAttribute('data-demo-location-state') === 'idle', `${view}: cancelled location callback cannot restore coordinates`);
         const geoOptions = await page.evaluate(() => window.__qaGeo.calls.map(call => call.options)); check(geoOptions.length === 4 && geoOptions.every(options => options.enableHighAccuracy === false && options.timeout === 8000 && options.maximumAge === 300000), `${view}: location requests stay bounded and low accuracy`);
         report.geolocation.push({ view, calls: 4, synthetic: true, scenarios: ['rounded-success', 'denied', 'native-timeout', 'reset-late-callback'], options: geoOptions });
-        await requestLocation.focus(); check(await requestLocation.evaluate(el => parseFloat(getComputedStyle(el).outlineWidth) >= 2), `${view}: location has visible keyboard focus`);
+        // Enter keyboard modality through real navigation after pointer actions.
+        // Programmatic focus() does not imply :focus-visible in every browser.
+        let keyboardSteps = 0;
+        do { await page.keyboard.press('Shift+Tab'); keyboardSteps++; }
+        while (keyboardSteps < 80 && !await requestLocation.evaluate(el => document.activeElement === el));
+        const keyboardFocus = await requestLocation.evaluate(el => ({ active: document.activeElement === el, visible: el.matches(':focus-visible'), outlineWidth: parseFloat(getComputedStyle(el).outlineWidth) }));
+        report.geolocation.at(-1).keyboardFocus = { method: 'Shift+Tab', steps: keyboardSteps, ...keyboardFocus };
+        check(keyboardFocus.active && keyboardFocus.visible && keyboardFocus.outlineWidth >= 2, `${view}: location has visible keyboard focus`);
         await noOverflow('location');
         if (locale === 'es-AR') { await assistant().scrollIntoViewIfNeeded(); await page.screenshot({ path: join(output, `${theme}-${width}-assistant.png`), fullPage: true }); }
       }
