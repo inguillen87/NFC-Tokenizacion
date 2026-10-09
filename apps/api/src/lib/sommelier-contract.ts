@@ -1,13 +1,14 @@
 export const SOMMELIER_VERSION = "nexid.sommelier.v1" as const;
 export type SommelierLocale = "es-AR" | "en" | "pt-BR";
-export type SommelierRequest = { question: string; locale: SommelierLocale; mode: "demo" | "consumer"; history: Array<{ role: "user" | "assistant"; content: string }>; eventId?: string };
+export type SommelierDemoProfile = "valle-secreto" | "syngenta";
+export type SommelierRequest = { question: string; locale: SommelierLocale; mode: "demo" | "consumer"; history: Array<{ role: "user" | "assistant"; content: string }>; eventId?: string; demoProfile?: SommelierDemoProfile };
 export type SommelierFact = { id: string; label: string; text: string; url: string | null };
-export type SommelierContext = { source: "valle_secreto_demo" | "published_editorial" | "general_guidance"; tenantId: string; demo: boolean; facts: SommelierFact[] };
+export type SommelierContext = { source: "valle_secreto_demo" | "syngenta_demo" | "published_editorial" | "general_guidance"; tenantId: string; demo: boolean; facts: SommelierFact[] };
 const record = (v: unknown): Record<string, unknown> | null => v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null;
 export function sommelierLocale(value: unknown): SommelierLocale | null { return value === "es-AR" || value === "en" || value === "pt-BR" ? value : null; }
 export function parseSommelierRequest(value: unknown): SommelierRequest | null {
   const body = record(value);
-  if (!body || Object.keys(body).some(k => !["question", "locale", "mode", "history", "eventId"].includes(k))) return null;
+  if (!body || Object.keys(body).some(k => !["question", "locale", "mode", "history", "eventId", "demoProfile"].includes(k))) return null;
   const locale = sommelierLocale(body.locale);
   if (!locale || (body.mode !== "demo" && body.mode !== "consumer") || typeof body.question !== "string" || !body.question.trim() || body.question.length > 1500) return null;
   const history = body.history === undefined ? [] : body.history;
@@ -21,7 +22,8 @@ export function parseSommelierRequest(value: unknown): SommelierRequest | null {
   if (Buffer.byteLength(JSON.stringify(clean), "utf8") > 6000) return null;
   if (body.eventId !== undefined && (typeof body.eventId !== "string" || !/^[1-9]\d{0,15}$/.test(body.eventId) || !Number.isSafeInteger(Number(body.eventId)))) return null;
   if (body.mode === "demo" && body.eventId !== undefined) return null;
-  return { question: body.question.trim(), locale, mode: body.mode, history: clean, ...(body.eventId !== undefined ? { eventId: body.eventId as string } : {}) };
+  if (body.demoProfile !== undefined && (body.mode !== "demo" || (body.demoProfile !== "valle-secreto" && body.demoProfile !== "syngenta"))) return null;
+  return { question: body.question.trim(), locale, mode: body.mode, history: clean, ...(body.eventId !== undefined ? { eventId: body.eventId as string } : {}), ...(body.demoProfile !== undefined ? { demoProfile: body.demoProfile as SommelierDemoProfile } : {}) };
 }
 export const SOMMELIER_OUTPUT_SCHEMA = {
   type: "object", additionalProperties: false, required: ["advice", "selectedFactIds", "suggestedQuestions"],
