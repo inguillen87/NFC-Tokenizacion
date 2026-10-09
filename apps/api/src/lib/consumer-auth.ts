@@ -300,7 +300,7 @@ async function consumeConsumerAuthChallenges(tokenHash: string, challengeId: unk
       SELECT id, contact, code_hash, expires_at, locked_until, used_at
       FROM consumer_auth_challenges
       WHERE (${tokenHash} <> '' AND magic_token_hash = ${tokenHash})
-         OR (${tokenHash} = '' AND id = ${challengeId}::bigint)
+         OR (${tokenHash} = '' AND id = ${challengeId}::uuid)
       ORDER BY id
       FOR UPDATE
     ), group_state AS MATERIALIZED (
@@ -309,12 +309,12 @@ async function consumeConsumerAuthChallenges(tokenHash: string, challengeId: unk
              max(locked_until) AS locked_until,
              min(expires_at) AS expires_at,
              bool_or(expires_at IS NULL) AS missing_expiry,
-             bool_or(id = ${challengeId}::bigint AND code_hash = ${codeHash}) AS otp_matches
+             bool_or(id = ${challengeId}::uuid AND code_hash = ${codeHash}) AS otp_matches
       FROM locked_challenges
     ), decision AS MATERIALIZED (
       SELECT CASE
         WHEN challenge_count = 0 OR already_used
-          OR (${challengeId}::bigint IS NOT NULL AND NOT otp_matches)
+          OR (${challengeId}::uuid IS NOT NULL AND NOT otp_matches)
           THEN 'invalid_code'
         WHEN locked_until > clock_timestamp() THEN 'locked'
         WHEN missing_expiry OR expires_at <= clock_timestamp() THEN 'expired'
