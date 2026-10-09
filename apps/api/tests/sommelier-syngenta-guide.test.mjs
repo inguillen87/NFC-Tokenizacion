@@ -124,6 +124,30 @@ test('prompt injection and private NFC/contact/location content cannot become in
   assert.match(redactSyngentaGuideConversation('picc_data=1234 sdm=1234 tenantId=private'),/private context omitted/);
 });
 
+for(const locale of ['es-AR','en','pt-BR'])test('quoted NFC, location and national contact fields are omitted from actual provider question and both history roles in '+locale,()=>{
+  const examples=[
+    ['{"uid":"04ABCDEF123456","cmac":"ABCDEF012345ABCD"}',['04ABCDEF123456','ABCDEF012345ABCD']],
+    ["{'tag_uid':'04 AB CD EF 12 34 56','sdm_mac':'AB CD EF 01 23 45 AB CD'}",['04 AB CD EF 12 34 56','AB CD EF 01 23 45 AB CD']],
+    ['{"lat":-12.34,"lng":-56.78,"latitude":-11.23,"longitude":-55.67}',['-12.34','-56.78','-11.23','-55.67']],
+    ["latitud=-13.45 longitud=-57.89 event_id='event private' tenant-id=tenant-private fresh_token=token-private picc-data='PICC private'",['-13.45','-57.89','event private','tenant-private','token-private','PICC private']],
+    ['Teléfono de ejemplo: 11 2345 6789; Phone: 11 2345 6789; Telefone: (11) 2345-6789',['11 2345 6789','(11) 2345-6789']],
+    ['{"telefone":"1123456789","phone":"(415)555-0123","celular":"11 91234-5678"}',['1123456789','(415)555-0123','11 91234-5678']],
+    ['uid="04\\u0041BCDEF123456" cmac=ABCDEF012345ABCD; chip-uid=04ABCD12345678',['04\\u0041BCDEF123456','ABCDEF012345ABCD','04ABCD12345678']],
+  ];
+  const publicText='AMISTAR XTRA: azoxistrobina 200 g/l y ciproconazole 80 g/l; concentración total 28 % p/v; formulación SC; bidón de 5 litros. Compará con AMISTAR TOP para trigo/soja/maíz. Precio consultado: $ 25.000; registro 34011. Nombre químico ABCDEF, referencia ABCDEF012300ABCD sin campo privado.';
+  for(const [privateText,privateValues]of examples){
+    const question=publicText+' '+privateText,history=[{role:'user',content:question},{role:'assistant',content:question}];
+    const body=sommelierProviderBody('huggingface',{...input,locale,question,history},syngentaGuideFacts(locale));
+    const conversation=JSON.parse(body.messages[1].content);
+    assert.deepEqual(conversation.untrustedHistory.map(row=>row.role),['user','assistant']);
+    for(const redacted of [conversation.question,...conversation.untrustedHistory.map(row=>row.content)]){
+      assert(redacted.startsWith(publicText),`${locale}: public product facts were modified`);
+      for(const value of privateValues)assert.equal(redacted.slice(publicText.length).includes(value),false,`${locale}: private value remained`);
+      assert.match(redacted.slice(publicText.length),/\[(?:private context|contact) omitted\]/);
+    }
+  }
+});
+
 for(const provider of ['huggingface','openai'])test('agro transport reuses pinned provider and token cap with a constrained schema '+provider,()=>{
   const body=sommelierProviderBody(provider,input,context);assert.equal(body.model,provider==='huggingface'?SOMMELIER_HF_MODEL:SOMMELIER_OPENAI_MODEL);assert.deepEqual(body.response_format.json_schema.schema,SYNGENTA_GUIDE_OUTPUT_SCHEMA);assert.equal(body.response_format.json_schema.strict,true);assert.equal(body.stream,false);assert.equal(body.max_tokens||body.max_completion_tokens,1024);assert.equal(body.reasoning_effort,provider==='huggingface'?'low':'none');
   assert.equal(sommelierProviderBody(provider,{...input,demoProfile:undefined},valleSecretoSommelierFacts('es-AR')).response_format.json_schema.schema,SOMMELIER_OUTPUT_SCHEMA);

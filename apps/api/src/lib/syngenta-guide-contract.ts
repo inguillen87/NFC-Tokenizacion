@@ -37,10 +37,15 @@ const ALLOWED_FACTS: Record<GuideIntent, readonly string[]> = {
   contact: ["contact", "product"], usage: ["label", "safety"], seal: ["tag", "purchase-checks", "label"], unknown: [],
 };
 
-/** The model never receives dynamic NFC values, contact details or coordinates. */
+/** Omit recognized private fields before sending conversation text to the model. */
 export function redactSyngentaGuideConversation(text: string) {
-  return redactSommelierConversation(text)
-    .replace(/\b(?:uid|picc(?:_data)?|cmac|sdm(?:mac)?|fresh(?:Token)?|eventId|tenantId|lat(?:itude)?|lon(?:gitude)?)\s*[:=]\s*[^\s,;]+/gi, "[private context omitted]")
+  // Match whole field names and quoted values before the shared redactor. NFC
+  // UIDs/MACs are shorter than its generic identifier threshold; JSON quotes
+  // and separated phone numbers must not let them pass into question/history.
+  const contextOmitted = text
+    .replace(/["']?\b(?:uid|(?:tag|chip)[_-]?uid|picc(?:[_-]?data)?|cmac|sdm(?:[_-]?mac)?|fresh(?:[_-]?token)?|event[_-]?id|tenant[_-]?id|lat(?:itude|itud)?|lng|lon(?:gitude|gitud)?)\b["']?\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;}\]]+)/gi, "[private context omitted]")
+    .replace(/(?<![\p{L}\p{N}_])(?:\(\d{2,4}\)[ \t-]*|\d{2,4}[ \t-]+)(?:\d{2,5}[ \t-]+)?\d{3,5}[ \t-]+\d{4}(?![\p{L}\p{N}_])/gu, "[contact omitted]");
+  return redactSommelierConversation(contextOmitted)
     .replace(/\bsk-[a-z0-9_-]{8,}/gi, "[identifier omitted]");
 }
 

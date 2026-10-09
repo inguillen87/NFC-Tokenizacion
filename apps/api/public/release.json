@@ -1,5 +1,5 @@
 {
-  "release": "2026.10.09-api-syngenta-guide.1",
+  "release": "2026.10.09-api-syngenta-guide.2",
   "scope": "profile-bound-public-product-guide-with-shared-managed-provider-and-unchanged-consumer-sommelier-authorization",
   "baseCommit": "0a5316f1a6cabbdca0f6e8c84364720dcafaa105",
   "tenantMarketplaceProtocol": "nexid.tenant-marketplace-catalog.v1",
