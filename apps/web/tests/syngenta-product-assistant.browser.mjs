@@ -28,6 +28,7 @@ const SAFE_SOURCE_PATHS = [
   'apps/web/src/app/sun/syngenta-demo.ts', 'apps/web/src/app/sun/syngenta-demo-experience.tsx',
   'apps/web/src/app/sun/syngenta-demo-experience.module.css', 'apps/web/src/app/sun/syngenta-demo-map.tsx',
   'apps/web/src/app/sun/syngenta-demo-map.module.css', 'apps/web/src/app/sun/sun-passport-map.tsx',
+  'apps/web/src/app/sun/syngenta-map-geography.ts',
   'apps/web/src/app/sun/syngenta-product-assistant.tsx', 'apps/web/src/app/sun/syngenta-product-assistant.module.css',
   'apps/web/src/app/sun/page.tsx', 'apps/web/src/app/sun/sun-passport-experience.module.css',
   'apps/web/src/lib/managed-sommelier.ts', 'apps/web/src/app/api/_lib/sommelier-proxy.ts',
@@ -130,6 +131,7 @@ export async function run({ origin, output = join(ROOT, 'artifacts/syngenta-clie
       const finishCase = async (item, count = 2) => { await page.waitForFunction(() => document.querySelector('[data-testid="syngenta-product-assistant"]')?.getAttribute('data-assistant-pending') === 'false'); check(item.requests.length === count, `${view}/${item.mode}: only expected fixture requests`); plan = null; };
       const ask = async (mode, question, method = 'click') => { const item = beginCase(mode); await input().fill(question); if (method === 'keyboard') await send().press('Enter'); else await send().click(); await finishCase(item, mode === 'reject-session' ? 1 : 2); return item; };
       for (const scenario of ['closed', 'opened', 'invalid']) {
+        if (page.url() !== 'about:blank') await page.waitForLoadState('networkidle');
         currentScenario = scenario;
         await page.goto(`${origin}/sun?demo=1&profile=syngenta&scenario=${scenario}&lang=${locale}`, { waitUntil: 'networkidle' });
         await assistant().waitFor(); await page.getByTestId('syngenta-demo-map').waitFor();
@@ -185,7 +187,9 @@ export async function run({ origin, output = join(ROOT, 'artifacts/syngenta-clie
         check(await page.evaluate(() => window.__qaGeo.calls.length) === 1, `${view}: one explicit location request`);
         await page.evaluate(() => window.__qaGeo.release(0, 'success'));
         await page.waitForFunction(() => document.querySelector('[data-testid="syngenta-demo-map"]')?.getAttribute('data-demo-location-state') === 'shared');
-        const text = await location.innerText(); check(text.includes('-32.8900') && text.includes('-68.8400') && !text.includes('-32.891234567'), `${view}: browser coordinates are publicly rounded`);
+        const text = await location.innerText();
+        const approximateLabel = locale === 'en' ? 'Your approximate area' : locale === 'pt-BR' ? 'Sua área aproximada' : 'Tu zona aproximada';
+        check(await location.locator('[data-sun-passport-map]').getAttribute('data-location-source') === 'demo_browser' && text.includes(approximateLabel) && !text.includes('-32.891234567') && !text.includes('-68.843456789') && await location.locator('a[href*="-32.891234567"],a[href*="-68.843456789"]').count() === 0, `${view}: consented demo area is labeled approximate and never exports full-precision coordinates`);
         await resetLocation.click(); check(await location.getAttribute('data-demo-location-state') === 'idle', `${view}: reset restores Mendoza sample`);
         await requestLocation.click(); await page.evaluate(() => window.__qaGeo.release(1, 'denied'));
         await page.waitForFunction(() => document.querySelector('[data-testid="syngenta-demo-map"]')?.getAttribute('data-demo-location-state') === 'denied'); check(await requestLocation.isEnabled(), `${view}: denied location allows a retry`);

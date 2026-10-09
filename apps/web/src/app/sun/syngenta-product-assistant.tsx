@@ -92,7 +92,7 @@ export function SyngentaProductAssistant({ locale }: { locale: SunLocale }) {
     </ol> : null}
     <p className={styles.status} role="status" aria-live="polite">{pending ? copy.pending : failedQuestion ? copy.error : ""}</p>
     {failedQuestion ? <button type="button" className={styles.retry} onClick={() => void ask(failedQuestion)} disabled={pending}><RotateCcw size={16} aria-hidden="true" />{copy.retry}</button> : null}
-    {suggestions.length ? <div className={styles.suggestions} aria-label={copy.followUp}>{suggestions.map(value => <button type="button" key={value} onClick={() => void ask(value)} disabled={pending} data-testid="syngenta-assistant-suggestion">{value}</button>)}</div> : null}
+    {suggestions.length ? <div className={styles.suggestions} role="group" aria-label={copy.followUp}>{suggestions.map(value => <button type="button" key={value} onClick={() => void ask(value)} disabled={pending} data-testid="syngenta-assistant-suggestion">{value}</button>)}</div> : null}
     <form onSubmit={submit} className={styles.form}>
       <label htmlFor={inputId}>{copy.label}</label>
       <textarea id={inputId} ref={inputRef} value={question} onChange={event => setQuestion(event.target.value)} rows={2} maxLength={MANAGED_SOMMELIER_QUESTION_MAX_CHARS} placeholder={copy.placeholder} disabled={pending} data-testid="syngenta-assistant-input" />

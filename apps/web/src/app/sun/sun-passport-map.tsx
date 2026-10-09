@@ -7,6 +7,7 @@ import styles from "./sun-passport-map.module.css";
 import {configureSunMapWorker} from "../../lib/sun-map-worker";
 import {googlePointLink, googleComparisonLink, sunMapInsets} from "../../lib/sun-external-map";
 import { sunReferenceMapStyle } from "./sun-reference-map";
+import { loadSyngentaMapGeography } from "./syngenta-map-geography";
 import type { SunLocale } from "./sun-locale";
 
 export type SunPassportMapLocation = {
@@ -410,10 +411,19 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         const maplibre = await import("maplibre-gl");
         if (disposed || !mapContainerRef.current) return;
 
+        const geography = cartography === "reference" && referenceContext === "agro" ? await loadSyngentaMapGeography() : null;
+        if (disposed || !mapContainerRef.current) return;
+        const styleForTheme = (light: boolean) => {
+          const style = cartography === "reference" ? sunReferenceMapStyle(light) : mapStyleForTheme(light);
+          const source = style.sources.geography;
+          if (geography && source?.type === "geojson") source.data = geography;
+          return style;
+        };
+
         configureSunMapWorker(maplibre, window.location.origin);
         const map = new maplibre.Map({
           container: mapContainerRef.current,
-          style: cartography === "reference" ? sunReferenceMapStyle(isLightTheme()) : mapStyleForTheme(isLightTheme()),
+          style: styleForTheme(isLightTheme()),
           center: [points[0].point.lng, points[0].point.lat],
           zoom: points.length === 1 ? 10 : 4,
           minZoom: cartography === "reference" ? -3 : 2,
@@ -710,7 +720,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           loadTimeoutId = window.setTimeout(() => {
             if (!disposed && !fullyReady) setLoadState("error");
           }, 8_000);
-          map.setStyle(cartography === "reference" ? sunReferenceMapStyle(nextLightTheme) : mapStyleForTheme(nextLightTheme));
+          map.setStyle(styleForTheme(nextLightTheme));
         };
         themeObserver = new MutationObserver(syncTheme);
         themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
