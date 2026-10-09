@@ -99,6 +99,9 @@ for(const locale of ['es-AR','en','pt-BR'])test('official corpus and structured 
   for(const id of valid.selectedFactIds)assert(answer.value.answer.includes(ctx.facts.find(f=>f.id===id).text));
   assert.equal(answer.value.suggestedQuestions.length,2);assert(answer.value.answer.length<=1200);
   const three=validateSyngentaGuideAnswer({...valid,selectedFactIds:['xtra-ingredients','amistar-ingredients','top-ingredients']},ctx,locale);assert.equal(three.ok,true);assert.equal(new Set(three.value.sources.map(s=>s.url)).size,3);
+  for(const intent of ['unknown','comparison-missing','seal']){
+    const empty=validateSyngentaGuideAnswer({intent,selectedFactIds:[],followUpIds:['label']},ctx,locale);assert.equal(empty.ok,true);assert.deepEqual(empty.value.sources.map(s=>s.url),[SYNGENTA_GUIDE_SOURCES.product,SYNGENTA_GUIDE_SOURCES.label]);assert.doesNotMatch(empty.value.answer,/Azox|Cypro|Difenoconazole|34011/);
+  }
   for(const fact of ctx.facts)assert.doesNotMatch(fact.text,/\b\d+\s*(?:g\b|cm³|cm3|ml|ha|días|days|dias|%)/i);
 });
 
@@ -145,6 +148,10 @@ test('quota denial admits no paid fetch and fallback truthfully reports unavaila
   let calls=0;
   const result=await requestLiveSommelier(input,context,env,{reserve:async()=>({ok:false,reason:'sommelier_budget_exhausted',retryAfter:60}),fetch:async()=>{calls++;return receipt()}});
   assert.equal(calls,0);assert.equal(result.source,'fallback');assert.equal(result.fallback,true);assert.equal(result.demoProfile,'syngenta');assert.equal(result.provider,undefined);assert.match(result.answer,/IA no está disponible/);assert.doesNotMatch(result.answer,/vino|bodega|maridaje/);
+  assert.deepEqual(result.sources.map(s=>s.url),[SYNGENTA_GUIDE_SOURCES.label,SYNGENTA_GUIDE_SOURCES.safety,SYNGENTA_GUIDE_SOURCES.product]);assert.equal(result.suggestedQuestions.length,3);assert.equal(result.contextSource,'syngenta_demo');assert.equal(result.demo,true);
+  for(const locale of ['en','pt-BR']){
+    const localized=await requestLiveSommelier({...input,locale},syngentaGuideFacts(locale),{...env,NEXID_SOMMELIER_ENABLED:'false'},{fetch:async()=>{throw Error('Disabled provider must not fetch')}});assert.equal(localized.sources.length,3);assert.equal(localized.suggestedQuestions.length,3);assert.equal(localized.source,'fallback');assert.equal(localized.provider,undefined);
+  }
   assert.equal(sommelierProviderBuckets('demo:syngenta',1)[1].limit,500000);assert.equal(sommelierProviderBuckets('demo:syngenta',1)[2].limit,100000);assert.deepEqual(sommelierProviderBuckets('demo:syngenta',1).map(b=>b.scope),sommelierProviderBuckets('demo:valle-secreto',1).map(b=>b.scope));
 });
 

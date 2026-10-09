@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { validateSommelierAnswer, sommelierFallback, sommelierMessages, SOMMELIER_OUTPUT_SCHEMA, SOMMELIER_VERSION, type SommelierAnswerRejection, type SommelierContext, type SommelierRequest } from "./sommelier-contract";
 import { reserveSommelierBuckets, sommelierProviderBuckets, type SommelierQuotaResult } from "./sommelier-quota";
 import type { SommelierEnv } from "./sommelier-access";
-import { syngentaGuideMessages, validateSyngentaGuideAnswer, syngentaGuideFallback, SYNGENTA_GUIDE_OUTPUT_SCHEMA, SYNGENTA_GUIDE_VERSION } from "./syngenta-guide-contract";
+import { syngentaGuideMessages, validateSyngentaGuideAnswer, syngentaGuideFallback, syngentaGuideFallbackReferences, SYNGENTA_GUIDE_OUTPUT_SCHEMA, SYNGENTA_GUIDE_VERSION } from "./syngenta-guide-contract";
 export const SOMMELIER_HF_MODEL = "openai/gpt-oss-20b:deepinfra";
 export const SOMMELIER_OPENAI_MODEL = "gpt-6-luna";
 export const SOMMELIER_PROVIDER_DEADLINE_MS = 9000;
@@ -41,7 +41,7 @@ export function sommelierReservedCost(provider: ProviderName, body: string) {
 }
 function fallback(input: SommelierRequest, context: SommelierContext, reason: string) {
   const agro = context.source === "syngenta_demo";
-  return { ok: true, version: agro ? SYNGENTA_GUIDE_VERSION : SOMMELIER_VERSION, answer: agro ? syngentaGuideFallback(input.locale) : sommelierFallback(input.locale), source: "fallback" as const, fallback: true, reason, contextSource: context.source, demo: context.demo, ...(agro ? { demoProfile: "syngenta" as const } : {}), sources: [], suggestedQuestions: [] };
+  return { ok: true, version: agro ? SYNGENTA_GUIDE_VERSION : SOMMELIER_VERSION, answer: agro ? syngentaGuideFallback(input.locale) : sommelierFallback(input.locale), source: "fallback" as const, fallback: true, reason, contextSource: context.source, demo: context.demo, ...(agro ? { demoProfile: "syngenta" as const, ...syngentaGuideFallbackReferences(input.locale, context) } : { sources: [], suggestedQuestions: [] }) };
 }
 async function boundedResponse(response: Response, signal: AbortSignal) {
   if (!response.body || !response.headers.get("content-type")?.toLowerCase().includes("application/json")) throw new Error("provider_receipt_invalid");

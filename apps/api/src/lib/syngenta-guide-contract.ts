@@ -67,7 +67,17 @@ export function validateSyngentaGuideAnswer(value: unknown, context: SommelierCo
   const selected = ids.map(id => context.facts.find(f => f.id === id)!);
   const answer = [COPY[locale].intros[intent], ...selected.map(f => `${f.label}: ${f.text}`)].join("\n\n");
   if (answer.length > 1200) return { ok: false, reason: "answer_too_long" };
-  return { ok: true, value: { answer, sources: selected.map(({ id, label, url }) => ({ id, label, url })), suggestedQuestions: (body.followUpIds as FollowUpId[]).map(id => COPY[locale].questions[id]), intent } };
+  // Even an unavailable fact keeps an evident path to the manufacturer's
+  // documents, without turning those links into evidence for an unknown claim.
+  const referenced = selected.length ? selected : context.facts.filter(f => ["product", "label"].includes(f.id));
+  return { ok: true, value: { answer, sources: referenced.map(({ id, label, url }) => ({ id, label, url })), suggestedQuestions: (body.followUpIds as FollowUpId[]).map(id => COPY[locale].questions[id]), intent } };
 }
 
 export const syngentaGuideFallback = (locale: SommelierLocale) => COPY[locale].fallback;
+
+export function syngentaGuideFallbackReferences(locale: SommelierLocale, context: SommelierContext) {
+  return {
+    sources: ["label", "safety", "product"].flatMap(id => context.facts.filter(f => f.id === id)).map(({ id, label, url }) => ({ id, label, url })),
+    suggestedQuestions: (["label", "safety", "before-buying"] as FollowUpId[]).map(id => COPY[locale].questions[id]),
+  };
+}
