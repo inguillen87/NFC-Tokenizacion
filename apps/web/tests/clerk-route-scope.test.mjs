@@ -123,6 +123,10 @@ test("Argentine public domains open the canonical consumer portal without alteri
     req.headers.set("x-forwarded-host", "nexid.com.ar");
     assert.deepEqual(loaded.proxy(req, {}), { kind: "next" });
   }
+  const req = request("/login?consumer=1&next=%2Fme", "nexid.com.ar");
+  req.nextUrl = new URL("http://localhost:3337/login?consumer=1&next=%2Fme");
+  req.nextUrl.clone = () => new URL(req.nextUrl.href);
+  assert.equal(loaded.proxy(req, {}).location, "https://nexid.lat/login?consumer=1&next=%2Fme");
   assert.equal(loaded.calls.length, 0);
 });
 

@@ -7,7 +7,9 @@ import { requiresClerkMiddleware } from "./lib/clerk-route-scope";
 function landingMiddleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
   const pathname = req.nextUrl.pathname;
-  const shouldCanonicalizePublicHost = ["www.nexid.lat", "nexid.com.ar", "www.nexid.com.ar"].includes(host.toLowerCase());
+  const shouldCanonicalizePublicHost = host.toLowerCase() === "www.nexid.lat"
+    || host.toLowerCase() === "nexid.com.ar"
+    || host.toLowerCase() === "www.nexid.com.ar";
   const shouldCanonicalizeLanding = pathname === "/landing" || pathname === "/landing/";
 
   // Public aliases share the canonical portal before rendering. This keeps the
@@ -18,6 +20,7 @@ function landingMiddleware(req: NextRequest) {
     if (shouldCanonicalizePublicHost) {
       url.host = "nexid.lat";
       url.protocol = "https:";
+      url.port = "";
     }
     if (shouldCanonicalizeLanding) {
       url.pathname = "/";
