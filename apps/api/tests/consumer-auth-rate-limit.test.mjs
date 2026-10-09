@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { verificationHarness, EMAIL, PHONE, CODE, MAGIC } from "./consumer-auth-verification-fixture.mjs";
+import { verificationHarness, CHALLENGE_IDS, EMAIL, PHONE, CODE, MAGIC } from "./consumer-auth-verification-fixture.mjs";
 
 test("consumer OTP rate limits are durable and do not rely on process-local Maps", async () => {
   const source = await readFile(new URL("../src/lib/consumer-auth.ts", import.meta.url), "utf8");
@@ -61,7 +61,7 @@ for (const mode of ["otp", "magic"]) {
     else {
       assert.deepEqual(result, { ok: false, error: failure === "expired" ? "expired" : failure === "locked" ? "locked" : "invalid_code" });
       assert.equal(h.state.accountReads, 0); assert.equal(h.state.accountWrites, 0); assert.equal(h.state.identityWrites, 0); assert.equal(h.state.sessions, 0);
-      assert(h.state.rows.filter(row => failure !== "used" || row.id !== "2").every(row => row.used_at === null));
+      assert(h.state.rows.filter(row => failure !== "used" || row.id !== CHALLENGE_IDS[1]).every(row => row.used_at === null));
     }
   });
   for (const failAt of ["account", "session"]) test(`${mode} downstream ${failAt} failure burns the challenge without retry session`, async () => {
@@ -70,6 +70,21 @@ for (const mode of ["otp", "magic"]) {
     await assert.rejects(verify, new RegExp(`fixture_${failAt}_failure`));
     assert(h.state.rows.every(row => row.used_at !== null)); assert.equal(h.state.sessions, 0);
     assert.deepEqual(await verify(), { ok: false, error: "invalid_code" }); assert.equal(h.state.sessions, 0);
+  });
+}
+
+for (const first of ["otp", "magic"]) {
+  test(`${first} verification consumes UUID challenges before OTP or magic-link reuse`, async () => {
+    const h = verificationHarness();
+    const verify = mode => mode === "magic" ? h.auth.verifyConsumerAuthToken(MAGIC, meta) : h.auth.verifyConsumerAuth(EMAIL, CODE, meta);
+    assert.equal((await verify(first)).ok, true);
+    assert.deepEqual(h.state.rows.map(row => row.id), CHALLENGE_IDS);
+    assert(h.state.rows.every(row => row.used_at !== null));
+    assert.deepEqual(await verify("otp"), { ok: false, error: "invalid_code" });
+    assert.deepEqual(await verify("magic"), { ok: false, error: "invalid_code" });
+    assert.equal(h.state.sessions, 1);
+    assert.equal(h.state.accountWrites, 1);
+    assert.equal(h.state.claims, 1);
   });
 }
 

@@ -9,6 +9,7 @@ export const EMAIL = "single-use@consumer-auth.invalid";
 export const PHONE = "+12025550123";
 export const CODE = "654321";
 export const MAGIC = `nxa_${Buffer.alloc(24, 0xac).toString("base64url")}`;
+export const CHALLENGE_IDS = ["11111111-2222-4333-8444-555555555555", "66666666-7777-4888-9999-aaaaaaaaaaaa"];
 export const sha = value => createHash("sha256").update(value).digest("hex");
 const compiled = ts.transpileModule(readFileSync(new URL("../src/lib/consumer-auth.ts", import.meta.url), "utf8"), {
   fileName: "consumer-auth.ts",
@@ -44,7 +45,7 @@ export function verificationHarness(options = {}) {
     now: Date.now(), consumer: null, accountReads: 0, accountWrites: 0,
     identityWrites: 0, sessionAttempts: 0, sessions: 0, claims: 0, queries: [],
     rows: [EMAIL, PHONE].slice(0, options.contacts || 2).map((contact, index) => ({
-      id: String(index + 1), contact, code_hash: sha(CODE), magic_token_hash: options.legacy ? null : sha(MAGIC),
+      id: CHALLENGE_IDS[index], contact, code_hash: sha(CODE), magic_token_hash: options.legacy ? null : sha(MAGIC),
       created_at: index + 1, used_at: null, expires_at: new Date(Date.now() + 60_000).toISOString(),
       locked_until: null, attempts: 0, max_attempts: 5,
     })),
@@ -65,6 +66,17 @@ export function verificationHarness(options = {}) {
       return snapshot;
     }
     if (text.startsWith("WITH locked_challenges AS MATERIALIZED")) {
+      // A UUID table cannot plan an id/bigint comparison, even when the magic
+      // path supplies NULL. Reject that mismatch before modeling consumption.
+      for (const comparison of text.matchAll(/\bid = \?::([a-z]+)/g)) {
+        assert.equal(comparison[1], "uuid", "consumer_auth_challenges.id is UUID");
+      }
+      for (let index = 0; index < values.length; index++) {
+        const cast = parts[index + 1].match(/^::([a-z]+)/)?.[1];
+        if (!cast || values[index] === null) continue;
+        assert.equal(cast, "uuid", "challenge parameters must retain the database UUID type");
+        assert.match(String(values[index]), /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i);
+      }
       state.claims++;
       if (options.beforeClaim) await options.beforeClaim(state, values);
       const [tokenHash, , , challengeId, , codeHash] = values;

@@ -1,7 +1,7 @@
 {
-  "release": "2026.10.09-api-syngenta-guide.2",
-  "scope": "profile-bound-public-product-guide-with-shared-managed-provider-and-unchanged-consumer-sommelier-authorization",
-  "baseCommit": "0a5316f1a6cabbdca0f6e8c84364720dcafaa105",
+  "release": "2026.10.09-api-consumer-auth-uuid.1",
+  "scope": "consumer-auth-uuid-challenge-consumption-with-existing-single-use-rate-limits-and-provider-contracts",
+  "baseCommit": "7082927a617edcfd949217a34dc1d7fb373343d4",
   "tenantMarketplaceProtocol": "nexid.tenant-marketplace-catalog.v1",
   "requiredDeploymentConfiguration": {
     "CLERK_AUTHORIZED_PARTIES": "https://app.nexid.lat"
