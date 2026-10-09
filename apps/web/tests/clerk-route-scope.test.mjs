@@ -102,6 +102,30 @@ test("canonical redirects preserve all query entries and bypass Clerk on public 
   assert.equal(loaded.calls.length, 1);
 });
 
+test("Argentine public domains open the canonical consumer portal without altering NFC query bytes or trusting forwarded hosts", () => {
+  const loaded = loadProxy();
+  for (const host of ["nexid.com.ar", "www.nexid.com.ar", "NEXID.COM.AR"]) {
+    for (const path of ["/login?consumer=1&next=%2Fme", "/me/products", "/sun?cmac=QA%2fone&cmac=QA%2FTWO&tenant=qa-brand&empty=&locale=pt-BR", "/api/consumer/auth/logout"]) {
+      for (const method of ["GET", "POST"]) {
+        const req = request(path, host, method), original = req.nextUrl.href;
+        const result = loaded.proxy(req, {}), target = new URL(result.location);
+        assert.equal(result.status, 308);
+        assert.equal(target.origin, "https://nexid.lat");
+        assert.equal(target.pathname, req.nextUrl.pathname);
+        assert.equal(target.search, req.nextUrl.search);
+        assert.equal(req.nextUrl.href, original);
+        assert.equal(req.method, method);
+      }
+    }
+  }
+  for (const host of ["localhost:3337", "nexid-consumer-otp-qa-marcelos-projects-c26aa499.vercel.app", "nexid.com.ar.evil.test", "evil-nexid.com.ar", "nexid.lat"]) {
+    const req = request("/login?consumer=1&next=%2Fme", host);
+    req.headers.set("x-forwarded-host", "nexid.com.ar");
+    assert.deepEqual(loaded.proxy(req, {}), { kind: "next" });
+  }
+  assert.equal(loaded.calls.length, 0);
+});
+
 test("unconfigured Web3 keeps its existing fallback; configured guard errors never downgrade identity", () => {
   const unconfigured = loadProxy({ configured: false });
   for (const path of ["/", "/sun", "/web3/sign-in", "/api/consumer/auth/web3", "/__clerk"]) assert.deepEqual(unconfigured.proxy(request(path), {}), { kind: "next" });

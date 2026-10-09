@@ -7,13 +7,15 @@ import { requiresClerkMiddleware } from "./lib/clerk-route-scope";
 function landingMiddleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
   const pathname = req.nextUrl.pathname;
-  const shouldCanonicalizeWww = host.toLowerCase() === "www.nexid.lat";
+  const shouldCanonicalizePublicHost = ["www.nexid.lat", "nexid.com.ar", "www.nexid.com.ar"].includes(host.toLowerCase());
   const shouldCanonicalizeLanding = pathname === "/landing" || pathname === "/landing/";
 
-  // Canonicalize www -> apex and legacy /landing -> / before rendering.
-  if (shouldCanonicalizeWww || shouldCanonicalizeLanding) {
+  // Public aliases share the canonical portal before rendering. This keeps the
+  // browser Origin and session cookies on the API-authorized nexid.lat domain.
+  // Preview and local hosts remain unchanged; never synthesize an API Origin.
+  if (shouldCanonicalizePublicHost || shouldCanonicalizeLanding) {
     const url = req.nextUrl.clone();
-    if (shouldCanonicalizeWww) {
+    if (shouldCanonicalizePublicHost) {
       url.host = "nexid.lat";
       url.protocol = "https:";
     }

@@ -16,6 +16,39 @@ import {
 } from "../../components/consumer-contact-input";
 import styles from "./consumer-login.module.css";
 
+type LoginFeedback = {
+  message: string;
+  tone: "info" | "error";
+  field?: "contact" | "code";
+  stage?: "preparation";
+  officialAccess?: boolean;
+};
+
+function preparationFailure(response: Awaited<ReturnType<typeof requestConsumerJson>>): LoginFeedback {
+  const preserved = "Tu contacto se conserva; no solicitamos un código.";
+  let message: string;
+  let officialAccess = false;
+  if (response.status === "unavailable") {
+    message = response.reason === "timeout"
+      ? `El servicio tardó demasiado en preparar tu acceso. Volvé a intentar. ${preserved}`
+      : typeof navigator !== "undefined" && navigator.onLine === false
+        ? `Estás sin conexión. Reconectate y volvé a intentar. ${preserved}`
+        : `No pudimos conectar con el servicio de acceso. Revisá la conexión y volvé a intentar. ${preserved}`;
+  } else if (response.httpStatus === 403 || response.httpStatus === 401) {
+    officialAccess = true;
+    message = response.httpStatus === 403 && response.payload?.error === "cross_site_request_blocked"
+      ? `Esta página no está habilitada para iniciar el acceso. Abrí el sitio oficial de NexID para continuar. ${preserved}`
+      : `El servicio rechazó preparar tu acceso. Volvé a intentar desde el sitio oficial de NexID. ${preserved}`;
+  } else if (response.httpStatus === 429) {
+    message = `Hay demasiados intentos de acceso. Esperá unos minutos antes de volver a probar. ${preserved}`;
+  } else if (response.httpStatus >= 500) {
+    message = `El servicio de acceso no está disponible ahora. Volvé a intentar más tarde. ${preserved}`;
+  } else {
+    message = `No pudimos confirmar la preparación del acceso. Volvé a intentar antes de cambiar de cuenta. ${preserved}`;
+  }
+  return { message, tone: "error", stage: "preparation", officialAccess };
+}
+
 async function logoutConsumerSession() {
   return requestConsumerJson("/api/consumer/auth/logout", { method: "POST", credentials: "include" });
 }
@@ -26,7 +59,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"start" | "verify">("start");
   const [lateCodeAvailable, setLateCodeAvailable] = useState(false);
-  const [feedback, setFeedback] = useState<{ message: string; tone: "info" | "error"; field?: "contact" | "code" }>({ message: "", tone: "info" });
+  const [feedback, setFeedback] = useState<LoginFeedback>({ message: "", tone: "info" });
   const [pending, setPending] = useState(false);
   const requestInFlight = useRef(false);
   const mounted = useRef(true);
@@ -42,7 +75,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const codeParam = searchParams.get("code");
   const autoverify = searchParams.get("autoverify");
   const isTapReturn = safeNextPath.includes("fromTap=1") || safeNextPath.includes("eventId=");
-  const preferEmailRecovery = step === "start" && contactDraft.channel === "whatsapp" && feedback.tone === "error" && !feedback.field;
+  const allowChannelRecovery = feedback.stage !== "preparation";
+  const preferEmailRecovery = step === "start" && contactDraft.channel === "whatsapp" && feedback.tone === "error" && !feedback.field && allowChannelRecovery;
 
   function setStatus(message: string, tone: "info" | "error" = "info", field?: "contact" | "code") {
     setFeedback({ message, tone, field });
@@ -83,10 +117,12 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       if (cancelled) return;
       setStep("start");
       setCode("");
-      setStatus(response.status === "received" && response.ok && response.payload?.ok === true
-        ? "Pedí un nuevo código para continuar."
-        : "No pudimos confirmar el cierre de la sesión anterior. Volvé a intentar antes de cambiar de cuenta.",
-      response.status === "received" && response.ok && response.payload?.ok === true ? "info" : "error");
+      setLateCodeAvailable(false);
+      if (response.status === "received" && response.ok && response.payload?.ok === true) {
+        setStatus("Pedí un nuevo código para continuar.");
+      } else {
+        setFeedback(preparationFailure(response));
+      }
       setPending(false);
       requestInFlight.current = false;
     });
@@ -148,7 +184,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     if (!mounted.current) return;
     if (logout.status !== "received" || !logout.ok || logout.payload?.ok !== true) {
       setPending(false); requestInFlight.current = false;
-      setStatus("No pudimos preparar el acceso. Tu contacto se conserva; volvé a intentar cuando tengas conexión.", "error");
+      setFeedback(preparationFailure(logout));
       return;
     }
     const response = await requestConsumerJson("/api/consumer/auth/start", {
@@ -223,6 +259,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         <ConsumerContactInput draft={contactDraft} onChange={changeContact} disabled={pending} idPrefix="consumer-login" compact
           invalid={feedback.field === "contact" && feedback.tone === "error"} describedBy={feedback.field === "contact" ? "consumer-access-feedback" : undefined} />
         <p id="consumer-access-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!status} className={styles.feedback} data-tone={feedback.tone}>{status}</p>
+        {feedback.officialAccess ? <a href="https://nexid.lat/login?consumer=1&next=%2Fme" target="_blank" rel="noopener noreferrer" className={styles.primary}
+          aria-label="Abrir el acceso oficial de NexID (abre una pestaña nueva)" aria-describedby="consumer-access-feedback">Abrir el acceso oficial de NexID</a> : null}
         {preferEmailRecovery ? <button ref={emailRecoveryRef} type="button" disabled={pending} onClick={changeChannel} className={styles.primary} data-consumer-email-recovery="primary" aria-describedby="consumer-access-feedback">
           Continuar con email
         </button> : null}
@@ -234,8 +272,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             aria-describedby={`consumer-code-hint${feedback.field === "code" ? " consumer-access-feedback" : ""}`} className={styles.codeInput} />
           <p id="consumer-code-hint" className={styles.hint}>Ingresá el código del mensaje más reciente.</p>
         </div> : null}
-        <button ref={submitRef} type="submit" disabled={pending || (step === "start" ? !contactIsValid : !code.trim())} className={preferEmailRecovery ? styles.secondary : styles.primary}>
-          {pending ? step === "start" ? "Solicitando código…" : "Comprobando acceso…" : step === "start" ? preferEmailRecovery ? "Reintentar WhatsApp" : lateCodeAvailable ? "Volver a pedir código" : "Recibir código" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
+        <button ref={submitRef} type="submit" disabled={pending || (step === "start" ? !contactIsValid : !code.trim())} className={preferEmailRecovery || feedback.officialAccess ? styles.secondary : styles.primary}>
+          {pending ? step === "start" ? "Solicitando código…" : "Comprobando acceso…" : step === "start" ? !allowChannelRecovery ? "Reintentar acceso" : preferEmailRecovery ? "Reintentar WhatsApp" : lateCodeAvailable ? "Volver a pedir código" : "Recibir código" : isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
         </button>
         {step === "verify" ? <>
           <div className={styles.secondaryActions}>
@@ -253,7 +291,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             setStatus("Ingresá el código más reciente que recibiste. Todavía no confirmamos el envío ni tu acceso.");
           }}>Ya tengo un código</button>
         </div> : null}
-        {step === "start" && contactDraft.channel === "email" && feedback.tone === "error" && !feedback.field ? <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary} aria-describedby="consumer-access-feedback">
+        {step === "start" && contactDraft.channel === "email" && feedback.tone === "error" && !feedback.field && allowChannelRecovery ? <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary} aria-describedby="consumer-access-feedback">
           Continuar con WhatsApp
         </button> : null}
       </form>
