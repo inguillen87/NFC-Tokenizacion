@@ -1,16 +1,16 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.09-web-syngenta-guide.1",
-  "scope": "sun-syngenta-product-agent-public-office-map-consented-local-location-and-5l-photography",
-  "baseCommit": "25832c5c55eff3c368f886da3f9aca9062bb54dd",
+  "version": "2026.10.09-web-public-privacy-preview-transport.1",
+  "scope": "public-privacy-data-deletion-instructions-and-scoped-server-preview-api-transport",
+  "baseCommit": "25149600ec171ece9d8958f01e81514d3dab6d0d",
   "physicalTapCertification": "not-included",
-  "requiredApiRelease": "2026.10.09-api-syngenta-guide.2",
-  "requiredApiCommit": "7082927a617edcfd949217a34dc1d7fb373343d4",
+  "requiredApiRelease": "2026.10.09-api-consumer-auth-uuid.1",
+  "requiredApiCommit": "1cc2afc5ab1965b1105bb9df4a74173ef9fcc2c5",
   "integrationGalleryCommit": "e9d954ef67145e2aa5776f40e956565afd78831c",
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.09-web-syngenta-guide.1",
+  "release": "2026.10.09-web-public-privacy-preview-transport.1",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1",
   "publicExperienceShareProtocol": "nexid:experience-event:v1",
@@ -18,5 +18,7 @@
   "sommelierProtocol": "nexid.sommelier.v1",
   "managedSommelierUiScope": "valle-secreto-and-syngenta-explicit-demo-only",
   "syngentaProductGuideProtocol": "nexid.product-guide.v1",
-  "syngentaLocationScope": "local-demo-only-with-explicit-permission"
+  "syngentaLocationScope": "local-demo-only-with-explicit-permission",
+  "publicPrivacyNoticeProtocol": "nexid.public-privacy.v1",
+  "previewApiTransportProtocol": "nexid.preview-api-transport.v1"
 }

@@ -135,6 +135,8 @@ function loadApi(result) {
     } },
     "next/navigation": { redirect: (url) => { throw new Error(`redirect:${url}`); } },
     "../../api/_lib/consumer-tap-handoff": { stripConsumerTapCapabilityCookies: () => "session=private" },
+    "@product/config": { productUrls: { api: "https://api.nexid.lat" } },
+    "../../api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected transport outside bounded-read fixture"); } },
     "./consumer-bounded-fetch": {
       consumerSessionState,
       fetchConsumerJson: async (url, init) => { calls.push({ url, init }); return result; },

@@ -257,6 +257,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           Continuar con WhatsApp
         </button> : null}
       </form>
+      <a className={styles.privacyLink} href="/privacy" target="_blank" rel="noopener noreferrer" aria-label="Cómo usamos tus datos (abre una pestaña nueva)">Cómo usamos tus datos ↗</a>
     </div>
   );
 }

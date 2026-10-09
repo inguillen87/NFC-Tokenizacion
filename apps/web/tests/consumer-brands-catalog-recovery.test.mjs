@@ -26,6 +26,8 @@ const api = compile("_components/consumer-api.ts", {
   "next/headers": { headers: () => { throw new Error("Unexpected network read"); } },
   "next/navigation": { redirect: () => { throw new Error("Unexpected redirect"); } },
   "../../api/_lib/consumer-tap-handoff": {}, "./consumer-bounded-fetch": {},
+  "@product/config": { productUrls: { api: "https://api.nexid.lat" } },
+  "../../api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected network read"); } },
 });
 const list = (items = []) => ({ ok: true, items });
 const brand = { tenant_id: "tenant-id", slug: "brand-qa", name: "Marca sintética QA", status: "active", points_balance: 540 };
