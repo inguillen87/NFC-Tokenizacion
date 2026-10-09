@@ -80,7 +80,42 @@
         "No NFC/NTAG424DNA TT installation or tamper measurement is shown or certified"
       ],
       "recommendedCaption": "Foto de referencia comercial · fuente Agroinsumos Mercofrut. Consultar documentación argentina vigente."
+    },
+    {
+      "path": "/sun/syngenta/amistar-xtra-5l-planeta.webp",
+      "assetKind": "commercial_reference_container_photo",
+      "brand": "Syngenta",
+      "product": "AMISTAR XTRA",
+      "presentation": "5 litros",
+      "observedAt": "2026-10-09T00:31:04.564Z",
+      "sourcePage": "https://www.mercadolibre.com.ar/syngenta-amistar-xtra-fungicida-x-5-l--azoxistrobina/up/MLAU3544079462",
+      "sourceUrl": "https://http2.mlstatic.com/D_NQ_NP_2X_883618-MLA97351457291_112025-F.webp",
+      "sourceKind": "Public Argentine commercial marketplace listing",
+      "sourceCredit": "Tienda Planeta Verde",
+      "contentType": "image/webp",
+      "bytes": 40152,
+      "width": 676,
+      "height": 1200,
+      "sha256": "979ca2bdc468ac054611b3abb3e8e3c72840688c84a746bd99c0e76e54e5418e",
+      "modified": false,
+      "visibleMarks": [
+        "Syngenta",
+        "AMISTAR XTRA",
+        "5 litros",
+        "SENASA34.011"
+      ],
+      "brandApprovalEstablished": false,
+      "permissionEstablished": false,
+      "nfcTagVisible": false,
+      "limitations": [
+        "Commercial reference photo, not an official Syngenta packshot",
+        "Printed lot and expiry belong to the photograph, not the NexID demo",
+        "Current label design and regulatory approval are not independently certified",
+        "No NFC/NTAG424DNA TT installation or tamper measurement is shown or certified"
+      ],
+      "recommendedCaption": "Foto de referencia comercial · Tienda Planeta Verde. Consultar documentación argentina vigente."
     }
   ],
-  "commercialContainerPhotoFound": true
+  "commercialContainerPhotoFound": true,
+  "selectedContainerPhoto": "/sun/syngenta/amistar-xtra-5l-planeta.webp"
 }

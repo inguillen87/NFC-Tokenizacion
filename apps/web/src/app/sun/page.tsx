@@ -9,6 +9,7 @@ import { SunLocationQuickAction } from "./sun-location-quick-action";
 import { SunProductImage } from "./sun-product-image";
 import type { Metadata } from "next";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowDown, ArrowLeft, ChevronDown, ChevronRight, Info, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
@@ -54,7 +55,9 @@ import { selectedValleSecretoDemo, valleSecretoDemoResult } from "./valle-secret
 import { ValleSecretoExperience, ValleSecretoDemoServices } from "./valle-secreto-experience";
 import { ValleSecretoDemoMap } from "./valle-secreto-demo-map";
 import { selectedSyngentaDemo, syngentaDemoCopy, syngentaDemoResult } from "./syngenta-demo";
-import { SyngentaDemoExperience, SyngentaDemoServices, SyngentaDemoOrigin } from "./syngenta-demo-experience";
+const SyngentaDemoExperience = dynamic(() => import("./syngenta-demo-experience").then(module => module.SyngentaDemoExperience));
+const SyngentaDemoServices = dynamic(() => import("./syngenta-demo-experience").then(module => module.SyngentaDemoServices));
+const SyngentaDemoOrigin = dynamic(() => import("./syngenta-demo-experience").then(module => module.SyngentaDemoOrigin));
 import { isSunDemoGalleryEntry, resolveSunDemoProfile } from "./sun-demo-entry";
 import { SunDemoGallery } from "./sun-demo-gallery";
 import { resolveSunDemoScenario, sunDemoScenarioSignals } from "./sun-demo-scenario";
@@ -1566,7 +1569,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "La lectura digital es válida y el tag informa sello abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
         : "Podés conocer el producto. Las opciones de la marca requieren sus validaciones y son voluntarias.";
   const primaryPostTapAction = isDemoPreview
-    ? isDemoLabHandoff
+    ? syngentaCopy
+      ? { label: syngentaCopy.assistantAction, href: "#syngenta-assistant", tone: "trace" }
+    : isDemoLabHandoff
       ? { label: "Ver opciones de muestra", href: "#sun-services", tone: "trace" }
       : { label: "Conocer el producto", href: "#product-info", tone: "trace" }
     : !hasSourceResult
@@ -1993,8 +1998,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         <section id="product-info" aria-labelledby="sun-product-title" className={`${passportStyles.productProfile} rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden`}>
           <div className="flex flex-col items-center">
 
-            {/* Floating Premium Image */}
-            <div className={passportStyles.productMedia}>
+            {!syngentaDemo ? <div className={passportStyles.productMedia}>
               {productHeroImageUrl ? (
                 <SunProductImage
                   src={productHeroImageUrl}
@@ -2005,7 +2009,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <Package aria-hidden="true" />
               )}
               <span>{isDemoPreview ? "Perfil de muestra" : productHeroImageUrl ? "Imagen informada por la marca" : "Imagen no informada"}</span>
-            </div>
+            </div> : null}
 
             {demoPhotography ? <a data-testid="sun-demo-photo-source" href={demoPhotography.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className={passportStyles.photoCredit}>
               {syngentaCopy?.photoCredit || translateSunUiText(`${demoPhotography.sourceLabel} · Referencia visual`, locale)}
@@ -2015,8 +2019,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span data-sun-server-evidence="true" className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
                 {tenantDisplayName}
               </span>
-              <h2 id="sun-product-title" data-sun-server-evidence="true" className={`${passportStyles.productTitle} mt-1`}>
-                {productDisplayName}
+              <h2 id="sun-product-title" data-sun-server-evidence="true" className={`${syngentaDemo ? passportStyles.syngentaProfileTitle : passportStyles.productTitle} mt-1`}>
+                {syngentaCopy?.productStatusTitle || productDisplayName}
               </h2>
               <p data-sun-server-evidence="true" className="text-xs text-slate-400 mt-1 leading-normal">
                 {productLine || verticalLabel}

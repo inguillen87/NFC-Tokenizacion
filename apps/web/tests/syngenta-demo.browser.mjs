@@ -54,7 +54,7 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
   const headers = path => ({ accept: path.startsWith('/sun') ? 'text/html' : '*/*', 'user-agent': USER_AGENT, 'cache-control': 'no-cache', ...(protectionHeader ? { [protectionHeader]: protectionValue } : {}) });
   const get = async path => { const response = await fetch(origin + path, { headers: headers(path), redirect: 'manual', signal: AbortSignal.timeout(20000) }); assert.equal(response.status, 200, 'own_preflight_http'); const bytes = Buffer.from(await response.arrayBuffer()); assert(bytes.length <= 8 * 1024 * 1024); return bytes; };
   const runtime = await get('/release.json');
-  if (phase !== 'local') { check(sha(runtime) === runtimeSHA, 'Runtime manifest exact bytes'); const release = JSON.parse(runtime); check(release.commit === source && release.tree === tree && release.release === '2026.10.08-web-syngenta.1', 'Runtime belongs to exact source and tree'); }
+  if (phase !== 'local') { check(sha(runtime) === runtimeSHA, 'Runtime manifest exact bytes'); const release = JSON.parse(runtime); check(release.commit === source && release.tree === tree && release.release === '2026.10.09-web-syngenta-guide.1', 'Runtime belongs to exact source and tree'); }
   report.runtimeSha256 = sha(runtime);
   const galleryHtml = (await get('/sun?lang=es-AR')).toString();
   const demoHtml = (await get('/sun?demo=1&profile=syngenta&scenario=closed&lang=es-AR')).toString();
@@ -141,7 +141,7 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
         await page.waitForFunction(() => { const image = document.querySelector('[data-testid="sun-product-image"]'); return image?.complete && image.naturalWidth > 0; });
         const logo = page.getByTestId('syngenta-demo-experience').locator('img'); await logo.scrollIntoViewIfNeeded();
         await page.waitForFunction(() => { const image = document.querySelector('[data-testid="syngenta-demo-experience"] img'); return image?.complete && image.naturalWidth > 0; });
-        check(await image.getAttribute('src')?.then(src => src.includes('/sun/syngenta/amistar-xtra-5l.webp')), `${view}/${scenario}: real commercial reference canister`);
+        check(await image.getAttribute('src')?.then(src => src.includes('/sun/syngenta/amistar-xtra-5l-planeta.webp')), `${view}/${scenario}: real commercial reference canister`);
         const sealDetails = page.getByTestId('syngenta-seal-details');
         check(!(await sealDetails.evaluate(el => el.open)), `${view}/${scenario}: technical seal details start collapsed`);
         await sealDetails.locator('summary').press('Enter');

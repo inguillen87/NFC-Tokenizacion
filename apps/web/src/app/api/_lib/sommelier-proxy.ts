@@ -19,7 +19,7 @@ async function readBounded(stream: ReadableStream<Uint8Array> | null, max: numbe
     timer = setTimeout(cancel, input.timeoutMs);
   }
   try {
-    if (input?.signal.aborted) throw new Error("input_timeout");
+    if (input?.signal.aborted) { void reader.cancel().catch(() => {}); throw new Error("input_timeout"); }
     while (true) {
       const { value, done } = await Promise.race([reader.read(), stopped]);
       if (done) break;
@@ -73,14 +73,15 @@ export async function proxySommelierRequest(req: Request, target: Target, option
   const forward = (async () => {
     try {
       upstream = await (options.fetchImpl ?? fetch)(new URL(target, base).href, { method: "POST", headers, body, cache: "no-store", signal: controller.signal });
-      const text = await readBounded(upstream.body, 24_576);
+      if (controller.signal.aborted) { void upstream.body?.cancel().catch(() => {}); return interrupted; }
+      const text = await readBounded(upstream.body, 24_576, { signal: controller.signal, timeoutMs: options.timeoutMs ?? 11_000 });
       if (controller.signal.aborted) return interrupted;
       const response = new Response(text, { status: upstream.status, headers: { ...PRIVATE_HEADERS, "content-type": "application/json" } });
       const retry = upstream.headers.get("retry-after");
       if (retry && /^[0-9]{1,6}$/.test(retry)) response.headers.set("retry-after", retry);
       const setCookies = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.() ?? [upstream.headers.get("set-cookie") || ""];
       for (const cookie of setCookies) {
-        if (!/^(?:__Host-nexid_sommelier_demo|nexid_sommelier_demo)=/.test(cookie) || !/;\s*HttpOnly(?:;|$)/i.test(cookie) || !/;\s*Path=\/(?:;|$)/i.test(cookie)) continue;
+        if (!/^(?:__Host-nexid_sommelier_demo|nexid_sommelier_demo|__Host-nexid_syngenta_demo|nexid_syngenta_demo)=/.test(cookie) || !/;\s*HttpOnly(?:;|$)/i.test(cookie) || !/;\s*Path=\/(?:;|$)/i.test(cookie)) continue;
         if (origin.startsWith("https:") && !/;\s*Secure(?:;|$)/i.test(cookie)) continue;
         response.headers.append("set-cookie", cookie.replace(/;\s*Domain=[^;]+/gi, ""));
       }
