@@ -20,6 +20,7 @@
   --access-error-bg: #402838;
 }
 .consumerShell { justify-content: flex-start; padding-top: 1rem; padding-bottom: 1rem; }
+.consumerShell :global(.web-auth-theme-control .theme-toggle) { min-height: 44px; min-width: 44px; }
 .consumerLayout { display: grid; gap: 1rem; margin-top: 1rem; }
 .consumerTitle { margin: 0; font-size: clamp(1.65rem, 4vw, 2.25rem); line-height: 1.2; }
 .consumerSummary { margin: .5rem 0 0; color: #b9c9db; font-size: .9375rem; line-height: 1.5; }

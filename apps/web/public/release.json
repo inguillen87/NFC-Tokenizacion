@@ -1,7 +1,7 @@
 {
   "application": "nexid-web",
-  "version": "2026.10.09-web-public-privacy-access.1",
-  "scope": "public-privacy-data-deletion-instructions-scoped-preview-transport-and-truthful-access-preparation-feedback",
+  "version": "2026.10.10-web-public-privacy-access.2",
+  "scope": "public-privacy-data-deletion-instructions-scoped-preview-transport-truthful-access-preparation-feedback-and-consumer-touch-controls",
   "baseCommit": "25149600ec171ece9d8958f01e81514d3dab6d0d",
   "physicalTapCertification": "not-included",
   "requiredApiRelease": "2026.10.09-api-consumer-auth-uuid.1",
@@ -10,7 +10,7 @@
   "currentEditorialProtocol": "nexid.current-editorial.v1",
   "productNoticesProtocol": "nexid.product-notices.v2",
   "databaseMigrationsIncluded": false,
-  "release": "2026.10.09-web-public-privacy-access.1",
+  "release": "2026.10.10-web-public-privacy-access.2",
   "consumerHistoryProtocol": "nexid.consumer-history.v1",
   "supportReportProtocol": "nexid.support-report.v1",
   "publicExperienceShareProtocol": "nexid:experience-event:v1",
