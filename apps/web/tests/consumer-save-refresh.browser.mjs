@@ -76,6 +76,8 @@ async function startLocalServer() {
 async function open(width, theme, scenario) {
   const confirmed = ['confirmed', 'confirmed-focus-moved', 'confirmed-scroll-moved'].includes(scenario);
   const lost = ['lost', 'lost-focus-moved'].includes(scenario);
+  const policyChanged = scenario === 'policy-changed';
+  const consumedUnavailable = ['consumed-unavailable', 'consumed-unavailable-focus-moved'].includes(scenario);
   const focusMoved = scenario.endsWith('-focus-moved');
   const scrollMoved = scenario === 'confirmed-scroll-moved';
   const context = await browser.newContext({ viewport: { width, height: 900 }, locale: 'es-AR', reducedMotion: 'reduce', serviceWorkers: 'block' });
@@ -130,6 +132,8 @@ async function open(width, theme, scenario) {
       const response = confirmed ? { status: 200, payload: { ok: true, saved: true, eventId } }
         : scenario === 'expired' ? { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required', fresh_token_status: 'fresh_token_expired' } }
           : scenario === 'used' ? { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required', fresh_token_status: 'fresh_token_already_used' } }
+            : policyChanged ? { status: 409, payload: { ok: false, error: 'tap_policy_changed', fresh_tap_required: true } }
+              : consumedUnavailable ? { status: 503, payload: { ok: false, error: 'tap_policy_unavailable', fresh_tap_required: true } }
             : scenario === 'foreign' ? { status: 200, payload: { ok: true, saved: true, eventId: '900102' } }
               : { status: 200, body: 'invalid JSON' };
       return route.fulfill({ status: response.status, contentType: 'application/json', body: response.body || JSON.stringify(response.payload),
@@ -177,7 +181,8 @@ async function open(width, theme, scenario) {
     check(true, `${width}/${theme}/${scenario}: user scrolls while the receipt remains pending`);
   }
   releaseReceipt();
-  const expectedOutcome = confirmed ? 'saved' : scenario === 'expired' ? 'fresh_expired' : scenario === 'used' ? 'fresh_used' : 'unconfirmed';
+  const expectedOutcome = confirmed ? 'saved' : scenario === 'expired' ? 'fresh_expired' : scenario === 'used' ? 'fresh_used'
+    : policyChanged || consumedUnavailable ? 'fresh_required' : 'unconfirmed';
   const result = banner.locator(`[data-outcome="${expectedOutcome}"]`);
   await result.waitFor();
   if (confirmed) await home.getByRole('heading', { name: productName, exact: true }).waitFor();
@@ -231,6 +236,12 @@ async function open(width, theme, scenario) {
     if (scenario === 'expired' || scenario === 'used') {
       check(await confirm.isDisabled(), `${width}/${theme}/${scenario}: rejected fresh capability cannot be replayed`);
       check((await result.innerText()).includes(scenario === 'expired' ? 'Acercá de nuevo el teléfono a la etiqueta' : 'para una acción nueva'), `${width}/${theme}/${scenario}: guidance requests a new physical TAP`);
+    } else if (policyChanged || consumedUnavailable) {
+      check(await confirm.isDisabled(), `${width}/${theme}/${scenario}: a spent reading disables retry even after 503`);
+      check((await result.innerText()).includes('Acercá de nuevo el teléfono a la etiqueta'), `${width}/${theme}/${scenario}: server requirement has visible new-TAP guidance`);
+      await confirm.evaluate(button => { button.click(); button.click(); });
+      await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+      check(postCount === 1 && refreshCount === initialRefreshes, `${width}/${theme}/${scenario}: terminal feedback cannot resend or refresh an unconfirmed action`);
     } else {
       check((await result.innerText()).includes('revisá tus productos antes de reintentar'), `${width}/${theme}/${scenario}: lost or malformed receipt directs collection review before deliberate retry`);
     }
@@ -269,6 +280,8 @@ try {
   report.servedRelease = await (await fetch(base + '/release.json', { signal: AbortSignal.timeout(5000) })).json();
   for (const theme of ['light', 'dark']) for (const width of [320, 390, 768, 1440]) await open(width, theme, 'confirmed');
   for (const theme of ['light', 'dark']) for (const scenario of ['lost', 'malformed', 'foreign', 'expired', 'used']) await open(390, theme, scenario);
+  for (const theme of ['light', 'dark']) for (const width of [320, 390]) for (const scenario of ['policy-changed', 'consumed-unavailable']) await open(width, theme, scenario);
+  for (const theme of ['light', 'dark']) await open(390, theme, 'consumed-unavailable-focus-moved');
   for (const theme of ['light', 'dark']) for (const width of [320, 390]) await open(width, theme, 'confirmed-focus-moved');
   for (const theme of ['light', 'dark']) for (const scenario of ['confirmed-scroll-moved', 'lost-focus-moved']) await open(390, theme, scenario);
   check(report.errors.length === 0, 'zero application runtime exceptions');
