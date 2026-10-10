@@ -6,7 +6,7 @@ import { CanonicalEventWriteError, writeCanonicalEvent } from "./canonical-event
 import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "./tap-commercial-rights";
 import { publishTenantTapRealtimeProjection } from "./realtime-tap-projection";
 
-async function publishActorAssociationProjection(eventId: unknown) {
+export async function publishActorAssociationProjection(eventId: unknown) {
   try {
     const publication = await publishTenantTapRealtimeProjection(eventId);
     if (!publication.projected || !publication.distributed) {

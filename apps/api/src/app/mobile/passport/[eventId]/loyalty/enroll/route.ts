@@ -5,10 +5,10 @@ import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../../lib/bounded-request-body";
 import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-limit";
 import { json } from "../../../../../../lib/http";
-import { getActiveProgram, getOrCreateMember, getTapEvent } from "../../../../../../lib/loyalty-service";
+import { getActiveProgram } from "../../../../../../lib/loyalty-service";
+import { readConsumerVerticalContext, enrollConsumerVerticalTap } from "../../../../../../lib/consumer-vertical-writer-policy";
+import { matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
 import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
-import { readCurrentTapCommercialRights } from "../../../../../../lib/tap-commercial-rights";
-import { isCurrentLoyaltyTapEligible } from "../../../../../../lib/loyalty-tap-policy";
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -31,11 +31,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
 
   const { eventId } = await params;
   if (!/^\d+$/.test(eventId)) return json({ ok: false, reason: "invalid_event_id" }, 400);
-  const event = await getTapEvent(eventId);
-  if (!event) return json({ ok: false, reason: "event_not_found" }, 404);
-  if (!isCurrentLoyaltyTapEligible(event)) {
-    return json({ ok: false, reason: "event_security_blocked" }, 403);
-  }
+  const decision = await readConsumerVerticalContext(eventId, "rewards");
+  if (!decision.ok) return json({ ok: false, reason: decision.error }, decision.error === "tap_policy_unavailable" ? 503 : 403);
+  const event = decision.context.event;
+  if (!matchesOwnershipTenant({ eventTenantId: event.tenant_id, eventTenantSlug: event.tenant_slug,
+    requestedTenantId: String(body.tenantId || body.tenant_id || ""), requestedTenantSlug: String(body.tenantSlug || body.tenant_slug || ""), requestedTenant: String(body.tenant || "") })
+    || !matchesOwnershipBatch({ eventBid: event.bid, requestedBid: String(body.bid || "") })) return json({ ok: false, reason: "tenant_mismatch" }, 403);
+  const program = await getActiveProgram(event.tenant_id);
+  if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
   const capability = await consumeSunFreshHandoff(req, body, {
     eventId: String(event.id),
     bid: String(event.bid || ""),
@@ -45,26 +48,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   if (!capability.ok) {
     return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
   }
-  const currentRights = await readCurrentTapCommercialRights(event.id);
-  if (!currentRights.allowed) {
-    return json({ ok: false, reason: currentRights.reason }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
-  }
-  const program = await getActiveProgram(event.tenant_id);
-  if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
   const locale = String(body.locale || consumer.preferred_locale || "es-AR").trim().slice(0, 12);
-  const member = await getOrCreateMember({
-    tenantId: event.tenant_id,
+  let member;
+  try { member = await enrollConsumerVerticalTap({
+    context: decision.context,
     programId: program.id,
-    eventId: String(event.id),
-    memberKey: `consumer:${consumer.id}`,
     consumerId: consumer.id,
     locale,
     email: consumer.email || null,
     phone: consumer.phone || null,
     displayName: consumer.display_name || null,
     country: event.country_code || consumer.country || null,
-  });
-  if (!member) return json({ ok: false, reason: "event_security_blocked" }, 403);
+  }); } catch { return json({ ok: false, reason: "tap_policy_unavailable", fresh_tap_required: true }, 503); }
+  if (!member) return json({ ok: false, reason: "tap_policy_changed", fresh_tap_required: true }, 409);
   return json({
     ok: true,
     enrollment_status: "enrolled",

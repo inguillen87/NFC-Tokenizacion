@@ -17,6 +17,7 @@ import {runSupplierRuntimeAcceptance} from "./lib/supplier-runtime-acceptance.mj
 import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
 import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
 import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
+import { runConsumerVerticalWriterPostgresQa } from "../tests/helpers/consumer-vertical-writer-postgres-harness.mjs";
 import { runConsumerRewardPostgresQa } from "../tests/helpers/consumer-reward-postgres-harness.mjs";
 import { runAdminRewardPostgresQa } from "../tests/helpers/admin-reward-postgres-harness.mjs";
 import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuration-postgres-harness.mjs";
@@ -176,6 +177,12 @@ async function run() {
   assert.ok(collectionConcurrency.checks.every(check => check.passed));
   assert.equal(collectionConcurrency.lockObservations.length, 3);
   assert.ok(collectionConcurrency.serializationConflicts >= 3);
+  const verticalWriters = await runConsumerVerticalWriterPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(verticalWriters.ok && verticalWriters.cleanup.schemaDropped && verticalWriters.cleanup.connectionsClosed, "Vertical consumer writer SQL regression or cleanup failed");
+  assert.ok(verticalWriters.checks.every(check => check.passed));
+  assert.equal(verticalWriters.checks.length, 26);
+  assert.equal(verticalWriters.lockObservations.length, 7);
+  assert.ok(verticalWriters.serializationConflicts >= 4);
   const rewardConfiguration = await runConsumerRewardPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardConfiguration.ok && rewardConfiguration.cleanup.schemaDropped && rewardConfiguration.cleanup.connectionsClosed, "Consumer reward configuration SQL regression or cleanup failed");
   assert.ok(rewardConfiguration.checks.every(check => check.ok));
@@ -202,7 +209,18 @@ async function run() {
   assert.ok(tenantMarketplaceCatalog.checks.every(check => check.passed));
   assert.equal(tenantMarketplaceCatalog.lockObservations.length, 1);
   assert.ok(tenantMarketplaceCatalog.lockObservations.every(observation => observation.observed && observation.waitEventType === 'Lock'));
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
+  // Publish observed QA counts only; keep connection identities and fixture data
+  // out of the new vertical-writer summary. 40001 counts are caught conflicts,
+  // not a claim that every conflict was followed by a successful retry.
+  const consumerVerticalWriters = {
+    schema: "nexid.consumer-vertical-writers.ci-summary/v1",
+    passed: verticalWriters.ok === true && verticalWriters.checks.every(check => check.passed === true),
+    casesTotal: verticalWriters.checks.length,
+    failedCount: verticalWriters.checks.filter(check => check.passed !== true).length,
+    lockObservations: verticalWriters.lockObservations.filter(lock => lock.lockObserved === true).length,
+    retryCounts: { serializationConflicts: verticalWriters.serializationConflicts },
+  };
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, consumerVerticalWriters, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 
