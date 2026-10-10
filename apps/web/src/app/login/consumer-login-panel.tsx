@@ -25,6 +25,7 @@ type LoginFeedback = {
 };
 type LoginFocusIntent = {
   trigger: Element | null;
+  mode: "request" | "transition";
   permitted: boolean;
   completed: boolean;
   scrollX: number;
@@ -104,33 +105,38 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
   function changeChannel() {
     changeContact({ ...contactDraft, channel: contactDraft.channel === "email" ? "whatsapp" : "email" });
-    completeFocusIntent(beginFocusIntent(), "contact");
+    completeFocusIntent(beginFocusIntent("transition"), "contact");
   }
 
-  function beginFocusIntent() {
+  function beginFocusIntent(mode: LoginFocusIntent["mode"] = "request") {
     focusIntent.current?.release();
-    const intent: LoginFocusIntent = { trigger: document.activeElement, permitted: true, completed: false, scrollX: window.scrollX, scrollY: window.scrollY, release: () => {} };
+    const intent: LoginFocusIntent = { trigger: document.activeElement, mode, permitted: true, completed: false, scrollX: window.scrollX, scrollY: window.scrollY, release: () => {} };
     const movedFocus = (event: Event) => {
       if (event.target !== document.body && event.target !== intent.trigger && !intent.trigger?.contains(event.target as Node)) intent.permitted = false;
     };
     const movedPointer = (event: Event) => {
-      if (event.target !== intent.trigger && !intent.trigger?.contains(event.target as Node)) intent.permitted = false;
+      if (intent.mode === "transition" || event.target !== intent.trigger && !intent.trigger?.contains(event.target as Node)) intent.permitted = false;
     };
     const movedReading = () => { intent.permitted = false; };
+    const movedScroll = () => {
+      // Removing the previous channel's error can clamp the page in this same
+      // explicit transition. Requests still reject every newer scroll event.
+      if (intent.mode !== "transition" || !intent.completed) intent.permitted = false;
+    };
     const movedKeyboard = () => { intent.permitted = false; };
     document.addEventListener("focusin", movedFocus, true);
     document.addEventListener("pointerdown", movedPointer, true);
     document.addEventListener("touchmove", movedReading, { capture: true, passive: true });
     document.addEventListener("keydown", movedKeyboard, true);
     window.addEventListener("wheel", movedReading, { capture: true, passive: true });
-    window.addEventListener("scroll", movedReading, { capture: true, passive: true });
+    window.addEventListener("scroll", movedScroll, { capture: true, passive: true });
     intent.release = () => {
       document.removeEventListener("focusin", movedFocus, true);
       document.removeEventListener("pointerdown", movedPointer, true);
       document.removeEventListener("touchmove", movedReading, true);
       document.removeEventListener("keydown", movedKeyboard, true);
       window.removeEventListener("wheel", movedReading, true);
-      window.removeEventListener("scroll", movedReading, true);
+      window.removeEventListener("scroll", movedScroll, true);
     };
     focusIntent.current = intent;
     return intent;
@@ -153,10 +159,10 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     intent.release();
     // Live feedback remains announced even after a newer interaction. Only a
     // still-owned request may move focus; finishing a request is not permission.
-    if (!mounted.current || !intent.permitted || window.scrollX !== intent.scrollX || window.scrollY !== intent.scrollY
+    if (!mounted.current || !intent.permitted || intent.mode === "request" && (window.scrollX !== intent.scrollX || window.scrollY !== intent.scrollY)
       || (document.activeElement !== intent.trigger && document.activeElement !== document.body)) return;
     if (intent.target === "code" || feedback.tone === "error" && feedback.field === "code") codeRef.current?.focus();
-    else if (intent.target === "contact" || feedback.tone === "error" && feedback.field === "contact") formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus();
+    else if (intent.target === "contact" || feedback.tone === "error" && feedback.field === "contact") formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus(intent.mode === "transition" ? { preventScroll: true } : undefined);
     else if (feedback.tone === "error" && preferEmailRecovery) emailRecoveryRef.current?.focus();
   }, [step, feedback, pending, preferEmailRecovery]);
 
