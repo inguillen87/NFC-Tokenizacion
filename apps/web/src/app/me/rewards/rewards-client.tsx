@@ -3,21 +3,21 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUpRight, Check, ChevronDown, Copy, Gift, Search, Ticket } from "lucide-react";
-import { expireConsumerRewards, nextConsumerRewardExpiry, REWARD_STATE_LABELS, rewardDateLabel, type ConsumerReward } from "../_components/consumer-rewards-model";
+import { createConsumerRewardClock, expireConsumerRewards, nextConsumerRewardExpiry, readConsumerRewardClock, reanchorConsumerRewardClock, REWARD_STATE_LABELS, rewardDateLabel, type ConsumerReward } from "../_components/consumer-rewards-model";
 import styles from "./rewards.module.css";
 
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-function useRewardExpiry(items: ConsumerReward[]) {
+function useRewardExpiry(items: ConsumerReward[], serverObservedAt: string) {
   // Keep the already-validated server projection identical during hydration;
-  // the first effect and every copy attempt observe the current client clock.
+  // the first effect and every copy attempt observe elapsed client time from the server sample.
   const [observedAt, setObservedAt] = useState(0);
-  const clock = useRef({ wall: Date.now(), monotonic: performance.now(), highWater: 0 });
+  const clock = useRef(createConsumerRewardClock(serverObservedAt, performance.now(), Date.now()));
   const readNow = useCallback(() => {
-    const elapsed = Math.max(0, performance.now() - clock.current.monotonic);
-    clock.current.highWater = Math.max(clock.current.highWater, Date.now(), clock.current.wall + elapsed);
-    return clock.current.highWater;
-  }, []);
+    const monotonic = performance.now(), wall = Date.now();
+    if (clock.current.serverObservedAt !== serverObservedAt) clock.current = reanchorConsumerRewardClock(clock.current, serverObservedAt, monotonic, wall);
+    return readConsumerRewardClock(clock.current, monotonic, wall);
+  }, [serverObservedAt]);
   const refresh = useCallback(() => setObservedAt(readNow()), [readNow]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -38,7 +38,8 @@ function useRewardExpiry(items: ConsumerReward[]) {
     document.addEventListener("visibilitychange", update);
     return () => { active = false; clearTimeout(timer); window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", update); };
   }, [items, readNow]);
-  return { currentItems: expireConsumerRewards(items, observedAt), readNow, refresh };
+  const sampleAvailable = Number.isFinite(createConsumerRewardClock(serverObservedAt, 0, 0).sampledAt);
+  return { currentItems: expireConsumerRewards(items, sampleAvailable ? observedAt : NaN), readNow, refresh };
 }
 
 function VoucherCode({ code, expiresAt, readNow, onExpiry }: { code: string; expiresAt: string; readNow: () => number; onExpiry: () => void }) {
@@ -76,8 +77,8 @@ function VoucherCode({ code, expiresAt, readNow, onExpiry }: { code: string; exp
   </div>;
 }
 
-export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }: { items: ConsumerReward[]; initialTenant: string; selectedVoucher: string | null }) {
-  const { currentItems, readNow, refresh } = useRewardExpiry(items);
+export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher, serverObservedAt }: { items: ConsumerReward[]; initialTenant: string; selectedVoucher: string | null; serverObservedAt: string }) {
+  const { currentItems, readNow, refresh } = useRewardExpiry(items, serverObservedAt);
   const [tenant, setTenant] = useState(initialTenant);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"all" | "vouchers" | "catalog">("all");

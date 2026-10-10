@@ -31,6 +31,31 @@ function instant(value: unknown): string | null {
 export function rewardDateLabel(value: string | null): string {
   return value ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value)) + " (Argentina)" : "No informado";
 }
+export type ConsumerRewardClock = { serverObservedAt: string; sampledAt: number; elapsedOrigin: number; monotonic: number; wall: number; highWater: number };
+// A server render sample is a lower bound, not the exact time of reception.
+// Only elapsed client time is used; its absolute wall-clock offset is ignored.
+export function createConsumerRewardClock(serverObservedAt: string, monotonic: number, wall: number): ConsumerRewardClock {
+  const sample = instant(serverObservedAt);
+  const sampledAt = sample ? Date.parse(sample) : NaN;
+  return { serverObservedAt, sampledAt, elapsedOrigin: sampledAt, monotonic, wall, highWater: sampledAt };
+}
+export function readConsumerRewardClock(clock: ConsumerRewardClock, monotonic: number, wall: number): number {
+  if (![clock.elapsedOrigin, clock.monotonic, clock.wall, clock.highWater, monotonic, wall].every(Number.isFinite) || monotonic < 0 || clock.monotonic < 0) return NaN;
+  const elapsed = Math.max(0, monotonic - clock.monotonic, wall - clock.wall);
+  // A malformed refresh withdraws the code, while elapsed time keeps advancing.
+  clock.highWater = Math.max(clock.highWater, clock.elapsedOrigin + elapsed);
+  return Number.isFinite(clock.sampledAt) ? clock.highWater : NaN;
+}
+export function reanchorConsumerRewardClock(clock: ConsumerRewardClock, serverObservedAt: string, monotonic: number, wall: number): ConsumerRewardClock {
+  const current = readConsumerRewardClock(clock, monotonic, wall);
+  const next = createConsumerRewardClock(serverObservedAt, monotonic, wall);
+  // Refreshing props can withdraw a code; an older cached sample cannot restore it.
+  const observed = [clock.highWater, current, next.sampledAt].filter(Number.isFinite);
+  if (observed.length) {
+    next.elapsedOrigin = next.highWater = Math.max(...observed);
+  }
+  return next;
+}
 // This projection can only withdraw a reported code. It never grants a claim
 // or restores one; the API remains the authority for cancellation and redemption.
 export function expireConsumerRewards(items: ConsumerReward[], observedAt: number): ConsumerReward[] {
