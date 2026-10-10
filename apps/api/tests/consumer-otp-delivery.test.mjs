@@ -37,6 +37,7 @@ const compiled = Object.fromEntries(Object.entries({
   status: source("../src/lib/consumer-otp-twilio-status.ts"),
   twilioConfig: source("../src/lib/consumer-otp-twilio-config.ts"),
   meta: source("../src/lib/consumer-otp-meta-whatsapp.ts"),
+  contact: source("../src/lib/consumer-contact.ts"),
   provider: source("../src/lib/consumer-auth-provider.ts"),
   auth: source("../src/lib/consumer-auth.ts"),
   route: source("../src/app/consumer/auth/start/route.ts"),
@@ -50,7 +51,7 @@ function harness(options = {}) {
   const logs = [], requests = [], mail = [], transports = [], queries = [], rates = [], timeouts = [], closed = [];
   const pendingTimers = new Map();
   let timerId = 0;
-  let provider, auth, statusHelper, twilioConfig, meta, safeReturn, continuation;
+  let provider, auth, statusHelper, twilioConfig, meta, contactParser, safeReturn, continuation;
   class RequestBodyTooLargeError extends Error {}
   const sql = async (parts, ...values) => {
     const text = parts.join("?").replace(/\s+/g, " ").trim();
@@ -108,7 +109,7 @@ function harness(options = {}) {
       shouldFailClosedSunRateLimit: () => true,
     };
     if (name.endsWith("/http")) return { json: (body, status = 200, headers = {}) => Response.json(body, { status, headers }) };
-    if (name.endsWith("/consumer-contact")) return { parseConsumerContact: (body) => ({ ok: true, contact: body.contact }) };
+    if (name.endsWith("/consumer-contact")) return contactParser;
     if (name.endsWith("/request-meta")) return { getRequestMeta: () => ({ ip: "198.51.100.42" }) };
     if (name.endsWith("/critical-rate-limit")) return { enforceCriticalRateLimit: async () => null };
     if (name.endsWith("/bounded-request-body")) return { RequestBodyTooLargeError, readBoundedJsonBody: (req) => req.json() };
@@ -126,6 +127,7 @@ function harness(options = {}) {
   statusHelper = load("status");
   twilioConfig = load("twilioConfig");
   meta = load("meta");
+  contactParser = load("contact");
   provider = load("provider");
   auth = load("auth");
   const route = load("route");
@@ -260,6 +262,49 @@ test("Meta is opt-in across WhatsApp modes; unset and explicit Twilio preserve t
       assert.equal(h.requests.length, 1);
       assert.equal(new URL(h.requests[0].url).hostname, metaSelected ? "graph.facebook.com" : "api.twilio.com");
       assertSanitizedLogs(h);
+    }
+  }
+});
+
+test("international contact prefixes survive parsing, challenge creation and direct Meta delivery", async () => {
+  for (const length of [8, 9, 10, 15]) {
+    const digits = `1${"2".repeat(length - 1)}`;
+    const h = harness({ env: { ...META_ENV, CONSUMER_AUTH_MODE: "whatsapp" },
+      fetch: () => response({ messaging_product: "whatsapp", messages: [{ id: META_RECEIPT }] }, 200),
+    });
+    const res = await h.post(` +${digits.slice(0, 3)} ${digits.slice(3)} `);
+    assert.equal(res.status, 200, `${length}-digit international contact`);
+    const body = await res.json();
+    assert.equal(body.contact, `+${digits}`);
+    assert.deepEqual(body.delivery, delivery("meta", "whatsapp").delivery);
+    assert.equal(h.requests.length, 1);
+    assert.equal(new URL(h.requests[0].url).hostname, "graph.facebook.com");
+    assert.equal(JSON.parse(h.requests[0].init.body).to, digits);
+    const challenges = h.queries.filter(({ text }) => text.startsWith("INSERT INTO consumer_auth_challenges"));
+    assert.equal(challenges.length, 1);
+    assert.equal(challenges[0].values[0], `+${digits}`);
+    assertPublicPayload(body);
+  }
+});
+
+test("Meta contact parsing rejects unsupported lengths and never guesses a short bare international prefix", async () => {
+  for (const [input, expectedError] of [
+    [`+${"1".repeat(7)}`, "invalid_phone"],
+    [`+${"1".repeat(16)}`, "invalid_phone"],
+    ["12345678", "meta_payload_invalid"],
+    ["123456789", "meta_payload_invalid"],
+    ["+012345678", "meta_payload_invalid"],
+    ["+1abc2345678", "meta_payload_invalid"],
+    ["++12345678", "meta_payload_invalid"],
+    ["+1234\n5678", "meta_payload_invalid"],
+  ]) {
+    const h = harness({ env: { ...META_ENV, CONSUMER_AUTH_MODE: "whatsapp" } });
+    const res = await h.post(input);
+    assert.equal(res.status, 422);
+    assert.deepEqual(await res.json(), { ok: false, error: expectedError });
+    assert.equal(h.requests.length, 0);
+    if (expectedError === "invalid_phone") {
+      assert.equal(h.queries.some(({ text }) => text.startsWith("INSERT INTO consumer_auth_challenges")), false);
     }
   }
 });

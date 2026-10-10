@@ -8,6 +8,7 @@ function isValidEmail(value: string) {
 
 function normalizePhone(value: string) {
   const digits = value.replace(/[^\d]/g, "");
+  if (/^\+[\d ().-]+$/.test(value)) return `+${digits}`;
   return digits.length >= 10 ? `+${digits}` : digits;
 }
 
