@@ -92,7 +92,7 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       tp.grape_varietal,
       tp.image_url
     FROM events e
-    JOIN tags t ON t.uid_hex = e.uid_hex
+    JOIN tags t ON t.batch_id = e.batch_id AND UPPER(TRIM(t.uid_hex)) = UPPER(TRIM(e.uid_hex))
     JOIN batches b ON b.id = t.batch_id
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     WHERE e.id = ${event.id}
