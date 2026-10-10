@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, Bot, CalendarDays, CircleAlert, Coffee, GlassWater, Send, Thermometer } from "lucide-react";
 import { classifySommelierResponse, normalizeSommelierProductContext, safeSommelierGuidance, sommelierProvenanceLabel, type SommelierProvenance } from "../../../lib/sommelier-guidance";
-import { requestSommelierAnswer, sommelierWelcome, SOMMELIER_QUESTION_MAX_CHARS } from "../../../lib/sommelier-conversation";
+import { sommelierWelcome } from "../../../lib/sommelier-conversation";
+import { requestManagedSommelierAnswer, sommelierHistory, MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../../lib/managed-sommelier";
 import styles from "./sommelier.module.css";
 
-type ChatMessage = { id: string; sender: "sommelier" | "user"; text: string; provenance?: SommelierProvenance; delivery?: "pending" | "received" | "unconfirmed" };
+type ChatMessage = { id: string; sender: "sommelier" | "user"; text: string; provenance?: SommelierProvenance; delivery?: "pending" | "received" | "unconfirmed"; sources?: SommelierSource[]; suggestedQuestions?: string[] };
+const VISIBLE_MESSAGE_LIMIT = 24;
 const starters = [
   { label: "Elegir un maridaje", question: "¿Qué debería tener en cuenta para elegir un maridaje?", Icon: Coffee },
   { label: "Servir el vino", question: "¿Cómo elijo la temperatura para servir un vino?", Icon: Thermometer },
@@ -22,9 +24,9 @@ function responseTitle(provenance?: SommelierProvenance) {
   return "Para empezar";
 }
 
-export default function SommelierClient({ productName, brandName }: { productName: string; brandName: string }) {
+export default function SommelierClient({ productName, brandName, eventId }: { productName: string; brandName: string; eventId?: string }) {
   const context = useMemo(() => normalizeSommelierProductContext({ productName, brandName }), [productName, brandName]);
-  const welcome = useMemo((): ChatMessage => ({ id: "welcome", sender: "sommelier", text: sommelierWelcome(context), provenance: { mode: "context" } }), [context]);
+  const welcome = useMemo((): ChatMessage => ({ id: "welcome", sender: "sommelier", text: eventId ? `Conversemos sobre ${context.productName || "tu producto"}. La marca habilita esta consulta; el servicio usa su información publicada cuando está disponible.` : sommelierWelcome({}), provenance: { mode: "context" } }), [context, eventId]);
   const [messages, setMessages] = useState<ChatMessage[]>([welcome]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -38,7 +40,8 @@ export default function SommelierClient({ productName, brandName }: { productNam
   const hintId = useId();
 
   useEffect(() => {
-    setMessages([welcome]); setPending(false); setFeedback("");
+    requestRef.current?.abort(); requestRef.current = null;
+    setMessages([welcome]); setInput(""); setPending(false); setFeedback("");
     return () => { requestRef.current?.abort(); requestRef.current = null; };
   }, [welcome]);
 
@@ -53,19 +56,22 @@ export default function SommelierClient({ productName, brandName }: { productNam
     const questionId = `question-${++sequence.current}`;
     followConversation.current = true;
     setPending(true); setFeedback("");
-    setMessages(previous => [...previous, { id: questionId, sender: "user", text: textToSend.trim(), delivery: "pending" }]);
-    const result = await requestSommelierAnswer(textToSend.trim(), context, { signal: controller.signal });
+    setMessages(previous => [...previous, { id: questionId, sender: "user" as const, text: textToSend.trim(), delivery: "pending" as const }].slice(-VISIBLE_MESSAGE_LIMIT));
+    // Only confirmed turns enter the next question; failed retries do not
+    // duplicate themselves, and local guidance is never a product fact.
+    const history = sommelierHistory(messages.filter(message => message.sender === "user" ? message.delivery === "received" : message.provenance?.mode === "live"));
+    const result = await requestManagedSommelierAnswer(textToSend.trim(), { locale: "es-AR", history, signal: controller.signal, ...(eventId ? { eventId } : {}) });
     // Navigation/context changes cancel the request and must never restore old replies.
     if (controller.signal.aborted || requestRef.current !== controller) return;
     if (result.status === "received") {
       const data = result.data;
       const provenance = classifySommelierResponse(data);
-      setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "received" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier", text: data.optimizedText, provenance }]);
-      setInput("");
-      setFeedback("Respuesta recibida. Podés hacer otra consulta.");
+      setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: data.fallback ? "unconfirmed" as const : "received" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier" as const, text: data.optimizedText, provenance, sources: data.sources, suggestedQuestions: data.suggestedQuestions }].slice(-VISIBLE_MESSAGE_LIMIT));
+      if (!data.fallback) setInput("");
+      setFeedback(data.fallback ? "La IA no está disponible ahora. Recibimos una guía general del servicio y conservamos tu consulta para que puedas reintentar." : "Respuesta recibida. Podés hacer otra consulta.");
     } else {
       const replyText = safeSommelierGuidance(textToSend, context);
-      setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "unconfirmed" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier", text: replyText, provenance: { mode: "local-fallback" } }]);
+      setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "unconfirmed" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier" as const, text: replyText, provenance: { mode: "local-fallback" as const } }].slice(-VISIBLE_MESSAGE_LIMIT));
       setFeedback("No pudimos recibir una respuesta del servicio. Conservamos tu consulta para que puedas volver a enviarla. La guía local no confirma una respuesta de IA.");
     }
     requestRef.current = null;
@@ -86,20 +92,21 @@ export default function SommelierClient({ productName, brandName }: { productNam
           {messages.map(msg => <article key={msg.id} className={`${styles.message} ${msg.sender === "user" ? styles.userMessage : styles.assistantMessage}`}>
             <span className={styles.messageLabel}>{msg.sender === "user" ? "Tu consulta" : responseTitle(msg.provenance)}</span>
             <p>{msg.text}</p>
-            {msg.sender === "sommelier" && msg.provenance?.mode !== "context" ? <details className={styles.provenance}><summary>Origen y alcance de esta respuesta</summary><p>{sommelierProvenanceLabel(msg.provenance)}</p></details> : null}
-            {msg.delivery === "unconfirmed" ? <span className={styles.delivery}>Respuesta del servicio no recibida</span> : null}
+            {msg.sender === "sommelier" && msg.provenance?.mode !== "context" ? <details className={styles.provenance}><summary>Origen y alcance de esta respuesta</summary><p>{sommelierProvenanceLabel(msg.provenance)}</p>{msg.sources?.length ? <ul className={styles.sources}>{msg.sources.map(source => <li key={source.id}>{source.url ? <a href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{source.label} ↗</a> : source.label}</li>)}</ul> : null}</details> : null}
+            {msg.suggestedQuestions?.length ? <div className={styles.followUps} aria-label="Continuar la conversación">{msg.suggestedQuestions.map(question => <button key={question} type="button" disabled={pending} onClick={() => { setInput(question); inputRef.current?.focus(); }}>{question}</button>)}</div> : null}
+            {msg.delivery === "unconfirmed" ? <span className={styles.delivery}>Respuesta de IA no confirmada</span> : null}
           </article>)}
         </div>
         <form className={styles.composer} onSubmit={onSubmit} aria-busy={pending}>
           <label htmlFor={inputId}>Tu pregunta sobre vinos</label>
-          <textarea ref={inputRef} id={inputId} value={input} onChange={event => setInput(event.target.value)} maxLength={SOMMELIER_QUESTION_MAX_CHARS} readOnly={pending} aria-describedby={hintId} rows={3} placeholder="Por ejemplo: ¿cómo elijo un vino para una cena?" />
+          <textarea ref={inputRef} id={inputId} value={input} onChange={event => setInput(event.target.value)} maxLength={MANAGED_SOMMELIER_QUESTION_MAX_CHARS} readOnly={pending} aria-describedby={hintId} rows={3} placeholder="Por ejemplo: ¿cómo elijo un vino para una cena?" />
           <div className={styles.composerFooter}><p id={hintId}>Elegí una sugerencia o escribí tu pregunta. Vos decidís cuándo enviarla.</p><button type="submit" disabled={pending || !input.trim()}><Send size={18} aria-hidden="true" />{pending ? "Consultando…" : "Enviar consulta"}</button></div>
           <p className={styles.feedback} role="status" aria-live="polite" aria-atomic="true">{pending ? "Consultando el servicio. Tu pregunta sigue visible." : feedback}</p>
         </form>
       </section>
       <aside className={styles.sidebar} aria-label="Ideas y contexto de la consulta">
         <section className={styles.panel} aria-labelledby="sommelier-starters-title"><span className={styles.eyebrow}>Ideas para conversar</span><h2 id="sommelier-starters-title">Empezá por lo que necesitás</h2><p>Estas sugerencias preparan una pregunta. Después podés editarla y enviarla.</p><div className={styles.starters}>{starters.map(({ label, question, Icon }) => <button type="button" key={label} disabled={pending} onClick={() => { setInput(question); inputRef.current?.focus(); }}><Icon size={20} aria-hidden="true" /><span>{label}</span></button>)}</div></section>
-        <section className={styles.panel} aria-labelledby="sommelier-context-title"><span className={styles.eyebrow}>Identidad declarada</span><h2 id="sommelier-context-title">Contexto de tu consulta</h2><dl className={styles.context}><dt>Producto indicado</dt><dd>{context.productName || "Sin producto seleccionado"}</dd><dt>Marca indicada</dt><dd>{context.brandName || "No indicada"}</dd><dt>Estado SUN/tamper:</dt><dd>No disponible en esta pantalla</dd></dl><p className={styles.contextNote}><CircleAlert size={18} aria-hidden="true" /><span>Estos datos no verifican la botella, su contenido ni el estado físico del sello. Consultá la ficha técnica de la marca para confirmar los datos del vino.</span></p></section>
+        <section className={styles.panel} aria-labelledby="sommelier-context-title"><span className={styles.eyebrow}>{eventId ? "Producto de tu cuenta" : "Orientación general"}</span><h2 id="sommelier-context-title">Contexto de tu consulta</h2><dl className={styles.context}><dt>Producto</dt><dd>{eventId ? context.productName || "Producto guardado" : "Sin producto seleccionado"}</dd><dt>Marca</dt><dd>{eventId ? context.brandName || "No informada" : "Sin marca seleccionada"}</dd></dl>{eventId ? <Link className={styles.back} href={`/me/taps/${encodeURIComponent(eventId)}`} prefetch={false}>Consultar mi lectura</Link> : null}<p className={styles.contextNote}><CircleAlert size={18} aria-hidden="true" /><span>El asistente usa la información que la marca publicó. Una respuesta no verifica el contenido, el sello ni la autenticidad física del producto.</span></p></section>
       </aside>
     </div>
   </div>;
