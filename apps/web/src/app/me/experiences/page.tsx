@@ -6,19 +6,30 @@ import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-cl
 import { PortalShell } from "../_components/portal-shell";
 import { VerifiedExperienceForm } from "./verified-experience-form";
 import { buildExperienceModel, experienceEventId, experienceTenant } from "./experience-model";
+import { parseConsumerTap } from "../_components/consumer-taps-model";
+import { consumerFeedbackAvailability, CONSUMER_FEEDBACK_UNAVAILABLE } from "../_components/consumer-feedback-policy";
+import { readPublicTenantConfiguration } from "../../../lib/public-tenant-configuration";
 import styles from "./experiences.module.css";
 
 export default async function ConsumerExperiencesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   const session = await readConsumerSession(buildConsumerNextPath("/me/experiences", params));
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
-  const tenant = experienceTenant(params.tenant);
   const eventId = experienceEventId(params.eventId);
-  const productName = typeof params.product === "string" ? params.product.slice(0, 240) : "";
-  const model = buildExperienceModel(await fetchConsumerPath("experiences"));
+  const [experiencesPayload, readingPayload] = await Promise.all([
+    fetchConsumerPath("experiences"), eventId ? fetchConsumerPath(`taps/${encodeURIComponent(eventId)}`) : null,
+  ]);
+  const reading = readingPayload?.ok === true ? parseConsumerTap(readingPayload.item) : null;
+  const ownedReading = reading?.id === eventId ? reading : null;
+  const tenant = experienceTenant(eventId ? ownedReading?.tenantSlug : params.tenant);
+  const configuration = ownedReading?.tenantSlug ? await readPublicTenantConfiguration(eventId) : null;
+  const feedback = consumerFeedbackAvailability(configuration, ownedReading?.tenantSlug);
+  const productName = ownedReading?.productName || "Producto guardado";
+  const model = buildExperienceModel(experiencesPayload);
   return <PortalShell title="Tus experiencias" subtitle="Compartí tu opinión, leé la respuesta de la marca y descubrí sus propuestas.">
     <div className={styles.page} data-testid="consumer-experiences">
-      {eventId ? <VerifiedExperienceForm initialEventId={eventId} initialProductName={productName} tenant={tenant || ""} />
+      {eventId ? feedback === "available" ? <VerifiedExperienceForm initialEventId={eventId} initialProductName={productName} tenant={ownedReading?.tenantSlug || ""} />
+        : <section className={styles.unavailable} role="status" data-testid="consumer-experience-disabled"><h2>No está disponible enviar una opinión</h2><p className={styles.description}>{CONSUMER_FEEDBACK_UNAVAILABLE[feedback]}</p><Link className={styles.actionLink} href="/me/products" prefetch={false}>Volver a mis productos<ArrowRight className={styles.icon} aria-hidden="true" /></Link></section>
         : <section className={styles.startCard} aria-labelledby="experience-start-title">
           <span className={styles.startIcon}><MessageSquareText aria-hidden="true" /></span>
           <div><h2 id="experience-start-title" className={styles.heading}>¿Cómo fue tu experiencia?</h2><p className={styles.description}>Elegí un producto guardado para contarle a la marca qué te gustó o qué puede mejorar.</p></div>

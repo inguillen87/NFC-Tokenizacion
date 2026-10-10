@@ -1,0 +1,21 @@
+.panel { display: grid; gap: 1rem; width: min(100%, 42rem); min-width: 0; }
+.card, .availability { min-width: 0; border: 1px solid var(--portal-border); border-radius: 1.2rem; padding: clamp(1.1rem, 3vw, 1.6rem); background: var(--portal-surface); color: var(--portal-text); }
+.card { box-shadow: var(--portal-shadow); }
+.heading { display: flex; align-items: flex-start; gap: .8rem; }
+.icon { display: grid; place-items: center; flex-shrink: 0; width: 2.8rem; height: 2.8rem; border: 1px solid var(--portal-border); border-radius: .85rem; background: var(--portal-active); color: var(--portal-accent); }
+.icon svg { width: 1.4rem; height: 1.4rem; }
+.panel h2 { margin: 0; font-size: 1.1rem; line-height: 1.35; font-weight: 750; letter-spacing: -.02em; }
+.panel p { margin: .6rem 0 0; font-size: .95rem; line-height: 1.65; }
+.heading p, .panel .note { color: var(--portal-muted); font-size: .875rem; }
+.contacts { display: grid; gap: .75rem; margin: 1.2rem 0; }
+.contacts > div { min-width: 0; border: 1px solid var(--portal-border); border-radius: .85rem; padding: .85rem 1rem; background: var(--portal-subtle); }
+.contacts dt { display: flex; align-items: center; gap: .45rem; color: var(--portal-muted); font-size: .8125rem; font-weight: 650; }
+.contacts dt svg, .confirmation svg, .back svg { width: 1.1rem; height: 1.1rem; flex-shrink: 0; }
+.contacts dd { margin: .4rem 0 0; color: var(--portal-text); font-size: .95rem; font-weight: 600; overflow-wrap: anywhere; }
+.panel .confirmation { display: flex; align-items: flex-start; gap: .5rem; color: var(--portal-accent); font-size: .875rem; }
+.confirmation svg { margin-top: .2rem; }
+.availability { background: var(--portal-subtle); }
+.status { display: inline-block; margin-bottom: .7rem; border: 1px solid var(--portal-border); border-radius: 2rem; padding: .3rem .65rem; background: var(--portal-surface); color: var(--portal-muted); font-size: .75rem; font-weight: 700; }
+.back { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; justify-self: start; min-height: 2.75rem; border: 1px solid var(--portal-border); border-radius: .8rem; padding: .6rem 1rem; background: var(--portal-surface); color: var(--portal-text); font-size: .875rem; font-weight: 650; text-decoration: none; touch-action: manipulation; }
+.back:hover { background: var(--portal-active); color: var(--portal-accent); }
+.back:focus-visible { outline: 3px solid var(--portal-accent); outline-offset: 3px; }

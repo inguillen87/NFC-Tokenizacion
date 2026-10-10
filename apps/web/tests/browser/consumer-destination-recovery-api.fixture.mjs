@@ -49,7 +49,7 @@ export async function createDestinationRecoveryFixture(){
    return reply({ok:true,protocol:'nexid.product-notices.v2',scope:{tenant:brand.slug,bid:product.bid},observedAt:'2026-10-06T12:00:00Z',notices:[],total:0,hasMore:false,doesNotDetermineNfcAuthenticity:true,closureDoesNotReleaseProduct:true,liftingNoticeDoesNotReleaseProduct:true});
   }
   if(scenario.startsWith('session-'))return reply({ok:false,error:'fixture_private_denied'},401);
-  if(path==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-only',display_name:'Cuenta local QA',email:'qa@example.invalid',status:'active'},stats:{products:1,taps:1},memberships:[]});
+  if(path==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-only',display_name:'Cuenta local QA',email:'qa@example.invalid',status:'registered'},stats:{products:1,taps:1,memberships:0},memberships:[]});
   if(path==='/consumer/products')return scenario==='products-unavailable'?reply({ok:false,error:'fixture_unavailable'},503):reply({ok:true,items:scenario==='empty'?[]:[product]});
   if(path==='/consumer/brands')return scenario==='brands-unavailable'?reply({ok:false,error:'fixture_unavailable'},503):reply(scenario==='brands-malformed'?{ok:true,items:[null]}:{ok:true,items:scenario==='empty'?[]:[brand]});
   if(path==='/consumer/taps')return scenario==='taps-unavailable'?reply({ok:false,error:'fixture_unavailable'},503):reply({ok:true,items:[],limit:200,truncated:false});
