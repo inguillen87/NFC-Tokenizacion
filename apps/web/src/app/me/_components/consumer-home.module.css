@@ -100,7 +100,10 @@
 .benefitCard h2 { font-size: 24px; line-height: 1.2; }
 .benefitCard p { font-size: 13px; color: var(--home-muted); line-height: 1.7; }
 .accountDetails { padding-bottom: 16px; }
-.accountEmail { display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; margin: 9px 0 5px !important; }
+.accountContacts { display: grid; gap: 12px; margin: 0 0 10px; }
+.accountContacts dt { display: flex; gap: 8px; align-items: center; color: var(--home-muted); font-size: 12px; font-weight: 650; }
+.accountContacts dt svg { flex: 0 0 auto; }
+.accountContacts dd { font-size: 14px; font-weight: 650; overflow-wrap: anywhere; margin: 5px 0 0; }
 .accountLinks { display: grid; border-top: 1px solid var(--home-line); padding-top: 8px; }
 .accountLinks a { display: flex; gap: 10px; align-items: center; min-height: 46px; font-size: 12px; font-weight: 700; border-radius: 9px; padding: 5px 0; }
 .accountLinks a:hover { background: var(--home-soft); }
@@ -139,7 +142,7 @@
   .readingAction span { display: none; }
   .empty { padding: 20px 15px; }
   .benefitCard { padding: 23px 20px; }
-  .accountEmail { font-size: 13px; }
+  .accountContacts dd { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .home :is(a, button) { transition: none; }

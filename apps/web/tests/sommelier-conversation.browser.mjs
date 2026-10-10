@@ -84,7 +84,7 @@ try {
     await assess(t.page, width, theme, "live-reply");
     await t.close();
   }
-  for (const [name, response] of [["http-denial", { status: 403, payload: { ok: false, reason: "sommelier_event_not_authorized" } }], ["invalid-json", { body: "not json" }], ["empty-answer", { payload: { ...syntheticLive, answer: " " } }]]) {
+  for (const [name, response] of [["invalid-json", { body: "not json" }], ["empty-answer", { payload: { ...syntheticLive, answer: " " } }]]) {
     const t = await open({ answer: () => response });
     const draft = t.page.getByRole("textbox", { name: "Tu pregunta sobre vinos" });
     await draft.fill("Consulta sintética que debe conservarse");
@@ -93,9 +93,96 @@ try {
     check(await draft.inputValue() === "Consulta sintética que debe conservarse", `${name} preserves the draft`);
     check(t.calls.length === 1 && !(await t.page.getByRole("log").innerText()).includes("Respuesta con IA"), `${name} makes one attempt and never claims an AI answer`);
     check((await t.page.getByRole("log").innerText()).includes("Guía local") && (await t.page.getByRole("log").innerText()).includes("Respuesta de IA no confirmada"), `${name} distinguishes local help from received service response`);
-    if (name === "http-denial") await assess(t.page, 390, "light", name);
     await t.close();
   }
+
+  for (const width of [320, 390, 1440]) for (const theme of ["light", "dark"]) {
+    const t = await open({ width, theme, scope: { eventId: "715", productName: "Producto privado A", brandName: "Marca A" }, answer: () => ({ status: 401, payload: { ok: false } }) });
+    const question = "Consulta privada de sesión que debe conservarse";
+    const draft = t.page.getByRole("textbox", { name: "Tu pregunta sobre vinos" });
+    await draft.fill(question);
+    await t.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
+    await t.page.getByRole("status").filter({ hasText: "Necesitás entrar a tu cuenta" }).waitFor();
+    const login = t.page.getByRole("link", { name: "Entrar a mi cuenta ↗", exact: true });
+    const href = new URL(await login.getAttribute("href"), origin);
+    check(href.pathname === "/login" && href.searchParams.get("consumer") === "1" && href.searchParams.get("next") === "/me/sommelier?eventId=715", `${width}/${theme} session recovery keeps only the canonical private reading in login`);
+    check(await login.getAttribute("target") === "_blank" && await login.getAttribute("rel") === "noopener noreferrer" && await login.getAttribute("referrerpolicy") === "no-referrer", `${width}/${theme} normal login preserves the original in-memory question without a referrer`);
+    check(await draft.inputValue() === question && !href.href.includes(question) && await t.page.evaluate(() => localStorage.length === 0 && sessionStorage.length === 0 && document.cookie === ""), `${width}/${theme} draft is retained only in the original screen, never URL or storage`);
+    check(t.calls.length === 1 && await t.page.getByRole("button", { name: "Enviar consulta", exact: true }).isDisabled(), `${width}/${theme} session denial cannot automatically resend`);
+    check(!(await t.page.getByRole("log").innerText()).includes("Guía local") && !(await t.page.getByRole("log").innerText()).includes("Respuesta con IA"), `${width}/${theme} session denial is not presented as a reply`);
+    await login.focus();
+    await t.page.keyboard.press("Tab");
+    await t.page.keyboard.press("Shift+Tab");
+    check(await login.evaluate(el => el === document.activeElement && getComputedStyle(el).outlineStyle !== "none"), `${width}/${theme} login recovery is keyboard reachable with visible focus`);
+    await assess(t.page, width, theme, "session-recovery");
+    await t.page.getByRole("button", { name: "Ya ingresé, revisar mi pregunta", exact: true }).click();
+    check(t.calls.length === 1 && await draft.inputValue() === question && await draft.evaluate(el => el === document.activeElement), `${width}/${theme} explicit return prepares a draft and never sends`);
+    await t.close();
+  }
+
+  for (const [name, status, reason, scope, expectedNext] of [
+    ["general-session-403", 403, "sommelier_consumer_session_required", { productName: "", brandName: "" }, "/me/sommelier"],
+    ["invalid-event-session-401", 401, undefined, { eventId: "715&tenant=other", productName: "Untrusted label", brandName: "Untrusted brand" }, "/me/sommelier"],
+  ]) {
+    const t = await open({ scope, answer: () => ({ status, payload: { ok: false, reason } }) });
+    await t.page.getByRole("textbox").fill("Borrador de acceso sintético");
+    await t.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
+    await t.page.getByRole("status").filter({ hasText: "Necesitás entrar a tu cuenta" }).waitFor();
+    const login = t.page.getByRole("link", { name: "Entrar a mi cuenta ↗", exact: true });
+    check(new URL(await login.getAttribute("href"), origin).searchParams.get("next") === expectedNext, `${name} cannot carry labels or invalid event data into normal login`);
+    const popupPromise = t.page.waitForEvent("popup");
+    await login.click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState("domcontentloaded");
+    check(await t.page.getByRole("textbox").inputValue() === "Borrador de acceso sintético" && t.calls.length === 1, `${name} opening normal login leaves the draft and makes no automatic query`);
+    await popup.close();
+    await t.close();
+  }
+
+  for (const theme of ["light", "dark"]) {
+    const t = await open({ theme, scope: { eventId: "715", productName: "Producto privado A", brandName: "Marca A" }, answer: () => ({ status: 403, payload: { ok: false, reason: "sommelier_event_not_authorized" } }) });
+    await t.page.getByRole("textbox").fill("Pregunta de acceso al producto");
+    await t.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
+    await t.page.getByRole("status").filter({ hasText: "No pudimos confirmar tu acceso" }).waitFor();
+    const reading = t.page.getByRole("link", { name: "Revisar mi lectura ↗", exact: true });
+    check(await reading.getAttribute("href") === "/me/taps/715" && await reading.getAttribute("target") === "_blank" && await reading.getAttribute("rel") === "noopener noreferrer" && await reading.getAttribute("referrerpolicy") === "no-referrer", `${theme} denied product context opens its own reading separately without draft or referrer`);
+    check(await t.page.getByRole("button", { name: "Enviar consulta", exact: true }).isDisabled() && t.calls.length === 1 && await t.page.getByRole("textbox").inputValue() === "Pregunta de acceso al producto", `${theme} permission recovery preserves the draft and prevents a retry loop`);
+    check(await t.page.getByRole("link", { name: "Entrar a mi cuenta ↗", exact: true }).count() === 0 && !(await t.page.getByRole("log").innerText()).includes("Guía local"), `${theme} ambiguous context denial never claims a logout or a service reply`);
+    await assess(t.page, 390, theme, "access-recovery");
+    const popupPromise = t.page.waitForEvent("popup");
+    await reading.click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState("domcontentloaded");
+    check(await t.page.getByRole("textbox").inputValue() === "Pregunta de acceso al producto" && t.calls.length === 1, `${theme} reading review keeps the original draft without automatic requests`);
+    await popup.close();
+    await t.page.getByRole("button", { name: "Ya revisé, volver a consultar", exact: true }).click();
+    check(t.calls.length === 1 && await t.page.getByRole("textbox").evaluate(el => el === document.activeElement), `${theme} explicit reading review only readies the draft, without assuming authorization`);
+    await t.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
+    await t.page.getByRole("status").filter({ hasText: "No pudimos confirmar tu acceso" }).waitFor();
+    check(t.calls.length === 2 && t.calls[1].body.history.length === 0 && await t.page.getByRole("button", { name: "Enviar consulta", exact: true }).isDisabled(), `${theme} another 403 reasserts the access guard and excludes unconfirmed history`);
+    await t.close();
+  }
+
+  const service = await open({ answer: () => ({ status: 503, payload: { ok: false, reason: "sommelier_disabled", detail: "PRIVATE PROVIDER TEXT" } }) });
+  await service.page.getByRole("textbox").fill("Pregunta durante la caída del servicio");
+  await service.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
+  await service.page.getByRole("status").filter({ hasText: "El asistente no está disponible por el momento" }).waitFor();
+  check(await service.page.getByRole("textbox").inputValue() === "Pregunta durante la caída del servicio" && service.calls.length === 1, "503 preserves the draft with one attempt");
+  check(await service.page.getByRole("link", { name: "Entrar a mi cuenta ↗", exact: true }).count() === 0 && !(await service.page.locator("body").innerText()).includes("PRIVATE PROVIDER TEXT"), "503 never invents a logout or displays private provider details");
+  check(!(await service.page.getByRole("button", { name: "Enviar consulta", exact: true }).isDisabled()) && (await service.page.getByRole("log").innerText()).includes("Guía local"), "503 permits only a manual retry and keeps local help labeled");
+  await assess(service.page, 390, "light", "service-recovery");
+  await service.close();
+
+  const recovered = await open({ answer: request => request.postDataJSON().history.length === 0 && recovered.calls.length === 1 ? { status: 401, payload: { ok: false } } : { payload: syntheticLive } });
+  await recovered.page.getByRole("textbox").fill("Pregunta para recuperar la sesión");
+  await recovered.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
+  await recovered.page.getByRole("status").filter({ hasText: "Necesitás entrar a tu cuenta" }).waitFor();
+  await recovered.page.getByRole("button", { name: "Ya ingresé, revisar mi pregunta", exact: true }).click();
+  check(recovered.calls.length === 1, "re-entering the account is never treated as consent to resend");
+  await recovered.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
+  await recovered.page.getByRole("status").filter({ hasText: "Respuesta recibida" }).waitFor();
+  check(recovered.calls.length === 2 && recovered.calls[1].body.history.length === 0 && await recovered.page.getByRole("textbox").inputValue() === "", "manual resend revalidates through the service and excludes the unconfirmed denied turn");
+  await recovered.close();
   let release;
   const held = new Promise(resolve => { release = resolve; });
   const concurrent = await open({ answer: () => held });
@@ -117,9 +204,9 @@ try {
   await cancelled.page.getByRole("button", { name: "Enviar consulta", exact: true }).click();
   await cancelled.page.getByRole("button", { name: "Consultando…", exact: true }).waitFor();
   await cancelled.page.getByRole("button", { name: "Salir del ensayo", exact: true }).click();
-  releaseLate({ payload: { ...syntheticLive, answer: "Respuesta tardía sintética" } });
+  releaseLate({ status: 401, payload: { ok: false } });
   await cancelled.page.getByText("Asistente cerrado", { exact: true }).waitFor();
-  check(await cancelled.page.getByTestId("sommelier-conversation").count() === 0, "unmount cancellation cannot restore an old conversation");
+  check(await cancelled.page.getByTestId("sommelier-conversation").count() === 0 && await cancelled.page.getByRole("link", { name: "Entrar a mi cuenta ↗", exact: true }).count() === 0, "unmount cancellation cannot restore a late session recovery or an old conversation");
   await cancelled.close();
 
   const fallback = await open({ answer: () => ({ payload: { ...syntheticLive, answer: "Guía general sintética", source: "fallback", fallback: true } }) });

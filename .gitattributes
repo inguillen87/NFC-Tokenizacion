@@ -1,1 +1,3 @@
 *.pdf binary
+# Public geography is byte-bound to its provenance, including line endings.
+apps/web/public/sun/valle-secreto/world-reference.geojson text eol=lf

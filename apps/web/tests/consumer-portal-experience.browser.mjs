@@ -30,6 +30,30 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+async function whatsappOnlyHomeRegression(page,context,width,theme){
+ const phone='+12025550124';
+ const observed={width,theme,syntheticContact:true,actualNextPage:true};
+ report.whatsappOnlyHome??=[];report.whatsappOnlyHome.push(observed);
+ await context.addCookies([{name:'consumer_contact_qa',value:'whatsapp-only',url:base,httpOnly:true,sameSite:'Lax'}]);
+ try{
+  await page.goto(base+'/me',{waitUntil:'networkidle'});
+  const home=page.getByTestId('consumer-home');await home.waitFor();
+  const account=home.locator('section[aria-labelledby="home-account-title"]');await account.waitFor();
+  observed.contactLabels=await account.locator('dt').allTextContents();
+  observed.contactValues=await account.locator('dd').allTextContents();
+  observed.welcome=await home.locator('#home-welcome-title').innerText();
+  const accountText=await account.innerText();
+  check(observed.contactLabels.length===1&&observed.contactLabels[0].trim()==='WhatsApp'&&observed.contactValues.length===1&&observed.contactValues[0]===phone,`${width}/${theme} actual Next phone-only account reports WhatsApp as its single contact`);
+  check(await home.getByText(phone,{exact:true}).count()===1&&observed.welcome==='Tu cuenta',`${width}/${theme} phone is shown once and is not repeated as a greeting`);
+  check(await account.getByText('Correo electrónico',{exact:true}).count()===0&&!/sin email|correo.*no informado|contacto no informado/i.test(accountText),`${width}/${theme} phone-only account does not imply a missing email`);
+  check(await account.getByText('Cuenta registrada',{exact:true}).count()===1&&!/\b(?:registered|verified|active|anonymous)\b/.test(accountText),`${width}/${theme} reported account status has a customer label without raw backend state`);
+  await noOverflow(page,`${width}/${theme} actual Next WhatsApp-only home fits viewport`);
+  await account.scrollIntoViewIfNeeded();
+  await assessment(page,'section[aria-labelledby="home-account-title"]','whatsapp-only-account',width,theme);
+ }finally{
+  await context.clearCookies({name:'consumer_contact_qa'});
+ }
+}
 async function feedbackPublicationRegression(page,open,ficha,width,theme){
  const url=base+'/api/public/passport/900001/configuration';
  const observed={width,theme,eventId:'900001',tenant:'consumer-qa',configurationReads:0,credentialedReads:0};
@@ -146,6 +170,7 @@ try{
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({width,theme,message:error.message}));
   await page.route('**/*',route=>{const request=route.request(),url=new URL(request.url());if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}return ['localhost','127.0.0.1'].includes(url.hostname)||['data:','blob:'].includes(url.protocol)?route.continue():route.abort();});
   await productPhotoRecovery(page,context,width,theme);
+  await whatsappOnlyHomeRegression(page,context,width,theme);
   await page.goto(base+'/me/products',{waitUntil:'networkidle',timeout:90000});
   const library=page.getByTestId('consumer-product-library');await library.waitFor();
   check(await library.getByRole('button',{name:/Abrir ficha y avisos de /}).count()===12,`${width}/${theme} first page has 12 product actions`);

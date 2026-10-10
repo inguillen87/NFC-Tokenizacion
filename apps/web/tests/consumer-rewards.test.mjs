@@ -194,6 +194,41 @@ test("redeemed, cancelled and expired vouchers remain history and never expose a
   }
 });
 
+test("open-screen expiry can only withdraw a claim code at its exact deadline", () => {
+  const before = Date.parse("2099-09-09T11:59:59.999Z"), deadline = Date.parse(FUTURE);
+  const items = [readItem(claim()), readItem(reward({ id: "reward-2" }))];
+  assert.equal(model.nextConsumerRewardExpiry(items, before), deadline);
+  assert.equal(model.expireConsumerRewards(items, before)[0].code, "BALMEC-1234");
+  const expired = model.expireConsumerRewards(items, deadline);
+  assert.equal(expired[0].state, "expired"); assert.equal(expired[0].code, null);
+  assert.equal(expired[1], items[1]); assert.equal(items[0].state, "claimed", "source projection is not mutated");
+  assert.equal(model.nextConsumerRewardExpiry(items, deadline), null);
+  assert.equal(model.expireConsumerRewards(expired, before)[0].state, "expired", "withdrawn history cannot be reactivated by a backwards clock");
+  assert.equal(model.expireConsumerRewards(expired, before)[0].code, null);
+});
+
+test("local expiry never authorizes unknown, cancelled, malformed or unowned voucher codes", () => {
+  const base = readItem(claim());
+  for (const state of ["unknown", "cancelled", "redeemed", "expired", "reported", "locked"]) {
+    const item = model.expireConsumerRewards([{ ...base, state, code: "UNAUTHORIZED-1234" }], Date.parse(NOW))[0];
+    assert.equal(item.state, state); assert.equal(item.code, null);
+  }
+  for (const override of [{ hasClaim: false }, { expiresAt: null }, { expiresAt: "2099-02-30T12:00:00Z" }]) {
+    const item = model.expireConsumerRewards([{ ...base, ...override }], Date.parse(NOW))[0];
+    assert.equal(item.state, "unknown"); assert.equal(item.code, null);
+  }
+  const invalidClock = model.expireConsumerRewards([base], NaN)[0];
+  assert.equal(invalidClock.state, "unknown"); assert.equal(invalidClock.code, null);
+  assert.equal(model.nextConsumerRewardExpiry([base], NaN), null);
+});
+
+test("the next local deadline uses only current owned claims, never catalog or invalid dates", () => {
+  const later = readItem(claim({ id: "reward-2", claim_id: "claim-2", claim_expires_at: "2099-09-10T12:00:00Z" }));
+  const earliest = readItem(claim());
+  assert.equal(model.nextConsumerRewardExpiry([later, earliest], Date.parse(NOW)), Date.parse(FUTURE));
+  assert.equal(model.nextConsumerRewardExpiry([{ ...earliest, state: "unknown" }, { ...later, hasClaim: false }], Date.parse(NOW)), null);
+});
+
 test("voucher links resolve only a unique active account voucher within the requested tenant", () => {
   const source = readModel(list([claim(), claim({ id: "reward-2", claim_id: "claim-2", tenant_slug: "otra-marca", redemption_code: "OTHER-1234" })]));
   assert.equal(model.findRequestedVoucher(source, "balmec-1234", "demobodega"), "claim-claim-1");
@@ -325,7 +360,7 @@ test("reward views inherit accessible light and dark tokens without polling or r
   assert.match(cssSource, /@media \(max-width:/);
   assert.match(cssSource, /overflow-wrap: anywhere/);
   assert.doesNotMatch(cssSource, /background:\s*(?:white|black|#[0-9a-f]+)\s*[;}]/i);
-  assert.doesNotMatch(modelSource + clientSource, /\bfetch\s*\(|setInterval|setTimeout|Math\.random|Date\.now|router\.refresh|useEffect|dangerouslySetInnerHTML/);
+  assert.doesNotMatch(modelSource + clientSource, /\bfetch\s*\(|setInterval|Math\.random|router\.refresh|dangerouslySetInnerHTML/);
   assert.doesNotMatch(pageSource + clientSource, /method\s*[:=]\s*["'](?:post|put|patch|delete)|claimReward|redeemReward|redemption\/confirm/i);
   assert.doesNotMatch(pageSource, /fetchConsumerPath\(["'](?:products|taps|catalog|brands|marketplace)/);
 });

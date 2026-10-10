@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { requestManagedSommelierAnswer, sommelierHistory, sommelierSources } from "../src/lib/managed-sommelier.ts";
+import { consumerSommelierFailureKind, requestManagedSommelierAnswer, sommelierHistory, sommelierSources } from "../src/lib/managed-sommelier.ts";
 
 const live = { ok: true, answer: "Respuesta sintética", source: "live", fallback: false, provider: "huggingface", model: "openai/gpt-oss-20b:deepinfra", demo: true, sources: [{ id: "sheet", label: "Ficha", url: "https://vallesecreto.cl/ficha.pdf" }], suggestedQuestions: ["¿Qué plato vas a preparar?"] };
 const syngentaLive = {
@@ -212,7 +212,7 @@ test("Syngenta session rejection and quota denial never start chat", async () =>
         calls.push(url); return Response.json({ ok: false, error: "unavailable" }, { status });
       },
     });
-    assert.deepEqual(result, { status: "unavailable", reason: "http-error" });
+    assert.deepEqual(result, { status: "unavailable", reason: "http-error", httpStatus: status });
     assert.deepEqual(calls, ["/api/sommelier/demo/session"]);
   }
 });
@@ -263,5 +263,63 @@ test("cancelling a Syngenta question cannot later commit its resolved chat JSON"
   controller.abort();
   assert.deepEqual(await pending, { status: "unavailable", reason: "cancelled" });
   releaseAnswer(syngentaLive);
+  await new Promise(resolve => setImmediate(resolve));
+});
+
+test("consumer access and service failures retain HTTP status and only known API reasons, without retry", async () => {
+  for (const [status, reason, kind] of [
+    [401, undefined, "session"],
+    [403, "sommelier_consumer_session_required", "session"],
+    [403, "sommelier_event_not_authorized", "access"],
+    [403, "sommelier_origin_rejected", "access"],
+    [503, "sommelier_disabled", "service"],
+    [502, undefined, "service"],
+    [429, "sommelier_rate_limited", "other"],
+  ]) {
+    let attempts = 0;
+    const result = await requestManagedSommelierAnswer("Consulta privada sintética", {
+      locale: "es-AR", eventId: "715", fetchImpl: async () => {
+        attempts++;
+        return Response.json({ ok: false, reason, detail: "private provider text" }, { status });
+      },
+    });
+    assert.equal(result.status, "unavailable");
+    assert.equal(result.reason, "http-error");
+    assert.equal(result.httpStatus, status);
+    assert.equal(consumerSommelierFailureKind(result), kind);
+    assert.equal(attempts, 1);
+    assert.equal(JSON.stringify(result).includes("private provider text"), false);
+    assert.equal(result.serviceReason, ["sommelier_consumer_session_required", "sommelier_event_not_authorized", "sommelier_origin_rejected"].includes(reason) ? reason : undefined);
+  }
+});
+
+test("non-JSON denial preserves recovery status and an untrusted error body cannot invent a session failure", async () => {
+  const result = await requestManagedSommelierAnswer("QA", { locale: "en", fetchImpl: async () => new Response("upstream text", { status: 401 }) });
+  assert.deepEqual(result, { status: "unavailable", reason: "http-error", httpStatus: 401 });
+  for (const payload of [
+    { ok: true, reason: "sommelier_consumer_session_required" },
+    { ok: false, reason: { message: "sommelier_consumer_session_required" } },
+    { ok: false, reason: "sommelier_consumer_session_required PRIVATE" },
+  ]) {
+    const denied = await requestManagedSommelierAnswer("QA", { locale: "en", fetchImpl: async () => Response.json(payload, { status: 403 }) });
+    assert.deepEqual(denied, { status: "unavailable", reason: "http-error", httpStatus: 403 });
+    assert.equal(consumerSommelierFailureKind(denied), "access");
+  }
+  for (const reason of ["connection", "timeout", "cancelled", "invalid-response"]) {
+    assert.equal(consumerSommelierFailureKind({ status: "unavailable", reason, httpStatus: 401, serviceReason: "sommelier_consumer_session_required" }), "other");
+  }
+});
+
+test("cancelling a delayed HTTP denial never restores a session or permission recovery", async () => {
+  const controller = new AbortController();
+  let release, read;
+  const reading = new Promise(resolve => { read = resolve; });
+  const pending = requestManagedSommelierAnswer("QA", { locale: "en", signal: controller.signal, fetchImpl: async () => ({
+    ok: false, status: 403, json: () => { read(); return new Promise(resolve => { release = resolve; }); },
+  }) });
+  await reading;
+  controller.abort();
+  assert.deepEqual(await pending, { status: "unavailable", reason: "cancelled" });
+  release({ ok: false, reason: "sommelier_consumer_session_required" });
   await new Promise(resolve => setImmediate(resolve));
 });

@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
-import { ArrowRight, ArrowUpRight, Building2, CircleAlert, Gift, History, Mail, Package, ScanLine, ShieldCheck, ShoppingBag, UserRound, Wallet } from "lucide-react";
-import { homeMembershipLabel, homeVerdictLabel, type ConsumerHomeModel, type HomeProduct } from "./consumer-home-model";
+import { ArrowRight, ArrowUpRight, Building2, CircleAlert, Gift, History, Mail, Package, Phone, ScanLine, ShieldCheck, ShoppingBag, UserRound, Wallet } from "lucide-react";
+import { homeAccountStatusLabel, homeMembershipLabel, homeVerdictLabel, type ConsumerHomeModel, type HomeProduct } from "./consumer-home-model";
 import styles from "./consumer-home.module.css";
 
 export function ConsumerProductImage({ product, className = "" }: { product: HomeProduct; className?: string }) {
@@ -104,8 +104,15 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
 
           <section className={styles.panel} aria-labelledby="home-account-title">
             <div className={styles.sectionHeading}><h2 id="home-account-title">Tu cuenta</h2><UserRound size={20} aria-hidden="true" /></div>
-            {model.account.status === "unavailable" ? <SectionState unavailable><strong>No se pudieron cargar tus datos.</strong><p>Reintentá para consultar el correo y el estado de tu cuenta.</p></SectionState>
-              : <div className={styles.accountDetails}><span className={styles.itemEyebrow}>Correo de tu cuenta</span><p className={styles.accountEmail}><Mail size={16} aria-hidden="true" />{account?.email || "Correo no informado"}</p><p className={styles.metadata}>Estado: {account?.status === "verified" ? "verificada" : account?.status === "active" ? "activa" : account?.status || "no informado"}</p></div>}
+            {model.account.status === "unavailable" ? <SectionState unavailable><strong>No se pudieron cargar tus datos.</strong><p>Reintentá para consultar tus contactos y el estado de tu cuenta.</p></SectionState>
+              : <div className={styles.accountDetails}>
+                <dl className={styles.accountContacts}>
+                  {account?.email && <div><dt><Mail size={16} aria-hidden="true" />Correo electrónico</dt><dd>{account.email}</dd></div>}
+                  {account?.phone && <div><dt><Phone size={16} aria-hidden="true" />WhatsApp</dt><dd>{account.phone}</dd></div>}
+                </dl>
+                {!account?.email && !account?.phone && <p className={styles.metadata}>Contacto no informado.</p>}
+                <p className={styles.metadata}>{homeAccountStatusLabel(account?.status || null)}</p>
+              </div>}
             <nav className={styles.accountLinks} aria-label="Gestionar tu cuenta">
               <Link href="/me/privacy" prefetch={false}><ShieldCheck size={18} aria-hidden="true" /><span>Privacidad y permisos</span><ArrowRight size={16} aria-hidden="true" /></Link>
               <Link href="/me/security" prefetch={false}><UserRound size={18} aria-hidden="true" /><span>Seguridad de la cuenta</span><ArrowRight size={16} aria-hidden="true" /></Link>

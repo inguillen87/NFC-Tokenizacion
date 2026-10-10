@@ -5,7 +5,8 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "rea
 import { ArrowLeft, Bot, CalendarDays, CircleAlert, Coffee, GlassWater, Send, Thermometer } from "lucide-react";
 import { classifySommelierResponse, normalizeSommelierProductContext, safeSommelierGuidance, sommelierProvenanceLabel, type SommelierProvenance } from "../../../lib/sommelier-guidance";
 import { sommelierWelcome } from "../../../lib/sommelier-conversation";
-import { requestManagedSommelierAnswer, sommelierHistory, MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../../lib/managed-sommelier";
+import { consumerSommelierFailureKind, requestManagedSommelierAnswer, sommelierHistory, MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../../lib/managed-sommelier";
+import { consumerSommelierEventId } from "./consumer-sommelier-scope";
 import styles from "./sommelier.module.css";
 
 type ChatMessage = { id: string; sender: "sommelier" | "user"; text: string; provenance?: SommelierProvenance; delivery?: "pending" | "received" | "unconfirmed"; sources?: SommelierSource[]; suggestedQuestions?: string[] };
@@ -31,6 +32,7 @@ export default function SommelierClient({ productName, brandName, eventId }: { p
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [recovery, setRecovery] = useState<"session" | "access" | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
@@ -41,7 +43,7 @@ export default function SommelierClient({ productName, brandName, eventId }: { p
 
   useEffect(() => {
     requestRef.current?.abort(); requestRef.current = null;
-    setMessages([welcome]); setInput(""); setPending(false); setFeedback("");
+    setMessages([welcome]); setInput(""); setPending(false); setFeedback(""); setRecovery(null);
     return () => { requestRef.current?.abort(); requestRef.current = null; };
   }, [welcome]);
 
@@ -50,7 +52,7 @@ export default function SommelierClient({ productName, brandName, eventId }: { p
   }, [messages]);
 
   async function handleSendMessage(textToSend: string) {
-    if (!textToSend.trim() || requestRef.current) return;
+    if (!textToSend.trim() || requestRef.current || recovery) return;
     const controller = new AbortController();
     requestRef.current = controller;
     const questionId = `question-${++sequence.current}`;
@@ -70,9 +72,20 @@ export default function SommelierClient({ productName, brandName, eventId }: { p
       if (!data.fallback) setInput("");
       setFeedback(data.fallback ? "La IA no está disponible ahora. Recibimos una guía general del servicio y conservamos tu consulta para que puedas reintentar." : "Respuesta recibida. Podés hacer otra consulta.");
     } else {
-      const replyText = safeSommelierGuidance(textToSend, context);
-      setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "unconfirmed" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier" as const, text: replyText, provenance: { mode: "local-fallback" as const } }].slice(-VISIBLE_MESSAGE_LIMIT));
-      setFeedback("No pudimos recibir una respuesta del servicio. Conservamos tu consulta para que puedas volver a enviarla. La guía local no confirma una respuesta de IA.");
+      const kind = consumerSommelierFailureKind(result);
+      if (kind === "session" || kind === "access") {
+        setMessages(previous => previous.map(msg => msg.id === questionId ? { ...msg, delivery: "unconfirmed" as const } : msg));
+        setRecovery(kind);
+        setFeedback(kind === "session"
+          ? "Necesitás entrar a tu cuenta para continuar. Conservamos tu consulta en esta pantalla. El ingreso se abre en otra pestaña; después volvé y revisá tu pregunta antes de enviarla."
+          : "No pudimos confirmar tu acceso al asistente de este producto. Conservamos tu consulta en esta pantalla. Abrí la lectura en otra pestaña para revisar las opciones de la marca; después volvé y revisá tu pregunta.");
+      } else {
+        const replyText = safeSommelierGuidance(textToSend, context);
+        setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "unconfirmed" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier" as const, text: replyText, provenance: { mode: "local-fallback" as const } }].slice(-VISIBLE_MESSAGE_LIMIT));
+        setFeedback(kind === "service"
+          ? "El asistente no está disponible por el momento. Conservamos tu consulta; podés volver a enviarla más tarde. La guía local no es una respuesta de IA."
+          : "No pudimos recibir una respuesta del servicio. Conservamos tu consulta para que puedas volver a enviarla. La guía local no confirma una respuesta de IA.");
+      }
     }
     requestRef.current = null;
     setPending(false);
@@ -82,6 +95,11 @@ export default function SommelierClient({ productName, brandName, eventId }: { p
     event.preventDefault();
     void handleSendMessage(input);
   }
+
+  const privateEventId = consumerSommelierEventId(eventId);
+  // Only the server-provided canonical reading can survive a normal login.
+  // Questions and brand/product labels stay in this component's memory.
+  const loginNext = privateEventId ? `/me/sommelier?eventId=${encodeURIComponent(privateEventId)}` : "/me/sommelier";
 
   return <div className={styles.assistant} data-testid="sommelier-conversation">
     <Link href="/me/products" className={styles.back}><ArrowLeft size={18} aria-hidden="true" />Volver a mis productos</Link>
@@ -100,8 +118,15 @@ export default function SommelierClient({ productName, brandName, eventId }: { p
         <form className={styles.composer} onSubmit={onSubmit} aria-busy={pending}>
           <label htmlFor={inputId}>Tu pregunta sobre vinos</label>
           <textarea ref={inputRef} id={inputId} value={input} onChange={event => setInput(event.target.value)} maxLength={MANAGED_SOMMELIER_QUESTION_MAX_CHARS} readOnly={pending} aria-describedby={hintId} rows={3} placeholder="Por ejemplo: ¿cómo elijo un vino para una cena?" />
-          <div className={styles.composerFooter}><p id={hintId}>Elegí una sugerencia o escribí tu pregunta. Vos decidís cuándo enviarla.</p><button type="submit" disabled={pending || !input.trim()}><Send size={18} aria-hidden="true" />{pending ? "Consultando…" : "Enviar consulta"}</button></div>
+          <div className={styles.composerFooter}><p id={hintId}>Elegí una sugerencia o escribí tu pregunta. Vos decidís cuándo enviarla.</p><button type="submit" disabled={pending || Boolean(recovery) || !input.trim()}><Send size={18} aria-hidden="true" />{pending ? "Consultando…" : "Enviar consulta"}</button></div>
           <p className={styles.feedback} role="status" aria-live="polite" aria-atomic="true">{pending ? "Consultando el servicio. Tu pregunta sigue visible." : feedback}</p>
+          {recovery === "session" ? <>
+            <Link className={styles.back} href={`/login?consumer=1&next=${encodeURIComponent(loginNext)}`} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" prefetch={false}>Entrar a mi cuenta ↗</Link>
+            <button type="button" onClick={() => { setRecovery(null); setFeedback("Revisá tu pregunta y elegí Enviar consulta. El servicio comprobará tu sesión y el acceso al producto de nuevo."); inputRef.current?.focus(); }}>Ya ingresé, revisar mi pregunta</button>
+          </> : recovery === "access" ? <>
+            <Link className={styles.back} href={privateEventId ? `/me/taps/${encodeURIComponent(privateEventId)}` : "/me/products"} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" prefetch={false}>{privateEventId ? "Revisar mi lectura ↗" : "Revisar mis productos ↗"}</Link>
+            <button type="button" onClick={() => { setRecovery(null); setFeedback("Revisá tu pregunta y elegí Enviar consulta. El servicio comprobará tu sesión y el acceso al producto de nuevo."); inputRef.current?.focus(); }}>Ya revisé, volver a consultar</button>
+          </> : null}
         </form>
       </section>
       <aside className={styles.sidebar} aria-label="Ideas y contexto de la consulta">

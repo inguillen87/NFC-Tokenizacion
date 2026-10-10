@@ -31,6 +31,25 @@ function instant(value: unknown): string | null {
 export function rewardDateLabel(value: string | null): string {
   return value ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value)) + " (Argentina)" : "No informado";
 }
+// This projection can only withdraw a reported code. It never grants a claim
+// or restores one; the API remains the authority for cancellation and redemption.
+export function expireConsumerRewards(items: ConsumerReward[], observedAt: number): ConsumerReward[] {
+  return items.map(item => {
+    if (item.state !== "claimed") return item.code === null ? item : { ...item, code: null };
+    const expiry = instant(item.expiresAt);
+    if (!item.hasClaim || !expiry || !Number.isFinite(observedAt)) return { ...item, state: "unknown", code: null };
+    return Date.parse(expiry) <= observedAt ? { ...item, state: "expired", code: null } : item;
+  });
+}
+export function nextConsumerRewardExpiry(items: ConsumerReward[], observedAt: number): number | null {
+  if (!Number.isFinite(observedAt)) return null;
+  const future = items.flatMap(item => {
+    const expiry = item.hasClaim && item.state === "claimed" ? instant(item.expiresAt) : null;
+    const value = expiry ? Date.parse(expiry) : NaN;
+    return value > observedAt ? [value] : [];
+  });
+  return future.length ? Math.min(...future) : null;
+}
 export function buildConsumerRewardsModel(payload: unknown, now: string): ConsumerRewardsSource {
   const envelope = record(payload);
   if (envelope?.ok !== true || !Array.isArray(envelope.items)) return { status: "unavailable", items: null };

@@ -17,7 +17,7 @@ const sourcePaths = ["apps/web/src/app/sun/consumer-passport-link.tsx", "apps/we
 const hashes = async () => Object.fromEntries(await Promise.all(sourcePaths.map(async path => [path, createHash("sha256").update(await readFile(join(root, path))).digest("hex")])));
 const report = { localOnly: true, actualReactComponent: true, actualNextAndBff: false, syntheticHandoffAndNavigation: true, productionOrPhysicalTapVerified: false, sourceHashesStart: await hashes(), checks: [], views: [], contexts: [], errors: [], browserClosed: false, serverClosed: false };
 const check = (passed, name) => { report.checks.push({ name, passed: Boolean(passed) }); assert.ok(passed, name); };
-const nextShim = `import React from 'react';export const useRouter=()=>({push(href){window.__handoffPushes.push(href);history.pushState(null,'',href);window.dispatchEvent(new Event('fixture-navigate'));}});export default React.forwardRef(function Link({prefetch,...props},ref){return <a {...props} ref={ref} data-prefetch={String(prefetch)}/>});`;
+const nextShim = `import React from 'react';export const useRouter=()=>({push(href){window.__handoffPushes.push(href);if(window.__handoffNavigationMode==='throw')throw Error('synthetic_navigation_failure');const commit=()=>{history.pushState(null,'',href);window.dispatchEvent(new Event('fixture-navigate'));};if(window.__handoffNavigationMode==='hold'){window.__handoffCommit=commit;return;}commit();}});export default React.forwardRef(function Link({prefetch,...props},ref){return <a {...props} ref={ref} data-prefetch={String(prefetch)}/>});`;
 const bundle = await build({ entryPoints: [join(web, "tests/browser/consumer-handoff-recovery.fixture.tsx")], bundle: true, write: false, outdir: join(output, "bundle"), format: "iife", platform: "browser", jsx: "automatic", loader: { ".module.css": "local-css" }, define: { "process.env.NODE_ENV": '"development"' }, plugins: [{ name: "synthetic-next", setup(builder) {
   builder.onResolve({ filter: /^next\/(link|navigation)$/ }, () => ({ path: "next-shim", namespace: "fixture" }));
   builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ contents: nextShim, loader: "tsx", resolveDir: web }));
@@ -188,6 +188,63 @@ try {
       check(await fixture.page.getByTestId("consumer-passport-primary").getByRole("button").isDisabled() && fixture.entry.handoffs === 1, "Terminal state remains terminal when feedback focus is not moved");
     } finally { await fixture.close(); }
   }
+  for (const interaction of ["wheel", "touchmove", "scroll", "keyboard", "pointer"]) {
+    const fixture = await open();
+    try {
+      const observed = fixture.hold("delayed-terminal");
+      const trigger = fixture.page.getByTestId("consumer-passport-primary").getByRole("button").first();
+      await trigger.click(); await observed;
+      await fixture.page.evaluate(kind => {
+        if (kind === "keyboard") document.dispatchEvent(new KeyboardEvent("keydown", { key: "PageDown", bubbles: true }));
+        else if (kind === "pointer") document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        else (kind === "touchmove" ? document : window).dispatchEvent(new Event(kind, { bubbles: true }));
+      }, interaction);
+      fixture.release(); await fixture.page.getByRole("alert").waitFor();
+      check(!await fixture.page.getByRole("alert").evaluate(node => node === document.activeElement), `Reading interaction cancels delayed feedback focus ${interaction}`);
+      check(await fixture.page.getByRole("alert").getAttribute("data-handoff-failure") === "fresh_required" && fixture.entry.handoffs === 1, `Reading interaction keeps terminal feedback announced ${interaction}`);
+    } finally { await fixture.close(); }
+  }
+  for (const theme of ["light", "dark"]) for (const width of [320, 390, 1280]) {
+    const fixture = await open({ theme, width });
+    try {
+      await fixture.page.evaluate(() => { window.__handoffNavigationMode = "hold"; });
+      const trigger = fixture.page.getByTestId("consumer-passport-primary").getByRole("button").first();
+      await trigger.evaluate(node => { node.click(); node.click(); });
+      await fixture.page.locator('[data-handoff-navigation="opening"]').waitFor();
+      check(await trigger.isDisabled() && await trigger.getAttribute("aria-busy") === "true", "Prepared handoff remains busy until route commit");
+      await trigger.evaluate(node => { node.click(); node.click(); });
+      check(fixture.entry.handoffs === 1 && await fixture.page.evaluate(() => window.__handoffPushes.length === 1), "Delayed destination cannot create a second capability POST");
+      // Wait for the actual production navigation timer. It only offers a GET
+      // navigation recovery; the transport and capability stay locked.
+      await fixture.page.locator('[data-handoff-navigation="slow"]').waitFor();
+      check(await trigger.isDisabled() && fixture.entry.handoffs === 1, "Slow navigation deadline never enables another capability POST");
+      const retry = fixture.page.getByRole("button", { name: "Volver a abrir la página", exact: true });
+      check(await retry.evaluate(node => node.getBoundingClientRect().height >= 44), "Navigation recovery is a 44px target");
+      check(await fixture.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "Navigation feedback fits narrow and desktop viewports");
+      await fixture.page.addScriptTag({ content: axe });
+      const violations = await fixture.page.evaluate(async () => (await axe.run('[data-testid="consumer-passport-primary"]', { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] } })).violations.map(v => ({ id: v.id, impact: v.impact })));
+      check(violations.length === 0, "Navigation recovery keeps accessible status and controls");
+      const screenshot = `navigation-slow-${width}-${theme}.png`; await fixture.page.screenshot({ path: join(output, screenshot) });
+      report.views.push({ scenario: "navigation-slow", width, theme, locale: "es-AR", screenshot, violations });
+      await retry.click();
+      check(fixture.entry.handoffs === 1 && await fixture.page.evaluate(() => window.__handoffPushes.length === 2 && window.__handoffPushes.every(href => href === "/me/products?fromTap=1&eventId=715&tenant=qa-only&action=products")), "Explicit slow-route retry reuses only the exact destination");
+      await fixture.page.evaluate(() => window.__handoffCommit());
+      await fixture.page.getByTestId("fixture-left-reading").waitFor();
+    } finally { await fixture.close(); }
+  }
+  {
+    const fixture = await open();
+    try {
+      await fixture.page.evaluate(() => { window.__handoffNavigationMode = "throw"; });
+      const trigger = fixture.page.getByTestId("consumer-passport-primary").getByRole("button").first();
+      await trigger.click(); await fixture.page.locator('[data-handoff-navigation="failed"]').waitFor();
+      check(await trigger.isDisabled() && await trigger.getAttribute("aria-busy") === "false" && await trigger.innerText() === "Acceso preparado" && fixture.entry.handoffs === 1, "Thrown route error is honest and never retries the capability");
+      await fixture.page.evaluate(() => { window.__handoffNavigationMode = "immediate"; });
+      await fixture.page.getByRole("button", { name: "Volver a abrir la página", exact: true }).click();
+      await fixture.page.getByTestId("fixture-left-reading").waitFor();
+      check(fixture.entry.handoffs === 1 && await fixture.page.evaluate(() => window.__handoffPushes.length === 2), "Route failure recovery navigates without another capability POST");
+    } finally { await fixture.close(); }
+  }
   {
     const fixture = await open();
     try {
@@ -206,7 +263,7 @@ finally {
   if (browser) { await browser.close(); report.browserClosed = true; }
   server.closeAllConnections(); await new Promise(done => server.close(done)); report.serverClosed = true;
   report.sourceHashesEnd = await hashes();
-  report.accepted = report.checks.every(item => item.passed) && report.views.length === 13 && report.contexts.length === 24 && report.contexts.every(entry => entry.closed && entry.errors.length === 0 && entry.blocked.length === 0 && entry.businessWrites === 0 && entry.geolocationCalls === 0) && report.errors.length === 0 && JSON.stringify(report.sourceHashesStart) === JSON.stringify(report.sourceHashesEnd) && report.browserClosed && report.serverClosed;
+  report.accepted = report.checks.every(item => item.passed) && report.views.length === 19 && report.contexts.length === 36 && report.contexts.every(entry => entry.closed && entry.errors.length === 0 && entry.blocked.length === 0 && entry.businessWrites === 0 && entry.geolocationCalls === 0) && report.errors.length === 0 && JSON.stringify(report.sourceHashesStart) === JSON.stringify(report.sourceHashesEnd) && report.browserClosed && report.serverClosed;
   await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2), { flag: "wx" });
   console.log(JSON.stringify({ accepted: report.accepted, checks: report.checks.length, views: report.views.length, contexts: report.contexts.length, errors: report.errors }));
   if (!report.accepted) process.exitCode = 1;
