@@ -28,6 +28,8 @@ const api = compile(readFileSync(new URL("_components/consumer-api.ts", dir), "u
   "next/headers": { headers: () => { throw new Error("unexpected-network-read"); } },
   "next/navigation": { redirect: () => { throw new Error("unexpected-redirect"); } },
   "./consumer-bounded-fetch": boundedFetch,
+  "@product/config": { productUrls: { api: "https://api.nexid.lat" } },
+  "../../api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected network read"); } },
 });
 const list = (items = []) => ({ ok: true, items });
 const wallet = (overrides = {}) => ({

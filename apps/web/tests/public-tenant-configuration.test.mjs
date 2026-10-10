@@ -18,6 +18,7 @@ const reader = load("../src/lib/public-tenant-configuration.ts", {
   "@product/config": { productUrls: { api: "https://api.example.invalid" } },
   "../app/me/_components/consumer-bounded-fetch": bounded,
   "../app/sun/tenant-action-availability": availability,
+  "../app/api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected default network"); } },
 });
 const configuration = { version: availability.TENANT_ACTIONS_VERSION, status: "published", allowedActions: ["sommelier"], program: null, trivia: null, catalogAvailable: false };
 const next = { NextResponse: { json: (body, options = {}) => new Response(JSON.stringify(body), { ...options, headers: { "content-type": "application/json", ...options.headers } }) } };

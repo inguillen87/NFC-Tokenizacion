@@ -2,8 +2,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { stripConsumerTapCapabilityCookies } from "../../api/_lib/consumer-tap-handoff";
 import { consumerSessionState, fetchConsumerJson } from "./consumer-bounded-fetch";
+import { productUrls } from "@product/config";
+import { fetchRuntimeApi } from "../../api/_lib/server-api-transport";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 
 type JsonMap = Record<string, unknown>;
 type ConsumerContact = JsonMap & { id: string; email?: string | null; phone?: string | null; status?: string };
@@ -22,7 +24,7 @@ async function readJson(path: string) {
       "x-forwarded-for": incomingHeaders.get("x-forwarded-for") || "",
       "user-agent": incomingHeaders.get("user-agent") || "nexid-web-portal",
     },
-  });
+  }, { fetchImpl: fetchRuntimeApi });
 }
 
 async function fetchJson(path: string): Promise<JsonMap | null> {

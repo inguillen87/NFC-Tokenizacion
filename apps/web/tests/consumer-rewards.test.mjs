@@ -32,6 +32,8 @@ const api = compile(read("_components/consumer-api.ts"), {
   "next/headers": { headers: () => { throw new Error("unexpected-network-read"); } },
   "next/navigation": { redirect: () => { throw new Error("unexpected-redirect"); } },
   "./consumer-bounded-fetch": boundedFetch,
+  "@product/config": { productUrls: { api: "https://api.nexid.lat" } },
+  "../../api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected network read"); } },
 });
 const css = Object.fromEntries([...cssSource.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => [match[1], match[1]]));
 const shared = {

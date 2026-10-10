@@ -29,6 +29,8 @@ const sharedApi = compile(readFileSync(new URL("_components/consumer-api.ts", di
   "next/headers": { headers: () => { throw new Error("unexpected-headers-read"); } },
   "next/navigation": { redirect: () => { throw new Error("unexpected-redirect"); } },
   "./consumer-bounded-fetch": boundedFetch,
+  "@product/config": { productUrls: { api: "https://api.nexid.lat" } },
+  "../../api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected network read"); } },
 });
 const styles = new Proxy({}, { get: (_, name) => String(name) });
 const list = (items = []) => ({ ok: true, items });
