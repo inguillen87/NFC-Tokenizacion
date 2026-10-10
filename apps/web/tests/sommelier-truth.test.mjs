@@ -53,10 +53,11 @@ test("SUN response provenance follows the selected language without claiming ver
 });
 
 test("sommelier product context never becomes SUN, seal or bottle verification", () => {
-  assert.match(consumerSource, /Identidad declarada/);
-  assert.match(consumerSource, /Estado SUN\/tamper:/);
-  assert.match(consumerSource, /No disponible en esta pantalla/);
-  assert.match(consumerSource, /no verifican la botella, su contenido ni el estado físico del sello/i);
+  assert.match(consumerSource, /Producto de tu cuenta/);
+  assert.match(consumerSource, /Orientación general/);
+  assert.match(consumerSource, /Una respuesta no verifica el contenido, el sello ni la autenticidad física del producto/i);
+  assert.match(consumerSource, /requestManagedSommelierAnswer/);
+  assert.doesNotMatch(consumerSource, /requestSommelierAnswer|productContext:/);
   assert.doesNotMatch(consumerSource, /Botella Verificada|Sello Original Cerrado/);
   assert.doesNotMatch(consumerSource, /Ã|Â|�/);
 });

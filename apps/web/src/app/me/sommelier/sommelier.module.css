@@ -18,6 +18,11 @@
 .provenance[open] summary::before { content: "−"; }
 .provenance p, .delivery { color: var(--assistant-muted); font-size: .8rem; line-height: 1.6; }
 .delivery { display: block; margin-top: .4rem; }
+.sources { margin: .5rem 0 0; padding-left: 1.2rem; font-size: .8rem; line-height: 1.6; }
+.sources a { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--assistant-accent); }
+.followUps { display: grid; gap: .5rem; margin-top: .8rem; }
+.followUps button { min-height: 2.75rem; padding: .65rem .8rem; border: 1px solid var(--assistant-border); border-radius: .7rem; background: var(--assistant-surface); color: var(--assistant-text); font: inherit; font-size: .85rem; line-height: 1.5; text-align: left; cursor: pointer; }
+.followUps button:disabled { opacity: .6; cursor: default; }
 .composer { display: grid; gap: .6rem; padding: 1.1rem; border-top: 1px solid var(--assistant-border); }
 .composer label { color: var(--assistant-text); font-size: .9rem; font-weight: 700; }
 .composer textarea { box-sizing: border-box; width: 100%; min-height: 5.5rem; border: 1px solid var(--assistant-border); border-radius: .8rem; padding: .8rem; background: var(--assistant-surface); color: var(--assistant-text); font: inherit; font-size: 1rem; line-height: 1.5; resize: vertical; }

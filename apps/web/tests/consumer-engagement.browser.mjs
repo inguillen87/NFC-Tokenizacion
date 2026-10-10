@@ -36,7 +36,7 @@ async function isolate(width,theme,scenario,authenticated=true){
  let intentionalSubmission=false;
  await page.route('**/*',route=>{
   const request=route.request(),url=new URL(request.url());
-  if(scenario==='sommelier-failure'&&url.pathname==='/api/cognitive-ai'&&request.method()==='POST'){
+  if(scenario==='sommelier-failure'&&url.pathname==='/api/sommelier/chat'&&request.method()==='POST'){
    report.syntheticAiRequests.push({width,theme,intentionalSubmission,payload:request.postDataJSON()});
    return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false,error:'synthetic_local_unavailable'})});
   }
@@ -73,7 +73,7 @@ function section(page,id){return page.locator(`section[aria-labelledby="${id}"]`
 try{
  const reserve=createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
  const env=Object.fromEntries(Object.entries(process.env).filter(([key])=>/^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|HOME|USERPROFILE|APPDATA|LOCALAPPDATA)$/i.test(key)));
- Object.assign(env,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',CONSUMER_ENGAGEMENT_QA:'1',QA_API_AUDIT:auditPath});
+ Object.assign(env,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',CONSUMER_ENGAGEMENT_QA:'1',QA_API_AUDIT:auditPath,CONSUMER_ENGAGEMENT_API_ORIGIN:process.env.CONSUMER_ENGAGEMENT_API_ORIGIN||'https://api.nexid.lat'});
  next=spawn(process.execPath,['--import',pathToFileURL(join(web,'tests/consumer-engagement-local-fetch.mjs')).href,join(repo,'node_modules/next/dist/bin/next'),'start','-p',String(port),'-H','127.0.0.1'],{cwd:web,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
  next.stdout.on('data',()=>{});next.stderr.on('data',()=>{});next.on('error',()=>{serverFailed=true;});
  base=`http://127.0.0.1:${port}`;let ready=false;
@@ -142,7 +142,7 @@ try{
   const sommelier=await isolate(width,theme,width===390&&theme==='light'?'sommelier-failure':'sommelier');
   await sommelier.page.goto(base+'/me/sommelier',{waitUntil:'networkidle'});
   const conversation=sommelier.page.getByTestId('sommelier-conversation');await conversation.waitFor();
-  check((await conversation.innerText()).includes('No seleccionaste un producto')&&(await conversation.innerText()).includes('Sin producto seleccionado')&&(await conversation.innerText()).includes('No indicada'),`${width}/${theme}/sommelier: generic assistant has no fabricated product or brand`);
+  check((await conversation.innerText()).includes('No seleccionaste un producto')&&(await conversation.innerText()).includes('Sin producto seleccionado')&&(await conversation.innerText()).includes('Sin marca seleccionada'),`${width}/${theme}/sommelier: generic assistant has no fabricated product or brand`);
   const question=conversation.getByRole('textbox',{name:'Tu pregunta sobre vinos',exact:true}),send=conversation.getByRole('button',{name:'Enviar consulta',exact:true});
   check(await send.isDisabled(),`${width}/${theme}/sommelier: empty question cannot send`);
   check(await focused(question),`${width}/${theme}/sommelier: question has visible keyboard focus`);
@@ -156,13 +156,13 @@ try{
   if(width===390&&theme==='light'){
    await sommelier.submitIsolated(async()=>{await send.focus();await sommelier.page.keyboard.press('Enter');await conversation.getByText('Guía local',{exact:true}).waitFor();});
    check(await question.inputValue()==='¿Qué debería tener en cuenta para elegir un maridaje?',`${width}/${theme}/sommelier: failed synthetic query retains editable question`);
-   check((await conversation.getByRole('status').innerText()).includes('La guía local no confirma una respuesta de IA')&&await conversation.getByText('Respuesta del servicio no recibida',{exact:true}).count()===1,`${width}/${theme}/sommelier: service failure is disclosed separately from local guidance`);
+   check((await conversation.getByRole('status').innerText()).includes('La guía local no confirma una respuesta de IA')&&await conversation.getByText('Respuesta de IA no confirmada',{exact:true}).count()===1,`${width}/${theme}/sommelier: service failure is disclosed separately from local guidance`);
    check(await conversation.getByText('Respuesta con IA',{exact:true}).count()===0,`${width}/${theme}/sommelier: failed request never claims a live AI response`);
    await conversation.getByText('Origen y alcance de esta respuesta',{exact:true}).click();
    await assess(sommelier.page,'sommelier-failure',width,theme,'[data-testid="sommelier-conversation"]');
   }
   await sommelier.page.goto(base+'/me/sommelier?product=Vino+de+ensayo+QA&brand=Bodega+sint%C3%A9tica',{waitUntil:'networkidle'});await conversation.waitFor();
-  check((await conversation.innerText()).includes('Vino de ensayo QA')&&(await conversation.innerText()).includes('Bodega sintética')&&(await conversation.innerText()).includes('Identidad declarada'),`${width}/${theme}/sommelier: selected identity stays declared context`);
+  check(!(await conversation.innerText()).includes('Vino de ensayo QA')&&!(await conversation.innerText()).includes('Bodega sintética')&&(await conversation.innerText()).includes('Sin producto seleccionado'),`${width}/${theme}/sommelier: URL product and brand cannot become trusted context`);
   await sommelier.context.close();
  }
  const {context,page}=await isolate(390,'light','denied',false);
@@ -173,7 +173,7 @@ try{
  const apiRows=await auditRows();report.apiAudit={requests:apiRows.length,blocked:apiRows.filter(row=>row.blocked),deniedRequests:apiRows.filter(row=>row.scenario==='denied')};
  check(!apiRows.some(row=>row.scenario==='denied'&&row.path.startsWith('/consumer/')&&row.path!=='/consumer/session'),'denied session makes no private API calls');
  check(report.apiAudit.blocked.length===0,'server attempts no provider requests or writes');
- check(report.syntheticAiRequests.length===1&&report.syntheticAiRequests[0].intentionalSubmission&&report.syntheticAiRequests[0].payload.tone==='sommelier-chat','exactly one explicit synthetic AI request is fulfilled with 503 before Next/provider transport');
+ check(report.syntheticAiRequests.length===1&&report.syntheticAiRequests[0].intentionalSubmission&&report.syntheticAiRequests[0].payload.mode==='consumer'&&!Object.hasOwn(report.syntheticAiRequests[0].payload,'eventId')&&!Object.hasOwn(report.syntheticAiRequests[0].payload,'productContext'),'exactly one explicit synthetic consumer AI request is fulfilled with 503 before Next/provider transport');
  check(report.blockedBrowserWrites.length===8&&report.blockedBrowserWrites.every(row=>row.intentionalSubmission&&row.path==='/api/consumer/experiences'&&row.method==='POST'),'only eight explicit synthetic submit attempts occur, all aborted before transport');
  check(report.geolocationCalls===0,'no automatic GPS calls');
  check(report.pageErrors.length===0,'zero application runtime errors');
