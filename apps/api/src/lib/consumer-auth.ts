@@ -64,7 +64,43 @@ function cleanMagicToken(value: unknown) {
 }
 
 function audit(event: string, payload: Record<string, unknown>) {
-  console.log("[consumer_auth_audit]", JSON.stringify({ event, ...payload, at: new Date().toISOString() }));
+  // Project known diagnostics only. Never spread contacts, request metadata,
+  // session/challenge identifiers, credentials or provider objects into logs.
+  const safe: Record<string, unknown> = {};
+  for (const [rawKey, hashKey] of [["contact", "contactHash"], ["ip", "ipHash"], ["consumerId", "consumerHash"]]) {
+    const raw = payload[rawKey];
+    const existingHash = payload[hashKey];
+    if (typeof raw === "string" && raw) safe[hashKey] = sha(raw).slice(0, 16);
+    else if (typeof existingHash === "string" && /^[a-f0-9]{16}$/.test(existingHash)) safe[hashKey] = existingHash;
+  }
+  const enums: Record<string, readonly string[]> = {
+    channel: ["email", "sms", "whatsapp"],
+    provider: ["smtp", "resend", "twilio", "meta", "demo"],
+    status: ["accepted", "failed", "simulated"],
+    mode: ["demo", "smtp", "email", "resend", "sms", "twilio", "whatsapp", "twilio_whatsapp", "smart", "production", "provider", "invalid"],
+    scope: ["consumer_auth_start_contact", "consumer_auth_start_ip", "consumer_auth_verify_contact", "consumer_auth_verify_ip", "consumer_auth_magic_ip"],
+  };
+  for (const [key, allowed] of Object.entries(enums)) {
+    const value = payload[key];
+    if (typeof value === "string" && allowed.includes(value)) safe[key] = value;
+  }
+  if (typeof payload.reason === "string") {
+    safe.reason = ["unavailable", "rate_limited", "rate_limit_unavailable", "locked", "invalid_code", "expired"].includes(payload.reason)
+      ? payload.reason : normalizeOtpDeliveryError(payload.reason);
+  }
+  for (const key of ["linkedContacts", "revokedSessionCount"]) {
+    const value = payload[key];
+    if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) safe[key] = value;
+  }
+  if (typeof payload.revoked === "boolean") safe.revoked = payload.revoked;
+  const secondary = payload.secondaryDelivery;
+  if (secondary && typeof secondary === "object") {
+    const { channel, status } = secondary as Record<string, unknown>;
+    if (typeof channel === "string" && enums.channel.includes(channel) && typeof status === "string" && enums.status.includes(status)) {
+      safe.secondaryDelivery = { channel, status };
+    }
+  }
+  console.log("[consumer_auth_audit]", JSON.stringify({ event, ...safe, at: new Date().toISOString() }));
 }
 
 function normalizeOtpDeliveryError(error: unknown) {
