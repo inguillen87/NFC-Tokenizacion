@@ -25,7 +25,8 @@ test("consumer login describes same-code multi-channel delivery without claiming
 test("consumer security treats linked contacts as recovery channels, not two factors", () => {
   assert.match(securityPanel, /const hasBothLinkedChannels = hasEmail && hasPhone/);
   assert.match(securityPanel, /Canales de contacto vinculados/);
-  assert.match(securityPanel, /no es MFA secuencial/);
+  assert.match(securityPanel, /Tenés un correo y un teléfono vinculados/);
+  assert.doesNotMatch(securityPanel, /El backend reporta|email y WhatsApp asociados/);
   assert.match(securityPage, /este flujo no es MFA secuencial/);
   assert.doesNotMatch(securityPanel, /isVerified2FA|Doble factor activo|Bono 2FA/);
   assert.doesNotMatch(securityPage, /estatus Verificado \(2FA\)/);
