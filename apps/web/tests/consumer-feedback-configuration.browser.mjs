@@ -12,7 +12,7 @@ const output=resolve(process.env.QA_OUTPUT||'artifacts/consumer-feedback-configu
 await mkdir(output,{recursive:true});
 const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
 const axe=process.env.AXE_MODULE_PATH?await readFile(process.env.AXE_MODULE_PATH,'utf8'):null;
-const entry=`import React,{useState} from 'react';import{createRoot}from'react-dom/client';import{ProductPassportDialog}from'./src/app/me/products/product-library';import{buildHomeProductsSource}from'./src/app/me/_components/consumer-home-model';function App(){const[event,setEvent]=useState('900001');window.changeFixtureReading=setEvent;const product=buildHomeProductsSource({ok:true,items:[{product_name:'Producto de ensayo',brand_name:'Marca de ensayo',tenant_slug:'qa-brand',bid:'QA-ONLY',latest_tap_event_id:event,latest_verdict:'OPENED',latest_tap_at:'2026-10-10T13:00:00Z',created_at:'2026-10-10T12:00:00Z',ownership_record_status:'viewed'}]}).data[0];return <main><h1>Ficha de ensayo local</h1><ProductPassportDialog product={product} onClose={()=>{}}/></main>};createRoot(document.getElementById('app')).render(<App/>);`;
+const entry=`import React,{useState} from 'react';import{createRoot}from'react-dom/client';import{ProductPassportDialog}from'./src/app/me/products/product-library';import{buildHomeProductsSource}from'./src/app/me/_components/consumer-home-model';function App(){const[event,setEvent]=useState('900001'),[visible,setVisible]=useState(true);window.changeFixtureReading=setEvent;window.closeFixtureReading=()=>setVisible(false);const product=buildHomeProductsSource({ok:true,items:[{product_name:'Producto de ensayo',brand_name:'Marca de ensayo',tenant_slug:'qa-brand',bid:'QA-ONLY',latest_tap_event_id:event,latest_verdict:'OPENED',latest_tap_at:'2026-10-10T13:00:00Z',created_at:'2026-10-10T12:00:00Z',ownership_record_status:'viewed'}]}).data[0];return <main><h1>Ficha de ensayo local</h1>{visible&&<ProductPassportDialog product={product} onClose={()=>setVisible(false)}/>}</main>};createRoot(document.getElementById('app')).render(<App/>);`;
 const bundle=await build({stdin:{contents:entry,resolveDir:web,loader:'tsx'},bundle:true,write:false,outfile:'fixture.js',format:'esm',platform:'browser',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"','process.env':'{}'},plugins:[{name:'loopback-next-stubs',setup(b){
  b.onResolve({filter:/^next\/(link|navigation)$/},args=>({path:args.path,namespace:'local-next'}));
  b.onLoad({filter:/.*/,namespace:'local-next'},args=>({contents:args.path==='next/link'?`import React from 'react';export default function Link({children,prefetch,...props}){return React.createElement('a',props,children);}`:`export function useSearchParams(){return new URLSearchParams(location.search)};export function useRouter(){return {refresh(){}}}`,loader:'js',resolveDir:web}));
@@ -32,10 +32,12 @@ const origin='http://127.0.0.1:'+server.address().port;
 const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
 const report={localOnly:true,actualClientDialog:true,actualModuleCss:true,nextLinkAndRouterStubs:true,syntheticReads:true,backendWrites:0,geolocationCalls:0,checks:[],views:[],exceptions:[],blockedExternalRequests:[]};
 const check=(condition,name)=>{report.checks.push({name,passed:Boolean(condition)});assert.ok(condition,name);};
-const published=()=>({version:'nexid.tenant-actions.v1',status:'published',allowedActions:['feedback'],program:null,trivia:null,catalogAvailable:false,tenantSlug:'qa-brand'});
+const published=()=>({version:'nexid.tenant-actions.v1',status:'published',allowedActions:['feedback','sommelier'],program:null,trivia:null,catalogAvailable:false,tenantSlug:'qa-brand'});
 async function open(width,theme,handler){
  const context=await browser.newContext({viewport:{width,height:900},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage(),calls=[];
- await page.addInitScript(value=>{document.addEventListener('DOMContentLoaded',()=>{document.documentElement.dataset.theme=value;},{once:true});Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){throw Error('Unexpected GPS')}}});},theme);
+ await page.addInitScript(value=>{document.addEventListener('DOMContentLoaded',()=>{document.documentElement.dataset.theme=value;},{once:true});Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){throw Error('Unexpected GPS')}}});
+  window.configurationTransports=[];const originalFetch=window.fetch.bind(window);window.fetch=(url,init)=>{if(String(url).endsWith('/configuration')){const observed={url:String(url),credentials:init?.credentials,cache:init?.cache,aborted:!!init?.signal?.aborted};window.configurationTransports.push(observed);init?.signal?.addEventListener('abort',()=>{observed.aborted=true;},{once:true});}return originalFetch(url,init);};
+ },theme);
  page.on('pageerror',error=>report.exceptions.push(error.message));
  await page.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url());
@@ -44,7 +46,7 @@ async function open(width,theme,handler){
   if(url.pathname.startsWith('/api/')){
    calls.push({path:url.pathname,method:request.method(),hasCookie:Boolean(request.headers().cookie)});
    const body=url.pathname.endsWith('/configuration')?await handler(url.pathname):{ok:true,notices:[],hasMore:false,observedAt:'2026-10-10T13:00:00Z'};
-   return route.fulfill({status:body?.status||200,contentType:'application/json',body:JSON.stringify(body?.payload||body)});
+   try{return await route.fulfill({status:body?.status||200,contentType:'application/json',body:JSON.stringify(body?.payload||body)});}catch{return; /* an intentionally cancelled old context may no longer accept a response */}
   }
   return route.continue();
  });
@@ -59,13 +61,17 @@ try{
    await t.page.getByRole('link',{name:'Compartir experiencia',exact:true}).waitFor();
    feedback=t.page.getByRole('link',{name:'Compartir experiencia',exact:true});
    check((await t.page.getByRole('link',{name:'Compartir experiencia',exact:true}).getAttribute('href')).includes('eventId=900001'),`${width}/${theme} published feedback links the selected account reading`);
+   const assistant=t.page.getByRole('link',{name:'Asistente de vinos',exact:true});await assistant.waitFor();
+   check(await assistant.getAttribute('href')==='/me/sommelier?eventId=900001',`${width}/${theme} assistant links only the account reading, without caller product facts`);
   }else{
    const expected=scenario==='unpublished'?'La marca no está recibiendo opiniones':'No pudimos confirmar si la marca recibe opiniones';
    await t.page.getByRole('status').filter({hasText:expected}).waitFor();
    feedback=t.page.getByRole('status').filter({hasText:expected});
    check(await t.page.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===0,`${width}/${theme}/${scenario} no unauthorized feedback link`);
+   check(await t.page.getByRole('link',{name:'Asistente de vinos',exact:true}).count()===0,`${width}/${theme}/${scenario} no unauthorized assistant link`);
   }
   check(t.calls.filter(call=>call.path.endsWith('/configuration')).length===1,`${width}/${theme}/${scenario} one configuration read without polling`);
+  check(await t.page.evaluate(()=>configurationTransports.length===1&&configurationTransports[0].credentials==='omit'&&configurationTransports[0].cache==='no-store'),`${width}/${theme}/${scenario} both actions share one uncached credential-free read`);
   check(await t.page.evaluate(()=>document.documentElement.dataset.theme)===theme,`${width}/${theme}/${scenario} requested appearance applies`);
   check(await t.page.getByRole('button',{name:'Cerrar ficha del producto'}).evaluate(element=>element===document.activeElement),`${width}/${theme}/${scenario} dialog starts with keyboard focus on its close action`);
   check(await t.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${width}/${theme}/${scenario} no horizontal overflow`);
@@ -86,13 +92,51 @@ try{
  const held=new Promise(done=>{release=done;});
  const race=await open(390,'dark',path=>path.includes('/900001/')?held:{ok:true,configuration:{...published(),allowedActions:[]}});
  await race.page.getByRole('status').filter({hasText:'Consultando las opciones actuales de la marca'}).waitFor();
+ await race.page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+ check(race.calls.filter(call=>call.path.endsWith('/configuration')).length===1,'Focus and visibility events during an unfinished read do not duplicate it');
  await race.page.evaluate(()=>window.changeFixtureReading('900002'));
  await race.page.getByRole('status').filter({hasText:'La marca no está recibiendo opiniones'}).waitFor();
  release({ok:true,configuration:published()});
  await race.page.waitForTimeout(100);
  check(await race.page.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===0,'A previous product configuration arriving late cannot enable the selected product');
+ check(await race.page.getByRole('link',{name:'Asistente de vinos',exact:true}).count()===0,'A late old product configuration cannot enable the selected product assistant');
+ check(await race.page.evaluate(()=>configurationTransports[0].aborted),'Switching products aborts the previous configuration transport');
  check(race.calls.filter(call=>call.path.endsWith('/configuration')).length===2,'Switching products reads each context once and issues no mutation');
  await race.context.close();
+ for(const action of ['feedback','sommelier']){
+  const selected=await open(390,'dark',()=>({ok:true,configuration:{...published(),allowedActions:[action]}}));
+  if(action==='feedback'){await selected.page.getByRole('link',{name:'Compartir experiencia',exact:true}).waitFor();check(await selected.page.getByRole('link',{name:'Asistente de vinos',exact:true}).count()===0,'Feedback-only configuration does not publish the assistant');}
+  else{await selected.page.getByRole('link',{name:'Asistente de vinos',exact:true}).waitFor();check(await selected.page.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===0,'Assistant-only configuration does not publish feedback');}
+  check(selected.calls.filter(call=>call.path.endsWith('/configuration')).length===1,`${action}-only configuration still uses one read`);await selected.context.close();
+ }
+ let releaseClosed;const pendingClosed=new Promise(done=>{releaseClosed=done;});
+ const closed=await open(390,'light',()=>pendingClosed);await closed.page.getByRole('status').filter({hasText:'Consultando las opciones actuales de la marca'}).waitFor();
+ await closed.page.evaluate(()=>window.closeFixtureReading());
+ check(await closed.page.evaluate(()=>configurationTransports[0].aborted),'Closing the product sheet aborts its unfinished configuration request');
+ await closed.page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+ check(closed.calls.filter(call=>call.path.endsWith('/configuration')).length===1,'Closing the sheet removes its focus/visibility refresh listeners');
+ releaseClosed({ok:true,configuration:published()});await closed.context.close();
+ const deadline=await open(390,'light',()=>new Promise(()=>{}));
+ await deadline.page.getByRole('status').filter({hasText:'No pudimos confirmar si la marca recibe opiniones'}).waitFor({timeout:8000});
+ check(await deadline.page.evaluate(()=>configurationTransports[0].aborted),'A configuration deadline aborts its transport and exposes an actionable status');
+ check(deadline.calls.filter(call=>call.path.endsWith('/configuration')).length===1,'A configuration timeout does not retry or poll');await deadline.context.close();
+ let currentConfiguration=published();
+ const returning=await open(390,'dark',()=>({ok:true,configuration:currentConfiguration}));
+ await returning.page.getByRole('link',{name:'Asistente de vinos',exact:true}).waitFor();
+ await returning.page.evaluate(()=>{window.fixtureVisibility='hidden';Object.defineProperty(document,'visibilityState',{configurable:true,get(){return window.fixtureVisibility;}});});
+ await returning.page.waitForTimeout(800);
+ await returning.page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+ check(returning.calls.filter(call=>call.path.endsWith('/configuration')).length===1,'Hidden tabs never refresh product options in the background');
+ currentConfiguration={...published(),allowedActions:[]};
+ await returning.page.evaluate(()=>{window.fixtureVisibility='visible';window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+ await returning.page.getByRole('status').filter({hasText:'La marca no está recibiendo opiniones'}).waitFor();
+ check(await returning.page.getByRole('link',{name:'Asistente de vinos',exact:true}).count()===0&&await returning.page.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===0,'Returning to a visible sheet withdraws both actions when the brand changed permission');
+ check(returning.calls.filter(call=>call.path.endsWith('/configuration')).length===2,'A paired focus/visibility return makes one fresh publication read');
+ currentConfiguration=published();await returning.page.waitForTimeout(800);
+ await returning.page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+ await returning.page.getByRole('link',{name:'Asistente de vinos',exact:true}).waitFor();
+ check(await returning.page.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===1,'Returning again reflects a freshly published feedback option');
+ check(returning.calls.filter(call=>call.path.endsWith('/configuration')).length===3,'A republished option uses one fresh read and no polling');await returning.context.close();
  check(report.backendWrites===0&&report.exceptions.length===0&&report.blockedExternalRequests.length===0,'No backend writes, browser exceptions or external requests');
 }finally{
  await browser.close();await new Promise(done=>server.close(done));await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));

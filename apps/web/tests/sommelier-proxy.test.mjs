@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { proxySommelierRequest } from "../src/app/api/_lib/sommelier-proxy.ts";
+import { readFileSync } from "node:fs";
+import ts from "typescript";
+import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
+// Execute the actual BFF with explicit server-only boundaries. Individual
+// contract tests inject transport; default protected transport is exercised in
+// server-api-transport.test.mjs with isolated environment and synthetic fetch.
+const code = ts.transpileModule(readFileSync(new URL("../src/app/api/_lib/sommelier-proxy.ts", import.meta.url), "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const loaded = { exports: {} };
+new Function("require", "module", "exports", code)(name => {
+  if (name === "@product/config") return { productUrls: { api: "https://api.nexid.lat" } };
+  if (name === "./consumer-tap-handoff") return tapHandoff;
+  if (name === "./server-api-transport") return { fetchRuntimeApi: () => { throw Error("Unexpected default network"); } };
+  throw Error(`Unexpected dependency: ${name}`);
+}, loaded, loaded.exports);
+const { proxySommelierRequest } = loaded.exports;
 const request = (headers = {}, body = "{}") => new Request("https://nexid.lat/api/sommelier/chat", { method: "POST", headers: { origin: "https://nexid.lat", "sec-fetch-site": "same-origin", "content-type": "application/json", ...headers }, body });
 test("BFF denies foreign/missing origins, hostile fetch sites and non-JSON before contacting API", async () => {
   for (const headers of [{ origin: "https://hostile.nexid.lat" }, { origin: "" }, { "sec-fetch-site": "same-site" }, { "content-type": "text/plain" }]) {

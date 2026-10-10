@@ -1,5 +1,6 @@
 import { productUrls } from "@product/config";
 import { stripConsumerTapCapabilityCookies } from "./consumer-tap-handoff";
+import { fetchRuntimeApi } from "./server-api-transport";
 
 type Target = "/public/sommelier/demo/session" | "/sommelier/chat";
 const PRIVATE_HEADERS = { "cache-control": "private, no-store", vary: "Cookie", "referrer-policy": "no-referrer" };
@@ -72,7 +73,7 @@ export async function proxySommelierRequest(req: Request, target: Target, option
   const timer = setTimeout(cancel, options.timeoutMs ?? 11_000);
   const forward = (async () => {
     try {
-      upstream = await (options.fetchImpl ?? fetch)(new URL(target, base).href, { method: "POST", headers, body, cache: "no-store", signal: controller.signal });
+      upstream = await (options.fetchImpl ?? fetchRuntimeApi)(new URL(target, base).href, { method: "POST", headers, body, cache: "no-store", signal: controller.signal });
       if (controller.signal.aborted) { void upstream.body?.cancel().catch(() => {}); return interrupted; }
       const text = await readBounded(upstream.body, 24_576, { signal: controller.signal, timeoutMs: options.timeoutMs ?? 11_000 });
       if (controller.signal.aborted) return interrupted;

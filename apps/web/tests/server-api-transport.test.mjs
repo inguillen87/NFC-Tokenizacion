@@ -45,6 +45,12 @@ function publicConfiguration(env, fetchImpl, api = API) {
     "../app/api/_lib/server-api-transport": { fetchRuntimeApi },
   } }).readPublicTenantConfiguration;
 }
+function sommelier(env, fetchImpl, api = API) {
+  return load("app/api/_lib/sommelier-proxy.ts", { env, modules: {
+    "@product/config": { productUrls: { api } }, "./consumer-tap-handoff": tapHandoff,
+    "./server-api-transport": { fetchRuntimeApi: transport(env, fetchImpl) },
+  } }).proxySommelierRequest;
+}
 function browserRequest(extra = {}) {
   return new Request(`${WEB}/api/consumer/auth/verify`, { method: "POST", headers: {
     origin: WEB, "sec-fetch-site": "same-origin", "content-type": "application/json",
@@ -292,4 +298,45 @@ test("Initial SSR history authenticates before its protected transport and prese
   } });
   const result = await Page({ searchParams: Promise.resolve({ tenant: "qa" }) });
   assert.deepEqual(order, ["auth", "fetch", "parse"]); assert.deepEqual(result.props.children.props.initial, { items: [] });
+});
+
+test("Managed assistant defaults to the existing exact-origin Preview transport without browser bypass injection", async () => {
+  const calls = [], forward = sommelier(previewEnv(), async (url, init) => { calls.push({ url, init }); return Response.json({ ok: true }); });
+  const req = new Request(`${WEB}/api/sommelier/chat`, { method: "POST", headers: {
+    origin: WEB, "content-type": "application/json", "sec-fetch-site": "same-origin",
+    cookie: "consumer_session=synthetic; __Host-nexid_tap_715=one-use",
+    "x-vercel-protection-bypass": "browser-injected", "x-vercel-set-bypass-cookie": "true",
+  }, body: '{"mode":"consumer","question":"Synthetic","eventId":"715"}' });
+  const res = await forward(req, "/sommelier/chat");
+  assert.equal(res.status, 200); assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, `${API}/sommelier/chat`); assert.equal(calls[0].init.redirect, "error");
+  assert.equal(calls[0].init.headers.get("x-vercel-protection-bypass"), SECRET);
+  assert.equal(calls[0].init.headers.get("x-vercel-set-bypass-cookie"), null);
+  assert.equal(calls[0].init.headers.get("origin"), WEB);
+  assert.equal(calls[0].init.headers.get("cookie"), "consumer_session=synthetic");
+  assert.equal(res.headers.get("x-vercel-protection-bypass"), null);
+});
+
+test("Assistant Production never reads the Preview grant; a foreign Preview API is denied before transport", async () => {
+  const env = { VERCEL_ENV: "production" };
+  for (const key of ["NEXID_PREVIEW_API_ORIGIN", "NEXID_PREVIEW_API_ALLOWED_HOST", "NEXID_PREVIEW_API_AUTOMATION_BYPASS"]) Object.defineProperty(env, key, { get() { throw Error("Must not read Preview configuration"); } });
+  let calls = 0;
+  const production = sommelier(env, async (url, init) => {
+    calls++; assert.equal(url, "https://api.nexid.lat/sommelier/chat"); assert.equal(init.headers.get("x-vercel-protection-bypass"), null); return Response.json({ ok: true });
+  }, "https://api.nexid.lat");
+  const req = () => new Request(`${WEB}/api/sommelier/chat`, { method: "POST", headers: { origin: WEB, "content-type": "application/json" }, body: "{}" });
+  assert.equal((await production(req(), "/sommelier/chat")).status, 200);
+  const hostile = sommelier(previewEnv(), async () => { calls++; throw Error("Must not fetch"); }, "https://other.vercel.app");
+  const denied = await hostile(req(), "/sommelier/chat");
+  assert.equal(denied.status, 503); assert.equal(calls, 1); assert.doesNotMatch(await denied.text(), new RegExp(SECRET));
+});
+
+test("Assistant explicit injected transport remains intact and retains cancellation/deadline", async () => {
+  const forward = sommelier(previewEnv(), () => assert.fail("Default transport must not run"));
+  let calls = 0, signal;
+  const req = new Request(`${WEB}/api/sommelier/chat`, { method: "POST", headers: { origin: WEB, "content-type": "application/json" }, body: "{}" });
+  const res = await forward(req, "/sommelier/chat", { timeoutMs: 10, fetchImpl: async (url, init) => {
+    calls++; signal = init.signal; assert.equal(url, `${API}/sommelier/chat`); assert.equal(init.headers["x-vercel-protection-bypass"], undefined); return new Promise(() => {});
+  } });
+  assert.equal(res.status, 503); assert.equal(calls, 1); assert.equal(signal.aborted, true);
 });

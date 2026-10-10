@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
-import { consumerSommelierEventId, consumerSommelierScope } from "../src/app/me/sommelier/consumer-sommelier-scope.ts";
+import { consumerSommelierAvailability, consumerSommelierEventId, consumerSommelierScope } from "../src/app/me/sommelier/consumer-sommelier-scope.ts";
 import { requestManagedSommelierAnswer, sommelierHistory } from "../src/lib/managed-sommelier.ts";
 
 const reading = { ok: true, item: { tap_event_id: "715", tenant_slug: "brand-a", tenant_name: "Marca A", product_name: "Vino de mi cuenta", brand_name: "Marca A", verdict: "OPENED", risk_level: "low" } };
@@ -18,6 +18,13 @@ test("the portal opens general guidance without manufacturing a product identity
     assert.equal(consumerSommelierEventId(id), null);
     assert.deepEqual(consumerSommelierScope(true, consumerSommelierEventId(id), reading, configuration), { state: "unavailable" });
   }
+});
+
+test("a product action uses only the exact brand's current published assistant permission", () => {
+  assert.equal(consumerSommelierAvailability(configuration, "brand-a"), "available");
+  for (const changed of [{ ...configuration, allowedActions: ["feedback"] }, { ...configuration, status: "unpublished" }]) assert.equal(consumerSommelierAvailability(changed, "brand-a"), "unpublished");
+  for (const changed of [null, { ...configuration, tenantSlug: "brand-b" }, { ...configuration, status: "unavailable" }, { ...configuration, allowedActions: ["invented"] }]) assert.equal(consumerSommelierAvailability(changed, "brand-a"), "unavailable");
+  assert.equal(consumerSommelierAvailability(configuration, "injected/tenant"), "unavailable");
 });
 
 test("context requires this account's exact reading and that brand's published opt-in", () => {
