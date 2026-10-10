@@ -17,6 +17,7 @@ type ConsumerSession = {
 const MAX_PHOTO_DATA_URL_CHARS = 2_800_000;
 const MAX_EXPERIENCE_BODY_BYTES = 8 * 1024 * 1024;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PRIVATE_HEADERS = { "cache-control": "private, no-store" };
 
 function cleanText(value: unknown, max = 280) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -28,8 +29,9 @@ function cleanUuid(value: unknown) {
 }
 
 function cleanEventId(value: unknown) {
-  const text = cleanText(value, 40);
-  return /^\d+$/.test(text) ? text : "";
+  const text = typeof value === "number" ? Number.isSafeInteger(value) && value > 0 ? String(value) : ""
+    : typeof value === "string" ? value.trim() : "";
+  return /^[1-9]\d{0,18}$/.test(text) && BigInt(text) <= 9_223_372_036_854_775_807n ? text : "";
 }
 
 function cleanRating(value: unknown) {
@@ -78,9 +80,9 @@ function readJsonArray(value: unknown) {
 }
 
 export async function GET(req: Request) {
-  await ensureConsumerPortalSchema();
   const consumer = (await getConsumerFromRequest(req)) as ConsumerSession | null;
-  if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  if (!consumer) return json({ ok: false, error: "unauthorized" }, 401, PRIVATE_HEADERS);
+  await ensureConsumerPortalSchema();
 
   const [rewardRows, experienceRows] = await Promise.all([
     sql/*sql*/`
@@ -88,8 +90,18 @@ export async function GET(req: Request) {
       FROM rewards r
       JOIN tenants t ON t.id = r.tenant_id
       JOIN tenant_consumer_memberships m ON m.tenant_id = r.tenant_id AND m.consumer_id = ${consumer.id}
+      JOIN loyalty_programs p ON p.id = r.program_id AND p.tenant_id = r.tenant_id
       WHERE r.type IN ('EXPERIENCE','TASTING','TOUR','VIP_ACCESS') AND r.status = 'active'
+        AND m.status = 'active' AND p.status = 'active'
+        AND (p.start_at IS NULL OR p.start_at <= now()) AND (p.end_at IS NULL OR p.end_at > now())
+        AND (r.starts_at IS NULL OR r.starts_at <= now()) AND (r.ends_at IS NULL OR r.ends_at > now())
+        AND (r.stock_remaining IS NULL OR r.stock_remaining > 0)
+        AND NOT EXISTS (
+          SELECT 1 FROM consumer_reward_claims claim
+          WHERE claim.reward_id = r.id AND claim.tenant_id = r.tenant_id AND claim.consumer_id = ${consumer.id}::uuid
+        )
       ORDER BY r.created_at DESC
+      LIMIT 100
     `,
     sql/*sql*/`
       SELECT
@@ -128,7 +140,7 @@ export async function GET(req: Request) {
       photo_urls: readJsonArray(row.photo_urls_json),
       verification_badges: readJsonArray(row.verification_badges_json),
     })),
-  });
+  }, 200, PRIVATE_HEADERS);
 }
 
 export async function POST(req: Request) {
@@ -178,12 +190,12 @@ export async function POST(req: Request) {
           'ownership' AS evidence_type
         FROM consumer_product_ownerships o
         JOIN tenants t ON t.id = o.tenant_id
-        LEFT JOIN events e ON e.id = o.event_id
+        LEFT JOIN events e ON e.id = o.event_id AND e.tenant_id = o.tenant_id
         LEFT JOIN tags tag ON tag.id = o.tag_id
         LEFT JOIN tag_profiles tp ON tp.tag_id = tag.id
         WHERE o.id = ${ownershipId}
           AND o.consumer_id = ${consumer.id}
-        LIMIT 1
+        LIMIT 2
       `
     : await sql/*sql*/`
         SELECT
@@ -201,17 +213,17 @@ export async function POST(req: Request) {
           h.risk_level
         FROM consumer_tap_history h
         JOIN tenants t ON t.id = h.tenant_id
-        JOIN events e ON e.id = h.tap_event_id
+        JOIN events e ON e.id = h.tap_event_id AND e.tenant_id = h.tenant_id
         LEFT JOIN tags tag ON tag.uid_hex = e.uid_hex AND tag.batch_id = e.batch_id
         LEFT JOIN tag_profiles tp ON tp.tag_id = tag.id
         WHERE h.consumer_id = ${consumer.id}
           AND h.tap_event_id = ${eventId}
         ORDER BY h.created_at DESC
-        LIMIT 1
+        LIMIT 2
       `;
 
   const evidence = evidenceRows[0];
-  if (!evidence) return json({ ok: false, error: "verified_evidence_not_found" }, 404);
+  if (evidenceRows.length !== 1 || !evidence) return json({ ok: false, error: "verified_evidence_not_found" }, 404, PRIVATE_HEADERS);
 
   if (String(evidence.risk_level || "").toLowerCase() === "high" || String(evidence.status || "").includes("blocked")) {
     return json({ ok: false, error: "review_blocked_by_risk_policy" }, 403);
@@ -257,6 +269,16 @@ export async function POST(req: Request) {
 
   const rows = existingRows[0]?.id
     ? await sql/*sql*/`
+        WITH permitted_profile AS MATERIALIZED (
+          SELECT tenant_id FROM tenant_sun_profiles
+          WHERE tenant_id = ${evidence.tenant_id}::uuid
+            AND metadata #>> '{postTap,version}' = 'nexid.tenant-actions.v1'
+            AND metadata #>> '{postTap,status}' = 'published'
+            AND jsonb_typeof(metadata #> '{postTap,allowedActions}') = 'array'
+            AND metadata #> '{postTap,allowedActions}' <@ '["lead","feedback","sommelier","marketplace"]'::jsonb
+            AND COALESCE(metadata #> '{postTap,allowedActions}', '[]'::jsonb) ? 'feedback'
+          FOR SHARE
+        )
         UPDATE consumer_product_experiences
         SET
           rating = ${rating},
@@ -273,9 +295,22 @@ export async function POST(req: Request) {
           metadata_json = ${JSON.stringify(payload)}::jsonb,
           updated_at = now()
         WHERE id = ${existingRows[0].id}
+          AND consumer_id = ${consumer.id}
+          AND tenant_id = ${evidence.tenant_id}::uuid
+          AND EXISTS (SELECT 1 FROM permitted_profile)
         RETURNING *
       `
     : await sql/*sql*/`
+        WITH permitted_profile AS MATERIALIZED (
+          SELECT tenant_id FROM tenant_sun_profiles
+          WHERE tenant_id = ${evidence.tenant_id}::uuid
+            AND metadata #>> '{postTap,version}' = 'nexid.tenant-actions.v1'
+            AND metadata #>> '{postTap,status}' = 'published'
+            AND jsonb_typeof(metadata #> '{postTap,allowedActions}') = 'array'
+            AND metadata #> '{postTap,allowedActions}' <@ '["lead","feedback","sommelier","marketplace"]'::jsonb
+            AND COALESCE(metadata #> '{postTap,allowedActions}', '[]'::jsonb) ? 'feedback'
+          FOR SHARE
+        )
         INSERT INTO consumer_product_experiences (
           tenant_id,
           consumer_id,
@@ -295,7 +330,7 @@ export async function POST(req: Request) {
           moderation_status,
           visibility,
           metadata_json
-        ) VALUES (
+        ) SELECT
           ${evidence.tenant_id},
           ${consumer.id},
           ${evidence.ownership_id || null},
@@ -314,11 +349,14 @@ export async function POST(req: Request) {
           'pending',
           'private',
           ${JSON.stringify(payload)}::jsonb
-        )
+        WHERE EXISTS (SELECT 1 FROM permitted_profile)
         RETURNING *
       `;
 
   const item = rows[0];
+  // The company setting is authority at the write, not a cached portal flag.
+  // Its row lock serializes this statement with an admin pause/withdrawal.
+  if (!item) return json({ ok: false, error: "customer_action_unpublished" }, 403, { "cache-control": "private, no-store" });
   return json({
     ok: true,
     item: {
