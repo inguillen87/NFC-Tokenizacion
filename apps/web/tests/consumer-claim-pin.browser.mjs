@@ -39,9 +39,18 @@ export async function runClaimPinScenarios({page,base,width,theme,report,check,a
    await page.waitForFunction(()=>{const button=document.querySelector('[data-testid="tap-association-confirm"]');return button&&!button.disabled;});
    check(await pin.getAttribute('type')==='password'&&await pin.getAttribute('maxlength')==='128'&&await pin.getAttribute('autocomplete')==='off',`${label}: bounded password input without autocomplete`);
    check(await pin.evaluate(node=>node.getBoundingClientRect().height>=44&&parseFloat(getComputedStyle(node).fontSize)>=16),`${label}: readable mobile touch field`);
-   await pin.focus();
-   check(await pin.evaluate(node=>{const style=getComputedStyle(node);return node.matches(':focus-visible')&&style.outlineStyle==='solid'&&parseFloat(style.outlineWidth)>=2;}),`${label}: product PIN has visible keyboard focus`);
-   check((await panel.locator('#tap-association-pin-help').innerText()).includes('WhatsApp'),`${label}: package code is distinguished from sign-in OTP`);
+   // Exercise actual keyboard navigation; programmatic .focus() alone does not
+   // establish the modality or wait for the focus style's rendered state.
+   await panel.getByTestId('tap-association-option-claim').focus();
+   await page.keyboard.press('Tab');
+   const focusState=()=>pin.evaluate(node=>{const style=getComputedStyle(node);return{active:document.activeElement===node,documentFocused:document.hasFocus(),focusVisible:node.matches(':focus-visible'),outlineStyle:style.outlineStyle,outlineWidth:style.outlineWidth,transitionProperty:style.transitionProperty,transitionDuration:style.transitionDuration};});
+   const focusObservation={width,theme,locale:scenario.locale,before:await focusState()};
+   report.claimPinFocus??=[];report.claimPinFocus.push(focusObservation);
+   try{
+    await page.waitForFunction(()=>{const node=document.querySelector('[data-testid="tap-association-claim-pin"]');if(!node)return false;const style=getComputedStyle(node);return document.activeElement===node&&node.matches(':focus-visible')&&style.outlineStyle==='solid'&&parseFloat(style.outlineWidth)>=2&&style.transitionProperty==='none';},null,{timeout:5000});
+   }finally{focusObservation.after=await focusState();}
+   check(focusObservation.after.active&&focusObservation.after.focusVisible&&focusObservation.after.outlineStyle==='solid'&&parseFloat(focusObservation.after.outlineWidth)>=2&&focusObservation.after.transitionProperty==='none',`${label}: product PIN has visible keyboard focus`);
+   check((await panel.locator('#tap-association-pin-help').innerText()).includes('WhatsApp'),`${label}: product PIN is distinguished from sign-in OTP`);
    await pin.fill(current.secret);await panel.getByTestId('tap-association-option-save').click();
    check(await pin.count()===0,`${label}: switching to save removes the code field`);
    await panel.getByTestId('tap-association-option-claim').click();
