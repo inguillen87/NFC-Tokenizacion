@@ -7,13 +7,17 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve, basename } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { build } from 'esbuild';
 
 const web = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(web, '../..');
 const output = resolve(process.env.QA_OUTPUT || 'artifacts/performance/deferred-tools');
 await mkdir(output, { recursive: true });
+const sourcePaths = ['src/app/sun/sun-deferred-consumer-tools.tsx', 'src/app/sun/sun-deferred-consumer-tools.module.css', 'src/app/sun/sun-locale.ts', 'tests/sun-deferred-consumer-tools.browser.mjs'];
+const sourceHashes = async () => Object.fromEntries(await Promise.all(sourcePaths.map(async path => [path, createHash('sha256').update(await readFile(join(web, path))).digest('hex')])));
+const sourcesBefore = await sourceHashes();
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
-const fixture = `import React from 'react';import{hydrateRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{DeferredCtaActions,DeferredQREngagementSuite}from'./src/app/sun/sun-deferred-consumer-tools';const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:['lead','feedback','sommelier'],program:{id:'synthetic-program',name:'Programa de ensayo',pointsName:'Puntos',pointsPerValidTap:0},trivia:{id:'11111111-1111-4111-8111-111111111111',title:'Trivia de ensayo',revision:'a'.repeat(64),pointsPerCorrect:0,completionBonus:0},catalogAvailable:false,tenantSlug:'synthetic'};export function App({locale='es-AR'}={}){return <SunLocaleProvider initialLocale={locale}><h1>Ensayo de opciones SUN</h1><p>Datos de prueba. Sin tap físico ni operaciones reales.</p><section id='information'><input aria-label='Otra consulta de prueba'/><a href='#information'>Seguir leyendo el producto</a></section><div style={{height:2000}} aria-hidden='true'/><div id='protected-actions'><DeferredCtaActions bid='synthetic-bid' uid='synthetic-uid' eventId='0' freshToken='' canExecute={false} tapState='blocked' allowedActions={['report']} blockedActions={['claimOwnership','registerWarranty','tokenization']}/></div><div style={{height:1500}} aria-hidden='true'/><div id='qr-engagement'><DeferredQREngagementSuite wineryName='Marca de ensayo' productName='Producto de ensayo' tenantSlug='synthetic' eventId='0' bid='synthetic-bid' initialTab='contact' allowedActions={['lead','feedback','sommelier','rewards']} configuration={configuration}/></div><div style={{height:1800}} aria-hidden='true'/></SunLocaleProvider>};`;
+const fixture = `import React from 'react';import{hydrateRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{DeferredCtaActions,DeferredQREngagementSuite}from'./src/app/sun/sun-deferred-consumer-tools';const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:['lead','feedback','sommelier'],program:{id:'synthetic-program',name:'Programa de ensayo',pointsName:'Puntos',pointsPerValidTap:0},trivia:{id:'11111111-1111-4111-8111-111111111111',title:'Trivia de ensayo',revision:'a'.repeat(64),pointsPerCorrect:0,completionBonus:0},catalogAvailable:false,tenantSlug:'synthetic'};export function App({locale='es-AR',isDemo=false}={}){const[mounted,setMounted]=React.useState(true);React.useEffect(()=>{const remove=()=>setMounted(false);window.addEventListener('fixture:remove-tools',remove);return()=>window.removeEventListener('fixture:remove-tools',remove);},[]);return <SunLocaleProvider initialLocale={locale}><h1>Ensayo de opciones SUN</h1><p>Datos de prueba. Sin tap físico ni operaciones reales.</p><section id='sun-summary'><input aria-label='Otra consulta de prueba'/><a href='#sun-summary'>Seguir leyendo el producto</a></section><div style={{height:2000}} aria-hidden='true'/>{mounted&&<><div id='protected-actions'><DeferredCtaActions bid='synthetic-bid' uid='synthetic-uid' eventId='0' freshToken='' canExecute={false} tapState='blocked' allowedActions={['report']} blockedActions={['claimOwnership','registerWarranty','tokenization']} isDemoPreview={isDemo}/></div><div style={{height:1500}} aria-hidden='true'/><div id='qr-engagement'><DeferredQREngagementSuite wineryName='Marca de ensayo' productName='Producto de ensayo' tenantSlug='synthetic' eventId='0' bid='synthetic-bid' initialTab='contact' allowedActions={['lead','feedback','sommelier','rewards']} configuration={configuration} isDemoPreview={isDemo}/></div></>}<div style={{height:1800}} aria-hidden='true'/></SunLocaleProvider>};`;
 const plugin = { name: 'consumer-tool-hosts', setup(b) {
   b.onResolve({ filter: /^next\/dynamic$/ }, () => ({ path: join(repo, 'node_modules/next/dist/shared/lib/app-dynamic.js') }));
   // PreloadChunks is server-only, never reached by these ssr:false tools.
@@ -22,10 +26,11 @@ const plugin = { name: 'consumer-tool-hosts', setup(b) {
   b.onLoad({ filter: /.*/, namespace: 'tool-fixture' }, () => ({ contents: `import React from 'react';export default function Link({children,...props}){return React.createElement('a',props,children)}`, loader: 'js', resolveDir: web }));
   b.onLoad({ filter: /\.module\.css$/ }, () => ({ contents: 'export default new Proxy({}, {get:(_,key)=>String(key)});', loader: 'js' }));
 } };
-const browserBundle = await build({ stdin: { contents: fixture + "const requested=new URLSearchParams(location.search).get('locale');const locale=['en','pt-BR'].includes(requested)?requested:'es-AR';hydrateRoot(document.getElementById('app'),<App locale={locale}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, minify: true, splitting: true, format: 'esm', platform: 'browser', jsx: 'automatic', outdir: join(output, 'bundles'), entryNames: 'fixture', chunkNames: 'chunks/[name]-[hash]', plugins: [plugin], define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'error' });
-const ssr = await build({ stdin: { contents: fixture + "import{renderToString}from'react-dom/server';export const render=(locale)=>renderToString(<App locale={locale}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, format: 'cjs', platform: 'node', jsx: 'automatic', plugins: [plugin], external: ['react', 'react-dom/server'], logLevel: 'error' });
+const browserBundle = await build({ stdin: { contents: fixture + "const params=new URLSearchParams(location.search);const requested=params.get('locale');const locale=['en','pt-BR'].includes(requested)?requested:'es-AR';hydrateRoot(document.getElementById('app'),<App locale={locale} isDemo={params.get('demo')==='1'}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, minify: true, splitting: true, format: 'esm', platform: 'browser', jsx: 'automatic', outdir: join(output, 'bundles'), entryNames: 'fixture', chunkNames: 'chunks/[name]-[hash]', plugins: [plugin], define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'error' });
+const ssr = await build({ stdin: { contents: fixture + "import{renderToString}from'react-dom/server';export const render=(locale,isDemo=false)=>renderToString(<App locale={locale} isDemo={isDemo}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, format: 'cjs', platform: 'node', jsx: 'automatic', plugins: [plugin], external: ['react', 'react-dom/server'], logLevel: 'error' });
 const module = { exports: {} }; new Function('module', 'exports', 'require', ssr.outputFiles[0].text)(module, module.exports, createRequire(import.meta.url));
 const html = new Map(['es-AR', 'en', 'pt-BR'].map(locale => [locale, module.exports.render(locale)]));
+const demoHtml = new Map(['es-AR', 'en', 'pt-BR'].map(locale => [locale, module.exports.render(locale, true)]));
 const css = (await readFile(join(web, 'src/app/sun/sun-deferred-consumer-tools.module.css'), 'utf8')).replace(/:global\(([^)]+)\)/g, '$1')
   + await readFile(join(web, 'src/app/sun/qr-engagement-suite.module.css'), 'utf8');
 const files = new Map();
@@ -39,22 +44,47 @@ const server = createServer((req, res) => {
   if (u.pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
   res.setHeader('content-type', 'text/html; charset=utf-8');
   const locale = html.has(u.searchParams.get('locale')) ? u.searchParams.get('locale') : 'es-AR';
-  res.end(`<!doctype html><html lang='${locale}' data-theme='light'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Opciones SUN sintéticas</title><style>${css}body{margin:0;padding:16px;font:14px/1.5 system-ui;color:#334155;background:white}*{box-sizing:border-box}button,input,textarea{font:inherit}button{min-height:44px}section{padding:12px;border:1px solid #ddd}input{display:block;max-width:100%}</style></head><body><div id='app'>${html.get(locale)}</div><script type='module' src='/fixture.js'></script></body></html>`);
+  res.end(`<!doctype html><html lang='${locale}' data-theme='light'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Opciones SUN sintéticas</title><style>${css}body{margin:0;padding:16px;font:14px/1.5 system-ui;color:#334155;background:white}html[data-theme=dark] body{color:#e2e8f0;background:#0b1722}*{box-sizing:border-box}button,input,textarea{font:inherit}button{min-height:44px}section{padding:12px;border:1px solid #ddd}input{display:block;max-width:100%}</style></head><body><div id='app'>${(u.searchParams.get('demo') === '1' ? demoHtml : html).get(locale)}</div><script type='module' src='/fixture.js'></script></body></html>`);
 });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const origin = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
-const report = { actualConsumerWidgets: true, actualNextAppDynamicRuntime: true, navigationAndServerPreloadHostsInert: true, syntheticData: true, physicalTapMeasured: false, checks: [], chunks: tools.map(([path, bytes]) => ({ path, decodedBytes: bytes.length, gzipBytes: gzipSync(bytes).length })), scenarios: [], exceptions: [] };
+const report = { actualConsumerWidgets: true, actualNextAppDynamicRuntime: true, navigationAndServerPreloadHostsInert: true, syntheticData: true, physicalTapMeasured: false, actualNextRouteMeasured: false, slowNoticeThresholdMs: 8000, sourcesBefore, delayedViews: [], checks: [], chunks: tools.map(([path, bytes]) => ({ path, decodedBytes: bytes.length, gzipBytes: gzipSync(bytes).length })), scenarios: [], exceptions: [] };
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
-async function scenario(hash = '', hold = false, failOnce = false, locale = 'es-AR', width = 390) {
+async function scenario(hash = '', hold = false, failOnce = false, locale = 'es-AR', width = 390, { heldTool = 'cta-actions', demo = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: 'reduce', serviceWorkers: 'block' }), page = await context.newPage();
-  const state = { requests: [], writes: [], held: [], hold, failOnce, geo: 0 };
+  const state = { requests: [], writes: [], held: [], hold, failOnce, heldTool, isDemoPreview: demo, geo: 0 };
   await page.addInitScript(() => { window.__geoRequests = 0; Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition() { window.__geoRequests++; } } }); });
   page.on('pageerror', e => report.exceptions.push(e.message));
-  await page.route('**/*', route => { const request = route.request(), u = new URL(request.url()); state.requests.push(u.pathname); if (request.method() !== 'GET') { state.writes.push(u.pathname); return route.abort(); } if (u.origin !== origin) return route.abort(); if (state.failOnce && /\/chunks\/cta-actions-/.test(u.pathname)) { state.failOnce = false; return route.fulfill({ status: 503, contentType: 'text/javascript', body: '' }); } if (state.hold && /\/chunks\/cta-actions-/.test(u.pathname)) { state.held.push(route); return; } return route.continue(); });
-  await page.goto(origin + '/' + (locale === 'es-AR' ? '' : '?locale=' + locale) + hash); await page.waitForTimeout(350);
+  await page.route('**/*', route => { const request = route.request(), u = new URL(request.url()); state.requests.push(u.pathname); if (request.method() !== 'GET') { state.writes.push(u.pathname); return route.abort(); } if (u.origin !== origin) return route.abort(); if (state.failOnce && /\/chunks\/cta-actions-/.test(u.pathname)) { state.failOnce = false; return route.fulfill({ status: 503, contentType: 'text/javascript', body: '' }); } if (state.hold && u.pathname.includes('/chunks/' + heldTool + '-')) { state.held.push(route); return; } return route.continue(); });
+  const params = new URLSearchParams(); if (locale !== 'es-AR') params.set('locale', locale); if (demo) params.set('demo', '1');
+  await page.goto(origin + '/' + (params.size ? '?' + params : '') + hash); await page.waitForTimeout(350);
   report.scenarios.push(state); return { context, page, state };
 }
+async function controlledDelay(page) {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 100));
+  await page.evaluate(() => {
+    const schedule = window.setTimeout.bind(window), cancel = window.clearTimeout.bind(window);
+    window.__slowTimers = [];
+    window.setTimeout = (callback, delay, ...args) => {
+      if (delay !== 8000) return schedule(callback, delay, ...args);
+      const record = { active: true, fired: false, cleared: false };
+      const id = schedule(() => { record.active = false; record.fired = true; callback(...args); }, delay);
+      record.id = id; window.__slowTimers.push(record); return id;
+    };
+    window.clearTimeout = id => { const record = window.__slowTimers.find(timer => timer.id === id); if (record) { record.active = false; record.cleared = true; } cancel(id); };
+  });
+}
+async function requestHeldTool(test, anchor = 'protected-actions') {
+  const region = test.page.locator(`[data-sun-deferred-tool="${anchor}"]`);
+  await region.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true }));
+  await test.page.keyboard.press('Enter');
+  await test.page.waitForFunction(id => document.querySelector(`[data-sun-deferred-tool="${id}"]`)?.getAttribute('data-tool-load-state') === 'loading', anchor);
+  await test.page.waitForFunction(() => window.__slowTimers.some(timer => timer.active));
+  return region;
+}
+async function releaseHeld(test) { test.state.hold = false; for (const route of test.state.held) await route.continue(); test.state.held = []; }
 try {
   const ssrOnly = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } }), ssrPage = await ssrOnly.newPage();
   await ssrPage.goto(origin); check(await ssrPage.getByRole('heading', { name: 'Postventa y garantía', exact: true }).count() === 1, 'Useful post-sale fallback is server-rendered'); check(await ssrPage.getByRole('heading', { name: 'Novedades y experiencias', exact: true }).count() === 1, 'Useful brand fallback is server-rendered'); check((await ssrPage.locator('noscript').allTextContents()).every(t => t.includes('información del producto')), 'JavaScript-free fallback explains how to keep reading'); await ssrOnly.close();
@@ -112,6 +142,92 @@ try {
     check(visual.state.writes.length === 0 && await visual.page.evaluate(() => window.__geoRequests) === 0, 'Progressive display never submits or asks for GPS ' + width + ' ' + theme);
     await visual.context.close();
   }
+  // The same in-flight module remains mounted while slow feedback is visible.
+  // Test both widgets, real blocked policy and explicit demo, using controlled time rather than a fast network.
+  const axeSource = await readFile(process.env.AXE_MODULE_PATH, 'utf8');
+  for (const width of [320, 390]) for (const theme of ['light', 'dark']) for (const tool of [
+    { chunk: 'cta-actions', anchor: 'protected-actions', demo: false },
+    { chunk: 'qr-engagement-suite', anchor: 'qr-engagement', demo: true },
+  ]) {
+    const slow = await scenario('', true, false, 'es-AR', width, { heldTool: tool.chunk, demo: tool.demo });
+    await slow.page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
+    await controlledDelay(slow.page);
+    const region = await requestHeldTool(slow, tool.anchor);
+    await slow.page.clock.fastForward(7999);
+    check(await region.getAttribute('data-tool-load-state') === 'loading', 'Before the deadline the original loading state remains ' + width + ' ' + theme + ' ' + tool.anchor);
+    await slow.page.clock.fastForward(1);
+    await region.getByTestId('sun-tool-delayed').waitFor();
+    const panel = region.getByTestId('sun-tool-delayed');
+    check(await region.getAttribute('aria-busy') === 'false' && await panel.getByRole('status').count() === 1, 'The slow notice is announced outside aria-busy ' + width + ' ' + theme + ' ' + tool.anchor);
+    check(await panel.getByRole('link').count() === 1 && await region.getByRole('button', { name: 'Volver a intentar' }).count() === 0, 'Slow loading offers one local action and no premature retry ' + width + ' ' + theme + ' ' + tool.anchor);
+    check(slow.state.requests.filter(path => path.includes('/chunks/' + tool.chunk + '-')).length === 1 && slow.state.held.length === 1, 'The slow notice retains exactly one in-flight chunk ' + width + ' ' + theme + ' ' + tool.anchor);
+    check(await panel.evaluate(el => el.scrollWidth <= el.clientWidth), 'Slow feedback has no horizontal overflow ' + width + ' ' + theme + ' ' + tool.anchor);
+    const back = panel.getByRole('link', { name: 'Volver a la ficha', exact: true });
+    check(await back.getAttribute('href') === '#sun-summary', 'The slow action targets the existing product summary ' + width + ' ' + theme + ' ' + tool.anchor);
+    await back.focus(); await back.scrollIntoViewIfNeeded();
+    const bounds = await back.boundingBox();
+    check(bounds.height >= 44 && await back.evaluate(el => getComputedStyle(el).outlineStyle !== 'none' && parseFloat(getComputedStyle(el).outlineWidth) >= 2), 'The slow action is a visible keyboard and touch target ' + width + ' ' + theme + ' ' + tool.anchor);
+    await slow.page.clock.resume();
+    await slow.page.evaluate(axeSource);
+    const axe = await slow.page.evaluate(async () => { const result = await window.axe.run('[data-testid="sun-tool-delayed"]', { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } }); return result.violations.map(({ id, impact, nodes }) => ({ id, impact, count: nodes.length })); });
+    report.delayedViews.push({ width, theme, anchor: tool.anchor, isDemoPreview: tool.demo, violations: axe });
+    check(axe.length === 0, 'Slow feedback has no scoped accessibility violations ' + width + ' ' + theme + ' ' + tool.anchor);
+    await panel.screenshot({ path: join(output, 'delayed-' + width + '-' + theme + '-' + tool.anchor + '.png') });
+    await slow.page.keyboard.press('Enter');
+    await slow.page.waitForFunction(() => location.hash === '#sun-summary' && window.scrollY < 250);
+    check(await slow.page.locator('#sun-summary').isVisible(), 'Keyboard continuation reaches the product summary ' + width + ' ' + theme + ' ' + tool.anchor);
+    await slow.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).fill('Ficha que sigo leyendo');
+    await releaseHeld(slow);
+    await slow.page.waitForFunction(id => document.querySelector(`[data-sun-deferred-tool="${id}"]`)?.getAttribute('data-tool-load-state') === 'ready', tool.anchor);
+    check(await slow.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).evaluate(el => el === document.activeElement) && await slow.page.evaluate(() => window.scrollY < 250), 'Late readiness does not take focus or scroll from the reader ' + width + ' ' + theme + ' ' + tool.anchor);
+    check(await region.getByTestId('sun-tool-delayed').count() === 0 && await region.getAttribute('aria-busy') === 'false', 'Readiness removes the notice and clears busy ' + width + ' ' + theme + ' ' + tool.anchor);
+    if (!tool.demo) check(await region.getByText('Necesito una nueva lectura NFC', { exact: true }).count() === 1, 'Delayed readiness preserves the real blocked policy ' + width + ' ' + theme);
+    if (tool.anchor === 'qr-engagement') {
+      await region.scrollIntoViewIfNeeded();
+      const name = region.getByPlaceholder('Tu nombre completo'); await name.fill('Borrador de ensayo');
+      await name.evaluate(el => { window.__lateForm = el; });
+      await slow.page.locator('#sun-summary').scrollIntoViewIfNeeded(); await region.scrollIntoViewIfNeeded();
+      check(await name.evaluate(el => el === window.__lateForm) && await name.inputValue() === 'Borrador de ensayo', 'The ready form remains mounted with its draft ' + width + ' ' + theme);
+    }
+    check(slow.state.requests.filter(path => path.includes('/chunks/' + tool.chunk + '-')).length === 1 && slow.state.writes.length === 0 && await slow.page.evaluate(() => window.__geoRequests) === 0, 'Continuation and late readiness never redownload, submit or request GPS ' + width + ' ' + theme + ' ' + tool.anchor);
+    await slow.context.close();
+  }
+  for (const releaseAt of [7999, 8001]) {
+    const race = await scenario('', true, false, 'es-AR', 390, { demo: true }); await controlledDelay(race.page);
+    const region = await requestHeldTool(race); await race.page.clock.fastForward(releaseAt);
+    if (releaseAt > 8000) await region.getByTestId('sun-tool-delayed').waitFor();
+    await releaseHeld(race); await race.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'ready');
+    await race.page.clock.fastForward(8001);
+    check(await region.getByTestId('sun-tool-delayed').count() === 0 && await region.getAttribute('data-tool-load-state') === 'ready', 'Readiness wins on either side of the slow deadline ' + releaseAt);
+    check(await race.page.evaluate(() => window.__slowTimers.filter(timer => timer.active).length === 0), 'Ready tools leave no slow timer behind ' + releaseAt);
+    check(await region.evaluate(el => el === document.activeElement), 'Without a newer interaction readiness preserves the original keyboard intent ' + releaseAt);
+    check(race.state.writes.length === 0, 'A deadline race never submits ' + releaseAt); await race.context.close();
+  }
+  for (const removeAt of [3000, 8001]) {
+    const removed = await scenario('', true); await controlledDelay(removed.page); await requestHeldTool(removed); await removed.page.clock.fastForward(removeAt);
+    await removed.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).fill('Conservar tras cierre');
+    await removed.page.evaluate(() => window.dispatchEvent(new Event('fixture:remove-tools')));
+    await removed.page.waitForFunction(() => !document.querySelector('[data-sun-deferred-tool]'));
+    check(await removed.page.evaluate(() => window.__slowTimers.every(timer => !timer.active)), 'Unmount cancels pending slow timers ' + removeAt);
+    await releaseHeld(removed); await removed.page.clock.fastForward(16000); await removed.page.clock.resume(); await removed.page.waitForTimeout(100);
+    check(await removed.page.locator('[data-sun-deferred-tool]').count() === 0 && await removed.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).evaluate(el => el === document.activeElement), 'A removed tool cannot reappear or take focus after late release ' + removeAt);
+    check(removed.state.writes.length === 0 && await removed.page.evaluate(() => window.__geoRequests) === 0, 'Cleanup never submits or asks for GPS ' + removeAt); await removed.context.close();
+  }
+  const failedSlow = await scenario('', true); await controlledDelay(failedSlow.page); const failedRegion = await requestHeldTool(failedSlow);
+  await failedSlow.page.clock.fastForward(8001); await failedRegion.getByTestId('sun-tool-delayed').waitFor();
+  for (const route of failedSlow.state.held) await route.fulfill({ status: 503, contentType: 'text/javascript', body: '' }); failedSlow.state.held = []; failedSlow.state.hold = false;
+  await failedSlow.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'error');
+  check(await failedRegion.getByTestId('sun-tool-delayed').count() === 0 && await failedRegion.getByRole('button', { name: 'Volver a intentar', exact: true }).count() === 1, 'An actual 503 replaces slow feedback with the existing explicit retry');
+  check(await failedRegion.getByRole('button', { name: 'Volver a intentar', exact: true }).evaluate(el => el === document.activeElement), 'A 503 after slow loading still respects the original keyboard intent');
+  check(await failedSlow.page.evaluate(() => window.__slowTimers.every(timer => !timer.active)) && failedSlow.state.writes.length === 0, 'Failure clears the timer without any automatic retry or submit'); await failedSlow.context.close();
+  for (const copy of [{ locale: 'en', status: 'These options are taking longer than expected.', back: 'Back to product details', open: 'View options' }, { locale: 'pt-BR', status: 'Estas opções estão demorando mais do que o esperado.', back: 'Voltar à ficha', open: 'Ver opções' }]) {
+    const translated = await scenario('', true, false, copy.locale); await controlledDelay(translated.page);
+    const region = translated.page.locator('[data-sun-deferred-tool="protected-actions"]'); await region.getByRole('button', { name: copy.open }).evaluate(el => el.focus({ preventScroll: true })); await translated.page.keyboard.press('Enter');
+    await translated.page.waitForFunction(() => window.__slowTimers.some(timer => timer.active)); await translated.page.clock.fastForward(8001);
+    await region.getByTestId('sun-tool-delayed').waitFor();
+    check(await region.getByRole('status').innerText() === copy.status && await region.getByRole('link', { name: copy.back, exact: true }).count() === 1, 'Slow recovery remains translated ' + copy.locale);
+    check(translated.state.writes.length === 0, 'Translation does not send data ' + copy.locale); await translated.context.close();
+  }
   // Retry is checked against Turbopack's real chunk loader in the companion Next test.
   for (const copy of [
     { locale: 'es-AR', star: 'Calificar con 3 estrellas', otherStar: 'Calificar con 4 estrellas', comment: 'Comentario corto', send: 'Enviar opinión', explanation: 'Tu opinión se envía a la marca junto con esta lectura.' },
@@ -151,5 +267,5 @@ try {
     await f.context.close();
   }
   check(report.exceptions.length === 0, 'No browser exceptions');
-} finally { await browser.close(); await new Promise(r => server.close(r)); for (const s of report.scenarios) delete s.held; await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2)); }
+} finally { await browser.close(); await new Promise(r => server.close(r)); for (const s of report.scenarios) delete s.held; report.sourcesAfter = await sourceHashes(); report.sourceUnchanged = JSON.stringify(report.sourcesAfter) === JSON.stringify(sourcesBefore); await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2)); }
 console.log(JSON.stringify({ checks: report.checks.length, failed: report.checks.filter(c => !c.passed), chunks: report.chunks, exceptions: report.exceptions }, null, 2));
