@@ -51,7 +51,7 @@
     "test:passport": "node --import tsx --test tests/passport-editorial-policy.test.mjs tests/passport-studio-integration-contract.test.mjs",
     "test:logistics": "node --import tsx --test tests/secure-delivery.test.mjs tests/logistics-atomic-contract.test.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
-    "test:current-tag-guards": "node --import tsx --test tests/ownership-flow-policy.test.mjs tests/ownership-current-state.test.mjs tests/ownership-current-state-postgres-harness.test.mjs tests/consumer-collection-save.test.mjs tests/consumer-collection-postgres-harness.test.mjs",
+    "test:current-tag-guards": "node --import tsx --test tests/ownership-flow-policy.test.mjs tests/ownership-current-state.test.mjs tests/ownership-current-state-postgres-harness.test.mjs tests/consumer-collection-save.test.mjs tests/consumer-collection-postgres-harness.test.mjs tests/consumer-vertical-writer-policy.test.mjs tests/consumer-vertical-writer-postgres-harness.test.mjs",
     "test:consumer-otp": "node --test tests/consumer-otp-delivery.test.mjs tests/consumer-otp-meta-whatsapp.test.mjs tests/consumer-otp-twilio-status.test.mjs tests/consumer-otp-twilio-inbound.test.mjs",
     "test:rewards": "node --import tsx --test tests/reward-public-links-security.test.mjs tests/consumer-reward-postgres-harness.test.mjs tests/consumer-rewards-read-model.test.mjs tests/consumer-rewards-read-postgres-harness.test.mjs tests/consumer-program-balance-read-model.test.mjs",
     "test:sun": "node --import tsx --test tests/sun-*.test.mjs",

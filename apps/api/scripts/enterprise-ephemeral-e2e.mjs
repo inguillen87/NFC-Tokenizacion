@@ -17,6 +17,7 @@ import {runSupplierRuntimeAcceptance} from "./lib/supplier-runtime-acceptance.mj
 import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
 import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
 import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
+import { runConsumerVerticalWriterPostgresQa } from "../tests/helpers/consumer-vertical-writer-postgres-harness.mjs";
 import { runConsumerRewardPostgresQa } from "../tests/helpers/consumer-reward-postgres-harness.mjs";
 import { runAdminRewardPostgresQa } from "../tests/helpers/admin-reward-postgres-harness.mjs";
 import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuration-postgres-harness.mjs";
@@ -176,6 +177,12 @@ async function run() {
   assert.ok(collectionConcurrency.checks.every(check => check.passed));
   assert.equal(collectionConcurrency.lockObservations.length, 3);
   assert.ok(collectionConcurrency.serializationConflicts >= 3);
+  const verticalWriters = await runConsumerVerticalWriterPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(verticalWriters.ok && verticalWriters.cleanup.schemaDropped && verticalWriters.cleanup.connectionsClosed, "Vertical consumer writer SQL regression or cleanup failed");
+  assert.ok(verticalWriters.checks.every(check => check.passed));
+  assert.equal(verticalWriters.checks.length, 26);
+  assert.equal(verticalWriters.lockObservations.length, 7);
+  assert.ok(verticalWriters.serializationConflicts >= 4);
   const rewardConfiguration = await runConsumerRewardPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardConfiguration.ok && rewardConfiguration.cleanup.schemaDropped && rewardConfiguration.cleanup.connectionsClosed, "Consumer reward configuration SQL regression or cleanup failed");
   assert.ok(rewardConfiguration.checks.every(check => check.ok));

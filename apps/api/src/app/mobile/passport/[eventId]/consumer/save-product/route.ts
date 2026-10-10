@@ -2,14 +2,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { json } from "../../../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
-import { saveTapForConsumer } from "../../../../../../lib/consumer-portal-service";
-import { getTapEvent } from "../../../../../../lib/loyalty-service";
-import { isClaimableOwnershipResult, matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
+import { publishActorAssociationProjection } from "../../../../../../lib/consumer-portal-service";
+import { associateConsumerVerticalTap, readConsumerVerticalContext } from "../../../../../../lib/consumer-vertical-writer-policy";
+import { matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
 import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-runtime-schema";
 import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../../lib/bounded-request-body";
 import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
-import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "../../../../../../lib/tap-commercial-rights";
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const consumer = await getConsumerFromRequest(req);
@@ -33,9 +32,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
   const { eventId } = await params;
-  const tapEvent = await getTapEvent(eventId);
-  if (!tapEvent) return json({ ok: false, error: "event_not_found" }, 404);
-  await ensureConsumerPortalSchema();
+  const decision = await readConsumerVerticalContext(eventId, "save");
+  if (!decision.ok) return json({ ok: false, error: decision.error }, decision.error === "tap_policy_unavailable" ? 503 : 403);
+  const tapEvent = decision.context.event;
   if (!matchesOwnershipTenant({
     eventTenantId: tapEvent.tenant_id,
     eventTenantSlug: tapEvent.tenant_slug,
@@ -46,14 +45,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     return json({ ok: false, error: "tenant_mismatch" }, 403);
   }
   if (!matchesOwnershipBatch({ eventBid: tapEvent.bid, requestedBid: body.bid })) return json({ ok: false, error: "tenant_batch_mismatch" }, 403);
-  if (!evaluateTapCommercialRights(tapEvent).allowed || !isClaimableOwnershipResult(String(tapEvent.result || ""))) return json({ ok: false, error: "tap_not_claimable" }, 409);
+  await ensureConsumerPortalSchema();
   const capability = await consumeSunFreshHandoff(req, body as Record<string, unknown>, {
     eventId: String(tapEvent.id), bid: String(tapEvent.bid || ""), uidHex: String(tapEvent.uid_hex || ""), readCounter: tapEvent.sdm_read_ctr,
   }, "consumer_save_product");
   if (!capability.ok) return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
-  const currentRights = await readCurrentTapCommercialRights(tapEvent.id);
-  if (!currentRights.allowed) return json({ ok: false, error: currentRights.reason }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
-  const savedEvent = await saveTapForConsumer({ consumerId: consumer.id, eventId });
-  if (!savedEvent) return json({ ok: false, error: "event_not_found" }, 404);
+  let savedEvent;
+  try { savedEvent = await associateConsumerVerticalTap({ consumerId: consumer.id, context: decision.context }); }
+  catch { return json({ ok: false, error: "tap_policy_unavailable", fresh_tap_required: true }, 503); }
+  if (!savedEvent) return json({ ok: false, error: "tap_policy_changed", fresh_tap_required: true }, 409);
+  if (savedEvent.history_inserted) await publishActorAssociationProjection(savedEvent.id);
   return json({ ok: true, saved: true, eventId });
 }
