@@ -31,7 +31,7 @@ const destinations=[
  ['/me/brands?tenant=loading-qa','Mis marcas y clubes'],
  ['/me/experiences?tenant=loading-qa&eventId=900001','Tus experiencias'],
  ['/me/wallet?fromTap=1&eventId=900001&tenant=loading-qa&action=wallet','Pasaporte Criptográfico & Wallet'],
- ['/me/passport?fromTap=1&eventId=900001&tenant=loading-qa&action=passport','NexID Premium Passport'],
+ ['/me/passport?fromTap=1&eventId=900001&tenant=loading-qa&action=passport','Mi cuenta y mis registros'],
  ['/me/sommelier?tenant=loading-qa&eventId=900001','Asistente de vinos'],
  ['/me/cork-analyzer?eventId=900001','Diagnóstico de Corcho & Cápsula'],
  ['/me/privacy?tenant=loading-qa','Privacidad'],
@@ -77,6 +77,14 @@ async function recover(destination,width,theme,scenario,capture=true){
    const requestStarted=page.waitForRequest(request=>routeUrl(new URL(request.url()))&&request.method()==='GET'&&request.headers().rsc==='1',{timeout:12000});
    await Promise.all([requestStarted,retry.click()]);const pending=unavailable.getByRole('button',{name:'Consultando…',exact:true});await pending.waitFor();check(await pending.isDisabled()&&await pending.getAttribute('aria-busy')==='true',name+': one pending disabled refresh');check(evidence.refreshCount===1,name+': exactly one RSC retry');release();
    await page.getByRole('heading',{name:title,exact:true}).waitFor({timeout:12000});check(await unavailable.count()===0,name+': requested page restored');check(page.url()===origin+path,name+': exact context retained after retry');
+   if(new URL(origin+path).pathname==='/me/passport'){
+    const account=page.locator('main');
+    check(await account.getByRole('heading',{name:'Cuenta local QA',exact:true}).count()===1,name+': reported account restored');
+    check((await account.innerText()).includes('qa@example.invalid')&&(await account.locator('[data-account-state="registered"]').innerText())==='Registrada',name+': reported contact and state restored');
+    const records=account.getByRole('navigation',{name:'Consultar mis registros',exact:true});
+    check((await records.innerText()).includes('Productos guardados: 1')&&(await records.innerText()).includes('Lecturas guardadas: 1')&&(await records.innerText()).includes('Marcas registradas: 0'),name+': current account counts restored');
+    check((await records.getByRole('link',{name:/Mis marcas y clubes/}).getAttribute('href'))==='/me/brands?tenant=loading-qa'&&(await account.getByRole('link',{name:'Ver mis beneficios',exact:true}).getAttribute('href'))==='/me/rewards?tenant=loading-qa',name+': reported tenant remains scoped in account destinations');
+   }
    if(new URL(origin+path).pathname==='/me/taps'){const history=page.getByTestId('consumer-history');check((await history.getByRole('status').innerText()).startsWith('Consulta confirmada'),name+': actual history contract confirmed');check((await history.innerText()).includes('Producto local QA'),name+': reported historical row restored');}
    if(new URL(origin+path).pathname==='/me/products'&&new URL(origin+path).searchParams.has('focus')){const notices=page.getByTestId('product-notices');await notices.locator('[role="status"]').waitFor({state:'detached',timeout:12000});await page.locator('[data-testid="product-notices"][data-notice-state="none"]').waitFor({timeout:12000});check((await notices.innerText()).includes('Sin avisos de retiro publicados en esta consulta.'),name+': selected product confirms the actual public notice contract');}
    evidence.retryReads=fixture.requests.slice(retryStart);check(evidence.retryReads.some(row=>row.path==='/consumer/session'&&row.scenario==='ready'&&row.responseStatus===200),name+': refreshed session confirmed');check(evidence.retryReads.every(row=>['ready','public-read-only'].includes(row.scenario)&&row.method==='GET'&&row.responseStatus===200),name+': ready reads use fixture contract');
