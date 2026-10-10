@@ -26,6 +26,12 @@
 .readingDetails { border-top:1px solid var(--tap-line); }
 .readingDetails>div { display:grid; gap:10px; padding:4px 0; }
 .confirmation { display:grid; justify-items:start; gap:12px; padding-top:16px; border-top:1px solid var(--tap-line); }
+.pinEntry { display:grid; gap:8px; min-width:0; }
+.pinEntry label { font-size:13px; font-weight:700; }
+.pinEntry input { width:100%; min-width:0; min-height:48px; box-sizing:border-box; border:1px solid var(--tap-line); border-radius:12px; background:var(--tap-soft); color:var(--tap-ink); font-size:16px; padding:12px; }
+.pinEntry input[aria-invalid="true"] { border-color:var(--tap-ink); }
+.panel .pinEntry input:focus-visible { outline:2px solid var(--tap-accent); outline-offset:4px; }
+.pinEntry p { overflow-wrap:anywhere; }
 .panel .primary,.secondary { display:inline-flex; align-items:center; justify-content:center; min-height:46px; border-radius:12px; padding:11px 16px; text-align:center; font-size:13px; font-weight:750; text-decoration:none; cursor:pointer; border:1px solid var(--tap-line); }
 .panel .primary { background:#106b54; color:#fff; border-color:#106b54; }
 .secondary { background:var(--tap-soft); color:var(--tap-ink); }

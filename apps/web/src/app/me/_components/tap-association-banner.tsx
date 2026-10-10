@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { associationCopy, associationLocale, type AssociationLocale } from "./tap-association-copy";
-import { createTapAssociationRunner, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
+import { createTapAssociationRunner, normalizeTapAssociationClaimPin, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
   type TapAssociationAction, type TapAssociationContext, type TapAssociationState, type TapAssociationSession } from "./tap-association-model";
 import styles from "./tap-association-banner.module.css";
 
@@ -20,6 +20,8 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   refreshPortal.current = router.refresh;
   const [locale, setLocale] = useState<AssociationLocale>("es-AR");
   const [selected, setSelected] = useState<TapAssociationAction | null>(context.preferred);
+  const [claimPin, setClaimPin] = useState("");
+  const [pinInputInvalid, setPinInputInvalid] = useState(false);
   const [session, setSession] = useState<TapAssociationSession>("checking");
   const [sessionRevision, setSessionRevision] = useState(0);
   const [state, setState] = useState<TapAssociationState>({ pending: null, results: {} });
@@ -84,6 +86,10 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   async function confirm(trigger: HTMLButtonElement) {
     const current = runner.current;
     if (!current || !selected || session !== "active" || current.state().pending || current.state().results[selected]?.retryable === false) return;
+    const submittedPin = selected === "claim" ? normalizeTapAssociationClaimPin(claimPin) : "";
+    if (submittedPin === null) { setPinInputInvalid(true); return; }
+    setPinInputInvalid(false);
+    setClaimPin("");
     feedbackFocus.current?.release();
     const request = { owner: current, action: selected, trigger,
       permitted: document.activeElement === trigger || document.activeElement === document.body, release: () => {} };
@@ -108,7 +114,7 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
       window.removeEventListener("wheel", movedScroll, true);
     };
     feedbackFocus.current = request;
-    const result = await current.run(selected, locale);
+    const result = await current.run(selected, locale, submittedPin);
     if (!result || runner.current !== current) {
       if (feedbackFocus.current === request) { request.release(); feedbackFocus.current = null; }
       return;
@@ -120,7 +126,7 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   const hasResults = Object.keys(state.results).length > 0;
   const loginHref = tapAssociationLoginHref({ ...context, preferred: selected });
   const renderChoice = (action: TapAssociationAction) => <label key={action} className={styles.choice} data-selected={selected === action} data-primary={action === "save"}>
-    <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => setSelected(action)} />
+    <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => { setSelected(action); setClaimPin(""); setPinInputInvalid(false); }} />
     <span><strong>{copy.actions[action].label}</strong><small>{copy.actions[action].detail}</small></span>
   </label>;
   return <section className={styles.panel} data-testid="tap-association" aria-labelledby="tap-association-title" lang={locale}>
@@ -134,6 +140,15 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
         <div className={styles.alternativeChoices}>{TAP_ASSOCIATION_ACTIONS.filter(action => action !== "save").map(renderChoice)}</div>
       </details>
     </fieldset>
+    {selected === "claim" && selectedResult?.retryable !== false ? <div className={styles.pinEntry}>
+      <label htmlFor="tap-association-claim-pin">{copy.pinLabel}</label>
+      <input id="tap-association-claim-pin" data-testid="tap-association-claim-pin" type="password" autoComplete="off"
+        maxLength={128} spellCheck={false} autoCapitalize="none" value={claimPin} disabled={Boolean(state.pending)}
+        aria-describedby={`tap-association-pin-help${pinInputInvalid ? " tap-association-pin-error" : ""}`} aria-invalid={pinInputInvalid || undefined}
+        onChange={event => { setClaimPin(event.target.value); setPinInputInvalid(false); }} />
+      <p id="tap-association-pin-help">{copy.pinHelp}</p>
+      {pinInputInvalid ? <p id="tap-association-pin-error" role="alert">{copy.pinInputError}</p> : null}
+    </div> : null}
     <div className={styles.confirmation}>
       <p role="status">{state.pending ? copy.sending : session === "checking" ? copy.checking : session === "active" ? copy.active : session === "none" ? copy.loginNeeded : copy.checkError}</p>
       {session === "none" ? <Link className={styles.primary} href={loginHref} data-testid="tap-association-login" prefetch={false}>{copy.login}</Link> : null}

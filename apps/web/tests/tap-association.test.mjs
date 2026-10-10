@@ -119,13 +119,68 @@ test("committed 503 records title as incomplete without enabling retries or inve
 });
 
 test("denied and review-required responses never become pending applications or ownership grants", () => {
-  for (const error of ["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked", "pin_required", "invalid_pin", "claim_pin_locked"]) {
+  for (const error of ["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked"]) {
     assert.deepEqual(model.tapAssociationResult("claim", "715", 403, { error }), { outcome: "fresh_required", retryable: false });
   }
   assert.deepEqual(model.tapAssociationResult("claim", "715", 403, { review_required: true }), { outcome: "review_required", retryable: false });
   assert.deepEqual(model.tapAssociationResult("rewards", "715", 404, { error: "no_active_program" }), { outcome: "no_program", retryable: false });
   assert.deepEqual(model.tapAssociationResult("claim", "715", 409, { error: "ownership_already_claimed" }), { outcome: "blocked", retryable: false });
   assert.deepEqual(model.tapAssociationResult("save", "715", 401, { error: "unauthorized" }), { outcome: "session_required", retryable: true });
+});
+
+test("ownership code is bounded like the API and is sent only for the selected claim", () => {
+  for (const value of [undefined, null, "", "   "]) assert.equal(model.normalizeTapAssociationClaimPin(value), "");
+  assert.equal(model.normalizeTapAssociationClaimPin("  SYNTHETIC-CLAIM-CODE  "), "SYNTHETIC-CLAIM-CODE");
+  assert.equal(model.normalizeTapAssociationClaimPin("a".repeat(128)), "a".repeat(128));
+  for (const value of [123, {}, "a".repeat(129), "a".repeat(257), "inside space", "line\nbreak", "á", "🔑"]) {
+    assert.equal(model.normalizeTapAssociationClaimPin(value), null);
+    assert.throws(() => model.tapAssociationRequest(context("action=claim"), "claim", "en", value), /pin_invalid_input/);
+  }
+  const ctx = context("action=claim");
+  assert.equal(model.tapAssociationRequest(ctx, "claim", "en", "  SYNTHETIC-CLAIM-CODE ").body.pin, "SYNTHETIC-CLAIM-CODE");
+  assert.equal(Object.hasOwn(model.tapAssociationRequest(ctx, "claim", "en").body, "pin"), false);
+  for (const action of ["save", "join", "rewards"]) {
+    assert.equal(Object.hasOwn(model.tapAssociationRequest(ctx, action, "en", "SYNTHETIC-CLAIM-CODE").body, "pin"), false);
+  }
+  assert.doesNotMatch(model.tapAssociationLoginHref(ctx), /SYNTHETIC-CLAIM-CODE|pin=/);
+});
+
+test("PIN-specific server denials retain exact feedback and never retry a consumed capability", async () => {
+  for (const [error, outcome, status] of [["pin_required", "pin_required", 400], ["invalid_pin", "pin_invalid", 403], ["claim_pin_locked", "pin_locked", 429]]) {
+    let calls = 0;
+    const runner = model.createTapAssociationRunner(context("action=claim"), async (_path, body) => {
+      calls++;
+      assert.equal(body.pin, "SYNTHETIC-CLAIM-CODE");
+      return { status, payload: { ok: false, error } };
+    });
+    assert.deepEqual(await runner.run("claim", "en", "SYNTHETIC-CLAIM-CODE"), { outcome, retryable: false });
+    assert.equal(await runner.run("claim", "en", "SYNTHETIC-CLAIM-CODE"), null);
+    assert.equal(calls, 1);
+    assert.equal(JSON.stringify(runner.state()).includes("SYNTHETIC-CLAIM-CODE"), false);
+    for (const locale of Object.values(copy.associationCopy)) {
+      assert.ok(locale.titles[outcome].trim());
+      assert.ok(locale.outcomes[outcome].trim());
+    }
+    runner.dispose();
+  }
+});
+
+test("invalid local code never invokes transport and renders no secret from context", async () => {
+  let calls = 0;
+  const runner = model.createTapAssociationRunner(context("action=claim"), async () => { calls++; return { status: 200, payload: successPayloads.claim }; });
+  let emissions = 0;
+  runner.subscribe(() => { emissions++; });
+  assert.equal(await runner.run("claim", "en", "invalid code"), null);
+  assert.deepEqual(runner.state(), {pending:null, results:{}});
+  assert.equal(emissions, 0);
+  assert.equal(calls, 0);
+  runner.dispose();
+  const html = render("fromTap=1&eventId=715&action=claim&pin=SYNTHETIC-CLAIM-CODE");
+  assert.match(html, /type="password"/);
+  assert.match(html, /maxLength="128"/);
+  assert.match(html, /aria-describedby="tap-association-pin-help"/);
+  assert.doesNotMatch(html, /SYNTHETIC-CLAIM-CODE/);
+  assert.doesNotMatch(render("fromTap=1&eventId=715&action=products"), /tap-association-claim-pin/);
 });
 
 test("runner makes one selected request, serializes rapid clicks and never repeats a completed action", async () => {
