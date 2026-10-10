@@ -2,6 +2,7 @@ import { sql, runtimeSchemaIsMigrationManaged } from "./db";
 import { requireRuntimeCarrierCatalog } from "./runtime-reference-catalog";
 import { ensureLoyaltySchema } from "./loyalty-schema";
 import { CARRIER_PROFILES } from "./carrier-profiles";
+import { allowRuntimeDemoSeed } from "./runtime-demo-seed-policy";
 
 let authSchemaReady: Promise<void> | null = null;
 let portalSchemaReady: Promise<void> | null = null;
@@ -1312,7 +1313,9 @@ export async function ensureConsumerPortalSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_source_identity ON marketplace_order_requests(tenant_id, source_tag_id, source_tap_event_id, source_tap_event_created_at)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_offers_ownership ON marketplace_offers(tenant_id, ownership_id) WHERE ownership_id IS NOT NULL`;
 
-      await seedBalmecMarketplaceRows();
+      // The tenant owns its published catalog. Demo resets are a deliberate
+      // local fixture opt-in, never part of Production or Preview requests.
+      if (allowRuntimeDemoSeed()) await seedBalmecMarketplaceRows();
     }, () => {
       portalSchemaReady = null;
     });
