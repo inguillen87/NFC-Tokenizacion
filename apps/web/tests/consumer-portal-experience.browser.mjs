@@ -7,6 +7,7 @@ import {mkdir,mkdtemp,readFile,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {marketplaceBinding,runMarketplaceScenarios} from './consumer-marketplace.browser.mjs';
+import {runClaimPinScenarios} from './consumer-claim-pin.browser.mjs';
 
 const web=fileURLToPath(new URL('../',import.meta.url)),repo=resolve(web,'../..');
 let base=process.env.QA_BASE_URL||'',next=null,serverFailed=false;
@@ -181,6 +182,7 @@ try{
   check(explainerContrast.backgroundImage==='none'&&explainerContrast.headingRatio>=explainerContrast.headingMinimum&&explainerContrast.paragraphRatio>=4.5,`${width}/${theme} experience explanation heading and paragraph have readable contrast against solid card background`);
   await noOverflow(page,`${width}/${theme} actual experience page fits viewport`);await assessment(page,'#consumer-portal-content','experience',width,theme);
   await runMarketplaceScenarios({page,base,width,theme,report,check,assessment,noOverflow});
+  await runClaimPinScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await context.close();
  }
  const anonymous=await browser.newContext();const page=await anonymous.newPage();page.on('pageerror',error=>report.errors.push({name:'anonymous',message:error.message}));

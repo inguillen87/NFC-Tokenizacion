@@ -8,6 +8,7 @@ import {
   proxyConsumerTapAction,
   stripConsumerTapCapabilityCookies,
 } from '../src/app/api/_lib/consumer-tap-handoff.ts';
+import { tapAssociationContext, tapAssociationRequest } from '../src/app/me/_components/tap-association-model.ts';
 
 const ORIGIN = 'https://nexid.example';
 const NOW = 1_800_000_000_000;
@@ -149,6 +150,37 @@ test('all four actions receive the capability in the body and retain session and
     assert.equal(response.headers.get('vary'), 'Accept-Language, Cookie');
     assert.deepEqual(await response.json(), { ok: true, saved: true });
   }
+});
+
+test('actual claim model and bounded bridge keep the PIN in the explicit POST body with existing capability custody', async () => {
+  const context = tapAssociationContext(new URLSearchParams(`fromTap=1&eventId=${EVENT_ID}&tenant=tenant-qa&bid=LOT-QA&action=claim`));
+  const pin = 'SYNTHETIC-CLAIM-PIN!';
+  const claim = tapAssociationRequest(context, 'claim', 'en', ` ${pin} `);
+  const path = claim.path.slice('/api'.length);
+  let forwards = 0;
+  const response = await proxyConsumerTapAction(actionRequest(claim.body, {}, path), path, async (req, forwardedPath) => {
+    forwards++;
+    assert.equal(forwardedPath, target('consumer/claim'));
+    assert.equal(req.method, 'POST');
+    assert.equal(req.url, `${ORIGIN}${claim.path}`);
+    assert.ok(!req.url.includes(pin));
+    assert.equal(req.headers.get('cookie'), 'consumer_session=session-test');
+    assert.ok(!JSON.stringify([...req.headers]).includes(pin));
+    assert.deepEqual(await req.json(), {tenantSlug:'tenant-qa', bid:'LOT-QA', pin, fresh_token:token()});
+    return Response.json({ok:false, error:'invalid_pin'}, {status:403});
+  }, NOW);
+  assert.equal(forwards, 1);
+  assert.equal(response.status, 403);
+  assertPrivate(response);
+  assert.equal((await response.text()).includes(pin), false);
+  assert.ok(!JSON.stringify([...response.headers]).includes(pin));
+  const denied = await proxyConsumerTapAction(actionRequest(claim.body, {origin:'https://other.nexid.example'}, path), path, () => {
+    forwards++;assert.fail('foreign-origin claim must not forward');
+  }, NOW);
+  assert.equal(denied.status, 403);
+  assertPrivate(denied);
+  assert.equal(forwards, 1);
+  assert.equal(Object.hasOwn(tapAssociationRequest(context, 'save', 'en', pin).body, 'pin'), false);
 });
 
 test('forged envelopes are custody only: an API rejection remains a rejection', async () => {

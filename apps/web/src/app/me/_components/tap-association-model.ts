@@ -2,7 +2,8 @@ export const TAP_ASSOCIATION_ACTIONS = ["save", "join", "claim", "rewards"] as c
 export type TapAssociationAction = typeof TAP_ASSOCIATION_ACTIONS[number];
 export type TapAssociationContext = { eventId: string; tenant: string; bid: string; preferred: TapAssociationAction | null; key: string };
 export type TapAssociationOutcome = "saved" | "linked" | "claimed" | "enrolled" | "recorded_pending" | "committed_unknown"
-  | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "session_required" | "no_program" | "blocked" | "unconfirmed";
+  | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "pin_required" | "pin_invalid" | "pin_locked"
+  | "session_required" | "no_program" | "blocked" | "unconfirmed";
 export type TapAssociationResult = { outcome: TapAssociationOutcome; retryable: boolean };
 export type TapAssociationState = { pending: TapAssociationAction | null; results: Partial<Record<TapAssociationAction, TapAssociationResult>> };
 export type TapAssociationSession = "checking" | "active" | "none" | "unavailable";
@@ -26,10 +27,22 @@ export function tapAssociationLoginHref(context: TapAssociationContext) {
   if (context.preferred) query.set("action", context.preferred);
   return "/login?consumer=1&next=" + encodeURIComponent("/me?" + query.toString());
 }
-export function tapAssociationRequest(context: TapAssociationContext, action: TapAssociationAction, locale: string) {
+/** This transient secret is sent only in an explicit ownership request. Keep the
+ * input bounds aligned with the API's readOwnershipClaimPinInput contract. */
+export function normalizeTapAssociationClaimPin(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return "";
+  if (typeof value !== "string" || new TextEncoder().encode(value).byteLength > 256) return null;
+  const pin = value.trim();
+  if (pin.length > 128 || (pin && !/^[\x21-\x7e]+$/.test(pin))) return null;
+  return pin;
+}
+export function tapAssociationRequest(context: TapAssociationContext, action: TapAssociationAction, locale: string, claimPin: unknown = "") {
   if (!TAP_ASSOCIATION_ACTIONS.includes(action)) throw new Error("tap_association_action_invalid");
+  const pin = action === "claim" ? normalizeTapAssociationClaimPin(claimPin) : "";
+  if (pin === null) throw new Error("tap_association_pin_invalid_input");
   return { path: `/api/mobile/passport/${encodeURIComponent(context.eventId)}/${ENDPOINTS[action]}`,
     body: { ...(context.tenant ? { tenantSlug: context.tenant } : {}), ...(context.bid ? { bid: context.bid } : {}),
+      ...(action === "claim" && pin ? { pin } : {}),
       ...(action === "rewards" ? { locale: ["es-AR", "en", "pt-BR"].includes(locale) ? locale : "es-AR" } : {}) } };
 }
 function record(value: unknown): Record<string, unknown> {
@@ -58,7 +71,10 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
     if (payload.fresh_token_status === "fresh_token_expired") return { outcome: "fresh_expired", retryable: false };
     if (payload.fresh_token_status === "fresh_token_already_used") return { outcome: "fresh_used", retryable: false };
   }
-  if (["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked", "pin_required", "invalid_pin", "claim_pin_locked"].includes(error)) return { outcome: "fresh_required", retryable: false };
+  if (action === "claim" && error === "pin_required") return { outcome: "pin_required", retryable: false };
+  if (action === "claim" && error === "invalid_pin") return { outcome: "pin_invalid", retryable: false };
+  if (action === "claim" && error === "claim_pin_locked") return { outcome: "pin_locked", retryable: false };
+  if (["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked"].includes(error)) return { outcome: "fresh_required", retryable: false };
   if (error === "ownership_manual_review_required" || payload.review_required === true) return { outcome: "review_required", retryable: false };
   if (error === "no_active_program") return { outcome: "no_program", retryable: false };
   if ([400, 403, 404, 409, 422].includes(status)) return { outcome: "blocked", retryable: false };
@@ -83,14 +99,16 @@ export function createTapAssociationRunner(context: TapAssociationContext, trans
     state: () => state,
     subscribe(listener: (state: TapAssociationState) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     dispose() { disposed = true; controller?.abort(); listeners.clear(); },
-    async run(action: TapAssociationAction, locale = "es-AR") {
+    async run(action: TapAssociationAction, locale = "es-AR", claimPin: unknown = "") {
       if (disposed || state.pending || !TAP_ASSOCIATION_ACTIONS.includes(action) || state.results[action]?.retryable === false) return null;
+      const pin = action === "claim" ? normalizeTapAssociationClaimPin(claimPin) : "";
+      if (pin === null) return null;
       state = { ...state, pending: action }; emit();
       controller = new AbortController();
       const timer = setTimeout(() => controller?.abort(), 15000);
       let result: TapAssociationResult;
       try {
-        const request = tapAssociationRequest(context, action, locale);
+        const request = tapAssociationRequest(context, action, locale, pin);
         const response = await transport(request.path, request.body, controller.signal);
         result = tapAssociationResult(action, context.eventId, response.status, response.payload);
       } catch { result = { outcome: "unconfirmed", retryable: true }; }
