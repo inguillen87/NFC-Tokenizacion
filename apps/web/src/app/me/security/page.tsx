@@ -9,12 +9,13 @@ export default async function SecurityPage({ searchParams }: { searchParams?: Pr
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const me = await fetchConsumerMe();
   const consumer = me?.consumer || null;
+  if (!consumer) return <ConsumerPortalUnavailable />;
   const stats = me?.stats || {};
 
   return (
     <PortalShell
       title="Seguridad y canales de contacto"
-      subtitle="Vinculá email y WhatsApp para mejorar entrega y recuperación. El código puede validarse desde cualquiera de los canales configurados; este flujo no es MFA secuencial."
+      subtitle="Revisá los contactos de tu cuenta y las opciones disponibles."
       notificationCount={Number(stats.unread || 0)}
     >
       <SecurityPanel initialConsumer={consumer} />

@@ -275,6 +275,7 @@ const library = compile(readFileSync(new URL('../products/product-library.tsx',d
  '../_components/me-portal-interactive-client':client,
  '../../sun/product-notices':{ProductNoticePanel:()=>null},
  '../_components/reading-current-notices':currentNotices,
+ '../_components/consumer-feedback-link':{ConsumerFeedbackLink:({eventId,tenant,href})=>React.createElement('p',{role:'status','data-event':eventId,'data-tenant':tenant,'data-destination':href},'Consultando las opciones actuales de la marca…')},
  './product-library-model':libraryModel,
  './product-library.module.css':{__esModule:true,default:styles},
  'next/link':{__esModule:true,default:({children,prefetch,...props})=>React.createElement('a',props,children)},
@@ -323,7 +324,7 @@ test("products unavailable is not an empty collection and supports a manual retr
   assert.doesNotMatch(emptyHtml, /No pudimos cargar|Reintentar carga|0 productos/);
 });
 
-test("product cards show source identity and stored reading with one action; the saved ficha retains secondary destinations", async () => {
+test("product cards show stored identity with one action; feedback consults current brand availability in the saved ficha", async () => {
   const payload = list([{ product_name: "Filtro industrial", brand_name: "Empresa Agua", tenant_slug: "agua", bid: "B-200", image_url: "/images/filter.jpg", latest_tap_event_id: 88, latest_verdict: "VALID_OPENED", latest_city: "Mendoza", latest_country: "AR", ownership_record_status: "pending", created_at: "2026-09-06 01:22:29+00", latest_tap_at: "2026-09-06T02:22:29Z" }]);
   const html = renderToStaticMarkup(await loadProductsPage(payload).page({}));
   assert.match(html, /Filtro industrial/);
@@ -338,7 +339,9 @@ test("product cards show source identity and stored reading with one action; the
   assert.doesNotMatch(card, /<nav|<details|href=/);
   const ficha = renderToStaticMarkup(React.createElement(library.ProductPassportDialog,{product:model.buildHomeProductsSource(payload).data[0],onClose:()=>{}}));
   assert.match(ficha, /href="\/me\/taps\/88"/);
-  assert.match(ficha, /href="\/me\/experiences\?tenant=agua&amp;eventId=88&amp;product=Filtro\+industrial"/);
+  assert.match(ficha, /data-event="88" data-tenant="agua" data-destination="\/me\/experiences\?tenant=agua&amp;eventId=88&amp;product=Filtro\+industrial"/);
+  assert.match(ficha, /Consultando las opciones actuales de la marca/);
+  assert.doesNotMatch(ficha, /<a[^>]*href="\/me\/experiences/);
   assert.match(ficha, /href="\/me\/marketplace\?tenant=agua"/);
   assert.match(ficha, /Solicitud pendiente/);
   assert.match(ficha, /01:22 UTC/);

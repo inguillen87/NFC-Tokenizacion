@@ -60,6 +60,12 @@ try {
     await t.close();
   }
   let release;
+  const unpublished = await open('/experience', () => ({ status: 403, payload: { ok: false, error: 'customer_action_unpublished' } }));
+  await draft(unpublished.page); await unpublished.page.getByRole('button', { name: 'Enviar experiencia', exact: true }).click();
+  await unpublished.page.getByRole('alert').waitFor();
+  check((await unpublished.page.getByRole('alert').innerText()).includes('La marca dejó de recibir opiniones') && (await unpublished.page.getByLabel('Comentario', { exact: true }).inputValue()).includes('conservarse') && (await unpublished.page.getByLabel('Link de la foto (opcional)').inputValue()).includes('photo.jpg'), 'Withdrawing brand feedback preserves the complete draft and explains current availability');
+  check(unpublished.calls.length === 1 && !(await unpublished.page.locator('body').innerText()).includes('Quedo guardada'), 'A withdrawn brand setting does not retry or claim persistence');
+  await unpublished.close();
   const held = new Promise(done => { release = done; });
   const t = await open('/experience', () => held);
   await draft(t.page);

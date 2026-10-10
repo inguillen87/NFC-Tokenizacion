@@ -25,6 +25,7 @@ const errorCopy: Record<string, string> = {
   verified_evidence_required: "Abrilo desde un producto guardado o desde un tap validado para asociar evidencia real.",
   verified_evidence_not_found: "No encontramos ese tap dentro de tu cuenta. Volve al producto y toca Dejar experiencia.",
   review_blocked_by_risk_policy: "Este producto tiene una alerta de riesgo. La marca debe revisarlo antes de aceptar experiencias.",
+  customer_action_unpublished: "La marca dejó de recibir opiniones desde este producto. Conservamos tu comentario y foto; podés volver a consultar la ficha.",
   invalid_json: "No se pudo leer la experiencia. Revisa los campos e intenta de nuevo.",
 };
 
