@@ -36,6 +36,15 @@ function proxy(env, fetchImpl, api = API) {
     "./consumer-tap-handoff": tapHandoff, "./server-api-transport": { fetchRuntimeApi },
   } }).proxyToApi;
 }
+function publicConfiguration(env, fetchImpl, api = API) {
+  const fetchRuntimeApi = transport(env, fetchImpl);
+  return load("lib/public-tenant-configuration.ts", { modules: {
+    "@product/config": { productUrls: { api } },
+    "../app/me/_components/consumer-bounded-fetch": boundedFetch,
+    "../app/sun/tenant-action-availability": load("app/sun/tenant-action-availability.ts"),
+    "../app/api/_lib/server-api-transport": { fetchRuntimeApi },
+  } }).readPublicTenantConfiguration;
+}
 function browserRequest(extra = {}) {
   return new Request(`${WEB}/api/consumer/auth/verify`, { method: "POST", headers: {
     origin: WEB, "sec-fetch-site": "same-origin", "content-type": "application/json",
@@ -184,6 +193,66 @@ test("Consumer SSR session reader uses the protected server transport, preserves
   assert.equal(calls[0].init.headers.get("cookie"), "consumer_session=synthetic");
   assert.equal(calls[0].init.headers.get("origin"), null); assert.equal(calls[0].init.headers.get("x-vercel-protection-bypass"), SECRET);
   assert.equal(calls[0].init.headers.get("user-agent"), "Synthetic SSR");
+});
+
+const publishedConfiguration = { version: "nexid.tenant-actions.v1", status: "published", allowedActions: ["sommelier", "marketplace"],
+  program: null, trivia: null, catalogAvailable: true, tenantSlug: "synthetic-tenant" };
+
+test("Public tenant settings reach a protected Preview API without forwarding consumer context or exposing the grant", async () => {
+  const calls = [];
+  const readConfiguration = publicConfiguration(previewEnv(), async (url, init) => {
+    calls.push({ url, init });
+    if (init.headers.get("x-vercel-protection-bypass") !== SECRET) return Response.json({ ok: false }, { status: 401 });
+    return Response.json({ ok: true, configuration: { ...publishedConfiguration, providerSecret: SECRET, email: "synthetic@example.invalid" } });
+  });
+  const result = await readConfiguration("715");
+  assert.deepEqual(result, publishedConfiguration);
+  assert.equal(calls.length, 1);
+  const { url, init } = calls[0];
+  assert.equal(url, `${API}/public/passport/715/configuration`);
+  assert.equal(init.method, "GET"); assert.equal(init.credentials, "omit"); assert.equal(init.cache, "no-store"); assert.equal(init.redirect, "error");
+  assert.equal(init.headers.get("x-vercel-protection-bypass"), SECRET);
+  assert.equal(init.headers.get("accept"), "application/json");
+  for (const name of ["cookie", "origin", "authorization", "x-vercel-set-bypass-cookie"]) assert.equal(init.headers.get(name), null);
+  assert.doesNotMatch(JSON.stringify(result), /synthetic-server-only-grant|synthetic@example\.invalid|providerSecret/);
+});
+
+test("Public configuration grants stay scoped to Preview; Production never reads them and mismatched origins fail closed", async () => {
+  const env = { VERCEL_ENV: "production" };
+  for (const name of ["NEXID_PREVIEW_API_ORIGIN", "NEXID_PREVIEW_API_ALLOWED_HOST", "NEXID_PREVIEW_API_AUTOMATION_BYPASS"]) {
+    Object.defineProperty(env, name, { get() { throw Error("Credential must not be read"); } });
+  }
+  let requests = 0;
+  const readProduction = publicConfiguration(env, async (url, init) => {
+    requests++;
+    assert.equal(url, "https://api.nexid.lat/public/passport/715/configuration");
+    assert.equal(init.headers.get("x-vercel-protection-bypass"), null);
+    return Response.json({ ok: true, configuration: publishedConfiguration });
+  }, "https://api.nexid.lat");
+  assert.deepEqual(await readProduction("715"), publishedConfiguration);
+  assert.equal(requests, 1);
+  const readWrongOrigin = publicConfiguration(previewEnv(), async () => { requests++; throw Error("Must not fetch"); }, "https://other.vercel.app");
+  assert.equal(await readWrongOrigin("715"), null);
+  assert.equal(requests, 1);
+});
+
+test("Public settings retain an explicit injected transport and its bounded-read timeout", async () => {
+  const readConfiguration = publicConfiguration(previewEnv(), () => assert.fail("Default transport must not run"));
+  let injected = 0;
+  assert.deepEqual(await readConfiguration("715", { fetchImpl: async (url, init) => {
+    injected++;
+    assert.equal(url, `${API}/public/passport/715/configuration`);
+    assert.deepEqual(init.headers, { accept: "application/json" });
+    assert.equal(init.credentials, "omit");
+    return Response.json({ ok: true, configuration: publishedConfiguration });
+  } }), publishedConfiguration);
+  let signal;
+  assert.equal(await readConfiguration("715", { timeoutMs: 10, fetchImpl: async (_url, init) => {
+    signal = init.signal;
+    return new Promise(() => {});
+  } }), null);
+  assert.equal(signal.aborted, true);
+  assert.equal(injected, 1);
 });
 
 test("History BFF retains query/status contracts while using the same protected server transport", async () => {
