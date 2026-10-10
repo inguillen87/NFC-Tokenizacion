@@ -10,6 +10,7 @@ import styles from "./sun-deferred-consumer-tools.module.css";
 type ReadyProps = { onReady: () => void };
 type CtaProps = ComponentProps<typeof CtaActions>;
 type EngagementProps = ComponentProps<typeof QREngagementSuite>;
+const SLOW_TOOL_NOTICE_MS = 8_000;
 
 function LoadingTool({ title }: { title: string }) {
   const { text } = useSunLocale();
@@ -57,12 +58,17 @@ function DeferredTool<Props extends object>({ anchorId, title, description, crea
   const [requested, setRequested] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [delayed, setDelayed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const retryRef = useRef<HTMLButtonElement>(null);
   const focusAfterLoad = useRef(false);
   const focusOwner = useRef<Element | null>(null);
   const Tool = useMemo(create, [create, attempt]);
+  const cancelFocus = useCallback(() => {
+    focusAfterLoad.current = false;
+    focusOwner.current = null;
+  }, []);
   const rememberFocus = useCallback(() => {
     focusAfterLoad.current = true;
     focusOwner.current = document.activeElement;
@@ -83,29 +89,38 @@ function DeferredTool<Props extends object>({ anchorId, title, description, crea
   const onReady = useCallback(() => {
     setReady(true);
     setFailed(false);
+    setDelayed(false);
     finishFocus(rootRef.current);
   }, [finishFocus]);
-  const onError = useCallback(() => setFailed(true), []);
+  const onError = useCallback(() => { setFailed(true); setDelayed(false); }, []);
+
+  useEffect(() => cancelFocus, [cancelFocus]);
+
+  useEffect(() => {
+    if (!requested || ready || failed) return;
+    // Slow is feedback, not a failed import: keep this attempt and its form mounted.
+    const timer = window.setTimeout(() => setDelayed(true), SLOW_TOOL_NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [attempt, failed, ready, requested]);
 
   useEffect(() => {
     if (!requested || ready || failed) return;
     // A delayed download must not override a newer interaction or browser history.
-    const cancel = () => { focusAfterLoad.current = false; focusOwner.current = null; };
     const onFocus = (event: FocusEvent) => {
-      if (event.target !== focusOwner.current) cancel();
+      if (event.target !== focusOwner.current) cancelFocus();
     };
     const pointerEvents = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
     document.addEventListener("focusin", onFocus);
-    for (const event of pointerEvents) document.addEventListener(event, cancel, { passive: true });
-    window.addEventListener("hashchange", cancel);
-    window.addEventListener("popstate", cancel);
+    for (const event of pointerEvents) document.addEventListener(event, cancelFocus, { passive: true });
+    window.addEventListener("hashchange", cancelFocus);
+    window.addEventListener("popstate", cancelFocus);
     return () => {
       document.removeEventListener("focusin", onFocus);
-      for (const event of pointerEvents) document.removeEventListener(event, cancel);
-      window.removeEventListener("hashchange", cancel);
-      window.removeEventListener("popstate", cancel);
+      for (const event of pointerEvents) document.removeEventListener(event, cancelFocus);
+      window.removeEventListener("hashchange", cancelFocus);
+      window.removeEventListener("popstate", cancelFocus);
     };
-  }, [attempt, failed, ready, requested]);
+  }, [attempt, cancelFocus, failed, ready, requested]);
 
   useEffect(() => {
     if (failed) finishFocus(retryRef.current);
@@ -128,13 +143,20 @@ function DeferredTool<Props extends object>({ anchorId, title, description, crea
     return () => { observer?.disconnect(); window.removeEventListener("hashchange", syncHash); };
   }, [anchorId, request, requested]);
 
+  const showDelay = requested && delayed && !ready && !failed;
   return <div ref={rootRef} className={styles.boundary} role="region" aria-label={text(title)} tabIndex={-1}
-    data-sun-deferred-tool={anchorId} data-tool-load-state={failed ? "error" : ready ? "ready" : requested ? "loading" : "waiting"}
-    aria-busy={requested && !ready && !failed}>
-    {requested ? <ToolErrorBoundary key={attempt} onError={onError} fallback={<div className={styles.placeholder}>
+    data-sun-deferred-tool={anchorId} data-tool-load-state={failed ? "error" : ready ? "ready" : showDelay ? "delayed" : requested ? "loading" : "waiting"}
+    aria-busy={requested && !ready && !failed && !showDelay}>
+    {showDelay && <div className={styles.placeholder} data-testid="sun-tool-delayed">
+      <h3>{text(title)}</h3>
+      <p role="status">{text("Estas opciones están tardando más de lo esperado.")}</p>
+      <p>{text("Podés seguir leyendo la ficha. Las opciones aparecerán cuando termine la carga.")}</p>
+      <a className={styles.openButton} href="#sun-summary" onClick={cancelFocus}>{text("Volver a la ficha")}</a>
+    </div>}
+    {requested ? <div hidden={showDelay}><ToolErrorBoundary key={attempt} onError={onError} fallback={<div className={styles.placeholder}>
       <p role="status">{text("No pudimos preparar estas opciones. Revisá la conexión y volvé a intentar.")}</p>
-      <button ref={retryRef} type="button" className={styles.openButton} onClick={() => { rememberFocus(); setReady(false); setFailed(false); setAttempt(value => value + 1); }}>{text("Volver a intentar")}</button>
-    </div>}><Tool {...toolProps} onReady={onReady} /></ToolErrorBoundary> : <div className={styles.placeholder}>
+      <button ref={retryRef} type="button" className={styles.openButton} onClick={() => { rememberFocus(); setReady(false); setFailed(false); setDelayed(false); setAttempt(value => value + 1); }}>{text("Volver a intentar")}</button>
+    </div>}><Tool {...toolProps} onReady={onReady} /></ToolErrorBoundary></div> : <div className={styles.placeholder}>
       <h3>{text(title)}</h3>
       <p>{text(description)}</p>
       <button type="button" className={styles.openButton} onClick={() => request(true)}>{text("Ver opciones")}</button>
