@@ -49,7 +49,7 @@ const server=createServer((req,res)=>{
 await new Promise(done=>server.listen(0,'127.0.0.1',done));
 const origin='http://127.0.0.1:'+server.address().port;
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
-const report={localOnly:true,actualRewardsClient:true,actualModuleCss:true,actualServerRenderAndHydrateRoot:true,actualNext:false,nextLinkStub:true,controlledSyntheticClock:true,serverSampleIsLowerBound:true,unknownPrefetchAndTransitAgeNotMeasured:true,sourceHashesBefore,sourceHashesAfter:null,sourceStable:false,backendWrites:0,externalRequests:0,checks:[],views:[],hydration:[],errors:[]};
+const report={localOnly:true,actualRewardsClient:true,actualModuleCss:true,actualServerRenderAndHydrateRoot:true,actualNext:false,nextLinkStub:true,controlledSyntheticClock:true,serverSampleIsLowerBound:true,unknownPrefetchAndTransitAgeNotMeasured:true,nodeVersion:process.version,browserVersion:browser.version(),sourceHashesBefore,sourceHashesAfter:null,sourceStable:false,backendWrites:0,externalRequests:0,checks:[],views:[],hydration:[],errors:[]};
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 async function open(width,theme,wallOffset=0){
  const context=await browser.newContext({viewport:{width,height:900},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage();
@@ -69,9 +69,10 @@ async function open(width,theme,wallOffset=0){
  page.on('pageerror',error=>report.errors.push(error.message));
  await page.route('**/*',route=>{const request=route.request();if(new URL(request.url()).origin!==origin){report.externalRequests++;return route.abort();}if(!['GET','HEAD'].includes(request.method())){report.backendWrites++;return route.abort();}return route.continue();});
  await page.goto(origin);await page.waitForFunction(sample=>window.fixtureReady===true&&window.fixtureRenderedSample===sample,start);await page.getByRole('button',{name:'Copiar código',exact:true}).waitFor();
- const hydration=await page.evaluate(()=>({errors:window.hydrationErrors.length,code:document.querySelector('code')?.textContent}));
+ const hydration=await page.evaluate(()=>({errors:window.hydrationErrors.length,code:document.querySelector('code')?.textContent,dateLabels:[...document.querySelectorAll('dd')].map(node=>node.textContent).filter(text=>text?.endsWith('(Argentina)'))}));
+ report.hydration.push({width,theme,wallOffset,...hydration});
  check(hydration.errors===0&&hydration.code==='LOCAL-TEST-1234',`${width}/${theme}/${wallOffset}: true SSR hydration keeps the reported voucher without recoverable errors`);
- report.hydration.push({width,theme,wallOffset,...hydration});return{page,context};
+ return{page,context};
 }
 async function expired(page,label){
  await page.locator('article[data-reward-state=expired]').waitFor();

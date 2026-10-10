@@ -202,6 +202,38 @@ test("page projection and client clock receive the same reported server instant"
   assert.deepEqual(result.calls, [["session", "/me/rewards"], ["fetch", "rewards"], ["fetch", "wallet"]]);
 });
 
+test("reward date labels use stable Spanish months and unambiguous 24-hour Argentina time", () => {
+  assert.equal(model.rewardDateLabel("2030-01-01T12:00:00Z"), "1 ene 2030, 09:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-01-01T03:00:00Z"), "1 ene 2030, 00:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-01-01T02:59:00Z"), "31 dic 2029, 23:59 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-03-01T02:00:00Z"), "28 feb 2030, 23:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-01-01T00:00:00-03:00"), "1 ene 2030, 00:00 (Argentina)");
+});
+test("reward date labels ignore NBSP and narrow locale literals and reuse one numeric h23 formatter", (t) => {
+  let constructors = 0, literal = "\u00a0", options;
+  t.mock.method(Intl, "DateTimeFormat", function (_locale, settings) {
+    constructors++; options = settings;
+    return { formatToParts: () => [
+      { type: "year", value: "2030" }, { type: "literal", value: literal },
+      { type: "month", value: "1" }, { type: "literal", value: literal }, { type: "day", value: "1" },
+      { type: "literal", value: literal }, { type: "hour", value: "00" },
+      { type: "literal", value: literal }, { type: "minute", value: "00" }, { type: "dayPeriod", value: "a. m." },
+    ] };
+  });
+  const isolated = compile(modelSource, { "./consumer-wallet-points-model": walletModel });
+  for (const spacing of ["\u00a0", "\u202f", " "]) {
+    literal = spacing;
+    assert.equal(isolated.rewardDateLabel("2030-01-01T03:00:00Z"), "1 ene 2030, 00:00 (Argentina)");
+  }
+  assert.equal(constructors, 1);
+  assert.equal(options.hourCycle, "h23"); assert.equal(options.numberingSystem, "latn");
+  assert.equal(options.timeZone, "America/Argentina/Buenos_Aires");
+  assert.equal(options.day, "numeric"); assert.equal(options.month, "numeric"); assert.equal(options.year, "numeric");
+});
+test("missing or malformed reward label dates do not invent a date", () => {
+  for (const value of [null, "invalid", "2030-02-30T12:00:00Z", "2030-01-01"]) assert.equal(model.rewardDateLabel(value), "No informado");
+});
+
 test("canonical API tenant slugs retain dots and underscores without collapsing homonymous brands or widening voucher lookup", () => {
   const slugs = ["brand-a", "branda", "brand_a", "brand.a", "a".repeat(120)];
   const source = readModel(list(slugs.map((tenant_slug, index) => claim({ id: `reward-${index}`, claim_id: `claim-${index}`, tenant_slug, tenant_name: "Mismo nombre", redemption_code: "SAME-CODE" }))));

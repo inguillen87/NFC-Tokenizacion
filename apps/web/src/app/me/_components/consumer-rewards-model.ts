@@ -28,8 +28,20 @@ function instant(value: unknown): string | null {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
+const rewardDateFormatter = new Intl.DateTimeFormat("es-AR", {
+  day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
+  hourCycle: "h23", numberingSystem: "latn", timeZone: "America/Argentina/Buenos_Aires",
+});
+const rewardMonths = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 export function rewardDateLabel(value: string | null): string {
-  return value ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value)) + " (Argentina)" : "No informado";
+  const sample = instant(value);
+  if (!sample) return "No informado";
+  // Locale literals can differ between server and browser CLDR versions during hydration.
+  const parts = rewardDateFormatter.formatToParts(new Date(sample));
+  const number = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(part => part.type === type)?.value);
+  const day = number("day"), month = number("month"), year = number("year"), hour = number("hour"), minute = number("minute");
+  if (![day, month, year, hour, minute].every(Number.isInteger) || day < 1 || day > 31 || month < 1 || month > 12 || year < 1000 || hour < 0 || hour > 23 || minute < 0 || minute > 59) return "No informado";
+  return `${day} ${rewardMonths[month - 1]} ${year}, ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} (Argentina)`;
 }
 export type ConsumerRewardClock = { serverObservedAt: string; sampledAt: number; elapsedOrigin: number; monotonic: number; wall: number; highWater: number };
 // A server render sample is a lower bound, not the exact time of reception.
