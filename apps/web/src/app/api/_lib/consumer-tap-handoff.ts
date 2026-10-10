@@ -106,6 +106,15 @@ function cookieConfiguration(req: Request) {
   return { prefix: localDevelopment ? DEV_COOKIE_PREFIX : CONSUMER_TAP_CAPABILITY_COOKIE_PREFIX, secure: !localDevelopment };
 }
 
+/** Read-only server custody lookup. Envelope checks never authenticate a TAP. */
+export function storedConsumerTapCapability(req: Request, eventId: string, nowMs = Date.now()): string | null {
+  if (!EVENT_ID.test(eventId)) return null;
+  const { prefix } = cookieConfiguration(req);
+  const cookies = parsedCookies(req.headers.get("cookie")).filter(({ name }) => name === `${prefix}${eventId}`);
+  if (cookies.length !== 1 || !inspectConsumerTapCapability(cookies[0].value, eventId, nowMs)) return null;
+  return cookies[0].value;
+}
+
 function serializeCookie(name: string, value: string, maxAge: number, secure: boolean) {
   return `${name}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }

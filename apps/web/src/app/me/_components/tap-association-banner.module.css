@@ -17,6 +17,11 @@
 .choice input { width:24px; height:24px; flex-shrink:0; margin-top:0; accent-color:var(--tap-accent); }
 .choice strong { display:block; font-size:14px; line-height:1.5; }
 .choice small { display:block; font-size:12px; color:var(--tap-muted); line-height:1.6; margin-top:5px; }
+.choice[data-available="false"] { cursor:default; }
+.choice .availabilityReason { margin-top:10px; padding-top:8px; border-top:1px solid var(--tap-line); font-weight:650; color:var(--tap-ink); }
+.availability { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid var(--tap-line); border-radius:12px; background:var(--tap-soft); min-width:0; }
+.availability p { overflow-wrap:anywhere; }
+.availabilityRefresh { flex-shrink:0; min-height:44px; border:0; padding:8px; border-radius:8px; background:transparent; color:var(--tap-accent); font-size:12px; font-weight:750; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
 .alternatives,.readingDetails { min-width:0; }
 .panel summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:8px 2px; font-size:13px; font-weight:700; cursor:pointer; list-style:none; color:var(--tap-ink); }
 .panel summary::-webkit-details-marker { display:none; }
@@ -49,5 +54,5 @@
 .results a { color:var(--tap-accent); display:inline-flex; align-items:center; min-height:44px; font-size:13px; font-weight:700; text-underline-offset:3px; }
 .results .collectionLink { justify-content:center; border:1px solid var(--tap-accent); border-radius:12px; padding:10px 16px; text-decoration:none; scroll-margin-block:10rem calc(6rem + env(safe-area-inset-bottom)); }
 .results .historyLink { justify-self:center; }
-@media(max-width:600px) { .panel { padding:18px; border-radius:18px; } .choices { grid-template-columns:1fr; } .confirmation { justify-items:stretch; } }
+@media(max-width:600px) { .panel { padding:18px; border-radius:18px; } .choices { grid-template-columns:1fr; } .confirmation { justify-items:stretch; } .availability { align-items:flex-start; flex-direction:column; gap:4px; } }
 @media(prefers-reduced-motion:reduce) { .choice,.panel summary::after { transition:none; } }

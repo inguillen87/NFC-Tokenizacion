@@ -2,7 +2,7 @@ export const TAP_ASSOCIATION_ACTIONS = ["save", "join", "claim", "rewards"] as c
 export type TapAssociationAction = typeof TAP_ASSOCIATION_ACTIONS[number];
 export type TapAssociationContext = { eventId: string; tenant: string; bid: string; preferred: TapAssociationAction | null; key: string };
 export type TapAssociationOutcome = "saved" | "linked" | "claimed" | "enrolled" | "recorded_pending" | "committed_unknown"
-  | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "pin_required" | "pin_invalid" | "pin_locked"
+  | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "pin_required" | "pin_input_required" | "pin_invalid" | "pin_locked"
   | "session_required" | "no_program" | "blocked" | "unconfirmed";
 export type TapAssociationResult = { outcome: TapAssociationOutcome; retryable: boolean };
 export type TapAssociationState = { pending: TapAssociationAction | null; results: Partial<Record<TapAssociationAction, TapAssociationResult>> };
@@ -74,7 +74,8 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
   // A consumed reading may require a new TAP even when its writer returns 503.
   // Retrying that action cannot restore the one-use capability.
   if (payload.fresh_tap_required === true) return { outcome: "fresh_required", retryable: false };
-  if (action === "claim" && error === "pin_required") return { outcome: "pin_required", retryable: false };
+  if (action === "claim" && error === "pin_required") return status === 403 && payload.fresh_tap_required === false
+    ? { outcome: "pin_input_required", retryable: true } : { outcome: "pin_required", retryable: false };
   if (action === "claim" && error === "invalid_pin") return { outcome: "pin_invalid", retryable: false };
   if (action === "claim" && error === "claim_pin_locked") return { outcome: "pin_locked", retryable: false };
   if (["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked"].includes(error)) return { outcome: "fresh_required", retryable: false };

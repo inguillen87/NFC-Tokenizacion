@@ -6,6 +6,7 @@ import { createServer } from 'node:http';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assertTapEligibilityRequest, tapEligibilityFixture } from './consumer-tap-eligibility.browser.mjs';
 
 const web = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(web, '../..');
@@ -89,7 +90,7 @@ async function open(width, theme, scenario) {
   const page = await context.newPage();
   page.setDefaultTimeout(15_000);
   page.on('pageerror', error => report.errors.push({ width, theme, scenario, message: error.message }));
-  let postCount = 0, refreshCount = 0, releaseReceipt, markRequestStarted;
+  let postCount = 0, refreshCount = 0, eligibilityReads = 0, releaseReceipt, markRequestStarted;
   const receiptReady = new Promise(done => { releaseReceipt = done; });
   const firstPostStarted = new Promise(done => { markRequestStarted = done; });
   page.on('request', request => {
@@ -123,6 +124,12 @@ async function open(width, theme, scenario) {
     if (url.pathname === '/api/consumer/session' && request.method() === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, authenticated: true }) });
     }
+    if (url.pathname === '/api/consumer/tap-eligibility') {
+      assertTapEligibilityRequest(request, base, { eventId, tenant: 'save-feedback-qa', bid: 'SAVE-FEEDBACK-QA' });
+      eligibilityReads++;
+      return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'cache-control': 'no-store' },
+        body: JSON.stringify(tapEligibilityFixture(eventId)) });
+    }
     if (url.pathname === savePath && request.method() === 'POST') {
       postCount++;
       assert.deepEqual(request.postDataJSON(), { tenantSlug: 'save-feedback-qa', bid: 'SAVE-FEEDBACK-QA' });
@@ -151,6 +158,8 @@ async function open(width, theme, scenario) {
   await confirm.waitFor();
   const home = page.getByTestId('consumer-home');
   await home.waitFor();
+  await page.waitForFunction(() => document.querySelector('[data-testid="tap-association-eligibility"]')?.getAttribute('data-state') === 'ready');
+  check(eligibilityReads === 1 && await confirm.isEnabled(), `${width}/${theme}/${scenario}: advisory options are read once before explicit confirmation`);
   check(await home.getByRole('heading', { name: productName, exact: true }).count() === 0, `${width}/${theme}/${scenario}: pre-save projection contains no new product`);
   check((await home.innerText()).includes('0 en tu cuenta'), `${width}/${theme}/${scenario}: initial saved-product count comes from the empty account projection`);
   check(postCount === 0, `${width}/${theme}/${scenario}: entering the portal sends no save`);
@@ -253,7 +262,7 @@ async function open(width, theme, scenario) {
   report.views.push({ width, theme, scenario, violations });
   check(violations.length === 0, `${width}/${theme}/${scenario}: zero axe violations in action feedback`);
   await banner.screenshot({ path: join(output, `${scenario}-${width}-${theme}.png`) });
-  report.cases.push({ width, theme, scenario, interceptedSavePosts: postCount, automaticRscRefreshes: refreshCount - initialRefreshes, expectedOutcome,
+  report.cases.push({ width, theme, scenario, interceptedSavePosts: postCount, advisoryEligibilityReads: eligibilityReads, automaticRscRefreshes: refreshCount - initialRefreshes, expectedOutcome,
     newerInteraction, feedbackFocus: await page.evaluate(() => ({ ...window.__saveFeedbackFocus })) });
   await reviewLink.click();
   await page.waitForURL(url => url.pathname === '/me/products' && url.searchParams.get('focus') === eventId);
