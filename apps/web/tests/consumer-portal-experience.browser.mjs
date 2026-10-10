@@ -30,6 +30,41 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+async function feedbackPublicationRegression(page,open,ficha,width,theme){
+ const url=base+'/api/public/passport/900001/configuration';
+ const observed={width,theme,eventId:'900001',tenant:'consumer-qa',configurationReads:0,credentialedReads:0};
+ report.feedbackPublication??=[];report.feedbackPublication.push(observed);
+ await page.keyboard.press('Escape');await ficha.waitFor({state:'hidden'});
+ let release;
+ const held=new Promise(resolve=>{release=resolve;});
+ const handler=async route=>{
+  const request=route.request();observed.configurationReads++;
+  if(request.headers().cookie||request.headers().authorization)observed.credentialedReads++;
+  assert.equal(request.method(),'GET');assert.equal(new URL(request.url()).search,'');
+  const configuration=await held;
+  return route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify({ok:true,configuration})});
+ };
+ await page.route(url,handler);
+ try{
+  await open.click();await ficha.waitFor();
+  await ficha.getByRole('status').filter({hasText:'Consultando las opciones actuales de la marca'}).waitFor();
+  check(await ficha.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===0,`${width}/${theme} pending brand publication offers no feedback action`);
+  check(await ficha.getByRole('link',{name:'Catálogo de la marca',exact:true}).count()===1,`${width}/${theme} loading feedback retains the separate catalogue destination`);
+  release({version:'nexid.tenant-actions.v1',status:'published',allowedActions:['marketplace'],program:null,trivia:null,catalogAvailable:true,tenantSlug:'consumer-qa'});
+  await ficha.getByRole('status').filter({hasText:'La marca no está recibiendo opiniones'}).waitFor();
+  check(await ficha.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===0,`${width}/${theme} current unpublished feedback has no actionable destination`);
+  check(observed.configurationReads===1&&observed.credentialedReads===0,`${width}/${theme} feedback publication reads the selected event once without account credentials`);
+ }finally{
+  release(null);await page.unroute(url,handler);
+ }
+ await page.keyboard.press('Escape');await ficha.waitFor({state:'hidden'});
+ // The normal BFF/local backend fixture publishes feedback for this exact
+ // saved reading and tenant. Wait for that asynchronous contract, not a tick.
+ await open.click();await ficha.waitFor();
+ const feedback=ficha.getByRole('link',{name:'Compartir experiencia',exact:true});await feedback.waitFor();
+ const href=new URL(await feedback.getAttribute('href'),base);
+ check(href.pathname==='/me/experiences'&&href.searchParams.get('eventId')==='900001'&&href.searchParams.get('tenant')==='consumer-qa',`${width}/${theme} republished feedback keeps the authenticated reading and brand context`);
+}
 async function productPhotoRecovery(page,context,width,theme){
  const observed={width,theme,failedRequests:0,updatedRequests:0,sameProductCard:false};
  report.productPhotoRecovery??=[];report.productPhotoRecovery.push(observed);
@@ -135,7 +170,9 @@ try{
   const ficha=page.getByRole('dialog',{name:'Vino reserva QA'});await ficha.waitFor();await ficha.getByRole('heading',{name:'Aviso de ensayo local',exact:true}).waitFor();
   check(new URL(page.url()).searchParams.get('focus')==='900001',`${width}/${theme} selected account reference enters URL`);
   check((await ficha.innerText()).includes('NO ES UN TAP NUEVO'),`${width}/${theme} saved reading remains historical`);
-  check(await ficha.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===1&&await ficha.getByRole('link',{name:'Catálogo de la marca',exact:true}).count()===1,`${width}/${theme} secondary destinations retained in ficha`);
+  await ficha.getByRole('link',{name:'Compartir experiencia',exact:true}).waitFor();
+  check(await ficha.getByRole('link',{name:'Compartir experiencia',exact:true}).count()===1&&await ficha.getByRole('link',{name:'Catálogo de la marca',exact:true}).count()===1,`${width}/${theme} published secondary destinations retained in ficha`);
+  await feedbackPublicationRegression(page,open,ficha,width,theme);
   await ficha.getByText('¿Necesitás ayuda con este producto?',{exact:true}).click();
   check((await ficha.innerText()).includes('cuando esa opción esté habilitada'),`${width}/${theme} contextual help keeps reporting conditional`);
   check(await ficha.locator('a,button,summary').evaluateAll(elements=>elements.filter(element=>element.getClientRects().length&&getComputedStyle(element).visibility!=='hidden').every(element=>element.getBoundingClientRect().height>=44)),`${width}/${theme} ficha actions have 44px targets`);
