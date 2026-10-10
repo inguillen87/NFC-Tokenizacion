@@ -110,7 +110,9 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
   function beginFocusIntent(mode: LoginFocusIntent["mode"] = "request") {
     focusIntent.current?.release();
-    const intent: LoginFocusIntent = { trigger: document.activeElement, mode, permitted: true, completed: false, scrollX: window.scrollX, scrollY: window.scrollY, release: () => {} };
+    const activeElement = document.activeElement;
+    const trigger = activeElement === document.body || activeElement === document.documentElement ? null : activeElement;
+    const intent: LoginFocusIntent = { trigger, mode, permitted: true, completed: false, scrollX: window.scrollX, scrollY: window.scrollY, release: () => {} };
     const movedFocus = (event: Event) => {
       if (event.target !== document.body && event.target !== intent.trigger && !intent.trigger?.contains(event.target as Node)) intent.permitted = false;
     };
@@ -219,7 +221,9 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     });
     return () => {
       cancelled = true;
-      if (focusIntent.current === intent) { intent.release(); focusIntent.current = null; }
+      // Cancelling the automatic URL completes only the intent that opened this
+      // code step. A newer interaction or replacement keeps its existing veto.
+      if (focusIntent.current === intent) completeFocusIntent(intent, "code");
       requestInFlight.current = false;
       setPending(false);
       setStatus("La verificación se interrumpió. Podés pedir un código para continuar.");
