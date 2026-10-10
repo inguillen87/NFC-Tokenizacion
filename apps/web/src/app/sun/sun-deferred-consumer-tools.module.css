@@ -11,7 +11,7 @@
 .loading .loadingNote { margin-bottom: 0; color: #b5c8d4; font-size: .8125rem; }
 @keyframes signal { 50% { opacity: .4; } }
 @media (prefers-reduced-motion: reduce) { .loadingSignal { animation: none; } }
-.openButton { min-height: 44px; padding: .625rem 1rem; border: 1px solid #67e8f9; border-radius: .75rem; background: #164e63; color: #ecfeff; font: inherit; font-size: .875rem; font-weight: 700; cursor: pointer; }
+.openButton { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: .625rem 1rem; border: 1px solid #67e8f9; border-radius: .75rem; background: #164e63; color: #ecfeff; font: inherit; font-size: .875rem; font-weight: 700; text-decoration: none; cursor: pointer; }
 .openButton:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
 .placeholder noscript { display: block; margin-top: 1rem; font-size: .875rem; line-height: 1.6; }
 :global(html[data-theme=light]) .placeholder, :global(html[data-theme=light]) .loading { background: #fff; color: #334155; border-color: #cbd5e1; }
