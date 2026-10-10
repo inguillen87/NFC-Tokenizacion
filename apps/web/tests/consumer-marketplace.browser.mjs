@@ -6,6 +6,7 @@ import {readFile,readdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {marketplaceFixtureItems,marketplaceBrokenPhotoFixture} from './consumer-marketplace-fixture.mjs';
+import {assertTapEligibilityRequest,tapEligibilityFixture} from './consumer-tap-eligibility.browser.mjs';
 
 export async function marketplaceBinding(repo,web){
  const paths=[
@@ -16,6 +17,7 @@ export async function marketplaceBinding(repo,web){
   'apps/web/src/app/me/_components/tap-association-copy.ts','apps/web/src/app/me/_components/tap-association-banner.module.css',
   'apps/web/tests/consumer-portal-experience.browser.mjs','apps/web/tests/consumer-portal-local-fetch.mjs',
   'apps/web/tests/consumer-claim-pin.browser.mjs',
+  'apps/web/tests/consumer-tap-eligibility.browser.mjs',
   'apps/web/tests/consumer-marketplace.browser.mjs','apps/web/tests/consumer-marketplace-fixture.mjs',
   'apps/web/public/release.json','apps/web/.next/BUILD_ID','apps/web/.next/server/app/me/marketplace/page.js',
  ];
@@ -31,9 +33,29 @@ export async function marketplaceBinding(repo,web){
 
 export async function runMarketplaceScenarios({page,base,width,theme,report,check,assessment,noOverflow}){
  const label=`${width}/${theme} catalogue`,requests=[];
- const record={width,theme,requests,geometry:[],scenarios:[],syntheticRequestOnly:true,realPurchaseCertified:false,photoFailures:[]};
+ const record={width,theme,requests,geometry:[],scenarios:[],syntheticRequestOnly:true,realPurchaseCertified:false,photoFailures:[],advisoryRequests:[]};
  report.marketplace??=[];report.marketplace.push(record);
  let mode='success';const held=[];
+ const advisoryEndpoint='**/api/consumer/tap-eligibility?*';
+ const advisoryHandler=async route=>{
+  const request=route.request(),url=new URL(request.url());
+  const scope={eventId:url.searchParams.get('eventId'),tenant:url.searchParams.get('tenant'),bid:url.searchParams.get('bid')};
+  if(scope.bid!==null)assertTapEligibilityRequest(request,base,scope);
+  else{
+   // A reading with no lot remains blocked; the real reader omits absent fields.
+   assert.equal(url.origin,base);assert.equal(request.method(),'GET');assert.equal(url.pathname,'/api/consumer/tap-eligibility');
+   assert.deepEqual([...url.searchParams.keys()].sort(),['eventId','tenant']);assert.equal(request.postData(),null);
+   const headers=request.headers();assert.equal(headers['x-nexid-consumer-tap-eligibility'],'1');
+   for(const key of ['authorization','x-nexid-fresh-tap','x-nexid-tap-capability','x-nexid-consumer-tap-capability'])assert.equal(headers[key],undefined);
+  }
+  assert.ok(['900001','900003'].includes(scope.eventId),'only exact local marketplace readings are intercepted');
+  const allowed=scope.eventId==='900001'&&scope.tenant==='consumer-qa'&&scope.bid==='LOT-WINE-QA';
+  const denied={allowed:false,reason:'tap_action_not_allowed',freshTapRequired:false};
+  record.advisoryRequests.push({...scope,method:'GET',allowed,syntheticAdvisoryOnly:true});
+  const payload=tapEligibilityFixture(scope.eventId,allowed?{}:{save:denied,join:denied,rewards:denied,claim:{...denied,nextStep:'blocked'}});
+  return route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify(payload)});
+ };
+ await page.route(advisoryEndpoint,advisoryHandler);
  const endpoint='**/api/marketplace/products/*/request-to-buy';
  const handler=async route=>{
   const request=route.request(),url=new URL(request.url()),id=decodeURIComponent(url.pathname.split('/').at(-2));
@@ -126,6 +148,8 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   if(!await alternatives.evaluate(element=>element.open))await alternatives.locator('summary').click();
   check(await alternatives.evaluate(element=>element.open),`${label} additional tap options are explicitly open`);
   const radio=page.getByTestId('tap-association-option-claim'),choice=radio.locator('..');
+  await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-eligibility"]')?.getAttribute('data-state')==='ready');
+  check(await radio.isEnabled()&&record.advisoryRequests.some(row=>row.allowed),`${label} ownership option is selectable only after an explicit synthetic advisory decision`);
   const readChoice=()=>choice.evaluate(el=>{
    const rect=element=>{const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};};
    const bounds=rect(el),header=document.querySelector('.consumer-portal-root > header'),nav=document.querySelector('nav[aria-label="Navegación del portal"]');
@@ -308,5 +332,5 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
    check(await catalog.count()===0&&await page.getByText(/Todavía no hay productos publicados para este contexto/).count()===1,`${label} empty published catalogue does not invent promotional products`);
   }
  }catch(error){record.failed=true;record.error=String(error.message).slice(0,500);record.visible=(await page.locator('body').innerText()).slice(0,6000);throw error;}
- finally{for(const pending of held)await (pending.route||pending).abort().catch(()=>{});await page.unroute(endpoint,handler);await page.unroute(brokenImagePattern,brokenImageHandler);}
+ finally{for(const pending of held)await (pending.route||pending).abort().catch(()=>{});await page.unroute(endpoint,handler);await page.unroute(brokenImagePattern,brokenImageHandler);await page.unroute(advisoryEndpoint,advisoryHandler);}
 }
