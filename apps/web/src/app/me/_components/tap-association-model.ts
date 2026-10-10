@@ -56,7 +56,7 @@ export function tapAssociationSession(status: number, raw: unknown): TapAssociat
 /** HTTP success alone never grants an entitlement. */
 export function tapAssociationResult(action: TapAssociationAction, eventId: string, status: number, raw: unknown): TapAssociationResult {
   const payload = record(raw), ownership = record(payload.ownership), member = record(payload.member), membership = record(payload.membership);
-  const success = status >= 200 && status < 300 && payload.ok === true;
+  const success = status >= 200 && status < 300 && payload.ok === true && payload.fresh_tap_required !== true;
   const claimed = ownership.status === "claimed" && (payload.ownership_scope === "nexid_off_chain_digital_title" || ownership.record_scope === "nexid_off_chain_digital_title");
   if (payload.operation_committed === true) return { outcome: action === "claim" && claimed ? "recorded_pending" : "committed_unknown", retryable: false };
   if (success) {
@@ -71,6 +71,9 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
     if (payload.fresh_token_status === "fresh_token_expired") return { outcome: "fresh_expired", retryable: false };
     if (payload.fresh_token_status === "fresh_token_already_used") return { outcome: "fresh_used", retryable: false };
   }
+  // A consumed reading may require a new TAP even when its writer returns 503.
+  // Retrying that action cannot restore the one-use capability.
+  if (payload.fresh_tap_required === true) return { outcome: "fresh_required", retryable: false };
   if (action === "claim" && error === "pin_required") return { outcome: "pin_required", retryable: false };
   if (action === "claim" && error === "invalid_pin") return { outcome: "pin_invalid", retryable: false };
   if (action === "claim" && error === "claim_pin_locked") return { outcome: "pin_locked", retryable: false };

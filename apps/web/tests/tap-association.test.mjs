@@ -118,6 +118,32 @@ test("committed 503 records title as incomplete without enabling retries or inve
   assert.deepEqual(model.tapAssociationResult("rewards", "715", 503, payload), { outcome: "committed_unknown", retryable: false });
 });
 
+test("an authoritative new TAP requirement is terminal after a policy change or unavailable writer", async () => {
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    for (const [status, error] of [[409, "tap_policy_changed"], [503, "tap_policy_unavailable"]]) {
+      let writes = 0, refreshes = 0;
+      const runner = model.createTapAssociationRunner(context(`action=${action}`), async () => {
+        writes++;
+        return { status, payload: { ok: false, error, fresh_tap_required: true } };
+      }, () => { refreshes++; });
+      assert.deepEqual(await runner.run(action), { outcome: "fresh_required", retryable: false });
+      assert.equal(await runner.run(action), null);
+      assert.equal(writes, 1, "manual retry must not resend a spent reading");
+      assert.equal(refreshes, 0, "a denial must not announce a completed action");
+      runner.dispose();
+    }
+    assert.deepEqual(model.tapAssociationResult(action, "715", 503, { error: "tap_policy_unavailable" }), { outcome: "unconfirmed", retryable: true });
+    for (const fresh of [false, "true", 1, null]) {
+      assert.deepEqual(model.tapAssociationResult(action, "715", 503, { fresh_tap_required: fresh }), { outcome: "unconfirmed", retryable: true });
+    }
+    assert.deepEqual(model.tapAssociationResult(action, "715", 200, { ...successPayloads[action], fresh_tap_required: true }), { outcome: "fresh_required", retryable: false });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 401, { fresh_tap_required: true }), { outcome: "session_required", retryable: true });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 503, { operation_committed: true, fresh_tap_required: true }), { outcome: "committed_unknown", retryable: false });
+  }
+  assert.deepEqual(model.tapAssociationResult("save", "715", 403, { error: "fresh_tap_capability_required", fresh_token_status: "fresh_token_expired", fresh_tap_required: true }), { outcome: "fresh_expired", retryable: false });
+  assert.deepEqual(model.tapAssociationResult("save", "715", 403, { error: "fresh_tap_capability_required", fresh_token_status: "fresh_token_already_used", fresh_tap_required: true }), { outcome: "fresh_used", retryable: false });
+});
+
 test("denied and review-required responses never become pending applications or ownership grants", () => {
   for (const error of ["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked"]) {
     assert.deepEqual(model.tapAssociationResult("claim", "715", 403, { error }), { outcome: "fresh_required", retryable: false });
