@@ -6,6 +6,8 @@ if (process.env.CONSUMER_ENGAGEMENT_QA !== '1') throw Error('consumer_engagement
 const original = globalThis.fetch;
 const auditPath = process.env.QA_API_AUDIT;
 if (!auditPath) throw Error('consumer_engagement_fixture_requires_audit_path');
+const fixtureApiOrigin = process.env.CONSUMER_ENGAGEMENT_API_ORIGIN || 'https://api.nexid.lat';
+if (fixtureApiOrigin !== 'https://api.nexid.lat' && !/^http:\/\/127\.0\.0\.1:\d+$/.test(fixtureApiOrigin)) throw Error('consumer_engagement_fixture_requires_pinned_api_origin');
 const date = '2026-10-03T12:00:00Z';
 const product = {product_name:'Vino de ensayo QA',brand_name:'Bodega sintética',tenant_slug:'consumer-qa',bid:'LOT-ENGAGEMENT-QA',latest_tap_event_id:'900001',latest_verdict:'VALID_CLOSED',latest_tap_at:date,created_at:date,ownership_status:'viewed'};
 const offers = [
@@ -29,7 +31,7 @@ globalThis.fetch = async (input,init) => {
   await audit({path:url.pathname,method,scenario,authorized,blocked:'write'});
   throw Error('consumer_engagement_write_blocked');
  }
- if (url.hostname === 'api.nexid.lat') {
+ if (url.origin === fixtureApiOrigin) {
   await audit({path:url.pathname,method,scenario,authorized,fixture:true});
   if (url.pathname === '/consumer/session') return reply({ok:true,authenticated:authorized});
   if (url.pathname.startsWith('/consumer/')) {

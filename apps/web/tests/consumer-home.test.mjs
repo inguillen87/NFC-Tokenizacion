@@ -275,7 +275,7 @@ const library = compile(readFileSync(new URL('../products/product-library.tsx',d
  '../_components/me-portal-interactive-client':client,
  '../../sun/product-notices':{ProductNoticePanel:()=>null},
  '../_components/reading-current-notices':currentNotices,
- '../_components/consumer-feedback-link':{ConsumerFeedbackLink:({eventId,tenant,href})=>React.createElement('p',{role:'status','data-event':eventId,'data-tenant':tenant,'data-destination':href},'Consultando las opciones actuales de la marca…')},
+ '../_components/consumer-product-actions':{ConsumerProductActions:({eventId,tenant,href})=>React.createElement('p',{role:'status','data-event':eventId,'data-tenant':tenant,'data-destination':href},'Consultando las opciones actuales de la marca…')},
  './product-library-model':libraryModel,
  './product-library.module.css':{__esModule:true,default:styles},
  'next/link':{__esModule:true,default:({children,prefetch,...props})=>React.createElement('a',props,children)},
