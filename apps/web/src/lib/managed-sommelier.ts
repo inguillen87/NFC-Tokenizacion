@@ -14,7 +14,7 @@ export function sommelierHistory(messages: readonly { sender: string; text: stri
   return candidates;
 }
 
-export function sommelierSources(value: unknown, demo = false): SommelierSource[] {
+export function sommelierSources(value: unknown, demo = false, profile?: "valle-secreto" | "syngenta"): SommelierSource[] {
   if (!Array.isArray(value) || value.length > 6) return [];
   const sources: SommelierSource[] = [];
   for (const item of value) {
@@ -27,7 +27,10 @@ export function sommelierSources(value: unknown, demo = false): SommelierSource[
       try {
         const parsed = new URL(record.url);
         if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port
-          || (demo && !["vallesecreto.cl", "www.vallesecreto.cl", "www.sustainable.cl", "sustainable.cl"].includes(parsed.hostname))) continue;
+          || (demo && profile === "syngenta" && (parsed.search || parsed.hash))
+          || (demo && !(profile === "syngenta"
+            ? ["syngenta.com.ar", "www.syngenta.com.ar", "www.nxp.com"]
+            : ["vallesecreto.cl", "www.vallesecreto.cl", "www.sustainable.cl", "sustainable.cl"]).includes(parsed.hostname))) continue;
         url = parsed.href;
       } catch { continue; }
     } else if (record.url !== null && record.url !== undefined) continue;
@@ -43,7 +46,7 @@ export type ManagedSommelierResult =
 export async function requestManagedSommelierAnswer(question: string, options: {
   locale: "es-AR" | "en" | "pt-BR";
   history?: SommelierHistoryMessage[];
-  demoProfile?: "valle-secreto";
+  demoProfile?: "valle-secreto" | "syngenta";
   eventId?: string | null;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
@@ -76,14 +79,17 @@ export async function requestManagedSommelierAnswer(question: string, options: {
     try {
       const text = question.trim().slice(0, MANAGED_SOMMELIER_QUESTION_MAX_CHARS);
       if (!text || !["es-AR", "en", "pt-BR"].includes(options.locale)
-        || (options.demoProfile && options.eventId !== undefined)) return { status: "unavailable", reason: "invalid-response" };
+        || (options.demoProfile && (!(["valle-secreto", "syngenta"] as const).includes(options.demoProfile) || options.eventId !== undefined))) return { status: "unavailable", reason: "invalid-response" };
       if (options.demoProfile) {
         const session = await post("/api/sommelier/demo/session", { profile: options.demoProfile, locale: options.locale });
         if (!session) return interrupted;
         if (!session.ok || !session.payload || typeof session.payload !== "object" || (session.payload as { ok?: unknown }).ok !== true) return { status: "unavailable", reason: "http-error" };
+        if (options.demoProfile === "syngenta" && (session.payload as { profile?: unknown }).profile !== "syngenta") return { status: "unavailable", reason: "invalid-response" };
+        if (options.demoProfile === "valle-secreto" && (session.payload as { profile?: unknown }).profile !== undefined && (session.payload as { profile?: unknown }).profile !== "valle-secreto") return { status: "unavailable", reason: "invalid-response" };
       }
       const result = await post("/api/sommelier/chat", {
         mode: options.demoProfile ? "demo" : "consumer", question: text, locale: options.locale, history: options.history ?? [],
+        ...(options.demoProfile === "syngenta" ? { demoProfile: "syngenta" } : {}),
         ...(!options.demoProfile && Object.hasOwn(options, "eventId") ? { eventId: options.eventId } : {}),
       });
       if (!result) return interrupted;
@@ -93,11 +99,15 @@ export async function requestManagedSommelierAnswer(question: string, options: {
       if (data.ok !== true || typeof data.answer !== "string" || !data.answer.trim() || data.answer.length > 5_000
         || typeof data.fallback !== "boolean" || data.demo !== Boolean(options.demoProfile)
         || (data.source !== "live" && data.source !== "fallback") || (data.source === "live") === data.fallback
+        || (options.demoProfile === "syngenta" && (data.demoProfile !== "syngenta" || data.contextSource !== "syngenta_demo"))
+        || (options.demoProfile === "valle-secreto" && ((data.demoProfile !== undefined && data.demoProfile !== "valle-secreto") || (data.contextSource !== undefined && data.contextSource !== "valle_secreto_demo")))
         || (!data.fallback && (typeof data.provider !== "string" || !data.provider || typeof data.model !== "string" || !data.model))) return { status: "unavailable", reason: "invalid-response" };
+      const sources = sommelierSources(data.sources, Boolean(options.demoProfile), options.demoProfile);
+      if (options.demoProfile === "syngenta" && !sources.some(source => source.url !== null)) return { status: "unavailable", reason: "invalid-response" };
       return { status: "received", data: {
         optimizedText: data.answer.trim(), fallback: data.fallback, demo: Boolean(data.demo),
         ...(!data.fallback ? { provider: data.provider as string, model: data.model as string } : {}),
-        sources: sommelierSources(data.sources, Boolean(options.demoProfile)),
+        sources,
         suggestedQuestions: Array.isArray(data.suggestedQuestions) ? data.suggestedQuestions.filter((q): q is string => typeof q === "string" && q.trim().length > 0 && q.length <= 200).slice(0, 3) : [],
       } };
     } catch {

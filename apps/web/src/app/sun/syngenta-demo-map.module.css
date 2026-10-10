@@ -1,0 +1,26 @@
+.shell { min-width: 0; color: var(--passport-ink,#17313b); }
+.intro { display: grid; gap: 10px; padding: 20px 0; }
+.eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--passport-accent,#086f62); font-size: 11px; font-weight: 750; letter-spacing: .045em; }
+.intro h3 { margin: 0; font-size: clamp(23px,6vw,28px); line-height: 1.18; letter-spacing: -.025em; text-wrap: balance; }
+.intro p { margin: 0; font-size: 14px; line-height: 1.6; }
+.actions { display: grid; gap: 8px; margin-top: 5px; }
+.primary,.secondary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-width: 0; min-height: 48px; padding: 11px 14px; border: 1px solid var(--passport-accent,#086f62); border-radius: 12px; font-size: 14px; font-weight: 700; line-height: 1.4; cursor: pointer; text-align: center; }
+.primary { background: var(--passport-accent,#086f62); color: var(--passport-surface,#fff); }
+.secondary { background: transparent; border-color: var(--passport-line,#d6e1de); color: inherit; }
+.primary svg,.secondary svg { flex: none; }
+.primary:disabled { cursor: wait; opacity: .75; }
+.intro .note,.note { color: var(--passport-muted,#536972); font-size: 12px; line-height: 1.6; }
+.intro .status { min-height: 23px; font-size: 13px; color: var(--passport-muted,#536972); }
+.status[data-error="true"] { color: var(--passport-attention,#8a4708); }
+.office { display: flex; align-items: flex-start; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--passport-line,#d6e1de); }
+.office > svg { flex: none; margin-top: 4px; color: var(--passport-accent,#086f62); }
+.office > div { min-width: 0; }
+.reference { color: var(--passport-muted,#536972); font-size: 11px; }
+.office h4 { margin: 4px 0 7px; font-size: 16px; line-height: 1.4; }
+.office p { margin: 5px 0; font-size: 13px; line-height: 1.6; }
+.office .note { font-size: 12px; }
+.links { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 7px; }
+.links a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; font-size: 12px; line-height: 1.5; font-weight: 650; color: var(--passport-accent,#086f62); text-decoration: underline; text-underline-offset: 3px; }
+.primary:focus-visible,.secondary:focus-visible,.links a:focus-visible { outline: 3px solid var(--passport-accent,#086f62); outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) { .primary,.secondary { transition: background-color 160ms ease,border-color 160ms ease; } .primary:active,.secondary:active { transform: translateY(1px); } }
+@media (prefers-reduced-motion: reduce) { .primary,.secondary { transition: none; } }

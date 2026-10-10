@@ -212,6 +212,8 @@ export default async function HomePage() {
         <div className="container-shell site-footer-meta">
           <span>{footerCopy.ecosystem}</span>
           <Link href="/about">{footerCopy.institutional}</Link>
+          <Link href="/privacy">{locale === "en" ? "Privacy" : locale === "pt-BR" ? "Privacidade" : "Privacidad"}</Link>
+          <Link href="/data-deletion">{locale === "en" ? "Delete my data" : locale === "pt-BR" ? "Excluir meus dados" : "Eliminar mis datos"}</Link>
         </div>
       </footer>
     </div>

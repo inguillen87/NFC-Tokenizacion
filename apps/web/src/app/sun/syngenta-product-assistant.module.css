@@ -1,0 +1,32 @@
+.assistant { border: 1px solid var(--passport-line,#d6e1de); border-radius: 22px; padding: 20px; background: var(--passport-surface,#fff); color: var(--passport-ink,#17313b); scroll-margin-top: 130px; }
+.heading { display: flex; align-items: flex-start; gap: 12px; }
+.icon { display: grid; place-items: center; flex-shrink: 0; width: 46px; height: 46px; border-radius: 14px; background: var(--passport-media,#eef4f1); color: var(--passport-accent,#086f62); }
+.eyebrow { color: var(--passport-accent,#086f62); font-weight: 650; font-size: 12px; }
+.heading h2 { margin: 5px 0 8px; font-size: clamp(23px,5vw,30px); line-height: 1.12; letter-spacing: -.03em; text-wrap: balance; }
+.heading p,.footer p { color: var(--passport-muted,#536972); font-size: 13px; line-height: 1.6; margin: 0; }
+.messages { display: grid; gap: 14px; list-style: none; padding: 0; margin: 22px 0 8px; max-height: 560px; overflow-y: auto; overscroll-behavior: contain; }
+.messages > li { min-width: 0; padding: 16px; border-radius: 16px; }
+.user { margin-left: 24px; background: var(--passport-media,#eef4f1); }
+.answer { margin-right: 12px; border: 1px solid var(--passport-line,#d6e1de); background: var(--passport-surface,#fff); }
+.messageLabel { display: block; color: var(--passport-accent,#086f62); font-size: 11px; font-weight: 700; line-height: 1.6; }
+.messages p { font-size: 14px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; }
+.sources { display: flex; flex-wrap: wrap; gap: 4px 12px; list-style: none; padding: 0; margin: 10px 0 0; }
+.sources a { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-size: 12px; font-weight: 650; color: var(--passport-accent,#086f62); text-decoration: underline; text-underline-offset: 3px; }
+.sources a svg { flex-shrink: 0; }
+.status { margin: 16px 0 8px; font-size: 13px; color: var(--passport-muted,#536972); line-height: 1.6; }
+.status:empty { display: none; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.suggestions button,.retry { min-height: 44px; padding: 10px 12px; color: var(--passport-ink,#17313b); background: var(--passport-media,#eef4f1); border: 1px solid var(--passport-line,#d6e1de); border-radius: 12px; font-size: 12px; text-align: left; line-height: 1.5; cursor: pointer; }
+.retry { display: inline-flex; align-items: center; gap: 8px; }
+.form { display: grid; gap: 10px; margin-top: 20px; }
+.form label { font-size: 13px; font-weight: 650; }
+.form textarea { width: 100%; resize: vertical; min-height: 88px; max-height: 240px; border: 1px solid var(--passport-line,#d6e1de); border-radius: 12px; padding: 13px; color: var(--passport-ink,#17313b); background: var(--passport-surface,#fff); font-size: 16px; line-height: 1.5; }
+.form textarea::placeholder { color: var(--passport-muted,#536972); opacity: 1; }
+.submit { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px; border: 0; border-radius: 12px; background: var(--passport-accent,#086f62); color: var(--passport-surface,#fff); font-size: 14px; font-weight: 700; line-height: 1.5; cursor: pointer; }
+.submit:disabled,.suggestions button:disabled,.retry:disabled { opacity: .6; cursor: default; }
+.footer { display: grid; gap: 10px; margin-top: 16px; }
+.footer p { font-size: 12px; }
+.reset { min-height: 44px; justify-self: start; padding: 8px 0; border: 0; color: var(--passport-accent,#086f62); background: none; font-size: 12px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.assistant button:focus-visible,.assistant a:focus-visible,.assistant textarea:focus-visible { outline: 3px solid var(--passport-accent,#086f62); outline-offset: 3px; }
+@media (max-width: 359px) { .assistant { padding: 16px; } .heading { gap: 10px; } .icon { width: 40px; height: 40px; } .heading h2 { font-size: 23px; } .user { margin-left: 12px; } .answer { margin-right: 0; } }
+@media (prefers-reduced-motion: no-preference) { .submit,.suggestions button { transition: border-color 160ms ease,background-color 160ms ease; } }

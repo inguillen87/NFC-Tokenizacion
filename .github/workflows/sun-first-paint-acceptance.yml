@@ -59,6 +59,7 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/valle-demo-map" node apps/web/tests/valle-secreto-demo-map.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/wine-demo" node apps/web/tests/sun-wine-demo.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/syngenta-demo" node apps/web/tests/syngenta-demo.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/syngenta-product-assistant" node apps/web/tests/syngenta-product-assistant.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/managed-sommelier" node apps/web/tests/sun-managed-sommelier.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/post-tap-sommelier" node apps/web/tests/sun-post-tap-sommelier.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/marketing-navigation" node apps/web/tests/marketing-mega-navigation.browser.mjs

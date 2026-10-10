@@ -66,9 +66,9 @@ test("Syngenta catalog identity and document references are fixed public facts, 
     assert.equal(url.pathname, path);
     assert.equal(url.username + url.password + url.search + url.hash, "");
   }
-  assert.equal(SYNGENTA_DEMO.imageUrl, "/sun/syngenta/amistar-xtra-5l.webp");
+  assert.equal(SYNGENTA_DEMO.imageUrl, "/sun/syngenta/amistar-xtra-5l-planeta.webp");
   assert.equal(SYNGENTA_DEMO.logo, "/sun/syngenta/logo.svg");
-  assert.equal(SYNGENTA_DEMO.photoSource, "https://www.mercadolibre.com.ar/syngenta-amistar-xtra-fungicida-5-litro/up/MLAU2913854648");
+  assert.equal(SYNGENTA_DEMO.photoSource, "https://www.mercadolibre.com.ar/syngenta-amistar-xtra-fungicida-x-5-l--azoxistrobina/up/MLAU3544079462");
 });
 
 function renderSyngentaExperience(locale, scenario) {
@@ -82,6 +82,8 @@ function renderSyngentaExperience(locale, scenario) {
   const localRequire = name => {
     if (name.endsWith(".module.css")) return css;
     if (name === "./syngenta-demo") return { SYNGENTA_DEMO };
+    if(name === './syngenta-demo-map') return {SyngentaDemoMap:()=>React.createElement('div', {'data-testid':'syngenta-map-stub'})};
+    if(name === './syngenta-product-assistant') return {SyngentaProductAssistant:()=>React.createElement('div', {'data-testid':'syngenta-assistant-stub'})};
     if (name.startsWith(".")) throw new Error(`Unexpected production dependency: ${name}`);
     return require(name);
   };
@@ -183,7 +185,7 @@ test("all languages distinguish public catalog content, simulated states and una
     assert(copy.trust.includes("Syngenta Argentina"));
     assert(copy.conditionBody.length > 30);
     assert(copy.stageBody.length > 30);
-    assert(copy.photoCredit.includes("Agroinsumos Mercofrut"));
+    assert(copy.photoCredit.includes("Tienda Planeta Verde"));
     assert.match(copy.photoCredit, /comercial|commercial/i, "the photo is a credited commercial reference");
     assert(!copy.conditionBody.includes("15.2") && !copy.conditionBody.includes("62%"));
   }

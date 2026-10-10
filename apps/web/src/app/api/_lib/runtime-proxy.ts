@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { stripConsumerTapCapabilityCookies } from "./consumer-tap-handoff";
+import { fetchRuntimeApi } from "./server-api-transport";
 
 function correlationIdFrom(req: Request) {
   return req.headers.get("x-correlation-id") || crypto.randomUUID();
@@ -48,14 +49,13 @@ export async function proxyToApi(req: Request, targetPath: string) {
   const method = req.method;
   const body = method === "GET" || method === "HEAD" ? undefined : await req.text();
   const correlationId = correlationIdFrom(req);
-  const response = await fetch(`${productUrls.api}${targetPath}`, {
+  const response = await fetchRuntimeApi(`${productUrls.api}${targetPath}`, {
     method,
     headers: buildProxyHeaders(req, correlationId),
     body,
     cache: "no-store",
-  }).catch((error) => {
-    const message = error instanceof Error ? error.message : "api_unavailable";
-    return Response.json({ ok: false, error: "api_unavailable", detail: message }, { status: 503 });
+  }).catch(() => {
+    return Response.json({ ok: false, error: "api_unavailable" }, { status: 503 });
   });
   const text = await response.text();
   const next = new NextResponse(text, {

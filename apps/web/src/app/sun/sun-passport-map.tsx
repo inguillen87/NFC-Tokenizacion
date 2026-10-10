@@ -7,6 +7,7 @@ import styles from "./sun-passport-map.module.css";
 import {configureSunMapWorker} from "../../lib/sun-map-worker";
 import {googlePointLink, googleComparisonLink, sunMapInsets} from "../../lib/sun-external-map";
 import { sunReferenceMapStyle } from "./sun-reference-map";
+import { loadSyngentaMapGeography } from "./syngenta-map-geography";
 import type { SunLocale } from "./sun-locale";
 
 export type SunPassportMapLocation = {
@@ -27,6 +28,7 @@ type SunPassportMapProps = {
   distanceLabel: string;
   tapTimeLabel?: string | null;
   cartography?: "reference";
+  referenceContext?: "agro";
   locale?: SunLocale;
 };
 
@@ -141,13 +143,13 @@ function accuracyPolygon(point: SunPassportMapLocation) {
   };
 }
 
-function popupContent(kind: "origin" | "tap", point: SunPassportMapLocation) {
+function popupContent(kind: "origin" | "tap", point: SunPassportMapLocation, referenceContext?: "agro", locale: SunLocale = "es-AR") {
   const container = document.createElement("div");
   container.className = styles.popup;
 
   const eyebrow = document.createElement("span");
   eyebrow.className = styles.popupEyebrow;
-  eyebrow.textContent = kind === "origin" ? originPresentation(point).eyebrow : tapSourcePresentation(point).eyebrow;
+  eyebrow.textContent = kind === "origin" ? originPresentation(point, referenceContext, locale).eyebrow : tapSourcePresentation(point).eyebrow;
 
   const title = document.createElement("strong");
   title.className = styles.popupTitle;
@@ -250,7 +252,14 @@ function referencePopup(map: MapLibreMap, coordinate: [number, number], content:
   };
 }
 
-function originPresentation(point: SunPassportMapLocation | null) {
+function originPresentation(point: SunPassportMapLocation | null, referenceContext?: "agro", locale: SunLocale = "es-AR") {
+  if (referenceContext === "agro" && point?.source === "public_producer_reference") {
+    return locale === "en"
+      ? { eyebrow: "Office reference · public point", meta: "Public contact address, not the manufacturing origin" }
+      : locale === "pt-BR"
+        ? { eyebrow: "Sede de referência · ponto público", meta: "Endereço público de contato, não a origem de fabricação" }
+        : { eyebrow: "Sede de referencia · punto público", meta: "Domicilio público de contacto, no origen de fabricación" };
+  }
   return point?.source === "public_producer_reference"
     ? { eyebrow: "Viña · punto público", meta: "Referencia del sitio oficial" }
     : { eyebrow: "Origen declarado", meta: "Informado por la empresa" };
@@ -328,7 +337,7 @@ function tapSourcePresentation(point: SunPassportMapLocation | null) {
   };
 }
 
-export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeLabel, cartography, locale = "es-AR" }: SunPassportMapProps) {
+export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeLabel, cartography, referenceContext, locale = "es-AR" }: SunPassportMapProps) {
   const mapId = useId();
   const mapFrameRef = useRef<HTMLDivElement | null>(null);
   const expandButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -402,10 +411,19 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         const maplibre = await import("maplibre-gl");
         if (disposed || !mapContainerRef.current) return;
 
+        const geography = cartography === "reference" && referenceContext === "agro" ? await loadSyngentaMapGeography() : null;
+        if (disposed || !mapContainerRef.current) return;
+        const styleForTheme = (light: boolean) => {
+          const style = cartography === "reference" ? sunReferenceMapStyle(light) : mapStyleForTheme(light);
+          const source = style.sources.geography;
+          if (geography && source?.type === "geojson") source.data = geography;
+          return style;
+        };
+
         configureSunMapWorker(maplibre, window.location.origin);
         const map = new maplibre.Map({
           container: mapContainerRef.current,
-          style: cartography === "reference" ? sunReferenceMapStyle(isLightTheme()) : mapStyleForTheme(isLightTheme()),
+          style: styleForTheme(isLightTheme()),
           center: [points[0].point.lng, points[0].point.lat],
           zoom: points.length === 1 ? 10 : 4,
           minZoom: cartography === "reference" ? -3 : 2,
@@ -555,7 +573,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           const element = document.createElement("button");
           element.type = "button";
           element.className = `${styles.marker} ${kind === "tap" ? styles.markerTap : ""}`;
-          element.setAttribute("aria-label", `${kind === "origin" ? originPresentation(point).eyebrow : tapSourcePresentation(point).eyebrow}: ${point.label}`);
+          element.setAttribute("aria-label", `${kind === "origin" ? originPresentation(point, referenceContext, locale).eyebrow : tapSourcePresentation(point).eyebrow}: ${point.label}`);
           const markerCode = document.createElement("span");
           markerCode.textContent = kind === "origin" ? "O" : "T";
           markerCode.setAttribute("aria-hidden", "true");
@@ -563,9 +581,9 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           markerAnchor.append(element);
 
           const popup = cartography === "reference"
-            ? referencePopup(map, [point.lng, point.lat], popupContent(kind, point), locale === "en" ? "Close" : locale === "pt-BR" ? "Fechar" : "Cerrar")
+            ? referencePopup(map, [point.lng, point.lat], popupContent(kind, point, referenceContext, locale), locale === "en" ? "Close" : locale === "pt-BR" ? "Fechar" : "Cerrar")
             : new maplibre.Popup({ offset: 24, closeButton: true, closeOnClick: false, focusAfterOpen: false, maxWidth: "260px" })
-                .setDOMContent(popupContent(kind, point));
+                .setDOMContent(popupContent(kind, point, referenceContext, locale));
           popupsRef.current[point.id] = popup;
           const onClose = () => {
             if (activePopup?.popup !== popup) return;
@@ -702,7 +720,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           loadTimeoutId = window.setTimeout(() => {
             if (!disposed && !fullyReady) setLoadState("error");
           }, 8_000);
-          map.setStyle(cartography === "reference" ? sunReferenceMapStyle(nextLightTheme) : mapStyleForTheme(nextLightTheme));
+          map.setStyle(styleForTheme(nextLightTheme));
         };
         themeObserver = new MutationObserver(syncTheme);
         themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
@@ -744,7 +762,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
       focusRef.current = () => undefined;
     };
   // Coordinates and evidence changes rebuild markers after a consented local update.
-  }, [pointKey, retryNonce, showDemoConnection, cartography]);
+  }, [pointKey, retryNonce, showDemoConnection, cartography, referenceContext]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -789,13 +807,13 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
           className={styles.locationButton}
           disabled={loadState !== "ready"}
           onClick={event => focusRef.current(point, event.currentTarget, event.detail === 0)}
-          aria-label={`Enfocar ${kind === "origin" ? "origen" : "tap"} en el mapa: ${point.label}`}
+          aria-label={`Enfocar ${kind === "origin" ? referenceContext === "agro" ? "sede de referencia" : "origen" : "tap"} en el mapa: ${point.label}`}
         >
           <span className={`${styles.locationIndex} ${kind === "tap" ? styles.locationIndexTap : ""}`} aria-hidden="true">{locationCode}</span>
           <span className={styles.locationCopy}>
-            <span className={styles.locationEyebrow}>{kind === "origin" ? originPresentation(point).eyebrow : tapPresentation.eyebrow}</span>
+            <span className={styles.locationEyebrow}>{kind === "origin" ? originPresentation(point, referenceContext, locale).eyebrow : tapPresentation.eyebrow}</span>
             <span className={styles.locationTitle}>{point.label}</span>
-            <span className={styles.locationMeta}>{kind === "origin" ? originPresentation(point).meta : tapPresentation.badge}</span>
+            <span className={styles.locationMeta}>{kind === "origin" ? originPresentation(point, referenceContext, locale).meta : tapPresentation.badge}</span>
           </span>
         </button>
         {point.mapHref ? <a className={styles.externalLink} href={point.mapHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label={`Abrir ${kind === "origin" ? "origen" : "tap"} en OpenStreetMap`}>OpenStreetMap ↗</a> : <span />}
@@ -805,7 +823,13 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
 
   const tapPresentation = tapSourcePresentation(tap);
   const isNetworkEstimate = tap?.source === "edge_ip_approx" || tap?.source === "ip_geo";
-  const mapAriaLabel = cartography === "reference"
+  const isAgroReference = cartography === "reference" && referenceContext === "agro";
+  const agroMapCopy = locale === "en"
+    ? { label: "Interactive map of the public office reference and the sample area or your approximate location", title: "OFFICE AND YOUR AREA · DEMO", intro: "General map without streets. This demo creates no NFC reading.", reference: "Office reference", focus: "Frame the available points on this demo map", openOffice: "Open the office reference ↗", sourceLabel: "Office reference:", noJourney: "The map shows a public contact reference and a sample or consented area. It does not identify this lot's manufacturing origin or a container journey." }
+    : locale === "pt-BR"
+      ? { label: "Mapa interativo da sede pública de referência e da área de exemplo ou da sua localização aproximada", title: "SEDE E SUA ÁREA · DEMO", intro: "Mapa geral, sem ruas. Esta demo não cria uma leitura NFC.", reference: "Sede de referência", focus: "Enquadrar os pontos disponíveis no mapa da demo", openOffice: "Abrir a sede de referência ↗", sourceLabel: "Sede de referência:", noJourney: "O mapa mostra uma referência pública de contato e uma área de exemplo ou compartilhada com permissão. Não indica a origem de fabricação deste lote nem o percurso da embalagem." }
+      : { label: "Mapa interactivo de la sede pública de referencia y la zona de ejemplo o tu ubicación aproximada", title: "SEDE Y TU ZONA · DEMO", intro: "Mapa general, sin calles. Esta demo no crea una lectura NFC.", reference: "Sede de referencia", focus: "Reencuadrar los puntos disponibles en este mapa de muestra", openOffice: "Abrir sede de referencia ↗", sourceLabel: "Sede de referencia:", noJourney: "El mapa muestra una referencia pública de contacto y una zona de ejemplo o compartida con permiso. No indica el origen de fabricación de este lote ni un recorrido del envase." };
+  const mapAriaLabel = isAgroReference ? agroMapCopy.label : cartography === "reference"
     ? locale === "en" ? "Interactive map of the public vineyard point and the demo area" : locale === "pt-BR" ? "Mapa interativo do ponto público da vinícola e da área de exemplo" : "Mapa interactivo del punto público de la viña y la zona de la demo"
     : origin && tap
     ? "Mapa interactivo del origen declarado y la zona informada para esta lectura"
@@ -816,7 +840,7 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         : "Mapa interactivo sin ubicaciones informadas";
   const mapLegend = (
     <div className={`${styles.mapLegend} ${cartography === "reference" ? styles.referenceLegend : ""}`} data-map-legend aria-hidden="true">
-      {origin ? <span className={styles.legendItem}><i className={styles.legendDot} />{cartography === "reference" ? (locale === "en" ? "Vineyard" : locale === "pt-BR" ? "Vinícola" : "Viña") : "Origen"}</span> : null}
+      {origin ? <span className={styles.legendItem}><i className={styles.legendDot} />{isAgroReference ? agroMapCopy.reference : cartography === "reference" ? (locale === "en" ? "Vineyard" : locale === "pt-BR" ? "Vinícola" : "Viña") : "Origen"}</span> : null}
       {tap ? <span className={styles.legendItem}><i className={`${styles.legendDot} ${styles.legendDotTap}`} />{cartography === "reference" ? (tap.source === "demo" ? "Mendoza" : locale === "en" ? "Your area" : locale === "pt-BR" ? "Sua área" : "Tu zona") : tapPresentation.legend}</span> : null}
       {origin && !tap ? <span className={styles.missingTapBadge}>Solo origen · lectura sin coordenadas</span> : null}
       {showDemoConnection && cartography !== "reference" ? <span className={styles.demoBadge}>Demo · conexión ilustrativa</span> : null}
@@ -855,11 +879,12 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
       data-sun-passport-map="maplibre"
       data-route-mode={showDemoConnection ? "demo" : "no-route"}
       data-basemap={cartography === "reference" ? "local-reference" : "configured-raster"}
+      data-reference-context={referenceContext}
       data-basemap-state={isDegraded && loadState === "ready" ? "degraded" : loadState}
       data-location-source={tapPresentation.kind}
     >
       <div className={styles.mapToolbar}>
-        <div className={styles.toolbarIntro}><span>{cartography === "reference" ? "VIÑA Y EXPERIENCIA DE MUESTRA" : "UBICACIONES DE ESTA LECTURA"}</span><p>{cartography === "reference" ? "Mapa general, sin calles. Explorá ambos puntos." : "Explorá el mapa sin salir del pasaporte."}</p></div>
+        <div className={styles.toolbarIntro}><span>{isAgroReference ? agroMapCopy.title : cartography === "reference" ? "VIÑA Y EXPERIENCIA DE MUESTRA" : "UBICACIONES DE ESTA LECTURA"}</span><p>{isAgroReference ? agroMapCopy.intro : cartography === "reference" ? "Mapa general, sin calles. Explorá ambos puntos." : "Explorá el mapa sin salir del pasaporte."}</p></div>
         <div className={styles.toolbarActions}>
           <button ref={expandButtonRef} type="button" className={styles.expandButton} aria-expanded={expanded} aria-controls={mapId} disabled={!points.length} onClick={toggleExpanded}>{expanded ? "Reducir mapa" : "Ampliar mapa"}</button>
           {(originHref || tapHref) ? <details className={styles.externalMenu}>
@@ -868,9 +893,9 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
               <p>Se abrirá una aplicación externa con las coordenadas públicas elegidas. No se envían el identificador ni el enlace de esta lectura.</p>
               {comparisonHref ? <>
                 <a href={comparisonHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Ver ambos en Google Maps ↗</a>
-                <small>Google puede calcular una ruta sugerida entre el origen declarado y la zona aproximada compartida. No representa el recorrido del producto.</small>
+                <small>{isAgroReference ? (locale === "en" ? "Google may suggest a route between this public office and your approximate area. It does not represent the container's journey." : locale === "pt-BR" ? "O Google pode sugerir uma rota entre esta sede pública e sua área aproximada. Não representa o percurso da embalagem." : "Google puede proponer una ruta entre esta sede pública y tu zona aproximada. No representa el recorrido del envase.") : "Google puede calcular una ruta sugerida entre el origen declarado y la zona aproximada compartida. No representa el recorrido del producto."}</small>
               </> : null}
-              {originHref ? <a href={originHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Abrir origen declarado ↗</a> : null}
+              {originHref ? <a href={originHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{isAgroReference ? agroMapCopy.openOffice : "Abrir origen declarado ↗"}</a> : null}
               {tapHref ? <a href={tapHref} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{tap?.source === "ip_geo" || tap?.source === "edge_ip_approx" ? "Ver zona estimada de red ↗" : "Abrir zona compartida ↗"}</a> : null}
               {!comparisonHref && (tap?.source === "ip_geo" || tap?.source === "edge_ip_approx") ? <small>La zona estimada por la red no se usa como destino preciso ni para calcular una ruta.</small> : null}
             </div>
@@ -912,9 +937,9 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         ) : null}
       </div>
       {loadState === "ready" && cartography === "reference" ? mapLegend : null}
-      {loadState === "ready" && points.length > 1 && cartography === "reference" ? <button type="button" className={`${styles.fitButton} ${styles.referenceFitButton}`} data-sun-dock-avoid title="Reencuadrar viña y zona de la demo" onClick={centerPoints}>Centrar puntos</button> : null}
+      {loadState === "ready" && points.length > 1 && cartography === "reference" ? <button type="button" className={`${styles.fitButton} ${styles.referenceFitButton}`} data-sun-dock-avoid title={isAgroReference ? agroMapCopy.focus : "Reencuadrar viña y zona de la demo"} onClick={centerPoints}>Centrar puntos</button> : null}
       <div className={styles.details} data-sun-dock-avoid>
-        {renderLocation("origin", origin)}
+        {!isAgroReference || origin ? renderLocation("origin", origin) : null}
         {renderLocation("tap", tap)}
       </div>
       <div className={styles.locationSourceSummary} data-sun-dock-avoid>
@@ -925,9 +950,9 @@ export function SunPassportMap({ origin, tap, showRoute, distanceLabel, tapTimeL
         <summary>Cómo se obtuvo esta ubicación</summary>
         <div className={styles.technicalBody}>
           {tap ? <p><strong>Fuente de esta lectura:</strong> {tap.evidence}</p> : null}
-          {origin ? <p><strong>Origen:</strong> {origin.evidence}</p> : null}
+          {origin ? <p><strong>{isAgroReference ? agroMapCopy.sourceLabel : "Origen:"}</strong> {origin.evidence}</p> : null}
           <p>
-            {showDemoConnection && origin && tap
+            {isAgroReference ? agroMapCopy.noJourney : showDemoConnection && origin && tap
               ? cartography === "reference"
                 ? locale === "en" ? `Demo: the line links the public vineyard point and the Mendoza example (${distanceLabel}); it does not represent a physical journey.` : locale === "pt-BR" ? `Demo: a linha conecta o ponto público da vinícola e o exemplo de Mendoza (${distanceLabel}); não representa um percurso físico.` : `Demo: la línea une el punto público de la viña y el ejemplo de Mendoza (${distanceLabel}); no representa un recorrido físico.`
                 : `Demo: la línea punteada conecta dos puntos simulados (${distanceLabel}); no representa un recorrido físico.`

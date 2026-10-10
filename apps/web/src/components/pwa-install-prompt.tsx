@@ -71,6 +71,8 @@ export function PwaInstallPrompt({ locale = "es-AR" }: { locale?: string }) {
     || pathname.startsWith("/offline")
     || pathname.startsWith("/me")
     || pathname.startsWith("/login")
+    || pathname === "/privacy"
+    || pathname === "/data-deletion"
     || pathname.startsWith("/web3/");
 
   useEffect(() => {

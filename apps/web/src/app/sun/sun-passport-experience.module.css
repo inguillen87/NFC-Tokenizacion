@@ -90,7 +90,12 @@
 }
 
 .passport[data-demo-profile="syngenta"]:global(.sun-tap-shell) :global(.sun-summary-panel) :global(.sun-summary-product__visual) {
+  height: clamp(12rem, 56vw, 14rem) !important;
   background: #fff !important;
+}
+.passport[data-demo-profile="syngenta"]:global(.sun-tap-shell) :global(.sun-summary-product) {
+  grid-template-columns: minmax(6.5rem, 42%) minmax(0, 1fr);
+  gap: 1rem;
 }
 .passport[data-demo-profile="syngenta"] :global(.sun-summary-product__title) {
   font-family: inherit;
@@ -98,7 +103,9 @@
 }
 .passport[data-demo-profile="syngenta"] :global(.sun-summary-product__visual) img {
   filter: none;
+  padding: .5rem;
 }
+.syngentaProfileTitle { color: var(--passport-ink); font-size: 1.125rem; line-height: 1.4; font-weight: 700; }
 
 .passport :global(.sun-summary-product__copy) > p:last-of-type {
   font-size: 0.8125rem;
@@ -463,6 +470,10 @@
 
 .passport :global(.sun-mobile-dock) a[aria-current="location"] {
   box-shadow: inset 0 -2px 0 var(--passport-accent);
+}
+
+:global(html:is(.theme-light, [data-theme="light"])) .passport :global(.sun-mobile-dock) a[aria-current="location"] {
+  color: #155e75 !important;
 }
 
 @container (max-width: 280px) {

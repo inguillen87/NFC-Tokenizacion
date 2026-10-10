@@ -18,6 +18,8 @@ export function ContextualHelpBot({ locale }: { locale: AppLocale }) {
     pathname.startsWith("/docs") ||
     pathname.startsWith("/sdk") ||
     pathname.startsWith("/pricing") ||
+    pathname === "/privacy" ||
+    pathname === "/data-deletion" ||
     pathname.startsWith("/r")
   ) {
     return null;
