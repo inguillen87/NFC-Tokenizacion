@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Mail, Phone, Sparkles } from "lucide-react";
+import { consumerDeliveryIsSimulation, consumerDeliveryMessage } from "../../login/consumer-login-delivery";
 import {
   ConsumerContactInput,
   consumerContactDraftIsValid,
@@ -20,6 +21,19 @@ type Consumer = {
 
 function contactFromPayload(payload: { email: string } | { phone: string }) {
   return "email" in payload ? payload.email : payload.phone;
+}
+
+function associationErrorMessage(error: unknown, stage: "start" | "verify") {
+  if (error === "contact_linking_temporarily_unavailable") {
+    return "La vinculación de contactos no está disponible ahora. Tu contacto se conserva y no se vinculó ningún canal. Intentá más tarde.";
+  }
+  if (error === "unauthorized") return "No pudimos confirmar tu sesión. Volvé a iniciar sesión para vincular el contacto.";
+  if (error === "rate_limited") return "Demasiados intentos. Tu contacto se conserva; esperá unos minutos y probá de nuevo.";
+  if (error === "contact_already_linked") return "Este contacto ya está vinculado a otra cuenta. Tu dato se conserva; revisalo antes de volver a intentar.";
+  if (error === "invalid_code") return "El código ingresado es incorrecto o expiró.";
+  return stage === "start"
+    ? "No pudimos confirmar la solicitud del código. Tu contacto se conserva; volvé a intentar."
+    : "No pudimos confirmar la vinculación. Tu contacto y el código se conservan; volvé a intentar.";
 }
 
 export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer | null }) {
@@ -72,15 +86,20 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
 
     setLoading(false);
     if (!res) {
-      setErrorMsg("Error de conexión al iniciar la asociación.");
+      setStatusMsg("");
+      setErrorMsg("No pudimos confirmar la solicitud por la conexión. Tu contacto se conserva; revisá la conexión y volvé a intentar.");
       return;
     }
 
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.ok) {
-      setErrorMsg(data?.error === "contact_already_linked"
-        ? "Este contacto ya está vinculado a otra cuenta."
-        : "No se pudo iniciar el proceso de verificación. Revisá el formato.");
+    if (!res.ok || data?.ok !== true) {
+      setStatusMsg("");
+      setErrorMsg(associationErrorMessage(data?.error, "start"));
+      return;
+    }
+    if (consumerDeliveryIsSimulation(data)) {
+      setStatusMsg("");
+      setErrorMsg("Este canal está en modo de prueba y no envió un código real. Tu contacto se conserva; intentá más tarde.");
       return;
     }
 
@@ -88,7 +107,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
     setPendingContact(nextContact);
     setCode("");
     setStep("verify");
-    setStatusMsg(`Código enviado a ${nextContact}. Revisá tu ${data.deliveryChannel === "email" ? "correo" : "WhatsApp"}.`);
+    setStatusMsg(`${consumerDeliveryMessage(data)} Contacto solicitado: ${nextContact}.`);
   }
 
   async function verifyAssociation() {
@@ -118,15 +137,15 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
 
     setLoading(false);
     if (!res) {
-      setErrorMsg("Error de conexión al verificar el código.");
+      setStatusMsg("");
+      setErrorMsg("No pudimos confirmar la vinculación por la conexión. Tu contacto y el código se conservan; volvé a intentar.");
       return;
     }
 
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.ok) {
-      setErrorMsg(data?.error === "invalid_code"
-        ? "El código ingresado es incorrecto o expiró."
-        : "Error en la verificación. Intentá de nuevo.");
+    if (!res.ok || data?.ok !== true) {
+      setStatusMsg("");
+      setErrorMsg(associationErrorMessage(data?.error, "verify"));
       return;
     }
 
@@ -150,7 +169,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
           <div className="v3-space-y-1">
             <h2 className="text-xl font-black tracking-tight text-white">Canales de contacto vinculados</h2>
             <p className="mx-auto max-w-sm text-xs leading-relaxed text-slate-400">
-              El backend reporta email y WhatsApp asociados a esta cuenta. Un código único puede enviarse a los canales configurados y cualquiera puede validarlo; esto mejora entrega y recuperación, pero no es MFA secuencial.
+              Tenés un correo y un teléfono vinculados. Podés pedir un código por los medios de acceso disponibles.
             </p>
           </div>
 
@@ -160,7 +179,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
               <span className="font-mono text-slate-200">{consumer.email}</span>
             </div>
             <div className="flex items-center justify-between p-3.5">
-              <span className="flex items-center gap-2 text-slate-400"><Phone className="h-4 w-4" /> WhatsApp</span>
+              <span className="flex items-center gap-2 text-slate-400"><Phone className="h-4 w-4" /> Teléfono</span>
               <span className="font-mono text-slate-200">{consumer.phone}</span>
             </div>
             <div className="flex items-center justify-between bg-emerald-500/5 p-3.5">
@@ -242,13 +261,13 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
           )}
 
           {statusMsg ? (
-            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs leading-relaxed text-cyan-200">
+            <div id="security-association-status" role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs leading-relaxed text-cyan-200">
               {statusMsg}
             </div>
           ) : null}
 
           {errorMsg ? (
-            <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs leading-relaxed text-red-200">
+            <div id="security-association-error" role="alert" className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs leading-relaxed text-red-200">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
               <span>{errorMsg}</span>
             </div>
