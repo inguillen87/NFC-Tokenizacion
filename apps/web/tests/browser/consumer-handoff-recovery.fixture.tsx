@@ -11,6 +11,8 @@ const state = Object.assign(window, {
   __handoffBodies: 0,
   __ignoreHandoffAbort: false,
   __handoffPushes: [] as string[],
+  __handoffNavigationMode: "immediate",
+  __handoffCommit: null as (() => void) | null,
   __handoffGeoCalls: 0,
 });
 window.fetch = async (input, init) => {

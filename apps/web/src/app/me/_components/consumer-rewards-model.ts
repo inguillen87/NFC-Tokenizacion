@@ -28,8 +28,64 @@ function instant(value: unknown): string | null {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
+const rewardDateFormatter = new Intl.DateTimeFormat("es-AR", {
+  day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
+  hourCycle: "h23", numberingSystem: "latn", timeZone: "America/Argentina/Buenos_Aires",
+});
+const rewardMonths = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 export function rewardDateLabel(value: string | null): string {
-  return value ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value)) + " (Argentina)" : "No informado";
+  const sample = instant(value);
+  if (!sample) return "No informado";
+  // Locale literals can differ between server and browser CLDR versions during hydration.
+  const parts = rewardDateFormatter.formatToParts(new Date(sample));
+  const number = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(part => part.type === type)?.value);
+  const day = number("day"), month = number("month"), year = number("year"), hour = number("hour"), minute = number("minute");
+  if (![day, month, year, hour, minute].every(Number.isInteger) || day < 1 || day > 31 || month < 1 || month > 12 || year < 1000 || hour < 0 || hour > 23 || minute < 0 || minute > 59) return "No informado";
+  return `${day} ${rewardMonths[month - 1]} ${year}, ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} (Argentina)`;
+}
+export type ConsumerRewardClock = { serverObservedAt: string; sampledAt: number; elapsedOrigin: number; monotonic: number; wall: number; highWater: number };
+// A server render sample is a lower bound, not the exact time of reception.
+// Only elapsed client time is used; its absolute wall-clock offset is ignored.
+export function createConsumerRewardClock(serverObservedAt: string, monotonic: number, wall: number): ConsumerRewardClock {
+  const sample = instant(serverObservedAt);
+  const sampledAt = sample ? Date.parse(sample) : NaN;
+  return { serverObservedAt, sampledAt, elapsedOrigin: sampledAt, monotonic, wall, highWater: sampledAt };
+}
+export function readConsumerRewardClock(clock: ConsumerRewardClock, monotonic: number, wall: number): number {
+  if (![clock.elapsedOrigin, clock.monotonic, clock.wall, clock.highWater, monotonic, wall].every(Number.isFinite) || monotonic < 0 || clock.monotonic < 0) return NaN;
+  const elapsed = Math.max(0, monotonic - clock.monotonic, wall - clock.wall);
+  // A malformed refresh withdraws the code, while elapsed time keeps advancing.
+  clock.highWater = Math.max(clock.highWater, clock.elapsedOrigin + elapsed);
+  return Number.isFinite(clock.sampledAt) ? clock.highWater : NaN;
+}
+export function reanchorConsumerRewardClock(clock: ConsumerRewardClock, serverObservedAt: string, monotonic: number, wall: number): ConsumerRewardClock {
+  const current = readConsumerRewardClock(clock, monotonic, wall);
+  const next = createConsumerRewardClock(serverObservedAt, monotonic, wall);
+  // Refreshing props can withdraw a code; an older cached sample cannot restore it.
+  const observed = [clock.highWater, current, next.sampledAt].filter(Number.isFinite);
+  if (observed.length) {
+    next.elapsedOrigin = next.highWater = Math.max(...observed);
+  }
+  return next;
+}
+// This projection can only withdraw a reported code. It never grants a claim
+// or restores one; the API remains the authority for cancellation and redemption.
+export function expireConsumerRewards(items: ConsumerReward[], observedAt: number): ConsumerReward[] {
+  return items.map(item => {
+    if (item.state !== "claimed") return item.code === null ? item : { ...item, code: null };
+    const expiry = instant(item.expiresAt);
+    if (!item.hasClaim || !expiry || !Number.isFinite(observedAt)) return { ...item, state: "unknown", code: null };
+    return Date.parse(expiry) <= observedAt ? { ...item, state: "expired", code: null } : item;
+  });
+}
+export function nextConsumerRewardExpiry(items: ConsumerReward[], observedAt: number): number | null {
+  if (!Number.isFinite(observedAt)) return null;
+  const future = items.flatMap(item => {
+    const expiry = item.hasClaim && item.state === "claimed" ? instant(item.expiresAt) : null;
+    const value = expiry ? Date.parse(expiry) : NaN;
+    return value > observedAt ? [value] : [];
+  });
+  return future.length ? Math.min(...future) : null;
 }
 export function buildConsumerRewardsModel(payload: unknown, now: string): ConsumerRewardsSource {
   const envelope = record(payload);

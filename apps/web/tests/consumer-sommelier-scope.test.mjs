@@ -62,7 +62,7 @@ test("withdrawn brand permission or an expired session never retries as general 
     const result = await requestManagedSommelierAnswer("Consulta que se conserva", { locale: "es-AR", eventId: "715", fetchImpl: async (path, init) => {
       calls.push({ path, body: JSON.parse(init.body) }); return Response.json({ ok: false, reason: "sommelier_event_not_authorized" }, { status });
     } });
-    assert.deepEqual(result, { status: "unavailable", reason: "http-error" });
+    assert.deepEqual(result, { status: "unavailable", reason: "http-error", httpStatus: status, serviceReason: "sommelier_event_not_authorized" });
     assert.deepEqual(calls, [{ path: "/api/sommelier/chat", body: { mode: "consumer", question: "Consulta que se conserva", locale: "es-AR", history: [], eventId: "715" } }]);
   }
 });

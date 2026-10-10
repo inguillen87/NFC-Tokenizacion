@@ -335,6 +335,51 @@ try{
   check(new URL(p.url()).pathname==='/login'&&!new URL(p.url()).searchParams.has('autoverify')&&!new URL(p.url()).searchParams.has('t'),`${kind} late response cannot redirect or restore automatic URL`);
   check(state.calls.length===1&&state.calls[0].path.endsWith('/verify')&&state.calls[0].method==='POST',`${kind} abandoned verification has one request and no automatic retry or session check`);await cancelled.context.close();
  }
+ for(const kind of ['legacy-code','magic-token'])for(const intervention of ['reader-focus','reader-focus-then-body','pointer','scroll-before-event']){
+  const theme=kind==='legacy-code'?'light':'dark',cancelled=await open(320,theme),p=cancelled.page,state=cancelled.state;
+  const label=`${kind}/${intervention}/320/${theme}`;state.identity.name=`automatic-verification-cancel:${label}`;state.holdVerify=true;state.verifyHttp=404;
+  check(await p.evaluate(()=>document.activeElement===document.body),`${label} automatic access begins with no focused control`);
+  const query=kind==='legacy-code'?'autoverify=1':'t=synthetic-only';
+  const requested=p.waitForRequest(request=>new URL(request.url()).pathname==='/api/consumer/auth/verify');
+  await p.evaluate(query=>history.pushState(null,'',`/login?consumer=1&next=%2Fdocs&${query}&contact=persona%40example.test&code=135791`),query);await requested;
+  await p.waitForFunction(()=>document.querySelector('.consumer-login-panel form')?.getAttribute('aria-busy')==='true');
+  check(await p.getByRole('textbox',{name:'Código de acceso',exact:true}).isDisabled(),`${label} automatic verification remains held and busy`);
+  const reader=p.getByRole('link',{name:'Cambiar tipo de acceso',exact:true});
+  if(intervention.startsWith('reader-focus')){
+   // Focus a real independent control without changing the viewport; returning
+   // to BODY afterwards must not erase the newer focus interaction's veto.
+   await reader.evaluate(node=>node.focus({preventScroll:true}));
+   check(await reader.evaluate(node=>node===document.activeElement),`${label} reader selected a real control outside the busy form`);
+   if(intervention==='reader-focus-then-body')await reader.evaluate(node=>node.blur());
+  }else if(intervention==='pointer'){
+   const bounds=await p.locator('.consumer-login-panel form').boundingBox();
+   check(bounds&&bounds.y+8>=0&&bounds.y+8<844,`${label} visible form padding supports a real pointer interaction`);
+   await p.mouse.click(bounds.x+8,bounds.y+8);
+  }
+  let before;
+  if(intervention==='scroll-before-event')before=await p.evaluate(()=>{
+   window.scrollTo(0,Math.min(200,Math.max(0,document.documentElement.scrollHeight-innerHeight)));
+   const position={scroll:window.scrollY,readerFocused:false};
+   history.pushState(null,'','/login?consumer=1&next=%2Fdocs');return position;
+  });
+  else{before=await p.evaluate(()=>({scroll:window.scrollY,readerFocused:document.activeElement?.textContent?.trim()==='Cambiar tipo de acceso'}));await p.evaluate(()=>history.pushState(null,'','/login?consumer=1&next=%2Fdocs'));}
+  if(intervention==='scroll-before-event')check(before.scroll>0,`${label} reader moved the viewport before the queued scroll event`);
+  await p.waitForFunction(()=>document.querySelector('.consumer-login-panel form')?.getAttribute('aria-busy')==='false');await afterRender(p);
+  const retainedCode=p.getByRole('textbox',{name:'Código de acceso',exact:true});
+  check(!await retainedCode.evaluate(node=>node===document.activeElement),`${label} cancelling automatic access preserves the newer reader interaction`);
+  if(intervention==='reader-focus')check(await reader.evaluate(node=>node===document.activeElement),`${label} cancelling keeps the selected outside control focused`);
+  if(intervention==='reader-focus-then-body'||intervention==='pointer')check(await p.evaluate(()=>document.activeElement===document.body),`${label} returning to BODY cannot restore permission to autofocus`);
+  if(intervention==='scroll-before-event')check(await p.evaluate(()=>window.scrollY)>=before.scroll-2,`${label} cancelling does not jump back to the code`);
+  check(await retainedCode.inputValue()==='135791'&&await p.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='persona@example.test',`${label} cancellation preserves both retained drafts`);
+  const interruption=await p.getByRole('status').innerText();check(interruption.includes('La verificación se interrumpió.'),`${label} cancellation is still announced`);
+  check(typeof state.releaseVerify==='function',`${label} pending response remains a local fixture`);
+  const lateResponse=p.waitForResponse(response=>new URL(response.url()).pathname==='/api/consumer/auth/verify'&&response.status()===404);state.releaseVerify();await(await lateResponse).finished();await afterRender(p);
+  check(await p.locator('form').getAttribute('aria-busy')==='false'&&await p.getByRole('status').innerText()===interruption&&!await retainedCode.evaluate(node=>node===document.activeElement),`${label} late denial cannot restore busy state, feedback or autofocus`);
+  check(await retainedCode.inputValue()==='135791'&&await p.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='persona@example.test',`${label} late denial leaves drafts unchanged`);
+  check(new URL(p.url()).pathname==='/login'&&!new URL(p.url()).searchParams.has('autoverify')&&!new URL(p.url()).searchParams.has('t'),`${label} late denial cannot navigate or restore automatic parameters`);
+  check(state.calls.length===1&&state.calls[0].path.endsWith('/verify')&&state.calls[0].method==='POST',`${label} cancellation and late response never retry or request a session`);
+  report.scenarios.push({name:'automatic-verification-cancel-after-reader-interaction',kind,intervention,width:320,theme,before,requests:state.calls});await cancelled.context.close();
+ }
  check(report.externalWrites===0,'No writes left local intercepted fixtures');check(report.blockedBusinessWrites.length===0,'No business mutations were attempted');check(report.geolocationCalls===0,'No location calls across access or product continuation');check(report.errors.length===0,'No client exceptions');report.status='passed';
 }catch(error){report.status='failed';report.error=error.stack;const p=browser.contexts().at(-1)?.pages().at(-1);if(p){const state=observedStates.find(state=>state.page===p);if(state)report.failureRequestTrace={...state.identity,...checkpoint(state,'failure'),navigationBoundaries:structuredClone(state.navigationBoundaries),snapshots:structuredClone(state.snapshots)};report.visible=(await p.locator('body').innerText()).slice(0,10000);await p.screenshot({path:join(output,'failure.png'),fullPage:true}).catch(()=>{});}throw error;}
 finally{

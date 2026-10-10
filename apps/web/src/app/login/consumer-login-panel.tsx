@@ -23,6 +23,16 @@ type LoginFeedback = {
   stage?: "preparation";
   officialAccess?: boolean;
 };
+type LoginFocusIntent = {
+  trigger: Element | null;
+  mode: "request" | "transition";
+  permitted: boolean;
+  completed: boolean;
+  scrollX: number;
+  scrollY: number;
+  target?: "code" | "contact";
+  release: () => void;
+};
 
 function preparationFailure(response: Awaited<ReturnType<typeof requestConsumerJson>>): LoginFeedback {
   const preserved = "Tu contacto se conserva; no solicitamos un código.";
@@ -67,6 +77,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const submitRef = useRef<HTMLButtonElement>(null);
   const emailRecoveryRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const focusIntent = useRef<LoginFocusIntent | null>(null);
   const status = feedback.message;
   const searchParams = useSearchParams();
   const forceOtp = searchParams.get("forceOtp") === "1" || searchParams.get("fresh") === "1";
@@ -83,6 +94,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   }
 
   function changeContact(nextDraft: ConsumerContactDraft) {
+    focusIntent.current?.release();
+    focusIntent.current = null;
     setContactDraft(nextDraft);
     setStep("start");
     setLateCodeAvailable(false);
@@ -92,21 +105,68 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
   function changeChannel() {
     changeContact({ ...contactDraft, channel: contactDraft.channel === "email" ? "whatsapp" : "email" });
-    requestAnimationFrame(() => formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus());
+    completeFocusIntent(beginFocusIntent("transition"), "contact");
   }
 
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  function beginFocusIntent(mode: LoginFocusIntent["mode"] = "request") {
+    focusIntent.current?.release();
+    const activeElement = document.activeElement;
+    const trigger = activeElement === document.body || activeElement === document.documentElement ? null : activeElement;
+    const intent: LoginFocusIntent = { trigger, mode, permitted: true, completed: false, scrollX: window.scrollX, scrollY: window.scrollY, release: () => {} };
+    const movedFocus = (event: Event) => {
+      if (event.target !== document.body && event.target !== intent.trigger && !intent.trigger?.contains(event.target as Node)) intent.permitted = false;
+    };
+    const movedPointer = (event: Event) => {
+      if (intent.mode === "transition" || event.target !== intent.trigger && !intent.trigger?.contains(event.target as Node)) intent.permitted = false;
+    };
+    const movedReading = () => { intent.permitted = false; };
+    const movedScroll = () => {
+      // Removing the previous channel's error can clamp the page in this same
+      // explicit transition. Requests still reject every newer scroll event.
+      if (intent.mode !== "transition" || !intent.completed) intent.permitted = false;
+    };
+    const movedKeyboard = () => { intent.permitted = false; };
+    document.addEventListener("focusin", movedFocus, true);
+    document.addEventListener("pointerdown", movedPointer, true);
+    document.addEventListener("touchmove", movedReading, { capture: true, passive: true });
+    document.addEventListener("keydown", movedKeyboard, true);
+    window.addEventListener("wheel", movedReading, { capture: true, passive: true });
+    window.addEventListener("scroll", movedScroll, { capture: true, passive: true });
+    intent.release = () => {
+      document.removeEventListener("focusin", movedFocus, true);
+      document.removeEventListener("pointerdown", movedPointer, true);
+      document.removeEventListener("touchmove", movedReading, true);
+      document.removeEventListener("keydown", movedKeyboard, true);
+      window.removeEventListener("wheel", movedReading, true);
+      window.removeEventListener("scroll", movedScroll, true);
+    };
+    focusIntent.current = intent;
+    return intent;
+  }
+
+  function completeFocusIntent(intent: LoginFocusIntent, target?: "code" | "contact") {
+    if (focusIntent.current === intent) { intent.completed = true; intent.target = target; }
+  }
+
+  useEffect(() => { mounted.current = true; return () => {
+    mounted.current = false;
+    focusIntent.current?.release();
+    focusIntent.current = null;
+  }; }, []);
 
   useEffect(() => {
-    if (step === "verify" && !pending) codeRef.current?.focus();
-  }, [step, pending]);
-
-  useEffect(() => {
-    if (feedback.tone !== "error" || pending) return;
-    if (feedback.field === "code") codeRef.current?.focus();
-    if (feedback.field === "contact") formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus();
-    if (preferEmailRecovery && (document.activeElement === submitRef.current || document.activeElement === document.body)) emailRecoveryRef.current?.focus();
-  }, [feedback, pending, preferEmailRecovery]);
+    const intent = focusIntent.current;
+    if (pending || !intent?.completed) return;
+    focusIntent.current = null;
+    intent.release();
+    // Live feedback remains announced even after a newer interaction. Only a
+    // still-owned request may move focus; finishing a request is not permission.
+    if (!mounted.current || !intent.permitted || intent.mode === "request" && (window.scrollX !== intent.scrollX || window.scrollY !== intent.scrollY)
+      || (document.activeElement !== intent.trigger && document.activeElement !== document.body)) return;
+    if (intent.target === "code" || feedback.tone === "error" && feedback.field === "code") codeRef.current?.focus();
+    else if (intent.target === "contact" || feedback.tone === "error" && feedback.field === "contact") formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus(intent.mode === "transition" ? { preventScroll: true } : undefined);
+    else if (feedback.tone === "error" && preferEmailRecovery) emailRecoveryRef.current?.focus();
+  }, [step, feedback, pending, preferEmailRecovery]);
 
   useEffect(() => {
     if (!forceOtp) return;
@@ -132,6 +192,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   useEffect(() => {
     if (forceOtp || (!magicToken && (autoverify !== "1" || !contactParam || !codeParam))) return;
     let cancelled = false;
+    const intent = beginFocusIntent();
     const legacyContact = contactParam || "";
     const legacyCode = codeParam || "";
     setContactDraft(consumerContactDraftFromValue(legacyContact));
@@ -156,10 +217,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         if (ready) { window.location.assign(safeNextPath); return; }
         setStatus("No pudimos confirmar tu sesión en este navegador. Volvé a intentar. Si se repite, revisá que las cookies estén habilitadas.", "error");
       }
-      if (!cancelled) { setPending(false); requestInFlight.current = false; }
+      if (!cancelled) { completeFocusIntent(intent); setPending(false); requestInFlight.current = false; }
     });
     return () => {
       cancelled = true;
+      // Cancelling the automatic URL completes only the intent that opened this
+      // code step. A newer interaction or replacement keeps its existing veto.
+      if (focusIntent.current === intent) completeFocusIntent(intent, "code");
       requestInFlight.current = false;
       setPending(false);
       setStatus("La verificación se interrumpió. Podés pedir un código para continuar.");
@@ -174,8 +238,9 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
   async function start() {
     if (requestInFlight.current) return;
+    const intent = beginFocusIntent();
     const contactPayload = consumerContactPayload(contactDraft);
-    if (!contactPayload) { setStatus("Ingresá un email válido o WhatsApp con prefijo y número local.", "error", "contact"); return; }
+    if (!contactPayload) { completeFocusIntent(intent); setStatus("Ingresá un email válido o WhatsApp con prefijo y número local.", "error", "contact"); return; }
     requestInFlight.current = true;
     setPending(true);
     setStatus("Estamos solicitando tu código…");
@@ -183,6 +248,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     const logout = await logoutConsumerSession();
     if (!mounted.current) return;
     if (logout.status !== "received" || !logout.ok || logout.payload?.ok !== true) {
+      completeFocusIntent(intent);
       setPending(false); requestInFlight.current = false;
       setFeedback(preparationFailure(logout));
       return;
@@ -191,6 +257,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(consumerAuthStartPayload(contactPayload, safeNextPath)),
     });
     if (!mounted.current) return;
+    completeFocusIntent(intent);
     setPending(false); requestInFlight.current = false;
     if (response.status !== "received") {
       setLateCodeAvailable(true);
@@ -213,14 +280,16 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       return;
     }
     setCode("");
+    completeFocusIntent(intent, "code");
     setStep("verify");
     setStatus(consumerDeliveryMessage(payload));
   }
 
   async function verify() {
     if (requestInFlight.current) return;
+    const intent = beginFocusIntent();
     const contactPayload = consumerContactPayload(contactDraft);
-    if (!contactPayload || !code.trim()) { setStatus("Revisá el contacto y el código.", "error", "code"); return; }
+    if (!contactPayload || !code.trim()) { completeFocusIntent(intent); setStatus("Revisá el contacto y el código.", "error", "code"); return; }
     requestInFlight.current = true;
     setPending(true);
     setStatus("Estamos comprobando tu código…");
@@ -229,11 +298,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     });
     if (!mounted.current) return;
     if (response.status !== "received") {
+      completeFocusIntent(intent);
       setPending(false); requestInFlight.current = false;
       setStatus("No pudimos confirmar el acceso por la conexión. Conservamos el código que ingresaste; volvé a intentar.", "error");
       return;
     }
     if (!response.ok || response.payload?.ok !== true) {
+      completeFocusIntent(intent);
       setPending(false); requestInFlight.current = false;
       setStatus(response.httpStatus === 429 ? "Demasiados intentos. Esperá unos minutos antes de volver a probar." : response.httpStatus >= 500
         ? "El servicio de acceso no está disponible ahora. Conservamos tu código; probá más tarde."
@@ -242,6 +313,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     }
     const ready = await confirmSession();
     if (!mounted.current) return;
+    completeFocusIntent(intent);
     setPending(false); requestInFlight.current = false;
     if (!ready) { setStatus("No pudimos confirmar tu sesión en este navegador. Volvé a intentar. Si se repite, revisá que las cookies estén habilitadas.", "error"); return; }
     window.location.assign(safeNextPath);
@@ -278,7 +350,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         {step === "verify" ? <>
           <div className={styles.secondaryActions}>
             <button type="button" disabled={pending} onClick={() => void start()} className={styles.secondary}>Reenviar código</button>
-            <button type="button" disabled={pending} onClick={() => { changeContact(contactDraft); requestAnimationFrame(() => formRef.current?.querySelector<HTMLInputElement>('input[type="email"], input[type="tel"]')?.focus()); }} className={styles.secondary}>Cambiar contacto</button>
+            <button type="button" disabled={pending} onClick={() => { changeContact(contactDraft); completeFocusIntent(beginFocusIntent(), "contact"); }} className={styles.secondary}>Cambiar contacto</button>
             <button type="button" disabled={pending} onClick={changeChannel} className={styles.secondary}>{contactDraft.channel === "email" ? "Continuar con WhatsApp" : "Continuar con email"}</button>
           </div>
           <p className={styles.hint}>Puede demorar unos instantes. En email, revisá también Spam. Si pedís otro código, usá el más reciente.</p>
@@ -286,6 +358,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         {step === "start" && lateCodeAvailable && contactIsValid ? <div className={styles.lateCodeRecovery}>
           <p>Si ya recibiste el código, podés ingresarlo sin pedir otro.</p>
           <button type="button" disabled={pending} className={styles.secondary} aria-describedby="consumer-access-feedback" onClick={() => {
+            const intent = beginFocusIntent();
+            completeFocusIntent(intent, "code");
             setCode("");
             setStep("verify");
             setStatus("Ingresá el código más reciente que recibiste. Todavía no confirmamos el envío ni tu acceso.");

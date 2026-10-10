@@ -73,7 +73,7 @@ function fixture({ respond, online = true, query = "", deadline } = {}) {
   };
   new Function("require", "module", "exports", "navigator", "document", "requestAnimationFrame", "window", panelCode)(
     name => Object.hasOwn(overrides, name) ? overrides[name] : require(name), loaded, loaded.exports,
-    { onLine: online }, { body, activeElement: body }, callback => callback(), { location: { assign: () => assert.fail("Unexpected navigation") } },
+    { onLine: online }, { body, activeElement: body, addEventListener() {}, removeEventListener() {} }, callback => callback(), { addEventListener() {}, removeEventListener() {}, location: { assign: () => assert.fail("Unexpected navigation") } },
   );
   function render() {
     for (let pass = 0; pass < 20; pass++) {

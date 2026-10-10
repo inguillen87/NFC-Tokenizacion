@@ -1,5 +1,5 @@
 export type HomeSource<T> = { status: "ready"; data: T } | { status: "unavailable"; data: null };
-export type HomeAccount = { name: string | null; email: string | null; status: string | null; products: number | null; taps: number | null };
+export type HomeAccount = { name: string | null; email: string | null; phone: string | null; status: string | null; products: number | null; taps: number | null };
 export type HomeProduct = {
   name: string; brand: string | null; tenantSlug: string | null; batch: string | null; imageUrl: string | null;
   eventId: string | null; readingHref: string | null; ownershipStatus: string | null;
@@ -68,11 +68,12 @@ export function buildConsumerHomeModel(payloads: { account: unknown; products: u
   const consumer = record(envelope?.consumer);
   const stats = record(envelope?.stats);
   const email = text(consumer?.email);
+  const phone = typeof consumer?.phone === "string" && /^\+[1-9]\d{6,14}$/.test(consumer.phone) ? consumer.phone : null;
   const displayName = text(consumer?.display_name);
   const account: HomeSource<HomeAccount> = envelope?.ok === true && consumer
     ? { status: "ready", data: {
-      name: displayName?.toLowerCase() === email?.toLowerCase() ? null : displayName,
-      email, status: text(consumer.status),
+      name: displayName?.toLowerCase() === email?.toLowerCase() || displayName === phone ? null : displayName,
+      email, phone, status: text(consumer.status),
       // Account counts are only supplied by /consumer/me. A limited history
       // response is not a lifetime total; a missing count is not zero.
       products: reportedHomeCount(stats?.products), taps: reportedHomeCount(stats?.taps),
@@ -90,6 +91,16 @@ export function buildConsumerHomeModel(payloads: { account: unknown; products: u
       return { name: text(item.name) || slug || "Marca sin nombre reportado", status: text(item.status), points: reportedHomeCount(item.points_balance), href: slug ? `/me/marketplace?tenant=${encodeURIComponent(slug)}` : "/me/brands" };
     }),
   };
+}
+
+export function homeAccountStatusLabel(status: string | null): string {
+  switch (status) {
+    case "registered": return "Cuenta registrada";
+    case "verified": return "Cuenta verificada";
+    case "active": return "Cuenta activa";
+    case "anonymous": return "Cuenta de consulta";
+    default: return "Estado de la cuenta no informado";
+  }
 }
 
 export function buildHomeProductsSource(payload: unknown): HomeSource<HomeProduct[]> {

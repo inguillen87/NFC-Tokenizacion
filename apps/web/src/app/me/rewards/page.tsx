@@ -15,7 +15,8 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
   const session = await readConsumerSession(buildConsumerNextPath("/me/rewards", params));
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const [rewardsPayload, walletPayload] = await Promise.all([fetchConsumerPath("rewards"), fetchConsumerPath("wallet")]);
-  const rewards = buildConsumerRewardsModel(rewardsPayload, new Date().toISOString());
+  const serverObservedAt = new Date().toISOString();
+  const rewards = buildConsumerRewardsModel(rewardsPayload, serverObservedAt);
   const points = buildConsumerWalletPointsModel(walletPayload).brands;
   const selectedVoucher = findRequestedVoucher(rewards, params.voucher, params.tenant);
   return (
@@ -37,7 +38,7 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
           : rewards.status === "unavailable" ? "No pudimos verificar el voucher de este enlace. Reintentá la carga."
             : "No encontramos un voucher vigente que corresponda a este enlace y a tu cuenta. Revisá la marca y el vencimiento del mensaje original."}</div> : null}
         {rewards.status === "unavailable" ? <section className={styles.unavailable} role="status"><h2>No pudimos cargar tus beneficios</h2><p>Tus vouchers no se borraron. La información no está disponible en este momento.</p><ConsumerDataRetryButton /></section>
-          : <ConsumerRewardsClient items={rewards.items} initialTenant={tenant} selectedVoucher={selectedVoucher} />}
+          : <ConsumerRewardsClient items={rewards.items} initialTenant={tenant} selectedVoucher={selectedVoucher} serverObservedAt={serverObservedAt} />}
       </div>
     </PortalShell>
   );

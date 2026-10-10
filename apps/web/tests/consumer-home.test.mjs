@@ -27,7 +27,7 @@ const styles = new Proxy({}, { get: (_, name) => String(name) });
 const client = compile(clientSource, {
   "./consumer-home-model": model,
   "./consumer-home.module.css": { __esModule: true, default: styles },
-  "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
+  "next/link": { __esModule: true, default: ({ children, prefetch, ...props }) => React.createElement("a", props, children) },
   "next/image": { __esModule: true, default: ({ unoptimized, sizes, onError, ...props }) => React.createElement("img", props) },
   "next/navigation": { useRouter: () => ({ refresh: () => {} }) },
 });
@@ -62,7 +62,7 @@ test("account counts require explicit nonnegative safe integers and never derive
 
 test("the client model only contains required display fields, no raw consumer record or brand consents", () => {
   const data = model.buildConsumerHomeModel({ ...empty(), account: { ok: true, consumer: { id: "private-id", display_name: "Alex", email: "alex@example.test", status: "active", password_hash: "private-hash", provider_id: "private-provider" }, stats: { taps: 5 } }, brands: list([{ name: "Acme", consents: { phone: "private-phone" } }]) });
-  assert.deepEqual(data.account.data, { name: "Alex", email: "alex@example.test", status: "active", products: null, taps: 5 });
+  assert.deepEqual(data.account.data, { name: "Alex", email: "alex@example.test", phone: null, status: "active", products: null, taps: 5 });
   assert.doesNotMatch(JSON.stringify(data), /private-|password_hash|provider_id|consents/);
 });
 
@@ -151,6 +151,36 @@ test("a display name equal to the account email is not duplicated as the welcome
   const html = render({ ...empty(), account: { ok: true, consumer: { display_name: "alex@example.test", email: "alex@example.test" } } });
   assert.equal((html.match(/alex@example\.test/g) || []).length, 1);
   assert.match(html, /id="home-welcome-title">Tu cuenta/);
+});
+
+test("WhatsApp accounts show their own reported contact and a readable registered state without requiring email", () => {
+  const phone = "+541155551234";
+  const payloads = { ...empty(), account: { ok: true, consumer: { phone, display_name: phone, status: "registered", unrelated_phone: "+541199999999", provider_id: "private-provider" } } };
+  const data = model.buildConsumerHomeModel(payloads);
+  assert.equal(data.account.data.phone, phone);
+  assert.equal(data.account.data.name, null);
+  const html = render(payloads), text = renderedText(html);
+  assert.equal((html.match(/\+541155551234/g) || []).length, 1);
+  assert.match(html, /<dt>.*WhatsApp<\/dt><dd>\+541155551234<\/dd>/);
+  assert.match(text, /Cuenta registrada/);
+  assert.doesNotMatch(text, /Correo no informado|Correo electrónico|registered|Cuenta verificada|private-provider|99999999/);
+  assert.match(html, /id="home-welcome-title">Tu cuenta/);
+});
+
+test("both account contacts are shown once and malformed phone values never become links or visible identity", () => {
+  const payload = phone => ({ ...empty(), account: { ok: true, consumer: { email: "alex@example.test", phone, status: "unrecognized-status" } } });
+  const html = render(payload("+541155551234"));
+  assert.equal((html.match(/alex@example\.test/g) || []).length, 1);
+  assert.equal((html.match(/\+541155551234/g) || []).length, 1);
+  assert.doesNotMatch(html, /href="(?:tel:|https:\/\/wa\.me)|unrecognized-status/);
+  assert.match(renderedText(html), /Estado de la cuenta no informado/);
+  for (const phone of [null, 541155551234, {}, "whatsapp:+541155551234", "+0", "+1234567890123456", "+54 11 5555 1234", "+541155551234\n"]) {
+    assert.equal(model.buildConsumerHomeModel(payload(phone)).account.data.phone, null);
+    assert.doesNotMatch(renderedText(render(payload(phone))), /WhatsApp/);
+  }
+  for (const [status, label] of [["registered", "Cuenta registrada"], ["verified", "Cuenta verificada"], ["active", "Cuenta activa"], ["anonymous", "Cuenta de consulta"], [null, "Estado de la cuenta no informado"]]) {
+    assert.equal(model.homeAccountStatusLabel(status), label);
+  }
 });
 
 test("home shows only five recent real readings and three memberships without sum-of-points or a synthetic total", () => {

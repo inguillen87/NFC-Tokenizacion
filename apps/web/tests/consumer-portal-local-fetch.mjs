@@ -21,6 +21,7 @@ globalThis.fetch=async(input,init)=>{
   const headers=new Headers(init?.headers||(input instanceof Request?input.headers:undefined));
   const authorized=(headers.get('cookie')||'').includes('consumer_qa=local');
   const photoQa=/(?:^|;\s*)consumer_photo_qa=(failed|updated)(?:;|$)/.exec(headers.get('cookie')||'')?.[1];
+  const whatsappOnlyQa=/(?:^|;\s*)consumer_contact_qa=whatsapp-only(?:;|$)/.test(headers.get('cookie')||'');
   if(url.pathname==='/consumer/session')return reply({ok:true,authenticated:authorized});
   if(/^\/public\/passport\/90000[123]\/configuration$/.test(url.pathname)){
    if(headers.has('cookie')||headers.has('authorization'))throw Error('public_configuration_must_not_forward_account_credentials');
@@ -34,7 +35,15 @@ globalThis.fetch=async(input,init)=>{
   if(url.pathname.startsWith('/consumer/')){
    if(!authorized)return reply({ok:false},401);
    if(url.pathname==='/consumer/products')return reply({ok:true,items:photoQa?items.map((item,index)=>index===0?{...item,image_url:photoQa==='failed'?'/qa-photo/failed.svg':'/qa-photo/updated.svg'}:item):items});
-   if(url.pathname==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',status:'verified'},stats:{products:items.length,taps:3}});
+   if(url.pathname==='/consumer/me'){
+    // Reserved fictional NANP contact, selected only by a separate local QA
+    // cookie. A phone-login account can report its phone as display_name;
+    // this projection deliberately contains no email or brand contact.
+    const phone='+12025550124';
+    return reply({ok:true,consumer:whatsappOnlyQa
+     ?{id:'synthetic-whatsapp-only-consumer',phone,display_name:phone,status:'registered'}
+     :{id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',status:'verified'},stats:whatsappOnlyQa?{products:items.length,taps:3,memberships:0}:{products:items.length,taps:3}});
+   }
    // An explicit local-only partial-load state exposes the real router.refresh
    // control for the image recovery regression. No production data is queried.
    if(url.pathname==='/consumer/brands')return photoQa?reply({ok:false},503):reply({ok:true,items:[]});

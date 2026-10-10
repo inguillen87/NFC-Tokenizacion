@@ -79,8 +79,160 @@ async function render(payload, options = {}) {
   return { ...setup, html: renderToStaticMarkup(await setup.page({ searchParams: Promise.resolve(options.params || {}) })) };
 }
 
-const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, initialTenant: "", selectedVoucher: null, ...props }));
+const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, initialTenant: "", selectedVoucher: null, serverObservedAt: NOW, ...props }));
 const pointsSection = (html) => html.match(/<section aria-labelledby="benefits-points-title"[\s\S]*?<\/section>/)?.[0] || "";
+const CLOCK_SAMPLE = "2030-01-01T12:00:00.000Z";
+const CLOCK_MS = Date.parse(CLOCK_SAMPLE);
+const CLOCK_EXPIRY = "2030-01-01T12:00:10.000Z";
+const clockItems = () => readModel(list([claim({ claim_expires_at: CLOCK_EXPIRY })]), CLOCK_SAMPLE).items;
+const clockState = (clock, monotonic, wall) => model.expireConsumerRewards(clockItems(), model.readConsumerRewardClock(clock, monotonic, wall))[0];
+
+test("server sample expires a voucher despite an initial client clock one hour behind", () => {
+  const wall = CLOCK_MS - 3_600_000, clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, wall);
+  assert.equal(clockState(clock, 100, wall).state, "claimed");
+  assert.equal(clockState(clock, 10_100, wall + 10_000).state, "expired");
+});
+test("initial client clock one hour ahead does not prematurely withdraw a server-reported voucher", () => {
+  const wall = CLOCK_MS + 3_600_000, clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, wall);
+  assert.equal(clockState(clock, 100, wall).state, "claimed");
+  assert.equal(clockState(clock, 10_099, wall + 9_999).state, "claimed");
+  assert.equal(clockState(clock, 10_100, wall + 10_000).code, null);
+});
+test("monotonic elapsed time still expires while the client wall clock stalls", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS - 3_600_000);
+  assert.equal(clockState(clock, 10_100, CLOCK_MS - 3_600_000).state, "expired");
+});
+test("relative wall elapsed still expires when the monotonic clock stalls", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS + 3_600_000);
+  assert.equal(clockState(clock, 100, CLOCK_MS + 3_610_000).state, "expired");
+});
+test("a forward wall jump after mounting keeps the pre-copy expiry guard", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+  assert.equal(clockState(clock, 100, CLOCK_MS + 11_000).code, null);
+});
+test("a backward wall jump after mounting cannot extend elapsed voucher lifetime", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+  assert.equal(clockState(clock, 10_100, CLOCK_MS - 3_600_000).state, "expired");
+});
+test("backward monotonic and wall readings cannot restore an already withdrawn code", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+  assert.equal(clockState(clock, 20_100, CLOCK_MS + 20_000).state, "expired");
+  assert.equal(clockState(clock, 50, CLOCK_MS - 20_000).code, null);
+});
+test("missing malformed and impossible server samples withdraw codes without inventing expiry", () => {
+  for (const sample of [undefined, null, "", "2030-02-30T12:00:00Z", "2030-01-01 12:00:00", "bad"]) {
+    const clock = model.createConsumerRewardClock(sample, 100, CLOCK_MS);
+    assert.equal(clockState(clock, 100, CLOCK_MS).state, "unknown");
+    assert.equal(clockState(clock, 100, CLOCK_MS).code, null);
+  }
+});
+test("invalid client elapsed samples fail closed instead of certifying a copied code", () => {
+  for (const [monotonic, wall] of [[NaN, CLOCK_MS], [Infinity, CLOCK_MS], [-1, CLOCK_MS], [100, NaN], [100, Infinity]]) {
+    const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+    assert.equal(clockState(clock, monotonic, wall).state, "unknown");
+  }
+});
+test("initial absolute client time never becomes the trusted server sample", () => {
+  for (const delta of [-3_600_000, 3_600_000]) {
+    const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 0, CLOCK_MS + delta);
+    assert.equal(model.readConsumerRewardClock(clock, 0, CLOCK_MS + delta), CLOCK_MS);
+  }
+});
+test("a newer server prop sample withdraws a now-expired voucher", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS - 3_600_000);
+  const next = model.reanchorConsumerRewardClock(clock, "2030-01-01T12:00:11.000Z", 200, CLOCK_MS - 3_599_900);
+  assert.equal(clockState(next, 200, CLOCK_MS - 3_599_900).state, "expired");
+});
+test("an older cached server prop sample cannot reactivate an expired voucher", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+  clockState(clock, 20_100, CLOCK_MS + 20_000);
+  const next = model.reanchorConsumerRewardClock(clock, "2030-01-01T11:00:00.000Z", 20_100, CLOCK_MS + 20_000);
+  assert.equal(clockState(next, 20_100, CLOCK_MS + 20_000).code, null);
+});
+test("an older cached server prop sample cannot pause elapsed time for a still-current voucher", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+  assert.equal(clockState(clock, 2_100, CLOCK_MS + 2_000).state, "claimed");
+  const next = model.reanchorConsumerRewardClock(clock, "2030-01-01T11:59:50.000Z", 2_100, CLOCK_MS + 2_000);
+  assert.equal(clockState(next, 7_100, CLOCK_MS + 7_000).state, "claimed");
+  assert.equal(clockState(next, 10_100, CLOCK_MS + 10_000).state, "expired");
+});
+test("an invalid prop sample followed by an older valid sample cannot erase an expired clock floor", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+  assert.equal(clockState(clock, 20_100, CLOCK_MS + 20_000).state, "expired");
+  const invalid = model.reanchorConsumerRewardClock(clock, "invalid", 20_100, CLOCK_MS + 20_000);
+  assert.equal(clockState(invalid, 20_100, CLOCK_MS + 20_000).state, "unknown");
+  const restored = model.reanchorConsumerRewardClock(invalid, CLOCK_SAMPLE, 20_100, CLOCK_MS + 20_000);
+  assert.equal(clockState(restored, 20_100, CLOCK_MS + 20_000).state, "expired");
+  assert.equal(clockState(restored, 20_100, CLOCK_MS + 20_000).code, null);
+});
+test("elapsed time during invalid props still withdraws a formerly-current code when older valid props return", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 100, CLOCK_MS);
+  assert.equal(clockState(clock, 2_100, CLOCK_MS + 2_000).state, "claimed");
+  const invalid = model.reanchorConsumerRewardClock(clock, "invalid", 2_100, CLOCK_MS + 2_000);
+  assert.equal(clockState(invalid, 22_100, CLOCK_MS + 22_000).state, "unknown");
+  const restored = model.reanchorConsumerRewardClock(invalid, CLOCK_SAMPLE, 22_100, CLOCK_MS + 22_000);
+  assert.equal(clockState(restored, 22_100, CLOCK_MS + 22_000).state, "expired");
+  assert.equal(clockState(restored, 22_100, CLOCK_MS + 22_000).code, null);
+});
+test("invalid server props render an unknown voucher with no code or copy control", () => {
+  const html = renderClient(clockItems(), { serverObservedAt: "invalid" });
+  assert.match(html, /data-reward-state="unknown"/);
+  assert.doesNotMatch(html, /BALMEC-1234|Copiar código/);
+});
+test("SSR projection stays identical despite either initial client wall offset", (t) => {
+  const baseline = renderClient(clockItems(), { serverObservedAt: CLOCK_SAMPLE });
+  for (const offset of [-3_600_000, 3_600_000]) {
+    const mock = t.mock.method(Date, "now", () => CLOCK_MS + offset);
+    assert.equal(renderClient(clockItems(), { serverObservedAt: CLOCK_SAMPLE }), baseline);
+    mock.mock.restore();
+  }
+});
+test("a server render sample does not invent the unknown prefetch or transit duration", () => {
+  const clock = model.createConsumerRewardClock(CLOCK_SAMPLE, 5_000, CLOCK_MS + 20_000);
+  assert.equal(model.readConsumerRewardClock(clock, 5_000, CLOCK_MS + 20_000), CLOCK_MS);
+  assert.equal(model.readConsumerRewardClock(clock, 15_000, CLOCK_MS + 30_000), CLOCK_MS + 10_000);
+});
+test("page projection and client clock receive the same reported server instant", async () => {
+  const payload = list([claim()]);
+  const result = await render(payload);
+  assert.equal(result.clientProps.length, 1);
+  const props = result.clientProps[0];
+  assert(Number.isFinite(Date.parse(props.serverObservedAt)));
+  assert.deepEqual(props.items, model.buildConsumerRewardsModel(payload, props.serverObservedAt).items);
+  assert.deepEqual(result.calls, [["session", "/me/rewards"], ["fetch", "rewards"], ["fetch", "wallet"]]);
+});
+
+test("reward date labels use stable Spanish months and unambiguous 24-hour Argentina time", () => {
+  assert.equal(model.rewardDateLabel("2030-01-01T12:00:00Z"), "1 ene 2030, 09:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-01-01T03:00:00Z"), "1 ene 2030, 00:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-01-01T02:59:00Z"), "31 dic 2029, 23:59 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-03-01T02:00:00Z"), "28 feb 2030, 23:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2030-01-01T00:00:00-03:00"), "1 ene 2030, 00:00 (Argentina)");
+});
+test("reward date labels ignore NBSP and narrow locale literals and reuse one numeric h23 formatter", (t) => {
+  let constructors = 0, literal = "\u00a0", options;
+  t.mock.method(Intl, "DateTimeFormat", function (_locale, settings) {
+    constructors++; options = settings;
+    return { formatToParts: () => [
+      { type: "year", value: "2030" }, { type: "literal", value: literal },
+      { type: "month", value: "1" }, { type: "literal", value: literal }, { type: "day", value: "1" },
+      { type: "literal", value: literal }, { type: "hour", value: "00" },
+      { type: "literal", value: literal }, { type: "minute", value: "00" }, { type: "dayPeriod", value: "a. m." },
+    ] };
+  });
+  const isolated = compile(modelSource, { "./consumer-wallet-points-model": walletModel });
+  for (const spacing of ["\u00a0", "\u202f", " "]) {
+    literal = spacing;
+    assert.equal(isolated.rewardDateLabel("2030-01-01T03:00:00Z"), "1 ene 2030, 00:00 (Argentina)");
+  }
+  assert.equal(constructors, 1);
+  assert.equal(options.hourCycle, "h23"); assert.equal(options.numberingSystem, "latn");
+  assert.equal(options.timeZone, "America/Argentina/Buenos_Aires");
+  assert.equal(options.day, "numeric"); assert.equal(options.month, "numeric"); assert.equal(options.year, "numeric");
+});
+test("missing or malformed reward label dates do not invent a date", () => {
+  for (const value of [null, "invalid", "2030-02-30T12:00:00Z", "2030-01-01"]) assert.equal(model.rewardDateLabel(value), "No informado");
+});
 
 test("canonical API tenant slugs retain dots and underscores without collapsing homonymous brands or widening voucher lookup", () => {
   const slugs = ["brand-a", "branda", "brand_a", "brand.a", "a".repeat(120)];
@@ -192,6 +344,41 @@ test("redeemed, cancelled and expired vouchers remain history and never expose a
     assert.match(html, new RegExp(model.REWARD_STATE_LABELS[state]));
     assert.doesNotMatch(html, /BALMEC-1234|Código del voucher|Copiar código/);
   }
+});
+
+test("open-screen expiry can only withdraw a claim code at its exact deadline", () => {
+  const before = Date.parse("2099-09-09T11:59:59.999Z"), deadline = Date.parse(FUTURE);
+  const items = [readItem(claim()), readItem(reward({ id: "reward-2" }))];
+  assert.equal(model.nextConsumerRewardExpiry(items, before), deadline);
+  assert.equal(model.expireConsumerRewards(items, before)[0].code, "BALMEC-1234");
+  const expired = model.expireConsumerRewards(items, deadline);
+  assert.equal(expired[0].state, "expired"); assert.equal(expired[0].code, null);
+  assert.equal(expired[1], items[1]); assert.equal(items[0].state, "claimed", "source projection is not mutated");
+  assert.equal(model.nextConsumerRewardExpiry(items, deadline), null);
+  assert.equal(model.expireConsumerRewards(expired, before)[0].state, "expired", "withdrawn history cannot be reactivated by a backwards clock");
+  assert.equal(model.expireConsumerRewards(expired, before)[0].code, null);
+});
+
+test("local expiry never authorizes unknown, cancelled, malformed or unowned voucher codes", () => {
+  const base = readItem(claim());
+  for (const state of ["unknown", "cancelled", "redeemed", "expired", "reported", "locked"]) {
+    const item = model.expireConsumerRewards([{ ...base, state, code: "UNAUTHORIZED-1234" }], Date.parse(NOW))[0];
+    assert.equal(item.state, state); assert.equal(item.code, null);
+  }
+  for (const override of [{ hasClaim: false }, { expiresAt: null }, { expiresAt: "2099-02-30T12:00:00Z" }]) {
+    const item = model.expireConsumerRewards([{ ...base, ...override }], Date.parse(NOW))[0];
+    assert.equal(item.state, "unknown"); assert.equal(item.code, null);
+  }
+  const invalidClock = model.expireConsumerRewards([base], NaN)[0];
+  assert.equal(invalidClock.state, "unknown"); assert.equal(invalidClock.code, null);
+  assert.equal(model.nextConsumerRewardExpiry([base], NaN), null);
+});
+
+test("the next local deadline uses only current owned claims, never catalog or invalid dates", () => {
+  const later = readItem(claim({ id: "reward-2", claim_id: "claim-2", claim_expires_at: "2099-09-10T12:00:00Z" }));
+  const earliest = readItem(claim());
+  assert.equal(model.nextConsumerRewardExpiry([later, earliest], Date.parse(NOW)), Date.parse(FUTURE));
+  assert.equal(model.nextConsumerRewardExpiry([{ ...earliest, state: "unknown" }, { ...later, hasClaim: false }], Date.parse(NOW)), null);
 });
 
 test("voucher links resolve only a unique active account voucher within the requested tenant", () => {
@@ -325,7 +512,7 @@ test("reward views inherit accessible light and dark tokens without polling or r
   assert.match(cssSource, /@media \(max-width:/);
   assert.match(cssSource, /overflow-wrap: anywhere/);
   assert.doesNotMatch(cssSource, /background:\s*(?:white|black|#[0-9a-f]+)\s*[;}]/i);
-  assert.doesNotMatch(modelSource + clientSource, /\bfetch\s*\(|setInterval|setTimeout|Math\.random|Date\.now|router\.refresh|useEffect|dangerouslySetInnerHTML/);
+  assert.doesNotMatch(modelSource + clientSource, /\bfetch\s*\(|setInterval|Math\.random|router\.refresh|dangerouslySetInnerHTML/);
   assert.doesNotMatch(pageSource + clientSource, /method\s*[:=]\s*["'](?:post|put|patch|delete)|claimReward|redeemReward|redemption\/confirm/i);
   assert.doesNotMatch(pageSource, /fetchConsumerPath\(["'](?:products|taps|catalog|brands|marketplace)/);
 });

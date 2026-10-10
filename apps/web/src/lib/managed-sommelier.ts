@@ -39,9 +39,27 @@ export function sommelierSources(value: unknown, demo = false, profile?: "valle-
   return sources;
 }
 
+type SommelierAccessReason = "sommelier_consumer_session_required" | "sommelier_event_not_authorized" | "sommelier_origin_rejected";
 export type ManagedSommelierResult =
   | { status: "received"; data: { optimizedText: string; fallback: boolean; provider?: string; model?: string; sources: SommelierSource[]; suggestedQuestions: string[]; demo: boolean } }
-  | { status: "unavailable"; reason: "timeout" | "cancelled" | "connection" | "http-error" | "invalid-response" };
+  | { status: "unavailable"; reason: "timeout" | "cancelled" | "connection" | "http-error" | "invalid-response"; httpStatus?: number; serviceReason?: SommelierAccessReason };
+
+/** Known API access reasons only; provider text must never become customer copy. */
+function httpFailure(status: number, payload: unknown): ManagedSommelierResult {
+  const record = payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : null;
+  const reason = record?.ok === false ? record.reason : null;
+  const serviceReason = reason === "sommelier_consumer_session_required" || reason === "sommelier_event_not_authorized" || reason === "sommelier_origin_rejected" ? reason : undefined;
+  return { status: "unavailable", reason: "http-error", ...(Number.isInteger(status) && status >= 400 && status <= 599 ? { httpStatus: status } : {}), ...(serviceReason ? { serviceReason } : {}) };
+}
+
+export function consumerSommelierFailureKind(result: Extract<ManagedSommelierResult, { status: "unavailable" }>): "session" | "access" | "service" | "other" {
+  if (result.reason !== "http-error") return "other";
+  // Consumer API uses 403 for missing session as well as denied product scope.
+  if (result.httpStatus === 401 || (result.httpStatus === 403 && result.serviceReason === "sommelier_consumer_session_required")) return "session";
+  if (result.httpStatus === 403) return "access";
+  if (result.httpStatus !== undefined && result.httpStatus >= 500) return "service";
+  return "other";
+}
 
 export async function requestManagedSommelierAnswer(question: string, options: {
   locale: "es-AR" | "en" | "pt-BR";
@@ -72,9 +90,9 @@ export async function requestManagedSommelierAnswer(question: string, options: {
         headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: controller.signal,
       });
       if (controller.signal.aborted) return null;
-      const payload: unknown = await response.json();
+      const payload: unknown = await response.json().catch(() => null);
       if (controller.signal.aborted) return null;
-      return { ok: response.ok, payload };
+      return { ok: response.ok, httpStatus: response.status, payload };
     };
     try {
       const text = question.trim().slice(0, MANAGED_SOMMELIER_QUESTION_MAX_CHARS);
@@ -83,7 +101,7 @@ export async function requestManagedSommelierAnswer(question: string, options: {
       if (options.demoProfile) {
         const session = await post("/api/sommelier/demo/session", { profile: options.demoProfile, locale: options.locale });
         if (!session) return interrupted;
-        if (!session.ok || !session.payload || typeof session.payload !== "object" || (session.payload as { ok?: unknown }).ok !== true) return { status: "unavailable", reason: "http-error" };
+        if (!session.ok || !session.payload || typeof session.payload !== "object" || (session.payload as { ok?: unknown }).ok !== true) return httpFailure(session.httpStatus, session.payload);
         if (options.demoProfile === "syngenta" && (session.payload as { profile?: unknown }).profile !== "syngenta") return { status: "unavailable", reason: "invalid-response" };
         if (options.demoProfile === "valle-secreto" && (session.payload as { profile?: unknown }).profile !== undefined && (session.payload as { profile?: unknown }).profile !== "valle-secreto") return { status: "unavailable", reason: "invalid-response" };
       }
@@ -93,7 +111,7 @@ export async function requestManagedSommelierAnswer(question: string, options: {
         ...(!options.demoProfile && Object.hasOwn(options, "eventId") ? { eventId: options.eventId } : {}),
       });
       if (!result) return interrupted;
-      if (!result.ok) return { status: "unavailable", reason: "http-error" };
+      if (!result.ok) return httpFailure(result.httpStatus, result.payload);
       if (!result.payload || typeof result.payload !== "object" || Array.isArray(result.payload)) return { status: "unavailable", reason: "invalid-response" };
       const data = result.payload as Record<string, unknown>;
       if (data.ok !== true || typeof data.answer !== "string" || !data.answer.trim() || data.answer.length > 5_000
