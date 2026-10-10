@@ -209,7 +209,18 @@ async function run() {
   assert.ok(tenantMarketplaceCatalog.checks.every(check => check.passed));
   assert.equal(tenantMarketplaceCatalog.lockObservations.length, 1);
   assert.ok(tenantMarketplaceCatalog.lockObservations.every(observation => observation.observed && observation.waitEventType === 'Lock'));
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
+  // Publish observed QA counts only; keep connection identities and fixture data
+  // out of the new vertical-writer summary. 40001 counts are caught conflicts,
+  // not a claim that every conflict was followed by a successful retry.
+  const consumerVerticalWriters = {
+    schema: "nexid.consumer-vertical-writers.ci-summary/v1",
+    passed: verticalWriters.ok === true && verticalWriters.checks.every(check => check.passed === true),
+    casesTotal: verticalWriters.checks.length,
+    failedCount: verticalWriters.checks.filter(check => check.passed !== true).length,
+    lockObservations: verticalWriters.lockObservations.filter(lock => lock.lockObserved === true).length,
+    retryCounts: { serializationConflicts: verticalWriters.serializationConflicts },
+  };
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, consumerVerticalWriters, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 
