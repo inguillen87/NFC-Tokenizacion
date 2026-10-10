@@ -9,9 +9,9 @@ import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
 
 export async function GET(req: Request) {
-  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  await ensureConsumerPortalSchema();
 
   const stats = await sql/*sql*/`
     SELECT
