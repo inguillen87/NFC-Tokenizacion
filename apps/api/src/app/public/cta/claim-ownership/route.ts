@@ -1,35 +1,17 @@
 import { createHash } from "node:crypto";
-import { json } from "../../../../lib/http";
+import { json as httpJson } from "../../../../lib/http";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../lib/consumer-portal-service";
+import { readConsumerOwnershipClaimContext, consumeAndAuthorizeConsumerOwnershipClaim } from "../../../../lib/consumer-vertical-writer-policy";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
-import { consumeSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import { ensureConsumerPortalSchema, ensureSdkSchema } from "../../../../lib/commercial-runtime-schema";
-import { getTapEvent } from "../../../../lib/loyalty-service";
 import { createAlert } from "../../../../lib/alert-engine";
 import { sql } from "../../../../lib/db";
 import { evaluateReceiptOcrForOwnership, performReceiptOcr, validateReceiptImageDataUrl } from "../../../../lib/ocr-service";
-import { normalizeClaimPolicy } from "../../../../lib/sun-tenant-profile";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { normalizeConsentedApproximateLocation } from "../../../../lib/approximate-location";
-import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "../../../../lib/tap-commercial-rights";
-import {
-  ownershipClaimPinRateScope,
-  readOwnershipClaimPinInput,
-  verifyOwnershipClaimPin,
-  type OwnershipClaimPinVerification,
-} from "../../../../lib/ownership-claim-pin";
-import {
-  OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS,
-  releaseSuccessfulOwnershipClaimPinAttempt,
-  reserveOwnershipClaimPinAttempt,
-} from "../../../../lib/ownership-claim-pin-rate-limit";
-import {
-  evaluateOwnershipClaimAuthorization,
-  resolveOwnershipClaimPinCredential,
-} from "../../../../lib/ownership-claim-authorization";
 
 const MAX_CLAIM_REQUEST_BYTES = 8 * 1024 * 1024;
 
@@ -52,6 +34,8 @@ function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): 
 }
 
 export async function POST(req: Request) {
+  let freshSpent = false;
+  const json = (body: Record<string, any>, status = 200, headers?: Record<string, string>) => httpJson({ ...body, ...(status >= 400 ? { fresh_tap_required: body.operation_committed === true ? false : freshSpent } : {}) }, status, headers);
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
   const limited = await enforceCriticalRateLimit(req, {
     rateClass: "proof_write",
@@ -81,206 +65,30 @@ export async function POST(req: Request) {
       fresh_token_status: "fresh_event_required",
     }, 403);
   }
-  const fresh = await consumeSunFreshHandoff(req, body, { bid, eventId }, "public_claim_ownership");
-  if (!fresh.ok) {
-    const freshReason = fresh.reason;
-    return json({
-      ok: false,
-      reason: "fresh_nfc_evidence_required_for_ownership",
-      trace_id: traceId,
-      share_token_status: auth.share_token_status,
-      fresh_token_status: freshReason,
-    }, 403);
+  // Normal verified consumer auth remains separate from the NFC capability.
+  const consumer = await getConsumerFromRequest(req);
+  if (!consumer) return json({ ok: false, reason: "consumer_auth_required", next_step: "verify_email_or_phone", ownership_created: false, trace_id: traceId }, 401);
+  const precheck = await readConsumerOwnershipClaimContext(eventId, consumer.id, typeof body.receiptFileData === "string" && body.receiptFileData.length > 0);
+  if (!precheck.ok) return json({ ok: false, reason: precheck.error, ownership_created: false, trace_id: traceId }, precheck.error === "tap_policy_unavailable" ? 503 : 403, { "cache-control": "no-store" });
+  const event = precheck.context.event;
+  if (event.bid !== bid || String(event.uid_hex).trim().toUpperCase() !== String(uid).trim().toUpperCase()) return json({ ok: false, reason: "tenant_batch_mismatch", trace_id: traceId }, 403);
+  const authorized = await consumeAndAuthorizeConsumerOwnershipClaim(req, body, precheck.context, "public_claim_ownership");
+  if (!authorized.ok) {
+    freshSpent = authorized.freshTapRequired;
+    return json({ ok: false, reason: authorized.error,
+      error: authorized.error === "claim_pin_locked" ? "Demasiados intentos. Espera 15 minutos o solicita asistencia al emisor." : authorized.error, trace_id: traceId,
+      fresh_token_status: "freshTokenStatus" in authorized ? authorized.freshTokenStatus : undefined,
+      ...("retryAfterSeconds" in authorized ? { retry_after_seconds: authorized.retryAfterSeconds } : {}) }, authorized.status,
+      { "cache-control": "no-store", ...("retryAfterSeconds" in authorized ? { "retry-after": String(authorized.retryAfterSeconds) } : {}) });
   }
-
-  const event = await getTapEvent(eventId);
-  if (!event) return json({ ok: false, reason: "event_not_found", trace_id: traceId }, 404);
-  const projectedRights = evaluateTapCommercialRights(event);
-  const currentRights = projectedRights.allowed
-    ? await readCurrentTapCommercialRights(eventId)
-    : projectedRights;
-  if (!currentRights.allowed) {
-    return json({
-      ok: false,
-      reason: currentRights.reason,
-      ownership_status: "not_claimed",
-      ownership_created: false,
-      trace_id: traceId,
-    }, currentRights.reason === "manual_opening_declared" ? 409 : 503, { "cache-control": "no-store" });
-  }
-
-  // 0. Query Tag and Batch Security Policies (POS Activation & PIN Requirement)
-  const tagRows = await sql`
-    SELECT 
-      t.id AS tag_id,
-      t.claim_pin_required AS tag_claim_pin_required,
-      t.hash_pin AS tag_hash_pin,
-      t.active_for_claim AS tag_active_for_claim,
-      b.claim_pin_required AS batch_claim_pin_required,
-      b.hash_pin AS batch_hash_pin,
-      b.active_for_claim AS batch_active_for_claim,
-      b.sdm_config AS batch_sdm_config,
-      tsp.claim_policy AS tenant_claim_policy,
-      EXISTS (
-        SELECT 1
-        FROM sdk_pos_activations activation
-        WHERE activation.tenant_id = b.tenant_id
-          AND activation.batch_id = b.id
-          AND activation.activation_status = 'active'
-          AND (activation.expires_at IS NULL OR activation.expires_at > now())
-          AND activation.tag_id = t.id
-          AND UPPER(activation.uid_hex) = UPPER(t.uid_hex)
-      ) AS retailer_pos_attested
-    FROM tags t
-    JOIN batches b ON b.id = t.batch_id
-    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = b.tenant_id
-    WHERE t.uid_hex = ${event.uid_hex} AND b.id = ${event.batch_id}
-    LIMIT 1
-  `;
-  const tagRow = tagRows[0];
-  if (!tagRow) return json({ ok: false, reason: "tag_not_found", error: "El tag no está registrado.", trace_id: traceId }, 404);
-
-  const batchSdmConfig = tagRow.batch_sdm_config as Record<string, any> | null;
-  const claimPolicy = normalizeClaimPolicy(tagRow.tenant_claim_policy)
-    || normalizeClaimPolicy(batchSdmConfig?.sun?.passport?.claimPolicy)
-    || normalizeClaimPolicy(batchSdmConfig?.sun?.claimPolicy);
-
-  if (!claimPolicy) {
-    return json({
-      ok: false,
-      reason: "claim_policy_configuration_required",
-      error: "El tenant debe configurar una política explícita de titularidad digital antes de aceptar reclamos.",
-      trace_id: traceId,
-    }, 403);
-  }
-
-  if (claimPolicy === "admin_approved") {
-    return json({
-      ok: false,
-      reason: "ownership_manual_approval_required",
-      error: "Este producto requiere aprobación manual del tenant para crear titularidad digital.",
-      review_required: true,
-      trace_id: traceId,
-    }, 403);
-  }
-
-  const activeForClaim = tagRow.tag_active_for_claim !== null && tagRow.tag_active_for_claim !== undefined
-    ? Boolean(tagRow.tag_active_for_claim)
-    : tagRow.batch_active_for_claim !== null && tagRow.batch_active_for_claim !== undefined
-    ? Boolean(tagRow.batch_active_for_claim)
-    : false;
-
-  if (!activeForClaim) {
-    return json({
-      ok: false,
-      reason: "pos_activation_pending",
-      error: "Este producto requiere ser activado en caja al momento del pago. Por favor solicita la activación al comercio.",
-      trace_id: traceId,
-    }, 403);
-  }
-
-  const pinCredential = resolveOwnershipClaimPinCredential({
-    claimPolicy,
-    tagPinRequired: tagRow.tag_claim_pin_required,
-    tagPinHash: tagRow.tag_hash_pin,
-    batchPinRequired: tagRow.batch_claim_pin_required,
-    batchPinHash: tagRow.batch_hash_pin,
-    configPinRequired: batchSdmConfig?.claim_pin_required,
-    configPinHash: batchSdmConfig?.hash_pin || batchSdmConfig?.claim_pin_hash,
-  });
-  const pinRequired = pinCredential.required;
-  if (pinCredential.misconfigured) {
-    return json({ ok: false, reason: "pin_policy_misconfigured", trace_id: traceId }, 409, { "cache-control": "no-store" });
-  }
-
-  let pinVerification: OwnershipClaimPinVerification | null = null;
-  if (pinRequired) {
-    const pinInput = readOwnershipClaimPinInput(body.pin, { required: true });
-    if (!pinInput.ok) {
-      return json({
-        ok: false,
-        reason: pinInput.reason === "pin_required" ? "pin_required" : "pin_invalid_input",
-        error: "Se requiere ingresar el PIN de seguridad oculto bajo la cápsula de la botella.",
-        trace_id: traceId,
-      }, 400);
-    }
-
-    const pinRateContext = {
-      tenantId: String(event.tenant_id || ""),
-      bid: String(event.bid || bid),
-      uidHex: String(event.uid_hex || uid),
-      sourceId: "public-claim",
-      credentialScope: ownershipClaimPinRateScope(pinCredential.storedHash),
-    };
-    const attemptReservation = await reserveOwnershipClaimPinAttempt(req, pinRateContext);
-    if (attemptReservation.status === "unavailable") {
-      return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
-    }
-    if (attemptReservation.status === "locked") {
-      return json({
-        ok: false,
-        reason: "claim_pin_locked",
-        error: "Demasiados intentos. Espera 15 minutos o solicita asistencia al emisor.",
-        trace_id: traceId,
-        retry_after_seconds: OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS,
-      }, 429, { "cache-control": "no-store", "retry-after": String(OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS) });
-    }
-
-    const storedPinHash = pinCredential.storedHash;
-    try {
-      pinVerification = await verifyOwnershipClaimPin({
-        storedHash: String(storedPinHash || ""),
-        pin: pinInput.pin,
-        context: {
-          tenantId: String(event.tenant_id || ""),
-          bid: String(event.bid || bid),
-          uidHex: String(event.uid_hex || uid),
-        },
-      });
-    } catch {
-      await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
-      return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
-    }
-
-    if (pinVerification.matches) {
-      const released = await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
-      if (released.status === "unavailable") {
-        return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
-      }
-    } else {
-      return json({
-        ok: false,
-        reason: "invalid_pin",
-        error: "El PIN de seguridad ingresado es incorrecto. Verificá los caracteres bajo la cápsula.",
-        trace_id: traceId,
-      }, 403);
-    }
-    console.info("[ownership_claim_pin_verified]", JSON.stringify({
-      trace_id: traceId,
-      algorithm: pinVerification.algorithm,
-      needs_rotation: pinVerification.needsRotation,
-    }));
-  }
-
-  const claimAuthorization = evaluateOwnershipClaimAuthorization({
-    claimPolicy,
-    activeForClaim,
-    configuredPinRequired: pinRequired,
-    pinPresented: Boolean(pinVerification),
-    pinValidated: pinVerification?.matches === true,
-    configuredPosRequired: Boolean(batchSdmConfig?.claim_requires_pos || batchSdmConfig?.pos_required || batchSdmConfig?.retailer_attestation_required),
-    posValidated: tagRow.retailer_pos_attested === true || String(tagRow.retailer_pos_attested) === "true",
-    purchaseProofPresented: typeof body.receiptFileData === "string" && body.receiptFileData.length > 0,
-  });
-  if (claimAuthorization.disposition === "denied") {
-    const status = claimAuthorization.reason === "claim_policy_configuration_required" ? 409 : 403;
-    return json({
-      ok: false,
-      reason: claimAuthorization.reason,
-      review_required: claimAuthorization.reason === "ownership_manual_approval_required" || claimAuthorization.reason === "purchase_receipt_required",
-      trace_id: traceId,
-    }, status, { "cache-control": "no-store" });
-  }
+  freshSpent = true;
+  try {
+  const fresh = authorized.fresh;
+  const pinVerification = authorized.pinVerification;
+  const pinRequired = precheck.context.pinRequired;
+  const activeForClaim = true;
+  const claimPolicy = precheck.context.claimPolicy;
+  const tagRow = { tag_id: event.current_tag_id };
 
   // UA, screen and geolocation are spoofable client-reported risk signals.
   // They never prove a physical device, proximity, custody or ownership.
@@ -490,9 +298,11 @@ export async function POST(req: Request) {
       }).catch((err) => console.error("Failed to trigger gray market alert", err));
     }
 
+    if (!authorized.authorization) return json({ ok: false, reason: "purchase_receipt_required", ownership_created: false, review_required: true, trace_id: traceId }, 403, { "cache-control": "no-store" });
     const claim = await claimOwnershipForConsumer({
       consumerId: consumer.id,
       eventId,
+      authorization: authorized.authorization,
       bid,
       uidHex: uid,
       source: "sun_passport",
@@ -532,7 +342,7 @@ export async function POST(req: Request) {
           ownership: claim.ownership || null,
           operation_committed: "operationCommitted" in claim ? claim.operationCommitted : false,
           reconciliation: "operationCommitted" in claim && claim.operationCommitted
-            ? "Retry the same ownership claim; the canonical event writer is idempotent."
+            ? "The title is saved. Reconcile the original canonical receipt; do not repeat the claim."
             : null,
         },
         claim.status,
@@ -574,4 +384,5 @@ export async function POST(req: Request) {
       boundary: "UA and client GPS are spoofable risk signals; they do not prove a physical device, proximity or custody.",
     },
   }, 401);
+  } catch { return json({ ok: false, reason: "ownership_write_unavailable", ownership_created: false, trace_id: traceId }, 503, { "cache-control": "no-store" }); }
 }

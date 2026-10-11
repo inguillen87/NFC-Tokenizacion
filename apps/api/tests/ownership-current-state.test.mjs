@@ -38,47 +38,66 @@ test("legacy null lifecycle uses active status; manual opening remains distinct 
   assert.equal(evaluateOwnershipEligibility(ownershipFixture({ reason: "operator declared open" })).isBlocked, true);
 });
 
-for (const update of [false, true]) {
-  test(`${update ? "UPDATE" : "INSERT"} claim repeats exact identity, active lifecycle and result eligibility while holding tag/batch/event locks`, async () => {
-    const captured = await captureOwnershipMutation({ update });
+test("INSERT core statement inspection rechecks full identity/counter/lifecycle snapshots and locks; not PostgreSQL rollback evidence", async () => {
+    const captured = await captureOwnershipMutation();
     assert.equal(captured.result.ok, false);
-    assert.equal(captured.result.error, "revoked");
+    assert.equal(captured.result.error, "claim_policy_changed");
+    assert.equal(captured.result.ownership, null);
+    assert.equal(captured.capabilityConsumed, true); assert.equal(captured.proofIssued, true);
     const query = captured.mutation.query;
-    assert.match(query, /WITH current_tag AS MATERIALIZED/);
-    assert.match(query, /bound_batch\.tenant_id = source_event\.tenant_id/);
-    assert.match(query, /tag\.batch_id = source_event\.batch_id AND UPPER\(tag\.uid_hex\) = UPPER\(source_event\.uid_hex\)/);
-    for (const field of ["source_event.tenant_id", "source_event.batch_id", "tag.id"]) assert.ok(query.includes(`${field} = $`));
-    assert.match(query, /tag\.status = 'active'/);
-    assert.match(query, /COALESCE\(tag\.lifecycle_state, tag\.status::text\) = 'active'/);
+    assert.match(query, /WITH locked_identity AS MATERIALIZED/);
+    assert.match(query, /b\.id = e\.batch_id AND b\.tenant_id = e\.tenant_id/);
+    assert.match(query, /tag\.batch_id = e\.batch_id AND UPPER\(TRIM\(tag\.uid_hex\)\) = UPPER\(TRIM\(e\.uid_hex\)\)/);
+    for (const field of ["e.id", "e.tenant_id", "tag.id"]) assert.ok(query.includes(`${field} = $`));
+    for (const table of ["e", "tag", "b"]) assert.match(query, new RegExp(`to_jsonb\\(${table}\\) = \\$\\d+::jsonb`));
     assert.match(query, /ambiguous_tag\.id <> tag\.id/);
-    assert.match(query, /FOR SHARE OF tag, bound_batch, source_event/);
-    assert.match(query, /WHEN NOT EXISTS \(SELECT 1 FROM current_tag\)/);
-    assert.match(query, /OPERATOR_DECLARED_OPEN/);
+    assert.match(query, /FOR SHARE OF e, b, tenant, tag/);
+    for (const table of ["profile", "product", "manual"]) {
+      assert.match(query, new RegExp(`FOR SHARE OF ${table}`));
+      assert.match(query, new RegExp(`SELECT snapshot FROM locked_${table}\\) IS NOT DISTINCT FROM \\$\\d+::jsonb`));
+    }
+    assert.match(query, /FOR UPDATE OF membership/); assert.match(query, /FOR UPDATE OF ownership/);
+    assert.match(query, /NOT EXISTS \(SELECT 1 FROM locked_ownership WHERE status = 'claimed' OR consumer_id = \$\d+::uuid AND event_id = e\.id\)/);
+    assert.match(query, /to_timestamp\(\$\d+\) > clock_timestamp\(\)/); assert.match(query, /core_commit_fence/);
+    for (const table of ["tenant_consumer_memberships", "consumer_tap_history", "consumer_products", "consumer_product_ownerships"]) assert.match(query, new RegExp(`INSERT INTO ${table}`));
+    assert.equal(captured.snapshot.tag.status, "active"); assert.equal(captured.snapshot.tag.lifecycle_state, "active");
+    assert.ok(CLAIMABLE_OWNERSHIP_RESULTS.has(captured.snapshot.event.result)); assert.equal(captured.snapshot.event.sdm_read_ctr, 1);
+    assert.equal(captured.snapshot.event.meta.sun_tt_truth_receipt.binding_status, "BOUND");
+    for (const key of ["event", "tag", "batch", "tenant", "profile", "product", "manual"]) assert.ok(captured.mutation.parameters.includes(captured.snapshot[key] == null ? null : JSON.stringify(captured.snapshot[key])));
     assert.ok(captured.mutation.parameters.includes(ownershipFixture().current_tag_id));
-    assert.ok(captured.mutation.parameters.includes(ownershipFixture().batch_id));
-    assert.ok(captured.mutation.parameters.some(p => Array.isArray(p) && p.length === CLAIMABLE_OWNERSHIP_RESULTS.size));
     assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /SELECT t\.id, t\.status/);
-  });
-}
+});
+
+test("former UPDATE claim refuses an already claimed title of the same consumer/event before consume or reassociation", async () => {
+  const captured = await captureOwnershipMutation({ update: true });
+  assert.equal(captured.result.ok, false); assert.equal(captured.result.error, "ownership_already_claimed");
+  assert.equal(captured.capabilityConsumed, false); assert.equal(captured.proofIssued, false); assert.equal(captured.mutation, undefined);
+  assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /\b(?:INSERT|UPDATE|DELETE)\b/);
+});
 
 test("inactive and ambiguous preflight do not enroll or save during a blocked claim", async () => {
-  for (const overrides of [{ current_tag_status: "inactive", current_tag_lifecycle_state: "suspended" }, { current_tag_identity_count: 2 }]) {
+  for (const [overrides, error] of [[{ current_tag_status: "inactive", current_tag_lifecycle_state: "suspended" }, "event_security_blocked"], [{ current_tag_identity_count: 2 }, "tap_policy_indeterminate"], [{ manual_tamper_status: "OPENED" }, "event_security_blocked"]]) {
     const captured = await captureOwnershipMutation({ event: ownershipFixture(overrides) });
-    assert.equal(captured.result.error, "revoked");
-    assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /INSERT INTO tenant_consumer_memberships|INSERT INTO consumer_tap_history|INSERT INTO consumer_products/);
+    assert.equal(captured.result.error, error); assert.equal(captured.capabilityConsumed, false); assert.equal(captured.proofIssued, false);
+    assert.equal(captured.mutation, undefined);
+    assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /\b(?:INSERT|UPDATE|DELETE)\b/);
   }
 });
 
 test("missing exact tag does not fall back to an unrelated batch", async () => {
   const captured = await captureOwnershipMutation({ event: ownershipFixture({ current_tag_id: null }) });
-  assert.equal(captured.result.error, "tag_not_found");
+  assert.equal(captured.result.error, "tap_policy_indeterminate");
+  assert.equal(captured.capabilityConsumed, false); assert.equal(captured.proofIssued, false);
   assert.equal(captured.mutation, undefined);
+  assert.equal(captured.statements.filter(s => /SELECT jsonb_build_object/.test(s.query)).length, 1);
+  assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /\b(?:INSERT|UPDATE|DELETE)\b/);
 });
 
 test("durable rights read failure blocks ownership and mutation failure cannot report a title", async () => {
   const captured = await captureOwnershipMutation({ rightsError: true });
   assert.equal(captured.result.ok, false);
-  assert.equal(captured.result.ownership.status, "revoked");
-  assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /INSERT INTO tenant_consumer_memberships|INSERT INTO consumer_tap_history/);
+  assert.equal(captured.result.error, "tap_policy_unavailable"); assert.equal(captured.result.ownership ?? null, null);
+  assert.equal(captured.capabilityConsumed, false); assert.equal(captured.proofIssued, false);
+  assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /\b(?:INSERT|UPDATE|DELETE)\b/);
   await assert.rejects(captureOwnershipMutation({ mutationError: new Error("synthetic mutation failure") }), /synthetic mutation failure/);
 });

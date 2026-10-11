@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { hitSunRateLimit } from "./sun-rate-limit-store";
+import { hitSunRateLimit, readSunRateLimitBucketUsed } from "./sun-rate-limit-store";
 
 const SNAPSHOT_ACCESS_MAX_TTL_SECONDS = 15 * 60;
 const FRESH_HANDOFF_MAX_TTL_SECONDS = 5 * 60;
@@ -357,17 +357,16 @@ export async function consumeSunFreshHandoff(
   const token = extractSunFreshToken(req, body);
   const verified = verifySunFreshHandoffToken(token, expected);
   if (!verified.ok) return verified;
-  const normalizedAction = clean(action).toLowerCase();
-  if (!/^[a-z0-9:_-]{1,120}$/.test(normalizedAction)) {
+  const actionKey = freshActionKey(token, action);
+  if (!actionKey) {
     return { ok: false as const, reason: "fresh_token_action_invalid" };
   }
   const now = Math.floor(Date.now() / 1000);
   const ttlSeconds = Math.max(1, Math.min(10 * 60, verified.payload.exp - now + 5));
-  const digest = createHash("sha256").update(token, "utf8").digest("hex");
   try {
     const reservation = await hitSunRateLimit(
       "sun_fresh_capability_once",
-      `${normalizedAction}:${digest}`,
+      actionKey,
       ttlSeconds,
       1,
     );
@@ -377,4 +376,25 @@ export async function consumeSunFreshHandoff(
   } catch {
     return { ok: false as const, reason: "fresh_token_consume_unavailable" };
   }
+}
+
+function freshActionKey(token: string, action: string) {
+  const normalizedAction = clean(action).toLowerCase();
+  if (!/^[a-z0-9:_-]{1,120}$/.test(normalizedAction)) return null;
+  return `${normalizedAction}:${createHash("sha256").update(token, "utf8").digest("hex")}`;
+}
+
+/** Advisory only: observes the SAME action bucket as consume, without mutation.
+ * No raw capability reaches storage; absence/read failures never repair schema. */
+export async function readSunFreshHandoffAction(token: string, expected: FreshExpected, action: string) {
+  const verified = verifySunFreshHandoffToken(token, expected);
+  if (!verified.ok) return verified;
+  const actionKey = freshActionKey(token, action);
+  if (!actionKey) return { ok: false as const, reason: "fresh_token_action_invalid" };
+  const bucket = await readSunRateLimitBucketUsed("sun_fresh_capability_once", actionKey);
+  if (bucket.unavailable) return { ok: false as const, reason: "fresh_token_read_unavailable" };
+  // Expiry can cross while the read is in flight. Never return a stale allow.
+  const current = verifySunFreshHandoffToken(token, expected);
+  if (!current.ok) return current;
+  return bucket.used ? { ok: false as const, reason: "fresh_token_already_used" } : current;
 }

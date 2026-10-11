@@ -21,6 +21,11 @@ const SALT_BYTES = 16;
 const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/i;
 const VISIBLE_ASCII_PATTERN = /^[\x21-\x7e]+$/;
 
+/** Shape check only: never evaluates a guess or exposes the credential. */
+export function isOwnershipClaimPinCredentialConfigured(storedHash: unknown): boolean {
+  return typeof storedHash === "string" && (SHA256_HEX_PATTERN.test(storedHash.trim()) || parseScryptHash(storedHash.trim()) !== null);
+}
+
 const COMMON_TRIVIAL_CODES = new Set([
   "12345678",
   "123456789",

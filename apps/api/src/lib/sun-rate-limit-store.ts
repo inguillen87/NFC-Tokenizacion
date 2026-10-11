@@ -59,6 +59,23 @@ export function rateLimitBucketKey(scope: string, scopeKey: string, env: Env = p
   };
 }
 
+/** Exact existing bucket observation, without sliding-window resets or repair.
+ * Callers must independently verify the capability is still valid. */
+export async function readSunRateLimitBucketUsed(scope: string, scopeKey: string) {
+  try {
+    const key = rateLimitBucketKey(scope, scopeKey);
+    const rows = await sql`
+      SELECT hit_count::text AS hit_count FROM sun_rate_limit_buckets
+      WHERE scope = ${key.scope} AND scope_key_hash = ${key.scopeKeyHash} LIMIT 2
+    `;
+    if (rows.length > 1) return { unavailable: true as const, used: false };
+    if (!rows.length) return { unavailable: false as const, used: false };
+    const hits = String(rows[0].hit_count ?? "");
+    if (!/^(0|[1-9][0-9]*)$/.test(hits)) return { unavailable: true as const, used: false };
+    return { unavailable: false as const, used: hits !== "0" };
+  } catch { return { unavailable: true as const, used: false }; }
+}
+
 async function ensureSunRateLimitTable() {
   if (ensuredTable) return;
   await sql/*sql*/`

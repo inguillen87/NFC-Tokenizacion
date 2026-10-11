@@ -15,7 +15,9 @@ import { startEnterpriseEphemeralHttpHarness } from "./lib/enterprise-ephemeral-
 
 import {runSupplierRuntimeAcceptance} from "./lib/supplier-runtime-acceptance.mjs";
 import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
-import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
+import { attestGithubPostgresDocker } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
+import { runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness-v2.mjs";
+import { readConsumerOwnershipClaimSourcePins, runConsumerOwnershipClaimPostgresQa } from "../tests/helpers/consumer-ownership-claim-postgres-harness.mjs";
 import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
 import { runConsumerVerticalWriterPostgresQa } from "../tests/helpers/consumer-vertical-writer-postgres-harness.mjs";
 import { runConsumerRewardPostgresQa } from "../tests/helpers/consumer-reward-postgres-harness.mjs";
@@ -143,6 +145,30 @@ class SseProbe {
   }
 }
 
+function ownershipClaimQaSummary(report) {
+  assert.equal(report.schema, "nexid.consumer-ownership-claim-postgres/v1");
+  assert.ok(["core", "legacy-equivalence"].includes(report.catalogue));
+  assert.equal(report.sourcePinsVerified, true);
+  assert.ok(Number.isSafeInteger(report.serializationConflicts) && report.serializationConflicts >= 0);
+  // Publish observed counters only, never SQL, rows, snapshots or source paths.
+  return {
+    schema: report.schema,
+    semanticsVersion: report.semanticsVersion,
+    catalogue: report.catalogue,
+    passed: report.ok === true,
+    casesTotal: report.checks.length,
+    failedCount: report.checks.filter(check => check.passed !== true).length,
+    lockObservations: report.lockObservations.length,
+    serializationConflicts: report.serializationConflicts,
+    sourcePinsVerified: report.sourcePinsVerified,
+    cleanup: {
+      schemaDropped: report.cleanup.schemaDropped === true,
+      connectionsClosed: report.cleanup.connectionsClosed === true,
+      syntheticEnvironmentRestored: report.cleanup.syntheticEnvironmentRestored === true,
+    },
+  };
+}
+
 async function run() {
   config = readEnterpriseEphemeralE2eConfig(process.env);
   const emptyTarget = await assertDatabaseStartsEmpty();
@@ -166,11 +192,17 @@ async function run() {
     try { await client.connect(); return client; }
     catch (error) { await client.end().catch(() => {}); throw error; }
   };
-  const ownershipCurrentState = await runOwnershipCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
-  assert.ok(ownershipCurrentState.ok && ownershipCurrentState.cleanup.schemaDropped && ownershipCurrentState.cleanup.connectionsClosed, "Ownership current-state SQL regression or cleanup failed");
+  const ownershipClaimSourcePins = await readConsumerOwnershipClaimSourcePins(apiRoot);
+  const ownershipCurrentState = await runOwnershipCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation, apiRoot, sourcePins: ownershipClaimSourcePins });
+  assert.ok(ownershipCurrentState.ok && ownershipCurrentState.sourcePinsVerified && ownershipCurrentState.cleanup.schemaDropped && ownershipCurrentState.cleanup.connectionsClosed && ownershipCurrentState.cleanup.syntheticEnvironmentRestored, "Ownership current-state SQL regression or cleanup failed");
   assert.equal(ownershipCurrentState.checks.length, 51);
-  assert.ok(ownershipCurrentState.checks.every(check => check.ok));
+  assert.ok(ownershipCurrentState.checks.every(check => check.passed === true));
   assert.equal(ownershipCurrentState.lockObservations.length, 4);
+  const ownershipClaimCore = await runConsumerOwnershipClaimPostgresQa({ connect: connectCurrentTagQa, dockerAttestation, apiRoot, sourcePins: ownershipClaimSourcePins });
+  assert.ok(ownershipClaimCore.ok && ownershipClaimCore.sourcePinsVerified && ownershipClaimCore.cleanup.schemaDropped && ownershipClaimCore.cleanup.connectionsClosed && ownershipClaimCore.cleanup.syntheticEnvironmentRestored, "Ownership claim core SQL regression or cleanup failed");
+  assert.equal(ownershipClaimCore.checks.length, 40);
+  assert.ok(ownershipClaimCore.checks.every(check => check.passed === true));
+  assert.equal(ownershipClaimCore.lockObservations.length, 8);
   const collectionConcurrency = await runConsumerCollectionPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(collectionConcurrency.ok && collectionConcurrency.cleanup.schemaDropped && collectionConcurrency.cleanup.connectionsClosed, "Collection concurrent-save SQL regression or cleanup failed");
   assert.equal(collectionConcurrency.checks.length, 11);
@@ -220,7 +252,7 @@ async function run() {
     lockObservations: verticalWriters.lockObservations.filter(lock => lock.lockObserved === true).length,
     retryCounts: { serializationConflicts: verticalWriters.serializationConflicts },
   };
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, consumerVerticalWriters, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipClaimQaSummary(ownershipCurrentState), consumerOwnershipClaimCore: ownershipClaimQaSummary(ownershipClaimCore), collection: collectionConcurrency, consumerVerticalWriters, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 

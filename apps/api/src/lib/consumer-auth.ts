@@ -554,9 +554,24 @@ export async function getConsumerFromRequest(req: Request) {
   const token = consumerSessionTokenFromRequest(req);
   if (!token) return null;
   await ensureConsumerAuthSchema();
-  let rows;
   try {
-    rows = await sql/*sql*/`
+    return await readConsumerSession(token);
+  } catch (error) {
+    if (String((error as { code?: string } | null)?.code || "") === "42P01") return null;
+    throw error;
+  }
+}
+
+/** Same current-session authority, without schema creation, backfills or touch.
+ * Missing schema/read failures propagate as unavailable, never as logout. */
+export async function readConsumerFromRequestReadonly(req: Request) {
+  const token = consumerSessionTokenFromRequest(req);
+  if (!token) return null;
+  return readConsumerSession(token);
+}
+
+async function readConsumerSession(token: string) {
+  const rows = await sql/*sql*/`
       SELECT c.*,
              s.revoked_at AS session_revoked_at,
              EXISTS (
@@ -576,10 +591,6 @@ export async function getConsumerFromRequest(req: Request) {
         AND c.status IN ('anonymous', 'registered', 'verified')
       LIMIT 1
     `;
-  } catch (error) {
-    if (String((error as { code?: string } | null)?.code || "") === "42P01") return null;
-    throw error;
-  }
   const consumer = rows[0] || null;
   if (!consumer || consumer.session_revoked_at || !isConsumerSessionAccountActive(consumer.status)) return null;
   return consumer;
