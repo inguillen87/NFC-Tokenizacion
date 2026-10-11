@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
-import { evaluateConsumerVerticalContext, readConsumerVerticalContext, associateConsumerVerticalTap, enrollConsumerVerticalTap } from "../src/lib/consumer-vertical-writer-policy.ts";
+import { evaluateConsumerVerticalContext, normalizeConsumerTapReadCounter, readConsumerVerticalContext, associateConsumerVerticalTap, enrollConsumerVerticalTap } from "../src/lib/consumer-vertical-writer-policy.ts";
 import { installEphemeralE2eSqlExecutor, DEFAULT_REQUIRED_SCHEMA_MIGRATIONS } from "../src/lib/db.ts";
 import { verticalWriterFixture, verticalConsumerId, verticalProgramId, verticalTestEnv } from "./helpers/consumer-vertical-writer-fixture.mjs";
 
@@ -36,6 +36,21 @@ for (const [label, mutate] of [
 ]) test(`${label} fails closed before any writer`, () => {
   const f = verticalWriterFixture(); mutate(f);
   for (const action of ["save", "join", "rewards"]) assert.equal(evaluateConsumerVerticalContext(f, action).ok, false);
+});
+
+for (const counter of [null, undefined, "", true, false, 1.5, -1, 9007199254740992, "9007199254740992", "01", "1.0", "1e0", " "]) test(`persisted counter ${JSON.stringify(counter)} denies every writer precheck`, () => {
+  const f = verticalWriterFixture(); f.snapshot.event.sdm_read_ctr = counter;
+  assert.equal(normalizeConsumerTapReadCounter(counter), null);
+  for (const action of ["save", "join", "rewards"]) assert.deepEqual(evaluateConsumerVerticalContext(f, action), { ok: false, error: "tap_policy_indeterminate" });
+});
+for (const counter of [0, "0", 1, "1", Number.MAX_SAFE_INTEGER, String(Number.MAX_SAFE_INTEGER)]) test(`persisted exact counter ${JSON.stringify(counter)} stays required and canonical in the issued context`, async () => {
+  const f = verticalWriterFixture(); f.snapshot.event.sdm_read_ctr = counter;
+  for (const action of ["save", "join", "rewards"]) {
+    const decision = evaluateConsumerVerticalContext(f, action);
+    assert.equal(decision.ok, true); assert.equal(decision.context.event.sdm_read_ctr, Number(counter));
+    // Preserve the DB snapshot for the existing whole-row CTE equality fence.
+    assert.equal(f.snapshot.event.sdm_read_ctr, counter);
+  }
 });
 
 async function runWriterFixture({ action = "save", outcomes = [[]], rows = [verticalWriterFixture()] } = {}, verify) {
@@ -117,8 +132,9 @@ test("largest exact JS event ID stays exact and a returned different ID cannot a
 });
 
 const routes = ["consumer/save-product", "consumer/join-tenant", "loyalty/enroll"];
-for (const route of routes) for (const scenario of ["anonymous", "policy_denied", "tenant_mismatch", "capability_denied", "stale_policy", "writer_failure", "allowed"]) test(`${route}: ${scenario} retains auth and one-use ordering`, async () => {
+for (const route of routes) for (const scenario of ["anonymous", "policy_denied", "persisted_counter_missing", "tenant_mismatch", "capability_denied", "stale_policy", "writer_failure", "allowed"]) test(`${route}: ${scenario} retains auth and one-use ordering`, async () => {
   const f = verticalWriterFixture(); const event = { ...f.snapshot.event, bid: f.snapshot.batch.bid, tenant_slug: f.snapshot.tenant.slug };
+  if (scenario === "persisted_counter_missing") f.snapshot.event.sdm_read_ctr = null;
   const calls = []; const exports = {};
   const file = await readFile(new URL(`../src/app/mobile/passport/[eventId]/${route}/route.ts`, import.meta.url), "utf8");
   const compiled = ts.transpileModule(file, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -128,7 +144,7 @@ for (const route of routes) for (const scenario of ["anonymous", "policy_denied"
     "critical-rate-limit": { enforceCriticalRateLimit: async () => null },
     "bounded-request-body": { RequestBodyTooLargeError: class extends Error {}, readBoundedJsonBody: async () => scenario === "tenant_mismatch" ? { tenant: "another-brand" } : {} },
     "commercial-runtime-schema": { ensureConsumerPortalSchema: async () => {} },
-    "consumer-vertical-writer-policy": { readConsumerVerticalContext: async () => { calls.push("precheck"); return scenario === "policy_denied" ? { ok: false, error: "tap_action_not_allowed" } : { ok: true, context: { event } }; }, associateConsumerVerticalTap: write, enrollConsumerVerticalTap: write },
+    "consumer-vertical-writer-policy": { readConsumerVerticalContext: async (...args) => { calls.push("precheck"); return scenario === "persisted_counter_missing" ? readConsumerVerticalContext(...args) : scenario === "policy_denied" ? { ok: false, error: "tap_action_not_allowed" } : { ok: true, context: { event } }; }, associateConsumerVerticalTap: write, enrollConsumerVerticalTap: write },
     "ownership-policy": await import("../src/lib/ownership-policy.ts"),
     "loyalty-service": { getActiveProgram: async () => ({ id: verticalProgramId }) },
     "sun-fresh-handoff": { consumeSunFreshHandoff: async () => { calls.push("consume"); return scenario === "capability_denied" ? { ok: false, reason: "fresh_token_already_used" } : { ok: true }; } },
@@ -136,9 +152,20 @@ for (const route of routes) for (const scenario of ["anonymous", "policy_denied"
     "http": { json: (body, status = 200) => Response.json(body, { status }) },
   };
   new Function("require", "exports", compiled)(key => { const value = deps[key.split("/").pop()]; if (!value) throw new Error("Unexpected route dependency"); return value; }, exports);
-  const response = await exports.POST(new Request("https://example.invalid/post", { method: "POST" }), { params: Promise.resolve({ eventId: "900001" }) });
+  const sqlCalls = [];
+  const remove = scenario === "persisted_counter_missing" ? installEphemeralE2eSqlExecutor(async strings => {
+    const query = strings.join("?"); sqlCalls.push(query);
+    if (/FROM schema_migrations/.test(query)) return DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.map(id => ({ id }));
+    if (/SELECT jsonb_build_object/.test(query)) return [f];
+    throw new Error("Counter denial cannot reach a writer or capability ledger");
+  }, verticalTestEnv, { migrationManaged: true }) : null;
+  let response;
+  try { response = await exports.POST(new Request("https://example.invalid/post", { method: "POST" }), { params: Promise.resolve({ eventId: "900001" }) }); }
+  finally { remove?.(); }
   const payload = await response.json();
-  if (["anonymous", "policy_denied", "tenant_mismatch"].includes(scenario)) { assert.ok(response.status >= 400); assert.ok(!calls.includes("consume") && !calls.includes("write")); }
+  if (["anonymous", "policy_denied", "persisted_counter_missing", "tenant_mismatch"].includes(scenario)) { assert.ok(response.status >= 400); assert.ok(!calls.includes("consume") && !calls.includes("write"));
+    if (scenario === "persisted_counter_missing") { assert.equal(response.status, 403); assert.equal(payload.error ?? payload.reason, "tap_policy_indeterminate"); assert.deepEqual(calls, ["precheck"]); assert.equal(sqlCalls.filter(q => /SELECT jsonb_build_object/.test(q)).length, 1); assert.ok(sqlCalls.every(q => !/\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER)\b/.test(q))); }
+  }
   else if (scenario === "capability_denied") { assert.deepEqual(calls,["precheck","consume"]); assert.equal(response.status,403); assert.equal(payload.fresh_token_status,"fresh_token_already_used"); }
   else { assert.deepEqual(calls, ["precheck", "consume", "write"]); assert.equal(response.status, scenario === "allowed" ? 200 : scenario === "stale_policy" ? 409 : 503); if (scenario !== "allowed") assert.equal(payload.fresh_tap_required, true); }
 });

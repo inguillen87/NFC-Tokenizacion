@@ -236,20 +236,46 @@ test("one authorization matrix rejects fresh-SUN-only claims across tenant polic
 });
 
 test("public, SDK and mobile claims share policy, PIN credential and lockout gates", async () => {
+  const policySource = await readFile(new URL("../src/lib/consumer-vertical-writer-policy.ts", import.meta.url), "utf8");
   const routeUrls = [
     new URL("../src/app/public/cta/claim-ownership/route.ts", import.meta.url),
-    new URL("../src/app/api/v1/sdk/claim/route.ts", import.meta.url),
     new URL("../src/app/mobile/passport/[eventId]/consumer/claim/route.ts", import.meta.url),
   ];
-  for (const routeUrl of routeUrls) {
+  for (const [index, routeUrl] of routeUrls.entries()) {
     const source = await readFile(routeUrl, "utf8");
-    assert.match(source, /resolveOwnershipClaimPinCredential/);
-    assert.match(source, /evaluateOwnershipClaimAuthorization/);
-    assert.match(source, /reserveOwnershipClaimPinAttempt/);
-    assert.match(source, /verifyOwnershipClaimPin/);
-    assert.match(source, /releaseSuccessfulOwnershipClaimPinAttempt/);
-    assert.ok(source.indexOf("reserveOwnershipClaimPinAttempt") < source.lastIndexOf("verifyOwnershipClaimPin"));
+    assert.match(source, /readConsumerOwnershipClaimContext, consumeAndAuthorizeConsumerOwnershipClaim.*from ".*consumer-vertical-writer-policy"/);
+    const precheck = source.indexOf("await readConsumerOwnershipClaimContext(");
+    const authorize = source.indexOf("await consumeAndAuthorizeConsumerOwnershipClaim(");
+    const write = source.indexOf("await claimOwnershipForConsumer(");
+    assert.ok(precheck >= 0 && authorize > precheck && write > authorize, "context and real PIN authorization must precede the title sink");
+    assert.match(source, /if \(!precheck\.ok\) return json\(/);
+    assert.match(source, /if \(!authorized\.ok\)/);
+    assert.match(source, /if \(!authorized\.authorization\) return json\(/);
+    assert.match(source, /authorization: authorized\.authorization/);
+    assert.match(source, index === 0 ? /"public_claim_ownership"/ : /"consumer_claim_ownership"/);
   }
+  assert.match(policySource, /const credential = resolveOwnershipClaimPinCredential\(/);
+  assert.match(policySource, /const requirements = ownershipClaimAuthorizationRequirements\(/);
+  const authorizerStart = policySource.indexOf("export async function consumeAndAuthorizeConsumerOwnershipClaim(");
+  const writerStart = policySource.indexOf("export async function commitConsumerOwnershipClaim(");
+  assert.ok(authorizerStart >= 0 && writerStart > authorizerStart);
+  const authorizer = policySource.slice(authorizerStart, writerStart);
+  const reserve = authorizer.indexOf("await reserveOwnershipClaimPinAttempt(");
+  const verify = authorizer.indexOf("await verifyOwnershipClaimPin(");
+  assert.ok(reserve >= 0 && verify > reserve, "the durable failure budgets must be reserved before expensive PIN verification");
+  assert.match(authorizer, /reservation\.status === "locked"[\s\S]*?spent\(429, "claim_pin_locked"\)[\s\S]*?retryAfterSeconds: OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS/);
+  assert.match(authorizer, /if \(!pinVerification\.matches\) return spent\(403, "invalid_pin"\);/);
+  assert.match(authorizer, /await releaseSuccessfulOwnershipClaimPinAttempt\(reservation\.attempt\)/);
+  assert.match(authorizer, /claimAuthorizations\.set\(authorization,/);
+
+  // SDK authorization remains direct and retains its own policy/PIN checks.
+  const sdkSource = await readFile(new URL("../src/app/api/v1/sdk/claim/route.ts", import.meta.url), "utf8");
+  assert.match(sdkSource, /resolveOwnershipClaimPinCredential/);
+  assert.match(sdkSource, /evaluateOwnershipClaimAuthorization/);
+  assert.match(sdkSource, /reserveOwnershipClaimPinAttempt/);
+  assert.match(sdkSource, /verifyOwnershipClaimPin/);
+  assert.match(sdkSource, /releaseSuccessfulOwnershipClaimPinAttempt/);
+  assert.ok(sdkSource.indexOf("reserveOwnershipClaimPinAttempt") < sdkSource.lastIndexOf("verifyOwnershipClaimPin"));
 });
 
 test("POS activation is mandatory UID-scoped and cannot write batch policy", async () => {
@@ -266,13 +292,23 @@ test("POS activation is mandatory UID-scoped and cannot write batch policy", asy
 });
 
 test("claim routes ignore legacy batch-wide, used and sibling POS attestations", async () => {
-  const publicSource = await readFile(new URL("../src/app/public/cta/claim-ownership/route.ts", import.meta.url), "utf8");
-  const mobileSource = await readFile(new URL("../src/app/mobile/passport/[eventId]/consumer/claim/route.ts", import.meta.url), "utf8");
+  const policySource = await readFile(new URL("../src/lib/consumer-vertical-writer-policy.ts", import.meta.url), "utf8");
   const sdkSource = await readFile(new URL("../src/app/api/v1/sdk/claim/route.ts", import.meta.url), "utf8");
-  for (const source of [publicSource, mobileSource]) {
-    assert.match(source, /activation\.activation_status = 'active'/);
-    assert.match(source, /activation\.tag_id = t\.id/);
-    assert.match(source, /UPPER\(activation\.uid_hex\) = UPPER\(t\.uid_hex\)/);
+  const readerStart = policySource.indexOf("export async function readConsumerOwnershipClaimContext(");
+  const authorizerStart = policySource.indexOf("export async function consumeAndAuthorizeConsumerOwnershipClaim(");
+  const writerStart = policySource.indexOf("export async function commitConsumerOwnershipClaim(");
+  assert.ok(readerStart >= 0 && authorizerStart > readerStart && writerStart > authorizerStart);
+  const reader = policySource.slice(readerStart, authorizerStart);
+  const writer = policySource.slice(writerStart);
+  assert.match(reader, /activation\.batch_id = \$\{s\.batch\.id\}::uuid AND activation\.tag_id = \$\{s\.tag\.id\}::uuid/);
+  assert.match(reader, /UPPER\(TRIM\(activation\.uid_hex\)\) = UPPER\(TRIM\(\$\{s\.event\.uid_hex\}\)\)/);
+  assert.match(reader, /activation\.activation_status = 'active'/);
+  assert.match(reader, /activation\.expires_at IS NULL OR activation\.expires_at > clock_timestamp\(\)/);
+  assert.match(writer, /activation\.batch_id = e\.batch_id AND activation\.tag_id = e\.writer_tag_id/);
+  assert.match(writer, /UPPER\(TRIM\(activation\.uid_hex\)\) = UPPER\(TRIM\(e\.uid_hex\)\)/);
+  assert.match(writer, /to_jsonb\(activation\) = \$\{posJson\}::jsonb FOR SHARE OF activation/);
+  assert.match(writer, /EXISTS \(SELECT 1 FROM locked_pos WHERE activation_status = 'active' AND \(expires_at IS NULL OR expires_at > clock_timestamp\(\)\)\)/);
+  for (const source of [reader, writer]) {
     assert.doesNotMatch(source, /activation\.tag_id IS NULL/);
     assert.doesNotMatch(source, /activation\.activation_status IN \('active', 'used'\)/);
   }
@@ -284,11 +320,18 @@ test("claim routes ignore legacy batch-wide, used and sibling POS attestations",
 
 test("ownership sink has no demo-email takeover and conflict responses expose no prior owner PII", async () => {
   const source = await readFile(new URL("../src/lib/consumer-portal-service.ts", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /demo\.consumer@nexid\.local/);
-  assert.doesNotMatch(source, /canSupersedeDemoClaim/);
-  assert.doesNotMatch(source, /consumer_email/);
-  assert.doesNotMatch(source, /SELECT o\.\*, c\.email/);
-  assert.match(source, /error: "ownership_already_claimed" as const,[\s\S]*?ownership: null/);
-  const conflictBranches = source.match(/error: "ownership_already_claimed" as const/g) || [];
-  assert.equal(conflictBranches.length, 2);
+  const policySource = await readFile(new URL("../src/lib/consumer-vertical-writer-policy.ts", import.meta.url), "utf8");
+  const writerStart = policySource.indexOf("export async function commitConsumerOwnershipClaim(");
+  assert.ok(writerStart >= 0);
+  const writer = policySource.slice(writerStart);
+  for (const sink of [source, writer]) {
+    assert.doesNotMatch(sink, /demo\.consumer@nexid\.local/);
+    assert.doesNotMatch(sink, /canSupersedeDemoClaim/);
+    assert.doesNotMatch(sink, /consumer_email/);
+    assert.doesNotMatch(sink, /SELECT o\.\*, c\.email/);
+  }
+  assert.match(source, /const committed = await commitConsumerOwnershipClaim\(input\);/);
+  assert.match(source, /if \(!committed\.ok\) return \{ \.\.\.committed, ownership: null \};/);
+  assert.match(writer, /error\.code === "23505"\) return \{ ok: false as const, status: 409, error: "ownership_already_claimed" \};/);
+  assert.doesNotMatch(writer, /UPDATE consumer_product_ownerships/);
 });

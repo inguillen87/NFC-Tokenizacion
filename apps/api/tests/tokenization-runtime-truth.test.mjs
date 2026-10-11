@@ -11,6 +11,8 @@ const consumerProductsUrl = new URL("../src/app/consumer/products/route.ts", imp
 const p2pListUrl = new URL("../src/app/marketplace/p2p/list/route.ts", import.meta.url);
 const p2pBuyUrl = new URL("../src/app/marketplace/p2p/buy/route.ts", import.meta.url);
 const claimUrl = new URL("../src/app/public/cta/claim-ownership/route.ts", import.meta.url);
+const claimIssuerUrl = new URL("../src/lib/consumer-vertical-writer-policy.ts", import.meta.url);
+const claimPinRateUrl = new URL("../src/lib/ownership-claim-pin-rate-limit.ts", import.meta.url);
 const schemaUrl = new URL("../src/lib/tokenization-schema.ts", import.meta.url);
 
 test("tokenization defaults fail closed and simulation is explicit", () => {
@@ -69,15 +71,23 @@ test("minting records remain tenant scoped while P2P listing and settlement are 
   assert.doesNotMatch(p2pBuy, /transferBlockchainToken/);
 });
 
-test("public ownership PIN has a durable lockout boundary", async () => {
+test("public ownership PIN delegates to the real issuer with durable ordered lockout and original retry contract", async () => {
   const source = await readFile(claimUrl, "utf8");
-
-  assert.match(source, /reserveOwnershipClaimPinAttempt/);
-  assert.match(source, /releaseSuccessfulOwnershipClaimPinAttempt/);
-  assert.ok(source.indexOf("reserveOwnershipClaimPinAttempt") < source.indexOf("verifyOwnershipClaimPin({"));
-  assert.match(source, /reason: "claim_pin_locked"/);
+  const policy = await readFile(claimIssuerUrl, "utf8"), durable = await readFile(claimPinRateUrl, "utf8");
+  const issuer = policy.slice(policy.indexOf("export async function consumeAndAuthorizeConsumerOwnershipClaim"), policy.indexOf("export async function commitConsumerOwnershipClaim"));
+  assert.match(source, /consumeAndAuthorizeConsumerOwnershipClaim\(req, body, precheck\.context, "public_claim_ownership"\)/);
+  assert.match(source, /authorization: authorized\.authorization/);
+  assert.match(issuer, /reserveOwnershipClaimPinAttempt/); assert.match(issuer, /releaseSuccessfulOwnershipClaimPinAttempt/);
+  assert.ok(issuer.indexOf("consumeSunFreshHandoff(") < issuer.indexOf("reserveOwnershipClaimPinAttempt("));
+  assert.ok(issuer.indexOf("reserveOwnershipClaimPinAttempt(") < issuer.indexOf("verifyOwnershipClaimPin({"));
+  assert.match(issuer, /spent\(429, "claim_pin_locked"\)/);
+  assert.match(issuer, /retryAfterSeconds: OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS/);
+  assert.match(durable, /OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS = 15 \* 60/); assert.match(durable, /reserveSunRateLimitLease/);
+  assert.match(durable, /claim_pin_device/); assert.match(durable, /claim_pin_product/);
+  assert.match(source, /retry_after_seconds: authorized\.retryAfterSeconds/);
   assert.match(source, /retry-after/);
-  assert.match(source, /claim_pin_security_unavailable/);
+  assert.match(source, /Demasiados intentos\. Espera 15 minutos o solicita asistencia al emisor\./);
+  assert.match(issuer, /claim_pin_security_unavailable/);
 });
 
 test("anchored public responses separate historical proof from current commercial eligibility", async () => {

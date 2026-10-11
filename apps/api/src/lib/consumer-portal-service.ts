@@ -1,6 +1,6 @@
 import { sql, sqlSerializable } from "./db";
+import { commitConsumerOwnershipClaim, type ConsumerOwnershipClaimAuthorization } from "./consumer-vertical-writer-policy";
 import { claimTapPoints, getTapEvent } from "./loyalty-service";
-import { CLAIMABLE_OWNERSHIP_RESULTS, evaluateOwnershipEligibility } from "./ownership-policy";
 import { ensureConsumerPortalSchema } from "./commercial-runtime-schema";
 import { CanonicalEventWriteError, writeCanonicalEvent } from "./canonical-event-writer";
 import { evaluateTapCommercialRights, readCurrentTapCommercialRights } from "./tap-commercial-rights";
@@ -161,6 +161,7 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
 }
 
 type ClaimOwnershipInput = {
+  authorization?: ConsumerOwnershipClaimAuthorization;
   consumerId: string;
   eventId: string;
   bid?: string | null;
@@ -181,214 +182,14 @@ function withDigitalTitleExecutionTruth(ownership: Record<string, any> | null | 
 }
 
 export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
-  await ensureConsumerPortalSchema();
-  const event = await getTapEvent(input.eventId);
-  if (!event) return { ok: false as const, status: 404, error: "event_not_found" as const };
-  if (!event.tenant_id || !event.batch_id || !event.uid_hex) return { ok: false as const, status: 400, error: "event_missing_identity" as const };
-  if (input.uidHex && String(input.uidHex).toUpperCase() !== String(event.uid_hex).toUpperCase()) {
-    return { ok: false as const, status: 403, error: "uid_mismatch" as const };
-  }
-
-  const tag = {
-    id: event.current_tag_id,
-    status: event.current_tag_status,
-    lifecycle_state: event.current_tag_lifecycle_state,
-    batch_id: event.batch_id,
-    bid: event.bid,
-  };
-  if (!tag.id) return { ok: false as const, status: 404, error: "tag_not_found" as const };
-  if (input.bid && String(input.bid).trim() !== String(tag.bid || "").trim()) {
-    return { ok: false as const, status: 403, error: "tenant_batch_mismatch" as const };
-  }
-  const result = String(event.result || "").toUpperCase();
-  const currentRights = await readCurrentTapCommercialRights(String(event.id));
-  const { isBlocked, nextStatus } = evaluateOwnershipEligibility({
-    ...event,
-    result,
-  });
-  const durableBlocked = isBlocked || !currentRights.allowed;
-  const durableNextStatus = durableBlocked ? "revoked" : nextStatus;
-
-  if (!durableBlocked) {
-    await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
-    await saveTapForConsumer({ consumerId: input.consumerId, eventId: String(event.id) });
-  }
-
-  const trustSnapshot = {
-    result,
-    reason: event.reason || null,
-    city: event.city || null,
-    country: event.country_code || null,
-    tag_status: tag.status || null,
-    tag_lifecycle_state: tag.lifecycle_state || tag.status || null,
-    blocked: durableBlocked,
-    commercial_rights_reason: currentRights.reason,
-    ...(input.trustSnapshot || {}),
-  };
-
-  const uidHex = String(event.uid_hex).toUpperCase();
-  const existingClaimRows = !durableBlocked ? await sql/*sql*/`
-    SELECT o.id, o.consumer_id
-    FROM consumer_product_ownerships o
-    WHERE o.tenant_id = ${event.tenant_id}
-      AND o.uid_hex = ${uidHex}
-      AND o.status = 'claimed'
-    ORDER BY o.updated_at DESC
-    LIMIT 1
-  ` : [];
-  const existingClaim = existingClaimRows[0];
-  const existingConsumerId = String(existingClaim?.consumer_id || "");
-  const sameConsumerClaim = existingConsumerId && existingConsumerId === String(input.consumerId);
-
-  if (existingClaim && !sameConsumerClaim) {
-    return {
-      ok: false as const,
-      status: 409,
-      error: "ownership_already_claimed" as const,
-      ownership: null,
-    };
-  }
-
-  let ownershipRows;
-  if (existingClaim && sameConsumerClaim) {
-    ownershipRows = await sql/*sql*/`
-      WITH current_tag AS MATERIALIZED (
-        SELECT tag.id
-        FROM events source_event
-        JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
-        JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
-        WHERE source_event.id = ${event.id}::bigint
-          AND source_event.tenant_id = ${event.tenant_id}
-          AND source_event.batch_id = ${tag.batch_id}
-          AND UPPER(source_event.uid_hex) = ${uidHex}
-          AND tag.id = ${tag.id}
-          AND UPPER(source_event.result) = ANY(${[...CLAIMABLE_OWNERSHIP_RESULTS]}::text[])
-          AND tag.status = 'active'
-          AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
-          AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
-        FOR SHARE OF tag, bound_batch, source_event
-      )
-      UPDATE consumer_product_ownerships
-      SET consumer_id = ${input.consumerId},
-          batch_id = ${tag.batch_id},
-          tag_id = ${tag.id || null},
-          event_id = ${event.id},
-          status = CASE
-            WHEN NOT EXISTS (SELECT 1 FROM current_tag) OR EXISTS (
-              SELECT 1
-              FROM events source_event
-              LEFT JOIN tag_manual_tamper_overrides manual_override
-                ON manual_override.batch_id = source_event.batch_id
-               AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
-              WHERE source_event.id = ${event.id}::bigint
-                AND (
-                  UPPER(COALESCE(source_event.result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
-                  OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
-                  OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
-                  OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
-                  OR UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) IN ('MANUAL_OPENED', 'OPENED')
-                  OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
-                  OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
-                  OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
-                )
-            ) THEN 'revoked'
-            ELSE ${durableNextStatus}
-          END,
-          source = ${input.source || "sun_passport"},
-          trust_snapshot = ${JSON.stringify(trustSnapshot)}::jsonb,
-          updated_at = now()
-      WHERE id = ${existingClaim.id}
-      RETURNING *
-    `;
-
-  } else {
-    try {
-      ownershipRows = await sql/*sql*/`
-        WITH current_tag AS MATERIALIZED (
-          SELECT tag.id
-          FROM events source_event
-          JOIN batches bound_batch ON bound_batch.id = source_event.batch_id AND bound_batch.tenant_id = source_event.tenant_id
-          JOIN tags tag ON tag.batch_id = source_event.batch_id AND UPPER(tag.uid_hex) = UPPER(source_event.uid_hex)
-          WHERE source_event.id = ${event.id}::bigint
-            AND source_event.tenant_id = ${event.tenant_id}
-            AND source_event.batch_id = ${tag.batch_id}
-            AND UPPER(source_event.uid_hex) = ${uidHex}
-            AND tag.id = ${tag.id}
-            AND UPPER(source_event.result) = ANY(${[...CLAIMABLE_OWNERSHIP_RESULTS]}::text[])
-            AND tag.status = 'active'
-            AND COALESCE(tag.lifecycle_state, tag.status::text) = 'active'
-            AND NOT EXISTS (SELECT 1 FROM tags ambiguous_tag WHERE ambiguous_tag.batch_id = tag.batch_id AND UPPER(ambiguous_tag.uid_hex) = UPPER(tag.uid_hex) AND ambiguous_tag.id <> tag.id)
-          FOR SHARE OF tag, bound_batch, source_event
-        )
-        INSERT INTO consumer_product_ownerships (
-          tenant_id, consumer_id, batch_id, tag_id, uid_hex, event_id, status, source, trust_snapshot
-        )
-        SELECT
-          ${event.tenant_id}, ${input.consumerId}, ${tag.batch_id}, ${tag.id || null}, ${uidHex}, ${event.id},
-          CASE
-            WHEN NOT EXISTS (SELECT 1 FROM current_tag)
-              OR UPPER(COALESCE(source_event.result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
-              OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
-              OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
-              OR regexp_replace(UPPER(COALESCE(source_event.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
-              OR UPPER(BTRIM(COALESCE(manual_override.tamper_status, ''))) IN ('MANUAL_OPENED', 'OPENED')
-              OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_TAMPER_OPENED%'
-              OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%MANUAL_OPENED%'
-              OR regexp_replace(UPPER(COALESCE(manual_override.reason, '')), '[[:space:]-]+', '_', 'g') LIKE '%OPERATOR_DECLARED_OPEN%'
-            THEN 'revoked'
-            ELSE ${durableNextStatus}
-          END,
-          ${input.source || "sun_passport"}, ${JSON.stringify(trustSnapshot)}::jsonb
-        FROM events source_event
-        LEFT JOIN tag_manual_tamper_overrides manual_override
-          ON manual_override.batch_id = source_event.batch_id
-         AND UPPER(manual_override.uid_hex) = UPPER(source_event.uid_hex)
-        WHERE source_event.id = ${event.id}::bigint
-        ON CONFLICT (consumer_id, event_id)
-        DO UPDATE SET
-          status = EXCLUDED.status,
-          trust_snapshot = EXCLUDED.trust_snapshot,
-          updated_at = now()
-        RETURNING *
-      `;
-    } catch (error) {
-      const err = error as { code?: string; constraint?: string };
-      if (err.code === "23505" && err.constraint === "uq_consumer_product_ownerships_active_uid") {
-        return {
-          ok: false as const,
-          status: 409,
-          error: "ownership_already_claimed" as const,
-          ownership: null,
-        };
-      }
-      throw error;
-    }
-  }
-  const ownership = ownershipRows[0];
-  const persistedNextStatus = String(ownership?.status || "revoked");
-
-  await sql/*sql*/`
-    UPDATE consumer_products
-    SET ownership_status = ${persistedNextStatus},
-        latest_tap_event_id = ${event.id},
-        updated_at = now()
-    WHERE consumer_id = ${input.consumerId}
-      AND tenant_id = ${event.tenant_id}
-      AND (
-        product_passport_id = ${uidHex}
-        OR tag_id = ${tag.id || null}
-      )
-  `;
-
-  if (durableBlocked || String(ownership?.status || "") !== "claimed") {
-    return {
-      ok: false as const,
-      status: 409,
-      error: nextStatus === "blocked_replay" ? "blocked_replay" as const : "revoked" as const,
-      ownership: withDigitalTitleExecutionTruth(ownership),
-    };
-  }
-
+  const committed = await commitConsumerOwnershipClaim(input);
+  if (!committed.ok) return { ...committed, ownership: null };
+  const { event, ownership, uidHex } = committed;
+  const tag = { batch_id: committed.batchId };
+  const nextStatus = "claimed";
+  // Core membership/history/product/title is confirmed. Canonical event/outbox
+  // remains a separate, exact-receipt reconciliation boundary below.
+  await publishActorAssociationProjection(event.id);
   const ownershipTruth = withDigitalTitleExecutionTruth(ownership);
   try {
     const canonicalEvent = await writeCanonicalEvent({
