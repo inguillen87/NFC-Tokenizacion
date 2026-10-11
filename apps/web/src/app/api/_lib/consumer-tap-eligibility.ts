@@ -38,8 +38,10 @@ function sameOriginAjax(req: Request, url: URL) {
   if (origin !== null ? origin !== url.origin : site !== "same-origin") return false;
   if (site !== null && site !== "same-origin") return false;
   const mode = req.headers.get("sec-fetch-mode");
+  // Fetch Metadata serializes fetch()'s empty destination as the token "empty".
+  const destination = req.headers.get("sec-fetch-dest");
   return (mode === null || mode === "cors" || mode === "same-origin")
-    && (!req.headers.has("sec-fetch-dest") || req.headers.get("sec-fetch-dest") === "")
+    && (destination === null || destination === "" || destination === "empty")
     && !req.headers.has("sec-fetch-user");
 }
 function eligibilityQuery(url: URL): EligibilityQuery | null {

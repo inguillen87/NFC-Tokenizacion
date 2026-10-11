@@ -25,7 +25,7 @@ function token(overrides = {}) {
 }
 function request(query = `eventId=${EVENT}`, headers = {}, options = {}) {
   return new Request(`${options.origin ?? ORIGIN}${options.path ?? PATH}?${query}`, { ...options, headers: {
-    'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'cors', 'sec-fetch-dest': '', 'x-nexid-consumer-tap-eligibility': '1',
+    'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'cors', 'sec-fetch-dest': 'empty', 'x-nexid-consumer-tap-eligibility': '1',
     cookie: `nexid_consumer_session=${SESSION}; ${CAP_COOKIE}=${token()}`, ...headers,
   } });
 }
@@ -78,12 +78,37 @@ test('an explicit exact Origin can omit Fetch Metadata; missing both cannot esta
   await assertFailure(await call(noOriginOrMetadata, mustNotForward), 403, 'same_origin_required');
 });
 
+test('standard empty destination without Origin reaches identity checks, never upstream without a session', async () => {
+  const anonymous = request(undefined, { cookie: '' });
+  assert.equal(anonymous.headers.get('origin'), null);
+  assert.equal(anonymous.headers.get('sec-fetch-site'), 'same-origin');
+  assert.equal(anonymous.headers.get('sec-fetch-dest'), 'empty');
+  let forwards = 0;
+  await assertFailure(await call(anonymous, () => { forwards++; assert.fail('Anonymous request must not reach API'); }), 401, 'unauthorized');
+  assert.equal(forwards, 0);
+});
+
+test('absent and legacy empty destination keep the same private transport contract', async () => {
+  for (const destination of [null, '']) {
+    const req = request(undefined, { 'sec-fetch-dest': destination ?? 'empty' });
+    if (destination === null) req.headers.delete('sec-fetch-dest');
+    let forwards = 0;
+    const response = await call(req, async (_url, init) => {
+      forwards++; assert.equal(init.method, 'GET'); assert.equal(init.cache, 'no-store'); return Response.json(dto());
+    });
+    assert.equal(response.status, 200); assertPrivate(response); assert.equal(forwards, 1);
+    assert.deepEqual(await response.json(), dto());
+  }
+});
+
 test('cross-site, sibling-origin, navigation and missing/ambiguous intentional headers fail before transport', async () => {
   const headers = [
     { origin: 'https://other.nexid.example' }, { origin: 'https://foreign.invalid' }, { origin: 'null' }, { origin: '' },
     { 'sec-fetch-site': 'same-site' }, { 'sec-fetch-site': 'cross-site' }, { 'sec-fetch-site': 'none' },
-    { origin: ORIGIN, 'sec-fetch-site': 'cross-site' }, { 'sec-fetch-mode': 'navigate' }, { 'sec-fetch-mode': 'no-cors' },
-    { 'sec-fetch-dest': 'document' }, { 'sec-fetch-user': '?1' },
+    { origin: ORIGIN, 'sec-fetch-site': 'cross-site' }, { 'sec-fetch-mode': 'navigate' }, { 'sec-fetch-mode': 'no-cors' }, { 'sec-fetch-mode': 'websocket' },
+    ...['document', 'iframe', 'frame', 'image', 'script', 'style', 'worker', 'unknown', 'Empty', 'empty, document', 'empty, empty'].map(destination => ({ 'sec-fetch-dest': destination })),
+    { 'sec-fetch-user': '?1' }, { 'sec-fetch-user': '?0' }, { 'sec-fetch-user': '' },
+    { 'sec-fetch-site': 'same-origin, same-origin' }, { 'sec-fetch-mode': 'cors, same-origin' },
     { 'x-nexid-consumer-tap-eligibility': '' }, { 'x-nexid-consumer-tap-eligibility': '1, 1' }, { 'x-nexid-consumer-tap-eligibility': 'true' },
   ];
   for (const input of headers) await assertFailure(await call(request(undefined, input), mustNotForward), 403, 'same_origin_required');
