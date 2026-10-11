@@ -6,17 +6,48 @@ import Link from "next/link";
 import { parseTenantActionConfiguration, resolveTenantActionAvailability, TENANT_ACTION_COPY } from "./tenant-action-availability";
 import {
   classifySommelierResponse,
+  safeSommelierGuidance,
   sommelierProvenanceLabel,
   type SommelierProvenance,
 } from "../../lib/sommelier-guidance";
 import { useSunLocale } from "./sun-locale-provider";
-import { requestSommelierAnswer, SOMMELIER_QUESTION_MAX_CHARS } from "../../lib/sommelier-conversation";
-import { requestManagedSommelierAnswer, sommelierHistory, MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../lib/managed-sommelier";
+import { SOMMELIER_QUESTION_MAX_CHARS } from "../../lib/sommelier-conversation";
+import { consumerSommelierFailureKind, requestManagedSommelierAnswer, sommelierHistory, MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../lib/managed-sommelier";
 import { demoSommelierAnswer, demoSommelierCopy, demoSommelierPrompts, type DemoSommelierContext, type DemoSommelierFollowUp } from "./sun-demo-sommelier";
 import { demoWineTrivia } from "./sun-demo-wine-quiz";
 import type { DemoWineProfile } from "./valle-secreto-demo";
 import styles from "./qr-engagement-suite.module.css";
 import { configuredTriviaQuiz, confirmedPreviousTrivia, confirmedTriviaResult, triviaContextAvailable, triviaRecoveryCopy, triviaRecoveryDescription, triviaSubmissionBody, type ClientTriviaQuestion, type TriviaResult } from "./sun-trivia-model";
+
+const CONSUMER_CHAT_COPY = {
+  "es-AR": {
+    local: "Esta es una guía local; no se recibió una respuesta de IA.",
+    session: "No pudimos confirmar tu sesión. Conservamos la pregunta para que puedas revisar tu cuenta.",
+    access: "No pudimos habilitar el asistente para esta lectura. La lectura debe estar vinculada a tu cuenta y la marca debe habilitar esta opción.",
+    unavailable: "No recibimos una respuesta del asistente. Podés volver a enviar la pregunta; mientras tanto, mostramos una guía local.",
+    fallback: "El servicio devolvió orientación general, sin una respuesta de IA confirmada. Podés volver a enviar la pregunta.",
+    account: "Ver las opciones de mi cuenta",
+    latestAnswer: "Ver última respuesta",
+  },
+  en: {
+    local: "I can help you plan a gift, pairing or serving. Confirm this wine's details in the brand's published technical sheet. This is a local guide; no AI response was received.",
+    session: "We could not confirm your session. Your question is kept so you can review your account.",
+    access: "We could not enable the assistant for this reading. It must be linked to your account and the brand must enable this option.",
+    unavailable: "No assistant response was received. You can send the question again; meanwhile, we show a local guide.",
+    fallback: "The service returned general guidance without a confirmed AI response. You can send the question again.",
+    account: "View my account options",
+    latestAnswer: "View latest answer",
+  },
+  "pt-BR": {
+    local: "Posso ajudar a planejar um presente, uma harmonização ou o serviço. Confirme os dados deste vinho na ficha técnica publicada pela marca. Este é um guia local; nenhuma resposta de IA foi recebida.",
+    session: "Não conseguimos confirmar sua sessão. Sua pergunta foi mantida para você consultar sua conta.",
+    access: "Não conseguimos habilitar o assistente para esta leitura. Ela precisa estar vinculada à sua conta e a marca deve habilitar esta opção.",
+    unavailable: "Nenhuma resposta do assistente foi recebida. Você pode enviar a pergunta novamente; enquanto isso, mostramos um guia local.",
+    fallback: "O serviço retornou orientação geral, sem uma resposta de IA confirmada. Você pode enviar a pergunta novamente.",
+    account: "Consultar as opções da minha conta",
+    latestAnswer: "Ver a última resposta",
+  },
+} as const;
 
 const FEEDBACK_COPY = {
   "es-AR": { explanation: "Tu opinión se envía a la marca junto con esta lectura.", rating: (star: number) => `Calificar con ${star} estrella${star > 1 ? "s" : ""}`, comment: "Comentario corto", commentHint: "Comentario opcional para la marca", send: "Enviar opinión", saving: "Guardando..." },
@@ -130,6 +161,7 @@ export function QREngagementSuite({
   const triviaCopy = triviaRecoveryCopy[locale];
   const quizCopy = QUIZ_COPY[locale];
   const chatCopy = demoSommelierCopy(locale);
+  const consumerChatCopy = CONSUMER_CHAT_COPY[locale];
   const activeDemoWineProfile = isDemoPreview ? demoWineProfile : null;
   const commentId = useId();
   const [activeTab, setActiveTab] = useState<EngagementTab | null>(initialTab);
@@ -141,8 +173,8 @@ export function QREngagementSuite({
   const chatRequest = useRef<AbortController | null>(null);
   const chatSendLock = useRef(false);
   const chatSequence = useRef(0);
-  const chatLog = useRef<HTMLDivElement | null>(null);
-  const followChat = useRef(true);
+  const latestChatReplyId = useId();
+  const latestChatReplyRef = useRef<HTMLDivElement | null>(null);
   const demoChatContext = useRef<DemoSommelierContext>({});
   const chatScope = JSON.stringify([productName, wineryName, locale, eventId, tenantSlug, isDemoPreview, activeDemoWineProfile?.key]);
   const currentChatScope = useRef(chatScope);
@@ -155,7 +187,16 @@ export function QREngagementSuite({
   const currentAvailability = useRef(availability);
   currentAvailability.current = availability;
   const chatPrompts = isDemoPreview ? demoSommelierPrompts(locale, activeDemoWineProfile) : chatCopy.prompts;
-  const demoFollowUps = activeDemoWineProfile?.key === "valle-secreto"
+  const latestChatReply = [...messages].reverse().find(message => message.sender === "sommelier" && message.id !== "welcome");
+  const showLatestChatReply = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const reply = latestChatReplyRef.current;
+    if (!reply) return;
+    event.preventDefault();
+    reply.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    reply.focus({ preventScroll: true });
+  };
+  const chatQuestionMaxChars = !isDemoPreview || activeDemoWineProfile?.key === "valle-secreto" ? MANAGED_SOMMELIER_QUESTION_MAX_CHARS : SOMMELIER_QUESTION_MAX_CHARS;
+  const chatFollowUps = !isDemoPreview || activeDemoWineProfile?.key === "valle-secreto"
     ? [...messages].reverse().find(message => message.sender === "sommelier")?.followUps ?? [] : [];
 
   useEffect(() => {
@@ -319,7 +360,6 @@ export function QREngagementSuite({
     setChatError(null);
     setChatInput("");
     demoChatContext.current = {};
-    followChat.current = true;
     setMessages([
       {
         id: "welcome",
@@ -345,9 +385,6 @@ export function QREngagementSuite({
     }
   }, [availability.sommelier]);
 
-  useEffect(() => {
-    if (followChat.current && chatLog.current) chatLog.current.scrollTop = chatLog.current.scrollHeight;
-  }, [messages, isTyping, visibleTab]);
 
   useEffect(() => {
     setTriviaQuestions(fallbackTrivia);
@@ -451,7 +488,7 @@ export function QREngagementSuite({
   };
 
   const handleSendChat = async (textToSend: string) => {
-    const question = textToSend.trim().slice(0, activeDemoWineProfile?.key === "valle-secreto" ? MANAGED_SOMMELIER_QUESTION_MAX_CHARS : SOMMELIER_QUESTION_MAX_CHARS);
+    const question = textToSend.trim().slice(0, chatQuestionMaxChars);
     if (!currentAvailability.current.sommelier || chatSendLock.current || !question) return;
     chatSendLock.current = true;
     const controller = new AbortController();
@@ -488,9 +525,24 @@ export function QREngagementSuite({
         setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", ...answer, sample: true, provenance: { mode: "local-fallback" } }]);
         return;
       }
-      const result = await requestSommelierAnswer(question, { productName, brandName: wineryName }, { signal: controller.signal, postTapEventId: eventId });
+      const appendLocalGuide = () => setMessages(prev => [...prev, {
+        id: `chat-${++chatSequence.current}`, sender: "sommelier", provenance: { mode: "local-fallback" },
+        text: locale === "es-AR" ? `${safeSommelierGuidance(question, { productName, brandName: wineryName })} ${consumerChatCopy.local}` : consumerChatCopy.local,
+      }]);
+      // A missing event never becomes an unrestricted consumer or demo request.
+      if (!eventId) {
+        appendLocalGuide();
+        return;
+      }
+      const result = await requestManagedSommelierAnswer(question, { locale, history: sommelierHistory(messages), eventId, signal: controller.signal });
       if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
-      if (result.status !== "received") throw new Error("sommelier_unavailable");
+      if (result.status !== "received") {
+        const failure = consumerSommelierFailureKind(result);
+        appendLocalGuide();
+        setChatError(failure === "session" ? consumerChatCopy.session : failure === "access" ? consumerChatCopy.access : consumerChatCopy.unavailable);
+        setChatInput(previous => previous || question);
+        return;
+      }
       const data = result.data;
       const provenance = classifySommelierResponse(data);
 
@@ -499,7 +551,13 @@ export function QREngagementSuite({
         sender: "sommelier",
         text: data.optimizedText,
         provenance,
+        sources: data.sources,
+        followUps: data.suggestedQuestions.map(question => ({ label: question, question })),
       }]);
+      if (data.fallback) {
+        setChatError(consumerChatCopy.fallback);
+        setChatInput(previous => previous || question);
+      }
     } catch {
       if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
       setChatError(TENANT_ACTION_COPY[locale].unavailable);
@@ -577,7 +635,7 @@ export function QREngagementSuite({
   };
 
   return (
-    <div className="sun-engagement-suite mt-4 w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 shadow-xl backdrop-blur-md" data-sun-dock-avoid>
+    <div className={`${styles.surface} sun-engagement-suite mt-4 w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 shadow-xl backdrop-blur-md`} data-sun-dock-avoid>
       {engagementTabs.length === 0 ? <p role="status" data-testid="sun-actions-unavailable" className="p-5 text-sm leading-relaxed text-slate-300">{TENANT_ACTION_COPY[locale][availability.state === "unavailable" ? "unavailable" : availability.state === "unpublished" ? "unpublished" : "empty"]}</p> : <>
       <div className={`${styles.tabs} sun-engagement-tabs border-b border-white/5 bg-black/40 text-[11px] md:text-xs`}
         style={{ gridTemplateColumns: `repeat(${Math.max(1, engagementTabs.length)}, minmax(0, 1fr))` }}>
@@ -628,14 +686,15 @@ export function QREngagementSuite({
             {isDemoPreview ? <p data-testid="sun-sommelier-demo-notice" className="text-xs leading-relaxed text-slate-300">{activeDemoWineProfile?.key === "valle-secreto" ? chatCopy.managedDemo : chatCopy.demo}</p> : null}
 
             <div className="flex flex-wrap gap-2" data-testid="sun-sommelier-prompts">
-              {chatPrompts.map(prompt => <button key={prompt} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt); }} className="min-h-11 rounded-xl border border-amber-300/25 px-3 py-2 text-sm leading-snug text-amber-200 transition hover:bg-amber-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400">{prompt}</button>)}
+              {chatPrompts.map(prompt => <button key={prompt} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt); }} className={`${styles.chatPrompt} min-h-11 rounded-xl border px-3 py-2 text-sm leading-snug`}>{prompt}</button>)}
             </div>
 
-            <div ref={chatLog} role="log" aria-label={chatCopy.log} aria-live="polite" aria-relevant="additions text" aria-busy={isTyping} tabIndex={0}
-              onScroll={event => { const log = event.currentTarget; followChat.current = log.scrollHeight - log.scrollTop - log.clientHeight < 64; }}
-              className={`${styles.chatLog} v3-space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 focus-visible:outline-2 focus-visible:outline-amber-400`}>
+            {latestChatReply ? <a href={`#${latestChatReplyId}`} aria-controls={latestChatReplyId} onClick={showLatestChatReply} data-testid="sun-sommelier-latest-answer-link" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-300/25 px-3 py-2 text-sm font-semibold text-cyan-200 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">{consumerChatCopy.latestAnswer}<ArrowRight className="h-4 w-4" aria-hidden="true" /></a> : null}
+
+            <div role="log" aria-label={chatCopy.log} aria-live="polite" aria-relevant="additions text" aria-busy={isTyping} tabIndex={0}
+              className={`${styles.chatLog} v3-space-y-3.5 rounded-xl border border-white/5 bg-black/45 p-3 focus-visible:outline-2 focus-visible:outline-amber-400`}>
               {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
+                <div key={msg.id} id={msg.id === latestChatReply?.id ? latestChatReplyId : undefined} ref={msg.id === latestChatReply?.id ? latestChatReplyRef : undefined} tabIndex={msg.id === latestChatReply?.id ? -1 : undefined} data-testid={msg.id === latestChatReply?.id ? "sun-sommelier-latest-answer" : undefined} className={`${styles.chatReplyAnchor} flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`min-w-0 max-w-[90%] break-words rounded-xl px-3.5 py-2.5 leading-relaxed ${
                     msg.sender === "user" ? "bg-amber-500 font-semibold text-slate-950" : "border border-white/5 bg-slate-900 text-slate-200"
                   }`}>
@@ -660,9 +719,9 @@ export function QREngagementSuite({
               )}
             </div>
 
-            {demoFollowUps.length ? <div data-testid="sun-sommelier-follow-ups" className="space-y-2">
+            {chatFollowUps.length ? <div data-testid="sun-sommelier-follow-ups" className="space-y-2">
               <p className="text-xs font-semibold text-slate-300">{chatCopy.continue}</p>
-              <div className="flex flex-wrap gap-2">{demoFollowUps.map(prompt => <button key={prompt.question} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt.question); }} className="min-h-11 rounded-xl border border-cyan-300/25 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">{prompt.label}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{chatFollowUps.map(prompt => <button key={prompt.question} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt.question); }} className="min-h-11 rounded-xl border border-cyan-300/25 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">{prompt.label}</button>)}</div>
             </div> : null}
 
             <form onSubmit={onChatSubmit} className="flex gap-2">
@@ -671,7 +730,7 @@ export function QREngagementSuite({
                 title={chatCopy.placeholder}
                 aria-label={chatCopy.placeholder}
                 placeholder={chatCopy.placeholder}
-                maxLength={activeDemoWineProfile?.key === "valle-secreto" ? MANAGED_SOMMELIER_QUESTION_MAX_CHARS : SOMMELIER_QUESTION_MAX_CHARS}
+                maxLength={chatQuestionMaxChars}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 className={`${styles.chatInput} min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden`}
@@ -687,6 +746,7 @@ export function QREngagementSuite({
               </button>
             </form>
             {chatError ? <p role="alert" className="text-xs leading-relaxed text-rose-300">{chatError}</p> : null}
+            {!isDemoPreview && chatError ? <Link href="/me/products" prefetch={false} className="flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{consumerChatCopy.account}</Link> : null}
           </div>
         )}
 
