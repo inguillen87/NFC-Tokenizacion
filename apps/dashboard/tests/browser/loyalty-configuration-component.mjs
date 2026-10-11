@@ -94,7 +94,13 @@ try{
   await page.getByRole('button',{name:'Publicar configuración guardada',exact:true}).click();await page.getByRole('button',{name:'Confirmar publicación',exact:true}).click();await page.getByRole('button',{name:'Retirar publicación',exact:true}).waitFor();
   for(const box of await page.getByRole('checkbox').all())check(await box.isDisabled(),'published service locked');
   await snapshot(page,width,theme,'services-published');
-  await page.getByRole('button',{name:'Retirar publicación',exact:true}).click();await page.getByRole('button',{name:'Confirmar retiro',exact:true}).click();await page.getByText('Retiro confirmado. Ahora podés editar; el historial se conserva.').waitFor();
+  const profileWithdrawalWrites=history.length;await page.getByRole('button',{name:'Retirar publicación',exact:true}).click();
+   const profileWithdrawalDialog=page.getByRole('group',{name:'Confirmar cambio de publicación',exact:true});await profileWithdrawalDialog.waitFor({state:'visible'});
+   check(await profileWithdrawalDialog.locator('p').textContent()==='Los servicios de este pasaporte dejarán de ofrecerse en nuevas lecturas. Los programas de puntos y las trivias se administran por separado. El historial se conserva.','profile withdrawal explains only the selected resource');
+   check(history.length===profileWithdrawalWrites,'profile opening withdrawal confirmation sends no POST');
+   await snapshot(page,width,theme,'withdraw-confirm-profile');
+   check(history.length===profileWithdrawalWrites,'profile reading withdrawal confirmation sends no POST');
+   await page.getByRole('button',{name:'Confirmar retiro',exact:true}).click();await page.getByText('Retiro confirmado. Ahora podés editar; el historial se conserva.').waitFor();
   check(Object.keys(history.at(-1)).sort().join(',')==='action,expectedRevision,kind,operationId','profile withdrawal contains no edit fields');
   if(width===320&&theme==='light'){
    await page.getByRole('checkbox',{name:/Contactar a la marca/}).uncheck();abortBeforeCommit=true;
@@ -122,7 +128,13 @@ try{
   check(history.at(-1).pointsPerValidTap===0&&history.at(-1).cooldownSeconds===0,'zero program semantics');
   check(history.at(-1).startAt===base.programs[0].startAt,'metadata edit retains timestamp precision');
   await page.getByRole('button',{name:'Publicar configuración guardada',exact:true}).click();await page.getByRole('button',{name:'Confirmar publicación',exact:true}).click();await page.getByRole('button',{name:'Retirar publicación',exact:true}).waitFor();
-  await page.getByRole('button',{name:'Retirar publicación',exact:true}).click();await page.getByRole('button',{name:'Confirmar retiro',exact:true}).click();await page.getByText('Retiro confirmado. Ahora podés editar; el historial se conserva.').waitFor();
+  const programWithdrawalWrites=history.length;await page.getByRole('button',{name:'Retirar publicación',exact:true}).click();
+   const programWithdrawalDialog=page.getByRole('group',{name:'Confirmar cambio de publicación',exact:true});await programWithdrawalDialog.waitFor({state:'visible'});
+   check(await programWithdrawalDialog.locator('p').textContent()==='Este programa y sus trivias dejarán de ofrecerse mientras esté retirado. Los servicios del pasaporte se administran por separado. Los puntos y los intentos anteriores se conservan.','program withdrawal explains only the selected resource');
+   check(history.length===programWithdrawalWrites,'program opening withdrawal confirmation sends no POST');
+   await snapshot(page,width,theme,'withdraw-confirm-program');
+   check(history.length===programWithdrawalWrites,'program reading withdrawal confirmation sends no POST');
+   await page.getByRole('button',{name:'Confirmar retiro',exact:true}).click();await page.getByText('Retiro confirmado. Ahora podés editar; el historial se conserva.').waitFor();
   check(history.at(-1).id===id&&Object.keys(history.at(-1)).length===5,'program withdrawal stable ID only');
   await page.getByRole('button',{name:'Crear programa',exact:true}).click();
   check(await page.getByLabel('Puntos por lectura válida',{exact:true}).inputValue()==='','new program no points default');
@@ -146,7 +158,13 @@ try{
   check(uncertainCommand.questions[0].correctIndex===0&&uncertainCommand.pointsPerCorrect===0&&uncertainCommand.completionBonus===0,'quiz saved exact answer and zero scoring');
   await page.getByRole('button',{name:'Publicar configuración guardada',exact:true}).click();await page.getByRole('button',{name:'Confirmar publicación',exact:true}).click();await page.getByRole('button',{name:'Retirar publicación',exact:true}).waitFor();
   check(await page.getByLabel('Enunciado 1',{exact:true}).isDisabled(),'published quiz locked');
-  await page.getByRole('button',{name:'Retirar publicación',exact:true}).click();await page.getByRole('button',{name:'Confirmar retiro',exact:true}).click();await page.getByText('Retiro confirmado. Ahora podés editar; el historial se conserva.').waitFor();
+  const quizWithdrawalWrites=history.length;await page.getByRole('button',{name:'Retirar publicación',exact:true}).click();
+   const quizWithdrawalDialog=page.getByRole('group',{name:'Confirmar cambio de publicación',exact:true});await quizWithdrawalDialog.waitFor({state:'visible'});
+   check(await quizWithdrawalDialog.locator('p').textContent()==='Esta trivia dejará de ofrecerse en nuevos intentos. El programa de puntos, las otras trivias y los servicios del pasaporte mantienen su publicación. Los puntos y el historial se conservan.','quiz withdrawal explains only the selected resource');
+   check(history.length===quizWithdrawalWrites,'quiz opening withdrawal confirmation sends no POST');
+   await snapshot(page,width,theme,'withdraw-confirm-quiz');
+   check(history.length===quizWithdrawalWrites,'quiz reading withdrawal confirmation sends no POST');
+   await page.getByRole('button',{name:'Confirmar retiro',exact:true}).click();await page.getByText('Retiro confirmado. Ahora podés editar; el historial se conserva.').waitFor();
   await page.getByLabel('Trivia guardada',{exact:true}).selectOption(legacyId);check(await page.getByRole('button',{name:'Guardar borrador',exact:true}).count()===0,'legacy content readonly');
   await page.getByRole('button',{name:'Crear trivia',exact:true}).click();await page.getByLabel('Programa de la trivia',{exact:true}).selectOption(id);await page.getByLabel('Título de la trivia',{exact:true}).fill('Nueva trivia QA');await page.getByLabel('Vertical',{exact:true}).selectOption('wine');await page.getByLabel('Inicio',{exact:true}).fill('2026-01-01T00:00');
   delay=true;await page.getByRole('button',{name:'Guardar borrador',exact:true}).dblclick().catch(()=>{});delay=false;await page.getByText('Borrador guardado. Todavía no está publicado.').waitFor();
