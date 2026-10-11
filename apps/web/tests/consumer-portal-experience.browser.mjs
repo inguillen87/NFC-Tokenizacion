@@ -8,17 +8,19 @@ import {join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {marketplaceBinding,runMarketplaceScenarios} from './consumer-marketplace.browser.mjs';
 import {runClaimPinScenarios} from './consumer-claim-pin.browser.mjs';
+import {runTapEligibilityScenarios} from './consumer-tap-eligibility.browser.mjs';
 
 const web=fileURLToPath(new URL('../',import.meta.url)),repo=resolve(web,'../..');
 let base=process.env.QA_BASE_URL||'',next=null,serverFailed=false;
 if(base)assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname),'QA must stay on loopback');
 const outputParent=resolve(process.env.QA_OUTPUT||'artifacts/consumer-portal-experience');
+const eligibilityOnly=process.env.QA_ELIGIBILITY_ONLY==='1';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright-core');
 const axe=await readFile(process.env.AXE_MODULE_PATH,'utf8');
 await mkdir(outputParent,{recursive:true});
 const output=await mkdtemp(join(outputParent,'run-'));
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
-const report={localOnly:true,realProductionBuild:!process.env.QA_BASE_URL,actualNextRouter:true,syntheticConsumerAndNotices:true,physicalTapMeasured:false,checks:[],views:[],errors:[],blockedWrites:[],geolocationCalls:0};
+const report={localOnly:true,realProductionBuild:!process.env.QA_BASE_URL,actualNextRouter:true,syntheticConsumerAndNotices:true,physicalTapMeasured:false,eligibilityOnly,checks:[],views:[],errors:[],blockedWrites:[],geolocationCalls:0};
 report.marketplaceBindingBefore=await marketplaceBinding(repo,web);
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 async function assessment(page,selector,name,width,theme){
@@ -162,13 +164,18 @@ try{
   }
   assert.ok(ready,'isolated production test server must become ready');
  }
- for(const theme of ['light','dark'])for(const width of [320,390,768,1280,1440]){
+ for(const theme of ['light','dark'])for(const width of eligibilityOnly?[320,390]:[320,390,768,1280,1440]){
   const context=await browser.newContext({viewport:{width,height:900},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
   await context.addCookies([{name:'consumer_qa',value:'local',url:base,httpOnly:true,sameSite:'Lax'},{name:'theme',value:theme,url:base},{name:'nexid_theme_version',value:'white-first-v2',url:base}]);
   await context.exposeBinding('__qaLocationCall',()=>{report.geolocationCalls++;});
   await context.addInitScript(()=>{Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location request');},watchPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location watch');}}});});
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({width,theme,message:error.message}));
   await page.route('**/*',route=>{const request=route.request(),url=new URL(request.url());if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}return ['localhost','127.0.0.1'].includes(url.hostname)||['data:','blob:'].includes(url.protocol)?route.continue():route.abort();});
+  if(eligibilityOnly){
+   await runTapEligibilityScenarios({page,base,width,theme,report,check,assessment,noOverflow});
+   await runClaimPinScenarios({page,base,width,theme,report,check,assessment,noOverflow});
+   await context.close();continue;
+  }
   await productPhotoRecovery(page,context,width,theme);
   await whatsappOnlyHomeRegression(page,context,width,theme);
   await page.goto(base+'/me/products',{waitUntil:'networkidle',timeout:90000});
@@ -244,6 +251,7 @@ try{
   check(explainerContrast.backgroundImage==='none'&&explainerContrast.headingRatio>=explainerContrast.headingMinimum&&explainerContrast.paragraphRatio>=4.5,`${width}/${theme} experience explanation heading and paragraph have readable contrast against solid card background`);
   await noOverflow(page,`${width}/${theme} actual experience page fits viewport`);await assessment(page,'#consumer-portal-content','experience',width,theme);
   await runMarketplaceScenarios({page,base,width,theme,report,check,assessment,noOverflow});
+  await runTapEligibilityScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await runClaimPinScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await context.close();
  }

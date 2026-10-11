@@ -19,7 +19,7 @@ Object.assign(env,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',CONSUMER_DE
 const next=spawn(process.execPath,['--import',pathToFileURL(join(web,'tests/consumer-destination-recovery-local-fetch.mjs')).href,join(repo,'node_modules/next/dist/bin/next'),'start','-p',String(port),'-H','127.0.0.1'],{cwd:web,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
 next.stdout.on('data',()=>{});next.stderr.on('data',()=>{});let serverFailed=false;next.on('error',()=>{serverFailed=true;});
 const origin=`http://127.0.0.1:${port}`;
-const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],geolocationCalls:0};
+const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],geolocationCalls:0,eligibilityFixtureReads:0,eligibilityFixturePolicy:'all-actions-denied'};
 const paths=['consumer-destination-recovery.browser.mjs','consumer-destination-recovery-local-fetch.mjs','browser/consumer-destination-recovery-api.fixture.mjs','consumer-portal-loading-evidence.mjs'];
 const hashes=async()=>Object.fromEntries(await Promise.all(paths.map(async path=>[path,createHash('sha256').update(await readFile(join(web,'tests',path))).digest('hex')])));
 report.helperHashesStart=await hashes();
@@ -48,7 +48,24 @@ async function open(width,theme,scenario){
  await context.exposeBinding('__destinationLocation',()=>report.geolocationCalls++);
  await context.addInitScript(()=>{window.__destinationDeliveries=[];window.addEventListener('error',event=>{window.__destinationDeliveries.push(window.__destinationNativeError({message:event.error?.message||event.message,digest:event.error?.digest||null}).catch(()=>{}));});Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__destinationLocation();throw Error('Unexpected GPS');},watchPosition(){void window.__destinationLocation();throw Error('Unexpected GPS');}}});});
  const page=await context.newPage();page.on('pageerror',error=>report.clientErrors.push({message:error.message}));page.on('console',message=>{if(message.type()==='error')report.consoleErrors.push({message:message.text(),url:message.location().url});});
- await page.route('**/*',route=>{const request=route.request(),url=new URL(request.url());if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}if(url.origin===origin||['data:','blob:'].includes(url.protocol))return route.continue();report.externalRequests.push({origin:url.origin,path:url.pathname});return route.abort();});
+ await page.route('**/*',route=>{
+  const request=route.request(),url=new URL(request.url());
+  if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}
+  if(url.origin===origin&&url.pathname==='/api/consumer/tap-eligibility'){
+   // This recovery fixture has synthetic sessions, not a real identity or TAP capability.
+   const query=url.searchParams,headers=request.headers();
+   check(request.method()==='GET'&&query.get('eventId')==='900001'
+    &&[...query.keys()].every(key=>['eventId','tenant','bid'].includes(key)&&query.getAll(key).length===1)
+    &&(!query.has('tenant')||query.get('tenant')==='loading-qa')&&(!query.has('bid')||query.get('bid')==='LOT-QA')
+    &&headers['x-nexid-consumer-tap-eligibility']==='1'
+    &&!Object.hasOwn(headers,'authorization')&&!Object.hasOwn(headers,'x-nexid-consumer-tap-capability'),
+   'eligibility fixture: exact synthetic advisory GET context');
+   report.eligibilityFixtureReads++;
+   const denied={allowed:false,reason:'tap_action_not_allowed',freshTapRequired:false};
+   return route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'private, no-store','referrer-policy':'no-referrer',vary:'Cookie'},body:JSON.stringify({ok:true,schema:'nexid.consumer-tap-eligibility/v1',eventId:'900001',actions:{save:denied,join:denied,rewards:denied,claim:{...denied,nextStep:'blocked'}}})});
+  }
+  if(url.origin===origin||['data:','blob:'].includes(url.protocol))return route.continue();report.externalRequests.push({origin:url.origin,path:url.pathname});return route.abort();
+ });
  return{context,page};
 }
 async function assess(page,selector,name,width,theme){
@@ -117,7 +134,7 @@ try{
  for(const theme of ['light','dark'])for(const scenario of ['products-unavailable','taps-unavailable','catalog-unavailable'])await availability('/me/brands?tenant=loading-qa','consumer-brands-partial',scenario,320,theme,'Marca local QA','No hay membresías registradas en esta cuenta');
  for(const width of [320,768,1280])for(const theme of ['light','dark'])await availability('/me/marketplace?tenant=loading-qa','consumer-catalog-unavailable','catalog-unavailable',width,theme,'Catálogo local QA','Todavía no hay productos publicados');
  for(const[path,,emptyText]of [['/me/brands','unused','No hay membresías registradas en esta cuenta'],['/me/marketplace','unused','Todavía no hay productos publicados']]){const{context,page}=await open(390,'light','empty');try{await page.goto(origin+path,{waitUntil:'domcontentloaded'});const content=page.locator('#consumer-portal-content');await content.getByText(emptyText,{exact:false}).waitFor();check((await content.innerText()).includes(emptyText),path+': confirmed empty remains distinct');check(await content.getByRole('button',{name:'Reintentar carga',exact:true}).count()===0,path+': successful empty is not a failure');await page.evaluate(()=>Promise.all(window.__destinationDeliveries));}finally{await context.close();}}
- check(fixture.requests.every(row=>row.method==='GET'),'fixture received only GET reads');check(fixture.requests.filter(row=>row.scenario==='public-read-only').every(row=>row.cookieForwarded===false&&row.authorizationForwarded===false),'public reads forward no session cookies or authorization');check(report.blockedWrites.length===0,'no authentication/business writes attempted');check(report.geolocationCalls===0,'zero GPS calls');check(report.externalRequests.length===0,'zero external browser requests');check(report.clientErrors.length===0,'zero client exceptions');check(report.nativeWindowErrors.length===0,'zero native window exceptions');check(report.consoleErrors.length===0,'zero unexpected browser console errors');report.status='passed';
+ check(fixture.requests.every(row=>row.method==='GET'),'fixture received only GET reads');check(fixture.requests.filter(row=>row.scenario==='public-read-only').every(row=>row.cookieForwarded===false&&row.authorizationForwarded===false),'public reads forward no session cookies or authorization');check(report.eligibilityFixtureReads>0,'synthetic advisory eligibility reads observed separately');check(report.blockedWrites.length===0,'no authentication/business writes attempted');check(report.geolocationCalls===0,'zero GPS calls');check(report.externalRequests.length===0,'zero external browser requests');check(report.clientErrors.length===0,'zero client exceptions');check(report.nativeWindowErrors.length===0,'zero native window exceptions');check(report.consoleErrors.length===0,'zero unexpected browser console errors');report.status='passed';
 }catch(error){report.status='failed';report.error=String(error.stack);const page=browser?.contexts().at(-1)?.pages().at(-1);if(page)await page.screenshot({path:join(output,'failure.png'),fullPage:true}).catch(()=>{});throw error;
 }finally{
  report.fixtureReads=fixture.requests;report.helperHashesEnd=await hashes();report.helpersUnchanged=JSON.stringify(report.helperHashesStart)===JSON.stringify(report.helperHashesEnd);check(report.helpersUnchanged,'helpers unchanged during execution');await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({status:report.status,checks:report.checks.length,views:report.views.length,cases:report.cases.length,clientErrors:report.clientErrors.length,nativeWindowErrors:report.nativeWindowErrors.length,consoleErrors:report.consoleErrors.length,blockedWrites:report.blockedWrites.length,geolocationCalls:report.geolocationCalls,output}));await browser?.close();if(next.exitCode===null){next.kill();await Promise.race([new Promise(resolve=>next.once('exit',resolve)),new Promise(resolve=>setTimeout(resolve,1500))]);}await fixture.close();

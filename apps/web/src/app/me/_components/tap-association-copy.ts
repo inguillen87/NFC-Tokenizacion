@@ -17,7 +17,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
   "es-AR": {
     eyebrow: "Después de tu TAP", title: "Guardá tu producto en tu cuenta", reference: "Referencia de lectura",
     subtitle: "Guardá su historia para volver cuando quieras.", alternatives: "Otras opciones", readingDetails: "Sobre esta lectura", history: "Ver historial de lecturas",
-    pinLabel: "PIN del producto, si la marca lo pide",
+    pinLabel: "PIN del producto",
     pinHelp: "Usá el PIN que te entregó la marca. Es distinto al código de acceso por email o WhatsApp.",
     pinInputError: "Revisá el PIN e ingresalo tal como te lo entregó la marca, sin espacios. No enviamos la solicitud.",
     titles: {
@@ -25,7 +25,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
       recorded_pending: "Registro pendiente de confirmación", committed_unknown: "Revisá el registro en tu cuenta", review_required: "Hace falta una revisión",
       fresh_required: "Necesitás otra lectura", fresh_expired: "La lectura venció", fresh_used: "Esta lectura ya se usó", session_required: "Iniciá sesión para continuar",
       no_program: "Beneficios no disponibles", blocked: "Acción no confirmada", unconfirmed: "Falta confirmar el resultado",
-      pin_required: "La marca requiere un PIN", pin_invalid: "El PIN no coincide", pin_locked: "Intentos de PIN bloqueados",
+      pin_required: "La marca requiere un PIN", pin_input_required: "Ingresá el PIN del producto", pin_invalid: "El PIN no coincide", pin_locked: "Intentos de PIN bloqueados",
     },
     intro: "La referencia del enlace no confirma autenticidad ni permisos. Cada acción se valida con tu sesión y la política de la empresa.",
     choose: "Una acción por vez", checking: "Comprobando tu sesión…", active: "Se usará tu sesión actual.",
@@ -46,6 +46,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
       committed_unknown: "El servidor informó un registro realizado, pero el resultado completo no está confirmado. Revisá tu colección antes de continuar.",
       review_required: "La empresa exige una revisión adicional. Esta respuesta no creó una solicitud de revisión ni registró titularidad.",
       pin_required: "No se registró titularidad. Pedile el PIN a la marca. Esta lectura ya se usó para la solicitud: tené el PIN a mano y hacé un nuevo TAP antes de confirmar.",
+      pin_input_required: "La lectura sigue disponible. Ingresá el PIN que te entregó la marca y confirmá la solicitud. Todavía no se registró titularidad.",
       pin_invalid: "No se registró titularidad. Revisá el PIN que te entregó la marca. Esta lectura ya se usó para la solicitud: hacé un nuevo TAP antes de confirmar con el PIN correcto.",
       pin_locked: "No se registró titularidad. Esperá antes de probar otro PIN o consultá con la marca. Después necesitás un nuevo TAP; repetir ahora no libera el bloqueo.",
       fresh_required: "Acercá de nuevo el teléfono a la etiqueta y retomá esta acción desde el pasaporte. Tu sesión sigue activa.",
@@ -59,7 +60,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
   en: {
     eyebrow: "After your tap", title: "Save your product to your account", reference: "Reading reference",
     subtitle: "Save its story and come back whenever you like.", alternatives: "Other options", readingDetails: "About this reading", history: "View reading history",
-    pinLabel: "Product PIN, if required by the brand",
+    pinLabel: "Product PIN",
     pinHelp: "Use the PIN the brand gave you. It is different from your email or WhatsApp sign-in code.",
     pinInputError: "Check the PIN and enter it exactly as the brand gave it to you, without spaces. No request was sent.",
     titles: {
@@ -67,7 +68,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
       recorded_pending: "Record awaiting confirmation", committed_unknown: "Review the record in your account", review_required: "Additional review needed",
       fresh_required: "A new reading is needed", fresh_expired: "This reading has expired", fresh_used: "This reading was already used", session_required: "Sign in to continue",
       no_program: "Benefits unavailable", blocked: "Action not confirmed", unconfirmed: "Result awaiting confirmation",
-      pin_required: "The brand requires a PIN", pin_invalid: "The PIN does not match", pin_locked: "PIN attempts are locked",
+      pin_required: "The brand requires a PIN", pin_input_required: "Enter the product PIN", pin_invalid: "The PIN does not match", pin_locked: "PIN attempts are locked",
     },
     intro: "The link reference does not confirm authenticity or permissions. Each action is checked against your session and company policy.",
     choose: "One action at a time", checking: "Checking your session…", active: "Your current session will be used.", loginNeeded: "Sign in to continue. You will then need to confirm your chosen action.", login: "Sign in",
@@ -84,6 +85,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
       recorded_pending: "Digital title was recorded, but technical confirmation is incomplete. Review your collection; we will not resend this action.", committed_unknown: "The server reported a committed record, but the full result is unconfirmed. Review your collection before continuing.",
       review_required: "The company requires additional review. This response did not create a review request or register title.", fresh_required: "Tap the tag again with your phone, then continue this action from the passport. Your session remains active.", session_required: "Your session is not active. Sign in and confirm this action again.", no_program: "The company has no active benefits program for this reading.",
       pin_required: "Title was not registered. Ask the brand for the PIN. This reading was already used for the request: have the PIN ready and tap the tag again before confirming.",
+      pin_input_required: "This reading is still available. Enter the PIN the brand gave you and confirm the request. Ownership has not been registered yet.",
       pin_invalid: "Title was not registered. Check the PIN the brand gave you. This reading was already used for the request: tap the tag again before confirming with the correct PIN.",
       pin_locked: "Title was not registered. Wait before trying another PIN or contact the brand. You will then need a new tap; retrying now does not unlock it.",
       fresh_expired: "The time to confirm this reading has passed. Tap the tag again and complete the action from that screen. Your session remains active.",
@@ -94,7 +96,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
   "pt-BR": {
     eyebrow: "Depois do seu toque", title: "Guarde seu produto na sua conta", reference: "Referência da leitura",
     subtitle: "Guarde a história e volte quando quiser.", alternatives: "Outras opções", readingDetails: "Sobre esta leitura", history: "Ver histórico de leituras",
-    pinLabel: "PIN do produto, se a marca exigir",
+    pinLabel: "PIN do produto",
     pinHelp: "Use o PIN que a marca forneceu. Ele é diferente do código de acesso por email ou WhatsApp.",
     pinInputError: "Confira o PIN e digite exatamente como a marca forneceu, sem espaços. Nenhuma solicitação foi enviada.",
     titles: {
@@ -102,7 +104,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
       recorded_pending: "Registro aguardando confirmação", committed_unknown: "Revise o registro na sua conta", review_required: "Análise adicional necessária",
       fresh_required: "É necessária outra leitura", fresh_expired: "A leitura expirou", fresh_used: "Esta leitura já foi usada", session_required: "Entre para continuar",
       no_program: "Benefícios indisponíveis", blocked: "Ação não confirmada", unconfirmed: "Resultado aguardando confirmação",
-      pin_required: "A marca exige um PIN", pin_invalid: "O PIN não corresponde", pin_locked: "Tentativas de PIN bloqueadas",
+      pin_required: "A marca exige um PIN", pin_input_required: "Digite o PIN do produto", pin_invalid: "O PIN não corresponde", pin_locked: "Tentativas de PIN bloqueadas",
     },
     intro: "A referência do link não confirma autenticidade nem permissões. Cada ação é validada com sua sessão e a política da empresa.",
     choose: "Uma ação por vez", checking: "Verificando sua sessão…", active: "Sua sessão atual será utilizada.", loginNeeded: "Entre para continuar. Depois, confirme a ação escolhida.", login: "Entrar",
@@ -119,6 +121,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
       recorded_pending: "A titularidade foi registrada, mas falta a confirmação técnica. Revise sua coleção; não enviaremos esta ação novamente.", committed_unknown: "O servidor informou um registro realizado, mas o resultado completo não foi confirmado. Revise sua coleção antes de continuar.",
       review_required: "A empresa exige análise adicional. Esta resposta não criou uma solicitação de análise nem registrou titularidade.", fresh_required: "Aproxime novamente o celular da etiqueta e retome esta ação pelo passaporte. Sua sessão continua ativa.", session_required: "A sessão não está ativa. Entre e confirme esta ação novamente.", no_program: "A empresa não tem um programa de benefícios ativo para esta leitura.",
       pin_required: "A titularidade não foi registrada. Peça o PIN à marca. Esta leitura já foi usada na solicitação: tenha o PIN em mãos e aproxime o celular da etiqueta novamente antes de confirmar.",
+      pin_input_required: "Esta leitura continua disponível. Digite o PIN fornecido pela marca e confirme a solicitação. A titularidade ainda não foi registrada.",
       pin_invalid: "A titularidade não foi registrada. Confira o PIN fornecido pela marca. Esta leitura já foi usada na solicitação: aproxime o celular da etiqueta novamente antes de confirmar com o PIN correto.",
       pin_locked: "A titularidade não foi registrada. Aguarde antes de tentar outro PIN ou consulte a marca. Depois será necessária uma nova leitura; repetir agora não libera o bloqueio.",
       fresh_expired: "O prazo para confirmar esta leitura terminou. Aproxime o celular da etiqueta novamente e conclua a ação nessa tela. Sua sessão continua ativa.",

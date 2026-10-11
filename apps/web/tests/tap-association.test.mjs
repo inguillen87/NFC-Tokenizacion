@@ -6,6 +6,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as model from "../src/app/me/_components/tap-association-model.ts";
+import * as eligibility from "../src/app/me/_components/tap-association-eligibility.ts";
+import { associationEligibilityCopy } from "../src/app/me/_components/tap-association-eligibility-copy.ts";
 
 const require = createRequire(import.meta.url);
 const directory = new URL("../src/app/me/_components/", import.meta.url);
@@ -37,6 +39,8 @@ function render(query) {
     if (request === "next/link") return { __esModule: true, default: ({ children, prefetch, ...props }) => React.createElement("a", props, children) };
     if (request === "./tap-association-model") return model;
     if (request === "./tap-association-copy") return copy;
+    if (request === "./tap-association-eligibility") return eligibility;
+    if (request === "./tap-association-eligibility-copy") return {associationEligibilityCopy};
     if (request.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, name) => String(name) }) };
     return require(request);
   };
@@ -202,9 +206,8 @@ test("invalid local code never invokes transport and renders no secret from cont
   assert.equal(calls, 0);
   runner.dispose();
   const html = render("fromTap=1&eventId=715&action=claim&pin=SYNTHETIC-CLAIM-CODE");
-  assert.match(html, /type="password"/);
-  assert.match(html, /maxLength="128"/);
-  assert.match(html, /aria-describedby="tap-association-pin-help"/);
+  assert.doesNotMatch(html, /type="password"|tap-association-claim-pin/);
+  assert.match(html, /data-state="checking"/);
   assert.doesNotMatch(html, /SYNTHETIC-CLAIM-CODE/);
   assert.doesNotMatch(render("fromTap=1&eventId=715&action=products"), /tap-association-claim-pin/);
 });
@@ -364,9 +367,43 @@ test("actual banner SSR exposes labeled single-choice controls and waits for ses
   assert.match(checked[0][1], /value="save"/);
   assert.match(html, /La referencia del enlace no confirma autenticidad ni permisos/);
   assert.match(html, /Comprobando tu sesión/);
+  assert.match(html, /Consultando las opciones de la marca/);
+  assert.equal((html.match(/type="radio"[^>]*disabled=""/g) || []).length,4);
+  assert.doesNotMatch(render("fromTap=1&eventId=715&action=claim"), /data-testid="tap-association-claim-pin"/);
   assert.doesNotMatch(html, /data-testid="tap-association-confirm"|Mensaje NFC validado|href="[^\"]*logout/);
   assert.doesNotMatch(render("fromTap=1&eventId=715&action=portal"), /checked=""/);
   assert.equal(render("eventId=715&action=products"), "");
+});
+
+test("only the explicit preconsume missing-PIN receipt keeps this claim attempt retryable",()=>{
+  assert.deepEqual(model.tapAssociationResult('claim','715',403,{ok:false,error:'pin_required',fresh_tap_required:false}),{outcome:'pin_input_required',retryable:true});
+  for(const payload of [{error:'pin_required'},{error:'pin_required',fresh_tap_required:'false'},{error:'pin_required',fresh_tap_required:null}])assert.deepEqual(model.tapAssociationResult('claim','715',403,payload),{outcome:'pin_required',retryable:false});
+  assert.deepEqual(model.tapAssociationResult('claim','715',403,{error:'pin_required',fresh_tap_required:true}),{outcome:'fresh_required',retryable:false});
+  assert.deepEqual(model.tapAssociationResult('claim','715',400,{error:'pin_required',fresh_tap_required:false}),{outcome:'pin_required',retryable:false});
+  assert.deepEqual(model.tapAssociationResult('claim','715',401,{error:'pin_required',fresh_tap_required:false}),{outcome:'session_required',retryable:true});
+  assert.deepEqual(model.tapAssociationResult('claim','715',403,{error:'pin_required',fresh_tap_required:false,operation_committed:true}),{outcome:'committed_unknown',retryable:false});
+  assert.deepEqual(model.tapAssociationResult('save','715',403,{error:'pin_required',fresh_tap_required:false}),{outcome:'blocked',retryable:false});
+});
+
+test("missing-PIN receipt permits one later explicit claim and never resends automatically",async()=>{
+  let calls=0;const runner=model.createTapAssociationRunner(context('action=claim'),async(_path,body)=>{
+    calls++;if(calls===1){assert.equal('pin' in body,false);return{status:403,payload:{ok:false,error:'pin_required',fresh_tap_required:false}};}
+    assert.equal(body.pin,'Synthetic-PIN');return{status:200,payload:successPayloads.claim};
+  });
+  assert.equal((await runner.run('claim')).outcome,'pin_input_required');assert.equal(calls,1);
+  await Promise.resolve();assert.equal(calls,1);
+  assert.equal((await runner.run('claim','es-AR','Synthetic-PIN')).outcome,'claimed');assert.equal(calls,2);
+  assert.equal(await runner.run('claim','es-AR','Synthetic-PIN'),null);assert.equal(calls,2);runner.dispose();
+});
+
+test("eligibility explanations are complete and consistent in Spanish English Portuguese",()=>{
+  const keys=Object.keys(associationEligibilityCopy['es-AR'].reasons).sort();
+  for(const locale of ['es-AR','en','pt-BR']){
+    const strings=associationEligibilityCopy[locale];assert.deepEqual(Object.keys(strings.reasons).sort(),keys);
+    for(const value of Object.values(strings)){if(typeof value==='string')assert.ok(value.trim());else for(const reason of Object.values(value))assert.ok(reason.trim());}
+    assert.notEqual(strings.reasons.ownership_already_claimed,strings.reasons.ownership_manual_approval_required);
+    assert.notEqual(copy.associationCopy[locale].outcomes.pin_input_required,copy.associationCopy[locale].outcomes.pin_required);
+  }
 });
 
 test("all supported locales contain every action and result with truthful membership and ownership limits", () => {
