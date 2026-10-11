@@ -49,6 +49,39 @@ const CONSUMER_CHAT_COPY = {
   },
 } as const;
 
+const ENGAGEMENT_TOOLTIP_COPY = {
+  "es-AR": {
+    sommelier: "Consultar maridajes, cata, temperatura y recomendaciones",
+    feedback: "Enviar opinión breve del producto o experiencia",
+    contact: "Autorizar contacto para novedades reales publicadas por la marca",
+    name: "Nombre para recibir novedades de la marca",
+    channel: "Contacto para recibir novedades autorizadas",
+    occasion: "Contexto de compra o consumo",
+    gender: "Dato opcional para segmentación agregada",
+    submit: "Registrar contacto para novedades de la marca",
+  },
+  en: {
+    sommelier: "Ask about pairings, tasting, temperature and recommendations",
+    feedback: "Share a short opinion about the product or experience",
+    contact: "Allow contact about updates published by the brand",
+    name: "Name for receiving brand updates",
+    channel: "Contact for receiving authorized updates",
+    occasion: "Purchase or consumption context",
+    gender: "Optional information for aggregated segmentation",
+    submit: "Register contact for brand updates",
+  },
+  "pt-BR": {
+    sommelier: "Consultar harmonizações, degustação, temperatura e recomendações",
+    feedback: "Enviar uma opinião breve sobre o produto ou a experiência",
+    contact: "Autorizar contato sobre novidades publicadas pela marca",
+    name: "Nome para receber novidades da marca",
+    channel: "Contato para receber novidades autorizadas",
+    occasion: "Contexto de compra ou consumo",
+    gender: "Informação opcional para segmentação agregada",
+    submit: "Registrar contato para novidades da marca",
+  },
+} as const;
+
 const FEEDBACK_COPY = {
   "es-AR": { explanation: "Tu opinión se envía a la marca junto con esta lectura.", rating: (star: number) => `Calificar con ${star} estrella${star > 1 ? "s" : ""}`, comment: "Comentario corto", commentHint: "Comentario opcional para la marca", send: "Enviar opinión", saving: "Guardando..." },
   en: { explanation: "Your opinion is sent to the brand with this reading.", rating: (star: number) => `Rate ${star} star${star > 1 ? "s" : ""}`, comment: "Short comment", commentHint: "Optional comment for the brand", send: "Send opinion", saving: "Saving..." },
@@ -157,6 +190,7 @@ export function QREngagementSuite({
   canEngage = true,
 }: QREngagementSuiteProps) {
   const { locale } = useSunLocale();
+  const engagementTooltipCopy = ENGAGEMENT_TOOLTIP_COPY[locale];
   const feedbackCopy = FEEDBACK_COPY[locale];
   const triviaCopy = triviaRecoveryCopy[locale];
   const quizCopy = QUIZ_COPY[locale];
@@ -252,11 +286,11 @@ export function QREngagementSuite({
   const currentQuestion = triviaQuestions[triviaStep] || triviaQuestions[0];
   const selectedAnswer = currentQuestion ? triviaAnswers[currentQuestion.id] ?? null : null;
   const engagementTabs = useMemo(() => [
-    ...(availability.sommelier ? [{ id: "sommelier" as const, label: "Sommelier", Icon: Bot, title: "Consultar maridajes, cata, temperatura y recomendaciones" }] : []),
+    ...(availability.sommelier ? [{ id: "sommelier" as const, label: "Sommelier", Icon: Bot, title: engagementTooltipCopy.sommelier }] : []),
     ...(availability.trivia || hasDraft || previousTriviaDraft.length || showTriviaResult ? [{ id: "trivia" as const, label: availability.trivia ? "Trivia" : triviaCopy.savedAnswers, Icon: HelpCircle, title: triviaCopy.savedAnswers }] : []),
-    ...(availability.feedback && !activeDemoWineProfile ? [{ id: "feedback" as const, label: "Calificar", Icon: Star, title: "Enviar opinión breve del producto o experiencia" }] : []),
-    ...(availability.lead && !activeDemoWineProfile ? [{ id: "contact" as const, label: "Novedades", Icon: Gift, title: "Autorizar contacto para novedades reales publicadas por la marca" }] : []),
-  ], [availability.sommelier, availability.trivia, availability.feedback, availability.lead, hasDraft, previousTriviaDraft.length, showTriviaResult, triviaCopy.savedAnswers, activeDemoWineProfile]);
+    ...(availability.feedback && !activeDemoWineProfile ? [{ id: "feedback" as const, label: "Calificar", Icon: Star, title: engagementTooltipCopy.feedback }] : []),
+    ...(availability.lead && !activeDemoWineProfile ? [{ id: "contact" as const, label: "Novedades", Icon: Gift, title: engagementTooltipCopy.contact }] : []),
+  ], [availability.sommelier, availability.trivia, availability.feedback, availability.lead, hasDraft, previousTriviaDraft.length, showTriviaResult, triviaCopy.savedAnswers, activeDemoWineProfile, engagementTooltipCopy]);
   const visibleTab = engagementTabs.some(tab => tab.id === activeTab) ? activeTab : engagementTabs[0]?.id ?? null;
 
   useEffect(() => {
@@ -520,6 +554,8 @@ export function QREngagementSuite({
               followUps: data.suggestedQuestions.length ? data.suggestedQuestions.map(question => ({ label: question, question })) : answer.followUps }]);
             return;
           }
+          setChatError(result.status === "received" ? consumerChatCopy.fallback : consumerChatCopy.unavailable);
+          setChatInput(previous => previous || question);
         }
         demoChatContext.current = answer.topic ? { topic: answer.topic } : {};
         setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", ...answer, sample: true, provenance: { mode: "local-fallback" } }]);
@@ -972,7 +1008,7 @@ export function QREngagementSuite({
                     Nombre
                     <input
                       type="text"
-                      title="Nombre para registrar el beneficio"
+                      title={engagementTooltipCopy.name}
                       placeholder="Tu nombre completo"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -983,7 +1019,7 @@ export function QREngagementSuite({
                     WhatsApp o email
                     <input
                       type="text"
-                      title="Contacto para recibir novedades autorizadas"
+                      title={engagementTooltipCopy.channel}
                       placeholder="ej. +549261... o mail@ejemplo.com"
                       value={contact}
                       onChange={(e) => setContact(e.target.value)}
@@ -994,7 +1030,7 @@ export function QREngagementSuite({
                     <label className="block v3-space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
                       Ocasión
                       <select
-                        title="Contexto de compra o consumo"
+                        title={engagementTooltipCopy.occasion}
                         value={occasion}
                         onChange={(e) => setOccasion(e.target.value)}
                         className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 transition focus:border-amber-500 focus:outline-hidden"
@@ -1008,7 +1044,7 @@ export function QREngagementSuite({
                     <label className="block v3-space-y-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
                       Género
                       <select
-                        title="Dato opcional para segmentación agregada"
+                        title={engagementTooltipCopy.gender}
                         value={gender}
                         onChange={(e) => setGender(e.target.value)}
                         className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs normal-case tracking-normal text-slate-100 transition focus:border-amber-500 focus:outline-hidden"
@@ -1028,7 +1064,7 @@ export function QREngagementSuite({
                 </label>
                 <button
                   type="button"
-                  title="Registrar contacto para novedades de la marca"
+                  title={engagementTooltipCopy.submit}
                   disabled={!brandContactConsent || !name.trim() || !contact.trim() || submittingLead}
                   onClick={async () => {
                     const saved = await submitLead({
