@@ -82,6 +82,7 @@ export function classifyFleetRateLimit(pathname: string, method: string): FleetR
     || path === "/admin/sdk/claim-policy"
     || path.startsWith("/admin/sdk/api-keys")
   )) return "public_write";
+  if (verb === "POST" && /^\/marketplace\/products\/[^/]+\/request-to-buy$/.test(path)) return "public_write";
   if (path === "/public/leads" || path === "/sun/context") return "public_write";
   if (path === "/public/proof/verify" || path === "/public/proof/decode" || path === "/public/cta/provenance") return "proof_write";
   if (verb !== "GET" && (
