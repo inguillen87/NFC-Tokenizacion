@@ -281,7 +281,7 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
     await reload();mode=failureMode;await page.evaluate(value=>{window.__marketplaceBodyHang=value;},failureMode==='body-hang');
     await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();const before=requests.length;
     await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();
-    const expected=failureMode==='context-denied'?'Primero asociá una lectura a tu Passport desde el formulario de esta página y luego volvé a intentar.':failureMode==='rate-limit'?'Se enviaron varias solicitudes. Esperá un momento y volvé a intentar.':'No pudimos confirmar si se registró. Revisá tus solicitudes antes de volver a enviar.';
+    const expected=failureMode==='context-denied'?'Para enviar solicitudes a esta marca necesitás una lectura asociada, un producto reclamado o una membresía activa. Revisá tus productos y lecturas antes de volver a enviarla.':failureMode==='rate-limit'?'Se enviaron varias solicitudes. Esperá un momento y volvé a intentar.':'No pudimos confirmar si se registró. Revisá tus solicitudes antes de volver a enviar.';
     await olive().getByText(expected,{exact:true}).waitFor({timeout:16000});
     await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).waitFor({state:'visible'});
     check(!(await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).isDisabled()),`${label} ${failureMode} releases busy state`);
