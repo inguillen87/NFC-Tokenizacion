@@ -14,10 +14,20 @@
 }
 
 .chatLog {
-  height: 280px;
+  min-height: 280px;
+  height: auto;
+  overflow: visible;
   font-size: 14px;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+.chatReplyAnchor {
+  scroll-margin-block-start: 96px;
+}
+
+.chatReplyAnchor:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
 }
 
 .chatInput {
@@ -75,4 +85,79 @@
 .triviaButton:focus-visible {
   outline: 3px solid currentColor;
   outline-offset: 2px;
+}
+/* Text-bearing SUN surfaces stop at an opaque theme background.
+   Decorative gradients remain outside this engagement panel. */
+.surface:global(.sun-engagement-suite) {
+  background-color: #020617 !important;
+  background-image: none !important;
+}
+
+.surface:global(.sun-engagement-suite) .tabs {
+  background-color: #0f172a !important;
+  background-image: none !important;
+}
+
+.surface:global(.sun-engagement-suite) .chatLog,
+.surface:global(.sun-engagement-suite) .chatInput {
+  background-color: #020617 !important;
+  background-image: none !important;
+}
+
+/* Include the semantic panel marker so these rules outrank the
+   existing global light SUN surface inventory and its !important rules. */
+:global(html.theme-light .sun-tap-experience) .surface:global(.sun-engagement-suite),
+:global(html[data-theme="light"] .sun-tap-experience) .surface:global(.sun-engagement-suite) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+:global(html.theme-light .sun-tap-experience) .surface:global(.sun-engagement-suite) .tabs,
+:global(html[data-theme="light"] .sun-tap-experience) .surface:global(.sun-engagement-suite) .tabs {
+  background-color: #f1f5f9 !important;
+  background-image: none !important;
+}
+
+:global(html.theme-light .sun-tap-experience) .surface:global(.sun-engagement-suite) .chatLog,
+:global(html[data-theme="light"] .sun-tap-experience) .surface:global(.sun-engagement-suite) .chatLog {
+  background-color: #f8fafc !important;
+  background-image: none !important;
+}
+
+:global(html.theme-light .sun-tap-experience) .surface:global(.sun-engagement-suite) .chatInput,
+:global(html[data-theme="light"] .sun-tap-experience) .surface:global(.sun-engagement-suite) .chatInput {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+/* Waiting changes availability, never the legibility of a suggested question. */
+.surface:global(.sun-engagement-suite) .chatPrompt {
+  --sun-chat-prompt-text: #fde68a;
+  --sun-chat-prompt-bg: #0f172a;
+  --sun-chat-prompt-hover: #1e293b;
+  color: var(--sun-chat-prompt-text) !important;
+  background-color: var(--sun-chat-prompt-bg) !important;
+  background-image: none !important;
+  border-color: #b45309 !important;
+  opacity: 1 !important;
+}
+
+:global(html.theme-light .sun-tap-experience) .surface:global(.sun-engagement-suite) .chatPrompt,
+:global(html[data-theme="light"] .sun-tap-experience) .surface:global(.sun-engagement-suite) .chatPrompt {
+  --sun-chat-prompt-text: #78350f;
+  --sun-chat-prompt-bg: #fffbeb;
+  --sun-chat-prompt-hover: #fef3c7;
+}
+
+.surface:global(.sun-engagement-suite) .chatPrompt:not(:disabled):hover {
+  background-color: var(--sun-chat-prompt-hover) !important;
+}
+
+.surface:global(.sun-engagement-suite) .chatPrompt:disabled {
+  cursor: wait;
+}
+
+.surface:global(.sun-engagement-suite) .chatPrompt:focus-visible {
+  outline: 3px solid var(--sun-chat-prompt-text) !important;
+  outline-offset: 3px;
 }

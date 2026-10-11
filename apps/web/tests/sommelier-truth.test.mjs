@@ -37,8 +37,9 @@ test("consumer and post-tap sommelier surfaces disclose provenance and remove fa
     assert.doesNotMatch(source, /95 puntos|James Suckling|medalla de oro Decanter|5 a 8 años|16 ?°?C y 18 ?°?C/i);
   }
   assert.match(consumerSource, /safeSommelierGuidance\(textToSend/);
-  assert.doesNotMatch(qrSource, /safeSommelierGuidance|qr_sommelier/);
-  assert.match(qrSource, /postTapEventId: eventId/);
+  assert.match(qrSource, /safeSommelierGuidance\(question/);
+  assert.doesNotMatch(qrSource, /requestSommelierAnswer\(/);
+  assert.match(qrSource, /history: sommelierHistory\(messages\), eventId, signal: controller\.signal/);
   assert.match(qrSource, /setChatError\(TENANT_ACTION_COPY\[locale\]\.unavailable\)/);
   assert.match(apiSource, /unverified_product_claim_blocked/);
   assert.doesNotMatch(apiSource, /Menciona que este Gran Reserva|prestigiosa bodega de Mendoza|95 puntos James Suckling/);
@@ -50,6 +51,8 @@ test("SUN response provenance follows the selected language without claiming ver
   assert.match(sommelierProvenanceLabel({ mode: "context" }, "en"), /product not verified/);
   assert.match(sommelierProvenanceLabel({ mode: "live", provider: "huggingface", model: "fixed-model" }, "pt-BR"), /Provedor confirmado.*não é ficha técnica/);
   assert.match(qrSource, /sommelierProvenanceLabel\(msg\.provenance, locale\)/);
+  assert.match(qrSource, /provenance: \{ mode: "local-fallback" \}/);
+  assert.match(qrSource, /consumerSommelierFailureKind\(result\)/);
 });
 
 test("sommelier product context never becomes SUN, seal or bottle verification", () => {

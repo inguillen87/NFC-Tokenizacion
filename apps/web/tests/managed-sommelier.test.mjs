@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { requestManagedSommelierAnswer, sommelierHistory, sommelierSources } from "../src/lib/managed-sommelier.ts";
+import { consumerSommelierFailureKind, requestManagedSommelierAnswer, sommelierHistory, sommelierSources } from "../src/lib/managed-sommelier.ts";
 
 const live = { ok: true, answer: "Respuesta sintética", source: "live", fallback: false, provider: "huggingface", model: "openai/gpt-oss-20b:deepinfra", demo: true, sources: [{ id: "sheet", label: "Ficha", url: "https://vallesecreto.cl/ficha.pdf" }], suggestedQuestions: ["¿Qué plato vas a preparar?"] };
 const syngentaLive = {
@@ -54,6 +54,59 @@ test("consumer mode cannot inherit a demo or manufacture a product/tenant fact",
   assert.deepEqual(calls, [{ url: "/api/sommelier/chat", body: { mode: "consumer", question: "QA", locale: "pt-BR", history: [], eventId: "715" } }]);
   assert.equal(result.data.sources[0].url, null);
   assert.equal((await requestManagedSommelierAnswer("QA", { locale: "en", demoProfile: "valle-secreto", eventId: "715", fetchImpl: () => { throw Error("Unexpected request"); } })).reason, "invalid-response");
+});
+test("a scoped SUN consumer question sends only the selected reading and bounded conversation in each locale", async () => {
+  const history = sommelierHistory([
+    { sender: "sommelier", text: "Unverified browser context", provenance: { mode: "context" } },
+    ...Array.from({ length: 8 }, (_, i) => ({ sender: i % 2 ? "sommelier" : "user", text: `synthetic-turn-${i}` })),
+  ]);
+  for (const locale of ["es-AR", "en", "pt-BR"]) {
+    const calls = [];
+    const result = await requestManagedSommelierAnswer("  Pregunta sintética  ", {
+      locale, eventId: "715", history,
+      productName: "Browser product is not authoritative", tenantId: "foreign-browser-tenant", freshToken: "synthetic-nfc-token",
+      fetchImpl: async (url, init) => {
+        calls.push({ url, body: JSON.parse(init.body), credentials: init.credentials, cache: init.cache });
+        return Response.json({ ...live, demo: false, sources: [{ id: "product", label: "Producto publicado por la marca", url: null }] });
+      },
+    });
+    assert.equal(result.status, "received");
+    assert.deepEqual(calls, [{ url: "/api/sommelier/chat", body: { mode: "consumer", question: "Pregunta sintética", locale, history, eventId: "715" }, credentials: "same-origin", cache: "no-store" }]);
+    assert.equal(history.length, 6);
+    assert.equal(history[0].content, "synthetic-turn-2");
+    assert.equal(result.data.demo, false);
+  }
+});
+test("a denied or fallback SUN reading never becomes eventless, demo or an automatic second request", async () => {
+  for (const payload of [
+    { ok: false, reason: "sommelier_event_not_authorized" },
+    { ...live, demo: false, source: "fallback", fallback: true, provider: undefined, model: undefined, sources: [] },
+  ]) {
+    const calls = [];
+    const denied = payload.ok === false;
+    const result = await requestManagedSommelierAnswer("Mi pregunta conservada", {
+      locale: "es-AR", eventId: "715", history: [{ role: "user", content: "Pregunta anterior" }],
+      fetchImpl: async (url, init) => {
+        calls.push({ url, body: JSON.parse(init.body) });
+        return Response.json(payload, { status: denied ? 403 : 200 });
+      },
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "/api/sommelier/chat");
+    assert.equal(calls[0].body.eventId, "715");
+    assert.equal(calls[0].body.mode, "consumer");
+    assert.equal(calls[0].body.question, "Mi pregunta conservada");
+    assert.equal(Object.hasOwn(calls[0].body, "demoProfile"), false);
+    if (denied) {
+      assert.equal(result.status, "unavailable");
+      assert.equal(consumerSommelierFailureKind(result), "access", "an event denial cannot infer a missing login or ownership");
+    } else {
+      assert.equal(result.status, "received");
+      assert.equal(result.data.fallback, true);
+      assert.equal(result.data.provider, undefined);
+      assert.equal(result.data.model, undefined);
+    }
+  }
 });
 test("source links cannot promote arbitrary model URLs to producer evidence", () => {
   assert.deepEqual(sommelierSources([{ id: "x", label: "Phishing", url: "https://evil.invalid/" }], true), []);
@@ -212,7 +265,7 @@ test("Syngenta session rejection and quota denial never start chat", async () =>
         calls.push(url); return Response.json({ ok: false, error: "unavailable" }, { status });
       },
     });
-    assert.deepEqual(result, { status: "unavailable", reason: "http-error" });
+    assert.deepEqual(result, { status: "unavailable", reason: "http-error", httpStatus: status });
     assert.deepEqual(calls, ["/api/sommelier/demo/session"]);
   }
 });
@@ -263,5 +316,63 @@ test("cancelling a Syngenta question cannot later commit its resolved chat JSON"
   controller.abort();
   assert.deepEqual(await pending, { status: "unavailable", reason: "cancelled" });
   releaseAnswer(syngentaLive);
+  await new Promise(resolve => setImmediate(resolve));
+});
+
+test("consumer access and service failures retain HTTP status and only known API reasons, without retry", async () => {
+  for (const [status, reason, kind] of [
+    [401, undefined, "session"],
+    [403, "sommelier_consumer_session_required", "session"],
+    [403, "sommelier_event_not_authorized", "access"],
+    [403, "sommelier_origin_rejected", "access"],
+    [503, "sommelier_disabled", "service"],
+    [502, undefined, "service"],
+    [429, "sommelier_rate_limited", "other"],
+  ]) {
+    let attempts = 0;
+    const result = await requestManagedSommelierAnswer("Consulta privada sintética", {
+      locale: "es-AR", eventId: "715", fetchImpl: async () => {
+        attempts++;
+        return Response.json({ ok: false, reason, detail: "private provider text" }, { status });
+      },
+    });
+    assert.equal(result.status, "unavailable");
+    assert.equal(result.reason, "http-error");
+    assert.equal(result.httpStatus, status);
+    assert.equal(consumerSommelierFailureKind(result), kind);
+    assert.equal(attempts, 1);
+    assert.equal(JSON.stringify(result).includes("private provider text"), false);
+    assert.equal(result.serviceReason, ["sommelier_consumer_session_required", "sommelier_event_not_authorized", "sommelier_origin_rejected"].includes(reason) ? reason : undefined);
+  }
+});
+
+test("non-JSON denial preserves recovery status and an untrusted error body cannot invent a session failure", async () => {
+  const result = await requestManagedSommelierAnswer("QA", { locale: "en", fetchImpl: async () => new Response("upstream text", { status: 401 }) });
+  assert.deepEqual(result, { status: "unavailable", reason: "http-error", httpStatus: 401 });
+  for (const payload of [
+    { ok: true, reason: "sommelier_consumer_session_required" },
+    { ok: false, reason: { message: "sommelier_consumer_session_required" } },
+    { ok: false, reason: "sommelier_consumer_session_required PRIVATE" },
+  ]) {
+    const denied = await requestManagedSommelierAnswer("QA", { locale: "en", fetchImpl: async () => Response.json(payload, { status: 403 }) });
+    assert.deepEqual(denied, { status: "unavailable", reason: "http-error", httpStatus: 403 });
+    assert.equal(consumerSommelierFailureKind(denied), "access");
+  }
+  for (const reason of ["connection", "timeout", "cancelled", "invalid-response"]) {
+    assert.equal(consumerSommelierFailureKind({ status: "unavailable", reason, httpStatus: 401, serviceReason: "sommelier_consumer_session_required" }), "other");
+  }
+});
+
+test("cancelling a delayed HTTP denial never restores a session or permission recovery", async () => {
+  const controller = new AbortController();
+  let release, read;
+  const reading = new Promise(resolve => { read = resolve; });
+  const pending = requestManagedSommelierAnswer("QA", { locale: "en", signal: controller.signal, fetchImpl: async () => ({
+    ok: false, status: 403, json: () => { read(); return new Promise(resolve => { release = resolve; }); },
+  }) });
+  await reading;
+  controller.abort();
+  assert.deepEqual(await pending, { status: "unavailable", reason: "cancelled" });
+  release({ ok: false, reason: "sommelier_consumer_session_required" });
   await new Promise(resolve => setImmediate(resolve));
 });
