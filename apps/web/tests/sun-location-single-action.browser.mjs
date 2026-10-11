@@ -39,13 +39,37 @@ await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
 const results = [];
+let diagnosticScenario = "initialization", diagnosticStage = "scenario", diagnosticPage = null;
+const diagnosticStartedAt = Date.now();
+const diagnosticMark = stage => { diagnosticStage = stage; };
+async function locationDiagnosticSnapshot(page) {
+  if (!page) return { unavailable: true };
+  let timer;
+  try {
+    return await Promise.race([
+      page.evaluate(() => {
+        const states = ["idle", "awaiting_permission", "measuring", "saving", "updated", "denied", "timeout", "uncertain", "fresh_tap_required", "retryable", "disabled"];
+        const state = value => states.includes(value) ? value : "unknown";
+        const visible = node => Boolean(node && node.getClientRects().length && getComputedStyle(node).display !== "none" && getComputedStyle(node).visibility !== "hidden");
+        const current = document.querySelector("[data-location-state]");
+        const saving = document.querySelector('[data-location-state="saving"]');
+        const quick = document.querySelector('[data-testid="sun-location-quick-action"]');
+        const cta = document.querySelector('[data-testid="sun-location-consent-cta"]');
+        return { theme: ["light", "dark"].includes(document.documentElement.dataset.theme) ? document.documentElement.dataset.theme : "unknown", state: current ? state(current.getAttribute("data-location-state")) : "absent", savingPresent: Boolean(saving), savingVisible: visible(saving), quickPresent: Boolean(quick), quickVisible: visible(quick), quickState: quick ? state(quick.getAttribute("data-state")) : "absent", ctaPresent: Boolean(cta), ctaDisabled: cta ? Boolean(cta.disabled) : null, geoCalls: Number.isSafeInteger(window.fixtureGeoCalls) && window.fixtureGeoCalls >= 0 ? window.fixtureGeoCalls : null };
+      }),
+      new Promise(resolve => { timer = setTimeout(() => resolve({ unavailable: true }), 2000); }),
+    ]);
+  } catch { return { unavailable: true }; }
+  finally { clearTimeout(timer); }
+}
 if(process.env.QA_OUTPUT)await mkdir(process.env.QA_OUTPUT,{recursive:true});
 try {
   for (const scenario of ["success", "permission_pregranted", "permission_api_unavailable", "permission_api_rejected", "permission_api_throws", "abandoned_measurement", "denied", "timeout", "uncertain", "upstream_unknown", "upstream_error", "expired", "unauthorized", "retryable", "stall_headers", "stall_body", "disabled"]) {
+    diagnosticScenario = scenario; diagnosticMark("scenario");
     const isSuccess = scenario === "success" || scenario.startsWith("permission_");
     const noPermissionInspection = scenario.startsWith("permission_api_");
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const page = await context.newPage();
+    const page = await context.newPage(); diagnosticPage = page;
     if (scenario.startsWith("stall_")) await page.clock.install();
     const streamedResponse = scenario === "stall_body"
       ? page.waitForResponse(response => new URL(response.url()).pathname === "/fixture-context")
@@ -110,13 +134,13 @@ try {
     }, { scenario });
     await page.goto(`${origin}/${scenario === "disabled" ? "?disabled=1" : scenario.startsWith("stall_") ? `?submission=${scenario}` : ""}`);
     const firstButton = page.getByTestId("sun-location-consent-cta");
-    await firstButton.waitFor();
+    diagnosticMark("initial-cta"); await firstButton.waitFor();
     if (scenario === "disabled") {
       assert.equal(await firstButton.isDisabled(), true);
       assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0);
       assert.equal(posts.length, 0);
       results.push({ scenario, pass: true });
-      await context.close();
+      await context.close(); diagnosticPage = null;
       continue;
     }
     await page.waitForFunction(() => !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
@@ -137,7 +161,7 @@ try {
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),"No horizontal overflow");
       if(process.env.QA_OUTPUT){await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-light.png"),fullPage:false});await page.evaluate(()=>document.documentElement.dataset.theme="dark");await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-dark.png"),fullPage:false});}
     }
-    await firstButton.click();
+    diagnosticMark("consent-click"); await firstButton.click();
     await page.waitForFunction(() => window.fixtureGeoCalls === 1 && document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
     assert.equal(await firstButton.isDisabled(), true);
     if (scenario !== "permission_pregranted") {
@@ -148,7 +172,7 @@ try {
     if (noPermissionInspection) {
       assert.equal(await page.locator('[data-location-state="measuring"]').count(), 0, "No unconfirmed claim that permission was granted");
     } else {
-      await page.waitForFunction(() => document.querySelector('[data-location-state="measuring"]'));
+      diagnosticMark("measuring"); await page.waitForFunction(() => document.querySelector('[data-location-state="measuring"]'));
       assert.match(await firstButton.textContent(), /Obteniendo zona/);
       assert.match(await page.getByTestId("sun-location-phase").textContent(), /todavía no se guardó/);
     }
@@ -164,16 +188,16 @@ try {
       await page.locator("#next-tap").click();
       await page.waitForFunction(() => document.querySelector('[data-location-state="idle"]') && !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
       assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 0, "Unmount immediately removes the permission listener");
-      await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+      diagnosticMark("geo-callback"); await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(posts.length, 0, "Measurement from an abandoned tap never starts a POST");
       assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0, "Old measurement cannot confirm the new tap");
       assert.equal(await page.locator('[data-location-state="idle"]').count(), 1, "New tap stays idle after the old callback");
       assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith("nexid:tap-context:")).length), 0, "Discarded measurement creates no receipt");
-      await firstButton.click();
+      diagnosticMark("consent-click"); await firstButton.click();
       await page.waitForFunction(() => window.fixtureGeoCalls === 2 && document.querySelector('[data-location-state="measuring"]'));
-      await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
-      await page.locator('[data-location-state="updated"]').waitFor();
+      diagnosticMark("geo-callback"); await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+      diagnosticMark("updated"); await page.locator('[data-location-state="updated"]').waitFor();
       const confirmedQuick=page.getByTestId("sun-location-quick-action");
       assert.equal(await confirmedQuick.getByTestId("sun-location-quick-confirmed").innerText(),"Mendoza, AR","The quick card displays the server receipt, not the previous network estimate");
       assert.equal(await confirmedQuick.getByTestId("sun-location-quick-confirmed").getAttribute("data-sun-server-evidence"),"true","Receipt city and country remain protected evidence");
@@ -187,12 +211,12 @@ try {
       assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 0, "Completed measurement releases its permission listener");
       assert.deepEqual(errors, [], "No React or client errors after abandoning a measurement");
       results.push({ scenario, pass: true, permissionRequests: 2, abandonedSubmissions: 0, submissions: 1 });
-      await context.close();
+      await context.close(); diagnosticPage = null;
       continue;
     }
-    await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+    diagnosticMark("geo-callback"); await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
     if (isSuccess) {
-      await page.waitForFunction(() => document.querySelector('[data-location-state="saving"]'));
+      diagnosticMark("saving"); await page.waitForFunction(() => document.querySelector('[data-location-state="saving"]'));
       assert.equal(posts.length, 1);
       assert.match(await firstButton.textContent(), /Guardando zona/);
       assert.match(await page.getByTestId("sun-location-phase").textContent(), /Esperamos el comprobante/);
@@ -201,8 +225,8 @@ try {
       assert.equal(posts[0].geoConsent, true);
       assert.equal(posts[0].geo.lat, -32.901);
       assert.equal(posts[0].geo.accuracy, 150);
-      releaseResponse();
-      await page.locator('[data-location-state="updated"]').waitFor();
+      diagnosticMark("release-response"); releaseResponse();
+      diagnosticMark("updated"); await page.locator('[data-location-state="updated"]').waitFor();
       assert.match(await page.getByTestId("sun-summary-location-confirmed").textContent(), /Mendoza, AR/);
       assert.match(await page.getByTestId("sun-origin-location-confirmed").textContent(), /Origen y zona compartida/);
       assert.doesNotMatch(await page.getByTestId("sun-origin-location-confirmed").textContent(), /estimada por red|Estimación de red/);
@@ -221,17 +245,17 @@ try {
     } else {
       const isAmbiguous = ["uncertain", "upstream_unknown", "upstream_error", "unauthorized", "stall_headers", "stall_body"].includes(scenario);
       if (scenario.startsWith("stall_")) {
-        await page.locator('[data-location-state="saving"]').waitFor();
+        diagnosticMark("stall-saving"); await page.locator('[data-location-state="saving"]').waitFor();
         await page.waitForFunction(() => document.querySelector('[data-testid="sun-location-quick-action"]').dataset.state === "saving");
         assert.match(await page.getByTestId("sun-location-phase").textContent(), /Esperamos el comprobante/);
         assert.equal(posts.length, 1);
         if (streamedResponse) assert.equal((await streamedResponse).status(), 200, "Body-stall scenario has already received response headers");
         // Move simulated time past the actual component budget, covering headers
         // and body without a 12-second wall-clock sleep in each scenario.
-        await page.clock.fastForward(12_001);
+        diagnosticMark("fast-forward-12001"); await page.clock.fastForward(12_001);
       }
       const expectedState = isAmbiguous ? "uncertain" : scenario === "expired" ? "fresh_tap_required" : scenario;
-      await page.locator(`[data-location-state="${expectedState}"]`).waitFor();
+      diagnosticMark("expected-result"); await page.locator(`[data-location-state="${expectedState}"]`).waitFor();
       assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0);
       assert.equal(posts.length, isAmbiguous || ["expired", "retryable"].includes(scenario) ? 1 : 0);
       if (isAmbiguous || scenario === "expired") {
@@ -252,14 +276,15 @@ try {
     }
     assert.deepEqual(errors, [], "No React or client errors");
     results.push({ scenario, pass: true, permissionRequests: 1, submissions: posts.length });
-    await context.close();
+    await context.close(); diagnosticPage = null;
   }
   for (const copy of [
     { locale: "es-AR", retry: "Reintentar", retryMessage: "La zona no se guardó esta vez", details: "Qué se comparte", conditional: "cuando esté disponible" },
     { locale: "en", retry: "Try again", retryMessage: "The area was not saved this time", details: "What is shared", conditional: "when available" },
     { locale: "pt-BR", retry: "Tentar novamente", retryMessage: "A área não foi salva desta vez", details: "O que é compartilhado", conditional: "quando disponível" },
   ]) {
-    const context = await browser.newContext({ viewport: { width: 320, height: 844 } }), page = await context.newPage();
+    diagnosticScenario = "localized_manual_retry:" + copy.locale; diagnosticMark("scenario");
+    const context = await browser.newContext({ viewport: { width: 320, height: 844 } }), page = await context.newPage(); diagnosticPage = page;
     const posts = [], errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.route("**/*", route => {
@@ -289,9 +314,9 @@ try {
     assert.ok((await quick.innerText()).includes(copy.conditional), "IP copy makes availability conditional in " + copy.locale);
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "Reading privacy is not location consent");
     assert.equal(posts.length, 0);
-    await button.click();
+    diagnosticMark("localized-consent"); await button.click();
     await page.waitForFunction(() => window.fixtureGeoCalls === 1);
-    await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+    diagnosticMark("geo-callback"); await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
     await page.waitForFunction(() => document.querySelector('[data-testid="sun-location-quick-action"]').dataset.state === "retryable");
     assert.ok((await quick.innerText()).includes(copy.retryMessage), "Failed persistence is explained without calling it a measurement failure in " + copy.locale);
     assert.equal(await button.innerText(), copy.retry);
@@ -299,10 +324,10 @@ try {
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(posts.length, 1, "Displaying the retry state never automatically resends");
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 1);
-    await button.focus(); await page.keyboard.press("Enter");
+    diagnosticMark("localized-retry"); await button.focus(); await page.keyboard.press("Enter");
     await page.waitForFunction(() => window.fixtureGeoCalls === 2);
     assert.equal(posts.length, 1, "A user retry still waits for a new measurement");
-    await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+    diagnosticMark("geo-callback"); await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
     await page.waitForFunction(() => document.querySelector('[data-testid="sun-location-quick-action"]').dataset.state === "retryable");
     assert.equal(posts.length, 2, "Only the explicit keyboard retry starts another local submission");
     assert.equal(posts[1].geoConsent, true);
@@ -310,10 +335,13 @@ try {
     assert.deepEqual(errors, []);
     results.push({ scenario: "localized_manual_retry", locale: copy.locale, pass: true, permissionRequests: 2, submissions: 2, automaticRetries: 0 });
     if (process.env.QA_OUTPUT) await page.screenshot({ path: join(process.env.QA_OUTPUT, `location-retry-${copy.locale}-320.png`), fullPage: false });
-    await context.close();
+    await context.close(); diagnosticPage = null;
   }
   if(process.env.QA_OUTPUT)await writeFile(join(process.env.QA_OUTPUT,"report.json"),JSON.stringify({localSynthetic:true,results},null,2));
   console.log(JSON.stringify({ evidence: "LOCAL simulated permission and API, real React components and Chromium; NOT physical certification", results }, null, 2));
+} catch (error) {
+  console.error("NEXID_LOCATION_DIAGNOSTIC " + JSON.stringify({ schema: "nexid.sun-location-ci-stage-diagnostic/v1", localSynthetic: true, qaOutputConfigured: Boolean(process.env.QA_OUTPUT), scenario: diagnosticScenario, stage: diagnosticStage, elapsedMs: Date.now() - diagnosticStartedAt, snapshot: await locationDiagnosticSnapshot(diagnosticPage), historicalFailureCauseProven: false }));
+  throw error;
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
