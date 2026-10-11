@@ -93,6 +93,41 @@ function availabilityLabel(status: string) {
   return "Disponibilidad no informada";
 }
 
+/** Public copy only. Unknown details never leave the response object. */
+export function marketplaceRequestErrorLabel(status: number, payload: unknown) {
+  const record = payload && typeof payload === "object" && !Array.isArray(payload)
+    ? payload as { error?: unknown; reason?: unknown } : {};
+  const error = typeof record.error === "string" ? record.error : "";
+  const reason = typeof record.reason === "string" ? record.reason : "";
+  const uncertain = "No pudimos confirmar si se registró. Revisá tus solicitudes antes de volver a enviar.";
+  if (status === 429) return "Se enviaron varias solicitudes. Esperá un momento y volvé a intentar.";
+  if (status === 403 && error === "passport_context_required") {
+    return "Para enviar solicitudes a esta marca necesitás una lectura asociada, un producto reclamado o una membresía activa. Revisá tus productos y lecturas antes de volver a enviarla.";
+  }
+  switch (`${status}:${error}`) {
+    case "404:product_not_found":
+    case "409:product_not_active":
+      return "Este producto ya no está disponible para solicitudes de contacto. Conservamos tu lista; consultá otros productos del catálogo.";
+    case "409:brand_not_visible_in_network":
+      return "La marca ya no está habilitada para recibir solicitudes desde este catálogo. Conservamos tu lista; consultá otras marcas.";
+    case "409:request_to_buy_disabled":
+      return "La marca deshabilitó las solicitudes de contacto para este producto. Conservamos tu lista; consultá otro producto del catálogo.";
+    case "400:age_gate_ack_required":
+      return "La marca requiere confirmación de mayoría de edad. Revisá las condiciones de este producto antes de enviar la solicitud.";
+    case "409:marketplace_source_attribution_mismatch":
+      return "No pudimos validar la lectura asociada a esta solicitud. Conservamos tu lista; revisá tus lecturas antes de volver a enviarla.";
+    case "503:commercial_asset_scope_migration_required":
+      return "Las solicitudes de contacto no están habilitadas en este momento. Conservamos tu lista; podés seguir consultando el catálogo.";
+    case "503:api_unavailable":
+    case "409:request_creation_conflict":
+      return uncertain;
+  }
+  if (status === 503 && ["rate_limit_policy_mismatch", "rate_limit_unavailable"].includes(reason)) {
+    return "No podemos recibir solicitudes de contacto en este momento. Conservamos tu lista; podés seguir consultando el catálogo.";
+  }
+  return uncertain;
+}
+
 export function MarketplaceGridClient({ items, postTapEventId }: { items: Listing[]; postTapEventId?: string }) {
   const validTapContext = typeof postTapEventId === "string" && /^[1-9]\d{0,15}$/.test(postTapEventId) && Number.isSafeInteger(Number(postTapEventId));
   const [tapContextDenied, setTapContextDenied] = useState(false);
@@ -221,11 +256,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
           setFeedbackById(prev => ({ ...prev, [item.id]: "Esta consulta ya no está habilitada para tu lectura. Conservamos tu lista; revisá el catálogo antes de volver a enviar." }));
           return false;
         }
-        const errorLabel = status === 403 && payload.error === "passport_context_required"
-          ? "Primero asociá una lectura a tu Passport desde el formulario de esta página y luego volvé a intentar."
-          : status === 429
-            ? "Se enviaron varias solicitudes. Esperá un momento y volvé a intentar."
-            : "No fue posible registrar la solicitud. Revisá la disponibilidad o volvé a intentar más tarde.";
+        const errorLabel = marketplaceRequestErrorLabel(status, payload);
         setFeedbackById((prev) => ({ ...prev, [item.id]: errorLabel }));
         return false;
       }

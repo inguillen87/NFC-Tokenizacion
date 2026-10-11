@@ -15,7 +15,14 @@ export function ConsumerProductLibrary({products,focusEvent=null}:{products:Home
  const requestedFocus=focusValues?(focusValues.length===1?focusValues[0]:null):focusEvent;
  const openedFromList=useRef<string|null>(null);
  useEffect(()=>{const index=productFocus(products,requestedFocus);setSelected(index===null?null:{index,item:products[index]});},[products,requestedFocus]);
- const choices=useMemo(()=>Array.from(new Map(products.filter(p=>publicProductScope(p)).map(p=>[p.tenantSlug!,p.brand||p.tenantSlug!])).entries()).sort((a,b)=>a[1].localeCompare(b[1],'es')),[products]);
+ const choices=useMemo(()=>{
+  const reportedNames=new Map<string,Set<string>>();
+  for(const product of products.filter(p=>publicProductScope(p))){
+   const slug=product.tenantSlug!,names=reportedNames.get(slug)||new Set<string>();
+   names.add(product.brand||slug);reportedNames.set(slug,names);
+  }
+  return Array.from(reportedNames,([slug,names])=>[slug,Array.from(names).sort((a,b)=>a.localeCompare(b,'es')).join(' / ')] as const).sort((a,b)=>a[1].localeCompare(b[1],'es')||a[0].localeCompare(b[0],'es'));
+ },[products]);
  const filtered=useMemo(()=>filterProductLibrary(products,search,brand,order),[products,search,brand,order]);
  const resetLimit=()=>setLimit(12);
  function openProduct(index:number,item:HomeProduct){

@@ -112,6 +112,16 @@ export function homeProductExperienceHref(product: HomeProduct): string | null {
   return `/me/experiences?${query}`;
 }
 
+export function homeAccountStatusLabel(status: string | null): string {
+  switch (status) {
+    case "registered": return "Cuenta registrada";
+    case "verified": return "Cuenta verificada";
+    case "active": return "Cuenta activa";
+    case "anonymous": return "Cuenta de consulta";
+    default: return "Estado de la cuenta no informado";
+  }
+}
+
 export function homeOwnershipLabel(status: string | null): string {
   switch (status?.toLowerCase()) {
     case "claimed": return "Titularidad digital registrada";
