@@ -9,6 +9,7 @@ import {canReadRuntimeConsole} from '../src/lib/runtime-readiness-access.ts';
 import {canReadGlobalNotifications} from '../src/lib/admin-notification-access.ts';
 import {readHistoricalBaseline,TENANT_SYNC_REVIEWED_SOURCES,TENANT_SYNC_SOURCE_BASE,tenantSyncHistoricalSourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 import {ENGAGEMENT_GOVERNANCE_BASE,ENGAGEMENT_GOVERNANCE_CHANGED,ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceInventory,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
+import {CUSTOMER_OPTIONS_EDITOR_SOURCE_BASE,CUSTOMER_OPTIONS_EDITOR_SOURCE_HEAD,CUSTOMER_OPTIONS_EDITOR_CHANGED,customerOptionsPriorGovernanceHash} from './helpers/customer-options-editor-reviewed-sources.mjs';
 import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,marketplacePriorInventory,assertMarketplaceAddedSource} from './helpers/tenant-marketplace-reviewed-sources.mjs';
 const source=await readFile(new URL('../src/lib/supplier-request-proxy.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source.replace(/^import .*;\r?$/gm,''),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -58,7 +59,7 @@ test('every merged source file retains its immutable origin except the exact rev
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
  await walk(root);assertGovernanceInventory(marketplacePriorInventory(actual,baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
  for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,actual)),expected),expected,path);}
- for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+ for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,customerOptionsPriorGovernanceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
  for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  assert.ok(baseline.expected['apps/dashboard/src/components/supplier-request-workspace.tsx']);
  assert.ok(baseline.expected['apps/dashboard/src/lib/supplier-service-client.ts']);
@@ -104,3 +105,28 @@ test('inbox integration preserves advanced operations and reviewed UI sources',a
 
 test('case summary overlays only presentation and preserves every advanced workflow origin',async()=>{const s=await readFile(new URL('../src/components/supplier-request-workspace.tsx',import.meta.url),'utf8');for(const name of ['SupplierRequestCaseSummary','SupplierDraftComparison','SupplierRequestQuotation','SupplierRequestBinding','SupplierRequestDeliveryAck','SupplierRequestCancellation','SupplierRequestAssignment','SupplierServiceStatus'])assert.ok(s.includes(name),name);const m=JSON.parse(await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));assert.equal(m.caseSummary.feature,'ddd72ef9114e1233b0d8713a1e5f261f7241136b');assert.equal(m.caseSummary.parent,'beb536614714213c14d2a01f464af90b30bda6ea');assert.equal(m.caseSummary.added.length,3);assert.notEqual(m.caseSummary.workspaceBefore,m.caseSummary.workspaceAfter);});
 test('three-way comparison keeps every advanced operation guard and its immutable feature origin',async()=>{const s=await readFile(new URL('../src/components/supplier-request-workspace.tsx',import.meta.url),'utf8');const guard=s.split('function canReconcile(){')[1].split('}')[0];for(const ref of ['reads','locked','unresolved','busy','readWithdrawn','reviewGuard','assignmentGuard','cancellationGuard','quotationGuard','bindingGuard','deliveryGuard','serviceGuard'])assert.ok(guard.includes(ref+'.current'),ref);for(const c of ['SupplierDraftComparison','SupplierRequestQuotation','SupplierRequestBinding','SupplierRequestDeliveryAck','SupplierRequestCancellation','SupplierRequestAssignment','SupplierServiceStatus'])assert.ok(s.includes(c),c);const m=JSON.parse(await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));assert.equal(m.draftReconciliation.feature,'bf80ccc04fa73108f8d103ebcc597a8fb833d423');assert.equal(m.draftReconciliation.added.length,3);assert.notEqual(m.draftReconciliation.workspaceBefore,m.draftReconciliation.workspaceAfter);});
+
+test('customer-options editor overlay retains the exact governance origin and rejects unrelated source drift',async()=>{
+ const path='apps/dashboard/src/components/loyalty-configuration-workspace.tsx';
+ assert.equal(CUSTOMER_OPTIONS_EDITOR_SOURCE_BASE,'f94f8020421bf07b4269512ac7d595db7652232f');
+ assert.equal(CUSTOMER_OPTIONS_EDITOR_SOURCE_HEAD,'766940167feccda90742ce9a953d3ba6fed4c3cc');
+ assert.deepEqual(Object.keys(CUSTOMER_OPTIONS_EDITOR_CHANGED),[path]);
+ const reviewed=CUSTOMER_OPTIONS_EDITOR_CHANGED[path];
+ assert.deepEqual(reviewed,{before:'433842a6ee2dba427f40e211faaa9a633ffde253e2ee01638c77ec685414e8b4',after:'df14f17732a26533892d85f8016b77e6498d8c4873eecc08d6c6188bf10ff082'});
+ assert.equal(Object.isFrozen(CUSTOMER_OPTIONS_EDITOR_CHANGED),true);assert.equal(Object.isFrozen(reviewed),true);
+ assert.equal(reviewed.before,ENGAGEMENT_GOVERNANCE_ADDED[path],'independently retained historical governance origin');
+ const text=await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8');
+ const actual=governanceSourceHash(text);assert.equal(actual,reviewed.after,'exact reviewed editor bytes');
+ assert.equal(customerOptionsPriorGovernanceHash(path,actual),reviewed.before);
+ assertGovernanceAddedSource(path,customerOptionsPriorGovernanceHash(path,actual));
+ for(const changed of [reviewed.before,'0'.repeat(64),'f'.repeat(64),actual+'0','',null,undefined,7,{}])assert.throws(()=>customerOptionsPriorGovernanceHash(path,changed),/exact reviewed customer-options editor increment/);
+ for(const unknown of ['apps/dashboard/src/unreviewed.ts','constructor','__proto__']){
+  const drift='0'.repeat(64);assert.equal(customerOptionsPriorGovernanceHash(unknown,drift),drift);
+  assert.throws(()=>assertGovernanceAddedSource(unknown,customerOptionsPriorGovernanceHash(unknown,drift)),/known governance source addition/);
+ }
+ const unchanged='apps/dashboard/src/components/loyalty-configuration-workspace.module.css';
+ const prior=ENGAGEMENT_GOVERNANCE_ADDED[unchanged];assert.equal(customerOptionsPriorGovernanceHash(unchanged,prior),prior);
+ assertGovernanceAddedSource(unchanged,customerOptionsPriorGovernanceHash(unchanged,prior));
+ assert.throws(()=>assertGovernanceAddedSource(unchanged,customerOptionsPriorGovernanceHash(unchanged,'0'.repeat(64))),/exact reviewed governance addition/);
+ assert.throws(()=>assertGovernanceAddedSource(path,customerOptionsPriorGovernanceHash(path,actual)+'0'),/exact reviewed governance addition/);
+});
