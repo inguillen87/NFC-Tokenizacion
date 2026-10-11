@@ -91,3 +91,46 @@ test("invalid user-controlled dimensions fail closed to non-global buckets", () 
   assert.match(decision.key, /subject:anonymous/);
   assert.match(decision.key, /ip:unknown/);
 });
+test("marketplace contact POST uses the existing public-write budget and pathname normalizer", () => {
+  const path = "/marketplace/products/olive-test-product/request-to-buy";
+  const variants = [
+    [path, "POST"],
+    [path.toUpperCase(), "post"],
+    [` ${path}/// `, "PoSt"],
+    [new URL(`https://api.nexid.lat${path}?source=catalog`).pathname, "POST"],
+  ];
+  for (const [pathname, method] of variants) {
+    const decision = buildFleetRateLimitDecision({
+      pathname, method, tenantId: "marketplace",
+      subjectId: "request-to-buy:unauthenticated", clientIp: "203.0.113.8",
+    });
+    assert.equal(decision.rateClass, "public_write");
+    assert.equal(decision.limit, 20);
+    assert.equal(decision.windowSeconds, 60);
+    assert.equal(decision.key, "public_write:marketplace:request-to-buy:unauthenticated:203.0.113.8");
+    assert.equal(decision.headers["x-ratelimit-policy"], "nexid-public_write");
+    assert.equal(decision.headers["x-ratelimit-limit"], "20");
+    assert.equal(decision.headers["retry-after"], "60");
+  }
+});
+
+test("marketplace contact classification does not widen neighboring routes or methods", () => {
+  const path = "/marketplace/products/olive-test-product/request-to-buy";
+  for (const method of ["GET", "get", "HEAD", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
+    assert.equal(classifyFleetRateLimit(path, method), "public", method);
+  }
+  for (const neighbor of [
+    "/marketplace/products/olive-test-product",
+    "/marketplace/products/request-to-buy",
+    "/marketplace/products//request-to-buy",
+    "/marketplace/products/olive/test-product/request-to-buy",
+    `${path}/status`,
+    "/marketplace/products/olive-test-product/request-to-buy-extra",
+    "/marketplace/brands/olive-test-product/request-to-buy",
+    "/api/marketplace/products/olive-test-product/request-to-buy",
+    `${path}?source=catalog`,
+  ]) {
+    assert.equal(classifyFleetRateLimit(neighbor, "POST"), "public", neighbor);
+  }
+  assert.equal(classifyFleetRateLimit("/marketplace/p2p/buy", "POST"), "proof_write");
+});

@@ -382,3 +382,71 @@ test("static worker and authenticated marketplace principals cannot evade limits
     assert.match(source, /globalPrincipal:\s*true/u, route);
   }
 });
+test("marketplace contact POST reserves both existing distributed public-write buckets", async () => {
+  const path = "/marketplace/products/olive-test-product/request-to-buy";
+  for (const pathname of [path, `${path}///?source=catalog`, path.toUpperCase()]) {
+    const captured = [];
+    const response = await enforceCriticalRateLimit(
+      request(pathname),
+      { rateClass: "public_write", tenantId: "marketplace", subjectId: "request-to-buy:unauthenticated" },
+      {
+        requestMeta: () => ({ ip: "203.0.113.8", userAgent: null, traceId: "trace-test" }),
+        reserve: async (...args) => {
+          captured.push(args);
+          return { hits: 1, limited: false, retryAfterSeconds: 60 };
+        },
+      },
+    );
+    assert.equal(response, null);
+    assert.deepEqual(captured, [
+      ["fleet:public_write:principal", "public_write:all-tenants:request-to-buy:unauthenticated:203.0.113.8", 60, 20],
+      ["fleet:public_write:tenant", "public_write:marketplace:request-to-buy:unauthenticated:203.0.113.8", 60, 20],
+    ]);
+  }
+});
+
+test("marketplace contact policy mismatch still refuses GET and neighboring POST before reservation", async () => {
+  for (const [pathname, method] of [
+    ["/marketplace/products/olive-test-product/request-to-buy", "GET"],
+    ["/marketplace/products/olive-test-product/request-to-buy/status", "POST"],
+    ["/marketplace/products//request-to-buy", "POST"],
+  ]) {
+    let reservations = 0;
+    const response = await enforceCriticalRateLimit(
+      new Request(`https://api.nexid.lat${pathname}`, { method }),
+      { rateClass: "public_write", tenantId: "marketplace", subjectId: "request-to-buy:unauthenticated" },
+      {
+        requestMeta: () => ({ ip: "203.0.113.8", userAgent: null, traceId: "trace-test" }),
+        reserve: async () => { reservations += 1; return { hits: 1, limited: false, retryAfterSeconds: 60 }; },
+      },
+    );
+    assert.equal(response?.status, 503);
+    assert.equal(reservations, 0);
+    assert.deepEqual(await response?.json(), { ok: false, reason: "rate_limit_policy_mismatch" });
+  }
+});
+
+test("matching marketplace contact policy still refuses exhausted or unavailable reservations", async () => {
+  for (const [reservation, status, reason, retryAfter] of [
+    [{ hits: 21, limited: true, retryAfterSeconds: 17 }, 429, "rate_limited", "17"],
+    [{ hits: 0, limited: false, unavailable: true, retryAfterSeconds: 30 }, 503, "rate_limit_unavailable", "30"],
+  ]) {
+    let reservations = 0;
+    const response = await enforceCriticalRateLimit(
+      request("/marketplace/products/olive-test-product/request-to-buy"),
+      { rateClass: "public_write", tenantId: "marketplace", subjectId: "request-to-buy:unauthenticated" },
+      {
+        requestMeta: () => ({ ip: "203.0.113.8", userAgent: null, traceId: "trace-test" }),
+        reserve: async () => { reservations += 1; return reservation; },
+        failClosed: () => true,
+      },
+    );
+    assert.equal(response?.status, status);
+    assert.equal(reservations, 1);
+    assert.equal(response?.headers.get("cache-control"), "no-store");
+    assert.equal(response?.headers.get("retry-after"), retryAfter);
+    assert.equal(response?.headers.get("x-ratelimit-policy"), "nexid-public_write");
+    assert.equal(response?.headers.get("x-ratelimit-limit"), "20");
+    assert.deepEqual(await response?.json(), { ok: false, reason });
+  }
+});
