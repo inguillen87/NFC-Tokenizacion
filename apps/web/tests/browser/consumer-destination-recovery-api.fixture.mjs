@@ -3,8 +3,9 @@ import {createServer} from 'node:http';
 import {createHash} from 'node:crypto';
 export async function createDestinationRecoveryFixture(){
  const requests=[];
- const scenarios=new Set(['ready','empty','session-500','session-401','session-false','session-malformed','session-network','session-headers-stall','session-body-stall','brands-unavailable','brands-malformed','catalog-unavailable','catalog-malformed','products-unavailable','taps-unavailable']);
+ const scenarios=new Set(['ready','empty','session-500','session-401','session-false','session-malformed','session-network','session-headers-stall','session-body-stall','brands-unavailable','brands-malformed','catalog-unavailable','catalog-malformed','products-unavailable','taps-unavailable','experience-context-ready','experience-context-unavailable','experience-context-mismatched']);
  const brand={slug:'loading-qa',name:'Marca local QA',status:'active',points_balance:0};
+ const experienceScenarios=new Set(['experience-context-ready','experience-context-unavailable','experience-context-mismatched']),otherBrand={slug:'other-brand',name:'Marca distinta QA',status:'active',points_balance:0};
  const product={id:'00000000-0000-4000-8000-000000000002',product_name:'Producto local QA',brand_name:brand.name,tenant_slug:brand.slug,bid:'LOT-QA',latest_tap_event_id:'900001',first_tap_event_id:'900001',ownership_status:'viewed',latest_verdict:'VALID_CLOSED',created_at:'2026-10-05T12:00:00Z',latest_tap_at:'2026-10-05T12:00:00Z'};
  const listing={id:'00000000-0000-4000-8000-000000000001',title:'Catálogo local QA',tenant_slug:brand.slug,brand_name:brand.name,stock_status:'active',request_to_buy_enabled:true,age_gate_required:false,cash_price:120};
  const historyAccount=createHash('sha256').update('consumer-history:synthetic-only').digest('hex');
@@ -51,15 +52,19 @@ export async function createDestinationRecoveryFixture(){
   if(scenario.startsWith('session-'))return reply({ok:false,error:'fixture_private_denied'},401);
   if(path==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-only',display_name:'Cuenta local QA',email:'qa@example.invalid',status:'active'},stats:{products:1,taps:1},memberships:[]});
   if(path==='/consumer/products')return scenario==='products-unavailable'?reply({ok:false,error:'fixture_unavailable'},503):reply({ok:true,items:scenario==='empty'?[]:[product]});
+  if(path==='/consumer/brands'&&experienceScenarios.has(scenario))return reply({ok:true,items:[brand,otherBrand]});
   if(path==='/consumer/brands')return scenario==='brands-unavailable'?reply({ok:false,error:'fixture_unavailable'},503):reply(scenario==='brands-malformed'?{ok:true,items:[null]}:{ok:true,items:scenario==='empty'?[]:[brand]});
   if(path==='/consumer/taps')return scenario==='taps-unavailable'?reply({ok:false,error:'fixture_unavailable'},503):reply({ok:true,items:[],limit:200,truncated:false});
   if(path==='/consumer/taps/history'){
    const history=historyResponse(url,scenario);
    return history?reply(history):reply({ok:false,error:'history_query_invalid'},400);
   }
+  if(path==='/consumer/taps/900001'&&scenario==='experience-context-unavailable')return reply({ok:false,error:'fixture_unavailable'},503);
+  if(path==='/consumer/taps/900001'&&scenario==='experience-context-mismatched')return reply({ok:true,item:{tap_event_id:'900002',verdict:'VALID_CLOSED',risk_level:'low',created_at:'2026-10-05T12:00:00Z',tenant_slug:otherBrand.slug,tenant_name:otherBrand.name,product_name:'Producto ajeno QA',bid:'LOT-OTHER-QA'}});
   if(path==='/consumer/taps/900001')return reply({ok:true,item:{tap_event_id:'900001',verdict:'VALID_CLOSED',risk_level:'low',created_at:'2026-10-05T12:00:00Z',tenant_slug:brand.slug,tenant_name:brand.name,product_name:product.product_name,bid:product.bid}});
   if(path==='/consumer/wallet')return reply({ok:true,tenantWallets:[],networkWallet:{enabled:false},certificates:[],ownerships:[],nfts:[],balances:[]});
   if(path==='/consumer/rewards')return reply({ok:true,items:[]});
+  if(path==='/consumer/experiences'&&experienceScenarios.has(scenario))return reply({ok:true,items:[],verifiedExperiences:[]});
   if(path==='/consumer/experiences')return reply({ok:true,items:[],offers:[]});
   if(path==='/consumer/privacy')return reply({ok:true,consumer:{display_name:'Cuenta local QA',preferred_locale:'es-AR'},consents:[]});
   if(path==='/marketplace/products')return scenario==='catalog-unavailable'?reply({ok:false,error:'fixture_unavailable'},503):reply(scenario==='catalog-malformed'?{ok:true,items:[null]}:{ok:true,items:scenario==='empty'?[]:[listing]});

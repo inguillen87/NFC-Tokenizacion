@@ -19,7 +19,7 @@ Object.assign(env,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',CONSUMER_DE
 const next=spawn(process.execPath,['--import',pathToFileURL(join(web,'tests/consumer-destination-recovery-local-fetch.mjs')).href,join(repo,'node_modules/next/dist/bin/next'),'start','-p',String(port),'-H','127.0.0.1'],{cwd:web,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
 next.stdout.on('data',()=>{});next.stderr.on('data',()=>{});let serverFailed=false;next.on('error',()=>{serverFailed=true;});
 const origin=`http://127.0.0.1:${port}`;
-const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],geolocationCalls:0};
+const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],experienceMockPosts:[],expectedSyntheticHttpErrors:[],geolocationCalls:0};
 const paths=['consumer-destination-recovery.browser.mjs','consumer-destination-recovery-local-fetch.mjs','browser/consumer-destination-recovery-api.fixture.mjs','consumer-portal-loading-evidence.mjs'];
 const hashes=async()=>Object.fromEntries(await Promise.all(paths.map(async path=>[path,createHash('sha256').update(await readFile(join(web,'tests',path))).digest('hex')])));
 report.helperHashesStart=await hashes();
@@ -41,13 +41,17 @@ const destinations=[
 ];
 let browser;
 async function setScenario(context,value){await context.addCookies([{name:'consumer_loading_qa',value,url:origin,httpOnly:true,sameSite:'Lax'}]);}
-async function open(width,theme,scenario){
+async function open(width,theme,scenario,expectedHttpStatus=0){
  const context=await browser.newContext({viewport:{width,height:900},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
  await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);await setScenario(context,scenario);
  await context.exposeBinding('__destinationNativeError',(_source,event)=>report.nativeWindowErrors.push(event));
  await context.exposeBinding('__destinationLocation',()=>report.geolocationCalls++);
  await context.addInitScript(()=>{window.__destinationDeliveries=[];window.addEventListener('error',event=>{window.__destinationDeliveries.push(window.__destinationNativeError({message:event.error?.message||event.message,digest:event.error?.digest||null}).catch(()=>{}));});Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__destinationLocation();throw Error('Unexpected GPS');},watchPosition(){void window.__destinationLocation();throw Error('Unexpected GPS');}}});});
- const page=await context.newPage();page.on('pageerror',error=>report.clientErrors.push({message:error.message}));page.on('console',message=>{if(message.type()==='error')report.consoleErrors.push({message:message.text(),url:message.location().url});});
+ const page=await context.newPage();page.on('pageerror',error=>report.clientErrors.push({message:error.message}));page.on('console',message=>{
+  if(message.type()!=='error')return;const url=message.location().url,reason=expectedHttpStatus===404?'Not Found':'Forbidden';
+  const expected=expectedHttpStatus&&url===origin+'/api/consumer/experiences'&&[`Failed to load resource: the server responded with a status of ${expectedHttpStatus} (${reason})`,`Failed to load resource: the server responded with a status of ${expectedHttpStatus} ()`].includes(message.text());
+  if(expected)report.expectedSyntheticHttpErrors.push({path:'/api/consumer/experiences',status:expectedHttpStatus});else report.consoleErrors.push({message:message.text(),url});
+ });
  await page.route('**/*',route=>{const request=route.request(),url=new URL(request.url());if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}if(url.origin===origin||['data:','blob:'].includes(url.protocol))return route.continue();report.externalRequests.push({origin:url.origin,path:url.pathname});return route.abort();});
  return{context,page};
 }
@@ -96,6 +100,65 @@ async function availability(path,marker,scenario,width,theme,readyText,emptyText
   await setScenario(context,'ready');await button.click();await notice.waitFor({state:'detached',timeout:12000});check((await page.locator('main').innerText()).includes(readyText),name+': successful retry restores reported source');check(page.url()===origin+path,name+': source retry keeps route and query');await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
  }finally{await context.close();}
 }
+const experiencePath='/me/experiences?tenant=other-brand&eventId=900001&product=Producto%20de%20URL%20B';
+async function experienceContext(width,theme,scenario){
+ const{context,page}=await open(width,theme,scenario),name='experiences-'+scenario+'-'+width+'-'+theme,start=fixture.requests.length,mockStart=report.experienceMockPosts.length;
+ report.cases.push({name,path:experiencePath,scenario,width,theme,syntheticOnly:true});
+ try{
+  const response=await page.goto(origin+experiencePath,{waitUntil:'domcontentloaded'}),form=page.getByTestId('verified-experience-form');await form.waitFor({timeout:12000});
+  const digests=extractInitialDocumentDigests(await response.text());check(digests.templateDigests.length===0&&digests.streamedSuspenseDigests.length===0&&digests.rscErrorDigests.length===0,name+': no streamed server/RSC error digest');
+  check(await page.getByTestId('consumer-portal-error').count()===0,name+': expected reading failure avoids exception boundary');
+  check(page.url()===origin+experiencePath,name+': conflicting URL retained without changing attribution');
+  const reads=fixture.requests.slice(start),ownReads=reads.filter(row=>row.path==='/consumer/taps/900001');
+  check(ownReads.length===1&&ownReads[0].query===''&&reads.every(row=>row.method==='GET'),name+': exactly one own reading GET without URL tenant');
+  const nav=page.getByRole('navigation',{name:'Seguir explorando'}),catalog=nav.getByRole('link',{name:/^Catálogo/}),rewards=nav.getByRole('link',{name:/^Beneficios/});
+  if(scenario==='experience-context-ready'){
+   check(await form.getByText('Producto local QA',{exact:true}).count()===1&&await form.getByText('Marca: Marca local QA',{exact:true}).count()===1,name+': own reading A supplies product and reported company');
+   check(await catalog.getAttribute('href')==='/me/marketplace?tenant=loading-qa'&&await rewards.getAttribute('href')==='/me/rewards?tenant=loading-qa',name+': destinations use own reading A');
+  }else{
+   check(await form.getByText('Producto por confirmar',{exact:true}).count()===1&&await form.getByText('Marca por confirmar',{exact:true}).count()===1,name+': unavailable or mismatched reading is not attributed');
+   check(await page.getByRole('status').filter({hasText:'No pudimos consultar esta lectura en tu cuenta. La marca y el producto están por confirmar.'}).count()===1,name+': accessible unconfirmed context notice');
+   check(await catalog.getAttribute('href')==='/me/marketplace'&&await rewards.getAttribute('href')==='/me/rewards',name+': unconfirmed context uses general destinations');
+  }
+  check(!(await form.innerText()).includes('Marca distinta QA')&&!(await form.innerText()).includes('Producto de URL B')&&!(await form.innerText()).includes('Producto ajeno QA'),name+': URL B and mismatched product never label composer');
+  check(await form.getByRole('alert').count()===0,name+': reading context is status, not submission error');
+  const title=form.getByRole('textbox',{name:'Titulo corto',exact:true});await title.focus();check(await title.evaluate(node=>node===document.activeElement),name+': labeled draft input receives keyboard focus');await page.keyboard.press('Tab');check(await form.evaluate(node=>node.contains(document.activeElement)),name+': keyboard advances within form');
+  check(report.experienceMockPosts.length===mockStart,name+': loading and keyboard navigation do not submit');
+  await assess(page,'[data-testid="consumer-experiences"]',name,width,theme);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
+ }finally{await context.close();}
+}
+async function experienceRejected(width,theme,status){
+ const{context,page}=await open(width,theme,'experience-context-ready',status),name='experiences-post-'+status+'-'+width+'-'+theme,mockStart=report.experienceMockPosts.length,consoleStart=report.expectedSyntheticHttpErrors.length;
+ const titleValue='Borrador local QA',bodyValue='Comentario local QA que se conserva.',photoValue='https://example.invalid/experiencia-local-qa.jpg';
+ const error=status===404?'verified_evidence_not_found':'review_blocked_by_risk_policy',copy=status===404?'No encontramos ese tap dentro de tu cuenta. Volve al producto y toca Dejar experiencia.':'Este producto tiene una alerta de riesgo. La marca debe revisarlo antes de aceptar experiencias.';
+ let release;const gate=new Promise(resolve=>{release=resolve;});const endpoint=url=>url.origin===origin&&url.pathname==='/api/consumer/experiences';
+ report.cases.push({name,path:experiencePath,scenario:'experience-context-ready',width,theme,httpStatus:status,syntheticOnly:true});
+ await page.route(endpoint,async route=>{
+  const request=route.request();if(request.method()!=='POST')return route.fallback();
+  const payload=request.postDataJSON();check(payload&&typeof payload==='object'&&!Array.isArray(payload)&&JSON.stringify(Object.keys(payload).sort())===JSON.stringify(['body','eventId','locale','photoUrls','rating','title']),name+': explicit payload preserves authoritative event-only contract');
+  check(payload.eventId==='900001'&&payload.rating===4&&payload.title===titleValue&&payload.body===bodyValue&&typeof payload.locale==='string'&&JSON.stringify(payload.photoUrls)===JSON.stringify([photoValue]),name+': synthetic payload keeps draft and selected score, never URL brand/product');
+  report.experienceMockPosts.push({path:'/api/consumer/experiences',status,syntheticOnly:true});await gate;
+  await route.fulfill({status,contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify({ok:false,error})});
+ });
+ try{
+  await page.goto(origin+experiencePath,{waitUntil:'domcontentloaded'});const form=page.getByTestId('verified-experience-form');await form.waitFor({timeout:12000});
+  const title=form.getByRole('textbox',{name:'Titulo corto',exact:true}),body=form.getByRole('textbox',{name:'Comentario',exact:true}),photo=form.getByRole('textbox',{name:'Link de la foto (opcional)',exact:true}),rating=form.getByRole('radio',{name:'4 estrellas',exact:true});
+  await rating.focus();await page.keyboard.press('Space');check(await rating.isChecked(),name+': score can be selected by keyboard');await title.fill(titleValue);await body.fill(bodyValue);await photo.fill(photoValue);
+  const submit=form.getByRole('button',{name:'Enviar experiencia',exact:true});check(await submit.isEnabled(),name+': valid draft enables explicit submit');check(await submit.evaluate(node=>node.getBoundingClientRect().height>=44),name+': submit touch target');
+  check(report.experienceMockPosts.length===mockStart,name+': filling draft does not submit');await submit.focus();check(await submit.evaluate(node=>node===document.activeElement),name+': keyboard submit is focused');
+  const started=page.waitForRequest(request=>endpoint(new URL(request.url()))&&request.method()==='POST',{timeout:12000});await Promise.all([started,submit.press('Enter',{timeout:12000})]);
+  const pending=form.getByRole('button',{name:'Enviando experiencia…',exact:true});await pending.waitFor({timeout:12000});check(await pending.isDisabled()&&await form.locator('form').getAttribute('aria-busy')==='true',name+': pending submit is disabled and announced');
+  await page.keyboard.press('Enter');check(report.experienceMockPosts.length===mockStart+1,name+': pending Enter does not duplicate request');release();
+  const alert=form.getByRole('alert');await alert.waitFor({timeout:12000});check((await alert.innerText()).includes(copy),name+': explicit HTTP '+status+' retains authoritative error');
+  check(await title.inputValue()===titleValue&&await body.inputValue()===bodyValue&&await photo.inputValue()===photoValue&&await rating.isChecked(),name+': failed submit preserves title, comment, photo and score');
+  check(await submit.isEnabled()&&await form.locator('form').getAttribute('aria-busy')==='false',name+': retry remains available only as an explicit action');
+  const recovery=alert.getByRole('link',{name:'Consultar mis experiencias',exact:true});check(await recovery.getAttribute('href')==='/me/experiences',name+': failure keeps general recovery destination');
+  await recovery.focus();check(await recovery.evaluate(node=>node===document.activeElement),name+': recovery link is keyboard reachable');
+  await page.waitForTimeout(150);check(report.experienceMockPosts.length===mockStart+1,name+': no automatic rePOST within bounded observation');
+  check(report.expectedSyntheticHttpErrors.length-consoleStart<=1,name+': at most one exact mocked HTTP resource error');check(page.url()===origin+experiencePath,name+': error keeps current route and draft');
+  await assess(page,'[data-testid="consumer-experiences"]',name,width,theme);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
+ }finally{release();await context.close();}
+}
 try{
  let ready=false;for(let i=0;i<120;i++){if(serverFailed||next.exitCode!==null)break;try{if((await fetch(origin+'/release.json',{signal:AbortSignal.timeout(1000)})).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,250));}
  check(ready,'isolated production Next ready');browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
@@ -109,6 +172,8 @@ try{
  for(const theme of ['light','dark'])for(const scenario of ['products-unavailable','taps-unavailable','catalog-unavailable'])await availability('/me/brands?tenant=loading-qa','consumer-brands-partial',scenario,320,theme,'Marca local QA','No hay membresías registradas en esta cuenta');
  for(const width of [320,768,1280])for(const theme of ['light','dark'])await availability('/me/marketplace?tenant=loading-qa','consumer-catalog-unavailable','catalog-unavailable',width,theme,'Catálogo local QA','Todavía no hay productos publicados');
  for(const[path,,emptyText]of [['/me/brands','unused','No hay membresías registradas en esta cuenta'],['/me/marketplace','unused','Todavía no hay productos publicados']]){const{context,page}=await open(390,'light','empty');try{await page.goto(origin+path,{waitUntil:'domcontentloaded'});const content=page.locator('#consumer-portal-content');await content.getByText(emptyText,{exact:false}).waitFor();check((await content.innerText()).includes(emptyText),path+': confirmed empty remains distinct');check(await content.getByRole('button',{name:'Reintentar carga',exact:true}).count()===0,path+': successful empty is not a failure');await page.evaluate(()=>Promise.all(window.__destinationDeliveries));}finally{await context.close();}}
+ for(const width of [320,390])for(const theme of ['light','dark']){for(const scenario of ['experience-context-ready','experience-context-unavailable','experience-context-mismatched'])await experienceContext(width,theme,scenario);for(const status of [404,403])await experienceRejected(width,theme,status);}
+ check(report.experienceMockPosts.length===8&&report.experienceMockPosts.every(row=>row.path==='/api/consumer/experiences'&&[404,403].includes(row.status)&&row.syntheticOnly===true),'exactly eight explicit synthetic experience POSTs, none forwarded');
  check(fixture.requests.every(row=>row.method==='GET'),'fixture received only GET reads');check(fixture.requests.filter(row=>row.scenario==='public-read-only').every(row=>row.cookieForwarded===false&&row.authorizationForwarded===false),'public reads forward no session cookies or authorization');check(report.blockedWrites.length===0,'no authentication/business writes attempted');check(report.geolocationCalls===0,'zero GPS calls');check(report.externalRequests.length===0,'zero external browser requests');check(report.clientErrors.length===0,'zero client exceptions');check(report.nativeWindowErrors.length===0,'zero native window exceptions');check(report.consoleErrors.length===0,'zero unexpected browser console errors');report.status='passed';
 }catch(error){report.status='failed';report.error=String(error.stack);const page=browser?.contexts().at(-1)?.pages().at(-1);if(page)await page.screenshot({path:join(output,'failure.png'),fullPage:true}).catch(()=>{});throw error;
 }finally{
