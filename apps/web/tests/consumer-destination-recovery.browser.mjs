@@ -100,6 +100,43 @@ async function availability(path,marker,scenario,width,theme,readyText,emptyText
   await setScenario(context,'ready');await button.click();await notice.waitFor({state:'detached',timeout:12000});check((await page.locator('main').innerText()).includes(readyText),name+': successful retry restores reported source');check(page.url()===origin+path,name+': source retry keeps route and query');await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
  }finally{await context.close();}
 }
+async function ratingGeometry(page,name,sameRow=true){
+ const group=page.getByTestId('verified-experience-form').getByRole('radiogroup',{name:'Puntaje',exact:true});
+ const boxes=await group.locator('label').evaluateAll(labels=>labels.map(label=>{const r=label.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,width:r.width,height:r.height};}));
+ check(boxes.length===5&&await group.getByRole('radio').count()===5,name+': five score labels and radios');
+ check(boxes.every(r=>r.width>=44&&r.height>=44),name+': every score touch target is at least 44 by 44');
+ if(sameRow)check(boxes.every(r=>Math.abs(r.top-boxes[0].top)<=1),name+': all five stars share one row');
+ check(boxes.every(r=>r.left>=-1&&r.right<=page.viewportSize().width+1),name+': score targets stay within horizontal viewport');
+ return group;
+}
+async function ratingKeyboard(page,name){
+ const group=page.getByTestId('verified-experience-form').getByRole('radiogroup',{name:'Puntaje',exact:true}),five=group.getByRole('radio',{name:'5 estrellas',exact:true}),four=group.getByRole('radio',{name:'4 estrellas',exact:true});
+ await five.focus();check(await five.evaluate(node=>{const label=node.closest('label'),style=getComputedStyle(label);return document.activeElement===node&&style.outlineStyle!=='none'&&parseFloat(style.outlineWidth)>=2;}),name+': focused score has a visible outline');
+ await page.keyboard.press('ArrowLeft');await page.waitForFunction(()=>document.querySelector('input[name="experience-rating"][value="4"]')?.checked,{},{timeout:12000});check(await four.isChecked()&&await four.evaluate(node=>node===document.activeElement),name+': Left arrow selects and focuses four stars');
+ await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('input[name="experience-rating"][value="5"]')?.checked,{},{timeout:12000});check(await five.isChecked()&&await five.evaluate(node=>node===document.activeElement),name+': Right arrow restores and focuses five stars');
+}
+async function portalZoomReflow(page,name){
+ const geometry=await page.evaluate(()=>{
+  const box=e=>e?.getBoundingClientRect(),visible=e=>{if(!e)return false;const s=getComputedStyle(e),r=box(e);return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0&&r.width>0&&r.height>0;};
+  const logo=document.querySelector('header [class*="brandArea"] a'),controls=document.querySelector('[aria-label="Apariencia y sesión"]'),a=box(logo),b=box(controls);
+  const items=[...(document.querySelector('nav.consumer-bottom-nav > div')?.children??[])],names=['Inicio','Productos','Historial','Beneficios','Más'];
+  const labels=items.map((item,index)=>{const label=item.querySelector(':scope > span:first-of-type'),r=box(item);if(!label||!visible(label)||label.textContent.trim()!==names[index])return{visible:false,within:false,touch:false};const range=document.createRange();range.selectNodeContents(label);const rects=[...range.getClientRects()].filter(x=>x.width>0&&x.height>0);range.detach();return{visible:true,within:rects.length>0&&rects.every(x=>x.left>=r.left-1&&x.right<=r.right+1&&x.top>=r.top-1&&x.bottom<=r.bottom+1),touch:r.width>=44&&r.height>=44};});
+  return{visible:visible(logo)&&visible(controls),separate:Boolean(a&&b&&(a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.top+1||b.bottom<=a.top+1)),labels:labels.length===5&&labels.every(x=>x.visible&&x.within),touch:labels.length===5&&labels.every(x=>x.touch)};
+ });
+ check(geometry.visible,name+': logo and account controls remain visible');
+ check(geometry.separate,name+': logo and account controls do not overlap');
+ check(geometry.labels,name+': five visible navigation labels stay within their own items');
+ check(geometry.touch,name+': navigation touch targets remain at least 44 by 44');
+}
+async function ratingZoomReflow(page,name,width,theme){
+ try{
+  await page.evaluate(()=>{document.documentElement.style.zoom='2';});check(await page.evaluate(()=>getComputedStyle(document.documentElement).zoom)==='2',name+': declared 200 percent CSS zoom applied');
+  const group=await ratingGeometry(page,name+'-zoom200',false),rows=await group.locator('label').evaluateAll(labels=>new Set(labels.map(label=>Math.round(label.getBoundingClientRect().top))).size);
+  check(rows>=1&&rows<=5,name+': zoom reflow keeps every score reachable without forcing one row');await ratingKeyboard(page,name+'-zoom200');
+  await portalZoomReflow(page,name+'-zoom200');
+  await assess(page,'[data-testid="consumer-experiences"]',name+'-zoom200',width,theme);
+ }finally{await page.evaluate(()=>{document.documentElement.style.zoom='';});}
+}
 const experiencePath='/me/experiences?tenant=other-brand&eventId=900001&product=Producto%20de%20URL%20B';
 async function experienceContext(width,theme,scenario){
  const{context,page}=await open(width,theme,scenario),name='experiences-'+scenario+'-'+width+'-'+theme,start=fixture.requests.length,mockStart=report.experienceMockPosts.length;
@@ -111,6 +148,7 @@ async function experienceContext(width,theme,scenario){
   check(page.url()===origin+experiencePath,name+': conflicting URL retained without changing attribution');
   const reads=fixture.requests.slice(start),ownReads=reads.filter(row=>row.path==='/consumer/taps/900001');
   check(ownReads.length===1&&ownReads[0].query===''&&reads.every(row=>row.method==='GET'),name+': exactly one own reading GET without URL tenant');
+  await ratingGeometry(page,name);await ratingKeyboard(page,name);
   const nav=page.getByRole('navigation',{name:'Seguir explorando'}),catalog=nav.getByRole('link',{name:/^Catálogo/}),rewards=nav.getByRole('link',{name:/^Beneficios/});
   if(scenario==='experience-context-ready'){
    check(await form.getByText('Producto local QA',{exact:true}).count()===1&&await form.getByText('Marca: Marca local QA',{exact:true}).count()===1,name+': own reading A supplies product and reported company');
@@ -124,7 +162,7 @@ async function experienceContext(width,theme,scenario){
   check(await form.getByRole('alert').count()===0,name+': reading context is status, not submission error');
   const title=form.getByRole('textbox',{name:'Titulo corto',exact:true});await title.focus();check(await title.evaluate(node=>node===document.activeElement),name+': labeled draft input receives keyboard focus');await page.keyboard.press('Tab');check(await form.evaluate(node=>node.contains(document.activeElement)),name+': keyboard advances within form');
   check(report.experienceMockPosts.length===mockStart,name+': loading and keyboard navigation do not submit');
-  await assess(page,'[data-testid="consumer-experiences"]',name,width,theme);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
+  await assess(page,'[data-testid="consumer-experiences"]',name,width,theme);if(scenario==='experience-context-ready')await ratingZoomReflow(page,name,width,theme);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
  }finally{await context.close();}
 }
 async function experienceRejected(width,theme,status){
@@ -143,11 +181,13 @@ async function experienceRejected(width,theme,status){
  try{
   await page.goto(origin+experiencePath,{waitUntil:'domcontentloaded'});const form=page.getByTestId('verified-experience-form');await form.waitFor({timeout:12000});
   const title=form.getByRole('textbox',{name:'Titulo corto',exact:true}),body=form.getByRole('textbox',{name:'Comentario',exact:true}),photo=form.getByRole('textbox',{name:'Link de la foto (opcional)',exact:true}),rating=form.getByRole('radio',{name:'4 estrellas',exact:true});
+  await ratingGeometry(page,name);
   await rating.focus();await page.keyboard.press('Space');check(await rating.isChecked(),name+': score can be selected by keyboard');await title.fill(titleValue);await body.fill(bodyValue);await photo.fill(photoValue);
   const submit=form.getByRole('button',{name:'Enviar experiencia',exact:true});check(await submit.isEnabled(),name+': valid draft enables explicit submit');check(await submit.evaluate(node=>node.getBoundingClientRect().height>=44),name+': submit touch target');
   check(report.experienceMockPosts.length===mockStart,name+': filling draft does not submit');await submit.focus();check(await submit.evaluate(node=>node===document.activeElement),name+': keyboard submit is focused');
   const started=page.waitForRequest(request=>endpoint(new URL(request.url()))&&request.method()==='POST',{timeout:12000});await Promise.all([started,submit.press('Enter',{timeout:12000})]);
   const pending=form.getByRole('button',{name:'Enviando experiencia…',exact:true});await pending.waitFor({timeout:12000});check(await pending.isDisabled()&&await form.locator('form').getAttribute('aria-busy')==='true',name+': pending submit is disabled and announced');
+  check(await form.getByRole('radio').evaluateAll(radios=>radios.length===5&&radios.every(radio=>radio.disabled||radio.matches(':disabled'))),name+': pending fieldset disables all five score controls');await ratingGeometry(page,name+'-pending');
   await page.keyboard.press('Enter');check(report.experienceMockPosts.length===mockStart+1,name+': pending Enter does not duplicate request');release();
   const alert=form.getByRole('alert');await alert.waitFor({timeout:12000});check((await alert.innerText()).includes(copy),name+': explicit HTTP '+status+' retains authoritative error');
   check(await title.inputValue()===titleValue&&await body.inputValue()===bodyValue&&await photo.inputValue()===photoValue&&await rating.isChecked(),name+': failed submit preserves title, comment, photo and score');

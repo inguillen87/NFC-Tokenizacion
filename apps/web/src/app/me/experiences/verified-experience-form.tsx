@@ -269,7 +269,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
 
         <form className={styles.form} aria-busy={state === "sending" || preparingPhoto} onSubmit={(event) => { event.preventDefault(); void submitExperience(); }}>
           <fieldset disabled={state === "sending"} className={styles.fields}>
-          <div className={styles.panel}>
+          <div className={`${styles.panel} ${styles.ratingPanel}`}>
             <span className={styles.fieldLabel}>Estrellas</span>
             <div className={styles.rating} role="radiogroup" aria-label="Puntaje">
               {[1, 2, 3, 4, 5].map((value) => (

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpRight, Check, ChevronDown, Copy, Gift, Search, Ticket } from "lucide-react";
-import { REWARD_STATE_LABELS, rewardDateLabel, type ConsumerReward } from "../_components/consumer-rewards-model";
+import { REWARD_STATE_LABELS, rewardDateLabel, rewardTenant, type ConsumerReward } from "../_components/consumer-rewards-model";
 import styles from "./rewards.module.css";
 
 function VoucherCode({ code }: { code: string }) {
@@ -25,13 +25,15 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"all" | "vouchers" | "catalog">("all");
   const brands = [...new Map(items.map(item => [item.tenant, item.brand])).entries()];
+  const catalogTenant = rewardTenant(tenant);
+  const catalogHref = catalogTenant ? `/me/marketplace?tenant=${encodeURIComponent(catalogTenant)}` : "/me/marketplace";
   const visible = items.filter(item => (!tenant || item.tenant === tenant) && (view === "all" || (view === "vouchers" ? item.hasClaim : !item.hasClaim))
     && `${item.title} ${item.brand} ${item.program || ""}`.toLocaleLowerCase("es-AR").includes(query.trim().toLocaleLowerCase("es-AR")));
   const filtered = Boolean(tenant || query || view !== "all");
   function reset() { setTenant(""); setQuery(""); setView("all"); }
   return <section aria-labelledby="benefits-list-title" className={styles.catalog}>
     <div className={styles.sectionHeading}><div className={styles.headingIcon}><Gift aria-hidden="true" /><div><h2 id="benefits-list-title">Beneficios y vouchers</h2><p>Consultá lo que publicaron tus marcas y el historial de tus vouchers.</p></div></div>
-      <Link className={styles.textLink} href="/me/marketplace">Explorar catálogo <ArrowUpRight aria-hidden="true" /></Link></div>
+      <Link className={styles.textLink} href={catalogHref}>{catalogTenant ? "Catálogo de esta marca" : "Explorar catálogo"} <ArrowUpRight aria-hidden="true" /></Link></div>
     <div className={styles.filters}>
       <div className={styles.views} role="group" aria-label="Tipo de beneficio">{([['all','Todos'],['vouchers','Mis vouchers'],['catalog','Publicados']] as const).map(([value,label]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => setView(value)}>{label}</button>)}</div>
       <label className={styles.search}><Search aria-hidden="true" /><span className={styles.srOnly}>Buscar beneficio</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar un beneficio…" /></label>
