@@ -1,0 +1,71 @@
+.root {
+  --cork-surface: #102737;
+  --cork-text: #eff8ff;
+  --cork-muted: #b6cbd7;
+  --cork-subtle: #163444;
+  --cork-border: #365465;
+  --cork-notice: #fde68a;
+  --cork-notice-bg: #451a03;
+  min-width: 0;
+  color: var(--cork-text);
+}
+:global(html.theme-light) .root,
+:global(html[data-theme="light"]) .root {
+  --cork-surface: #ffffff;
+  --cork-text: #132e40;
+  --cork-muted: #486071;
+  --cork-subtle: #edf5f3;
+  --cork-border: #c8dcd7;
+  --cork-notice: #92400e;
+  --cork-notice-bg: #fff7ed;
+}
+.root[data-cork-demo] .disabledState h2,
+.root[data-cork-demo] .primary { color: var(--cork-text) !important; }
+.root[data-cork-demo] .disabledState p,
+.root[data-cork-demo] .muted { color: var(--cork-muted) !important; }
+.root[data-cork-demo].disabledCard,
+.root[data-cork-demo] .surface {
+  background: var(--cork-surface) !important;
+  border: 1px solid var(--cork-border) !important;
+  color: var(--cork-text) !important;
+  border-radius: 1.25rem;
+}
+.disabledCard { display: grid; gap: 1.25rem; padding: 1.25rem; }
+.disabledState { min-width: 0; }
+.disabledState h2 { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.disabledState p { margin: .65rem 0 0; max-width: 42rem; font-size: .875rem; line-height: 1.65; overflow-wrap: anywhere; }
+.root[data-cork-demo] .back,
+.root[data-cork-demo] .sampleButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 44px;
+  min-width: 44px;
+  max-width: 100%;
+  padding: .65rem .9rem;
+  border: 1px solid var(--cork-border);
+  border-radius: .75rem;
+  background: var(--cork-subtle) !important;
+  color: var(--cork-text) !important;
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.disabledCard > .back { justify-self: start; }
+.back:focus-visible,
+.sampleButton:focus-visible { outline: 3px solid var(--cork-text); outline-offset: 3px; }
+.root[data-cork-demo] .badge,
+.root[data-cork-demo] .notice {
+  border: 1px solid var(--cork-border);
+  background: var(--cork-notice-bg) !important;
+  color: var(--cork-notice) !important;
+}
+.badge { display: inline-flex; align-items: center; gap: .375rem; border-radius: 999px; padding: .35rem .65rem; font-size: .75rem; font-weight: 700; }
+.notice { border-radius: 1rem; padding: 1rem; }
+.root[data-cork-demo] .notice p { color: var(--cork-notice) !important; }
+.noticeBody { margin-top: .35rem; font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.root[data-cork-demo] .camera { border: 1px solid var(--cork-border); background: var(--cork-subtle) !important; color: var(--cork-muted) !important; }

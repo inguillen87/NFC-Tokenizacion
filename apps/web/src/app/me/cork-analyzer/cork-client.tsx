@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import styles from "./cork-client.module.css";
 import { Card, Button } from "@product/ui";
 import { 
   ArrowLeft, 
@@ -96,32 +97,46 @@ export default function CorkClient() {
     setResult(null);
   };
 
+  if (!demoEnabled) {
+    return (
+      <section className={styles.root + " " + styles.disabledCard} data-cork-demo="disabled" aria-labelledby="cork-demo-state">
+        <div role="status" aria-live="polite" className={styles.disabledState}>
+          <h2 id="cork-demo-state">Demo deshabilitada. No hay análisis disponible.</h2>
+          <p>La simulación está deshabilitada. La foto no se analiza y esta pantalla no ejecuta IA ni ofrece un diagnóstico del corcho o del vino.</p>
+        </div>
+        <Link href="/me/products" prefetch={false} className={styles.back}>
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Volver a mis productos
+        </Link>
+      </section>
+    );
+  }
+
   return (
-    <div className="v3-space-y-6">
+    <div className={styles.root + " v3-space-y-6"} data-cork-demo="enabled">
       {/* Top navigation */}
       <header className="flex items-center justify-between border-b border-white/5 pb-4">
         <Link 
           href="/me/products" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition"
+          prefetch={false} className={styles.back}
         >
           <ArrowLeft className="w-4 h-4" /> Volver a mis productos
         </Link>
-        <span className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-amber-200">
+        <span className={styles.badge}>
           <Sparkles className="w-3 h-3" /> Demo simulada
         </span>
       </header>
 
-      <div role="status" className="rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-amber-100">
+      <div role="status" className={styles.notice}>
         <p className="text-xs font-black uppercase tracking-[0.14em]">Demo simulado · valores aleatorios · no diagnóstico</p>
-        <p className="mt-1 text-xs leading-5 text-amber-100/80">
+        <p className={styles.noticeBody}>
           La imagen solo sirve como preview. Esta pantalla no ejecuta IA ni mide humedad, hermeticidad, conservación, oxidación o aptitud de consumo.
-          {demoEnabled ? " La simulación está habilitada para probar la UX." : " La simulación está deshabilitada; un administrador debe activar NEXT_PUBLIC_CORK_ANALYZER_DEMO_ENABLED."}
+          {demoEnabled ? " La simulación está habilitada para probar la UX." : " La simulación está deshabilitada. Podés volver a tus productos."}
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
         {/* Image upload and scan display */}
-        <Card className="p-6 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden">
+        <Card className={styles.surface + " p-6 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden"}>
           <AnimatePresence mode="wait">
             {!selectedImage ? (
               <motion.div 
@@ -131,12 +146,12 @@ export default function CorkClient() {
                 exit={{ opacity: 0 }}
                 className="text-center v3-space-y-4 w-full"
               >
-                <div className="mx-auto w-16 h-16 rounded-3xl bg-slate-900 border border-white/10 flex items-center justify-center text-slate-400">
+                <div className={styles.camera + " mx-auto w-16 h-16 rounded-3xl flex items-center justify-center"}>
                   <Camera className="w-8 h-8" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Cargar imagen para la simulación visual</h4>
-                  <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                  <h4 className={styles.primary + " text-sm font-bold"}>Cargar imagen para la simulación visual</h4>
+                  <p className={styles.muted + " text-xs mt-1 max-w-xs mx-auto"}>
                     La foto no se analiza: se usa como fondo para recorrer una experiencia de producto claramente simulada.
                   </p>
                 </div>
@@ -151,7 +166,7 @@ export default function CorkClient() {
                   <button 
                     onClick={loadSampleImage} 
                     disabled={!demoEnabled}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 hover:bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 transition disabled:cursor-not-allowed disabled:opacity-50"
+                    className={styles.sampleButton}
                   >
                     Cargar Muestra de Cava
                   </button>

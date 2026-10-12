@@ -14,7 +14,7 @@ export default async function SecurityPage({ searchParams }: { searchParams?: Pr
   return (
     <PortalShell
       title="Seguridad y canales de contacto"
-      subtitle="Vinculá email y WhatsApp para mejorar entrega y recuperación. El código puede validarse desde cualquiera de los canales configurados; este flujo no es MFA secuencial."
+      subtitle="Revisá tus contactos de acceso y recuperación. Un solo código alcanza para entrar."
       notificationCount={Number(stats.unread || 0)}
     >
       <SecurityPanel initialConsumer={consumer} />

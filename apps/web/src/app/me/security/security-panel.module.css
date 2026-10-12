@@ -1,0 +1,66 @@
+.root {
+  --security-surface: #ffffff;
+  --security-text: #0f172a;
+  --security-muted: #475569;
+  --security-border: #cbd5e1;
+  --security-field: #f8fafc;
+  --security-accent: #92400e;
+  --security-accent-bg: #fef3c7;
+  --security-success: #166534;
+  --security-success-bg: #f0fdf4;
+  --security-status: #155e75;
+  --security-status-bg: #ecfeff;
+  --security-error: #991b1b;
+  --security-error-bg: #fef2f2;
+  width: 100%;
+  min-width: 0;
+  color: var(--security-text);
+}
+:global(html.theme-dark) .root,
+:global(html[data-theme="dark"]) .root {
+  --security-surface: #0f172a;
+  --security-text: #f1f5f9;
+  --security-muted: #cbd5e1;
+  --security-border: #64748b;
+  --security-field: #111827;
+  --security-accent: #fde68a;
+  --security-accent-bg: #451a03;
+  --security-success: #bbf7d0;
+  --security-success-bg: #052e16;
+  --security-status: #cffafe;
+  --security-status-bg: #083344;
+  --security-error: #fecaca;
+  --security-error-bg: #450a0a;
+}
+.card { border-color: var(--security-border) !important; background: var(--security-surface) !important; }
+.root h2, .root h3 { color: var(--security-text) !important; }
+.root p, .root label { color: var(--security-muted) !important; }
+.root .back { min-height: 44px; color: var(--security-muted); }
+.contacts { border-color: var(--security-border) !important; background: var(--security-field) !important; }
+.contactRow { gap: 0.75rem; min-width: 0; border-color: var(--security-border) !important; }
+.contactRow > span:first-child { flex-shrink: 0; color: var(--security-muted) !important; }
+.root .contactValue { min-width: 0; overflow-wrap: anywhere; text-align: right; color: var(--security-text); }
+.successIcon { border-color: var(--security-border) !important; background: var(--security-success-bg) !important; color: var(--security-success) !important; }
+.root :global(input), .root :global(select) {
+  min-width: 0; min-height: 44px; border-color: var(--security-border) !important;
+  background: var(--security-field) !important; color: var(--security-text) !important;
+}
+.root :global(input)::placeholder { color: var(--security-muted); opacity: 1; }
+.root :global(button), .benefits { min-height: 44px; }
+.root :global(button) { touch-action: manipulation; }
+.root :global(button):disabled { cursor: wait; opacity: 1; }
+.root :global(button):disabled:not([aria-busy="true"]) { cursor: not-allowed; }
+.secondary { border-color: var(--security-border) !important; color: var(--security-text) !important; }
+.root :global(a):focus-visible, .root :global(button):focus-visible,
+.root :global(input):focus-visible, .root :global(select):focus-visible {
+  outline: 3px solid var(--security-accent); outline-offset: 3px;
+}
+.benefits { display: inline-flex; align-items: center; justify-content: center; padding: 0.65rem 1rem; border: 1px solid var(--security-accent); border-radius: 0.75rem; background: var(--security-accent-bg); color: var(--security-accent); font-size: 0.875rem; font-weight: 700; }
+.status { border-color: var(--security-status) !important; background: var(--security-status-bg) !important; color: var(--security-status) !important; overflow-wrap: anywhere; }
+.error { border-color: var(--security-error) !important; background: var(--security-error-bg) !important; color: var(--security-error) !important; overflow-wrap: anywhere; }
+.error :global(svg) { color: var(--security-error) !important; }
+.recovery { display: flex; min-height: 44px; width: 100%; align-items: center; justify-content: center; margin-top: 1rem; padding: 0.75rem; border: 1px solid var(--security-accent); border-radius: 0.75rem; background: var(--security-accent-bg); color: var(--security-accent); font-weight: 700; }
+@media (max-width: 25rem) {
+  .contactRow { flex-wrap: wrap; }
+  .root .contactValue { flex-basis: 100%; text-align: left; }
+}

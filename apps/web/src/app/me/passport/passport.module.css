@@ -1,0 +1,52 @@
+.root {
+  --passport-surface: #ffffff;
+  --passport-text: #132e40;
+  --passport-muted: #486071;
+  --passport-border: #c8dcd7;
+  --passport-subtle: #edf5f3;
+  --passport-amber: #92400e;
+  --passport-amber-bg: #fff7ed;
+  --passport-emerald: #166534;
+  --passport-emerald-bg: #f0fdf4;
+  --passport-cyan: #155e75;
+  --passport-cyan-bg: #ecfeff;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  width: 100%;
+  color: var(--passport-text);
+}
+:global(html.theme-dark) .root,
+:global(html[data-theme="dark"]) .root {
+  --passport-surface: #102737;
+  --passport-text: #eff8ff;
+  --passport-muted: #b6cbd7;
+  --passport-border: #365465;
+  --passport-subtle: #163444;
+  --passport-amber: #fde68a;
+  --passport-amber-bg: #451a03;
+  --passport-emerald: #bbf7d0;
+  --passport-emerald-bg: #052e16;
+  --passport-cyan: #cffafe;
+  --passport-cyan-bg: #083344;
+}
+.root .card, .root .featureCard { min-width: 0; border-color: var(--passport-border) !important; background: var(--passport-surface) !important; color: var(--passport-text) !important; }
+.root .card { box-shadow: 0 12px 30px rgba(20, 56, 50, .08); }
+.root .accountHeader { border-color: var(--passport-border) !important; }
+.root .primary, .root .detailGrid > p { color: var(--passport-text) !important; }
+.root .muted { color: var(--passport-muted) !important; }
+.root .amber { color: var(--passport-amber) !important; }
+.root .emerald { color: var(--passport-emerald) !important; }
+.root .cyan { color: var(--passport-cyan) !important; }
+.root .accountIcon { flex-shrink: 0; border-color: var(--passport-border) !important; background: var(--passport-amber-bg) !important; color: var(--passport-amber) !important; }
+.root .status { max-width: 100%; overflow-wrap: anywhere; }
+.root .verified { border-color: var(--passport-emerald) !important; background: var(--passport-emerald-bg) !important; color: var(--passport-emerald) !important; }
+.root .pending { border-color: var(--passport-amber) !important; background: var(--passport-amber-bg) !important; color: var(--passport-amber) !important; }
+.root .action { min-width: 0; min-height: 44px; gap: .75rem; touch-action: manipulation; border-color: var(--passport-border) !important; background: var(--passport-subtle) !important; color: var(--passport-text) !important; }
+.root .action > span { min-width: 0; overflow-wrap: anywhere; color: inherit; }
+.root .actionIcon { flex-shrink: 0; color: inherit !important; }
+.root .wallet { border-color: var(--passport-emerald) !important; background: var(--passport-emerald-bg) !important; color: var(--passport-emerald) !important; }
+.root .catalog { border-color: var(--passport-cyan) !important; background: var(--passport-cyan-bg) !important; color: var(--passport-cyan) !important; }
+.root .action:hover { box-shadow: inset 0 0 0 1px currentColor; }
+.root .action:focus-visible { outline: 3px solid var(--passport-cyan); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .root .card, .root .featureCard, .root .action { transition: none; } }

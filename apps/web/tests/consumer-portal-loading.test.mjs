@@ -6,7 +6,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { CONSUMER_READ_TIMEOUT_MS, consumerSessionState, fetchConsumerJson } from "../src/app/me/_components/consumer-bounded-fetch.ts";
-import { homeReadingHref } from "../src/app/me/_components/consumer-home-model.ts";
+import { homeReadingHref, homeAccountStatusLabel } from "../src/app/me/_components/consumer-home-model.ts";
 import { rewardTenant } from "../src/app/me/_components/consumer-rewards-model.ts";
 
 test("consumer reads time out stalled headers, even when the transport ignores abort", async (t) => {
@@ -139,7 +139,7 @@ function loadApi(result) {
     "../../api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected transport outside bounded-read fixture"); } },
     "./consumer-bounded-fetch": {
       consumerSessionState,
-      fetchConsumerJson: async (url, init) => { calls.push({ url, init }); return result; },
+      fetchConsumerJson: async (url, init) => { calls.push({ url, init }); return typeof result === "function" ? result(url) : result; },
     },
   });
   return { api, calls };
@@ -415,4 +415,96 @@ test("the genuine route error boundary retains its reset or supplied retry contr
   assert.match(html, /data-testid="consumer-portal-error"/);
   assert.match(html, /id="consumer-error-title"/);
   assert.doesNotMatch(html, /consumer-portal-unavailable|unexpected/);
+});
+
+function loadPassportPage(accountRead, readConsumerMe = null) {
+  const loaded = loadApi((url) => new URL(url).pathname === "/consumer/session"
+    ? { status: "ready", data: { ok: true, authenticated: true } } : accountRead);
+  const ConsumerPortalUnavailable = () => null;
+  const page = compile(readFileSync(new URL("passport/page.tsx", root), "utf8"), {
+    "../_components/consumer-api": readConsumerMe ? { ...loaded.api, fetchConsumerMe: readConsumerMe } : loaded.api,
+    "../_components/consumer-home-model": { homeAccountStatusLabel },
+    "./passport.module.css": { __esModule: true, default: styles },
+    "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable },
+    "../_components/portal-shell": { PortalShell: ({ title, subtitle, children }) =>
+      React.createElement("main", null, React.createElement("h1", null, title), React.createElement("p", null, subtitle), children) },
+    "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
+    "lucide-react": Object.fromEntries(["ShieldCheck", "UserCheck", "Award", "Sparkles", "WalletCards", "PackageCheck", "ChevronRight"].map(name => [name, () => null])),
+  }).default;
+  return { page, loaded, ConsumerPortalUnavailable };
+}
+
+test("passport uses the reported account status without inventing a pending credential", async () => {
+  for (const [status, legacyStatus, label] of [
+    ["registered", "verified", "Cuenta registrada"], ["verified", "pending", "Cuenta verificada"],
+    ["anonymous", undefined, "Cuenta de consulta"], [undefined, "verified", "Estado de la cuenta no informado"],
+    ["unknown", "verified", "Estado de la cuenta no informado"],
+  ]) {
+    const h = loadPassportPage({ status: "ready", data: { ok: true, consumer: { id: "synthetic-passport", status, passport_status: legacyStatus }, stats: {} } });
+    const element = await h.page({ searchParams: Promise.resolve({ tenant: "bodega & prueba", eventId: "732" }) });
+    const html = renderToStaticMarkup(element);
+    assert.match(html, new RegExp(label));
+    assert.match(html, /data-testid="consumer-passport-account-status"/);
+    assert.match(html, /Nombre no informado/);
+    assert.match(html, /Correo no informado/);
+    assert.doesNotMatch(html, /PENDING|Cuenta inicial|email no validado|DOCUMENTO DE IDENTIDAD DIGITAL|Premium Passport/);
+    if (status === "registered") assert.doesNotMatch(html, /Cuenta verificada/);
+    assert.deepEqual(h.loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session", "/consumer/me"]);
+    assert.equal(h.loaded.calls[0].init.cache, "no-store");
+    assert.equal(h.loaded.calls[1].init.headers.cookie, "session=private");
+  }
+});
+
+test("passport recovers failed or malformed account reads after a confirmed session instead of fabricating identity", async () => {
+  for (const accountRead of [
+    { status: "http-error", httpStatus: 503 }, { status: "unavailable", reason: "timeout" },
+    { status: "unavailable", reason: "invalid-json" }, { status: "ready", data: null },
+    { status: "ready", data: { ok: true, consumer: null } },
+    ...["unexpected", [], 42].map(consumer => ({ status: "ready", data: { ok: true, consumer } })),
+    { status: "ready", data: { ok: true, consumer: { id: "synthetic-passport", display_name: {} } } },
+    { status: "ready", data: { ok: true, consumer: { id: "" } } },
+    { status: "ready", data: { ok: false, consumer: { id: "synthetic-passport", status: "verified" } } },
+  ]) {
+    const h = loadPassportPage(accountRead);
+    const element = await h.page({ searchParams: Promise.resolve({ tenant: "bodega" }) });
+    assert.equal(element.type, h.ConsumerPortalUnavailable);
+    assert.deepEqual(h.loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session", "/consumer/me"]);
+    assert.equal(h.loaded.calls.length, 2);
+  }
+});
+
+test("passport labels describe the existing read destinations without claiming redemption, NFTs or legal identity", async () => {
+  const h = loadPassportPage({ status: "ready", data: { ok: true, consumer: { id: "synthetic-passport", status: "registered", display_name: "Nombre reportado", email: "qa@example.invalid" } } });
+  const html = renderToStaticMarkup(await h.page({ searchParams: Promise.resolve({ tenant: "bodega & prueba" }) }));
+  assert.match(html, /Mi pasaporte NexID/);
+  assert.match(html, /Datos de tu cuenta/);
+  assert.match(html, /Membresías/);
+  assert.match(html, /Registros digitales/);
+  assert.match(html, /Tu cuenta, tus productos y las marcas que elegís/);
+  assert.match(html, /Consultá los registros digitales disponibles de tus productos/);
+  assert.match(html, /Estado informado por NexID/);
+  assert.match(html, /href="\/me\/products"/);
+  assert.match(html, /href="\/me\/wallet\?tenant=bodega%20%26%20prueba"/);
+  assert.match(html, /href="\/me\/marketplace\?tenant=bodega%20%26%20prueba"/);
+  assert.match(html, /Ver wallet y registros digitales/);
+  assert.match(html, /Consultar catálogo/);
+  assert.doesNotMatch(html, /Canjear Beneficios|Registro \+ NFT|Ownership Digital|Memberships|Estado por Tenant|Cuenta validada|<button|<form/);
+});
+
+test("passport rejects malformed consumer DTOs at the server-render boundary without using their values", async () => {
+  for (const consumer of ["unexpected", [], 42, true,
+    { id: "synthetic-passport", status: "registered", display_name: {} },
+    { id: "synthetic-passport", status: "registered", email: {} },
+    { id: "synthetic-passport", status: {} },
+  ]) {
+    let accountReads = 0;
+    const h = loadPassportPage({ status: "ready", data: null }, async () => {
+      accountReads += 1;
+      return { ok: true, consumer };
+    });
+    const element = await h.page({ searchParams: Promise.resolve({ tenant: "bodega" }) });
+    assert.equal(element.type, h.ConsumerPortalUnavailable);
+    assert.equal(accountReads, 1);
+    assert.deepEqual(h.loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session"]);
+  }
 });

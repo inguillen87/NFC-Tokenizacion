@@ -10,8 +10,8 @@ export default async function CorkAnalyzerPage({ searchParams }: { searchParams?
 
   return (
     <PortalShell 
-      title="Diagnóstico de Corcho & Cápsula" 
-      subtitle="Analizá el estado de conservación de tus botellas guardadas mediante inspección óptica asistida por IA."
+      title="Simulación visual de corcho y cápsula"
+      subtitle="Explorá escenarios visuales de ejemplo. La foto no se analiza ni ofrece un diagnóstico del corcho o del vino."
     >
       <CorkClient />
     </PortalShell>

@@ -1,72 +1,79 @@
 import Link from "next/link";
+import styles from "./passport.module.css";
 import { buildConsumerNextPath, fetchConsumerMe, readConsumerSession } from "../_components/consumer-api";
 import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { PortalShell } from "../_components/portal-shell";
+import { homeAccountStatusLabel } from "../_components/consumer-home-model";
 import { ShieldCheck, UserCheck, Award, Sparkles, WalletCards, PackageCheck, ChevronRight } from "lucide-react";
 
-type Passport = { ok?: boolean; consumer?: { display_name?: string | null; email?: string | null; passport_status?: string | null } };
+type Passport = { ok?: boolean; consumer?: { display_name?: string | null; email?: string | null; status?: string | null } };
 
 export default async function PassportPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   const session = await readConsumerSession(buildConsumerNextPath("/me/passport", params));
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const payload = (await fetchConsumerMe()) as Passport | null;
-  const status = String(payload?.consumer?.passport_status || "pending").toLowerCase();
+  const consumer = payload?.consumer;
+  if (payload?.ok !== true || consumer === null || typeof consumer !== "object" || Array.isArray(consumer)) return <ConsumerPortalUnavailable />;
+  if ([consumer.display_name, consumer.email, consumer.status].some(value => value !== undefined && value !== null && typeof value !== "string")) return <ConsumerPortalUnavailable />;
+  const status = typeof consumer.status === "string" ? consumer.status.trim().toLowerCase() : null;
+  const accountStatusLabel = homeAccountStatusLabel(status);
   
   const isVerif = status === "verified";
   const tone = isVerif 
-    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.08)]" 
-    : "border-amber-500/35 bg-amber-500/10 text-amber-300";
+    ? styles.verified
+    : styles.pending;
     
   const tenant = typeof params.tenant === "string" ? params.tenant : "";
 
   return (
-    <PortalShell title="NexID Premium Passport" subtitle="Estado de cuenta, memberships y registros de ownership. La identidad digital no garantiza autenticidad física, procedencia ni custodia.">
+    <PortalShell title="Mi pasaporte NexID" subtitle="Tu cuenta, tus productos y las marcas que elegís.">
       
-      {/* Golden Passport Identity Document */}
-      <section className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-[linear-gradient(135deg,#131316_0%,#1e1b18_100%)] p-6 shadow-[0_20px_50px_rgba(245,158,11,0.05)] transition hover:border-amber-500/35">
+      <div className={styles.root}>
+      {/* Datos de cuenta informados por API. */}
+      <section className={styles.card+" relative overflow-hidden rounded-3xl border p-6 transition"}>
         <div className="absolute -right-20 -top-20 h-44 w-44 rounded-full bg-amber-500/5 blur-3xl" />
         <div className="absolute -left-20 -bottom-20 h-44 w-44 rounded-full bg-amber-600/5 blur-3xl" />
         
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
+        <div className={styles.accountHeader+" flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4"}>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className={styles.accountIcon+" grid h-12 w-12 place-items-center rounded-2xl border"}>
               <UserCheck className="h-6 w-6" />
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">DOCUMENTO DE IDENTIDAD DIGITAL</p>
-              <h2 className="text-xl font-black text-white mt-0.5">{payload?.consumer?.display_name || "Usuario NexID"}</h2>
-              <p className="text-[11px] font-mono text-slate-400">{payload?.consumer?.email || "email no validado"}</p>
+            <div className="min-w-0">
+              <p className={styles.amber+" text-[10px] font-black uppercase tracking-[0.2em]"}>Datos de tu cuenta</p>
+              <h2 className={styles.primary+" text-xl font-black mt-0.5 break-words"}>{consumer.display_name || "Nombre no informado"}</h2>
+              <p className={styles.muted+" text-[11px] font-mono break-all"}>{consumer.email || "Correo no informado"}</p>
             </div>
           </div>
           
-          <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider self-start sm:self-center ${tone}`}>
-            {status.toUpperCase()}
+          <span data-testid="consumer-passport-account-status" className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider self-start sm:self-center ${styles.status} ${tone}`}>
+            {accountStatusLabel}
           </span>
         </div>
 
-        <div className="mt-4 grid gap-3 text-xs text-slate-300 sm:grid-cols-2">
-          <p><span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Tipo de Credencial</span>Cuenta consumer nexID</p>
-          <p><span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Estado del Passport</span>{status.toUpperCase()}</p>
+        <div className={styles.detailGrid+" mt-4 grid gap-3 text-xs sm:grid-cols-2"}>
+          <p><span className={styles.muted+" block text-[9px] uppercase tracking-wider font-bold mb-0.5"}>Tipo de cuenta</span>Cuenta NexID</p>
+          <p><span className={styles.muted+" block text-[9px] uppercase tracking-wider font-bold mb-0.5"}>Estado de tu cuenta</span>{accountStatusLabel}</p>
         </div>
       </section>
 
-      {/* Passport Features Specs Grid */}
+      {/* Accesos y condiciones; no acredita membresías ni registros. */}
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          { title: "Memberships", value: "Estado por Tenant", desc: "Cada marca aplica consentimiento, elegibilidad y política antes de activar una membresía.", Icon: Award, colorClass: "text-amber-400" },
-          { title: "Ownership Digital", value: "Registro + NFT opcional", desc: "La Wallet muestra registros digitales; no garantiza procedencia ni autenticidad física.", Icon: WalletCards, colorClass: "text-cyan-400" },
-          { title: "Estado de Cuenta", value: isVerif ? "Cuenta validada" : "Cuenta inicial", desc: "Refleja el estado de identidad de la cuenta, no la autenticidad de productos.", Icon: ShieldCheck, colorClass: "text-emerald-400" }
+          { title: "Membresías", value: "Condiciones por marca", desc: "Consultá tus marcas para revisar las membresías y condiciones que informa cada una.", Icon: Award, colorClass: styles.amber },
+          { title: "Registros digitales", value: "Consultar en tu wallet", desc: "Consultá los registros digitales disponibles de tus productos.", Icon: WalletCards, colorClass: styles.cyan },
+          { title: "Estado de cuenta", value: accountStatusLabel, desc: "Estado informado por NexID.", Icon: ShieldCheck, colorClass: styles.emerald }
         ].map(({ title, value, desc, Icon, colorClass }) => {
           const FeatureIcon = Icon;
           return (
-            <article key={title} className="rounded-3xl border border-white/5 bg-slate-950/60 p-5 transition duration-300 hover:border-white/10">
+            <article key={title} className={styles.featureCard+" rounded-3xl border p-5 transition duration-300"}>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{title}</span>
+                <span className={styles.muted+" text-[10px] font-black uppercase tracking-wider"}>{title}</span>
                 <FeatureIcon className={`h-4.5 w-4.5 ${colorClass}`} />
               </div>
-              <p className="mt-3 text-lg font-black text-white leading-tight">{value}</p>
-              <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">{desc}</p>
+              <p className={styles.primary+" mt-3 text-lg font-black leading-tight"}>{value}</p>
+              <p className={styles.muted+" mt-1.5 text-[10px] leading-relaxed"}>{desc}</p>
             </article>
           );
         })}
@@ -74,20 +81,21 @@ export default async function PassportPage({ searchParams }: { searchParams?: Pr
 
       {/* Navigation triggers */}
       <section className="grid gap-3 sm:grid-cols-3">
-        <Link href="/me/products" className="rounded-2xl border border-white/5 bg-slate-900/30 px-4 py-3.5 text-xs font-bold text-slate-200 transition hover:bg-slate-900/50 flex items-center justify-between">
-          <span>Ver Colección de Productos</span>
-          <ChevronRight className="h-4 w-4 text-slate-500" />
+        <Link href="/me/products" className={styles.action+" rounded-2xl border px-4 py-3.5 text-xs font-bold transition flex items-center justify-between"}>
+          <span>Ver mis productos</span>
+          <ChevronRight className={styles.actionIcon+" h-4 w-4"} />
         </Link>
-        <Link href={tenant ? `/me/wallet?tenant=${encodeURIComponent(tenant)}` : "/me/wallet"} className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3.5 text-xs font-bold text-emerald-300 transition hover:border-emerald-500/15 flex items-center justify-between">
-          <span>Pasaporte Criptográfico / NFTs</span>
-          <ChevronRight className="h-4 w-4 text-emerald-400" />
+        <Link href={tenant ? `/me/wallet?tenant=${encodeURIComponent(tenant)}` : "/me/wallet"} className={styles.action+" "+styles.wallet+" rounded-2xl border px-4 py-3.5 text-xs font-bold transition flex items-center justify-between"}>
+          <span>Ver wallet y registros digitales</span>
+          <ChevronRight className={styles.actionIcon+" h-4 w-4"} />
         </Link>
-        <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3.5 text-xs font-bold text-cyan-300 transition hover:border-cyan-500/15 flex items-center justify-between">
-          <span>Canjear Beneficios & Marketplace</span>
-          <ChevronRight className="h-4 w-4 text-cyan-400" />
+        <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className={styles.action+" "+styles.catalog+" rounded-2xl border px-4 py-3.5 text-xs font-bold transition flex items-center justify-between"}>
+          <span>Consultar catálogo</span>
+          <ChevronRight className={styles.actionIcon+" h-4 w-4"} />
         </Link>
       </section>
       
+      </div>
     </PortalShell>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Mail, Phone, Sparkles } from "lucide-react";
+import styles from "./security-panel.module.css";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Mail, Phone } from "lucide-react";
 import {
   ConsumerContactInput,
   consumerContactDraftIsValid,
@@ -45,11 +46,12 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
 
   if (!consumer) {
     return (
-      <div className="rounded-3xl border border-red-500/25 bg-red-950/10 p-6 text-center">
-        <p className="font-bold text-red-400">No se pudo cargar la sesión. Por favor iniciá sesión de nuevo.</p>
-        <Link href="/login" className="mt-4 inline-block rounded-xl bg-slate-800 px-4 py-2 text-xs font-black text-slate-100">
-          Ir al Login
-        </Link>
+      <div className={`${styles.root} ${styles.card} rounded-3xl border p-6 text-center`}>
+        <p role="alert">No pudimos consultar tus contactos. Reintentá para revisar tu cuenta.</p>
+        <button type="button" className={styles.recovery} onClick={() => window.location.reload()}>
+          Reintentar consulta
+        </button>
+        <Link href="/me" prefetch={false} className={`${styles.back} mt-3 inline-flex items-center`}>Volver a mi espacio</Link>
       </div>
     );
   }
@@ -137,56 +139,53 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
   }
 
   return (
-    <div className="mx-auto max-w-xl v3-space-y-6">
-      <Link href="/me" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 transition hover:text-white">
+    <div className={`${styles.root} mx-auto max-w-xl v3-space-y-6`}>
+      <Link href="/me" prefetch={false} className={`${styles.back} inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider`}>
         <ArrowLeft className="h-4 w-4" /> Volver al Pasaporte
       </Link>
 
       {hasBothLinkedChannels ? (
-        <div className="v3-space-y-4 rounded-3xl border border-emerald-500/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.06)_0%,rgba(4,120,87,0.02)_100%)] p-6 text-center shadow-xl">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 shadow-inner">
+        <div className={`${styles.card} v3-space-y-4 rounded-3xl border p-6 text-center shadow-xl`}>
+          <div className={`${styles.successIcon} mx-auto grid h-16 w-16 place-items-center rounded-2xl border shadow-inner`}>
             <CheckCircle2 className="h-8 w-8" />
           </div>
           <div className="v3-space-y-1">
             <h2 className="text-xl font-black tracking-tight text-white">Canales de contacto vinculados</h2>
             <p className="mx-auto max-w-sm text-xs leading-relaxed text-slate-400">
-              El backend reporta email y WhatsApp asociados a esta cuenta. Un código único puede enviarse a los canales configurados y cualquiera puede validarlo; esto mejora entrega y recuperación, pero no es MFA secuencial.
+              Tenés email y WhatsApp vinculados a tu cuenta. Un solo código alcanza para entrar; podés usar cualquiera de los canales disponibles.
             </p>
           </div>
 
-          <div className="mt-4 divide-y divide-white/5 rounded-2xl border border-white/5 bg-black/40 text-left text-xs">
-            <div className="flex items-center justify-between p-3.5">
+          <div className={`${styles.contacts} mt-4 divide-y rounded-2xl border text-left text-xs`}>
+            <div className={`${styles.contactRow} flex items-center justify-between p-3.5`}>
               <span className="flex items-center gap-2 text-slate-400"><Mail className="h-4 w-4" /> Correo electrónico</span>
-              <span className="font-mono text-slate-200">{consumer.email}</span>
+              <span className={`${styles.contactValue} font-mono`}>{consumer.email}</span>
             </div>
-            <div className="flex items-center justify-between p-3.5">
+            <div className={`${styles.contactRow} flex items-center justify-between p-3.5`}>
               <span className="flex items-center gap-2 text-slate-400"><Phone className="h-4 w-4" /> WhatsApp</span>
-              <span className="font-mono text-slate-200">{consumer.phone}</span>
+              <span className={`${styles.contactValue} font-mono`}>{consumer.phone}</span>
             </div>
-            <div className="flex items-center justify-between bg-emerald-500/5 p-3.5">
-              <span className="flex items-center gap-2 font-bold text-emerald-400"><Sparkles className="h-4 w-4" /> Beneficio de asociación</span>
-              <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-300">Consultar saldo</span>
-            </div>
+
           </div>
         </div>
       ) : (
-        <div className="v3-space-y-5 rounded-3xl border border-white/10 bg-slate-900/55 p-6 shadow-lg">
+        <div className={`${styles.card} v3-space-y-5 rounded-3xl border p-6 shadow-lg`}>
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
               <Lock className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-sm font-black tracking-tight text-white">Vincular canal de contacto</h3>
-              <p className="text-[11px] text-slate-400">Verificá el canal faltante para mejorar entrega y recuperación. No activa MFA por sí solo.</p>
+              <p className="text-[11px] text-slate-400">Agregá el contacto faltante para tener otra opción de acceso y recuperación.</p>
             </div>
           </div>
 
           {step === "input" ? (
             <div className="v3-space-y-4">
               <div className="v3-space-y-2">
-                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                <p className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
                   {missingType === "email" ? "Vincular correo electrónico" : "Vincular WhatsApp"}
-                </label>
+                </p>
                 <ConsumerContactInput
                   draft={effectiveContactDraft}
                   onChange={setContactDraft}
@@ -199,7 +198,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
               <button
                 disabled={loading || !contactIsValid}
                 onClick={() => void startAssociation()}
-                className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 py-3 text-xs font-black uppercase tracking-wider text-slate-950 shadow transition hover:from-amber-400 hover:to-amber-300 disabled:opacity-60"
+                aria-busy={loading} className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 py-3 text-xs font-black uppercase tracking-wider text-slate-950 shadow transition hover:from-amber-400 hover:to-amber-300 disabled:opacity-60"
               >
                 Enviar código de verificación
               </button>
@@ -207,11 +206,11 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
           ) : (
             <div className="v3-space-y-4">
               <div className="v3-space-y-2">
-                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                <label htmlFor="security-association-code" className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
                   Código de verificación recibido
                 </label>
                 <input
-                  type="text"
+                  id="security-association-code" type="text"
                   placeholder="------"
                   inputMode="numeric"
                   autoComplete="one-time-code"
@@ -226,14 +225,14 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
                 <button
                   disabled={loading}
                   onClick={() => setStep("input")}
-                  className="flex-1 rounded-xl border border-white/10 py-3 text-xs font-black uppercase tracking-wider text-slate-300 transition hover:bg-white/5"
+                  className={`${styles.secondary} flex-1 rounded-xl border py-3 text-xs font-black uppercase tracking-wider transition`}
                 >
                   Atrás
                 </button>
                 <button
                   disabled={loading || code.trim().length !== 6}
                   onClick={() => void verifyAssociation()}
-                  className="flex-1 rounded-xl bg-emerald-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+                  aria-busy={loading} className="flex-1 rounded-xl bg-emerald-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
                 >
                   Verificar y vincular
                 </button>
@@ -242,19 +241,20 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
           )}
 
           {statusMsg ? (
-            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs leading-relaxed text-cyan-200">
+            <div role="status" aria-live="polite" className={`${styles.status} rounded-xl border p-3 text-xs leading-relaxed`}>
               {statusMsg}
             </div>
           ) : null}
 
           {errorMsg ? (
-            <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs leading-relaxed text-red-200">
+            <div role="alert" className={`${styles.error} flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed`}>
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
               <span>{errorMsg}</span>
             </div>
           ) : null}
         </div>
       )}
+      <Link href="/me/rewards" prefetch={false} className={styles.benefits}>Ver mis beneficios</Link>
     </div>
   );
 }
