@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import ts from "typescript";
 
 const QA_DATABASE = /^(?:nexid_e2e[a-z0-9_]*|codex_qa_[a-z0-9_]+)$/;
 const OWN_SCHEMA = /^consumer_rewards_qa_[0-9a-f]{32}$/;
@@ -128,7 +130,7 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
   const clients = [];
   const schema = `consumer_rewards_qa_${randomUUID().replaceAll("-", "")}`;
   const s = identifier(schema);
-  const report = { kind: "synthetic-postgresql-integration", ok: false, checks: [], expiryLockWaits: [], consumerLockWaits: [], cleanup: { schemaDropped: false, connectionsClosed: false } };
+  const report = { kind: "synthetic-postgresql-integration", ok: false, checks: [], expiryLockWaits: [], consumerLockWaits: [], redeemLockWaits: [], cleanup: { schemaDropped: false, connectionsClosed: false } };
   let schemaCreated = false;
   let executionError;
   try {
@@ -662,6 +664,187 @@ export async function runConsumerRewardPostgresQa({ connect } = {}) {
         await admin.query(`ALTER TABLE ${s}.consumer_reward_claims DROP CONSTRAINT qa_cancel_failure`);
       }
     });
+    // Compile the current handler and its real date/body/HTTP helpers. Only auth,
+    // rate and schema bootstrap are synthetic; every handler SQL tag uses pg.
+    const sourceRoot = new URL("../../src/", import.meta.url);
+    const sourceModules = Object.fromEntries([
+      ["route", "app/consumer/rewards/[rewardId]/redeem/route.ts"],
+      ["consumer-rewards-read-model", "lib/consumer-rewards-read-model.ts"],
+      ["bounded-request-body", "lib/bounded-request-body.ts"],
+      ["http", "lib/http.ts"],
+    ].map(([name, relativePath]) => {
+      const bytes = readFileSync(new URL(relativePath, sourceRoot));
+      return [name, { relativePath: "apps/api/src/" + relativePath,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        code: ts.transpileModule(bytes.toString("utf8"), { compilerOptions: {
+          target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS,
+        } }).outputText }];
+    }));
+    const instantiate = (name, deps = {}) => {
+      const module = { exports: {} };
+      new Function("require", "module", "exports", sourceModules[name].code)(specifier => {
+        const key = specifier.split("/").at(-1);
+        assert.ok(Object.hasOwn(deps, key), "Only the explicit synthetic boundary may replace an import");
+        return deps[key];
+      }, module, module.exports);
+      return module.exports;
+    };
+    let redeemSqlExecutions = 0;
+    function redeem(f, client, { consumerId = f.consumerId, rewardId = f.rewardId } = {}) {
+      const actualQuery = queryAdapter(client);
+      const sql = async (strings, ...values) => {
+        redeemSqlExecutions += 1;
+        return actualQuery(strings, ...values);
+      };
+      const deps = {
+        "consumer-auth": { getConsumerFromRequest: async () => ({ id: consumerId }) },
+        "critical-rate-limit": { enforceCriticalRateLimit: async () => null },
+        "commercial-runtime-schema": { ensureConsumerPortalSchema: async () => {} },
+        db: { sql }, http: instantiate("http"),
+        "bounded-request-body": instantiate("bounded-request-body"),
+        "consumer-rewards-read-model": instantiate("consumer-rewards-read-model", { db: { sql } }),
+      };
+      const { POST } = instantiate("route", deps);
+      return POST(new Request("https://fixture.invalid/consumer/rewards/" + rewardId + "/redeem", {
+        method: "POST", body: JSON.stringify({ redemptionId: f.claimId }),
+      }), { params: Promise.resolve({ rewardId }) });
+    }
+    async function redeemFixture() {
+      const f = await fixture();
+      const [created] = await claim(f);
+      assert.ok(created?.id);
+      return { ...f, claimId: created.id };
+    }
+    function economicState(snapshot) {
+      return { members: snapshot.members, rewards: snapshot.rewards, ledger: snapshot.ledger };
+    }
+    async function deniedRedeem(f, options = {}) {
+      const before = await state(f);
+      const response = await redeem(f, first, options);
+      assert.equal(response.status, 404);
+      assert.deepEqual(await response.json(), { ok: false, error: "claim_not_found_or_invalid_state" });
+      assert.deepEqual(await state(f), before, "Denied redemption must change no claim, stock, points or ledger");
+    }
+    async function readRedeemBlockers(expiresAt = null) {
+      await admin.query("SELECT pg_stat_clear_snapshot()");
+      return (await admin.query(`SELECT pid, pg_blocking_pids(pid) AS blockers,
+        query_start < $2::timestamptz AS started_before_expiry,
+        clock_timestamp() < $2::timestamptz AS before_expiry
+        FROM pg_stat_activity WHERE pid = ANY($1::integer[]) AND wait_event_type = 'Lock'`,
+      [pids.slice(1), expiresAt])).rows;
+    }
+    function assertRedeemBlockers(rows) {
+      assert.equal(rows.length, 2, "Both handler SQL backends must be waiting for a lock");
+      const byPid = new Map(rows.map(row => [row.pid, row]));
+      assert.deepEqual([...byPid.keys()].sort((a, b) => a - b), [...pids.slice(1)].sort((a, b) => a - b));
+      for (const row of rows) {
+        assert.ok(Array.isArray(row.blockers) && row.blockers.length > 0);
+        assert.equal(new Set(row.blockers).size, row.blockers.length);
+        assert.ok(row.blockers.every(pid => pids.includes(pid) && pid !== row.pid), "No foreign or self blocker is permitted");
+        const otherPid = pids.slice(1).find(pid => pid !== row.pid);
+        assert.ok(row.blockers.includes(pids[0]) || (row.blockers.includes(otherPid)
+          && byPid.get(otherPid).blockers.includes(pids[0])),
+        "Every handler must reach the harness's admin claim lock directly or through the other known handler");
+      }
+    }
+    async function observeRedeemWait(kind, expiresAt = null) {
+      const rows = await readRedeemBlockers(expiresAt);
+      assertRedeemBlockers(rows);
+      if (expiresAt) assert.ok(rows.every(row => row.started_before_expiry && row.before_expiry));
+      report.redeemLockWaits.push({ kind, waitingBackends: 2, blockedByHarnessClaimLock: true,
+        blockerScope: "three-known-backends-at-most-two-hops", startedBeforeExpiry: expiresAt ? true : null,
+        expiredBeforeRelease: false });
+    }
+
+    await check("consumer_redeem_actual_handler_concurrent_and_duplicate_redeems_at_most_once", async () => {
+      const f = await redeemFixture(), before = await state(f);
+      const responses = await concurrent("consumer_reward_claims", f.claimId,
+        [() => redeem(f, first), () => redeem(f, second)], () => observeRedeemWait("at-most-one"));
+      assert.deepEqual(responses.map(response => response.status).sort(), [200, 404]);
+      const current = await state(f);
+      assert.equal(current.claims.length, 1); assert.equal(current.claims[0].status, "redeemed");
+      assert.deepEqual(economicState(current), economicState(before));
+      await deniedRedeem(f);
+    });
+    await check("consumer_redeem_actual_handler_invalid_expiry_and_absent_only_48_hour_rule", async () => {
+      for (const value of ["", "invalid", "now", "infinity", "2026-02-30T12:00:00Z", "2026-10-12", [], {}, false, 0]) {
+        const f = await redeemFixture();
+        await admin.query(`UPDATE ${s}.consumer_reward_claims SET metadata_json = jsonb_build_object('expires_at', $2::jsonb) WHERE id = $1`, [f.claimId, JSON.stringify(value)]);
+        await deniedRedeem(f);
+      }
+      for (const metadata of [{}, { expires_at: null }]) for (const expired of [true, false]) {
+        const f = await redeemFixture();
+        await admin.query(`UPDATE ${s}.consumer_reward_claims SET metadata_json = $2::jsonb,
+          created_at = clock_timestamp() - $3::interval WHERE id = $1`, [f.claimId, JSON.stringify(metadata), expired ? "49 hours" : "1 hour"]);
+        if (expired) await deniedRedeem(f);
+        else {
+          const before = await state(f), response = await redeem(f, first);
+          assert.equal(response.status, 200);
+          assert.deepEqual(economicState(await state(f)), economicState(before));
+        }
+      }
+      const f = await redeemFixture();
+      await admin.query(`UPDATE ${s}.consumer_reward_claims SET metadata_json = jsonb_build_object('expires_at', to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) WHERE id = $1`, [f.claimId]);
+      await deniedRedeem(f);
+    });
+    await check("consumer_redeem_actual_handler_owner_reward_and_terminal_state_are_scoped", async () => {
+      const f = await redeemFixture();
+      await deniedRedeem(f, { consumerId: randomUUID() });
+      await deniedRedeem(f, { rewardId: randomUUID() });
+      for (const status of ["cancelled", "expired", "redeemed"]) {
+        await admin.query(`UPDATE ${s}.consumer_reward_claims SET status = $2 WHERE id = $1`, [f.claimId, status]);
+        await deniedRedeem(f);
+      }
+    });
+    await check("consumer_redeem_actual_handler_expiry_during_claim_lock_uses_post_lock_wall_clock", async () => {
+      const f = await redeemFixture();
+      const { rows: [clock] } = await admin.query("SELECT clock_timestamp() + interval '3 seconds' AS expires_at");
+      const expiresAt = clock.expires_at.toISOString();
+      await admin.query(`UPDATE ${s}.consumer_reward_claims SET metadata_json = jsonb_build_object('expires_at', $2::text) WHERE id = $1`, [f.claimId, expiresAt]);
+      const before = await state(f);
+      const responses = await concurrent("consumer_reward_claims", f.claimId,
+        [() => redeem(f, first), () => redeem(f, second)], async () => {
+          await observeRedeemWait("wall-clock-expiry", expiresAt);
+          const deadline = Date.now() + 6000;
+          let expired = false;
+          while (Date.now() < deadline) {
+            const { rows: [now] } = await admin.query("SELECT clock_timestamp() >= $1::timestamptz AS expired", [expiresAt]);
+            if (now.expired) { expired = true; break; }
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          assert.equal(expired, true, "PostgreSQL time must reach unchanged expiry while the row is still locked");
+          assertRedeemBlockers(await readRedeemBlockers());
+          report.redeemLockWaits.at(-1).expiredBeforeRelease = true;
+        });
+      assert.ok(responses.every(response => response.status === 404));
+      assert.deepEqual(await state(f), before, "Expiry alone must not mutate a claim or economic rows");
+    });
+    for (const change of ["owner", "status", "expiry", "created_at"]) {
+      await check(`consumer_redeem_actual_handler_${change}_change_committed_while_locked_wins`, async () => {
+        const f = await redeemFixture();
+        const before = await state(f), otherConsumerId = randomUUID();
+        if (change === "owner") await admin.query(`INSERT INTO ${s}.consumers(id) VALUES ($1)`, [otherConsumerId]);
+        let changedClaim;
+        const responses = await concurrent("consumer_reward_claims", f.claimId,
+          [() => redeem(f, first), () => redeem(f, second)], async () => {
+            await observeRedeemWait(change);
+            if (change === "owner") await admin.query(`UPDATE ${s}.consumer_reward_claims SET consumer_id = $2 WHERE id = $1`, [f.claimId, otherConsumerId]);
+            if (change === "status") await admin.query(`UPDATE ${s}.consumer_reward_claims SET status = 'cancelled' WHERE id = $1`, [f.claimId]);
+            if (change === "expiry") await admin.query(`UPDATE ${s}.consumer_reward_claims SET metadata_json = metadata_json || '{"expires_at":"invalid"}'::jsonb WHERE id = $1`, [f.claimId]);
+            if (change === "created_at") await admin.query(`UPDATE ${s}.consumer_reward_claims SET created_at = created_at - interval '1 minute' WHERE id = $1`, [f.claimId]);
+            changedClaim = (await admin.query(`SELECT * FROM ${s}.consumer_reward_claims WHERE id = $1`, [f.claimId])).rows[0];
+          });
+        assert.ok(responses.every(response => response.status === 404));
+        const current = await state(f);
+        assert.deepEqual(economicState(current), economicState(before));
+        assert.deepEqual(current.claims, [changedClaim], "Only the deliberate competing change may persist");
+      });
+    }
+    assert.ok(redeemSqlExecutions > 0, "The compiled handler must have executed SQL through real pg clients");
+    report.redeemHandler = { sources: Object.values(sourceModules).map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+      sqlExecutions: redeemSqlExecutions, sqlCopiedIntoHarness: false,
+      authentication: "synthetic-owner-only", rateLimit: "synthetic-allow", schemaBootstrap: "synthetic-noop",
+      customerAcceptance: false, productionRowsUsed: false };
     report.ok = report.checks.every((result) => result.ok);
   } catch (error) {
     executionError = error;

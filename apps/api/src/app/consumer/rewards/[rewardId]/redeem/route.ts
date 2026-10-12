@@ -6,6 +6,7 @@ import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
 import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../lib/bounded-request-body";
+import { consumerRewardClaimExpiresAt } from "../../../../../lib/consumer-rewards-read-model";
 
 export async function POST(req: Request, { params }: { params: Promise<{ rewardId: string }> }) {
   const consumer = await getConsumerFromRequest(req);
@@ -24,14 +25,43 @@ export async function POST(req: Request, { params }: { params: Promise<{ rewardI
   const redemptionId = body.redemptionId || null;
   if (!redemptionId) return json({ ok: false, error: 'redemptionId_required' }, 400);
 
-  const rows = await sql/*sql*/`
-    UPDATE consumer_reward_claims
-    SET status = 'redeemed', updated_at = now(), metadata_json = metadata_json || ${JSON.stringify({ redeemedBy: 'consumer', at: new Date().toISOString() })}::jsonb
+  const claims = await sql/*sql*/`
+    SELECT id, created_at, created_at::text AS claimed_at_text,
+      metadata_json->'expires_at' AS expires_at_value
+    FROM consumer_reward_claims
     WHERE id = ${redemptionId}
       AND reward_id = ${rewardId}
       AND consumer_id = ${consumer.id}
       AND status = 'claimed'
-    RETURNING *
+    LIMIT 1
+  `;
+  const claim = claims[0];
+  const expiresAt = claim ? consumerRewardClaimExpiresAt(claim.expires_at_value, claim.created_at) : null;
+  if (!expiresAt || Date.parse(expiresAt) <= Date.now()) return json({ ok: false, error: 'claim_not_found_or_invalid_state' }, 404);
+
+  const rows = await sql/*sql*/`
+    WITH locked AS MATERIALIZED (
+      SELECT id, created_at::text AS claimed_at_text,
+        metadata_json->'expires_at' AS expires_at_value
+      FROM consumer_reward_claims
+      WHERE id = ${redemptionId}
+        AND reward_id = ${rewardId}
+        AND consumer_id = ${consumer.id}
+        AND status = 'claimed'
+      FOR UPDATE
+    ),
+    eligible AS MATERIALIZED (
+      SELECT id FROM locked
+      WHERE ${expiresAt}::timestamptz > clock_timestamp()
+        AND claimed_at_text = ${claim.claimed_at_text}
+        AND COALESCE(expires_at_value, 'null'::jsonb) = ${JSON.stringify(claim.expires_at_value ?? null)}::jsonb
+    )
+    UPDATE consumer_reward_claims
+    SET status = 'redeemed', updated_at = now(), metadata_json = metadata_json || ${JSON.stringify({ redeemedBy: 'consumer', at: new Date().toISOString() })}::jsonb
+    FROM eligible
+    WHERE consumer_reward_claims.id = eligible.id
+      AND consumer_reward_claims.status = 'claimed'
+    RETURNING consumer_reward_claims.*
   `;
   if (!rows[0]) return json({ ok: false, error: 'claim_not_found_or_invalid_state' }, 404);
   return json({ ok: true, claim: rows[0] });
