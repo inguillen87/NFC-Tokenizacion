@@ -170,6 +170,7 @@ export function QREngagementSuite({
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [chatRecoveryNotice, setChatRecoveryNotice] = useState<string | null>(null);
   const chatRequest = useRef<AbortController | null>(null);
   const chatSendLock = useRef(false);
   const chatSequence = useRef(0);
@@ -245,7 +246,7 @@ export function QREngagementSuite({
   const [shareApproximateLocation, setShareApproximateLocation] = useState(false);
   useEffect(() => {
     setFeedbackSubmitted(false); setOptInSubmitted(false); setBrandContactConsent(false);
-    setShareApproximateLocation(false); setLeadError(null); setChatError(null);
+    setShareApproximateLocation(false); setLeadError(null); setChatError(null); setChatRecoveryNotice(null);
     setIsTyping(false); setSubmittingLead(false);
   }, [triviaScope]);
 
@@ -358,6 +359,7 @@ export function QREngagementSuite({
     chatSendLock.current = false;
     setIsTyping(false);
     setChatError(null);
+    setChatRecoveryNotice(null);
     setChatInput("");
     demoChatContext.current = {};
     setMessages([
@@ -504,6 +506,7 @@ export function QREngagementSuite({
     setChatInput("");
     setIsTyping(true);
     setChatError(null);
+    setChatRecoveryNotice(null);
     const capturedScope = chatScope;
 
     try {
@@ -520,6 +523,8 @@ export function QREngagementSuite({
               followUps: data.suggestedQuestions.length ? data.suggestedQuestions.map(question => ({ label: question, question })) : answer.followUps }]);
             return;
           }
+          setChatRecoveryNotice(result.status === "received" ? consumerChatCopy.fallback : consumerChatCopy.unavailable);
+          setChatInput(previous => previous || question);
         }
         demoChatContext.current = answer.topic ? { topic: answer.topic } : {};
         setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", ...answer, sample: true, provenance: { mode: "local-fallback" } }]);
@@ -721,7 +726,7 @@ export function QREngagementSuite({
 
             {chatFollowUps.length ? <div data-testid="sun-sommelier-follow-ups" className="space-y-2">
               <p className="text-xs font-semibold text-slate-300">{chatCopy.continue}</p>
-              <div className="flex flex-wrap gap-2">{chatFollowUps.map(prompt => <button key={prompt.question} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt.question); }} className="min-h-11 rounded-xl border border-cyan-300/25 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">{prompt.label}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{chatFollowUps.map(prompt => <button key={prompt.question} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt.question); }} className={`${styles.chatPrompt} min-h-11 rounded-xl border px-3 py-2 text-sm leading-snug`}>{prompt.label}</button>)}</div>
             </div> : null}
 
             <form onSubmit={onChatSubmit} className="flex gap-2">
@@ -745,6 +750,7 @@ export function QREngagementSuite({
                 <Send className="h-4 w-4" aria-hidden="true" />
               </button>
             </form>
+            {chatRecoveryNotice ? <p role="status" data-testid="sun-sommelier-recovery-notice" className="text-xs leading-relaxed text-slate-300">{chatRecoveryNotice}</p> : null}
             {chatError ? <p role="alert" className="text-xs leading-relaxed text-rose-300">{chatError}</p> : null}
             {!isDemoPreview && chatError ? <Link href="/me/products" prefetch={false} className="flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{consumerChatCopy.account}</Link> : null}
           </div>

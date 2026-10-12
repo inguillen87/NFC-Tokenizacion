@@ -15,11 +15,11 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(
 // Same external AXE source input as the existing sun-managed-sommelier browser suite.
 // Missing AXE is a failed prerequisite, never a reason to skip accessibility or contrast.
 const axeSource = await readFile(process.env.AXE_MODULE_PATH, "utf8");
-const paths = ["tests/sun-post-tap-sommelier.browser.mjs", "src/app/sun/qr-engagement-suite.tsx", "src/app/sun/qr-engagement-suite.module.css", "src/lib/managed-sommelier.ts", "src/lib/sommelier-guidance.ts", "src/lib/sommelier-conversation.ts", "src/app/sun/sun-demo-sommelier.ts", "src/app/sun/sun-locale-provider.tsx", "src/app/globals.css", "src/app/layout.tsx", "../../packages/ui/src/theme-toggle.tsx"];
+const paths = ["tests/sun-post-tap-sommelier.browser.mjs", "src/app/sun/qr-engagement-suite.tsx", "src/app/sun/qr-engagement-suite.module.css", "src/lib/managed-sommelier.ts", "src/lib/sommelier-guidance.ts", "src/lib/sommelier-conversation.ts", "src/app/sun/sun-demo-sommelier.ts", "src/app/sun/valle-secreto-demo.ts", "src/app/sun/sun-locale-provider.tsx", "src/app/globals.css", "src/app/layout.tsx", "../../packages/ui/src/theme-toggle.tsx"];
 const hashes = async () => Object.fromEntries(await Promise.all(paths.map(async path => [path, createHash("sha256").update(await readFile(join(web, path))).digest("hex")])));
 const sourceHashes = await hashes();
-const fixture = `import React,{useState}from'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider,useSunLocale}from'./src/app/sun/sun-locale-provider';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';
-const params=new URLSearchParams(location.search),initialLocale=['es-AR','en','pt-BR'].includes(params.get('locale'))?params.get('locale'):'es-AR';function App(){const[product,setProduct]=useState('Vino QA'),[eventId,setEventId]=useState(params.has('eventless')?null:'715'),[visible,setVisible]=useState(true),[enabled,setEnabled]=useState(true);const{setLocale}=useSunLocale();const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:enabled?['sommelier']:[],catalogAvailable:false,program:null,trivia:null};return <main className='sun-tap-experience' style={{maxWidth:430,margin:'0 auto',padding:12}}><h1>SUN · ensayo sintético</h1><p data-testid='product'>{product}</p><button data-testid='product-change' onClick={()=>{setProduct('Vino QB');setEventId('716')}}>Cambiar producto</button><button data-testid='locale-change' onClick={()=>void setLocale('en')}>Cambiar idioma</button><button data-testid='permission-change' onClick={()=>setEnabled(false)}>Quitar permiso</button><button data-testid='close-chat' onClick={()=>setVisible(false)}>Cerrar chat</button>{visible?<QREngagementSuite productName={product} wineryName='Marca QA' tenantSlug='qa-synthetic' eventId={eventId} configuration={configuration} initialTab='sommelier'/>:<p data-testid='closed'>Chat cerrado</p>}</main>};createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={initialLocale}><App/></SunLocaleProvider>);`;
+const fixture = `import React,{useState}from'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider,useSunLocale}from'./src/app/sun/sun-locale-provider';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{VALLE_SECRETO_DEMO}from'./src/app/sun/valle-secreto-demo';
+const params=new URLSearchParams(location.search),initialLocale=['es-AR','en','pt-BR'].includes(params.get('locale'))?params.get('locale'):'es-AR';function App(){const[product,setProduct]=useState('Vino QA'),[eventId,setEventId]=useState(params.has('eventless')?null:'715'),[visible,setVisible]=useState(true),[enabled,setEnabled]=useState(true);const{setLocale}=useSunLocale();const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:enabled?['sommelier']:[],catalogAvailable:false,program:null,trivia:null};return <main className='sun-tap-experience' style={{maxWidth:430,margin:'0 auto',padding:12}}><h1>SUN · ensayo sintético</h1><p data-testid='product'>{product}</p><button data-testid='product-change' onClick={()=>{setProduct('Vino QB');setEventId('716')}}>Cambiar producto</button><button data-testid='locale-change' onClick={()=>void setLocale('en')}>Cambiar idioma</button><button data-testid='permission-change' onClick={()=>setEnabled(false)}>Quitar permiso</button><button data-testid='close-chat' onClick={()=>setVisible(false)}>Cerrar chat</button>{visible?<QREngagementSuite productName={product} wineryName='Marca QA' tenantSlug='qa-synthetic' eventId={eventId} configuration={configuration} isDemoPreview={params.has('valleDemo')} demoWineProfile={params.has('valleDemo')?VALLE_SECRETO_DEMO:null} initialTab='sommelier'/>:<p data-testid='closed'>Chat cerrado</p>}</main>};createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={initialLocale}><App/></SunLocaleProvider>);`;
 const bundled = await build({ stdin: { contents: fixture, resolveDir: web, loader: "tsx" }, bundle: true, write: false, outfile: "fixture.js", format: "esm", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"production"' }, plugins: [{ name: "inert-next", setup(b) {
   b.onResolve({ filter: /^next\/link$/ }, () => ({ path: "link", namespace: "nav" }));
   b.onLoad({ filter: /.*/, namespace: "nav" }, () => ({ contents: "import React from'react';export default function Link({prefetch,...props}){return <a {...props}/>}", loader: "tsx", resolveDir: web }));
@@ -47,8 +47,8 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
 const report = { localOnly: true, syntheticResponses: true, actualApplicationChatAndCss: true, actualNextServer: false, realTenantSessionAcceptance: false, publicAcceptance: false, realProviderRequests: 0, realBusinessWrites: 0, geolocationCalls: 0, unexpectedRequests: [], errors: [], checks: [], views: [], accessibility: [], conversationGeometry: [], pageAnchors: [], deadlineCases: [], sourceHashes, axeSourceSha256: createHash("sha256").update(axeSource).digest("hex"), configuredManagedDeadlineMs: 12_000, fixtureThemePolicy: "canonical layout lightclass/data-theme; explicit-dark-class separately labelled" };
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
-const reply = (text, fallback = false, options = {}) => ({ status: 200, payload: { ok: true, answer: text, source: fallback ? "fallback" : "live", fallback, demo: false, ...(!fallback ? { provider: "fixture-provider", model: "fixture-model" } : {}), sources: options.sources ?? [{ id: "product", label: "Dato publicado sintético", url: null }], suggestedQuestions: options.suggestedQuestions ?? [] } });
-async function open({ width = 390, theme = "dark", themeClasses = "layout", locale = "es-AR", eventless = false, reducedMotion = "reduce", answer = () => reply("Guía sintética") } = {}) {
+const reply = (text, fallback = false, options = {}) => ({ status: 200, payload: { ok: true, answer: text, source: fallback ? "fallback" : "live", fallback, demo: options.demo ?? false, ...(!fallback ? { provider: "fixture-provider", model: "fixture-model" } : {}), sources: options.sources ?? [{ id: "product", label: "Dato publicado sintético", url: null }], suggestedQuestions: options.suggestedQuestions ?? [] } });
+async function open({ width = 390, theme = "dark", themeClasses = "layout", locale = "es-AR", eventless = false, valleDemo = false, reducedMotion = "reduce", answer = () => reply("Guía sintética") } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion, serviceWorkers: "block" });
   const page = await context.newPage(), calls = [];
   page.setDefaultTimeout(10_000);
@@ -74,9 +74,9 @@ async function open({ width = 390, theme = "dark", themeClasses = "layout", loca
     const request = route.request(), url = new URL(request.url());
     if (url.origin !== origin) { report.realProviderRequests++; return route.abort(); }
     if (url.pathname.startsWith("/api/")) {
-      if (!["/api/sommelier/chat", "/api/sun/locale"].includes(url.pathname) || request.method() !== "POST") { report.unexpectedRequests.push({ path: url.pathname, method: request.method() }); return route.abort(); }
+      if (!["/api/sommelier/chat", "/api/sun/locale", ...(valleDemo ? ["/api/sommelier/demo/session"] : [])].includes(url.pathname) || request.method() !== "POST") { report.unexpectedRequests.push({ path: url.pathname, method: request.method() }); return route.abort(); }
       calls.push({ path: url.pathname, method: request.method(), body: request.postDataJSON() });
-      const result = url.pathname === "/api/sun/locale" ? { status: 200, payload: { ok: true } } : await answer(request);
+      const result = url.pathname === "/api/sun/locale" ? { status: 200, payload: { ok: true } } : url.pathname === "/api/sommelier/demo/session" ? { status: 200, payload: { ok: true, profile: "valle-secreto" } } : await answer(request);
       return route.fulfill({ status: result.status, contentType: "application/json", body: JSON.stringify(result.payload) }).catch(() => {});
     }
     return route.continue();
@@ -86,6 +86,7 @@ async function open({ width = 390, theme = "dark", themeClasses = "layout", loca
   fixtureUrl.searchParams.set("theme", theme);
   fixtureUrl.searchParams.set("themeClasses", themeClasses);
   if (eventless) fixtureUrl.searchParams.set("eventless", "1");
+  if (valleDemo) fixtureUrl.searchParams.set("valleDemo", "1");
   await page.goto(fixtureUrl.href, { waitUntil: "networkidle" });
   await page.getByRole("log").waitFor();
   check(await page.evaluate(({ theme, themeClasses, locale }) => document.documentElement.dataset.theme === theme && document.documentElement.lang === locale && document.documentElement.classList.contains("theme-light") === (theme === "light") && document.documentElement.classList.contains("theme-dark") === (theme === "dark" && themeClasses === "explicit-dark-class"), { theme, themeClasses, locale }), `${width}/${theme}/${locale}/${themeClasses}: fixture uses the declared theme/locale contract`);
@@ -216,6 +217,7 @@ try {
     answer = () => ({ status: 503, payload: { error: "synthetic_unavailable" } });
     await send(t, "Pregunta para recuperar");
     await t.page.getByRole("alert").waitFor();
+    check(await t.page.getByTestId("sun-sommelier-recovery-notice").count() === 0, `${label}: consumer service failures retain the alert contract rather than a Valle notice`);
     check(await t.page.getByRole("textbox").inputValue() === "Pregunta para recuperar", `${label}: denial preserves the question`);
     check(t.calls.length === 2, `${label}: denial is not retried automatically`);
     check(t.calls[1].body.eventId === "715" && t.calls[1].body.history.length === 2 && t.calls[1].body.history[0].content === "Pregunta sintética doble", `${label}: follow-up retains the reading and previous conversation`);
@@ -442,6 +444,54 @@ try {
     await inspectNaturalConversation(t, "motion/no-preference");
     check(t.calls.length === 1, "motion/no-preference: navigating the answer makes no extra request");
     await t.close();
+  }
+  for (const width of [320, 390]) for (const theme of ["light", "dark"]) for (const failure of ["fallback", "unavailable"]) {
+    let release, releaseNew;
+    const pending = new Promise(resolve => { release = resolve; });
+    let answer = () => pending;
+    const t = await open({ width, theme, valleDemo: true, answer: request => answer(request) });
+    const label = `valle-recovery/${width}/${theme}/${failure}`, question = "Pregunta Valle con respuesta pendiente";
+    const degraded = () => failure === "fallback" ? reply("Orientación Valle sintética sin IA confirmada", true, { demo: true }) : { status: 503, payload: { ok: false } };
+    const notice = failure === "fallback" ? "El servicio devolvió orientación general, sin una respuesta de IA confirmada. Podés volver a enviar la pregunta." : "No recibimos una respuesta del asistente. Podés volver a enviar la pregunta; mientras tanto, mostramos una guía local.";
+    try {
+      check(t.calls.length === 0, `${label}: mounting makes no session or assistant request`);
+      await t.page.getByRole("textbox").fill(question);
+      await t.page.getByRole("textbox").locator("..").evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
+      await waitCalls(t, 1);
+      check(await t.page.getByRole("log").getAttribute("aria-busy") === "true" && await t.page.getByRole("textbox").inputValue() === "", `${label}: question waits once with an empty draft`);
+      release(degraded());
+      await t.page.getByTestId("sun-sommelier-recovery-notice").filter({ hasText: notice }).waitFor();
+      check(await t.page.getByRole("textbox").inputValue() === question && await t.page.getByRole("status").filter({ hasText: notice }).innerText() === notice && await t.page.getByRole("alert").count() === 0, `${label}: handled fallback restores the question and announces a truthful non-blocking status`);
+      check(t.calls.length === 2 && t.calls[0].path === "/api/sommelier/demo/session" && t.calls[0].body.profile === "valle-secreto" && t.calls[1].path === "/api/sommelier/chat" && t.calls[1].body.mode === "demo" && t.calls[1].body.locale === "es-AR" && t.calls[1].body.question === question && !Object.hasOwn(t.calls[1].body, "eventId"), `${label}: only one explicit existing Valle session/chat pair is sent`);
+      await t.page.getByRole("log").locator("summary").last().click();
+      check((await t.page.getByRole("log").locator("details").last().innerText()).includes("Fallback local") && !(await t.page.getByRole("log").innerText()).includes("fixture-provider"), `${label}: the useful sourced answer is labelled as local guidance`);
+      await inspectNaturalConversation(t, `${label}-first`);
+      await inspectAccessibility(t, `${label}-first`);
+      await t.page.waitForTimeout(80);
+      check(t.calls.length === 2, `${label}: showing fallback does not retry automatically`);
+      const nextQuestion = "Pregunta Valle antes de otro borrador", newerDraft = "Borrador distinto escrito mientras espero";
+      const pendingNew = new Promise(resolve => { releaseNew = resolve; });
+      answer = () => pendingNew;
+      await send(t, nextQuestion);
+      await waitCalls(t, 2);
+      check(await t.page.getByRole("log").getAttribute("aria-busy") === "true" && await t.page.getByTestId("sun-sommelier-recovery-notice").count() === 0, `${label}: an explicit new question clears the previous notice before its response`);
+      await t.page.getByRole("textbox").fill(newerDraft);
+      releaseNew(degraded());
+      await t.page.getByTestId("sun-sommelier-recovery-notice").filter({ hasText: notice }).waitFor();
+      check(await t.page.getByRole("textbox").inputValue() === newerDraft && await t.page.getByRole("alert").count() === 0 && await t.page.getByRole("log").getByText(newerDraft, { exact: true }).count() === 0, `${label}: recovery preserves the newer unsent draft`);
+      check(t.calls.length === 4 && t.calls.filter(call => call.path === "/api/sommelier/chat").length === 2 && t.calls.filter(call => call.path === "/api/sommelier/demo/session").length === 2, `${label}: the pending response creates no extra request`);
+      await inspectNaturalConversation(t, `${label}-newer`);
+      await inspectAccessibility(t, `${label}-newer`);
+      answer = () => reply("Respuesta Valle sintética después del reintento manual", false, { demo: true });
+      await t.page.getByRole("textbox").locator("..").getByRole("button", { exact: true }).click();
+      await t.page.getByRole("log").getByText("Respuesta Valle sintética después del reintento manual", { exact: false }).waitFor();
+      const chats = t.calls.filter(call => call.path === "/api/sommelier/chat"), sessions = t.calls.filter(call => call.path === "/api/sommelier/demo/session");
+      check(t.calls.length === 6 && chats.length === 3 && sessions.length === 3 && chats[2].body.question === newerDraft && chats[2].body.mode === "demo" && !Object.hasOwn(chats[2].body, "eventId"), `${label}: only the explicit retry submits the newer draft once`);
+      check(await t.page.getByTestId("sun-sommelier-recovery-notice").count() === 0 && await t.page.getByRole("alert").count() === 0 && await t.page.getByRole("textbox").inputValue() === "", `${label}: confirmed synthetic recovery clears status and draft`);
+      report.views.push({ width, theme, phase: "valle-recovery", failure, syntheticRequests: t.calls.length });
+    } finally {
+      release(degraded()); releaseNew?.(degraded()); await t.close();
+    }
   }
   check(report.realProviderRequests === 0 && report.unexpectedRequests.length === 0, "all API replies are intercepted loopback fixtures");
   check(report.geolocationCalls === 0 && report.errors.length === 0, "zero GPS calls or browser exceptions");
