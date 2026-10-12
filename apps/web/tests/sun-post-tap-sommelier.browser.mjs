@@ -454,14 +454,14 @@ try {
     check(t.calls.length === 0, `${label}: mounting does not create a session or ask a question`);
     await t.page.getByRole("textbox").fill(question);
     await t.page.getByRole("textbox").locator("..").evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
-    const expectedAlert = {
+    const expectedNotice = {
       "es-AR": { fallback: "El servicio devolvió orientación general, sin una respuesta de IA confirmada. Podés volver a enviar la pregunta.", unavailable: "No recibimos una respuesta del asistente. Podés volver a enviar la pregunta; mientras tanto, mostramos una guía local." },
       en: { fallback: "The service returned general guidance without a confirmed AI response. You can send the question again.", unavailable: "No assistant response was received. You can send the question again; meanwhile, we show a local guide." },
       "pt-BR": { fallback: "O serviço retornou orientação geral, sem uma resposta de IA confirmada. Você pode enviar a pergunta novamente.", unavailable: "Nenhuma resposta do assistente foi recebida. Você pode enviar a pergunta novamente; enquanto isso, mostramos um guia local." },
     }[locale][failure];
-    await t.page.getByRole("alert").filter({ hasText: expectedAlert }).waitFor();
+    await t.page.getByRole("status").filter({ hasText: expectedNotice }).waitFor();
     check(await t.page.getByRole("textbox").inputValue() === question, `${label}: an unconfirmed managed response preserves the question`);
-    check(await t.page.getByRole("alert").innerText() === expectedAlert, `${label}: accessible recovery states the unconfirmed response without inferring account ownership`);
+    check(await t.page.getByRole("status").filter({ hasText: expectedNotice }).innerText() === expectedNotice && await t.page.getByRole("alert").count() === 0, `${label}: accessible recovery states the unconfirmed response without inferring account ownership`);
     const chats = t.calls.filter(call => call.path === "/api/sommelier/chat"), sessions = t.calls.filter(call => call.path === "/api/sommelier/demo/session");
     check(chats.length === 1 && sessions.length === 1 && t.calls.length === 2, `${label}: synchronous double-submit makes one existing session request and one chat request`);
     check(sessions[0].body.profile === "valle-secreto" && sessions[0].body.locale === locale && chats[0].body.mode === "demo" && chats[0].body.locale === locale && chats[0].body.question === question && !Object.hasOwn(chats[0].body, "eventId"), `${label}: the existing Valle demo contract and locale are preserved`);
@@ -478,7 +478,7 @@ try {
     await t.page.getByRole("log").getByText("Respuesta Valle sintética tras reintento explícito", { exact: false }).waitFor();
     const retryChats = t.calls.filter(call => call.path === "/api/sommelier/chat"), retrySessions = t.calls.filter(call => call.path === "/api/sommelier/demo/session");
     check(retryChats.length === 2 && retrySessions.length === 2 && t.calls.length === 4 && retryChats[1].body.question === question, `${label}: only explicit retry sends one additional existing session and one chat`);
-    check(await t.page.getByRole("alert").count() === 0 && await t.page.getByRole("textbox").inputValue() === "", `${label}: a confirmed synthetic recovery clears the draft and alert`);
+    check(await t.page.getByRole("alert").count() === 0 && await t.page.getByTestId("sun-sommelier-recovery-notice").count() === 0 && await t.page.getByRole("textbox").inputValue() === "", `${label}: a confirmed synthetic recovery clears the draft and alert`);
     let releasePending;
     const pendingNewDraft = new Promise(resolve => { releasePending = resolve; });
     answer = () => pendingNewDraft;
@@ -490,8 +490,8 @@ try {
     check(await t.page.getByRole("log").getAttribute("aria-busy") === "true" && await t.page.getByRole("textbox").inputValue() === "", `${label}: the third explicit question is pending before a new draft is typed`);
     await t.page.getByRole("textbox").fill(newerDraft);
     releasePending(failure === "fallback" ? reply("Orientación sintética pendiente sin IA confirmada", true, { demo: true }) : { status: 503, payload: { ok: false } });
-    await t.page.getByRole("alert").filter({ hasText: expectedAlert }).waitFor();
-    check(await t.page.getByRole("textbox").inputValue() === newerDraft && await t.page.getByRole("alert").innerText() === expectedAlert, `${label}: failed pending response preserves the newer different draft and localized alert`);
+    await t.page.getByRole("status").filter({ hasText: expectedNotice }).waitFor();
+    check(await t.page.getByRole("textbox").inputValue() === newerDraft && await t.page.getByRole("status").filter({ hasText: expectedNotice }).innerText() === expectedNotice && await t.page.getByRole("alert").count() === 0, `${label}: failed pending response preserves the newer different draft and localized alert`);
     const pendingChats = t.calls.filter(call => call.path === "/api/sommelier/chat"), pendingSessions = t.calls.filter(call => call.path === "/api/sommelier/demo/session");
     check(t.calls.length === 6 && pendingChats.length === 3 && pendingSessions.length === 3 && pendingChats[2].body.question === submittedPendingQuestion, `${label}: recovery has only the three explicit session/chat pairs observed so far`);
     check(await t.page.getByRole("log").getByText(submittedPendingQuestion, { exact: true }).count() === 1 && await t.page.getByRole("log").getByText(newerDraft, { exact: true }).count() === 0, `${label}: the unsent newer draft is not inserted into conversation`);
@@ -502,7 +502,7 @@ try {
     await t.page.getByRole("log").getByText("Respuesta Valle confirmada para el borrador nuevo", { exact: false }).waitFor();
     const newerChats = t.calls.filter(call => call.path === "/api/sommelier/chat"), newerSessions = t.calls.filter(call => call.path === "/api/sommelier/demo/session");
     check(t.calls.length === 8 && newerChats.length === 4 && newerSessions.length === 4 && newerChats[3].body.question === newerDraft && newerChats[3].body.mode === "demo" && newerChats[3].body.locale === locale && !Object.hasOwn(newerChats[3].body, "eventId"), `${label}: one explicit action submits the newer draft with the same existing Valle contract`);
-    check(await t.page.getByRole("alert").count() === 0 && await t.page.getByRole("textbox").inputValue() === "", `${label}: confirmed newer-draft submission clears its input and alert`);
+    check(await t.page.getByRole("alert").count() === 0 && await t.page.getByTestId("sun-sommelier-recovery-notice").count() === 0 && await t.page.getByRole("textbox").inputValue() === "", `${label}: confirmed newer-draft submission clears its input and alert`);
     report.views.push({ width: 390, theme, locale, valleDemo: true, recovery: failure, newerDraftWhilePending: true, syntheticRequests: t.calls.length });
     await t.close();
   }

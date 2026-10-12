@@ -204,6 +204,7 @@ export function QREngagementSuite({
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [chatRecoveryNotice, setChatRecoveryNotice] = useState<string | null>(null);
   const chatRequest = useRef<AbortController | null>(null);
   const chatSendLock = useRef(false);
   const chatSequence = useRef(0);
@@ -279,7 +280,7 @@ export function QREngagementSuite({
   const [shareApproximateLocation, setShareApproximateLocation] = useState(false);
   useEffect(() => {
     setFeedbackSubmitted(false); setOptInSubmitted(false); setBrandContactConsent(false);
-    setShareApproximateLocation(false); setLeadError(null); setChatError(null);
+    setShareApproximateLocation(false); setLeadError(null); setChatError(null); setChatRecoveryNotice(null);
     setIsTyping(false); setSubmittingLead(false);
   }, [triviaScope]);
 
@@ -392,6 +393,7 @@ export function QREngagementSuite({
     chatSendLock.current = false;
     setIsTyping(false);
     setChatError(null);
+    setChatRecoveryNotice(null);
     setChatInput("");
     demoChatContext.current = {};
     setMessages([
@@ -538,6 +540,7 @@ export function QREngagementSuite({
     setChatInput("");
     setIsTyping(true);
     setChatError(null);
+    setChatRecoveryNotice(null);
     const capturedScope = chatScope;
 
     try {
@@ -554,7 +557,7 @@ export function QREngagementSuite({
               followUps: data.suggestedQuestions.length ? data.suggestedQuestions.map(question => ({ label: question, question })) : answer.followUps }]);
             return;
           }
-          setChatError(result.status === "received" ? consumerChatCopy.fallback : consumerChatCopy.unavailable);
+          setChatRecoveryNotice(result.status === "received" ? consumerChatCopy.fallback : consumerChatCopy.unavailable);
           setChatInput(previous => previous || question);
         }
         demoChatContext.current = answer.topic ? { topic: answer.topic } : {};
@@ -781,6 +784,7 @@ export function QREngagementSuite({
                 <Send className="h-4 w-4" aria-hidden="true" />
               </button>
             </form>
+            {chatRecoveryNotice ? <p role="status" data-testid="sun-sommelier-recovery-notice" className="text-xs leading-relaxed text-slate-300">{chatRecoveryNotice}</p> : null}
             {chatError ? <p role="alert" className="text-xs leading-relaxed text-rose-300">{chatError}</p> : null}
             {!isDemoPreview && chatError ? <Link href="/me/products" prefetch={false} className="flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{consumerChatCopy.account}</Link> : null}
           </div>
