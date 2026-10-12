@@ -21,7 +21,7 @@ export default async function PassportPage({ searchParams }: { searchParams?: Pr
   
   const isVerif = status === "verified";
   const tone = isVerif 
-    ? styles.verified 
+    ? styles.verified
     : styles.pending;
     
   const tenant = typeof params.tenant === "string" ? params.tenant : "";

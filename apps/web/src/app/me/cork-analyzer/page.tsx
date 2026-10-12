@@ -10,7 +10,7 @@ export default async function CorkAnalyzerPage({ searchParams }: { searchParams?
 
   return (
     <PortalShell 
-      title="Simulación visual de corcho y cápsula" 
+      title="Simulación visual de corcho y cápsula"
       subtitle="Explorá escenarios visuales de ejemplo. La foto no se analiza ni ofrece un diagnóstico del corcho o del vino."
     >
       <CorkClient />
