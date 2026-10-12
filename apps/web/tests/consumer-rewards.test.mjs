@@ -329,3 +329,57 @@ test("reward views inherit accessible light and dark tokens without polling or r
   assert.doesNotMatch(pageSource + clientSource, /method\s*[:=]\s*["'](?:post|put|patch|delete)|claimReward|redeemReward|redemption\/confirm/i);
   assert.doesNotMatch(pageSource, /fetchConsumerPath\(["'](?:products|taps|catalog|brands|marketplace)/);
 });
+
+function marketplaceLinkHref(html) {
+  const links = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>/g)].map(match => match[1])
+    .filter(href => href === "/me/marketplace" || href.startsWith("/me/marketplace?"));
+  assert.equal(links.length, 1, "one marketplace destination in the benefits client");
+  return links[0];
+}
+
+test("benefits catalog destination retains the selected tenant instead of another own brand", () => {
+  const items = readModel(list([
+    reward({ id: "reward-a", tenant_slug: "brand-a", tenant_name: "Misma marca", title: "Beneficio A" }),
+    reward({ id: "reward-b", tenant_slug: "brand-b", tenant_name: "Misma marca", title: "Beneficio B" }),
+  ])).items;
+  for (const [tenant, ownTitle, otherTitle] of [["brand-a", "Beneficio A", "Beneficio B"], ["brand-b", "Beneficio B", "Beneficio A"]]) {
+    const html = renderClient(items, { initialTenant: tenant });
+    assert.equal(marketplaceLinkHref(html), `/me/marketplace?tenant=${encodeURIComponent(tenant)}`);
+    assert.ok(html.includes(ownTitle));
+    assert.ok(!html.includes(otherTitle));
+    assert.match(html, /Catálogo de esta marca/);
+  }
+});
+
+test("catalog tenant encoding preserves the existing canonical and legacy slug contract", () => {
+  for (const tenant of ["brand_a", "brand.a", "Balmec-AR", "a".repeat(120)]) {
+    assert.equal(model.rewardTenant(tenant), tenant);
+    const items = readModel(list([reward({ tenant_slug: tenant })])).items;
+    const href = marketplaceLinkHref(renderClient(items, { initialTenant: tenant }));
+    assert.equal(href, `/me/marketplace?tenant=${encodeURIComponent(tenant)}`);
+    const url = new URL(href, "https://portal.invalid");
+    assert.equal(url.pathname, "/me/marketplace");
+    assert.deepEqual([...url.searchParams.entries()], [["tenant", tenant]]);
+    assert.equal(url.hash, "");
+  }
+});
+
+test("missing, empty and invalid tenant scopes keep the existing unscoped catalog fallback", async () => {
+  const payload = list([reward({ tenant_slug: "brand-a" }), reward({ id: "reward-b", tenant_slug: "brand-b" })]);
+  for (const params of [{}, { tenant: "" }, { tenant: null }, { tenant: ["brand-a", "brand-b"] },
+    ...["../brand-a", "brand/a", " brand-a ", "brand-a&tenant=brand-b", "brand-a%26tenant=brand-b", "brand-a#other", "BRAND_A", "BRAND.A", "A".repeat(61), "a".repeat(121)].map(tenant => ({ tenant }))]) {
+    const { html, clientProps, calls } = await render(payload, { params });
+    assert.equal(clientProps[0].initialTenant, "");
+    assert.equal(marketplaceLinkHref(html), "/me/marketplace");
+    assert.match(html, /Explorar catálogo/);
+    assert.deepEqual(calls.slice(1), [["fetch", "rewards"], ["fetch", "wallet"]]);
+  }
+});
+
+test("a valid explicit tenant with no matching benefits does not fall back to another brand", () => {
+  const items = readModel(list([reward({ tenant_slug: "brand-b" })])).items;
+  const html = renderClient(items, { initialTenant: "absent-brand" });
+  assert.match(html, /No hay coincidencias/);
+  assert.equal(marketplaceLinkHref(html), "/me/marketplace?tenant=absent-brand");
+  assert.doesNotMatch(html, /data-reward-state=/);
+});

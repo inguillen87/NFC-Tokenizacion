@@ -31,7 +31,7 @@
 }
 
 .header { position: sticky; top: 0; z-index: 50; width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
-.headerRow { display: flex; align-items: center; justify-content: space-between; gap: .65rem; width: min(100%, 88rem); min-height: 4.75rem; margin-inline: auto; padding: .55rem max(.85rem, env(safe-area-inset-right)) .55rem max(.85rem, env(safe-area-inset-left)); }
+.headerRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .65rem; width: min(100%, 88rem); min-height: 4.75rem; margin-inline: auto; padding: .55rem max(.85rem, env(safe-area-inset-right)) .55rem max(.85rem, env(safe-area-inset-left)); }
 .brandArea { display: flex; align-items: center; gap: 1rem; min-width: 0; }
 .header .brand { display: inline-flex; min-width: 0; min-height: 3.5rem; border-radius: .85rem; }
 .header .brandLockup { gap: .4rem; max-width: none; }
@@ -52,7 +52,7 @@
 }
 .brand *, .brand *::before, .brand *::after { animation: none !important; }
 .portalLabel { display: none; color: var(--portal-muted); font-size: .9rem; font-weight: 600; white-space: nowrap; }
-.accountControls { display: flex; align-items: center; flex-shrink: 0; gap: .4rem; }
+.accountControls { display: flex; align-items: center; margin-inline-start: auto; flex-shrink: 0; gap: .4rem; }
 .portal .accountControls button { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; border: 1px solid var(--portal-border); border-radius: .85rem; padding: .55rem; background: var(--portal-subtle); color: var(--portal-text); box-shadow: none; touch-action: manipulation; }
 .portal .themeControl button > span:not(:first-child) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .portal .logoutControl button { border-color: var(--portal-border); background: var(--portal-danger-bg); color: var(--portal-danger); }
@@ -71,7 +71,7 @@
 .navigation, .navigationPlaceholder { position: fixed; inset: auto 0 0; z-index: 120; width: 100%; border-top: 1px solid var(--portal-border); padding: .45rem max(.45rem, env(safe-area-inset-right)) max(.45rem, env(safe-area-inset-bottom)) max(.45rem, env(safe-area-inset-left)); background: var(--portal-surface); }
 .navigationPlaceholder { min-height: calc(4.5rem + env(safe-area-inset-bottom)); }
 .navigationItems { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .2rem; max-width: 40rem; margin-inline: auto; }
-.navigationItem { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; min-width: 0; min-height: 3.5rem; border: 1px solid transparent; border-radius: .8rem; padding: .45rem .1rem; background: transparent; color: var(--portal-muted); font-size: .6875rem; font-weight: 650; line-height: 1.4; text-align: center; text-decoration: none; touch-action: manipulation; cursor: pointer; }
+.navigationItem { display: flex; overflow-wrap: anywhere; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; min-width: 0; min-height: 3.5rem; border: 1px solid transparent; border-radius: .8rem; padding: .45rem .1rem; background: transparent; color: var(--portal-muted); font-size: .6875rem; font-weight: 650; line-height: 1.4; text-align: center; text-decoration: none; touch-action: manipulation; cursor: pointer; }
 .navigationItem > svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
 .navigationItem[aria-current="page"], .navigationItem[data-active="true"] { border-color: var(--portal-border); background: var(--portal-active); color: var(--portal-accent); }
 .navigationItem:hover, .moreLink:hover { background: var(--portal-subtle); color: var(--portal-accent); }
