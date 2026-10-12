@@ -1,3 +1,5 @@
+import { parseConsumerTap } from "../_components/consumer-taps-model";
+
 type Source<T> = { status: "ready"; items: T[] } | { status: "unavailable"; items: null };
 export type BrandExperience = { id: string; title: string; tenant: string | null; href: string | null };
 export type ProductExperience = {
@@ -23,6 +25,20 @@ export function experienceEventId(value: unknown): string {
 }
 export function experienceTenant(value: unknown): string | null {
   return typeof value === "string" && /^[a-zA-Z0-9-]{1,60}$/.test(value) ? value : null;
+}
+export function experienceBrandName(payload: unknown, tenant: unknown): string | null {
+  const envelope = record(payload), rows = envelope?.items;
+  if (typeof tenant !== "string" || !tenant || envelope?.ok !== true || !Array.isArray(rows)) return null;
+  const brands = rows.map(record);
+  if (brands.some(brand => !brand || typeof brand.slug !== "string" || !brand.slug)) return null;
+  const matches = brands.filter(brand => brand?.slug === tenant);
+  return matches.length === 1 ? text(matches[0]?.name) : null;
+}
+export function experienceReadingContext(payload: unknown, eventId: string) {
+  const envelope = record(payload), item = record(envelope?.item);
+  if (!eventId || envelope?.ok !== true || !item) return null;
+  const reading = parseConsumerTap(item);
+  return reading?.id === eventId && reading.tenantSlug ? reading : null;
 }
 export function buildExperienceModel(payload: unknown) {
   const envelope = record(payload);

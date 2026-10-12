@@ -9,6 +9,7 @@ type Props = {
   initialEventId?: string;
   initialProductName?: string;
   tenant?: string;
+  brandName?: string;
 };
 
 type SubmitState = "idle" | "sending" | "success" | "error";
@@ -87,7 +88,7 @@ async function compressPhotoFile(file: File) {
   throw new Error("image_too_large_after_compression");
 }
 
-export function VerifiedExperienceForm({ initialEventId, initialProductName, tenant }: Props) {
+export function VerifiedExperienceForm({ initialEventId, initialProductName, brandName }: Props) {
   const eventId = normalizeEventId(initialEventId);
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState("");
@@ -250,8 +251,8 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
       <div className={styles.layout}>
         <div className={styles.panel}>
           <p className={styles.fieldLabel}>Producto</p>
-          <p className={styles.productName}>{initialProductName || "Producto asociado"}</p>
-          <p className={styles.muted}>{tenant ? `Marca: ${tenant}` : "Club de marca"}</p>
+          <p className={styles.productName}>{initialProductName || "Producto por confirmar"}</p>
+          <p className={styles.muted}>{brandName ? `Marca: ${brandName}` : "Marca por confirmar"}</p>
           <div className={styles.metadata}>
             {[
               ["Referencia de lectura", eventId ? `#${eventId}; se comprueba al enviar` : "Pendiente"],

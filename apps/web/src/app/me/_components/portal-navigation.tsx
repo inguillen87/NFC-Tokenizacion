@@ -20,7 +20,7 @@ export const PORTAL_MORE_DESTINATIONS = [
   { href: "/me/wallet", label: "Billetera digital", detail: "Activos y registros de tu cuenta", icon: WalletCards },
   { href: "/me/experiences", label: "Experiencias", detail: "Experiencias disponibles para tu cuenta", icon: Sparkles },
   { href: "/me/sommelier", label: "Asistente de vinos", detail: "Orientación general sobre vinos", icon: Wine },
-  { href: "/me/cork-analyzer", label: "Analizar corcho", detail: "Herramienta de revisión visual", icon: Leaf },
+  { href: "/me/cork-analyzer", label: "Corcho y cápsula", detail: "Simulación visual; no analiza tu foto", icon: Leaf },
   { href: "/me/privacy", label: "Privacidad", detail: "Datos y consentimiento", icon: ShieldCheck },
   { href: "/me/security", label: "Seguridad", detail: "Protección de tu cuenta", icon: ShieldCheck },
 ] as const;
