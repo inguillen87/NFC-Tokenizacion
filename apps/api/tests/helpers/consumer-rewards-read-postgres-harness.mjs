@@ -313,9 +313,23 @@ export async function runConsumerRewardsReadPostgresQa({ connect } = {}) {
       assert.equal(initial[0].id, f.rewardId);
       assert.equal(initial[0].program_points_balance, 20, 'Use the exact program member, not membership, other program or other consumer balances');
       const other = await read(f.otherConsumerId);
-      assert.equal(other.length, 1);
-      assert.equal(other[0].id, f.otherRewardId);
-      assert.equal(other[0].program_points_balance, 1000);
+      assert.equal(other.length, 2);
+      assert.deepEqual(other.map(row => row.id).sort(), [f.rewardId, f.otherRewardId].sort());
+      const enrolledOwnProgram = other.find(row => row.id === f.rewardId);
+      const otherBrandProgram = other.find(row => row.id === f.otherRewardId);
+      assert.equal(enrolledOwnProgram.tenant_slug, f.tenantId);
+      assert.equal(enrolledOwnProgram.program_name, 'Own QA Program');
+      assert.equal(enrolledOwnProgram.program_points_balance, 9000);
+      assert.equal(enrolledOwnProgram.state, 'locked', 'Own enrollment reads a catalog without granting CRM or claim eligibility');
+      assert.equal(otherBrandProgram.tenant_slug, f.otherTenantId);
+      assert.equal(otherBrandProgram.program_name, 'Other QA Program');
+      assert.equal(otherBrandProgram.program_points_balance, 1000);
+      for (const row of other) {
+        assert.equal(row.can_claim, false);
+        assert.equal(row.claim_unavailable_reason, 'review_required');
+        assert.equal(row.claim_id, null);
+        assert.equal(row.redemption_code, null);
+      }
       await client.query(`UPDATE ${s}.loyalty_members SET points_balance = 0 WHERE id = $1`, [f.memberId]);
       const zero = (await read(f.consumerId))[0];
       assert.equal(zero.program_points_balance, 0);
