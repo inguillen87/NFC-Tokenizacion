@@ -28,10 +28,11 @@ async function createFixtureSchema(client, schema) {
     CREATE TYPE ${s}.tenant_membership_status AS ENUM ('invited', 'active', 'paused', 'blocked', 'left');
     CREATE TYPE ${s}.consumer_reward_claim_status AS ENUM ('claimed', 'redeemed', 'cancelled', 'expired');
     CREATE TABLE ${s}.tenants (id uuid PRIMARY KEY, slug text NOT NULL UNIQUE, name text NOT NULL);
-    CREATE TABLE ${s}.consumers (id uuid PRIMARY KEY);
+    CREATE TABLE ${s}.consumers (id uuid PRIMARY KEY, status text NOT NULL DEFAULT 'registered');
     CREATE TABLE ${s}.loyalty_programs (
       id uuid PRIMARY KEY, tenant_id uuid NOT NULL REFERENCES ${s}.tenants(id), name text NOT NULL,
       status ${s}.loyalty_program_status NOT NULL DEFAULT 'draft',
+      age_gate_required boolean NOT NULL DEFAULT false,
       start_at timestamptz NOT NULL DEFAULT now(), end_at timestamptz
     );
     CREATE TABLE ${s}.tenant_consumer_memberships (
@@ -51,7 +52,9 @@ async function createFixtureSchema(client, schema) {
       program_id uuid NOT NULL REFERENCES ${s}.loyalty_programs(id),
       title text NOT NULL, description text, status text NOT NULL DEFAULT 'draft',
       points_cost integer NOT NULL DEFAULT 0, stock_remaining integer,
-      network_visible boolean NOT NULL DEFAULT false,
+      network_visible boolean NOT NULL DEFAULT false, requires_age_gate boolean NOT NULL DEFAULT false,
+      eligibility_json jsonb NOT NULL DEFAULT '{}'::jsonb, redemption_limit_per_member integer,
+      fulfillment_json jsonb NOT NULL DEFAULT '{}'::jsonb,
       starts_at timestamptz NOT NULL DEFAULT now(), ends_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now()
     );
@@ -251,7 +254,7 @@ export async function runConsumerRewardsReadPostgresQa({ connect } = {}) {
         await client.query(`UPDATE ${s}.loyalty_members SET points_balance = 100, status = $1 WHERE id = $2`, [status, f.memberId]);
         const row = (await read(f.consumerId))[0];
         assert.equal(row.state, expected);
-        assert.equal(row.can_claim, false);
+        assert.equal(row.can_claim, status === 'enrolled' || status === 'verified');
       }
       await client.query(`UPDATE ${s}.loyalty_members SET tenant_id = $1 WHERE id = $2`, [f.otherTenantId, f.memberId]);
       assert.equal((await read(f.consumerId))[0].state, 'locked');
@@ -325,8 +328,8 @@ export async function runConsumerRewardsReadPostgresQa({ connect } = {}) {
       assert.equal(otherBrandProgram.program_name, 'Other QA Program');
       assert.equal(otherBrandProgram.program_points_balance, 1000);
       for (const row of other) {
-        assert.equal(row.can_claim, false);
-        assert.equal(row.claim_unavailable_reason, 'review_required');
+        assert.equal(row.can_claim, row.id === f.otherRewardId);
+        assert.equal(row.claim_unavailable_reason, row.can_claim ? null : 'review_required');
         assert.equal(row.claim_id, null);
         assert.equal(row.redemption_code, null);
       }
