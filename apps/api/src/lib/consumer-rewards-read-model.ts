@@ -11,6 +11,7 @@ export type ConsumerRewardItem = {
   tenant_slug: string;
   tenant_name: string;
   program_name: string | null;
+  program_points_balance?: number | null;
   points_cost: number | null;
   points_spent: number | null;
   stock_remaining: number | null;
@@ -91,6 +92,7 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
     : catalog;
   const cost = integer(row.points_cost);
   const spent = claimId ? integer(row.points_spent) : null;
+  const programBalance = integer(row.program_points_balance);
 
   return {
     id: text(row.id, 64) || "",
@@ -99,6 +101,7 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
     tenant_slug: text(row.tenant_slug, 160) || "",
     tenant_name: text(row.tenant_name, 200) || "",
     program_name: text(row.program_name, 200),
+    program_points_balance: row.program_identity_matches === true && integer(row.program_member_count) === 1 && programBalance !== null && programBalance >= 0 ? programBalance : null,
     points_cost: cost !== null && cost >= 0 ? cost : null,
     points_spent: spent !== null && spent >= 0 ? spent : null,
     stock_remaining: integer(row.stock_remaining),
@@ -129,6 +132,7 @@ export async function getPrivateConsumerRewards(consumerId: string, executor: Sq
       reward.starts_at, reward.ends_at,
       tenant.slug AS tenant_slug, tenant.name AS tenant_name,
       program.name AS program_name, program.status::text AS program_status,
+      (program.id IS NOT NULL) AS program_identity_matches,
       program.start_at AS program_starts_at, program.end_at AS program_ends_at,
       membership.status::text AS membership_status,
       member.member_count AS program_member_count,

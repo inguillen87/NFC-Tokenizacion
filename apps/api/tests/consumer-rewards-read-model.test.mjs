@@ -25,7 +25,7 @@ function reward(overrides = {}) {
     starts_at: "2026-09-01T00:00:00.000Z", ends_at: null,
     program_starts_at: "2026-09-01T00:00:00.000Z", program_ends_at: null,
     points_cost: 50, stock_remaining: 5, program_member_count: 1,
-    program_points_balance: 80, program_member_active: true,
+    program_points_balance: 80, program_member_active: true, program_identity_matches: true,
     claim_id: null, claim_status: null, claimed_at: null,
     redemption_code: null, claim_expires_at_value: null,
     ...overrides,
@@ -201,8 +201,49 @@ test("DTO keeps the real cost and only explicitly projected fields, with distinc
   assert.equal(h.model.toConsumerRewardItem(claim({ points_spent: -1 }), NOW).points_spent, null);
   assert.equal(h.model.toConsumerRewardItem(claim({ points_spent: 0 }), NOW).points_spent, 0);
   assert.deepEqual(Object.keys(projection).sort(), [
-    "id", "title", "description", "tenant_slug", "tenant_name", "program_name", "points_cost", "points_spent", "stock_remaining",
+    "id", "title", "description", "tenant_slug", "tenant_name", "program_name", "program_points_balance", "points_cost", "points_spent", "stock_remaining",
     "state", "catalog_state", "claim_id", "claim_status", "claim_expires_at", "claimed_at", "redemption_code",
     "can_claim", "claim_unavailable_reason",
   ].sort());
+});
+
+test("program balances report safe exact amounts only for one own program member without opening claims", () => {
+  const { toConsumerRewardItem: item } = harness().model;
+  for (const value of [0, "0", 80, "80", Number.MAX_SAFE_INTEGER, String(Number.MAX_SAFE_INTEGER)]) {
+    const result = item(reward({ program_points_balance: value, membership_points_balance: 999999 }), NOW);
+    assert.equal(result.program_points_balance, Number(value));
+    assert.equal(result.can_claim, false);
+    assert.equal(result.claim_unavailable_reason, "review_required");
+  }
+  for (const value of [undefined, null, "", " ", false, true, -1, 0.5, NaN, Infinity, "1.5", "1e2", "80 pts", Number.MAX_SAFE_INTEGER + 1, "9007199254740992", [], {}]) {
+    assert.equal(item(reward({ program_points_balance: value, membership_points_balance: 999999 }), NOW).program_points_balance, null);
+  }
+  for (const count of [undefined, null, 0, 2, -1, "invalid"]) {
+    assert.equal(item(reward({ program_member_count: count, program_points_balance: 80, membership_points_balance: 999999 }), NOW).program_points_balance, null);
+  }
+});
+
+test("a mismatched program reports no balance while retaining own voucher history", async () => {
+  const mismatch = { program_identity_matches: false, program_name: null, program_status: null, program_points_balance: 900 };
+  const h = harness({ rows: [reward(mismatch), claim({ ...mismatch, id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", claim_expires_at_value: "2099-09-09T12:00:00Z" })] });
+  const body = await response(h, 200);
+  assert.equal(body.items.length, 2);
+  assert.equal(body.items[0].catalog_state, "inactive");
+  assert.equal(body.items[0].program_name, null);
+  assert.equal(body.items[0].program_points_balance, null);
+  assert.equal(body.items[1].state, "claimed");
+  assert.equal(body.items[1].program_points_balance, null);
+  assert.equal(body.items[1].points_spent, 20);
+  assert.equal(body.items[1].redemption_code, "NEXID-OWN-ISSUED-CODE");
+  for (const row of body.items) {
+    assert.equal(row.can_claim, false);
+    assert.equal(row.claim_unavailable_reason, "review_required");
+    assert.equal(Object.hasOwn(row, "program_identity_matches"), false);
+  }
+  const { toConsumerRewardItem: item } = h.model;
+  for (const value of [undefined, null, false, 1, "true", {}, []]) {
+    assert.equal(item(reward({ program_identity_matches: value, program_points_balance: 0 }), NOW).program_points_balance, null);
+  }
+  assert.equal(item(reward({ program_identity_matches: true, program_points_balance: 0 }), NOW).program_points_balance, 0);
+  assert.match(h.queries[0].statement, /\(program\.id IS NOT NULL\) AS program_identity_matches/);
 });

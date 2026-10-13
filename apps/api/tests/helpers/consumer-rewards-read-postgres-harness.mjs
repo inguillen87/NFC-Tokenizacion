@@ -302,6 +302,101 @@ export async function runConsumerRewardsReadPostgresQa({ connect } = {}) {
       assert.deepEqual(rows.map((row) => row.claim_id), claimIds.slice(0, 100));
       assert.ok(rows.every((row) => row.id === f.rewardId && row.redemption_code === null && row.points_spent === 15));
     });
+
+    await check("program_balance_zero_null_and_exact_consumer_tenant_program_scope", async () => {
+      const f = await fixture();
+      await client.query(`INSERT INTO ${s}.loyalty_members(id, tenant_id, program_id, consumer_id, status, points_balance)
+        VALUES ($1, $3, $4, $5, 'verified', 7000), ($2, $3, $6, $7, 'enrolled', 9000)`,
+      [randomUUID(), randomUUID(), f.tenantId, f.secondProgramId, f.consumerId, f.programId, f.otherConsumerId]);
+      const initial = await read(f.consumerId);
+      assert.equal(initial.length, 1);
+      assert.equal(initial[0].id, f.rewardId);
+      assert.equal(initial[0].program_points_balance, 20, 'Use the exact program member, not membership, other program or other consumer balances');
+      const other = await read(f.otherConsumerId);
+      assert.equal(other.length, 1);
+      assert.equal(other[0].id, f.otherRewardId);
+      assert.equal(other[0].program_points_balance, 1000);
+      await client.query(`UPDATE ${s}.loyalty_members SET points_balance = 0 WHERE id = $1`, [f.memberId]);
+      const zero = (await read(f.consumerId))[0];
+      assert.equal(zero.program_points_balance, 0);
+      assert.equal(zero.state, 'locked');
+      assert.equal(zero.can_claim, false);
+      assert.equal(zero.claim_unavailable_reason, 'review_required');
+      for (const dimension of ['tenant', 'program', 'consumer']) {
+        const g = await fixture();
+        if (dimension === 'tenant') await client.query(`UPDATE ${s}.loyalty_members SET tenant_id = $1 WHERE id = $2`, [g.otherTenantId, g.memberId]);
+        else if (dimension === 'program') await client.query(`UPDATE ${s}.loyalty_members SET program_id = $1 WHERE id = $2`, [g.secondProgramId, g.memberId]);
+        else await client.query(`UPDATE ${s}.loyalty_members SET consumer_id = $1 WHERE id = $2`, [g.otherConsumerId, g.memberId]);
+        const row = (await read(g.consumerId)).find((item) => item.id === g.rewardId);
+        assert.ok(row, dimension);
+        assert.equal(row.program_points_balance, null, dimension);
+        assert.equal(row.state, 'locked', dimension);
+        assert.equal(row.can_claim, false, dimension);
+        assert.equal(row.claim_unavailable_reason, 'review_required', dimension);
+      }
+    });
+
+    await check("inconsistent_program_tuple_has_no_balance_and_preserves_own_voucher", async () => {
+      const f = await fixture();
+      const wrongReward = await addReward(f, { programId: f.otherProgramId });
+      await client.query(`INSERT INTO ${s}.loyalty_members(id, tenant_id, program_id, consumer_id, status, points_balance)
+        VALUES ($1, $2, $3, $4, 'enrolled', 900)`, [randomUUID(), f.tenantId, f.otherProgramId, f.consumerId]);
+      const claimId = await addClaim(f, { rewardId: wrongReward, spent: 15 });
+      const rows = await read(f.consumerId);
+      const voucher = rows.find((row) => row.claim_id === claimId);
+      assert.ok(voucher);
+      assert.equal(voucher.id, wrongReward);
+      assert.equal(voucher.tenant_slug, f.tenantId);
+      assert.equal(voucher.program_name, null);
+      assert.equal(voucher.catalog_state, 'inactive');
+      assert.equal(voucher.program_points_balance, null);
+      assert.equal(voucher.state, 'claimed');
+      assert.equal(voucher.claim_status, 'claimed');
+      assert.equal(voucher.points_spent, 15);
+      assert.equal(voucher.redemption_code, `QA-${claimId}`);
+      assert.equal(voucher.can_claim, false);
+      assert.equal(voucher.claim_unavailable_reason, 'review_required');
+      assert.equal(Object.hasOwn(voucher, 'program_identity_matches'), false);
+      assert.equal(rows.find((row) => row.id === f.rewardId)?.program_points_balance, 20);
+    });
+
+    await check("current_program_balance_changes_without_rewriting_historical_voucher_points", async () => {
+      const f = await fixture();
+      const claimId = await addClaim(f, { spent: 15 });
+      const initial = (await read(f.consumerId)).find((row) => row.claim_id === claimId);
+      assert.ok(initial);
+      assert.equal(initial.program_points_balance, 20);
+      assert.equal(initial.points_spent, 15);
+      assert.equal(initial.redemption_code, `QA-${claimId}`);
+      await client.query(`UPDATE ${s}.loyalty_members SET points_balance = 7 WHERE id = $1`, [f.memberId]);
+      for (const status of ['active', 'paused', 'blocked']) {
+        await client.query(`UPDATE ${s}.tenant_consumer_memberships SET status = $1 WHERE id = $2`, [status, f.membershipId]);
+        const row = (await read(f.consumerId)).find((item) => item.claim_id === claimId);
+        assert.ok(row, status);
+        assert.equal(row.program_points_balance, 7, status);
+        assert.equal(row.points_spent, 15, status);
+        assert.equal(row.claimed_at, initial.claimed_at, status);
+        assert.equal(row.claim_status, 'claimed', status);
+        assert.equal(row.redemption_code, initial.redemption_code, status);
+        assert.equal(row.can_claim, false, status);
+        assert.equal(row.claim_unavailable_reason, 'review_required', status);
+      }
+      await client.query(`UPDATE ${s}.consumer_reward_claims SET status = 'cancelled' WHERE id = $1`, [claimId]);
+      const cancelled = (await read(f.consumerId)).find((row) => row.claim_id === claimId);
+      assert.ok(cancelled);
+      assert.equal(cancelled.program_points_balance, 7);
+      assert.equal(cancelled.points_spent, 15);
+      assert.equal(cancelled.state, 'cancelled');
+      assert.equal(cancelled.redemption_code, null);
+      await client.query(`DELETE FROM ${s}.loyalty_members WHERE id = $1`, [f.memberId]);
+      const missing = (await read(f.consumerId)).find((row) => row.claim_id === claimId);
+      assert.ok(missing);
+      assert.equal(missing.program_points_balance, null);
+      assert.equal(missing.points_spent, 15);
+      assert.equal(missing.state, 'cancelled');
+      assert.equal(missing.redemption_code, null);
+      assert.equal(missing.can_claim, false);
+    });
     report.ok = report.checks.every((result) => result.ok);
   } catch (error) {
     executionError = error;
