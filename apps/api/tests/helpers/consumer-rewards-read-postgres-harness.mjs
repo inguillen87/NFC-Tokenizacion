@@ -397,6 +397,198 @@ export async function runConsumerRewardsReadPostgresQa({ connect } = {}) {
       assert.equal(missing.redemption_code, null);
       assert.equal(missing.can_claim, false);
     });
+
+    await check("own_current_published_program_catalog_is_readable_after_enrollment_without_crm", async () => {
+      const f = await fixture();
+      await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+      await client.query(`UPDATE ${s}.rewards SET points_cost = 0 WHERE id = $1`, [f.rewardId]);
+      await client.query(`UPDATE ${s}.loyalty_members SET points_balance = 0 WHERE id = $1`, [f.memberId]);
+      const observe = async () => (await client.query(`SELECT
+        (SELECT count(*)::integer FROM ${s}.tenant_consumer_memberships WHERE tenant_id = $1 AND consumer_id = $2) AS crm_rows,
+        (SELECT count(*)::integer FROM ${s}.consumer_reward_claims WHERE consumer_id = $2) AS claims,
+        (SELECT points_balance FROM ${s}.loyalty_members WHERE id = $3) AS program_points,
+        (SELECT stock_remaining FROM ${s}.rewards WHERE id = $4) AS stock`,
+      [f.tenantId, f.consumerId, f.memberId, f.rewardId])).rows[0];
+      for (const status of ['enrolled', 'verified']) {
+        await client.query(`UPDATE ${s}.loyalty_members SET status = $1 WHERE id = $2`, [status, f.memberId]);
+        const before = await observe();
+        const rows = await read(f.consumerId);
+        assert.equal(rows.length, 1);
+        assert.equal(rows[0].id, f.rewardId);
+        assert.equal(rows[0].tenant_slug, f.tenantId);
+        assert.equal(rows[0].program_name, 'Own QA Program');
+        assert.equal(rows[0].program_points_balance, 0);
+        assert.equal(rows[0].points_cost, 0);
+        assert.equal(rows[0].state, 'locked');
+        assert.equal(rows[0].can_claim, false);
+        assert.equal(rows[0].claim_unavailable_reason, 'review_required');
+        assert.equal(rows[0].claim_id, null);
+        assert.equal(rows[0].redemption_code, null);
+        assert.equal(JSON.stringify(rows).includes('OTHER-'), false);
+        assert.deepEqual(await observe(), before, 'A catalog read cannot create CRM, claims, points or stock effects');
+        assert.equal(before.crm_rows, 0);
+        assert.equal(before.claims, 0);
+      }
+    });
+
+    await check("enrolled_catalog_without_crm_requires_exact_consumer_tenant_and_program", async () => {
+      for (const dimension of ['consumer', 'tenant', 'program']) {
+        const f = await fixture();
+        await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+        if (dimension === 'consumer') await client.query(`UPDATE ${s}.loyalty_members SET consumer_id = $1 WHERE id = $2`, [f.otherConsumerId, f.memberId]);
+        else if (dimension === 'tenant') await client.query(`UPDATE ${s}.loyalty_members SET tenant_id = $1 WHERE id = $2`, [f.otherTenantId, f.memberId]);
+        else await client.query(`UPDATE ${s}.loyalty_members SET program_id = $1 WHERE id = $2`, [f.secondProgramId, f.memberId]);
+        assert.deepEqual(await read(f.consumerId), [], dimension);
+      }
+      const f = await fixture();
+      await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+      const otherProgramReward = await addReward(f, { programId: f.secondProgramId });
+      const rows = await read(f.consumerId);
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].id, f.rewardId);
+      assert.equal(rows.some(row => row.id === otherProgramReward), false);
+    });
+
+    await check("enrolled_catalog_without_crm_refuses_absent_anonymous_blocked_and_deleted_members", async () => {
+      for (const status of ['anonymous', 'blocked', 'deleted']) {
+        const f = await fixture();
+        await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+        await client.query(`UPDATE ${s}.loyalty_members SET status = $1 WHERE id = $2`, [status, f.memberId]);
+        assert.deepEqual(await read(f.consumerId), [], status);
+      }
+      const f = await fixture();
+      await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+      await client.query(`DELETE FROM ${s}.loyalty_members WHERE id = $1`, [f.memberId]);
+      assert.deepEqual(await read(f.consumerId), []);
+    });
+
+    await check("enrolled_catalog_without_crm_requires_published_current_program_and_reward", async () => {
+      for (const target of ['program', 'reward']) {
+        for (const status of ['draft', 'paused', 'archived']) {
+          const f = await fixture();
+          await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+          if (target === 'program') await client.query(`UPDATE ${s}.loyalty_programs SET status = $1 WHERE id = $2`, [status, f.programId]);
+          else await client.query(`UPDATE ${s}.rewards SET status = $1 WHERE id = $2`, [status, f.rewardId]);
+          assert.deepEqual(await read(f.consumerId), [], target + ':' + status);
+        }
+        for (const window of ['future', 'expired', 'end_elapsed']) {
+          const f = await fixture();
+          await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+          if (target === 'program') {
+            if (window === 'future') await client.query(`UPDATE ${s}.loyalty_programs SET start_at = now() + interval '1 day' WHERE id = $1`, [f.programId]);
+            else await client.query(`UPDATE ${s}.loyalty_programs SET end_at = now() - $1::interval WHERE id = $2`, [window === 'expired' ? '1 day' : '0 seconds', f.programId]);
+          } else {
+            if (window === 'future') await client.query(`UPDATE ${s}.rewards SET starts_at = now() + interval '1 day' WHERE id = $1`, [f.rewardId]);
+            else await client.query(`UPDATE ${s}.rewards SET ends_at = now() - $1::interval WHERE id = $2`, [window === 'expired' ? '1 day' : '0 seconds', f.rewardId]);
+          }
+          assert.deepEqual(await read(f.consumerId), [], target + ':' + window);
+        }
+      }
+    });
+
+    await check("existing_nonactive_crm_membership_is_not_bypassed_by_own_program_enrollment", async () => {
+      const f = await fixture();
+      for (const status of ['blocked', 'left', 'invited']) {
+        await client.query(`UPDATE ${s}.tenant_consumer_memberships SET status = $1 WHERE id = $2`, [status, f.membershipId]);
+        assert.deepEqual(await read(f.consumerId), [], status);
+      }
+      await client.query(`UPDATE ${s}.tenant_consumer_memberships SET status = 'paused' WHERE id = $1`, [f.membershipId]);
+      assert.equal((await read(f.consumerId))[0].state, 'locked', 'Preserve the existing paused-brand read branch');
+      await client.query(`UPDATE ${s}.tenant_consumer_memberships SET status = 'blocked' WHERE id = $1`, [f.membershipId]);
+      const claimId = await addClaim(f, { status: 'cancelled' });
+      const history = await read(f.consumerId);
+      assert.equal(history.length, 1);
+      assert.equal(history[0].claim_id, claimId);
+      assert.equal(history[0].state, 'cancelled');
+      assert.equal(history[0].redemption_code, null);
+      assert.equal(history[0].can_claim, false);
+    });
+
+    await check("unpublished_association_and_network_discovery_remain_blocked_own_history_preserved", async () => {
+      const f = await fixture();
+      await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+      const mismatchedReward = await addReward(f, { programId: f.otherProgramId });
+      await client.query(`INSERT INTO ${s}.loyalty_members(id, tenant_id, program_id, consumer_id, status, points_balance)
+        VALUES ($1, $2, $3, $4, 'verified', 1000)`, [randomUUID(), f.tenantId, f.otherProgramId, f.consumerId]);
+      assert.equal((await read(f.consumerId)).some(row => row.id === mismatchedReward), false, 'Persisted reward and program tenants must agree even with a malformed member tuple');
+      await client.query(`UPDATE ${s}.rewards SET network_visible = true WHERE id = $1`, [f.rewardId]);
+      assert.deepEqual(await read(randomUUID()), [], 'Network visibility never supplies an enrollment relationship');
+      const claimId = await addClaim(f, { rewardId: mismatchedReward, status: 'cancelled' });
+      const rows = await read(f.consumerId);
+      const historical = rows.find(row => row.claim_id === claimId);
+      assert.ok(historical);
+      assert.equal(historical.state, 'cancelled');
+      assert.equal(historical.program_name, null);
+      assert.equal(historical.program_points_balance, null);
+      assert.equal(historical.can_claim, false);
+      assert.equal(historical.redemption_code, null);
+      assert.equal(rows.some(row => row.id === f.otherRewardId), false);
+    });
+
+    await check("own_published_evergreen_program_catalog_keeps_nullable_end_contract", async () => {
+      const f = await fixture();
+      await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+      await client.query(`UPDATE ${s}.loyalty_programs SET start_at = now() - interval '1 day', end_at = NULL WHERE id = $1`, [f.programId]);
+      await client.query(`UPDATE ${s}.rewards SET starts_at = now() - interval '1 day', ends_at = NULL WHERE id = $1`, [f.rewardId]);
+      const { rows: [window] } = await client.query(`SELECT program.start_at, program.end_at, reward.starts_at, reward.ends_at
+        FROM ${s}.loyalty_programs program JOIN ${s}.rewards reward ON reward.program_id = program.id AND reward.tenant_id = program.tenant_id
+        WHERE program.id = $1 AND reward.id = $2`, [f.programId, f.rewardId]);
+      assert.ok(window.start_at);
+      assert.ok(window.starts_at);
+      assert.equal(window.end_at, null);
+      assert.equal(window.ends_at, null);
+      const rows = await read(f.consumerId);
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].id, f.rewardId);
+      assert.equal(rows[0].state, 'locked');
+      assert.equal(rows[0].can_claim, false);
+      assert.equal(rows[0].claim_id, null);
+      assert.equal(rows[0].redemption_code, null);
+    });
+
+    await check("statement_clock_proves_inclusive_start_exclusive_end_and_exact_single_member", async () => {
+      // Prepare every nominal fixture before the table-backed views. These
+      // views live only in the harness's generated QA schema; each read still
+      // imports the actual reader and executes its unchanged SELECT READ ONLY.
+      // Dynamic date columns equal statement_timestamp() in the same SELECT,
+      // so this checks equality instead of an earlier fixture-write timestamp.
+      const fixtures = [];
+      for (const label of ['program_start_equal', 'program_end_equal', 'reward_start_equal', 'reward_end_equal', 'duplicate_member']) {
+        const f = await fixture();
+        await client.query(`DELETE FROM ${s}.tenant_consumer_memberships WHERE id = $1`, [f.membershipId]);
+        fixtures.push({ label, ...f });
+      }
+      const [programStart, programEnd, rewardStart, rewardEnd, duplicate] = fixtures;
+      await client.query(`ALTER TABLE ${s}.loyalty_programs RENAME TO qa_clock_program_rows`);
+      await client.query(`CREATE VIEW ${s}.loyalty_programs AS SELECT
+        id, tenant_id, name, status,
+        CASE WHEN id = '${programStart.programId}'::uuid THEN statement_timestamp() ELSE start_at END AS start_at,
+        CASE WHEN id = '${programEnd.programId}'::uuid THEN statement_timestamp() ELSE end_at END AS end_at
+        FROM ${s}.qa_clock_program_rows`);
+      await client.query(`ALTER TABLE ${s}.rewards RENAME TO qa_clock_reward_rows`);
+      await client.query(`CREATE VIEW ${s}.rewards AS SELECT
+        id, tenant_id, program_id, title, description, status, points_cost, stock_remaining, network_visible,
+        CASE WHEN id = '${rewardStart.rewardId}'::uuid THEN statement_timestamp() ELSE starts_at END AS starts_at,
+        CASE WHEN id = '${rewardEnd.rewardId}'::uuid THEN statement_timestamp() ELSE ends_at END AS ends_at, created_at
+        FROM ${s}.qa_clock_reward_rows`);
+      await client.query(`ALTER TABLE ${s}.loyalty_members RENAME TO qa_clock_member_rows`);
+      await client.query(`CREATE VIEW ${s}.loyalty_members AS
+        SELECT id, tenant_id, program_id, consumer_id, status, points_balance FROM ${s}.qa_clock_member_rows
+        UNION ALL SELECT id, tenant_id, program_id, consumer_id, status, points_balance
+          FROM ${s}.qa_clock_member_rows WHERE id = '${duplicate.memberId}'::uuid`);
+      for (const f of fixtures) {
+        const rows = await read(f.consumerId);
+        if (f.label.endsWith('start_equal')) {
+          assert.equal(rows.length, 1, f.label);
+          assert.equal(rows[0].id, f.rewardId, f.label);
+          assert.equal(rows[0].claim_id, null);
+          assert.equal(rows[0].can_claim, false);
+          assert.equal(rows[0].redemption_code, null);
+        } else {
+          assert.deepEqual(rows, [], f.label);
+        }
+      }
+    });
     report.ok = report.checks.every((result) => result.ok);
   } catch (error) {
     executionError = error;

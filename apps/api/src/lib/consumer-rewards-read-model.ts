@@ -120,6 +120,9 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
 /** One row per own claim; a catalog row only when the reward has no own claim.
  * The latest 100 claims take priority, then remaining slots show own-brand
  * catalog entries. claim_id (or id for catalog) is the stable row identity.
+ * One own enrolled/verified program member may also read its current published
+ * catalog without creating a CRM membership. An existing nonactive membership
+ * cannot use that path. This read relationship grants no claim or consent.
  * Network discovery is deliberately outside this authenticated read contract.
  */
 export async function getPrivateConsumerRewards(consumerId: string, executor: SqlExecutor = sql): Promise<ConsumerRewardItem[]> {
@@ -159,6 +162,13 @@ export async function getPrivateConsumerRewards(consumerId: string, executor: Sq
     ) member ON true
     WHERE claim.id IS NOT NULL
        OR (membership.status IN ('active', 'paused') AND reward.status = 'active')
+       OR (membership.tenant_id IS NULL
+           AND program.id IS NOT NULL AND program.status = 'active'
+           AND program.start_at <= statement_timestamp()
+           AND (program.end_at IS NULL OR program.end_at > statement_timestamp())
+           AND reward.status = 'active' AND reward.starts_at <= statement_timestamp()
+           AND (reward.ends_at IS NULL OR reward.ends_at > statement_timestamp())
+           AND member.member_count = 1 AND member.active IS TRUE)
     ORDER BY (claim.id IS NOT NULL) DESC,
       COALESCE(claim.created_at, reward.created_at) DESC,
       reward.id DESC, claim.id DESC

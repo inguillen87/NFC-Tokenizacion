@@ -189,7 +189,7 @@ async function run() {
   assert.equal(rewardConfiguration.redeemHandler.sources.length, 4);
   const rewardRead = await runConsumerRewardsReadPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardRead.ok && rewardRead.cleanup.schemaDropped && rewardRead.cleanup.connectionsClosed, "Consumer reward read SQL regression or cleanup failed");
-  assert.equal(rewardRead.checks.length, 14);
+  assert.equal(rewardRead.checks.length, 22);
   assert.ok(rewardRead.checks.every(check => check.ok));
   const rewardHttp = await runConsumerRewardHttpPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardHttp.ok && rewardHttp.cleanup.schemaDropped && rewardHttp.cleanup.connectionsClosed, "Consumer reward HTTP SQL regression or cleanup failed");

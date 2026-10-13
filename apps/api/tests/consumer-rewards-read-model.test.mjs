@@ -247,3 +247,43 @@ test("a mismatched program reports no balance while retaining own voucher histor
   assert.equal(item(reward({ program_identity_matches: true, program_points_balance: 0 }), NOW).program_points_balance, 0);
   assert.match(h.queries[0].statement, /\(program\.id IS NOT NULL\) AS program_identity_matches/);
 });
+
+test("own enrolled-program catalog DTO without CRM stays locked and never implies a claim", async () => {
+  // Real SQL selection is covered by the registered PostgreSQL harness; this
+  // unit exercises the actual authenticated route and closed public DTO.
+  const h = harness({ rows: [reward({
+    membership_status: null, points_cost: 0, program_points_balance: 0,
+    consumer_id: PRIVATE, metadata_json: { phone: PRIVATE },
+  })] });
+  const body = await response(h, 200);
+  assert.equal(body.scope, "own_brands");
+  assert.equal(body.items.length, 1);
+  const item = body.items[0];
+  assert.equal(item.state, "locked");
+  assert.equal(item.catalog_state, "locked");
+  assert.equal(item.program_points_balance, 0);
+  assert.equal(item.points_cost, 0);
+  assert.equal(item.points_spent, null);
+  assert.equal(item.claim_id, null);
+  assert.equal(item.redemption_code, null);
+  assert.equal(item.can_claim, false);
+  assert.equal(item.claim_unavailable_reason, "review_required");
+  assert.deepEqual(h.events, ["authenticate", "read"]);
+  assert.equal(h.queries.length, 1);
+});
+
+test("own enrolled evergreen catalog preserves nullable ends and inclusive starts without claim permission", () => {
+  const { toConsumerRewardItem: item } = harness().model;
+  const evergreen = reward({ membership_status: null, points_cost: 0, program_points_balance: 0,
+    starts_at: new Date(NOW).toISOString(), program_starts_at: new Date(NOW).toISOString(),
+    ends_at: null, program_ends_at: null });
+  assert.equal(item(evergreen, NOW).catalog_state, "locked");
+  assert.equal(item({ ...evergreen, ends_at: new Date(NOW).toISOString() }, NOW).catalog_state, "expired");
+  assert.equal(item({ ...evergreen, program_ends_at: new Date(NOW).toISOString() }, NOW).catalog_state, "expired");
+  assert.equal(item({ ...evergreen, starts_at: new Date(NOW + 1).toISOString() }, NOW).catalog_state, "upcoming");
+  const current = item(evergreen, NOW);
+  assert.equal(current.can_claim, false);
+  assert.equal(current.claim_unavailable_reason, "review_required");
+  assert.equal(current.claim_id, null);
+  assert.equal(current.redemption_code, null);
+});
