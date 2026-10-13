@@ -3,12 +3,13 @@ import * as tapHandoff from '../src/app/api/_lib/consumer-tap-handoff.ts';
 const require=createRequire(import.meta.url),read=p=>readFileSync(new URL('../src/'+p,import.meta.url),'utf8'),style=new Proxy({},{get:(_,p)=>p});
 function compile(source,modules={},extraFetch){const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;const m={exports:{}};new Function('require','module','exports','fetch',code)(k=>Object.hasOwn(modules,k)?modules[k]:k==='../../api/_lib/consumer-tap-handoff'?tapHandoff:k==='../../api/_lib/server-api-transport'?{fetchRuntimeApi:extraFetch}:require(k),m,m.exports,extraFetch);return m.exports;}
 const taps=compile(read('app/me/_components/consumer-taps-model.ts')),model=compile(read('app/me/taps/history-model.ts'),{'../_components/consumer-taps-model':taps});
+const dateFormat=compile(read('app/me/taps/history-date-format.ts'));
 const filters={tenant:'',from:'',to:'',event:''};
 const row=(n='9007199254740993',override={})=>({row_id:n,tap_event_id:n,created_at:'2026-09-01T12:00:00.000123Z',verdict:'VALID_OPENED',risk_level:'high',city:null,country:null,tenant_slug:'wine-qa',tenant_name:'Bodega QA',product_name:'Producto QA',brand_name:'Marca QA',...override});
 const payload=(items=[row()])=>({ok:true,protocol:'nexid.consumer-history.v1',source:'database',readOnly:true,timeBasis:'saved_to_account',accountKey:'a'.repeat(64),observedAt:'2026-09-20T12:00:00Z',query:{...filters},items,brands:[{slug:'wine-qa',name:'Bodega QA'}],moreBrands:false,navigation:{page:1,pageSize:25,returned:items.length,hasNext:false,cursor:'opaque_read_position',nextCursor:null,cutoff:'2026-09-20T12:00:00.000123Z'}});
 const parse=p=>model.parseHistory(p),links=[];
 const link={__esModule:true,default:({children,prefetch,...props})=>{links.push({...props,prefetch});return React.createElement('a',props,children);}};
-const ui=compile(read('app/me/taps/consumer-history.tsx'),{'./history-model':model,'./consumer-history.module.css':{__esModule:true,default:style},'next/link':link});
+const ui=compile(read('app/me/taps/consumer-history.tsx'),{'./history-model':model,'./history-date-format':dateFormat,'./consumer-history.module.css':{__esModule:true,default:style},'next/link':link});
 const render=initial=>renderToStaticMarkup(React.createElement(ui.ConsumerHistory,{initial}));
 test('page contract pins account, filters, reference and microsecond ordering',()=>{const p=payload([row('9007199254740994'),row()]);assert.equal(parse(p).items[0].id,'9007199254740994');assert.throws(()=>model.parseHistory(p,{query:filters,page:1,account:'b'.repeat(64)}));p.items.reverse();assert.throws(()=>parse(p));});
 test('malformed or unsupported data cannot become an empty successful history',()=>{for(const p of [null,{}, {...payload(),source:'demo'},payload([null]),payload([row('01')]),payload([row('9223372036854775808')])])assert.throws(()=>parse(p));});
@@ -22,3 +23,19 @@ test('new BFF explicitly forwards allowed search parameters while rejecting acto
 test('client invalidates old data and stale requests without polling, GPS or browser history persistence',()=>{const s=read('app/me/taps/consumer-history.tsx');assert.match(s,/setPage\(null\)/);assert.match(s,/sequence.current/);assert.match(s,/response.status===401/);assert.doesNotMatch(s,/setInterval|localStorage|sessionStorage|navigator.geolocation|method:'POST'/);});
 test('SSR authenticates before data read and removes capability cookies while preserving the session',async()=>{const calls=[];const auth=compile(read('app/me/taps/page.tsx'),{'next/headers':{headers:async()=>new Headers({cookie:'consumer_session=keep; __Host-nexid_tap_715=opaque; nexid_tap_716=dev'})},'@product/config':{productUrls:{api:'http://127.0.0.1'}},'../_components/consumer-api':{readConsumerSession:async p=>{calls.push(['auth',p]);return {status:'ready'};},buildConsumerNextPath:(p)=>p},'../_components/consumer-portal-recovery':{ConsumerPortalUnavailable:()=>null},'../_components/portal-shell':{PortalShell:({children})=>children},'./consumer-history':ui,'./history-model':model},async(_url,options)=>{assert.equal(options.headers.cookie,'consumer_session=keep');calls.push(['read']);return new Response(JSON.stringify(payload()));}).default;renderToStaticMarkup(await auth({}));assert.deepEqual(calls,[['auth','/me/taps'],['read']]);});
 test('denied session prevents history data reads',async()=>{let fetched=false;const page=compile(read('app/me/taps/page.tsx'),{'next/headers':{headers:async()=>new Headers()},'@product/config':{productUrls:{api:'http://127.0.0.1'}},'../_components/consumer-api':{readConsumerSession:async()=>{throw Error('login');},buildConsumerNextPath:p=>p},'../_components/consumer-portal-recovery':{ConsumerPortalUnavailable:()=>null},'../_components/portal-shell':{PortalShell:()=>null},'./consumer-history':ui,'./history-model':model},async()=>{fetched=true;return new Response('{}');}).default;await assert.rejects(()=>page({}),/login/);assert.equal(fetched,false);});
+
+test('initial nonempty morning and afternoon history preserves raw instants, cursor, account and UTC filters',()=>{
+ for(const [observedAt,savedAt,label] of [
+  ['2026-10-13T08:20:00.654321Z','2026-10-13T08:15:00.123456Z','13/10/2026 · 08:15 UTC'],
+  ['2026-10-13T18:20:00.654321Z','2026-10-13T18:15:00.123456Z','13/10/2026 · 18:15 UTC'],
+ ]){
+  const p=payload([row(undefined,{created_at:savedAt})]);p.observedAt=observedAt;p.navigation.cutoff=observedAt;p.query={...filters,from:'2026-10-13',to:'2026-10-13'};
+  const initial=parse(p),before=JSON.stringify(initial),html=render(initial);
+  assert.ok(html.includes(label));assert.ok(html.toLowerCase().includes('datetime="'+savedAt.toLowerCase()+'"'));
+  assert.ok(html.includes('Consulta confirmada · 13/10/2026 · '+(observedAt.includes('T08:')?'08:20':'18:20')+' UTC'));
+  assert.ok(html.includes(initial.navigation.cutoff));assert.match(html,/Horarios UTC/);assert.match(html,/Desde · UTC|Desde ·/);
+  assert.equal(JSON.stringify(initial),before);assert.equal(initial.observedAt,observedAt);assert.equal(initial.items[0].savedAt,savedAt);assert.equal(initial.navigation.cutoff,observedAt);
+  assert.equal(initial.accountKey,'a'.repeat(64));assert.equal(initial.navigation.cursor,'opaque_read_position');assert.deepEqual(initial.query,p.query);
+  assert.equal(model.historyParams(initial.query).toString(),'from=2026-10-13&to=2026-10-13');
+ }
+});

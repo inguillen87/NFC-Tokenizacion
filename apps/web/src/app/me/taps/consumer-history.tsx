@@ -3,6 +3,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {ArrowLeft,ArrowRight,ChevronLeft,ChevronRight,Clock3,History,Search,Filter,ScanLine,ShieldCheck,TriangleAlert,Info,MapPin,Package,Copy,Check,RefreshCw,X} from 'lucide-react';
 import {boundedHistoryJson,parseHistory,historyParams,historySearch,informationalReading,EMPTY_HISTORY_FILTERS,type HistoryPage,type HistoryFilters,type HistoryRow} from './history-model';
+import {createHistoryDateFormatter} from './history-date-format';
 import styles from './consumer-history.module.css';
 type Attempt={q:HistoryFilters;cursor:string|null;page:number;cutoff?:string;account?:string};
 export function ConsumerHistory({initial,initialFilters=EMPTY_HISTORY_FILTERS}:{initial:HistoryPage|null;initialFilters?:HistoryFilters}){
@@ -11,7 +12,7 @@ export function ConsumerHistory({initial,initialFilters=EMPTY_HISTORY_FILTERS}:{
  const live=useRef(true),controller=useRef<AbortController|null>(null),sequence=useRef(0),retry=useRef<Attempt|null>(null),heading=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{live.current=true;setZone(Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC');return()=>{live.current=false;sequence.current++;controller.current?.abort();};},[]);
  const rows=useMemo(()=>page?historySearch(page.items,search):[],[page,search]);
- const labels=useMemo(()=>new Intl.DateTimeFormat('es-AR',{dateStyle:'medium',timeStyle:'short',timeZone:localTime?zone:'UTC'}),[localTime,zone]);
+ const labels=useMemo(()=>createHistoryDateFormatter(localTime?zone:'UTC'),[localTime,zone]);
  const invalid=Boolean(page&&JSON.stringify(filters)!==JSON.stringify(page.query));
  function changed(next:HistoryFilters){sequence.current++;retry.current=null;setFilters(next);setError('Filtros modificados: consultá para confirmar los resultados.');setPage(null);setTrail([]);}
  async function load(a:Attempt){
