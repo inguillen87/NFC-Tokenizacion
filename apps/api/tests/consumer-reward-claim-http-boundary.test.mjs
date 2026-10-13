@@ -21,7 +21,7 @@ const bounded = load(source("lib/bounded-request-body.ts"), {});
 const origin = load(source("lib/consumer-mutation-origin.ts"), { http: { json } }, { NODE_ENV: "production", VERCEL_ENV: "production" });
 
 function harness(options = {}) {
-  const calls = { origin: 0, auth: 0, rate: 0, body: 0, schema: 0, claims: [], queries: [] };
+  const calls = { origin: 0, auth: 0, rate: 0, body: 0, schema: 0, claims: [], queries: [], readbacks: [] };
   const receipt = { id: CLAIM, consumer_id: OWNER, reward_id: REWARD, status: "claimed", points_spent: 40,
     idempotency_key: options.existingKey ?? "consumer-reward-claim:" + OWNER + ":" + REWARD };
   let inserted = false;
@@ -30,26 +30,27 @@ function harness(options = {}) {
     "consumer-auth": { getConsumerFromRequest: async () => { calls.auth++; return options.unauthorized ? null : { id: OWNER }; } },
     "consumer-mutation-origin": { enforceConsumerMutationOrigin: req => { calls.origin++; return origin.enforceConsumerMutationOrigin(req); } },
     http: { json },
-    db: { sql: async (strings, ...values) => {
-      const statement = strings.join("?").replace(/\s+/g, " ").trim(); calls.queries.push({ statement, values });
-      assert.match(statement, /^SELECT \* FROM consumer_reward_claims WHERE idempotency_key = \? AND consumer_id = \? AND reward_id = \? LIMIT 1$/);
-      const requestedRewardId = calls.claims.at(-1).rewardId;
-      assert.deepEqual(values, ["consumer-reward-claim:" + OWNER + ":" + requestedRewardId, OWNER, requestedRewardId]);
-      return [{ ...receipt, ...options.existing }];
-    } },
+    db: {
+      sql: async (strings, ...values) => { calls.queries.push({ statement: strings.join("?"), values }); return [{ id: REWARD, points_cost: options.currentCost ?? 40, points_balance: 100, stock_remaining: 2 }]; },
+      sqlSerializable: async () => { throw Error("Synthetic writer boundary must not execute SQL"); },
+    },
     "commercial-runtime-schema": { ensureConsumerPortalSchema: async () => { calls.schema++; } },
     "critical-rate-limit": { enforceCriticalRateLimit: async () => { calls.rate++; return options.limited ? json({ ok: false, error: "rate_limited" }, 429) : null; } },
     "bounded-request-body": { ...bounded, readBoundedJsonBody: async (req, limit) => { calls.body++; assert.equal(limit, 8192); return bounded.readBoundedJsonBody(req, limit); } },
     "consumer-reward-queries": { insertConsumerRewardClaim: async (_query, input) => {
       calls.claims.push(input);
-      if (options.writerError) throw Error("owned writer failure");
-      if (options.existingKey) assert.equal(input.idempotencyKey, options.existingKey, "Do not change the stored historical request key");
+      assert.equal(_query, deps.db.sqlSerializable);
+      if (options.writerError) throw Object.assign(Error("owned writer failure"), { code: options.serializationConflict ? "40001" : "XX000" });
       if (options.existing || inserted) return [];
       inserted = true; receipt.idempotency_key = input.idempotencyKey; return [receipt];
+    }, readOwnPortalRewardClaimUnderLock: async (_query, input) => {
+      assert.equal(_query, deps.db.sqlSerializable); calls.readbacks.push(input);
+      if (options.ambiguous) return { state: "ambiguous" };
+      return options.existing || inserted ? { state: "single", claim: { ...receipt, ...options.existing } } : { state: "absent" };
     } },
   };
   const handler = load(source("app/consumer/rewards/[rewardId]/claim/route.ts"), deps).POST;
-  const post = (body = {}, request = {}, rewardId = REWARD) => handler(new Request("https://nexid.lat/api/consumer/rewards/" + rewardId + "/claim", {
+  const post = (body = { expectedPointsCost: 40 }, request = {}, rewardId = REWARD) => handler(new Request("https://nexid.lat/api/consumer/rewards/" + rewardId + "/claim", {
     method: "POST", body: typeof body === "string" && request.raw ? body : JSON.stringify(body),
     headers: { origin: "https://nexid.lat", "sec-fetch-site": "same-origin", "content-type": "application/json", ...request.headers },
   }), { params: Promise.resolve({ rewardId }) });
@@ -97,17 +98,17 @@ test("actual bounded reader rejects streamed and declared bodies larger than 8Ki
 });
 
 test("valid claim binds authenticated owner and validated UUID text, ignoring supplied authority and TAP", async () => {
-  const h = harness(), response = await h.post({ locale: "es-AR", consumerId: OTHER, tenantId: OTHER, memberId: OTHER, eventId: "forged" }, {}, REWARD.toUpperCase());
+  const h = harness(), response = await h.post({ expectedPointsCost: 40, locale: "es-AR", consumerId: OTHER, tenantId: OTHER, memberId: OTHER, eventId: "forged" }, {}, REWARD.toUpperCase());
   assert.equal(response.status, 200); assert.equal((await response.json()).duplicate, false);
   assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.schema, 1);
-  assert.deepEqual(h.calls.claims[0], { consumerId: OWNER, rewardId: REWARD.toUpperCase(), idempotencyKey: "consumer-reward-claim:" + OWNER + ":" + REWARD.toUpperCase(), redemptionCode: "NXR-EEEEEEEE", locale: "es-AR" });
+  assert.deepEqual(h.calls.claims[0], { consumerId: OWNER, rewardId: REWARD.toUpperCase(), idempotencyKey: "consumer-reward-claim:" + OWNER + ":" + REWARD.toUpperCase(), redemptionCode: "NXR-EEEEEEEE", locale: "es-AR", portalFirstClaim: { expectedPointsCost: 40 } });
 });
 
 test("repeated request with identical UUID text recovers the same receipt and key", async () => {
-  const h = harness(); const first = await h.post({}, {}, REWARD.toUpperCase()); const repeated = await h.post({}, {}, REWARD.toUpperCase());
+  const h = harness(); const first = await h.post({ expectedPointsCost: 40 }, {}, REWARD.toUpperCase()); const repeated = await h.post({ expectedPointsCost: 40 }, {}, REWARD.toUpperCase());
   assert.equal(first.status, 200); assert.equal(repeated.status, 200);
   assert.equal((await repeated.json()).duplicate, true); assert.equal(h.calls.claims.length, 2);
-  assert.equal(h.calls.claims[0].idempotencyKey, h.calls.claims[1].idempotencyKey); assert.equal(h.calls.queries.length, 1);
+  assert.equal(h.calls.claims[0].idempotencyKey, h.calls.claims[1].idempotencyKey); assert.equal(h.calls.readbacks.length, 1);
   for (const status of ["redeemed", "cancelled", "expired"]) {
     const existing = harness({ existing: { status } }), response = await existing.post();
     const body = await response.json(); assert.equal(body.duplicate, true); assert.equal(body.claim.status, status);
@@ -118,15 +119,41 @@ test("repeated request with identical UUID text recovers the same receipt and ke
 test("a historical uppercase UUID key stays unchanged when its original request is repeated", async () => {
   const oldKey = "consumer-reward-claim:" + OWNER + ":" + REWARD.toUpperCase();
   const h = harness({ existingKey: oldKey, existing: { status: "claimed" } });
-  const response = await h.post({}, {}, REWARD.toUpperCase());
+  const response = await h.post({ expectedPointsCost: 40 }, {}, REWARD.toUpperCase());
   const body = await response.json();
   assert.equal(response.status, 200); assert.equal(body.duplicate, true);
   assert.equal(body.claim.id, CLAIM); assert.equal(body.claim.idempotency_key, oldKey);
   assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.claims[0].idempotencyKey, oldKey);
-  assert.equal(h.calls.claims[0].rewardId, REWARD.toUpperCase()); assert.equal(h.calls.queries.length, 1);
+  assert.equal(h.calls.claims[0].rewardId, REWARD.toUpperCase()); assert.equal(h.calls.readbacks.length, 1);
 });
 
 test("writer rejection is not retried by the handler", async () => {
-  const h = harness({ writerError: true }); await assert.rejects(() => h.post(), /owned writer failure/);
+  const h = harness({ writerError: true }); const response = await h.post();
+  assert.equal(response.status, 503); assert.equal((await response.json()).refresh_required, true);
   assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.queries.length, 0);
+});
+
+test("confirmed portal cost is mandatory and validated before every initializer or write", async () => {
+  for (const value of [undefined, null, "40", -1, 0.5, 2_147_483_648, {}, []]) {
+    const h = harness(), response = await h.post({ expectedPointsCost: value });
+    assert.equal(response.status, 400); assert.equal((await response.json()).error, "invalid_expected_points_cost");
+    noPersistence(h.calls); assert.equal(h.calls.readbacks.length, 0);
+  }
+});
+test("semantic UUID readback preserves one historical key across uppercase and lowercase requests", async () => {
+  const key = "consumer-reward-claim:" + OWNER + ":" + REWARD.toUpperCase();
+  const h = harness({ existingKey: key, existing: { status: "expired" } });
+  const response = await h.post({ expectedPointsCost: 40 }, {}, REWARD.toLowerCase()), body = await response.json();
+  assert.equal(response.status, 200); assert.equal(body.duplicate, true); assert.equal(body.claim.idempotency_key, key);
+  assert.equal(body.claim.status, "expired"); assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.readbacks.length, 1);
+});
+test("ambiguous history refuses instead of selecting or replacing a receipt", async () => {
+  const h = harness({ ambiguous: true, existing: {} }), response = await h.post();
+  assert.equal(response.status, 409); assert.equal((await response.json()).error, "reward_claim_history_ambiguous");
+  assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.readbacks.length, 1);
+});
+test("serialization conflict performs one readback and never retries the mutation", async () => {
+  const h = harness({ writerError: true, serializationConflict: true, existing: { status: "claimed" } }), response = await h.post();
+  assert.equal(response.status, 200); assert.equal((await response.json()).duplicate, true);
+  assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.readbacks.length, 1);
 });

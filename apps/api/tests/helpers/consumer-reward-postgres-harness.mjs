@@ -75,6 +75,7 @@ async function createFixtureSchema(client, schema) {
       status text NOT NULL DEFAULT 'draft', points_cost integer NOT NULL DEFAULT 0,
       requires_age_gate boolean NOT NULL DEFAULT false,
       eligibility_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+      redemption_limit_per_member integer, fulfillment_json jsonb NOT NULL DEFAULT '{}'::jsonb,
       stock_total integer, stock_remaining integer,
       starts_at timestamptz NOT NULL DEFAULT now(), ends_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now(),

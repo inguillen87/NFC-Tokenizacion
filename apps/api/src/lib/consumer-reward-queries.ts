@@ -10,6 +10,8 @@ type ClaimInput = {
   metadata?: Record<string, unknown>;
   /** A free campaign response cannot debit points after a concurrent price change. */
   maximumPointsCost?: 0;
+  /** Server-owned opt-in; campaigns retain their existing first-class contract. */
+  portalFirstClaim?: { expectedPointsCost: number };
 };
 
 type RefundInput = {
@@ -26,6 +28,10 @@ type RefundInput = {
  * writes, including the points and stock changes.
  */
 export async function insertConsumerRewardClaim(query: SqlExecutor, input: ClaimInput) {
+  if (input.portalFirstClaim && (!Number.isSafeInteger(input.portalFirstClaim.expectedPointsCost)
+    || input.portalFirstClaim.expectedPointsCost < 0 || input.portalFirstClaim.expectedPointsCost > 2_147_483_647)) {
+    throw new Error("invalid_portal_expected_points_cost");
+  }
   return query/*sql*/`
     WITH locked AS MATERIALIZED (
       SELECT
@@ -64,6 +70,20 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
         -- Stored eligibility rules require a supported verifier; never ignore
         -- configured restrictions or interpret unknown JSON as unrestricted.
         AND reward.eligibility_json = '{}'::jsonb
+        -- Only the authenticated portal opts into a first-reservation contract.
+        -- Unknown configured policy stays blocked; no rule is silently discarded.
+        AND (${Boolean(input.portalFirstClaim)}::boolean = false OR (
+          reward.redemption_limit_per_member IS NULL
+          AND reward.fulfillment_json = '{}'::jsonb
+          AND reward.points_cost = ${input.portalFirstClaim?.expectedPointsCost ?? null}::integer
+          AND (SELECT count(*) FROM loyalty_members own_member
+            WHERE own_member.consumer_id = ${input.consumerId}::uuid
+              AND own_member.tenant_id = reward.tenant_id
+              AND own_member.program_id = reward.program_id) = 1
+          AND NOT EXISTS (SELECT 1 FROM consumer_reward_claims own_claim
+            WHERE own_claim.consumer_id = ${input.consumerId}::uuid
+              AND own_claim.reward_id = reward.id)
+        ))
         AND reward.points_cost >= 0
         AND (${input.maximumPointsCost ?? null}::integer IS NULL OR reward.points_cost <= ${input.maximumPointsCost ?? null}::integer)
         AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
@@ -137,6 +157,33 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
     )
     SELECT * FROM inserted_claim
   `;
+}
+
+/** Portal-only semantic UUID readback. Execute with sqlSerializable; never retry a write.
+ * Locks protect the returned historical row; keys and receipts are not normalized. */
+export async function readOwnPortalRewardClaimUnderLock(query: SqlExecutor, input: { consumerId: string; rewardId: string }) {
+  const rows = await query/*sql*/`
+    WITH locked_reward AS MATERIALIZED (
+      SELECT reward.id, reward.tenant_id FROM rewards reward
+      WHERE reward.id = ${input.rewardId}::uuid
+      FOR UPDATE OF reward
+    ), locked_consumer AS MATERIALIZED (
+      SELECT consumer.id FROM consumers consumer JOIN locked_reward ON true
+      WHERE consumer.id = ${input.consumerId}::uuid
+        AND consumer.status IN ('anonymous', 'registered', 'verified')
+      FOR SHARE OF consumer
+    )
+    SELECT claim.*, locked_reward.tenant_id AS reward_tenant_id
+    FROM consumer_reward_claims claim
+    JOIN locked_reward ON locked_reward.id = claim.reward_id
+    JOIN locked_consumer ON locked_consumer.id = claim.consumer_id
+    ORDER BY claim.id LIMIT 2
+    FOR SHARE OF claim
+  `;
+  if (rows.length === 0) return { state: "absent" as const };
+  if (rows.length !== 1 || rows[0].tenant_id !== rows[0].reward_tenant_id) return { state: "ambiguous" as const };
+  const { reward_tenant_id: _tenant, ...claim } = rows[0];
+  return { state: "single" as const, claim };
 }
 
 export async function refundConsumerRewardClaim(query: SqlExecutor, input: RefundInput) {
