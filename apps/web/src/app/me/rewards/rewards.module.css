@@ -39,7 +39,7 @@
 .badge[data-state="expired"], .badge[data-state="cancelled"] { color: var(--portal-danger); background: var(--portal-danger-bg); }
 .brandLabel { margin: 0 0 .45rem; color: var(--portal-accent); font-size: .8rem; font-weight: 750; }
 .rewardCard h3 { margin: 0; font-size: 1.25rem; line-height: 1.35; font-weight: 800; letter-spacing: -.025em; overflow-wrap: anywhere; }
-.program { color: var(--portal-muted); font-size: .85rem; margin: .5rem 0 0; }
+.program { color: var(--portal-muted); font-size: .85rem; margin: .5rem 0 0; overflow-wrap: anywhere; }
 .cost { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: baseline; gap: .5rem; margin: 1.3rem 0; }
 .cost span { font-size: .8rem; color: var(--portal-muted); }
 .cost strong { font-size: 1.1rem; font-weight: 750; }

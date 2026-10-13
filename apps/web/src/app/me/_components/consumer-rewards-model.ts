@@ -2,7 +2,7 @@ import { reportedWalletPoints } from "./consumer-wallet-points-model";
 
 export type ConsumerReward = {
   key: string; id: string; title: string; tenant: string; brand: string;
-  program: string | null; description: string | null; cost: number | null; hasClaim: boolean;
+  program: string | null; programBalance?: number | null; description: string | null; cost: number | null; hasClaim: boolean;
   state: "claimed" | "redeemed" | "cancelled" | "expired" | "out_of_stock" | "upcoming" | "inactive" | "locked" | "reported" | "unknown";
   code: string | null; expiresAt: string | null;
 };
@@ -29,7 +29,15 @@ function instant(value: unknown): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 export function rewardDateLabel(value: string | null): string {
-  return value ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value)) + " (Argentina)" : "No informado";
+  if (!value) return "No informado";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "No informado";
+  const parts = new Intl.DateTimeFormat("es-AR", {
+    calendar: "gregory", numberingSystem: "latn", timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
+  return `${part("day")}/${part("month")}/${part("year")} · ${part("hour")}:${part("minute")} (Argentina)`;
 }
 export function buildConsumerRewardsModel(payload: unknown, now: string): ConsumerRewardsSource {
   const envelope = record(payload);
@@ -56,7 +64,7 @@ export function buildConsumerRewardsModel(payload: unknown, now: string): Consum
     else if (reported === "available") state = "reported"; // Legacy availability used a different points ledger, not claim authorization.
     const code = typeof row.redemption_code === "string" && /^[A-Z0-9-]{4,64}$/i.test(row.redemption_code) ? row.redemption_code : null;
     items.push({ key, id, tenant, title: text(row.title) || "Beneficio sin título informado", brand: text(row.tenant_name) || tenant,
-      program: text(row.program_name), description: text(row.description, 1200), cost: reportedWalletPoints(claimId ? row.points_spent : row.points_cost),
+      program: text(row.program_name), programBalance: reportedWalletPoints(row.program_points_balance), description: text(row.description, 1200), cost: reportedWalletPoints(claimId ? row.points_spent : row.points_cost),
       hasClaim: Boolean(claimId), state, code: state === "claimed" ? code : null, expiresAt });
   }
   return { status: "ready", items };
