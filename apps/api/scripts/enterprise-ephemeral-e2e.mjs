@@ -18,6 +18,7 @@ import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-
 import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
 import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
 import { runConsumerRewardPostgresQa } from "../tests/helpers/consumer-reward-postgres-harness.mjs";
+import { runConsumerRewardsReadPostgresQa } from "../tests/helpers/consumer-rewards-read-postgres-harness.mjs";
 import { runAdminRewardPostgresQa } from "../tests/helpers/admin-reward-postgres-harness.mjs";
 import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuration-postgres-harness.mjs";
 import { runLoyaltyCurrentStatePostgresQa } from '../tests/helpers/loyalty-current-state-postgres-harness.mjs';
@@ -185,6 +186,10 @@ async function run() {
   assert.equal(rewardConfiguration.redeemLockWaits.filter(wait => wait.startedBeforeExpiry && wait.expiredBeforeRelease).length, 1);
   assert.ok(rewardConfiguration.redeemHandler.sqlExecutions > 0 && rewardConfiguration.redeemHandler.sqlCopiedIntoHarness === false);
   assert.equal(rewardConfiguration.redeemHandler.sources.length, 4);
+  const rewardRead = await runConsumerRewardsReadPostgresQa({ connect: connectCurrentTagQa });
+  assert.ok(rewardRead.ok && rewardRead.cleanup.schemaDropped && rewardRead.cleanup.connectionsClosed, "Consumer reward read SQL regression or cleanup failed");
+  assert.equal(rewardRead.checks.length, 14);
+  assert.ok(rewardRead.checks.every(check => check.ok));
   const adminRewardConfiguration = await runAdminRewardPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(adminRewardConfiguration.ok && adminRewardConfiguration.schemaCleaned, "Admin reward configuration SQL regression or cleanup failed");
   const tenantConfiguration = await runConfigurationPostgresQa(connectCurrentTagQa);
@@ -207,7 +212,7 @@ async function run() {
   assert.ok(tenantMarketplaceCatalog.checks.every(check => check.passed));
   assert.equal(tenantMarketplaceCatalog.lockObservations.length, 1);
   assert.ok(tenantMarketplaceCatalog.lockObservations.every(observation => observation.observed && observation.waitEventType === 'Lock'));
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, rewardRead, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 
