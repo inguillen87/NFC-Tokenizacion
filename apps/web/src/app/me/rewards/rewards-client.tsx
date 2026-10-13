@@ -32,7 +32,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const filtered = Boolean(tenant || query || view !== "all");
   function reset() { setTenant(""); setQuery(""); setView("all"); }
   return <section aria-labelledby="benefits-list-title" className={styles.catalog}>
-    <div className={styles.sectionHeading}><div className={styles.headingIcon}><Gift aria-hidden="true" /><div><h2 id="benefits-list-title">Beneficios y vouchers</h2><p>Consultá lo que publicaron tus marcas y el historial de tus vouchers.</p></div></div>
+    <div className={styles.sectionHeading}><div className={styles.headingIcon}><Gift aria-hidden="true" /><div><h2 id="benefits-list-title">Beneficios y vouchers</h2><p>El saldo de cada programa puede ser distinto al de la marca. Consultá los beneficios publicados y tus vouchers.</p></div></div>
       <Link className={styles.textLink} href={catalogHref}>{catalogTenant ? "Catálogo de esta marca" : "Explorar catálogo"} <ArrowUpRight aria-hidden="true" /></Link></div>
     <div className={styles.filters}>
       <div className={styles.views} role="group" aria-label="Tipo de beneficio">{([['all','Todos'],['vouchers','Mis vouchers'],['catalog','Publicados']] as const).map(([value,label]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => setView(value)}>{label}</button>)}</div>
@@ -45,6 +45,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
         <div className={styles.cardTop}><span className={styles.cardIcon}>{item.hasClaim ? <Ticket aria-hidden="true" /> : <Gift aria-hidden="true" />}</span><span className={styles.badge} data-state={item.state}>{REWARD_STATE_LABELS[item.state]}</span></div>
         <p className={styles.brandLabel}>{item.brand}</p><h3>{item.title}</h3>{item.program ? <p className={styles.program}>{item.program}</p> : null}
         <div className={styles.cost}><span>{item.hasClaim ? "Puntos del reclamo" : "Costo publicado"}</span><strong>{item.cost === null ? "No informado" : <>{item.cost} <small>pts</small></>}</strong></div>
+        <div className={styles.cost} data-benefit-points="program"><span>Saldo actual del programa</span><strong>{item.programBalance == null ? "No informado" : <>{item.programBalance} <small>pts</small></>}</strong></div>
         <details className={styles.details} open={selectedVoucher === item.key || undefined}><summary>{item.hasClaim ? "Ver detalle del voucher" : "Ver información"}<ChevronDown aria-hidden="true" /></summary><div className={styles.detailsBody}>
           {item.description ? <p>{item.description}</p> : null}
           {item.hasClaim ? <><dl><dt>Vencimiento</dt><dd>{rewardDateLabel(item.expiresAt)}</dd><dt>Estado registrado</dt><dd>{REWARD_STATE_LABELS[item.state]}</dd></dl>{item.code ? <VoucherCode code={item.code} /> : <p>{item.state === "redeemed" ? "Este voucher ya figura como canjeado. Se conserva en tu historial." : item.state === "cancelled" || item.state === "expired" ? "Este voucher ya no se presenta como válido para canjear." : "No hay un código vigente confirmado para mostrar. Consultá con la marca antes de usarlo."}</p>}</>

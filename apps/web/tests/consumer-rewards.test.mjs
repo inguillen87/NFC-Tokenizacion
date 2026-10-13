@@ -318,6 +318,15 @@ test("SSR codes remain copyable as text and date labels explicitly identify the 
   assert.match(clientSource, /No se pudo copiar/);
 });
 
+test("voucher dates use stable numeric Argentina labels across UTC day boundaries", () => {
+  assert.equal(model.rewardDateLabel("2099-09-09T12:00:00Z"), "09/09/2099 · 09:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2026-01-01T00:30:00Z"), "31/12/2025 · 21:30 (Argentina)");
+  assert.equal(model.rewardDateLabel("2026-01-01T03:00:00Z"), "01/01/2026 · 00:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("2026-01-01T03:00:00+03:00"), "31/12/2025 · 21:00 (Argentina)");
+  assert.equal(model.rewardDateLabel("invalid-date"), "No informado");
+  assert.equal(model.rewardDateLabel(null), "No informado");
+});
+
 test("reward views inherit accessible light and dark tokens without polling or reward mutations", () => {
   for (const token of ["text", "muted", "surface", "subtle", "border", "accent", "active", "danger", "danger-bg"]) assert.ok(cssSource.includes(`var(--portal-${token})`), token);
   assert.match(cssSource, /:focus-visible/);
@@ -382,4 +391,45 @@ test("a valid explicit tenant with no matching benefits does not fall back to an
   assert.match(html, /No hay coincidencias/);
   assert.equal(marketplaceLinkHref(html), "/me/marketplace?tenant=absent-brand");
   assert.doesNotMatch(html, /data-reward-state=/);
+});
+
+test("optional program balances preserve zero and safe amounts without borrowing brand or network fields", () => {
+  for (const value of [0, "0", 80, "80", Number.MAX_SAFE_INTEGER, String(Number.MAX_SAFE_INTEGER)]) {
+    assert.equal(readItem(reward({ program_points_balance: value })).programBalance, Number(value));
+  }
+  for (const value of [undefined, null, "", " ", false, true, -1, 0.5, NaN, Infinity, "01", "1.5", "1e2", "80 pts", Number.MAX_SAFE_INTEGER + 1, "9007199254740992", [], {}]) {
+    const item = readItem(reward({ program_points_balance: value, points_balance: 540, membership_points_balance: 540, network_points_balance: 999 }));
+    assert.equal(item.programBalance, null);
+    assert.equal(item.cost, 100);
+    const html = renderClient([item]);
+    assert.match(html, /data-benefit-points="program"><span>Saldo actual del programa<\/span><strong>No informado<\/strong>/);
+    assert.doesNotMatch(html, /Podés canjear|Canjear ahora|Solicitar voucher/);
+  }
+});
+
+test("SSR keeps each selected brand program balance separate from its wallet and other programs", async () => {
+  const payload = list([
+    reward({ id: "reward-a", tenant_slug: "brand-a", tenant_name: "Misma marca", title: "Beneficio A", program_name: "Club A", program_points_balance: 0 }),
+    reward({ id: "reward-b", tenant_slug: "brand-b", tenant_name: "Misma marca", title: "Beneficio B", program_name: "Club B", program_points_balance: 77 }),
+    reward({ id: "reward-unknown", tenant_slug: "brand-a", tenant_name: "Misma marca", title: "Beneficio sin saldo", program_name: "Otro programa A" }),
+  ]);
+  const wallets = wallet({ tenantWallets: [{ slug: "brand-a", name: "Misma marca", points_balance: 540 }, { slug: "brand-b", name: "Misma marca", points_balance: 270 }], networkWallet: { enabled: true, points_balance: 999 } });
+  for (const [tenant, ownTitle, otherTitle, balance] of [["brand-a", "Beneficio A", "Beneficio B", 0], ["brand-b", "Beneficio B", "Beneficio A", 77]]) {
+    const { html, calls } = await render(payload, { params: { tenant }, wallet: wallets });
+    const cards = [...html.matchAll(/<article\b[^>]*data-reward-state=[\s\S]*?<\/article>/g)].map(match => match[0]);
+    const own = cards.find(card => card.includes(ownTitle));
+    assert.ok(own);
+    assert.ok(cards.every(card => !card.includes(otherTitle)));
+    assert.match(own, new RegExp('data-benefit-points="program"><span>Saldo actual del programa<\\/span><strong>' + balance + ' <small>pts<\\/small>'));
+    assert.doesNotMatch(own, /<strong>(?:540|270|999) /);
+    assert.match(own, /El reclamo desde el portal todavía no está habilitado/);
+    assert.equal(marketplaceLinkHref(html), "/me/marketplace?tenant=" + tenant);
+    assert.deepEqual(calls.slice(1), [["fetch", "rewards"], ["fetch", "wallet"]]);
+    if (tenant === "brand-a") {
+      const unknown = cards.find(card => card.includes("Beneficio sin saldo"));
+      assert.match(unknown, /data-benefit-points="program"><span>Saldo actual del programa<\/span><strong>No informado<\/strong>/);
+    }
+  }
+  const mismatch = await render(payload, { params: { tenant: "brand-c" }, wallet: wallets });
+  assert.doesNotMatch(mismatch.html, /data-reward-state=|data-benefit-points="program"/);
 });
