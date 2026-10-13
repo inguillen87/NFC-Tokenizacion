@@ -1,15 +1,30 @@
 "use client";
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {ArrowLeft,ArrowRight,ChevronLeft,ChevronRight,Clock3,History,Search,Filter,ScanLine,ShieldCheck,TriangleAlert,Info,MapPin,Package,Copy,Check,RefreshCw,X} from 'lucide-react';
 import {boundedHistoryJson,parseHistory,historyParams,historySearch,informationalReading,EMPTY_HISTORY_FILTERS,type HistoryPage,type HistoryFilters,type HistoryRow} from './history-model';
 import {createHistoryDateFormatter} from './history-date-format';
 import styles from './consumer-history.module.css';
 type Attempt={q:HistoryFilters;cursor:string|null;page:number;cutoff?:string;account?:string};
+const useServerSnapshotEffect=typeof window==='undefined'?useEffect:useLayoutEffect;
 export function ConsumerHistory({initial,initialFilters=EMPTY_HISTORY_FILTERS}:{initial:HistoryPage|null;initialFilters?:HistoryFilters}){
  const [brands,setBrands]=useState(initial?.brands||[]),[queryOpen,setQueryOpen]=useState(!initial);
  const [page,setPage]=useState(initial),[filters,setFilters]=useState<HistoryFilters>(initial?.query||initialFilters),[search,setSearch]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(initial?'':'No pudimos confirmar tu historial. Esto no significa que esté vacío.'),[login,setLogin]=useState(false),[advanced,setAdvanced]=useState(false),[localTime,setLocalTime]=useState(false),[zone,setZone]=useState('UTC'),[trail,setTrail]=useState<string[]>(initial?[initial.navigation.cursor]:[]);
  const live=useRef(true),controller=useRef<AbortController|null>(null),sequence=useRef(0),retry=useRef<Attempt|null>(null),heading=useRef<HTMLHeadingElement>(null);
+ const serverQueryKey=historyParams(initial?.query||initialFilters).toString();
+ const serverSource=useRef({initial,initialFilters,queryKey:serverQueryKey});
+ useServerSnapshotEffect(()=>{
+  const previous=serverSource.current;
+  if(previous.initial===initial&&previous.initialFilters===initialFilters&&previous.queryKey===serverQueryKey)return;
+  serverSource.current={initial,initialFilters,queryKey:serverQueryKey};
+  // A new server snapshot owns account, query, data and cursor. Keep the
+  // device-time preference while preventing an old request from replacing it.
+  sequence.current++;controller.current?.abort();controller.current=null;retry.current=null;
+  setPage(initial);setBrands(initial?.brands||[]);setFilters(initial?.query||initialFilters);
+  setTrail(initial?[initial.navigation.cursor]:[]);setBusy(false);setLogin(false);setSearch('');
+  setError(initial?'':'No pudimos confirmar tu historial. Esto no significa que esté vacío.');
+  setQueryOpen(!initial);setAdvanced(false);
+ },[initial,initialFilters,serverQueryKey]);
  useEffect(()=>{live.current=true;setZone(Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC');return()=>{live.current=false;sequence.current++;controller.current?.abort();};},[]);
  const rows=useMemo(()=>page?historySearch(page.items,search):[],[page,search]);
  const labels=useMemo(()=>createHistoryDateFormatter(localTime?zone:'UTC'),[localTime,zone]);
@@ -19,11 +34,11 @@ export function ConsumerHistory({initial,initialFilters=EMPTY_HISTORY_FILTERS}:{
   if(controller.current)return;const c=new AbortController(),s=++sequence.current;controller.current=c;retry.current=a;setBusy(true);setError('');setPage(null);setLogin(false);const timer=setTimeout(()=>c.abort(),14000);
   try{
    const response=await fetch('/api/consumer/taps/history?'+historyParams(a.q,a.cursor),{cache:'no-store',credentials:'same-origin',signal:c.signal});
-   if(!response.ok){if(response.status===401){setLogin(true);setBrands([]);retry.current=null;throw Error('Tu sesión terminó. Iniciá sesión para consultar sólo tus lecturas.');}if(response.status===409){retry.current=null;throw Error('La navegación venció o cambió la cuenta. Usá Consultar historial para empezar de nuevo.');}throw Error(response.status===400?'Revisá la referencia y las fechas: se necesitan ambas y un período de hasta 366 días.':'No se confirmó la página. Reintentá; no se muestra información anterior como actual.');}
+   if(!response.ok){if(!live.current||sequence.current!==s)return;if(response.status===401){setLogin(true);setBrands([]);retry.current=null;throw Error('Tu sesión terminó. Iniciá sesión para consultar sólo tus lecturas.');}if(response.status===409){retry.current=null;throw Error('La navegación venció o cambió la cuenta. Usá Consultar historial para empezar de nuevo.');}throw Error(response.status===400?'Revisá la referencia y las fechas: se necesitan ambas y un período de hasta 366 días.':'No se confirmó la página. Reintentá; no se muestra información anterior como actual.');}
    const next=parseHistory(await boundedHistoryJson(response),{query:a.q,page:a.page,account:a.account,cutoff:a.cutoff});
    if(live.current&&sequence.current===s){setPage(next);setBrands(next.brands);setFilters(next.query);setQueryOpen(false);setAdvanced(false);setTrail(previous=>a.cursor?[...previous.slice(0,a.page-1),next.navigation.cursor]:[next.navigation.cursor]);requestAnimationFrame(()=>{heading.current?.focus({preventScroll:true});if(window.matchMedia('(max-width:700px)').matches)heading.current?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});});}
   }catch(e){if(live.current&&sequence.current===s)setError(e instanceof Error?e.message:'Historial no disponible.');}
-  finally{clearTimeout(timer);if(controller.current===c)controller.current=null;if(live.current)setBusy(false);}
+  finally{clearTimeout(timer);if(controller.current===c)controller.current=null;if(live.current&&sequence.current===s)setBusy(false);}
  }
  const newQuery=()=>load({q:filters,cursor:null,page:1});
  function move(next:boolean){if(!page)return;const number=page.navigation.page+(next?1:-1),cursor=next?page.navigation.nextCursor:trail[number-1];if(number<1||!cursor)return;void load({q:page.query,page:number,cursor,cutoff:page.navigation.cutoff,account:page.accountKey});}
