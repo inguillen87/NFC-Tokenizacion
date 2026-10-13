@@ -87,6 +87,22 @@ export async function fetchConsumerPath(path: string): Promise<(JsonMap & { item
   return Object.hasOwn(payload, "item") ? { ...payload, item: jsonRecord(payload.item) } : payload;
 }
 
+
+export type ConsumerPrivacyPathRead =
+  | { status: "ready"; data: Record<string, unknown> }
+  | { status: "unauthenticated" | "forbidden" | "unavailable" };
+
+/** Preserve denied access separately from unavailable data in the permissions view. */
+export async function readConsumerPrivacyPath(path: "privacy" | "brands"): Promise<ConsumerPrivacyPathRead> {
+  const result = await readJson(`/consumer/${path}`);
+  if (result.status === "http-error") {
+    return { status: result.httpStatus === 401 ? "unauthenticated" : result.httpStatus === 403 ? "forbidden" : "unavailable" };
+  }
+  if (result.status !== "ready") return { status: "unavailable" };
+  const data = jsonRecord(result.data);
+  return data?.ok === true ? { status: "ready", data } : { status: "unavailable" };
+}
+
 export async function fetchMarketplacePath(path: string) {
   return fetchJson(`/marketplace/${path}`);
 }

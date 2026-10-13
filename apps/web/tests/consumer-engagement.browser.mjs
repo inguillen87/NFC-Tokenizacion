@@ -36,7 +36,7 @@ async function isolate(width,theme,scenario,authenticated=true){
  let intentionalSubmission=false;
  await page.route('**/*',route=>{
   const request=route.request(),url=new URL(request.url());
-  if(scenario==='sommelier-failure'&&url.pathname==='/api/cognitive-ai'&&request.method()==='POST'){
+  if(scenario==='sommelier-failure'&&url.pathname==='/api/sommelier/chat'&&request.method()==='POST'){
    report.syntheticAiRequests.push({width,theme,intentionalSubmission,payload:request.postDataJSON()});
    return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false,error:'synthetic_local_unavailable'})});
   }
@@ -173,7 +173,7 @@ try{
  const apiRows=await auditRows();report.apiAudit={requests:apiRows.length,blocked:apiRows.filter(row=>row.blocked),deniedRequests:apiRows.filter(row=>row.scenario==='denied')};
  check(!apiRows.some(row=>row.scenario==='denied'&&row.path.startsWith('/consumer/')&&row.path!=='/consumer/session'),'denied session makes no private API calls');
  check(report.apiAudit.blocked.length===0,'server attempts no provider requests or writes');
- check(report.syntheticAiRequests.length===1&&report.syntheticAiRequests[0].intentionalSubmission&&report.syntheticAiRequests[0].payload.tone==='sommelier-chat','exactly one explicit synthetic AI request is fulfilled with 503 before Next/provider transport');
+ check(report.syntheticAiRequests.length===1&&report.syntheticAiRequests[0].intentionalSubmission&&report.syntheticAiRequests[0].payload.mode==='consumer'&&report.syntheticAiRequests[0].payload.locale==='es-AR'&&!Object.hasOwn(report.syntheticAiRequests[0].payload,'eventId')&&!Object.hasOwn(report.syntheticAiRequests[0].payload,'productContext'),'exactly one explicit synthetic AI request is fulfilled with 503 before Next/provider transport');
  check(report.blockedBrowserWrites.length===8&&report.blockedBrowserWrites.every(row=>row.intentionalSubmission&&row.path==='/api/consumer/experiences'&&row.method==='POST'),'only eight explicit synthetic submit attempts occur, all aborted before transport');
  check(report.geolocationCalls===0,'no automatic GPS calls');
  check(report.pageErrors.length===0,'zero application runtime errors');

@@ -43,7 +43,7 @@ const product = (overrides = {}) => ({ product_name: "Producto real", bid: "LOTE
 
 test("wallet opens the latest associated reading privately instead of an unsigned public certificate", () => {
   const { html, links } = render([product({ latest_tap_event_id: "703", first_tap_event_id: "702" })]);
-  assert.match(html, /Abrir lectura/);
+  assert.match(html, /Ver lectura/);
   assert.equal(links.length, 1);
   assert.equal(links[0].href, "/me/taps/703");
   assert.equal(links[0].prefetch, false);
@@ -66,7 +66,7 @@ test("wallet preserves canonical bigint IDs and suppresses unsafe, malformed and
   for (const id of [null, undefined, "", "01", "+1", " 703 ", "703\n", "9223372036854775808", Number.MAX_SAFE_INTEGER + 1, "/me/privacy", "1?share=private"]) {
     const { html, links } = render([product({ latest_tap_event_id: id })]);
     assert.equal(links.length, 0, String(id));
-    assert.doesNotMatch(html, /Abrir lectura|href="\/me\/taps\/|href="\/certificado\//);
+    assert.doesNotMatch(html, /Ver lectura|href="\/me\/taps\/|href="\/certificado\//);
   }
 });
 
@@ -74,7 +74,7 @@ test("private reading access does not enable transfer or alter claimed ownership
   const { html, links } = render([product({ latest_tap_event_id: 703, ownership_record_status: "claimed" })]);
   assert.match(html, /Transferencias deshabilitadas/);
   assert.match(html, /receipt confirmado por el backend/);
-  assert.match(html, /Propietario/);
+  assert.match(html, /Titularidad registrada/);
   assert.equal(links[0].href, "/me/taps/703");
   assert.doesNotMatch(html, /Simular transferencia|Confirmar|Simulación local completada/);
   assert.match(clientSource, /if \(!transferDemoEnabled\)/);
