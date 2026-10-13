@@ -8,13 +8,20 @@ import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtim
 import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../lib/bounded-request-body";
 import { insertConsumerRewardClaim } from "../../../../../lib/consumer-reward-queries";
+import { enforceConsumerMutationOrigin } from "../../../../../lib/consumer-mutation-origin";
 
 export async function POST(req: Request, { params }: { params: Promise<{ rewardId: string }> }) {
+  const crossSite = enforceConsumerMutationOrigin(req);
+  if (crossSite) return crossSite;
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
   const limited = await enforceCriticalRateLimit(req, { rateClass: "public_write", tenantId: "consumer", subjectId: `consumer:${consumer.id}:reward-claim` });
   if (limited) return limited;
-  const { rewardId } = await params;
+  const { rewardId: suppliedRewardId } = await params;
+  if (typeof suppliedRewardId !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(suppliedRewardId)) {
+    return json({ ok: false, error: "invalid_reward_id" }, 400);
+  }
+  const rewardId = suppliedRewardId;
   let body: Record<string, unknown>;
   try {
     body = await readBoundedJsonBody<Record<string, unknown>>(req, 8 * 1024);
@@ -22,6 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ rewardI
     const tooLarge = error instanceof RequestBodyTooLargeError;
     return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ ok: false, error: "invalid_body" }, 400);
   await ensureConsumerPortalSchema();
   const idem = `consumer-reward-claim:${consumer.id}:${rewardId}`;
   const code = `NXR-${randomUUID().split('-')[0].toUpperCase()}`;

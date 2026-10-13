@@ -19,6 +19,7 @@ import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "
 import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
 import { runConsumerRewardPostgresQa } from "../tests/helpers/consumer-reward-postgres-harness.mjs";
 import { runConsumerRewardsReadPostgresQa } from "../tests/helpers/consumer-rewards-read-postgres-harness.mjs";
+import { runConsumerRewardHttpPostgresQa, REWARD_HTTP_POSTGRES_EXPECTED } from "../tests/helpers/consumer-reward-http-postgres-harness.mjs";
 import { runAdminRewardPostgresQa } from "../tests/helpers/admin-reward-postgres-harness.mjs";
 import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuration-postgres-harness.mjs";
 import { runLoyaltyCurrentStatePostgresQa } from '../tests/helpers/loyalty-current-state-postgres-harness.mjs';
@@ -190,6 +191,17 @@ async function run() {
   assert.ok(rewardRead.ok && rewardRead.cleanup.schemaDropped && rewardRead.cleanup.connectionsClosed, "Consumer reward read SQL regression or cleanup failed");
   assert.equal(rewardRead.checks.length, 14);
   assert.ok(rewardRead.checks.every(check => check.ok));
+  const rewardHttp = await runConsumerRewardHttpPostgresQa({ connect: connectCurrentTagQa });
+  assert.ok(rewardHttp.ok && rewardHttp.cleanup.schemaDropped && rewardHttp.cleanup.connectionsClosed, "Consumer reward HTTP SQL regression or cleanup failed");
+  assert.equal(rewardHttp.claimChecks.length, REWARD_HTTP_POSTGRES_EXPECTED.claimChecks);
+  assert.equal(rewardHttp.adminChecks.length, REWARD_HTTP_POSTGRES_EXPECTED.adminChecks);
+  assert.ok([...rewardHttp.claimChecks, ...rewardHttp.adminChecks].every(check => check.ok));
+  assert.equal(rewardHttp.lockObservations.length, REWARD_HTTP_POSTGRES_EXPECTED.lockObservations);
+  assert.ok(rewardHttp.lockObservations.every(lock => lock.waitingBackends === 2 && lock.waitEventType === "Lock" && lock.blockedByOwnedClaimLock));
+  assert.equal(rewardHttp.lockObservations.filter(lock => lock.wallClockExpiryReached && lock.startedBeforeExpiry).length, REWARD_HTTP_POSTGRES_EXPECTED.wallClockExpiryObservations);
+  assert.ok(rewardHttp.rawPrecisionObservation?.rawTextChanged && rewardHttp.rawPrecisionObservation?.parsedMillisecondUnchanged && rewardHttp.rawPrecisionObservation?.changedMicroseconds === 1);
+  assert.ok(rewardHttp.sqlExecutions.claim > 0 && rewardHttp.sqlExecutions.admin > 0 && rewardHttp.sqlCopiedIntoHarness === false);
+  assert.equal(rewardHttp.sources.length, 7);
   const adminRewardConfiguration = await runAdminRewardPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(adminRewardConfiguration.ok && adminRewardConfiguration.schemaCleaned, "Admin reward configuration SQL regression or cleanup failed");
   const tenantConfiguration = await runConfigurationPostgresQa(connectCurrentTagQa);
@@ -212,7 +224,7 @@ async function run() {
   assert.ok(tenantMarketplaceCatalog.checks.every(check => check.passed));
   assert.equal(tenantMarketplaceCatalog.lockObservations.length, 1);
   assert.ok(tenantMarketplaceCatalog.lockObservations.every(observation => observation.observed && observation.waitEventType === 'Lock'));
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, rewardRead, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, rewardRead, rewardHttp, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 

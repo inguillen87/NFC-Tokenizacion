@@ -5,6 +5,7 @@ import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
 import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
 import { json } from "../../../../../lib/http";
+import { consumerRewardClaimExpiresAt } from "../../../../../lib/consumer-rewards-read-model";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -21,8 +22,8 @@ function maskPhone(phone: string | null | undefined) {
 
 function formatClaim(row: Record<string, any>) {
   const metadata = row.metadata_json || {};
-  const expiresAt = metadata.expires_at || row.expires_at || null;
-  const expired = expiresAt ? new Date(expiresAt).getTime() < Date.now() : false;
+  const expiresAt = consumerRewardClaimExpiresAt(row.expires_at_value ?? metadata.expires_at, row.created_at);
+  const expired = !expiresAt || Date.parse(expiresAt) <= Date.now();
   return {
     id: row.id,
     redemption_code: row.redemption_code,
@@ -63,7 +64,8 @@ async function getClaim(code: string, forcedTenantSlug = "") {
       con.email,
       con.phone,
       t.slug AS tenant_slug,
-      COALESCE((c.metadata_json->>'expires_at')::timestamptz, c.created_at + interval '48 hours') AS expires_at
+      c.created_at::text AS claimed_at_text,
+      c.metadata_json->'expires_at' AS expires_at_value
     FROM consumer_reward_claims c
     JOIN rewards r ON r.id = c.reward_id
     JOIN consumers con ON con.id = c.consumer_id
@@ -109,6 +111,25 @@ export async function POST(req: Request) {
       return json({ ok: false, reason: "redemption_not_claimed", redemption: formatted }, 409);
     }
     const rows = await sql/*sql*/`
+      WITH locked AS MATERIALIZED (
+        SELECT id, created_at::text AS claimed_at_text,
+          metadata_json->'expires_at' AS expires_at_value
+        FROM consumer_reward_claims
+        WHERE id = ${claim.id}
+          AND tenant_id = ${claim.tenant_id}
+          AND consumer_id = ${claim.consumer_id}
+          AND reward_id = ${claim.reward_id}
+          AND redemption_code = ${code}
+          AND status = 'claimed'
+          AND (${forcedTenantSlug} = '' OR tenant_id = (SELECT id FROM tenants WHERE slug = ${forcedTenantSlug} LIMIT 1))
+        FOR UPDATE
+      ),
+      eligible AS MATERIALIZED (
+        SELECT id FROM locked
+        WHERE ${formatted.expires_at}::timestamptz > clock_timestamp()
+          AND claimed_at_text = ${claim.claimed_at_text}
+          AND COALESCE(expires_at_value, 'null'::jsonb) = ${JSON.stringify(claim.expires_at_value ?? null)}::jsonb
+      )
       UPDATE consumer_reward_claims
       SET status = 'redeemed',
           metadata_json = metadata_json || ${JSON.stringify({
@@ -117,10 +138,10 @@ export async function POST(req: Request) {
             validation_source: "admin_rewards_redemptions_validate",
           })}::jsonb,
           updated_at = now()
-      WHERE id = ${claim.id}
-        AND status = 'claimed'
-        AND (${forcedTenantSlug} = '' OR tenant_id = (SELECT id FROM tenants WHERE slug = ${forcedTenantSlug} LIMIT 1))
-      RETURNING *
+      FROM eligible
+      WHERE consumer_reward_claims.id = eligible.id
+        AND consumer_reward_claims.status = 'claimed'
+      RETURNING consumer_reward_claims.*
     `;
     if (!rows[0]) {
       const current = await getClaim(code, forcedTenantSlug);
