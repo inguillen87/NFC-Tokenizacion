@@ -99,7 +99,7 @@ function page(options = {}) {
   const source = readFileSync(new URL("../src/app/me/brands/page.tsx", import.meta.url), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const overrides = {
-    "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
+    "next/link": { __esModule: true, default: ({ children, prefetch, ...props }) => React.createElement("a", props, children) },
     "../_components/consumer-api": {
       buildConsumerNextPath: (path, params) => { const query = new URLSearchParams(); for (const [key, value] of Object.entries(params)) for (const entry of Array.isArray(value) ? value : [value]) if (entry) query.append(key, entry); return query.size ? `${path}?${query}` : path; },
       readConsumerSession: async next => { calls.push(["session", next]); return { status: options.session || "ready" }; },
@@ -149,6 +149,34 @@ test("SSR preserves source-specific recovery and reported products rather than f
 test("SSR session uncertainty preserves the full return query and stops every account/catalog read", async () => {
   const subject = page({ session: "unavailable" }); await subject.render({ tenant: ["brand-a", "brand-b"], fromTap: "1", eventId: "900001" });
   assert.deepEqual(subject.calls, [["session", "/me/brands?tenant=brand-a&tenant=brand-b&fromTap=1&eventId=900001"]]);
+});
+
+test("missing and empty memberships guide an explicit new TAP without starting enrollment or borrowing another brand", async () => {
+  const empty = await page({ brands: { ok: true, items: [] } }).render();
+  const missing = await page().render({ tenant: "foreign" });
+  for (const html of [empty, missing]) {
+    assert.match(html, /volvé a acercar el teléfono a la etiqueta del producto/);
+    assert.match(html, /Vincularme con la empresa.*Inscribirme en beneficios.*sólo si la marca habilita esas opciones/);
+    assert.match(html, /href="\/me\/products">Ver mis productos/);
+    assert.doesNotMatch(html, /<form|type="submit"|href="[^"]*(?:fromTap|eventId)|Inscripción confirmada|Vínculo confirmado/);
+  }
+  assert.doesNotMatch(missing, /data-testid="consumer-brand-card"/);
+  const invalid = await page().render({ tenant: ["brand-a", "brand-b"] });
+  assert.doesNotMatch(invalid, /volvé a acercar el teléfono|href="\/me\/products"/);
+  assert.match(invalid, /Ver todas mis marcas/);
+});
+
+test("relationship guidance leaves unavailable sources and paused or blocked memberships as consultation states", async () => {
+  const failed = await page({ brands: null }).render();
+  assert.match(failed, /No pudimos cargar tus membresías/);
+  assert.doesNotMatch(failed, /volvé a acercar el teléfono/);
+  for (const status of ["paused", "blocked"]) {
+    const subject = page({ brands: { ok: true, items: [brand("brand-a", { status })] } });
+    const html = await subject.render({ tenant: "brand-a" });
+    assert.match(html, new RegExp(model.membershipLabel(status)));
+    assert.doesNotMatch(html, /Reactivar|Inscribirme ahora|volvé a acercar el teléfono/);
+    assert.deepEqual(subject.calls, [["session", "/me/brands?tenant=brand-a"], ["private", "brands"], ["private", "products"], ["private", "taps"], ["catalog", "products"]]);
+  }
 });
 
 test("SSR gives a bounded consultation label and readable reading outcomes without rendering technical codes or malformed fields", async () => {

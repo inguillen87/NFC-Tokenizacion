@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Check, ChevronDown, Copy, Gift, Search, Ticket } from "lucide-react";
 import { REWARD_STATE_LABELS, rewardAvailabilityNotice, rewardDateLabel, rewardTenant, type ConsumerReward } from "../_components/consumer-rewards-model";
 import { readConsumerReservation, reserveConsumerReward, rewardReservationQuote, sameReservationQuote, type RewardReservationLookup, type RewardReservationQuote } from "../_components/consumer-reward-reservation";
+import { rewardNextActions } from "../_components/consumer-reward-next-actions";
 import styles from "./rewards.module.css";
 
 function VoucherCode({ code }: { code: string }) {
@@ -139,6 +140,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
       : <div className={styles.cards}>{visible.map(item => {
         const quote = rewardReservationQuote(item);
         const availability = !item.hasClaim && !quote ? rewardAvailabilityNotice(item) : null;
+        const nextActions = availability ? rewardNextActions(item, { busy, hasQuote: Boolean(quote) }) : null;
         const confirming = active?.phase === "confirm" && active.quote.rewardId === item.id && active.quote.tenant === item.tenant;
         return <article key={item.key} id={item.hasClaim ? "voucher-" + item.key : undefined} className={styles.rewardCard} data-selected={selectedKey === item.key} data-reward-state={item.state}>
         <div className={styles.cardTop}><span className={styles.cardIcon}>{item.hasClaim ? <Ticket aria-hidden="true" /> : <Gift aria-hidden="true" />}</span><span className={styles.badge} data-state={item.state}>{REWARD_STATE_LABELS[item.state]}</span></div>
@@ -162,7 +164,11 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
           {item.description ? <p>{item.description}</p> : null}
           {item.hasClaim ? <><dl><dt>Vencimiento</dt><dd>{rewardDateLabel(item.expiresAt)}</dd><dt>Estado registrado</dt><dd>{REWARD_STATE_LABELS[item.state]}</dd></dl>{item.code ? <VoucherCode code={item.code} /> : <p>{item.state === "redeemed" ? "Este voucher ya figura como canjeado. Se conserva en tu historial." : item.state === "cancelled" || item.state === "expired" ? "Este voucher ya no se presenta como válido para canjear." : "No hay un código vigente confirmado para mostrar. Consultá con la marca antes de usarlo."}</p>}</>
             : quote ? <p>Podés solicitar la reserva con puntos de este programa. Revisá el costo y confirmá antes de continuar.</p>
-              : availability ? <><p><strong>{availability.title}</strong></p><ul className={styles.requirements}>{availability.messages.map(message => <li key={message}>{message}</li>)}</ul></> : null}
+              : availability ? <><p><strong>{availability.title}</strong></p><ul className={styles.requirements}>{availability.messages.map(message => <li key={message}>{message}</li>)}</ul>
+                {nextActions ? <div className={styles.nextSteps} data-testid="reward-next-steps"><h4>Cómo continuar</h4>
+                  {nextActions.guidance.map(message => <p key={message}>{message}</p>)}
+                  <Link className={styles.copyButton} href={nextActions.href} prefetch={false} aria-label={`${nextActions.label} para ${item.title}`}>{nextActions.label}<ArrowUpRight aria-hidden="true" /></Link>
+                </div> : null}</> : null}
         </div></details>
       </article>; })}</div>}
   </section>;

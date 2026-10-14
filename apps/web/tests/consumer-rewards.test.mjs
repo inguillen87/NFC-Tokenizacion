@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
+import { rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -38,10 +39,11 @@ const api = compile(read("_components/consumer-api.ts"), {
 });
 const css = Object.fromEntries([...cssSource.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => [match[1], match[1]]));
 const shared = {
-  "next/link": ({ children, ...props }) => React.createElement("a", props, children),
+  "next/link": ({ children, prefetch, ...props }) => React.createElement("a", props, children),
   "./rewards.module.css": css,
   "../_components/consumer-rewards-model": model,
   "../_components/consumer-reward-reservation": reservation,
+  "../_components/consumer-reward-next-actions": { rewardNextActions },
 };
 const { ConsumerRewardsClient } = compile(clientSource, shared);
 const NOW = "2026-09-08T12:00:00Z";
@@ -441,6 +443,88 @@ const reservableReward = (overrides = {}) => reward({
   catalog_state: "reported", claim_id: null, claim_status: null, claim_expires_at: null,
   redemption_code: null, points_spent: null, can_claim: true,
   claimIntent: "portal-first-reservation.v1", ...overrides,
+});
+
+test("relationship guidance opens the exact canonical brand without widening scope or inferring legacy identifiers", () => {
+  for (const tenant of ["brand-a", "brand_a", "brand.a", "a".repeat(120)]) {
+    const item = readItem(reward({ tenant_slug: tenant, claim_unavailable_reasons: ["brand_connection_required"] }));
+    const action = rewardNextActions(item, { busy: false, hasQuote: false });
+    assert.ok(action);
+    const url = new URL(action.href, "https://portal.invalid");
+    assert.equal(url.origin, "https://portal.invalid");
+    assert.equal(url.pathname, "/me/brands");
+    assert.deepEqual([...url.searchParams.entries()], [["tenant", tenant]]);
+    assert.equal(url.hash, "");
+  }
+  const item = readItem(reward({ claim_unavailable_reasons: ["brand_connection_required"] }));
+  for (const tenant of ["Balmec-AR", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", " Brand-A ", "brand/a", "brand?tenant=other", "brand#other", "a".repeat(121), null]) {
+    assert.equal(rewardNextActions({ ...item, tenant }, { busy: false, hasQuote: false }), null);
+  }
+});
+
+test("connection and program participation have distinct advice but share a single consultation action", () => {
+  const reasons = Object.freeze(["program_participation_required", "brand_connection_required", "brand_connection_required"]);
+  const item = readItem(reward({ claim_unavailable_reasons: reasons }));
+  const action = rewardNextActions(item, { busy: false, hasQuote: false });
+  assert.equal(action.guidance.length, 2);
+  assert.match(action.guidance[0], /vínculo pausado o bloqueado puede necesitar revisión/);
+  assert.match(action.guidance[1], /Inscribirme en beneficios.*sólo si la marca habilita esa opción/);
+  assert.deepEqual(reasons, ["program_participation_required", "brand_connection_required", "brand_connection_required"]);
+  const html = renderClient([item]);
+  const detail = html.match(/<details\b[\s\S]*?<\/details>/)?.[0];
+  assert.ok(detail);
+  assert.equal((detail.match(/href="\/me\/brands\?tenant=demobodega"/g) || []).length, 1);
+  assert.match(detail, /Ver mi relación con Bodega Balmec/);
+  assert.doesNotMatch(html.slice(0, html.indexOf("<details")), /Cómo continuar|Ver mi relación/);
+  assert.doesNotMatch(html, /href="[^"]*(?:fromTap|eventId|freshToken)|Reservar beneficio/);
+});
+
+test("every reservation priority suppresses navigation to a new relationship step", () => {
+  const item = readItem(reward({ claim_unavailable_reasons: ["brand_connection_required", "program_participation_required"] }));
+  assert.equal(rewardNextActions(item, { busy: true, hasQuote: false }), null);
+  assert.equal(rewardNextActions(item, { busy: false, hasQuote: true }), null);
+  for (const state of ["expired", "out_of_stock", "inactive", "upcoming", "unknown"]) {
+    const unavailable = { ...item, state };
+    assert.equal(rewardNextActions(unavailable, { busy: false, hasQuote: false }), null);
+    assert.doesNotMatch(renderClient([unavailable]), /reward-next-steps|Ver mi relación/);
+  }
+  for (const overrides of [{ hasClaim: true }, { reservationNeedsRefresh: true }, { reservation: { claimIntent: "portal-first-reservation.v1", pointsCost: 100 } }]) {
+    assert.equal(rewardNextActions({ ...item, ...overrides }, { busy: false, hasQuote: false }), null);
+  }
+});
+
+test("legacy, unsupported and malformed requirements never create an enrollment or age-verification shortcut", () => {
+  const item = readItem(reward());
+  for (const reasons of [undefined, [], ["age_verification_required"], ["brand_conditions_review"], ["account_review"], ["brand_connection_required", "unknown_requirement"], new Array(2), [null], new Array(8).fill("brand_connection_required")]) {
+    const candidate = { ...item, claimUnavailableReasons: reasons };
+    assert.equal(rewardNextActions(candidate, { busy: false, hasQuote: false }), null);
+    const parsed = readItem(reward({ claim_unavailable_reasons: reasons }));
+    assert.doesNotMatch(renderClient([parsed]), /reward-next-steps|Ver mi relación|Verificar edad ahora|Inscribirme ahora/);
+  }
+});
+
+test("authoritative quotes, incomplete quote recovery and terminal voucher history retain their existing paths", () => {
+  const reasons = ["brand_connection_required", "program_participation_required"];
+  const complete = readItem(reservableReward({ claim_unavailable_reasons: reasons }));
+  const quotedHtml = renderClient([complete]);
+  assert.match(quotedHtml, /Reservar beneficio/);
+  assert.doesNotMatch(quotedHtml, /reward-next-steps|Ver mi relación/);
+  const incomplete = readItem(reservableReward({ program_name: null, claim_unavailable_reasons: reasons }));
+  const incompleteHtml = renderClient([incomplete]);
+  assert.match(incompleteHtml, /Volver a cargar la información/);
+  assert.doesNotMatch(incompleteHtml, /reward-next-steps|Ver mi relación/);
+  for (const claim_status of ["claimed", "redeemed", "cancelled", "expired"]) {
+    const voucher = readItem(claim({ claim_status, claim_unavailable_reasons: reasons }));
+    assert.doesNotMatch(renderClient([voucher]), /reward-next-steps|Ver mi relación/);
+  }
+});
+
+test("relationship navigation uses the tenant and safely renders a brand name independently of its URL", () => {
+  const item = readItem(reward({ tenant_name: 'Marca <script> & "otra"', claim_unavailable_reasons: ["program_participation_required"] }));
+  const html = renderClient([item]);
+  assert.match(html, /href="\/me\/brands\?tenant=demobodega"/);
+  assert.match(html, /Ver mi relación con Marca &lt;script&gt; &amp; &quot;otra&quot;/);
+  assert.doesNotMatch(html, /<script>|href="[^"]*(?:script|otra)/);
 });
 
 test("private availability reasons explain all reported requirements without adding reservation authority", () => {
