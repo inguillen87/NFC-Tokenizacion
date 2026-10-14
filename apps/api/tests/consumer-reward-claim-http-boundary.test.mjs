@@ -41,7 +41,7 @@ function harness(options = {}) {
       calls.claims.push(input);
       assert.equal(_query, deps.db.sqlSerializable);
       if (options.writerError) throw Object.assign(Error("owned writer failure"), { code: options.serializationConflict ? "40001" : "XX000" });
-      if (options.existing || inserted) return [];
+      if (options.denied || options.existing || inserted) return [];
       inserted = true; receipt.idempotency_key = input.idempotencyKey; return [receipt];
     }, readOwnPortalRewardClaimUnderLock: async (_query, input) => {
       assert.equal(_query, deps.db.sqlSerializable); calls.readbacks.push(input);
@@ -156,4 +156,15 @@ test("serialization conflict performs one readback and never retries the mutatio
   const h = harness({ writerError: true, serializationConflict: true, existing: { status: "claimed" } }), response = await h.post();
   assert.equal(response.status, 200); assert.equal((await response.json()).duplicate, true);
   assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.readbacks.length, 1);
+});
+
+test("writer denial has one generic response without querying private reward price, stock, existence or balance", async () => {
+  const expectedBody = { ok: false, error: "reward_claim_conflict", refresh_required: true };
+  for (const rewardId of [REWARD, OTHER]) for (const currentCost of [0, 40, 70]) for (const expectedPointsCost of [0, 40, 70]) {
+    const h = harness({ denied: true, currentCost }), response = await h.post({ expectedPointsCost }, {}, rewardId);
+    assert.equal(response.status, 409); assert.deepEqual(await response.json(), expectedBody);
+    assert.equal(h.calls.claims.length, 1); assert.equal(h.calls.readbacks.length, 1);
+    assert.deepEqual(h.calls.readbacks[0], { consumerId: OWNER, rewardId });
+    assert.equal(h.calls.queries.length, 0, "No post-denial eligibility SELECT may disclose an unowned reward");
+  }
 });
