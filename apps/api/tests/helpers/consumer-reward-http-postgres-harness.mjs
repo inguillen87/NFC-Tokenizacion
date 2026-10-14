@@ -5,7 +5,7 @@ import ts from "typescript";
 
 const QA_DATABASE = /^(?:nexid_e2e[a-z0-9_]*|codex_qa_[a-z0-9_]+)$/;
 const OWN_SCHEMA = /^consumer_reward_http_qa_[0-9a-f]{32}$/;
-export const REWARD_HTTP_POSTGRES_EXPECTED = Object.freeze({ claimChecks: 21, adminChecks: 16, lockObservations: 9, wallClockExpiryObservations: 1, portalLockObservations: 4 });
+export const REWARD_HTTP_POSTGRES_EXPECTED = Object.freeze({ claimChecks: 22, adminChecks: 16, lockObservations: 9, wallClockExpiryObservations: 1, portalLockObservations: 4 });
 function identifier(value) { assert.match(value, OWN_SCHEMA, "Only this harness generated schema may be mutated"); return '"' + value + '"'; }
 function queryAdapter(client, mode = "Date", observe) {
   return async (strings, ...values) => {
@@ -280,8 +280,21 @@ async function portalRead(f) {
     });
     await check("claimChecks", "portal_confirmed_price_mismatch_never_debits", async () => {
       const f = await fixture(), before = await snapshot(f), response = await claimHttp(f).post({ expectedPointsCost: 39 });
-      assert.equal(response.status, 409); assert.equal((await response.json()).error, "reward_price_changed");
+      assert.equal(response.status, 409); assert.deepEqual(await response.json(), { ok: false, error: "reward_claim_conflict", refresh_required: true });
       assert.deepEqual(await snapshot(f), before);
+    });
+    await check("claimChecks", "portal_denial_does_not_disclose_private_price_stock_or_existence", async () => {
+      const f = await fixture();
+      await admin.query("UPDATE " + s + ".rewards SET status='draft',points_cost=70,stock_remaining=0 WHERE id=$1", [f.otherRewardId]);
+      const before = await snapshot(f), expected = { ok: false, error: "reward_claim_conflict", refresh_required: true };
+      for (const [actor, rewardId] of [[{ ...f, consumerId: f.otherConsumerId }, f.rewardId], [f, f.otherRewardId], [f, randomUUID()]]) {
+        for (const expectedPointsCost of [0, 40, 70]) {
+          const h = claimHttp(actor), response = await h.post({ expectedPointsCost }, {}, rewardId);
+          assert.equal(response.status, 409); assert.deepEqual(await response.json(), expected);
+          assert.equal(h.calls.sql, 2, "Only authoritative writer and scoped own-receipt readback execute");
+          assert.deepEqual(await snapshot(f), before);
+        }
+      }
     });
     await check("claimChecks", "portal_requires_existing_active_crm_without_implicit_join", async () => {
       for (const status of [null, "paused", "blocked", "left"]) {

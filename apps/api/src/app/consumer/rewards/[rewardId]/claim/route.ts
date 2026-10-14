@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { randomUUID } from "node:crypto";
 import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { json } from "../../../../../lib/http";
-import { sql, sqlSerializable } from "../../../../../lib/db";
+import { sqlSerializable } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
 import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../lib/bounded-request-body";
@@ -61,24 +61,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ rewardI
     return json({ ok: false, error: "reward_claim_unavailable", refresh_required: true }, status);
   }
   if (serializationConflict) return json({ ok: false, error: "reward_claim_conflict", refresh_required: true }, 409);
-  let eligibility: Array<Record<string, unknown>>;
-  try {
-    eligibility = await sql/*sql*/`
-    SELECT reward.id, reward.points_cost, reward.stock_remaining, member.points_balance
-    FROM rewards reward
-    LEFT JOIN loyalty_members member
-      ON member.consumer_id = ${consumer.id}
-     AND member.tenant_id = reward.tenant_id
-     AND member.program_id = reward.program_id
-    WHERE reward.id = ${rewardId}
-    LIMIT 1
-    `;
-  } catch {
-    return json({ ok: false, error: "reward_claim_unavailable", refresh_required: true }, 503);
-  }
-  if (!eligibility[0]) return json({ ok: false, error: "reward_not_available" }, 404);
-  if (Number(eligibility[0].points_cost) !== expectedPointsCost) return json({ ok: false, error: "reward_price_changed", refresh_required: true }, 409);
-  if (Number(eligibility[0].points_balance || 0) < Number(eligibility[0].points_cost || 0)) return json({ ok: false, error: "insufficient_points" }, 409);
-  if (eligibility[0].stock_remaining !== null && Number(eligibility[0].stock_remaining) <= 0) return json({ ok: false, error: "out_of_stock" }, 409);
-  return json({ ok: false, error: "reward_claim_conflict" }, 409);
+  // The authoritative writer and own receipt readback found no permitted result.
+  // Do not inspect an unscoped reward for price, stock, existence or balance hints.
+  return json({ ok: false, error: "reward_claim_conflict", refresh_required: true }, 409);
 }
