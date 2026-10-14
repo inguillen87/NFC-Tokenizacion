@@ -96,8 +96,9 @@ test("physical TAP browser QA checks themes, filters, pending state and retained
     import React from 'react';import{createRoot}from'react-dom/client';
     import{PhysicalTapsCommandCenter}from'./physical-taps-command-center';
     const params=new URLSearchParams(location.search);
-    const rows=(params.has('empty')?[]:['closed','opened']).map((sealState,index)=>({eventId:'fixture-'+index,tenantSlug:'fixture-tenant',bid:'LOT-FIXTURE',productName:'Producto de prueba local',uidMasked:'TEST****0'+index,messageValid:true,sealState,reportedState:sealState==='closed'?'VALID_CLOSED':'VALID_OPENED',readCounter:2+index,occurredAt:{utc:'2026-09-05T12:00:00Z',timezone:'America/Argentina/Buenos_Aires'},location:{city:'Zona de prueba',region:'',country:'',lat:null,lng:null,source:'none',precision:'none'},evidence:{kind:'physical_nfc_tt_evidenced',ttStatusReported:true}}));
-    const result=params.has('availability')?{availability:params.get('availability'),payload:null,detail:'HTTP_403',checkedAt:'2026-09-05T12:05:00Z'}:{availability:'ready',detail:'offline fixture only',checkedAt:'2026-09-05T12:05:00Z',payload:{scope:{tenant:'fixture-tenant',range:'24h',bid:params.get('bid')||'all',source:'real'},summary:{total:rows.length,closed:rows.length?1:0,opened:rows.length?1:0,distinctUnits:rows.length,latestAt:rows.length?'2026-09-05T12:00:00Z':null},rows}};
+    const states=params.has('empty')?[]:params.get('state')==='closed'?['closed']:params.get('state')==='opened'?['opened']:['closed','opened'];
+    const rows=states.map((sealState,index)=>({eventId:'fixture-'+index,tenantSlug:'fixture-tenant',bid:'LOT-FIXTURE',productName:'Producto de prueba local',uidMasked:'TEST****0'+index,messageValid:true,sealState,reportedState:sealState==='closed'?'VALID_CLOSED':'VALID_OPENED',readCounter:2+index,occurredAt:{utc:'2026-09-05T12:00:00Z',timezone:'America/Argentina/Buenos_Aires'},location:{city:'Zona de prueba',region:'',country:'',lat:null,lng:null,source:'none',precision:'none'},evidence:{kind:'physical_nfc_tt_evidenced',ttStatusReported:true}}));
+    const result=params.has('availability')?{availability:params.get('availability'),payload:null,detail:'HTTP_403',checkedAt:'2026-09-05T12:05:00Z'}:{availability:'ready',detail:'offline fixture only',checkedAt:'2026-09-05T12:05:00Z',payload:{scope:{tenant:'fixture-tenant',range:'24h',bid:params.get('bid')||'all',source:'real'},summary:{total:rows.length,closed:rows.filter(row=>row.sealState==='closed').length,opened:rows.filter(row=>row.sealState==='opened').length,distinctUnits:rows.length,latestAt:rows.length?'2026-09-05T12:00:00Z':null},rows}};
     createRoot(document.getElementById('root')).render(<PhysicalTapsCommandCenter result={result} tenantSlug="fixture-tenant" tenantDisplayName="Empresa de prueba local"/>);
   `;
   const stubs = {
@@ -180,6 +181,24 @@ test("physical TAP browser QA checks themes, filters, pending state and retained
       finishRefresh();
       await page.getByText("Último snapshot confirmado", { exact: true }).waitFor();
       assert.equal(await page.getByTestId("physical-taps-event-row").count(), 1, "outage preserves evidence and filter");
+      assert.deepEqual(errors, []);
+      for (const state of ["closed", "opened"]) {
+        await page.goto(`${origin}/?theme=${theme}&state=${state}`);
+        const card = page.getByTestId(`physical-tap-${state}`);
+        await card.waitFor();
+        assert.equal(await card.count(), 1, "a single reported state presents its available evidence");
+        assert.equal(await page.getByTestId(`physical-tap-${state === "closed" ? "opened" : "closed"}`).count(), 0, "a missing counterpart is never fabricated");
+        assert.equal(await page.getByTestId("physical-taps-event-row").count(), 1);
+        assert.match(await card.textContent(), /Evento #fixture-0/);
+        assert.equal(await card.locator("details[open]").count(), 0);
+        const layout = await card.evaluate(element => ({ cardWidth: element.getBoundingClientRect().width,
+          parentWidth: element.parentElement.getBoundingClientRect().width, siblings: element.parentElement.childElementCount }));
+        assert.equal(layout.siblings, 1);
+        assert.ok(Math.abs(layout.cardWidth - layout.parentWidth) <= 1, "single evidence uses the available width on mobile and desktop");
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
+        assert.equal(requests, 1, "single-state rendering makes no extra API request");
+        if (process.env.NEXID_PHYSICAL_TAPS_QA_SCREENSHOTS) await page.screenshot({ path: join(process.env.NEXID_PHYSICAL_TAPS_QA_SCREENSHOTS, `physical-taps-${state}-only-${width}-${theme}.png`), fullPage: true });
+      }
       assert.deepEqual(errors, []);
       await page.goto(`${origin}/?theme=${theme}&empty=1&bid=LOT-FIXTURE`);
       const emptyPeriod = page.getByTestId("physical-taps-empty-period");

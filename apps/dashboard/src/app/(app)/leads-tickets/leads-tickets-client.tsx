@@ -196,6 +196,7 @@ export default function LeadsTicketsClient({
               directory={memberDirectory}
               selectedMemberId={selectedMemberId}
               timeline={memberTimeline}
+              locale={locale}
             />
             <CustomerSignalTimeline
               signals={customerSignals}

@@ -105,3 +105,29 @@ test("unconfirmed messages retain a visible review warning outside the disclosur
   assert.match(beforeDisclosure, /Carrier físico sin confirmar/);
   assert.doesNotMatch(firstCard, /El mensaje autenticado del tag reportó estado TT cerrado/);
 });
+
+for (const state of ["closed", "opened"]) {
+  test(`a period with only ${state} TAPs still presents its latest evidence card`, () => {
+    const row = fixtureRow(state, "fixture-single-state");
+    const older = { ...fixtureRow(state, "fixture-older"), occurredAt: { ...row.occurredAt, utc: "2026-09-08T13:00:00Z" } };
+    const html = render(ready([older, row]));
+    const cards = [...html.matchAll(/<article\b[^>]*data-testid="physical-tap-(closed|opened)"[\s\S]*?<\/article>/g)];
+    assert.equal(cards.length, 1);
+    assert.equal(cards[0][1], state);
+    assert.match(cards[0][0], /Evento #fixture-single-state/);
+    assert.doesNotMatch(cards[0][0], /fixture-older/);
+    assert.match(cards[0][0], /Mensaje NFC validado/);
+    assert.match(cards[0][0], /<summary>Alcance de esta evidencia<\/summary>/);
+    assert.equal([...html.matchAll(/data-testid="physical-taps-event-row"/g)].length, 2);
+    assert.doesNotMatch(render(ready([row]), { compact: true }), /data-testid="physical-tap-(closed|opened)"/);
+  });
+}
+
+test("an unclassified-only period remains visible without inventing closed or opened evidence", () => {
+  const row = { ...fixtureRow("other", "fixture-other"), reportedState: "UNCLASSIFIED", evidence: { kind: "real_tap_event_carrier_unconfirmed", ttStatusReported: false } };
+  const html = render(ready([row]));
+  assert.doesNotMatch(html, /data-testid="physical-tap-(closed|opened)"|data-testid="physical-taps-empty-period"/);
+  assert.equal([...html.matchAll(/data-testid="physical-taps-event-row"/g)].length, 1);
+  assert.match(html, /fixture-other/);
+  assert.match(html, /<span\b[^>]*>Revisión<\/span>/);
+});

@@ -591,10 +591,10 @@ export function PhysicalTapsCommandCenter({
         ))}
       </div>
 
-      {!compact && latestClosed && latestOpened ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <EventEvidenceCard row={latestClosed} />
-          <EventEvidenceCard row={latestOpened} />
+      {!compact && (latestClosed || latestOpened) ? (
+        <div className={`grid gap-4${latestClosed && latestOpened ? " xl:grid-cols-2" : ""}`}>
+          {latestClosed ? <EventEvidenceCard row={latestClosed} /> : null}
+          {latestOpened ? <EventEvidenceCard row={latestOpened} /> : null}
         </div>
       ) : null}
 
