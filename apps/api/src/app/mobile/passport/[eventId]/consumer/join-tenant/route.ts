@@ -52,7 +52,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }, "consumer_join_tenant");
   if (!capability.ok) return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
   const currentRights = await readCurrentTapCommercialRights(event.id);
-  if (!currentRights.allowed) return json({ ok: false, error: currentRights.reason }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
+  // This action already consumed its capability. A new TAP cannot lift a business restriction.
+  if (!currentRights.allowed) return json({ ok: false, error: currentRights.reason, fresh_tap_required: true }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
   await saveTapForConsumer({ consumerId: consumer.id, eventId: String(event.id) });
   const membership = await ensureTenantMembership({ consumerId: consumer.id, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
   return json({ ok: true, membership });
