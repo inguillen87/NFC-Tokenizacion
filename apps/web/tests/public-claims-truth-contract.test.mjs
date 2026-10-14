@@ -50,6 +50,7 @@ const [
   read("../public/demo/luxury-basic/luxury-basic_seed.json"),
   read("../public/demo/events-basic/seed.json"),
 ]);
+const walletPage = await read("../src/app/me/wallet/page.tsx");
 
 test("public metadata and global SEO describe digital evidence instead of physical authentication", () => {
   assert.match(metadata, /NFC\/SUN message validation, declared data/);
@@ -123,9 +124,12 @@ test("audience, SDK and wallet surfaces name digital rights without authenticati
   assert.match(sdk, /no autentica por si sola el objeto fisico/);
   assert.doesNotMatch(sdk, /Identidad - Autenticidad - Confianza|integrar autenticidad, QR/);
 
-  assert.match(wallet, /certificados y registros de ownership digital; no del objeto f.sico/);
+  assert.match(walletPage, /Son registros reportados en tu cuenta/);
+  assert.match(walletPage, /no certifican el estado f.sico, el contenido ni la procedencia del producto/);
+  assert.match(walletPage, /Registros NFT reportados/);
+  assert.doesNotMatch(walletPage, /NFTs Acuñados|productos autenticados|Canjear Club/i);
   assert.match(walletCard, /La firma no prueba el objeto f.sico/);
-  assert.doesNotMatch(`${wallet}\n${walletCard}`, /productos autenticados|tokenizar un producto premium/);
+  assert.doesNotMatch(`${wallet}\n${walletCard}\n${walletPage}`, /productos autenticados|tokenizar un producto premium/);
 });
 
 test("landing, pricing and demo surfaces label evidence and simulations precisely", () => {
