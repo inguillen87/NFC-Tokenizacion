@@ -7,7 +7,7 @@ const TENANT = "10000000-0000-4000-8000-000000000001";
 const PROGRAM = "20000000-0000-4000-8000-000000000001";
 const OTHER_PROGRAM = "20000000-0000-4000-8000-000000000002";
 const REWARD = "30000000-0000-4000-8000-000000000001";
-const files = { policy: "../src/lib/admin-reward-policy.ts", service: "../src/lib/admin-reward-service.ts", route: "../src/app/admin/loyalty/rewards/route.ts" };
+const files = { policy: "../src/lib/admin-reward-policy.ts", service: "../src/lib/admin-reward-service.ts", readModel: "../src/lib/admin-reward-read-model.ts", route: "../src/app/admin/loyalty/rewards/route.ts" };
 const compiled = Object.fromEntries(Object.entries(files).map(([name, path]) => [name,
   ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText,
 ]));
@@ -28,6 +28,7 @@ function harness({ candidates = [{ id: REWARD, program_id: PROGRAM }], programs 
   };
   const policy = load(compiled.policy, () => { throw new Error("unexpected policy dependency"); });
   const service = load(compiled.service, name => name === "./db" ? { sql: execute } : name === "./admin-reward-policy" ? policy : null);
+  const readModel = load(compiled.readModel, () => { throw new Error("unexpected read model dependency"); });
   const route = load(compiled.route, name => {
     if (name.endsWith("/auth")) return { checkAdmin: async () => null, checkAdminPermission: () => null, getAdminTenantScope: () => ({ scope: forcedTenantSlug ? "tenant" : "super_admin", forcedTenantSlug }) };
     if (name.endsWith("/db")) return { sql: execute };
@@ -35,6 +36,7 @@ function harness({ candidates = [{ id: REWARD, program_id: PROGRAM }], programs 
     if (name.endsWith("/admin-tenant-filter")) return { effectiveTenantFilter: ({ forcedTenantSlug, requestedTenantSlug }) => forcedTenantSlug || String(requestedTenantSlug || "").trim().toLowerCase() };
     if (name.endsWith("/admin-reward-policy")) return policy;
     if (name.endsWith("/admin-reward-service")) return service;
+    if (name.endsWith("/admin-reward-read-model")) return readModel;
     throw new Error(`Unexpected dependency ${name}`);
   });
   return { policy, service, route, queries, execute };

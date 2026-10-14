@@ -5,6 +5,9 @@ export const CONSUMER_PORTAL_CLAIM_INTENT = "portal-first-reservation.v1" as con
 
 export type ConsumerRewardCatalogState = "reported" | "locked" | "upcoming" | "expired" | "out_of_stock" | "inactive";
 export type ConsumerRewardClaimStatus = "claimed" | "redeemed" | "cancelled" | "expired";
+export type ConsumerRewardUnavailableReason =
+  | "age_verification_required" | "insufficient_program_points" | "brand_connection_required"
+  | "program_participation_required" | "brand_conditions_review" | "availability_review" | "account_review";
 export type ConsumerRewardItem = {
   id: string;
   title: string;
@@ -27,6 +30,8 @@ export type ConsumerRewardItem = {
   /** Advertised only for the persisted, supported portal reservation capability. */
   claimIntent?: typeof CONSUMER_PORTAL_CLAIM_INTENT;
   claim_unavailable_reason: "review_required" | null;
+  /** Read-only explanations; they never authorize a reservation or override an own voucher. */
+  claim_unavailable_reasons?: ConsumerRewardUnavailableReason[];
 };
 
 function text(value: unknown, maxLength: number): string | null {
@@ -82,6 +87,58 @@ function catalogState(row: Record<string, unknown>, now: number): ConsumerReward
   return "reported";
 }
 
+function unavailableReasons(row: Record<string, unknown>, now: number): ConsumerRewardUnavailableReason[] {
+  const reasons = new Set<ConsumerRewardUnavailableReason>();
+  const accountAllowed = typeof row.consumer_account_status === "string"
+    && ["anonymous", "registered", "verified"].includes(row.consumer_account_status);
+  if (!accountAllowed) reasons.add("account_review");
+
+  if (row.program_age_gate_required === true || row.reward_age_gate_required === true) reasons.add("age_verification_required");
+  if (row.program_identity_matches !== true
+    || (row.program_age_gate_required !== true && row.program_age_gate_required !== false)
+    || (row.reward_age_gate_required !== true && row.reward_age_gate_required !== false)
+    || row.reward_eligibility_unrestricted !== true || row.reward_fulfillment_unrestricted !== true
+    || row.reward_member_limit_unrestricted !== true) reasons.add("brand_conditions_review");
+
+  if (row.membership_identity_matches === false
+    || (row.membership_identity_matches === true && typeof row.membership_status === "string"
+      && ["invited", "paused", "blocked", "left"].includes(row.membership_status))) {
+    reasons.add("brand_connection_required");
+  } else if (row.membership_identity_matches !== true || row.membership_status !== "active") {
+    reasons.add("account_review");
+  }
+
+  const memberCount = integer(row.program_member_count);
+  const cost = integer(row.points_cost);
+  const balance = integer(row.program_points_balance);
+  if (row.program_identity_matches === true && (memberCount === 0 || (memberCount === 1 && row.program_member_active === false))) {
+    reasons.add("program_participation_required");
+  } else if (row.program_identity_matches !== true || memberCount !== 1 || row.program_member_active !== true) {
+    reasons.add("account_review");
+  }
+  if (cost === null || cost < 0 || (memberCount === 1 && (balance === null || balance < 0))) {
+    reasons.add("account_review");
+  } else if (row.program_identity_matches === true && memberCount === 1 && row.program_member_active === true
+    && balance !== null && balance < cost) {
+    reasons.add("insufficient_program_points");
+  }
+
+  const startsAt = timestamp(row.starts_at);
+  const programStartsAt = timestamp(row.program_starts_at);
+  const endsAt = timestamp(row.ends_at);
+  const programEndsAt = timestamp(row.program_ends_at);
+  const stock = integer(row.stock_remaining);
+  if (row.reward_status !== "active" || row.program_status !== "active"
+    || !startsAt || !programStartsAt || Date.parse(startsAt) > now || Date.parse(programStartsAt) > now
+    || (row.ends_at !== null && (!endsAt || Date.parse(endsAt) <= now))
+    || (row.program_ends_at !== null && (!programEndsAt || Date.parse(programEndsAt) <= now))
+    || (row.stock_remaining !== null && (stock === null || stock <= 0))) reasons.add("availability_review");
+
+  // A future/unsupported persisted condition remains a review, never an empty grant.
+  if (!reasons.size) reasons.add("brand_conditions_review");
+  return [...reasons];
+}
+
 export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.now()): ConsumerRewardItem {
   const catalog = catalogState(row, now);
   const claimId = text(row.claim_id, 64);
@@ -120,6 +177,7 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
     can_claim: canClaim,
     ...(canClaim ? { claimIntent: CONSUMER_PORTAL_CLAIM_INTENT } : {}),
     claim_unavailable_reason: canClaim ? null : "review_required",
+    ...(!claimId ? { claim_unavailable_reasons: canClaim ? [] : unavailableReasons(row, now) } : {}),
   };
 }
 
@@ -147,6 +205,13 @@ export async function getPrivateConsumerRewards(consumerId: string, executor: Sq
       member.member_count AS program_member_count,
       member.points_balance AS program_points_balance,
       member.active AS program_member_active,
+      account.status::text AS consumer_account_status,
+      (membership.tenant_id IS NOT NULL) AS membership_identity_matches,
+      program.age_gate_required AS program_age_gate_required,
+      reward.requires_age_gate AS reward_age_gate_required,
+      (reward.eligibility_json = '{}'::jsonb) AS reward_eligibility_unrestricted,
+      (reward.fulfillment_json = '{}'::jsonb) AS reward_fulfillment_unrestricted,
+      (reward.redemption_limit_per_member IS NULL) AS reward_member_limit_unrestricted,
       CASE WHEN claim.id IS NULL
         AND account.status IN ('anonymous', 'registered', 'verified')
         AND program.id IS NOT NULL AND program.status = 'active'

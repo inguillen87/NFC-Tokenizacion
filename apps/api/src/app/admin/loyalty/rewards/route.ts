@@ -7,6 +7,7 @@ import { json } from "../../../../lib/http";
 import { effectiveTenantFilter } from "../../../../lib/admin-tenant-filter";
 import { AdminRewardError, parseAdminRewardCommand } from "../../../../lib/admin-reward-policy";
 import { saveAdminReward } from "../../../../lib/admin-reward-service";
+import { toAdminRewardReadItem } from "../../../../lib/admin-reward-read-model";
 
 export async function GET(req: Request) {
   const auth = await checkAdmin(req);
@@ -28,16 +29,30 @@ export async function GET(req: Request) {
 
   const rows = tenant
     ? await sql`
-        SELECT r.id, r.program_id, t.slug AS tenant_slug, r.code, r.title, r.points_cost as points, r.status, r.description, r.type, r.image_url, r.stock_total, r.stock_remaining, r.requires_age_gate, r.network_visible
+        SELECT r.id, r.program_id, t.slug AS tenant_slug, r.code, r.title, r.points_cost as points, r.status, r.description, r.type, r.image_url, r.stock_total, r.stock_remaining, r.requires_age_gate, r.network_visible,
+          program.name AS reservation_program_name, program.age_gate_required AS reservation_program_age_gate,
+          (program.id IS NOT NULL) AS reservation_program_matches,
+          r.starts_at AS reservation_starts_at, r.ends_at AS reservation_ends_at,
+          CASE WHEN jsonb_typeof(r.eligibility_json) = 'object' THEN r.eligibility_json <> '{}'::jsonb ELSE NULL END AS reservation_eligibility_review,
+          CASE WHEN jsonb_typeof(r.fulfillment_json) = 'object' THEN r.fulfillment_json <> '{}'::jsonb ELSE NULL END AS reservation_fulfillment_review,
+          r.redemption_limit_per_member AS reservation_member_limit
         FROM rewards r
         JOIN tenants t ON t.id = r.tenant_id
+        LEFT JOIN loyalty_programs program ON program.id = r.program_id AND program.tenant_id = r.tenant_id
         WHERE t.slug = ${tenant}
         ORDER BY r.created_at DESC
       `
     : await sql`
-        SELECT r.id, r.program_id, t.slug AS tenant_slug, r.code, r.title, r.points_cost as points, r.status, r.description, r.type, r.image_url, r.stock_total, r.stock_remaining, r.requires_age_gate, r.network_visible
+        SELECT r.id, r.program_id, t.slug AS tenant_slug, r.code, r.title, r.points_cost as points, r.status, r.description, r.type, r.image_url, r.stock_total, r.stock_remaining, r.requires_age_gate, r.network_visible,
+          program.name AS reservation_program_name, program.age_gate_required AS reservation_program_age_gate,
+          (program.id IS NOT NULL) AS reservation_program_matches,
+          r.starts_at AS reservation_starts_at, r.ends_at AS reservation_ends_at,
+          CASE WHEN jsonb_typeof(r.eligibility_json) = 'object' THEN r.eligibility_json <> '{}'::jsonb ELSE NULL END AS reservation_eligibility_review,
+          CASE WHEN jsonb_typeof(r.fulfillment_json) = 'object' THEN r.fulfillment_json <> '{}'::jsonb ELSE NULL END AS reservation_fulfillment_review,
+          r.redemption_limit_per_member AS reservation_member_limit
         FROM rewards r
         JOIN tenants t ON t.id = r.tenant_id
+        LEFT JOIN loyalty_programs program ON program.id = r.program_id AND program.tenant_id = r.tenant_id
         ORDER BY r.created_at DESC
       `;
 
@@ -45,7 +60,7 @@ export async function GET(req: Request) {
     ok: true,
     tenant: tenant || null,
     scope: tenant ? "tenant" : "global",
-    rewards: rows,
+    rewards: rows.map(toAdminRewardReadItem),
   });
 }
 
