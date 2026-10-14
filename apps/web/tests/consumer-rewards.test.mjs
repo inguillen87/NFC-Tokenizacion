@@ -424,7 +424,7 @@ test("SSR keeps each selected brand program balance separate from its wallet and
     assert.ok(cards.every(card => !card.includes(otherTitle)));
     assert.match(own, new RegExp('data-benefit-points="program"><span>Saldo actual del programa<\\/span><strong>' + balance + ' <small>pts<\\/small>'));
     assert.doesNotMatch(own, /<strong>(?:540|270|999) /);
-    assert.match(own, /El reclamo desde el portal todavía no está habilitado/);
+    assert.match(own, /Todavía no se puede reservar/);
     assert.equal(marketplaceLinkHref(html), "/me/marketplace?tenant=" + tenant);
     assert.deepEqual(calls.slice(1), [["fetch", "rewards"], ["fetch", "wallet"]]);
     if (tenant === "brand-a") {
@@ -434,4 +434,188 @@ test("SSR keeps each selected brand program balance separate from its wallet and
   }
   const mismatch = await render(payload, { params: { tenant: "brand-c" }, wallet: wallets });
   assert.doesNotMatch(mismatch.html, /data-reward-state=|data-benefit-points="program"/);
+});
+
+const reservableReward = (overrides = {}) => reward({
+  id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", program_points_balance: 120,
+  catalog_state: "reported", claim_id: null, claim_status: null, claim_expires_at: null,
+  redemption_code: null, points_spent: null, can_claim: true,
+  claimIntent: "portal-first-reservation.v1", ...overrides,
+});
+
+test("private availability reasons explain all reported requirements without adding reservation authority", () => {
+  const reasons = ["age_verification_required", "insufficient_program_points", "brand_connection_required",
+    "program_participation_required", "brand_conditions_review", "availability_review", "account_review"];
+  const item = readItem(reservableReward({ can_claim: false, claimIntent: undefined,
+    program_points_balance: 40, claim_unavailable_reasons: reasons }));
+  assert.deepEqual(item.claimUnavailableReasons, reasons);
+  assert.equal(reservation.rewardReservationQuote(item), null);
+  const html = renderClient([item]);
+  assert.match(html, /Antes de reservar/);
+  assert.match(html, /requiere verificación de edad/);
+  assert.match(html, /Te faltan 60 puntos en este programa/);
+  assert.match(html, /vínculo activo con la marca/);
+  assert.match(html, /requiere participar en el programa/);
+  assert.match(html, /confirmar las condiciones/);
+  assert.match(html, /confirmar la vigencia y los cupos/);
+  assert.match(html, /Necesitamos revisar los datos de tu cuenta/);
+  assert.equal((html.match(/<li>/g) || []).length, 7);
+  assert.match(html, /Consultá los 7 requisitos en el detalle/);
+  assert.doesNotMatch(html, /Reservar beneficio|Verificar edad ahora|Confirmar reserva por|age_verification_required|can_claim/);
+});
+
+test("duplicate known requirements remain a single bounded explanation", () => {
+  const item = readItem(reward({ claim_unavailable_reasons: ["brand_connection_required", "brand_connection_required"] }));
+  assert.deepEqual(item.claimUnavailableReasons, ["brand_connection_required"]);
+  const html = renderClient([item]);
+  assert.equal((html.match(/<li>/g) || []).length, 1);
+  assert.doesNotMatch(html, /requisitos en el detalle|Reservar beneficio/);
+});
+
+test("unknown or malformed optional notices fall back without hiding a valid legacy collection", () => {
+  const malformed = [null, "age_verification_required", {}, true,
+    ["unknown_requirement"], ["age_verification_required", "unknown_requirement"],
+    ["AGE_VERIFICATION_REQUIRED"], [" age_verification_required"], ["account_review", null],
+    ["account_review", {}], ["account_review", 1], new Array(1),
+    new Array(8).fill("account_review"), ["<script>claim-now</script>"]];
+  for (const claim_unavailable_reasons of malformed) {
+    const source = readModel(list([reward({ claim_unavailable_reasons }), reward({ id: "reward-2" })]));
+    assert.equal(source.status, "ready");
+    assert.equal(source.items.length, 2);
+    assert.equal(source.items[0].claimUnavailableReasons, undefined);
+    assert.equal(reservation.rewardReservationQuote(source.items[0]), null);
+    const html = renderClient(source.items);
+    assert.match(html, /Todavía no se puede reservar/);
+    assert.match(html, /Publicado no significa reservado/);
+    assert.doesNotMatch(html, /verificación de edad|unknown_requirement|claim-now|Reservar beneficio/);
+  }
+});
+
+test("absent and empty notice arrays preserve legacy information and never imply eligibility", () => {
+  for (const claim_unavailable_reasons of [undefined, []]) {
+    const item = readItem(reward({ claim_unavailable_reasons }));
+    assert.equal(item.reservation, undefined);
+    assert.equal(item.reservationNeedsRefresh, undefined);
+    const html = renderClient([item]);
+    assert.match(html, /La marca tiene que confirmar los requisitos y la disponibilidad/);
+    assert.doesNotMatch(html, /Reservar beneficio|Volver a cargar la información/);
+  }
+});
+
+test("notices cannot bypass a false, missing or malformed capability", () => {
+  for (const can_claim of [undefined, false, "true", 1]) {
+    for (const claim_unavailable_reasons of [[], ["account_review"], ["unknown_requirement"]]) {
+      const item = readItem(reservableReward({ can_claim, claim_unavailable_reasons }));
+      assert.equal(item.reservation, undefined);
+      assert.equal(reservation.rewardReservationQuote(item), null);
+      assert.doesNotMatch(renderClient([item]), /Reservar beneficio|Confirmar reserva por/);
+    }
+  }
+});
+
+test("a complete authoritative quote retains the existing confirmation path regardless of advisory notices", () => {
+  for (const claim_unavailable_reasons of [undefined, [], ["account_review"], ["unknown_requirement"], null]) {
+    const item = readItem(reservableReward({ claim_unavailable_reasons }));
+    const quote = reservation.rewardReservationQuote(item);
+    assert.equal(quote.pointsCost, 100);
+    assert.equal(quote.programBalance, 120);
+    assert.equal(item.reservationNeedsRefresh, undefined);
+    const html = renderClient([item]);
+    assert.match(html, /Reservar beneficio/);
+    assert.match(html, /Revisá el costo y confirmá antes de continuar/);
+    assert.doesNotMatch(html, /Antes de reservar|Todavía no se puede reservar|Volver a cargar la información/);
+  }
+});
+
+test("an incomplete advertised quote asks for fresh information rather than blaming a brand requirement", () => {
+  for (const extra of [{ program_name: null }, { program_points_balance: null }, { points_cost: "100" },
+    { claimIntent: undefined }, { claim_id: undefined }, { redemption_code: "UNOWNED-1234" }]) {
+    const item = readItem(reservableReward({ ...extra, claim_unavailable_reasons: ["age_verification_required"] }));
+    assert.equal(item.reservationNeedsRefresh, true);
+    assert.equal(reservation.rewardReservationQuote(item), null);
+    const html = renderClient([item]);
+    assert.match(html, /Necesitamos actualizar los datos/);
+    assert.match(html, /No pudimos confirmar todos los datos para reservar/);
+    assert.match(html, /href="\/me\/rewards\?tenant=demobodega">Volver a cargar la información/);
+    assert.doesNotMatch(html, /Reservar beneficio|verificación de edad|UNOWNED-1234|Confirmar reserva por/);
+  }
+});
+
+test("refresh navigation retains a sanitized benefit tenant and cannot inject parameters or a fragment", () => {
+  for (const tenant of ["brand_a", "brand.a", "Balmec-AR", "a".repeat(120)]) {
+    const item = readItem(reservableReward({ tenant_slug: tenant, program_name: null }));
+    const html = renderClient([item]);
+    const match = html.match(/<a\b[^>]*href="([^"]+)"[^>]*>Volver a cargar la información<\/a>/);
+    assert.ok(match);
+    const url = new URL(match[1], "https://portal.invalid");
+    assert.equal(url.pathname, "/me/rewards");
+    assert.deepEqual([...url.searchParams.entries()], [["tenant", tenant]]);
+    assert.equal(url.hash, "");
+  }
+});
+
+test("insufficient points explanations never borrow wallet balances or fabricate a negative shortfall", () => {
+  for (const program_points_balance of [null, 100, 120]) {
+    const item = readItem(reward({ program_points_balance, points_balance: 1_000, network_points_balance: 10_000,
+      claim_unavailable_reasons: ["insufficient_program_points"] }));
+    const html = renderClient([item]);
+    assert.match(html, /El programa necesita confirmar un saldo suficiente/);
+    assert.doesNotMatch(html, /Te faltan|1,?000|10,?000|Reservar beneficio/);
+  }
+});
+
+test("owned terminal vouchers retain history without new requirements, refresh links or active codes", () => {
+  for (const state of ["redeemed", "cancelled", "expired"]) {
+    const item = readItem(claim({ claim_status: state,
+      claim_unavailable_reasons: ["age_verification_required", "account_review"], can_claim: true }));
+    assert.equal(item.code, null);
+    assert.equal(item.reservationNeedsRefresh, undefined);
+    const html = renderClient([item]);
+    assert.match(html, new RegExp(model.REWARD_STATE_LABELS[state]));
+    assert.doesNotMatch(html, /Antes de reservar|verificación de edad|actualizar los datos|Volver a cargar la información|Código del voucher|BALMEC-1234|Reservar beneficio/);
+  }
+});
+
+test("known catalog lifecycle remains the primary explanation while other reported requirements stay in detail", () => {
+  for (const [state, headline, explanation] of [
+    ["expired", "Este beneficio ya venció", "El beneficio figura como vencido"],
+    ["out_of_stock", "Este beneficio no tiene cupos", "El beneficio figura sin cupos"],
+    ["inactive", "Este beneficio no está habilitado", "La marca no tiene habilitada la reserva de este beneficio"],
+    ["upcoming", "Todavía no se puede reservar", "Este beneficio todavía no está habilitado"],
+  ]) {
+    const item = readItem(reward({ state, claim_unavailable_reasons: ["age_verification_required", "availability_review", "account_review"] }));
+    const html = renderClient([item]);
+    const primary = html.match(/<div class="availabilityNotice">([\s\S]*?)<\/div>/)?.[1];
+    assert.ok(primary);
+    assert.match(primary, new RegExp(headline));
+    assert.match(primary, new RegExp(explanation));
+    assert.doesNotMatch(primary, /verificación de edad|confirmar la vigencia y los cupos/);
+    const detail = html.match(/<ul class="requirements">([\s\S]*?)<\/ul>/)?.[1];
+    assert.ok(detail);
+    assert.match(detail, new RegExp("^<li>" + explanation));
+    assert.match(detail, /requiere verificación de edad/);
+    assert.match(detail, /Necesitamos revisar los datos de tu cuenta/);
+    assert.equal((detail.match(/<li>/g) || []).length, 3);
+    assert.doesNotMatch(html, /Reservar beneficio|Confirmar reserva por/);
+  }
+});
+
+test("a known expired catalog state cannot hide or add to the seven reported requirements", () => {
+  const reasons = ["age_verification_required", "insufficient_program_points", "brand_connection_required",
+    "program_participation_required", "brand_conditions_review", "availability_review", "account_review"];
+  const item = readItem(reward({ state: "expired", program_points_balance: 40, claim_unavailable_reasons: reasons }));
+  const html = renderClient([item]);
+  assert.match(html, /Este beneficio ya venció/);
+  const detail = html.match(/<ul class="requirements">([\s\S]*?)<\/ul>/)?.[1];
+  assert.ok(detail);
+  assert.equal((detail.match(/<li>/g) || []).length, 7);
+  assert.match(detail, /Te faltan 60 puntos/);
+  assert.match(detail, /requiere verificación de edad/);
+  assert.match(detail, /vínculo activo con la marca/);
+  assert.match(detail, /requiere participar en el programa/);
+  assert.match(detail, /confirmar las condiciones/);
+  assert.match(detail, /figura como vencido/);
+  assert.match(detail, /Necesitamos revisar los datos de tu cuenta/);
+  assert.doesNotMatch(detail, /confirmar la vigencia y los cupos/);
+  assert.deepEqual(item.claimUnavailableReasons, reasons, "display ordering must not mutate the private read model");
 });
