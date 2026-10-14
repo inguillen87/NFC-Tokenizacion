@@ -47,7 +47,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }
   const currentRights = await readCurrentTapCommercialRights(event.id);
   if (!currentRights.allowed) {
-    return json({ ok: false, reason: currentRights.reason }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
+    // This action already consumed its capability. A new TAP cannot lift a business restriction.
+    return json({ ok: false, reason: currentRights.reason, fresh_tap_required: true }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
   }
   const program = await getActiveProgram(event.tenant_id);
   if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
