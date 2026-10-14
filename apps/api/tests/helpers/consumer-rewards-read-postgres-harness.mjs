@@ -578,13 +578,14 @@ export async function runConsumerRewardsReadPostgresQa({ connect } = {}) {
       const [programStart, programEnd, rewardStart, rewardEnd, duplicate] = fixtures;
       await client.query(`ALTER TABLE ${s}.loyalty_programs RENAME TO qa_clock_program_rows`);
       await client.query(`CREATE VIEW ${s}.loyalty_programs AS SELECT
-        id, tenant_id, name, status,
+        id, tenant_id, name, status, age_gate_required,
         CASE WHEN id = '${programStart.programId}'::uuid THEN statement_timestamp() ELSE start_at END AS start_at,
         CASE WHEN id = '${programEnd.programId}'::uuid THEN statement_timestamp() ELSE end_at END AS end_at
         FROM ${s}.qa_clock_program_rows`);
       await client.query(`ALTER TABLE ${s}.rewards RENAME TO qa_clock_reward_rows`);
       await client.query(`CREATE VIEW ${s}.rewards AS SELECT
         id, tenant_id, program_id, title, description, status, points_cost, stock_remaining, network_visible,
+        requires_age_gate, eligibility_json, redemption_limit_per_member, fulfillment_json,
         CASE WHEN id = '${rewardStart.rewardId}'::uuid THEN statement_timestamp() ELSE starts_at END AS starts_at,
         CASE WHEN id = '${rewardEnd.rewardId}'::uuid THEN statement_timestamp() ELSE ends_at END AS ends_at, created_at
         FROM ${s}.qa_clock_reward_rows`);
