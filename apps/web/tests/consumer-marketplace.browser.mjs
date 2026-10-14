@@ -222,6 +222,26 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   check(await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).isDisabled(),`${label} successful list is cleared`);
   check(await jump.isDisabled(),`${label} successful list resets the selection shortcut`);
 
+  for(const failureMode of ['context-denied','invalid-json']){
+   await reload();mode=failureMode;await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();
+   await list.getByRole('button',{name:'Agregar una unidad de Oliva QA',exact:true}).click();
+   await catalog.getByRole('button',{name:'Vinos',exact:true}).click();
+   check(await olive().count()===0&&await selection.getByRole('status').innerText()==='2 unidades en tu lista',`${label} ${failureMode} filtering hides the product card without removing its two-unit draft`);
+   await assertListJump(jump,`filtered-${failureMode}-list-jump`);
+   const before=requests.length;await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();
+   const expected=failureMode==='context-denied'?'Para enviar solicitudes a esta marca necesitás una lectura asociada, un producto reclamado o una membresía activa. Revisá tus productos y lecturas antes de volver a enviarla.':'No pudimos confirmar si se registró. Revisá tus solicitudes antes de volver a enviar.';
+   const pendingLine=list.locator('[data-marketplace-request-item="market-olive-qa"]');
+   await pendingLine.getByText(expected,{exact:true}).waitFor();await list.getByText('No se pudieron enviar las solicitudes. Revisá los avisos de cada producto.',{exact:true}).waitFor();
+   check(await pendingLine.getByText(expected,{exact:true}).isVisible()&&await pendingLine.locator('span[aria-label="Cantidad"]').innerText()==='2',`${label} ${failureMode} reports the public error next to the filtered draft and retains its quantity`);
+   check(await list.locator('[role="status"], [aria-live]').count()===1,`${label} ${failureMode} uses only the existing list summary live region`);
+   check(requests.length===before+1&&requests.at(-1).id==='market-olive-qa'&&requests.at(-1).body.quantity===2,`${label} ${failureMode} sends one explicit request for the actual selected quantity without retry`);
+   await targets('filtered error list');await noOverflow(page,`${label} filtered error list fits viewport`);
+   await catalog.getByRole('button',{name:'Limpiar filtros',exact:true}).click();await olive().getByText(expected,{exact:true}).waitFor();
+   check(await pendingLine.getByText(expected,{exact:true}).isVisible()&&requests.length===before+1,`${label} ${failureMode} clearing filters restores the same card feedback without resubmitting or removing the draft`);
+   record.scenarios.push({name:`filtered-draft-${failureMode}`,requests:requests.slice(before),draftPreserved:true,quantity:2,errorVisibleInList:true,singleListLiveRegion:true,filterResetResubmits:false});
+  }
+  mode='success';
+
   await reload();mode='held-success';await wine().getByRole('button',{name:'Solicitar contacto',exact:true}).click();await wine().getByRole('button',{name:'Soy mayor de edad',exact:true}).waitFor();
   await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();const busyStart=requests.length;
   await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();await list.getByRole('button',{name:'Enviando...',exact:true}).waitFor();
@@ -271,7 +291,7 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
    check(await catalog.locator('[data-marketplace-product]').count()===marketplaceFixtureItems.length,`${label} a URL brand override cannot replace the event's canonical published catalogue`);
    await page.goto(base+'/me/marketplace?fromTap=1&eventId=900003&action=marketplace&tenant=consumer-qa',{waitUntil:'networkidle'});
    check(await catalog.count()===0&&await page.getByText('Las consultas desde esta lectura no están disponibles. La marca pudo cambiar sus opciones o la lectura requiere revisión.',{exact:true}).count()===1,`${label} missing canonical brand never falls back to owned or URL-selected products`);
-   check(await page.getByRole('link',{name:'Consultar el catálogo general',exact:true}).getAttribute('href')==='/me/marketplace',`${label} independent browsing requires an explicit safe link`);
+    check(await page.getByRole('link',{name:'Volver al catálogo',exact:true}).getAttribute('href')==='/me/marketplace',`${label} independent browsing requires an explicit safe link`);
    await reload();mode='configuration-changed';await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();const withdrawnStart=requests.length;
    await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();await catalog.getByText('Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.',{exact:true}).waitFor();
    check(requests.length===withdrawnStart+1&&requests.at(-1).body.postTapEventId==='900001',`${label} withdrawn context makes one bound inquiry with no global fallback`);
@@ -293,9 +313,13 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
     mode='success';
    }
    await reload();mode='partial';await wine().getByRole('button',{name:'Agregar a la lista',exact:true}).click();await wine().getByRole('button',{name:'Soy mayor de edad',exact:true}).click();await olive().getByRole('button',{name:'Agregar a la lista',exact:true}).click();
+   await catalog.getByRole('button',{name:'Vinos',exact:true}).click();check(await olive().count()===0,`${label} partial list hides only the product whose synthetic response will fail`);
    const partialStart=requests.length;await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();await list.getByText(/Los productos pendientes siguen en tu lista/).waitFor();
    check(await list.getByText('Oliva QA',{exact:true}).count()===1&&await list.getByText('Vino reserva QA',{exact:true}).count()===0,`${label} partial success preserves only failed draft lines`);
-   record.scenarios.push({name:'partial-success',requests:requests.slice(partialStart),draftPreserved:true});
+   const partialLine=list.locator('[data-marketplace-request-item="market-olive-qa"]');
+   check(await partialLine.getByText('No pudimos confirmar si se registró. Revisá tus solicitudes antes de volver a enviar.',{exact:true}).isVisible()&&await partialLine.locator('span[aria-label="Cantidad"]').innerText()==='1',`${label} partial success keeps the filtered failed line and its public uncertainty message together`);
+   check(requests.length===partialStart+2&&await list.locator('[role="status"], [aria-live]').count()===1,`${label} partial list sends each selected product once and adds no line live region`);
+   record.scenarios.push({name:'partial-success',requests:requests.slice(partialStart),draftPreserved:true,errorVisibleInFilteredLine:true,singleListLiveRegion:true});
 
    await page.goto(route+'&signature=synthetic-do-not-carry&cap=synthetic-do-not-carry',{waitUntil:'networkidle'});await catalog.waitFor();mode='unauthorized';const unauthorizedStart=requests.length;
    await olive().getByRole('button',{name:'Solicitar contacto',exact:true}).click();await page.waitForURL(url=>url.pathname==='/login');

@@ -152,7 +152,7 @@ test("contextual catalog remains bound to server tenant and original event throu
   const params = { fromTap: "1", action: "marketplace", eventId: "715", tenant: "untrusted-url-brand" };
   const failed = setup("marketplace", { catalog: null }), html = await failed.render(params);
   assert.deepEqual(failed.calls, [["session", api.buildConsumerNextPath("/me/marketplace", params)], ["public-configuration", "715"], ["catalog", "products?tenant=brand-qa"]]);
-  assert.match(html, /consumer-catalog-unavailable/); assert.doesNotMatch(html, /Consultar el catálogo general|Todavía no hay productos publicados/);
+  assert.match(html, /consumer-catalog-unavailable/); assert.doesNotMatch(html, /Consultar el catálogo general|Volver al catálogo|Todavía no hay productos publicados/);
   const ready = setup("marketplace"); await ready.render(params);
   assert.equal(ready.grids[0].postTapEventId, "715"); assert.equal(ready.grids[0].items[0], item);
 });
