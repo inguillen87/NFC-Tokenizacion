@@ -2,7 +2,7 @@ import { reportedWalletPoints } from "./consumer-wallet-points-model";
 
 export const CONSUMER_REWARD_RESERVATION_INTENT = "portal-first-reservation.v1" as const;
 
-const REWARD_UNAVAILABLE_REASONS = [
+export const REWARD_UNAVAILABLE_REASONS = [
   "age_verification_required", "insufficient_program_points", "brand_connection_required",
   "program_participation_required", "brand_conditions_review", "availability_review", "account_review",
 ] as const;

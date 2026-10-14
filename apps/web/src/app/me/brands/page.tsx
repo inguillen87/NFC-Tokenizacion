@@ -32,7 +32,8 @@ export default async function BrandsPage({ searchParams }: { searchParams?: Prom
       ) : model.items.length === 0 ? (
         <section data-testid="consumer-brands-empty" className={styles.empty}>
           <h2>No hay membresías registradas en esta cuenta</h2><p>Podés consultar tus productos y lecturas guardadas. Una lectura no implica una membresía ni un beneficio nuevo.</p>
-          <Link className={`${styles.link} ${styles.primary}`} href="/me/products">Ver mis productos</Link>
+          <p>Para solicitar un vínculo o participar en beneficios, volvé a acercar el teléfono a la etiqueta del producto. Elegí «Vincularme con la empresa» o «Inscribirme en beneficios» sólo si la marca habilita esas opciones.</p>
+          <Link className={`${styles.link} ${styles.primary}`} href="/me/products" prefetch={false}>Ver mis productos</Link>
         </section>
       ) : (
         <>
@@ -45,7 +46,10 @@ export default async function BrandsPage({ searchParams }: { searchParams?: Prom
             </nav>
           </section>
           {unavailable.length > 0 && <section data-testid="consumer-brands-partial" className={recoveryStyles.notice} role="status"><h2>Consulta incompleta</h2><p>No pudimos cargar {unavailable.join(", ")}. Las membresías y los datos disponibles siguen visibles.</p><ConsumerDataRetryButton /></section>}
-          {(selected.state === "invalid" || selected.state === "missing") && <section data-testid="consumer-brands-filter-unavailable" className={styles.empty} role="status"><h2>No encontramos esa marca en tus membresías</h2><p>Elegí una de tus marcas o volvé a la vista completa.</p><Link className={`${styles.link} ${styles.primary}`} href="/me/brands">Ver todas mis marcas</Link></section>}
+          {(selected.state === "invalid" || selected.state === "missing") && <section data-testid="consumer-brands-filter-unavailable" className={styles.empty} role="status"><h2>No encontramos esa marca en tus membresías</h2>
+            {selected.state === "missing" ? <><p>Para solicitar un vínculo o participar en beneficios, volvé a acercar el teléfono a la etiqueta del producto. Elegí «Vincularme con la empresa» o «Inscribirme en beneficios» sólo si la marca habilita esas opciones.</p>
+              <Link className={`${styles.link} ${styles.primary}`} href="/me/products" prefetch={false}>Ver mis productos</Link></> : <p>Elegí una de tus marcas o volvé a la vista completa.</p>}
+            <Link className={styles.link} href="/me/brands" prefetch={false}>Ver todas mis marcas</Link></section>}
           <div className={styles.cards} data-testid="consumer-brand-cards">
             {selected.items.map(card => (
               <article key={card.key} className={styles.card} data-testid="consumer-brand-card" data-brand-tenant={card.slug || undefined} aria-labelledby={`${card.key}-title`}>
