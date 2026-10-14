@@ -22,6 +22,7 @@ import {
 } from "../lib/customer-member-timeline";
 
 import { createMemberTimelineReader } from "../lib/customer-member-timeline-reader";
+import type { TicketLookupLocale } from "../lib/ticket-reference-lookup";
 
 type CustomerMemberTimelineProps = {
   tenantScope: string;
@@ -29,7 +30,20 @@ type CustomerMemberTimelineProps = {
   directory: CustomerMemberDirectoryState;
   selectedMemberId: string;
   timeline: CustomerMemberTimelineState;
+  locale?: TicketLookupLocale;
 };
+
+const TAP_REFERENCE_COPY = {
+  "es-AR": { label: "TAP vinculado", event: "Evento" },
+  en: { label: "Linked TAP", event: "Event" },
+  "pt-BR": { label: "TAP vinculado", event: "Evento" },
+} as const;
+
+function persistedTapReference(event: CustomerMemberTimelineEntry) {
+  const reference = event.correlation.tapEventId;
+  return typeof reference === "string" && reference.trim() === reference && /^[1-9][0-9]{0,18}$/.test(reference)
+    && event.correlation.basis.includes("tap_event_id") ? reference : null;
+}
 
 type TimelinePageLoadState =
   | "idle"
@@ -125,7 +139,7 @@ function emptyTimeline(availability: CustomerMemberTimelineState["availability"]
   return { availability, items: [], partial: false, sourceErrors: [], hasMore: false, nextCursor: null };
 }
 
-export function CustomerMemberTimeline({ tenantScope, members, directory, selectedMemberId, timeline }: CustomerMemberTimelineProps) {
+export function CustomerMemberTimeline({ tenantScope, members, directory, selectedMemberId, timeline, locale = "es-AR" }: CustomerMemberTimelineProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -267,6 +281,8 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
               {visibleTimeline.items.map((event) => {
                 const copy = eventCopy(event);
                 const Icon = copy.icon;
+                const tapReference = persistedTapReference(event);
+                const tapReferenceCopy = TAP_REFERENCE_COPY[locale];
                 return (
                   <li key={`${event.sourceKind}-${event.sourceId}`} className="relative pl-12">
                     <div className="absolute left-0 top-4 z-10 grid h-10 w-10 place-items-center rounded-xl border border-emerald-300/30 bg-slate-950 text-emerald-200"><Icon className="h-4 w-4" /></div>
@@ -282,6 +298,7 @@ export function CustomerMemberTimeline({ tenantScope, members, directory, select
                       </div>
                       <div className="lg:text-right">
                         <time dateTime={event.occurredAt} className="text-xs font-bold text-slate-300">{formatMoment(event.occurredAt)}</time>
+                        {tapReference ? <p data-testid="customer-member-tap-reference" className="mt-2 text-xs font-bold text-slate-300">{tapReferenceCopy.label} · {tapReferenceCopy.event} #{tapReference}</p> : null}
                         <p className="mt-1 text-[10px] text-slate-500">Persistencia durable · {event.provenance.relation}</p>
                         <p className="mt-1 text-[10px] text-slate-500">Vínculo: {event.correlation.basis.join(" + ")}</p>
                       </div>

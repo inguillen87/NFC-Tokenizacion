@@ -10,6 +10,7 @@ import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,assertMarketplac
 import {REWARD_NOTICE_ADDED,rewardNoticePriorInventory,assertRewardNoticeAddedSource} from './helpers/reward-notice-reviewed-sources.mjs';
 import {rewardProgramContextPublishedSourceHash} from './helpers/reward-program-context-reviewed-sources.mjs';
 import {CRM_ORDER_REQUEST_ADDED,crmOrderRequestPublishedSourceHash,crmOrderRequestPriorInventory,assertCrmOrderRequestAddedSource} from './helpers/crm-order-request-reviewed-sources.mjs';
+import {physicalTapPublishedSourceHash} from './helpers/physical-tap-reviewed-sources.mjs';
 import {canReadRuntimeConsole,runtimeConsoleScopeKey} from '../src/lib/runtime-readiness-access.ts';
 import {parseRuntimeSnapshot,runtimeSupportSummary,runtimeObservedTime,runtimeSnapshotExpiresAt,RUNTIME_CONSOLE_FEATURES} from '../src/lib/runtime-readiness-contract.ts';
 import {readRuntimeSnapshot,fetchRuntimeSnapshot,RuntimeConsoleError} from '../src/lib/runtime-readiness-transport.ts';
@@ -53,7 +54,7 @@ test('the diagnostic UI preserves all operational sources outside the exact revi
  for(const p of baseline.paths){
   const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
   const actual=createHash('sha256').update(content).digest('hex');
-  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,rewardProgramContextPublishedSourceHash(p,crmOrderRequestPublishedSourceHash(p,actual,origins.expected[p])))),origins.expected[p])+'\n');
+  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,rewardProgramContextPublishedSourceHash(p,crmOrderRequestPublishedSourceHash(p,physicalTapPublishedSourceHash(p,actual,origins.expected[p]),origins.expected[p])))),origins.expected[p])+'\n');
  }
  assert.equal(digest.digest('hex'),baseline.digest);
  const root=new URL('../src/',import.meta.url),actual=[];
