@@ -127,11 +127,16 @@ async function open(width, theme, scenario) {
       markRequestStarted();
       await receiptReady;
       if (lost) return route.abort('failed');
-      const response = confirmed ? { status: 200, payload: { ok: true, saved: true, eventId } }
+      const response = confirmed ? { status: 200, payload: { ok: true, saved: true, eventId, fresh_tap_required: true } }
         : scenario === 'expired' ? { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required', fresh_token_status: 'fresh_token_expired' } }
           : scenario === 'used' ? { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required', fresh_token_status: 'fresh_token_already_used' } }
             : scenario === 'foreign' ? { status: 200, payload: { ok: true, saved: true, eventId: '900102' } }
-              : { status: 200, body: 'invalid JSON' };
+              : scenario === 'consumed-policy' ? { status: 409, payload: { ok: false, error: 'manual_opening_declared', fresh_tap_required: true } }
+                : scenario === 'consumed-unavailable' ? { status: 503, payload: { ok: false, error: 'rights_evidence_unavailable', fresh_tap_required: true } }
+                  : scenario === 'unmarked-unavailable' ? { status: 503, payload: { ok: false, error: 'rights_evidence_unavailable' } }
+                    : scenario === 'malformed-marker' ? { status: 503, payload: { ok: false, error: 'rights_evidence_unavailable', fresh_tap_required: 'true' } }
+                      : scenario === 'committed-unavailable' ? { status: 503, payload: { ok: false, operation_committed: true, fresh_tap_required: true } }
+                        : { status: 200, body: 'invalid JSON' };
       return route.fulfill({ status: response.status, contentType: 'application/json', body: response.body || JSON.stringify(response.payload),
         headers: confirmed ? { 'set-cookie': 'consumer_saved_qa=1; Path=/; HttpOnly; SameSite=Lax' } : {} });
     }
@@ -177,7 +182,9 @@ async function open(width, theme, scenario) {
     check(true, `${width}/${theme}/${scenario}: user scrolls while the receipt remains pending`);
   }
   releaseReceipt();
-  const expectedOutcome = confirmed ? 'saved' : scenario === 'expired' ? 'fresh_expired' : scenario === 'used' ? 'fresh_used' : 'unconfirmed';
+  const expectedOutcome = confirmed ? 'saved' : scenario === 'expired' ? 'fresh_expired' : scenario === 'used' ? 'fresh_used'
+    : scenario === 'consumed-policy' ? 'blocked' : scenario === 'consumed-unavailable' ? 'fresh_required'
+      : scenario === 'committed-unavailable' ? 'committed_unknown' : 'unconfirmed';
   const result = banner.locator(`[data-outcome="${expectedOutcome}"]`);
   await result.waitFor();
   if (confirmed) await home.getByRole('heading', { name: productName, exact: true }).waitFor();
@@ -230,9 +237,25 @@ async function open(width, theme, scenario) {
     check(await banner.getByRole('link', { name: 'Revisar mis productos', exact: true }).isVisible(), `${width}/${theme}/${scenario}: read-only collection review remains available`);
     if (scenario === 'expired' || scenario === 'used') {
       check(await confirm.isDisabled(), `${width}/${theme}/${scenario}: rejected fresh capability cannot be replayed`);
-      check((await result.innerText()).includes(scenario === 'expired' ? 'Acercá de nuevo el teléfono a la etiqueta' : 'para una acción nueva'), `${width}/${theme}/${scenario}: guidance requests a new physical TAP`);
+      check((await result.innerText()).includes(scenario === 'expired' ? 'Acercá de nuevo el teléfono a la etiqueta' : 'para volver a solicitarla'), `${width}/${theme}/${scenario}: guidance requests a new physical TAP for this action`);
+    } else if (['consumed-policy', 'consumed-unavailable', 'committed-unavailable'].includes(scenario)) {
+      check(await confirm.isDisabled(), `${width}/${theme}/${scenario}: consumed or committed action remains terminal`);
+      await confirm.evaluate(button => { button.click(); button.click(); });
+      await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+      check(postCount === 1 && refreshCount === initialRefreshes, `${width}/${theme}/${scenario}: repeated clicks cannot resend a consumed action or refresh unconfirmed rights`);
+      const guidance = await result.innerText();
+      if (scenario === 'consumed-policy') {
+        check(guidance.includes('tu historial') && guidance.includes('no garantiza que se habilite'), `${width}/${theme}/${scenario}: policy denial guides review without promising access after another tap`);
+      } else if (scenario === 'consumed-unavailable') {
+        check(guidance.includes('esta acción') && guidance.includes('no elimina sus restricciones'), `${width}/${theme}/${scenario}: unavailable post-consumption result requests a new reading for this action under brand policy`);
+      } else {
+        check(guidance.includes('registro realizado') && !guidance.includes('hacé un nuevo TAP'), `${width}/${theme}/${scenario}: committed receipt takes precedence over the fresh-reading marker`);
+      }
+      const historyLink = banner.getByRole('link', { name: 'Ver historial de lecturas', exact: true });
+      check(await historyLink.getAttribute('href') === '/me/taps', `${width}/${theme}/${scenario}: read-only history review remains available`);
     } else {
       check((await result.innerText()).includes('revisá tus productos antes de reintentar'), `${width}/${theme}/${scenario}: lost or malformed receipt directs collection review before deliberate retry`);
+      if (['unmarked-unavailable', 'malformed-marker'].includes(scenario)) check(await confirm.isEnabled(), `${width}/${theme}/${scenario}: an unqualified unavailable response retains the existing deliberate-retry behavior`);
     }
   }
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}/${theme}/${scenario}: no horizontal overflow`);
@@ -269,6 +292,8 @@ try {
   report.servedRelease = await (await fetch(base + '/release.json', { signal: AbortSignal.timeout(5000) })).json();
   for (const theme of ['light', 'dark']) for (const width of [320, 390, 768, 1440]) await open(width, theme, 'confirmed');
   for (const theme of ['light', 'dark']) for (const scenario of ['lost', 'malformed', 'foreign', 'expired', 'used']) await open(390, theme, scenario);
+  for (const theme of ['light', 'dark']) for (const width of [320, 390, 768, 1440]) for (const scenario of ['consumed-policy', 'consumed-unavailable', 'committed-unavailable']) await open(width, theme, scenario);
+  for (const theme of ['light', 'dark']) for (const scenario of ['unmarked-unavailable', 'malformed-marker']) await open(390, theme, scenario);
   for (const theme of ['light', 'dark']) for (const width of [320, 390]) await open(width, theme, 'confirmed-focus-moved');
   for (const theme of ['light', 'dark']) for (const scenario of ['confirmed-scroll-moved', 'lost-focus-moved']) await open(390, theme, scenario);
   check(report.errors.length === 0, 'zero application runtime exceptions');

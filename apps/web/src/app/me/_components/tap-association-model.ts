@@ -67,6 +67,13 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
   }
   const error = String(payload.error || payload.reason || "");
   if (status === 401) return { outcome: "session_required", retryable: true };
+  // The API can consume this action's capability before it denies a policy
+  // check or fails to persist the result. Do not resend that consumed action.
+  // A positive receipt or committed-operation signal above takes precedence.
+  if (Object.hasOwn(payload, "fresh_tap_required") && payload.fresh_tap_required === true) {
+    if (status === 409) return { outcome: "blocked", retryable: false };
+    if (status === 503) return { outcome: "fresh_required", retryable: false };
+  }
   if (error === "fresh_tap_capability_required") {
     if (payload.fresh_token_status === "fresh_token_expired") return { outcome: "fresh_expired", retryable: false };
     if (payload.fresh_token_status === "fresh_token_already_used") return { outcome: "fresh_used", retryable: false };
