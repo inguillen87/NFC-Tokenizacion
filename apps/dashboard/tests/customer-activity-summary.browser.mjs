@@ -22,7 +22,8 @@ import LeadsTicketsClient from './src/app/(app)/leads-tickets/leads-tickets-clie
 const row=(id,status)=>({id,tenant_slug:'qa-only',status,created_at:'2026-09-22T12:00:00.000Z',contact:'synthetic@example.invalid',source:'assistant',message:'Synthetic recorded query'});
 const leads=[{...row('lead-1','closed'),name:'Prospecto sintético',notes:'assistant_mode=lead_capture; synthetic note, not an AI answer'},row('lead-2','closed'),{...row('lead-3','converted'),source:'email',notes:'assistant mentioned in user text'}];
 const tickets=[{...row('81000000-0000-8000-8000-000000000001','open'),title:'Ticket sintético',detail:'Reporte sintético'}, {...row('81000000-0000-8000-8000-000000000002','pending'),title:'Consulta sintética',detail:'Sin operación productiva'}];
-const orders=[{...row('order-1','completed'),company:'Organización sintética',volume:1}];
+const orders=[{...row('order-1','completed'),company:'Organización sintética',tag_type:'Etiqueta sintética',volume:1,notes:'Solicitud antigua'},
+  {...row('order-2','requested'),product_title:'Reserva de ensayo',quantity:2,email:'consumer@example.invalid',phone:'+540000000000',consumer_message:'Consulta por caja de regalo'}];
 function Fixture(){
 const [scenario,setScenario]=React.useState('normal'); window.__qaSetActivityScenario=setScenario;
 const locale=new URLSearchParams(location.search).get('locale')||'es-AR';
@@ -77,7 +78,7 @@ try {
     await page.goto(`${origin}/?locale=${locale}&theme=${theme}`);
     const summary = page.getByTestId('customer-activity-summary');
     await summary.waitFor();
-    for (const [kind, value] of [['leads', '3'], ['tickets', '2'], ['orders', '1']]) check(await page.getByTestId(`activity-count-${kind}`).textContent() === value, `${kind} count`);
+    for (const [kind, value] of [['leads', '3'], ['tickets', '2'], ['orders', '2']]) check(await page.getByTestId(`activity-count-${kind}`).textContent() === value, `${kind} count`);
     check(await summary.locator('article').count() === 3, 'independent collections');
     await summary.locator('details summary').first().click();
     check((await summary.innerText()).includes('closed'), 'literal closed status stays closed');
@@ -91,6 +92,19 @@ try {
     if (locale === 'es-AR' && ((width === 375 && theme === 'light') || (width === 1440 && theme === 'dark'))) await summary.screenshot({ path: join(output, `summary-${width}-${theme}.png`) });
     const tabs = page.getByRole('tablist').getByRole('tab');
     check(await tabs.count() === 6, 'six named local inboxes');
+    await tabs.nth(4).click();
+    const requestsTable = page.getByTestId('crm-order-requests'); await requestsTable.waitFor();
+    for (const text of ['Reserva de ensayo','consumer@example.invalid','+540000000000','Consulta por caja de regalo','Etiqueta sintética','Solicitud antigua']) check((await requestsTable.innerText()).includes(text), `request field ${text}`);
+    for (const query of ['Reserva de ensayo','+540000000000','caja de regalo']) {
+      await page.getByRole('searchbox',{name:ui.search}).fill(query);
+      check(await requestsTable.locator('tbody tr').count() === 1, 'local search finds the consumer request');
+    }
+    await page.getByRole('searchbox',{name:ui.search}).fill('not-recorded');
+    check((await requestsTable.innerText()).includes(ui.orderNoMatches), 'no match differs from no requests');
+    await page.getByRole('searchbox',{name:ui.search}).fill('');
+    check(await requestsTable.locator('tbody tr').count() === 2, 'cleared search preserves both loaded formats');
+    check(await requestsTable.locator('a, form').count() === 0, 'request review has no purchase or contact action');
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'request table stays inside the viewport');
     await tabs.first().focus(); await page.keyboard.press('End');
     const assistant = page.getByTestId('assistant-records'); await assistant.waitFor();
     check(await tabs.last().getAttribute('aria-selected') === 'true', 'End selects assistant and updates the panel');

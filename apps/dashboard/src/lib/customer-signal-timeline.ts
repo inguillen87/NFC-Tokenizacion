@@ -1,4 +1,5 @@
 import { projectSupportTicket, type SupportTicketProjection } from "./support-ticket-projection";
+import { projectCustomerOrderRequest } from "./customer-order-request-projection";
 
 export type CustomerSignalAvailability =
   | "ready"
@@ -70,8 +71,16 @@ export type CustomerTicketRecord = CustomerSignalRecord & {
 
 export type CustomerOrderRecord = CustomerSignalRecord & {
   id: string;
-  contact: string;
+  contact?: string;
+  product_title?: string;
+  product_name?: string;
+  requested_product?: string;
+  quantity?: number | null;
+  email?: string;
+  phone?: string;
+  consumer_message?: string;
   company?: string;
+  tenant_name?: string;
   tag_type?: string;
   volume?: number;
   notes?: string;
@@ -202,21 +211,22 @@ function buildSignal(
     };
   }
 
+  const order = projectCustomerOrderRequest(row);
   return {
     id: text(row.id) || `order-${index}`,
     kind,
     occurredAt,
     timestamp: Number.isFinite(parsedTime) ? parsedTime : 0,
-    subject: text(company, contact) || "Identidad no informada",
-    title: product ? `Solicitud: ${product}` : "Pedido registrado",
-    summary: text(row.notes),
-    contact,
-    company,
+    subject: order.company || order.contact || "Identidad no informada",
+    title: order.product ? `Solicitud: ${order.product}` : "Pedido registrado",
+    summary: order.message,
+    contact: order.contact,
+    company: order.company,
     status: text(row.status),
     channel: text(row.source),
-    product,
+    product: order.product,
     owner,
-    objective: explicitObjective || product,
+    objective: explicitObjective || order.product,
     objectiveLabel: explicitObjective ? "Objetivo informado" : "Producto solicitado",
     nextAction,
     source,

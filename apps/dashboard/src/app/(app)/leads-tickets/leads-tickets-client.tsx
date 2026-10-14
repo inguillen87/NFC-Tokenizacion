@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { AssistantRecords } from "../../../components/assistant-records";
 import { CustomerInboxNotice } from "../../../components/customer-inbox-notice";
 import { buildAssistantLedger } from "../../../lib/assistant-records";
-import { confirmCustomerInbox, customerRecordText, customerRecordDate, customerRecordQuantity } from "../../../lib/customer-inbox-state";
+import { confirmCustomerInbox, customerRecordText, customerRecordDate } from "../../../lib/customer-inbox-state";
 import { customerInboxCopy } from "../../../lib/customer-inbox-copy";
+import { customerOrderRequestTableRow, customerOrderRequestMatchesQuery } from "../../../lib/customer-order-request-projection";
 import inboxStyles from "../../../components/customer-inbox.module.css";
 import { CustomerActivitySummary } from "../../../components/customer-activity-summary";
 import { buildCustomerActivitySummary, customerActivityDestination, type CustomerActivityKind } from "../../../lib/customer-activity-summary";
@@ -100,6 +101,7 @@ export default function LeadsTicketsClient({
     orders: confirmCustomerInbox<Order>("orders", ordersInput, inputCollections.orders, context),
   }), [leadsInput, ticketsInput, ordersInput, inputCollections, leadsSource, context]);
   const initialLeads = inboxes.leads.rows, initialTickets = inboxes.tickets.rows, initialOrders = inboxes.orders.rows;
+  const orderRows = useMemo(() => initialOrders.map(row => customerOrderRequestTableRow(row, ui.missing)), [initialOrders, ui.missing]);
   const signalCollections = inboxes;
   const entryReference = (value: unknown) => ticketEntryReference(value, inboxes.tickets, tenantScope, demoMode, canLookupTickets);
   function openTicket(value: string) {
@@ -175,11 +177,11 @@ export default function LeadsTicketsClient({
       {ticketNavigationLocked ? <p role="status" data-testid="ticket-entry-lock-notice" className="rounded-xl border border-amber-300/30 bg-amber-400/10 p-4 text-sm leading-6 text-slate-200">{entryCopy.locked}</p> : null}
 
       {/* Tab Contents */}
-      {activeTab === "tickets" || activeTab === "signals" ? (
+      {activeTab === "tickets" || activeTab === "signals" || activeTab === "orders" ? (
         <p className="px-2 text-xs leading-5 text-slate-400">
           {activeTab === "tickets"
             ? ui.ticketHint
-            : ui.signalHint}
+            : activeTab === "orders" ? ui.orderHint : ui.signalHint}
         </p>
       ) : null}
       <div id={contentId} ref={contentRef} role="tabpanel" aria-labelledby={`${contentId}-${activeTab}`} tabIndex={-1} className="animate-in fade-in slide-in-from-top-1 duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500">
@@ -296,37 +298,29 @@ export default function LeadsTicketsClient({
           </div>
 
         {activeTab === "orders" && inboxes.orders.availability === "ready" && (
+          <div className={inboxStyles.orderRequests} data-testid="crm-order-requests">
           <DataTable
             title={ui.orders}
             columns={[
-              { key: "created_at", label: "Fecha" },
-              { key: "contact", label: "Contacto" },
-              { key: "company", label: "Empresa" },
-              { key: "tag_type", label: "Tipo Tag" },
-              { key: "volume", label: "Cantidad" },
-              { key: "status", label: "Estado" }
+              { key: "reference", label: ui.reference },
+              { key: "created_at", label: ui.date },
+              { key: "product", label: ui.orderProduct },
+              { key: "quantity", label: ui.orderQuantity },
+              { key: "contact", label: ui.contact },
+              { key: "company", label: ui.company },
+              { key: "status", label: ui.orderStatus },
+              { key: "message", label: ui.orderMessage },
             ]}
-            rows={initialOrders
-              .filter(o => {
-                const searchStr = `${o.contact || ""} ${o.company || ""} ${o.tag_type || ""} ${o.notes || ""}`.toLowerCase();
-                return searchStr.includes(searchTerm.toLowerCase());
-              })
-              .map((item) => ({
-                created_at: customerRecordDate(item.created_at, ui.missing),
-                contact: item.contact,
-                company: item.company || "-",
-                tag_type: item.tag_type || "-",
-                volume: customerRecordQuantity(item.volume, ui.missing),
-                status: customerRecordText(item.status, ui.missing),
-              }))}
+            rows={orderRows.filter(row => customerOrderRequestMatchesQuery(row, searchTerm))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
-            emptyLabel="No hay pedidos de muestras registrados"
-            searchPlaceholder="Filtrar..."
+            emptyLabel={initialOrders.length === 0 ? ui.orderNoRecords : ui.orderNoMatches}
+            searchPlaceholder={ui.orderSearch}
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
             statusMap={copy.statuses}
           />
+          </div>
         )}
 
         {activeTab === "ai_queries" && (
