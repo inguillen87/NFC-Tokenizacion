@@ -118,6 +118,71 @@ test("committed 503 records title as incomplete without enabling retries or inve
   assert.deepEqual(model.tapAssociationResult("rewards", "715", 503, payload), { outcome: "committed_unknown", retryable: false });
 });
 
+test("a consumed-action marker blocks the same action after 409 or requires a new reading after 503", async () => {
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    for (const [status, expected] of [[409, "blocked"], [503, "fresh_required"]]) {
+      const calls = [];
+      let refreshes = 0;
+      const runner = model.createTapAssociationRunner(context(`action=${action}`), async path => {
+        calls.push(path);
+        return { status, payload: { ok: false, error: status === 409 ? "manual_opening_declared" : "rights_evidence_unavailable", fresh_tap_required: true } };
+      }, () => { refreshes++; });
+      assert.deepEqual(await runner.run(action), { outcome: expected, retryable: false });
+      assert.equal(await runner.run(action), null, `${action}/${status}: no second POST for the consumed action`);
+      assert.equal(calls.length, 1);
+      assert.equal(refreshes, 0, "a denial does not refresh or invent an entitlement");
+      const otherAction = model.TAP_ASSOCIATION_ACTIONS.find(value => value !== action);
+      assert.deepEqual(await runner.run(otherAction), { outcome: expected, retryable: false });
+      assert.equal(calls.length, 2, "another action retains its own explicit request and result");
+      assert.equal(runner.state().results[action].outcome, expected);
+      runner.dispose();
+    }
+  }
+});
+
+test("the consumed-action marker requires an own boolean and only qualifies 409 or 503", () => {
+  const malformed = [undefined, null, false, "true", 1, [], {}];
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    for (const value of malformed) {
+      const payload = { ok: false, error: "rights_evidence_unavailable", fresh_tap_required: value };
+      assert.deepEqual(model.tapAssociationResult(action, "715", 503, payload), { outcome: "unconfirmed", retryable: true });
+    }
+    assert.deepEqual(model.tapAssociationResult(action, "715", 503, Object.create({ fresh_tap_required: true })), { outcome: "unconfirmed", retryable: true });
+    for (const status of [200, 201, 429, 500, 504]) {
+      assert.deepEqual(model.tapAssociationResult(action, "715", status, { ok: false, fresh_tap_required: true }), { outcome: "unconfirmed", retryable: true });
+    }
+    assert.deepEqual(model.tapAssociationResult(action, "715", 401, { fresh_tap_required: true }), { outcome: "session_required", retryable: true });
+  }
+});
+
+test("positive and committed receipts take precedence over the consumed-action marker", () => {
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    assert.deepEqual(model.tapAssociationResult(action, "715", 200, { ...successPayloads[action], fresh_tap_required: true }), { outcome: outcome[action], retryable: false });
+    for (const status of [409, 503]) {
+      assert.deepEqual(model.tapAssociationResult(action, "715", status, { operation_committed: true, fresh_tap_required: true }), { outcome: "committed_unknown", retryable: false });
+    }
+  }
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 503, {
+    operation_committed: true, fresh_tap_required: true, ownership: { status: "claimed", record_scope: titleScope },
+  }), { outcome: "recorded_pending", retryable: false });
+});
+
+test("consumed-action guidance preserves policy requirements and offers read-only review", () => {
+  const requirements = {
+    "es-AR": [/esta acción/, /no elimina sus restricciones/, /historial/, /no garantiza/],
+    en: [/this action/, /does not remove its restrictions/, /history/, /does not guarantee/],
+    "pt-BR": [/esta ação/, /não elimina suas restrições/, /histórico/, /não garante/],
+  };
+  for (const [locale, [action, restriction, history, guarantee]] of Object.entries(requirements)) {
+    assert.match(copy.associationCopy[locale].outcomes.fresh_required, action);
+    assert.match(copy.associationCopy[locale].outcomes.fresh_required, restriction);
+    assert.match(copy.associationCopy[locale].outcomes.blocked, history);
+    assert.match(copy.associationCopy[locale].outcomes.blocked, guarantee);
+  }
+  assert.match(source, /href="\/me\/taps"/);
+  assert.match(source, /prefetch=\{false\}/);
+});
+
 test("denied and review-required responses never become pending applications or ownership grants", () => {
   for (const error of ["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked"]) {
     assert.deepEqual(model.tapAssociationResult("claim", "715", 403, { error }), { outcome: "fresh_required", retryable: false });
