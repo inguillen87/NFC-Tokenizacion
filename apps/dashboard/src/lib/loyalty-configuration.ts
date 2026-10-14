@@ -53,6 +53,31 @@ export function parseLoyaltyConfiguration(value: unknown, tenant: string): Loyal
   return value as LoyaltyConfiguration;
 }
 
+export type ConfigurationProgramContext = {
+  state: "none" | "selected" | "invalid" | "unavailable" | "missing";
+  program: ConfigurationProgram | null;
+  clearHref: string;
+  message: string;
+};
+
+/** A URL selects one persisted program for consultation; it never creates or changes a configuration. */
+export function configurationProgramContext(value: unknown, tenant: string, requested: unknown, isDemo = false): ConfigurationProgramContext {
+  const tenantConfirmed = /^[a-z0-9][a-z0-9._-]{0,127}$/.test(tenant);
+  const clearHref = `/loyalty/configuration${tenantConfirmed ? `?${new URLSearchParams({ tenant })}` : ""}`;
+  const context = (state: ConfigurationProgramContext["state"], message: string, program: ConfigurationProgram | null = null): ConfigurationProgramContext =>
+    ({ state, message, program, clearHref });
+  if (requested === undefined) return context("none", "");
+  if (typeof requested !== "string" || !uuid.test(requested)) {
+    return context("invalid", "El enlace no identifica un único programa válido. Quitá la selección del enlace para consultar la configuración de esta empresa.");
+  }
+  const data = !isDemo && tenantConfirmed ? parseLoyaltyConfiguration(value, tenant) : null;
+  if (!data) return context("unavailable", "No pudo confirmarse el programa para esta empresa. No se seleccionó otro programa ni se creó una configuración.");
+  const programs = data.programs.filter(program => program.id.toLowerCase() === requested.toLowerCase());
+  if (programs.length > 1) return context("unavailable", "No pudo confirmarse un único programa para este enlace. No se seleccionó otro programa ni se creó una configuración.");
+  if (programs.length !== 1) return context("missing", "El programa del enlace no está incluido en esta consulta. Puede estar fuera de la lista de programas recientes. Su asociación se conserva; no se seleccionó otro programa.");
+  return context("selected", "Estás consultando el programa asociado al beneficio. Abrir esta consulta no modifica sus reglas ni habilita reservas.", programs[0]);
+}
+
 export function isPublished(resource: ConfigurationResource) { return resource.status === "active" || resource.status === "published"; }
 export function configurationState(resource: ConfigurationResource, now = Date.now()): string {
   if (resource.status === "paused") return "Retirado";

@@ -19,6 +19,19 @@ const text = (value: unknown): string | null => typeof value === "string" && val
 const integer = (value: unknown): number | null => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 2_147_483_647 ? value : null;
 const advisory = "Estas condiciones describen la configuración guardada. La reserva se valida para cada persona en el portal; el estado Activo no confirma que pueda reservar.";
 
+/** Navigation only: never infer an association from a program name or an unconfirmed source. */
+export function rewardProgramConfigurationLink(rewardValue: unknown, context: NoticeContext): string | null {
+  if (context.dataSource !== "production") return null;
+  const reward = object(rewardValue);
+  const tenant = context.tenantScope;
+  if (!/^[a-z0-9][a-z0-9._-]{0,127}$/.test(tenant) || reward?.tenant_slug !== tenant) return null;
+  const requirements = object(reward.reservation_requirements);
+  const program = object(requirements?.program);
+  if (requirements?.version !== REWARD_REQUIREMENTS_VERSION || program?.association_confirmed !== true
+    || typeof reward.program_id !== "string" || !/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(reward.program_id)) return null;
+  return `/loyalty/configuration?${new URLSearchParams({ tenant, program: reward.program_id.toLowerCase() })}`;
+}
+
 function dateRow(label: string, value: unknown): RewardNoticeRow {
   if (value === null) return { label, value: "Fecha no informada", attention: true };
   // The API's versioned model emits canonical ISO instants. Never turn an invalid or missing value into an open-ended period.

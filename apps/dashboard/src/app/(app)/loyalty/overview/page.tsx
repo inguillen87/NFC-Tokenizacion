@@ -80,7 +80,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
           <Link href={`/loyalty/configuration${tenantScope ? `?${new URLSearchParams({ tenant: tenantScope })}` : ""}`} className="min-h-11 px-4 py-2 border border-cyan-300/30 text-cyan-200 text-sm font-semibold rounded-lg">
             Configurar servicios y trivias
           </Link>
-          <Link href="/loyalty/rewards" className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">
+          <Link href={`/loyalty/rewards${tenantScope ? `?${new URLSearchParams({ tenant: tenantScope })}` : ""}`} className="min-h-11 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">
             Ver Catálogo
           </Link>
         </div>

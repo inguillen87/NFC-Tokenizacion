@@ -8,6 +8,7 @@ import {readHistoricalBaseline,tenantSyncHistoricalSourceHash} from './helpers/t
 import {ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
 import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,assertMarketplaceAddedSource} from './helpers/tenant-marketplace-reviewed-sources.mjs';
 import {REWARD_NOTICE_ADDED,rewardNoticePriorInventory,assertRewardNoticeAddedSource} from './helpers/reward-notice-reviewed-sources.mjs';
+import {rewardProgramContextPublishedSourceHash} from './helpers/reward-program-context-reviewed-sources.mjs';
 import {canReadRuntimeConsole,runtimeConsoleScopeKey} from '../src/lib/runtime-readiness-access.ts';
 import {parseRuntimeSnapshot,runtimeSupportSummary,runtimeObservedTime,runtimeSnapshotExpiresAt,RUNTIME_CONSOLE_FEATURES} from '../src/lib/runtime-readiness-contract.ts';
 import {readRuntimeSnapshot,fetchRuntimeSnapshot,RuntimeConsoleError} from '../src/lib/runtime-readiness-transport.ts';
@@ -51,15 +52,15 @@ test('the diagnostic UI preserves all operational sources outside the exact revi
  for(const p of baseline.paths){
   const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
   const actual=createHash('sha256').update(content).digest('hex');
-  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,actual)),origins.expected[p])+'\n');
+  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,rewardProgramContextPublishedSourceHash(p,actual))),origins.expected[p])+'\n');
  }
  assert.equal(digest.digest('hex'),baseline.digest);
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
  await walk(root);rewardNoticePriorInventory(actual,origins.expected);
- for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+ for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
  for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
- for(const path of Object.keys(REWARD_NOTICE_ADDED))assertRewardNoticeAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+ for(const path of Object.keys(REWARD_NOTICE_ADDED))assertRewardNoticeAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
 });
 
 test('UTC time is unambiguous at midnight and future clock tolerance cannot extend client visibility past 60 seconds',()=>{

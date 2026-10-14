@@ -21,6 +21,6 @@ export default async function LoyaltyConfigurationPage({ searchParams }: { searc
   const canWrite = Boolean(context.tenantSlug && !session.isDemo) && (session.role === "super-admin"
     ? !dashboardPermissionDenied(session.deniedPermissions, "rewards:write")
     : dashboardPermissionMatches(session.permissions, "rewards:write", session.deniedPermissions));
-  return <LoyaltyConfigurationWorkspace key={`${context.tenantSlug}:${Boolean(session.isDemo)}`} tenant={context.tenantSlug} canSelectTenant={context.canSelectTenant}
-    canWrite={canWrite} initialData={initialData} initialReason={initialReason} isDemo={Boolean(session.isDemo)} />;
+  return <LoyaltyConfigurationWorkspace key={`${context.tenantSlug}:${Boolean(session.isDemo)}:${JSON.stringify(query.program ?? null)}`} tenant={context.tenantSlug} canSelectTenant={context.canSelectTenant}
+    canWrite={canWrite} initialData={initialData} initialReason={initialReason} isDemo={Boolean(session.isDemo)} initialProgramQuery={query.program} />;
 }
