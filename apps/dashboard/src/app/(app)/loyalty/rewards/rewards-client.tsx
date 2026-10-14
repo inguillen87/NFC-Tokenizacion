@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Card, StatusChip } from "@product/ui";
+import RewardReservationNotice from "../../../../components/reward-reservation-notice";
 import {
   Plus,
   Edit2,
@@ -34,6 +35,7 @@ interface Reward {
   stock_remaining?: number | null;
   requires_age_gate?: boolean;
   network_visible?: boolean;
+  reservation_requirements?: unknown;
 }
 
 type RewardForm = { code: string; title: string; description: string; type: string; points_cost: number; stock_total: number | null; image_url: string; status: string; requires_age_gate: boolean; network_visible: boolean };
@@ -303,6 +305,13 @@ export default function RewardsClient({
         </div>
       ) : null}
 
+      {availability === "ready" && dataSource === "production" ? (
+        <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-slate-300">
+          Activo indica el estado del beneficio. Cada reserva también depende del programa, la vigencia y los requisitos de la persona.
+          Revisá <strong>Condiciones de acceso</strong> en cada beneficio antes de comunicar su disponibilidad.
+        </p>
+      ) : null}
+
       {availability === "ready" ? <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {initialRewards.map((item, idx) => {
           const isPaused = item.status === "paused" || item.status === "draft";
@@ -371,6 +380,8 @@ export default function RewardsClient({
                 <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed flex-1">
                   {item.description || "Sin descripción disponible."}
                 </p>
+
+                <RewardReservationNotice reward={item} tenantScope={tenantScope} dataSource={dataSource} />
 
                 <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
                   <div>

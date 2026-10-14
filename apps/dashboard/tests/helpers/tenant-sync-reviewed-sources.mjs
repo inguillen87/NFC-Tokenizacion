@@ -6,8 +6,10 @@ export const TENANT_SYNC_SOURCE_BASE='4d976d385e75d1e9139ebc44f5ba820eaaebb591';
 export const TENANT_SYNC_REVIEWED_SOURCES=Object.freeze({
  'apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx':Object.freeze({
   before:'a30a8a28b0341cc679dd01c1ddb00f4c16b513a7937732251ad26d405f8a2c18',
-  after:'8863655cf2f4466b79f24a89e87cde85b1d9ab4636d8e6ccd2b2f59deae6e5ba',
-  reason:'Persisted reward identity and flags; consumed-stock preservation; accessible recoverable form.'
+  previousAfter:'8863655cf2f4466b79f24a89e87cde85b1d9ab4636d8e6ccd2b2f59deae6e5ba',
+  sourceParent:'f94f8020421bf07b4269512ac7d595db7652232f',
+  after:'dd011e3af39d7115a1b2f2e8c841234819dbc8d938587eb404bbfab1fe113276',
+  reason:'Reviewed read-only access-conditions disclosure on f94f8020; prior identity, flags, stock preservation and form handlers unchanged.'
  }),
  'apps/dashboard/src/app/sign-in/[[...sign-in]]/page.tsx':Object.freeze({
   before:'63c4f9f4e733569dfee628418c5dc4b98ce725e0ef0f7a42604c5267d42af013',
