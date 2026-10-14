@@ -94,7 +94,7 @@ export default function SommelierClient({ productName, brandName }: { productNam
             <p>{msg.text}</p>
             {msg.sender === "sommelier" && msg.provenance?.mode !== "context" ? <details className={styles.provenance}><summary>Origen y alcance de esta respuesta</summary><p>{sommelierProvenanceLabel(msg.provenance)}</p></details> : null}
             {msg.sources?.length ? <details className={styles.provenance}><summary>Fuentes de esta respuesta</summary><ul>{msg.sources.map(source => <li key={source.id}>{source.url ? <a className={styles.back} href={source.url} target="_blank" rel="noreferrer">{source.label}</a> : source.label}</li>)}</ul></details> : null}
-            {msg.suggestedQuestions?.length ? <div className={styles.starters} aria-label="Preguntas sugeridas para continuar">{msg.suggestedQuestions.map((question, index) => <button type="button" key={index} disabled={pending} onClick={() => { setInput(question); inputRef.current?.focus(); }}>{question}</button>)}</div> : null}
+            {msg.suggestedQuestions?.length ? <div className={styles.starters} role="group" aria-label="Preguntas sugeridas para continuar">{msg.suggestedQuestions.map((question, index) => <button type="button" key={index} disabled={pending} onClick={() => { setInput(question); inputRef.current?.focus(); }}>{question}</button>)}</div> : null}
             {msg.delivery === "unconfirmed" ? <span className={styles.delivery}>Respuesta del servicio no recibida</span> : null}
           </article>)}
         </div>
