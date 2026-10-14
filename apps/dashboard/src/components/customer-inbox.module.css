@@ -33,3 +33,5 @@
 .search input::placeholder { color: var(--ci-muted); }
 .search:focus-within { outline: 3px solid var(--ci-accent); outline-offset: 3px; }
 .search input:focus-visible { outline: none; }
+.orderRequests { min-width: 0; max-width: 100%; }
+.orderRequests td { overflow-wrap: anywhere; vertical-align: top; }

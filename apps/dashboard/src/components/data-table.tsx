@@ -62,6 +62,8 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
 
   const statuses = Array.from(new Set(rows.map((row) => row[filterKey])));
   const exportBase = slugify(title);
+  const displayStatus = (value: string) => statusMap && Object.hasOwn(statusMap, value) && typeof statusMap[value] === "string"
+    ? statusMap[value] : value;
 
   return (
     <Card className="data-table-card p-5">
@@ -74,7 +76,7 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
           <input suppressHydrationWarning aria-label={searchPlaceholder} placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm sm:w-48" />
           <select suppressHydrationWarning aria-label="Filtrar por estado" value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
             <option value="all">{allFilterLabel}</option>
-            {statuses.map((item) => <option key={item} value={item}>{statusMap?.[item] ?? item}</option>)}
+            {statuses.map((item) => <option key={item} value={item}>{displayStatus(item)}</option>)}
           </select>
           <Button variant="secondary" disabled={refreshDisabled} onClick={() => { if (!refreshDisabled) startTransition(() => router.refresh()); }}>{refreshLabel}</Button>
           <button suppressHydrationWarning type="button" className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100" onClick={() => downloadBlob(`${exportBase}.csv`, "text/csv;charset=utf-8", buildCsv(columns, filtered))}>CSV</button>
@@ -103,9 +105,9 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
                     <td key={col.key} className="px-4 py-3 text-slate-200 whitespace-pre-line max-w-[480px]">
                       {col.key === filterKey ? (
                         <Badge tone={resolveTone(row[col.key])}>
-                          {statusMap?.[row[col.key]] ?? row[col.key]}
+                          {displayStatus(row[col.key])}
                         </Badge>
-                      ) : (statusMap?.[row[col.key]] ?? row[col.key])}
+                      ) : row[col.key]}
                     </td>
                   ))}
                 </tr>
