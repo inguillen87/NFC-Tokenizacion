@@ -1,10 +1,13 @@
 import { reportedWalletPoints } from "./consumer-wallet-points-model";
 
+export const CONSUMER_REWARD_RESERVATION_INTENT = "portal-first-reservation.v1" as const;
+
 export type ConsumerReward = {
   key: string; id: string; title: string; tenant: string; brand: string;
   program: string | null; programBalance?: number | null; description: string | null; cost: number | null; hasClaim: boolean;
   state: "claimed" | "redeemed" | "cancelled" | "expired" | "out_of_stock" | "upcoming" | "inactive" | "locked" | "reported" | "unknown";
   code: string | null; expiresAt: string | null;
+  reservation?: { claimIntent: typeof CONSUMER_REWARD_RESERVATION_INTENT; pointsCost: number };
 };
 export type ConsumerRewardsSource = { status: "ready"; items: ConsumerReward[] } | { status: "unavailable"; items: null };
 function record(value: unknown): Record<string, unknown> | null {
@@ -63,9 +66,20 @@ export function buildConsumerRewardsModel(payload: unknown, now: string): Consum
     } else if (["expired", "out_of_stock", "upcoming", "inactive", "locked", "reported"].includes(reported || "")) state = reported as ConsumerReward["state"];
     else if (reported === "available") state = "reported"; // Legacy availability used a different points ledger, not claim authorization.
     const code = typeof row.redemption_code === "string" && /^[A-Z0-9-]{4,64}$/i.test(row.redemption_code) ? row.redemption_code : null;
+    // A published or legacy available row alone never authorizes a portal request.
+    const canReserve = row.can_claim === true && row.claimIntent === CONSUMER_REWARD_RESERVATION_INTENT
+      && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)
+      && row.catalog_state === "reported" && reported === "reported"
+      && row.claim_id === null && row.claim_status === null && row.claim_expires_at === null
+      && row.redemption_code === null && row.points_spent === null
+      && typeof row.points_cost === "number" && Number.isSafeInteger(row.points_cost)
+      && row.points_cost >= 0 && row.points_cost <= 2_147_483_647
+      && typeof row.program_points_balance === "number" && Number.isSafeInteger(row.program_points_balance)
+      && row.program_points_balance >= row.points_cost && text(row.program_name) !== null;
     items.push({ key, id, tenant, title: text(row.title) || "Beneficio sin título informado", brand: text(row.tenant_name) || tenant,
       program: text(row.program_name), programBalance: reportedWalletPoints(row.program_points_balance), description: text(row.description, 1200), cost: reportedWalletPoints(claimId ? row.points_spent : row.points_cost),
-      hasClaim: Boolean(claimId), state, code: state === "claimed" ? code : null, expiresAt });
+      hasClaim: Boolean(claimId), state, code: state === "claimed" ? code : null, expiresAt,
+      ...(canReserve ? { reservation: { claimIntent: CONSUMER_REWARD_RESERVATION_INTENT, pointsCost: row.points_cost as number } } : {}) });
   }
   return { status: "ready", items };
 }
