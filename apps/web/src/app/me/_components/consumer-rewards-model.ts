@@ -2,12 +2,20 @@ import { reportedWalletPoints } from "./consumer-wallet-points-model";
 
 export const CONSUMER_REWARD_RESERVATION_INTENT = "portal-first-reservation.v1" as const;
 
+const REWARD_UNAVAILABLE_REASONS = [
+  "age_verification_required", "insufficient_program_points", "brand_connection_required",
+  "program_participation_required", "brand_conditions_review", "availability_review", "account_review",
+] as const;
+export type ConsumerRewardUnavailableReason = typeof REWARD_UNAVAILABLE_REASONS[number];
+
 export type ConsumerReward = {
   key: string; id: string; title: string; tenant: string; brand: string;
   program: string | null; programBalance?: number | null; description: string | null; cost: number | null; hasClaim: boolean;
   state: "claimed" | "redeemed" | "cancelled" | "expired" | "out_of_stock" | "upcoming" | "inactive" | "locked" | "reported" | "unknown";
   code: string | null; expiresAt: string | null;
   reservation?: { claimIntent: typeof CONSUMER_REWARD_RESERVATION_INTENT; pointsCost: number };
+  claimUnavailableReasons?: ConsumerRewardUnavailableReason[];
+  reservationNeedsRefresh?: boolean;
 };
 export type ConsumerRewardsSource = { status: "ready"; items: ConsumerReward[] } | { status: "unavailable"; items: null };
 function record(value: unknown): Record<string, unknown> | null {
@@ -18,6 +26,13 @@ function text(value: unknown, max = 240): string | null {
 }
 function identifier(value: unknown): string | null {
   return typeof value === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(value) ? value : null;
+}
+function unavailableReasons(value: unknown): ConsumerRewardUnavailableReason[] | undefined {
+  if (!Array.isArray(value) || value.length > REWARD_UNAVAILABLE_REASONS.length) return undefined;
+  for (const reason of value) {
+    if (typeof reason !== "string" || !(REWARD_UNAVAILABLE_REASONS as readonly string[]).includes(reason)) return undefined;
+  }
+  return [...new Set(value)] as ConsumerRewardUnavailableReason[];
 }
 export function rewardTenant(value: unknown): string {
   return typeof value === "string" && (/^[a-z0-9][a-z0-9._-]{0,119}$/.test(value) || /^[a-zA-Z0-9-]{1,60}$/.test(value)) ? value : "";
@@ -76,9 +91,12 @@ export function buildConsumerRewardsModel(payload: unknown, now: string): Consum
       && row.points_cost >= 0 && row.points_cost <= 2_147_483_647
       && typeof row.program_points_balance === "number" && Number.isSafeInteger(row.program_points_balance)
       && row.program_points_balance >= row.points_cost && text(row.program_name) !== null;
+    const reasons = unavailableReasons(row.claim_unavailable_reasons);
     items.push({ key, id, tenant, title: text(row.title) || "Beneficio sin título informado", brand: text(row.tenant_name) || tenant,
       program: text(row.program_name), programBalance: reportedWalletPoints(row.program_points_balance), description: text(row.description, 1200), cost: reportedWalletPoints(claimId ? row.points_spent : row.points_cost),
       hasClaim: Boolean(claimId), state, code: state === "claimed" ? code : null, expiresAt,
+      ...(reasons ? { claimUnavailableReasons: reasons } : {}),
+      ...(row.can_claim === true && !claimId && !canReserve ? { reservationNeedsRefresh: true } : {}),
       ...(canReserve ? { reservation: { claimIntent: CONSUMER_REWARD_RESERVATION_INTENT, pointsCost: row.points_cost as number } } : {}) });
   }
   return { status: "ready", items };
@@ -92,5 +110,37 @@ export function findRequestedVoucher(source: ConsumerRewardsSource, voucher: unk
 }
 export const REWARD_STATE_LABELS: Record<ConsumerReward["state"], string> = {
   claimed: "Voucher emitido", redeemed: "Canjeado", cancelled: "Cancelado", expired: "Vencido", out_of_stock: "Sin cupo",
-  upcoming: "No habilitado", inactive: "Finalizado", locked: "Requiere condiciones", reported: "Publicado por la marca", unknown: "Estado por confirmar",
+  upcoming: "No habilitado", inactive: "No habilitado", locked: "Requiere condiciones", reported: "Publicado por la marca", unknown: "Estado por confirmar",
 };
+
+/** Notices are advisory. A known catalog lifecycle takes priority without hiding other reported requirements. */
+export function rewardAvailabilityNotice(item: ConsumerReward): { title: string; summary?: string; messages: string[] } {
+  if (item.reservationNeedsRefresh) return { title: "Necesitamos actualizar los datos", messages: [
+    "No pudimos confirmar todos los datos para reservar este beneficio. Volvé a consultar tus beneficios antes de continuar.",
+  ] };
+  const lifecycle = item.state === "expired" ? { title: "Este beneficio ya venció", message: "El beneficio figura como vencido. Podés consultar otras propuestas de la marca." }
+    : item.state === "out_of_stock" ? { title: "Este beneficio no tiene cupos", message: "El beneficio figura sin cupos. Consultá con la marca si habrá una nueva disponibilidad." }
+      : item.state === "inactive" ? { title: "Este beneficio no está habilitado", message: "La marca no tiene habilitada la reserva de este beneficio. Consultá si estará disponible." }
+        : item.state === "upcoming" ? { title: "Todavía no se puede reservar", message: "Este beneficio todavía no está habilitado. Consultá con la marca cuándo estará disponible." } : null;
+  const reasons = item.claimUnavailableReasons;
+  const orderedReasons = lifecycle && reasons ? [...reasons.filter(reason => reason === "availability_review"), ...reasons.filter(reason => reason !== "availability_review")] : reasons;
+  const messages = orderedReasons?.map(reason => {
+    switch (reason) {
+      case "age_verification_required": return "Este beneficio requiere verificación de edad. Consultá con la marca cómo acceder.";
+      case "insufficient_program_points": return typeof item.cost === "number" && typeof item.programBalance === "number"
+        && item.programBalance < item.cost
+        ? `Te faltan ${item.cost - item.programBalance} puntos en este programa para alcanzar el costo del beneficio.`
+        : "El programa necesita confirmar un saldo suficiente para este beneficio.";
+      case "brand_connection_required": return "Este beneficio requiere un vínculo activo con la marca. Podés revisar tu relación en Mis marcas.";
+      case "program_participation_required": return "Este beneficio requiere participar en el programa de la marca. Consultá cómo sumarte y qué condiciones tiene.";
+      case "brand_conditions_review": return "La marca tiene que confirmar las condiciones de este beneficio antes de habilitar la reserva.";
+      case "availability_review": return lifecycle?.message ?? "La marca tiene que confirmar la vigencia y los cupos antes de habilitar la reserva.";
+      case "account_review": return "Necesitamos revisar los datos de tu cuenta para este beneficio. Volvé a consultar o contactá a la marca.";
+    }
+  });
+  if (messages?.length) return { title: lifecycle?.title ?? "Antes de reservar", ...(lifecycle ? { summary: lifecycle.message } : {}), messages };
+  if (lifecycle) return { title: lifecycle.title, messages: [lifecycle.message] };
+  return { title: "Todavía no se puede reservar", messages: [
+    "La marca tiene que confirmar los requisitos y la disponibilidad de este beneficio. Publicado no significa reservado; consultar esta información no descuenta puntos.",
+  ] };
+}

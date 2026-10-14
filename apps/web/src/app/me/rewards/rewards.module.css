@@ -44,6 +44,13 @@
 .cost span { font-size: .8rem; color: var(--portal-muted); }
 .cost strong { font-size: 1.1rem; font-weight: 750; }
 .cost small { font-size: .8rem; }
+.availabilityNotice { border: 1px solid var(--portal-border); border-radius: .8rem; padding: .85rem; margin-bottom: 1rem; background: var(--portal-subtle); color: var(--portal-muted); font-size: .85rem; line-height: 1.65; overflow-wrap: anywhere; }
+.availabilityNotice p { margin: 0; }
+.availabilityNotice strong { color: var(--portal-text); }
+.availabilityNotice p + p { margin-top: .4rem; }
+.availabilityNotice .moreRequirements { font-size: .8rem; }
+.availabilityNotice a { margin-top: .65rem; }
+.requirements { display: grid; gap: .65rem; margin: .65rem 0; padding-left: 1.2rem; overflow-wrap: anywhere; }
 .details { border-top: 1px solid var(--portal-border); }
 .details summary { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 3rem; padding-top: .3rem; font-size: .875rem; font-weight: 700; color: var(--portal-accent); cursor: pointer; list-style: none; }
 .details summary::-webkit-details-marker { display: none; }
