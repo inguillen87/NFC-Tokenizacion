@@ -10,6 +10,7 @@ import {canReadGlobalNotifications} from '../src/lib/admin-notification-access.t
 import {readHistoricalBaseline,TENANT_SYNC_REVIEWED_SOURCES,TENANT_SYNC_SOURCE_BASE,tenantSyncHistoricalSourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 import {ENGAGEMENT_GOVERNANCE_BASE,ENGAGEMENT_GOVERNANCE_CHANGED,ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceInventory,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
 import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,marketplacePriorInventory,assertMarketplaceAddedSource} from './helpers/tenant-marketplace-reviewed-sources.mjs';
+import {REWARD_NOTICE_SOURCE_BASE,REWARD_NOTICE_ADDED,rewardNoticePriorInventory,assertRewardNoticeAddedSource} from './helpers/reward-notice-reviewed-sources.mjs';
 const source=await readFile(new URL('../src/lib/supplier-request-proxy.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source.replace(/^import .*;\r?$/gm,''),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const moduleExports={};
@@ -56,10 +57,11 @@ test('every merged source file retains its immutable origin except the exact rev
  assert.equal(baseline.protocol,'nexid.release-convergence-source.v1');assert.equal(baseline.baselineSourceFiles,487);assert.equal(baseline.replaced.length,3);assert.equal(baseline.added.length,2);
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
- await walk(root);assertGovernanceInventory(marketplacePriorInventory(actual,baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
+ await walk(root);assertGovernanceInventory(marketplacePriorInventory(rewardNoticePriorInventory(actual,baseline.expected),baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
  for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,actual)),expected),expected,path);}
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+ for(const path of Object.keys(REWARD_NOTICE_ADDED))assertRewardNoticeAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  assert.ok(baseline.expected['apps/dashboard/src/components/supplier-request-workspace.tsx']);
  assert.ok(baseline.expected['apps/dashboard/src/lib/supplier-service-client.ts']);
 });
@@ -90,6 +92,23 @@ test('governance overlay pins exact published origin and an independent four-cha
  assert.throws(()=>assertGovernanceAddedSource('apps/dashboard/src/unreviewed.ts','0'.repeat(64)),/known governance source addition/);
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assert.throws(()=>assertGovernanceAddedSource(path,'0'.repeat(64)),/exact reviewed governance addition/);
  assert.equal(governancePublishedSourceHash('apps/dashboard/src/lib/enterprise-runtime-rbac.ts','unreviewed'),'unreviewed');
+});
+test('reward notice overlay allows only three exact new sources on f94 without hiding arbitrary changes',async()=>{
+ assert.equal(REWARD_NOTICE_SOURCE_BASE,'f94f8020421bf07b4269512ac7d595db7652232f');
+ assert.deepEqual(Object.keys(REWARD_NOTICE_ADDED).sort(),['apps/dashboard/src/components/reward-reservation-notice.module.css','apps/dashboard/src/components/reward-reservation-notice.tsx','apps/dashboard/src/lib/reward-reservation-notices.ts']);
+ const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
+ const prior=[...Object.keys(baseline.expected),...Object.keys(ENGAGEMENT_GOVERNANCE_ADDED),...Object.keys(TENANT_MARKETPLACE_ADDED)];
+ const inventory=[...prior,...Object.keys(REWARD_NOTICE_ADDED)];
+ assert.deepEqual(rewardNoticePriorInventory(inventory,baseline.expected),prior);
+ for(const path of Object.keys(REWARD_NOTICE_ADDED)){
+  assert.throws(()=>rewardNoticePriorInventory(inventory.filter(item=>item!==path),baseline.expected));
+  assert.throws(()=>rewardNoticePriorInventory(inventory,{...baseline.expected,[path]:'0'.repeat(64)}));
+  assert.throws(()=>assertRewardNoticeAddedSource(path,'0'.repeat(64)),/exact reviewed reward notice addition/);
+ }
+ assert.throws(()=>rewardNoticePriorInventory(inventory.slice(1),baseline.expected));
+ assert.throws(()=>rewardNoticePriorInventory([...inventory,inventory[0]],baseline.expected));
+ assert.throws(()=>rewardNoticePriorInventory([...inventory,'apps/dashboard/src/unreviewed.ts'],baseline.expected));
+ assert.throws(()=>assertRewardNoticeAddedSource('apps/dashboard/src/unreviewed.ts','0'.repeat(64)),/known reward notice source addition/);
 });
 test('merged CI keeps all prior operational and production-hotfix browser suites',async()=>{
  const w=await readFile(new URL('../../../.github/workflows/ticket-deadline-qa.yml',import.meta.url),'utf8');
