@@ -5,12 +5,13 @@ type Props = {
   reward: unknown;
   tenantScope: string;
   dataSource: "production" | "demo" | "unavailable";
+  initiallyOpen?: boolean;
 };
 
-export default function RewardReservationNotice({ reward, tenantScope, dataSource }: Props) {
+export default function RewardReservationNotice({ reward, tenantScope, dataSource, initiallyOpen = false }: Props) {
   const notice = rewardReservationNotice(reward, { tenantScope, dataSource });
   return (
-    <details className={styles.notice} data-reservation-notice={notice.state}>
+    <details className={styles.notice} data-reservation-notice={notice.state} open={initiallyOpen}>
       <summary className={styles.summary}>
         <span className={styles.heading}>Condiciones de acceso</span>
         <span className={styles.status}>{notice.summary}</span>

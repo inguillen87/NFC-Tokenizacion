@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Card, StatusChip } from "@product/ui";
 import RewardReservationNotice from "../../../../components/reward-reservation-notice";
+import { rewardProgramConfigurationLink } from "../../../../lib/reward-reservation-notices";
 import {
   Plus,
   Edit2,
@@ -134,6 +135,8 @@ export default function RewardsClient({
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const programConfigurationHref = availability === "ready" && !isDemo
+    ? rewardProgramConfigurationLink(editingReward, { tenantScope, dataSource }) : null;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -148,7 +151,7 @@ export default function RewardsClient({
   };
   const containModalFocus = (event: React.KeyboardEvent<HTMLDialogElement>) => {
     if (event.key !== "Tab") return;
-    const targets = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])")];
+    const targets = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), summary, a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])")];
     const first = targets[0], last = targets[targets.length - 1];
     const active = document.activeElement;
     if (event.shiftKey ? active === first || !targets.includes(active as HTMLElement) : active === last || !targets.includes(active as HTMLElement)) {
@@ -429,6 +432,11 @@ export default function RewardsClient({
             </header>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              {editingReward && <section aria-label="Condiciones guardadas del beneficio" className="space-y-3">
+                <p className="text-sm leading-relaxed text-slate-300">Esta edición conserva la asociación con el programa, la vigencia y las condiciones personalizadas. Guardar no garantiza que una persona pueda reservar; se validan los requisitos del programa y del beneficio.</p>
+                <RewardReservationNotice reward={editingReward} tenantScope={tenantScope} dataSource={dataSource} initiallyOpen />
+                {programConfigurationHref && <a href={programConfigurationHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-cyan-400/40 px-3 py-2 text-sm font-semibold text-cyan-200 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300">Consultar programa (abre otra pestaña)</a>}
+              </section>}
               {message && (
                 <div
                   ref={feedbackRef}

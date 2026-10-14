@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  buildConfigurationCommand, configurationDate, configurationErrorCopy, configurationReconciliation, configurationState, dateInput, explicitInteger,
+  buildConfigurationCommand, configurationDate, configurationErrorCopy, configurationProgramContext, configurationReconciliation, configurationState, dateInput, explicitInteger,
   isConfigurationResource, isPublished, parseLoyaltyConfiguration, POST_TAP_SERVICES,
   type ConfigurationAction, type ConfigurationCommand, type ConfigurationKind, type ConfigurationProgram,
   type ConfigurationQuestion, type ConfigurationQuiz, type ConfigurationResource, type LoyaltyConfiguration,
@@ -36,13 +36,17 @@ function putResource(data: LoyaltyConfiguration, kind: ConfigurationKind, resour
   return { ...data, [key]: [...rows.filter(r => "id" in resource && r.id !== resource.id), resource] };
 }
 
-export default function LoyaltyConfigurationWorkspace({ tenant, canWrite, canSelectTenant, initialData, initialReason = "", isDemo = false }: {
-  tenant: string; canWrite: boolean; canSelectTenant: boolean; initialData: LoyaltyConfiguration | null; initialReason?: string; isDemo?: boolean;
+export default function LoyaltyConfigurationWorkspace({ tenant, canWrite, canSelectTenant, initialData, initialReason = "", isDemo = false, initialProgramQuery }: {
+  tenant: string; canWrite: boolean; canSelectTenant: boolean; initialData: LoyaltyConfiguration | null; initialReason?: string; isDemo?: boolean; initialProgramQuery?: unknown;
 }) {
-  const [data, setData] = useState(initialData);
-  const [kind, setKind] = useState<ConfigurationKind>("profile");
-  const [resource, setResource] = useState<ConfigurationResource | null>(initialData?.profile || null);
-  const [fields, setFields] = useState<Fields>(initialData ? fieldsOf(initialData.profile) : { ...blank });
+  const [initialSnapshot] = useState(() => isDemo ? null : parseLoyaltyConfiguration(initialData, tenant));
+  const [programContext] = useState(() => configurationProgramContext(initialSnapshot, tenant, initialProgramQuery, isDemo));
+  const initialResource = programContext.state === "none" ? initialSnapshot?.profile || null : programContext.program;
+  const [data, setData] = useState(initialSnapshot);
+  const [kind, setKind] = useState<ConfigurationKind>(programContext.state === "none" ? "profile" : "program");
+  const [resource, setResource] = useState<ConfigurationResource | null>(initialResource);
+  const [fields, setFields] = useState<Fields>(initialResource ? fieldsOf(initialResource) : { ...blank });
+  const [contextReadOnly, setContextReadOnly] = useState(programContext.state === "selected");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(initialReason ? configurationErrorCopy(initialReason) : "");
@@ -66,18 +70,20 @@ export default function LoyaltyConfigurationWorkspace({ tenant, canWrite, canSel
   const bindingMissing = kind === "quiz" && resource && "programId" in resource && resource.revision && !data?.programs.some(p => p.id === resource.programId);
   const published = resource && isPublished(resource);
   const archived = resource?.status === "archived";
-  const editable = canWrite && Boolean(data && resource) && !published && !archived && !legacy && !bindingMissing && !busy && !uncertain;
+  const editable = canWrite && Boolean(data && resource) && !contextReadOnly && !published && !archived && !legacy && !bindingMissing && !busy && !uncertain;
   function inform(text: string, isError = false) { setMessage(text); setError(isError); }
   function adopt(next: ConfigurationResource | null, nextKind = kind) {
     setKind(nextKind); setResource(next); setFields(next ? fieldsOf(next) : { ...blank }); setDirty(false); setPending(null); setUncertain(false); setReviewed(null); setDidRead(false); setConfirmAction(null);
   }
   function choose(nextKind: ConfigurationKind, next: ConfigurationResource | null) {
     if (dirty || uncertain) { inform("Tu formulario sigue aquí. Guardá el borrador o descartá los cambios antes de cambiar de sección.", true); return; }
+    setContextReadOnly(false);
     adopt(next, nextKind); inform("");
   }
   function change<K extends keyof Fields>(key: K, value: Fields[K]) { if (!editable) return; setFields(f => ({ ...f, [key]: value })); setDirty(true); setConfirmAction(null); }
   function create(nextKind: "program" | "quiz") {
     if (!canWrite || !data || busy || uncertain || dirty) { if (dirty) inform("Guardá o descartá el formulario actual antes de crear otro borrador.", true); return; }
+    setContextReadOnly(false);
     const common = { id: crypto.randomUUID(), revision: "", lastOperationId: null, vertical: "", status: "draft" };
     const next: ConfigurationResource = nextKind === "program" ? { ...common, name: "", pointsName: "", pointsPerValidTap: null, cooldownSeconds: null, startAt: null, endAt: null }
       : { ...common, programId: "", title: "", description: "", startsAt: null, endsAt: null, questions: [], pointsPerCorrect: 0, completionBonus: 0, passThreshold: 0, managed: true };
@@ -146,6 +152,14 @@ export default function LoyaltyConfigurationWorkspace({ tenant, canWrite, canSel
     {canSelectTenant && <form action="/loyalty/configuration" method="GET" className={styles.tenantForm}><label>Empresa<input name="tenant" defaultValue={tenant} required pattern="[a-zA-Z0-9][a-zA-Z0-9._-]*" maxLength={128} disabled={busy || dirty || uncertain} placeholder="Identificador de la empresa" /></label><button disabled={busy || dirty || uncertain}>Consultar empresa</button></form>}
     {!tenant ? <p className={styles.note}>Seleccioná una empresa para consultar y editar su configuración. Esta pantalla no realiza cambios globales.</p> : null}
     {isDemo ? <p className={styles.notice}>El entorno de demostración no consulta ni guarda esta configuración de clientes.</p> : !canWrite && tenant ? <p className={styles.notice}>Tenés acceso de consulta. Este perfil no puede guardar, publicar ni retirar configuraciones.</p> : null}
+    {programContext.state !== "none" && (programContext.state !== "selected" || kind === "program" && resource && "id" in resource && resource.id === programContext.program?.id) && <section className={styles.notice} aria-label="Programa del enlace" data-program-context={programContext.state}>
+      <p className={styles.note}>{programContext.message}</p>
+      <div className={styles.actions}>
+        {!busy && !dirty && !uncertain ? <a href={programContext.clearHref} className={styles.contextLink}>Quitar selección del enlace</a>
+          : <span className={styles.note}>Tu formulario se conserva. Esperá a que termine la consulta o el guardado; revisá el estado guardado y guardá o descartá los cambios antes de quitar la selección.</span>}
+        {contextReadOnly && canWrite && !archived && <button type="button" disabled={busy || uncertain} onClick={() => setContextReadOnly(false)}>Abrir configuración del programa</button>}
+      </div>
+    </section>}
     {message && <div ref={notice} tabIndex={-1} role={error ? "alert" : "status"} className={error ? styles.error : styles.notice}>{message}</div>}
     {tenant && !isDemo && <div className={styles.toolbar}><button type="button" disabled={busy} onClick={() => void refresh()}>Consultar estado guardado</button>{dirty && !uncertain && <button type="button" disabled={busy} onClick={() => { adopt(resource?.revision ? resource : null); inform("Cambios sin guardar descartados."); }}>Descartar cambios sin guardar</button>}</div>}
     {!data ? <p className={styles.note}>La configuración no está disponible. Completá el perfil de marca o reintentá la consulta; no se reemplaza con reglas de ejemplo.</p> : <>
@@ -167,7 +181,7 @@ export default function LoyaltyConfigurationWorkspace({ tenant, canWrite, canSel
             {kind === "quiz" && <div className={styles.questions}><h3>Preguntas · {fields.questions.length}{legacy ? " · sólo consulta" : "/12"}</h3>{fields.questions.map((q, index) => <section key={q.id} className={styles.question} aria-label={`Pregunta ${index + 1}`}><div className={styles.title}><h4>Pregunta {index + 1}</h4><button type="button" onClick={() => change("questions", fields.questions.filter((_, i) => i !== index))}>Quitar pregunta {index + 1}</button></div><label>Enunciado {index + 1}<textarea aria-label={`Enunciado ${index + 1}`} value={q.prompt} maxLength={500} onChange={e => questionChange(index, { prompt: e.target.value })} /></label><fieldset className={styles.options}><legend>Opciones y respuesta correcta · pregunta {index + 1}</legend>{q.options.map((option, optionIndex) => <div key={optionIndex} className={styles.option}><label className={styles.radio}><input type="radio" name={`correct-${q.id}`} checked={q.correctIndex === optionIndex} onChange={() => questionChange(index, { correctIndex: optionIndex })} /><span>Correcta {optionIndex + 1}</span></label><label className={styles.optionText}>Opción {optionIndex + 1}<input value={option} maxLength={240} onChange={e => questionChange(index, { options: q.options.map((o, i) => i === optionIndex ? e.target.value : o) })} /></label><button type="button" disabled={q.correctIndex === optionIndex} aria-label={`Quitar opción ${optionIndex + 1} de pregunta ${index + 1}`} onClick={() => removeOption(index, optionIndex)}>Quitar</button></div>)}<button type="button" disabled={q.options.length >= 6} onClick={() => questionChange(index, { options: [...q.options, ""] })}>Agregar opción a pregunta {index + 1}</button><p className={styles.note}>Para quitar la opción marcada, elegí antes otra respuesta correcta.</p></fieldset><label>Explicación (opcional) · pregunta {index + 1}<textarea aria-label={`Explicación (opcional) · pregunta ${index + 1}`} value={q.explanation || ""} maxLength={1000} onChange={e => questionChange(index, { explanation: e.target.value })} /></label></section>)}<button type="button" disabled={fields.questions.length >= 12} onClick={() => change("questions", [...fields.questions, { id: crypto.randomUUID(), prompt: "", options: ["", ""], correctIndex: 0, explanation: "" }])}>Agregar pregunta</button><p className={styles.note}>El borrador puede estar incompleto. Publicar exige entre 1 y 12 preguntas, de 2 a 6 opciones distintas y una respuesta correcta por pregunta.</p></div>}
           </>}
         </fieldset>
-        {canWrite && !legacy && !archived && !bindingMissing && <div className={styles.actions}>{published ? <button type="button" disabled={busy || uncertain} onClick={() => setConfirmAction("withdraw")}>Retirar publicación</button> : <><button type="button" disabled={!editable} onClick={() => void send("save_draft")}>Guardar borrador</button><button type="button" className={styles.primary} disabled={!editable || !resource.revision || dirty} onClick={() => setConfirmAction("publish")}>Publicar configuración guardada</button></>}{dirty && !published && <p className={styles.note}>Guardá los cambios como borrador antes de publicarlos.</p>}</div>}
+        {canWrite && !contextReadOnly && !legacy && !archived && !bindingMissing && <div className={styles.actions}>{published ? <button type="button" disabled={busy || uncertain} onClick={() => setConfirmAction("withdraw")}>Retirar publicación</button> : <><button type="button" disabled={!editable} onClick={() => void send("save_draft")}>Guardar borrador</button><button type="button" className={styles.primary} disabled={!editable || !resource.revision || dirty} onClick={() => setConfirmAction("publish")}>Publicar configuración guardada</button></>}{dirty && !published && <p className={styles.note}>Guardá los cambios como borrador antes de publicarlos.</p>}</div>}
         {confirmAction && <div className={styles.confirm} role="group" aria-label="Confirmar cambio de publicación"><h3>{confirmAction === "withdraw" ? "Retirar esta publicación" : "Publicar esta configuración"}</h3><p>{confirmAction === "withdraw" ? "Dejará de estar disponible para nuevas acciones. Los puntos, beneficios e intentos anteriores conservan su historial." : kind === "profile" ? `Habilitará ${fields.allowedActions.length} servicio(s) de esta marca. La compra también exige catálogo publicado y política comercial apta.` : kind === "program" ? `${fields.pointsPerValidTap} puntos por lectura válida, con ${fields.cooldownSeconds} segundos de espera; aplican las fechas guardadas.` : `Trivia para la vertical ${verticals[fields.vertical as keyof typeof verticals] || fields.vertical} de esta empresa, con ${fields.pointsPerCorrect} puntos por acierto y ${fields.completionBonus} de bonus. El programa debe estar vigente.`}</p><div className={styles.actions}><button type="button" className={styles.primary} disabled={busy} onClick={() => void send(confirmAction)}>{confirmAction === "withdraw" ? "Confirmar retiro" : "Confirmar publicación"}</button><button type="button" disabled={busy} onClick={() => setConfirmAction(null)}>Cancelar</button></div></div>}
       </section> : <p className={styles.note}>{kind === "program" ? "Elegí un programa guardado o creá un borrador. No se selecciona ni activa uno automáticamente." : "Elegí una trivia guardada o creá un borrador ligado a un programa existente."}</p>}
       {didRead && <section className={styles.compare} aria-label="Versión guardada consultada"><h2>Estado guardado consultado</h2><p>{reviewed ? `${"name" in reviewed ? reviewed.name : "title" in reviewed ? reviewed.title : "Servicios post-tap"} · ${configurationState(reviewed)}` : "Este borrador no figura entre las configuraciones guardadas."}</p>{reviewed && <><p className={styles.note}>Revisión: {reviewed.revision}</p>{"pointsName" in reviewed && <p>Lectura válida: {reviewed.pointsPerValidTap ?? "sin configurar"} puntos · espera {reviewed.cooldownSeconds ?? "sin configurar"} segundos.</p>}<button type="button" disabled={busy} onClick={() => { adopt(reviewed); inform("Versión guardada cargada; el formulario anterior se descartó."); }}>Descartar formulario y usar versión guardada</button></>}{uncertain && pending && configurationReconciliation(reviewed, pending) === "retry_allowed" && <><p className={styles.note}>La revisión consultada permite reintentar exactamente la operación original. No se cambian sus campos ni su identificador.</p><button type="button" disabled={busy} onClick={() => void send(pending.action, pending)}>Reintentar operación original</button></>}</section>}
