@@ -180,3 +180,12 @@ test("server render never labels a handoff as failed before a deliberate request
   assert.doesNotMatch(html, /role="alert"|data-handoff-failure|Reintentar acceso|Nueva lectura necesaria/);
   assert.doesNotMatch(html, /href="\/me\/products\?fromTap=1"/);
 });
+
+test("handoff renders an empty polite live region before navigation feedback changes", () => {
+  const html = renderToStaticMarkup(React.createElement(consumerLink, { href: "/me/products?fromTap=1", eventId, freshToken }, "Abrir colección"));
+  assert.match(html, /<div id="[^"]+" role="status" aria-live="polite" aria-atomic="true"><\/div>/);
+  assert.doesNotMatch(html, /data-handoff-navigation|Abriendo tu cuenta|Acceso preparado|Continuar a mi cuenta|private-fixture-capability/);
+  const readOnly = renderToStaticMarkup(React.createElement(consumerLink, { href: "/me/products", eventId, freshToken: "" }, "Colección"));
+  assert.doesNotMatch(readOnly, /role="status"|aria-live|aria-busy|<button/);
+  assert.match(readOnly, /href="\/me\/products"[^>]*data-prefetch="false"/);
+});

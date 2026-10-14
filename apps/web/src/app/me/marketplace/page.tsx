@@ -50,14 +50,18 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
       </section>}
       {contextUnavailable ? <section className={`${styles.intro} ${styles.empty}`} role="status">
         <p>Las consultas desde esta lectura no están disponibles. La marca pudo cambiar sus opciones o la lectura requiere revisión.</p>
-        <Link href="/me/marketplace" className={styles.button}>Consultar el catálogo general</Link>
+        <Link href="/me/marketplace" className={styles.button}>Volver al catálogo</Link>
       </section> : catalog.status === "unavailable" ? <section className={recoveryStyles.notice} role="status" data-testid="consumer-catalog-unavailable">
         <h2>No pudimos cargar el catálogo</h2>
         <p>Reintentá la consulta para ver los productos publicados y sus condiciones.</p>
         <ConsumerDataRetryButton />
       </section> : catalog.data.length ? <MarketplaceGridClient key={postTapEventId || "global"} items={catalog.data} {...(postTapEventId ? { postTapEventId } : {})} /> : (
         <section className={`${styles.intro} ${styles.empty}`}>
-          Todavía no hay productos publicados para este contexto. Podés volver a consultar el catálogo más adelante.
+          <p>Todavía no hay productos publicados para este contexto. Podés volver a consultar el catálogo más adelante.</p>
+          <div className={styles.actions}>
+            <Link href="/me/products" prefetch={false} className={styles.button}>Ver mis productos</Link>
+            <Link href="/me/brands" prefetch={false} className={styles.button}>Ver mis marcas</Link>
+          </div>
         </section>
       )}
       <section className={styles.wallet}>

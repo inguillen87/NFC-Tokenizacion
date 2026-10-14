@@ -17,7 +17,7 @@ const sourcePaths = ["apps/web/src/app/sun/consumer-passport-link.tsx", "apps/we
 const hashes = async () => Object.fromEntries(await Promise.all(sourcePaths.map(async path => [path, createHash("sha256").update(await readFile(join(root, path))).digest("hex")])));
 const report = { localOnly: true, actualReactComponent: true, actualNextAndBff: false, syntheticHandoffAndNavigation: true, productionOrPhysicalTapVerified: false, sourceHashesStart: await hashes(), checks: [], views: [], contexts: [], errors: [], browserClosed: false, serverClosed: false };
 const check = (passed, name) => { report.checks.push({ name, passed: Boolean(passed) }); assert.ok(passed, name); };
-const nextShim = `import React from 'react';export const useRouter=()=>({push(href){window.__handoffPushes.push(href);history.pushState(null,'',href);window.dispatchEvent(new Event('fixture-navigate'));}});export default React.forwardRef(function Link({prefetch,...props},ref){return <a {...props} ref={ref} data-prefetch={String(prefetch)}/>});`;
+const nextShim = `import React from 'react';export const useRouter=()=>({push(href){window.__handoffPushes.push(href);if(window.__handoffNavigationMode==='throw')throw new Error('synthetic_navigation_failure');if(window.__handoffNavigationMode==='hold')return;history.pushState(null,'',href);window.dispatchEvent(new Event('fixture-navigate'));}});export default React.forwardRef(function Link({prefetch,...props},ref){return <a {...props} ref={ref} data-prefetch={String(prefetch)}/>});`;
 const bundle = await build({ entryPoints: [join(web, "tests/browser/consumer-handoff-recovery.fixture.tsx")], bundle: true, write: false, outdir: join(output, "bundle"), format: "iife", platform: "browser", jsx: "automatic", loader: { ".module.css": "local-css" }, define: { "process.env.NODE_ENV": '"development"' }, plugins: [{ name: "synthetic-next", setup(builder) {
   builder.onResolve({ filter: /^next\/(link|navigation)$/ }, () => ({ path: "next-shim", namespace: "fixture" }));
   builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ contents: nextShim, loader: "tsx", resolveDir: web }));
@@ -44,15 +44,29 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : "playwright-core");
 const axe = await readFile(process.env.AXE_MODULE_PATH, "utf8");
 const labels = {
-  "es-AR": { retry: "Reintentar acceso", newReading: "Nueva lectura necesaria", readOnly: "Abrir mis productos guardados", fresh: "Acercá de nuevo el teléfono a la etiqueta." },
-  en: { retry: "Retry access", newReading: "New reading needed", readOnly: "Open my saved products", fresh: "Tap the tag again with your phone." },
-  "pt-BR": { retry: "Tentar acesso novamente", newReading: "Nova leitura necessária", readOnly: "Abrir meus produtos salvos", fresh: "Aproxime o celular da etiqueta novamente." },
+  "es-AR": { retry: "Reintentar acceso", newReading: "Nueva lectura necesaria", readOnly: "Abrir mis productos guardados", fresh: "Acercá de nuevo el teléfono a la etiqueta.", opening: "Abriendo tu cuenta…", prepared: "Acceso preparado", continue: "Continuar a mi cuenta" },
+  en: { retry: "Retry access", newReading: "New reading needed", readOnly: "Open my saved products", fresh: "Tap the tag again with your phone.", opening: "Opening your account…", prepared: "Access ready", continue: "Continue to my account" },
+  "pt-BR": { retry: "Tentar acesso novamente", newReading: "Nova leitura necessária", readOnly: "Abrir meus produtos salvos", fresh: "Aproxime o celular da etiqueta novamente.", opening: "Abrindo sua conta…", prepared: "Acesso preparado", continue: "Continuar para minha conta" },
 };
 let browser;
 async function open({ width = 390, theme = "light", locale = "es-AR" } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, locale, reducedMotion: "reduce", serviceWorkers: "block" });
   const page = await context.newPage(); page.setDefaultTimeout(10000);
-  const entry = { width, theme, locale, handoffs: 0, businessWrites: 0, geolocationCalls: null, blocked: [], errors: [], expectedFailures: [], closed: false }; report.contexts.push(entry);
+  const entry = { width, theme, locale, handoffs: 0, portalReads: [], businessWrites: 0, geolocationCalls: null, blocked: [], errors: [], expectedFailures: [], closed: false }; report.contexts.push(entry);
+  // Observe native timer registration/clearing; React hooks and the component's
+  // real eight-second deadlines are not replaced or accelerated.
+  await page.addInitScript(() => {
+    const timers = new Set(), nativeSet = window.setTimeout.bind(window), nativeClear = window.clearTimeout.bind(window);
+    window.setTimeout = (callback, delay, ...args) => {
+      if (typeof callback !== "function" || delay !== 8000) return nativeSet(callback, delay, ...args);
+      let timer;
+      timer = nativeSet((...values) => { timers.delete(timer); callback.apply(window, values); }, delay, ...args);
+      timers.add(timer);
+      return timer;
+    };
+    window.clearTimeout = timer => { timers.delete(timer); nativeClear(timer); };
+    window.__handoffEightSecondTimers = () => timers.size;
+  });
   let mode = "success", release, observed, requestObserved;
   page.on("pageerror", () => entry.errors.push("pageerror"));
   page.on("console", message => {
@@ -77,6 +91,7 @@ async function open({ width = 390, theme = "light", locale = "es-AR" } = {}) {
       if (currentMode === "wrong-ok") return route.fulfill({ status: 400, json: { ok: true, error: "tap_handoff_invalid_or_expired" } });
       if (currentMode === "other-error") return route.fulfill({ status: 400, json: { ok: false, error: "tap_capability_ambiguous" } });
       if (currentMode === "wrong-event") return route.fulfill({ status: 200, json: { ok: true, eventId: "717" } });
+      if (currentMode === "unexpected-success-status") return route.fulfill({ status: 201, json: { ok: true, eventId: body.eventId } });
       return route.fulfill({ status: 200, json: { ok: true, eventId: body.eventId } }).catch(() => {
         if (contextClosed || entry.expectedAbort) entry.expectedFailures.push("synthetic_cancelled_response");
         else entry.errors.push("response_delivery_failure");
@@ -84,6 +99,7 @@ async function open({ width = 390, theme = "light", locale = "es-AR" } = {}) {
     }
     if (request.method() !== "GET") { entry.businessWrites++; return route.abort(); }
     if (!["/", "/fixture.js", "/fixture.css", "/base.css", "/favicon.ico", "/me/products"].includes(url.pathname)) { entry.blocked.push("unexpected_path"); return route.abort(); }
+    if (url.pathname === "/me/products") entry.portalReads.push(url.pathname + url.search);
     return route.continue();
   });
   let contextClosed = false;
@@ -112,6 +128,22 @@ async function assess(fixture, scenario) {
   await page.screenshot({ path: join(output, screenshot) });
   report.views.push({ scenario, width: entry.width, theme: entry.theme, locale: entry.locale, screenshot, violations });
 }
+async function assessNavigation(fixture, scenario) {
+  const { page, entry } = fixture, region = page.getByTestId("consumer-passport-primary");
+  const status = region.getByRole("status"), button = region.getByRole("button");
+  check(await status.getAttribute("aria-live") === "polite" && await status.getAttribute("aria-atomic") === "true", `Polite navigation feedback ${scenario}`);
+  check(await button.getAttribute("aria-describedby") === await status.getAttribute("id") && await button.isDisabled(), `Prepared navigation stays disabled and associated ${scenario}`);
+  check(await region.getByRole("alert").count() === 0, `Confirmed access is not reported as transport failure ${scenario}`);
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Navigation feedback has no horizontal overflow ${scenario}`);
+  const markup = await region.innerHTML();
+  check(!/synthetic-capability|freshToken/.test(markup), `No capability appears in navigation markup ${scenario}`);
+  await page.addScriptTag({ content: axe });
+  const violations = await page.evaluate(async () => (await axe.run('[data-testid="consumer-passport-primary"]', { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] } })).violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.length })));
+  check(violations.length === 0, `Accessible navigation feedback ${scenario}`);
+  const screenshot = `${scenario}-${entry.width}-${entry.theme}-${entry.locale}.png`;
+  await page.screenshot({ path: join(output, screenshot) });
+  report.views.push({ scenario, width: entry.width, theme: entry.theme, locale: entry.locale, screenshot, violations });
+}
 try {
   browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
   for (const locale of ["es-AR", "en", "pt-BR"]) for (const width of [320, 390]) for (const theme of ["light", "dark"]) {
@@ -135,7 +167,7 @@ try {
       check(new URL(fixture.page.url()).pathname === "/me/products" && new URL(fixture.page.url()).search === "" && fixture.entry.handoffs === 1, "Read-only collection does not reuse TAP context or send another handoff");
     } finally { await fixture.close(); }
   }
-  for (const mode of ["connectivity", "invalid-json", "wrong-status", "wrong-ok", "other-error", "wrong-event"]) {
+  for (const mode of ["connectivity", "invalid-json", "wrong-status", "wrong-ok", "other-error", "wrong-event", "unexpected-success-status"]) {
     const fixture = await open();
     try {
       fixture.setMode(mode);
@@ -201,12 +233,96 @@ try {
       check(fixture.entry.handoffs === 2 && await fixture.page.evaluate(() => window.__handoffPushes.length === 1), "A timed-out handoff remains recoverable by one deliberate retry");
     } finally { await fixture.close(); }
   }
+  for (const locale of ["es-AR", "en", "pt-BR"]) for (const width of [320, 390]) for (const theme of ["light", "dark"]) {
+    const fixture = await open({ locale, width, theme });
+    try {
+      await fixture.page.evaluate(() => { window.__handoffNavigationMode = "hold"; });
+      const observed = fixture.hold(), region = fixture.page.getByTestId("consumer-passport-primary"), button = region.getByRole("button");
+      await button.click(); await observed;
+      await fixture.page.getByRole("button", { name: "Salir de esta lectura" }).focus();
+      fixture.release();
+      await region.locator('[data-handoff-navigation="opening"]').waitFor();
+      check(await button.innerText() === labels[locale].opening && await button.getAttribute("aria-busy") === "true", "Confirmed navigation has its own localized busy phase");
+      check(await fixture.page.evaluate(() => window.__handoffEightSecondTimers() === 1 && window.__handoffPushes.length === 1), "Only the navigation deadline remains after confirmed transport");
+      await button.evaluate(node => { node.click(); node.click(); });
+      check(fixture.entry.handoffs === 1 && await fixture.page.evaluate(() => window.__handoffPushes.length === 1), "Double click after confirmation cannot prepare access again");
+      check(await region.getByRole("link").count() === 0, "Continuation is not offered before the navigation deadline");
+      check(await fixture.page.getByRole("button", { name: "Salir de esta lectura" }).evaluate(node => node === document.activeElement), "Opening feedback does not steal focus");
+      await assessNavigation(fixture, "confirmed-opening");
+    } finally { await fixture.close(); }
+  }
+  {
+    const fixture = await open();
+    try {
+      await fixture.page.evaluate(() => { window.__handoffNavigationMode = "hold"; });
+      const region = fixture.page.getByTestId("consumer-passport-primary"), button = region.getByRole("button");
+      const started = await fixture.page.evaluate(() => Date.now());
+      await button.click(); await region.locator('[data-handoff-navigation="opening"]').waitFor();
+      await fixture.page.getByRole("button", { name: "Salir de esta lectura" }).focus();
+      await region.locator('[data-handoff-navigation="delayed"]').waitFor();
+      check(await fixture.page.evaluate(started => Date.now() - started >= 8000, started), "Explicit continuation waits for the native eight-second navigation deadline");
+      check(fixture.entry.handoffs === 1 && await fixture.page.evaluate(() => window.__handoffPushes.length === 1 && window.__handoffEightSecondTimers() === 0), "Delayed navigation does not retry transport or leave a live timer");
+      check(await button.innerText() === labels["es-AR"].prepared && await button.getAttribute("aria-busy") === "false", "Delayed navigation acknowledges confirmed access without an endless busy state");
+      check(await fixture.page.getByRole("button", { name: "Salir de esta lectura" }).evaluate(node => node === document.activeElement), "Delayed continuation does not move focus");
+      const continuation = region.getByRole("link", { name: labels["es-AR"].continue, exact: true });
+      check(await continuation.getAttribute("href") === "/me/products?fromTap=1&eventId=715&tenant=qa-only&action=products" && await continuation.getAttribute("data-prefetch") === "false", "Continuation preserves the exact prepared destination without prefetch");
+      check(await continuation.evaluate(node => { const r = node.getBoundingClientRect(); return r.height >= 44 && r.width >= 44 && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest("a") === node; }), "Prepared continuation is an unobstructed 44px target");
+      await assessNavigation(fixture, "confirmed-delayed");
+      fixture.entry.geolocationCalls = await fixture.page.evaluate(() => window.__handoffGeoCalls);
+      await fixture.page.keyboard.press("Tab");
+      check(await continuation.evaluate(node => node === document.activeElement), "Prepared continuation is the next native keyboard target");
+      await fixture.page.keyboard.press("Enter");
+      await fixture.page.getByRole("heading", { name: "Productos guardados del ensayo" }).waitFor();
+      check(fixture.entry.handoffs === 1 && JSON.stringify(fixture.entry.portalReads) === JSON.stringify(["/me/products?fromTap=1&eventId=715&tenant=qa-only&action=products"]), "Explicit prepared continuation is GET only and sends no second handoff");
+    } finally { await fixture.close(); }
+  }
+  {
+    const fixture = await open();
+    try {
+      await fixture.page.evaluate(() => { window.__handoffNavigationMode = "throw"; });
+      const observed = fixture.hold(), region = fixture.page.getByTestId("consumer-passport-primary"), button = region.getByRole("button");
+      await button.click(); await observed;
+      await fixture.page.getByRole("button", { name: "Salir de esta lectura" }).focus();
+      fixture.release(); await region.locator('[data-handoff-navigation="failed"]').waitFor();
+      check(await fixture.page.evaluate(() => window.__handoffEightSecondTimers() === 0), "Synchronous router failure clears its own navigation deadline");
+      check(await fixture.page.getByRole("button", { name: "Salir de esta lectura" }).evaluate(node => node === document.activeElement), "Router failure feedback does not steal focus");
+      // Even an adversarially enabled DOM button cannot prepare this confirmed
+      // reading again. This is a component guarantee, not a server security test.
+      await button.evaluate(node => { node.disabled = false; node.click(); node.click(); node.disabled = true; });
+      check(fixture.entry.handoffs === 1 && await fixture.page.evaluate(() => window.__handoffPushes.length === 1), "Router throw after confirmation never returns to POST retry");
+      await assessNavigation(fixture, "confirmed-router-failed");
+      fixture.entry.geolocationCalls = await fixture.page.evaluate(() => window.__handoffGeoCalls);
+      await region.getByRole("link", { name: labels["es-AR"].continue, exact: true }).click();
+      await fixture.page.getByRole("heading", { name: "Productos guardados del ensayo" }).waitFor();
+      check(fixture.entry.handoffs === 1 && JSON.stringify(fixture.entry.portalReads) === JSON.stringify(["/me/products?fromTap=1&eventId=715&tenant=qa-only&action=products"]), "Router recovery uses the prepared destination with GET only");
+    } finally { await fixture.close(); }
+  }
+  for (const kind of ["prepared-context-change", "prepared-unmount"]) {
+    const fixture = await open();
+    try {
+      await fixture.page.evaluate(() => { window.__handoffNavigationMode = "hold"; });
+      const region = fixture.page.getByTestId("consumer-passport-primary");
+      await region.getByRole("button").click(); await region.locator('[data-handoff-navigation="opening"]').waitFor();
+      check(await fixture.page.evaluate(() => window.__handoffEightSecondTimers() === 1), `One confirmed navigation deadline ${kind}`);
+      if (kind === "prepared-context-change") await fixture.page.evaluate(() => window.dispatchEvent(new Event("fixture-change-context")));
+      else await fixture.page.getByRole("button", { name: "Salir de esta lectura" }).click();
+      await fixture.page.waitForFunction(() => window.__handoffEightSecondTimers() === 0);
+      check(fixture.entry.handoffs === 1 && await fixture.page.locator("[data-handoff-navigation]").count() === 0, `Prepared deadline and feedback are cleared ${kind}`);
+      if (kind === "prepared-context-change") {
+        await fixture.page.locator('[data-testid="fixture-current-reading"][data-event-id="716"]').waitFor();
+        const next = fixture.page.getByTestId("consumer-passport-primary").getByRole("button");
+        check(!await next.isDisabled(), "A different reading starts with a new deliberate choice");
+        await next.click(); await region.locator('[data-handoff-navigation="opening"]').waitFor();
+        check(fixture.entry.handoffs === 2 && await fixture.page.evaluate(() => JSON.stringify(window.__handoffPushes) === JSON.stringify(["/me/products?fromTap=1&eventId=715&tenant=qa-only&action=products", "/me/products?fromTap=1&eventId=716&tenant=qa-only&action=products"])), "A new reading prepares only its own exact destination on a new click");
+      } else await fixture.page.getByTestId("fixture-left-reading").waitFor();
+    } finally { await fixture.close(); }
+  }
 } catch { report.errors.push("handoff_recovery_assertion_or_runtime_failure"); }
 finally {
   if (browser) { await browser.close(); report.browserClosed = true; }
   server.closeAllConnections(); await new Promise(done => server.close(done)); report.serverClosed = true;
   report.sourceHashesEnd = await hashes();
-  report.accepted = report.checks.every(item => item.passed) && report.views.length === 13 && report.contexts.length === 24 && report.contexts.every(entry => entry.closed && entry.errors.length === 0 && entry.blocked.length === 0 && entry.businessWrites === 0 && entry.geolocationCalls === 0) && report.errors.length === 0 && JSON.stringify(report.sourceHashesStart) === JSON.stringify(report.sourceHashesEnd) && report.browserClosed && report.serverClosed;
+  report.accepted = report.checks.every(item => item.passed) && report.views.length === 27 && report.contexts.length === 41 && report.contexts.every(entry => entry.closed && entry.errors.length === 0 && entry.blocked.length === 0 && entry.businessWrites === 0 && entry.geolocationCalls === 0) && report.errors.length === 0 && JSON.stringify(report.sourceHashesStart) === JSON.stringify(report.sourceHashesEnd) && report.browserClosed && report.serverClosed;
   await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2), { flag: "wx" });
   console.log(JSON.stringify({ accepted: report.accepted, checks: report.checks.length, views: report.views.length, contexts: report.contexts.length, errors: report.errors }));
   if (!report.accepted) process.exitCode = 1;

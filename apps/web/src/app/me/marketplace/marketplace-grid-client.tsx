@@ -349,7 +349,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
           <ShoppingCart className={styles.icon} aria-hidden="true" /> Ver mi lista <ArrowDown className={styles.icon} aria-hidden="true" />
         </button>
       </div>
-      {contextUnavailable ? <div role="status" className={styles.intro}><p>Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.</p><a href="/me/marketplace" className={styles.button}>Consultar el catálogo general</a></div> : null}
+      {contextUnavailable ? <div role="status" className={styles.intro}><p>Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.</p><a href="/me/marketplace" className={styles.button}>Volver al catálogo</a></div> : null}
       <div className={styles.layout}>
         <aside className={styles.filters} aria-label="Filtros del catálogo">
           <div className={styles.panel}>
@@ -425,7 +425,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
             <p className={styles.muted}>{cartTotals.units} unidad{cartTotals.units === 1 ? "" : "es"}</p>
             <div className={styles.lines}>
               {cartLines.length ? cartLines.map(({ item, quantity }) => (
-                <div key={item.id} className={styles.line}>
+                <div key={item.id} className={styles.line} data-marketplace-request-item={item.id}>
                   <p className={styles.lineTitle}>{item.title || "Producto publicado"}</p>
                   <p className={styles.muted}>{priceLabel(item)}</p>
                   <div className={styles.quantityRow}>
@@ -436,6 +436,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                     </div>
                     <button type="button" disabled={cartBusy || busyById[item.id]} onClick={() => setCartQuantity(item.id, 0)} className={styles.button} aria-label={`Quitar ${item.title || "producto"} de la lista`}>Quitar</button>
                   </div>
+                  {feedbackById[item.id] ? <p className={styles.feedback}>{feedbackById[item.id]}</p> : null}
                 </div>
               )) : <p className={styles.empty}>Agregá productos para consultar por varios en una sola lista.</p>}
             </div>
