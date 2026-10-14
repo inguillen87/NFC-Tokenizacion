@@ -12,6 +12,8 @@ type ClaimInput = {
   maximumPointsCost?: 0;
   /** Server-owned opt-in; campaigns retain their existing first-class contract. */
   portalFirstClaim?: { expectedPointsCost: number };
+  /** HTTP-only semantic identity; never accepted from a consumer body. Default false preserves other writers. */
+  consumerHttpClaim?: true;
 };
 
 type RefundInput = {
@@ -70,7 +72,7 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
         -- Stored eligibility rules require a supported verifier; never ignore
         -- configured restrictions or interpret unknown JSON as unrestricted.
         AND reward.eligibility_json = '{}'::jsonb
-        -- Only the authenticated portal opts into a first-reservation contract.
+        -- Only an explicit portal intent opts into a first-reservation contract.
         -- Unknown configured policy stays blocked; no rule is silently discarded.
         AND (${Boolean(input.portalFirstClaim)}::boolean = false OR (
           reward.redemption_limit_per_member IS NULL
@@ -83,6 +85,13 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
           AND NOT EXISTS (SELECT 1 FROM consumer_reward_claims own_claim
             WHERE own_claim.consumer_id = ${input.consumerId}::uuid
               AND own_claim.reward_id = reward.id)
+        ))
+        -- Both HTTP protocols reserve at most one semantic consumer/reward identity.
+        -- A preceding read alone cannot protect concurrent requests.
+        AND (${Boolean(input.consumerHttpClaim)}::boolean = false OR NOT EXISTS (
+          SELECT 1 FROM consumer_reward_claims http_claim
+          WHERE http_claim.consumer_id = ${input.consumerId}::uuid
+            AND http_claim.reward_id = reward.id
         ))
         AND reward.points_cost >= 0
         AND (${input.maximumPointsCost ?? null}::integer IS NULL OR reward.points_cost <= ${input.maximumPointsCost ?? null}::integer)
@@ -159,7 +168,7 @@ export async function insertConsumerRewardClaim(query: SqlExecutor, input: Claim
   `;
 }
 
-/** Portal-only semantic UUID readback. Execute with sqlSerializable; never retry a write.
+/** Authenticated HTTP semantic UUID readback. Execute with sqlSerializable; never retry a write.
  * Locks protect the returned historical row; keys and receipts are not normalized. */
 export async function readOwnPortalRewardClaimUnderLock(query: SqlExecutor, input: { consumerId: string; rewardId: string }) {
   const rows = await query/*sql*/`

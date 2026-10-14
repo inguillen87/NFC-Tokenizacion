@@ -303,3 +303,13 @@ test("advisory true never overrides own claim history or a locked display condit
     assert.equal(model.toConsumerRewardItem(row, NOW).can_claim, false);
   }
 });
+
+test("claim intent is additive and advertised only with the persisted supported claim capability", () => {
+  const { toConsumerRewardItem: item, CONSUMER_PORTAL_CLAIM_INTENT } = harness().model;
+  const ready = item(reward({ portal_claim_eligible: true }), NOW);
+  assert.equal(ready.can_claim, true); assert.equal(ready.claimIntent, CONSUMER_PORTAL_CLAIM_INTENT);
+  assert.equal(ready.claimIntent, "portal-first-reservation.v1"); assert.equal(ready.points_cost, 50);
+  for (const row of [reward(), reward({ portal_claim_eligible: false }), reward({ portal_claim_eligible: "true" }), reward({ portal_claim_eligible: true, membership_status: "paused" }), claim({ portal_claim_eligible: true })]) {
+    const result = item(row, NOW); assert.equal(result.can_claim, false); assert.equal(Object.hasOwn(result, "claimIntent"), false);
+  }
+});

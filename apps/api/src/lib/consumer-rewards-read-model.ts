@@ -1,6 +1,7 @@
 import { sql, type SqlExecutor } from "./db";
 
 export const CONSUMER_REWARDS_LIMIT = 100;
+export const CONSUMER_PORTAL_CLAIM_INTENT = "portal-first-reservation.v1" as const;
 
 export type ConsumerRewardCatalogState = "reported" | "locked" | "upcoming" | "expired" | "out_of_stock" | "inactive";
 export type ConsumerRewardClaimStatus = "claimed" | "redeemed" | "cancelled" | "expired";
@@ -23,6 +24,8 @@ export type ConsumerRewardItem = {
   claimed_at: string | null;
   redemption_code: string | null;
   can_claim: boolean;
+  /** Advertised only for the persisted, supported portal reservation capability. */
+  claimIntent?: typeof CONSUMER_PORTAL_CLAIM_INTENT;
   claim_unavailable_reason: "review_required" | null;
 };
 
@@ -115,6 +118,7 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
     claimed_at: claimedAt,
     redemption_code: state === "claimed" ? text(row.redemption_code, 160) : null,
     can_claim: canClaim,
+    ...(canClaim ? { claimIntent: CONSUMER_PORTAL_CLAIM_INTENT } : {}),
     claim_unavailable_reason: canClaim ? null : "review_required",
   };
 }

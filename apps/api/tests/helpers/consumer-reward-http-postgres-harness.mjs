@@ -5,7 +5,7 @@ import ts from "typescript";
 
 const QA_DATABASE = /^(?:nexid_e2e[a-z0-9_]*|codex_qa_[a-z0-9_]+)$/;
 const OWN_SCHEMA = /^consumer_reward_http_qa_[0-9a-f]{32}$/;
-export const REWARD_HTTP_POSTGRES_EXPECTED = Object.freeze({ claimChecks: 22, adminChecks: 16, lockObservations: 9, wallClockExpiryObservations: 1, portalLockObservations: 4 });
+export const REWARD_HTTP_POSTGRES_EXPECTED = Object.freeze({ claimChecks: 29, adminChecks: 16, lockObservations: 9, wallClockExpiryObservations: 1, portalLockObservations: 6 });
 function identifier(value) { assert.match(value, OWN_SCHEMA, "Only this harness generated schema may be mutated"); return '"' + value + '"'; }
 function queryAdapter(client, mode = "Date", observe) {
   return async (strings, ...values) => {
@@ -195,7 +195,14 @@ export async function runConsumerRewardHttpPostgresQa({ connect } = {}) {
     function claimHttp(f, client = first, options = {}) {
       const calls = { auth:0, rate:0, body:0, schema:0, sql:0 };
       const sql = queryAdapter(client,"Date",() => {calls.sql++;report.sqlExecutions.claim++;});
-      const sqlSerializable = serializableAdapter(client, () => { calls.sql++; report.sqlExecutions.claim++; });
+      const ownSerializable = serializableAdapter(client, () => { calls.sql++; report.sqlExecutions.claim++; });
+      const sqlSerializable = async (strings, ...values) => {
+        const rows = await ownSerializable(strings, ...values);
+        // A synthetic timing boundary after the real readback transaction commits.
+        // The handler and both SQL statements are the imported production source.
+        if (strings[0].trimStart().startsWith("WITH locked_reward AS MATERIALIZED")) await options.afterOwnReadback?.();
+        return rows;
+      };
       const deps = { "node:crypto": {randomUUID}, http, db:{sql,sqlSerializable}, "consumer-reward-queries":writer,
         "consumer-auth": {getConsumerFromRequest:async()=>{calls.auth++;return options.unauthorized?null:{id:f.consumerId};}},
         "consumer-mutation-origin":origin,
@@ -203,7 +210,7 @@ export async function runConsumerRewardHttpPostgresQa({ connect } = {}) {
         "commercial-runtime-schema":{ensureConsumerPortalSchema:async()=>{calls.schema++;}},
         "bounded-request-body":{...bounded,readBoundedJsonBody:async(req,limit)=>{calls.body++;assert.equal(limit,8192);return bounded.readBoundedJsonBody(req,limit);}} };
       const {POST}=instantiate("claim-route",deps);
-      return {calls,post:async(body={expectedPointsCost:40},request={},rewardId=f.rewardId)=>POST(new Request("https://nexid.lat/api/consumer/rewards/"+rewardId+"/claim",{method:"POST",body:request.raw?body:JSON.stringify(body),headers:{origin:"https://nexid.lat","sec-fetch-site":"same-origin","content-type":"application/json",...request.headers}}),{params:Promise.resolve({rewardId})})};
+      return {calls,post:async(body={claimIntent:"portal-first-reservation.v1",expectedPointsCost:40},request={},rewardId=f.rewardId)=>POST(new Request("https://nexid.lat/api/consumer/rewards/"+rewardId+"/claim",{method:"POST",body:request.raw?body:JSON.stringify(body),headers:{origin:"https://nexid.lat","sec-fetch-site":"same-origin","content-type":"application/json",...request.headers}}),{params:Promise.resolve({rewardId})})};
     }
     function adminHttp(f, client = first, options = {}) {
       const calls = {auth:0,schema:0,sql:0,createdSnapshots:[]};
@@ -227,8 +234,8 @@ export async function runConsumerRewardHttpPostgresQa({ connect } = {}) {
     await check("claimChecks","claim_invalid_uuid_refuses_before_body_or_sql",async()=>{const f=await fixture(),before=await snapshot(f);for(const id of ["invalid",f.rewardId+" "]){const h=claimHttp(f);await deniedBoundary(h,await h.post({}, {},id),400);assert.equal(h.calls.body,0);}assert.deepEqual(await snapshot(f),before);});
     await check("claimChecks","claim_invalid_object_or_json_refuses_without_writes",async()=>{const f=await fixture(),before=await snapshot(f);for(const value of [null,[],false,0,"not-an-object"]){const h=claimHttp(f);await deniedBoundary(h,await h.post(value),400);}const h=claimHttp(f);await deniedBoundary(h,await h.post("{broken",{raw:true}),400);assert.deepEqual(await snapshot(f),before);});
     await check("claimChecks","claim_streamed_or_declared_oversize_refuses_without_writes",async()=>{const f=await fixture(),before=await snapshot(f);for(const request of [{},{headers:{"content-length":"8193"}}]){const h=claimHttp(f);await deniedBoundary(h,await h.post({payload:"x".repeat(8193)},request),413);}assert.deepEqual(await snapshot(f),before);});
-    await check("claimChecks","claim_actual_handler_uses_own_program_and_unchanged_uuid_text",async()=>{const f=await fixture(),h=claimHttp(f),response=await h.post({expectedPointsCost:40,consumerId:f.otherConsumerId,tenantId:f.otherTenantId,memberId:randomUUID(),eventId:"forged"},{},f.rewardId.toUpperCase());assert.equal(response.status,200);const result=await response.json();assert.equal(result.duplicate,false);assert.equal(result.claim.consumer_id,f.consumerId);assert.equal(result.claim.tenant_id,f.tenantId);assert.equal(result.claim.reward_id,f.rewardId);assert.equal(result.claim.idempotency_key,"consumer-reward-claim:"+f.consumerId+":"+f.rewardId.toUpperCase());const state=await snapshot(f);assert.equal(state.loyalty_members[0].points_balance,60);assert.equal(state.consumer_reward_claims.length,1);assert.equal(state.points_ledger.length,1);assert.equal(state.points_ledger[0].delta,-40);assert.equal(state.rewards.find(r=>r.id===f.rewardId).stock_remaining,1);});
-    await check("claimChecks","claim_preexisting_uppercase_key_replays_same_text_without_another_debit",async()=>{const f=await issued();for(const status of ["claimed","redeemed","cancelled","expired"]){await admin.query("UPDATE "+s+".consumer_reward_claims SET status=$2 WHERE id=$1",[f.claimId,status]);const before=await snapshot(f);const responses=await Promise.all([claimHttp(f,first).post({expectedPointsCost:40}, {},f.rewardId.toUpperCase()),claimHttp(f,second).post({expectedPointsCost:40}, {},f.rewardId.toUpperCase())]);for(const response of responses){assert.equal(response.status,200);const body=await response.json();assert.equal(body.duplicate,true);assert.equal(body.claim.id,f.claimId);assert.equal(body.claim.status,status);}assert.deepEqual(await snapshot(f),before);}});
+    await check("claimChecks","claim_actual_handler_uses_own_program_and_unchanged_uuid_text",async()=>{const f=await fixture(),h=claimHttp(f),response=await h.post({claimIntent:"portal-first-reservation.v1",expectedPointsCost:40,consumerId:f.otherConsumerId,tenantId:f.otherTenantId,memberId:randomUUID(),eventId:"forged"},{},f.rewardId.toUpperCase());assert.equal(response.status,200);const result=await response.json();assert.equal(result.duplicate,false);assert.equal(result.claim.consumer_id,f.consumerId);assert.equal(result.claim.tenant_id,f.tenantId);assert.equal(result.claim.reward_id,f.rewardId);assert.equal(result.claim.idempotency_key,"consumer-reward-claim:"+f.consumerId+":"+f.rewardId.toUpperCase());const state=await snapshot(f);assert.equal(state.loyalty_members[0].points_balance,60);assert.equal(state.consumer_reward_claims.length,1);assert.equal(state.points_ledger.length,1);assert.equal(state.points_ledger[0].delta,-40);assert.equal(state.rewards.find(r=>r.id===f.rewardId).stock_remaining,1);});
+    await check("claimChecks","claim_preexisting_uppercase_key_replays_same_text_without_another_debit",async()=>{const f=await issued();for(const status of ["claimed","redeemed","cancelled","expired"]){await admin.query("UPDATE "+s+".consumer_reward_claims SET status=$2 WHERE id=$1",[f.claimId,status]);const before=await snapshot(f);const responses=await Promise.all([claimHttp(f,first).post({claimIntent:"portal-first-reservation.v1",expectedPointsCost:40}, {},f.rewardId.toUpperCase()),claimHttp(f,second).post({claimIntent:"portal-first-reservation.v1",expectedPointsCost:40}, {},f.rewardId.toUpperCase())]);for(const response of responses){assert.equal(response.status,200);const body=await response.json();assert.equal(body.duplicate,true);assert.equal(body.claim.id,f.claimId);assert.equal(body.claim.status,status);}assert.deepEqual(await snapshot(f),before);}});
 
     await check("adminChecks","admin_auth_refuses_before_initializer_and_sql",async()=>{const f=await issued(),h=adminHttp(f,first,{unauthorized:true});await deniedBoundary(h,await h.post({action:"redeem"}),401);});
     await check("adminChecks","admin_lookup_native_date_or_string_created_at_with_raw_precision",async()=>{const f=await issued();await admin.query("UPDATE "+s+".consumer_reward_claims SET created_at=date_trunc('second',clock_timestamp())-interval '1 hour'+interval '123456 microseconds' WHERE id=$1",[f.claimId]);const before=await snapshot(f);for(const createdAtMode of ["Date","string"]){const h=adminHttp(f,first,{createdAtMode}),response=await h.post();assert.equal(response.status,200);const body=await response.json();assert.equal(body.redemption.status,"claimed");assert.ok(body.redemption.expires_at);assert.equal(h.calls.createdSnapshots.length,0);}assert.deepEqual(await snapshot(f),before);});
@@ -273,13 +280,13 @@ async function portalRead(f) {
     await check("claimChecks", "portal_expected_cost_is_mandatory_and_early_validated", async () => {
       const f = await fixture(), before = await snapshot(f);
       for (const expectedPointsCost of [undefined, null, "40", -1, 0.5, 2147483648, {}, []]) {
-        const h = claimHttp(f), response = await h.post({ expectedPointsCost });
+        const h = claimHttp(f), response = await h.post({ claimIntent: "portal-first-reservation.v1", expectedPointsCost });
         await deniedBoundary(h, response, 400); assert.equal((await response.json()).error, "invalid_expected_points_cost");
       }
       assert.deepEqual(await snapshot(f), before);
     });
     await check("claimChecks", "portal_confirmed_price_mismatch_never_debits", async () => {
-      const f = await fixture(), before = await snapshot(f), response = await claimHttp(f).post({ expectedPointsCost: 39 });
+      const f = await fixture(), before = await snapshot(f), response = await claimHttp(f).post({ claimIntent: "portal-first-reservation.v1", expectedPointsCost: 39 });
       assert.equal(response.status, 409); assert.deepEqual(await response.json(), { ok: false, error: "reward_claim_conflict", refresh_required: true });
       assert.deepEqual(await snapshot(f), before);
     });
@@ -289,10 +296,12 @@ async function portalRead(f) {
       const before = await snapshot(f), expected = { ok: false, error: "reward_claim_conflict", refresh_required: true };
       for (const [actor, rewardId] of [[{ ...f, consumerId: f.otherConsumerId }, f.rewardId], [f, f.otherRewardId], [f, randomUUID()]]) {
         for (const expectedPointsCost of [0, 40, 70]) {
-          const h = claimHttp(actor), response = await h.post({ expectedPointsCost }, {}, rewardId);
+          for(const claimIntent of [undefined,"portal-first-reservation.v1"]) {
+          const h = claimHttp(actor), response = await h.post(claimIntent ? {claimIntent,expectedPointsCost} : {expectedPointsCost}, {}, rewardId);
           assert.equal(response.status, 409); assert.deepEqual(await response.json(), expected);
-          assert.equal(h.calls.sql, 2, "Only authoritative writer and scoped own-receipt readback execute");
+          assert.equal(h.calls.sql, 3, "Only scoped own preread, authoritative writer and scoped own readback execute");
           assert.deepEqual(await snapshot(f), before);
+          }
         }
       }
     });
@@ -334,7 +343,7 @@ async function portalRead(f) {
       const f = await issued(), original = (await snapshot(f)).consumer_reward_claims[0];
       for (const status of ["claimed", "redeemed", "cancelled", "expired"]) {
         await admin.query("UPDATE " + s + ".consumer_reward_claims SET status=$2 WHERE id=$1", [f.claimId,status]);
-        const before = await snapshot(f), response = await claimHttp(f).post({expectedPointsCost:40}, {}, f.rewardId.toLowerCase()), body = await response.json();
+        const before = await snapshot(f), response = await claimHttp(f).post({claimIntent:"portal-first-reservation.v1",expectedPointsCost:73}, {}, f.rewardId.toLowerCase()), body = await response.json();
         assert.equal(response.status,200); assert.equal(body.duplicate,true); assert.equal(body.claim.id,f.claimId);
         assert.equal(body.claim.idempotency_key,original.idempotency_key); assert.equal(body.claim.status,status); assert.deepEqual(await snapshot(f),before);
       }
@@ -351,36 +360,128 @@ async function portalRead(f) {
     });
     await check("claimChecks", "portal_advisory_true_tracks_same_persisted_first_reservation", async () => {
       const f = await fixture(), before=await snapshot(f), row=(await portalRead(f)).find(row=>row.id===f.rewardId);
-      assert.equal(row.can_claim,true); assert.equal(row.claim_unavailable_reason,null); assert.equal(row.program_points_balance,100); assert.deepEqual(await snapshot(f),before);
+      assert.equal(row.can_claim,true); assert.equal(row.claimIntent,"portal-first-reservation.v1"); assert.equal(row.claim_unavailable_reason,null); assert.equal(row.program_points_balance,100); assert.deepEqual(await snapshot(f),before);
       assert.equal((await claimHttp(f).post()).status,200); const after=(await portalRead(f)).find(row=>row.id===f.rewardId);
-      assert.equal(after.can_claim,false); assert.equal(after.state,"claimed"); assert.equal(after.program_points_balance,60); assert.equal(after.points_spent,40);
+      assert.equal(after.can_claim,false); assert.equal(Object.hasOwn(after,"claimIntent"),false); assert.equal(after.state,"claimed"); assert.equal(after.program_points_balance,60); assert.equal(after.points_spent,40);
     });
-    async function portalLockedCase(name, { mutate, expiryWait=false, otherConsumer=false } = {}) {
+    await check("claimChecks","legacy_object_locale_preserves_own_business_contract_without_price_manufacture",async()=>{
+      for(const body of [{},{locale:"es-AR"},{locale:"en-US",expectedPointsCost:"ignored-legacy-extra",consumerHttpClaim:false},{portalFirstClaim:{expectedPointsCost:0},tenantId:randomUUID(),consumerHttpClaim:false}]) {
+        const f=await fixture();
+        await admin.query("UPDATE "+s+".rewards SET redemption_limit_per_member=1,fulfillment_json='{\"pickup\":\"appointment\"}'::jsonb WHERE id=$1",[f.rewardId]);
+        const response=await claimHttp(f).post(body);assert.equal(response.status,200);const result=await response.json();
+        assert.equal(result.duplicate,false);assert.equal(result.claim.points_spent,40);
+        assert.equal(result.claim.metadata_json.locale,typeof body.locale==="string"?body.locale.slice(0,12):"es-AR");
+        const state=await snapshot(f);assert.equal(state.loyalty_members[0].points_balance,60);assert.equal(state.points_ledger.length,1);
+      }
+      for(const denied of ["expired","crm-paused","crm-missing"]) {
+        const f=await fixture();
+        if(denied==="expired")await admin.query("UPDATE "+s+".rewards SET ends_at=clock_timestamp()-interval '1 second' WHERE id=$1",[f.rewardId]);
+        else if(denied==="crm-paused")await admin.query("UPDATE "+s+".tenant_consumer_memberships SET status='paused' WHERE id=$1",[f.membershipId]);
+        else await admin.query("DELETE FROM "+s+".tenant_consumer_memberships WHERE id=$1",[f.membershipId]);
+        const before=await snapshot(f),response=await claimHttp(f).post({locale:"es-AR"});
+        assert.equal(response.status,409);assert.deepEqual(await snapshot(f),before);
+      }
+    });
+    await check("claimChecks","legacy_historical_uuid_terminal_and_expiry_replay_preserves_receipt_and_economics",async()=>{
+      const f=await issued();
+      await admin.query("UPDATE "+s+".rewards SET ends_at=clock_timestamp()-interval '1 second' WHERE id=$1",[f.rewardId]);
+      await admin.query("UPDATE "+s+".consumer_reward_claims SET metadata_json=jsonb_build_object('expires_at','2020-01-01T00:00:00Z','locale','original') WHERE id=$1",[f.claimId]);
+      for(const status of ["claimed","redeemed","cancelled","expired"]) {
+        await admin.query("UPDATE "+s+".consumer_reward_claims SET status=$2 WHERE id=$1",[f.claimId,status]);
+        const before=await snapshot(f),original=before.consumer_reward_claims[0];
+        for(const rewardId of [f.rewardId.toLowerCase(),f.rewardId.toUpperCase()]) {
+          const h=claimHttp(f),response=await h.post({locale:"new"}, {},rewardId),body=await response.json();
+          assert.equal(response.status,200);assert.equal(body.duplicate,true);assert.equal(body.claim.id,original.id);
+          assert.equal(body.claim.idempotency_key,original.idempotency_key);assert.equal(body.claim.redemption_code,original.redemption_code);
+          assert.equal(body.claim.status,status);assert.deepEqual(body.claim.metadata_json,original.metadata_json);
+          assert.equal(h.calls.sql,1,"Historical legacy recovery ends before the writer");
+        }
+        assert.deepEqual(await snapshot(f),before);
+      }
+    });
+    await check("claimChecks","legacy_ambiguous_or_mismatched_historical_identity_never_replaced",async()=>{
+      for(const kind of ["multiple","tenant-mismatch"]) {
+        const f=await issued();
+        if(kind==="multiple")await admin.query("INSERT INTO "+s+".consumer_reward_claims(consumer_id,tenant_id,reward_id,status,points_spent,redemption_code,idempotency_key) VALUES($1,$2,$3,'expired',40,$4,$5)",[f.consumerId,f.tenantId,f.rewardId,"QA-"+randomUUID(),"legacy-"+randomUUID()]);
+        else await admin.query("UPDATE "+s+".consumer_reward_claims SET tenant_id=$2 WHERE id=$1",[f.claimId,f.otherTenantId]);
+        const before=await snapshot(f),h=claimHttp(f),response=await h.post({});
+        assert.equal(response.status,409);assert.equal((await response.json()).error,"reward_claim_history_ambiguous");assert.equal(h.calls.sql,1);
+        assert.deepEqual(await snapshot(f),before);
+      }
+    });
+    await check("claimChecks","selected_unknown_intent_never_downgrades_to_legacy",async()=>{
+      const f=await fixture(),before=await snapshot(f);
+      for(const claimIntent of [null,false,0,{},[],"","portal-first-reservation.v2"]) {
+        const h=claimHttp(f),response=await h.post({claimIntent,expectedPointsCost:40});
+        await deniedBoundary(h,response,400);assert.equal((await response.json()).error,"unsupported_claim_intent");
+      }
+      assert.deepEqual(await snapshot(f),before);
+    });
+    await check("claimChecks","campaign_maximum_zero_default_identity_false_and_legacy_refund_remain_real_sql",async()=>{
+      const f=await fixture(),before=await snapshot(f),query=serializableAdapter(first),paidKey="qa-campaign-paid:"+randomUUID();
+      const paid=await writer.insertConsumerRewardClaim(query,{consumerId:f.consumerId,rewardId:f.rewardId,idempotencyKey:paidKey,redemptionCode:"QA-"+randomUUID(),locale:"es-AR",maximumPointsCost:0});
+      assert.deepEqual(paid,[]);assert.deepEqual(await snapshot(f),before);
+      await admin.query("UPDATE "+s+".rewards SET points_cost=0 WHERE id=$1",[f.rewardId]);
+      const freeKey="qa-campaign-free:"+randomUUID(),input={consumerId:f.consumerId,rewardId:f.rewardId,idempotencyKey:freeKey,redemptionCode:"QA-"+randomUUID(),locale:"es-AR",maximumPointsCost:0,metadata:{campaign:"synthetic-only"}};
+      const free=await writer.insertConsumerRewardClaim(query,input);assert.equal(free.length,1);assert.equal(free[0].points_spent,0);
+      const once=await snapshot(f);assert.deepEqual(await writer.insertConsumerRewardClaim(query,input),[]);assert.deepEqual(await snapshot(f),once);
+      // A different campaign key keeps its historic default-false identity behaviour.
+      const other=await writer.insertConsumerRewardClaim(query,{...input,idempotencyKey:"qa-campaign-free:"+randomUUID(),redemptionCode:"QA-"+randomUUID()});
+      assert.equal(other.length,1);const freeState=await snapshot(f);assert.equal(freeState.loyalty_members[0].points_balance,100);assert.equal(freeState.points_ledger.length,2);assert.equal(freeState.consumer_reward_claims.length,2);
+      const r=await fixture(),claimedResponse=await claimHttp(r).post({}),claimed=(await claimedResponse.json()).claim;
+      assert.equal(claimedResponse.status,200);const refundInput={consumerId:r.consumerId,claimId:claimed.id,rewardId:r.rewardId,idempotencyKey:"qa-refund:"+claimed.id};
+      const refund=await writer.refundConsumerRewardClaim(query,refundInput);assert.equal(refund.length,1);assert.equal(refund[0].status,"cancelled");
+      const restored=await snapshot(r);assert.equal(restored.loyalty_members[0].points_balance,100);assert.equal(restored.rewards.find(row=>row.id===r.rewardId).stock_remaining,2);
+      assert.equal(restored.points_ledger.length,2);assert.equal(restored.points_ledger.reduce((sum,row)=>sum+row.delta,0),0);
+      assert.deepEqual(await writer.refundConsumerRewardClaim(query,refundInput),[]);assert.deepEqual(await snapshot(r),restored);
+      const replay=await claimHttp(r).post({locale:"new"},{},r.rewardId.toUpperCase()),replayBody=await replay.json();
+      assert.equal(replay.status,200);assert.equal(replayBody.duplicate,true);assert.equal(replayBody.claim.id,claimed.id);assert.equal(replayBody.claim.status,"cancelled");assert.deepEqual(await snapshot(r),restored);
+    });
+    async function portalLockedCase(name, { mutate, expiryWait=false, otherConsumer=false, protocols=["portal","portal"] } = {}) {
       const f=await fixture(); if(otherConsumer) {
         await admin.query("INSERT INTO "+s+".tenant_consumer_memberships(tenant_id,consumer_id,loyalty_program_id,status) VALUES($1,$2,$3,'active')",[f.tenantId,f.otherConsumerId,f.programId]);
         await admin.query("INSERT INTO "+s+".loyalty_members(tenant_id,program_id,consumer_id,status,points_balance,lifetime_points) VALUES($1,$2,$3,'enrolled',100,100)",[f.tenantId,f.programId,f.otherConsumerId]);
         await admin.query("UPDATE "+s+".rewards SET stock_total=1,stock_remaining=1 WHERE id=$1",[f.rewardId]);
       }
       let expiry=null; if(expiryWait) { expiry=(await admin.query("SELECT clock_timestamp()+interval '4 seconds' AS value")).rows[0].value; await admin.query("UPDATE "+s+".rewards SET ends_at=$2 WHERE id=$1",[f.rewardId,expiry]); }
-      const before=await snapshot(f); let pending, inTransaction=false;
+      const before=await snapshot(f); let pending, inTransaction=false, releasePrereads;
+      const ready = new Set(), gate = new Promise(resolve => { releasePrereads=resolve; });
+      const firstReadHook = index => async () => {
+        if (ready.has(index)) return;
+        ready.add(index);
+        await gate;
+      };
+      const payload = protocol => protocol === "portal"
+        ? {claimIntent:"portal-first-reservation.v1",expectedPointsCost:40} : {};
+      assert.ok(protocols.length===2 && protocols.every(value=>["legacy","portal"].includes(value)));
+      const deadline=Date.now()+8000;
       try {
-        await admin.query("BEGIN");inTransaction=true;await admin.query("SELECT id FROM "+s+".rewards WHERE id=$1 FOR UPDATE",[f.rewardId]);
         const secondActor=otherConsumer?{...f,consumerId:f.otherConsumerId}:f;
-        pending=Promise.allSettled([claimHttp(f,first).post({expectedPointsCost:40},{},f.rewardId.toUpperCase()),claimHttp(secondActor,second).post({expectedPointsCost:40},{},f.rewardId.toLowerCase())]);
-        const deadline=Date.now()+8000;let rows;while(Date.now()<deadline){rows=await waitRows(expiry);if(rows.length===2)break;await new Promise(resolve=>setTimeout(resolve,15));}assertBlockers(rows);
+        pending=Promise.allSettled([
+          claimHttp(f,first,{afterOwnReadback:firstReadHook(0)}).post(payload(protocols[0]),{},f.rewardId.toUpperCase()),
+          claimHttp(secondActor,second,{afterOwnReadback:firstReadHook(1)}).post(payload(protocols[1]),{},f.rewardId.toLowerCase())
+        ]);
+        while(Date.now()<deadline && ready.size!==2) await new Promise(resolve=>setTimeout(resolve,15));
+        assert.equal(ready.size,2,"Both real absent-read transactions must commit before the writer race");
+        await admin.query("BEGIN");inTransaction=true;await admin.query("SELECT id FROM "+s+".rewards WHERE id=$1 FOR UPDATE",[f.rewardId]);
+        releasePrereads();
+        let rows;while(Date.now()<deadline){rows=await waitRows(expiry);if(rows.length===2)break;await new Promise(resolve=>setTimeout(resolve,15));}assertBlockers(rows);
         if(expiryWait){assert.ok(rows.every(row=>row.started_before_expiry&&row.before_expiry));while(Date.now()<deadline&&(await admin.query("SELECT clock_timestamp() < $1::timestamptz AS before",[expiry])).rows[0].before)await new Promise(resolve=>setTimeout(resolve,15));assert.equal((await admin.query("SELECT clock_timestamp() >= $1::timestamptz AS reached",[expiry])).rows[0].reached,true);}
         await mutate?.(f); await admin.query("COMMIT");inTransaction=false;
         const responses=(await pending).map(result=>{assert.equal(result.status,"fulfilled");return result.value;});const bodies=await Promise.all(responses.map(response=>response.json()));
         const after=await snapshot(f); if(mutate||expiryWait) { assert.ok(responses.every(response=>response.status===409));assert.equal(after.points_ledger.length,0);assert.equal(after.consumer_reward_claims.length,0);assert.deepEqual(after.loyalty_members,before.loyalty_members);assert.equal(after.rewards.find(row=>row.id===f.rewardId).stock_remaining,before.rewards.find(row=>row.id===f.rewardId).stock_remaining); }
         else { assert.equal(after.consumer_reward_claims.length,1);assert.equal(after.points_ledger.length,1);assert.equal(after.points_ledger[0].delta,-40);assert.equal(after.rewards.find(row=>row.id===f.rewardId).stock_remaining,otherConsumer?0:1);assert.equal(after.loyalty_members.reduce((sum,row)=>sum+row.points_balance,0),otherConsumer?160:60);
           if(otherConsumer)assert.deepEqual(responses.map(response=>response.status).sort(),[200,409]);else {assert.ok(responses.every(response=>response.status===200));assert.equal(bodies.filter(body=>body.duplicate===false).length,1);assert.equal(bodies.filter(body=>body.duplicate===true).length,1);assert.equal(bodies[0].claim.id,bodies[1].claim.id);assert.equal(bodies[0].claim.idempotency_key,bodies[1].claim.idempotency_key);} }
-        report.portalLockObservations.push({name,waitingBackends:2,waitEventType:"Lock",blockedByOwnedRewardLock:true,wallClockExpiryReached:expiryWait,mutationRequests:2,automaticMutationRetries:0});
-      } finally {if(inTransaction)await admin.query("ROLLBACK");if(pending)await pending;}
+        report.portalLockObservations.push({name,waitingBackends:2,waitEventType:"Lock",blockedByOwnedRewardLock:true,wallClockExpiryReached:expiryWait,protocols:[...protocols],absentPrereadsCommitted:2,mutationRequests:2,automaticMutationRetries:0});
+      } finally {releasePrereads?.();if(inTransaction)await admin.query("ROLLBACK");if(pending)await pending;}
     }
     await check("claimChecks","portal_uuid_case_race_reserves_once_under_serializable",()=>portalLockedCase("uuid-case"));
     await check("claimChecks","portal_price_changed_while_both_requests_wait_refuses_debit",()=>portalLockedCase("price-change",{mutate:async f=>admin.query("UPDATE "+s+".rewards SET points_cost=70 WHERE id=$1",[f.rewardId])}));
     await check("claimChecks","portal_expiry_reached_while_both_requests_wait_refuses_debit",()=>portalLockedCase("expiry",{expiryWait:true}));
     await check("claimChecks","portal_last_unit_two_owned_consumers_reserves_once",()=>portalLockedCase("last-unit",{otherConsumer:true}));
+
+    await check("claimChecks","legacy_uuid_case_race_reserves_once_under_same_serializable_writer",()=>portalLockedCase("legacy-uuid-case",{protocols:["legacy","legacy"]}));
+    await check("claimChecks","legacy_and_portal_race_share_one_historical_receipt_under_same_lock",()=>portalLockedCase("mixed-uuid-case",{protocols:["legacy","portal"]}));
 
     assert.equal(report.claimChecks.length,REWARD_HTTP_POSTGRES_EXPECTED.claimChecks);assert.equal(report.adminChecks.length,REWARD_HTTP_POSTGRES_EXPECTED.adminChecks);
     assert.equal(report.lockObservations.length,REWARD_HTTP_POSTGRES_EXPECTED.lockObservations);assert.equal(report.lockObservations.filter(r=>r.wallClockExpiryReached).length,1);

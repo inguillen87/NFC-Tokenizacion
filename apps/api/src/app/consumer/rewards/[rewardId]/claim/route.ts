@@ -30,20 +30,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ rewardI
     return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return json({ ok: false, error: "invalid_body" }, 400);
-  const expectedPointsCost = body.expectedPointsCost;
-  if (typeof expectedPointsCost !== "number" || !Number.isSafeInteger(expectedPointsCost)
-    || expectedPointsCost < 0 || expectedPointsCost > 2_147_483_647) {
-    return json({ ok: false, error: "invalid_expected_points_cost" }, 400);
+  const hasClaimIntent = Object.hasOwn(body, "claimIntent");
+  if (hasClaimIntent && body.claimIntent !== "portal-first-reservation.v1") {
+    return json({ ok: false, error: "unsupported_claim_intent" }, 400);
+  }
+  let portalFirstClaim: { expectedPointsCost: number } | undefined;
+  if (hasClaimIntent) {
+    const expectedPointsCost = body.expectedPointsCost;
+    if (typeof expectedPointsCost !== "number" || !Number.isSafeInteger(expectedPointsCost)
+      || expectedPointsCost < 0 || expectedPointsCost > 2_147_483_647) {
+      return json({ ok: false, error: "invalid_expected_points_cost" }, 400);
+    }
+    portalFirstClaim = { expectedPointsCost };
   }
   await ensureConsumerPortalSchema();
   const idem = `consumer-reward-claim:${consumer.id}:${rewardId}`;
   const code = `NXR-${randomUUID().split('-')[0].toUpperCase()}`;
+  // A legacy body can recover its own historical receipt without a new price.
+  // This read is advisory to the write: the writer also rechecks semantic identity.
+  try {
+    const prior = await readOwnPortalRewardClaimUnderLock(sqlSerializable, { consumerId: consumer.id, rewardId });
+    if (prior.state === "ambiguous") return json({ ok: false, error: "reward_claim_history_ambiguous", refresh_required: true }, 409);
+    if (prior.state === "single") return json({ ok: true, claim: prior.claim, duplicate: true });
+  } catch (error) {
+    const status = String((error as { code?: unknown } | null)?.code || "") === "40001" ? 409 : 503;
+    return json({ ok: false, error: "reward_claim_unavailable", refresh_required: true }, status);
+  }
   let serializationConflict = false;
   try {
     const claimRows = await insertConsumerRewardClaim(sqlSerializable, {
       consumerId: consumer.id, rewardId, idempotencyKey: idem, redemptionCode: code,
       locale: typeof body.locale === "string" ? body.locale.slice(0, 12) : "es-AR",
-      portalFirstClaim: { expectedPointsCost },
+      // Always server-owned; a consumer body cannot disable HTTP identity.
+      consumerHttpClaim: true,
+      ...(portalFirstClaim ? { portalFirstClaim } : {}),
     });
     if (claimRows[0]) return json({ ok: true, claim: claimRows[0], duplicate: false });
   } catch (error) {
