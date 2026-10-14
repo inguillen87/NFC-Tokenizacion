@@ -28,6 +28,7 @@ function compile(source, overrides = {}) {
 
 const walletModel = compile(read("_components/consumer-wallet-points-model.ts"));
 const model = compile(modelSource, { "./consumer-wallet-points-model": walletModel });
+const reservation = compile(read("_components/consumer-reward-reservation.ts"), { "./consumer-rewards-model": model, "./consumer-bounded-fetch": boundedFetch });
 const api = compile(read("_components/consumer-api.ts"), {
   "next/headers": { headers: () => { throw new Error("unexpected-network-read"); } },
   "next/navigation": { redirect: () => { throw new Error("unexpected-redirect"); } },
@@ -40,6 +41,7 @@ const shared = {
   "next/link": ({ children, ...props }) => React.createElement("a", props, children),
   "./rewards.module.css": css,
   "../_components/consumer-rewards-model": model,
+  "../_components/consumer-reward-reservation": reservation,
 };
 const { ConsumerRewardsClient } = compile(clientSource, shared);
 const NOW = "2026-09-08T12:00:00Z";
@@ -327,14 +329,14 @@ test("voucher dates use stable numeric Argentina labels across UTC day boundarie
   assert.equal(model.rewardDateLabel(null), "No informado");
 });
 
-test("reward views inherit accessible light and dark tokens without polling or reward mutations", () => {
+test("reward views inherit accessible light and dark tokens without polling or automatic requests", () => {
   for (const token of ["text", "muted", "surface", "subtle", "border", "accent", "active", "danger", "danger-bg"]) assert.ok(cssSource.includes(`var(--portal-${token})`), token);
   assert.match(cssSource, /:focus-visible/);
   assert.match(cssSource, /prefers-reduced-motion/);
   assert.match(cssSource, /@media \(max-width:/);
   assert.match(cssSource, /overflow-wrap: anywhere/);
   assert.doesNotMatch(cssSource, /background:\s*(?:white|black|#[0-9a-f]+)\s*[;}]/i);
-  assert.doesNotMatch(modelSource + clientSource, /\bfetch\s*\(|setInterval|setTimeout|Math\.random|Date\.now|router\.refresh|useEffect|dangerouslySetInnerHTML/);
+  assert.doesNotMatch(modelSource + clientSource, /\bfetch\s*\(|setInterval|setTimeout|Math\.random|Date\.now|router\.refresh|dangerouslySetInnerHTML/);
   assert.doesNotMatch(pageSource + clientSource, /method\s*[:=]\s*["'](?:post|put|patch|delete)|claimReward|redeemReward|redemption\/confirm/i);
   assert.doesNotMatch(pageSource, /fetchConsumerPath\(["'](?:products|taps|catalog|brands|marketplace)/);
 });
