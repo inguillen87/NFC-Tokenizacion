@@ -203,7 +203,7 @@ test("DTO keeps the real cost and only explicitly projected fields, with distinc
   assert.deepEqual(Object.keys(projection).sort(), [
     "id", "title", "description", "tenant_slug", "tenant_name", "program_name", "program_points_balance", "points_cost", "points_spent", "stock_remaining",
     "state", "catalog_state", "claim_id", "claim_status", "claim_expires_at", "claimed_at", "redemption_code",
-    "can_claim", "claim_unavailable_reason",
+    "can_claim", "claim_unavailable_reason", "claim_unavailable_reasons",
   ].sort());
 });
 
