@@ -1,6 +1,7 @@
 import { sql, type SqlExecutor } from "./db";
 
 export const CONSUMER_REWARDS_LIMIT = 100;
+export const CONSUMER_PORTAL_CLAIM_INTENT = "portal-first-reservation.v1" as const;
 
 export type ConsumerRewardCatalogState = "reported" | "locked" | "upcoming" | "expired" | "out_of_stock" | "inactive";
 export type ConsumerRewardClaimStatus = "claimed" | "redeemed" | "cancelled" | "expired";
@@ -22,8 +23,10 @@ export type ConsumerRewardItem = {
   claim_expires_at: string | null;
   claimed_at: string | null;
   redemption_code: string | null;
-  can_claim: false;
-  claim_unavailable_reason: "review_required";
+  can_claim: boolean;
+  /** Advertised only for the persisted, supported portal reservation capability. */
+  claimIntent?: typeof CONSUMER_PORTAL_CLAIM_INTENT;
+  claim_unavailable_reason: "review_required" | null;
 };
 
 function text(value: unknown, maxLength: number): string | null {
@@ -93,6 +96,8 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
   const cost = integer(row.points_cost);
   const spent = claimId ? integer(row.points_spent) : null;
   const programBalance = integer(row.program_points_balance);
+  // PostgreSQL proves exact persisted authority/time/policy; display state alone never grants it.
+  const canClaim = !claimId && catalog === "reported" && row.portal_claim_eligible === true;
 
   return {
     id: text(row.id, 64) || "",
@@ -112,8 +117,9 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
     claim_expires_at: expiresAt,
     claimed_at: claimedAt,
     redemption_code: state === "claimed" ? text(row.redemption_code, 160) : null,
-    can_claim: false,
-    claim_unavailable_reason: "review_required",
+    can_claim: canClaim,
+    ...(canClaim ? { claimIntent: CONSUMER_PORTAL_CLAIM_INTENT } : {}),
+    claim_unavailable_reason: canClaim ? null : "review_required",
   };
 }
 
@@ -141,11 +147,30 @@ export async function getPrivateConsumerRewards(consumerId: string, executor: Sq
       member.member_count AS program_member_count,
       member.points_balance AS program_points_balance,
       member.active AS program_member_active,
+      CASE WHEN claim.id IS NULL
+        AND account.status IN ('anonymous', 'registered', 'verified')
+        AND program.id IS NOT NULL AND program.status = 'active'
+        AND program.start_at <= statement_timestamp()
+        AND (program.end_at IS NULL OR program.end_at > statement_timestamp())
+        AND membership.status = 'active' AND reward.status = 'active'
+        AND reward.starts_at <= statement_timestamp()
+        AND (reward.ends_at IS NULL OR reward.ends_at > statement_timestamp())
+        AND program.age_gate_required = false AND reward.requires_age_gate = false
+        AND reward.eligibility_json = '{}'::jsonb
+        AND reward.redemption_limit_per_member IS NULL
+        AND reward.fulfillment_json = '{}'::jsonb
+        AND member.member_count = 1 AND member.active IS TRUE
+        AND reward.points_cost >= 0 AND member.points_balance >= reward.points_cost
+        AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
+        AND NOT EXISTS (SELECT 1 FROM consumer_reward_claims own_claim
+          WHERE own_claim.consumer_id = ${consumerId}::uuid AND own_claim.reward_id = reward.id)
+        THEN true ELSE false END AS portal_claim_eligible,
       claim.id AS claim_id, claim.status::text AS claim_status,
       claim.created_at AS claimed_at, claim.redemption_code, claim.points_spent,
       claim.metadata_json->'expires_at' AS claim_expires_at_value
     FROM rewards reward
     JOIN tenants tenant ON tenant.id = reward.tenant_id
+    LEFT JOIN consumers account ON account.id = ${consumerId}::uuid
     LEFT JOIN loyalty_programs program
       ON program.id = reward.program_id AND program.tenant_id = reward.tenant_id
     LEFT JOIN tenant_consumer_memberships membership

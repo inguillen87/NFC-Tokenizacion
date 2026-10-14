@@ -102,7 +102,7 @@ test("the production SQL binds owner and tenant on claims, memberships and progr
   assert.match(sql, /lm\.tenant_id = reward\.tenant_id AND lm\.program_id = reward\.program_id AND lm\.consumer_id = \?::uuid/);
   assert.match(sql, /WHERE claim\.id IS NOT NULL OR \(membership\.status IN \('active', 'paused'\) AND reward\.status = 'active'\)/);
   assert.match(sql, /ORDER BY \(claim\.id IS NOT NULL\) DESC, COALESCE\(claim\.created_at, reward\.created_at\) DESC, reward\.id DESC, claim\.id DESC LIMIT \?$/);
-  assert.deepEqual(values, [CONSUMER, CONSUMER, CONSUMER, 100]);
+  assert.deepEqual(values, [CONSUMER, CONSUMER, CONSUMER, CONSUMER, CONSUMER, 100]);
   assert.doesNotMatch(sql, /\b(?:CREATE|ALTER|INSERT|UPDATE|DELETE)\b|::timestamptz|membership\.points_balance|network_visible|SELECT [a-z]+\.\*/i);
   assert.match(sql, /claim\.metadata_json->'expires_at' AS claim_expires_at_value/);
   assert.match(sql, /bool_and\(lm\.status IN \('enrolled', 'verified'\)\) AS active/);
@@ -286,4 +286,30 @@ test("own enrolled evergreen catalog preserves nullable ends and inclusive start
   assert.equal(current.claim_unavailable_reason, "review_required");
   assert.equal(current.claim_id, null);
   assert.equal(current.redemption_code, null);
+});
+
+test("only an explicit SQL advisory boolean allows the first portal reservation", () => {
+  const { model } = harness();
+  const allowed = model.toConsumerRewardItem(reward({ portal_claim_eligible: true }), NOW);
+  assert.equal(allowed.can_claim, true); assert.equal(allowed.claim_unavailable_reason, null);
+  for (const value of [undefined, null, false, "true", 1, {}]) {
+    const row = model.toConsumerRewardItem(reward({ portal_claim_eligible: value }), NOW);
+    assert.equal(row.can_claim, false); assert.equal(row.claim_unavailable_reason, "review_required");
+  }
+});
+test("advisory true never overrides own claim history or a locked display condition", () => {
+  const { model } = harness();
+  for (const row of [claim({ portal_claim_eligible: true }), claim({ portal_claim_eligible: true, claim_status: "expired" }), reward({ portal_claim_eligible: true, membership_status: null }), reward({ portal_claim_eligible: true, program_points_balance: 0 })]) {
+    assert.equal(model.toConsumerRewardItem(row, NOW).can_claim, false);
+  }
+});
+
+test("claim intent is additive and advertised only with the persisted supported claim capability", () => {
+  const { toConsumerRewardItem: item, CONSUMER_PORTAL_CLAIM_INTENT } = harness().model;
+  const ready = item(reward({ portal_claim_eligible: true }), NOW);
+  assert.equal(ready.can_claim, true); assert.equal(ready.claimIntent, CONSUMER_PORTAL_CLAIM_INTENT);
+  assert.equal(ready.claimIntent, "portal-first-reservation.v1"); assert.equal(ready.points_cost, 50);
+  for (const row of [reward(), reward({ portal_claim_eligible: false }), reward({ portal_claim_eligible: "true" }), reward({ portal_claim_eligible: true, membership_status: "paused" }), claim({ portal_claim_eligible: true })]) {
+    const result = item(row, NOW); assert.equal(result.can_claim, false); assert.equal(Object.hasOwn(result, "claimIntent"), false);
+  }
 });

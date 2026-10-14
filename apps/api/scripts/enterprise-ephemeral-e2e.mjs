@@ -202,6 +202,10 @@ async function run() {
   assert.ok(rewardHttp.lockObservations.every(lock => lock.waitingBackends === 2 && lock.waitEventType === "Lock" && lock.blockedByOwnedClaimLock));
   assert.equal(rewardHttp.lockObservations.filter(lock => lock.wallClockExpiryReached && lock.startedBeforeExpiry).length, REWARD_HTTP_POSTGRES_EXPECTED.wallClockExpiryObservations);
   assert.ok(rewardHttp.rawPrecisionObservation?.rawTextChanged && rewardHttp.rawPrecisionObservation?.parsedMillisecondUnchanged && rewardHttp.rawPrecisionObservation?.changedMicroseconds === 1);
+  assert.equal(rewardHttp.portalLockObservations.length, REWARD_HTTP_POSTGRES_EXPECTED.portalLockObservations);
+  assert.ok(rewardHttp.portalLockObservations.every(wait => wait.waitingBackends === 2 && wait.blockedByOwnedRewardLock && wait.automaticMutationRetries === 0));
+  assert.ok(rewardHttp.serializableIsolationObservations.length > 0 && rewardHttp.serializableIsolationObservations.every(isolation => isolation === "serializable"));
+  assert.ok(rewardHttp.serializationConflicts > 0);
   assert.ok(rewardHttp.sqlExecutions.claim > 0 && rewardHttp.sqlExecutions.admin > 0 && rewardHttp.sqlCopiedIntoHarness === false);
   assert.equal(rewardHttp.sources.length, 7);
   const adminRewardConfiguration = await runAdminRewardPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
