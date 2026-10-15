@@ -11,12 +11,43 @@ const [portal, privacyConsent, whatsappInbound, sunContext] = await Promise.all(
 
 test("a newly persisted actor association republishes that exact tenant tap projection", () => {
   assert.match(portal, /import \{ publishTenantTapRealtimeProjection \} from "\.\/realtime-tap-projection"/);
-  assert.match(portal, /ON CONFLICT \(consumer_id, tap_event_id\) DO NOTHING\s+RETURNING tenant_id, tap_event_id/);
-  assert.match(portal, /String\(actorAssociation\.tenant_id \|\| ""\) === String\(event\.tenant_id \|\| ""\)/);
+  const coreStart = portal.indexOf("export async function saveConsumerTapActionForConsumer(");
+  const coreEnd = portal.indexOf("export async function saveTapForConsumer(", coreStart);
+  assert.ok(coreStart >= 0 && coreEnd > coreStart);
+  const core = portal.slice(coreStart, coreEnd);
+  const sqlStart = core.indexOf("const rows = await sqlSerializable/*sql*/`");
+  const sqlEnd = core.indexOf("`;", sqlStart);
+  const postCommitStart = core.indexOf("const reason = committed?.error;", sqlEnd);
+  assert.ok(sqlStart >= 0 && sqlEnd > sqlStart && postCommitStart > sqlEnd);
+  const transaction = core.slice(sqlStart, sqlEnd);
+  const postCommit = core.slice(postCommitStart);
+  const cte = (start, end) => {
+    const from = transaction.indexOf(start);
+    const to = transaction.indexOf(end, from);
+    assert.ok(from >= 0 && to > from, `missing bounded CTE: ${start}`);
+    return transaction.slice(from, to);
+  };
 
-  const associationWrite = portal.indexOf("const actorAssociationRows = await sql");
-  const postCommitPublish = portal.indexOf("await publishActorAssociationProjection(actorAssociation.tap_event_id)", associationWrite);
-  assert.ok(associationWrite >= 0 && postCommitPublish > associationWrite);
+  const lockedEvent = cte("WITH locked_event AS MATERIALIZED (", "), locked_batch AS MATERIALIZED (");
+  assert.match(lockedEvent, /FROM events source_event JOIN tenants tenant ON tenant\.id = source_event\.tenant_id/);
+  assert.match(lockedEvent, /WHERE source_event\.id = \$\{input\.eventId\}::bigint/);
+  const eligible = cte("), eligible AS MATERIALIZED (", "), written_membership AS (");
+  assert.match(eligible, /FROM locked_event event[\s\S]*CROSS JOIN decision\s+WHERE decision\.error IS NULL/);
+  const membership = cte("), written_membership AS (", "), written_history AS (");
+  assert.match(membership, /INSERT INTO tenant_consumer_memberships \(tenant_id, consumer_id,[\s\S]*SELECT tenant_id, \$\{input\.consumerId\}::uuid,[\s\S]*FROM eligible WHERE true/);
+  const history = cte("), written_history AS (", "), updated_product AS (");
+  assert.match(history, /INSERT INTO consumer_tap_history \(consumer_id, tenant_id, tap_event_id,/);
+  assert.match(history, /SELECT \$\{input\.consumerId\}::uuid, event\.tenant_id, event\.id,/);
+  assert.match(history, /FROM eligible event JOIN written_membership membership ON membership\.tenant_id = event\.tenant_id/);
+  assert.match(history, /ON CONFLICT \(consumer_id, tap_event_id\) DO NOTHING RETURNING tenant_id, tap_event_id/);
+  assert.match(transaction, /\(SELECT tap_event_id FROM written_history LIMIT 1\) AS association_event_id/);
+
+  assert.match(core.slice(sqlEnd, postCommitStart), /committed = rows\[0\];\s+break;/);
+  assert.doesNotMatch(core.slice(sqlStart, postCommitStart), /publishActorAssociationProjection/);
+  const receiptGate = postCommit.indexOf('if (reason || !committed?.membership?.id || !committed.product_id) throw new Error("consumer_tap_core_result_unavailable");');
+  const publication = postCommit.indexOf("if (committed.association_event_id) await publishActorAssociationProjection(committed.association_event_id);");
+  assert.ok(receiptGate >= 0 && publication > receiptGate);
+  assert.equal((core.match(/await publishActorAssociationProjection\(/g) || []).length, 1);
   assert.match(portal, /\[consumer_actor_realtime_projection_failed\]/);
   assert.doesNotMatch(portal, /consumer_actor_realtime_projection_failed[\s\S]{0,180}(consumerId|uid_hex|email|phone)/i);
 });
