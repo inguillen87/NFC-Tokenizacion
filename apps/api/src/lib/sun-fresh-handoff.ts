@@ -361,8 +361,10 @@ export async function consumeSunFreshHandoff(
   if (!/^[a-z0-9:_-]{1,120}$/.test(normalizedAction)) {
     return { ok: false as const, reason: "fresh_token_action_invalid" };
   }
-  const now = Math.floor(Date.now() / 1000);
-  const ttlSeconds = Math.max(1, Math.min(10 * 60, verified.payload.exp - now + 5));
+  // Keep the replay bucket window stable across attempts. A verified token may
+  // start up to the allowed clock skew in the future; its signed expiry still
+  // rejects expired requests before any reservation is attempted.
+  const ttlSeconds = FRESH_HANDOFF_MAX_TTL_SECONDS + TOKEN_CLOCK_SKEW_SECONDS + 5;
   const digest = createHash("sha256").update(token, "utf8").digest("hex");
   try {
     const reservation = await hitSunRateLimit(
