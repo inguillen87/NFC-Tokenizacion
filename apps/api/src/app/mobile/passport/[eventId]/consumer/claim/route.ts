@@ -159,7 +159,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     };
     const attemptReservation = await reserveOwnershipClaimPinAttempt(req, rateContext);
     if (attemptReservation.status === "unavailable") {
-      return json({ ok: false, error: "claim_pin_security_unavailable", reason: "claim_pin_security_unavailable" }, 503, { "cache-control": "no-store" });
+      return json({ ok: false, error: "claim_pin_security_unavailable", reason: "claim_pin_security_unavailable", fresh_tap_required: true }, 503, { "cache-control": "no-store" });
     }
     if (attemptReservation.status === "locked") {
       return json({ ok: false, error: "claim_pin_locked", reason: "claim_pin_locked", retry_after_seconds: OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS }, 429, {
@@ -175,12 +175,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
       });
     } catch {
       await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
-      return json({ ok: false, error: "claim_pin_security_unavailable", reason: "claim_pin_security_unavailable" }, 503, { "cache-control": "no-store" });
+      return json({ ok: false, error: "claim_pin_security_unavailable", reason: "claim_pin_security_unavailable", fresh_tap_required: true }, 503, { "cache-control": "no-store" });
     }
     if (pinVerification.matches) {
       const released = await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
       if (released.status === "unavailable") {
-        return json({ ok: false, error: "claim_pin_security_unavailable", reason: "claim_pin_security_unavailable" }, 503, { "cache-control": "no-store" });
+        return json({ ok: false, error: "claim_pin_security_unavailable", reason: "claim_pin_security_unavailable", fresh_tap_required: true }, 503, { "cache-control": "no-store" });
       }
     } else {
       return json({ ok: false, error: "invalid_pin", reason: "invalid_pin" }, 403, { "cache-control": "no-store" });
