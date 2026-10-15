@@ -3,7 +3,7 @@ export type TapAssociationAction = typeof TAP_ASSOCIATION_ACTIONS[number];
 export type TapAssociationContext = { eventId: string; tenant: string; bid: string; preferred: TapAssociationAction | null; key: string };
 export type TapAssociationOutcome = "saved" | "linked" | "claimed" | "enrolled" | "recorded_pending" | "committed_unknown"
   | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "pin_required" | "pin_invalid" | "pin_locked"
-  | "session_required" | "no_program" | "membership_inactive" | "blocked" | "unconfirmed";
+  | "session_required" | "no_program" | "membership_inactive" | "ownership_conflict" | "blocked" | "unconfirmed";
 export type TapAssociationResult = { outcome: TapAssociationOutcome; retryable: boolean };
 export type TapAssociationState = { pending: TapAssociationAction | null; results: Partial<Record<TapAssociationAction, TapAssociationResult>> };
 export type TapAssociationSession = "checking" | "active" | "none" | "unavailable";
@@ -70,6 +70,9 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
   }
   const error = String(payload.error || payload.reason || "");
   if (status === 401) return { outcome: "session_required", retryable: true };
+  if (action === "claim" && status === 409 && Object.hasOwn(payload, "error") && payload.error === "ownership_already_claimed") {
+    return { outcome: "ownership_conflict", retryable: false };
+  }
   // The API can consume this action's capability before it denies a policy
   // check or fails to persist the result. Do not resend that consumed action.
   // A positive receipt or committed-operation signal above takes precedence.
