@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createRequire } from "node:module";
+import { CLAIMABLE_OWNERSHIP_RESULTS } from "../src/lib/ownership-policy.ts";
 import { readFile } from "node:fs/promises";
 import { DEFAULT_REQUIRED_SCHEMA_MIGRATIONS, installEphemeralE2eSqlExecutor } from "../src/lib/db.ts";
 import { saveTapForConsumer } from "../src/lib/consumer-portal-service.ts";
@@ -171,4 +173,121 @@ test("history retains tag-less and invalid reading support without claiming owne
     assert.doesNotMatch(calls.core[0].text, /INSERT INTO consumer_product_ownerships|UPDATE loyalty_members/);
     assert.equal(calls.metadata.tagId, null);
   });
+});
+
+// Execute the real service with closed spies, not a copied save implementation.
+// A resolved sqlSerializable adapter receipt models its post-commit boundary;
+// this software fixture does not execute PostgreSQL or prove real durability.
+function publicationDeferred() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
+async function publicationPhaseReached(promise) {
+  let timer;
+  try { return await Promise.race([promise, new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Error("Synthetic core phase was not reached")), 5000);
+  })]); }
+  finally { clearTimeout(timer); }
+}
+async function loadHistoricalPublicationFixture({ outcomes, projection = async () => ({ projected: true, distributed: true }) } = {}) {
+  const returnedAssociation = "900077";
+  const rows = association => [{ ...successRows()[0], association_event_id: association }];
+  outcomes ??= [rows(returnedAssociation)];
+  const started = outcomes.map(() => publicationDeferred());
+  const calls = { schema: 0, events: [], core: [], publications: [], order: [] };
+  const unused = () => { throw Error("Unexpected dependency outside historical publication fixture"); };
+  const dependencies = {
+    "./db": { sql: unused, sqlSerializable: async (strings, ...values) => {
+      const index = calls.core.length, attempt = index + 1;
+      calls.core.push({ text: strings.join("?"), values }); calls.order.push(`core:${attempt}:started`);
+      started[Math.min(index, started.length - 1)].resolve();
+      try {
+        const outcome = await outcomes[Math.min(index, outcomes.length - 1)];
+        if (outcome instanceof Error) throw outcome;
+        calls.order.push(`core:${attempt}:resolved`); return outcome;
+      } catch (error) { calls.order.push(`core:${attempt}:rejected`); throw error; }
+    } },
+    "./loyalty-service": { getTapEvent: async id => { calls.events.push(id); return fixtureEvent; }, claimTapPoints: unused },
+    "./ownership-policy": { CLAIMABLE_OWNERSHIP_RESULTS, evaluateOwnershipEligibility: unused },
+    "./commercial-runtime-schema": { ensureConsumerPortalSchema: async () => { calls.schema += 1; } },
+    "./canonical-event-writer": { CanonicalEventWriteError: class extends Error {}, writeCanonicalEvent: unused },
+    "./tap-commercial-rights": { evaluateTapCommercialRights: unused, readCurrentTapCommercialRights: unused },
+    "./realtime-tap-projection": { publishTenantTapRealtimeProjection: async id => {
+      calls.publications.push(id); calls.order.push("publication"); return await projection(id);
+    } },
+  };
+  const ts = createRequire(import.meta.url)("typescript");
+  const source = await readFile(new URL("../src/lib/consumer-portal-service.ts", import.meta.url), "utf8");
+  const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+  const module = { exports: {} };
+  new Function("require", "module", "exports", code)(name => {
+    assert.ok(Object.hasOwn(dependencies, name), `Unexpected service dependency ${name}`);
+    return dependencies[name];
+  }, module, module.exports);
+  return { calls, started, returnedAssociation, rows,
+    save: () => module.exports.saveTapForConsumer({ consumerId: fixtureConsumer, eventId: fixtureEvent.id }) };
+}
+
+test("historical save waits for the compound receipt before publishing its returned association once", { timeout: 10000 }, async () => {
+  const receipt = publicationDeferred(), f = await loadHistoricalPublicationFixture({ outcomes: [receipt.promise] });
+  const pending = f.save();
+  try {
+    await publicationPhaseReached(f.started[0].promise);
+    assert.deepEqual(f.calls.order, ["core:1:started"]); assert.deepEqual(f.calls.publications, []);
+    receipt.resolve(f.rows(f.returnedAssociation));
+    assert.equal(await pending, fixtureEvent);
+    assert.deepEqual(f.calls.order, ["core:1:started", "core:1:resolved", "publication"]);
+    assert.deepEqual(f.calls.publications, [f.returnedAssociation]);
+    assert.notEqual(f.returnedAssociation, fixtureEvent.id, "The spy distinguishes the returned association ID from the request ID");
+    assert.equal(f.calls.core.length, 1); assert.deepEqual(f.calls.events, [fixtureEvent.id]); assert.equal(f.calls.schema, 1);
+  } finally { receipt.resolve(f.rows(f.returnedAssociation)); await pending.catch(() => {}); }
+});
+
+test("historical publication happens once only after the successful receipt following serialization retries", async () => {
+  const f = await loadHistoricalPublicationFixture({ outcomes: [sqlError("40001"), sqlError("40001"), [{ ...successRows()[0], association_event_id: "900077" }]] });
+  assert.equal(await f.save(), fixtureEvent);
+  assert.deepEqual(f.calls.order, ["core:1:started", "core:1:rejected", "core:2:started", "core:2:rejected", "core:3:started", "core:3:resolved", "publication"]);
+  assert.deepEqual(f.calls.publications, ["900077"]); assert.equal(f.calls.core.length, 3);
+  assert.deepEqual(f.calls.core[0], f.calls.core[1]); assert.deepEqual(f.calls.core[1], f.calls.core[2]);
+  assert.deepEqual(f.calls.events, [fixtureEvent.id]); assert.equal(f.calls.schema, 1);
+});
+
+test("failed, exhausted, denied or missing historical receipts never request realtime publication", async () => {
+  const permanent = sqlError("22012"), exhausted = sqlError("40001");
+  for (const [outcomes, attempts, error] of [
+    [[permanent], 1, permanent], [[exhausted], 3, exhausted], [[[]], 1, /consumer_tap_core_result_unavailable/],
+  ]) {
+    const f = await loadHistoricalPublicationFixture({ outcomes });
+    await assert.rejects(f.save(), expected => error instanceof RegExp ? error.test(expected.message) : expected === error);
+    assert.equal(f.calls.core.length, attempts); assert.deepEqual(f.calls.publications, []);
+    assert.equal(f.calls.order.includes("publication"), false);
+  }
+  const denied = await loadHistoricalPublicationFixture({ outcomes: [[{ error: "consumer_membership_inactive", membership: null, product_id: null, association_event_id: "900077" }]] });
+  assert.equal(await denied.save(), null); assert.equal(denied.calls.core.length, 1); assert.deepEqual(denied.calls.publications, []);
+});
+
+test("an existing historical association does not cause a second publication on another successful save", async () => {
+  const f = await loadHistoricalPublicationFixture({ outcomes: [[{ ...successRows()[0], association_event_id: "900077" }], successRows()] });
+  assert.equal(await f.save(), fixtureEvent); assert.equal(await f.save(), fixtureEvent);
+  assert.equal(f.calls.core.length, 2); assert.deepEqual(f.calls.publications, ["900077"]);
+  assert.deepEqual(f.calls.order, ["core:1:started", "core:1:resolved", "publication", "core:2:started", "core:2:resolved"]);
+  const existing = await loadHistoricalPublicationFixture({ outcomes: [successRows()] });
+  assert.equal(await existing.save(), fixtureEvent); assert.deepEqual(existing.calls.publications, []);
+});
+
+for (const [label, projection, warning] of [
+  ["publisher error including 40001", async () => { throw sqlError("40001"); }, "[consumer_actor_realtime_projection_failed]"],
+  ["unavailable projection", async () => ({ projected: false, distributed: false }), "[consumer_actor_realtime_projection_unavailable]"],
+]) test(`historical ${label} keeps the durable receipt and never retries the core`, async () => {
+  const f = await loadHistoricalPublicationFixture({ projection }), warnings = [], previous = console.warn;
+  console.warn = (...args) => warnings.push(args);
+  try {
+    assert.equal(await f.save(), fixtureEvent);
+    assert.equal(f.calls.core.length, 1); assert.deepEqual(f.calls.publications, [f.returnedAssociation]);
+    assert.deepEqual(f.calls.order, ["core:1:started", "core:1:resolved", "publication"]);
+    assert.equal(warnings.length, 1); assert.equal(warnings[0][0], warning);
+    const details = JSON.parse(warnings[0][1]); assert.equal(details.eventId, f.returnedAssociation);
+    assert.equal(Object.hasOwn(details, "consumerId"), false); assert.equal(Object.hasOwn(details, "uid_hex"), false);
+  } finally { console.warn = previous; }
 });
