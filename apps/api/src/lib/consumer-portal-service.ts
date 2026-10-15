@@ -90,16 +90,16 @@ export async function saveConsumerTapActionForConsumer(input: { consumerId: stri
         ), locked_manual AS MATERIALIZED (
           SELECT manual.* FROM tag_manual_tamper_overrides manual JOIN locked_event event
             ON manual.batch_id = event.batch_id AND UPPER(manual.uid_hex) = UPPER(event.uid_hex)
-          CROSS JOIN (SELECT count(*) FROM locked_tags) tag_lock_barrier
+          WHERE (SELECT count(*) FROM locked_tags) >= 0
           FOR SHARE OF manual
         ), locked_programs AS MATERIALIZED (
           SELECT program.* FROM loyalty_programs program JOIN locked_event event ON program.tenant_id = event.tenant_id
-          CROSS JOIN (SELECT count(*) FROM locked_manual) manual_lock_barrier
+          WHERE (SELECT count(*) FROM locked_manual) >= 0
           ORDER BY program.id FOR SHARE OF program
         ), locked_membership AS MATERIALIZED (
           SELECT membership.* FROM tenant_consumer_memberships membership JOIN locked_event event ON membership.tenant_id = event.tenant_id
-          CROSS JOIN (SELECT count(*) FROM locked_programs) program_lock_barrier
           WHERE membership.consumer_id = ${input.consumerId}::uuid
+            AND (SELECT count(*) FROM locked_programs) >= 0
           FOR UPDATE OF membership
         ), tag_profile AS MATERIALIZED (
           SELECT tag.id, profile.product_name, profile.sku, profile.winery, profile.region, profile.grape_varietal, profile.image_url
@@ -107,18 +107,29 @@ export async function saveConsumerTapActionForConsumer(input: { consumerId: stri
           ORDER BY tag.created_at ASC, tag.id LIMIT 1
         ), locked_history AS MATERIALIZED (
           SELECT history.consumer_id, history.tenant_id, history.tap_event_id FROM consumer_tap_history history JOIN locked_event event ON event.id = history.tap_event_id
-          CROSS JOIN (SELECT count(*) FROM locked_membership) membership_lock_barrier
           WHERE history.consumer_id = ${input.consumerId}::uuid
+            AND (SELECT count(*) FROM locked_membership) >= 0
           FOR SHARE OF history
         ), locked_product AS MATERIALIZED (
           SELECT product.id FROM consumer_products product JOIN locked_event event ON product.tenant_id = event.tenant_id
-          CROSS JOIN (SELECT count(*) FROM locked_history) history_lock_barrier
           WHERE product.consumer_id = ${input.consumerId}::uuid
+            AND (SELECT count(*) FROM locked_history) >= 0
             AND (product.product_passport_id = NULLIF(event.uid_hex, '')
               OR product.tag_id = (SELECT id FROM tag_profile))
           ORDER BY product.updated_at DESC, product.id LIMIT 1 FOR UPDATE OF product
         ), decision_clock AS MATERIALIZED (
-          SELECT clock_timestamp() AS observed_at FROM (SELECT count(*) FROM locked_product) product_lock_barrier
+          -- Demand every locked source before sampling time: an empty product or
+          -- history result does not drain an unused upstream count join. These
+          -- scalar counts are used by the qualification before the volatile clock.
+          SELECT clock_timestamp() AS observed_at
+          WHERE (SELECT count(*) FROM locked_event)
+              + (SELECT count(*) FROM locked_batch)
+              + (SELECT count(*) FROM locked_tags)
+              + (SELECT count(*) FROM locked_manual)
+              + (SELECT count(*) FROM locked_programs)
+              + (SELECT count(*) FROM locked_membership)
+              + (SELECT count(*) FROM locked_history)
+              + (SELECT count(*) FROM locked_product) >= 0
         ), current_program AS MATERIALIZED (
           SELECT program.id FROM locked_programs program CROSS JOIN decision_clock clock
           WHERE program.status = 'active' AND program.start_at <= clock.observed_at

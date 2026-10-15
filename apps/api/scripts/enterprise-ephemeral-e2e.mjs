@@ -175,10 +175,10 @@ async function run() {
   assert.equal(ownershipCurrentState.lockObservations.length, 4);
   const collectionConcurrency = await runConsumerCollectionPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(collectionConcurrency.ok && collectionConcurrency.cleanup.schemaDropped && collectionConcurrency.cleanup.connectionsClosed, "Collection concurrent-save SQL regression or cleanup failed");
-  assert.equal(collectionConcurrency.checks.length, 40);
+  assert.equal(collectionConcurrency.checks.length, 41);
   assert.ok(collectionConcurrency.checks.every(check => check.passed));
-  assert.equal(new Set(collectionConcurrency.checks.map(check => check.name)).size, 40);
-  assert.equal(collectionConcurrency.lockObservations.length, 8);
+  assert.equal(new Set(collectionConcurrency.checks.map(check => check.name)).size, 41);
+  assert.equal(collectionConcurrency.lockObservations.length, 9);
   assert.ok(collectionConcurrency.lockObservations.every(observation => observation.observed && observation.waitEventType === "Lock" && observation.graph.every(edge => edge.observed && edge.waitEventType === "Lock")));
   assert.ok(collectionConcurrency.productStatements.length > 0 && collectionConcurrency.productStatements.every(statement => statement.scope === "composed-membership-history-product" && statement.isolation === "SERIALIZABLE"));
   assert.ok(Number.isSafeInteger(collectionConcurrency.serializationConflicts) && collectionConcurrency.serializationConflicts >= 0);
