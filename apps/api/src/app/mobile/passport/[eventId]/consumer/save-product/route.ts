@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { json } from "../../../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
-import { saveTapForConsumer } from "../../../../../../lib/consumer-portal-service";
+import { saveConsumerTapActionForConsumer } from "../../../../../../lib/consumer-portal-service";
 import { getTapEvent } from "../../../../../../lib/loyalty-service";
 import { isClaimableOwnershipResult, matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
 import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-runtime-schema";
@@ -54,7 +54,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   const currentRights = await readCurrentTapCommercialRights(tapEvent.id);
   // This action already consumed its capability. A new TAP cannot lift a business restriction.
   if (!currentRights.allowed) return json({ ok: false, error: currentRights.reason, fresh_tap_required: true }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
-  const savedEvent = await saveTapForConsumer({ consumerId: consumer.id, eventId });
-  if (!savedEvent) return json({ ok: false, error: "event_not_found" }, 404);
+  let saved;
+  try {
+    saved = await saveConsumerTapActionForConsumer({ consumerId: consumer.id, eventId, mode: { kind: "mobile", expected: {
+      tenantId: String(tapEvent.tenant_id || ""), batchId: String(tapEvent.batch_id || ""), bid: String(tapEvent.bid || ""),
+      uidHex: String(tapEvent.uid_hex || ""), readCounter: tapEvent.sdm_read_ctr,
+      tagId: String(tapEvent.current_tag_id || ""), tagRevision: String(tapEvent.current_tag_revision || ""),
+    } } });
+  } catch {
+    // The capability is consumed even when the core's commit cannot be confirmed.
+    return json({ ok: false, error: "consumer_tap_save_unavailable", fresh_tap_required: true }, 503);
+  }
+  if (!saved.ok) return json({ ok: false, error: saved.error, fresh_tap_required: true }, saved.status);
   return json({ ok: true, saved: true, eventId });
 }

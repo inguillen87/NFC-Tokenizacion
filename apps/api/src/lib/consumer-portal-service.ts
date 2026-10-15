@@ -42,122 +42,199 @@ export async function ensureTenantMembership(input: { consumerId: string; tenant
   return rows[0];
 }
 
-export async function saveTapForConsumer(input: { consumerId: string; eventId: string }) {
+type ConsumerTapActionMode = { kind: "history" } | {
+  kind: "mobile";
+  /** Captured by the authenticated route from getTapEvent, never from its body. */
+  expected: { tenantId: string; batchId: string; bid: string; uidHex: string; readCounter: unknown; tagId: string; tagRevision: string };
+};
+
+type ConsumerTapActionResult =
+  | { ok: true; status: 200; event: Record<string, any>; membership: Record<string, any>; productId: string }
+  | { ok: false; status: 404 | 409; error: "event_not_found" | "tap_context_changed" | "manual_opening_declared" | "consumer_membership_inactive" };
+
+/** Membership, history and collection are one durable unit. This does not award
+ * points, create a title or make the surrounding claim/points adapters atomic. */
+export async function saveConsumerTapActionForConsumer(input: { consumerId: string; eventId: string; mode: ConsumerTapActionMode }): Promise<ConsumerTapActionResult> {
   await ensureConsumerPortalSchema();
   const event = await getTapEvent(input.eventId);
-  if (!event) return null;
-
-  await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
-
-  const normalizedResult = String(event.result || "").toUpperCase();
-  const tapRiskLevel = normalizedResult.includes("REPLAY") || normalizedResult.includes("TAMPER") || normalizedResult.includes("INVALID")
-    ? "high"
-    : normalizedResult.includes("VALID") || normalizedResult === "OPENED"
-      ? "low"
-      : "medium";
-
-  const actorAssociationRows = await sql/*sql*/`
-    INSERT INTO consumer_tap_history (consumer_id, tenant_id, tap_event_id, verdict, risk_level, city, country)
-    VALUES (
-      ${input.consumerId},
-      ${event.tenant_id},
-      ${event.id},
-      ${event.result || null},
-      ${tapRiskLevel},
-      ${event.city || null},
-      ${event.country_code || null}
-    )
-    ON CONFLICT (consumer_id, tap_event_id) DO NOTHING
-    RETURNING tenant_id, tap_event_id
-  `;
-
-  const actorAssociation = actorAssociationRows[0];
-  if (
-    actorAssociation?.tap_event_id
-    && String(actorAssociation.tenant_id || "") === String(event.tenant_id || "")
-  ) {
-    // The association already committed. Re-publish its canonical tenant tap
-    // projection so live CRM clients see the actor without waiting for a read.
-    await publishActorAssociationProjection(actorAssociation.tap_event_id);
+  if (!event) return { ok: false, status: 404, error: "event_not_found" };
+  const expected = input.mode.kind === "mobile" ? input.mode.expected : null;
+  const strict = input.mode.kind === "mobile";
+  const counter = typeof expected?.readCounter === "number" || (typeof expected?.readCounter === "string" && /^(?:0|[1-9]\d*)$/.test(expected.readCounter))
+    ? Number(expected.readCounter) : NaN;
+  const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+  if (strict && (!expected || !uuid.test(expected.tenantId) || !uuid.test(expected.batchId) || !uuid.test(expected.tagId)
+    || !expected.bid || !expected.uidHex || !/^\d+$/.test(expected.tagRevision)
+    || !Number.isSafeInteger(counter) || counter < 0)) {
+    return { ok: false, status: 409, error: "tap_context_changed" };
   }
 
-  const tagRows = await sql/*sql*/`
-    SELECT
-      t.id,
-      b.bid,
-      tp.product_name,
-      tp.sku,
-      tp.winery,
-      tp.region,
-      tp.grape_varietal,
-      tp.image_url
-    FROM events e
-    JOIN tags t ON t.batch_id = e.batch_id AND UPPER(TRIM(t.uid_hex)) = UPPER(TRIM(e.uid_hex))
-    JOIN batches b ON b.id = t.batch_id
-    LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
-    WHERE e.id = ${event.id}
-      AND b.tenant_id = ${event.tenant_id}
-    ORDER BY t.created_at ASC
-    LIMIT 1
-  `;
-  const tagProfile = tagRows[0];
-  const productName = String(tagProfile?.product_name || tagProfile?.sku || "").trim()
-    || (String(tagProfile?.grape_varietal || "").trim() && String(tagProfile?.region || "").trim()
-      ? `${String(tagProfile.grape_varietal).trim()} - ${String(tagProfile.region).trim()}`
-      : "")
-    || `Producto ${event.uid_hex || "NFC"}`;
-  const brandName = String(tagProfile?.winery || event.tenant_slug || "Tenant").trim();
-  const imageUrl = String(tagProfile?.image_url || "").trim() || null;
-
-  // Keep the identity predicate and the historical association separate from
-  // ownership or benefit eligibility. SERIALIZABLE protects the absent-row
-  // predicate too; a row lock or ON CONFLICT without a unit key cannot do that.
+  let committed: Record<string, any> | undefined;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const productRows = await sqlSerializable/*sql*/`
-        WITH existing AS MATERIALIZED (
-          SELECT id
-          FROM consumer_products
-          WHERE consumer_id = ${input.consumerId}
-            AND tenant_id = ${event.tenant_id}
-            AND (
-              product_passport_id = ${event.uid_hex || null}
-              OR (${tagProfile?.id || null}::uuid IS NOT NULL AND tag_id = ${tagProfile?.id || null})
-            )
-          ORDER BY updated_at DESC
-          LIMIT 1
-        ), updated AS (
-          UPDATE consumer_products product
-          SET latest_tap_event_id = ${event.id},
-              tag_id = COALESCE(${tagProfile?.id || null}, product.tag_id),
-              product_name = COALESCE(NULLIF(${productName}, ''), product.product_name),
-              brand_name = COALESCE(NULLIF(${brandName}, ''), product.brand_name),
-              image_url = COALESCE(${imageUrl}, product.image_url),
-              updated_at = now()
-          FROM existing
-          WHERE product.id = existing.id
-          RETURNING product.id
-        ), inserted AS (
+      const rows = await sqlSerializable/*sql*/`
+        WITH locked_event AS MATERIALIZED (
+          SELECT source_event.*, tenant.slug AS tenant_slug
+          FROM events source_event JOIN tenants tenant ON tenant.id = source_event.tenant_id
+          WHERE source_event.id = ${input.eventId}::bigint
+          FOR SHARE OF source_event
+        ), locked_batch AS MATERIALIZED (
+          SELECT batch.* FROM batches batch JOIN locked_event event
+            ON batch.id = event.batch_id AND batch.tenant_id = event.tenant_id
+          FOR SHARE OF batch
+        ), locked_tags AS MATERIALIZED (
+          SELECT tag.*, tag.xmin::text AS row_revision FROM tags tag JOIN locked_batch batch ON batch.id = tag.batch_id
+          JOIN locked_event event ON UPPER(BTRIM(tag.uid_hex)) = UPPER(BTRIM(event.uid_hex))
+          WHERE (${strict}::boolean = false OR UPPER(tag.uid_hex) = UPPER(event.uid_hex))
+          ORDER BY tag.id FOR SHARE OF tag
+        ), locked_manual AS MATERIALIZED (
+          SELECT manual.* FROM tag_manual_tamper_overrides manual JOIN locked_event event
+            ON manual.batch_id = event.batch_id AND UPPER(manual.uid_hex) = UPPER(event.uid_hex)
+          CROSS JOIN (SELECT count(*) FROM locked_tags) tag_lock_barrier
+          FOR SHARE OF manual
+        ), locked_programs AS MATERIALIZED (
+          SELECT program.* FROM loyalty_programs program JOIN locked_event event ON program.tenant_id = event.tenant_id
+          CROSS JOIN (SELECT count(*) FROM locked_manual) manual_lock_barrier
+          ORDER BY program.id FOR SHARE OF program
+        ), locked_membership AS MATERIALIZED (
+          SELECT membership.* FROM tenant_consumer_memberships membership JOIN locked_event event ON membership.tenant_id = event.tenant_id
+          CROSS JOIN (SELECT count(*) FROM locked_programs) program_lock_barrier
+          WHERE membership.consumer_id = ${input.consumerId}::uuid
+          FOR UPDATE OF membership
+        ), tag_profile AS MATERIALIZED (
+          SELECT tag.id, profile.product_name, profile.sku, profile.winery, profile.region, profile.grape_varietal, profile.image_url
+          FROM locked_tags tag LEFT JOIN tag_profiles profile ON profile.tag_id = tag.id
+          ORDER BY tag.created_at ASC, tag.id LIMIT 1
+        ), locked_history AS MATERIALIZED (
+          SELECT history.consumer_id, history.tenant_id, history.tap_event_id FROM consumer_tap_history history JOIN locked_event event ON event.id = history.tap_event_id
+          CROSS JOIN (SELECT count(*) FROM locked_membership) membership_lock_barrier
+          WHERE history.consumer_id = ${input.consumerId}::uuid
+          FOR SHARE OF history
+        ), locked_product AS MATERIALIZED (
+          SELECT product.id FROM consumer_products product JOIN locked_event event ON product.tenant_id = event.tenant_id
+          CROSS JOIN (SELECT count(*) FROM locked_history) history_lock_barrier
+          WHERE product.consumer_id = ${input.consumerId}::uuid
+            AND (product.product_passport_id = NULLIF(event.uid_hex, '')
+              OR product.tag_id = (SELECT id FROM tag_profile))
+          ORDER BY product.updated_at DESC, product.id LIMIT 1 FOR UPDATE OF product
+        ), decision_clock AS MATERIALIZED (
+          SELECT clock_timestamp() AS observed_at FROM (SELECT count(*) FROM locked_product) product_lock_barrier
+        ), current_program AS MATERIALIZED (
+          SELECT program.id FROM locked_programs program CROSS JOIN decision_clock clock
+          WHERE program.status = 'active' AND program.start_at <= clock.observed_at
+            AND (program.end_at IS NULL OR program.end_at >= clock.observed_at)
+          ORDER BY program.created_at DESC, program.id LIMIT 1
+        ), decision AS MATERIALIZED (
+          SELECT CASE
+            WHEN NOT EXISTS (SELECT 1 FROM locked_event) THEN 'event_not_found'
+            WHEN ${strict}::boolean AND NOT EXISTS (
+              SELECT 1 FROM locked_event event JOIN locked_batch batch ON true
+              WHERE event.tenant_id = ${expected?.tenantId ?? null}::uuid
+                AND event.batch_id = ${expected?.batchId ?? null}::uuid AND batch.bid = ${expected?.bid ?? null}
+                AND UPPER(event.uid_hex) = UPPER(${expected?.uidHex ?? null})
+                AND event.sdm_read_ctr::bigint = ${strict ? counter : null}::bigint
+            ) THEN 'tap_context_changed'
+            WHEN ${strict}::boolean AND (
+              EXISTS (SELECT 1 FROM locked_event WHERE UPPER(COALESCE(result, '')) IN ('MANUAL_OPENED', 'VALID_MANUAL_OPENED')
+                OR regexp_replace(UPPER(COALESCE(reason, '')), '[[:space:]-]+', '_', 'g') SIMILAR TO '%(MANUAL_TAMPER_OPENED|MANUAL_OPENED|OPERATOR_DECLARED_OPEN)%')
+              OR EXISTS (SELECT 1 FROM locked_manual WHERE UPPER(BTRIM(COALESCE(tamper_status, ''))) IN ('MANUAL_OPENED', 'OPENED')
+                OR regexp_replace(UPPER(COALESCE(reason, '')), '[[:space:]-]+', '_', 'g') SIMILAR TO '%(MANUAL_TAMPER_OPENED|MANUAL_OPENED|OPERATOR_DECLARED_OPEN)%')
+            ) THEN 'manual_opening_declared'
+            WHEN ${strict}::boolean AND (
+              NOT EXISTS (SELECT 1 FROM locked_event WHERE UPPER(COALESCE(result, '')) = ANY(${[...CLAIMABLE_OWNERSHIP_RESULTS]}::text[]))
+              OR (SELECT count(*) FROM locked_tags) <> 1
+              OR NOT EXISTS (SELECT 1 FROM locked_tags WHERE id = ${expected?.tagId ?? null}::uuid
+                AND row_revision = ${expected?.tagRevision ?? null} AND status = 'active'
+                AND COALESCE(lifecycle_state, status::text) = 'active')
+            ) THEN 'tap_context_changed'
+            WHEN EXISTS (SELECT 1 FROM locked_membership WHERE status IS DISTINCT FROM 'active') THEN 'consumer_membership_inactive'
+            WHEN EXISTS (SELECT 1 FROM locked_history history JOIN locked_event event ON history.tenant_id IS DISTINCT FROM event.tenant_id) THEN 'tap_context_changed'
+            ELSE NULL END AS error
+          FROM decision_clock
+        ), eligible AS MATERIALIZED (
+          SELECT event.*,
+            COALESCE(NULLIF(BTRIM(COALESCE(NULLIF(profile.product_name, ''), profile.sku, '')), ''),
+              CASE WHEN NULLIF(BTRIM(profile.grape_varietal), '') IS NOT NULL AND NULLIF(BTRIM(profile.region), '') IS NOT NULL
+                THEN BTRIM(profile.grape_varietal) || ' - ' || BTRIM(profile.region) END,
+              'Producto ' || COALESCE(NULLIF(event.uid_hex, ''), 'NFC')) AS product_name,
+            BTRIM(COALESCE(NULLIF(profile.winery, ''), event.tenant_slug, 'Tenant')) AS brand_name,
+            NULLIF(BTRIM(profile.image_url), '') AS image_url, profile.id AS tag_id,
+            CASE WHEN UPPER(COALESCE(event.result, '')) SIMILAR TO '%(REPLAY|TAMPER|INVALID)%' THEN 'high'
+              WHEN UPPER(COALESCE(event.result, '')) LIKE '%VALID%' OR UPPER(event.result) = 'OPENED' THEN 'low' ELSE 'medium' END AS tap_risk_level
+          FROM locked_event event LEFT JOIN tag_profile profile ON true CROSS JOIN decision
+          WHERE decision.error IS NULL
+        ), written_membership AS (
+          INSERT INTO tenant_consumer_memberships (tenant_id, consumer_id, loyalty_program_id, source, first_tap_event_id, last_tap_event_id, status)
+          SELECT tenant_id, ${input.consumerId}::uuid, (SELECT id FROM current_program), 'tap', id, id, 'active' FROM eligible WHERE true
+          ON CONFLICT (tenant_id, consumer_id) DO UPDATE SET
+            last_tap_event_id = COALESCE(EXCLUDED.last_tap_event_id, tenant_consumer_memberships.last_tap_event_id),
+            last_activity_at = now(), updated_at = now()
+          WHERE tenant_consumer_memberships.status = 'active'
+          RETURNING *
+        ), written_history AS (
+          INSERT INTO consumer_tap_history (consumer_id, tenant_id, tap_event_id, verdict, risk_level, city, country)
+          SELECT ${input.consumerId}::uuid, event.tenant_id, event.id, NULLIF(event.result, ''), event.tap_risk_level,
+            NULLIF(event.city, ''), NULLIF(event.country_code, '')
+          FROM eligible event JOIN written_membership membership ON membership.tenant_id = event.tenant_id
+          WHERE true
+          ON CONFLICT (consumer_id, tap_event_id) DO NOTHING RETURNING tenant_id, tap_event_id
+        ), updated_product AS (
+          UPDATE consumer_products product SET latest_tap_event_id = event.id,
+            tag_id = COALESCE(event.tag_id, product.tag_id), product_name = COALESCE(NULLIF(event.product_name, ''), product.product_name),
+            brand_name = COALESCE(NULLIF(event.brand_name, ''), product.brand_name), image_url = COALESCE(event.image_url, product.image_url), updated_at = now()
+          FROM locked_product existing, eligible event, written_membership membership,
+            (SELECT count(*) FROM written_history) history_write_barrier
+          WHERE product.id = existing.id AND membership.tenant_id = event.tenant_id RETURNING product.id
+        ), inserted_product AS (
           INSERT INTO consumer_products (consumer_id, tenant_id, product_passport_id, tag_id, first_tap_event_id, latest_tap_event_id, ownership_status, collection_type, product_name, brand_name, image_url)
-          SELECT ${input.consumerId}, ${event.tenant_id}, ${event.uid_hex || null}, ${tagProfile?.id || null},
-                 ${event.id}, ${event.id}, 'viewed', 'wine', ${productName}, ${brandName}, ${imageUrl}
-          WHERE NOT EXISTS (SELECT 1 FROM existing)
-          RETURNING id
+          SELECT ${input.consumerId}::uuid, event.tenant_id, NULLIF(event.uid_hex, ''), event.tag_id,
+            event.id, event.id, 'viewed', 'wine', event.product_name, event.brand_name, event.image_url
+          FROM eligible event JOIN written_membership membership ON membership.tenant_id = event.tenant_id
+          CROSS JOIN (SELECT count(*) FROM written_history) history_write_barrier
+          WHERE NOT EXISTS (SELECT 1 FROM locked_product) RETURNING id
+        ), saved_product AS MATERIALIZED (
+          SELECT id FROM updated_product UNION ALL SELECT id FROM inserted_product
+        ), write_integrity AS MATERIALIZED (
+          -- Force a statement rollback if an unexpected trigger/RLS suppresses a
+          -- required write; never return a rejection after committing only part.
+          SELECT 1 / CASE WHEN (SELECT error FROM decision) IS NOT NULL
+            OR ((SELECT count(*) FROM written_membership) = 1 AND (SELECT count(*) FROM saved_product) = 1
+              AND ((SELECT count(*) FROM written_history) = 1 OR EXISTS (
+                SELECT 1 FROM locked_history history JOIN locked_event event ON history.tenant_id = event.tenant_id AND history.tap_event_id = event.id
+                WHERE history.consumer_id = ${input.consumerId}::uuid)))
+            THEN 1 ELSE 0 END AS valid
         )
-        SELECT id FROM updated
-        UNION ALL
-        SELECT id FROM inserted
+        SELECT (SELECT error FROM decision) AS error,
+          (SELECT row_to_json(membership) FROM written_membership membership LIMIT 1) AS membership,
+          (SELECT id FROM saved_product LIMIT 1) AS product_id,
+          (SELECT tap_event_id FROM written_history LIMIT 1) AS association_event_id
+        FROM write_integrity WHERE valid = 1
       `;
-      if (!productRows[0]?.id) throw new Error("consumer_product_save_failed");
+      committed = rows[0];
       break;
     } catch (error) {
       if (attempt === 2 || typeof error !== "object" || error === null || !("code" in error) || error.code !== "40001") throw error;
-      // Retry only the rolled-back product statement. Membership, history and
-      // realtime publication already committed and must not be repeated here.
+      // Only the entire rolled-back core is retried. No token consumption, PIN,
+      // points, title or post-commit projection is repeated by this loop.
     }
   }
+  const reason = committed?.error;
+  if (reason === "event_not_found") return { ok: false, status: 404, error: reason };
+  if (reason === "tap_context_changed" || reason === "manual_opening_declared" || reason === "consumer_membership_inactive") {
+    return { ok: false, status: 409, error: reason };
+  }
+  if (reason || !committed?.membership?.id || !committed.product_id) throw new Error("consumer_tap_core_result_unavailable");
+  // All three writes already committed. Publication remains best-effort and
+  // outside the core; its failure cannot turn this receipt into a new attempt.
+  if (committed.association_event_id) await publishActorAssociationProjection(committed.association_event_id);
+  return { ok: true, status: 200, event, membership: committed.membership, productId: String(committed.product_id) };
+}
 
-  return event;
+/** Historical callers retain their event/null adapter and may save an invalid,
+ * tag-less or currently suspended reading without claiming ownership/benefits. */
+export async function saveTapForConsumer(input: { consumerId: string; eventId: string }) {
+  const result = await saveConsumerTapActionForConsumer({ ...input, mode: { kind: "history" } });
+  return result.ok ? result.event : null;
 }
 
 type ClaimOwnershipInput = {

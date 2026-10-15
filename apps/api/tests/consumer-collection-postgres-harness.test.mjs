@@ -46,6 +46,31 @@ test("collection PostgreSQL harness closes opened clients if the next connection
   assert.equal(closed, true);
 });
 
+test("collection closes both validated clients when the third backend cannot connect", async () => {
+  const clients = [0, 1].map(index => ({ closed: false, statements: [],
+    async query(text) { this.statements.push(text); return { rows: [{ database: "nexid_e2e", role: "nexid_e2e", pid: 124 + index, address: "127.0.0.1" }] }; },
+    async end() { this.closed = true; },
+  }));
+  let count = 0;
+  await assert.rejects(runConsumerCollectionPostgresQa({ connect: async () => {
+    if (count < clients.length) return clients[count++];
+    throw new Error("Synthetic third backend failure");
+  } }), /Synthetic third backend failure/);
+  assert.ok(clients.every(client => client.closed && client.statements.length === 1));
+  assert.doesNotMatch(clients.flatMap(client => client.statements).join("\n"), /CREATE|INSERT|UPDATE|DELETE|DROP/);
+});
+
+test("collection refuses a third backend in another database and closes all three before DDL", async () => {
+  const clients = [0, 1, 2].map(index => ({ closed: false, statements: [],
+    async query(text) { this.statements.push(text); return { rows: [{ database: index === 2 ? "nexid_e2e_other" : "nexid_e2e", role: "nexid_e2e", pid: 127 + index, address: "127.0.0.1" }] }; },
+    async end() { this.closed = true; },
+  }));
+  let count = 0;
+  await assert.rejects(runConsumerCollectionPostgresQa({ connect: async () => clients[count++] }), /same QA database/);
+  assert.ok(clients.every(client => client.closed && client.statements.length === 1));
+  assert.doesNotMatch(clients.flatMap(client => client.statements).join("\n"), /CREATE|INSERT|UPDATE|DELETE|DROP/);
+});
+
 for (const address of ["172.18.0.2", "10.0.0.2", "192.168.1.2"]) test(`collection does not allow private server ${address} without local Docker attestation`, async () => {
   let closed = false; const statements = [];
   await assert.rejects(runConsumerCollectionPostgresQa({ connect: async () => ({ query: async text => { statements.push(text); return { rows: [{ database: "nexid_e2e", role: "nexid_e2e", pid: 1, address }] }; }, end: async () => { closed = true; } }) }), /non-loopback/);

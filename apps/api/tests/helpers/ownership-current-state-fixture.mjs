@@ -38,6 +38,25 @@ export async function captureOwnershipMutation({ event = ownershipFixture(), upd
       if (rightsError) throw new Error("synthetic rights read failure");
       return [event];
     }
+    if (/WITH locked_event AS MATERIALIZED/.test(query)) {
+      // The real historical adapter now submits membership/history/product as
+      // one compound query. Supply its explicit receipt before the broad mocks
+      // below; this capture fixture does not execute SQL or prove PG atomicity.
+      assert.match(query, /written_membership AS \([\s\S]*INSERT INTO tenant_consumer_memberships/);
+      assert.match(query, /written_history AS \([\s\S]*FROM eligible event JOIN written_membership membership/);
+      assert.match(query, /updated_product AS \([\s\S]*UPDATE consumer_products/);
+      assert.match(query, /inserted_product AS \([\s\S]*INSERT INTO consumer_products/);
+      assert.match(query, /FROM write_integrity WHERE valid = 1/);
+      assert.equal(parameters.some(value => value === true), false, "Ownership's save adapter remains historical");
+      assert.ok(parameters.includes(consumerId) && parameters.includes(String(event.id)));
+      return [{ error: null,
+        membership: { id: "00000000-0000-0000-0000-000000000107", tenant_id: event.tenant_id, consumer_id: consumerId, status: "active" },
+        product_id: "00000000-0000-0000-0000-000000000106",
+        // No realtime/provider effect in this SQL-capture fixture. The claim
+        // mutation below still returns revoked and stops its canonical sink.
+        association_event_id: null,
+      }];
+    }
     if (/WITH current_tag AS MATERIALIZED/.test(query)) {
       assert.match(query, /(?:INSERT INTO|UPDATE) consumer_product_ownerships/);
       mutation = statement;
@@ -45,8 +64,6 @@ export async function captureOwnershipMutation({ event = ownershipFixture(), upd
       return [{ id: ownershipId, consumer_id: consumerId, status: "revoked" }];
     }
     if (/FROM consumer_product_ownerships o/.test(query)) return update ? [{ id: ownershipId, consumer_id: consumerId }] : [];
-    if (/WITH existing AS MATERIALIZED/.test(query)) return [{ id: "00000000-0000-0000-0000-000000000106" }];
-    if (/FROM events e\s+JOIN tags t/.test(query)) return [{ id: event.current_tag_id, bid: event.bid, product_name: "Synthetic product" }];
     if (/FROM loyalty_programs|INSERT INTO tenant_consumer_memberships|INSERT INTO consumer_tap_history|UPDATE consumer_products/.test(query)) return [];
     throw new Error(`Unexpected synthetic statement: ${query.trim().slice(0, 90)}`);
   }, ownershipTestEnv, { migrationManaged: true });
