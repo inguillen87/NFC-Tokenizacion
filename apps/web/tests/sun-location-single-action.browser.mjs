@@ -39,17 +39,23 @@ await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
 const results = [];
+const phaseLedger = [];
+let activeScenario = "bootstrap", activeLocale = null, activePhase = "starting";
+const qaStartedAtMs = Date.now();
+function recordPhase(phase) {
+  activePhase = phase;
+  if (phaseLedger.length < 256) phaseLedger.push({ scenario: activeScenario, locale: activeLocale, phase, elapsedMs: Date.now() - qaStartedAtMs });
+}
 if(process.env.QA_OUTPUT)await mkdir(process.env.QA_OUTPUT,{recursive:true});
 try {
   for (const scenario of ["success", "permission_pregranted", "permission_api_unavailable", "permission_api_rejected", "permission_api_throws", "abandoned_measurement", "denied", "timeout", "uncertain", "upstream_unknown", "upstream_error", "expired", "unauthorized", "retryable", "stall_headers", "stall_body", "disabled"]) {
+    activeScenario = scenario; activeLocale = null; recordPhase("scenario_start");
     const isSuccess = scenario === "success" || scenario.startsWith("permission_");
     const noPermissionInspection = scenario.startsWith("permission_api_");
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
     if (scenario.startsWith("stall_")) await page.clock.install();
-    const streamedResponse = scenario === "stall_body"
-      ? page.waitForResponse(response => new URL(response.url()).pathname === "/fixture-context")
-      : null;
+    let streamedResponse = null;
     const errors = [];
     const posts = [];
     let releaseResponse;
@@ -108,13 +114,16 @@ try {
         },
       } });
     }, { scenario });
+    recordPhase("navigation");
     await page.goto(`${origin}/${scenario === "disabled" ? "?disabled=1" : scenario.startsWith("stall_") ? `?submission=${scenario}` : ""}`);
     const firstButton = page.getByTestId("sun-location-consent-cta");
     await firstButton.waitFor();
+    recordPhase("fixture_ready");
     if (scenario === "disabled") {
       assert.equal(await firstButton.isDisabled(), true);
       assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0);
       assert.equal(posts.length, 0);
+      recordPhase("verified");
       results.push({ scenario, pass: true });
       await context.close();
       continue;
@@ -137,6 +146,7 @@ try {
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),"No horizontal overflow");
       if(process.env.QA_OUTPUT){await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-light.png"),fullPage:false});await page.evaluate(()=>document.documentElement.dataset.theme="dark");await page.screenshot({path:join(process.env.QA_OUTPUT,"location-prompt-dark.png"),fullPage:false});}
     }
+    recordPhase("consent");
     await firstButton.click();
     await page.waitForFunction(() => window.fixtureGeoCalls === 1 && document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
     assert.equal(await firstButton.isDisabled(), true);
@@ -160,6 +170,7 @@ try {
     });
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 1);
     if (scenario === "abandoned_measurement") {
+      recordPhase("abandoned_measurement");
       assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 1, "Active measurement observes permission changes");
       await page.locator("#next-tap").click();
       await page.waitForFunction(() => document.querySelector('[data-location-state="idle"]') && !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
@@ -186,11 +197,29 @@ try {
       assert.equal(posts[0].eventId, "local-fixture-2", "Only the new tap is sent");
       assert.equal(await page.evaluate(() => window.fixturePermissionListenerCount()), 0, "Completed measurement releases its permission listener");
       assert.deepEqual(errors, [], "No React or client errors after abandoning a measurement");
+      recordPhase("verified");
       results.push({ scenario, pass: true, permissionRequests: 2, abandonedSubmissions: 0, submissions: 1 });
       await context.close();
       continue;
     }
-    await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+    if (scenario === "stall_body") {
+      // Register the exact response observer immediately before releasing the
+      // measurement; setup and consent cannot spend its response wait budget.
+      recordPhase("waiting_streamed_headers");
+      [streamedResponse] = await Promise.all([
+        page.waitForResponse(response => {
+          const url = new URL(response.url());
+          return response.request().method() === "POST" && url.origin === origin
+            && url.pathname === "/fixture-context" && url.search === "?submission=stall_body";
+        }, { timeout: 30_000 }),
+        page.evaluate(() => window.fixtureGeoCallbacks.shift()()),
+      ]);
+      recordPhase("streamed_headers_received");
+    } else {
+      recordPhase("release_measurement");
+      await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
+    }
+    recordPhase("delivery_assertions");
     if (isSuccess) {
       await page.waitForFunction(() => document.querySelector('[data-location-state="saving"]'));
       assert.equal(posts.length, 1);
@@ -225,7 +254,7 @@ try {
         await page.waitForFunction(() => document.querySelector('[data-testid="sun-location-quick-action"]').dataset.state === "saving");
         assert.match(await page.getByTestId("sun-location-phase").textContent(), /Esperamos el comprobante/);
         assert.equal(posts.length, 1);
-        if (streamedResponse) assert.equal((await streamedResponse).status(), 200, "Body-stall scenario has already received response headers");
+        if (streamedResponse) assert.equal(streamedResponse.status(), 200, "Body-stall scenario has already received response headers");
         // Move simulated time past the actual component budget, covering headers
         // and body without a 12-second wall-clock sleep in each scenario.
         await page.clock.fastForward(12_001);
@@ -251,6 +280,7 @@ try {
       }
     }
     assert.deepEqual(errors, [], "No React or client errors");
+    recordPhase("verified");
     results.push({ scenario, pass: true, permissionRequests: 1, submissions: posts.length });
     await context.close();
   }
@@ -259,6 +289,7 @@ try {
     { locale: "en", retry: "Try again", retryMessage: "The area was not saved this time", details: "What is shared", conditional: "when available" },
     { locale: "pt-BR", retry: "Tentar novamente", retryMessage: "A área não foi salva desta vez", details: "O que é compartilhado", conditional: "quando disponível" },
   ]) {
+    activeScenario = "localized_manual_retry"; activeLocale = copy.locale; recordPhase("scenario_start");
     const context = await browser.newContext({ viewport: { width: 320, height: 844 } }), page = await context.newPage();
     const posts = [], errors = [];
     page.on("pageerror", error => errors.push(error.message));
@@ -282,13 +313,16 @@ try {
         },
       } });
     });
+    recordPhase("navigation");
     await page.goto(`${origin}/?locale=${copy.locale}`);
     const quick = page.getByTestId("sun-location-quick-action"), button = quick.getByTestId("sun-location-consent-cta");
     await page.waitForFunction(() => !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
+    recordPhase("fixture_ready");
     await quick.locator("summary").filter({ hasText: copy.details }).click();
     assert.ok((await quick.innerText()).includes(copy.conditional), "IP copy makes availability conditional in " + copy.locale);
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "Reading privacy is not location consent");
     assert.equal(posts.length, 0);
+    recordPhase("consent");
     await button.click();
     await page.waitForFunction(() => window.fixtureGeoCalls === 1);
     await page.evaluate(() => window.fixtureGeoCallbacks.shift()());
@@ -299,6 +333,7 @@ try {
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(posts.length, 1, "Displaying the retry state never automatically resends");
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 1);
+    recordPhase("manual_retry");
     await button.focus(); await page.keyboard.press("Enter");
     await page.waitForFunction(() => window.fixtureGeoCalls === 2);
     assert.equal(posts.length, 1, "A user retry still waits for a new measurement");
@@ -308,12 +343,22 @@ try {
     assert.equal(posts[1].geoConsent, true);
     assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0);
     assert.deepEqual(errors, []);
+    recordPhase("verified");
     results.push({ scenario: "localized_manual_retry", locale: copy.locale, pass: true, permissionRequests: 2, submissions: 2, automaticRetries: 0 });
     if (process.env.QA_OUTPUT) await page.screenshot({ path: join(process.env.QA_OUTPUT, `location-retry-${copy.locale}-320.png`), fullPage: false });
     await context.close();
   }
-  if(process.env.QA_OUTPUT)await writeFile(join(process.env.QA_OUTPUT,"report.json"),JSON.stringify({localSynthetic:true,results},null,2));
+  if(process.env.QA_OUTPUT)await writeFile(join(process.env.QA_OUTPUT,"report.json"),JSON.stringify({localSynthetic:true,results,phaseLedger},null,2));
   console.log(JSON.stringify({ evidence: "LOCAL simulated permission and API, real React components and Chromium; NOT physical certification", results }, null, 2));
+} catch (error) {
+  const failure = { scenario: activeScenario, locale: activeLocale, phase: activePhase,
+    errorName: ["TimeoutError", "AssertionError", "Error"].includes(error?.name) ? error.name : "test_failure" };
+  console.error(JSON.stringify({ localSynthetic: true, failure }));
+  if (process.env.QA_OUTPUT) {
+    try { await writeFile(join(process.env.QA_OUTPUT, "report.json"), JSON.stringify({ localSynthetic: true, results, phaseLedger, failure }, null, 2)); }
+    catch { console.error(JSON.stringify({ localSynthetic: true, diagnosticReportWritten: false })); }
+  }
+  throw error;
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
