@@ -127,7 +127,7 @@ test("unavailable notices distinguish no services, legitimate empty publication 
   for (const status of ["published", "unpublished"]) {
     const html = services({ configuration: { ...serviceBase.configuration, status, allowedActions: [], catalogAvailable: false }, policyAvailability }).html;
     assert.doesNotMatch(html, /data-testid="sun-services-unavailable"|No pudimos cargar/);
-    assert.match(html, status === "unpublished" ? /todavía no habilitó experiencias/ : /No hay experiencias habilitadas/);
+    assert.match(html, status === "unpublished" ? /todavía no habilitó experiencias/ : /No hay gestiones adicionales disponibles/);
   }
   assert.doesNotMatch(services({ configuration: null, freshnessState: "demo" }).html, /data-testid="sun-services-unavailable"|No pudimos cargar/);
   const blocked = services({ configuration: null, riskState: "blocked" }).html;

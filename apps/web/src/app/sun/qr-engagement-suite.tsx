@@ -65,7 +65,7 @@ const QUIZ_COPY = {
     score: (score: number, total: number, product: string) => `Acertaste ${score} de ${total} preguntas sobre ${product}.`,
     localResult: "Resultado educativo local: no se otorgaron puntos ni premios.", already: "Este tap ya tenía la trivia registrada.",
     points: (points: number) => `Se confirmaron ${points} puntos.`, localHelp: "Podés repasar las respuestas y consultar la información de la viña.",
-    realHelp: "Resultado confirmado del programa de la marca.", save: "Guardar puntos en mi Pasaporte", saved: "Puntos guardados en tu Pasaporte nexID.",
+    realHelp: "Resultado confirmado del programa de la marca.", save: "Guardar puntos en mi Pasaporte", saved: "Puntos guardados en tu Pasaporte nexID.", resultSaved: "Resultado de la trivia guardado.", account: "Ver mi cuenta",
     correct: "Respuesta correcta", learn: "Para recordar", restart: "Intentar de nuevo", source: "Consultar la ficha de la viña",
   },
   en: {
@@ -77,7 +77,7 @@ const QUIZ_COPY = {
     score: (score: number, total: number, product: string) => `You answered ${score} of ${total} questions about ${product} correctly.`,
     localResult: "Local educational result: no points or prizes awarded.", already: "This tap already had a recorded quiz.",
     points: (points: number) => `${points} points confirmed.`, localHelp: "Review your answers and explore the producer's information.",
-    realHelp: "Confirmed result from the brand's program.", save: "Save points to my Passport", saved: "Points saved to your nexID Passport.",
+    realHelp: "Confirmed result from the brand's program.", save: "Save points to my Passport", saved: "Points saved to your nexID Passport.", resultSaved: "Quiz result saved.", account: "View my account",
     correct: "Correct answer", learn: "Something to remember", restart: "Try again", source: "View the producer's technical sheet",
   },
   "pt-BR": {
@@ -89,7 +89,7 @@ const QUIZ_COPY = {
     score: (score: number, total: number, product: string) => `Você acertou ${score} de ${total} perguntas sobre ${product}.`,
     localResult: "Resultado educativo local: sem pontos nem prêmios.", already: "Este tap já tinha um quiz registrado.",
     points: (points: number) => `${points} pontos confirmados.`, localHelp: "Revise as respostas e consulte as informações da vinícola.",
-    realHelp: "Resultado confirmado do programa da marca.", save: "Guardar pontos no meu Passaporte", saved: "Pontos guardados no seu Passaporte nexID.",
+    realHelp: "Resultado confirmado do programa da marca.", save: "Guardar pontos no meu Passaporte", saved: "Pontos guardados no seu Passaporte nexID.", resultSaved: "Resultado do quiz salvo.", account: "Consultar minha conta",
     correct: "Resposta correta", learn: "Para lembrar", restart: "Tentar novamente", source: "Consultar a ficha da vinícola",
   },
 } as const;
@@ -869,16 +869,16 @@ export function QREngagementSuite({
                     {triviaResult?.isLocal ? quizCopy.localHelp : quizCopy.realHelp}
                   </p>
                   {triviaResult?.isLocal && activeDemoWineProfile ? <a href={activeDemoWineProfile.technicalSheet} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center text-cyan-300 underline">{quizCopy.source} ↗</a> : null}
-                  {!triviaResult?.isLocal && triviaResult?.requiresLogin ? (
+                  {!triviaResult?.isLocal && triviaResult?.requiresLogin === true ? (
                     <Link
                       href="/login?next=/me"
                       className="block w-full rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 py-2.5 text-center text-[11px] font-black uppercase tracking-wider text-slate-950"
                     >
-                      {quizCopy.save}
+                      {triviaResult.pointsAwarded === 0 ? quizCopy.account : quizCopy.save}
                     </Link>
-                  ) : !triviaResult?.isLocal ? (
+                  ) : !triviaResult?.isLocal && triviaResult?.requiresLogin === false ? (
                     <div className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[11px] font-bold text-emerald-200">
-                      {quizCopy.saved}
+                      {triviaResult.pointsAwarded === 0 ? quizCopy.resultSaved : quizCopy.saved}
                     </div>
                   ) : null}
                 </div>

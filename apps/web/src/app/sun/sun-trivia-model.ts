@@ -87,7 +87,7 @@ export const triviaRecoveryCopy = {
     uncertain: "No pudimos confirmar el envío. Conservamos tus respuestas. Revisá tu cuenta antes de volver a intentarlo.",
     unavailable: "La trivia no está disponible por el momento. Volvé a consultar más tarde.",
     notEnrolled: "La participación de tu cuenta no está habilitada para esta trivia. Consultá tus beneficios o contactá a la marca.",
-    changed: "La marca cambió o retiró esta trivia. Conservamos tus respuestas para que las revises. Cargá la versión actual antes de participar de nuevo.",
+    changed: "La marca cambió o retiró esta trivia. Conservamos tus respuestas para que las revises. Cargá la versión actual para consultar las preguntas.",
     reload: "Cargar trivia actualizada", savedAnswers: "Tus respuestas anteriores", previous: "Estas respuestas se conservan como referencia. No se envían a una trivia nueva.",
   },
   en: {
@@ -101,7 +101,7 @@ export const triviaRecoveryCopy = {
     uncertain: "We could not confirm your submission. Your answers are saved here. Check your account before trying again.",
     unavailable: "Trivia is temporarily unavailable. Please check again later.",
     notEnrolled: "Your account is not enabled to participate in this trivia. Check your benefits or contact the brand.",
-    changed: "The brand changed or withdrew this trivia. Your answers are preserved for review. Load the current version before participating again.",
+    changed: "The brand changed or withdrew this trivia. Your answers are preserved for review. Load the current version to read the questions.",
     reload: "Load updated trivia", savedAnswers: "Your previous answers", previous: "These answers are kept for reference. They are not submitted to a new quiz.",
   },
   "pt-BR": {
@@ -115,7 +115,7 @@ export const triviaRecoveryCopy = {
     uncertain: "Não foi possível confirmar o envio. Suas respostas foram mantidas aqui. Confira sua conta antes de tentar novamente.",
     unavailable: "A trivia está temporariamente indisponível. Consulte novamente mais tarde.",
     notEnrolled: "Sua conta não está habilitada para participar desta trivia. Consulte seus benefícios ou entre em contato com a marca.",
-    changed: "A marca alterou ou retirou esta trivia. Suas respostas foram preservadas para revisão. Carregue a versão atual antes de participar novamente.",
+    changed: "A marca alterou ou retirou esta trivia. Suas respostas foram preservadas para revisão. Carregue a versão atual para consultar as perguntas.",
     reload: "Carregar trivia atualizada", savedAnswers: "Suas respostas anteriores", previous: "Estas respostas são mantidas como referência. Elas não são enviadas a uma nova trivia.",
   },
 } as const;

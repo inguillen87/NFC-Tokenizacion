@@ -66,7 +66,6 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/sun-theme-ready" node apps/web/tests/sun-theme-ready.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/public-visual" node scripts/browser/public-visual-next.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/brand-hero-motion" xvfb-run --auto-servernum node scripts/browser/brand-hero-motion-next.browser.mjs
-          CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/tenant-actions" node apps/web/tests/sun-tenant-actions.browser.mjs
           git diff --exit-code -- apps packages package.json package-lock.json
       - name: Upload synthetic browser evidence
         if: always()
@@ -74,5 +73,39 @@ jobs:
         with:
           name: sun-first-paint-evidence
           path: ${{ runner.temp }}/sun-evidence
+          if-no-files-found: ignore
+          retention-days: 7
+  sun-tenant-actions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Install exact component dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install isolated browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sun-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
+          node "$RUNNER_TEMP/sun-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
+      - name: Verify tenant actions and trivia with production components
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
+        run: |
+          CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/tenant-actions" node apps/web/tests/sun-tenant-actions.browser.mjs
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Upload synthetic tenant action evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sun-tenant-actions-evidence
+          path: ${{ runner.temp }}/sun-evidence/tenant-actions
           if-no-files-found: ignore
           retention-days: 7
