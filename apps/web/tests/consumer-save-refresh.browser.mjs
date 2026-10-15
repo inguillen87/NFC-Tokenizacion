@@ -23,7 +23,7 @@ const savePath = `/api/mobile/passport/${eventId}/consumer/save-product`;
 const productName = 'Producto nuevo de ensayo QA';
 const report = {
   localOnly: true, actualProductionBuild: true, actualNextRouterAndPages: true,
-  syntheticSaveReceipts: true, syntheticReadOnlyAccountProjections: true,
+  syntheticSaveReceipts: true, syntheticJoinReceipts: true, syntheticReadOnlyAccountProjections: true,
   apiPersistenceVerified: false, physicalTapVerified: false, backendWrites: 0,
   browser: browser.version(), checks: [], views: [], viewportEvidence: [], cases: [], errors: [], unexpectedWrites: [], geolocationCalls: 0,
 };
@@ -73,7 +73,10 @@ async function startLocalServer() {
   throw Error('isolated production save test server did not become ready');
 }
 
-async function open(width, theme, scenario) {
+async function open(width, theme, scenario, action = 'save') {
+  const inactiveMembership = scenario === `membership-inactive-${action}`;
+  assert.ok(['save', 'join'].includes(action) && (action === 'save' || inactiveMembership), 'join fixture is limited to the explicit inactive-membership response');
+  const requestPath = action === 'save' ? savePath : `/api/mobile/passport/${eventId}/consumer/join-tenant`;
   const confirmed = ['confirmed', 'confirmed-focus-moved', 'confirmed-scroll-moved'].includes(scenario);
   const lost = ['lost', 'lost-focus-moved'].includes(scenario);
   const focusMoved = scenario.endsWith('-focus-moved');
@@ -121,13 +124,14 @@ async function open(width, theme, scenario) {
     if (url.pathname === '/api/consumer/session' && request.method() === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, authenticated: true }) });
     }
-    if (url.pathname === savePath && request.method() === 'POST') {
+    if (url.pathname === requestPath && request.method() === 'POST') {
       postCount++;
       assert.deepEqual(request.postDataJSON(), { tenantSlug: 'save-feedback-qa', bid: 'SAVE-FEEDBACK-QA' });
       markRequestStarted();
       await receiptReady;
       if (lost) return route.abort('failed');
-      const response = confirmed ? { status: 200, payload: { ok: true, saved: true, eventId, fresh_tap_required: true } }
+      const response = inactiveMembership ? { status: 409, payload: { ok: false, error: 'consumer_membership_inactive', fresh_tap_required: true } }
+        : confirmed ? { status: 200, payload: { ok: true, saved: true, eventId, fresh_tap_required: true } }
         : scenario === 'expired' ? { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required', fresh_token_status: 'fresh_token_expired' } }
           : scenario === 'used' ? { status: 403, payload: { ok: false, error: 'fresh_tap_capability_required', fresh_token_status: 'fresh_token_already_used' } }
             : scenario === 'foreign' ? { status: 200, payload: { ok: true, saved: true, eventId: '900102' } }
@@ -146,7 +150,7 @@ async function open(width, theme, scenario) {
     }
     return route.continue();
   });
-  await page.goto(base + target, { waitUntil: 'networkidle', timeout: 90_000 });
+  await page.goto(base + target.replace(/action=save$/, 'action=' + action), { waitUntil: 'networkidle', timeout: 90_000 });
   const banner = page.getByTestId('tap-association');
   const confirm = page.getByTestId('tap-association-confirm');
   await confirm.waitFor();
@@ -182,7 +186,7 @@ async function open(width, theme, scenario) {
     check(true, `${width}/${theme}/${scenario}: user scrolls while the receipt remains pending`);
   }
   releaseReceipt();
-  const expectedOutcome = confirmed ? 'saved' : scenario === 'expired' ? 'fresh_expired' : scenario === 'used' ? 'fresh_used'
+  const expectedOutcome = inactiveMembership ? 'membership_inactive' : confirmed ? 'saved' : scenario === 'expired' ? 'fresh_expired' : scenario === 'used' ? 'fresh_used'
     : scenario === 'consumed-policy' ? 'blocked' : scenario === 'consumed-unavailable' ? 'fresh_required'
       : scenario === 'committed-unavailable' ? 'committed_unknown' : 'unconfirmed';
   const result = banner.locator(`[data-outcome="${expectedOutcome}"]`);
@@ -235,7 +239,16 @@ async function open(width, theme, scenario) {
     check(refreshCount === initialRefreshes, `${width}/${theme}/${scenario}: missing definitive receipt performs no automatic refresh`);
     check(await home.getByRole('heading', { name: productName, exact: true }).count() === 0, `${width}/${theme}/${scenario}: unconfirmed response never invents a saved product`);
     check(await banner.getByRole('link', { name: 'Revisar mis productos', exact: true }).isVisible(), `${width}/${theme}/${scenario}: read-only collection review remains available`);
-    if (scenario === 'expired' || scenario === 'used') {
+    if (inactiveMembership) {
+      check(await result.getByRole('heading', { name: 'Tu vínculo con la marca está inactivo', exact: true }).isVisible(), `${width}/${theme}/${scenario}: the known brand-membership condition has a specific visible heading`);
+      check(await result.locator('p').innerText() === 'Consultá con la marca para revisar el vínculo de esta cuenta antes de volver a intentar. Esta solicitud no se reenviará automáticamente; otro TAP no reactiva el vínculo.', `${width}/${theme}/${scenario}: brand review is explicit and another TAP is not presented as reactivation`);
+      check(await confirm.isDisabled(), `${width}/${theme}/${scenario}: inactive membership remains terminal for this consumed action`);
+      await confirm.evaluate(button => { button.click(); button.click(); });
+      await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+      check(postCount === 1 && refreshCount === initialRefreshes, `${width}/${theme}/${scenario}: repeated clicks cannot resend or refresh a denied save/join`);
+      const historyLink = banner.getByRole('link', { name: 'Ver historial de lecturas', exact: true });
+      check(await historyLink.getAttribute('href') === '/me/taps', `${width}/${theme}/${scenario}: read-only history remains available without a fabricated contact CTA`);
+    } else if (scenario === 'expired' || scenario === 'used') {
       check(await confirm.isDisabled(), `${width}/${theme}/${scenario}: rejected fresh capability cannot be replayed`);
       check((await result.innerText()).includes(scenario === 'expired' ? 'Acercá de nuevo el teléfono a la etiqueta' : 'para volver a solicitarla'), `${width}/${theme}/${scenario}: guidance requests a new physical TAP for this action`);
     } else if (['consumed-policy', 'consumed-unavailable', 'committed-unavailable'].includes(scenario)) {
@@ -265,7 +278,7 @@ async function open(width, theme, scenario) {
   report.views.push({ width, theme, scenario, violations });
   check(violations.length === 0, `${width}/${theme}/${scenario}: zero axe violations in action feedback`);
   await banner.screenshot({ path: join(output, `${scenario}-${width}-${theme}.png`) });
-  report.cases.push({ width, theme, scenario, interceptedSavePosts: postCount, automaticRscRefreshes: refreshCount - initialRefreshes, expectedOutcome,
+  report.cases.push({ width, theme, scenario, action, interceptedSavePosts: action === 'save' ? postCount : 0, interceptedJoinPosts: action === 'join' ? postCount : 0, automaticRscRefreshes: refreshCount - initialRefreshes, expectedOutcome,
     newerInteraction, feedbackFocus: await page.evaluate(() => ({ ...window.__saveFeedbackFocus })) });
   await reviewLink.click();
   await page.waitForURL(url => url.pathname === '/me/products' && url.searchParams.get('focus') === eventId);
@@ -296,6 +309,7 @@ try {
   for (const theme of ['light', 'dark']) for (const scenario of ['unmarked-unavailable', 'malformed-marker']) await open(390, theme, scenario);
   for (const theme of ['light', 'dark']) for (const width of [320, 390]) await open(width, theme, 'confirmed-focus-moved');
   for (const theme of ['light', 'dark']) for (const scenario of ['confirmed-scroll-moved', 'lost-focus-moved']) await open(390, theme, scenario);
+  for (const theme of ['light', 'dark']) for (const width of [320, 390]) for (const action of ['save', 'join']) await open(width, theme, `membership-inactive-${action}`, action);
   check(report.errors.length === 0, 'zero application runtime exceptions');
   check(report.unexpectedWrites.length === 0, 'zero account, OTP, telemetry or business writes outside intercepted synthetic save');
   check(report.geolocationCalls === 0, 'zero GPS requests');
