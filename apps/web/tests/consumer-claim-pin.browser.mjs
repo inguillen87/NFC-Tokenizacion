@@ -95,6 +95,54 @@ export async function runClaimPinScenarios({page,base,width,theme,report,check,a
    report.claimPin??=[];report.claimPin.push({width,theme,locale:scenario.locale,syntheticReceipt:true,actualNextComponent:true,reason:scenario.error,outcome:scenario.outcome,requests:current.requests,pinOnlyInExplicitClaim:true,pinClearedBeforeReceipt:true,noUrlStorageOrDomSecret:true,newTapRequired:true});
   }
  }finally{release?.();await page.unroute(endpoint,handler);}
+ await runOwnershipConflictScenarios({page,base,width,theme,report,check,assessment,noOverflow});
+}
+
+
+// Known title conflict in the same actual Next component; synthetic receipts
+// do not prove a real ownership record, transfer or customer operation.
+async function runOwnershipConflictScenarios({page,base,width,theme,report,check,assessment,noOverflow}){
+ const cases=[{"locale":"es-AR","heading":"Solicitá la titularidad digital","title":"El producto ya tiene titularidad registrada","body":"No se registró una nueva titularidad para tu cuenta. Podés seguir consultando tus productos y el historial. Si necesitás revisar el registro, consultá con la marca. Otro TAP no cambia la titularidad registrada.","products":"Revisar mis productos","history":"Ver historial de lecturas"},{"locale":"en","heading":"Request digital title","title":"This product already has a registered digital title","body":"No new digital title was registered for your account. You can still review your products and reading history. Contact the brand if the record needs review. Another tap does not change the registered title.","products":"Review my products","history":"View reading history"},{"locale":"pt-BR","heading":"Solicite a titularidade digital","title":"O produto já tem titularidade registrada","body":"Nenhuma nova titularidade foi registrada para sua conta. Você pode continuar consultando seus produtos e o histórico de leituras. Fale com a marca se precisar revisar o registro. Outro toque não muda a titularidade registrada.","products":"Revisar meus produtos","history":"Ver histórico de leituras"}];
+ const endpoint='**/api/mobile/passport/900001/consumer/claim';let current=null;
+ const handler=async route=>{
+  const request=route.request(),url=new URL(request.url());
+  assert.equal(url.origin,base);assert.equal(url.pathname,'/api/mobile/passport/900001/consumer/claim');assert.equal(request.method(),'POST');
+  assert.ok(current);assert.deepEqual(request.postDataJSON(),{tenantSlug:'consumer-qa',bid:'LOT-WINE-QA',pin:current.secret});
+  current.requests++;assert.equal(current.requests,1,'a title conflict receives only the explicit claim request');
+  await route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({ok:false,error:'ownership_already_claimed',ownership:null,operation_committed:false})});
+ };
+ await page.route(endpoint,handler);
+ try{
+  for(const scenario of cases){
+   current={...scenario,secret:'Synthetic-Claim-Conflict!2026',requests:0};const label=`${width}/${theme}/${scenario.locale} existing title`;
+   await page.goto(base+'/me/products?fromTap=1&eventId=900001&tenant=consumer-qa&bid=LOT-WINE-QA&action=claim',{waitUntil:'networkidle'});
+   await page.evaluate(locale=>{document.documentElement.lang=locale;},scenario.locale);
+   const panel=page.getByTestId('tap-association'),pin=panel.getByTestId('tap-association-claim-pin'),confirm=panel.getByTestId('tap-association-confirm');
+   await panel.getByRole('heading',{name:scenario.heading,exact:true}).waitFor();
+   await page.waitForFunction(()=>{const button=document.querySelector('[data-testid="tap-association-confirm"]');return button&&!button.disabled;});
+   check(current.requests===0,`${label}: consultation and the existing-title context never submit automatically`);
+   await pin.fill(current.secret);await confirm.click();
+   const result=panel.getByTestId('tap-association-result-claim');await result.waitFor();
+   check(await result.getAttribute('data-outcome')==='ownership_conflict'&&current.requests===1,`${label}: the exact409 reason has a claim-only terminal outcome`);
+   check(await result.getByRole('heading',{name:scenario.title,exact:true}).count()===1&&await result.locator('p').innerText()===scenario.body,`${label}: known registered title is explained without exposing an owner identity or suggesting another tap fixes it`);
+   check(await confirm.isDisabled()&&await pin.count()===0,`${label}: existing title cannot resend the claim and the submitted code is removed`);
+   check(await result.locator('..').getAttribute('aria-live')==='polite',`${label}: existing feedback remains accessible`);
+   await confirm.evaluate(button=>{button.click();button.click();});
+   await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+   check(current.requests===1,`${label}: repeated clicks cannot resend the denied claim`);
+   const products=panel.getByRole('link',{name:scenario.products,exact:true}),history=panel.getByRole('link',{name:scenario.history,exact:true});
+   check(await products.isVisible()&&await history.isVisible()&&await products.getAttribute('href')==='/me/products?focus=900001'&&await history.getAttribute('href')==='/me/taps',`${label}: existing read-only product and history destinations remain available`);
+   check(await page.evaluate(secret=>!location.href.includes(secret)&&![localStorage,sessionStorage].some(storage=>Array.from({length:storage.length},(_,index)=>storage.getItem(storage.key(index))).some(value=>value?.includes(secret)))&&!document.documentElement.outerHTML.includes(secret),current.secret),`${label}: code stays absent from URL, storage and rendered DOM`);
+   await noOverflow(page,`${label}: existing-title feedback fits viewport`);
+   await assessment(page,'[data-testid="tap-association"]',`ownership-conflict-${scenario.locale}`,width,theme);
+   const followHistory=width===320&&theme==='light'&&scenario.locale==='es-AR';
+   if(followHistory){
+   await history.click();await page.waitForURL(url=>url.origin===base&&url.pathname==='/me/taps');await page.getByRole('heading',{name:'Historial de lecturas',exact:true}).waitFor();
+   check(current.requests===1,`${label}: actual Next history navigation keeps consultation available without resubmitting the claim`);
+   }
+   report.ownershipConflict??=[];report.ownershipConflict.push({width,theme,locale:scenario.locale,outcome:'ownership_conflict',requests:current.requests,actualNextComponent:true,syntheticReceipt:true,historyRouteReached:followHistory,newTapPresentedAsOwnershipResolution:false,realOwnershipAccepted:false});
+  }
+ }finally{await page.unroute(endpoint,handler);}
 }
 
 // Additional explicit loopback receipts in the same actual Next portal harness.

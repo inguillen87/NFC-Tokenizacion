@@ -223,7 +223,7 @@ test("denied and review-required responses never become pending applications or 
   }
   assert.deepEqual(model.tapAssociationResult("claim", "715", 403, { review_required: true }), { outcome: "review_required", retryable: false });
   assert.deepEqual(model.tapAssociationResult("rewards", "715", 404, { error: "no_active_program" }), { outcome: "no_program", retryable: false });
-  assert.deepEqual(model.tapAssociationResult("claim", "715", 409, { error: "ownership_already_claimed" }), { outcome: "blocked", retryable: false });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 409, { error: "ownership_already_claimed" }), { outcome: "ownership_conflict", retryable: false });
   assert.deepEqual(model.tapAssociationResult("save", "715", 401, { error: "unauthorized" }), { outcome: "session_required", retryable: true });
 });
 
@@ -536,5 +536,44 @@ test("inactive membership copy directs brand review without promising reactivati
   for (const [locale, value] of Object.entries(expected)) {
     assert.equal(copy.associationCopy[locale].titles.membership_inactive, value.title);
     assert.equal(copy.associationCopy[locale].outcomes.membership_inactive, value.body);
+  }
+});
+
+
+test("an existing title has exact claim-only 409 feedback independent of the fresh-reading marker", () => {
+  const denied = { ok: false, error: "ownership_already_claimed", ownership: null, operation_committed: false };
+  for (const marker of [undefined, false, true]) for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    assert.deepEqual(model.tapAssociationResult(action, "715", 409, { ...denied, fresh_tap_required: marker }),
+      { outcome: action === "claim" ? "ownership_conflict" : "blocked", retryable: false });
+  }
+  for (const raw of [Object.create({ error: denied.error }), { reason: denied.error }, { error: new String(denied.error) }, { ...denied, error: "tap_context_changed" }]) {
+    assert.deepEqual(model.tapAssociationResult("claim", "715", 409, raw), { outcome: "blocked", retryable: false });
+  }
+  for (const status of [400, 403, 404, 422]) assert.deepEqual(model.tapAssociationResult("claim", "715", status, denied), { outcome: "blocked", retryable: false });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 401, denied), { outcome: "session_required", retryable: true });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 503, denied), { outcome: "unconfirmed", retryable: true });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 503, { ...denied, fresh_tap_required: true }), { outcome: "fresh_required", retryable: false });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 200, { ...successPayloads.claim, error: denied.error, fresh_tap_required: true }), { outcome: "claimed", retryable: false });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 409, { ...denied, operation_committed: true }), { outcome: "committed_unknown", retryable: false });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 409, { ...denied, operation_committed: true, ownership: { status: "claimed", record_scope: titleScope } }), { outcome: "recorded_pending", retryable: false });
+});
+
+test("an existing title cannot resend or refresh a denied claim and leaves another explicit action independent", async () => {
+  for (const marker of [undefined, true]) {
+    const posts = []; let refreshes = 0;
+    const runner = model.createTapAssociationRunner(context("action=claim"), async path => {
+      posts.push(path);
+      return path.endsWith("/consumer/claim")
+        ? { status: 409, payload: { ok: false, error: "ownership_already_claimed", ownership: null, operation_committed: false, fresh_tap_required: marker } }
+        : { status: 200, payload: successPayloads.save };
+    }, () => { refreshes++; });
+    assert.deepEqual(await runner.run("claim"), { outcome: "ownership_conflict", retryable: false });
+    assert.equal(await runner.run("claim"), null);
+    assert.equal(posts.length, 1); assert.equal(refreshes, 0);
+    assert.deepEqual(await runner.run("save"), { outcome: "saved", retryable: false });
+    assert.equal(posts.length, 2); assert.equal(refreshes, 1);
+    assert.equal(runner.state().results.claim.outcome, "ownership_conflict");
+    assert.equal(await runner.run("claim"), null);
+    runner.dispose();
   }
 });
