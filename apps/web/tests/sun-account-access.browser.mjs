@@ -44,6 +44,12 @@ while(true){try{const entry=await lstat(ancestor);assert.ok(entry.isDirectory()&
 for(let current=ancestor;current!==resolve(current,'..');current=resolve(current,'..')){const entry=await lstat(current);assert.ok(!entry.isSymbolicLink(),'Output ancestors cannot contain a symlink or junction');}
 await mkdir(outputParent,{recursive:true});const output=await mkdtemp(join(outputParent,'run-'));
 const report={schemaVersion:'nexid.sun-account-access-next-qa/v3',status:'failed',viewOrder:'scriptless-first',localOnly:true,realProductionBuild:true,actualNextRouter:true,syntheticSunContract:true,syntheticConsumerAccount:true,realAuthenticationCertified:false,otpDeliveryCertified:false,physicalTapMeasured:false,customerWrites:0,providerMutations:0,checks:[],frames:[],views:[],cases:[],documentNavigations:[],accountRequests:[],serverReads:[],errors:[],requestFailures:[],expectedDisabledScriptBlocks:[],documentPolicies:[],blockedWrites:[],blockedExternal:[],blockedCapabilities:[],geolocationCalls:0,contactSeeded:false,capabilityTransferred:false};
+report.requestSourceLedger=[];report.requestSourceLedgerLimit=16_384;report.requestSourceLedgerTruncated=false;
+const requestSourceStartedAt=performance.now();
+function recordRequestSource(row){
+ if(report.requestSourceLedger.length>=report.requestSourceLedgerLimit){report.requestSourceLedgerTruncated=true;return;}
+ report.requestSourceLedger.push({ordinal:report.requestSourceLedger.length+1,elapsedMs:Math.round(performance.now()-requestSourceStartedAt),...row});
+}
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 const snapshotFixture=join(web,'tests/sun-mobile-local-fetch.mjs');
 const disabledScriptPolicy=join(web,'tests/browser/disabled-script-policy.mjs');
@@ -104,6 +110,12 @@ function safeNetworkError(request){
  if(value==='csp')return'CSP';
  return typeof value==='string'?value.match(/^net::(ERR_[A-Z0-9_]{1,80})$/)?.[1]||'UNKNOWN':'UNKNOWN';
 }
+function compiledScriptEvidence(request){
+ const url=new URL(request.url()),key='apps/web/.next/'+url.pathname.slice('/_next/'.length),hashes=report.entryBindingBefore?.hashes;
+ const known=request.resourceType()==='script'&&url.origin===base&&url.search===''&&!request.url().includes('?')&&url.hash===''&&!request.url().includes('#')
+  &&/^\/_next\/static\/(?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.js$/.test(url.pathname)&&hashes&&Object.hasOwn(hashes,key);
+ return{compiledScriptPath:known?url.pathname:null,compiledScriptSha256:known?hashes[key]:null};
+}
 function sunPath(entry){return entry.mode==='demo'?`/sun?demo=1&lang=${entry.locale}`:`/sun?snapshot=qa-closed&trace=synthetic&access=invalid&lang=${entry.locale}`;}
 async function open(entry,javaScriptEnabled=true){
  const name=`${entry.mode}-${entry.width}-${entry.theme}-${entry.locale}${javaScriptEnabled?'':'-no-js'}`;
@@ -111,7 +123,7 @@ async function open(entry,javaScriptEnabled=true){
  await context.addCookies([{name:'theme',value:entry.theme,url:base},{name:'nexid_theme_version',value:'white-first-v2',url:base},{name:'locale',value:entry.locale,url:base}]);
  await context.exposeBinding('__sunAccountGeo',()=>{report.geolocationCalls++;});
  await context.addInitScript(()=>{Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__sunAccountGeo();throw Error('qa_location_blocked');},watchPosition(){void window.__sunAccountGeo();throw Error('qa_location_blocked');}}});});
- const state={closing:false,phase:'sun-readiness',requests:[],documentSequence:0,currentDocument:null,documentSlots:new Set(),requestDocuments:new WeakMap()};
+ const state={closing:false,phase:'sun-readiness',requests:[],documentSequence:0,currentDocument:null,documentSlots:new Set(),requestDocuments:new WeakMap(),diagnosticRequestOrder:0,diagnosticNavigationOrder:0,diagnosticCommittedOrder:0,requestStarts:new WeakMap()};
  contextStates.set(context,state);
  await context.route('**/*',route=>track((async()=>{try{
   const request=route.request(),url=new URL(request.url());
@@ -128,7 +140,21 @@ async function open(entry,javaScriptEnabled=true){
  }catch{report.errors.push({view:name,reason:'route_failed'});try{await route.abort('failed');}catch{report.errors.push({view:name,reason:'route_abort_failed'});}}
  })()));
  const page=await context.newPage();page.setDefaultTimeout(15000);
+ // Passive ordering only: this never grants an exception to failure policy.
+ function recordRequestLifecycle(request,event){
+  const started=state.requestStarts.get(request);if(!started?.tracked)return;
+  recordRequestSource({view:name,event,started,phase:state.phase,closing:state.closing,navigationOrder:state.diagnosticNavigationOrder,committedDocumentOrder:state.diagnosticCommittedOrder,currentDocumentSha256:digest(page.url()),...(event==='failed'?{errorEnum:safeNetworkError(request)}:{})});
+ }
+ page.on('framenavigated',frame=>{
+  if(!javaScriptEnabled||frame!==page.mainFrame())return;
+  state.diagnosticCommittedOrder++;
+  if(new URL(frame.url()).origin===base)recordRequestSource({view:name,event:'document_committed',phase:state.phase,navigationOrder:state.diagnosticNavigationOrder,committedDocumentOrder:state.diagnosticCommittedOrder,documentSha256:digest(frame.url())});
+ });
  page.on('request',request=>{const url=new URL(request.url());
+  const mainFrame=request.frame()===page.mainFrame(),resourceType=request.resourceType();
+  if(mainFrame&&request.isNavigationRequest()&&resourceType==='document')state.diagnosticNavigationOrder++;
+  state.requestStarts.set(request,{tracked:javaScriptEnabled&&mainFrame&&url.origin===base&&request.method()==='GET'&&['script','document'].includes(resourceType),requestOrder:++state.diagnosticRequestOrder,phase:state.phase,navigationOrder:state.diagnosticNavigationOrder,committedDocumentOrder:state.diagnosticCommittedOrder,documentSha256:digest(page.url()),resourceSha256:digest(request.url()),resourceType,method:request.method(),navigation:request.isNavigationRequest(),...compiledScriptEvidence(request)});
+  recordRequestLifecycle(request,'started');
   if(!javaScriptEnabled&&request.isNavigationRequest()&&request.resourceType()==='document'&&request.frame()===page.mainFrame()){
    if(state.currentDocument&&!state.currentDocument.responseObserved)state.currentDocument.resolve(null);
    const slot={id:`${name}/doc-${++state.documentSequence}`,sequence:state.documentSequence,request,phase:state.phase,responseObserved:false,policy:null,resolve:null,promise:null};
@@ -138,6 +164,7 @@ async function open(entry,javaScriptEnabled=true){
   if(url.pathname==='/me'||url.pathname==='/login'){
   const row={view:name,phase:state.phase,method:request.method(),resourceType:request.resourceType(),navigation:request.isNavigationRequest(),...safeRequestEvidence(request)};state.requests.push(row);report.accountRequests.push(row);
  }});
+ page.on('requestfinished',request=>recordRequestLifecycle(request,'finished'));
  page.on('response',response=>{
   const request=response.request(),slot=state.requestDocuments.get(request);
   if(javaScriptEnabled||!slot||slot.request!==request)return;
@@ -153,7 +180,8 @@ async function open(entry,javaScriptEnabled=true){
  // JS-disabled preload control can be expected; all aborts remain fatal.
  page.on('requestfailed',request=>{
   const url=new URL(request.url()),slot=state.requestDocuments.get(request),current=state.currentDocument;
-  const row={view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',errorEnum:safeNetworkError(request),resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing,...safeRequestEvidence(request),javaScriptEnabled,mainFrame:request.frame()===page.mainFrame(),originOwned:url.origin===base,queryEmpty:url.search===''&&!request.url().includes('?'),fragmentEmpty:url.hash===''&&!request.url().includes('#'),requestDocumentPolicyId:slot?.id||null,currentDocumentPolicyId:current?.id||null,currentDocumentSha256:digest(page.url())};
+  const row={view:name,reason:'request_failed',net:request.failure()?.errorText==='net::ERR_ABORTED'?'aborted':'failed',errorEnum:safeNetworkError(request),resourceSha256:digest(request.url()),resourceType:request.resourceType(),method:request.method(),navigation:request.isNavigationRequest(),phase:state.phase,closing:state.closing,...safeRequestEvidence(request),javaScriptEnabled,mainFrame:request.frame()===page.mainFrame(),originOwned:url.origin===base,queryEmpty:url.search===''&&!request.url().includes('?'),fragmentEmpty:url.hash===''&&!request.url().includes('#'),requestDocumentPolicyId:slot?.id||null,currentDocumentPolicyId:current?.id||null,currentDocumentSha256:digest(page.url()),requestStartObservation:state.requestStarts.get(request)||null,observedNavigationOrder:state.diagnosticNavigationOrder,observedCommittedDocumentOrder:state.diagnosticCommittedOrder};
+  recordRequestLifecycle(request,'failed');
   const errorText=request.failure()?.errorText;
   void track((async()=>{
    const potential=!javaScriptEnabled&&errorText==='csp'&&row.closing===false&&slot&&slot===current;
@@ -171,10 +199,14 @@ async function open(entry,javaScriptEnabled=true){
 }
 async function settle(page){await page.waitForLoadState('networkidle',{timeout:20000});await drain();}
 async function navigateAccount(current,kind,keyboard=false){
- const{page,name,state}=current;state.phase=kind;const start=state.requests.length;
- const firstRequest=page.waitForRequest(request=>new URL(request.url()).pathname==='/me');
+ const{page,name,state}=current;const start=state.requests.length;
  const account=page.getByTestId(current.javaScriptEnabled?'sun-account-link':'sun-nojs-account-link');
  if(keyboard)await account.focus();
+ // Font, focus and accessibility work can start later reads after initial idle.
+ // Keep the existing settle budget; observe navigation only after it completes.
+ await settle(page);state.phase=kind;
+ const firstRequest=page.waitForRequest(request=>new URL(request.url()).pathname==='/me');
+ if(current.javaScriptEnabled)recordRequestSource({view:name,event:'account_gesture',phase:kind,navigationOrder:state.diagnosticNavigationOrder,committedDocumentOrder:state.diagnosticCommittedOrder,documentSha256:digest(page.url())});
  const[first]=await Promise.all([firstRequest,keyboard?account.press('Enter'):account.click()]);
  const observation={view:name,kind,method:first.method(),resourceType:first.resourceType(),navigation:first.isNavigationRequest(),referrerSuppressed:!first.headers().referer,...safeRequestEvidence(first)};
  report.documentNavigations.push(observation);
@@ -277,6 +309,7 @@ try{
  check(report.documentNavigations.length===frames.length*2+frames.filter(item=>item.width<=390).length+scriptlessFrames.length&&report.documentNavigations.every(item=>item.path==='/me'&&item.navigation&&item.resourceType==='document'&&!item.rsc&&!item.prefetch&&!item.segment&&item.referrerSuppressed),'All account entries began as documents without prefetch or a SUN referrer');
  check(report.serverReads.length>0&&report.serverReads.every(row=>row.scenario==='authenticated'||row.path==='/consumer/session'),'Only confirmed synthetic sessions read private consumer resources');
  check(report.requestFailures.length===report.expectedDisabledScriptBlocks.length+report.errors.filter(row=>row.reason==='request_failed').length&&report.expectedDisabledScriptBlocks.every(row=>report.requestFailures.includes(row)), 'Every failed request remains in the complete expected-or-fatal ledger');
+ check(report.requestSourceLedgerTruncated===false,'Passive request-source ledger remains complete within its bound');
  check(report.errors.length===0,'Zero unexpected application, route, request and console errors');check(report.blockedWrites.length===0&&report.customerWrites===0,'Zero write attempts');check(report.blockedExternal.length===0,'Zero external requests');check(report.blockedCapabilities.length===0,'Zero capability or contact transfers');check(report.geolocationCalls===0,'Zero GPS calls');report.status='passed';
 }catch(error){report.status='failed';report.failureReason='bounded_sun_account_qa_failed';report.failureCategory=exceptionCategory(error);if(cleanupStage)report.cleanupFailure={stage:cleanupStage,category:report.failureCategory};}
 finally{
