@@ -79,6 +79,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   const expectedEventId = String(event.id || eventId).trim();
   const expectedBid = String(body.bid || event.bid || "").trim();
   if (!expectedBid) return freshOwnershipForbidden("fresh_token_bid_missing");
+  const expectedClaim = {
+    tenantId: String(event.tenant_id || ""),
+    batchId: String(event.batch_id || ""),
+    bid: String(event.bid || ""),
+    uidHex: String(event.uid_hex || ""),
+    readCounter: event.sdm_read_ctr,
+    tagId: String(event.current_tag_id || ""),
+    tagRevision: String(event.current_tag_revision || ""),
+  };
   const fresh = await consumeSunFreshHandoff(req, body as Record<string, unknown>, {
     eventId: expectedEventId,
     bid: expectedBid,
@@ -90,6 +99,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   const policyRows = await sql/*sql*/`
     SELECT
       t.id::text AS tag_id,
+      t.xmin::text AS tag_row_revision,
+      b.xmin::text AS batch_row_revision,
+      tsp.xmin::text AS tenant_policy_revision,
       t.claim_pin_required AS tag_claim_pin_required,
       t.hash_pin AS tag_hash_pin,
       t.active_for_claim AS tag_active_for_claim,
@@ -207,6 +219,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     consumerId: consumer.id,
     eventId,
     source: "sun_passport",
+    expected: expectedClaim,
+    authorization: {
+      tagRevision: String(policyRow.tag_row_revision),
+      batchRevision: String(policyRow.batch_row_revision),
+      tenantPolicyRevision: policyRow.tenant_policy_revision === null || policyRow.tenant_policy_revision === undefined
+        ? null : String(policyRow.tenant_policy_revision),
+      posRequired: claimAuthorization.posRequired,
+    },
     bid: expectedBid,
     uidHex: String(event.uid_hex || ""),
     trustSnapshot: {
@@ -218,7 +238,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
         needs_rotation: pinVerification.needsRotation,
       } : null,
     },
-  });
+  }).catch(() => null);
+  if (!claimed) return json({
+    ok: false,
+    error: "consumer_ownership_claim_unavailable",
+    reason: "consumer_ownership_claim_unavailable",
+    fresh_tap_required: true,
+  }, 503, { "cache-control": "no-store" });
   if (!claimed.ok) return json({
     ok: false,
     error: claimed.error,

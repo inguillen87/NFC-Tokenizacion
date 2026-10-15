@@ -76,8 +76,9 @@ test("historical collection save uses one compound statement and remains viewed 
     assert.equal(calls.event, 1); assert.equal(calls.core.length, 1);
     const { text, values } = calls.core[0];
     assert.match(text, /WHERE NOT EXISTS \(SELECT 1 FROM locked_product\)/);
-    assert.match(text, /'viewed', 'wine'/);
-    assert.doesNotMatch(text, /acquired_at|points_balance|consumer_product_ownerships/);
+    assert.match(text, /CASE WHEN \?::boolean THEN 'claimed' ELSE 'viewed' END, 'wine'/);
+    assert.doesNotMatch(text, /acquired_at|points_balance/);
+    assert.match(text, /FROM eligible event WHERE \?::boolean AND NOT EXISTS/);
     assert.ok(values.includes(fixtureConsumer) && values.includes(fixtureEvent.id));
     assert.equal(values.filter(v => v === true).length, 0, "History never enables the strict mobile branches");
     assert.ok(values.filter(v => v === false).length >= 3);
@@ -170,7 +171,8 @@ test("history retains tag-less and invalid reading support without claiming owne
   await runFixture({ event, profiles: [] }, async (save, calls) => {
     assert.equal(await save(), event); assert.deepEqual(calls.committed, oneAssociation);
     assert.equal(calls.core[0].values.some(value => value === true), false);
-    assert.doesNotMatch(calls.core[0].text, /INSERT INTO consumer_product_ownerships|UPDATE loyalty_members/);
+    assert.doesNotMatch(calls.core[0].text, /UPDATE loyalty_members/);
+    assert.match(calls.core[0].text, /FROM eligible event WHERE \?::boolean AND NOT EXISTS/);
     assert.equal(calls.metadata.tagId, null);
   });
 });
@@ -226,6 +228,7 @@ async function loadHistoricalPublicationFixture({ outcomes, projection = async (
     return dependencies[name];
   }, module, module.exports);
   return { calls, started, returnedAssociation, rows,
+    saveAction: input => module.exports.saveConsumerTapActionForConsumer(input),
     save: () => module.exports.saveTapForConsumer({ consumerId: fixtureConsumer, eventId: fixtureEvent.id }) };
 }
 
@@ -290,4 +293,15 @@ for (const [label, projection, warning] of [
     const details = JSON.parse(warnings[0][1]); assert.equal(details.eventId, f.returnedAssociation);
     assert.equal(Object.hasOwn(details, "consumerId"), false); assert.equal(Object.hasOwn(details, "uid_hex"), false);
   } finally { console.warn = previous; }
+});
+
+test("collection action ignores an undeclared runtime ownership input instead of granting a title", async () => {
+  const f = await loadHistoricalPublicationFixture({ outcomes: [successRows()] });
+  const input = { consumerId: fixtureConsumer, eventId: fixtureEvent.id, mode: { kind: "history" } };
+  Object.defineProperty(input, "ownership", { enumerable: true, get() { throw Error("Undeclared ownership capability was read"); } });
+  const result = await f.saveAction(input);
+  assert.equal(result.ok, true); assert.equal(Object.hasOwn(result, "ownership"), false);
+  assert.equal(f.calls.core.length, 1);
+  assert.equal(f.calls.core[0].values.some(value => value === true), false);
+  assert.deepEqual(f.calls.publications, []);
 });

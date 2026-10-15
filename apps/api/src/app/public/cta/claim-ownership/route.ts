@@ -4,7 +4,7 @@ import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../lib/consumer-portal-service";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
-import { consumeSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
+import { consumeSunFreshHandoff, requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import { ensureConsumerPortalSchema, ensureSdkSchema } from "../../../../lib/commercial-runtime-schema";
 import { getTapEvent } from "../../../../lib/loyalty-service";
 import { createAlert } from "../../../../lib/alert-engine";
@@ -95,6 +95,48 @@ export async function POST(req: Request) {
 
   const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, reason: "event_not_found", trace_id: traceId }, 404);
+  // Reverify the consumed token against the server row without reserving it again.
+  const rawReadCounter = event.sdm_read_ctr;
+  const readCounter = typeof rawReadCounter === "number"
+    ? rawReadCounter
+    : typeof rawReadCounter === "string" && /^(0|[1-9][0-9]*)$/.test(rawReadCounter)
+      ? Number(rawReadCounter) : null;
+  if (readCounter === null || !Number.isSafeInteger(readCounter) || readCounter < 0) {
+    return json({
+      ok: false,
+      reason: "fresh_nfc_evidence_required_for_ownership",
+      trace_id: traceId,
+      share_token_status: auth.share_token_status,
+      fresh_token_status: "fresh_token_counter_mismatch",
+    }, 403);
+  }
+  const expectedClaim = {
+    tenantId: String(event.tenant_id || ""),
+    batchId: String(event.batch_id || ""),
+    bid: String(event.bid || ""),
+    uidHex: String(event.uid_hex || ""),
+    readCounter,
+    tagId: String(event.current_tag_id || ""),
+    tagRevision: String(event.current_tag_revision || ""),
+  };
+  const boundFresh = requireSunFreshHandoff(req, body, {
+    bid: expectedClaim.bid,
+    eventId: String(event.id || eventId),
+    uidHex: expectedClaim.uidHex,
+    readCounter: expectedClaim.readCounter,
+  });
+  const freshBindingStatus = !expectedClaim.uidHex
+    ? "fresh_token_tag_binding_mismatch"
+    : boundFresh.ok ? null : boundFresh.reason;
+  if (freshBindingStatus) {
+    return json({
+      ok: false,
+      reason: "fresh_nfc_evidence_required_for_ownership",
+      trace_id: traceId,
+      share_token_status: auth.share_token_status,
+      fresh_token_status: freshBindingStatus,
+    }, 403);
+  }
   const projectedRights = evaluateTapCommercialRights(event);
   const currentRights = projectedRights.allowed
     ? await readCurrentTapCommercialRights(eventId)
@@ -113,6 +155,9 @@ export async function POST(req: Request) {
   const tagRows = await sql`
     SELECT 
       t.id AS tag_id,
+      t.xmin::text AS tag_row_revision,
+      b.xmin::text AS batch_row_revision,
+      tsp.xmin::text AS tenant_policy_revision,
       t.claim_pin_required AS tag_claim_pin_required,
       t.hash_pin AS tag_hash_pin,
       t.active_for_claim AS tag_active_for_claim,
@@ -496,6 +541,14 @@ export async function POST(req: Request) {
       bid,
       uidHex: uid,
       source: "sun_passport",
+      expected: expectedClaim,
+      authorization: {
+        tagRevision: String(tagRow.tag_row_revision),
+        batchRevision: String(tagRow.batch_row_revision),
+        tenantPolicyRevision: tagRow.tenant_policy_revision === null || tagRow.tenant_policy_revision === undefined
+          ? null : String(tagRow.tenant_policy_revision),
+        posRequired: claimAuthorization.posRequired,
+      },
       trustSnapshot: {
         trace_id: traceId,
         share_token_status: auth.share_token_status,
@@ -521,7 +574,13 @@ export async function POST(req: Request) {
           target_country: targetCountry,
         },
       },
-    });
+    }).catch(() => null);
+    if (!claim) return json({
+      ok: false,
+      reason: "consumer_ownership_claim_unavailable",
+      fresh_tap_required: true,
+      trace_id: traceId,
+    }, 503, { "cache-control": "no-store" });
     if (!claim.ok) {
       return json(
         {
