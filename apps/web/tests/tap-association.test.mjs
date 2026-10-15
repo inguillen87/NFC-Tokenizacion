@@ -118,6 +118,40 @@ test("committed 503 records title as incomplete without enabling retries or inve
   assert.deepEqual(model.tapAssociationResult("rewards", "715", 503, payload), { outcome: "committed_unknown", retryable: false });
 });
 
+test("benefit enrollment accepts enrolled or verified receipts only with complete authoritative confirmation", () => {
+  const receipt = (status = "verified", id = "member-1") => ({ ok: true, enrollment_status: "enrolled", member: { id, status, pointsBalance: 0 } });
+  for (const [http, status] of [[200, "enrolled"], [200, "verified"], [201, "verified"]]) {
+    assert.deepEqual(model.tapAssociationResult("rewards", "715", http, receipt(status)), { outcome: "enrolled", retryable: false });
+  }
+  for (const status of ["anonymous", "inactive", "blocked", "active", "unknown", "VERIFIED", null, {}, new String("verified")]) {
+    assert.equal(model.tapAssociationResult("rewards", "715", 200, receipt(status)).outcome, "unconfirmed");
+  }
+  for (const id of ["", " ", " member-1", "member-1 ", "member\n1", "member\u007f1", "x".repeat(129), 123, null]) {
+    assert.equal(model.tapAssociationResult("rewards", "715", 200, receipt("verified", id)).outcome, "unconfirmed");
+  }
+  for (const payload of [{ ...receipt(), ok: false }, { ...receipt(), ok: undefined }, { ...receipt(), enrollment_status: undefined }, { ...receipt(), enrollment_status: "pending" }, { ...receipt(), member: null }]) {
+    assert.equal(model.tapAssociationResult("rewards", "715", 200, payload).outcome, "unconfirmed");
+  }
+  for (const http of [199, 300, 401, 403, 500]) assert.notEqual(model.tapAssociationResult("rewards", "715", http, receipt()).outcome, "enrolled");
+  for (const action of ["save", "join", "claim"]) assert.equal(model.tapAssociationResult(action, "715", 200, receipt()).outcome, "unconfirmed");
+});
+
+test("a verified enrollment receipt refreshes once and cannot be posted again in the same context", async () => {
+  let posts = 0, refreshes = 0;
+  const runner = model.createTapAssociationRunner(context("action=rewards"), async (path, body) => {
+    posts++;
+    assert.equal(path, "/api/mobile/passport/715/loyalty/enroll");
+    assert.equal(body.locale, "en");
+    return { status: 200, payload: { ok: true, enrollment_status: "enrolled", member: { id: "member-1", status: "verified", pointsBalance: 42 } } };
+  }, () => { refreshes++; });
+  assert.deepEqual(await runner.run("rewards", "en"), { outcome: "enrolled", retryable: false });
+  assert.equal(await runner.run("rewards", "pt-BR"), null);
+  assert.equal(await runner.run("rewards", "en"), null);
+  assert.equal(posts, 1); assert.equal(refreshes, 1);
+  assert.deepEqual(runner.state(), { pending: null, results: { rewards: { outcome: "enrolled", retryable: false } } }, "member status does not fabricate a point award in UI state");
+  runner.dispose();
+});
+
 test("a consumed-action marker blocks the same action after 409 or requires a new reading after 503", async () => {
   for (const action of model.TAP_ASSOCIATION_ACTIONS) {
     for (const [status, expected] of [[409, "blocked"], [503, "fresh_required"]]) {
@@ -429,16 +463,23 @@ test("all supported locales contain every action and result with truthful member
   assert.match(copy.associationCopy["es-AR"].outcomes.review_required, /no creó una solicitud/);
 });
 
-test("default save keeps alternatives and technical context collapsed; a specific alternative stays discoverable", () => {
+test("entry intent is the stable primary choice with a matching request heading and collapsed alternatives", () => {
   const save = render("fromTap=1&eventId=715&action=products");
   assert.match(save, /<details class="alternatives"><summary>Otras opciones<\/summary>/);
   assert.match(save, /<details class="readingDetails"><summary>Sobre esta lectura<\/summary>/);
   assert.ok(save.indexOf('value="save"') < save.indexOf('<details class="alternatives">'));
   for (const action of ["join", "claim", "rewards"]) {
     const html = render(`fromTap=1&eventId=715&action=${action}`);
-    assert.match(html, /<details class="alternatives" open="">/);
+    assert.match(html, /<details class="alternatives"><summary>Otras opciones<\/summary>/);
+    assert.ok(html.indexOf(`value="${action}"`) < html.indexOf('<details class="alternatives">'));
+    assert.ok(html.indexOf('value="save"') > html.indexOf('<details class="alternatives">'));
+    assert.ok(html.includes(`<h2 id="tap-association-title">${copy.associationCopy["es-AR"].actions[action].title}</h2>`));
+    assert.ok(html.includes(copy.associationCopy["es-AR"].actions[action].subtitle));
     const checked = [...html.matchAll(/<input\b([^>]*\bchecked=""[^>]*)>/g)];
     assert.equal(checked.length, 1);
     assert.ok(checked[0][1].includes(`value="${action}"`));
   }
+  const neutral = render("fromTap=1&eventId=715");
+  assert.ok(neutral.includes(copy.associationCopy["es-AR"].title));
+  assert.doesNotMatch(neutral, /checked=""/);
 });

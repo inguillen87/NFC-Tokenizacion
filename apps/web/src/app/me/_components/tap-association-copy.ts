@@ -3,11 +3,11 @@ export type AssociationLocale = "es-AR" | "en" | "pt-BR";
 type Copy = {
   eyebrow: string; title: string; intro: string; reference: string; choose: string; checking: string; active: string;
   loginNeeded: string; login: string; checkError: string; checkAgain: string; sending: string; retry: string;
-  results: string; done: string; products: string; freshHelp: string;
+  results: string; done: string; products: string; benefits: string; freshHelp: string;
   alternatives: string; readingDetails: string; history: string; subtitle: string;
   pinLabel: string; pinHelp: string; pinInputError: string;
   titles: Record<TapAssociationOutcome, string>;
-  actions: Record<TapAssociationAction, { label: string; detail: string; button: string }>;
+  actions: Record<TapAssociationAction, { label: string; detail: string; button: string; title: string; subtitle: string }>;
   outcomes: Record<TapAssociationOutcome, string>;
 };
 export function associationLocale(value: string): AssociationLocale {
@@ -15,8 +15,8 @@ export function associationLocale(value: string): AssociationLocale {
 }
 export const associationCopy: Record<AssociationLocale, Copy> = {
   "es-AR": {
-    eyebrow: "Después de tu TAP", title: "Guardá tu producto en tu cuenta", reference: "Referencia de lectura",
-    subtitle: "Guardá su historia para volver cuando quieras.", alternatives: "Otras opciones", readingDetails: "Sobre esta lectura", history: "Ver historial de lecturas",
+    eyebrow: "Después de tu TAP", title: "¿Qué querés hacer con este producto?", reference: "Referencia de lectura",
+    subtitle: "Elegí una opción y confirmala para continuar.", alternatives: "Otras opciones", readingDetails: "Sobre esta lectura", history: "Ver historial de lecturas", benefits: "Ver mis beneficios",
     pinLabel: "PIN del producto, si la marca lo pide",
     pinHelp: "Usá el PIN que te entregó la marca. Es distinto al código de acceso por email o WhatsApp.",
     pinInputError: "Revisá el PIN e ingresalo tal como te lo entregó la marca, sin espacios. No enviamos la solicitud.",
@@ -34,10 +34,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     sending: "Esperando confirmación…", retry: "Reintentar solo esta acción", results: "Resultado de cada acción", done: "Respuesta recibida", products: "Revisar mis productos",
     freshHelp: "Estas acciones requieren una lectura NFC vigente. Si hace falta otra, acercá el teléfono a la etiqueta y completá el flujo desde esa pantalla.",
     actions: {
-      save: { label: "Guardar producto", detail: "Guarda la lectura y vincula el producto con tu cuenta y la empresa. No solicita titularidad ni habilita premios.", button: "Guardar producto en mi cuenta" },
-      join: { label: "Vincularme con la empresa", detail: "Vincula tu cuenta con la empresa y guarda el producto. No autoriza mensajes comerciales ni inscribe en beneficios.", button: "Vincular mi cuenta y guardar producto" },
-      claim: { label: "Solicitar titularidad digital", detail: "La empresa valida los requisitos. El proceso también puede guardar el producto y vincular tu cuenta. No transfiere un NFT ni activa garantía.", button: "Solicitar registro de titularidad" },
-      rewards: { label: "Inscribirme en beneficios", detail: "Solicita inscripción en el programa disponible. No canjea premios ni confirma puntos nuevos.", button: "Solicitar inscripción en beneficios" },
+      save: { label: "Guardar producto", detail: "Guarda la lectura y vincula el producto con tu cuenta y la empresa. No solicita titularidad ni habilita premios.", button: "Guardar producto en mi cuenta", title: "Guardá tu producto en tu cuenta", subtitle: "Guardá su historia para volver cuando quieras." },
+      join: { label: "Vincularme con la empresa", detail: "Vincula tu cuenta con la empresa y guarda el producto. No autoriza mensajes comerciales ni inscribe en beneficios.", button: "Vincular mi cuenta y guardar producto", title: "Vinculá tu cuenta con la empresa", subtitle: "Revisá cómo conectar con la marca antes de confirmar." },
+      claim: { label: "Solicitar titularidad digital", detail: "La empresa valida los requisitos. El proceso también puede guardar el producto y vincular tu cuenta. No transfiere un NFT ni activa garantía.", button: "Solicitar registro de titularidad", title: "Solicitá la titularidad digital", subtitle: "Revisá los requisitos de la marca antes de confirmar." },
+      rewards: { label: "Inscribirme en beneficios", detail: "Solicita inscripción en el programa disponible. No canjea premios ni confirma puntos nuevos.", button: "Solicitar inscripción en beneficios", title: "Solicitá la inscripción en beneficios", subtitle: "Confirmá si querés participar. La marca valida los requisitos." },
     },
     outcomes: {
       saved: "Producto guardado y vinculado a tu cuenta y a la empresa.", linked: "Vínculo con la empresa confirmado; el producto quedó guardado.",
@@ -57,8 +57,8 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     },
   },
   en: {
-    eyebrow: "After your tap", title: "Save your product to your account", reference: "Reading reference",
-    subtitle: "Save its story and come back whenever you like.", alternatives: "Other options", readingDetails: "About this reading", history: "View reading history",
+    eyebrow: "After your tap", title: "What would you like to do with this product?", reference: "Reading reference",
+    subtitle: "Choose an option and confirm it to continue.", alternatives: "Other options", readingDetails: "About this reading", history: "View reading history", benefits: "View my benefits",
     pinLabel: "Product PIN, if required by the brand",
     pinHelp: "Use the PIN the brand gave you. It is different from your email or WhatsApp sign-in code.",
     pinInputError: "Check the PIN and enter it exactly as the brand gave it to you, without spaces. No request was sent.",
@@ -74,10 +74,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     checkError: "We could not check your session. No new action was sent.", checkAgain: "Check session", sending: "Waiting for confirmation…", retry: "Retry only this action", results: "Result of each action", done: "Response received", products: "Review my products",
     freshHelp: "These actions require a current NFC reading. If another is needed, tap the tag with your phone and complete the flow on that screen.",
     actions: {
-      save: { label: "Save product", detail: "Saves the reading and links the product to your account and the company. Does not claim title or activate rewards.", button: "Save product to my account" },
-      join: { label: "Connect with the company", detail: "Links your account to the company and saves the product. Does not authorize marketing messages or enroll in rewards.", button: "Link my account and save product" },
-      claim: { label: "Request digital title", detail: "The company checks its requirements. The process may also save the product and link your account. It does not transfer an NFT or activate a warranty.", button: "Request digital title registration" },
-      rewards: { label: "Enroll in benefits", detail: "Requests enrollment in the available program. Does not redeem rewards or confirm new points.", button: "Request benefits enrollment" },
+      save: { label: "Save product", detail: "Saves the reading and links the product to your account and the company. Does not claim title or activate rewards.", button: "Save product to my account", title: "Save your product to your account", subtitle: "Save its story and come back whenever you like." },
+      join: { label: "Connect with the company", detail: "Links your account to the company and saves the product. Does not authorize marketing messages or enroll in rewards.", button: "Link my account and save product", title: "Connect your account with the company", subtitle: "Review how to connect with the brand before confirming." },
+      claim: { label: "Request digital title", detail: "The company checks its requirements. The process may also save the product and link your account. It does not transfer an NFT or activate a warranty.", button: "Request digital title registration", title: "Request digital title", subtitle: "Review the brand's requirements before confirming." },
+      rewards: { label: "Enroll in benefits", detail: "Requests enrollment in the available program. Does not redeem rewards or confirm new points.", button: "Request benefits enrollment", title: "Request benefits enrollment", subtitle: "Confirm if you want to participate. The brand checks its requirements." },
     },
     outcomes: {
       saved: "Product saved and linked to your account and the company.", linked: "Company connection confirmed; the product was saved.", claimed: "Digital title registered in NexID. No NFT transfer or warranty activation took place.", enrolled: "Enrollment confirmed. No redemption or new points were confirmed.",
@@ -92,8 +92,8 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     },
   },
   "pt-BR": {
-    eyebrow: "Depois do seu toque", title: "Guarde seu produto na sua conta", reference: "Referência da leitura",
-    subtitle: "Guarde a história e volte quando quiser.", alternatives: "Outras opções", readingDetails: "Sobre esta leitura", history: "Ver histórico de leituras",
+    eyebrow: "Depois do seu toque", title: "O que você quer fazer com este produto?", reference: "Referência da leitura",
+    subtitle: "Escolha uma opção e confirme para continuar.", alternatives: "Outras opções", readingDetails: "Sobre esta leitura", history: "Ver histórico de leituras", benefits: "Ver meus benefícios",
     pinLabel: "PIN do produto, se a marca exigir",
     pinHelp: "Use o PIN que a marca forneceu. Ele é diferente do código de acesso por email ou WhatsApp.",
     pinInputError: "Confira o PIN e digite exatamente como a marca forneceu, sem espaços. Nenhuma solicitação foi enviada.",
@@ -109,10 +109,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     checkError: "Não foi possível verificar a sessão. Nenhuma nova ação foi enviada.", checkAgain: "Verificar sessão", sending: "Aguardando confirmação…", retry: "Repetir somente esta ação", results: "Resultado de cada ação", done: "Resposta recebida", products: "Revisar meus produtos",
     freshHelp: "Estas ações exigem uma leitura NFC vigente. Se precisar de outra, aproxime o celular da etiqueta e conclua o fluxo nessa tela.",
     actions: {
-      save: { label: "Guardar produto", detail: "Guarda a leitura e vincula o produto à sua conta e à empresa. Não solicita titularidade nem libera prêmios.", button: "Guardar produto na minha conta" },
-      join: { label: "Vincular-me à empresa", detail: "Vincula sua conta à empresa e guarda o produto. Não autoriza mensagens comerciais nem inscreve em benefícios.", button: "Vincular minha conta e guardar produto" },
-      claim: { label: "Solicitar titularidade digital", detail: "A empresa valida os requisitos. O processo também pode guardar o produto e vincular sua conta. Não transfere NFT nem ativa garantia.", button: "Solicitar registro de titularidade" },
-      rewards: { label: "Inscrever-me em benefícios", detail: "Solicita inscrição no programa disponível. Não resgata prêmios nem confirma novos pontos.", button: "Solicitar inscrição em benefícios" },
+      save: { label: "Guardar produto", detail: "Guarda a leitura e vincula o produto à sua conta e à empresa. Não solicita titularidade nem libera prêmios.", button: "Guardar produto na minha conta", title: "Guarde seu produto na sua conta", subtitle: "Guarde a história e volte quando quiser." },
+      join: { label: "Vincular-me à empresa", detail: "Vincula sua conta à empresa e guarda o produto. Não autoriza mensagens comerciais nem inscreve em benefícios.", button: "Vincular minha conta e guardar produto", title: "Vincule sua conta à empresa", subtitle: "Confira como se conectar com a marca antes de confirmar." },
+      claim: { label: "Solicitar titularidade digital", detail: "A empresa valida os requisitos. O processo também pode guardar o produto e vincular sua conta. Não transfere NFT nem ativa garantia.", button: "Solicitar registro de titularidade", title: "Solicite a titularidade digital", subtitle: "Confira os requisitos da marca antes de confirmar." },
+      rewards: { label: "Inscrever-me em benefícios", detail: "Solicita inscrição no programa disponível. Não resgata prêmios nem confirma novos pontos.", button: "Solicitar inscrição em benefícios", title: "Solicite a inscrição em benefícios", subtitle: "Confirme se deseja participar. A marca verifica os requisitos." },
     },
     outcomes: {
       saved: "Produto guardado e vinculado à sua conta e à empresa.", linked: "Vínculo com a empresa confirmado; o produto foi guardado.", claimed: "Titularidade digital registrada no NexID. Não houve transferência NFT nem ativação de garantia.", enrolled: "Inscrição confirmada. Nenhum resgate ou novo ponto foi confirmado.",

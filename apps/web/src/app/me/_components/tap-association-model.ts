@@ -63,7 +63,10 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
     if (action === "save" && payload.saved === true && String(payload.eventId) === eventId) return { outcome: "saved", retryable: false };
     if (action === "join" && typeof membership.id === "string" && membership.id && membership.status === "active") return { outcome: "linked", retryable: false };
     if (action === "claim" && claimed && String(payload.eventId) === eventId) return { outcome: "claimed", retryable: false };
-    if (action === "rewards" && payload.enrollment_status === "enrolled" && typeof member.id === "string" && member.id && member.status === "enrolled") return { outcome: "enrolled", retryable: false };
+    if (action === "rewards" && payload.enrollment_status === "enrolled"
+      && typeof member.id === "string" && member.id.length > 0 && member.id.length <= 128
+      && member.id === member.id.trim() && !/[\u0000-\u0020\u007f]/.test(member.id)
+      && (member.status === "enrolled" || member.status === "verified")) return { outcome: "enrolled", retryable: false };
   }
   const error = String(payload.error || payload.reason || "");
   if (status === 401) return { outcome: "session_required", retryable: true };
