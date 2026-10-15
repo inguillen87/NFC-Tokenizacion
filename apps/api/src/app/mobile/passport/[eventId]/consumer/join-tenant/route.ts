@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { json } from "../../../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
-import { ensureTenantMembership, saveTapForConsumer } from "../../../../../../lib/consumer-portal-service";
+import { saveConsumerTapActionForConsumer } from "../../../../../../lib/consumer-portal-service";
 import { getTapEvent } from "../../../../../../lib/loyalty-service";
 import { isClaimableOwnershipResult, matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
 import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-runtime-schema";
@@ -54,7 +54,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   const currentRights = await readCurrentTapCommercialRights(event.id);
   // This action already consumed its capability. A new TAP cannot lift a business restriction.
   if (!currentRights.allowed) return json({ ok: false, error: currentRights.reason, fresh_tap_required: true }, currentRights.reason === "manual_opening_declared" ? 409 : 503);
-  await saveTapForConsumer({ consumerId: consumer.id, eventId: String(event.id) });
-  const membership = await ensureTenantMembership({ consumerId: consumer.id, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
-  return json({ ok: true, membership });
+  let saved;
+  try {
+    saved = await saveConsumerTapActionForConsumer({ consumerId: consumer.id, eventId: String(event.id), mode: { kind: "mobile", expected: {
+      tenantId: String(event.tenant_id || ""), batchId: String(event.batch_id || ""), bid: String(event.bid || ""),
+      uidHex: String(event.uid_hex || ""), readCounter: event.sdm_read_ctr,
+      tagId: String(event.current_tag_id || ""), tagRevision: String(event.current_tag_revision || ""),
+    } } });
+  } catch {
+    return json({ ok: false, error: "consumer_tap_save_unavailable", fresh_tap_required: true }, 503);
+  }
+  if (!saved.ok) return json({ ok: false, error: saved.error, fresh_tap_required: true }, saved.status);
+  return json({ ok: true, membership: saved.membership });
 }

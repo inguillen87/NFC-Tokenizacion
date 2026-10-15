@@ -175,10 +175,13 @@ async function run() {
   assert.equal(ownershipCurrentState.lockObservations.length, 4);
   const collectionConcurrency = await runConsumerCollectionPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(collectionConcurrency.ok && collectionConcurrency.cleanup.schemaDropped && collectionConcurrency.cleanup.connectionsClosed, "Collection concurrent-save SQL regression or cleanup failed");
-  assert.equal(collectionConcurrency.checks.length, 11);
+  assert.equal(collectionConcurrency.checks.length, 40);
   assert.ok(collectionConcurrency.checks.every(check => check.passed));
-  assert.equal(collectionConcurrency.lockObservations.length, 3);
-  assert.ok(collectionConcurrency.serializationConflicts >= 3);
+  assert.equal(new Set(collectionConcurrency.checks.map(check => check.name)).size, 40);
+  assert.equal(collectionConcurrency.lockObservations.length, 8);
+  assert.ok(collectionConcurrency.lockObservations.every(observation => observation.observed && observation.waitEventType === "Lock" && observation.graph.every(edge => edge.observed && edge.waitEventType === "Lock")));
+  assert.ok(collectionConcurrency.productStatements.length > 0 && collectionConcurrency.productStatements.every(statement => statement.scope === "composed-membership-history-product" && statement.isolation === "SERIALIZABLE"));
+  assert.ok(Number.isSafeInteger(collectionConcurrency.serializationConflicts) && collectionConcurrency.serializationConflicts >= 0);
   const rewardConfiguration = await runConsumerRewardPostgresQa({ connect: connectCurrentTagQa });
   assert.ok(rewardConfiguration.ok && rewardConfiguration.cleanup.schemaDropped && rewardConfiguration.cleanup.connectionsClosed, "Consumer reward configuration SQL regression or cleanup failed");
   assert.ok(rewardConfiguration.checks.every(check => check.ok));

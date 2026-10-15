@@ -22,11 +22,15 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
     limits: [
       "Synthetic minimal schema, not production migrations or customer data",
       "Fixture migration-watermark rows do not certify real migrations applied",
-      "Uses actual saveTapForConsumer and its SQL; no route/auth/fresh-token/PIN/POS or ownership claim is exercised",
-      "sqlSerializable test adapter explicitly runs the actual product statement in a SERIALIZABLE transaction",
-      "History SQL executes; its returned projection row is suppressed to prevent external realtime/provider activity",
+      "Uses actual saveTapForConsumer historical adapter and saveConsumerTapActionForConsumer mobile core; no route/auth/fresh-token/PIN/POS or ownership claim is exercised",
+      "sqlSerializable test adapter runs the whole actual membership/history/product statement in one SERIALIZABLE transaction per attempt",
+      "Core SQL executes in its real transaction, including rollback cases; only association_event_id in a committed return projection is suppressed to prevent external realtime/provider activity",
+      "Lock graphs identify owned waiting backends, not an inferred CTE stage; serialization conflict counts are observations, not a required historical minimum",
+      "Controlled SQL fixture rows, advisory barriers and product trigger failures do not demonstrate a live exploit or production concurrency latency",
       "No unit uniqueness constraint is added; protection covers cooperating service writers, not arbitrary database writers",
+      "The minimal fixture deliberately permits duplicate UID tags across batches to test metadata isolation; it does not certify the production global UID index or its migrations",
       "Existing duplicate rows are retained; missing UID and tag identity is not inferred from separate historical events",
+      "Historical no-tag/suspended adapters remain supported; an inactive membership now intentionally returns no saved event and no partial associations",
       "No provider, live NFC, OTP or customer request is exercised",
     ],
   };
@@ -47,7 +51,8 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
     }
     const [admin, first, second] = clients;
     const db = await import("../../src/lib/db.ts");
-    const { saveTapForConsumer, ensureTenantMembership } = await import("../../src/lib/consumer-portal-service.ts");
+    const { saveTapForConsumer, saveConsumerTapActionForConsumer, ensureTenantMembership } = await import("../../src/lib/consumer-portal-service.ts");
+    const { getTapEvent } = await import("../../src/lib/loyalty-service.ts");
     await admin.query(`CREATE SCHEMA ${s}`);
     schemaCreated = true;
     for (const client of clients) {
@@ -63,13 +68,27 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       CREATE TABLE ${s}.tag_profiles(tag_id uuid, product_name text, sku text, winery text, region text, grape_varietal text, image_url text);
       CREATE TABLE ${s}.tag_manual_tamper_overrides(batch_id uuid, uid_hex text, tamper_status text, reason text, source text, updated_at timestamptz DEFAULT now());
       CREATE TABLE ${s}.events(id bigint PRIMARY KEY, tenant_id uuid, batch_id uuid, uid_hex text, sdm_read_ctr integer DEFAULT 1, result text, reason text, created_at timestamptz DEFAULT now(), city text, country_code text, geo_lat float, geo_lng float);
-      CREATE TABLE ${s}.loyalty_programs(id uuid PRIMARY KEY, tenant_id uuid, status text, created_at timestamptz DEFAULT now());
+      CREATE TABLE ${s}.loyalty_programs(id uuid PRIMARY KEY, tenant_id uuid, status text, start_at timestamptz DEFAULT now(), end_at timestamptz, created_at timestamptz DEFAULT now());
       CREATE TABLE ${s}.tenant_consumer_memberships(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid, consumer_id uuid, loyalty_program_id uuid, source text, first_tap_event_id bigint, last_tap_event_id bigint, status text, points_balance integer DEFAULT 0, lifetime_points integer DEFAULT 0, last_activity_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(), UNIQUE(tenant_id,consumer_id));
       CREATE TABLE ${s}.consumer_tap_history(id bigserial PRIMARY KEY, consumer_id uuid, tenant_id uuid, tap_event_id bigint, verdict text, risk_level text, city text, country text, UNIQUE(consumer_id,tap_event_id));
       CREATE TABLE ${s}.consumer_products(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), consumer_id uuid, tenant_id uuid, product_passport_id text, tag_id uuid, first_tap_event_id bigint, latest_tap_event_id bigint, ownership_status text DEFAULT 'viewed', collection_type text, product_name text, brand_name text, image_url text, acquired_at timestamptz, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+      CREATE TABLE ${s}.collection_fixture_faults(consumer_id uuid PRIMARY KEY, mode text NOT NULL);
       CREATE FUNCTION ${s}.hold_product_insert() RETURNS trigger LANGUAGE plpgsql AS $fixture$
-      BEGIN PERFORM pg_advisory_xact_lock(${lockKey}); RETURN NEW; END; $fixture$;
-      CREATE TRIGGER collection_overlap BEFORE INSERT ON ${s}.consumer_products FOR EACH ROW EXECUTE FUNCTION ${s}.hold_product_insert();
+      BEGIN
+        IF EXISTS (SELECT 1 FROM ${s}.collection_fixture_faults WHERE consumer_id=NEW.consumer_id AND mode='raise') THEN
+          RAISE EXCEPTION 'synthetic product write failure' USING ERRCODE='P0001';
+        END IF;
+        IF EXISTS (SELECT 1 FROM ${s}.collection_fixture_faults WHERE consumer_id=NEW.consumer_id AND mode='suppress') THEN RETURN NULL; END IF;
+        IF TG_OP='INSERT' THEN PERFORM pg_advisory_xact_lock(${lockKey}); END IF;
+        RETURN NEW;
+      END; $fixture$;
+      CREATE TRIGGER collection_overlap BEFORE INSERT OR UPDATE ON ${s}.consumer_products FOR EACH ROW EXECUTE FUNCTION ${s}.hold_product_insert();
+      CREATE FUNCTION ${s}.suppress_history_insert() RETURNS trigger LANGUAGE plpgsql AS $fixture$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM ${s}.collection_fixture_faults WHERE consumer_id=NEW.consumer_id AND mode='suppress-history') THEN RETURN NULL; END IF;
+        RETURN NEW;
+      END; $fixture$;
+      CREATE TRIGGER collection_history_fault BEFORE INSERT ON ${s}.consumer_tap_history FOR EACH ROW EXECUTE FUNCTION ${s}.suppress_history_insert();
     `);
     await admin.query(`INSERT INTO ${s}.schema_migrations(id) SELECT unnest($1::text[])`, [[...db.DEFAULT_REQUIRED_SCHEMA_MIGRATIONS]]);
     removeExecutor = db.installEphemeralE2eSqlExecutor(async (strings, ...values) => {
@@ -79,22 +98,24 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       // That lookup must execute against the fixture ledger before seeds skip.
       if (!/FROM schema_migrations/.test(text) && /commercial-runtime-schema\.[cm]?[jt]s/.test(new Error().stack || "")) { report.compatibilitySeedsSkipped += 1; return []; }
       const client = currentClient.getStore() || first;
-      if (/WITH existing AS MATERIALIZED/.test(text) && /INSERT INTO consumer_products/.test(text)) {
-        report.productStatements.push({ sha256: createHash("sha256").update(text).digest("hex"), parameters: values.length, pid: pids[clients.indexOf(client)], isolation: "SERIALIZABLE" });
+      if (/WITH locked_event AS MATERIALIZED/.test(text) && /written_membership AS/.test(text) && /INSERT INTO consumer_products/.test(text)) {
+        report.productStatements.push({ sha256: createHash("sha256").update(text).digest("hex"), parameters: values.length, pid: pids[clients.indexOf(client)], isolation: "SERIALIZABLE", scope: "composed-membership-history-product" });
         await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
         try {
           const result = await client.query(text, values);
           await client.query("COMMIT");
-          return result.rows;
+          return result.rows.map(row => {
+            if (row.association_event_id != null) report.projectionReturnsSuppressed += 1;
+            return { ...row, association_event_id: null };
+          });
         } catch (error) {
           await client.query("ROLLBACK");
           if (error.code === "40001") report.serializationConflicts += 1;
           throw error;
         }
       }
-      const { rows } = await client.query(text, values);
-      if (/INSERT INTO consumer_tap_history/.test(text)) { report.projectionReturnsSuppressed += rows.length; return []; }
-      return rows;
+      assert.doesNotMatch(text, /INSERT INTO consumer_tap_history|INSERT INTO consumer_products/, "Collection writes must stay inside the composed SERIALIZABLE adapter");
+      return (await client.query(text, values)).rows;
     }, { NODE_ENV: "test", VERCEL_ENV: "test", NEXID_E2E_CONFIRMATION: "I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE", NEXID_E2E_DATABASE_URL: "postgresql://nexid_e2e:synthetic@127.0.0.1/nexid_e2e" }, { migrationManaged: true });
 
     async function fixture() {
@@ -114,38 +135,95 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       return { products, history, memberships };
     }
     const save = (f, client = first, eventId = f.eventIds[0]) => currentClient.run(client, () => saveTapForConsumer({ consumerId: f.consumerId, eventId }));
+    async function snapshot(f, client = first, eventId = f.eventIds[0]) {
+      const event = await currentClient.run(client, () => getTapEvent(eventId));
+      assert.ok(event);
+      return { tenantId: event.tenant_id, batchId: event.batch_id, bid: event.bid, uidHex: event.uid_hex,
+        readCounter: event.sdm_read_ctr, tagId: event.current_tag_id, tagRevision: event.current_tag_revision };
+    }
+    async function mobile(f, client = first, eventId = f.eventIds[0], expected) {
+      const captured = expected ?? await snapshot(f, client, eventId);
+      return currentClient.run(client, () => saveConsumerTapActionForConsumer({ consumerId: f.consumerId, eventId, mode: { kind: "mobile", expected: captured } }));
+    }
+    async function waitForOwnedBlock(writerPid, blockerPid) {
+      const deadline = Date.now() + 6000;
+      while (Date.now() < deadline) {
+        await admin.query("SELECT pg_stat_clear_snapshot()");
+        const row = (await admin.query("SELECT pid,wait_event_type,wait_event,pg_blocking_pids(pid) AS blockers,query FROM pg_stat_activity WHERE pid=$1", [writerPid])).rows[0];
+        if (row?.wait_event_type === "Lock" && row.blockers.includes(blockerPid)) {
+          assert.match(row.query, /WITH locked_event AS MATERIALIZED/);
+          return { writerPid, blockerPid, waitEventType: row.wait_event_type, waitEvent: row.wait_event,
+            observedQuerySha256: createHash("sha256").update(row.query).digest("hex"), observedQueryBytes: Buffer.byteLength(row.query), queryTextMayBeTruncated: true, observed: true };
+        }
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      assert.fail("The actual composed statement did not wait on the expected owned backend");
+    }
+    async function lockedCore(f, name, { prepare, beforeRelease } = {}) {
+      const expected = await snapshot(f);
+      let pending, observation, expectedState, barrierError;
+      await admin.query("BEGIN");
+      try {
+        await prepare();
+        expectedState = await state(f);
+        pending = Promise.allSettled([mobile(f, first, f.eventIds[0], expected)]);
+        observation = await waitForOwnedBlock(pids[1], pids[0]);
+        await beforeRelease?.(observation);
+        report.lockObservations.push({ case: name, observed: true, waitEventType: "Lock", graph: [observation], barrier: "fixture-only-owned-row-lock" });
+      } catch (error) { barrierError = error; }
+      finally { await admin.query(barrierError ? "ROLLBACK" : "COMMIT"); }
+      const results = pending ? await pending : [];
+      if (barrierError) throw barrierError;
+      assert.equal(results.length, 1);
+      if (results[0].status === "rejected") throw results[0].reason;
+      return { result: results[0].value, expectedState, observation };
+    }
+    async function program(f, { startSeconds = -3600, endSeconds = 3600, status = "active", createdSeconds = -60 } = {}) {
+      const id = randomUUID();
+      await admin.query(`INSERT INTO ${s}.loyalty_programs(id,tenant_id,status,start_at,end_at,created_at)
+        VALUES($1,$2,$3,clock_timestamp()+$4::double precision*interval '1 second',
+          CASE WHEN $5::double precision IS NULL THEN NULL ELSE clock_timestamp()+$5::double precision*interval '1 second' END,
+          clock_timestamp()+$6::double precision*interval '1 second')`, [id, f.tenantId, status, startSeconds, endSeconds, createdSeconds]);
+      return id;
+    }
+    async function membership(f, { status = "active", programId = null, points = 0, lifetime = 0 } = {}) {
+      const id = randomUUID();
+      await admin.query(`INSERT INTO ${s}.tenant_consumer_memberships(id,tenant_id,consumer_id,loyalty_program_id,source,first_tap_event_id,last_tap_event_id,status,points_balance,lifetime_points,last_activity_at,updated_at)
+        VALUES($1,$2,$3,$4,'synthetic-existing',$5,$5,$6,$7,$8,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')`, [id, f.tenantId, f.consumerId, programId, f.eventIds[0], status, points, lifetime]);
+      return id;
+    }
+    async function denied(f, expected, error = "tap_context_changed") {
+      const before = await state(f), projections = report.projectionReturnsSuppressed;
+      const result = await mobile(f, first, f.eventIds[0], expected);
+      assert.deepEqual(result, { ok: false, status: 409, error });
+      assert.deepEqual(await state(f), before, "A denial must preserve complete membership/history/product rows, including timestamps and points");
+      assert.equal(report.projectionReturnsSuppressed, projections);
+    }
     async function check(name, operation) { await operation(); report.checks.push({ name, passed: true }); }
-    async function overlap(f, sameEvent = false, joinSecond = false) {
-      // The fixture-only INSERT trigger waits after the real absent-row CTE
-      // read. Both independent writers must be observed waiting before release.
-      let pending, barrierError;
+    async function overlap(f, sameEvent = false, joinSecond = false, strict = false) {
+      // One writer reaches the fixture product trigger; the other waits on the
+      // first writer's core locks. The graph does not infer a particular CTE.
+      let firstPending, secondPending, barrierError;
       await admin.query("BEGIN");
       try {
         await admin.query("SELECT pg_advisory_xact_lock($1::bigint)", [lockKey]);
-        pending = Promise.allSettled([
-          save(f, first),
-          currentClient.run(second, async () => {
+        firstPending = Promise.allSettled([strict ? mobile(f, first) : save(f, first)]);
+        const firstWait = await waitForOwnedBlock(pids[1], pids[0]);
+        secondPending = Promise.allSettled([currentClient.run(second, async () => {
             const eventId = sameEvent ? f.eventIds[0] : f.eventIds[1];
-            const event = await saveTapForConsumer({ consumerId: f.consumerId, eventId });
+            const event = strict ? await mobile(f, second, eventId) : await saveTapForConsumer({ consumerId: f.consumerId, eventId });
             if (joinSecond) await ensureTenantMembership({ consumerId: f.consumerId, tenantId: f.tenantId, tapEventId: eventId, source: "tap" });
             return event;
-          }),
-        ]);
-        const deadline = Date.now() + 6000;
-        let waiting = [];
-        while (Date.now() < deadline) {
-          await admin.query("SELECT pg_stat_clear_snapshot()");
-          waiting = (await admin.query("SELECT pid FROM pg_stat_activity WHERE pid = ANY($1::integer[]) AND wait_event_type='Lock' AND query LIKE '%INSERT INTO consumer_products%'", [pids.slice(1)])).rows;
-          if (waiting.length === 2) break;
-          await new Promise(resolve => setTimeout(resolve, 20));
-        }
-        assert.equal(waiting.length, 2, "Both actual product statements must overlap after their absent-row reads");
-        report.lockObservations.push({ case: sameEvent ? "same-event" : joinSecond ? "save-and-membership-path" : "two-events", writerPids: waiting.map(row => row.pid), waitType: "Lock", barrier: "fixture-only-before-insert-advisory-lock" });
+          })]);
+        const secondWait = await waitForOwnedBlock(pids[2], pids[1]);
+        report.lockObservations.push({ case: strict ? (sameEvent ? "mobile-same-event" : "mobile-two-events") : sameEvent ? "same-event" : joinSecond ? "save-and-membership-path" : "two-events",
+          observed: true, waitEventType: "Lock", graph: [firstWait, secondWait], barrier: "fixture-only-product-insert-and-core-writer-graph" });
       } catch (error) { barrierError = error; }
       finally { await admin.query("ROLLBACK"); }
-      const results = pending ? await pending : [];
+      const results = [...(firstPending ? await firstPending : []), ...(secondPending ? await secondPending : [])];
       if (barrierError) throw barrierError;
-      for (const result of results) { if (result.status === "rejected") throw result.reason; assert.ok(result.value?.id); }
+      assert.equal(results.length, 2);
+      for (const result of results) { if (result.status === "rejected") throw result.reason; assert.ok(strict ? result.value?.ok === true : result.value?.id); }
     }
 
     await check("sequential_save_keeps_one_viewed_product_and_one_history_for_same_event", async () => {
@@ -167,11 +245,10 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       assert.equal(current.history.length, 2); assert.equal(current.memberships[0].points_balance, 0);
     });
     await check("overlapping_saves_same_unit_two_events_persist_one_product_two_histories", async () => {
-      const f = await fixture(), before = report.serializationConflicts; await overlap(f);
+      const f = await fixture(); await overlap(f);
       const current = await state(f);
       assert.equal(current.products.length, 1); assert.equal(current.history.length, 2); assert.equal(current.memberships.length, 1);
       assert.equal(current.products[0].ownership_status, "viewed"); assert.equal(current.memberships[0].points_balance, 0);
-      assert.ok(report.serializationConflicts > before, "The forced absent-row conflict must actually serialize and retry");
     });
     await check("overlapping_saves_same_event_persist_one_history_and_product", async () => {
       const f = await fixture(); await overlap(f, true);
@@ -219,6 +296,210 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       const f = await fixture(); await admin.query(`UPDATE ${s}.tags SET status='inactive',lifecycle_state='suspended' WHERE id=$1`, [f.tagId]);
       await save(f); const current = await state(f); assert.equal(current.products.length, 1); assert.equal(current.products[0].ownership_status, "viewed"); assert.equal(current.memberships[0].points_balance, 0);
     });
+    await check("mobile_closed_core_commits_membership_history_product_without_points_or_title", async () => {
+      const f = await fixture(), result = await mobile(f), current = await state(f);
+      assert.equal(result.ok, true); assert.equal(result.status, 200);
+      assert.equal(current.memberships.length, 1); assert.equal(current.history.length, 1); assert.equal(current.products.length, 1);
+      assert.equal(result.membership.id, current.memberships[0].id); assert.equal(result.productId, current.products[0].id);
+      assert.equal(current.products[0].ownership_status, "viewed"); assert.equal(current.products[0].acquired_at, null);
+      assert.equal(current.memberships[0].points_balance, 0); assert.equal(current.memberships[0].lifetime_points, 0);
+    });
+    await check("mobile_valid_opened_result_remains_a_legitimate_save_without_manual_override", async () => {
+      const f = await fixture(); await admin.query(`UPDATE ${s}.events SET result='VALID_OPENED' WHERE id=$1`, [f.eventIds[0]]);
+      assert.equal((await mobile(f)).ok, true);
+      const current = await state(f); assert.equal(current.history[0].verdict, "VALID_OPENED"); assert.equal(current.memberships[0].points_balance, 0);
+    });
+    await check("nonactive_existing_membership_denies_without_reactivation_or_partial_associations", async () => {
+      for (const status of ["inactive", "paused", "blocked", "left"]) {
+        const f = await fixture(); await membership(f, { status, points: 17, lifetime: 29 });
+        await denied(f, await snapshot(f), "consumer_membership_inactive");
+      }
+    });
+    await check("historical_adapter_returns_null_for_inactive_membership_without_partial_associations", async () => {
+      const f = await fixture(); await membership(f, { status: "inactive", points: 17, lifetime: 29 });
+      const before = await state(f), projections = report.projectionReturnsSuppressed;
+      assert.equal(await save(f), null); assert.deepEqual(await state(f), before);
+      assert.equal(report.projectionReturnsSuppressed, projections);
+    });
+    await check("membership_changed_to_inactive_while_core_waits_denies_and_preserves_committed_state", async () => {
+      const f = await fixture(); await membership(f, { points: 17, lifetime: 29 });
+      const observed = await lockedCore(f, "membership-revoked-during-owned-lock", { prepare: () => admin.query(`UPDATE ${s}.tenant_consumer_memberships SET status='inactive' WHERE consumer_id=$1 AND tenant_id=$2`, [f.consumerId, f.tenantId]) });
+      assert.deepEqual(observed.result, { ok: false, status: 409, error: "consumer_membership_inactive" });
+      assert.deepEqual(await state(f), observed.expectedState);
+    });
+    await check("new_membership_selects_the_current_active_program", async () => {
+      const f = await fixture(), id = await program(f); assert.equal((await mobile(f)).ok, true);
+      assert.equal((await state(f)).memberships[0].loyalty_program_id, id);
+    });
+    await check("future_active_program_does_not_enroll_a_new_membership_early", async () => {
+      const f = await fixture(); await program(f, { startSeconds: 3600, endSeconds: 7200 });
+      assert.equal((await mobile(f)).ok, true); assert.equal((await state(f)).memberships[0].loyalty_program_id, null);
+    });
+    await check("expired_active_program_does_not_attach_to_a_new_membership", async () => {
+      const f = await fixture(); await program(f, { startSeconds: -7200, endSeconds: -3600 });
+      assert.equal((await mobile(f)).ok, true); assert.equal((await state(f)).memberships[0].loyalty_program_id, null);
+    });
+    await check("paused_current_program_does_not_attach_to_a_new_membership", async () => {
+      const f = await fixture(); await program(f, { status: "paused" });
+      assert.equal((await mobile(f)).ok, true); assert.equal((await state(f)).memberships[0].loyalty_program_id, null);
+    });
+    await check("current_evergreen_program_preserves_the_nullable_end_contract", async () => {
+      const f = await fixture(), id = await program(f, { endSeconds: null });
+      assert.equal((await mobile(f)).ok, true); assert.equal((await state(f)).memberships[0].loyalty_program_id, id);
+    });
+    await check("newer_future_or_expired_active_periods_do_not_displace_the_current_program", async () => {
+      const f = await fixture(), id = await program(f, { createdSeconds: -120 });
+      await program(f, { startSeconds: 3600, endSeconds: 7200, createdSeconds: -30 });
+      await program(f, { startSeconds: -7200, endSeconds: -3600, createdSeconds: -10 });
+      assert.equal((await mobile(f)).ok, true); assert.equal((await state(f)).memberships[0].loyalty_program_id, id);
+    });
+    await check("program_expiring_during_a_real_tag_lock_is_rechecked_after_the_wait", async () => {
+      const f = await fixture(), id = await program(f, { endSeconds: 2 });
+      const observed = await lockedCore(f, "program-expiry-during-tag-lock", {
+        prepare: () => admin.query(`SELECT id FROM ${s}.tags WHERE id=$1 FOR UPDATE`, [f.tagId]),
+        beforeRelease: async observation => {
+          const before = (await admin.query(`SELECT clock_timestamp()<end_at AS before_expiry FROM ${s}.loyalty_programs WHERE id=$1`, [id])).rows[0];
+          assert.equal(before.before_expiry, true, "The actual wait must begin while the fixture program is current");
+          const deadline = Date.now() + 4000; let expired = false;
+          while (Date.now() < deadline) {
+            expired = (await admin.query(`SELECT clock_timestamp()>end_at AS expired FROM ${s}.loyalty_programs WHERE id=$1`, [id])).rows[0].expired;
+            if (expired) break;
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          assert.equal(expired, true); observation.startedBeforeExpiry = true; observation.expiredBeforeRelease = true;
+        },
+      });
+      assert.equal(observed.result.ok, true); assert.equal((await state(f)).memberships[0].loyalty_program_id, null);
+    });
+    await check("existing_active_membership_keeps_its_program_and_balances_without_reassignment", async () => {
+      const f = await fixture(), existingProgram = await program(f, { endSeconds: -3600 });
+      const id = await membership(f, { programId: existingProgram, points: 37, lifetime: 88 });
+      await program(f); assert.equal((await mobile(f)).ok, true);
+      const row = (await state(f)).memberships[0];
+      assert.equal(row.id, id); assert.equal(row.loyalty_program_id, existingProgram); assert.equal(row.points_balance, 37); assert.equal(row.lifetime_points, 88);
+      assert.equal(row.source, "synthetic-existing"); assert.equal(String(row.first_tap_event_id), f.eventIds[0]);
+    });
+    await check("mobile_expected_identity_mismatches_leave_all_three_collections_unchanged", async () => {
+      for (const field of ["tenantId", "batchId", "bid", "uidHex", "readCounter", "tagId", "tagRevision"]) {
+        const f = await fixture(), expected = await snapshot(f);
+        const changed = field === "tenantId" || field === "batchId" || field === "tagId" ? randomUUID()
+          : field === "readCounter" ? Number(expected[field]) + 1 : field === "tagRevision" ? String(Number(expected[field]) + 1) : expected[field] + "-different";
+        await denied(f, { ...expected, [field]: changed });
+      }
+    });
+    await check("persisted_null_counter_cannot_match_a_previously_captured_mobile_identity", async () => {
+      const f = await fixture(), expected = await snapshot(f);
+      await admin.query(`UPDATE ${s}.events SET sdm_read_ctr=NULL WHERE id=$1`, [f.eventIds[0]]);
+      await denied(f, expected);
+    });
+    await check("mobile_missing_suspended_inactive_or_ambiguous_tag_denies_without_writes", async () => {
+      for (const mode of ["missing", "suspended", "inactive", "ambiguous"]) {
+        const f = await fixture(), expected = await snapshot(f);
+        if (mode === "missing") { await admin.query(`DELETE FROM ${s}.tag_profiles WHERE tag_id=$1`, [f.tagId]); await admin.query(`DELETE FROM ${s}.tags WHERE id=$1`, [f.tagId]); }
+        if (mode === "suspended") await admin.query(`UPDATE ${s}.tags SET lifecycle_state='suspended' WHERE id=$1`, [f.tagId]);
+        if (mode === "inactive") await admin.query(`UPDATE ${s}.tags SET status='inactive' WHERE id=$1`, [f.tagId]);
+        if (mode === "ambiguous") await admin.query(`INSERT INTO ${s}.tags(id,batch_id,uid_hex) VALUES($1,$2,$3)`, [randomUUID(), f.batchId, f.uid]);
+        await denied(f, expected);
+      }
+    });
+    await check("mobile_tag_revision_change_after_snapshot_denies_even_when_tag_remains_active", async () => {
+      const f = await fixture(), expected = await snapshot(f);
+      await admin.query(`UPDATE ${s}.tags SET status=status WHERE id=$1`, [f.tagId]);
+      await denied(f, expected);
+    });
+    await check("manual_opening_from_current_override_or_event_reason_denies_without_associations", async () => {
+      for (const mode of ["status", "override-reason", "event-reason"]) {
+        const f = await fixture(), expected = await snapshot(f);
+        if (mode === "event-reason") await admin.query(`UPDATE ${s}.events SET reason='operator-declared-open' WHERE id=$1`, [f.eventIds[0]]);
+        else await admin.query(`INSERT INTO ${s}.tag_manual_tamper_overrides(batch_id,uid_hex,tamper_status,reason,source) VALUES($1,$2,$3,$4,'synthetic-fixture')`, [f.batchId, f.uid, mode === "status" ? "OPENED" : "UNKNOWN", mode === "override-reason" ? "manual tamper opened" : null]);
+        await denied(f, expected, "manual_opening_declared");
+      }
+    });
+    await check("manual_override_added_by_a_tag_touching_writer_during_wait_is_not_bypassed", async () => {
+      const f = await fixture();
+      const observed = await lockedCore(f, "manual-override-during-tag-lock", { prepare: async () => {
+        // The participating manual writer touches the tag before its override.
+        // This fixture reproduces that lock/version protocol, not a live call.
+        await admin.query(`UPDATE ${s}.tags SET status=status WHERE id=$1`, [f.tagId]);
+        await admin.query(`INSERT INTO ${s}.tag_manual_tamper_overrides(batch_id,uid_hex,tamper_status,reason,source) VALUES($1,$2,'OPENED','manual_opened','synthetic-fixture')`, [f.batchId, f.uid]);
+      } });
+      assert.deepEqual(observed.result, { ok: false, status: 409, error: "manual_opening_declared" });
+      assert.deepEqual(await state(f), observed.expectedState);
+    });
+    async function productFailure(f, mode, code, eventId = f.eventIds[0]) {
+      const before = await state(f), projections = report.projectionReturnsSuppressed;
+      await admin.query(`INSERT INTO ${s}.collection_fixture_faults(consumer_id,mode) VALUES($1,$2)`, [f.consumerId, mode]);
+      await assert.rejects(() => mobile(f, first, eventId), error => error.code === code);
+      assert.deepEqual(await state(f), before); assert.equal(report.projectionReturnsSuppressed, projections);
+    }
+    await check("product_insert_sql_failure_rolls_back_new_membership_and_history", async () => {
+      await productFailure(await fixture(), "raise", "P0001");
+    });
+    await check("product_update_sql_failure_preserves_existing_membership_history_product_and_timestamps", async () => {
+      const f = await fixture(); assert.equal((await mobile(f)).ok, true);
+      await productFailure(f, "raise", "P0001", f.eventIds[1]);
+    });
+    await check("product_trigger_suppressing_a_required_insert_forces_complete_rollback", async () => {
+      await productFailure(await fixture(), "suppress", "22012");
+    });
+    await check("history_trigger_suppressing_a_new_required_row_forces_complete_rollback", async () => {
+      await productFailure(await fixture(), "suppress-history", "22012");
+    });
+    await check("existing_exact_history_allows_idempotent_core_when_history_trigger_returns_null", async () => {
+      const f = await fixture();
+      await admin.query(`INSERT INTO ${s}.consumer_tap_history(consumer_id,tenant_id,tap_event_id,verdict,risk_level) VALUES($1,$2,$3,'VALID_CLOSED','low')`, [f.consumerId, f.tenantId, f.eventIds[0]]);
+      const history = (await state(f)).history, projections = report.projectionReturnsSuppressed;
+      await admin.query(`INSERT INTO ${s}.collection_fixture_faults(consumer_id,mode) VALUES($1,'suppress-history')`, [f.consumerId]);
+      assert.equal((await mobile(f)).ok, true);
+      const current = await state(f); assert.deepEqual(current.history, history); assert.equal(current.memberships.length, 1); assert.equal(current.products.length, 1);
+      assert.equal(report.projectionReturnsSuppressed, projections, "An existing receipt must not publish a new association");
+    });
+    await check("history_for_another_tenant_cannot_satisfy_the_exact_history_integrity_gate", async () => {
+      const f = await fixture(), other = await fixture();
+      await admin.query(`INSERT INTO ${s}.consumer_tap_history(consumer_id,tenant_id,tap_event_id,verdict,risk_level) VALUES($1,$2,$3,'VALID_CLOSED','low')`, [f.consumerId, other.tenantId, f.eventIds[0]]);
+      const before = (await admin.query(`SELECT * FROM ${s}.consumer_tap_history WHERE consumer_id=$1`, [f.consumerId])).rows;
+      await denied(f, await snapshot(f));
+      assert.deepEqual((await admin.query(`SELECT * FROM ${s}.consumer_tap_history WHERE consumer_id=$1`, [f.consumerId])).rows, before);
+    });
+    await check("mobile_overlapping_two_events_commit_one_product_and_two_histories", async () => {
+      const f = await fixture(); await overlap(f, false, false, true);
+      const current = await state(f); assert.equal(current.products.length, 1); assert.equal(current.history.length, 2); assert.equal(current.memberships.length, 1);
+    });
+    await check("mobile_overlapping_same_event_keeps_one_product_and_one_history", async () => {
+      const f = await fixture(); await overlap(f, true, false, true);
+      const current = await state(f); assert.equal(current.products.length, 1); assert.equal(current.history.length, 1); assert.equal(current.memberships.length, 1);
+    });
+    await check("historical_canonical_uid_metadata_is_projected_by_real_sql_for_case_and_space_variants", async () => {
+      for (const variant of ["upper-event-lower-tag", "lower-event-upper-tag", "spaced-event-and-tag", "spaced-tag"]) {
+        const f = await fixture(), image = `https://example.invalid/collection-${variant}.png`, name = `Synthetic ${variant}`, brand = `Synthetic brand ${variant}`;
+        const eventUid = variant === "lower-event-upper-tag" ? f.uid.toLowerCase() : variant === "spaced-event-and-tag" ? ` ${f.uid.toLowerCase()} ` : f.uid;
+        const tagUid = variant === "upper-event-lower-tag" ? f.uid.toLowerCase() : variant === "spaced-event-and-tag" || variant === "spaced-tag" ? `  ${f.uid}  ` : f.uid;
+        await admin.query(`UPDATE ${s}.events SET uid_hex=$1 WHERE tenant_id=$2`, [eventUid, f.tenantId]);
+        await admin.query(`UPDATE ${s}.tags SET uid_hex=$1 WHERE id=$2`, [tagUid, f.tagId]);
+        await admin.query(`UPDATE ${s}.tag_profiles SET product_name=$1,winery=$2,image_url=$3 WHERE tag_id=$4`, [name, brand, image, f.tagId]);
+        assert.ok((await save(f))?.id); assert.ok((await save(f, first, f.eventIds[1]))?.id);
+        const current = await state(f); assert.equal(current.products.length, 1); assert.equal(current.history.length, 2); assert.equal(current.memberships.length, 1);
+        const row = current.products[0];
+        assert.equal(row.tag_id, f.tagId); assert.equal(row.product_passport_id, eventUid); assert.equal(row.product_name, name); assert.equal(row.brand_name, brand); assert.equal(row.image_url, image);
+        assert.equal(String(row.first_tap_event_id), f.eventIds[0]); assert.equal(String(row.latest_tap_event_id), f.eventIds[1]);
+      }
+    });
+    await check("historical_same_tenant_uid_in_another_batch_never_supplies_the_saved_product_metadata", async () => {
+      const f = await fixture(), otherBatch = randomUUID(), otherTag = randomUUID(), image = "https://example.invalid/another-batch.png";
+      await admin.query(`DELETE FROM ${s}.tag_profiles WHERE tag_id=$1`, [f.tagId]);
+      await admin.query(`INSERT INTO ${s}.batches(id,tenant_id,bid) VALUES($1,$2,'SYNTHETIC-OTHER-BATCH')`, [otherBatch, f.tenantId]);
+      await admin.query(`INSERT INTO ${s}.tags(id,batch_id,uid_hex) VALUES($1,$2,$3)`, [otherTag, otherBatch, f.uid]);
+      await admin.query(`INSERT INTO ${s}.tag_profiles(tag_id,product_name,winery,image_url) VALUES($1,'Synthetic other-batch product','Synthetic other-batch brand',$2)`, [otherTag, image]);
+      assert.ok((await save(f))?.id); assert.ok((await save(f, first, f.eventIds[1]))?.id);
+      const current = await state(f); assert.equal(current.products.length, 1); assert.equal(current.history.length, 2); assert.equal(current.memberships.length, 1);
+      const row = current.products[0];
+      assert.equal(row.tag_id, f.tagId); assert.notEqual(row.tag_id, otherTag); assert.equal(row.product_passport_id, f.uid);
+      assert.equal(row.product_name, `Producto ${f.uid}`); assert.equal(row.brand_name, "synthetic-brand"); assert.equal(row.image_url, null);
+    });
+    assert.equal(report.checks.length, 40); assert.equal(new Set(report.checks.map(row => row.name)).size, 40);
+    assert.equal(report.lockObservations.length, 8);
+    assert.ok(report.lockObservations.every(row => row.observed && row.waitEventType === "Lock" && row.graph.every(edge => edge.observed && edge.waitEventType === "Lock")));
+    assert.ok(report.productStatements.length > 0 && report.productStatements.every(row => row.scope === "composed-membership-history-product" && row.isolation === "SERIALIZABLE"));
     report.ok = true;
   } finally {
     removeExecutor?.();

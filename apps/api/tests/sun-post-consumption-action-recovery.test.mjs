@@ -39,7 +39,7 @@ function fixture(descriptor, configuration = {}) {
     current_tag_tenant_id: "10000000-0000-4000-8000-000000000001",
     current_tag_batch_id: "10000000-0000-4000-8000-000000000002",
     current_tag_uid_hex: "04AABBCCDD0011", current_tag_identity_count: 1,
-    current_tag_status: "active", current_tag_lifecycle_state: "active",
+    current_tag_status: "active", current_tag_lifecycle_state: "active", current_tag_revision: "17000001",
   };
   const consumer = { id: "20000000-0000-4000-8000-000000000001", preferred_locale: "es-AR" };
   const rights = loadSource("lib/tap-commercial-rights.ts", {
@@ -60,12 +60,19 @@ function fixture(descriptor, configuration = {}) {
     [namespace + "http"]: { json },
     [namespace + "consumer-auth"]: { getConsumerFromRequest: async () => configuration.unauthorized ? null : consumer },
     [namespace + "consumer-portal-service"]: {
-      saveTapForConsumer: async () => {
+      saveConsumerTapActionForConsumer: async input => {
         calls.push("save");
+        assert.deepEqual(input, { consumerId: consumer.id, eventId: event.id, mode: { kind: "mobile", expected: {
+          tenantId: event.tenant_id, batchId: event.batch_id, bid: event.bid, uidHex: event.uid_hex,
+          readCounter: event.sdm_read_ctr, tagId: event.current_tag_id, tagRevision: event.current_tag_revision,
+        } } });
         if (configuration.writerThrows) throw Error("synthetic_writer_result_indeterminate");
-        return configuration.savedEventMissing ? null : { ...event, operationCommitted: true };
+        if (configuration.savedEventMissing) return { ok: false, status: 404, error: "event_not_found" };
+        if (configuration.coreError) return { ok: false, status: 409, error: configuration.coreError };
+        return { ok: true, status: 200, event, membership: { id: "synthetic-membership", status: "active" }, productId: "synthetic-product" };
       },
-      ensureTenantMembership: async () => { calls.push("membership"); return { id: "synthetic-membership" }; },
+      saveTapForConsumer: async () => { throw Error("Mobile handlers must not use the historical adapter"); },
+      ensureTenantMembership: async () => { calls.push("membership"); throw Error("Mobile handlers must not write membership separately"); },
     },
     [namespace + "loyalty-service"]: {
       getTapEvent: async () => configuration.eventMissing ? null : event,
@@ -166,25 +173,74 @@ for (const descriptor of descriptors) {
       assert.equal(f.calls.includes(label === "enroll" ? "member" : "save"), true);
     }
   });
-  test(`${label}: an indeterminate writer result does not invent rollback or a marker response`, async () => {
+  test(`${label}: an indeterminate writer result never fabricates a committed receipt or retries consumption`, async () => {
     const f = fixture(descriptor, { writerThrows: true });
-    await assert.rejects(f.request(), /synthetic_writer_result_indeterminate/);
+    if (label !== "enroll") {
+      // The strict save/join core has an explicit uncertain-result response. It does
+      // not certify rollback or operation_committed and never sends another POST.
+      const { response, body } = await responseData(f);
+      assert.equal(response.status, 503);
+      assert.deepEqual(body, { ok: false, error: "consumer_tap_save_unavailable", fresh_tap_required: true });
+      assert.equal(Object.hasOwn(body, "operation_committed"), false);
+    } else {
+      await assert.rejects(f.request(), /synthetic_writer_result_indeterminate/);
+    }
     assert.equal(f.calls.filter(call => call === "consume").length, 1);
     assert.equal(f.calls.filter(call => call === "rights").length, 1);
-    assert.equal(f.calls.includes(label === "enroll" ? "member" : "save"), true);
+    assert.equal(f.calls.filter(call => call === (label === "enroll" ? "member" : "save")).length, 1);
   });
 }
 
-test("unreviewed post-consumption 404/403 branches keep their existing payloads", async () => {
+test("strict save/join post-consumption 404 gains its marker while unchanged enrollment 404/403 payloads remain unmarked", async () => {
   for (const [descriptor, configuration, status, reason] of [
     [descriptors[0], { savedEventMissing: true }, 404, "event_not_found"],
+    [descriptors[1], { savedEventMissing: true }, 404, "event_not_found"],
     [descriptors[2], { programMissing: true }, 404, "no_active_program"],
     [descriptors[2], { memberMissing: true }, 403, "event_security_blocked"],
   ]) {
     const f = fixture(descriptor, configuration), { response, body } = await responseData(f);
     assert.equal(response.status, status);
     assert.equal(body[descriptor.reasonKey], reason);
-    assert.equal(Object.hasOwn(body, "fresh_tap_required"), false);
+    assert.equal(Object.hasOwn(body, "fresh_tap_required"), descriptor.action !== "enroll");
+    if (descriptor.action !== "enroll") assert.equal(body.fresh_tap_required, true);
     assert.equal(f.calls.filter(call => call === "consume").length, 1);
   }
 });
+
+for (const descriptor of descriptors.slice(0, 2)) {
+  for (const error of ["tap_context_changed", "manual_opening_declared", "consumer_membership_inactive"]) {
+    test(`${descriptor.action}: explicit core ${error} is a 409 for the consumed action without false success`, async () => {
+      const f = fixture(descriptor, { coreError: error }), { response, body } = await responseData(f);
+      assert.equal(response.status, 409);
+      assert.deepEqual(body, { ok: false, error, fresh_tap_required: true });
+      for (const call of ["consume", "rights", "save"]) assert.equal(f.calls.filter(value => value === call).length, 1);
+      assert.equal(f.calls.includes("membership"), false, "The route never makes a separate membership write");
+    });
+  }
+
+  test(`${descriptor.action}: mobile expected binding comes from the authenticated event, never forged body fields`, async () => {
+    const f = fixture(descriptor, { body: {
+      bid: "SYNTHETIC-BATCH", tenantSlug: "synthetic-brand", consumerId: "forged-consumer",
+      expected: { tenantId: "forged-tenant", tagRevision: "999", readCounter: 999 },
+      tagId: "forged-tag", tagRevision: "999", readCounter: 999,
+    } }), { response, body } = await responseData(f);
+    assert.equal(response.status, 200);
+    assert.deepEqual(body, descriptor.action === "save" ? { ok: true, saved: true, eventId: "900001" }
+      : { ok: true, membership: { id: "synthetic-membership", status: "active" } });
+    assert.equal(f.calls.filter(call => call === "consume").length, 1);
+    assert.equal(f.calls.filter(call => call === "save").length, 1);
+    assert.equal(f.calls.includes("membership"), false);
+  });
+
+  test(`${descriptor.action}: tenant and batch mismatches are rejected before capability consumption or the core`, async () => {
+    for (const [body, error] of [
+      [{ bid: "SYNTHETIC-BATCH", tenantSlug: "another-tenant" }, "tenant_mismatch"],
+      [{ bid: "ANOTHER-BATCH", tenantSlug: "synthetic-brand" }, "tenant_batch_mismatch"],
+    ]) {
+      const f = fixture(descriptor, { body }), result = await responseData(f);
+      assert.equal(result.response.status, 403); assert.equal(result.body.error, error);
+      assert.equal(Object.hasOwn(result.body, "fresh_tap_required"), false);
+      assert.equal(f.calls.some(call => ["consume", "rights", "save", "membership"].includes(call)), false);
+    }
+  });
+}
