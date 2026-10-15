@@ -3,7 +3,7 @@ export type TapAssociationAction = typeof TAP_ASSOCIATION_ACTIONS[number];
 export type TapAssociationContext = { eventId: string; tenant: string; bid: string; preferred: TapAssociationAction | null; key: string };
 export type TapAssociationOutcome = "saved" | "linked" | "claimed" | "enrolled" | "recorded_pending" | "committed_unknown"
   | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "pin_required" | "pin_invalid" | "pin_locked"
-  | "session_required" | "no_program" | "blocked" | "unconfirmed";
+  | "session_required" | "no_program" | "membership_inactive" | "blocked" | "unconfirmed";
 export type TapAssociationResult = { outcome: TapAssociationOutcome; retryable: boolean };
 export type TapAssociationState = { pending: TapAssociationAction | null; results: Partial<Record<TapAssociationAction, TapAssociationResult>> };
 export type TapAssociationSession = "checking" | "active" | "none" | "unavailable";
@@ -74,6 +74,9 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
   // check or fails to persist the result. Do not resend that consumed action.
   // A positive receipt or committed-operation signal above takes precedence.
   if (Object.hasOwn(payload, "fresh_tap_required") && payload.fresh_tap_required === true) {
+    if (status === 409 && (action === "save" || action === "join") && Object.hasOwn(payload, "error") && payload.error === "consumer_membership_inactive") {
+      return { outcome: "membership_inactive", retryable: false };
+    }
     if (status === 409) return { outcome: "blocked", retryable: false };
     if (status === 503) return { outcome: "fresh_required", retryable: false };
   }

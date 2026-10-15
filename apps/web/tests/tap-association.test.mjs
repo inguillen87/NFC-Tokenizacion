@@ -483,3 +483,58 @@ test("entry intent is the stable primary choice with a matching request heading 
   assert.ok(neutral.includes(copy.associationCopy["es-AR"].title));
   assert.doesNotMatch(neutral, /checked=""/);
 });
+
+
+test("inactive brand membership has specific feedback only for consumed save/join 409 responses", () => {
+  const denied = { ok: false, error: "consumer_membership_inactive", fresh_tap_required: true };
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    assert.deepEqual(model.tapAssociationResult(action, "715", 409, denied), { outcome: ["save", "join"].includes(action) ? "membership_inactive" : "blocked", retryable: false });
+  }
+  for (const action of ["save", "join"]) {
+    for (const marker of [undefined, null, false, "true", 1]) {
+      assert.deepEqual(model.tapAssociationResult(action, "715", 409, { ...denied, fresh_tap_required: marker }), { outcome: "blocked", retryable: false });
+    }
+    const inheritedMarker = Object.assign(Object.create({ fresh_tap_required: true }), { error: denied.error });
+    const inheritedError = Object.assign(Object.create({ error: denied.error }), { fresh_tap_required: true });
+    for (const raw of [inheritedMarker, inheritedError, { fresh_tap_required: true, reason: denied.error }, { ...denied, error: new String(denied.error) }]) {
+      assert.deepEqual(model.tapAssociationResult(action, "715", 409, raw), { outcome: "blocked", retryable: false });
+    }
+    for (const error of ["manual_opening_declared", "tap_context_changed"]) {
+      assert.deepEqual(model.tapAssociationResult(action, "715", 409, { ...denied, error }), { outcome: "blocked", retryable: false });
+    }
+    assert.deepEqual(model.tapAssociationResult(action, "715", 404, { ...denied, error: "event_not_found" }), { outcome: "blocked", retryable: false });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 503, denied), { outcome: "fresh_required", retryable: false });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 200, { ...successPayloads[action], ...denied, ok: true }), { outcome: outcome[action], retryable: false });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 409, { ...denied, operation_committed: true }), { outcome: "committed_unknown", retryable: false });
+  }
+});
+
+test("inactive membership stays terminal without resending or refreshing and does not globally block another explicit action", async () => {
+  for (const action of ["save", "join"]) {
+    const posts = []; let refreshes = 0;
+    const runner = model.createTapAssociationRunner(context(`action=${action}`), async path => {
+      posts.push(path);
+      return { status: 409, payload: { ok: false, error: "consumer_membership_inactive", fresh_tap_required: true } };
+    }, () => { refreshes++; });
+    assert.deepEqual(await runner.run(action), { outcome: "membership_inactive", retryable: false });
+    assert.equal(await runner.run(action), null); assert.equal(await runner.run(action), null);
+    assert.equal(posts.length, 1); assert.equal(refreshes, 0);
+    const other = action === "save" ? "join" : "save";
+    assert.deepEqual(await runner.run(other), { outcome: "membership_inactive", retryable: false });
+    assert.equal(posts.length, 2); assert.notEqual(posts[0], posts[1]); assert.equal(refreshes, 0);
+    assert.equal(runner.state().results[action].outcome, "membership_inactive");
+    runner.dispose();
+  }
+});
+
+test("inactive membership copy directs brand review without promising reactivation or sending a request in all three locales", () => {
+  const expected = {
+    "es-AR": { title: "Tu vínculo con la marca está inactivo", body: "Consultá con la marca para revisar el vínculo de esta cuenta antes de volver a intentar. Esta solicitud no se reenviará automáticamente; otro TAP no reactiva el vínculo." },
+    en: { title: "Your connection with this brand is inactive", body: "Contact the brand to review your account’s connection before trying again. This request will not be resent automatically; another tap does not reactivate the connection." },
+    "pt-BR": { title: "Seu vínculo com a marca está inativo", body: "Fale com a marca para revisar o vínculo desta conta antes de tentar novamente. Esta solicitação não será reenviada automaticamente; outro toque não reativa o vínculo." },
+  };
+  for (const [locale, value] of Object.entries(expected)) {
+    assert.equal(copy.associationCopy[locale].titles.membership_inactive, value.title);
+    assert.equal(copy.associationCopy[locale].outcomes.membership_inactive, value.body);
+  }
+});
