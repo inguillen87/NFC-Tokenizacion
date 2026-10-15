@@ -144,3 +144,18 @@ test("trivia recovery localizes the next step without exposing implementation or
     assert.match(source, /triviaRecoveryDescription\(quizChanged \? "quiz_configuration_changed" : triviaError, canSubmitTrivia, locale\)/);
   }
 });
+
+test("a read-only reload after an attempted submission gives localized new-tap guidance without promising eligibility", () => {
+  for (const [locale, nextTap, lookup, policy] of [
+    ["es-AR", /acercá otra vez tu teléfono/, /Revisá tus beneficios/, /las condiciones de la marca siguen vigentes/],
+    ["en", /Hold your phone near the tag again/, /Check your benefits/, /brand’s requirements still apply/],
+    ["pt-BR", /aproxime o telefone da etiqueta/, /Consulte seus benefícios/, /as condições da marca continuam válidas/],
+  ]) {
+    for (const canSubmit of [true, false]) {
+      const description = trivia.triviaRecoveryDescription("trivia_submission_locked", canSubmit, locale);
+      assert.equal(description, trivia.triviaRecoveryCopy[locale].afterSubmissionReload);
+      assert.match(description, nextTap); assert.match(description, lookup); assert.match(description, policy);
+      assert.doesNotMatch(description, /points awarded|puntos otorgados|pontos concedidos|capability|API/i);
+    }
+  }
+});

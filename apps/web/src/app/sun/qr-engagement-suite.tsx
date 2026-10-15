@@ -65,7 +65,7 @@ const QUIZ_COPY = {
     score: (score: number, total: number, product: string) => `Acertaste ${score} de ${total} preguntas sobre ${product}.`,
     localResult: "Resultado educativo local: no se otorgaron puntos ni premios.", already: "Este tap ya tenía la trivia registrada.",
     points: (points: number) => `Se confirmaron ${points} puntos.`, localHelp: "Podés repasar las respuestas y consultar la información de la viña.",
-    realHelp: "Resultado confirmado del programa de la marca.", save: "Guardar puntos en mi Pasaporte", saved: "Puntos guardados en tu Pasaporte nexID.",
+    realHelp: "Resultado confirmado del programa de la marca.", save: "Guardar puntos en mi Pasaporte", saved: "Puntos guardados en tu Pasaporte nexID.", resultSaved: "Resultado de la trivia guardado.", account: "Ver mi cuenta",
     correct: "Respuesta correcta", learn: "Para recordar", restart: "Intentar de nuevo", source: "Consultar la ficha de la viña",
   },
   en: {
@@ -77,7 +77,7 @@ const QUIZ_COPY = {
     score: (score: number, total: number, product: string) => `You answered ${score} of ${total} questions about ${product} correctly.`,
     localResult: "Local educational result: no points or prizes awarded.", already: "This tap already had a recorded quiz.",
     points: (points: number) => `${points} points confirmed.`, localHelp: "Review your answers and explore the producer's information.",
-    realHelp: "Confirmed result from the brand's program.", save: "Save points to my Passport", saved: "Points saved to your nexID Passport.",
+    realHelp: "Confirmed result from the brand's program.", save: "Save points to my Passport", saved: "Points saved to your nexID Passport.", resultSaved: "Quiz result saved.", account: "View my account",
     correct: "Correct answer", learn: "Something to remember", restart: "Try again", source: "View the producer's technical sheet",
   },
   "pt-BR": {
@@ -89,7 +89,7 @@ const QUIZ_COPY = {
     score: (score: number, total: number, product: string) => `Você acertou ${score} de ${total} perguntas sobre ${product}.`,
     localResult: "Resultado educativo local: sem pontos nem prêmios.", already: "Este tap já tinha um quiz registrado.",
     points: (points: number) => `${points} pontos confirmados.`, localHelp: "Revise as respostas e consulte as informações da vinícola.",
-    realHelp: "Resultado confirmado do programa da marca.", save: "Guardar pontos no meu Passaporte", saved: "Pontos guardados no seu Passaporte nexID.",
+    realHelp: "Resultado confirmado do programa da marca.", save: "Guardar pontos no meu Passaporte", saved: "Pontos guardados no seu Passaporte nexID.", resultSaved: "Resultado do quiz salvo.", account: "Consultar minha conta",
     correct: "Resposta correta", learn: "Para lembrar", restart: "Tentar novamente", source: "Consultar a ficha da vinícola",
   },
 } as const;
@@ -223,6 +223,7 @@ export function QREngagementSuite({
   const [triviaSubmitting, setTriviaSubmitting] = useState(false);
   const [triviaSubmissionLocked, setTriviaSubmissionLocked] = useState(false);
   const triviaSendLock = useRef(false);
+  const confirmedTriviaScope = useRef<string | null>(null);
   const [triviaError, setTriviaError] = useState<string | null>(null);
   const [triviaResult, setTriviaResult] = useState<TriviaResult | null>(null);
   const canSubmitTrivia = triviaContextAvailable(eventId, tenantSlug, freshToken);
@@ -230,6 +231,8 @@ export function QREngagementSuite({
   const hasDraft = configuredTriviaScope === triviaScope && Object.keys(triviaAnswers).length > 0;
   const canPlayTrivia = isDemoPreview || availability.trivia && !quizChanged && canSubmitTrivia && !triviaSubmissionLocked && configuredTriviaScope === triviaScope && triviaQuestions.length > 0 && !triviaError;
   const showTriviaResult = triviaDone && (isDemoPreview || configuredTriviaScope === triviaScope);
+  const showReadOnlyReloadedTrivia = !isDemoPreview && availability.trivia && triviaSubmissionLocked && !triviaLoading && !quizChanged
+    && triviaError === "trivia_submission_locked" && configuredTriviaScope === triviaScope && triviaQuestions.length > 0;
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -388,7 +391,17 @@ export function QREngagementSuite({
   }, [availability.sommelier]);
 
 
+  // Only another event/tenant scope opens a new send attempt. Locale or published copy cannot renew a tap.
   useEffect(() => {
+    setTriviaSubmissionLocked(false);
+    triviaSendLock.current = false;
+    confirmedTriviaScope.current = null;
+    setTriviaSubmitting(false);
+  }, [triviaScope]);
+
+  useEffect(() => {
+    // Preserve pending/confirmed receipts and drafts for an already attempted real scope.
+    if (!isDemoPreview && (triviaSendLock.current || confirmedTriviaScope.current === triviaScope)) return;
     setTriviaQuestions(fallbackTrivia);
     setConfiguredTriviaScope(null);
     setLoadedQuiz(null);
@@ -398,11 +411,8 @@ export function QREngagementSuite({
     setTriviaDone(false);
     setTriviaResult(null);
     setTriviaError(null);
-    setTriviaSubmissionLocked(false);
-    triviaSendLock.current = false;
-    setTriviaSubmitting(false);
     setTriviaLoading(false);
-  }, [fallbackTrivia, triviaScope]);
+  }, [fallbackTrivia, triviaScope, isDemoPreview]);
 
   useEffect(() => {
     if (visibleTab !== "trivia" || isDemoPreview || !availability.trivia || triviaSubmissionLocked || !canSubmitTrivia || !eventId || loadedQuiz) return;
@@ -430,6 +440,7 @@ export function QREngagementSuite({
         if (payload.previousAttempt) {
           const previous = confirmedPreviousTrivia(payload.previousAttempt, quiz.questions.length, payload.member?.consumerLinked);
           if (!previous) throw new Error("trivia_result_unconfirmed");
+          confirmedTriviaScope.current = triviaScope;
           setTriviaResult(previous);
           setTriviaDone(true);
         }
@@ -450,7 +461,8 @@ export function QREngagementSuite({
   }, [visibleTab, eventId, freshToken, isDemoPreview, triviaSubmissionLocked, canSubmitTrivia, locale, tenantSlug, triviaScope, availability.trivia, availability.quiz?.id, availability.quiz?.revision, loadedQuiz]);
 
   const handleReloadTrivia = async () => {
-    if (isDemoPreview || triviaLoading || triviaSubmitting || !canSubmitTrivia || !eventId || !canEngage) return;
+    if (isDemoPreview || triviaLoading || triviaSubmitting || !canSubmitTrivia || !eventId || !canEngage
+      || confirmedTriviaScope.current === triviaScope) return;
     const capturedScope = triviaScope;
     setTriviaLoading(true);
     setTriviaError(null);
@@ -470,6 +482,9 @@ export function QREngagementSuite({
       if (!response.ok || !quiz) throw new Error(payload?.error || "trivia_unavailable");
       if (quiz.id !== updatedAvailability.quiz.id || quiz.revision !== updatedAvailability.quiz.revision) throw new Error("quiz_configuration_changed");
       if (currentScope.current !== capturedScope) return;
+      const hasPreviousAttempt = payload.previousAttempt !== undefined && payload.previousAttempt !== null;
+      const previous = hasPreviousAttempt ? confirmedPreviousTrivia(payload.previousAttempt, quiz.questions.length, payload.member?.consumerLinked) : null;
+      if (hasPreviousAttempt && !previous) throw new Error("trivia_result_unconfirmed");
       const draft = triviaQuestions.filter(question => triviaAnswers[question.id] !== undefined)
         .map(question => ({ prompt: question.prompt, answer: question.options[triviaAnswers[question.id]] }));
       if (draft.length) setPreviousTriviaDraft(draft);
@@ -478,10 +493,18 @@ export function QREngagementSuite({
       setConfiguredTriviaScope(triviaScope);
       setTriviaAnswers({});
       setTriviaStep(0);
-      setTriviaSubmissionLocked(false);
-      triviaSendLock.current = false;
-      setTriviaResult(null);
-      setTriviaDone(false);
+      if (previous) {
+        // The private event-scoped read confirmed an already completed receipt; it does not send again.
+        confirmedTriviaScope.current = capturedScope;
+        setTriviaError(null);
+        setTriviaResult(previous);
+        setTriviaDone(true);
+      } else {
+        // A read-only configuration refresh cannot renew a previously attempted action.
+        setTriviaError(triviaSendLock.current ? "trivia_submission_locked" : null);
+        setTriviaResult(null);
+        setTriviaDone(false);
+      }
     } catch (error) {
       if (currentScope.current === capturedScope) setTriviaError(error instanceof Error ? error.message : "trivia_unavailable");
     } finally {
@@ -618,6 +641,7 @@ export function QREngagementSuite({
       }
       const confirmed = confirmedTriviaResult(payload, triviaQuestions.length);
       if (!confirmed) throw new Error("trivia_result_unconfirmed");
+      confirmedTriviaScope.current = capturedScope;
       setTriviaResult(confirmed);
       setTriviaDone(true);
     } catch (error) {
@@ -758,7 +782,7 @@ export function QREngagementSuite({
 
         {visibleTab === "trivia" && (
           <div className="v3-space-y-4">
-            {!canPlayTrivia && !showTriviaResult ? <div role="status" data-testid="sun-trivia-unavailable" className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-xs leading-relaxed text-slate-200">
+            {!canPlayTrivia && !showTriviaResult && !showReadOnlyReloadedTrivia ? <div role="status" data-testid="sun-trivia-unavailable" className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-xs leading-relaxed text-slate-200">
               <strong>{triviaSubmitting ? triviaCopy.submittingTitle : triviaLoading ? triviaCopy.loadingTitle : triviaCopy.unavailableTitle}</strong>
               <p className="mt-2">{triviaSubmitting ? triviaCopy.submittingHelp : triviaLoading ? triviaCopy.loadingHelp : triviaRecoveryDescription(quizChanged ? "quiz_configuration_changed" : triviaError, canSubmitTrivia, locale)}</p>
               {(quizChanged || triviaError === "quiz_configuration_changed") && canSubmitTrivia ? <button type="button" onClick={handleReloadTrivia} disabled={triviaLoading || triviaSubmitting} className="mt-3 block min-h-11 rounded-lg border border-amber-400/40 px-3 text-amber-200">{triviaCopy.reload}</button> : null}
@@ -767,11 +791,23 @@ export function QREngagementSuite({
               <div className="v3-space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   <span className="flex items-center gap-1 text-cyan-200"><Brain className="h-3.5 w-3.5" aria-hidden="true" /> {isDemoPreview ? quizCopy.demoTitle : quizCopy.title}</span>
-                  <span>{triviaLoading ? quizCopy.loading : quizCopy.question(triviaStep + 1, triviaQuestions.length)}</span>
+                  <span>{triviaLoading ? quizCopy.loading : showReadOnlyReloadedTrivia ? triviaCopy.currentQuestions : quizCopy.question(triviaStep + 1, triviaQuestions.length)}</span>
                 </div>
 
                 {isDemoPreview ? <p data-testid="sun-trivia-demo-notice" className="text-xs text-slate-300">{quizCopy.demo}</p> : null}
+                {showReadOnlyReloadedTrivia ? <div role="status" aria-atomic="true" data-testid="sun-trivia-new-tap-required" className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4 text-xs leading-relaxed text-slate-200">
+                  <strong>{triviaCopy.newTapTitle}</strong><p className="mt-2">{triviaCopy.afterSubmissionReload}</p>
+                  <Link href="/me/rewards" prefetch={false} className="mt-3 inline-flex min-h-11 items-center underline">{triviaCopy.benefits}</Link>
+                </div> : null}
 
+                {showReadOnlyReloadedTrivia ? <ol className="v3-space-y-4" aria-label={triviaCopy.currentQuestions}>
+                  {triviaQuestions.map(question => <li key={question.id}>
+                    <h4 className="text-sm font-bold leading-normal text-white">{question.prompt}</h4>
+                    <div className="mt-3 grid gap-2">{question.options.map((option, index) => <button
+                      key={question.id + "-" + index} type="button" data-testid="sun-trivia-answer" title={quizCopy.answer(index + 1)} aria-pressed={false} disabled
+                      className={styles.triviaButton + " w-full rounded-xl border border-white/5 bg-black/30 p-3.5 text-left text-xs text-slate-300"}>{option}</button>)}</div>
+                  </li>)}
+                </ol> : <>
                 <h4 className="text-sm font-bold leading-normal text-white">
                   {currentQuestion?.prompt || quizCopy.loading}
                 </h4>
@@ -781,8 +817,10 @@ export function QREngagementSuite({
                     <button
                       key={`${currentQuestion.id}-${idx}`}
                       type="button"
+                      data-testid="sun-trivia-answer"
                       title={quizCopy.answer(idx + 1)}
                       aria-pressed={selectedAnswer === idx}
+                      disabled={!canPlayTrivia || triviaSubmitting || triviaLoading}
                       onClick={() => { if (canPlayTrivia && !triviaSubmitting && !triviaLoading) setTriviaAnswers((prev) => ({ ...prev, [currentQuestion.id]: idx })); }}
                       className={`${styles.triviaButton} w-full rounded-xl border p-3.5 text-left text-xs transition-all ${
                         selectedAnswer === idx
@@ -794,9 +832,11 @@ export function QREngagementSuite({
                     </button>
                   ))}
                 </div>
+                </>}
 
                 <button
                   type="button"
+                  data-testid="sun-trivia-next"
                   title={triviaStep === triviaQuestions.length - 1 ? quizCopy.finish : quizCopy.next}
                   disabled={!canPlayTrivia || selectedAnswer === null || triviaSubmitting || triviaLoading}
                   onClick={handleNextQuestion}
@@ -829,16 +869,16 @@ export function QREngagementSuite({
                     {triviaResult?.isLocal ? quizCopy.localHelp : quizCopy.realHelp}
                   </p>
                   {triviaResult?.isLocal && activeDemoWineProfile ? <a href={activeDemoWineProfile.technicalSheet} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center text-cyan-300 underline">{quizCopy.source} ↗</a> : null}
-                  {!triviaResult?.isLocal && triviaResult?.requiresLogin ? (
+                  {!triviaResult?.isLocal && triviaResult?.requiresLogin === true ? (
                     <Link
                       href="/login?next=/me"
                       className="block w-full rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 py-2.5 text-center text-[11px] font-black uppercase tracking-wider text-slate-950"
                     >
-                      {quizCopy.save}
+                      {triviaResult.pointsAwarded === 0 ? quizCopy.account : quizCopy.save}
                     </Link>
-                  ) : !triviaResult?.isLocal ? (
+                  ) : !triviaResult?.isLocal && triviaResult?.requiresLogin === false ? (
                     <div className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[11px] font-bold text-emerald-200">
-                      {quizCopy.saved}
+                      {triviaResult.pointsAwarded === 0 ? quizCopy.resultSaved : quizCopy.saved}
                     </div>
                   ) : null}
                 </div>

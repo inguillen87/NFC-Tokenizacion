@@ -78,6 +78,12 @@ const FRESHNESS_LABEL: Record<SunServicesFreshnessState, string> = {
 const ACTION_CLASS_NAME = "sun-services-action group flex min-h-20 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left text-white transition hover:border-cyan-300/30 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-300";
 const DEMO_ACTION_CLASS_NAME = "sun-services-action min-h-20 rounded-2xl border border-white/10 bg-slate-950/55 text-left text-white";
 
+const ADDITIONAL_SERVICES_EMPTY_COPY: Readonly<Record<AppLocale, string>> = {
+  "es-AR": "No hay gestiones adicionales disponibles para este producto.",
+  en: "No additional requests are available for this product.",
+  "pt-BR": "Não há outras solicitações disponíveis para este produto.",
+};
+
 const PARTIAL_CONFIGURATION_COPY: Readonly<Record<AppLocale, string>> = {
   "es-AR": "No pudimos cargar algunas opciones de la marca. Podés continuar con las opciones que aparecen abajo.",
   en: "We could not load some of the brand's options. You can continue with the options shown below.",
@@ -387,7 +393,7 @@ export function SunServicesHub({
           })}
         </nav>
       ) : configured.state !== "unavailable" ? (
-        <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">{TENANT_ACTION_COPY[activeLocale || locale][configured.state === "unpublished" ? "unpublished" : "empty"]}</p>
+        <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">{configured.state === "unpublished" ? TENANT_ACTION_COPY[activeLocale || locale].unpublished : ADDITIONAL_SERVICES_EMPTY_COPY[activeLocale || locale]}</p>
       ) : null}
     </section>
   );

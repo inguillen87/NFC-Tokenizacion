@@ -81,11 +81,13 @@ export const triviaRecoveryCopy = {
     submittingTitle: "Enviando tus respuestas", submittingHelp: "Esperá la confirmación del envío.", benefits: "Consultar mis beneficios",
     login: "Ingresá a tu cuenta para participar. Después acercá de nuevo el teléfono a la etiqueta del producto.",
     freshReading: "Acercá de nuevo el teléfono a la etiqueta del producto para participar.",
+    newTapTitle: "Un nuevo toque para participar", currentQuestions: "Preguntas actualizadas",
+    afterSubmissionReload: "Podés leer las preguntas nuevas. Para volver a participar, acercá otra vez tu teléfono a la etiqueta. Revisá tus beneficios; las condiciones de la marca siguen vigentes.",
     unpublished: "La marca todavía no publicó una trivia para este producto.",
     uncertain: "No pudimos confirmar el envío. Conservamos tus respuestas. Revisá tu cuenta antes de volver a intentarlo.",
     unavailable: "La trivia no está disponible por el momento. Volvé a consultar más tarde.",
     notEnrolled: "La participación de tu cuenta no está habilitada para esta trivia. Consultá tus beneficios o contactá a la marca.",
-    changed: "La marca cambió o retiró esta trivia. Conservamos tus respuestas para que las revises. Cargá la versión actual antes de participar de nuevo.",
+    changed: "La marca cambió o retiró esta trivia. Conservamos tus respuestas para que las revises. Cargá la versión actual para consultar las preguntas.",
     reload: "Cargar trivia actualizada", savedAnswers: "Tus respuestas anteriores", previous: "Estas respuestas se conservan como referencia. No se envían a una trivia nueva.",
   },
   en: {
@@ -93,11 +95,13 @@ export const triviaRecoveryCopy = {
     submittingTitle: "Sending your answers", submittingHelp: "Please wait for confirmation.", benefits: "View my benefits",
     login: "Sign in to participate. Then hold your phone near the product's tag again.",
     freshReading: "Hold your phone near the product's tag again to participate.",
+    newTapTitle: "Tap again to participate", currentQuestions: "Updated questions",
+    afterSubmissionReload: "You can read the new questions. Hold your phone near the tag again to participate. Check your benefits; the brand’s requirements still apply.",
     unpublished: "The brand has not published trivia for this product yet.",
     uncertain: "We could not confirm your submission. Your answers are saved here. Check your account before trying again.",
     unavailable: "Trivia is temporarily unavailable. Please check again later.",
     notEnrolled: "Your account is not enabled to participate in this trivia. Check your benefits or contact the brand.",
-    changed: "The brand changed or withdrew this trivia. Your answers are preserved for review. Load the current version before participating again.",
+    changed: "The brand changed or withdrew this trivia. Your answers are preserved for review. Load the current version to read the questions.",
     reload: "Load updated trivia", savedAnswers: "Your previous answers", previous: "These answers are kept for reference. They are not submitted to a new quiz.",
   },
   "pt-BR": {
@@ -105,17 +109,20 @@ export const triviaRecoveryCopy = {
     submittingTitle: "Enviando suas respostas", submittingHelp: "Aguarde a confirmação do envio.", benefits: "Consultar meus benefícios",
     login: "Entre na sua conta para participar. Depois aproxime novamente o telefone da etiqueta do produto.",
     freshReading: "Aproxime novamente o telefone da etiqueta do produto para participar.",
+    newTapTitle: "Um novo toque para participar", currentQuestions: "Perguntas atualizadas",
+    afterSubmissionReload: "Você pode ler as novas perguntas. Para participar novamente, aproxime o telefone da etiqueta. Consulte seus benefícios; as condições da marca continuam válidas.",
     unpublished: "A marca ainda não publicou uma trivia para este produto.",
     uncertain: "Não foi possível confirmar o envio. Suas respostas foram mantidas aqui. Confira sua conta antes de tentar novamente.",
     unavailable: "A trivia está temporariamente indisponível. Consulte novamente mais tarde.",
     notEnrolled: "Sua conta não está habilitada para participar desta trivia. Consulte seus benefícios ou entre em contato com a marca.",
-    changed: "A marca alterou ou retirou esta trivia. Suas respostas foram preservadas para revisão. Carregue a versão atual antes de participar novamente.",
+    changed: "A marca alterou ou retirou esta trivia. Suas respostas foram preservadas para revisão. Carregue a versão atual para consultar as perguntas.",
     reload: "Carregar trivia atualizada", savedAnswers: "Suas respostas anteriores", previous: "Estas respostas são mantidas como referência. Elas não são enviadas a uma nova trivia.",
   },
 } as const;
 
 export function triviaRecoveryDescription(error: string | null, canSubmit: boolean, locale: keyof typeof triviaRecoveryCopy = "es-AR") {
   const copy = triviaRecoveryCopy[locale];
+  if (error === "trivia_submission_locked") return copy.afterSubmissionReload;
   if (error === "quiz_configuration_changed") return copy.changed;
   if (error === "unauthorized") return copy.login;
   if (error === "consumer_not_enrolled") return copy.notEnrolled;
