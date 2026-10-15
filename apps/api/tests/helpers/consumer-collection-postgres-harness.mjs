@@ -72,6 +72,10 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       CREATE TABLE ${s}.tenant_consumer_memberships(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid, consumer_id uuid, loyalty_program_id uuid, source text, first_tap_event_id bigint, last_tap_event_id bigint, status text, points_balance integer DEFAULT 0, lifetime_points integer DEFAULT 0, last_activity_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(), UNIQUE(tenant_id,consumer_id));
       CREATE TABLE ${s}.consumer_tap_history(id bigserial PRIMARY KEY, consumer_id uuid, tenant_id uuid, tap_event_id bigint, verdict text, risk_level text, city text, country text, UNIQUE(consumer_id,tap_event_id));
       CREATE TABLE ${s}.consumer_products(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), consumer_id uuid, tenant_id uuid, product_passport_id text, tag_id uuid, first_tap_event_id bigint, latest_tap_event_id bigint, ownership_status text DEFAULT 'viewed', collection_type text, product_name text, brand_name text, image_url text, acquired_at timestamptz, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+      CREATE TABLE ${s}.tenant_sun_profiles(tenant_id uuid PRIMARY KEY);
+      CREATE TABLE ${s}.sdk_pos_activations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid, batch_id uuid, tag_id uuid, uid_hex text, activation_status text, expires_at timestamptz);
+      CREATE TABLE ${s}.consumer_product_ownerships(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL, consumer_id uuid NOT NULL, batch_id uuid NOT NULL, tag_id uuid, uid_hex text NOT NULL, event_id bigint NOT NULL, status text NOT NULL, source text NOT NULL, trust_snapshot jsonb NOT NULL DEFAULT '{}', created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(), UNIQUE(consumer_id,event_id));
+      CREATE UNIQUE INDEX uq_consumer_product_ownerships_active_uid ON ${s}.consumer_product_ownerships(tenant_id,uid_hex) WHERE status='claimed';
       CREATE TABLE ${s}.collection_fixture_faults(consumer_id uuid PRIMARY KEY, mode text NOT NULL);
       CREATE FUNCTION ${s}.hold_product_insert() RETURNS trigger LANGUAGE plpgsql AS $fixture$
       BEGIN
@@ -132,6 +136,8 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       const products = (await admin.query(`SELECT * FROM ${s}.consumer_products WHERE consumer_id=$1 AND tenant_id=$2 ORDER BY id`, params)).rows;
       const history = (await admin.query(`SELECT * FROM ${s}.consumer_tap_history WHERE consumer_id=$1 AND tenant_id=$2 ORDER BY tap_event_id`, params)).rows;
       const memberships = (await admin.query(`SELECT * FROM ${s}.tenant_consumer_memberships WHERE consumer_id=$1 AND tenant_id=$2`, params)).rows;
+      const ownerships = (await admin.query(`SELECT id FROM ${s}.consumer_product_ownerships WHERE tenant_id=$1`, [f.tenantId])).rows;
+      assert.deepEqual(ownerships, [], "Historical/mobile save must never enable the private ownership option");
       return { products, history, memberships };
     }
     const save = (f, client = first, eventId = f.eventIds[0]) => currentClient.run(client, () => saveTapForConsumer({ consumerId: f.consumerId, eventId }));

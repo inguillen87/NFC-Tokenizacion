@@ -31,10 +31,10 @@ test("a newly persisted actor association republishes that exact tenant tap proj
   const lockedEvent = cte("WITH locked_event AS MATERIALIZED (", "), locked_batch AS MATERIALIZED (");
   assert.match(lockedEvent, /FROM events source_event JOIN tenants tenant ON tenant\.id = source_event\.tenant_id/);
   assert.match(lockedEvent, /WHERE source_event\.id = \$\{input\.eventId\}::bigint/);
-  const eligible = cte("), eligible AS MATERIALIZED (", "), written_membership AS (");
+  const eligible = cte("), eligible AS MATERIALIZED (", "), inserted_title AS (");
   assert.match(eligible, /FROM locked_event event[\s\S]*CROSS JOIN decision\s+WHERE decision\.error IS NULL/);
   const membership = cte("), written_membership AS (", "), written_history AS (");
-  assert.match(membership, /INSERT INTO tenant_consumer_memberships \(tenant_id, consumer_id,[\s\S]*SELECT tenant_id, \$\{input\.consumerId\}::uuid,[\s\S]*FROM eligible WHERE true/);
+  assert.match(membership, /INSERT INTO tenant_consumer_memberships \(tenant_id, consumer_id,[\s\S]*SELECT tenant_id, \$\{input\.consumerId\}::uuid,[\s\S]*FROM eligible\s+WHERE NOT \$\{claiming\}::boolean OR EXISTS \(SELECT 1 FROM saved_title\)/);
   const history = cte("), written_history AS (", "), updated_product AS (");
   assert.match(history, /INSERT INTO consumer_tap_history \(consumer_id, tenant_id, tap_event_id,/);
   assert.match(history, /SELECT \$\{input\.consumerId\}::uuid, event\.tenant_id, event\.id,/);
@@ -44,7 +44,7 @@ test("a newly persisted actor association republishes that exact tenant tap proj
 
   assert.match(core.slice(sqlEnd, postCommitStart), /committed = rows\[0\];\s+break;/);
   assert.doesNotMatch(core.slice(sqlStart, postCommitStart), /publishActorAssociationProjection/);
-  const receiptGate = postCommit.indexOf('if (reason || !committed?.membership?.id || !committed.product_id) throw new Error("consumer_tap_core_result_unavailable");');
+  const receiptGate = postCommit.indexOf('if (reason || !committed?.membership?.id || !committed.product_id || claiming && !committed.ownership?.id) throw new Error("consumer_tap_core_result_unavailable");');
   const publication = postCommit.indexOf("if (committed.association_event_id) await publishActorAssociationProjection(committed.association_event_id);");
   assert.ok(receiptGate >= 0 && publication > receiptGate);
   assert.equal((core.match(/await publishActorAssociationProjection\(/g) || []).length, 1);

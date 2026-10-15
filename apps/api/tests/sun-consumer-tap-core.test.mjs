@@ -40,7 +40,7 @@ function fixture({ tapEvent = event, outcomes = [goodRows(true)], projectionThro
     "./db": {
       sql: unused,
       sqlSerializable: async (strings, ...values) => {
-        calls.order.push("statement"); calls.statements.push({ text: strings.join("?"), values });
+        calls.order.push("statement"); calls.statements.push({ text: strings.join("?"), values, segments: [...strings] });
         const outcome = outcomes[Math.min(calls.statements.length - 1, outcomes.length - 1)];
         if (outcome instanceof Error) throw outcome;
         return outcome;
@@ -60,12 +60,42 @@ function fixture({ tapEvent = event, outcomes = [goodRows(true)], projectionThro
   return { calls, service, save: (snapshot = expected) => service.saveConsumerTapActionForConsumer({ consumerId, eventId: event.id, mode: { kind: "mobile", expected: snapshot } }) };
 }
 
+// Check the actual tagged-template parameter slots, not a fabricated rendered
+// SQL string. This adapter assertion is not execution/rollback proof for PG.
+function assertNonClaimBooleanBindings(statement, strictMobile) {
+  const parameter = (before, after) => {
+    const indices = statement.segments.flatMap((segment, index) =>
+      index < statement.values.length && before.test(segment) && after.test(statement.segments[index + 1]) ? [index] : []);
+    assert.equal(indices.length, 1, "Expected one exact SQL binding: " + after);
+    return indices[0];
+  };
+  const strictIndices = [
+    parameter(/WHERE \($/, /^::boolean = false OR UPPER\(tag\.uid_hex\)/),
+    parameter(/WHEN $/, /^::boolean AND NOT EXISTS \(\s+SELECT 1 FROM locked_event event JOIN locked_batch batch ON true/),
+    parameter(/WHEN $/, /^::boolean AND \(\s+EXISTS \(SELECT 1 FROM locked_event WHERE UPPER\(COALESCE\(result, ''\)\) IN \('MANUAL_OPENED'/),
+    parameter(/WHEN $/, /^::boolean AND \(\s+NOT EXISTS \(SELECT 1 FROM locked_event WHERE UPPER\(COALESCE\(result, ''\)\) = ANY/),
+  ];
+  assert.equal(new Set(strictIndices).size, 4);
+  for (const index of strictIndices) assert.equal(statement.values[index], strictMobile, "Strict identity/lifecycle checks retain their mode binding");
+  const booleanIndices = statement.segments.flatMap((_segment, index) =>
+    index < statement.values.length && statement.segments[index + 1].startsWith("::boolean") ? [index] : []);
+  assert.ok(booleanIndices.length > strictIndices.length);
+  for (const index of booleanIndices.filter(index => !strictIndices.includes(index))) {
+    assert.equal(statement.values[index], false, "Save/history cannot enable an optional ownership or POS authority branch");
+  }
+  const titleInsert = parameter(/FROM eligible event WHERE $/, /^::boolean AND NOT EXISTS \(/);
+  const titleReuse = parameter(/saved_title AS MATERIALIZED \([\s\S]*WHERE $/, /^::boolean AND decision\.error IS NULL/);
+  const membershipTitleGate = parameter(/FROM eligible\s+WHERE NOT $/, /^::boolean OR EXISTS \(SELECT 1 FROM saved_title\)/);
+  assert.equal(statement.values[titleInsert], false); assert.equal(statement.values[titleReuse], false); assert.equal(statement.values[membershipTitleGate], false);
+  assert.doesNotMatch(statement.text, /points_balance|claim_points|acquired_at|UPDATE loyalty_members/);
+}
+
 test("mobile core submits one membership/history/product statement with authoritative identity and guarded receipt", async () => {
   const f = fixture(), result = await f.save();
   assert.deepEqual(result, { ok: true, status: 200, event, membership, productId: goodRows()[0].product_id });
   assert.equal(f.calls.schema, 1); assert.deepEqual(f.calls.event, [event.id]); assert.equal(f.calls.statements.length, 1);
   const { text, values } = f.calls.statements[0];
-  for (const name of ["locked_event", "locked_batch", "locked_tags", "locked_manual", "locked_programs", "locked_membership", "locked_history", "locked_product", "decision_clock", "current_program", "decision", "eligible", "saved_product", "write_integrity"]) {
+  for (const name of ["locked_event", "locked_batch", "locked_tags", "locked_manual", "locked_tenant_policy", "locked_pos", "locked_programs", "locked_membership", "locked_ownerships", "locked_founder_events", "saved_title", "locked_history", "locked_product", "decision_clock", "current_program", "decision", "eligible", "saved_product", "write_integrity"]) {
     assert.match(text, new RegExp(`${name} AS MATERIALIZED`));
   }
   assert.match(text, /FOR SHARE OF source_event/); assert.match(text, /FOR SHARE OF batch/); assert.match(text, /ORDER BY tag\.id FOR SHARE OF tag/);
@@ -83,10 +113,9 @@ test("mobile core submits one membership/history/product statement with authorit
   assert.match(text, /program\.start_at <= clock\.observed_at[\s\S]*program\.end_at >= clock\.observed_at/);
   const membershipUpdate = text.split("ON CONFLICT (tenant_id, consumer_id) DO UPDATE SET")[1].split("RETURNING *")[0];
   assert.doesNotMatch(membershipUpdate, /loyalty_program_id\s*=/, "An existing membership is never silently moved to another program");
-  assert.doesNotMatch(text, /consumer_product_ownerships|points_balance|claim_points|acquired_at/);
+  assertNonClaimBooleanBindings(f.calls.statements[0], true);
   for (const value of [event.id, consumerId, expected.tenantId, expected.batchId, expected.bid, expected.uidHex, expected.readCounter, expected.tagId, expected.tagRevision]) assert.ok(values.includes(value));
   assert.ok(values.some(value => Array.isArray(value) && value.includes("VALID_OPENED") && value.includes("VALID_CLOSED")));
-  assert.equal(values.some(value => value === false), false); assert.ok(values.filter(value => value === true).length >= 3);
   assert.deepEqual(f.calls.order, ["statement", "publication"]); assert.deepEqual(f.calls.publications, [event.id]);
 });
 
@@ -96,7 +125,8 @@ test("history adapter disables strict mobile checks and returns the original eve
   assert.equal(await f.service.saveTapForConsumer({ consumerId, eventId: event.id }), historic);
   const { values, text } = f.calls.statements[0];
   assert.equal(values.some(value => value === true), false); assert.ok(values.filter(value => value === false).length >= 3);
-  assert.match(text, /'viewed', 'wine'/); assert.doesNotMatch(text, /INSERT INTO consumer_product_ownerships|UPDATE loyalty_members/);
+  assert.match(text, /CASE WHEN \?::boolean THEN 'claimed' ELSE 'viewed' END, 'wine'/);
+  assertNonClaimBooleanBindings(f.calls.statements[0], false);
   assert.deepEqual(f.calls.publications, []);
 });
 

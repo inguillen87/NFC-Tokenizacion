@@ -38,34 +38,40 @@ test("legacy null lifecycle uses active status; manual opening remains distinct 
   assert.equal(evaluateOwnershipEligibility(ownershipFixture({ reason: "operator declared open" })).isBlocked, true);
 });
 
-for (const update of [false, true]) {
-  test(`${update ? "UPDATE" : "INSERT"} claim repeats exact identity, active lifecycle and result eligibility while holding tag/batch/event locks`, async () => {
-    const captured = await captureOwnershipMutation({ update });
-    assert.equal(captured.result.ok, false);
-    assert.equal(captured.result.error, "revoked");
-    const query = captured.mutation.query;
-    assert.match(query, /WITH current_tag AS MATERIALIZED/);
-    assert.match(query, /bound_batch\.tenant_id = source_event\.tenant_id/);
-    assert.match(query, /tag\.batch_id = source_event\.batch_id AND UPPER\(tag\.uid_hex\) = UPPER\(source_event\.uid_hex\)/);
-    for (const field of ["source_event.tenant_id", "source_event.batch_id", "tag.id"]) assert.ok(query.includes(`${field} = $`));
-    assert.match(query, /tag\.status = 'active'/);
-    assert.match(query, /COALESCE\(tag\.lifecycle_state, tag\.status::text\) = 'active'/);
-    assert.match(query, /ambiguous_tag\.id <> tag\.id/);
-    assert.match(query, /FOR SHARE OF tag, bound_batch, source_event/);
-    assert.match(query, /WHEN NOT EXISTS \(SELECT 1 FROM current_tag\)/);
-    assert.match(query, /OPERATOR_DECLARED_OPEN/);
-    assert.ok(captured.mutation.parameters.includes(ownershipFixture().current_tag_id));
-    assert.ok(captured.mutation.parameters.includes(ownershipFixture().batch_id));
-    assert.ok(captured.mutation.parameters.some(p => Array.isArray(p) && p.length === CLAIMABLE_OWNERSHIP_RESULTS.size));
-    assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /SELECT t\.id, t\.status/);
-  });
-}
+test("positive ownership submits the current strict four-write core without executing SQL in this capture", async () => {
+  const captured = await captureOwnershipMutation();
+  assert.equal(captured.sqlExecuted, false);
+  assert.equal(captured.result.ok, false); assert.equal(captured.result.error, "revoked");
+  const query = captured.mutation.query;
+  assert.match(query, /WITH locked_event AS MATERIALIZED/);
+  for (const source of ["locked_batch", "locked_tags", "locked_manual", "locked_tenant_policy", "locked_pos", "locked_ownerships", "decision_clock", "saved_title"]) {
+    assert.ok(query.includes(source + " AS MATERIALIZED"), source);
+  }
+  assert.match(query, /batch\.id = event\.batch_id AND batch\.tenant_id = event\.tenant_id/);
+  assert.match(query, /UPPER\(BTRIM\(tag\.uid_hex\)\) = UPPER\(BTRIM\(event\.uid_hex\)\)/);
+  assert.match(query, /event\.sdm_read_ctr::bigint = \$[0-9]+::bigint/);
+  assert.match(query, /row_revision = \$[0-9]+ AND status = 'active'/);
+  assert.match(query, /COALESCE\(lifecycle_state, status::text\) = 'active'/);
+  assert.match(query, /FOR SHARE OF source_event/); assert.match(query, /FOR SHARE OF batch/); assert.match(query, /FOR SHARE OF tag/);
+  assert.match(query, /FOR UPDATE OF ownership/); assert.match(query, /OPERATOR_DECLARED_OPEN/);
+  for (const target of ["consumer_product_ownerships", "tenant_consumer_memberships", "consumer_tap_history", "consumer_products"]) {
+    assert.ok(query.includes("INSERT INTO " + target), target);
+  }
+  assert.match(query, /FROM write_integrity WHERE valid = 1/);
+  assert.ok(captured.mutation.parameters.includes(ownershipFixture().current_tag_id));
+  assert.ok(captured.mutation.parameters.includes(ownershipFixture().batch_id));
+  assert.ok(captured.mutation.parameters.includes(true));
+  assert.ok(captured.mutation.parameters.some(p => Array.isArray(p) && p.length === CLAIMABLE_OWNERSHIP_RESULTS.size));
+  assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /WITH current_tag AS MATERIALIZED/);
+});
 
 test("inactive and ambiguous preflight do not enroll or save during a blocked claim", async () => {
   for (const overrides of [{ current_tag_status: "inactive", current_tag_lifecycle_state: "suspended" }, { current_tag_identity_count: 2 }]) {
     const captured = await captureOwnershipMutation({ event: ownershipFixture(overrides) });
     assert.equal(captured.result.error, "revoked");
-    assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /INSERT INTO tenant_consumer_memberships|INSERT INTO consumer_tap_history|INSERT INTO consumer_products/);
+    assert.match(captured.mutation.query, /WITH current_tag AS MATERIALIZED/);
+    assert.match(captured.mutation.query, /INSERT INTO consumer_product_ownerships/);
+    assert.doesNotMatch(captured.statements.map(s => s.query).join("\n"), /WITH locked_event AS MATERIALIZED|INSERT INTO tenant_consumer_memberships|INSERT INTO consumer_tap_history|INSERT INTO consumer_products/);
   }
 });
 

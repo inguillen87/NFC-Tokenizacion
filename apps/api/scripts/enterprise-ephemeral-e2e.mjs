@@ -17,6 +17,7 @@ import {runSupplierRuntimeAcceptance} from "./lib/supplier-runtime-acceptance.mj
 import { supplierChainRoutes, runSupplierChainAcceptance } from "./lib/supplier-chain-acceptance.mjs";
 import { attestGithubPostgresDocker, runOwnershipCurrentStatePostgresQa } from "../tests/helpers/ownership-current-state-postgres-harness.mjs";
 import { runConsumerCollectionPostgresQa } from "../tests/helpers/consumer-collection-postgres-harness.mjs";
+import { OWNERSHIP_CLAIM_POSTGRES_CASE_NAMES, OWNERSHIP_CLAIM_POSTGRES_EXPECTED } from "../tests/helpers/consumer-ownership-claim-postgres-harness.mjs";
 import { runConsumerRewardPostgresQa } from "../tests/helpers/consumer-reward-postgres-harness.mjs";
 import { runConsumerRewardsReadPostgresQa } from "../tests/helpers/consumer-rewards-read-postgres-harness.mjs";
 import { runConsumerRewardHttpPostgresQa, REWARD_HTTP_POSTGRES_EXPECTED } from "../tests/helpers/consumer-reward-http-postgres-harness.mjs";
@@ -168,11 +169,20 @@ async function run() {
     try { await client.connect(); return client; }
     catch (error) { await client.end().catch(() => {}); throw error; }
   };
-  const ownershipCurrentState = await runOwnershipCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
-  assert.ok(ownershipCurrentState.ok && ownershipCurrentState.cleanup.schemaDropped && ownershipCurrentState.cleanup.connectionsClosed, "Ownership current-state SQL regression or cleanup failed");
-  assert.equal(ownershipCurrentState.checks.length, 51);
-  assert.ok(ownershipCurrentState.checks.every(check => check.ok));
-  assert.equal(ownershipCurrentState.lockObservations.length, 4);
+  const transactionalClaim = await runOwnershipCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  const registeredClaimNames = new Set(OWNERSHIP_CLAIM_POSTGRES_CASE_NAMES);
+  assert.equal(registeredClaimNames.size, OWNERSHIP_CLAIM_POSTGRES_EXPECTED.checks);
+  if (!transactionalClaim.ok || !transactionalClaim.cleanup.schemaDropped || !transactionalClaim.cleanup.connectionsClosed) console.error(JSON.stringify({ diagnostic: "consumer_transactional_claim_failure_v1", checks: transactionalClaim.checks.map(check => ({ name: registeredClaimNames.has(check.name) ? check.name : "unregistered_claim_check", passed: check.passed === true, code: ["ERR_ASSERTION", "23505", "22P02", "42601", "42P01", "42703", "42883", "40001", "40P01", "55P03", "57014", "23503", "23502", "42501", "22012"].includes(check.code) ? check.code : null })), cleanup: { schemaDropped: transactionalClaim.cleanup.schemaDropped === true, connectionsClosed: transactionalClaim.cleanup.connectionsClosed === true } }));
+  assert.ok(transactionalClaim.ok && transactionalClaim.cleanup.schemaDropped && transactionalClaim.cleanup.connectionsClosed, "Transactional ownership claim SQL regression or cleanup failed");
+  assert.equal(transactionalClaim.checks.length, OWNERSHIP_CLAIM_POSTGRES_EXPECTED.checks);
+  assert.ok(transactionalClaim.checks.every(check => check.passed));
+  assert.deepEqual([...transactionalClaim.checks.map(check => check.name)].sort(), [...OWNERSHIP_CLAIM_POSTGRES_CASE_NAMES].sort());
+  assert.equal(new Set(transactionalClaim.checks.map(check => check.name)).size, OWNERSHIP_CLAIM_POSTGRES_EXPECTED.checks);
+  assert.equal(transactionalClaim.lockObservations.length, OWNERSHIP_CLAIM_POSTGRES_EXPECTED.lockObservations);
+  assert.ok(transactionalClaim.lockObservations.every(observation => observation.observed && observation.waitEventType === "Lock" && observation.graph.length > 0 && observation.graph.every(edge => edge.observed && edge.waitEventType === "Lock")));
+  assert.ok(transactionalClaim.coreStatements.length > 0 && transactionalClaim.coreStatements.every(statement => statement.scope === "ownership-membership-history-product" && statement.isolation === "serializable"));
+  assert.ok(transactionalClaim.coreCommits > 0 && transactionalClaim.coreRollbacks > 0 && Number.isSafeInteger(transactionalClaim.serializationConflicts) && transactionalClaim.serializationConflicts >= 0);
+  const ownershipCurrentState = { kind: "synthetic-postgresql-current-ownership-runtime", ok: transactionalClaim.ok, transactionalClaim, historicalStatementOnlyEvidenceAdopted: false };
   const collectionConcurrency = await runConsumerCollectionPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(collectionConcurrency.ok && collectionConcurrency.cleanup.schemaDropped && collectionConcurrency.cleanup.connectionsClosed, "Collection concurrent-save SQL regression or cleanup failed");
   assert.equal(collectionConcurrency.checks.length, 41);
