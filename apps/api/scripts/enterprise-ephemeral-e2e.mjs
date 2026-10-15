@@ -25,6 +25,7 @@ import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuratio
 import { runLoyaltyCurrentStatePostgresQa } from '../tests/helpers/loyalty-current-state-postgres-harness.mjs';
 import { runMarketplaceContextualPostgresQa } from '../tests/helpers/marketplace-contextual-postgres-harness.mjs';
 import { runTenantMarketplaceCatalogPostgresQa } from '../tests/helpers/tenant-marketplace-catalog-postgres-qa.mjs';
+import { runSunFreshCapabilityWindowPostgresQa } from "../tests/helpers/sun-fresh-capability-window-postgres-harness.mjs";
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { Client, Pool } = pg;
@@ -230,7 +231,12 @@ async function run() {
   assert.ok(tenantMarketplaceCatalog.checks.every(check => check.passed));
   assert.equal(tenantMarketplaceCatalog.lockObservations.length, 1);
   assert.ok(tenantMarketplaceCatalog.lockObservations.every(observation => observation.observed && observation.waitEventType === 'Lock'));
-  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, rewardRead, rewardHttp, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog };
+  const freshCapabilityWindow = await runSunFreshCapabilityWindowPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
+  assert.ok(freshCapabilityWindow.ok && freshCapabilityWindow.cleanup.schemaDropped && freshCapabilityWindow.cleanup.connectionsClosed, "Fresh capability window SQL regression or cleanup failed");
+  assert.equal(freshCapabilityWindow.checks.length, 10);
+  assert.ok(freshCapabilityWindow.checks.every(check => check.ok));
+  assert.ok(freshCapabilityWindow.realReservationExecutions > 0 && freshCapabilityWindow.sqlCopiedIntoHarness === false);
+  const currentTagRegressionEvidence = { postgresVersion: emptyTarget.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, rewardRead, rewardHttp, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog, freshCapabilityWindow };
   assert.deepEqual(await assertDatabaseStartsEmpty(), emptyTarget, "Focused SQL harnesses must leave the validated database empty before migration");
   const bootstrapPrerequisites = applyMigrations();
 

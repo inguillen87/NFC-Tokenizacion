@@ -545,7 +545,7 @@ test('durable tenant catalog SQL QA runs behind verified target guards on both e
   assert(call>source.indexOf('attestGithubPostgresDocker({'));
   assert(call<source.indexOf('const bootstrapPrerequisites = applyMigrations()'));
   assert.match(source,/tenantMarketplaceCatalog\.accepted && tenantMarketplaceCatalog\.cleanup\.schemaDropped && tenantMarketplaceCatalog\.cleanup\.connectionsClosed/);
-  assert.match(source,/currentTagRegressionEvidence = \{[^\n]+tenantMarketplaceCatalog \}/);
+  assert.match(source,/const currentTagRegressionEvidence = \{ postgresVersion: emptyTarget\.postgresVersion, localDocker: dockerAttestation, ownership: ownershipCurrentState, collection: collectionConcurrency, rewardConfiguration, rewardRead, rewardHttp, adminRewardConfiguration, tenantConfiguration, loyaltyGovernance, marketplaceGovernance, tenantMarketplaceCatalog, freshCapabilityWindow \};/);
   const harness=await readFile(new URL('./helpers/tenant-marketplace-catalog-postgres-qa.mjs',import.meta.url),'utf8');
   assert(harness.indexOf('assertQaPostgresClientIdentity(client,identity,{dockerAttestation})')<harness.indexOf("'CREATE SCHEMA '"));
   assert.match(harness,/SET search_path TO '\+s\+', pg_catalog/);
