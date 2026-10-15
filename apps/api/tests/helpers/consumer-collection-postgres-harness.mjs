@@ -199,7 +199,22 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       assert.deepEqual(await state(f), before, "A denial must preserve complete membership/history/product rows, including timestamps and points");
       assert.equal(report.projectionReturnsSuppressed, projections);
     }
-    async function check(name, operation) { await operation(); report.checks.push({ name, passed: true }); }
+    async function check(name, operation) {
+      try { await operation(); }
+      catch (error) {
+        // Only fixture identifiers and bounded assertion shapes reach CI; the original error stays in cause.
+        const failedCase = String(name).replace(/[^a-z0-9_]/gi, "_").slice(0, 200);
+        const assertion = error instanceof assert.AssertionError;
+        const headings = ["Expected values to be strictly equal:", "Expected values to be strictly deep-equal:", "The expression evaluated to a falsy value:"];
+        const firstLine = assertion ? error.message.split(/\r?\n/, 1)[0] : "";
+        const reason = headings.includes(firstLine) ? firstLine : assertion ? "assertion_failed" : "operation_failed";
+        const shape = value => value === null ? "null" : typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ? "uuid" : Array.isArray(value) ? "array" : typeof value;
+        const code = assertion ? "ERR_ASSERTION" : typeof error?.code === "string" && /^[A-Z0-9]{5}$/.test(error.code) ? error.code : "unclassified";
+        const comparison = assertion ? `;actual_shape=${shape(error.actual)};expected_shape=${shape(error.expected)}` : "";
+        throw new Error(`consumer_collection_case_failed:${failedCase};completed_checks=${report.checks.length};reason=${reason};code=${code}${comparison}`, { cause: error });
+      }
+      report.checks.push({ name, passed: true });
+    }
     async function overlap(f, sameEvent = false, joinSecond = false, strict = false) {
       // One writer reaches the fixture product trigger; the other waits on the
       // first writer's core locks. The graph does not infer a particular CTE.
