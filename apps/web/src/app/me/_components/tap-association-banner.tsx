@@ -30,6 +30,10 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   const feedbackFocus = useRef<{ owner: ReturnType<typeof createTapAssociationRunner>; action: TapAssociationAction;
     trigger: HTMLButtonElement; permitted: boolean; release: () => void } | null>(null);
   const copy = associationCopy[locale];
+  // Keep the entry action in place while the user explores the other choices.
+  const primaryChoice = context.preferred || "save";
+  const heading = selected ? copy.actions[selected].title : copy.title;
+  const subtitle = selected ? copy.actions[selected].subtitle : copy.subtitle;
 
   useEffect(() => {
     const update = () => setLocale(associationLocale(document.documentElement.lang));
@@ -124,20 +128,21 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
 
   const selectedResult = selected ? state.results[selected] : null;
   const hasResults = Object.keys(state.results).length > 0;
+  const enrollmentConfirmed = state.results.rewards?.outcome === "enrolled";
   const loginHref = tapAssociationLoginHref({ ...context, preferred: selected });
-  const renderChoice = (action: TapAssociationAction) => <label key={action} className={styles.choice} data-selected={selected === action} data-primary={action === "save"}>
+  const renderChoice = (action: TapAssociationAction) => <label key={action} className={styles.choice} data-selected={selected === action} data-primary={action === primaryChoice}>
     <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => { setSelected(action); setClaimPin(""); setPinInputInvalid(false); }} />
     <span><strong>{copy.actions[action].label}</strong><small>{copy.actions[action].detail}</small></span>
   </label>;
   return <section className={styles.panel} data-testid="tap-association" aria-labelledby="tap-association-title" lang={locale}>
-    <header><span className={styles.eyebrow}>{copy.eyebrow}</span><h2 id="tap-association-title">{copy.title}</h2>
-      <p>{copy.subtitle}</p></header>
+    <header><span className={styles.eyebrow}>{copy.eyebrow}</span><h2 id="tap-association-title">{heading}</h2>
+      <p>{subtitle}</p></header>
     <fieldset className={styles.choices} disabled={Boolean(state.pending)}>
       <legend>{copy.choose}</legend>
-      {renderChoice("save")}
-      <details className={styles.alternatives} open={context.preferred !== null && context.preferred !== "save"}>
+      {renderChoice(primaryChoice)}
+      <details className={styles.alternatives}>
         <summary>{copy.alternatives}</summary>
-        <div className={styles.alternativeChoices}>{TAP_ASSOCIATION_ACTIONS.filter(action => action !== "save").map(renderChoice)}</div>
+        <div className={styles.alternativeChoices}>{TAP_ASSOCIATION_ACTIONS.filter(action => action !== primaryChoice).map(renderChoice)}</div>
       </details>
     </fieldset>
     {selected === "claim" && selectedResult?.retryable !== false ? <div className={styles.pinEntry}>
@@ -163,7 +168,8 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
       <ul aria-live="polite">{TAP_ASSOCIATION_ACTIONS.map(action => state.results[action] ? <li key={action} data-testid={`tap-association-result-${action}`} data-outcome={state.results[action]?.outcome}>
         <span className={styles.resultAction}>{copy.actions[action].label}</span><h4>{copy.titles[state.results[action]!.outcome]}</h4><p>{copy.outcomes[state.results[action]!.outcome]}</p>
       </li> : null)}</ul>
-      <Link href={`/me/products?focus=${context.eventId}`} className={styles.collectionLink} prefetch={false}>{copy.products}</Link>
+      {enrollmentConfirmed ? <Link href="/me/rewards" className={styles.collectionLink} data-testid="tap-association-benefits" prefetch={false}>{copy.benefits}</Link> : null}
+      <Link href={`/me/products?focus=${context.eventId}`} className={enrollmentConfirmed ? styles.historyLink : styles.collectionLink} prefetch={false}>{copy.products}</Link>
       <Link href="/me/taps" className={styles.historyLink} prefetch={false}>{copy.history}</Link>
     </section> : null}
     <details className={styles.readingDetails}>
