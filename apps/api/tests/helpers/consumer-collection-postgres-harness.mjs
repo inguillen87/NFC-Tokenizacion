@@ -511,8 +511,44 @@ export async function runConsumerCollectionPostgresQa({ connect, dockerAttestati
       assert.equal(row.tag_id, f.tagId); assert.notEqual(row.tag_id, otherTag); assert.equal(row.product_passport_id, f.uid);
       assert.equal(row.product_name, `Producto ${f.uid}`); assert.equal(row.brand_name, "synthetic-brand"); assert.equal(row.image_url, null);
     });
-    assert.equal(report.checks.length, 40); assert.equal(new Set(report.checks.map(row => row.name)).size, 40);
-    assert.equal(report.lockObservations.length, 8);
+    await check("existing_product_history_without_membership_does_not_enroll_in_a_program_expiring_during_tag_lock", async () => {
+      const f = await fixture(), productId = randomUUID();
+      // Legacy partial state is seeded directly, without bypassing the actual mobile save under test.
+      await admin.query(`INSERT INTO ${s}.consumer_products(id,consumer_id,tenant_id,product_passport_id,tag_id,first_tap_event_id,latest_tap_event_id,ownership_status,collection_type,product_name,brand_name,acquired_at)
+        VALUES($1,$2,$3,$4,$5,$6,$6,'claimed','wine','Synthetic product','Synthetic brand','2026-01-01T00:00:00Z')`, [productId,f.consumerId,f.tenantId,f.uid,f.tagId,f.eventIds[0]]);
+      await admin.query(`INSERT INTO ${s}.consumer_tap_history(consumer_id,tenant_id,tap_event_id,verdict,risk_level)
+        VALUES($1,$2,$3,'VALID_CLOSED','low')`, [f.consumerId,f.tenantId,f.eventIds[0]]);
+      const before = await state(f);
+      assert.equal(before.products.length, 1); assert.equal(before.history.length, 1); assert.equal(before.memberships.length, 0);
+      const id = await program(f, { endSeconds: 2 });
+      const observed = await lockedCore(f, "existing-product-history-program-expiry-during-tag-lock", {
+        prepare: () => admin.query(`SELECT id FROM ${s}.tags WHERE id=$1 FOR UPDATE`, [f.tagId]),
+        beforeRelease: async observation => {
+          const current = (await admin.query(`SELECT clock_timestamp()<end_at AS before_expiry FROM ${s}.loyalty_programs WHERE id=$1`, [id])).rows[0];
+          assert.equal(current.before_expiry, true, "The actual wait must begin while the fixture program is current");
+          const deadline = Date.now() + 4000; let expired = false;
+          while (Date.now() < deadline) {
+            expired = (await admin.query(`SELECT clock_timestamp()>end_at AS expired FROM ${s}.loyalty_programs WHERE id=$1`, [id])).rows[0].expired;
+            if (expired) break;
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          assert.equal(expired, true); observation.startedBeforeExpiry = true; observation.expiredBeforeRelease = true;
+        },
+      });
+      assert.deepEqual(observed.expectedState, before);
+      assert.equal(observed.result.ok, true); assert.equal(observed.result.productId, productId);
+      assert.equal(observed.observation.startedBeforeExpiry, true); assert.equal(observed.observation.expiredBeforeRelease, true);
+      const current = await state(f);
+      assert.equal(current.memberships.length, 1); assert.equal(current.memberships[0].status, "active");
+      assert.equal(current.memberships[0].loyalty_program_id, null); assert.equal(current.memberships[0].points_balance, 0); assert.equal(current.memberships[0].lifetime_points, 0);
+      assert.equal(current.products.length, 1); assert.equal(current.products[0].id, productId);
+      assert.equal(String(current.products[0].first_tap_event_id), f.eventIds[0]); assert.equal(String(current.products[0].latest_tap_event_id), f.eventIds[0]);
+      assert.equal(current.products[0].ownership_status, "claimed"); assert.equal(current.products[0].collection_type, before.products[0].collection_type);
+      assert.equal(current.products[0].acquired_at.toISOString(), before.products[0].acquired_at.toISOString());
+      assert.equal(current.history.length, 1); assert.equal(current.history[0].id, before.history[0].id); assert.deepEqual(current.history, before.history);
+    });
+    assert.equal(report.checks.length, 41); assert.equal(new Set(report.checks.map(row => row.name)).size, 41);
+    assert.equal(report.lockObservations.length, 9);
     assert.ok(report.lockObservations.every(row => row.observed && row.waitEventType === "Lock" && row.graph.every(edge => edge.observed && edge.waitEventType === "Lock")));
     assert.ok(report.productStatements.length > 0 && report.productStatements.every(row => row.scope === "composed-membership-history-product" && row.isolation === "SERIALIZABLE"));
     report.ok = true;
