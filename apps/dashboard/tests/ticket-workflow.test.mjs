@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTicketWorkflowReader, createTicketWorkflowWriter, parseWorkflowHistory, parseWorkflowOutcome, prepareWorkflowCommand } from "../src/lib/ticket-workflow.ts";
 import { ticketWorkflowCopy } from "../src/lib/ticket-workflow-copy.ts";
+import { readFile } from "node:fs/promises";
+import ts from "typescript";
 
 const ID = "81000000-0000-8000-8000-000000000009", REQUEST = "81000000-0000-4000-8000-000000000050", OP = "81000000-0000-8000-8000-000000000051", ACTOR = "81000000-0000-4000-8000-000000000052", TENANT = "10000000-0000-4000-8000-000000000001";
 const current = (patch = {}) => ({ ticketId: ID, tenantId: TENANT, tenantSlug: "qa-only", status: "open", revision: "a".repeat(64), updatedAt: "2026-09-22T02:00:00.000Z", canUpdate: true, blockedReason: null, ...patch });
@@ -132,4 +134,217 @@ test("history reader distinguishes empty, unauthorized, failure and cursor reque
 
 test("workflow copy covers identical states in Spanish, English and Portuguese", () => {
   for (const copy of Object.values(ticketWorkflowCopy)) { assert.deepEqual(Object.keys(copy).sort(), Object.keys(ticketWorkflowCopy["es-AR"]).sort()); assert.notEqual(copy.empty, copy.unavailable); assert.notEqual(copy.saved, copy.uncertain); }
+});
+
+// Execute the actual component and actual protocol readers/writer. React
+// scheduling and loopback-free HTTP responses are injected, not the decisions.
+const componentSource = await readFile(new URL("../src/components/ticket-workflow.tsx", import.meta.url), "utf8");
+const componentCode = ts.transpileModule(componentSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
+function workflowComponent(fetcher) {
+  const slots = [], effects = []; let cursor = 0;
+  const react = {
+    useRef(value) { const index = cursor++; return slots[index] ??= { current: value }; },
+    useState(value) { const index = cursor++; const slot = slots[index] ??= { value }; return [slot.value, next => { slot.value = typeof next === "function" ? next(slot.value) : next; }]; },
+    useId() { return react.useRef(`workflow-${cursor}`).current; },
+    useEffect(effect, deps) { const index = cursor++, old = slots[index]; if (old && old.deps.length === deps.length && old.deps.every((value, offset) => Object.is(value, deps[offset]))) return;
+      slots[index] = { deps, cleanup: null }; effects.push(() => { old?.cleanup?.(); slots[index].cleanup = effect(); }); },
+  };
+  const element = (type, props) => ({ type, props }), module = { exports: {} };
+  const runtime = { createTicketWorkflowReader: (id, tenant) => createTicketWorkflowReader(id, tenant, fetcher), createTicketWorkflowWriter: (id, tenant) => createTicketWorkflowWriter(id, tenant, fetcher) };
+  new Function("require", "module", "exports", componentCode)(name => {
+    if (name === "react") return react;
+    if (name === "react/jsx-runtime") return { jsx: element, jsxs: element };
+    if (name === "../lib/ticket-workflow") return runtime;
+    if (name === "../lib/ticket-workflow-copy") return { ticketWorkflowCopy };
+    throw Error(`Unexpected workflow dependency ${name}`);
+  }, module, module.exports);
+  const base = { ticket: { id: ID, tenant_slug: "qa-only" }, tenantScope: "qa-only", locale: "es-AR", onCurrent() {} };
+  return {
+    render(patch = {}) { cursor = 0; const tree = module.exports.TicketWorkflow({ ...base, ...patch }); while (effects.length) effects.shift()(); return tree; },
+    unmount() { for (const slot of slots) slot.cleanup?.(); },
+  };
+}
+function componentNodes(value) {
+  if (!value || typeof value !== "object") return [];
+  if (Array.isArray(value)) return value.flatMap(componentNodes);
+  return [value, ...componentNodes(value.props?.children)];
+}
+const componentSettle = () => new Promise(resolve => setImmediate(resolve));
+async function reviewComponent(h, props) {
+  let tree = h.render(props);
+  tree.props.onToggle({ currentTarget: { open: true } }); await componentSettle();
+  tree = h.render(props);
+  componentNodes(tree).find(node => node.type === "select").props.onChange({ target: { value: "pending" } });
+  tree = h.render(props);
+  componentNodes(tree).find(node => node.type === "textarea").props.onChange({ target: { value: item().reason } });
+  tree = h.render(props);
+  componentNodes(tree).find(node => node.type === "form").props.onSubmit({ preventDefault() {} });
+  return h.render(props);
+}
+const componentConfirm = tree => componentNodes(componentNodes(tree).find(node => node.props?.["data-testid"] === "ticket-workflow-review")).find(node => node.type === "button");
+
+test("actual component notifies the captured PATCH listener once, using replay current rather than receipt status", async () => {
+  let finish; const calls = [], old = [], replacement = [], detail = [];
+  const h = workflowComponent(async (url, init) => { calls.push({ url, init }); return init.method === "PATCH" ? new Promise(resolve => { finish = resolve; }) : response(history()); });
+  const props = { onAuthoritativeCurrent: value => old.push(value), onCurrent: value => detail.push(value) };
+  const tree = await reviewComponent(h, props); assert.equal(old.length, 1); assert.equal(detail.length, 1);
+  const confirm = componentConfirm(tree); confirm.props.onClick(); confirm.props.onClick();
+  assert.equal(calls.filter(call => call.init.method === "PATCH").length, 1);
+  const newer = { onAuthoritativeCurrent: value => replacement.push(value), onCurrent: value => detail.push(value) };
+  h.render(newer);
+  const sent = JSON.parse(calls.find(call => call.init.method === "PATCH").init.body);
+  finish(response(saved({ outcome: "replayed", receipt: item({ requestId: sent.request_id }), current: current({ status: "closed", revision: "c".repeat(64) }) })));
+  await componentSettle(); h.render(newer);
+  assert.equal(old.length, 2); assert.equal(old.at(-1).status, "closed"); assert.equal(replacement.length, 0);
+  assert.equal(JSON.parse(calls.find(call => call.init.method === "PATCH").init.body).status, "pending");
+  assert.equal(detail.at(-1).status, "closed"); h.unmount();
+});
+
+for (const status of [403, 409, 503]) {
+  test(`actual component keeps PATCH ${status} out of the collection callback and preserves the reviewed body`, async () => {
+    const commits = [], calls = [], reason = status === 409 ? "ticket_workflow_conflict" : "unavailable";
+    const h = workflowComponent(async (url, init) => { calls.push({ url, init }); return init.method === "PATCH" ? response({ ok: false, reason }, status) : response(history()); });
+    const props = { onAuthoritativeCurrent: value => commits.push(value) };
+    const tree = await reviewComponent(h, props); componentConfirm(tree).props.onClick(); await componentSettle();
+    const next = h.render(props), patch = calls.filter(call => call.init.method === "PATCH");
+    assert.equal(commits.length, 1); assert.equal(commits[0].status, "open"); assert.equal(patch.length, 1);
+    assert.equal(JSON.parse(patch[0].init.body).reason, item().reason); assert.equal(JSON.parse(patch[0].init.body).expected_revision, "a".repeat(64));
+    assert.equal(componentNodes(next).find(node => node.type === "textarea").props.value, item().reason);
+    h.unmount();
+  });
+}
+
+test("an explicit history check confirms an uncertain operation only with its exact receipt, without another PATCH", async () => {
+  const calls = [], confirmed = [], replacement = []; let sent, finishHistory, recovering = false;
+  const h = workflowComponent(async (url, init) => {
+    calls.push({ url, init });
+    if (init.method === "PATCH") { sent = JSON.parse(init.body); return response({ ok: false }, 503); }
+    return recovering ? new Promise(resolve => { finishHistory = resolve; }) : response(history());
+  });
+  const props = { onAuthoritativeCurrent: value => confirmed.push(value) };
+  let tree = await reviewComponent(h, props); componentConfirm(tree).props.onClick(); await componentSettle();
+  tree = h.render(props); assert.equal(confirmed.length, 1);
+  assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.value, item().reason);
+  recovering = true;
+  componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].reload).props.onClick();
+  h.render({ onAuthoritativeCurrent: value => replacement.push(value) });
+  finishHistory(response(history({ current: current({ status: "closed", revision: "c".repeat(64) }), items: [item({ requestId: sent.request_id })] })));
+  await componentSettle(); tree = h.render(props);
+  assert.equal(confirmed.length, 2); assert.equal(confirmed.at(-1).status, "closed"); assert.equal(replacement.length, 0);
+  assert.equal(calls.filter(call => call.init.method === "PATCH").length, 1);
+  assert.equal(calls.filter(call => call.init.method === "GET").length, 2);
+  assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.value, item().reason);
+  h.unmount();
+});
+
+test("an uncertain operation remains unconfirmed when history has only matching status or a different receipt", async () => {
+  for (const items of [[], [item({ requestId: OP })]]) {
+    const commits = [], calls = []; let recovering = false;
+    const h = workflowComponent(async (url, init) => {
+      calls.push(init.method);
+      return init.method === "PATCH" ? response({ ok: false }, 503) : response(recovering ? history({ current: current({ status: "pending" }), items }) : history());
+    });
+    const props = { onAuthoritativeCurrent: value => commits.push(value) };
+    let tree = await reviewComponent(h, props); componentConfirm(tree).props.onClick(); await componentSettle(); tree = h.render(props);
+    recovering = true;
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].reload).props.onClick();
+    await componentSettle(); tree = h.render(props);
+    assert.equal(commits.length, 2); assert.equal(commits.at(-1).status, "pending"); assert.equal(calls.filter(method => method === "PATCH").length, 1);
+    assert.equal(componentNodes(tree).find(node => node.props?.["data-workflow-state"] === "uncertain")?.props["data-workflow-state"], "uncertain");
+    assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.disabled, true);
+    assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.value, item().reason);
+    h.unmount();
+  }
+});
+
+for (const failure of ["503", "network"]) {
+  test(`an uncertain operation keeps its frozen recovery visible through a pending and failed ${failure} history read`, async () => {
+    const calls = [], commits = [], locks = []; let reads = 0, patches = 0, finishRead;
+    const h = workflowComponent(async (url, init) => {
+      calls.push({ url, init });
+      if (init.method === "PATCH") {
+        patches++;
+        return patches === 1 ? response({ ok: false }, 503) : response(saved({ outcome: "replayed", receipt: item({ requestId: JSON.parse(init.body).request_id }) }));
+      }
+      if (++reads === 1) return response(history());
+      return new Promise((resolve, reject) => { finishRead = () => failure === "network" ? reject(Error("history connection lost")) : resolve(response({ ok: false }, 503)); });
+    });
+    const props = { onAuthoritativeCurrent: value => commits.push(value), onNavigationLockChange: value => locks.push(value) };
+    let tree = await reviewComponent(h, props); componentConfirm(tree).props.onClick(); await componentSettle(); tree = h.render(props);
+    const original = calls.find(call => call.init.method === "PATCH").init;
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].reload).props.onClick();
+    tree = h.render(props);
+    const assertRecovery = () => {
+      const nodes = componentNodes(tree);
+      assert.equal(nodes.find(node => node.type === "textarea").props.value, item().reason);
+      assert.equal(nodes.find(node => node.type === "textarea").props.disabled, true);
+      assert.equal(nodes.find(node => node.type === "select").props.value, "pending");
+      assert.equal(nodes.find(node => node.type === "select").props.disabled, true);
+      assert.ok(nodes.find(node => node.props?.["data-workflow-state"] === "uncertain"));
+      assert.ok(nodes.find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry));
+      assert.equal(nodes.some(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].review), false);
+      assert.equal(nodes.some(node => node.props?.["data-testid"] === "ticket-workflow-history"), false);
+      assert.equal(patches, 1); assert.equal(commits.length, 1); assert.equal(locks.at(-1), true);
+    };
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-history-state"] === "loading")); assertRecovery();
+    finishRead(); await componentSettle(); tree = h.render(props);
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-history-state"] === "unavailable")); assertRecovery();
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry).props.onClick();
+    await componentSettle(); tree = h.render(props);
+    const attempts = calls.filter(call => call.init.method === "PATCH");
+    assert.equal(attempts.length, 2); assert.equal(attempts[1].init.body, original.body);
+    assert.equal(attempts[1].init.headers["Idempotency-Key"], original.headers["Idempotency-Key"]);
+    assert.equal(reads, 2); assert.equal(commits.at(-1).status, "pending"); assert.equal(locks.at(-1), false);
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-workflow-state"] === "saved"));
+    h.unmount();
+  });
+}
+
+for (const deniedStatus of [401, 403]) {
+  test(`history ${deniedStatus} keeps frozen recovery hidden until an explicit authorized read succeeds`, async () => {
+    const calls = [], locks = []; let readMode = "initial", finishRead;
+    const h = workflowComponent(async (url, init) => {
+      calls.push({ url, init });
+      if (init.method === "PATCH") return response({ ok: false }, 503);
+      if (readMode === "initial" || readMode === "restored") return response(history());
+      if (readMode === "denied") return response({ ok: false }, deniedStatus);
+      return new Promise(resolve => { finishRead = () => resolve(response({ ok: false }, 503)); });
+    });
+    const props = { onNavigationLockChange: value => locks.push(value) };
+    let tree = await reviewComponent(h, props); componentConfirm(tree).props.onClick(); await componentSettle(); tree = h.render(props);
+    readMode = "denied";
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].reload).props.onClick();
+    await componentSettle(); tree = h.render(props);
+    const assertRestricted = () => {
+      const nodes = componentNodes(tree);
+      assert.equal(nodes.some(node => node.type === "form" || node.type === "textarea" || node.type === "select"), false);
+      assert.equal(nodes.some(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry), false);
+      assert.equal(nodes.some(node => node.props?.["data-workflow-state"] || node.props?.["data-testid"] === "ticket-workflow-history"), false);
+      assert.equal(calls.filter(call => call.init.method === "PATCH").length, 1); assert.equal(locks.at(-1), true);
+    };
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-history-state"] === "forbidden")); assertRestricted();
+    readMode = "pending";
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].refresh).props.onClick();
+    tree = h.render(props); assertRestricted();
+    finishRead(); await componentSettle(); tree = h.render(props); assertRestricted();
+    readMode = "restored";
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].refresh).props.onClick();
+    await componentSettle(); tree = h.render(props);
+    assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.value, item().reason);
+    assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.disabled, true);
+    assert.ok(componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry));
+    assert.equal(calls.filter(call => call.init.method === "PATCH").length, 1); assert.equal(locks.at(-1), true);
+    h.unmount();
+  });
+}
+
+test("an unavailable initial history never exposes an editable or retryable operation", async () => {
+  const calls = [];
+  const h = workflowComponent(async (url, init) => { calls.push(init.method); return response({ ok: false }, 503); });
+  let tree = h.render(); tree.props.onToggle({ currentTarget: { open: true } }); await componentSettle(); tree = h.render();
+  const nodes = componentNodes(tree);
+  assert.ok(nodes.find(node => node.props?.["data-history-state"] === "unavailable"));
+  assert.equal(nodes.some(node => node.type === "form" || node.type === "textarea" || node.type === "select"), false);
+  assert.equal(nodes.some(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry), false);
+  assert.deepEqual(calls, ["GET"]); h.unmount();
 });

@@ -8,7 +8,7 @@ import { confirmCustomerInbox } from "../src/lib/customer-inbox-state.ts";
 
 const ID = "81000000-0000-8000-8000-000000000009", OTHER = "81000000-0000-8000-8000-000000000010";
 const tenantId = "10000000-0000-4000-8000-000000000001";
-const row = (id = ID, tenant_slug = "qa-only") => ({ id, tenant_slug, status: "open", created_at: "2026-09-23T12:00:00Z" });
+const row = (id = ID, tenant_slug = "qa-only") => ({ id, tenant_id: tenantId, tenant_slug, status: "open", created_at: "2026-09-23T12:00:00Z" });
 const inbox = (rows = [row()]) => confirmCustomerInbox("tickets", rows, { availability: "ready", source: "production" }, { tenantScope: "qa-only", demoMode: false });
 const response = (id = ID, tenant = "qa-only") => new Response(JSON.stringify({ ok: true, protocol: "nexid.support-ticket-lookup.v1",
   scope: { mode: "tenant", tenantId, tenantSlug: tenant }, ticket: { ...row(id, tenant), title: "QA report", detail: null,
@@ -190,3 +190,50 @@ for (const [name, intermediate] of [["permission", { canLookupTickets: false }],
     parentLookup(tree).props.onNavigationLockChange(true); assert.equal(parentLocked(render()), true);
   });
 }
+
+const committedCurrent = (patch = {}) => ({ ticketId: ID, tenantId, tenantSlug: "qa-only", status: "closed",
+  revision: "b".repeat(64), updatedAt: "2026-09-23T13:00:00.000Z", canUpdate: true, blockedReason: null, ...patch });
+function showTicketTable(render, patch) {
+  let tree = render(patch);
+  nodes(tree).find(node => node.props?.role === "tab" && node.props.id.endsWith("-tickets")).props.onClick();
+  return render(patch);
+}
+const ticketTable = tree => nodes(tree).find(node => node.type === "DataTable" && node.props.columns.some(column => column.key === "tap_event_id"));
+
+test("confirmed current status reaches the actual table rows, state search, summary and customer signals together", () => {
+  const render = parentHarness(); let tree = showTicketTable(render);
+  assert.equal(ticketTable(tree).props.rows[0].status, "OPEN");
+  parentLookup(tree).props.onAuthoritativeCurrent(committedCurrent());
+  tree = render(); assert.equal(ticketTable(tree).props.rows[0].status, "CLOSED");
+  const summary = nodes(tree).find(node => node.type === "CustomerActivitySummary").props.summary;
+  assert.deepEqual(summary.cards.find(card => card.kind === "tickets").statuses, [{ value: "closed", count: 1 }]);
+  nodes(tree).find(node => node.props?.role === "tab" && node.props.id.endsWith("-signals")).props.onClick();
+  const signal = nodes(render()).find(node => node.type === "CustomerSignalTimeline").props;
+  assert.equal(JSON.stringify(signal).includes('"status":"closed"'), true);
+  tree = showTicketTable(render);
+  nodes(tree).find(node => node.type === "input" && node.props.type === "search").props.onChange({ target: { value: "closed" } });
+  assert.equal(ticketTable(render()).props.rows.length, 1);
+  nodes(render()).find(node => node.type === "input" && node.props.type === "search").props.onChange({ target: { value: "open" } });
+  assert.equal(ticketTable(render()).props.rows.length, 0);
+  // DataTable filters and both CSV/Excel exports consume this same rows prop.
+});
+
+for (const [name, intermediate] of [["permission", { canLookupTickets: false }], ["tenant", { tenantScope: "another-company" }], ["demo", { demoMode: true }]]) {
+  test(`confirmed callback from before ${name} context A to B to A cannot change the replacement list`, () => {
+    const render = parentHarness(); const first = parentLookup(showTicketTable(render));
+    first.props.onAuthoritativeCurrent(committedCurrent()); assert.equal(ticketTable(render()).props.rows[0].status, "CLOSED");
+    render(intermediate); let tree = render(); assert.equal(ticketTable(tree).props.rows[0].status, "OPEN");
+    first.props.onAuthoritativeCurrent(committedCurrent()); assert.equal(ticketTable(render()).props.rows[0].status, "OPEN");
+    parentLookup(tree).props.onAuthoritativeCurrent(committedCurrent({ status: "pending" }));
+    assert.equal(ticketTable(render()).props.rows[0].status, "PENDING");
+  });
+}
+
+test("a new server snapshot clears the overlay and rejects a late callback captured before refresh", () => {
+  const render = parentHarness(); const first = parentLookup(showTicketTable(render));
+  first.props.onAuthoritativeCurrent(committedCurrent()); assert.equal(ticketTable(render()).props.rows[0].status, "CLOSED");
+  const refreshed = { initialTickets: [{ ...row(), status: "pending" }] };
+  const tree = render(refreshed); assert.equal(ticketTable(tree).props.rows[0].status, "PENDING");
+  first.props.onAuthoritativeCurrent(committedCurrent()); assert.equal(ticketTable(render(refreshed)).props.rows[0].status, "PENDING");
+  parentLookup(tree).props.onAuthoritativeCurrent(committedCurrent()); assert.equal(ticketTable(render(refreshed)).props.rows[0].status, "CLOSED");
+});

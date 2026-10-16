@@ -12,6 +12,7 @@ import * as assistant from "../src/lib/assistant-records.ts";
 import * as activity from "../src/lib/customer-activity-summary.ts";
 import * as entry from "../src/lib/ticket-entry.ts";
 import * as tickets from "../src/lib/support-ticket-projection.ts";
+import * as ticketStatuses from "../src/lib/ticket-status-reconciliation.ts";
 import * as exports from "../src/lib/export-utils.ts";
 import { customerInboxCopy } from "../src/lib/customer-inbox-copy.ts";
 
@@ -104,6 +105,7 @@ function renderOrders({ records = [row(), legacy], search = "", context = "qa-on
     "../../../lib/assistant-records": assistant, "../../../lib/customer-inbox-state": inbox, "../../../lib/customer-inbox-copy": { customerInboxCopy },
     "../../../lib/customer-order-request-projection": orders, "../../../lib/customer-activity-summary": activity, "../../../lib/customer-signal-timeline": signals,
     "../../../lib/ticket-entry": entry, "../../../lib/support-ticket-projection": tickets,
+    "../../../lib/ticket-status-reconciliation": ticketStatuses,
     "../../../components/assistant-records": { AssistantRecords: Empty }, "../../../components/customer-activity-summary": { CustomerActivitySummary: Empty },
     "../../../components/customer-member-timeline": { CustomerMemberTimeline: Empty }, "../../../components/customer-signal-timeline": { CustomerSignalTimeline: Empty },
     "../../../components/ticket-reference-lookup": { TicketReferenceLookup: Empty },

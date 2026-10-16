@@ -7,12 +7,14 @@ import { ticketLookupCopy } from "../lib/ticket-reference-lookup-copy";
 import { projectSupportTicket } from "../lib/support-ticket-projection";
 import { SupportTicketDetails } from "./support-ticket-details";
 import { TicketWorkflow } from "./ticket-workflow";
+import type { WorkflowCurrent } from "../lib/ticket-workflow";
 
 export type TicketReferenceLookupHandle = { open: (reference: string) => boolean; isNavigationLocked: () => boolean };
 
 export const TicketReferenceLookup = forwardRef<TicketReferenceLookupHandle, {
   tenantScope: string; locale?: TicketLookupLocale; isDemo?: boolean; canLookup?: boolean; onNavigationLockChange?: (locked: boolean) => void;
-}>(function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = false, canLookup = false, onNavigationLockChange }, ref) {
+  onAuthoritativeCurrent?: (current: WorkflowCurrent) => void;
+}>(function TicketReferenceLookup({ tenantScope, locale = "es-AR", isDemo = false, canLookup = false, onNavigationLockChange, onAuthoritativeCurrent }, ref) {
   const copy = ticketLookupCopy[locale];
   const inputId = useId();
   const lookup = useTicketReferenceLookup(tenantScope, isDemo, canLookup, onNavigationLockChange);
@@ -69,7 +71,8 @@ export const TicketReferenceLookup = forwardRef<TicketReferenceLookupHandle, {
             <div><dt className="font-semibold">{copy.contact}</dt><dd className="break-all">{projection.contact || copy.noContact}</dd></div>
           </dl>
           {!isDemo && canLookup ? <TicketWorkflow key={`${context}|${ticket.id}`} ticket={ticket} tenantScope={tenantScope} locale={locale}
-            onNavigationLockChange={lookup.setLocked} onCurrent={current => lookup.updateStatus(current.ticketId, current.status)} /> : null}
+            onNavigationLockChange={lookup.setLocked} onCurrent={current => lookup.updateStatus(current.ticketId, current.status)}
+            onAuthoritativeCurrent={onAuthoritativeCurrent} /> : null}
         </article>
       ) : null}
     </section>
