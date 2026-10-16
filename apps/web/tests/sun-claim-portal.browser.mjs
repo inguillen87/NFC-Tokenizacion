@@ -95,7 +95,11 @@ async function positive(t,double=false){
  check(await t.portal.getAttribute('data-claim-available')==='true','Fresh allowed claim offers account navigation');
  const button=t.portal.getByRole('button',{name:labels[t.entry.locale].action,exact:true});await button.waitFor();check(await button.isEnabled(),'Primary claim entry is enabled only after hydration');
  await button.scrollIntoViewIfNeeded();const hit=await button.evaluate(el=>{const r=el.getBoundingClientRect(),h=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);return{height:r.height,width:r.width,hit:h===el||el.contains(h),x:(r.left+r.right)/2,y:(r.top+r.bottom)/2};});check(hit.hit&&hit.width>=44&&hit.height>=44,'Primary claim target is unobstructed and touch-sized');
+ const responsePromise=t.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/consumer/tap-handoff',{timeout:12000});
  if(double){await t.page.mouse.dblclick(hit.x,hit.y);await t.page.waitForTimeout(150);check(t.entry.handoffs===1&&new URL(t.page.url()).pathname==='/sun','Rapid natural double click prepares once while pending');t.releaseHandoff();}else{await button.focus();await t.page.keyboard.press('Enter');}
+ const response=await responsePromise,receipt=await response.json();
+ t.entry.handoffReceipt={status:response.status(),ok:receipt?.ok===true,eventMatches:receipt?.eventId===t.issued.eventId,error:typeof receipt?.error==='string'&&/^[a-z_]{1,80}$/.test(receipt.error)?receipt.error:null};
+ check(response.status()===200&&receipt?.ok===true&&receipt?.eventId===t.issued.eventId,'Real BFF handoff accepted: '+JSON.stringify(t.entry.handoffReceipt));
  await t.page.waitForURL(u=>u.pathname==='/me'&&u.searchParams.get('action')==='claim',{timeout:60000});
  const u=new URL(t.page.url());check(u.searchParams.get('fromTap')==='1'&&u.searchParams.get('eventId')===t.issued.eventId&&u.searchParams.get('tenant')==='qa-brand','Exact account destination retains canonical claim context');
  check([...u.searchParams.keys()].every(k=>['fromTap','eventId','tenant','bid','action','lang'].includes(k)),'Account query contains no capability or private credential');check(t.entry.handoffs===1,'One successful handoff reaches the real account route');
