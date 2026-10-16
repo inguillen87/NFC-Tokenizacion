@@ -1,4 +1,5 @@
-// Real client components; local HTTP fixtures only. No account, NFC, GPS or backend writes.
+// Real client components on an inert fixture host; no actual Next router/BFF,
+// account, NFC, GPS or backend writes are certified by this harness.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -10,8 +11,22 @@ const web = fileURLToPath(new URL('../', import.meta.url));
 const output = resolve(process.env.QA_OUTPUT || 'artifacts/consumer-action-feedback');
 await mkdir(output, { recursive: true });
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
-const fixture = `import React from 'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{VerifiedExperienceForm}from'./src/app/me/experiences/verified-experience-form';import{CtaActions}from'./src/app/sun/cta-actions';import{ReportProblemForm}from'./src/app/sun/report-problem-form';function App(){return <SunLocaleProvider initialLocale='es-AR'><h1>Ensayo local de formularios</h1>{location.pathname==='/experience'?<VerifiedExperienceForm initialEventId='900001' initialProductName='Producto de ensayo' tenant='qa-only'/>:location.pathname==='/claim'?<CtaActions bid='QA-ONLY' eventId='900001' uid='synthetic' freshToken='qa-only' canExecute={true} tapState='valid' rightsPolicy={{claimMode:'receipt_required'}} allowedActions={['claim','warranty','report']}/>:<ReportProblemForm bid='QA-ONLY' eventId='900001' supportToken='qa-only-support' locale='es-AR' productName='Producto de ensayo'/>}</SunLocaleProvider>};createRoot(document.getElementById('app')).render(<App/>);`;
-const bundle = await build({ stdin: { contents: fixture, resolveDir: web, loader: 'tsx' }, bundle: true, write: false, format: 'esm', platform: 'browser', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'css-host', setup(b) { b.onLoad({ filter: /\.module\.css$/ }, () => ({ contents: 'export default new Proxy({}, {get:(_,key)=>String(key)});', loader: 'js' })); } }], logLevel: 'error' });
+const claimHref = '/me?fromTap=1&eventId=900001&tenant=qa-only&bid=QA-ONLY&action=claim';
+const freshToken = 'qa-only-handoff-capability';
+const fixture = `import React,{useEffect}from'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{VerifiedExperienceForm}from'./src/app/me/experiences/verified-experience-form';import{CtaActions}from'./src/app/sun/cta-actions';import{ReportProblemForm}from'./src/app/sun/report-problem-form';function App(){useEffect(()=>{window.__fixtureMounted=true;},[]);return <SunLocaleProvider initialLocale='es-AR'><h1>Ensayo local de formularios</h1>{location.pathname==='/experience'?<VerifiedExperienceForm initialEventId='900001' initialProductName='Producto de ensayo' tenant='qa-only'/>:location.pathname.startsWith('/claim')?<CtaActions bid='QA-ONLY' eventId='900001' uid='synthetic' freshToken=${JSON.stringify(freshToken)} canExecute={location.pathname!=='/claim-blocked'} tapState='valid' rightsPolicy={{claimMode:'receipt_required'}} allowedActions={['claim','warranty','report']} claimHref={location.pathname==='/claim-invalid'?${JSON.stringify(claimHref.replace('eventId=900001', 'eventId=900002'))}:${JSON.stringify(claimHref)}}/>:<ReportProblemForm bid='QA-ONLY' eventId='900001' supportToken='qa-only-support' locale='es-AR' productName='Producto de ensayo'/>}</SunLocaleProvider>};createRoot(document.getElementById('app')).render(<App/>);`;
+const inertNext = {
+  name: 'explicit-inert-next-navigation',
+  setup(b) {
+    b.onResolve({ filter: /^next\/(?:link|navigation)$/ }, args => ({ path: args.path, namespace: 'fixture-next' }));
+    b.onLoad({ filter: /.*/, namespace: 'fixture-next' }, args => ({
+      contents: args.path === 'next/link'
+        ? `import{createElement}from'react';export default function Link({href,children,prefetch,onClick,...props}){return createElement('a',{...props,href,onClick(event){onClick?.(event);if(!event.defaultPrevented){event.preventDefault();window.__fixtureNavigations.push({kind:'link',href});}}},children);}`
+        : `export function useRouter(){return{push(href){window.__fixtureNavigations.push({kind:'router.push',href});}};}`,
+      loader: 'js', resolveDir: web,
+    }));
+  },
+};
+const bundle = await build({ stdin: { contents: fixture, resolveDir: web, loader: 'tsx' }, bundle: true, write: false, format: 'esm', platform: 'browser', jsx: 'automatic', define: { 'process.env': '{}', 'process.env.NODE_ENV': '"production"' }, plugins: [inertNext, { name: 'css-host', setup(b) { b.onLoad({ filter: /\.module\.css$/ }, () => ({ contents: 'export default new Proxy({}, {get:(_,key)=>String(key)});', loader: 'js' })); } }], logLevel: 'error' });
 const server = createServer((req, res) => {
   if (req.method !== 'GET') { res.writeHead(405); return res.end(); }
   if (req.url === '/fixture.js') { res.setHeader('content-type', 'text/javascript'); return res.end(bundle.outputFiles[0].contents); }
@@ -22,33 +37,56 @@ const server = createServer((req, res) => {
 await new Promise(done => server.listen(0, '127.0.0.1', done));
 const origin = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
-const report = { localOnly: true, actualClientComponents: true, syntheticHttpResponses: true, backendWrites: 0, gpsRequests: 0, checks: [], exceptions: [] };
+const report = { status: 'failed', localOnly: true, actualClientComponents: true, syntheticHttpResponses: true, fixtureHost: 'inert-react-host', actualNextAndBff: false, nextNavigationAdapters: true, httpOnlyCookieCertified: false, realAuthenticationCertified: false, backendWrites: 0, gpsRequests: 0, checks: [], exceptions: [], mountFailures: [], forbiddenRequests: [], blockedExternalRequests: [], navigationIntents: [] };
 const check = (condition, name) => { report.checks.push({ name, passed: Boolean(condition) }); assert.ok(condition, name); };
 const receipt = { ok: true, item: { id: '43123123-1234-4234-8234-123456789012', event_id: '900001', visibility: 'private', moderation_status: 'pending', trust_score: null, trust_score_status: 'not_computed' } };
 async function open(path, handler = () => ({ ok: true })) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-AR', serviceWorkers: 'block' });
-  const page = await context.newPage(), calls = [];
+  const page = await context.newPage(), calls = [], pageErrors = [];
   page.setDefaultTimeout(10_000);
-  page.on('pageerror', e => report.exceptions.push(e.message));
-  await page.addInitScript(() => { window.__geoRequests = 0; Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition() { window.__geoRequests++; throw Error('Unexpected GPS'); } } }); });
+  let rejectMount;
+  const mountFailure = new Promise((_, reject) => { rejectMount = reject; });
+  page.on('pageerror', e => { report.exceptions.push(e.message); pageErrors.push(e.message); rejectMount?.(Error('Fixture startup exception: ' + e.message)); });
+  await page.addInitScript(() => { window.__fixtureMounted = false; window.__fixtureNavigations = []; window.__geoRequests = 0; Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition() { window.__geoRequests++; throw Error('Unexpected GPS'); } } }); });
   await page.route('**/*', async route => {
     const req = route.request(), u = new URL(req.url());
-    if (u.origin !== origin) return route.abort();
+    if (u.origin !== origin) { report.blockedExternalRequests.push({ url: u.href, method: req.method(), resourceType: req.resourceType() }); return route.abort(); }
     if (u.pathname.startsWith('/api/')) {
-      calls.push({ path: u.pathname, method: req.method(), body: req.postDataJSON() });
+      const call = { path: u.pathname, method: req.method(), body: req.postDataJSON() };
+      calls.push(call);
+      const allowed = req.method() === 'POST' && (path === '/experience' ? u.pathname === '/api/consumer/experiences' : path === '/claim' && u.pathname === '/api/consumer/tap-handoff');
+      if (!allowed) { report.forbiddenRequests.push(call); return route.abort(); }
       const result = await handler(u.pathname, req);
       return route.fulfill({ status: result?.status || 200, contentType: 'application/json', body: typeof result === 'string' ? result : JSON.stringify(result?.payload || result) });
     }
     return route.continue();
   });
-  await page.goto(origin + path);
-  const close = async () => { report.gpsRequests += await page.evaluate(() => window.__geoRequests); await context.close(); };
-  return { context, page, calls, close };
+  try {
+    await Promise.race([page.goto(origin + path).then(() => page.waitForFunction(() => window.__fixtureMounted === true, null, { timeout: 5000 })), mountFailure]);
+    rejectMount = null;
+    check(pageErrors.length === 0, path + ' mounts real client components on the inert host without startup exceptions');
+  } catch (error) {
+    rejectMount = null;
+    report.mountFailures.push({ path, exceptions: pageErrors, message: error.message });
+    await context.close();
+    throw Error('Fixture failed to mount ' + path + ': ' + (pageErrors.join('; ') || error.message), { cause: error });
+  }
+  const navigation = () => page.evaluate(() => window.__fixtureNavigations);
+  const close = async () => { report.gpsRequests += await page.evaluate(() => window.__geoRequests); report.navigationIntents.push({ path, intents: await navigation() }); await context.close(); };
+  return { context, page, calls, navigation, close };
 }
 async function draft(page) {
   await page.getByLabel('Titulo corto').fill('Titulo de ensayo');
   await page.getByLabel('Comentario', { exact: true }).fill('Comentario sintetico que debe conservarse.');
   await page.getByLabel('Link de la foto (opcional)').fill('https://images.example.invalid/photo.jpg');
+}
+async function claimBoundary(t, name) {
+  check(t.calls.every(call => call.path === '/api/consumer/tap-handoff' && call.method === 'POST'
+    && JSON.stringify(Object.keys(call.body).sort()) === JSON.stringify(['eventId', 'freshToken'])
+    && call.body.eventId === '900001' && call.body.freshToken === freshToken), name + ' sends only the exact event-scoped synthetic handoff');
+  const urls = await t.page.evaluate(() => [location.href, ...[...document.querySelectorAll('[href]')].map(el => el.getAttribute('href')), ...window.__fixtureNavigations.map(row => row.href)]);
+  check(urls.every(url => typeof url === 'string' && !url.includes(freshToken) && !/[?&](?:freshToken|token|capability)=/i.test(url)), name + ' keeps the capability out of document, link and intended navigation URLs');
+  check(new URL(t.page.url()).pathname.startsWith('/claim'), name + ' records navigation intent without leaving the inert host');
 }
 try {
   for (const [name, response] of [['invalid JSON', 'not json'], ['empty envelope', {}], ['missing item', { ok: true }], ['foreign reading', { ...receipt, item: { ...receipt.item, event_id: '900002' } }], ['missing persistence reference', { ...receipt, item: { ...receipt.item, id: '' } }], ['unconfirmed publication state', { ...receipt, item: { ...receipt.item, visibility: 'public' } }]]) {
@@ -105,32 +143,63 @@ try {
   check((await photo.page.locator('body').innerText()).includes('tercera.png optimizada') && !(await photo.page.locator('body').innerText()).includes('segunda.png optimizada'), 'Latest selected photo wins despite reversed completion order');
   await photo.close();
 
-  let verifyCount = 0;
-  const claim = await open('/claim', path => path === '/api/consumer/session' ? { status: 401, payload: { ok: false, authenticated: false } } : path.endsWith('/start') ? { ok: true, mode: 'otp', delivery: { channel: 'email', status: 'accepted' }, deliveryChannel: 'email' } : path.endsWith('/verify') ? (++verifyCount === 1 ? { status: 401, payload: { ok: false, error: 'invalid_code' } } : { ok: true, consumer: { id: 'qa-only' } }) : { ok: true });
-  await claim.page.locator('.sun-public-cta > div').getByRole('button').filter({ hasText: /Iniciar|Activar|Validar|Continuar/ }).first().click();
-  const contact = claim.page.getByLabel('Email o celular', { exact: true });
-  await contact.waitFor(); check(await contact.evaluate(el => el === document.activeElement), 'Opening buyer contact focuses the first field');
-  await contact.fill('persona@example.invalid'); await contact.press('Enter');
-  const code = claim.page.getByLabel('Codigo recibido', { exact: true }); await code.waitFor();
-  check(await code.evaluate(el => el === document.activeElement) && await code.getAttribute('autocomplete') === 'one-time-code', 'Accepted code request focuses a labelled autofill-enabled code field');
-  check(await claim.page.getByRole('button', { name: 'Confirmar', exact: true }).isDisabled(), 'Confirm stays disabled for a missing code');
-  check((await claim.page.getByRole('status').innerText()).includes('La entrega todavía no está confirmada'), 'Accepted OTP request does not claim delivery');
-  await code.fill('1234'); await code.press('Enter'); await claim.page.getByRole('alert').waitFor();
-  check(await code.inputValue() === '1234' && await code.evaluate(el => el === document.activeElement), 'Rejected code stays available with focus and announced recovery');
-  await code.fill('5678'); await code.press('Enter'); const heading = claim.page.getByRole('heading', { name: 'Comprobante de Compra (Ticket/Factura)', exact: true }); await heading.waitFor();
-  check(await heading.evaluate(el => el === document.activeElement), 'Contact confirmation focuses purchase proof instead of claiming ownership');
-  check(!claim.calls.some(c => /\/public-cta\/claim|\/register-warranty/.test(c.path)), 'OTP alone sends no purchase or warranty mutation');
-  await claim.close();
+  let releaseHandoff;
+  const heldHandoff = new Promise(done => { releaseHandoff = done; });
+  const claim = await open('/claim', () => heldHandoff);
+  const primary = claim.page.getByTestId('sun-claim-portal').getByRole('button', { name: 'Continuar en mi cuenta', exact: true });
+  await primary.waitFor(); await claim.page.waitForFunction(() => { const button = document.querySelector('[data-testid="consumer-passport-handoff"] button'); return Boolean(button && !button.disabled); });
+  check(claim.calls.length === 0 && (await claim.navigation()).length === 0, 'Mounting the ownership gateway does not prepare access or navigate');
+  check(await claim.page.getByLabel('Email o celular', { exact: true }).count() === 0 && await claim.page.getByLabel('Codigo recibido', { exact: true }).count() === 0 && await claim.page.getByRole('heading', { name: 'Comprobante de Compra (Ticket/Factura)', exact: true }).count() === 0, 'The gateway does not render the retired contact, OTP or OCR flow');
+  await primary.evaluate(el => { el.click(); el.click(); });
+  await claim.page.getByRole('button', { name: 'Preparando acceso…', exact: true }).waitFor();
+  check(claim.calls.length === 1 && (await claim.navigation()).length === 0, 'A deliberate synchronous double click prepares once and waits for the handoff receipt');
+  await claimBoundary(claim, 'Pending ownership gateway');
+  releaseHandoff({ ok: true, eventId: '900001' });
+  await claim.page.waitForFunction(() => window.__fixtureNavigations.length === 1);
+  check(JSON.stringify(await claim.navigation()) === JSON.stringify([{ kind: 'router.push', href: claimHref }]), 'Only an exact matching receipt records the canonical account destination');
+  const opening = claim.page.getByRole('button', { name: 'Abriendo tu cuenta…', exact: true });
+  check(await opening.isDisabled(), 'Prepared navigation cannot prepare the capability again');
+  await opening.evaluate(el => { el.click(); el.click(); }); await claim.page.waitForTimeout(100);
+  check(claim.calls.length === 1 && (await claim.navigation()).length === 1, 'A prepared handoff remains single-use while the inert destination stays open');
+  await claimBoundary(claim, 'Confirmed ownership gateway'); await claim.close();
 
-  const error = await open('/claim', path => path === '/api/consumer/session' ? { status: 401, payload: { ok: false, authenticated: false } } : { status: 503, payload: { ok: false, error: 'resend_api_key_missing' } });
-  await error.page.locator('.sun-public-cta > div').getByRole('button').filter({ hasText: /Iniciar|Activar|Validar|Continuar/ }).first().click();
-  await error.page.getByLabel('Email o celular', { exact: true }).fill('persona@example.invalid'); await error.page.getByRole('button', { name: 'Enviar codigo', exact: true }).click(); await error.page.getByRole('alert').waitFor();
-  check(!(await error.page.getByRole('alert').innerText()).includes('RESEND_API_KEY') && await error.page.getByLabel('Email o celular', { exact: true }).inputValue() === 'persona@example.invalid', 'Provider failure gives a human message and preserves the contact'); await error.close();
+  for (const [name, response] of [['generic 200', { ok: true }], ['foreign-event 200', { ok: true, eventId: '900002' }]]) {
+    const invalid = await open('/claim', () => response);
+    await invalid.page.getByRole('button', { name: 'Continuar en mi cuenta', exact: true }).click();
+    await invalid.page.getByRole('alert').waitFor(); await invalid.page.waitForTimeout(100);
+    check(invalid.calls.length === 1 && (await invalid.navigation()).length === 0 && await invalid.page.getByRole('button', { name: 'Reintentar acceso', exact: true }).isEnabled(), name + ' cannot confirm access or navigate and never retries automatically');
+    await claimBoundary(invalid, name); await invalid.close();
+  }
 
-  const unknown = await open('/claim', path => path === '/api/consumer/session' ? { status: 401, payload: { ok: false, authenticated: false } } : {});
-  await unknown.page.getByRole('button', { name: 'Activar garantía o beneficios', exact: true }).click();
-  await unknown.page.getByLabel('Email o celular', { exact: true }).fill('persona@example.invalid'); await unknown.page.getByRole('button', { name: 'Enviar codigo', exact: true }).click(); await unknown.page.getByRole('alert').waitFor();
-  check(await unknown.page.getByLabel('Codigo recibido', { exact: true }).count() === 0, 'A generic 200 envelope cannot advance contact confirmation'); await unknown.close();
+  let retryRequests = 0;
+  const retry = await open('/claim', () => ++retryRequests === 1 ? { status: 503, payload: { ok: false, error: 'synthetic_unavailable' } } : { ok: true, eventId: '900001' });
+  await retry.page.getByRole('button', { name: 'Continuar en mi cuenta', exact: true }).click();
+  await retry.page.getByRole('alert').waitFor(); await retry.page.waitForTimeout(100);
+  check(retry.calls.length === 1 && (await retry.navigation()).length === 0 && await retry.page.getByRole('button', { name: 'Reintentar acceso', exact: true }).isEnabled(), 'A 503 preserves an explicit retry without another POST or navigation');
+  check(await retry.page.getByRole('link', { name: 'Abrir mis productos guardados', exact: true }).getAttribute('href') === '/me/products', 'A recoverable handoff failure offers the read-only products destination');
+  await retry.page.getByRole('button', { name: 'Reintentar acceso', exact: true }).click();
+  await retry.page.waitForFunction(() => window.__fixtureNavigations.length === 1);
+  check(retry.calls.length === 2 && JSON.stringify(await retry.navigation()) === JSON.stringify([{ kind: 'router.push', href: claimHref }]), 'Only a second deliberate click retries and a matching receipt permits account intent');
+  await claimBoundary(retry, 'Explicit retry'); await retry.close();
+
+  const expired = await open('/claim', () => ({ status: 400, payload: { ok: false, error: 'tap_handoff_invalid_or_expired' } }));
+  await expired.page.getByRole('button', { name: 'Continuar en mi cuenta', exact: true }).click();
+  await expired.page.getByRole('alert').waitFor();
+  const newReading = expired.page.getByRole('button', { name: 'Nueva lectura necesaria', exact: true });
+  check(await newReading.isDisabled() && (await expired.page.getByRole('alert').innerText()).includes('Acercá de nuevo el teléfono a la etiqueta'), 'An expired capability requires a new physical reading and disables retry');
+  check(await expired.page.getByRole('link', { name: 'Abrir mis productos guardados', exact: true }).getAttribute('href') === '/me/products', 'An expired handoff preserves read-only account recovery');
+  await newReading.evaluate(el => { el.click(); el.click(); }); await expired.page.waitForTimeout(100);
+  check(expired.calls.length === 1 && (await expired.navigation()).length === 0 && await expired.page.getByRole('button', { name: 'Reintentar acceso', exact: true }).count() === 0, 'An expired capability never rePOSTs or navigates');
+  await claimBoundary(expired, 'Expired ownership gateway'); await expired.close();
+
+  for (const path of ['/claim-invalid', '/claim-blocked']) {
+    const unavailable = await open(path);
+    const action = unavailable.page.getByTestId('sun-claim-portal').getByRole('button', { name: 'Continuar en mi cuenta', exact: true });
+    check(await action.isDisabled(), path + ' disables the canonical ownership gateway');
+    await action.evaluate(el => el.click()); await unavailable.page.waitForTimeout(100);
+    check(unavailable.calls.length === 0 && (await unavailable.navigation()).length === 0, path + ' cannot send a handoff or navigate');
+    await claimBoundary(unavailable, path); await unavailable.close();
+  }
 
   const support = await open('/report'); await support.page.locator('summary').click();
   await support.page.getByLabel('Describí lo que pasó', { exact: true }).fill('Descripción de ensayo con el producto.');
@@ -139,7 +208,10 @@ try {
   await support.page.waitForFunction(() => document.getElementById('report-contact')?.getAttribute('aria-invalid') === 'true');
   check(await support.page.locator('#report-contact').evaluate(el => el === document.activeElement), 'Support review focuses the invalid optional contact instead of the valid description');
   check(support.calls.length === 0, 'Support validation and review preparation perform no request'); await support.close();
-  check(report.gpsRequests === 0 && report.exceptions.length === 0, 'No geolocation or browser exceptions');
+  check(report.forbiddenRequests.length === 0, 'No auth, claim, warranty, OCR, support or unknown API requests escape the explicit synthetic allowlist');
+  check(report.blockedExternalRequests.every(row => row.method === 'GET' && row.resourceType === 'image' && row.url === 'https://images.example.invalid/photo.jpg'), 'Only the intentionally synthetic draft photo may attempt an external request, and it is blocked');
+  check(report.gpsRequests === 0 && report.exceptions.length === 0 && report.mountFailures.length === 0, 'No geolocation, mount failures or browser exceptions');
+  report.status = 'passed';
 } finally {
   await browser.close(); await new Promise(done => server.close(done));
   await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
