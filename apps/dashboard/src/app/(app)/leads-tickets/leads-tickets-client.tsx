@@ -18,6 +18,8 @@ import { TicketReferenceLookup, type TicketReferenceLookupHandle } from "../../.
 import { ticketEntryReference, ticketEntryCopy } from "../../../lib/ticket-entry";
 import type { TicketLookupLocale } from "../../../lib/ticket-reference-lookup";
 import { SUPPORT_TICKET_COLUMNS, supportTicketTableRow, supportTicketRowMatchesQuery } from "../../../lib/support-ticket-projection";
+import { reconcileAuthoritativeTicketStatus } from "../../../lib/ticket-status-reconciliation";
+import type { WorkflowCurrent } from "../../../lib/ticket-workflow";
 import type {
   CustomerMember,
   CustomerMemberDirectoryState,
@@ -100,10 +102,23 @@ export default function LeadsTicketsClient({
     tickets: confirmCustomerInbox<Ticket>("tickets", ticketsInput, inputCollections.tickets, context),
     orders: confirmCustomerInbox<Order>("orders", ordersInput, inputCollections.orders, context),
   }), [leadsInput, ticketsInput, ordersInput, inputCollections, leadsSource, context]);
-  const initialLeads = inboxes.leads.rows, initialTickets = inboxes.tickets.rows, initialOrders = inboxes.orders.rows;
+  const ticketSnapshot = useMemo(() => ({ context: ticketContext, inbox: inboxes.tickets }), [ticketContext, inboxes.tickets]);
+  const activeTicketSnapshot = useRef(ticketSnapshot); activeTicketSnapshot.current = ticketSnapshot;
+  const [ticketReconciliation, setTicketReconciliation] = useState({ snapshot: ticketSnapshot, inbox: inboxes.tickets });
+  const ticketInbox = ticketReconciliation.snapshot === ticketSnapshot ? ticketReconciliation.inbox : inboxes.tickets;
+  function acceptAuthoritativeTicket(current: WorkflowCurrent) {
+    if (activeTicketSnapshot.current !== ticketSnapshot) return;
+    setTicketReconciliation(previous => {
+      if (activeTicketSnapshot.current !== ticketSnapshot) return previous;
+      const latest = previous.snapshot === ticketSnapshot ? previous.inbox : inboxes.tickets;
+      const next = reconcileAuthoritativeTicketStatus(latest, current, { tenantScope, demoMode, canLookupTickets });
+      return next === latest ? previous : { snapshot: ticketSnapshot, inbox: next };
+    });
+  }
+  const initialLeads = inboxes.leads.rows, initialTickets = ticketInbox.rows, initialOrders = inboxes.orders.rows;
   const orderRows = useMemo(() => initialOrders.map(row => customerOrderRequestTableRow(row, ui.missing)), [initialOrders, ui.missing]);
-  const signalCollections = inboxes;
-  const entryReference = (value: unknown) => ticketEntryReference(value, inboxes.tickets, tenantScope, demoMode, canLookupTickets);
+  const signalCollections = useMemo(() => ({ ...inboxes, tickets: ticketInbox }), [inboxes, ticketInbox]);
+  const entryReference = (value: unknown) => ticketEntryReference(value, ticketInbox, tenantScope, demoMode, canLookupTickets);
   function openTicket(value: string) {
     const reference = entryReference(value);
     if (!reference || navigationBlocked() || !ticketLookup.current?.open(reference)) return;
@@ -279,7 +294,7 @@ export default function LeadsTicketsClient({
 
           <div hidden={activeTab !== "tickets"} className="space-y-6">
           <TicketReferenceLookup key={ticketContext.key} ref={ticketLookup} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets}
-            onNavigationLockChange={locked => setTicketLock({ context: ticketContext, locked })} />
+            onNavigationLockChange={locked => setTicketLock({ context: ticketContext, locked })} onAuthoritativeCurrent={acceptAuthoritativeTicket} />
           {activeTab === "tickets" && (inboxes.tickets.availability !== "ready" ? <CustomerInboxNotice state={inboxes.tickets} locale={locale} onRetry={retry} pending={refreshing} /> : <DataTable
             title={ui.tickets}
             columns={SUPPORT_TICKET_COLUMNS}

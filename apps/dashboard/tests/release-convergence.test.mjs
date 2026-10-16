@@ -14,6 +14,7 @@ import {REWARD_NOTICE_SOURCE_BASE,REWARD_NOTICE_ADDED,rewardNoticePriorInventory
 import {rewardProgramContextPublishedSourceHash} from './helpers/reward-program-context-reviewed-sources.mjs';
 import {CRM_ORDER_REQUEST_ADDED,crmOrderRequestPublishedSourceHash,crmOrderRequestPriorInventory,assertCrmOrderRequestAddedSource} from './helpers/crm-order-request-reviewed-sources.mjs';
 import {physicalTapPublishedSourceHash} from './helpers/physical-tap-reviewed-sources.mjs';
+import {TICKET_STATUS_SYNC_ADDED,ticketStatusSyncPublishedSourceHash,ticketStatusSyncPriorInventory,assertTicketStatusSyncAddedSource} from './helpers/ticket-status-sync-reviewed-sources.mjs';
 const source=await readFile(new URL('../src/lib/supplier-request-proxy.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source.replace(/^import .*;\r?$/gm,''),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const moduleExports={};
@@ -60,12 +61,13 @@ test('every merged source file retains its immutable origin except the exact rev
  assert.equal(baseline.protocol,'nexid.release-convergence-source.v1');assert.equal(baseline.baselineSourceFiles,487);assert.equal(baseline.replaced.length,3);assert.equal(baseline.added.length,2);
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
- await walk(root);assertGovernanceInventory(marketplacePriorInventory(rewardNoticePriorInventory(crmOrderRequestPriorInventory(actual,baseline.expected),baseline.expected),baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
- for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,rewardProgramContextPublishedSourceHash(path,crmOrderRequestPublishedSourceHash(path,physicalTapPublishedSourceHash(path,actual,baseline.expected[path]),baseline.expected[path])))),expected),expected,path);}
+ await walk(root);assertGovernanceInventory(marketplacePriorInventory(rewardNoticePriorInventory(crmOrderRequestPriorInventory(ticketStatusSyncPriorInventory(actual,baseline.expected),baseline.expected),baseline.expected),baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
+ for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=createHash('sha256').update(text).digest('hex');assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,rewardProgramContextPublishedSourceHash(path,crmOrderRequestPublishedSourceHash(path,physicalTapPublishedSourceHash(path,ticketStatusSyncPublishedSourceHash(path,actual,baseline.expected[path]),baseline.expected[path]),baseline.expected[path])))),expected),expected,path);}
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
  for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  for(const path of Object.keys(REWARD_NOTICE_ADDED))assertRewardNoticeAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
  for(const path of Object.keys(CRM_ORDER_REQUEST_ADDED))assertCrmOrderRequestAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+ for(const path of Object.keys(TICKET_STATUS_SYNC_ADDED))assertTicketStatusSyncAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  assert.ok(baseline.expected['apps/dashboard/src/components/supplier-request-workspace.tsx']);
  assert.ok(baseline.expected['apps/dashboard/src/lib/supplier-service-client.ts']);
 });

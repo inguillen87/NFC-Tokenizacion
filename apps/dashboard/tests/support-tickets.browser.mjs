@@ -122,7 +122,7 @@ async function inspect(page, name, width, theme, target) {
   check(dimensions.scrollWidth <= dimensions.width + 1 && !clipped, `${name} ${width} ${theme}: no page overflow or clipped report surface`);
 }
 try {
-  for (const theme of ['light', 'dark']) for (const width of [390, 1440]) {
+  for (const theme of ['light', 'dark']) for (const width of [320, 390, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 960 }, reducedMotion: 'reduce', serviceWorkers: 'block', locale: 'es-AR', timezoneId: 'America/Argentina/Buenos_Aires' });
     const page = await context.newPage();
     page.setDefaultTimeout(12000);
@@ -167,6 +167,13 @@ try {
         const receipt = { operationId: lookupId(100 + workflowWrites.length), requestId: command.request_id, sequence: String(state.items.length + 1), fromStatus: state.current.status, toStatus: command.status, reason: command.reason, actor: { id: workflowActor, label: 'Operadora sintética QA' }, createdAt: '2026-09-22T03:30:00.000Z', revision: 'b'.repeat(64) };
         state.receipts.set(command.request_id, receipt); state.items.unshift(receipt);
         state.current = { ...state.current, status: command.status, revision: receipt.revision, updatedAt: receipt.createdAt };
+        if (workflowMode === 'response_timeout') {
+          // The synthetic write is recorded, but the actual client deadline
+          // expires before its reply. This never reaches a real API or DB.
+          await new Promise(resolve => setTimeout(resolve, 16_500));
+          await reply({ ...workflowEnvelope(id, tenant, state), receipt, outcome: 'updated' }).catch(() => {});
+          return;
+        }
         if (workflowMode.startsWith('pagination_hold')) await new Promise(resolve => delayedWorkflowPatches.push(resolve));
         if (workflowMode === 'uncertain' || workflowMode === 'pagination_hold_uncertain') return reply({ ok: false, reason: 'ticket_workflow_unavailable' }, 503);
         return reply({ ...workflowEnvelope(id, tenant, state), receipt, outcome: 'updated' });
@@ -320,6 +327,59 @@ try {
       await workflow.getByLabel('Motivo del cambio', { exact: true }).fill(reason);
       await workflow.getByRole('button', { name: 'Revisar cambio', exact: true }).click();
     };
+
+    // A loaded ticket, unlike the historical result above, must reconcile the
+    // recent collection after an authenticated current read or a confirmed operation.
+    workflowStates.set(ticketId, { ...initialWorkflow(ticketId, 'qa-only'), current: { ...initialWorkflow(ticketId, 'qa-only').current, status: 'open' } });
+    await openWorkflow(ticketId, 'uncertain'); await reviewWorkflow('Motivo sintético de la fila cargada');
+    const beforeLoadedWrite = workflowWrites.length;
+    await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click();
+    await workflow.locator('[data-workflow-state="uncertain"]').waitFor();
+    const loadedBody = workflowWrites.at(-1).body;
+    const loadedRow = page.locator('tbody tr').filter({ hasText: ticketId });
+    check((await loadedRow.locator('td').last().textContent()).trim() === 'Abierto', `${width} ${theme}: uncertain operation does not update a loaded table row optimistically`);
+    workflowMode = 'normal';
+    workflowStates.get(ticketId).current = { ...workflowStates.get(ticketId).current, status: 'pending', revision: 'c'.repeat(64) };
+    await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click();
+    await workflow.locator('[data-workflow-state="saved"]').waitFor();
+    check(workflowWrites.length === beforeLoadedWrite + 2 && workflowWrites.at(-1).body === loadedBody, `${width} ${theme}: explicit replay preserves the original command without an automatic PATCH`);
+    check((await loadedRow.locator('td').last().textContent()).trim() === 'Pendiente' && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Pendiente', `${width} ${theme}: loaded table and detail use replay current rather than the older closed receipt`);
+    await search.fill(ticketId);
+    await page.getByLabel('Filtrar por estado', { exact: true }).selectOption('PENDING');
+    check(await page.locator('tbody tr').count() === 1 && (await loadedRow.locator('td').last().textContent()).trim() === 'Pendiente', `${width} ${theme}: status filter includes the confirmed replay row`);
+    for (const format of ['CSV', 'Excel']) {
+      const pendingDownload = page.waitForEvent('download');
+      await page.getByRole('button', { name: format, exact: true }).click();
+      const downloaded = await pendingDownload, file = join(out, `confirmed-pending-${width}-${theme}.${format === 'CSV' ? 'csv' : 'xls'}`);
+      await downloaded.saveAs(file); const text = await readFile(file, 'utf8');
+      check(text.includes(ticketId) && text.includes('PENDING') && !text.includes('CLOSED'), `${width} ${theme}: ${format} exports the confirmed filtered row status`);
+    }
+    await page.getByLabel('Filtrar por estado', { exact: true }).selectOption('all'); await search.fill('');
+    await inspect(page, 'ticket-loaded-confirmed-current', width, theme, '.data-table-card');
+
+    await workflow.getByRole('button', { name: 'Volver a consultar', exact: true }).click();
+    await workflow.locator('[data-workflow-state="draft"]').waitFor({ state: 'attached' });
+    workflowMode = 'response_timeout'; await reviewWorkflow('Motivo conservado después de vencer el tiempo de respuesta');
+    await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click();
+    await workflow.locator('[data-workflow-state="uncertain"]').waitFor({ timeout: 22_000 });
+    const afterTimedOutWrite = workflowWrites.length, beforeRecoveryRead = historyReads.length;
+    check((await loadedRow.locator('td').last().textContent()).trim() === 'Pendiente', `${width} ${theme}: real client deadline keeps the last confirmed loaded row`);
+    const recoveryState = workflowStates.get(ticketId), savedHistory = [...recoveryState.items];
+    recoveryState.items = []; // A current status without our receipt is insufficient.
+    await workflow.getByRole('button', { name: 'Consultar el estado antes de continuar', exact: true }).click();
+    await workflow.locator('[data-history-state="ready"]').waitFor({ state: 'attached' });
+    check(await workflow.locator('[data-workflow-state="uncertain"]').count() === 1 && (await loadedRow.locator('td').last().textContent()).trim() === 'Cerrado' && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Cerrado' && workflowWrites.length === afterTimedOutWrite, `${width} ${theme}: authenticated history updates current detail and row without confirming our receipt or causing a PATCH`);
+    check(await referenceInput.isDisabled() && await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled(), `${width} ${theme}: current status alone cannot unlock the uncertain operation`);
+    recoveryState.items = savedHistory;
+    recoveryState.current = { ...recoveryState.current, status: 'open', revision: 'd'.repeat(64) };
+    await workflow.getByRole('button', { name: 'Consultar el estado antes de continuar', exact: true }).click();
+    await workflow.locator('[data-workflow-state="saved"]').waitFor();
+    check(historyReads.length === beforeRecoveryRead + 2 && workflowWrites.length === afterTimedOutWrite, `${width} ${theme}: exact receipt recovery uses two explicit GETs and zero new PATCHes`);
+    check((await loadedRow.locator('td').last().textContent()).trim() === 'Abierto' && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Abierto', `${width} ${theme}: matched receipt recovery synchronizes the later current status to detail and table`);
+    check(await workflow.getByLabel('Motivo del cambio', { exact: true }).inputValue() === 'Motivo conservado después de vencer el tiempo de respuesta', `${width} ${theme}: read recovery preserves the reviewed reason`);
+    await inspect(page, 'ticket-loaded-read-recovery', width, theme, '[data-testid="ticket-reference-lookup"]');
+    workflowMode = 'normal';
+
     const checkEntryLocked = async (id, phase) => {
       const before = { lookups: lookupCalls.length, history: historyReads.length, writes: workflowWrites.length };
       check(await referenceInput.isDisabled() && await lookup.getByRole('button', { name: 'Buscar ticket', exact: true }).isDisabled(), `${width} ${theme}: ${phase} disables reference editing and lookup submission`);
