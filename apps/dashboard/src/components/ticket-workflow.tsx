@@ -25,6 +25,7 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent, onNavig
   const navigationLockRef = useRef(onNavigationLockChange); navigationLockRef.current = onNavigationLockChange;
   const [history, setHistory] = useState<WorkflowHistory | null>(null);
   const [readState, setReadState] = useState<"idle" | "loading" | "ready" | "unavailable" | "forbidden">("idle");
+  const [readAccessDenied, setReadAccessDenied] = useState(false);
   const [target, setTarget] = useState("");
   const [reason, setReason] = useState("");
   const [phase, setPhase] = useState<Phase>("draft");
@@ -41,7 +42,9 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent, onNavig
     const next = await reader.current!.read(cursor);
     if (!next) return;
     setReadState(next.status);
+    if (next.status === "forbidden") setReadAccessDenied(true);
     if (next.status !== "ready") return;
+    setReadAccessDenied(false);
     const nextHistory = next.history;
     setHistory(previous => cursor && previous ? {
       ...nextHistory, items: [...previous.items, ...nextHistory.items.filter(item => !previous.items.some(old => old.operationId === item.operationId))],
@@ -88,6 +91,9 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent, onNavig
     }
   }
   const unresolved = writer.current.isUnresolved();
+  // A temporary read failure cannot remove the frozen operation's recovery
+  // controls. Permission loss still hides the private snapshot and actions.
+  const recoveryVisible = unresolved && !readAccessDenied && readState !== "forbidden";
   const locked = !writer.current.canEdit() || phase === "review" || phase === "saved" || phase === "conflict" || phase === "blocked";
   const actionAvailable = history?.current.canUpdate && readState === "ready";
   const message = phase === "invalid" ? copy.invalid : phase === "submitting" ? copy.submitting : phase === "saved" ? copy.saved : phase === "uncertain" ? copy.uncertain
@@ -97,12 +103,12 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent, onNavig
       <summary className="min-h-11 cursor-pointer text-base font-semibold text-white">{copy.heading}</summary>
       <p className="mt-2 text-sm leading-6 text-slate-300">{copy.hint}</p>
       <div className="mt-3 text-sm text-slate-300" role="status" data-history-state={readState}>{readState === "loading" ? copy.loading : readState === "unavailable" ? copy.unavailable : readState === "forbidden" ? copy.denied : null}</div>
-      {readState === "unavailable" || readState === "forbidden" ? <button type="button" className={buttonClass + " mt-3"} onClick={() => void load()}>{copy.refresh}</button> : null}
-      {history && readState === "ready" ? (
+      {(readState === "unavailable" && !recoveryVisible) || readState === "forbidden" ? <button type="button" className={buttonClass + " mt-3"} onClick={() => void load()}>{copy.refresh}</button> : null}
+      {history && (readState === "ready" || recoveryVisible) ? (
         <>
           <p className="mt-4 text-sm text-slate-200">{copy.current}: <strong data-testid="workflow-current-status">{statusLabel(history.current.status)}</strong></p>
           {!history.current.canUpdate ? <p className="mt-3 text-sm leading-6 text-slate-300">{copy.blocked} {history.current.blockedReason ? copy[history.current.blockedReason] : ""}</p> : null}
-          {actionAvailable ? (
+          {actionAvailable || (recoveryVisible && history.current.canUpdate) ? (
             <form onSubmit={review} className="mt-5 space-y-4">
               <div><label htmlFor={`${formId}-status`} className="mb-2 block text-sm font-semibold text-slate-200">{copy.target}</label>
                 <select id={`${formId}-status`} value={target} onChange={event => { setTarget(event.target.value); setPhase("draft"); }} disabled={locked} className={inputClass}>
@@ -133,14 +139,14 @@ export function TicketWorkflow({ ticket, tenantScope, locale, onCurrent, onNavig
           {unresolved && phase !== "submitting" ? <button type="button" onClick={() => void confirm()} className={buttonClass + " mt-3"}>{copy.retry}</button> : null}
           {phase === "conflict" || phase === "blocked" || unresolved && phase !== "submitting" ? <button type="button" onClick={() => void load(undefined, true)} className={buttonClass + " mt-3"}>{copy.reload}</button> : null}
           {phase === "saved" ? <button type="button" onClick={() => { writer.current!.clear(); setCommand(null); setTarget(""); setReason(""); setPhase("draft"); void load(); }} className={buttonClass + " mt-3"}>{copy.refresh}</button> : null}
-          <section className="mt-6" aria-label={copy.history}>
+          {readState === "ready" ? <section className="mt-6" aria-label={copy.history}>
             <h5 className="font-semibold text-white">{copy.history}</h5>
             {!history.items.length ? <p className="mt-2 text-sm text-slate-300">{copy.empty}</p> : <ol className="mt-3 space-y-3" data-testid="ticket-workflow-history">{history.items.map(item => <li key={item.operationId} className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
               <p className="font-semibold">{statusLabel(item.fromStatus)} → {statusLabel(item.toStatus)}</p><p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.reason}</p>
               <p className="mt-2 break-all">{copy.actor}: {item.actor.label || item.actor.id || copy.actorMissing}</p><p className="mt-1">{copy.at}: <time dateTime={item.createdAt}>{moment(item.createdAt)}</time></p>
             </li>)}</ol>}
             {history.page.hasMore ? <button type="button" disabled={phase === "submitting"} onClick={() => void load(history.page.nextCursor!)} className={buttonClass + " mt-3"}>{copy.older}</button> : null}
-          </section>
+          </section> : null}
         </>
       ) : null}
     </details>

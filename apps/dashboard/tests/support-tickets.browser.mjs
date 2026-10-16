@@ -147,6 +147,7 @@ try {
         if (!workflowPatch) {
           historyReads.push({ id, cursor: url.searchParams.get('cursor') });
           if (workflowMode === 'history_error') return reply({ ok: false, reason: 'ticket_workflow_unavailable' }, 503);
+          if (workflowMode === 'history_unauthorized' || workflowMode === 'history_forbidden') return reply({ ok: false, reason: 'forbidden' }, workflowMode === 'history_unauthorized' ? 401 : 403);
           if (workflowMode === 'blocked') state.current = { ...state.current, canUpdate: false, blockedReason: 'incident_managed' };
           if (workflowMode.startsWith('pagination')) {
             const makeItem = sequence => ({ operationId: lookupId(1000 + sequence), requestId: lookupId(2000 + sequence), sequence: String(sequence), fromStatus: 'open', toStatus: 'pending', reason: `Cambio sintético anterior ${sequence}`, actor: { id: workflowActor, label: null }, createdAt: '2026-09-22T02:30:00.000Z', revision: 'a'.repeat(64) });
@@ -400,6 +401,13 @@ try {
     await workflow.locator('[data-workflow-state="uncertain"]').waitFor();
     const uncertainCommand = workflowWrites.at(-1).body;
     check(await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled() && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Pendiente', `${width} ${theme}: uncertain write freezes details and does not falsely close ticket`);
+    const beforeFailedHistory = { reads: historyReads.length, writes: workflowWrites.length };
+    workflowMode = 'history_error';
+    await workflow.getByRole('button', { name: 'Consultar el estado antes de continuar', exact: true }).click();
+    await workflow.locator('[data-history-state="unavailable"]').waitFor({ state: 'attached' });
+    check(await workflow.locator('[data-workflow-state="uncertain"]').isVisible() && await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).isVisible(), `${width} ${theme}: failed history keeps the uncertain outcome and explicit same-command retry visible`);
+    check(await workflow.getByLabel('Motivo del cambio', { exact: true }).inputValue() === 'Motivo sintético que se conserva' && await workflow.getByLabel('Motivo del cambio', { exact: true }).isDisabled() && await workflow.getByLabel('Nuevo estado', { exact: true }).isDisabled(), `${width} ${theme}: failed history preserves the frozen reason and target without enabling a new change`);
+    check(await workflow.getByTestId('ticket-workflow-history').count() === 0 && historyReads.length === beforeFailedHistory.reads + 1 && workflowWrites.length === beforeFailedHistory.writes, `${width} ${theme}: failed history claims no refreshed history and never retries the PATCH automatically`);
     await checkEntryLocked(lookupId(21), 'uncertain');
     if ((width === 390 && theme === 'light') || (width === 1440 && theme === 'dark')) await inspect(page, 'ticket-open-blocked-uncertain', width, theme, '[data-testid="ticket-reference-lookup"]');
     workflowMode = 'forbidden'; await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click();
@@ -408,6 +416,24 @@ try {
     workflowMode = 'normal'; workflowStates.get(lookupId(21)).current = { ...workflowStates.get(lookupId(21)).current, status: 'open', revision: 'c'.repeat(64) };
     await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).click(); await workflow.locator('[data-workflow-state="saved"]').waitFor();
     check(workflowWrites.slice(-3).every(entry => entry.body === uncertainCommand) && (await workflow.getByTestId('workflow-current-status').innerText()) === 'Abierto', `${width} ${theme}: retries are byte-identical and replay uses authoritative current status rather than old receipt`);
+    for (const [suffix, deniedMode] of [[31, 'history_unauthorized'], [32, 'history_forbidden']]) {
+      await openWorkflow(lookupId(suffix), 'uncertain'); await reviewWorkflow('Motivo privado conservado durante pérdida de autorización');
+      await workflow.getByRole('button', { name: 'Confirmar cambio de estado', exact: true }).click();
+      await workflow.locator('[data-workflow-state="uncertain"]').waitFor();
+      const beforeDeniedRead = workflowWrites.length;
+      workflowMode = deniedMode;
+      await workflow.getByRole('button', { name: 'Consultar el estado antes de continuar', exact: true }).click();
+      await workflow.locator('[data-history-state="forbidden"]').waitFor({ state: 'attached' });
+      check(await workflow.locator('form, textarea, select').count() === 0 && await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).count() === 0, `${width} ${theme}: ${deniedMode} hides private operation inputs and write recovery actions`);
+      workflowMode = 'history_error';
+      await workflow.getByRole('button', { name: 'Volver a consultar', exact: true }).click();
+      await workflow.locator('[data-history-state="unavailable"]').waitFor({ state: 'attached' });
+      check(await workflow.locator('form, textarea, select').count() === 0 && await workflow.getByRole('button', { name: 'Reintentar el mismo cambio', exact: true }).count() === 0 && await referenceInput.isDisabled(), `${width} ${theme}: a failed read after ${deniedMode} cannot restore private recovery or unlock the uncertain operation`);
+      workflowMode = 'normal';
+      await workflow.getByRole('button', { name: 'Volver a consultar', exact: true }).click();
+      await workflow.locator('[data-workflow-state="saved"]').waitFor();
+      check(workflowWrites.length === beforeDeniedRead && await workflow.getByLabel('Motivo del cambio', { exact: true }).inputValue() === 'Motivo privado conservado durante pérdida de autorización', `${width} ${theme}: only an authorized read restores the receipt and preserved reason after ${deniedMode}, with no additional PATCH`);
+    }
     for (const [suffix, boundary, nextContext] of [
       [28, 'permission revocation', { tenant: 'qa-only', demo: false, canLookup: false }],
       [29, 'tenant change', { tenant: 'qa-second', demo: false, canLookup: true }],

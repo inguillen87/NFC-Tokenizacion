@@ -256,3 +256,95 @@ test("an uncertain operation remains unconfirmed when history has only matching 
     h.unmount();
   }
 });
+
+for (const failure of ["503", "network"]) {
+  test(`an uncertain operation keeps its frozen recovery visible through a pending and failed ${failure} history read`, async () => {
+    const calls = [], commits = [], locks = []; let reads = 0, patches = 0, finishRead;
+    const h = workflowComponent(async (url, init) => {
+      calls.push({ url, init });
+      if (init.method === "PATCH") {
+        patches++;
+        return patches === 1 ? response({ ok: false }, 503) : response(saved({ outcome: "replayed", receipt: item({ requestId: JSON.parse(init.body).request_id }) }));
+      }
+      if (++reads === 1) return response(history());
+      return new Promise((resolve, reject) => { finishRead = () => failure === "network" ? reject(Error("history connection lost")) : resolve(response({ ok: false }, 503)); });
+    });
+    const props = { onAuthoritativeCurrent: value => commits.push(value), onNavigationLockChange: value => locks.push(value) };
+    let tree = await reviewComponent(h, props); componentConfirm(tree).props.onClick(); await componentSettle(); tree = h.render(props);
+    const original = calls.find(call => call.init.method === "PATCH").init;
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].reload).props.onClick();
+    tree = h.render(props);
+    const assertRecovery = () => {
+      const nodes = componentNodes(tree);
+      assert.equal(nodes.find(node => node.type === "textarea").props.value, item().reason);
+      assert.equal(nodes.find(node => node.type === "textarea").props.disabled, true);
+      assert.equal(nodes.find(node => node.type === "select").props.value, "pending");
+      assert.equal(nodes.find(node => node.type === "select").props.disabled, true);
+      assert.ok(nodes.find(node => node.props?.["data-workflow-state"] === "uncertain"));
+      assert.ok(nodes.find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry));
+      assert.equal(nodes.some(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].review), false);
+      assert.equal(nodes.some(node => node.props?.["data-testid"] === "ticket-workflow-history"), false);
+      assert.equal(patches, 1); assert.equal(commits.length, 1); assert.equal(locks.at(-1), true);
+    };
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-history-state"] === "loading")); assertRecovery();
+    finishRead(); await componentSettle(); tree = h.render(props);
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-history-state"] === "unavailable")); assertRecovery();
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry).props.onClick();
+    await componentSettle(); tree = h.render(props);
+    const attempts = calls.filter(call => call.init.method === "PATCH");
+    assert.equal(attempts.length, 2); assert.equal(attempts[1].init.body, original.body);
+    assert.equal(attempts[1].init.headers["Idempotency-Key"], original.headers["Idempotency-Key"]);
+    assert.equal(reads, 2); assert.equal(commits.at(-1).status, "pending"); assert.equal(locks.at(-1), false);
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-workflow-state"] === "saved"));
+    h.unmount();
+  });
+}
+
+for (const deniedStatus of [401, 403]) {
+  test(`history ${deniedStatus} keeps frozen recovery hidden until an explicit authorized read succeeds`, async () => {
+    const calls = [], locks = []; let readMode = "initial", finishRead;
+    const h = workflowComponent(async (url, init) => {
+      calls.push({ url, init });
+      if (init.method === "PATCH") return response({ ok: false }, 503);
+      if (readMode === "initial" || readMode === "restored") return response(history());
+      if (readMode === "denied") return response({ ok: false }, deniedStatus);
+      return new Promise(resolve => { finishRead = () => resolve(response({ ok: false }, 503)); });
+    });
+    const props = { onNavigationLockChange: value => locks.push(value) };
+    let tree = await reviewComponent(h, props); componentConfirm(tree).props.onClick(); await componentSettle(); tree = h.render(props);
+    readMode = "denied";
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].reload).props.onClick();
+    await componentSettle(); tree = h.render(props);
+    const assertRestricted = () => {
+      const nodes = componentNodes(tree);
+      assert.equal(nodes.some(node => node.type === "form" || node.type === "textarea" || node.type === "select"), false);
+      assert.equal(nodes.some(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry), false);
+      assert.equal(nodes.some(node => node.props?.["data-workflow-state"] || node.props?.["data-testid"] === "ticket-workflow-history"), false);
+      assert.equal(calls.filter(call => call.init.method === "PATCH").length, 1); assert.equal(locks.at(-1), true);
+    };
+    assert.ok(componentNodes(tree).find(node => node.props?.["data-history-state"] === "forbidden")); assertRestricted();
+    readMode = "pending";
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].refresh).props.onClick();
+    tree = h.render(props); assertRestricted();
+    finishRead(); await componentSettle(); tree = h.render(props); assertRestricted();
+    readMode = "restored";
+    componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].refresh).props.onClick();
+    await componentSettle(); tree = h.render(props);
+    assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.value, item().reason);
+    assert.equal(componentNodes(tree).find(node => node.type === "textarea").props.disabled, true);
+    assert.ok(componentNodes(tree).find(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry));
+    assert.equal(calls.filter(call => call.init.method === "PATCH").length, 1); assert.equal(locks.at(-1), true);
+    h.unmount();
+  });
+}
+
+test("an unavailable initial history never exposes an editable or retryable operation", async () => {
+  const calls = [];
+  const h = workflowComponent(async (url, init) => { calls.push(init.method); return response({ ok: false }, 503); });
+  let tree = h.render(); tree.props.onToggle({ currentTarget: { open: true } }); await componentSettle(); tree = h.render();
+  const nodes = componentNodes(tree);
+  assert.ok(nodes.find(node => node.props?.["data-history-state"] === "unavailable"));
+  assert.equal(nodes.some(node => node.type === "form" || node.type === "textarea" || node.type === "select"), false);
+  assert.equal(nodes.some(node => node.type === "button" && node.props.children === ticketWorkflowCopy["es-AR"].retry), false);
+  assert.deepEqual(calls, ["GET"]); h.unmount();
+});
