@@ -60,7 +60,7 @@ test("SUN demo copy never asserts a fresh physical tap or a real verification", 
   assert.match(page, /trustScore == null \? "Score no reportado" : "Score de calidad informado"/);
   assert.match(page, /Evidencia CMAC[\s\S]{0,160}\|\| "No disponible"/);
   assert.match(page, /isDemoPreview=\{isDemoPreview\}/);
-  assert.match(actions, /selectSunTruthCopy\([\s\S]{0,180}SUN_DEMO_COPY\.claimTapLabel[\s\S]{0,180}"Lectura digital"/);
+  assert.match(actions, /tapState !== "blocked" && !isDemoPreview/);
   assert.match(actions, /selectSunTruthCopy\(isDemoPreview, SUN_DEMO_COPY\.gatedActions, realGatedCopy\)/);
   assert.doesNotMatch(actions, /tap físico prueba acceso al producto|core: autenticidad/i);
   assert.match(engagement, /from "\.\/sun-demo-wine-quiz"/);

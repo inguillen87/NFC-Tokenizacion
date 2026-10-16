@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [page, telemetry, tapLocationModel, locationExperience, passportMap, consumerStatus, sectionNav, actions] = await Promise.all([
+const [page, telemetry, tapLocationModel, locationExperience, passportMap, consumerStatus, sectionNav, actions, claimPortal] = await Promise.all([
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/tap-precision-telemetry.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/tap-location-model.ts", import.meta.url), "utf8"),
@@ -11,6 +11,7 @@ const [page, telemetry, tapLocationModel, locationExperience, passportMap, consu
   readFile(new URL("../src/app/sun/sun-consumer-status.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/sun-section-nav.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/cta-actions.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/sun/sun-claim-portal.tsx", import.meta.url), "utf8"),
 ]);
 
 test("the first mobile viewport is product-first and keeps the official image eager", () => {
@@ -39,11 +40,11 @@ test("opened or manually declared states expose a report path and keep protected
   assert.match(actions, /const isManualOpenedConsumerFlow = tapState === "manual_opened"/);
   assert.match(actions, /const isOpenedConsumerFlow = isSensorOpenedConsumerFlow \|\| isManualOpenedConsumerFlow/);
   assert.match(actions, /const commercialActionsAllowed = canExecute && !isManualOpenedConsumerFlow/);
-  assert.match(actions, /const showReportFlow = isOpenedConsumerFlow \|\| tapState === "blocked"/);
-  assert.match(actions, /Describir el problema/);
+  assert.match(actions, /supportAvailable=\{supportAvailable && !isDemoPreview\}/);
+  assert.match(claimPortal, /supportAvailable \? <a href="#report-problem"/);
   assert.match(page, /const reportProblemHref = "#report-problem"/);
   assert.match(page, /<ReportProblemForm/);
-  assert.match(actions, /if \(actionKey === "report"\) \{\s+window.location.hash = "report-problem";\s+return;/);
+  assert.doesNotMatch(actions, /\/api\/public-cta\/report-problem/);
 });
 
 test("phone location is explicit, low-precision and sends only the minimal browser context", () => {

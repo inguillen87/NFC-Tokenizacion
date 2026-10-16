@@ -81,13 +81,13 @@ test("the browser writer fails closed without a fresh tap capability and forward
 });
 
 test("real wine SUN page records truthful views and meaningful starts through the same-origin BFF", async () => {
-  const [tracker, page, services, nextStep, engagement, actions, agro, writer, bff] = await Promise.all([
+  const [tracker, page, services, nextStep, engagement, claimPortal, agro, writer, bff] = await Promise.all([
     read("../src/app/sun/wine-experience-events.tsx"),
     read("../src/app/sun/page.tsx"),
     read("../src/app/sun/sun-services-hub.tsx"),
     read("../src/app/sun/post-tap-next-step.tsx"),
     read("../src/app/sun/qr-engagement-suite.tsx"),
-    read("../src/app/sun/cta-actions.tsx"),
+    read("../src/app/sun/sun-claim-portal.tsx"),
     read("../src/app/sun/agro-dpp-experience.tsx"),
     read("../src/app/sun/public-experience-events.ts"),
     read("../src/app/api/public-cta/[action]/route.ts"),
@@ -104,7 +104,7 @@ test("real wine SUN page records truthful views and meaningful starts through th
   assert.match(page, /TECHNICAL_SHEET_VIEWED/);
   assert.match(services, /LOYALTY_OFFER_VIEWED/);
   assert.match(nextStep, /PROBLEM_REPORTED/);
-  assert.match(actions, /data-sun-experience-event="PROBLEM_REPORTED"/);
+  assert.match(claimPortal, /data-sun-experience-event="PROBLEM_REPORTED"/);
   assert.match(engagement, /TRAINING_STARTED/);
   assert.match(tracker, /recordPublicExperienceEvent/);
   assert.match(agro, /recordPublicExperienceEvent/);
