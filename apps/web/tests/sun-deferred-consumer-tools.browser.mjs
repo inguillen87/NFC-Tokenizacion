@@ -96,7 +96,13 @@ try {
   t.state.hold = false; for (const route of t.state.held) await route.continue();
   await t.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'ready');
   check(await cta.getAttribute('aria-busy') === 'false', 'Ready chunk clears aria-busy'); check(await cta.evaluate(el => el === document.activeElement), 'Keyboard load keeps focus in the loaded region');
-  check(await cta.getByText('Necesito una nueva lectura NFC', { exact: true }).count() === 1, 'Blocked policy remains blocked after deferred mount');
+  {
+    const portal = cta.getByTestId('sun-claim-portal'), action = portal.getByRole('button', { name: 'Continuar en mi cuenta', exact: true });
+    check(await portal.count() === 1 && await portal.getAttribute('data-claim-available') === 'false'
+      && await action.count() === 1 && await action.isDisabled()
+      && await portal.locator('a[href]').evaluateAll(links => links.every(link => link.getAttribute('href') === '#report-problem')),
+    'Blocked ownership portal has a disabled account action and no privileged link after deferred mount');
+  }
   await t.page.locator('#qr-engagement').scrollIntoViewIfNeeded(); await t.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="qr-engagement"]')?.getAttribute('data-tool-load-state') === 'ready');
   check(t.state.requests.filter(p => /\/chunks\/qr-engagement-suite-/.test(p)).length === 1, 'Brand tools download once when approaching viewport');
   const name = qr.getByPlaceholder('Tu nombre completo'); await name.fill('Persona de ensayo'); const inputIdentity = await name.evaluate(el => { window.__savedFormInput = el; return true; });
@@ -181,7 +187,13 @@ try {
     await slow.page.waitForFunction(id => document.querySelector(`[data-sun-deferred-tool="${id}"]`)?.getAttribute('data-tool-load-state') === 'ready', tool.anchor);
     check(await slow.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).evaluate(el => el === document.activeElement) && await slow.page.evaluate(() => window.scrollY < 250), 'Late readiness does not take focus or scroll from the reader ' + width + ' ' + theme + ' ' + tool.anchor);
     check(await region.getByTestId('sun-tool-delayed').count() === 0 && await region.getAttribute('aria-busy') === 'false', 'Readiness removes the notice and clears busy ' + width + ' ' + theme + ' ' + tool.anchor);
-    if (!tool.demo) check(await region.getByText('Necesito una nueva lectura NFC', { exact: true }).count() === 1, 'Delayed readiness preserves the real blocked policy ' + width + ' ' + theme);
+    if (!tool.demo) {
+      const portal = region.getByTestId('sun-claim-portal'), action = portal.getByRole('button', { name: 'Continuar en mi cuenta', exact: true });
+      check(await portal.count() === 1 && await portal.getAttribute('data-claim-available') === 'false'
+        && await action.count() === 1 && await action.isDisabled()
+        && await portal.locator('a[href]').evaluateAll(links => links.every(link => link.getAttribute('href') === '#report-problem')),
+      'Delayed ownership portal preserves its disabled account action and no privileged link ' + width + ' ' + theme);
+    }
     if (tool.anchor === 'qr-engagement') {
       await region.scrollIntoViewIfNeeded();
       const name = region.getByPlaceholder('Tu nombre completo'); await name.fill('Borrador de ensayo');
