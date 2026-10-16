@@ -5,13 +5,12 @@ import { createServer } from 'node:http';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { selectCtaActionsChunk } from './browser/deferred-tools-chunk-contract.mjs';
 const web = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(web, '../..'), output = resolve(process.env.QA_OUTPUT || 'artifacts/performance/deferred-tools-next');
 await mkdir(output, { recursive: true });
 const chunkFolder = join(web, '.next/static/chunks');
 const candidates = (await readdir(chunkFolder)).filter(name => name.endsWith('.js'));
-let ctaChunk;
-for (const name of candidates) if ((await readFile(join(chunkFolder, name), 'utf8')).includes('/api/public-cta/receipt-ocr')) { ctaChunk = name; break; }
-assert.ok(ctaChunk, 'Built CtaActions chunk exists');
+const ctaChunk = selectCtaActionsChunk(await Promise.all(candidates.map(async name => ({ name, source: await readFile(join(chunkFolder, name), 'utf8') }))));
 const reserve = createServer(); await new Promise(r => reserve.listen(0, '127.0.0.1', r)); const port = reserve.address().port; await new Promise(r => reserve.close(r));
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|HOME|USERPROFILE|APPDATA|LOCALAPPDATA)$/i.test(key)));
 Object.assign(env, { NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' });
@@ -21,7 +20,7 @@ const origin = 'http://127.0.0.1:' + port;
 for (let n = 0; n < 80; n++) { try { if ((await fetch(origin + '/release.json')).ok) break; } catch {} await new Promise(r => setTimeout(r, 250)); if (n === 79) { server.kill(); throw Error('local_server_not_ready'); } }
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
-const report = { actualNextBuild: true, syntheticContract: true, physicalTapMeasured: false, chunkAttempts: 0, writes: [], errors: [], checks: [] };
+const report = { actualNextBuild: true, syntheticContract: true, physicalTapMeasured: false, ctaChunk, chunkAttempts: 0, chunkOutages: 0, writes: [], errors: [], checks: [] };
 let failEnabled = true;
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
 try {
@@ -34,7 +33,7 @@ try {
     if (u.origin !== origin) return route.abort();
     if (u.pathname === '/qa-product.svg') return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="92" height="128"><rect width="92" height="128" fill="#147d83"/></svg>' });
     if (u.pathname.startsWith('/api/')) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false}' });
-    if (u.pathname.endsWith('/' + ctaChunk)) { report.chunkAttempts++; if (failEnabled) return route.fulfill({ status: 503, contentType: 'text/javascript', body: '' }); }
+    if (u.pathname === '/_next/static/chunks/' + ctaChunk) { report.chunkAttempts++; if (failEnabled) { report.chunkOutages++; return route.fulfill({ status: 503, contentType: 'text/javascript', body: '' }); } }
     return route.continue();
   });
   await page.goto(origin + '/sun?snapshot=qa-replay&trace=synthetic&access=invalid', { waitUntil: 'networkidle' });
@@ -42,6 +41,7 @@ try {
   check(report.chunkAttempts === 0, 'Actual Next does not download offscreen action chunk');
   await cta.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'error');
+  check(report.chunkOutages > 0 && report.chunkAttempts === report.chunkOutages, 'The selected deferred chunk actually received persistent HTTP 503 responses');
   check(await cta.getAttribute('aria-busy') === 'false', 'Persistent chunk outage releases busy state');
   check(await page.getByTestId('sun-summary-product').count() === 1, 'Chunk outage retains product information');
   const requestsAtFailure = report.chunkAttempts; failEnabled = false;
@@ -50,7 +50,12 @@ try {
   check(report.chunkAttempts > requestsAtFailure, 'Explicit retry retrieves the failed chunk again');
   check(await cta.getAttribute('aria-busy') === 'false', 'Successful retry clears busy state');
   check(await cta.evaluate(el => el === document.activeElement), 'Retry restores focus into the ready region');
-  check(await cta.getByText('Necesito una nueva lectura NFC', { exact: true }).count() === 1, 'Recovery retains blocked action policy');
+  const claim = cta.getByTestId('sun-claim-portal');
+  check(await claim.count() === 1 && await claim.getAttribute('data-claim-available') === 'false'
+    && await claim.getByRole('button', { name: 'Continuar en mi cuenta', exact: true }).isDisabled(), 'Recovery retains the blocked ownership request');
+  check(await claim.getByRole('status').innerText() === 'Hacé un nuevo tap desde la etiqueta para solicitar titularidad. Una lectura guardada no renueva ese acceso.', 'Recovery explains that a saved reading cannot renew ownership access');
+  check(await cta.locator('#warranty-action').isDisabled()
+    && await cta.getByRole('button', { name: /Solicitar NFT \/ token/, includeHidden: true }).isDisabled(), 'Recovery keeps warranty and tokenization blocked');
   check(report.writes.length === 0 && await page.evaluate(() => window.__geoRequests) === 0, 'Retry initiates no business write or geolocation');
   check(report.errors.length === 0, 'Chunk failure is handled without browser exceptions'); await context.close();
 } finally { await browser.close(); server.kill(); await writeFile(join(output, 'server.log'), serverLog); await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2)); }

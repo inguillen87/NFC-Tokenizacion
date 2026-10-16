@@ -97,8 +97,8 @@ test("post-tap journey adapts the next action without implying ownership from a 
   assert.doesNotMatch(page, /Registrar Propiedad \/ Garant[ií]a/);
 
   const actions = await readFile(new URL("../src/app/sun/cta-actions.tsx", import.meta.url), "utf8");
-  assert.match(actions, /const ownerClaimState = !canStartClaim/);
-  assert.match(actions, /<strong className="text-xs text-white">\{ownerClaimState\}<\/strong>/);
+  assert.match(actions, /<SunClaimPortal/);
+  assert.match(actions, /availability=\{!commercialActionsAllowed[\s\S]{0,180}!canStartClaim/);
   assert.doesNotMatch(actions, /ownerClaimScore|canStartClaim && isAuthenticated \? 92/);
   assert.match(actions, /id=\{key === "registerWarranty" \? "warranty-action" : undefined\}/);
 });

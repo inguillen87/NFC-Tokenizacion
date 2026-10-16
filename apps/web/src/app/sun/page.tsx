@@ -15,6 +15,7 @@ import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowDown, ArrowLeft, ChevronDown, ChevronRight, Info, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { DeferredCtaActions, DeferredQREngagementSuite } from "./sun-deferred-consumer-tools";
 import { ReportProblemForm } from "./report-problem-form";
+import { reportContextAvailable } from "./report-problem-model";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import type { SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
@@ -1140,6 +1141,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     return `${pathname}?${nextParams.toString()}${hash ? `#${hash}` : ""}`;
   };
   const registerHref = localizeHref(result.cta?.registerUrl) || withTapQuery("/me", "register");
+  // Ownership uses our authenticated portal. Tenant URLs must not redirect this
+  // protected handoff or carry its short-lived capability in the destination.
+  const claimPortalHref = withTapQuery("/me", "claim");
+  const supportTokenForReading = result.supportReport?.eventId === eventId ? result.supportReport.token || "" : "";
+  const supportAvailable = !valleDemo && !syngentaDemo && reportContextAvailable({
+    bid, eventId, supportToken: supportTokenForReading, isDemoPreview,
+  });
   const walletHref = withTapQuery("/me/wallet", "wallet");
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
   const tapMarketplaceHref = localizeHref(result.cta?.marketplaceUrl) || withTapQuery(marketplaceHref, "marketplace");
@@ -2398,7 +2406,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             {!valleDemo && !syngentaDemo ? <ReportProblemForm
               bid={bid}
               eventId={eventId}
-              supportToken={result.supportReport?.eventId === eventId ? result.supportReport.token || "" : ""}
+              supportToken={supportTokenForReading}
               productName={productDisplayName}
               locale={locale}
               isDemoPreview={isDemoPreview}
@@ -2509,6 +2517,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   allowedActions={allowedActions}
                   blockedActions={blockedActions}
                   isDemoPreview={isDemoPreview}
+                  claimHref={claimPortalHref}
+                  supportAvailable={supportAvailable}
                 />
               </div>
             ) : null}

@@ -184,22 +184,21 @@ test("calculator and investor snapshot expose hypotheses instead of promising RO
   assert.doesNotMatch(investorSnapshot, /tasas de conversi.n mediocres \(<2% CTR\)|Cada tap genera una firma din.mica|margen del 40%\./);
 });
 
-test("SUN fallbacks and post-tap actions fail closed and stay pending until confirmed", () => {
+test("SUN fallbacks and post-tap actions fail closed and stay pending until confirmed", async () => {
   assert.match(sunPage, /code: "QR_UPSTREAM_UNAVAILABLE"/);
   assert.match(sunPage, /ok: false/);
   assert.match(sunPage, /const requestedProduct = readParam\(params, "product"\) \|\| readParam\(params, "productName"\);/);
   assert.match(sunPage, /const requestedWinery = readParam\(params, "winery"\) \|\| readParam\(params, "brand"\);/);
   assert.match(sunPage, /requestedRegion \|\| "N\/D"/);
   assert.match(ctaActions, /Solicitud de garant.a registrada . pendiente de revisi.n/);
-  assert.match(ctaActions, /Aviso registrado para revisi.n/);
-  assert.match(ctaActions, /Boolean\(data\.ticket\?\.id\)/);
-  assert.match(ctaActions, /tenant_assigned/);
+  const reportModel = await readFile(new URL("../src/app/sun/report-problem-model.ts", import.meta.url), "utf8");
+  assert.match(reportModel, /payload\.ticket_created === true/);
+  assert.match(reportModel, /payload\.eventId === expected\.event_id && payload\.bid === expected\.bid/);
+  assert.match(reportModel, /UUID\.test\(ticket\.id\) && ticket\.tenant_assigned === true/);
   assert.match(ctaActions, /confirmedStatuses/);
-  assert.match(ctaActions, /Lectura digital/);
-  assert.match(ctaActions, /Apertura declarada/);
-  assert.match(ctaActions, /La lectura automática sólo extrae los datos del comprobante/);
-  assert.match(ctaActions, /signed_pos/);
-  assert.match(ctaActions, /tenant_manual_approval/);
+  assert.match(ctaActions, /La lectura digital fue validada/);
+  assert.match(ctaActions, /Un operador informó una apertura/);
+  assert.doesNotMatch(ctaActions, /receiptFileData|purchase_authorization|\/api\/public-cta\/receipt-ocr/);
   assert.doesNotMatch(ctaActions, /tap fisico valido y fresco|Verificado por proveedor|data\.claim_eligible === true|validen ticket, producto y score/i);
   assert.doesNotMatch(ctaActions, /Activa cobertura|Garantia registrada para postventa|Crea un ticket|Ticket creado para revisar/);
   assert.match(manifest, /NFC Message Evidence & Digital Product Identity/);

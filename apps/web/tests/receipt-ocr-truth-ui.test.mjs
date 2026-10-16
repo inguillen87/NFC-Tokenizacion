@@ -4,19 +4,14 @@ import { readFile } from "node:fs/promises";
 
 const source = await readFile(new URL("../src/app/sun/cta-actions.tsx", import.meta.url), "utf8");
 
-test("receipt UX separates OCR extraction from tenant or signed POS authorization", () => {
-  assert.match(source, /mode === "live_confirmed"/);
-  assert.match(source, /provenance\.confirmed === true/);
-  assert.match(source, /purchaseAuthorization\.status/);
-  assert.match(source, /"signed_pos", "tenant_manual_approval"/);
-  assert.match(source, /disabled=\{pending \|\| !ocrVerification\?\.authorizationConfirmed/);
-  assert.doesNotMatch(source, /data\.claim_eligible === true/);
+test("public claim entry cannot collect a receipt for an unattended OCR review", () => {
+  assert.match(source, /SunClaimPortal/);
+  assert.doesNotMatch(source, /receiptFileData|purchase_authorization|authorizationConfirmed|setShowReceiptForm/);
+  assert.doesNotMatch(source, /\/api\/public-cta\/(?:receipt-ocr|claim-ownership)/);
 });
 
-test("receipt UX labels provider, demo and manual-review states without fake AI verification", () => {
-  assert.match(source, /Datos extra.dos por OCR/);
-  assert.match(source, /Extracci.n demo simulada . no habilita propiedad/);
-  assert.match(source, /Revisi.n manual requerida/);
-  assert.match(source, /OCR no valida pago, producto ni titularidad/);
+test("the replacement entry does not present OCR output as approval or request an upload", async () => {
+  const portal = await readFile(new URL("../src/app/sun/sun-claim-portal.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(portal, /type="file"|FileReader|receiptFileData|purchase_authorization|fetch\(/);
   assert.doesNotMatch(source, /Verificado por proveedor|Verificado \(IA:/);
 });

@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { isSecurePostTapActionAllowed, type SecurePostTapActionKey } from "./post-tap-policy";
 import { selectSunTruthCopy, SUN_DEMO_COPY } from "./sun-truth-copy";
-import { authStartErrorMessage, consumerDeliveryMessage } from "../login/consumer-login-delivery";
-import { requestConsumerJson } from "../../lib/consumer-request";
+import { SunClaimPortal } from "./sun-claim-portal";
 
 type TapState = "valid" | "opened" | "manual_opened" | "blocked";
 type RightsPolicy = {
@@ -16,9 +15,9 @@ type RightsPolicy = {
   consumerCopy?: string | null;
   recommendedNextStep?: string | null;
 };
-type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState; rightsPolicy?: RightsPolicy; allowedActions?: string[]; blockedActions?: string[]; isDemoPreview?: boolean };
+type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState; rightsPolicy?: RightsPolicy; allowedActions?: string[]; blockedActions?: string[]; isDemoPreview?: boolean; claimHref?: string | null; supportAvailable?: boolean };
 type ActionState = "idle" | "loading" | "success" | "error";
-type ActionKey = SecurePostTapActionKey;
+type ActionKey = Exclude<SecurePostTapActionKey, "claimOwnership" | "report">;
 type CallResponse = {
   ok?: boolean;
   authenticated?: boolean;
@@ -52,17 +51,6 @@ type CallResponse = {
   _httpOk?: boolean;
   _traceId?: string | null;
 };
-type ReceiptOcrUiState = {
-  mode: "live_confirmed" | "demo_mock" | "unavailable";
-  confirmed: boolean;
-  provider: string | null;
-  model: string | null;
-  score: number;
-  extractionReady: boolean;
-  authorizationConfirmed: boolean;
-  message: string;
-};
-type LastRequest = { path: string; method: "POST" | "GET"; actionKey: ActionKey };
 type ProvenanceResponse = {
   ok?: boolean;
   reason?: string;
@@ -71,22 +59,11 @@ type ProvenanceResponse = {
   timeline?: Array<{ stage?: string; status?: string; at?: string | null }>;
   commercial_signals?: Record<string, unknown>;
 };
-const SECURITY_GATED_ACTIONS = new Set<ActionKey>(["claimOwnership", "registerWarranty", "tokenization"]);
+const SECURITY_GATED_ACTIONS = new Set<ActionKey>(["registerWarranty", "tokenization"]);
 
 function normalizeUnknownError(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
   return "No se pudo completar la acción por un problema de conexión. Reintentá en unos segundos.";
-}
-
-function normalizeClaimAuthError(error: unknown) {
-  const message = normalizeUnknownError(error);
-  if (message.includes("email_contact_required")) return "Usa un email valido para recibir el codigo por este canal.";
-  if (message.includes("phone_contact_required")) return "Usa un celular con codigo de pais para recibir el codigo por este canal.";
-  if (["invalid", "mismatch", "invalid_code", "contact_and_code_required"].includes(message)) return "El codigo no coincide. Revisa el mensaje mas reciente e intenta de nuevo.";
-  if (message === "expired") return "El codigo vencio. Usa la opcion de pedir un nuevo codigo.";
-  if (message === "locked") return "Este codigo alcanzo el limite de intentos. Espera antes de solicitar otro.";
-  const knownMessage = authStartErrorMessage(message);
-  return knownMessage === authStartErrorMessage(undefined) ? "No pudimos confirmar este paso. Conservamos tus datos; intenta de nuevo." : knownMessage;
 }
 
 function labelPolicy(value?: string | null) {
@@ -95,11 +72,6 @@ function labelPolicy(value?: string | null) {
 }
 
 async function call(path: string, method: "POST" | "GET", payload: Record<string, unknown> | null): Promise<CallResponse> {
-  if (method === "POST" && ["/api/consumer/auth/start", "/api/consumer/auth/verify"].includes(path)) {
-    const result = await requestConsumerJson(path, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {}) });
-    if (result.status !== "received") throw new Error("consumer_auth_unavailable");
-    return { ...result.payload, _httpStatus: result.httpStatus, _httpOk: result.ok } as CallResponse;
-  }
   const url = new URL(path, window.location.origin);
   if (method === "GET" && payload) {
     Object.entries(payload).forEach(([key, value]) => {
@@ -122,64 +94,13 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   };
 }
 
-function roundApproximateCoordinate(value: number) {
-  return Math.round(value * 1000) / 1000;
-}
-
-async function getClientMetadata(shareApproximateLocation: boolean) {
-  let lat: number | null = null;
-  let lng: number | null = null;
-  let acc: number | null = null;
-
-  try {
-    if (shareApproximateLocation && typeof window !== "undefined" && window.navigator && window.navigator.geolocation) {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        window.navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: false,
-          timeout: 4000,
-          maximumAge: 5 * 60 * 1000,
-        });
-      });
-      lat = roundApproximateCoordinate(position.coords.latitude);
-      lng = roundApproximateCoordinate(position.coords.longitude);
-      acc = Math.max(150, Math.round(position.coords.accuracy || 150));
-    }
-  } catch (error) {
-    console.warn("Geolocation gathering failed or denied", error);
-  }
-
-  const fingerprint = {
-    language: typeof navigator !== "undefined" ? navigator.language : "",
-    platform: typeof navigator !== "undefined" ? (navigator as any).platform || "" : "",
-    userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
-    screenWidth: typeof window !== "undefined" ? window.screen?.width || 0 : 0,
-    screenHeight: typeof window !== "undefined" ? window.screen?.height || 0 : 0,
-    touchPoints: typeof navigator !== "undefined" ? navigator.maxTouchPoints || 0 : 0,
-  };
-
-  return {
-    latitude: lat,
-    longitude: lng,
-    accuracy: acc,
-    locationConsent: shareApproximateLocation,
-    geoPrecision: shareApproximateLocation ? "approximate" : "not_requested",
-    screenSize: {
-      width: typeof window !== "undefined" ? window.innerWidth || 0 : 0,
-      height: typeof window !== "undefined" ? window.innerHeight || 0 : 0,
-    },
-    deviceFingerprint: fingerprint,
-  };
-}
-
-export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy, allowedActions = [], blockedActions = [], isDemoPreview = false }: Props) {
+export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy, allowedActions = [], blockedActions = [], isDemoPreview = false, claimHref = null, supportAvailable = false }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
   const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
-    claimOwnership: "idle",
     registerWarranty: "idle",
     provenance: "idle",
     tokenization: "idle",
-    report: "idle",
   });
   const [actionError, setActionError] = useState<string>("");
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -189,51 +110,15 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [provenance, setProvenance] = useState<ProvenanceResponse | null>(null);
   const [lastActionMessage, setLastActionMessage] = useState("");
   const [lastTraceId, setLastTraceId] = useState<string>("");
-  const [lastRequest, setLastRequest] = useState<LastRequest | null>(null);
-  const [claimAuthOpen, setClaimAuthOpen] = useState(false);
-  const [claimContact, setClaimContact] = useState("");
-  const [claimCode, setClaimCode] = useState("");
-  const [claimAuthStarted, setClaimAuthStarted] = useState(false);
-  const [claimAuthMessage, setClaimAuthMessage] = useState("");
-  const [claimAuthError, setClaimAuthError] = useState("");
-  const [claimAuthLoading, setClaimAuthLoading] = useState(false);
-  const [consumerSessionLoading, setConsumerSessionLoading] = useState(false);
-
-  // States for user session & receipt uploads
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [consumerData, setConsumerData] = useState<any>(null);
-  const [showReceiptForm, setShowReceiptForm] = useState(false);
-  const [receiptFileName, setReceiptFileName] = useState("");
-  const [receiptFileData, setReceiptFileData] = useState("");
-  const [receiptEstablishment, setReceiptEstablishment] = useState("");
-  const [receiptDate, setReceiptDate] = useState("");
-  const [receiptTime, setReceiptTime] = useState("");
-  const [receiptPrice, setReceiptPrice] = useState("");
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrVerification, setOcrVerification] = useState<ReceiptOcrUiState | null>(null);
-  const [securityPin, setSecurityPin] = useState("");
-  const [shareApproximateLocation, setShareApproximateLocation] = useState(false);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const tokenModalRef = useRef<HTMLDivElement | null>(null);
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
-  const claimContactRef = useRef<HTMLInputElement | null>(null);
-  const claimCodeRef = useRef<HTMLInputElement | null>(null);
-  const primaryClaimButtonRef = useRef<HTMLButtonElement | null>(null);
-  const receiptHeadingRef = useRef<HTMLHeadingElement | null>(null);
-  const claimAuthLock = useRef(false);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
-  const normalizedClaimContact = claimContact.trim();
-  const claimContactLooksEmail = normalizedClaimContact.includes("@");
-  const claimPhoneDigits = normalizedClaimContact.replace(/\D/g, "");
-  const isClaimContactValid = claimContactLooksEmail
-    ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedClaimContact)
-    : claimPhoneDigits.length >= 8 && claimPhoneDigits.length <= 15;
-  const isClaimCodeValid = claimCode.trim().length >= 4;
   const tokenPolicy = String(rightsPolicy?.tokenizationPolicy || "").toLowerCase();
   const claimMode = String(rightsPolicy?.claimMode || "").toLowerCase();
   const policySummary = rightsPolicy?.consumerCopy || "";
-  const policyAllowsAction = (actionKey: ActionKey) => isSecurePostTapActionAllowed(
+  const policyAllowsAction = (actionKey: SecurePostTapActionKey) => isSecurePostTapActionAllowed(
     actionKey,
     allowedActions,
     blockedActions,
@@ -241,52 +126,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const isManualOpenedConsumerFlow = tapState === "manual_opened";
   const isSensorOpenedConsumerFlow = tapState === "opened";
   const isOpenedConsumerFlow = isSensorOpenedConsumerFlow || isManualOpenedConsumerFlow;
-  const commercialActionsAllowed = canExecute && !isManualOpenedConsumerFlow;
+  const commercialActionsAllowed = canExecute && !isManualOpenedConsumerFlow && tapState !== "blocked" && !isDemoPreview;
   const canStartClaim = commercialActionsAllowed && policyAllowsAction("claimOwnership");
-  const showReportFlow = isOpenedConsumerFlow || tapState === "blocked";
-  const ownerClaimState = !canStartClaim
-    ? "Protegido"
-    : isAuthenticated
-      ? "Canal confirmado"
-      : claimAuthStarted
-        ? "Envío solicitado"
-        : "Listo para iniciar";
-  const ownerClaimTone = isOpenedConsumerFlow
-    ? "text-amber-100 border-amber-300/30 bg-amber-500/10"
-    : canStartClaim
-      ? "text-emerald-100 border-emerald-300/30 bg-emerald-500/10"
-      : "text-amber-100 border-amber-300/30 bg-amber-500/10";
-  const ownerClaimSteps = [
-    {
-      label: selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimTapLabel, isOpenedConsumerFlow ? "Estado del sello" : "Lectura digital"),
-      state: selectSunTruthCopy(
-        isDemoPreview,
-        SUN_DEMO_COPY.claimTapState,
-        isManualOpenedConsumerFlow ? "Apertura declarada" : isSensorOpenedConsumerFlow ? "Apertura detectada" : commercialActionsAllowed ? "Confirmada" : "Requerida",
-      ),
-    },
-    { label: "Política del lote", state: policyAllowsAction("claimOwnership") ? "Habilitada" : "No habilitada" },
-    { label: "Email o celular", state: claimAuthStarted ? "Envío solicitado" : "Pendiente" },
-    { label: "Ticket / POS", state: claimMode.includes("purchase") || claimMode.includes("review") ? "Revisable" : "Opcional" },
-  ];
-  const primaryCtaLabel = !commercialActionsAllowed
-    ? "Necesito una nueva lectura NFC"
-    : !policyAllowsAction("claimOwnership")
-      ? "Registro de comprador no habilitado"
-      : claimAuthStarted
-        ? "Confirmar codigo"
-        : isOpenedConsumerFlow
-          ? "Lo abrí yo: continuar con postventa"
-          : "Activar garantía o beneficios";
-  const primaryCtaHelp = !commercialActionsAllowed
-    ? isManualOpenedConsumerFlow
-      ? "La apertura fue declarada por un operador y necesita revisión. Podés avisar a la marca, pero no habilita propiedad, garantía ni tokenización."
-      : "Podés consultar el producto. Para solicitar garantía o un registro digital, volvé a leer la etiqueta NFC."
-    : !policyAllowsAction("claimOwnership")
-      ? "La marca no habilitó el registro de comprador para este producto. Consultá las opciones disponibles abajo."
-      : isOpenedConsumerFlow
-        ? "Continuá sólo si reconocés la apertura y el envase está en condiciones. La marca puede pedir contacto y comprobante."
-        : "Confirmamos el canal de contacto y revisamos la prueba de compra antes de activar garantía o beneficios.";
   const tokenSubtitle = tokenPolicy === "issuer_transfer"
     ? "La transferencia del registro digital requiere documentación y autorización del emisor."
     : tokenPolicy === "lot_anchor"
@@ -313,14 +154,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     : "Una transaccion confirmada puede registrar declaraciones aprobadas de propiedad, origen o garantia; no prueba por si sola custodia ni contenido fisico.";
   const tokenModalCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.tokenModal, realTokenModalCopy);
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
-    claimOwnership: {
-      title: "Validar comprador",
-      subtitle: "Confirma el canal de contacto y revisa la prueba de compra antes de aprobar propiedad o garantia.",
-      icon: "BUY",
-      path: "/api/public-cta/claim-ownership",
-      method: "POST",
-      tone: "border-indigo-300/40 bg-indigo-500/10 text-indigo-100 transition hover:bg-indigo-500/20",
-    },
     registerWarranty: {
       title: "Solicitar revisión de garantía",
       subtitle: "Registra una solicitud para revisión de cobertura, postventa y fecha declarada de compra.",
@@ -337,21 +170,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       method: "GET",
       tone: "border-amber-300/40 bg-amber-500/10 text-amber-100 transition hover:bg-amber-500/20",
     },
-    report: {
-      title: "Avisar sobre un problema",
-      subtitle: "Registrá un ticket de revisión con el producto, el lote y esta lectura.",
-      icon: "RPT",
-      path: "/api/public-cta/report-problem",
-      method: "POST",
-      tone: "border-rose-300/40 bg-rose-500/10 text-rose-100 transition hover:bg-rose-500/20",
-    }
   };
   const successCopy: Record<ActionKey, string> = {
-    claimOwnership: "Registro de comprador aprobado y asociado a la marca.",
     registerWarranty: "Solicitud de garantía registrada · pendiente de revisión.",
     provenance: "Información de origen consultada.",
     tokenization: "Solicitud de registro digital recibida. No hay NFT confirmado hasta contar con una transacción y un identificador verificables.",
-    report: "Aviso registrado para revisión.",
   };
 
   function tokenizationStatus(data: CallResponse) {
@@ -431,12 +254,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   function successMessageFor(actionKey: ActionKey, data: CallResponse) {
-    if (actionKey === "claimOwnership") {
-      const ownershipStatus = String(data.ownership_status || data.ownership?.status || "").toLowerCase();
-      return ownershipStatus === "claimed"
-        ? successCopy.claimOwnership
-        : "Solicitud de comprador registrada. La propiedad y la garantia esperan la aprobación de la marca.";
-    }
     const provenance = typeof data.provenance === "string"
       ? data.provenance
       : data.provenance?.status || data.provenance?.mode || "";
@@ -452,14 +269,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       return confirmedStatuses.has(responseStatus)
         ? "Garantía confirmada por el servicio de validación para postventa."
         : successCopy.registerWarranty;
-    }
-    if (actionKey === "report") {
-      const hasConfirmedTicket = Boolean(data.ticket?.id) && confirmedStatuses.has(responseStatus);
-      return hasConfirmedTicket
-        ? data.ticket?.tenant_assigned
-          ? "Aviso registrado. Quedó asignado al equipo de la marca para revisar esta lectura."
-          : "Aviso registrado en nexID para revisar esta lectura."
-        : successCopy.report;
     }
     if (actionKey !== "tokenization") return successCopy[actionKey];
     return tokenizationUiResult(data).message;
@@ -508,15 +317,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   useEffect(() => {
-    if (claimAuthOpen) (claimAuthStarted ? claimCodeRef.current : claimContactRef.current)?.focus();
-  }, [claimAuthOpen, claimAuthStarted]);
-  useEffect(() => {
-    if (claimAuthOpen && claimAuthError && !claimAuthLoading) (claimAuthStarted ? claimCodeRef.current : claimContactRef.current)?.focus();
-  }, [claimAuthOpen, claimAuthError, claimAuthLoading, claimAuthStarted]);
-  useEffect(() => {
-    if (showReceiptForm) receiptHeadingRef.current?.focus();
-  }, [showReceiptForm]);
-  useEffect(() => {
     const hasSuccess = Object.values(actionStates).some((item) => item === "success");
     if (!hasSuccess) return;
     const timeout = setTimeout(() => {
@@ -563,7 +363,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   function normalizeReason(data: { reason?: string; error?: string; _httpStatus?: number }) {
     const reason = String(data.error || data.reason || "").toLowerCase();
     if (reason.includes("consumer_auth_required")) {
-      return "Para iniciar la validacion de compra o solicitar un NFT necesitamos confirmar un email o celular. El producto queda visible, pero no se asocia a nadie solo por confirmar ese canal.";
+      return "Para continuar, entrá en tu cuenta NexID. Esta solicitud no se completó; no se reintentará automáticamente.";
     }
     if (reason.includes("ownership_claim_required")) {
       return "Primero completa la validacion de compra segun la politica de la marca. Despues se habilita la solicitud NFT y la conexion de wallet.";
@@ -581,10 +381,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
-    if (actionKey === "report") {
-      window.location.hash = "report-problem";
-      return;
-    }
     if (actionStates[actionKey] === "loading") return;
     if (!policyAllowsAction(actionKey)) {
       setActionError("La politica de este producto no habilita esta accion. Revisa las opciones disponibles para este lote.");
@@ -602,27 +398,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     setLastActionMessage("");
     setLastTraceId("");
     setActionStates((current) => ({ ...current, [actionKey]: "loading" }));
-    setLastRequest({ path, method, actionKey });
     try {
-      let extraPayload: Record<string, unknown> | undefined;
-      if (actionKey === "claimOwnership") {
-        const meta = await getClientMetadata(shareApproximateLocation);
-        extraPayload = {
-          ...meta,
-          receiptDate: receiptDate || null,
-          receiptTime: receiptTime || null,
-          receiptPrice: receiptPrice ? Number(receiptPrice) : null,
-          receiptEstablishment: receiptEstablishment || null,
-          receiptFileName: receiptFileName || null,
-          receiptFileData: receiptFileData || null,
-          pin: securityPin || null,
-        };
-      }
-      const data = await call(path, method, basePayload(extraPayload));
+      const data = await call(path, method, basePayload());
       setStatus(JSON.stringify(data));
       if (data._traceId) setLastTraceId(data._traceId);
-      if ((actionKey === "claimOwnership" || actionKey === "tokenization") && requiresConsumerAuth(data)) {
-        setClaimAuthOpen(true);
+      if (actionKey === "tokenization" && requiresConsumerAuth(data)) {
         setActionStates((current) => ({ ...current, [actionKey]: "error" }));
         setActionError(normalizeReason(data));
         return;
@@ -635,10 +415,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         setActionError(result.message);
       } else {
         setLastActionMessage(result.message);
-        if (actionKey === "claimOwnership") {
-          // Ocultar formulario de ticket de compra tras éxito
-          setShowReceiptForm(false);
-        }
       }
       if (method === "GET" && path.includes("provenance")) setProvenance(data as ProvenanceResponse);
     } catch (error) {
@@ -704,485 +480,20 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     }
   }
 
-  async function startClaimAuth() {
-    if (!isClaimContactValid || claimAuthLoading || claimAuthLock.current) return;
-    claimAuthLock.current = true;
-    setClaimAuthLoading(true);
-    setClaimAuthError("");
-    setClaimAuthMessage("");
-    try {
-      const payload = claimContactLooksEmail
-        ? { email: normalizedClaimContact }
-        : { phone: normalizedClaimContact };
-      const data = await call("/api/consumer/auth/start", "POST", payload);
-      if (!data._httpOk || data.ok !== true) {
-        throw new Error(String(data.error || data.reason || "auth_start_failed"));
-      }
-      setClaimAuthStarted(true);
-      setClaimAuthMessage(consumerDeliveryMessage(data));
-    } catch (error) {
-      setClaimAuthError(normalizeClaimAuthError(error));
-    } finally {
-      claimAuthLock.current = false;
-      setClaimAuthLoading(false);
-    }
-  }
-
-  async function verifyClaimAuthAndRetry() {
-    if (!isClaimContactValid || !isClaimCodeValid || claimAuthLoading || claimAuthLock.current) return;
-    claimAuthLock.current = true;
-    setClaimAuthLoading(true);
-    setClaimAuthError("");
-    setClaimAuthMessage("");
-    try {
-      const payload = claimContactLooksEmail
-        ? { email: normalizedClaimContact, code: claimCode.trim() }
-        : { phone: normalizedClaimContact, code: claimCode.trim() };
-      const data = await call("/api/consumer/auth/verify", "POST", payload);
-      if (!data._httpOk || data.ok !== true || !data.consumer) {
-        throw new Error(String(data.error || data.reason || "auth_verify_failed"));
-      }
-      setClaimAuthOpen(false);
-      setClaimAuthStarted(false);
-      setClaimCode("");
-      setClaimAuthMessage("");
-      
-      setIsAuthenticated(true);
-      if (data.consumer) {
-        setConsumerData(data.consumer);
-      }
-      
-      setShowReceiptForm(true);
-      setLastActionMessage("Canal de contacto confirmado. Subi tu comprobante para continuar con la validacion de compra.");
-    } catch (error) {
-      setClaimAuthError(normalizeClaimAuthError(error));
-    } finally {
-      claimAuthLock.current = false;
-      setClaimAuthLoading(false);
-    }
-  }
-
-  async function resolveConsumerSessionForClaim(): Promise<"authenticated" | "anonymous" | "error"> {
-    if (isAuthenticated) return "authenticated";
-    if (consumerSessionLoading) return "error";
-
-    setConsumerSessionLoading(true);
-    setActionError("");
-    setLastActionMessage("");
-    setLastTraceId("");
-    try {
-      const data = await call("/api/consumer/session", "GET", null);
-      setStatus(JSON.stringify(data));
-      if (data._traceId) setLastTraceId(data._traceId);
-
-      if (data._httpStatus === 401 && data.authenticated === false) {
-        return "anonymous";
-      }
-      if (!data._httpOk || data.ok === false) {
-        setActionError(normalizeReason(data));
-        return "error";
-      }
-      if (data.authenticated !== true) {
-        setActionError("No pudimos confirmar tu sesión. Reintentá antes de continuar con la validación de compra.");
-        return "error";
-      }
-
-      setIsAuthenticated(true);
-      setConsumerData(data.consumer || null);
-      return "authenticated";
-    } catch (error) {
-      const message = normalizeUnknownError(error);
-      setActionError(message);
-      setStatus(JSON.stringify({ ok: false, reason: message }));
-      return "error";
-    } finally {
-      setConsumerSessionLoading(false);
-    }
-  }
-
-  async function continuePrimaryClaimAction() {
-    const sessionState = await resolveConsumerSessionForClaim();
-    if (sessionState === "authenticated") {
-      setShowReceiptForm(true);
-      return;
-    }
-    if (sessionState === "anonymous") {
-      setClaimAuthOpen(true);
-    }
-  }
-
-  function retryLastAction() {
-    if (!lastRequest || pending) return;
-    void trigger(lastRequest.path, lastRequest.method, lastRequest.actionKey);
-  }
-
-  function handlePrimaryClaimAction() {
-    if (!canStartClaim) {
-      if (commercialActionsAllowed && !policyAllowsAction("claimOwnership")) {
-        setActionError("La marca no habilitó el registro de comprador para este producto. Usá una opción disponible para el lote.");
-        return;
-      }
-      setActionError(isManualOpenedConsumerFlow
-        ? "La apertura declarada puede enviarse a revisión, pero no habilita comprador, garantía ni propiedad."
-        : "Para registrar la compra, solicitar garantía o propiedad necesitás una nueva lectura NFC validada.");
-      return;
-    }
-    if (claimAuthStarted) {
-      void verifyClaimAuthAndRetry();
-      return;
-    }
-    if (!isAuthenticated) {
-      void continuePrimaryClaimAction();
-      return;
-    }
-    setShowReceiptForm(true);
-  }
-
   return (
     <div className="sun-public-cta mt-4 v3-space-y-2">
-      {showReportFlow ? (
-        <section id="report-action" className="scroll-mt-24 rounded-2xl border border-amber-300/35 bg-amber-500/10 p-4 text-amber-50" aria-labelledby="report-action-title">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">Ayuda con esta lectura</p>
-          <h3 id="report-action-title" className="mt-1 text-base font-black text-white">
-            {isOpenedConsumerFlow ? "¿No reconocés esta apertura?" : "¿Querés avisar sobre esta lectura?"}
-          </h3>
-          <p className="mt-2 text-xs leading-5 text-amber-50/85">
-            {isOpenedConsumerFlow
-              ? "No uses el producto si el envase está dañado. Podemos registrar un ticket con el producto, el lote y esta lectura para que el equipo lo revise."
-              : "Podemos registrar un ticket con el producto, el lote y esta lectura para que el equipo revise qué pasó."}
-          </p>
-          <button
-            suppressHydrationWarning
-            type="button"
-            onClick={() => void trigger("/api/public-cta/report-problem", "POST", "report")}
-            data-sun-experience-event="PROBLEM_REPORTED"
-            data-sun-experience-placement="protected_actions"
-            data-sun-experience-interaction="report_started"
-            className="mt-3 min-h-12 w-full rounded-xl border border-amber-200/50 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Describir el problema
-          </button>
-          {actionStates.report === "success" ? (
-            <p className="mt-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">
-              Aviso registrado. El equipo ya puede revisar esta lectura.
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-      
-      <div className={`rounded-2xl border p-4 ${ownerClaimTone} v3-space-y-4`}>
-        {showReceiptForm ? (
-          <div className="v3-space-y-3">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Validacion de compra</p>
-                <h3 ref={receiptHeadingRef} tabIndex={-1} className="text-sm font-black text-white">Comprobante de Compra (Ticket/Factura)</h3>
-              </div>
-              <button
-                suppressHydrationWarning
-                type="button"
-                onClick={() => setShowReceiptForm(false)}
-                className="text-[10px] font-bold text-slate-400 hover:text-slate-200 border border-white/10 rounded px-2 py-0.5"
-              >
-                Cancelar
-              </button>
-            </div>
-            
-            <p className="text-[11px] text-slate-300">
-              Para revisar la evidencia de compra antes de habilitar garantia, propiedad o tokenizacion NFT, subi tu ticket y completa los datos.
-              <span className="block mt-1 text-[10px] text-cyan-300/90 font-medium">
-                La ubicacion GPS y el canal de contacto son señales auxiliares de auditoria. No prueban identidad, compra ni ubicacion fisica del producto por si solos.
-              </span>
-            </p>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {/* File Uploader */}
-              <div className="v3-space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-300 block">Foto de Comprobante / Ticket</label>
-                <div className="relative border border-dashed border-white/20 rounded-xl p-3 flex flex-col items-center justify-center bg-slate-950/40 hover:border-cyan-400/50 transition">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={ocrLoading}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setReceiptFileName(file.name);
-                        setOcrLoading(true);
-                        setOcrVerification(null);
-                        const reader = new FileReader();
-                        reader.onload = async (evt) => {
-                          if (evt.target?.result) {
-                            const base64 = evt.target.result as string;
-                            setReceiptFileData(base64);
-
-                            try {
-                              console.log("[OCR] Digitalizando comprobante con IA...");
-                              const response = await fetch("/api/public-cta/receipt-ocr", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  bid,
-                                  uid_hex: uid,
-                                  event_id: eventId,
-                                  receiptFileData: base64,
-                                  receiptFileName: file.name,
-                                }),
-                              });
-
-                              const data = await response.json().catch(() => ({}));
-                              if (data.ocr) {
-                                const ocr = data.ocr as Record<string, any>;
-                                const provenance = ocr.provenance && typeof ocr.provenance === "object"
-                                  ? ocr.provenance as Record<string, any>
-                                  : {};
-                                const mode = ["live_confirmed", "demo_mock", "unavailable"].includes(String(provenance.mode))
-                                  ? String(provenance.mode) as ReceiptOcrUiState["mode"]
-                                  : "unavailable";
-                                const score = Number.isFinite(Number(ocr.compliance_score)) ? Number(ocr.compliance_score) : 0;
-                                const extractionReady = Boolean(
-                                  response.ok
-                                  && data.ok
-                                  && mode === "live_confirmed"
-                                  && provenance.confirmed === true
-                                  && provenance.provider
-                                  && provenance.model,
-                                );
-                                const purchaseAuthorization = data.purchase_authorization && typeof data.purchase_authorization === "object"
-                                  ? data.purchase_authorization as Record<string, any>
-                                  : {};
-                                const authorizationConfirmed = Boolean(
-                                  response.ok
-                                  && data.ok
-                                  && ["approved", "confirmed"].includes(String(purchaseAuthorization.status).toLowerCase())
-                                  && ["signed_pos", "tenant_manual_approval"].includes(String(purchaseAuthorization.source).toLowerCase()),
-                                );
-                                const message = extractionReady
-                                  ? `Datos extraídos por ${String(provenance.provider)} con ${String(provenance.model)}. Revisalos: OCR no valida pago, producto ni titularidad.`
-                                  : mode === "demo_mock"
-                                    ? "Extracción simulada de demo. No valida el comprobante ni habilita propiedad."
-                                    : mode === "live_confirmed"
-                                      ? String(data.error || "El OCR respondió, pero los datos requieren revisión manual.")
-                                      : String(data.error || "No se completó la extracción OCR. Reintentá o solicitá revisión manual.");
-                                setOcrVerification({
-                                  mode,
-                                  confirmed: provenance.confirmed === true,
-                                  provider: typeof provenance.provider === "string" ? provenance.provider : null,
-                                  model: typeof provenance.model === "string" ? provenance.model : null,
-                                  score,
-                                  extractionReady,
-                                  authorizationConfirmed,
-                                  message,
-                                });
-                                if (extractionReady) {
-                                  if (ocr.establishment) setReceiptEstablishment(ocr.establishment);
-                                  if (ocr.date) setReceiptDate(ocr.date);
-                                  if (ocr.time) setReceiptTime(ocr.time);
-                                  if (ocr.price) setReceiptPrice(String(ocr.price));
-                                }
-                              } else {
-                                setOcrVerification({
-                                  mode: "unavailable",
-                                  confirmed: false,
-                                  provider: null,
-                                  model: null,
-                                  score: 0,
-                                  extractionReady: false,
-                                  authorizationConfirmed: false,
-                                  message: String(data.error || "No se pudo extraer el comprobante. Reintentá o solicitá revisión manual."),
-                                });
-                              }
-                            } catch (err) {
-                              console.warn("[OCR] Error de escaneo IA:", err);
-                            } finally {
-                              setOcrLoading(false);
-                            }
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                  />
-                  {ocrLoading ? (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
-                      <span className="text-[10px] text-cyan-300 font-medium animate-pulse">Digitalizando con IA...</span>
-                    </div>
-                  ) : receiptFileData ? (
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-2">
-                        <img src={receiptFileData} className="w-8 h-8 object-cover rounded border border-white/10" alt="Preview" />
-                        <span className="text-[10px] font-mono text-emerald-300 max-w-[120px] truncate">{receiptFileName}</span>
-                      </div>
-                      {ocrVerification && (
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
-                          ocrVerification.extractionReady
-                            ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/20 shadow-[0_0_8px_rgba(34,211,238,0.12)]"
-                            : "bg-amber-500/10 text-amber-300 border-amber-500/20"
-                        }`}>
-                          {ocrVerification.extractionReady
-                            ? `Datos extraídos por OCR (score de lectura ${ocrVerification.score}%)`
-                            : ocrVerification.mode === "demo_mock"
-                              ? "Extracción demo simulada · no habilita propiedad"
-                              : "Revisión manual requerida"}
-                        </span>
-                      )}
-                      {ocrVerification ? (
-                        <span className="max-w-[240px] text-center text-[9px] leading-4 text-slate-400">{ocrVerification.message}</span>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <>
-                      <span className="text-xs text-slate-400">📁 Seleccionar o tomar foto</span>
-                      <span className="text-[9px] text-slate-500">JPG, PNG</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Establecimiento */}
-              <div className="v3-space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-300 block">Establecimiento / Vinoteca</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Vinoteca Mendoza, Online Shop"
-                  value={receiptEstablishment}
-                  onChange={(e) => setReceiptEstablishment(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-600 outline-hidden focus:border-cyan-400/40"
-                />
-              </div>
-
-              {/* Fecha de Compra */}
-              <div className="v3-space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-300 block">Fecha de Compra</label>
-                <input
-                  type="date"
-                  value={receiptDate}
-                  onChange={(e) => setReceiptDate(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-hidden focus:border-cyan-400/40"
-                />
-              </div>
-
-              {/* Hora de Compra */}
-              <div className="v3-space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-300 block">Hora de Compra</label>
-                <input
-                  type="time"
-                  value={receiptTime}
-                  onChange={(e) => setReceiptTime(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-hidden focus:border-cyan-400/40"
-                />
-              </div>
-
-              {/* Precio */}
-              <div className="v3-space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-300 block">Precio Pagado (USD / ARS)</label>
-                <input
-                  type="number"
-                  placeholder="Ej: 45.00"
-                  value={receiptPrice}
-                  onChange={(e) => setReceiptPrice(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-600 outline-hidden focus:border-cyan-400/40"
-                />
-              </div>
-
-              {/* WhatsApp como DNI */}
-              <div className="v3-space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-300 block">DNI Digital Vinculado (Contacto)</label>
-                <input
-                  type="text"
-                  disabled
-                  value={consumerData?.phone || consumerData?.email || "Canal de contacto confirmado"}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-400 outline-hidden font-mono"
-                />
-              </div>
-            </div>
-
-            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-left">
-              <input
-                type="checkbox"
-                checked={shareApproximateLocation}
-                onChange={(event) => setShareApproximateLocation(event.target.checked)}
-                className="mt-0.5 h-5 w-5 rounded border-white/20 bg-slate-950 accent-cyan-400"
-              />
-              <span>
-                <span className="block text-[11px] font-black text-cyan-100">Incluir zona en la solicitud de propiedad (opcional)</span>
-                <span className="mt-1 block text-[10px] leading-relaxed text-cyan-100/70">
-                  Solo se solicita si marcas esta opcion. Se redondea antes de enviarla, no guarda GPS exacto y no demuestra compra, custodia ni recorrido fisico.
-                </span>
-              </span>
-            </label>
-
-            <button
-              suppressHydrationWarning
-              type="button"
-              disabled={pending || !ocrVerification?.authorizationConfirmed || !receiptEstablishment.trim() || !receiptDate || !receiptPrice || !receiptFileData}
-              onClick={() => void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership")}
-              className="mt-3 w-full rounded-xl border border-emerald-300/35 bg-emerald-400 px-4 py-3 text-xs font-black text-slate-950 shadow-[0_16px_40px_rgba(16,185,129,0.22)] hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 transition"
-            >
-              {pending ? "Procesando autorizacion..." : ocrVerification?.authorizationConfirmed ? "Enviar autorización y activar beneficios" : "Esperando aprobación de la marca o comprobante firmado"}
-            </button>
-            {!ocrVerification?.authorizationConfirmed ? (
-              <p className="text-[10px] text-amber-300 text-center">
-                * La lectura automática sólo extrae los datos del comprobante. No valida pago, producto ni titularidad: la propiedad sigue bloqueada hasta recibir aprobación de la marca o un comprobante de caja firmado.
-              </p>
-            ) : !receiptFileData || !receiptEstablishment.trim() || !receiptDate || !receiptPrice ? (
-              <p className="text-[10px] text-amber-300 text-center">
-                * Para mayor seguridad, todos los campos y la foto del ticket son obligatorios.
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">{isOpenedConsumerFlow ? "Si vos abriste el sello" : "Tu producto, tu cuenta"}</p>
-                <h3 className="mt-1 text-sm font-black text-white">{isOpenedConsumerFlow ? "Continuar con postventa" : "Activar garantía o beneficios"}</h3>
-                <p className="mt-1 text-[11px] leading-5 opacity-85">
-                  {selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimIntro, isOpenedConsumerFlow
-                    ? "Si reconocés la apertura y el envase está en condiciones, podés seguir. La marca puede pedir un contacto y comprobante antes de habilitar garantía o beneficios."
-                    : "La marca puede confirmar un canal de contacto y revisar el comprobante antes de habilitar garantía o beneficios.")}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right">
-                <span className="block text-[10px] uppercase tracking-[0.12em] opacity-70">Estado</span>
-                <strong className="text-xs text-white">{ownerClaimState}</strong>
-              </div>
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-4">
-              {ownerClaimSteps.map((step) => (
-                <div key={step.label} className="rounded-xl border border-white/10 bg-slate-950/35 p-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-300">{step.label}</p>
-                  <span className="mt-1 block text-[11px] font-bold text-white">
-                    {step.label.includes("celular") && isAuthenticated
-                      ? "Canal confirmado"
-                      : step.label.includes("Ticket") && showReceiptForm
-                      ? "En carga"
-                      : step.state}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <button
-              suppressHydrationWarning
-              ref={primaryClaimButtonRef}
-              type="button"
-              disabled={!canStartClaim || pending || claimAuthLoading || consumerSessionLoading || (claimAuthStarted && !isClaimCodeValid)}
-              onClick={handlePrimaryClaimAction}
-              className={`sun-primary-claim-button mt-3 w-full rounded-xl border px-4 py-3 text-sm font-black text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-60 ${isOpenedConsumerFlow ? "border-amber-300/40 bg-amber-300 shadow-[0_16px_40px_rgba(245,158,11,0.18)] hover:bg-amber-200" : "border-emerald-300/35 bg-emerald-400 shadow-[0_16px_40px_rgba(16,185,129,0.22)] hover:bg-emerald-300"}`}
-            >
-              {consumerSessionLoading ? "Confirmando sesión..." : pending || claimAuthLoading ? "Procesando..." : primaryCtaLabel}
-            </button>
-            <p className="mt-2 text-[11px] leading-5 opacity-85">{primaryCtaHelp}</p>
-          </>
-        )}
-      </div>
+      <SunClaimPortal
+        href={claimHref}
+        eventId={eventId}
+        freshToken={freshToken}
+        availability={!commercialActionsAllowed ? isManualOpenedConsumerFlow ? "manual_opened" : "fresh_required" : !canStartClaim ? "not_enabled" : pending ? "busy" : "ready"}
+        supportAvailable={supportAvailable && !isDemoPreview}
+      />
 
       <details open={!policyAllowsAction("claimOwnership") && policyAllowsAction("registerWarranty")} className="sun-advanced-actions rounded-2xl border border-white/10 bg-slate-950/45 p-3 text-xs">
         <summary className="cursor-pointer text-sm font-black text-slate-100">Opciones avanzadas de garantía y propiedad digital</summary>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
-        {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).filter((key) => !(showReportFlow && key === "report")).map((key) => {
+        {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
           const item = actionMeta[key];
           return (
             <button suppressHydrationWarning
@@ -1190,13 +501,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               key={key}
               disabled={isActionDisabled(key)}
               onClick={() => void trigger(item.path, item.method, key)}
-              data-sun-experience-event={key === "report" ? "PROBLEM_REPORTED" : undefined}
-              data-sun-experience-placement={key === "report" ? "protected_actions" : undefined}
-              data-sun-experience-interaction={key === "report" ? "report_started" : undefined}
               className={`sun-public-cta-card rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold"><span className="sun-public-cta-code">{item.icon}</span> {key === "report" ? "Reportar problema" : item.title}{actionStates[key] === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-200" /> : null}</p>
+                <p className="text-sm font-semibold"><span className="sun-public-cta-code">{item.icon}</span> {item.title}{actionStates[key] === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-200" /> : null}</p>
                 {renderStateBadge(key)}
               </div>
               <p className="mt-1 text-[11px] opacity-90">{item.subtitle}</p>
@@ -1227,67 +535,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       {lastActionMessage ? <p className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">{lastActionMessage}</p> : null}
       {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100" aria-live="assertive">{actionError}</p> : null}
       
-      {claimAuthOpen ? (
-        <form className="rounded-2xl border border-cyan-300/25 bg-slate-950/80 p-3 text-xs text-slate-200" aria-busy={claimAuthLoading} onSubmit={(event) => { event.preventDefault(); void (claimAuthStarted ? verifyClaimAuthAndRetry() : startClaimAuth()); }}>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Validacion de compra</p>
-              <h3 className="mt-1 text-sm font-black text-white">Confirma tu email o celular</h3>
-              <p id="sun-claim-contact-help" className="mt-1 text-[11px] leading-5 text-slate-300">
-                El codigo solo confirma el canal de contacto. La botella no se asocia a una cuenta ni propiedad sin comprobante aprobado y politica de marca.
-              </p>
-            </div>
-            <button suppressHydrationWarning type="button" disabled={claimAuthLoading} onClick={() => { setClaimAuthOpen(false); primaryClaimButtonRef.current?.focus(); }} className="min-h-11 rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200 disabled:opacity-50">
-              Cerrar
-            </button>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-[1.1fr_0.9fr_auto]">
-            <label className="grid gap-1">Email o celular
-            <input
-              suppressHydrationWarning
-              ref={claimContactRef}
-              autoComplete="username"
-              disabled={claimAuthLoading || claimAuthStarted}
-              aria-describedby="sun-claim-contact-help sun-claim-contact-validation"
-              aria-invalid={!isClaimContactValid && Boolean(normalizedClaimContact)}
-              value={claimContact}
-              onChange={(event) => setClaimContact(event.target.value)}
-              placeholder="WhatsApp (+54...) o Email"
-              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-hidden focus:border-cyan-300/50 disabled:opacity-60"
-            />
-            </label>
-            {claimAuthStarted ? <label className="grid gap-1">Codigo recibido
-            <input
-              suppressHydrationWarning
-              ref={claimCodeRef}
-              autoComplete="one-time-code"
-              inputMode="numeric"
-              disabled={claimAuthLoading}
-              aria-invalid={Boolean(claimAuthError)}
-              aria-describedby={claimAuthError ? "sun-claim-auth-error" : undefined}
-              value={claimCode}
-              onChange={(event) => setClaimCode(event.target.value)}
-              placeholder={claimAuthStarted ? "Codigo recibido" : "Codigo"}
-              className="min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-base text-white outline-hidden focus:border-cyan-300/50 disabled:opacity-60"
-            />
-            </label> : null}
-            <button
-              suppressHydrationWarning
-              type="submit"
-              disabled={claimAuthLoading || !isClaimContactValid || (claimAuthStarted && !isClaimCodeValid)}
-              className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {claimAuthLoading ? "Validando..." : claimAuthStarted ? "Confirmar" : "Enviar codigo"}
-            </button>
-          </div>
-          <p id="sun-claim-contact-validation" className="mt-2 text-[11px] text-amber-200">{!isClaimContactValid && normalizedClaimContact ? "Usa un email valido o un celular con codigo de pais." : ""}</p>
-          {claimAuthStarted ? <button type="button" disabled={claimAuthLoading} onClick={() => { setClaimAuthStarted(false); setClaimCode(""); setClaimAuthError(""); setClaimAuthMessage(""); }} className="min-h-11 rounded-lg border border-white/15 px-3 py-2 text-xs disabled:opacity-50">Usar otro contacto o pedir un nuevo codigo</button> : null}
-          {claimAuthLoading ? <p role="status" className="mt-2 text-xs text-cyan-100">{claimAuthStarted ? "Confirmando el codigo…" : "Solicitando el envio del codigo…"}</p> : null}
-          {claimAuthMessage ? <p role="status" className="mt-2 text-[11px] text-cyan-100">{claimAuthMessage}</p> : null}
-          {claimAuthError ? <p id="sun-claim-auth-error" role="alert" className="mt-2 rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-[11px] text-rose-100">{claimAuthError}</p> : null}
-          
-        </form>
-      ) : null}
       {lastTraceId ? <p className="text-[11px] text-slate-400">trace_id: <span className="font-mono">{lastTraceId}</span></p> : null}
       {provenance?.timeline?.length ? (
         <details className="rounded border border-cyan-300/15 bg-slate-950/45 p-2 text-[11px] text-slate-200">
