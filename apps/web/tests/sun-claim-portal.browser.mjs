@@ -78,7 +78,7 @@ async function assess(t,name){
   await region.scrollIntoViewIfNeeded();const geometry=await region.evaluate(el=>{const r=el.getBoundingClientRect();return{within:r.left>=-1&&r.right<=innerWidth+1,overflow:document.documentElement.scrollWidth>innerWidth+1};});check(geometry.within&&!geometry.overflow,'New claim region fits mobile viewport');
   await t.page.addScriptTag({content:axe});const a=await t.page.evaluate(async()=>{const result=await axe.run('[data-testid="sun-claim-portal"]',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return{violations:result.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),incomplete:result.incomplete.map(v=>v.id)};});t.entry.axe=a;check(a.violations.length===0,'No WCAG violations in the new claim region');
  }
- const file='view-'+t.entry.id+'-'+name+'-'+t.entry.width+'-'+t.entry.theme+'.png';await t.page.screenshot({path:join(output,file)});t.entry.screenshot={file,sha256:digest(await readFile(join(output,file)))};
+ const file=('view-'+t.entry.id+'-'+name+'-'+t.entry.width+'-'+t.entry.theme+'.png').toLowerCase();await t.page.screenshot({path:join(output,file)});t.entry.screenshot={file,sha256:digest(await readFile(join(output,file)))};
 }
 async function privacy(t){
  check(!new URL(t.page.url()).searchParams.has('fresh')&&!new URL(t.page.url()).searchParams.has('fresh_token'),'Hydrated SUN or account URL is capability-free');
@@ -121,21 +121,21 @@ try{
   const t=await openView(state,390,theme,locale);await t.portal.getByRole('heading',{name:labels[locale].title,exact:true}).waitFor();await assess(t,state+'-'+locale);await positive(t);await closeView(t);
  }
  for(const kind of ['503','malformed','wrong-event','expired','timeout','navigation-held']){
-  const t=await openView('closed',390,'dark','es-AR',{handoff:kind,ttl:kind==='expired'?30:300});await assess(t,'handoff-'+kind);
+  const t=await openView('closed',390,'dark','es-AR',{handoff:kind,ttl:kind==='expired'?30:300});
   const button=t.portal.getByRole('button',{name:labels['es-AR'].action,exact:true});await button.waitFor();
   if(kind==='expired')await t.page.waitForTimeout(Math.max(0,t.issued.expiresAt-Date.now()+100));
   await button.click();
   if(kind==='navigation-held'){
-   await t.portal.locator('[data-handoff-navigation="delayed"]').waitFor({timeout:12000});check(t.entry.handoffs===1,'Delayed navigation does not prepare twice');check(new URL(t.page.url()).pathname==='/sun','No destination commitment while navigation is held');t.releaseNavigation();await t.page.waitForURL(u=>u.pathname==='/me',{timeout:30000});
+   await t.portal.locator('[data-handoff-navigation="delayed"]').waitFor({timeout:12000});check(t.entry.handoffs===1,'Delayed navigation does not prepare twice');check(new URL(t.page.url()).pathname==='/sun','No destination commitment while navigation is held');await assess(t,'handoff-'+kind);t.releaseNavigation();await t.page.waitForURL(u=>u.pathname==='/me',{timeout:30000});
   }else{
    await t.portal.getByRole('alert').waitFor({timeout:12000});await t.page.waitForTimeout(300);check(t.entry.handoffs===1&&new URL(t.page.url()).pathname==='/sun','Failed handoff stays on SUN without automatic retry');
-   check(await t.portal.getByRole('link',{name:'Abrir mis productos guardados',exact:true}).getAttribute('href')==='/me/products','Failure offers a read-only route to saved products');t.releaseHandoff();
+   check(await t.portal.getByRole('link',{name:'Abrir mis productos guardados',exact:true}).getAttribute('href')==='/me/products','Failure offers a read-only route to saved products');await assess(t,'handoff-'+kind);t.releaseHandoff();
   }
   await closeView(t);
  }
  const noSupport=await openView('no-support',390,'light');await help(noSupport,false);await assess(noSupport,'no-support');await closeView(noSupport);
  const missing=await openView('missing-fresh',390,'dark');check(await missing.portal.getAttribute('data-claim-available')==='false','Missing capability cannot degrade into an ordinary privileged claim link');check(missing.entry.handoffs===0,'Missing capability never hands off');await assess(missing,'missing-fresh');await closeView(missing);
- const anonymous=await openView('closed',390,'light','es-AR',{authenticated:false});await anonymous.portal.getByRole('button',{name:labels['es-AR'].action,exact:true}).click();await anonymous.page.waitForURL(u=>u.pathname==='/login',{timeout:60000});check(anonymous.entry.handoffs===1,'Anonymous account flow prepares once and uses normal login');check(anonymous.entry.requests.filter(x=>x.method==='POST'&&/\/auth\//.test(x.path)).length===0,'Opening login sends no OTP');await closeView(anonymous);
+ const anonymous=await openView('closed',390,'light','es-AR',{authenticated:false});await assess(anonymous,'anonymous');await anonymous.portal.getByRole('button',{name:labels['es-AR'].action,exact:true}).click();await anonymous.page.waitForURL(u=>u.pathname==='/login',{timeout:60000});check(anonymous.entry.handoffs===1,'Anonymous account flow prepares once and uses normal login');check(anonymous.entry.requests.filter(x=>x.method==='POST'&&/\/auth\//.test(x.path)).length===0,'Opening login sends no OTP');await closeView(anonymous);
  const finalState=await fixture('/qa-state');check(finalState.forbidden.length===0,'Synthetic upstream observed no business or unknown API request');check(report.forbiddenWrites.length===0,'No claim, OCR, OTP or report submission from gateway QA');check(report.unexpected.length===0,'No external or application errors');report.status='passed';
 }catch(error){report.failure={name:error?.name||'Error',messageSha256:digest(String(error?.message||''))};throw error;}
 finally{
