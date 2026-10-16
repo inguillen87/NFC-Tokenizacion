@@ -64,7 +64,12 @@ async function openView(state,width,theme,locale='es-AR',{authenticated=true,han
  const url=state==='demo'?base+'/sun?demo=1&lang='+locale:state==='qr'?base+'/sun?qr=1&bid=QA-ONLY&lang='+locale:base+'/sun?'+query;
  await page.goto(url,{waitUntil:'load',timeout:90000});
  const portal=page.getByTestId('sun-claim-portal');
- if(state!=='demo')await portal.waitFor({state:'visible',timeout:30000});
+ if(state!=='demo'){
+  // The production tool loads only when reached. Exercise the same scroll as a
+  // customer instead of waiting for an off-screen deferred component to exist.
+  await page.locator('#protected-actions').scrollIntoViewIfNeeded();
+  await portal.waitFor({state:'visible',timeout:30000});
+ }
  await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.classList.toggle('theme-light',theme==='light');document.documentElement.classList.toggle('theme-dark',theme==='dark');},theme);
  return{entry,context,page,portal,issued,releaseHandoff:()=>holdRelease?.(),releaseNavigation:()=>navRelease?.()};
 }
