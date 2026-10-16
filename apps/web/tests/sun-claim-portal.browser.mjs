@@ -128,7 +128,8 @@ try{
   if(kind==='navigation-held'){
    await t.portal.locator('[data-handoff-navigation="delayed"]').waitFor({timeout:12000});check(t.entry.handoffs===1,'Delayed navigation does not prepare twice');check(new URL(t.page.url()).pathname==='/sun','No destination commitment while navigation is held');t.releaseNavigation();await t.page.waitForURL(u=>u.pathname==='/me',{timeout:30000});
   }else{
-   await t.portal.getByRole('alert').waitFor({timeout:12000});await t.page.waitForTimeout(300);check(t.entry.handoffs===1&&new URL(t.page.url()).pathname==='/sun','Failed handoff stays on SUN without automatic retry');check(await t.portal.locator('[data-handoff-navigation]').count()===1,'Failure keeps the existing navigation feedback region');t.releaseHandoff();
+   await t.portal.getByRole('alert').waitFor({timeout:12000});await t.page.waitForTimeout(300);check(t.entry.handoffs===1&&new URL(t.page.url()).pathname==='/sun','Failed handoff stays on SUN without automatic retry');
+   check(await t.portal.getByRole('link',{name:'Abrir mis productos guardados',exact:true}).getAttribute('href')==='/me/products','Failure offers a read-only route to saved products');t.releaseHandoff();
   }
   await closeView(t);
  }
