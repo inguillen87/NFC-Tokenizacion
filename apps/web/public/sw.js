@@ -1,6 +1,6 @@
 // Bump when consumer-facing SUN bundles change so an intermittent/offline
 // phone cannot keep mixing an older passport shell with current API evidence.
-const CACHE_NAME = "nexid-v6";
+const CACHE_NAME = "nexid-v7";
 const APP_SHELL = [
   "/",
   "/offline",
@@ -219,7 +219,7 @@ function emergencyOfflineResponse() {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="noindex,nofollow" />
-        <title>Verificación pendiente · nexID</title>
+        <title>Sin conexión · nexID</title>
         <style>
           *{box-sizing:border-box}
           body{margin:0;min-height:100vh;display:grid;place-items:center;overflow-x:hidden;padding:1rem;background:#050914;color:#e5f9ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
@@ -231,10 +231,10 @@ function emergencyOfflineResponse() {
       </head>
       <body>
         <main>
-          <h1>Verificación pendiente</h1>
-          <p>Necesitamos conexión para confirmar autenticidad criptográfica.</p>
-          <p>La lectura se guardó en este dispositivo. Abrí esta pantalla cuando vuelva la conexión para sincronizarla.</p>
-          <a href="/offline">Abrir cola local</a>
+          <h1>No pudimos abrir esta página</h1>
+          <p>Revisá tu conexión y volvé a intentarlo.</p>
+          <p>Si tenés lecturas guardadas en este dispositivo, podés consultarlas cuando la pantalla esté disponible.</p>
+          <a href="/offline">Consultar lecturas guardadas</a>
         </main>
       </body>
     </html>`,

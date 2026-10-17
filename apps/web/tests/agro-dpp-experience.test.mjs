@@ -93,6 +93,6 @@ test("mobile Agro DPP implements the ten ordered surfaces and all structured eve
   assert.match(eventWriter, /idempotency-key/);
   assert.match(page, /<AgroDppExperience/);
   assert.match(bff, /"experience-event"/);
-  assert.match(offline, /VERIFICATION_PENDING/);
-  assert.match(offline, /Sin conexión\. La información pública está disponible\. La autenticidad criptográfica se confirmará al recuperar conexión\./);
+  assert.match(offline, /PENDING_BACKEND_VERIFICATION/);
+  assert.doesNotMatch(offline, /<code[^>]*>VERIFICATION_PENDING|<code[^>]*>\{record\.status\}/);
 });

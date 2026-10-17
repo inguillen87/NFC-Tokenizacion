@@ -78,11 +78,10 @@ test("PWA queue is local, deduplicated, bounded and routes failed SUN navigation
   assert.doesNotMatch(`${sw}\n${store}\n${client}`, /K_META|K_FILE|KMS/);
 });
 
-test("offline page exposes exact pending truth and no sensitive action enablement", () => {
+test("offline page preserves pending states without exposing internal codes or sensitive actions", () => {
   assert.match(page, /robots: \{ index: false, follow: false \}/);
   assert.match(client, /Verificación pendiente/);
-  assert.match(client, /VERIFICATION_PENDING/);
-  assert.match(client, /Sin conexión\. La información pública está disponible\. La autenticidad criptográfica se confirmará al recuperar conexión\./);
+  assert.doesNotMatch(client, /<code[^>]*>VERIFICATION_PENDING|<code[^>]*>\{record\.status\}/);
   assert.match(client, /PENDING_BACKEND_VERIFICATION/);
   assert.match(client, /SYNCED_VALID/);
   assert.match(client, /SYNCED_INVALID/);
