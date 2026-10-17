@@ -20,8 +20,9 @@ import {
 } from "./offline-store";
 
 type Connectivity = "online" | "offline";
+type StorageState = "loading" | "ready" | "unavailable";
 
-const OFFLINE_PENDING_PUBLIC_COPY = "Sin conexión. La información pública está disponible. La autenticidad criptográfica se confirmará al recuperar conexión.";
+const OFFLINE_PENDING_PUBLIC_COPY = "La lectura está guardada en este dispositivo. Necesita conexión para comprobar su autenticidad.";
 
 const STATUS_COPY: Record<OfflineSunStatus, { title: string; body: string; tone: string }> = {
   PENDING_BACKEND_VERIFICATION: {
@@ -31,22 +32,22 @@ const STATUS_COPY: Record<OfflineSunStatus, { title: string; body: string; tone:
   },
   SYNCING: {
     title: "Sincronizando",
-    body: "Estamos enviando el mensaje guardado al verificador online.",
+    body: "Estamos enviando la lectura guardada para verificarla.",
     tone: "border-cyan-400/35 bg-cyan-400/10 text-cyan-100",
   },
   SYNCED_VALID: {
     title: "Validación online completada",
-    body: "El backend aceptó el mensaje SUN/CMAC. Esto no acredita por sí solo contenido físico, origen, custodia ni propiedad.",
+    body: "La lectura pasó la verificación online. Esto no acredita por sí solo el contenido físico, el origen, la custodia ni la propiedad.",
     tone: "border-emerald-400/35 bg-emerald-400/10 text-emerald-100",
   },
   SYNCED_INVALID: {
     title: "Lectura no validada",
-    body: "El backend no pudo validar el mensaje. Repetí el tap físico antes de continuar.",
+    body: "No se pudo validar la lectura. Acercá de nuevo el teléfono a la etiqueta antes de continuar.",
     tone: "border-rose-400/35 bg-rose-400/10 text-rose-100",
   },
   REPLAY_SUSPECT: {
     title: "Repetición detectada",
-    body: "El backend reconoció un mensaje ya utilizado. Hacé un nuevo tap físico para obtener una lectura fresca.",
+    body: "Esta lectura ya se utilizó. Acercá de nuevo el teléfono a la etiqueta para obtener una nueva.",
     tone: "border-rose-400/35 bg-rose-400/10 text-rose-100",
   },
   SYNC_FAILED: {
@@ -130,13 +131,24 @@ async function enrichWithCachedProduct(records: OfflineSunRecord[]) {
 export function OfflineQueueClient() {
   const [records, setRecords] = useState<OfflineSunRecord[]>([]);
   const [connectivity, setConnectivity] = useState<Connectivity>("offline");
-  const [storageReady, setStorageReady] = useState(false);
+  const [storageState, setStorageState] = useState<StorageState>("loading");
+  const refreshSequenceRef = useRef(0);
   const syncingRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    const stored = await listOfflineSunRecords().catch(() => []);
-    setRecords(await enrichWithCachedProduct(stored));
-    setStorageReady(true);
+    const sequence = ++refreshSequenceRef.current;
+    try {
+      if (typeof indexedDB === "undefined") throw new Error("offline_storage_unavailable");
+      const stored = await listOfflineSunRecords();
+      const enriched = await enrichWithCachedProduct(stored);
+      if (sequence !== refreshSequenceRef.current) return;
+      setRecords(enriched);
+      setStorageState("ready");
+    } catch {
+      if (sequence !== refreshSequenceRef.current) return;
+      setRecords([]);
+      setStorageState("unavailable");
+    }
   }, []);
 
   const syncPending = useCallback(async () => {
@@ -252,6 +264,13 @@ export function OfflineQueueClient() {
   };
 
   const pendingCount = records.filter((record) => !isTerminalOfflineSunStatus(record.status)).length;
+  const storageCopy = storageState === "loading"
+    ? "Estamos comprobando las lecturas guardadas en este dispositivo."
+    : storageState === "unavailable"
+      ? "No pudimos acceder al almacenamiento de este dispositivo. No podemos confirmar si hay lecturas guardadas."
+      : records.length > 0
+        ? `Encontramos ${records.length} ${records.length === 1 ? "lectura guardada" : "lecturas guardadas"} en este dispositivo. Revisá el estado de cada una en la lista.`
+        : "No encontramos lecturas guardadas en este dispositivo. Si una lectura no aparece en la lista, acercá de nuevo el teléfono a la etiqueta cuando tengas conexión.";
 
   return (
     <main className="nexid-offline-page min-h-screen bg-[#050914] px-4 py-6 text-slate-100 sm:py-10">
@@ -267,24 +286,20 @@ export function OfflineQueueClient() {
         <section className="overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950/80 shadow-2xl shadow-cyan-950/30">
           <div className="border-b border-white/10 bg-gradient-to-br from-cyan-400/10 via-slate-950 to-violet-500/10 p-6 sm:p-8">
             <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-100">
-              <ShieldAlert aria-hidden="true" size={14} /> Offline Level 1
+              <ShieldAlert aria-hidden="true" size={14} /> Lecturas sin conexión
             </span>
-            <h1 className="mt-5 text-3xl font-black tracking-tight text-white sm:text-4xl">Verificación pendiente</h1>
-            <code className="mt-3 inline-flex rounded-full border border-amber-300/25 bg-black/20 px-3 py-1.5 text-[10px] font-black tracking-[0.14em] text-amber-100">VERIFICATION_PENDING</code>
-            <p className="mt-3 max-w-xl text-base leading-7 text-slate-300">{OFFLINE_PENDING_PUBLIC_COPY}</p>
-            <p className="mt-3 text-sm leading-6 text-slate-400">
-              El tap quedó guardado localmente. La aplicación pública no lleva material secreto y espera el veredicto del backend.
-            </p>
+            <h1 className="mt-5 text-3xl font-black tracking-tight text-white sm:text-4xl">Lecturas en este dispositivo</h1>
+            <p className="mt-3 max-w-xl text-base leading-7 text-slate-300">{storageCopy}</p>
           </div>
 
           <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Guardados</span>
-              <strong className="mt-2 block text-2xl text-white">{records.length}</strong>
+              <strong className="mt-2 block text-2xl text-white">{storageState === "ready" ? records.length : "—"}</strong>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Por sincronizar</span>
-              <strong className="mt-2 block text-2xl text-white">{pendingCount}</strong>
+              <strong className="mt-2 block text-2xl text-white">{storageState === "ready" ? pendingCount : "—"}</strong>
             </div>
             <button
               type="button"
@@ -297,13 +312,25 @@ export function OfflineQueueClient() {
           </div>
         </section>
 
-        <section aria-live="polite" aria-busy={!storageReady} className="v3-space-y-4">
-          {!storageReady ? (
-            <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 text-slate-300">Abriendo la cola local…</div>
+        <section aria-live="polite" aria-busy={storageState === "loading"} className="v3-space-y-4">
+          {storageState === "loading" ? (
+            <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 text-slate-300">Buscando lecturas guardadas…</div>
+          ) : storageState === "unavailable" ? (
+            <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-6">
+              <h2 className="text-xl font-black text-white">No pudimos consultar tus lecturas</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">Podés volver a consultar el almacenamiento de este dispositivo. Si tu lectura no aparece, acercá de nuevo el teléfono a la etiqueta cuando tengas conexión.</p>
+              <button
+                type="button"
+                onClick={() => { setStorageState("loading"); void refresh(); }}
+                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-5 text-sm font-black text-cyan-100 transition hover:bg-cyan-300/15"
+              >
+                Volver a consultar
+              </button>
+            </div>
           ) : records.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-6">
-              <h2 className="text-xl font-black text-white">No hay lecturas pendientes</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-400">Cuando una navegación SUN falle por conectividad, aparecerá acá sin exponer el payload técnico en pantalla.</p>
+              <h2 className="text-xl font-black text-white">No hay lecturas guardadas</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">Las lecturas que se guarden correctamente en este dispositivo aparecerán acá.</p>
             </div>
           ) : records.map((record) => {
             const copy = STATUS_COPY[record.status];
@@ -332,7 +359,6 @@ export function OfflineQueueClient() {
                   <div>
                     <strong className="block text-sm">{copy.title}</strong>
                     <p className="mt-1 text-sm leading-6 opacity-90">{copy.body}</p>
-                    <code className="mt-2 block text-[10px] font-bold tracking-wide opacity-70">{record.status}</code>
                   </div>
                 </div>
 
