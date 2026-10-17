@@ -1,7 +1,7 @@
 name: SUN first-paint and location acceptance
 on:
   pull_request:
-    paths: ['apps/web/**', 'packages/**', 'scripts/browser/**', 'package.json', 'package-lock.json', '.github/workflows/sun-first-paint-acceptance.yml', 'scripts/sun-ci-build-transport.mjs', 'scripts/tests/sun-first-paint-workflow.test.mjs']
+    paths: ['apps/web/**', 'packages/**', 'scripts/browser/**', 'package.json', 'package-lock.json', '.github/workflows/sun-first-paint-acceptance.yml', 'scripts/sun-ci-build-transport.mjs', 'scripts/tests/sun-first-paint-workflow.test.mjs', 'scripts/tests/sun-first-paint-contexts.test.mjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,6 +23,13 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.15.0'
+      - name: Validate SUN workflow contexts with pinned actionlint
+        run: |
+          mkdir "$RUNNER_TEMP/sun-actionlint"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/sun-actionlint/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          printf '%s  %s\n' '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' "$RUNNER_TEMP/sun-actionlint/actionlint.tar.gz" | sha256sum --check --strict
+          tar --extract --gzip --file "$RUNNER_TEMP/sun-actionlint/actionlint.tar.gz" --directory "$RUNNER_TEMP/sun-actionlint" actionlint
+          ACTIONLINT_PATH="$RUNNER_TEMP/sun-actionlint/actionlint" node --test scripts/tests/sun-first-paint-contexts.test.mjs
       - name: Install exact dependencies and validate web
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -58,8 +65,6 @@ jobs:
       SUN_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       SUN_CI_MANIFEST_SHA256: ${{ needs.sun-web-build.outputs.manifest-sha256 }}
       SUN_CI_BUILD_ID: ${{ needs.sun-web-build.outputs.build-id }}
-      PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
-      AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -83,6 +88,9 @@ jobs:
           node "$RUNNER_TEMP/sun-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
       - name: Verify foundation-and-access
         if: matrix.batch == 'foundation-and-access'
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
         run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/first-paint" node apps/web/tests/sun-first-paint.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/product-image" node apps/web/tests/sun-product-image.browser.mjs
@@ -104,6 +112,9 @@ jobs:
           git diff --exit-code -- apps packages package.json package-lock.json
       - name: Verify consumer-and-wine
         if: matrix.batch == 'consumer-and-wine'
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
         run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal" node apps/web/tests/consumer-portal-experience.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-save-refresh" node apps/web/tests/consumer-save-refresh.browser.mjs
@@ -114,6 +125,9 @@ jobs:
           git diff --exit-code -- apps packages package.json package-lock.json
       - name: Verify brand-and-product
         if: matrix.batch == 'brand-and-product'
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
         run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/syngenta-demo" node apps/web/tests/syngenta-demo.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/syngenta-product-assistant" node apps/web/tests/syngenta-product-assistant.browser.mjs
