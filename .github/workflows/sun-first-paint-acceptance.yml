@@ -1,16 +1,20 @@
 name: SUN first-paint and location acceptance
 on:
   pull_request:
-    paths: ['apps/web/**', 'packages/**', 'scripts/browser/**', 'package.json', 'package-lock.json', '.github/workflows/sun-first-paint-acceptance.yml']
+    paths: ['apps/web/**', 'packages/**', 'scripts/browser/**', 'package.json', 'package-lock.json', '.github/workflows/sun-first-paint-acceptance.yml', 'scripts/sun-ci-build-transport.mjs', 'scripts/tests/sun-first-paint-workflow.test.mjs', 'scripts/tests/sun-first-paint-contexts.test.mjs']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  sun-web:
+  sun-web-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      manifest-sha256: ${{ steps.pack.outputs.manifest-sha256 }}
+      build-id: ${{ steps.pack.outputs.build-id }}
     env:
       NEXT_TELEMETRY_DISABLED: '1'
+      SUN_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -19,19 +23,71 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.15.0'
+      - name: Validate SUN workflow contexts with pinned actionlint
+        run: |
+          mkdir "$RUNNER_TEMP/sun-actionlint"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/sun-actionlint/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          printf '%s  %s\n' '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' "$RUNNER_TEMP/sun-actionlint/actionlint.tar.gz" | sha256sum --check --strict
+          tar --extract --gzip --file "$RUNNER_TEMP/sun-actionlint/actionlint.tar.gz" --directory "$RUNNER_TEMP/sun-actionlint" actionlint
+          ACTIONLINT_PATH="$RUNNER_TEMP/sun-actionlint/actionlint" node --test scripts/tests/sun-first-paint-contexts.test.mjs
       - name: Install exact dependencies and validate web
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
+          node --test scripts/tests/sun-first-paint-workflow.test.mjs
           npm test --workspace web
           node --test scripts/browser/brand-hero-readonly-network.test.mjs
           npx tsc --noEmit --incremental false -p apps/web/tsconfig.json
           npm run check:secrets
           npm run build:web
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Pack source-bound compiled build once
+        id: pack
+        run: node scripts/sun-ci-build-transport.mjs pack "$RUNNER_TEMP/sun-build-transport"
+      - name: Preserve compiled build and generated styles/worker
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sun-first-paint-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/sun-build-transport
+          if-no-files-found: error
+          retention-days: 7
+  sun-web-browsers:
+    name: sun-web (${{ matrix.batch }})
+    needs: sun-web-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        batch: [foundation-and-access, consumer-and-wine, brand-and-product]
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      SUN_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      SUN_CI_MANIFEST_SHA256: ${{ needs.sun-web-build.outputs.manifest-sha256 }}
+      SUN_CI_BUILD_ID: ${{ needs.sun-web-build.outputs.build-id }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Install exact dependencies without rebuilding
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Download the build from this exact run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: sun-first-paint-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/sun-build-transport
+      - name: Restore verified source-bound build
+        run: node scripts/sun-ci-build-transport.mjs restore "$RUNNER_TEMP/sun-build-transport"
       - name: Install isolated browser tools
         run: |
           npm install --prefix "$RUNNER_TEMP/sun-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
           node "$RUNNER_TEMP/sun-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
-      - name: Verify loading DOM work and explicit same-tap location
+      - name: Verify foundation-and-access
+        if: matrix.batch == 'foundation-and-access'
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
           AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
@@ -42,6 +98,7 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/map-recovery" node apps/web/tests/sun-map-recovery.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/map-controls" node apps/web/tests/sun-map-controls.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/style-budget" node apps/web/tests/public-style-budget.browser.mjs
+          QA_OUTPUT="$RUNNER_TEMP/sun-evidence/consumer-style-budget" node apps/web/tests/consumer-style-budget.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/mobile-experience" node apps/web/tests/sun-mobile-experience.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/visual-refinement" node apps/web/tests/sun-visual-refinement.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/photography-location" node apps/web/tests/sun-photography-location.browser.mjs
@@ -52,12 +109,26 @@ jobs:
           QA_SUN_ACCOUNT_AUTHORIZED=1 QA_SOURCE="$(git rev-parse HEAD)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/sun-account" node apps/web/tests/sun-account-access.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-access" node apps/web/tests/consumer-access.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-actions" node apps/web/tests/consumer-action-feedback.browser.mjs
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Verify consumer-and-wine
+        if: matrix.batch == 'consumer-and-wine'
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
+        run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal" node apps/web/tests/consumer-portal-experience.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-save-refresh" node apps/web/tests/consumer-save-refresh.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal-loading" node apps/web/tests/consumer-portal-loading.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-destination-recovery" node apps/web/tests/consumer-destination-recovery.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/valle-demo-map" node apps/web/tests/valle-secreto-demo-map.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/wine-demo" node apps/web/tests/sun-wine-demo.browser.mjs
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Verify brand-and-product
+        if: matrix.batch == 'brand-and-product'
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
+        run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/syngenta-demo" node apps/web/tests/syngenta-demo.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/syngenta-product-assistant" node apps/web/tests/syngenta-product-assistant.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/managed-sommelier" node apps/web/tests/sun-managed-sommelier.browser.mjs
@@ -67,7 +138,42 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/public-visual" node scripts/browser/public-visual-next.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/brand-hero-motion" xvfb-run --auto-servernum node scripts/browser/brand-hero-motion-next.browser.mjs
           git diff --exit-code -- apps packages package.json package-lock.json
-      - name: Upload synthetic browser evidence
+      - name: Verify build inputs remain unchanged
+        if: always()
+        run: node scripts/sun-ci-build-transport.mjs verify "$RUNNER_TEMP/sun-build-transport"
+      - name: Preserve every batch including partial browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sun-first-paint-evidence-batch-${{ matrix.batch }}
+          path: ${{ runner.temp }}/sun-evidence
+          if-no-files-found: ignore
+          retention-days: 7
+  sun-web:
+    if: ${{ always() }}
+    needs: [sun-web-build, sun-web-browsers, sun-tenant-actions]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SUN_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      SUN_CI_NEEDS_JSON: ${{ toJSON(needs) }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Gather browser evidence without changing it
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: sun-first-paint-evidence-batch-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/sun-evidence
+      - name: Require build and every browser dependency to succeed
+        run: node scripts/sun-ci-build-transport.mjs aggregate "$RUNNER_TEMP/sun-evidence"
+      - name: Preserve combined synthetic browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

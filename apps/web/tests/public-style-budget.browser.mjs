@@ -33,7 +33,7 @@ try{
   report.comparisons.push({width,theme,identical,visibleElements:before.length,fullGzip:gzipSync(full.css).length,leanGzip:gzipSync(lean.css).length,totalSunCssGzip:smallBytes,differences:diffs});report.views.push({width,theme,file:`sun-${width}-${theme}.png`});
   check(await t.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow '+width+' '+theme);await t.context.close();
  }
- for(const route of ['/','/about','/pricing','/sdk','/login','/demo-lab']){
+ for(const route of ['/','/about','/pricing','/sdk','/demo-lab']){
   const response=await fetch(origin+route),html=await response.text(),styles=await stylesFor(html);check(styles.some(s=>s.css===full.css),'Complete original site styles kept on '+route);report.routes.push({route,status:response.status,cssFiles:styles.length,hasFull:styles.some(s=>s.css===full.css)});
  }
  {

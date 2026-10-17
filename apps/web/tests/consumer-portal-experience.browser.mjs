@@ -30,6 +30,67 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+async function filterControlMeasurement(control){return control.evaluate(element=>{
+ const style=getComputedStyle(element),box=element.getBoundingClientRect(),nativeSelect=element instanceof HTMLSelectElement;
+ const textSource=nativeSelect?'selected-option':element.value?'input-value':'placeholder';
+ const textStyle=textSource==='placeholder'?getComputedStyle(element,'::placeholder'):style;
+ const selectedLabel=nativeSelect?element.selectedOptions[0]?.label:element.value||element.placeholder;
+ const foregroundColor=textStyle.color,opacity=Number(textStyle.opacity);
+ const context=document.createElement('canvas').getContext('2d');context.font=textStyle.font||`${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
+ const textWidth=context.measureText(selectedLabel).width+Math.max(0,Array.from(selectedLabel).length-1)*(parseFloat(textStyle.letterSpacing)||0);
+ // Native select text has no reliable DOM scrollWidth. Keep a conservative
+ // arrow allowance in addition to the actual computed padding and borders.
+ const arrowReserve=nativeSelect?24:0,availableWidth=box.width-parseFloat(style.borderLeftWidth)-parseFloat(style.borderRightWidth)-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-arrowReserve;
+ const channels=color=>color.match(/[\d.]+/g)?.map(Number)||[];
+ const background=start=>{for(let node=start;node;node=node.parentElement){const color=channels(getComputedStyle(node).backgroundColor);if(color.length>=3&&(color[3]??1)===1)return color;}return null;};
+ const luminance=color=>color.slice(0,3).map(value=>value/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
+ const contrast=(foreground,backdrop)=>{if(!backdrop||foreground.length<3||(foreground[3]??1)!==1)return null;const a=luminance(foreground),b=luminance(backdrop);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
+ const controlBackground=background(element),surroundingBackground=background(element.parentElement),outline=channels(style.outlineColor);
+ // Composite the visible text's own color/opacity over the resolved solid
+ // control surface. Unknown ancestor opacity fails closed instead of claiming a ratio.
+ let opaqueControlTree=true;for(let node=element;node;node=node.parentElement){if(Number(getComputedStyle(node).opacity)!==1){opaqueControlTree=false;break;}}
+ const foreground=channels(foregroundColor),alpha=(foreground[3]??1)*opacity;
+ const renderedForeground=opaqueControlTree&&controlBackground&&foreground.length>=3&&Number.isFinite(alpha)&&alpha>=0&&alpha<=1?foreground.slice(0,3).map((value,index)=>value*alpha+controlBackground[index]*(1-alpha)):null;
+ return {selectedLabel,textSource,foregroundColor,opacity,opaqueControlTree,renderedForeground,value:element.value,textWidth,availableWidth,arrowReserve,font:context.font,fontSize:parseFloat(textStyle.fontSize),colorScheme:style.colorScheme,nativeSelect,appearance:style.appearance,
+  geometry:{left:box.left,right:box.right,top:box.top,bottom:box.bottom,width:box.width,height:box.height,viewportWidth:innerWidth},
+  textContrast:renderedForeground?contrast(renderedForeground,controlBackground):null,focus:{active:element===document.activeElement,visible:element.matches(':focus-visible'),style:style.outlineStyle,width:parseFloat(style.outlineWidth),offset:parseFloat(style.outlineOffset),controlContrast:contrast(outline,controlBackground),surroundingContrast:contrast(outline,surroundingBackground)}};
+});}
+async function productFilterExperience(page,library,width,theme){
+ await page.evaluate(()=>document.fonts.ready);
+ const search=library.getByRole('searchbox',{name:'Buscar producto, marca o lote'}),brand=library.getByRole('combobox',{name:'Marca',exact:true}),order=library.getByRole('combobox',{name:'Orden',exact:true});
+ const result={width,theme,measurements:[],focus:[]};report.productFilters??=[];report.productFilters.push(result);
+ const names=()=>library.locator('article h3').allTextContents(),original=await names();
+ async function measure(control,state){
+  const observed=await filterControlMeasurement(control);result.measurements.push({state,...observed});
+  check(observed.geometry.width>=44&&observed.geometry.height>=46&&observed.geometry.left>=0&&observed.geometry.right<=observed.geometry.viewportWidth,`${width}/${theme} ${state}: filter is a visible touch target`);
+  check(observed.fontSize>=(width<=700?16:14)&&observed.textContrast>=4.5,`${width}/${theme} ${state}: filter text is legible`);
+  check(observed.textWidth<=observed.availableWidth,`${width}/${theme} ${state}: selected text fits before the native arrow (${observed.textWidth.toFixed(1)} <= ${observed.availableWidth.toFixed(1)}px)`);
+  check(observed.colorScheme===theme&&(!observed.nativeSelect||observed.appearance!=='none'),`${width}/${theme} ${state}: native control follows the requested theme`);
+ }
+ await measure(search,'search-placeholder');await measure(brand,'all-brands');await measure(order,'original-order');
+ await brand.selectOption('olive-qa');await measure(brand,'olive-brand');
+ check(JSON.stringify(await names())===JSON.stringify(['Aceite de oliva QA']),`${width}/${theme} brand selection shows only that brand's product`);
+ await search.fill('reserva');await library.getByRole('heading',{name:'No hay coincidencias con estos filtros.',exact:true}).waitFor();
+ check((await names()).length===0,`${width}/${theme} search combines with the selected brand`);
+ await brand.selectOption('consumer-qa');await measure(brand,'wine-brand');
+ check(JSON.stringify(await names())===JSON.stringify(['Vino reserva QA']),`${width}/${theme} changing brand preserves the search query`);
+ await search.fill('');await brand.selectOption('');
+ await order.selectOption('name');await measure(order,'name-order');const alphabetical=await names();
+ check(alphabetical.length===12&&alphabetical[0]==='Aceite de oliva QA'&&alphabetical.every((name,index)=>index===0||alphabetical[index-1].localeCompare(name,'es')<=0),`${width}/${theme} name order changes the actual product sequence`);
+ await order.selectOption('recent');await measure(order,'recent-order');
+ check(JSON.stringify((await names()).slice(0,2))===JSON.stringify(['Vino reserva QA','Aceite de oliva QA']),`${width}/${theme} recent order puts reported readings before undated products`);
+ await order.selectOption('original');
+ check(JSON.stringify(await names())===JSON.stringify(original),`${width}/${theme} original order restores the loaded sequence`);
+ // Enter the form with the keyboard and follow its native tab sequence.
+ await search.focus();await page.keyboard.press('Shift+Tab');
+ for(const [name,control] of [['search',search],['brand',brand],['order',order]]){
+  await page.keyboard.press('Tab');const observed=await filterControlMeasurement(control);result.focus.push({name,...observed.focus});
+  check(observed.focus.active&&observed.focus.visible&&observed.focus.style!=='none'&&observed.focus.width>=2&&observed.focus.offset>=0&&observed.focus.controlContrast>=3&&observed.focus.surroundingContrast>=3,`${width}/${theme} ${name}: keyboard focus is visible with sufficient contrast`);
+ }
+ const filters=await search.evaluate(element=>{const box=element.closest('label').parentElement.getBoundingClientRect();return {x:box.x+scrollX-6,y:box.y+scrollY-6,width:box.width+12,height:box.height+12};});
+ await page.screenshot({path:join(output,`product-filters-${width}-${theme}.png`),clip:filters});
+ await order.blur();
+}
 async function productPhotoRecovery(page,context,width,theme){
  const observed={width,theme,failedRequests:0,updatedRequests:0,sameProductCard:false};
  report.productPhotoRecovery??=[];report.productPhotoRecovery.push(observed);
@@ -117,6 +178,7 @@ try{
   check(await library.locator('article').evaluateAll(cards=>cards.every(card=>card.querySelectorAll('button').length===1&&card.querySelectorAll('a,details').length===0)),`${width}/${theme} each card has one action`);
   check(await library.locator('article button').evaluateAll(buttons=>buttons.every(button=>button.getBoundingClientRect().height>=44&&parseFloat(getComputedStyle(button).fontSize)>=14)),`${width}/${theme} product actions are legible touch targets`);
   check(await page.getByTestId('product-notices').count()===0,`${width}/${theme} list performs no notice read`);
+  await productFilterExperience(page,library,width,theme);
   await noOverflow(page,`${width}/${theme} products fit viewport`);await assessment(page,'[data-testid="consumer-product-library"]','products',width,theme);
 
   const more=page.getByRole('button',{name:'Más',exact:true});await more.focus();await page.keyboard.press('Enter');

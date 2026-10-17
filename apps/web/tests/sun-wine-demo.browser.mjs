@@ -43,9 +43,81 @@ const server = createServer((req, res) => {
 await new Promise(r => server.listen(0, "127.0.0.1", r));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH });
-const report = { localOnly: true, actualProductionComponentsAndCss: true, actualNextServer: false, nextNavigationInert: true, physicalTapMeasured: false, realBusinessWrites: 0, managedServiceDisabledMock: true, managedDemoRequests: [], selectedCase: process.env.QA_ONLY || null, externalRequests: [], apiRequests: [], errors: [], geolocationCalls: 0, checks: [], views: [], sourceHashes: startHashes };
+const report = { localOnly: true, actualProductionComponentsAndCss: true, actualNextServer: false, nextNavigationInert: true, physicalTapMeasured: false, realBusinessWrites: 0, managedServiceDisabledMock: true, managedDemoRequests: [], navigationTargets: [], selectedCase: process.env.QA_ONLY || null, externalRequests: [], apiRequests: [], errors: [], geolocationCalls: 0, checks: [], views: [], sourceHashes: startHashes };
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
-async function playWineDemo(page, label, locale, hasProfile) {
+function ownNavigationTargets(context, label, expectedGuideHref) {
+  const targets = new Map(), scheduled = new Set(), pending = new Set(), failures = [], lateTargets = [];
+  let primary, phase = "exercise";
+  const destination = href => href === "about:blank" ? { kind: "transient", url: "about:blank", validated: false }
+    : href === expectedGuideHref ? { kind: "guide", url: href, validated: true }
+      : { kind: "unexpected", url: null, validated: false };
+  const scheduleClose = target => {
+    if (target === primary || scheduled.has(target)) return;
+    scheduled.add(target);
+    const record = targets.get(target);
+    record.role = "additional";
+    const task = (async () => {
+      try {
+        if (target.isClosed()) throw new Error("Target closed before destination validation");
+        // about:blank is allowed while a native target is being created, never as a verified destination.
+        await target.waitForURL(expectedGuideHref, { waitUntil: "commit" });
+        record.destination = destination(target.url());
+        record.destinationValidated = record.destination.validated && record.destinations.every(item => item.kind === "transient" || item.validated);
+        if (!record.destinationValidated) failures.push(record.id);
+        record.geolocationCalls = await target.evaluate(() => window.__gpsCalls);
+        if (Number.isInteger(record.geolocationCalls) && record.geolocationCalls >= 0) report.geolocationCalls += record.geolocationCalls;
+        else failures.push(record.id);
+      } catch (error) {
+        record.validationError = error.name;
+        failures.push(record.id);
+      } finally {
+        try {
+          if (!target.isClosed()) { await target.close(); record.closedByTest = true; }
+          record.closed = target.isClosed();
+          if (!record.closed) failures.push(record.id);
+        } catch (error) { record.closeError = error.name; failures.push(record.id); }
+      }
+    })().catch(error => { record.lifecycleError = error.name; failures.push(record.id); });
+    pending.add(task);
+    void task.then(() => pending.delete(task));
+  };
+  context.on("page", target => {
+    const record = { view: label, id: targets.size + 1, role: "unassigned", destinations: [destination(target.url())], destinationValidated: false, closedByTest: false, closed: false };
+    targets.set(target, record);
+    report.navigationTargets.push(record);
+    target.on("pageerror", error => report.errors.push(error.message));
+    target.on("framenavigated", frame => {
+      if (frame !== target.mainFrame()) return;
+      const observed = destination(frame.url());
+      record.destinations.push(observed);
+      if (target !== primary && observed.kind === "unexpected") { record.destinationValidated = false; failures.push(record.id); }
+    });
+    target.on("close", () => { record.closed = true; });
+    if (phase === "draining") scheduleClose(target);
+    else if (phase === "sealed") { record.late = true; lateTargets.push(record.id); }
+  });
+  const assertSinglePage = capture => check(context.pages().length === 1 && context.pages()[0] === primary && pending.size === 0 && lateTargets.length === 0 && failures.length === 0, `${label}: only the owned primary page remains for ${capture}`);
+  return {
+    setPrimary(page) { primary = page; targets.get(page).role = "primary"; },
+    assertSinglePage,
+    async closeExtras() {
+      phase = "draining";
+      let observedCount;
+      do {
+        for (const [target, record] of targets) if (target !== primary) { record.role = "additional"; scheduleClose(target); }
+        while (pending.size) await Promise.all([...pending]);
+        observedCount = targets.size;
+        // Flush another protocol turn so page events arriving during closure enter the same drain.
+        await primary.evaluate(() => undefined);
+      } while (pending.size || targets.size !== observedCount);
+      phase = "sealed";
+      check(failures.length === 0 && [...targets].filter(([target]) => target !== primary).every(([, record]) => record.destinationValidated && record.destinations.every(item => item.kind === "transient" || item.validated) && record.closedByTest && record.closed), `${label}: additional guide targets reached their exact local destination and closed without errors`);
+      assertSinglePage("final capture preparation");
+    },
+    assertNoLateTargets() { check(lateTargets.length === 0 && failures.length === 0, `${label}: no late target or invalid destination after lifecycle validation`); },
+  };
+}
+async function playWineDemo(page, label, locale, hasProfile, targetOwner) {
   const copy = await page.evaluate(() => window.__wineChatCopy);
   const prompts = await page.evaluate(() => window.__wineChatPrompts);
   const chat = page.getByRole("log", { name: copy.log });
@@ -85,6 +157,7 @@ async function playWineDemo(page, label, locale, hasProfile) {
     check((await chat.locator(":scope > div").last().innerText()).includes("?"), `${label}: an ambiguous question gives useful clarification`);
     check(await chat.locator(":scope > div").last().locator("a").count() === 0, `${label}: clarification does not invent a producer source`);
   }
+  targetOwner.assertSinglePage("Sommelier capture");
   await page.screenshot({ path: join(output, `${label.replaceAll("/", "-")}-sommelier.png`), fullPage: true });
   await page.locator(".sun-engagement-tabs button").nth(1).click();
   const questions = await page.evaluate(() => window.__wineQuiz);
@@ -164,14 +237,13 @@ try {
     const label = `${profile}/${width}/${theme}/${locale}`;
     if (process.env.QA_ONLY && process.env.QA_ONLY !== label) continue;
     const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: "reduce", serviceWorkers: "block" });
-    const page = await context.newPage();
-    page.on("pageerror", error => report.errors.push(error.message));
-    await page.addInitScript(({ theme, locale }) => {
+    const targetOwner = ownNavigationTargets(context, label, `${origin}/?locale=${locale}&profile=${profile}#qr-engagement`);
+    await context.addInitScript(({ theme, locale }) => {
       document.addEventListener("DOMContentLoaded", () => { document.documentElement.dataset.theme = theme; document.documentElement.lang = locale; }, { once: true });
       window.__gpsCalls = 0;
       Object.defineProperty(navigator, "geolocation", { value: { getCurrentPosition() { window.__gpsCalls++; } } });
     }, { theme, locale });
-    await page.route("**/*", route => {
+    await context.route("**/*", route => {
       const request = route.request(), url = new URL(request.url());
       if (url.origin !== origin) { report.externalRequests.push(url.hostname); return route.abort(); }
       if (profile === "valle-secreto" && url.pathname === "/api/sommelier/demo/session" && request.method() === "POST" && !url.search) {
@@ -183,6 +255,8 @@ try {
       if (url.pathname.startsWith("/api/") || request.method() !== "GET") { report.apiRequests.push({ path: url.pathname, method: request.method() }); return route.abort(); }
       return route.continue();
     });
+    const page = await context.newPage();
+    targetOwner.setPrimary(page);
     await page.goto(`${origin}/?locale=${locale}&profile=${profile}`, { waitUntil: "networkidle" });
     check(report.managedDemoRequests.filter(request => request.view === label).length === 0, `${label}: opening a demo does not automatically send a question or initialize an AI session`);
     const cards = await page.locator('.sun-services-card [role="listitem"]').evaluateAll(elements => elements.map(el => {
@@ -200,17 +274,21 @@ try {
       check(await page.getByTestId("valle-secreto-services").locator("a").count() === 3, `${label}: three clear brand experience destinations`);
       await playTreasure(page, label);
     }
-    await playWineDemo(page, label, locale, profile === "valle-secreto");
+    await playWineDemo(page, label, locale, profile === "valle-secreto", targetOwner);
+    await targetOwner.closeExtras();
     const smallTargets = await page.locator('main button,main a').evaluateAll(elements => elements.filter(el => el.getClientRects().length && el.getBoundingClientRect().height < 44).map(el => ({ text: el.textContent, height: el.getBoundingClientRect().height })));
     check(smallTargets.length === 0, `${label}: engagement touch targets remain at least 44px ${JSON.stringify(smallTargets)}`);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${label}: no horizontal overflow`);
     await page.addScriptTag({ content: axe });
     const accessibility = await page.evaluate(async () => { const result = await axe.run("main", { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] } }); return { violations: result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => ({ target: n.target, summary: n.failureSummary, checks: n.any.map(check => ({ id: check.id, data: check.data })) })) })), incomplete: result.incomplete.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })) }; });
     report.views.push({ profile, width, theme, locale, cards, ...accessibility });
+    targetOwner.assertSinglePage("final capture");
     await page.screenshot({ path: join(output, `${profile}-${width}-${theme}-${locale}.png`), fullPage: true });
+    targetOwner.assertSinglePage("completed final capture");
     check(accessibility.violations.length === 0, `${label}: zero axe violations`);
     report.geolocationCalls += await page.evaluate(() => window.__gpsCalls);
     await context.close();
+    targetOwner.assertNoLateTargets();
   }
   check(report.apiRequests.length === 0 && report.externalRequests.length === 0, "zero unexpected API, external or business operations; demo session responses are local disabled mocks");
   check(report.views.length === (process.env.QA_ONLY ? 1 : 32), "all requested views executed");

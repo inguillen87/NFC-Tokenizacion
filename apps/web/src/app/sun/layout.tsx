@@ -1,4 +1,4 @@
-import "../generated/sun-root.css";
+import "../generated/experience-root.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
