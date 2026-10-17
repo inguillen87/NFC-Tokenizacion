@@ -294,11 +294,11 @@ export function OfflineQueueClient() {
 
           <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Guardados</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Guardados</span>
               <strong className="mt-2 block text-2xl text-white">{storageState === "ready" ? records.length : "—"}</strong>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Por sincronizar</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Por sincronizar</span>
               <strong className="mt-2 block text-2xl text-white">{storageState === "ready" ? pendingCount : "—"}</strong>
             </div>
             <button
@@ -340,9 +340,9 @@ export function OfflineQueueClient() {
               <article key={record.id} className="rounded-3xl border border-white/10 bg-slate-950/80 p-5 shadow-xl shadow-black/20 sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Lote público</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Lote público</span>
                     <h2 className="mt-1 break-words text-xl font-black text-white">{record.params.bid}</h2>
-                    <p className="mt-1 text-xs text-slate-500">Capturado {formatCapturedAt(record.capturedAt)}</p>
+                    <p className="mt-1 text-xs text-slate-400">Capturado {formatCapturedAt(record.capturedAt)}</p>
                   </div>
                   <button
                     type="button"
@@ -366,35 +366,35 @@ export function OfflineQueueClient() {
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Información pública guardada</span>
                     <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                      {product.name ? <div><dt className="text-slate-500">Producto</dt><dd className="mt-0.5 font-bold text-slate-100">{product.name}</dd></div> : null}
-                      {product.brand ? <div><dt className="text-slate-500">Marca</dt><dd className="mt-0.5 font-bold text-slate-100">{product.brand}</dd></div> : null}
-                      {product.region ? <div><dt className="text-slate-500">Región declarada</dt><dd className="mt-0.5 font-bold text-slate-100">{product.region}</dd></div> : null}
-                      {product.origin ? <div><dt className="text-slate-500">Origen declarado</dt><dd className="mt-0.5 font-bold text-slate-100">{product.origin}</dd></div> : null}
-                      {product.storage ? <div className="sm:col-span-2"><dt className="text-slate-500">Conservación informada</dt><dd className="mt-0.5 font-bold text-slate-100">{product.storage}</dd></div> : null}
-                      {product.notes ? <div className="sm:col-span-2"><dt className="text-slate-500">Información del producto</dt><dd className="mt-0.5 leading-6 text-slate-300">{product.notes}</dd></div> : null}
+                      {product.name ? <div><dt className="text-slate-400">Producto</dt><dd className="mt-0.5 font-bold text-slate-100">{product.name}</dd></div> : null}
+                      {product.brand ? <div><dt className="text-slate-400">Marca</dt><dd className="mt-0.5 font-bold text-slate-100">{product.brand}</dd></div> : null}
+                      {product.region ? <div><dt className="text-slate-400">Región declarada</dt><dd className="mt-0.5 font-bold text-slate-100">{product.region}</dd></div> : null}
+                      {product.origin ? <div><dt className="text-slate-400">Origen declarado</dt><dd className="mt-0.5 font-bold text-slate-100">{product.origin}</dd></div> : null}
+                      {product.storage ? <div className="sm:col-span-2"><dt className="text-slate-400">Conservación informada</dt><dd className="mt-0.5 font-bold text-slate-100">{product.storage}</dd></div> : null}
+                      {product.notes ? <div className="sm:col-span-2"><dt className="text-slate-400">Información del producto</dt><dd className="mt-0.5 leading-6 text-slate-300">{product.notes}</dd></div> : null}
                     </dl>
                     {product.agro ? (
                       <div className="mt-4 border-t border-white/10 pt-4">
                         <span className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Pasaporte agro disponible offline</span>
                         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                          {product.agro.crop ? <div><dt className="text-slate-500">Cultivo</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.crop}</dd></div> : null}
-                          {product.agro.seedVariety ? <div><dt className="text-slate-500">Variedad</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.seedVariety}</dd></div> : null}
-                          {product.agro.productFamily ? <div><dt className="text-slate-500">Familia</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.productFamily}</dd></div> : null}
-                          {product.agro.registrationNumber ? <div><dt className="text-slate-500">Registro</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.registrationNumber}</dd></div> : null}
-                          {product.agro.batchLot ? <div><dt className="text-slate-500">Lote</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.batchLot}</dd></div> : null}
-                          {product.agro.authorizedChannel ? <div><dt className="text-slate-500">Canal autorizado</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.authorizedChannel}</dd></div> : null}
-                          {product.agro.ppeSummary ? <div className="sm:col-span-2"><dt className="text-slate-500">EPP</dt><dd className="mt-0.5 leading-6 text-slate-200">{product.agro.ppeSummary}</dd></div> : null}
-                          {product.agro.ppeItems?.length ? <div className="sm:col-span-2"><dt className="text-slate-500">Elementos requeridos</dt><dd><ul className="mt-1 list-disc v3-space-y-1 pl-5 text-slate-200">{product.agro.ppeItems.map((item) => <li key={item}>{item}</li>)}</ul></dd></div> : null}
-                          {product.agro.stewardshipSummary ? <div className="sm:col-span-2"><dt className="text-slate-500">Uso responsable</dt><dd className="mt-0.5 leading-6 text-slate-200">{product.agro.stewardshipSummary}</dd></div> : null}
+                          {product.agro.crop ? <div><dt className="text-slate-400">Cultivo</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.crop}</dd></div> : null}
+                          {product.agro.seedVariety ? <div><dt className="text-slate-400">Variedad</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.seedVariety}</dd></div> : null}
+                          {product.agro.productFamily ? <div><dt className="text-slate-400">Familia</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.productFamily}</dd></div> : null}
+                          {product.agro.registrationNumber ? <div><dt className="text-slate-400">Registro</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.registrationNumber}</dd></div> : null}
+                          {product.agro.batchLot ? <div><dt className="text-slate-400">Lote</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.batchLot}</dd></div> : null}
+                          {product.agro.authorizedChannel ? <div><dt className="text-slate-400">Canal autorizado</dt><dd className="mt-0.5 font-bold text-slate-100">{product.agro.authorizedChannel}</dd></div> : null}
+                          {product.agro.ppeSummary ? <div className="sm:col-span-2"><dt className="text-slate-400">EPP</dt><dd className="mt-0.5 leading-6 text-slate-200">{product.agro.ppeSummary}</dd></div> : null}
+                          {product.agro.ppeItems?.length ? <div className="sm:col-span-2"><dt className="text-slate-400">Elementos requeridos</dt><dd><ul className="mt-1 list-disc v3-space-y-1 pl-5 text-slate-200">{product.agro.ppeItems.map((item) => <li key={item}>{item}</li>)}</ul></dd></div> : null}
+                          {product.agro.stewardshipSummary ? <div className="sm:col-span-2"><dt className="text-slate-400">Uso responsable</dt><dd className="mt-0.5 leading-6 text-slate-200">{product.agro.stewardshipSummary}</dd></div> : null}
                         </dl>
                       </div>
                     ) : null}
-                    <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-5 text-slate-500">Datos informativos guardados; no constituyen un veredicto criptográfico.</p>
+                    <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-5 text-slate-400">Datos informativos guardados; no constituyen un veredicto criptográfico.</p>
                   </div>
                 ) : null}
 
                 {record.duplicateCount > 0 ? (
-                  <p className="mt-3 text-xs text-slate-500">La misma lectura se detectó {record.duplicateCount + 1} veces y se conservó una sola entrada.</p>
+                  <p className="mt-3 text-xs text-slate-400">La misma lectura se detectó {record.duplicateCount + 1} veces y se conservó una sola entrada.</p>
                 ) : null}
               </article>
             );
