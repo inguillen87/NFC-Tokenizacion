@@ -32,9 +32,12 @@ async function assessment(page,selector,name,width,theme){
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
 async function filterControlMeasurement(control){return control.evaluate(element=>{
  const style=getComputedStyle(element),box=element.getBoundingClientRect(),nativeSelect=element instanceof HTMLSelectElement;
+ const textSource=nativeSelect?'selected-option':element.value?'input-value':'placeholder';
+ const textStyle=textSource==='placeholder'?getComputedStyle(element,'::placeholder'):style;
  const selectedLabel=nativeSelect?element.selectedOptions[0]?.label:element.value||element.placeholder;
- const context=document.createElement('canvas').getContext('2d');context.font=style.font||`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
- const textWidth=context.measureText(selectedLabel).width+Math.max(0,Array.from(selectedLabel).length-1)*(parseFloat(style.letterSpacing)||0);
+ const foregroundColor=textStyle.color,opacity=Number(textStyle.opacity);
+ const context=document.createElement('canvas').getContext('2d');context.font=textStyle.font||`${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
+ const textWidth=context.measureText(selectedLabel).width+Math.max(0,Array.from(selectedLabel).length-1)*(parseFloat(textStyle.letterSpacing)||0);
  // Native select text has no reliable DOM scrollWidth. Keep a conservative
  // arrow allowance in addition to the actual computed padding and borders.
  const arrowReserve=nativeSelect?24:0,availableWidth=box.width-parseFloat(style.borderLeftWidth)-parseFloat(style.borderRightWidth)-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-arrowReserve;
@@ -43,9 +46,14 @@ async function filterControlMeasurement(control){return control.evaluate(element
  const luminance=color=>color.slice(0,3).map(value=>value/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
  const contrast=(foreground,backdrop)=>{if(!backdrop||foreground.length<3||(foreground[3]??1)!==1)return null;const a=luminance(foreground),b=luminance(backdrop);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
  const controlBackground=background(element),surroundingBackground=background(element.parentElement),outline=channels(style.outlineColor);
- return {selectedLabel,value:element.value,textWidth,availableWidth,arrowReserve,font:context.font,fontSize:parseFloat(style.fontSize),colorScheme:style.colorScheme,nativeSelect,appearance:style.appearance,
+ // Composite the visible text's own color/opacity over the resolved solid
+ // control surface. Unknown ancestor opacity fails closed instead of claiming a ratio.
+ let opaqueControlTree=true;for(let node=element;node;node=node.parentElement){if(Number(getComputedStyle(node).opacity)!==1){opaqueControlTree=false;break;}}
+ const foreground=channels(foregroundColor),alpha=(foreground[3]??1)*opacity;
+ const renderedForeground=opaqueControlTree&&controlBackground&&foreground.length>=3&&Number.isFinite(alpha)&&alpha>=0&&alpha<=1?foreground.slice(0,3).map((value,index)=>value*alpha+controlBackground[index]*(1-alpha)):null;
+ return {selectedLabel,textSource,foregroundColor,opacity,opaqueControlTree,renderedForeground,value:element.value,textWidth,availableWidth,arrowReserve,font:context.font,fontSize:parseFloat(textStyle.fontSize),colorScheme:style.colorScheme,nativeSelect,appearance:style.appearance,
   geometry:{left:box.left,right:box.right,top:box.top,bottom:box.bottom,width:box.width,height:box.height,viewportWidth:innerWidth},
-  textContrast:contrast(channels(style.color),controlBackground),focus:{active:element===document.activeElement,visible:element.matches(':focus-visible'),style:style.outlineStyle,width:parseFloat(style.outlineWidth),offset:parseFloat(style.outlineOffset),controlContrast:contrast(outline,controlBackground),surroundingContrast:contrast(outline,surroundingBackground)}};
+  textContrast:renderedForeground?contrast(renderedForeground,controlBackground):null,focus:{active:element===document.activeElement,visible:element.matches(':focus-visible'),style:style.outlineStyle,width:parseFloat(style.outlineWidth),offset:parseFloat(style.outlineOffset),controlContrast:contrast(outline,controlBackground),surroundingContrast:contrast(outline,surroundingBackground)}};
 });}
 async function productFilterExperience(page,library,width,theme){
  await page.evaluate(()=>document.fonts.ready);
