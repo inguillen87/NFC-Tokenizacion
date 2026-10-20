@@ -406,7 +406,7 @@ export function OfflineQueueClient() {
           <p>Si el resultado es inválido o repetido, descartá esta lectura y hacé un nuevo tap físico. No reutilices una URL guardada como prueba.</p>
         </aside>
 
-        <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 transition hover:border-cyan-300/30 hover:text-white">
+        <Link href="/" prefetch={false} className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 transition hover:border-cyan-300/30 hover:text-white">
           Volver al inicio
         </Link>
       </div>

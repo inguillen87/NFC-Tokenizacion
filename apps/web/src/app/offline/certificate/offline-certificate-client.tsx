@@ -262,7 +262,7 @@ export function OfflineCertificateClient() {
           <p>La verificación usa solo la clave pública y puede repetirse sin conexión mientras el certificado guardado siga vigente. No se guarda ni distribuye ninguna clave NFC.</p>
         </aside>
 
-        <Link href="/offline" className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 hover:border-cyan-300/25">Volver al centro offline</Link>
+        <Link href="/offline" prefetch={false} className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 hover:border-cyan-300/25">Volver al centro offline</Link>
       </div>
     </main>
   );

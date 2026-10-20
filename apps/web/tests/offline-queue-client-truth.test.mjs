@@ -56,7 +56,7 @@ function client({ list = async () => [], supported = true } = {}) {
   const { OfflineQueueClient } = compile(source, {
     react: hooks,
     "lucide-react": Object.fromEntries(["AlertTriangle", "CheckCircle2", "Clock3", "RefreshCw", "ShieldAlert", "Trash2", "Wifi", "WifiOff", "XCircle"].map((name) => [name, icon])),
-    "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
+    "next/link": { __esModule: true, default: ({ children, prefetch: _prefetch, ...props }) => React.createElement("a", props, children) },
     "../../components/brand-home-link": { BrandHomeLink: () => React.createElement("a", { href: "/" }, "nexID") },
     "../../lib/offline-sun-contract": contract,
     "./offline-store": {

@@ -6,6 +6,7 @@ const APP_SHELL = [
   "/offline",
   "/offline/certificate",
   "/manifest.webmanifest",
+  "/favicon.ico",
   "/nexid-mark-256.png",
   "/nexid-mark-512.png",
   "/nexid-mark-pulse.svg",
