@@ -10,6 +10,8 @@ export function ContextualHelpBot({ locale }: { locale: AppLocale }) {
   const pathname = usePathname() || "";
 
   if (
+    pathname === "/offline" ||
+    pathname.startsWith("/offline/") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/sun") ||
     pathname.startsWith("/me") ||
