@@ -80,3 +80,17 @@ test("the deferred HelpBot bridge resolves the original component without evalua
   assert.ok(runtime.runtimeRequests.some(({ request }) => request === "../../../../packages/ui/src/helpbot"));
   assert.ok(!runtime.runtimeRequests.some(({ request }) => request === "@product/ui"));
 });
+
+test("offline recovery excludes the online sales assistant without hiding similarly named public pages", () => {
+  const runtime = loadHelpBot();
+  for (const pathname of ["/offline", "/offline/", "/offline/certificate"]) {
+    runtime.setPath(pathname);
+    for (const locale of ["es-AR", "en", "pt-BR"]) {
+      assert.equal(runtime.Contextual({ locale }), null, `${pathname}/${locale}`);
+    }
+  }
+  for (const pathname of ["/offline-guide", "/offline-tools", "/about"]) {
+    runtime.setPath(pathname);
+    assert.match(renderToStaticMarkup(React.createElement(runtime.Contextual, { locale: "es-AR" })), /helpbot-trigger/, pathname);
+  }
+});
