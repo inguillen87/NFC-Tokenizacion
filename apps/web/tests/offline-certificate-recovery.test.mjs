@@ -288,12 +288,15 @@ test("a network certificate for a different signed identity is not displayed or 
   assert(subject.calls.fetch.every(({ options }) => options.credentials === "omit" && options.redirect === "error" && options.signal instanceof AbortSignal)); subject.dispose();
 });
 
-test("a matching network certificate is saved only after the original verifier succeeds, even when storage is denied", async () => {
+test("a verified network certificate reports a denied local save without losing verification or download", async () => {
   const stored = await certificate();
+  const saveFailureNotice = "El certificado es válido, pero no pudimos guardar esta versión en el navegador. Podés descargarlo.";
   for (const storageWriteThrows of [false, true]) {
     const subject = fixture({ online: true, storageWriteThrows, fetch: url => responseFor(stored, url) }); subject.render();
     const html = await subject.until(html => html.includes("actualizada desde nexID"));
-    assert.match(html, /Información pública verificada/); assert.equal(subject.calls.storageWrites.length, 1);
+    assert.match(html, /Información pública verificada/); assert.match(html, /Descargar certificado/);
+    assert.equal(html.includes(saveFailureNotice), storageWriteThrows);
+    assert.equal(subject.calls.storageWrites.length, 1);
     assert.equal(subject.calls.storageWrites[0].key, keyFor(A)); subject.dispose();
   }
 });

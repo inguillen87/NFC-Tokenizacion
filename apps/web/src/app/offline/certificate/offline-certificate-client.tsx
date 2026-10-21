@@ -96,13 +96,15 @@ function loadStored(key: string): StoredCertificate | null {
   }
 }
 
-function saveStored(key: string, stored: StoredCertificate) {
+function saveStored(key: string, stored: StoredCertificate): boolean {
   const serialized = JSON.stringify(stored);
-  if (serialized.length > MAX_RESPONSE_BYTES * 2) return;
+  if (serialized.length > MAX_RESPONSE_BYTES * 2) return false;
   try {
     localStorage.setItem(key, serialized);
+    return true;
   } catch {
     // A valid certificate remains visible even if private browsing blocks storage.
+    return false;
   }
 }
 
@@ -223,8 +225,10 @@ export function OfflineCertificateClient() {
         setResult({ key, view: { status: "invalid", reason: verificationMessage(verification.reason) } });
         return;
       }
-      setResult({ key, view: { status: "verified", payload: verification.payload, kid: verification.kid, source: "network", stored } });
-      saveStored(key, stored);
+      const storedLocally = saveStored(key, stored);
+      setResult({ key, view: { status: "verified", payload: verification.payload, kid: verification.kid, source: "network", stored, notice: storedLocally
+        ? undefined
+        : "El certificado es válido, pero no pudimos guardar esta versión en el navegador. Podés descargarlo." } });
     } catch {
       // A deadline is a current failure; unmount, a new lookup or a newer attempt
       // cancels this generation and cannot change the screen or write storage.
