@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Download, RefreshCw, ShieldCheck, WifiOff, XCircle } from "lucide-react";
 import { productUrls } from "@product/config";
 import { BrandHomeLink } from "../../../components/brand-home-link";
+import styles from "./offline-certificate-client.module.css";
 import {
   type OfflinePublicCertificateEnvelope,
   type OfflinePublicCertificatePayload,
@@ -145,15 +146,22 @@ export function OfflineCertificateClient() {
   const searchParams = useSearchParams();
   const lookup = useMemo(() => lookupFrom(searchParams), [searchParams]);
   const key = lookup ? storageKey(lookup) : null;
-  const [result, setResult] = useState<{ key: string | null; view: ViewState }>({ key, view: lookup ? { status: "loading" } : { status: "invalid", reason: "Identificador GS1 inválido o incompleto." } });
-  // A changed/removed query cannot display the previous product for one render.
-  const state: ViewState = result.key === key
-    ? result.view
-    : lookup ? { status: "loading" } : { status: "invalid", reason: "Identificador GS1 inválido o incompleto." };
+  // The public cached shell has no query. SSR and the first client render must
+  // stay identical until effects mount, even when the browser opens a GS1 URL.
+  const [mounted, setMounted] = useState(false);
+  const [result, setResult] = useState<{ key: string | null; view: ViewState }>({ key: null, view: { status: "loading" } });
+  // After mount, a changed/removed query cannot display the previous product.
+  const state: ViewState = !mounted
+    ? { status: "loading" }
+    : !lookup || !key
+      ? { status: "invalid", reason: "Identificador GS1 inválido o incompleto." }
+      : result.key === key ? result.view : { status: "loading" };
   const [refreshing, setRefreshing] = useState(false);
   const [online, setOnline] = useState(true);
   const loadVersion = useRef(0);
   const requestController = useRef<AbortController | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const refresh = useCallback(async () => {
     if (!lookup || !key) {
@@ -299,10 +307,10 @@ export function OfflineCertificateClient() {
   };
 
   return (
-    <main className="nexid-offline-certificate-page min-h-screen bg-[#050914] px-4 py-7 text-slate-100 sm:py-12">
+    <main className={`${styles.page} nexid-offline-certificate-page min-h-screen bg-[#050914] px-4 py-7 text-slate-100 sm:py-12`}>
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
         <header className="flex items-center justify-between gap-4">
-          <BrandHomeLink size={42} />
+          <BrandHomeLink size={42} className={styles.focusAction} />
           <span className="rounded-full border border-violet-300/25 bg-violet-300/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-violet-100">Certificado público</span>
         </header>
 
@@ -319,31 +327,31 @@ export function OfflineCertificateClient() {
             </div>
             <div className="v3-space-y-5 p-6 sm:p-8">
               <dl className="grid gap-4 sm:grid-cols-2">
-                {publicText(state.payload, "display_name") ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Producto</dt><dd className="mt-1 font-black text-white">{publicText(state.payload, "display_name")}</dd></div> : null}
-                {publicText(state.payload, "brand") ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Marca declarada</dt><dd className="mt-1 font-black text-white">{publicText(state.payload, "brand")}</dd></div> : null}
-                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">GTIN</dt><dd className="mt-1 break-all font-mono text-sm text-slate-100">{state.payload.gtin}</dd></div>
-                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Lote nexID</dt><dd className="mt-1 break-all font-mono text-sm text-slate-100">{state.payload.batch_id}</dd></div>
-                {state.payload.lot ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Lote GS1</dt><dd className="mt-1 font-mono text-sm text-slate-100">{state.payload.lot}</dd></div> : null}
-                {state.payload.serial ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Serie GS1</dt><dd className="mt-1 font-mono text-sm text-slate-100">{state.payload.serial}</dd></div> : null}
-                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Emitido</dt><dd className="mt-1 text-sm text-slate-200">{displayDate(state.payload.issued_at)}</dd></div>
-                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Vence</dt><dd className="mt-1 text-sm text-slate-200">{displayDate(state.payload.expires_at)}</dd></div>
+                {publicText(state.payload, "display_name") ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Producto</dt><dd className="mt-1 font-black text-white">{publicText(state.payload, "display_name")}</dd></div> : null}
+                {publicText(state.payload, "brand") ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Marca declarada</dt><dd className="mt-1 font-black text-white">{publicText(state.payload, "brand")}</dd></div> : null}
+                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">GTIN</dt><dd className="mt-1 break-all font-mono text-sm text-slate-100">{state.payload.gtin}</dd></div>
+                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Lote nexID</dt><dd className="mt-1 break-all font-mono text-sm text-slate-100">{state.payload.batch_id}</dd></div>
+                {state.payload.lot ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Lote GS1</dt><dd className="mt-1 font-mono text-sm text-slate-100">{state.payload.lot}</dd></div> : null}
+                {state.payload.serial ? <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Serie GS1</dt><dd className="mt-1 font-mono text-sm text-slate-100">{state.payload.serial}</dd></div> : null}
+                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Emitido</dt><dd className="mt-1 text-sm text-slate-200">{displayDate(state.payload.issued_at)}</dd></div>
+                <div><dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Vence</dt><dd className="mt-1 text-sm text-slate-200">{displayDate(state.payload.expires_at)}</dd></div>
               </dl>
               {publicText(state.payload, "description") ? <p className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm leading-6 text-slate-300">{publicText(state.payload, "description")}</p> : null}
               <div className="flex gap-3 rounded-2xl border border-amber-300/20 bg-amber-300/[0.06] p-4 text-sm leading-6 text-amber-50/90">
                 <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0" size={19} />
                 <p>La firma cubre esta información publicada. No comprueba el estado físico del producto ni una nueva lectura NFC. Las acciones que requieren verificar el producto se habilitan por separado.</p>
               </div>
-              <p className="text-xs leading-5 text-slate-500">Fuente: {state.source === "device" ? "guardada en este dispositivo" : "actualizada desde nexID"}.</p>
+              <p className="text-xs leading-5 text-slate-400">Fuente: {state.source === "device" ? "guardada en este dispositivo" : "actualizada desde nexID"}.</p>
               <details className="rounded-2xl border border-white/10 bg-white/[0.035] px-4">
-                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-bold text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Cómo se verificó</summary>
+                <summary className={`${styles.focusAction} flex min-h-11 cursor-pointer items-center text-sm font-bold text-slate-200`}>Cómo se verificó</summary>
                 <p className="pb-4 text-xs leading-5 text-slate-300">La firma digital usa ES256 y la clave pública {state.kid}. No evalúa una nueva lectura NFC, su reutilización ni la autenticidad física del producto.</p>
               </details>
               <p role="status" aria-live="polite" className="text-sm leading-6 text-slate-300">{refreshing ? "Buscando una versión actualizada…" : state.notice || (!online ? "Sin conexión. Podés volver a comprobar la copia local." : "")}</p>
               <div className="grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={download} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 px-5 text-sm font-black text-emerald-100 hover:bg-emerald-300/15">
+                <button type="button" onClick={download} className={`${styles.focusAction} inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 px-5 text-sm font-black text-emerald-100 hover:bg-emerald-300/15`}>
                   <Download aria-hidden="true" size={17} /> Descargar certificado
                 </button>
-                <button type="button" onClick={() => void refresh()} disabled={refreshing} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 hover:border-cyan-300/25 disabled:opacity-50">
+                <button type="button" onClick={() => void refresh()} disabled={refreshing} className={`${styles.focusAction} inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 hover:border-cyan-300/25 disabled:opacity-50`}>
                   <RefreshCw aria-hidden="true" size={17} className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Actualizando…" : online ? "Actualizar online" : "Comprobar copia local"}
                 </button>
               </div>
@@ -369,7 +377,7 @@ export function OfflineCertificateClient() {
               </div>
             </div>
             {state.status !== "loading" && lookup ? (
-              <button type="button" onClick={() => void refresh()} disabled={refreshing} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-5 text-sm font-black text-cyan-100 disabled:opacity-50">
+              <button type="button" onClick={() => void refresh()} disabled={refreshing} className={`${styles.focusAction} mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-5 text-sm font-black text-cyan-100 disabled:opacity-50`}>
                 <RefreshCw aria-hidden="true" size={17} className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Consultando…" : online ? "Reintentar" : "Volver a comprobar"}
               </button>
             ) : null}
@@ -381,7 +389,7 @@ export function OfflineCertificateClient() {
           <p>La verificación usa solo la clave pública y puede repetirse sin conexión mientras el certificado guardado siga vigente. No se guarda ni distribuye ninguna clave NFC.</p>
         </aside>
 
-        <Link href="/offline" prefetch={false} className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 hover:border-cyan-300/25">Volver al centro offline</Link>
+        <Link href="/offline" prefetch={false} className={`${styles.focusAction} inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-5 text-sm font-black text-slate-200 hover:border-cyan-300/25`}>Volver al centro offline</Link>
       </div>
     </main>
   );

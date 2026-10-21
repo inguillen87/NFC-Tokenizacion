@@ -1,0 +1,21 @@
+.page {
+  --certificate-focus-color: #67e8f9;
+}
+
+:global(html.theme-light) .page,
+:global(html[data-theme="light"]) .page {
+  --certificate-focus-color: #087f8c;
+}
+
+/* Explicit local focus survives unrelated global resets and remains visible
+   in both themes. No outline is removed for pointer or keyboard users. */
+.page .focusAction:focus-visible {
+  outline: 3px solid var(--certificate-focus-color);
+  outline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+  .page .focusAction:focus-visible {
+    outline-color: Highlight;
+  }
+}

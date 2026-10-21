@@ -87,7 +87,7 @@ function textOf(value) {
 // Execute the original client and original ES256 verifier. React hooks, clock,
 // public storage and transport are deterministic adapters; these focal tests
 // do not establish browser persistence, deployed API or physical NFC operation.
-function fixture({ lookup = A, online = false, saved = [], fetch: fetchImplementation, storageReadThrows = false, storageWriteThrows = false } = {}) {
+function fixture({ lookup = A, online = false, saved = [], fetch: fetchImplementation, storageReadThrows = false, storageWriteThrows = false, serverRendering = false } = {}) {
   let search = new URLSearchParams(queryFor(lookup)), cursor = 0, now = NOW, disposed = false, tree;
   let timerId = 0;
   const cells = [], effects = [], queued = new Map(), timers = new Map(), windowListeners = new Map(), documentListeners = new Map();
@@ -140,16 +140,18 @@ function fixture({ lookup = A, online = false, saved = [], fetch: fetchImplement
   const verifier = compile(verifierSource, {}, { Date: ClockDate });
   const icon = () => null;
   const { OfflineCertificateClient } = compile(clientSource, {
-    react: hooks,
+    react: serverRendering ? React : hooks,
     "next/navigation": { useSearchParams: () => search },
     "next/link": { __esModule: true, default: ({ children, prefetch: _prefetch, ...props }) => React.createElement("a", props, children) },
     "lucide-react": Object.fromEntries(["AlertTriangle", "CheckCircle2", "Download", "RefreshCw", "ShieldCheck", "WifiOff", "XCircle"].map(name => [name, icon])),
     "@product/config": { productUrls: { api: "https://api.example.test" } },
     "../../../components/brand-home-link": { BrandHomeLink: () => React.createElement("a", { href: "/" }, "nexID") },
     "../../../lib/offline-public-certificate": verifier,
+    "./offline-certificate-client.module.css": { __esModule: true, default: { page: "qa-certificate-page", focusAction: "qa-certificate-focus-action" } },
   }, { navigator, window, document, localStorage, fetch, Date: ClockDate });
   const render = ({ flush = true } = {}) => {
-    cursor = 0; tree = OfflineCertificateClient();
+    cursor = 0;
+    tree = serverRendering ? React.createElement(OfflineCertificateClient) : OfflineCertificateClient();
     const html = renderToStaticMarkup(tree);
     if (flush) { const work = [...queued.values()]; queued.clear(); work.forEach(effect => effect()); }
     return html;
@@ -179,6 +181,62 @@ function responseFor(stored, url) {
   return new Response(JSON.stringify(url.endsWith("/jwks") ? stored.jwks : { certificate: stored.envelope }), { status: 200, headers: { "content-type": "application/json" } });
 }
 function assertNoVerified(html) { assert.doesNotMatch(html, /Información pública verificada|Firma digital válida|Descargar certificado/); }
+
+test("cached query-free SSR and the first client render stay identical for every GS1 query", () => {
+  const absent = { gtin: "", lot: "", serial: "" };
+  const shell = fixture({ lookup: absent, serverRendering: true });
+  const shellHtml = shell.render({ flush: false });
+  assert.match(shellHtml, /Comprobando certificado/);
+  assertNoVerified(shellHtml);
+  for (const lookup of [A, B, { ...A, gtin: "invalid" }, absent]) {
+    const server = fixture({ lookup, serverRendering: true });
+    const client = fixture({ lookup });
+    assert.equal(server.render({ flush: false }), shellHtml,
+      "real React SSR must not vary the cached public markup with the query");
+    assert.equal(client.render({ flush: false }), shellHtml,
+      "the first adapted client render must match the query-free cached shell before mount");
+    assert.equal(client.calls.fetch.length, 0);
+    assert.equal(client.calls.storageWrites.length, 0);
+    server.dispose(); client.dispose();
+  }
+  shell.dispose();
+});
+
+test("the initial invalid or missing query becomes non-busy only after mounting and never verifies", () => {
+  for (const lookup of [{ gtin: "", lot: "", serial: "" }, { ...A, gtin: "invalid" }]) {
+    const subject = fixture({ lookup });
+    const first = subject.render({ flush: false });
+    assert.match(first, /Comprobando certificado/);
+    assert.doesNotMatch(first, /Identificador GS1 inválido/);
+    subject.render();
+    const mounted = subject.render();
+    assert.match(mounted, /Identificador GS1 inválido o incompleto/);
+    assertNoVerified(mounted); assert.doesNotMatch(mounted, /aria-busy="true"/);
+    assert.equal(subject.calls.fetch.length, 0);
+    assert.equal(subject.calls.storageWrites.length, 0);
+    subject.dispose();
+  }
+});
+
+test("a query changed before mount verifies only its current copy and removal clears it immediately", async () => {
+  const first = await certificate(A), second = await certificate(B);
+  const subject = fixture({ lookup: A, saved: [[A, first], [B, second]] });
+  const firstHtml = subject.render({ flush: false });
+  subject.setQuery(B);
+  assert.equal(subject.render({ flush: false }), firstHtml,
+    "a pre-mount query change keeps the same neutral hydration markup");
+  subject.render();
+  const current = await subject.until(html => html.includes(`QA product ${B.gtin}`));
+  assert.doesNotMatch(current, new RegExp(`QA product ${A.gtin}`));
+  assert.equal(subject.calls.fetch.length, 0);
+  assert.equal(subject.calls.storageWrites.length, 0);
+  subject.setQuery("");
+  const removed = subject.render({ flush: false });
+  assertNoVerified(removed);
+  assert.match(removed, /Identificador GS1 inválido o incompleto/);
+  assert.doesNotMatch(removed, new RegExp(`QA product ${B.gtin}`));
+  subject.render(); subject.dispose();
+});
 
 test("a valid GS1 copy verifies with original WebCrypto offline and sends no request", async () => {
   const stored = await certificate();
