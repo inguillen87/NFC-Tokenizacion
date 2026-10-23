@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
@@ -15,13 +15,14 @@ const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
 const component=join(appRoot,'src/app/me/taps/consumer-history.tsx').replaceAll('\\','/');
 const model=join(appRoot,'src/app/me/taps/history-model.ts').replaceAll('\\','/');
 const hash=value=>createHash('sha256').update(value).digest('hex'),before=hash(await readFile(component));
+const qaOutput=process.env.QA_OUTPUT?resolve(process.env.QA_OUTPUT):null;
 const entry=[
  'import React from "react";import {createRoot} from "react-dom/client";',
  'import {ConsumerHistory} from '+JSON.stringify(component)+';',
  'import {parseHistory} from '+JSON.stringify(model)+';',
  'const root=createRoot(document.getElementById("history-snapshot-root"));',
  'window.__qa={calls:[],errors:[]};window.addEventListener("error",e=>window.__qa.errors.push(String(e.message)));',
- 'window.fetch=(url,options)=>{if(!String(url).startsWith("/api/consumer/taps/history?"))throw Error("Unexpected QA fetch");return new Promise(resolve=>{const call={url:String(url),aborted:options.signal.aborted,resolve:(raw,status=200)=>{const response=new Response(JSON.stringify(raw),{status,headers:{"content-type":"application/json"}}),getReader=response.body.getReader.bind(response.body);Object.defineProperty(response,"ok",{get(){call.statusRead=true;return status>=200&&status<300;}});response.body.getReader=()=>{const reader=getReader(),release=reader.releaseLock.bind(reader);reader.releaseLock=()=>{release();call.readReleased=true;};return reader;};resolve(response);}};options.signal.addEventListener("abort",()=>{call.aborted=true;});window.__qa.calls.push(call);});};',
+ 'window.fetch=(url,options)=>{if(!String(url).startsWith("/api/consumer/taps/history?"))throw Error("Unexpected QA fetch");return new Promise((resolve,reject)=>{const call={url:String(url),aborted:options.signal.aborted,rejectOnAbort:window.__qa.rejectOnAbort===true,resolve:(raw,status=200)=>{const response=new Response(JSON.stringify(raw),{status,headers:{"content-type":"application/json"}}),getReader=response.body.getReader.bind(response.body);Object.defineProperty(response,"ok",{get(){call.statusRead=true;return status>=200&&status<300;}});response.body.getReader=()=>{const reader=getReader(),release=reader.releaseLock.bind(reader);reader.releaseLock=()=>{release();call.readReleased=true;};return reader;};resolve(response);}};options.signal.addEventListener("abort",()=>{call.aborted=true;if(call.rejectOnAbort)reject(new DOMException("QA transport aborted", "AbortError"));});window.__qa.calls.push(call);});};',
  'window.__qa.replace=(raw,filters)=>root.render(React.createElement(ConsumerHistory,{initial:raw===null?null:parseHistory(raw),initialFilters:filters}));',
 ].join('\n');
 const plugins=[{name:'history-mounted-regression',setup(b){
@@ -36,9 +37,10 @@ function payload(label,query,account,hasNext=true,page=1){
   items:Array.from({length:count},(_,n)=>({row_id:String(1000-n),tap_event_id:String(1000-n),created_at:'2026-10-13T08:00:00.123456Z',verdict:'VALID_CLOSED',risk_level:'low',city:null,country:null,tenant_slug:tenant,tenant_name:tenant,product_name:label+' '+(n+1),brand_name:tenant})),
   brands:[{slug:tenant,name:tenant}],moreBrands:false,navigation:{page,pageSize:25,returned:count,hasNext,cursor:'cursor_'+account+'_'+page,nextCursor:hasNext?'next_'+account+'_'+page:null,cutoff:'2026-10-13T10:00:00.654321Z'}};
 }
-const report={kind:'synthetic-mounted-history-props-regression',status:'pending',realComponent:true,realParser:true,realCss:true,nextServer:false,authentication:false,postgres:false,physicalTap:false,sourceBefore:before,cases:[],closure:{contexts:false,browser:false,server:false,esbuild:false}};
+const report={kind:'synthetic-mounted-history-props-regression',status:'pending',realComponent:true,realParser:true,realCss:true,nextServer:false,authentication:false,postgres:false,physicalTap:false,sourceBefore:before,cases:[],layoutMatrix:[],screenshots:[],closure:{contexts:false,browser:false,server:false,esbuild:false}};
 let browser,server;const contexts=new Set();
 try{
+ if(qaOutput)await mkdir(qaOutput,{recursive:true});
  const bundle=await build({bundle:true,write:false,platform:'browser',format:'iife',absWorkingDir:appRoot,jsx:'automatic',define:{'process.env.NODE_ENV':'"development"'},logLevel:'silent',plugins,outfile:join(appRoot,'history-snapshot-qa.js'),stdin:{contents:entry,sourcefile:'history-snapshot-qa.js',resolveDir:appRoot}});
  const js=bundle.outputFiles.find(f=>f.path.endsWith('.js')),css=bundle.outputFiles.find(f=>f.path.endsWith('.css'));assert(js&&css);
  server=createServer((req,res)=>{const path=new URL(req.url,'http://127.0.0.1').pathname;if(req.method!=='GET'){res.writeHead(405);res.end();return;}if(path==='/bundle.js'){res.setHeader('content-type','text/javascript');res.end(js.contents);return;}if(path==='/style.css'){res.setHeader('content-type','text/css');res.end(css.contents);return;}if(path==='/favicon.ico'){res.writeHead(204);res.end();return;}if(path!=='/'){res.writeHead(404);res.end();return;}res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="es-AR"><head><link rel="stylesheet" href="/style.css"><style>*{box-sizing:border-box}body{margin:0;padding:12px;font-family:Arial,sans-serif}</style></head><body><div id="history-snapshot-root"></div><script src="/bundle.js"></script></body></html>');});
@@ -69,9 +71,41 @@ try{
    await p.evaluate(q=>window.__qa.replace(null,q),qC);await root.getByRole('button',{name:'Reintentar consulta',exact:true}).waitFor();assert.equal(await root.getByRole('listitem').count(),0);
    await root.getByRole('button',{name:'Reintentar consulta',exact:true}).click();await p.waitForFunction(()=>window.__qa.calls.length===3);const fresh=new URL(await p.evaluate(()=>window.__qa.calls[2].url),origin);assert.equal(fresh.searchParams.get('tenant'),'agro-qa');assert.equal(fresh.searchParams.has('cursor'),false);
    await p.evaluate(raw=>window.__qa.calls[2].resolve(raw),payload('FRESH_C_RESPONSE',qC,'b',false));await root.getByText('FRESH_C_RESPONSE 1',{exact:true}).waitFor();assert.equal(await root.getByRole('button',{name:'Hora de mi dispositivo',exact:true}).getAttribute('aria-pressed'),'true');
-   assert.deepEqual(errors,[]);assert.deepEqual(await p.evaluate(()=>window.__qa.errors),[]);assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));report.cases.push({theme,width:390,passed:true,serverPropsAndAccountReset:true,oldAbortedResponsesIgnored:true,stale401CannotSetLogin:true,newBusyStateRetained:true,localTimeRetained:true,freshRetryWithoutOldCursor:true});
+   // Exercise the component's real 14-second deadline with a deferred,
+   // abort-aware GET. No timer replacement, automatic retry or backend write.
+   await p.evaluate(()=>{window.__qa.rejectOnAbort=true;});
+   await root.getByTestId('history-filter-panel').locator(':scope > summary').click();
+   await root.getByRole('button',{name:'Consultar historial',exact:true}).click();await p.waitForFunction(()=>window.__qa.calls.length===4);
+   await root.getByRole('status').filter({hasText:'La consulta tardó más de lo esperado. Reintentá; no hace falta repetir el TAP.'}).waitFor({timeout:20000});
+   assert.equal(await p.evaluate(()=>window.__qa.calls.length),4);assert.equal(await p.evaluate(()=>window.__qa.calls[3].aborted),true);assert.equal(await root.getByRole('listitem').count(),0);assert.equal(await root.getByText('QA transport aborted',{exact:false}).count(),0);
+   const retry=root.getByRole('button',{name:'Reintentar consulta',exact:true});
+   // Reuse this visible timeout for every width; do not repeat its 14-second
+   // deadline or refetch while checking layout and keyboard focus.
+   for(const width of [320,390,768,1440]){
+    await p.setViewportSize({width,height:844});
+    const status=root.getByRole('status');assert.equal(await status.textContent(),'La consulta tardó más de lo esperado. Reintentá; no hace falta repetir el TAP.');assert.equal(await status.isVisible(),true);
+    assert.equal(await retry.isEnabled(),true);await retry.focus();const focused=await retry.evaluate(e=>e===document.activeElement);assert.equal(focused,true);const retryBox=await retry.boundingBox();assert.ok(retryBox&&retryBox.height>=44);
+    const layout=await p.evaluate(()=>({viewportWidth:innerWidth,documentWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth}));assert.ok(layout.documentWidth<=layout.viewportWidth+1);assert.ok(layout.bodyWidth<=layout.viewportWidth+1);
+    let screenshot=null;if(qaOutput){screenshot=`history-timeout-${theme}-${width}.png`;await p.screenshot({path:join(qaOutput,screenshot),fullPage:true});report.screenshots.push(screenshot);}
+    report.layoutMatrix.push({theme,width,height:844,statusVisible:true,exactTimeoutMessage:true,retryEnabled:true,retryFocused:focused,retryHeight:retryBox.height,noHorizontalOverflow:true,...layout,screenshot});
+   }
+   await p.setViewportSize({width:390,height:844});assert.equal(await p.evaluate(()=>window.__qa.calls.length),4);
+   await p.evaluate(()=>{window.__qa.rejectOnAbort=false;});await retry.click();await p.waitForFunction(()=>window.__qa.calls.length===5);
+   assert.equal(await p.evaluate(()=>window.__qa.calls[4].url),await p.evaluate(()=>window.__qa.calls[3].url));
+   await p.evaluate(raw=>window.__qa.calls[4].resolve(raw),payload('RECOVERED_AFTER_TIMEOUT',qC,'b',false));await root.getByText('RECOVERED_AFTER_TIMEOUT 1',{exact:true}).waitFor();
+   // Active 409/401 responses keep their existing recovery and login paths;
+   // the deadline copy must not replace either response's feedback.
+   await root.getByTestId('history-filter-panel').locator(':scope > summary').click();
+   await root.getByRole('button',{name:'Consultar historial',exact:true}).click();await p.waitForFunction(()=>window.__qa.calls.length===6);
+   await p.evaluate(()=>window.__qa.calls[5].resolve({error:'navigation-expired'},409));await root.getByRole('status').filter({hasText:'La navegación venció o cambió la cuenta. Usá Consultar historial para empezar de nuevo.'}).waitFor();
+   assert.equal(await root.getByRole('link',{name:'Entrar a mi cuenta',exact:true}).count(),0);assert.equal(await root.getByText('La consulta tardó más de lo esperado. Reintentá; no hace falta repetir el TAP.',{exact:true}).count(),0);
+   await root.getByRole('button',{name:'Reintentar consulta',exact:true}).click();await p.waitForFunction(()=>window.__qa.calls.length===7);const afterConflict=new URL(await p.evaluate(()=>window.__qa.calls[6].url),origin);assert.equal(afterConflict.searchParams.get('tenant'),'agro-qa');assert.equal(afterConflict.searchParams.has('cursor'),false);
+   await p.evaluate(()=>window.__qa.calls[6].resolve({error:'session-expired'},401));await root.getByRole('link',{name:'Entrar a mi cuenta',exact:true}).waitFor();await root.getByRole('status').filter({hasText:'Tu sesión terminó. Iniciá sesión para consultar sólo tus lecturas.'}).waitFor();
+   assert.equal(await root.getByRole('button',{name:'Reintentar consulta',exact:true}).count(),0);assert.equal(await root.getByRole('listitem').count(),0);assert.equal(await root.getByText('La consulta tardó más de lo esperado. Reintentá; no hace falta repetir el TAP.',{exact:true}).count(),0);
+   assert.deepEqual(errors,[]);assert.deepEqual(await p.evaluate(()=>window.__qa.errors),[]);assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));report.cases.push({theme,width:390,passed:true,serverPropsAndAccountReset:true,oldAbortedResponsesIgnored:true,stale401CannotSetLogin:true,newBusyStateRetained:true,localTimeRetained:true,freshRetryWithoutOldCursor:true,ownedDeadlineShowsActionableSpanish:true,timeoutDoesNotAutoRetry:true,explicitRetryRetainsQuery:true,timeoutRetryFocusable:true,active409KeepsRecovery:true,active401KeepsLogin:true});
   }finally{await context.close();contexts.delete(context);}
  }
+ assert.equal(report.layoutMatrix.length,8);if(qaOutput)assert.equal(report.screenshots.length,8);
  report.sourceAfter=hash(await readFile(component));assert.equal(report.sourceAfter,before);report.status='passed';
 }catch(e){report.status='failed';report.error=String(e.message);throw e;}
-finally{report.closure.contexts=contexts.size===0;if(browser){await browser.close();report.closure.browser=true;}if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));report.closure.server=true;}await stop();report.closure.esbuild=true;console.log(JSON.stringify(report));}
+finally{report.closure.contexts=contexts.size===0;if(browser){await browser.close();report.closure.browser=true;}if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));report.closure.server=true;}await stop();report.closure.esbuild=true;if(qaOutput)await writeFile(join(qaOutput,'consumer-history-snapshot-report.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));}
