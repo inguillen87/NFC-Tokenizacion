@@ -93,6 +93,7 @@ function fixture({ lookup = A, online = false, saved = [], fetch: fetchImplement
   const cells = [], effects = [], queued = new Map(), timers = new Map(), windowListeners = new Map(), documentListeners = new Map();
   const values = new Map(saved.map(([requested, stored]) => [keyFor(requested), JSON.stringify(stored)]));
   const calls = { fetch: [], storageWrites: [], lateStateWrites: 0 };
+  const callbackTasks = [];
   class ClockDate extends RealDate { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const memo = (create, deps) => {
     const index = cursor++, previous = cells[index];
@@ -107,7 +108,14 @@ function fixture({ lookup = A, online = false, saved = [], fetch: fetchImplement
       return [cells[index], value => { if (disposed) calls.lateStateWrites += 1; cells[index] = typeof value === "function" ? value(cells[index]) : value; }];
     },
     useRef(initial) { const index = cursor++; if (!(index in cells)) cells[index] = { current: initial }; return cells[index]; },
-    useMemo: memo, useCallback: (callback, deps) => memo(() => callback, deps),
+    useMemo: memo,
+    useCallback(callback, deps) {
+      return memo(() => (...args) => {
+        const task = callback(...args);
+        if (task && typeof task.then === "function") callbackTasks.push(task);
+        return task;
+      }, deps);
+    },
     useEffect(effect, deps) {
       const index = cursor++, previous = effects[index];
       if (!previous || deps.some((value, offset) => !Object.is(value, previous.deps[offset]))) {
@@ -159,6 +167,10 @@ function fixture({ lookup = A, online = false, saved = [], fetch: fetchImplement
   return {
     calls, navigator, timers, values,
     render,
+    async settleCallbacks() {
+      // Await the original callbacks through their finally blocks, including WebCrypto.
+      for (const task of callbackTasks) await task;
+    },
     async until(predicate) {
       for (let count = 0; count < 2_000; count += 1) {
         const html = render();
@@ -316,12 +328,21 @@ test("query changes clear old product content immediately and ignore late respon
   subject.setQuery("gtin=invalid"); assertNoVerified(subject.render({ flush: false })); subject.render(); assert.match(subject.render(), /Identificador GS1 inválido/); subject.dispose();
 });
 
-test("unmount aborts both requests and denies late state or storage writes", async () => {
+test("unmount aborts both requests and denies late state or storage writes", { timeout: 10_000 }, async () => {
   const stored = await certificate(), pending = [];
   const subject = fixture({ online: true, fetch: (url, options) => new Promise(resolve => pending.push({ url, options, resolve })) });
   subject.render(); await subject.until(() => pending.length === 2); subject.dispose();
-  assert(pending.every(entry => entry.options.signal.aborted)); pending.forEach(entry => entry.resolve(responseFor(stored, entry.url)));
-  await realDelay(20); assert.equal(subject.calls.lateStateWrites, 0); assert.equal(subject.calls.storageWrites.length, 0); assert.equal(subject.activeListeners(), 0); assert.equal(subject.timers.size, 0);
+  assert(pending.every(entry => entry.options.signal.aborted));
+  assert.equal(subject.calls.lateStateWrites, 0);
+  assert.equal(subject.calls.storageWrites.length, 0);
+  assert.equal(subject.activeListeners(), 0);
+  assert.equal(subject.timers.size, 0, "unmount must clear the deadline before transport settles");
+  pending.forEach(entry => entry.resolve(responseFor(stored, entry.url)));
+  await subject.settleCallbacks();
+  assert.equal(subject.calls.lateStateWrites, 0);
+  assert.equal(subject.calls.storageWrites.length, 0);
+  assert.equal(subject.activeListeners(), 0);
+  assert.equal(subject.timers.size, 0);
 });
 
 test("removing the query during an active lookup aborts transport and clears its busy state", async () => {

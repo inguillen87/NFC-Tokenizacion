@@ -175,6 +175,14 @@ export function OfflineCertificateClient() {
     requestController.current = controller;
     const current = () => loadVersion.current === version;
     let deadline: number | undefined;
+    const clearDeadline = () => {
+      if (deadline !== undefined) {
+        window.clearTimeout(deadline);
+        deadline = undefined;
+      }
+    };
+    // Teardown releases the deadline even if transport or verification settles late.
+    controller.signal.addEventListener("abort", clearDeadline, { once: true });
     let timedOut = false;
     let cachedReason: string | undefined;
     let cachedView: Extract<ViewState, { status: "verified" }> | undefined;
@@ -247,7 +255,7 @@ export function OfflineCertificateClient() {
       }
       if (current()) setResult({ key, view: { status: "unavailable", failure: navigator.onLine === false ? "offline" : timedOut ? "timeout" : "network", cachedReason } });
     } finally {
-      if (deadline !== undefined) window.clearTimeout(deadline);
+      clearDeadline();
       controller.abort();
       if (current()) {
         requestController.current = null;
