@@ -66,7 +66,7 @@ export const supplierVaultArtifactSchema = z.object({
   mime_type: nullableString,
   status: nullableString,
   created_at: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 }).passthrough();
 
 export const supplierVaultResponseSchema = z.object({
@@ -118,7 +118,7 @@ export const supplierManifestResponseSchema = z.object({
   registeredSunPayloads: z.number().optional(),
   duplicateUids: z.array(z.string()).optional(),
   activated: optionalBoolean,
-  supplier_gate: z.record(z.unknown()).nullable().optional(),
+  supplier_gate: z.record(z.string(), z.unknown()).nullable().optional(),
 }).passthrough();
 
 export const supplierQaResponseSchema = z.object({
@@ -135,7 +135,7 @@ export const supplierKeyRotationResponseSchema = z.object({
   bid: z.string(),
   key_version: z.number(),
   key_fingerprint: z.string(),
-  role_key_fingerprints: z.record(z.string()).optional(),
+  role_key_fingerprints: z.record(z.string(), z.string()).optional(),
   evidence_hash: z.string().optional(),
   warning: z.string().optional(),
 }).passthrough();
@@ -146,7 +146,7 @@ export const supplierActivationResponseSchema = z.object({
   activated: z.number(),
   remainingInactive: z.number(),
   activationComplete: z.boolean(),
-  supplier_gate: z.record(z.unknown()).nullable().optional(),
+  supplier_gate: z.record(z.string(), z.unknown()).nullable().optional(),
 }).passthrough();
 
 export const offlineVerifierDeviceSchema = z.object({
@@ -177,9 +177,9 @@ export const offlineVerifierBundleSchema = z.object({
   tenant_slug: z.string(),
   device_id: z.string(),
   allowed_bids: z.array(z.string()),
-  key_fingerprints: z.record(z.object({
+  key_fingerprints: z.record(z.string(), z.object({
     pair: z.string().nullable().optional(),
-    roles: z.record(z.string()).optional(),
+    roles: z.record(z.string(), z.string()).optional(),
   }).passthrough()),
   key_material_included: z.literal(false),
   policy: z.object({
