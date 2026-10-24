@@ -93,9 +93,12 @@ function runNpmAudit(extraArgs) {
 // npm audit excludes linked local source. Validate the maintained backport
 // behavior and its complete provenance before trusting registry-only results.
 function verifyLocalSecurityBackport() {
+  // A parent node:test IPC context must not replace this child's TAP channel.
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
   const result = spawnSync(process.execPath, [
     "--test", "--test-reporter=tap", "scripts/tests/zod3-security-backport.test.mjs",
-  ], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 30_000, maxBuffer: 2 * 1024 * 1024 });
+  ], { cwd: root, env, encoding: "utf8", windowsHide: true, timeout: 30_000, maxBuffer: 2 * 1024 * 1024 });
   const count = name => Number(String(result.stdout || "").match(new RegExp(`^# ${name} (\\d+)\\r?$`, "m"))?.[1] ?? NaN);
   const tests = count("tests"), pass = count("pass");
   if (result.error || result.status !== 0 || !Number.isSafeInteger(tests) || tests < 41 || pass !== tests
