@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 const root = new URL('../../../', import.meta.url);
 const json = async file => JSON.parse(await readFile(new URL(file, root), 'utf8'));
-const minimums = { next: '16.3.3', 'maplibre-gl': '6.4.1', nodemailer: '9.1.1', sharp: '0.35.4', postcss: '8.5.23', 'csv-parse': '7.0.2', nanoid: '3.3.18', 'adm-zip': '0.6.1', qs: '6.16.0' };
+const minimums = { next: '16.4.1', 'maplibre-gl': '6.4.1', nodemailer: '9.1.1', sharp: '0.35.5', postcss: '8.5.23', 'csv-parse': '7.0.2', nanoid: '3.3.18', 'adm-zip': '0.6.1', qs: '6.16.0' };
 function atLeast(actual, minimum) {
   if (!/^\d+\.\d+\.\d+$/.test(actual || '')) return false;
   const a = actual.split('.').map(Number), b = minimum.split('.').map(Number);

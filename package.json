@@ -55,9 +55,13 @@
     "gate:enterprise": "node scripts/enterprise-gates.mjs"
   },
   "packageManager": "npm@10.9.0",
+  "dependencies": {
+    "zod": "4.6.7"
+  },
   "devDependencies": {
     "postcss": "8.5.23",
-    "braces": "file:vendor/braces-security"
+    "braces": "file:vendor/braces-security",
+    "@nexid/zod3-security-backport": "file:vendor/zod3-security"
   },
   "optionalDependencies": {
     "sharp": "0.35.5"
@@ -71,12 +75,26 @@
     "next": {
       "postcss": "$postcss",
       "sharp": "$sharp",
-      ".": "16.3.8"
+      ".": "16.4.3"
     },
     "nanoid": "3.3.18",
     "adm-zip": "0.6.1",
+    "undici": "6.29.1",
+    "@nomicfoundation/hardhat-zod-utils": {
+      ".": "3.0.5",
+      "zod": "file:vendor/zod3-security"
+    },
     "qs": "6.16.0",
-    "braces": "$braces"
+    "braces": "$braces",
+    "hardhat": {
+      "zod": "file:vendor/zod3-security"
+    },
+    "@nomicfoundation/hardhat-ethers": {
+      "zod": "file:vendor/zod3-security"
+    },
+    "@nomicfoundation/hardhat-verify": {
+      "zod": "file:vendor/zod3-security"
+    }
   },
   "engines": {
     "node": ">=20.11.1"
