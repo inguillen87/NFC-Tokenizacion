@@ -90,6 +90,21 @@ function runNpmAudit(extraArgs) {
   return report;
 }
 
+// npm audit excludes linked local source. Validate the maintained backport
+// behavior and its complete provenance before trusting registry-only results.
+function verifyLocalSecurityBackport() {
+  const result = spawnSync(process.execPath, [
+    "--test", "--test-reporter=tap", "scripts/tests/zod3-security-backport.test.mjs",
+  ], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 30_000, maxBuffer: 2 * 1024 * 1024 });
+  const count = name => Number(String(result.stdout || "").match(new RegExp(`^# ${name} (\\d+)\\r?$`, "m"))?.[1] ?? NaN);
+  const tests = count("tests"), pass = count("pass");
+  if (result.error || result.status !== 0 || !Number.isSafeInteger(tests) || tests < 41 || pass !== tests
+    || ["fail", "cancelled", "skipped", "todo"].some(name => count(name) !== 0)) {
+    throw new AuditPolicyError("vendor_backport_validation_failed", "local behavior or source provenance could not be verified");
+  }
+  return { tests, pass };
+}
+
 function validateReport(report, label) {
   if (report?.auditReportVersion !== 2 || !report.vulnerabilities || typeof report.vulnerabilities !== "object") {
     throw new AuditPolicyError("audit_report_unsupported", `${label} must use npm audit report version 2`);
@@ -210,6 +225,7 @@ function enforceFullAudit(report, allowlist) {
 try {
   const args = parseArgs(process.argv.slice(2));
   const policy = validatePolicy(readJson(args.policyPath, "allowlist"), args.now);
+  const localBackport = verifyLocalSecurityBackport();
   const productionReport = validateReport(
     args.productionReportPath ? readJson(args.productionReportPath, "production audit fixture") : runNpmAudit(["--omit=dev"]),
     "production audit",
@@ -225,6 +241,7 @@ try {
     ok: true,
     gate: "enterprise_dependency_audit_v1",
     productionHighCritical: 0,
+    localBackport,
     temporarilyAllowlistedDevelopmentFindings: summarized,
     allowlistExpiresOn: policy.map((entry) => entry.expiresOn),
   }));
