@@ -1,0 +1,41 @@
+{
+  "name": "@nexid/zod3-security-backport",
+  "version": "3.25.76+nexid.1",
+  "private": true,
+  "description": "NexID-maintained bounded-collection security backport of Zod 3.25.76; not an official upstream patched release.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.cts",
+  "exports": {
+    ".": {
+      "@zod/source": "./src/v3/index.ts",
+      "types": "./index.d.cts",
+      "import": "./index.js",
+      "require": "./index.cjs"
+    },
+    "./v3": {
+      "@zod/source": "./src/v3/index.ts",
+      "types": "./v3/index.d.cts",
+      "import": "./v3/index.js",
+      "require": "./v3/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "index.cjs",
+    "index.d.ts",
+    "index.d.cts",
+    "v3",
+    "src/v3",
+    "LICENSE",
+    "README.md",
+    "UPSTREAM.json"
+  ],
+  "engines": {
+    "node": ">=20.11.1"
+  }
+}

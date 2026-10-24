@@ -59,7 +59,8 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "postcss": "8.5.23"
+    "postcss": "8.5.23",
+    "@nexid/zod3-security-backport": "file:vendor/zod3-security"
   },
   "optionalDependencies": {
     "sharp": "0.35.5"
@@ -78,8 +79,20 @@
     "nanoid": "3.3.18",
     "adm-zip": "0.6.1",
     "undici": "6.29.1",
-    "@nomicfoundation/hardhat-zod-utils": "3.0.5",
-    "qs": "6.16.0"
+    "@nomicfoundation/hardhat-zod-utils": {
+      ".": "3.0.5",
+      "zod": "file:vendor/zod3-security"
+    },
+    "qs": "6.16.0",
+    "hardhat": {
+      "zod": "file:vendor/zod3-security"
+    },
+    "@nomicfoundation/hardhat-ethers": {
+      "zod": "file:vendor/zod3-security"
+    },
+    "@nomicfoundation/hardhat-verify": {
+      "zod": "file:vendor/zod3-security"
+    }
   },
   "engines": {
     "node": ">=20.11.1"

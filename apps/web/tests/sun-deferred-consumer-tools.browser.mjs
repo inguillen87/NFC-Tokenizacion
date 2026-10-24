@@ -13,22 +13,39 @@ import { build } from 'esbuild';
 const web = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(web, '../..');
 const output = resolve(process.env.QA_OUTPUT || 'artifacts/performance/deferred-tools');
 await mkdir(output, { recursive: true });
-const sourcePaths = ['src/app/sun/sun-deferred-consumer-tools.tsx', 'src/app/sun/sun-deferred-consumer-tools.module.css', 'src/app/sun/sun-locale.ts', 'tests/sun-deferred-consumer-tools.browser.mjs'];
+const require = createRequire(import.meta.url);
+const { defaultConfig } = require('next/dist/server/config-shared');
+const { createVendoredReactAliases } = require('next/dist/build/create-compiler-aliases');
+const nextConfig = (await import(pathToFileURL(join(web, 'next.config.mjs')).href)).default;
+// This standalone compiler host must mirror the App Router's React aliases and
+// compiler-defined flag, rather than mixing installed React 18 with Next's runtime.
+const browserBailout = nextConfig.experimental?.reactBrowserBailout ?? defaultConfig.experimental.reactBrowserBailout;
+const compilerDefines = { 'process.env.NODE_ENV': '"production"', 'process.env.__NEXT_EXPERIMENTAL_REACT_BROWSER_BAILOUT': JSON.stringify(Boolean(browserBailout)) };
+const sourcePaths = ['src/app/sun/sun-deferred-consumer-tools.tsx', 'src/app/sun/sun-deferred-consumer-tools.module.css', 'src/app/sun/sun-locale.ts', 'tests/sun-deferred-consumer-tools.browser.mjs', 'next.config.mjs'];
 const sourceHashes = async () => Object.fromEntries(await Promise.all(sourcePaths.map(async path => [path, createHash('sha256').update(await readFile(join(web, path))).digest('hex')])));
 const sourcesBefore = await sourceHashes();
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
-const fixture = `import React from 'react';import{hydrateRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{DeferredCtaActions,DeferredQREngagementSuite}from'./src/app/sun/sun-deferred-consumer-tools';const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:['lead','feedback','sommelier'],program:{id:'synthetic-program',name:'Programa de ensayo',pointsName:'Puntos',pointsPerValidTap:0},trivia:{id:'11111111-1111-4111-8111-111111111111',title:'Trivia de ensayo',revision:'a'.repeat(64),pointsPerCorrect:0,completionBonus:0},catalogAvailable:false,tenantSlug:'synthetic'};export function App({locale='es-AR',isDemo=false}={}){const[mounted,setMounted]=React.useState(true);React.useEffect(()=>{const remove=()=>setMounted(false);window.addEventListener('fixture:remove-tools',remove);return()=>window.removeEventListener('fixture:remove-tools',remove);},[]);return <SunLocaleProvider initialLocale={locale}><h1>Ensayo de opciones SUN</h1><p>Datos de prueba. Sin tap físico ni operaciones reales.</p><section id='sun-summary'><input aria-label='Otra consulta de prueba'/><a href='#sun-summary'>Seguir leyendo el producto</a></section><div style={{height:2000}} aria-hidden='true'/>{mounted&&<><div id='protected-actions'><DeferredCtaActions bid='synthetic-bid' uid='synthetic-uid' eventId='0' freshToken='' canExecute={false} tapState='blocked' allowedActions={['report']} blockedActions={['claimOwnership','registerWarranty','tokenization']} isDemoPreview={isDemo}/></div><div style={{height:1500}} aria-hidden='true'/><div id='qr-engagement'><DeferredQREngagementSuite wineryName='Marca de ensayo' productName='Producto de ensayo' tenantSlug='synthetic' eventId='0' bid='synthetic-bid' initialTab='contact' allowedActions={['lead','feedback','sommelier','rewards']} configuration={configuration} isDemoPreview={isDemo}/></div></>}<div style={{height:1800}} aria-hidden='true'/></SunLocaleProvider>};`;
-const plugin = { name: 'consumer-tool-hosts', setup(b) {
+const fixture = `import React from 'react';import{hydrateRoot}from'react-dom/client';import{SunLocaleProvider}from'./src/app/sun/sun-locale-provider';import{DeferredCtaActions,DeferredQREngagementSuite}from'./src/app/sun/sun-deferred-consumer-tools';const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:['lead','feedback','sommelier'],program:{id:'synthetic-program',name:'Programa de ensayo',pointsName:'Puntos',pointsPerValidTap:0},trivia:{id:'11111111-1111-4111-8111-111111111111',title:'Trivia de ensayo',revision:'a'.repeat(64),pointsPerCorrect:0,completionBonus:0},catalogAvailable:false,tenantSlug:'synthetic'};export function App({locale='es-AR',isDemo=false}={}){const[mounted,setMounted]=React.useState(true);React.useEffect(()=>{const remove=()=>setMounted(false);window.addEventListener('fixture:remove-tools',remove);document.documentElement.dataset.fixtureHydrated='true';return()=>{delete document.documentElement.dataset.fixtureHydrated;window.removeEventListener('fixture:remove-tools',remove);};},[]);return <SunLocaleProvider initialLocale={locale}><h1>Ensayo de opciones SUN</h1><p>Datos de prueba. Sin tap físico ni operaciones reales.</p><section id='sun-summary'><input aria-label='Otra consulta de prueba'/><a href='#sun-summary'>Seguir leyendo el producto</a></section><div style={{height:2000}} aria-hidden='true'/>{mounted&&<><div id='protected-actions'><DeferredCtaActions bid='synthetic-bid' uid='synthetic-uid' eventId='0' freshToken='' canExecute={false} tapState='blocked' allowedActions={['report']} blockedActions={['claimOwnership','registerWarranty','tokenization']} isDemoPreview={isDemo}/></div><div style={{height:1500}} aria-hidden='true'/><div id='qr-engagement'><DeferredQREngagementSuite wineryName='Marca de ensayo' productName='Producto de ensayo' tenantSlug='synthetic' eventId='0' bid='synthetic-bid' initialTab='contact' allowedActions={['lead','feedback','sommelier','rewards']} configuration={configuration} isDemoPreview={isDemo}/></div></>}<div style={{height:1800}} aria-hidden='true'/></SunLocaleProvider>};`;
+const plugin = isBrowser => ({ name: 'consumer-tool-hosts', setup(b) {
+  const reactAliases = createVendoredReactAliases('', { layer: 'app-pages-browser', isBrowser: true, isEdgeServer: false, reactProductionProfiling: false });
+  // renderToString is a standalone SSR host, so its renderer and hooks must share
+  // these compiled packages, rather than the App Router's prebundled dispatcher.
+  if (!isBrowser) reactAliases['react-dom/server$'] = 'next/dist/compiled/react-dom/server.node';
+  b.onResolve({ filter: /^(react|react-dom)(\/.*)?$/ }, args => {
+    const target = reactAliases[args.path + '$'];
+    assert.ok(target, 'Next provides the fixture React alias ' + args.path);
+    return { path: require.resolve(target), external: !isBrowser };
+  });
   b.onResolve({ filter: /^next\/dynamic$/ }, () => ({ path: join(repo, 'node_modules/next/dist/shared/lib/app-dynamic.js') }));
   // PreloadChunks is server-only, never reached by these ssr:false tools.
   b.onLoad({ filter: /[\\/]lazy-dynamic[\\/]preload-chunks\.js$/ }, () => ({ contents: 'exports.PreloadChunks=function(){return null;};', loader: 'js' }));
   b.onResolve({ filter: /^next\/link$/ }, () => ({ path: 'inert-navigation-link', namespace: 'tool-fixture' }));
   b.onLoad({ filter: /.*/, namespace: 'tool-fixture' }, () => ({ contents: `import React from 'react';export default function Link({children,...props}){return React.createElement('a',props,children)}`, loader: 'js', resolveDir: web }));
   b.onLoad({ filter: /\.module\.css$/ }, () => ({ contents: 'export default new Proxy({}, {get:(_,key)=>String(key)});', loader: 'js' }));
-} };
-const browserBundle = await build({ stdin: { contents: fixture + "const params=new URLSearchParams(location.search);const requested=params.get('locale');const locale=['en','pt-BR'].includes(requested)?requested:'es-AR';hydrateRoot(document.getElementById('app'),<App locale={locale} isDemo={params.get('demo')==='1'}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, minify: true, splitting: true, format: 'esm', platform: 'browser', jsx: 'automatic', outdir: join(output, 'bundles'), entryNames: 'fixture', chunkNames: 'chunks/[name]-[hash]', plugins: [plugin], define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'error' });
-const ssr = await build({ stdin: { contents: fixture + "import{renderToString}from'react-dom/server';export const render=(locale,isDemo=false)=>renderToString(<App locale={locale} isDemo={isDemo}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, format: 'cjs', platform: 'node', jsx: 'automatic', plugins: [plugin], external: ['react', 'react-dom/server'], logLevel: 'error' });
-const module = { exports: {} }; new Function('module', 'exports', 'require', ssr.outputFiles[0].text)(module, module.exports, createRequire(import.meta.url));
+} });
+const browserBundle = await build({ stdin: { contents: fixture + "const params=new URLSearchParams(location.search);const requested=params.get('locale');const locale=['en','pt-BR'].includes(requested)?requested:'es-AR';hydrateRoot(document.getElementById('app'),<App locale={locale} isDemo={params.get('demo')==='1'}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, minify: true, splitting: true, format: 'esm', platform: 'browser', jsx: 'automatic', outdir: join(output, 'bundles'), entryNames: 'fixture', chunkNames: 'chunks/[name]-[hash]', plugins: [plugin(true)], define: compilerDefines, logLevel: 'error' });
+const ssr = await build({ stdin: { contents: fixture + "import{renderToString}from'react-dom/server';export const render=(locale,isDemo=false)=>renderToString(<App locale={locale} isDemo={isDemo}/>);", resolveDir: web, loader: 'tsx' }, bundle: true, write: false, format: 'cjs', platform: 'node', jsx: 'automatic', plugins: [plugin(false)], define: compilerDefines, logLevel: 'error' });
+const module = { exports: {} }; new Function('module', 'exports', 'require', ssr.outputFiles[0].text)(module, module.exports, require);
 const html = new Map(['es-AR', 'en', 'pt-BR'].map(locale => [locale, module.exports.render(locale)]));
 const demoHtml = new Map(['es-AR', 'en', 'pt-BR'].map(locale => [locale, module.exports.render(locale, true)]));
 const css = (await readFile(join(web, 'src/app/sun/sun-deferred-consumer-tools.module.css'), 'utf8')).replace(/:global\(([^)]+)\)/g, '$1')
@@ -49,7 +66,7 @@ const server = createServer((req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const origin = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
-const report = { actualConsumerWidgets: true, actualNextAppDynamicRuntime: true, navigationAndServerPreloadHostsInert: true, syntheticData: true, physicalTapMeasured: false, actualNextRouteMeasured: false, slowNoticeThresholdMs: 8000, sourcesBefore, delayedViews: [], checks: [], chunks: tools.map(([path, bytes]) => ({ path, decodedBytes: bytes.length, gzipBytes: gzipSync(bytes).length })), scenarios: [], exceptions: [] };
+const report = { actualConsumerWidgets: true, actualNextAppDynamicRuntime: true, nextCompilerReactAliases: true, nextCompilerBrowserBailout: Boolean(browserBailout), navigationAndServerPreloadHostsInert: true, syntheticData: true, physicalTapMeasured: false, actualNextRouteMeasured: false, slowNoticeThresholdMs: 8000, sourcesBefore, delayedViews: [], checks: [], chunks: tools.map(([path, bytes]) => ({ path, decodedBytes: bytes.length, gzipBytes: gzipSync(bytes).length })), scenarios: [], exceptions: [] };
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
 async function scenario(hash = '', hold = false, failOnce = false, locale = 'es-AR', width = 390, { heldTool = 'cta-actions', demo = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: 'reduce', serviceWorkers: 'block' }), page = await context.newPage();
@@ -58,8 +75,12 @@ async function scenario(hash = '', hold = false, failOnce = false, locale = 'es-
   page.on('pageerror', e => report.exceptions.push(e.message));
   await page.route('**/*', route => { const request = route.request(), u = new URL(request.url()); state.requests.push(u.pathname); if (request.method() !== 'GET') { state.writes.push(u.pathname); return route.abort(); } if (u.origin !== origin) return route.abort(); if (state.failOnce && /\/chunks\/cta-actions-/.test(u.pathname)) { state.failOnce = false; return route.fulfill({ status: 503, contentType: 'text/javascript', body: '' }); } if (state.hold && u.pathname.includes('/chunks/' + heldTool + '-')) { state.held.push(route); return; } return route.continue(); });
   const params = new URLSearchParams(); if (locale !== 'es-AR') params.set('locale', locale); if (demo) params.set('demo', '1');
-  await page.goto(origin + '/' + (params.size ? '?' + params : '') + hash); await page.waitForTimeout(350);
+  await page.goto(origin + '/' + (params.size ? '?' + params : '') + hash); await page.waitForFunction(() => document.documentElement.dataset.fixtureHydrated === 'true');
   report.scenarios.push(state); return { context, page, state };
+}
+async function focusToolTrigger(page, button) {
+  await button.evaluate(el => el.focus({ preventScroll: true }));
+  await page.waitForFunction(el => el === document.activeElement, await button.elementHandle());
 }
 async function controlledDelay(page) {
   await page.clock.install();
@@ -78,7 +99,7 @@ async function controlledDelay(page) {
 }
 async function requestHeldTool(test, anchor = 'protected-actions') {
   const region = test.page.locator(`[data-sun-deferred-tool="${anchor}"]`);
-  await region.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true }));
+  await focusToolTrigger(test.page, region.getByRole('button', { name: 'Ver opciones' }));
   await test.page.keyboard.press('Enter');
   await test.page.waitForFunction(id => document.querySelector(`[data-sun-deferred-tool="${id}"]`)?.getAttribute('data-tool-load-state') === 'loading', anchor);
   await test.page.waitForFunction(() => window.__slowTimers.some(timer => timer.active));
@@ -90,7 +111,7 @@ try {
   await ssrPage.goto(origin); check(await ssrPage.getByRole('heading', { name: 'Postventa y garantía', exact: true }).count() === 1, 'Useful post-sale fallback is server-rendered'); check(await ssrPage.getByRole('heading', { name: 'Novedades y experiencias', exact: true }).count() === 1, 'Useful brand fallback is server-rendered'); check((await ssrPage.locator('noscript').allTextContents()).every(t => t.includes('información del producto')), 'JavaScript-free fallback explains how to keep reading'); await ssrOnly.close();
   const t = await scenario('', true), cta = t.page.locator('[data-sun-deferred-tool="protected-actions"]'), qr = t.page.locator('[data-sun-deferred-tool="qr-engagement"]');
   check(await cta.getAttribute('data-tool-load-state') === 'waiting' && await qr.getAttribute('data-tool-load-state') === 'waiting', 'Offscreen tools remain waiting'); check(!t.state.requests.some(p => /\/chunks\/(cta-actions|qr-engagement-suite)-/.test(p)), 'Neither tool chunk downloads offscreen');
-  await cta.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await t.page.keyboard.press('Enter'); await t.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('aria-busy') === 'true');
+  await focusToolTrigger(t.page, cta.getByRole('button', { name: 'Ver opciones' })); await t.page.keyboard.press('Enter'); await t.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('aria-busy') === 'true');
   check(await cta.getAttribute('data-tool-load-state') === 'loading', 'Keyboard action reports pending chunk download'); check(await cta.getByRole('status').innerText() === 'Preparando las opciones…', 'Chunk loading exposes clear status');
   check(await cta.getByRole('heading', { name: 'Postventa y garantía', exact: true }).count() === 1, 'Loading retains the requested tool title');
   t.state.hold = false; for (const route of t.state.held) await route.continue();
@@ -106,10 +127,10 @@ try {
   check(t.state.writes.length === 0 && await t.page.evaluate(() => window.__geoRequests) === 0, 'Mount and navigation initiate no writes or GPS'); await t.context.close();
   for (const anchor of ['protected-actions', 'qr-engagement']) { const h = await scenario('#' + anchor); await h.page.waitForFunction(id => document.querySelector(`[data-sun-deferred-tool="${id}"]`)?.getAttribute('data-tool-load-state') === 'ready', anchor); check(await h.page.locator(`[data-sun-deferred-tool="${anchor}"]`).getAttribute('aria-busy') === 'false', 'Direct hash loads ready region ' + anchor); check(h.state.writes.length === 0, 'Hash never initiates a write ' + anchor); await h.context.close(); }
   const h = await scenario(); await h.page.evaluate(() => { location.hash = '#qr-engagement'; }); await h.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="qr-engagement"]')?.getAttribute('data-tool-load-state') === 'ready'); check(true, 'Hash navigation after load reaches the brand tools'); await h.context.close();
-  const e = await scenario('', false, true); await e.page.locator('[data-sun-deferred-tool="protected-actions"]').getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await e.page.keyboard.press('Enter'); await e.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'error'); check(await e.page.locator('[data-sun-deferred-tool="protected-actions"]').getAttribute('aria-busy') === 'false', 'Chunk failure ends busy state and preserves the page'); check(await e.page.getByRole('button', { name: 'Volver a intentar', exact: true }).count() === 1, 'Chunk failure offers explicit retry'); check(await e.page.getByRole('button', { name: 'Volver a intentar', exact: true }).evaluate(el => el === document.activeElement), 'A failed keyboard request hands focus to retry'); await e.context.close();
+  const e = await scenario('', false, true); await focusToolTrigger(e.page, e.page.locator('[data-sun-deferred-tool="protected-actions"]').getByRole('button', { name: 'Ver opciones' })); await e.page.keyboard.press('Enter'); await e.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'error'); check(await e.page.locator('[data-sun-deferred-tool="protected-actions"]').getAttribute('aria-busy') === 'false', 'Chunk failure ends busy state and preserves the page'); check(await e.page.getByRole('button', { name: 'Volver a intentar', exact: true }).count() === 1, 'Chunk failure offers explicit retry'); check(await e.page.getByRole('button', { name: 'Volver a intentar', exact: true }).evaluate(el => el === document.activeElement), 'A failed keyboard request hands focus to retry'); await e.context.close();
   for (const newerAction of ['focus-and-type', 'scroll', 'history']) {
     const next = await scenario('', true), region = next.page.locator('[data-sun-deferred-tool="protected-actions"]');
-    await region.getByRole('button', { name: 'Ver opciones' }).evaluate(el => el.focus({ preventScroll: true })); await next.page.keyboard.press('Enter');
+    await focusToolTrigger(next.page, region.getByRole('button', { name: 'Ver opciones' })); await next.page.keyboard.press('Enter');
     await next.page.waitForFunction(() => document.querySelector('[data-sun-deferred-tool="protected-actions"]')?.getAttribute('data-tool-load-state') === 'loading');
     if (newerAction === 'focus-and-type') await next.page.getByRole('textbox', { name: 'Otra consulta de prueba' }).fill('Conservar esta interacción');
     if (newerAction === 'scroll') {
@@ -222,7 +243,7 @@ try {
   check(await failedSlow.page.evaluate(() => window.__slowTimers.every(timer => !timer.active)) && failedSlow.state.writes.length === 0, 'Failure clears the timer without any automatic retry or submit'); await failedSlow.context.close();
   for (const copy of [{ locale: 'en', status: 'These options are taking longer than expected.', back: 'Back to product details', open: 'View options' }, { locale: 'pt-BR', status: 'Estas opções estão demorando mais do que o esperado.', back: 'Voltar à ficha', open: 'Ver opções' }]) {
     const translated = await scenario('', true, false, copy.locale); await controlledDelay(translated.page);
-    const region = translated.page.locator('[data-sun-deferred-tool="protected-actions"]'); await region.getByRole('button', { name: copy.open }).evaluate(el => el.focus({ preventScroll: true })); await translated.page.keyboard.press('Enter');
+    const region = translated.page.locator('[data-sun-deferred-tool="protected-actions"]'); await focusToolTrigger(translated.page, region.getByRole('button', { name: copy.open })); await translated.page.keyboard.press('Enter');
     await translated.page.waitForFunction(() => window.__slowTimers.some(timer => timer.active)); await translated.page.clock.fastForward(8001);
     await region.getByTestId('sun-tool-delayed').waitFor();
     check(await region.getByRole('status').innerText() === copy.status && await region.getByRole('link', { name: copy.back, exact: true }).count() === 1, 'Slow recovery remains translated ' + copy.locale);
