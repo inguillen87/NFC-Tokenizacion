@@ -94,6 +94,7 @@ test("dependency audit accepts clean production and development reports", async 
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(result.stdout, /enterprise_dependency_audit_v1/);
+  assert.deepEqual(JSON.parse(result.stdout).localBackport, { tests: 41, pass: 41 });
 });
 
 test("dependency audit rejects former, new, production, expired and stale exceptions", async () => {
