@@ -38,18 +38,22 @@ for (const revision of ["before", "after"]) {
   const plugins = revision === "before" ? [{ name: "baseline-nav", setup(builder) {
     builder.onLoad({ filter: /sun-section-nav[.]tsx$/ }, args => ({ contents: baseline, loader: "tsx", resolveDir: dirname(args.path) }));
   } }] : [];
-  const result = await build({ stdin: { contents: fixture, resolveDir: web, loader: "tsx" }, bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"production"' }, plugins, logLevel: "silent" });
-  bundles[revision] = result.outputFiles[0].contents;
+  const result = await build({ stdin: { contents: fixture, resolveDir: web, loader: "tsx" }, bundle: true, write: false, outfile: `fixture-${revision}.js`, platform: "browser", format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"production"' }, plugins, logLevel: "silent" });
+  const script = result.outputFiles.find(file => file.path.endsWith(".js"));
+  const styles = result.outputFiles.find(file => file.path.endsWith(".css"));
+  assert.ok(script && styles, "Each navigation variant emits JavaScript and native provider CSS");
+  bundles[revision] = { js: script.contents, css: styles.text };
 }
 const server = createServer((req, res) => {
   const url = new URL(req.url, "http://fixture.invalid");
   if (req.method !== "GET") { res.writeHead(405); return res.end(); }
-  if (url.pathname === "/fixture.js") { res.setHeader("Content-Type", "text/javascript"); return res.end(bundles[url.searchParams.get("revision") === "before" ? "before" : "after"]); }
-  if (url.pathname === "/fixture.css") { res.setHeader("Content-Type", "text/css"); return res.end(css); }
+  const revision = url.searchParams.get("revision") === "before" ? "before" : "after";
+  if (url.pathname === "/fixture.js") { res.setHeader("Content-Type", "text/javascript"); return res.end(bundles[revision].js); }
+  if (url.pathname === "/fixture.css") { res.setHeader("Content-Type", "text/css"); return res.end(css + "\n" + bundles[revision].css); }
   if (url.pathname === "/favicon.ico") { res.writeHead(204); return res.end(); }
   const theme = url.searchParams.get("theme") === "light" ? "light" : "dark";
   res.setHeader("Content-Type", "text/html;charset=utf-8");
-  res.end(`<!doctype html><html lang="es-AR" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SUN navigation local test</title><link rel="stylesheet" href="/fixture.css"><style>
+  res.end(`<!doctype html><html lang="es-AR" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SUN navigation local test</title><link rel="stylesheet" href="/fixture.css?revision=${revision}"><style>
 body{margin:0;font:16px system-ui;overflow-anchor:none}#fixture-main{box-sizing:border-box;max-width:900px;margin:0 auto;padding:0 12px}#prelude{height:100px}#tail{height:900px}.fixture-section{box-sizing:border-box;height:900px;scroll-margin-top:96px;padding:24px;border:1px solid #64748b}button{min-height:44px}h1,h2{font-size:24px;margin:0 0 20px}
 </style></head><body><div id="app"></div><script src="/fixture.js?revision=${url.searchParams.get("revision") || "after"}"></script></body></html>`);
 });
