@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, BrandDot, BrandLockup, Button, Card } from "@product/ui";
 import { escapeSpreadsheetCsvCell, escapeSpreadsheetHtmlCell } from "../lib/export-utils";
+import { dataTableCopy } from "../lib/data-table-copy";
+
+const defaultCopy = dataTableCopy["es-AR"];
 
 type Row = Record<string, string>;
 type RowAction = { label: string; heading: string; testId?: string; available: (row: Row) => boolean; disabled?: boolean; onClick: (row: Row) => void };
@@ -48,8 +51,10 @@ function resolveTone(value: string) {
   return "default" as const;
 }
 
-export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = "Search", allFilterLabel = "All", refreshLabel = "Refresh", statusMap, rowAction, refreshDisabled = false }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; statusMap?: Record<string, string>; rowAction?: RowAction; refreshDisabled?: boolean }) {
+export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = defaultCopy.searchPlaceholder, allFilterLabel = defaultCopy.allFilterLabel, refreshLabel = defaultCopy.refreshLabel, filterLabel = defaultCopy.filterLabel, countLabel = defaultCopy.countLabel, filteredEmptyLabel = defaultCopy.filteredEmptyLabel, clearFiltersLabel = defaultCopy.clearFiltersLabel, missingStatusLabel = defaultCopy.missingStatusLabel, statusMap, rowAction, refreshDisabled = false }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; filterLabel?: string; countLabel?: string; filteredEmptyLabel?: string; clearFiltersLabel?: string; missingStatusLabel?: string; statusMap?: Record<string, string>; rowAction?: RowAction; refreshDisabled?: boolean }) {
   const router = useRouter();
+  const id = useId();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [isPending, startTransition] = useTransition();
@@ -61,33 +66,43 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
   }), [filterKey, query, rows, status]);
 
   const statuses = Array.from(new Set(rows.map((row) => row[filterKey])));
+  const visibleStatuses = status !== "all" && !statuses.includes(status) ? [status, ...statuses] : statuses;
+  const hasFilters = Boolean(query || status !== "all");
+  const visibleCount = countLabel.replaceAll("{visible}", String(filtered.length)).replaceAll("{total}", String(rows.length));
   const exportBase = slugify(title);
   const displayStatus = (value: string) => statusMap && Object.hasOwn(statusMap, value) && typeof statusMap[value] === "string"
     ? statusMap[value] : value;
+  function clearFilters() {
+    setQuery(""); setStatus("all");
+    searchRef.current?.focus();
+  }
 
   return (
-    <Card className="data-table-card p-5">
+    <Card className="data-table-card p-5" aria-labelledby={`${id}-title`} aria-busy={isPending}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-white">{title}</h3>
-          <p className="mt-1 text-xs text-slate-400">{filtered.length} / {rows.length} rows visible</p>
+          <h3 id={`${id}-title`} className="text-sm font-semibold text-white">{title}</h3>
+          <p id={`${id}-count`} role="status" aria-live="polite" aria-atomic="true" className="mt-1 text-xs text-slate-400">{visibleCount}</p>
         </div>
         <div className="data-table-toolbar flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
-          <input suppressHydrationWarning aria-label={searchPlaceholder} placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm sm:w-48" />
-          <select suppressHydrationWarning aria-label="Filtrar por estado" value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
+          <label htmlFor={`${id}-search`} className="sr-only">{searchPlaceholder}</label>
+          <input ref={searchRef} id={`${id}-search`} suppressHydrationWarning aria-describedby={`${id}-count`} placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 max-w-full min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm sm:w-48" />
+          <label htmlFor={`${id}-status`} className="sr-only">{filterLabel}</label>
+          <select id={`${id}-status`} suppressHydrationWarning aria-describedby={`${id}-count`} value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 max-w-full min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
             <option value="all">{allFilterLabel}</option>
-            {statuses.map((item) => <option key={item} value={item}>{displayStatus(item)}</option>)}
+            {visibleStatuses.map((item) => <option key={item} value={item}>{displayStatus(item)}{!statuses.includes(item) ? ` · ${missingStatusLabel}` : ""}</option>)}
           </select>
-          <Button variant="secondary" disabled={refreshDisabled} onClick={() => { if (!refreshDisabled) startTransition(() => router.refresh()); }}>{refreshLabel}</Button>
-          <button suppressHydrationWarning type="button" className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100" onClick={() => downloadBlob(`${exportBase}.csv`, "text/csv;charset=utf-8", buildCsv(columns, filtered))}>CSV</button>
-          <button suppressHydrationWarning type="button" className="rounded-lg border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100" onClick={() => downloadBlob(`${exportBase}.xls`, "application/vnd.ms-excel;charset=utf-8", buildExcelHtml(title, columns, filtered))}>Excel</button>
-          <button suppressHydrationWarning type="button" className="rounded-lg border border-violet-300/25 bg-violet-500/10 px-3 py-2 text-sm font-semibold text-violet-100" onClick={() => window.print()}>PDF</button>
-          {(query || status !== "all") ? <button suppressHydrationWarning type="button" className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300" onClick={() => { setQuery(""); setStatus("all"); }}>Clear</button> : null}
+          <Button variant="secondary" className="min-h-11" disabled={refreshDisabled} onClick={() => { if (!refreshDisabled) startTransition(() => router.refresh()); }}>{refreshLabel}</Button>
+          <button suppressHydrationWarning type="button" className="min-h-11 rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100" onClick={() => downloadBlob(`${exportBase}.csv`, "text/csv;charset=utf-8", buildCsv(columns, filtered))}>CSV</button>
+          <button suppressHydrationWarning type="button" className="min-h-11 rounded-lg border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100" onClick={() => downloadBlob(`${exportBase}.xls`, "application/vnd.ms-excel;charset=utf-8", buildExcelHtml(title, columns, filtered))}>Excel</button>
+          <button suppressHydrationWarning type="button" className="min-h-11 rounded-lg border border-violet-300/25 bg-violet-500/10 px-3 py-2 text-sm font-semibold text-violet-100" onClick={() => window.print()}>PDF</button>
+          {hasFilters ? <button suppressHydrationWarning type="button" className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300" onClick={clearFilters}>{clearFiltersLabel}</button> : null}
         </div>
       </div>
 
       {isPending ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-3"><BrandDot size={10} variant="pulse" theme="dark" />{loadingLabel}</div></div> : null}
-      {!isPending && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
+      {!isPending && rows.length === 0 ? <div data-testid="data-table-source-empty" className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
+      {!isPending && rows.length > 0 && filtered.length === 0 ? <div data-testid="data-table-filtered-empty" className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><p>{filteredEmptyLabel}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300" onClick={clearFilters}>{clearFiltersLabel}</button></div> : null}
 
       {!isPending && filtered.length > 0 ? (
         <div className="data-table-shell overflow-x-auto rounded-2xl border border-white/10" role="region" aria-label={title} tabIndex={0}>

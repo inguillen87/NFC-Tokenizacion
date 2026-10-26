@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { DataTable } from "../../../../components/data-table";
+import { dataTableCopy } from "../../../../lib/data-table-copy";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 
@@ -53,7 +54,7 @@ export default async function ShipmentsPage() {
         description="Audit the chain of custody and tamper events for all secure deliveries." 
       />
 
-      <DataTable
+      <DataTable {...dataTableCopy.en}
         title="All Shipments"
         columns={[
           { key: "shipmentCode", label: "Shipment Code" },

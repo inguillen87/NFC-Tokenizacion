@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { dataTableCopy } from "../src/lib/data-table-copy.ts";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
@@ -93,7 +94,7 @@ const Empty = () => null;
 const ui = { Card: ({ children }) => React.createElement("section", null, children), Badge: ({ children }) => React.createElement("span", null, children),
   Button: ({ children, onClick, disabled }) => React.createElement("button", { type: "button", onClick, disabled }, children), BrandDot: Empty, BrandLockup: Empty };
 const router = { refresh() { throw new Error("Unexpected refresh during rendering"); } };
-const DataTable = loadComponent("../src/components/data-table.tsx", { "@product/ui": ui, "next/navigation": { useRouter: () => router }, "../lib/export-utils": exports }).DataTable;
+const DataTable = loadComponent("../src/components/data-table.tsx", { "@product/ui": ui, "next/navigation": { useRouter: () => router }, "../lib/export-utils": exports, "../lib/data-table-copy": { dataTableCopy } }).DataTable;
 function renderOrders({ records = [row(), legacy], search = "", context = "qa-only", state = ready, locale = "es-AR", demoMode = false, statusMap = {} } = {}) {
   let stateIndex = 0, tableProps = null;
   const reactShim = { ...React, useState: initial => {
@@ -103,6 +104,7 @@ function renderOrders({ records = [row(), legacy], search = "", context = "qa-on
   const Client = loadComponent("../src/app/(app)/leads-tickets/leads-tickets-client.tsx", {
     react: reactShim, "next/navigation": { useRouter: () => router }, "lucide-react": { Search: Empty },
     "../../../lib/assistant-records": assistant, "../../../lib/customer-inbox-state": inbox, "../../../lib/customer-inbox-copy": { customerInboxCopy },
+    "../../../lib/data-table-copy": { dataTableCopy },
     "../../../lib/customer-order-request-projection": orders, "../../../lib/customer-activity-summary": activity, "../../../lib/customer-signal-timeline": signals,
     "../../../lib/ticket-entry": entry, "../../../lib/support-ticket-projection": tickets,
     "../../../lib/ticket-status-reconciliation": ticketStatuses,
@@ -127,6 +129,16 @@ test("actual CRM table displays marketplace and legacy rows with no create, purc
   for (const text of ["Producto solicitado", "Cantidad informada", "Mensaje o notas", "Reserva sintética", "qa@example.invalid", "+540000000000", "Etiqueta de ensayo", "Detalle antiguo"]) assert.ok(html.includes(text), text);
   assert.ok(html.includes("&lt;script&gt;alert(1)&lt;/script&gt;")); assert.doesNotMatch(html, /<script>|href=|<form/);
   assert.match(html, /No confirman una compra/); assert.doesNotMatch(html, /Tipo Tag|pedidos de muestras/);
+});
+
+test("actual CRM table recovery feedback follows its selected locale", () => {
+  for (const [locale, count, clear] of [["es-AR", "2 de 2 filas visibles", "Limpiar filtros"], ["en", "2 of 2 rows visible", "Clear filters"], ["pt-BR", "2 de 2 linhas visíveis", "Limpar filtros"]]) {
+    const { html, tableProps } = renderOrders({ locale });
+    assert.ok(html.includes(count), locale);
+    assert.equal(tableProps.clearFiltersLabel, clear);
+    assert.equal(tableProps.filteredEmptyLabel, dataTableCopy[locale].filteredEmptyLabel);
+    assert.equal(tableProps.missingStatusLabel, dataTableCopy[locale].missingStatusLabel);
+  }
 });
 
 test("actual CRM search uses product, phone and consumer message instead of the obsolete sample fields", () => {

@@ -290,7 +290,7 @@ export default async function SubscriptionsPage({
         ))}
       </section>
 
-      <DataTable
+      <DataTable {...copy.tableFeedback}
         title="Escenarios ilustrativos de suscripcion"
         columns={[
           { key: "tenant", label: copy.tables.subscriptions.tenant },

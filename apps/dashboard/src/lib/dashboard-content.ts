@@ -1,9 +1,11 @@
 import type { AppLocale } from "@product/config";
 import type { DashboardEnterpriseRole } from "./enterprise-runtime-rbac";
+import { dataTableCopy, type DataTableCopy } from "./data-table-copy";
 
 export type UserRole = DashboardEnterpriseRole;
 
 type DashboardContent = {
+  tableFeedback: DataTableCopy;
   shell: {
     subtitle: string;
     search: string;
@@ -119,6 +121,7 @@ export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> 
 
 export const dashboardContent: Record<AppLocale, DashboardContent> = {
   "es-AR": {
+    tableFeedback: dataTableCopy["es-AR"],
     shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "Estado de datos: ver cada módulo", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
     nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Fidelización", experiences: "Experiencias", campaigns: "Campañas", subscriptions: "Suscripciones", apiKeys: "API Keys", sdkVision: "Ecosistema SDK", logistics: "Envíos y precintos", proof: "Trust Layers", supplierBatches: "Recepción de fábrica" },
     pages: {
@@ -186,6 +189,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     statuses: { active: "Activo", pending: "Pendiente", revoked: "Revocado", healthy: "Sano", risk: "Riesgo", draft: "Borrador", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "No registrado", NOT_ACTIVE: "No activo", REPLAY_SUSPECT: "Replay sospechoso", VALID: "Válido" },
   },
   "pt-BR": {
+    tableFeedback: dataTableCopy["pt-BR"],
     shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "Estado dos dados: ver cada módulo", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
     nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", loyalty: "Fidelidade", experiences: "Experiências", campaigns: "Campanhas", subscriptions: "Assinaturas", apiKeys: "API Keys", sdkVision: "Ecossistema SDK", logistics: "Envios e lacres", proof: "Trust Layers", supplierBatches: "Recebimento de fábrica" },
     pages: {
@@ -253,6 +257,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     statuses: { active: "Ativo", pending: "Pendente", revoked: "Revogado", healthy: "Saudável", risk: "Risco", draft: "Rascunho", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "Não registrado", NOT_ACTIVE: "Não ativo", REPLAY_SUSPECT: "Replay suspeito", VALID: "Válido" },
   },
   en: {
+    tableFeedback: dataTableCopy.en,
     shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "Data status: check each module", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
     nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Loyalty Studio", experiences: "Experiences", campaigns: "Campaigns", subscriptions: "Subscriptions", apiKeys: "API Keys", sdkVision: "SDK Developer Hub", logistics: "Shipments and seals", proof: "Trust Layers", supplierBatches: "Factory reception" },
     pages: {

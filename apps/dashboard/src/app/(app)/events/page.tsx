@@ -203,7 +203,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         </dl>
       </section>
 
-      <DataTable
+      <DataTable {...copy.tableFeedback}
         title="Eventos de la muestra · hora de Argentina (UTC−03:00)"
         columns={[
           ...(!isTenantAdmin ? [{ key: "tenant", label: copy.tables.events.tenant }] : []),

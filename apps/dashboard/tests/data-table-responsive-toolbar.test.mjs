@@ -22,7 +22,7 @@ test("responsive layout preserves filtering, refresh and export callbacks", () =
   assert.match(toolbar, /buildCsv\(columns, filtered\)/);
   assert.match(toolbar, /buildExcelHtml\(title, columns, filtered\)/);
   assert.match(toolbar, /window\.print\(\)/);
-  assert.match(toolbar, /setQuery\(""\); setStatus\("all"\)/);
+  assert.match(toolbar, /onClick=\{clearFilters\}/);
 });
 
 test("wide data cells retain their own horizontal scrolling container", () => {

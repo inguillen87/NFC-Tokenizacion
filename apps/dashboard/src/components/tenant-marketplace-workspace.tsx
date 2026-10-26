@@ -25,26 +25,41 @@ export default function TenantMarketplaceWorkspace({ tenant, canWrite, canSelect
   const [pending, setPending] = useState<{ command: CatalogCommand; baseline: CatalogResource } | null>(null);
   const [reviewed, setReviewed] = useState<CatalogResource | null>(null), [didRead, setDidRead] = useState(false);
   const [confirmAction, setConfirmAction] = useState<CatalogAction | null>(null);
-  const lock = useRef(false), notice = useRef<HTMLDivElement>(null);
+  const [editorNavigation, setEditorNavigation] = useState(0);
+  const lock = useRef(false), notice = useRef<HTMLDivElement>(null), editor = useRef<HTMLElement>(null);
+  const editorIntent = useRef<"heading" | "field" | null>(null), focusNotice = useRef(true);
   const endpoint = `/api/tenant-marketplace?${new URLSearchParams({ tenant })}`;
   const active = resource?.status === "active", restricted = resource ? !catalogManaged(resource) : false;
   const editable = canWrite && !isDemo && Boolean(data && resource) && !active && !restricted && !busy && !uncertain && !conflict;
   const publishable = Boolean(resource?.updatedAt && !active && !restricted && !dirty && !busy && !uncertain && !conflict
     && (kind === "brand" ? "display_name" in resource && resource.display_name.trim() : "title" in resource && resource.title.trim() && catalogVisible(data?.brand || null) && (resource.request_to_buy_enabled || resource.external_checkout_url)));
-  useEffect(() => { if (message && error) notice.current?.focus(); }, [message, error]);
+  useEffect(() => { if (message && error && focusNotice.current) notice.current?.focus(); }, [message, error]);
+  useEffect(() => {
+    const intent = editorIntent.current;
+    editorIntent.current = null;
+    if (!intent || !editor.current) return;
+    const heading = editor.current.querySelector<HTMLElement>("h2");
+    const field = intent === "field" ? editor.current.querySelector<HTMLElement>("fieldset:not([disabled]) input:not([disabled]), fieldset:not([disabled]) select:not([disabled]), fieldset:not([disabled]) textarea:not([disabled])") : null;
+    const target = field || heading;
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [editorNavigation]);
   useEffect(() => {
     if (!dirty && !uncertain) return;
     const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", prevent); return () => window.removeEventListener("beforeunload", prevent);
   }, [dirty, uncertain]);
-  function inform(text: string, isError = false) { setMessage(text); setError(isError); }
+  function inform(text: string, isError = false, shouldFocus = true) { focusNotice.current = shouldFocus; setMessage(text); setError(isError); }
   function adopt(next: CatalogResource | null, nextKind = kind) {
+    editorIntent.current = null;
     setKind(nextKind); setResource(next); setFields(next ? catalogFieldsOf(next, nextKind) : { ...blankCatalogFields }); setDirty(false);
     setUncertain(false); setConflict(false); setPending(null); setReviewed(null); setDidRead(false); setConfirmAction(null);
   }
   function choose(next: CatalogResource | null, nextKind = kind) {
-    if (busy || dirty || uncertain || conflict) { inform("Tu formulario sigue aquí. Guardá o descartá los cambios antes de cambiar de producto o sección.", true); return; }
+    if (busy || dirty || uncertain || conflict) { inform("Tu formulario sigue aquí. Guardá o descartá los cambios antes de cambiar de producto o sección.", true, false); return; }
     adopt(next, nextKind); inform("");
+    editorIntent.current = "heading"; setEditorNavigation(value => value + 1);
   }
   function change<K extends keyof CatalogFields>(key: K, value: CatalogFields[K]) {
     if (!editable) return; setFields(current => ({ ...current, [key]: value })); setDirty(true); setConfirmAction(null);
@@ -55,6 +70,7 @@ export default function TenantMarketplaceWorkspace({ tenant, canWrite, canSelect
     const item: CatalogResource = nextKind === "brand" ? { ...common, display_name: "", slug: "", country: null, city: null, visible_in_network: false }
       : { ...common, title: "", category: null, image_url: null, price_amount: null, price_currency: null, external_checkout_url: null, request_to_buy_enabled: false, age_gate_required: false };
     adopt(item, nextKind); setFields({ ...blankCatalogFields }); setDirty(true); inform("Nuevo borrador sin guardar. Todavía no se muestra a clientes.");
+    editorIntent.current = "field"; setEditorNavigation(value => value + 1);
   }
   function accepted(item: CatalogResource, action: CatalogAction, nextData: TenantCatalog, text: string) {
     setData(putResource(nextData, kind, item));
@@ -120,8 +136,8 @@ export default function TenantMarketplaceWorkspace({ tenant, canWrite, canSelect
         <section className={styles.notice} data-testid="tenant-catalog-brand-dependency"><strong>{catalogVisible(data.brand) ? "Marca publicada y visible en la red" : "Falta publicar una marca visible en la red"}</strong><p>El cliente solo ve productos activos de una marca activa y visible. Habilitar el servicio de compra después de una lectura requiere además el catálogo y una lectura apta.</p><button type="button" disabled={busy} onClick={() => choose(data.brand, "brand")}>Revisar perfil de la marca</button></section>
         <div className={styles.tabs} aria-label="Sección del catálogo"><button type="button" aria-pressed={kind === "product"} onClick={() => choose(data.items[0] || null, "product")}>Productos</button><button type="button" aria-pressed={kind === "brand"} onClick={() => choose(data.brand, "brand")}>Perfil de la marca</button></div>
         {kind === "product" && <section aria-label="Productos guardados"><div className={styles.title}><h2>Productos guardados</h2>{canWrite && <button type="button" disabled={busy || dirty || uncertain || conflict} onClick={() => create("product")}>Crear borrador de producto</button>}</div>{data.hasMore && <p className={styles.notice}>Se muestran los primeros 100 productos. La consulta de estado verifica el identificador del producto seleccionado.</p>}{!data.items.length && <p className={styles.empty}>La fuente confirmó que todavía no hay productos guardados para esta empresa.</p>}<div className={styles.products}>{data.items.map(item => <article key={item.id} className={styles.product}><span className={styles.badge}>{catalogState(item, data.brand)}</span><h3>{item.title || "Borrador sin título"}</h3><p>{item.vertical || "Vertical sin informar"}</p><button type="button" aria-pressed={resource?.id === item.id} disabled={busy || uncertain || conflict} onClick={() => choose(item)}>Revisar {item.title || "borrador"}</button></article>)}</div></section>}
-        {kind === "brand" && !resource && <section className={styles.empty}><h2>Perfil de marca pendiente</h2><p>Creá un borrador con el nombre y el identificador público que verá el cliente. Publicarlo hará visible la marca en la red.</p>{canWrite && <button type="button" disabled={busy} onClick={() => create("brand")}>Crear borrador de marca</button>}</section>}
-        {resource && <section className={styles.card} data-testid="tenant-catalog-editor"><div className={styles.title}><h2>{kind === "brand" ? "Perfil de la marca" : "Contenido del producto"}</h2><span className={styles.badge}>{resource.updatedAt ? catalogState(resource, data.brand) : "Borrador sin guardar"}</span></div>{active && <p className={styles.notice}>Esta versión está publicada. Retirala antes de editar; el historial de consultas se conserva.</p>}{restricted && <p className={styles.notice} data-testid="tenant-catalog-restricted">Esta versión requiere revisión autorizada. Este editor no puede modificar, publicar ni reactivar su estado.</p>}
+        {kind === "brand" && !resource && <section ref={editor} className={styles.empty}><h2 tabIndex={-1} className={styles.editorHeading}>Perfil de marca pendiente</h2><p>Creá un borrador con el nombre y el identificador público que verá el cliente. Publicarlo hará visible la marca en la red.</p>{canWrite && <button type="button" disabled={busy} onClick={() => create("brand")}>Crear borrador de marca</button>}</section>}
+        {resource && <section ref={editor} className={styles.card} data-testid="tenant-catalog-editor"><div className={styles.title}><h2 tabIndex={-1} className={styles.editorHeading}>{kind === "brand" ? "Perfil de la marca" : "Contenido del producto"}</h2><span className={styles.badge}>{resource.updatedAt ? catalogState(resource, data.brand) : "Borrador sin guardar"}</span></div>{active && <p className={styles.notice}>Esta versión está publicada. Retirala antes de editar; el historial de consultas se conserva.</p>}{restricted && <p className={styles.notice} data-testid="tenant-catalog-restricted">Esta versión requiere revisión autorizada. Este editor no puede modificar, publicar ni reactivar su estado.</p>}
           <fieldset disabled={!editable} className={styles.fields}><legend className={styles.note}>Los cambios se muestran a clientes después de guardar y publicar.</legend>
             {kind === "brand" ? <><label>Nombre de la marca<input value={fields.displayName} maxLength={160} onChange={e => change("displayName", e.target.value)} /></label><label>Identificador público de la marca<input value={fields.brandSlug} maxLength={120} onChange={e => change("brandSlug", e.target.value)} /><span className={styles.note}>Minúsculas, números, punto, guion o guion bajo. No cambia la empresa autorizada de esta sesión.</span></label></> : <label>Título del producto<input value={fields.title} maxLength={160} onChange={e => change("title", e.target.value)} /></label>}
             <label>Vertical<input value={fields.vertical} maxLength={40} placeholder="Por ejemplo: wine, events o cosmetics" onChange={e => change("vertical", e.target.value)} /></label><label>Descripción<textarea value={fields.description} maxLength={6000} onChange={e => change("description", e.target.value)} /></label>

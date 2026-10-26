@@ -7,6 +7,7 @@ import { CustomerInboxNotice } from "../../../components/customer-inbox-notice";
 import { buildAssistantLedger } from "../../../lib/assistant-records";
 import { confirmCustomerInbox, customerRecordText, customerRecordDate } from "../../../lib/customer-inbox-state";
 import { customerInboxCopy } from "../../../lib/customer-inbox-copy";
+import { dataTableCopy } from "../../../lib/data-table-copy";
 import { customerOrderRequestTableRow, customerOrderRequestMatchesQuery } from "../../../lib/customer-order-request-projection";
 import inboxStyles from "../../../components/customer-inbox.module.css";
 import { CustomerActivitySummary } from "../../../components/customer-activity-summary";
@@ -223,7 +224,7 @@ export default function LeadsTicketsClient({
         )}
 
         {activeTab === "opportunities" && inboxes.leads.availability === "ready" && (
-          <DataTable
+          <DataTable {...dataTableCopy[locale]}
             title={ui.opportunities}
             columns={[
               { key: "created_at", label: "Fecha" },
@@ -257,7 +258,7 @@ export default function LeadsTicketsClient({
         )}
 
         {activeTab === "prospects" && inboxes.leads.availability === "ready" && (
-          <DataTable
+          <DataTable {...dataTableCopy[locale]}
             title={ui.prospects}
             columns={[
               { key: "name", label: "Nombre" },
@@ -295,7 +296,7 @@ export default function LeadsTicketsClient({
           <div hidden={activeTab !== "tickets"} className="space-y-6">
           <TicketReferenceLookup key={ticketContext.key} ref={ticketLookup} tenantScope={tenantScope} locale={locale} isDemo={demoMode} canLookup={canLookupTickets}
             onNavigationLockChange={locked => setTicketLock({ context: ticketContext, locked })} onAuthoritativeCurrent={acceptAuthoritativeTicket} />
-          {activeTab === "tickets" && (inboxes.tickets.availability !== "ready" ? <CustomerInboxNotice state={inboxes.tickets} locale={locale} onRetry={retry} pending={refreshing} /> : <DataTable
+          {activeTab === "tickets" && (inboxes.tickets.availability !== "ready" ? <CustomerInboxNotice state={inboxes.tickets} locale={locale} onRetry={retry} pending={refreshing} /> : <DataTable {...dataTableCopy[locale]}
             title={ui.tickets}
             columns={SUPPORT_TICKET_COLUMNS}
             rows={initialTickets
@@ -315,7 +316,7 @@ export default function LeadsTicketsClient({
 
         {activeTab === "orders" && inboxes.orders.availability === "ready" && (
           <div className={inboxStyles.orderRequests} data-testid="crm-order-requests">
-          <DataTable
+          <DataTable {...dataTableCopy[locale]}
             title={ui.orders}
             columns={[
               { key: "reference", label: ui.reference },
