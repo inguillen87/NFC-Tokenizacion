@@ -73,7 +73,7 @@ test("SUN selector persists server-side, changes in place and cannot revalidate 
 
   assert.match(provider, /fetch\("\/api\/sun\/locale",/);
   assert.match(provider, /credentials: "same-origin"/);
-  assert.match(provider, /localeRequestRef\.current\?\.controller\.abort\(\)/);
+  assert.match(provider, /localeRequestRef\.current\?\.cancel\(\)/);
   assert.match(provider, /document\.documentElement\.lang = toDocumentLanguage\(nextLocale\)/);
   assert.doesNotMatch(provider, /url\.searchParams\.set\("lang", nextLocale\)/);
   assert.doesNotMatch(provider, /window\.history\.replaceState\(/);

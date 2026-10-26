@@ -131,11 +131,14 @@
   overflow-wrap: anywhere;
 }
 
-.locale {
+.header .locale {
+  display: contents;
   min-width: 0;
 }
 
 .header .locale :global(.locale-switcher) {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   width: 100%;
   min-width: 0;
@@ -146,6 +149,11 @@
   border-radius: 0.85rem;
   background: var(--header-control);
   color: var(--header-ink);
+}
+
+.header .locale [data-sun-locale-feedback] {
+  grid-column: 1 / -1;
+  grid-row: 3;
 }
 
 .header .locale :global(.locale-switcher__icon) {
@@ -222,9 +230,10 @@
 @media (max-width: 299px) {
   .header .utilities { grid-template-columns: minmax(0, 1fr) 2.75rem; }
   .header .accountLink { grid-column: 1 / -1; grid-row: 1; }
-  .header .locale { grid-column: 1; grid-row: 2; }
+  .header .locale :global(.locale-switcher) { grid-column: 1; grid-row: 2; }
   .header .theme { grid-column: 2; grid-row: 2; }
   .header .status { grid-column: 1 / -1; grid-row: 3; min-height: 1.25rem; }
+  .header .locale [data-sun-locale-feedback] { grid-row: 4; }
 }
 @media (max-width: 279px) {
   .header .brand { min-height: 5rem; }

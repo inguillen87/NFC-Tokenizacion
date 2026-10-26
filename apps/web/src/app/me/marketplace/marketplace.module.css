@@ -185,7 +185,8 @@
   scroll-margin-block: 6rem;
 }
 
-.listHeading h3:focus {
+.listHeading h3:focus,
+.productBody h3:focus {
   outline: 3px solid var(--portal-accent, #08755d);
   outline-offset: 4px;
   border-radius: 0.25rem;

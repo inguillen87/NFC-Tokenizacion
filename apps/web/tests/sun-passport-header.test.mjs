@@ -72,7 +72,7 @@ test("SUN passport header preserves identity, evidence labels and the existing p
   assert.match(header, /sun-passport-brand__caption \$\{styles\.caption\}/);
   assert.match(header, /aria-label=\{text\("Controles del pasaporte"\)\}/);
   assert.match(header, /role="status"/);
-  assert.match(header, /<SunLocaleSwitcher \/>/);
+  assert.match(header, /<SunLocaleSwitcher className=\{styles\.locale\} \/>/);
   assert.doesNotMatch(header, /<LocaleSwitcher|router\.refresh|router\.push/);
   assert.match(header, /<ThemeToggle locale=\{locale\} waitForClientReady \/>/);
   assert.match(header, /<a href="\/me" className=\{styles\.accountLink\} data-testid="sun-account-link" referrerPolicy="no-referrer">/);

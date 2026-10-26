@@ -1,5 +1,6 @@
 export type HomeSource<T> = { status: "ready"; data: T } | { status: "unavailable"; data: null };
-export type HomeAccount = { name: string | null; email: string | null; status: string | null; products: number | null; taps: number | null };
+export type ConsumerAccountContact = { kind: "email" | "phone" | "unreported"; label: string; value: string };
+export type HomeAccount = { name: string | null; email: string | null; contact: ConsumerAccountContact; status: string | null; products: number | null; taps: number | null };
 export type HomeProduct = {
   name: string; brand: string | null; tenantSlug: string | null; batch: string | null; imageUrl: string | null;
   eventId: string | null; readingHref: string | null; ownershipStatus: string | null;
@@ -16,6 +17,18 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+export function consumerAccountContact(email: unknown, phone: unknown): ConsumerAccountContact {
+  const reportedEmail = text(email);
+  if (reportedEmail) return { kind: "email", label: "Correo de tu cuenta", value: reportedEmail };
+  const reportedPhone = text(phone);
+  // The authenticated API reports a phone, not the messaging provider or a new
+  // verification receipt. Only a canonical E.164 number earns a masked hint.
+  if (reportedPhone && /^\+[1-9]\d{7,14}$/.test(reportedPhone)) {
+    return { kind: "phone", label: "Teléfono de tu cuenta", value: `Terminado en ${reportedPhone.slice(-4)}` };
+  }
+  return { kind: "unreported", label: "Contacto de tu cuenta", value: "Contacto no disponible en esta consulta." };
 }
 
 export function reportedHomeCount(value: unknown): number | null {
@@ -72,7 +85,7 @@ export function buildConsumerHomeModel(payloads: { account: unknown; products: u
   const account: HomeSource<HomeAccount> = envelope?.ok === true && consumer
     ? { status: "ready", data: {
       name: displayName?.toLowerCase() === email?.toLowerCase() ? null : displayName,
-      email, status: text(consumer.status),
+      email, contact: consumerAccountContact(email, consumer.phone), status: text(consumer.status),
       // Account counts are only supplied by /consumer/me. A limited history
       // response is not a lifetime total; a missing count is not zero.
       products: reportedHomeCount(stats?.products), taps: reportedHomeCount(stats?.taps),

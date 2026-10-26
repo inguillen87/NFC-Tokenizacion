@@ -6,7 +6,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { CONSUMER_READ_TIMEOUT_MS, consumerSessionState, fetchConsumerJson } from "../src/app/me/_components/consumer-bounded-fetch.ts";
-import { homeReadingHref, homeAccountStatusLabel } from "../src/app/me/_components/consumer-home-model.ts";
+import { consumerAccountContact, homeReadingHref, homeAccountStatusLabel } from "../src/app/me/_components/consumer-home-model.ts";
 import { rewardTenant } from "../src/app/me/_components/consumer-rewards-model.ts";
 
 test("consumer reads time out stalled headers, even when the transport ignores abort", async (t) => {
@@ -423,7 +423,7 @@ function loadPassportPage(accountRead, readConsumerMe = null) {
   const ConsumerPortalUnavailable = () => null;
   const page = compile(readFileSync(new URL("passport/page.tsx", root), "utf8"), {
     "../_components/consumer-api": readConsumerMe ? { ...loaded.api, fetchConsumerMe: readConsumerMe } : loaded.api,
-    "../_components/consumer-home-model": { homeAccountStatusLabel },
+    "../_components/consumer-home-model": { consumerAccountContact, homeAccountStatusLabel },
     "./passport.module.css": { __esModule: true, default: styles },
     "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable },
     "../_components/portal-shell": { PortalShell: ({ title, subtitle, children }) =>
@@ -446,12 +446,25 @@ test("passport uses the reported account status without inventing a pending cred
     assert.match(html, new RegExp(label));
     assert.match(html, /data-testid="consumer-passport-account-status"/);
     assert.match(html, /Nombre no informado/);
-    assert.match(html, /Correo no informado/);
+    assert.match(html, /Contacto no disponible en esta consulta/);
     assert.doesNotMatch(html, /PENDING|Cuenta inicial|email no validado|DOCUMENTO DE IDENTIDAD DIGITAL|Premium Passport/);
     if (status === "registered") assert.doesNotMatch(html, /Cuenta verificada/);
     assert.deepEqual(h.loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session", "/consumer/me"]);
     assert.equal(h.loaded.calls[0].init.cache, "no-store");
     assert.equal(h.loaded.calls[1].init.headers.cookie, "session=private");
+  }
+});
+
+test("passport retains a phone-only account and renders only its masked contact", async () => {
+  for (const [consumer, expected, absent] of [
+    [{ phone: "+5491112345678", status: "registered" }, /Teléfono de tu cuenta: Terminado en 5678/, /5491112345678|Correo no informado/],
+    [{ phone: "+5491112345678", email: "qa@example.test", status: "registered" }, /qa@example.test/, /Terminado en/],
+    [{ phone: { invalid: true }, status: "registered" }, /Contacto no disponible en esta consulta/, /Correo no informado|Terminado en/],
+  ]) {
+    const h = loadPassportPage({ status: "ready", data: { ok: true, consumer: { id: "synthetic-passport", ...consumer }, stats: {} } });
+    const html = renderToStaticMarkup(await h.page({ searchParams: Promise.resolve({}) }));
+    assert.match(html, expected); assert.doesNotMatch(html, absent); assert.match(html, /Cuenta registrada/);
+    assert.deepEqual(h.loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session", "/consumer/me"]);
   }
 });
 

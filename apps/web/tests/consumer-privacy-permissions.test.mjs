@@ -22,6 +22,7 @@ const payload = (consents = [], consumer = {}) => ({ ok: true, consumer, consent
 const ready = data => ({ status: "ready", data });
 const brand = { tenant_id: "tenant-A", name: "Marca sintética A", slug: "brand-a" };
 const consent = { tenant_id: "tenant-A", scope: "whatsapp", granted: true };
+const homeModel = compile("_components/consumer-home-model.ts", {});
 function setup(options = {}) {
   const calls = [];
   const Page = compile("privacy/page.tsx", {
@@ -35,6 +36,7 @@ function setup(options = {}) {
     "../_components/portal-shell": { PortalShell: ({ children, title, subtitle }) => React.createElement("main", null, React.createElement("h1", null, title), React.createElement("p", null, subtitle), children) },
     "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => React.createElement("h1", { "data-testid": "consumer-portal-unavailable" }, "Sesión no disponible") },
     "../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", { type: "button" }, "Reintentar carga") },
+    "../_components/consumer-home-model": homeModel,
     "../_components/consumer-list-recovery.module.css": css, "../brands/brands.module.css": css,
   }).default;
   return { calls, render: async (params = {}) => renderToStaticMarkup(await Page({ searchParams: Promise.resolve(params) })) };
@@ -85,8 +87,17 @@ test("unavailable and malformed privacy envelopes recover instead of claiming an
 });
 test("only validated empty permissions show the empty state without inventing account details", async () => {
   const html = await setup({ privacy: ready(payload()), brands: { status: "unavailable" } }).render();
-  assert.match(html, /consumer-privacy-empty/); assert.match(html, /Nombre no informado/); assert.match(html, /Correo no informado/);
+  assert.match(html, /consumer-privacy-empty/); assert.match(html, /Nombre no informado/); assert.match(html, /Contacto no disponible en esta consulta/);
   assert.doesNotMatch(html, /consumer-privacy-brands-unavailable|Español/);
+});
+test("privacy presents the reported account contact without exposing a full phone or inventing email trouble", async () => {
+  const phoneOnly = await setup({ privacy: ready(payload([], { phone: "+5491112345678", status: "registered" })) }).render();
+  assert.match(phoneOnly, /Teléfono de tu cuenta/); assert.match(phoneOnly, /Terminado en 5678/);
+  assert.doesNotMatch(phoneOnly, /5491112345678|Correo no informado|WhatsApp verificado/);
+  const email = await setup({ privacy: ready(payload([], { email: "qa@example.test", phone: "+5491112345678" })) }).render();
+  assert.match(email, /qa@example.test/); assert.doesNotMatch(email, /Terminado en/);
+  const malformed = await setup({ privacy: ready(payload([], { phone: { invalid: true } })) }).render();
+  assert.match(malformed, /Contacto no disponible en esta consulta/); assert.match(malformed, /consumer-privacy-empty/);
 });
 test("reported purposes and strict booleans have human labels and exact owned brand identity", async () => {
   const rows = ["whatsapp", "whatsapp_marketing", "promotions", "campaigns"].map((scope, index) => ({ ...consent, scope, granted: index % 2 === 0 }));

@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
-import { ArrowRight, ArrowUpRight, Building2, CircleAlert, Gift, History, Mail, Package, ScanLine, ShieldCheck, ShoppingBag, UserRound, Wallet } from "lucide-react";
-import { homeAccountStatusLabel, homeMembershipLabel, homeVerdictLabel, type ConsumerHomeModel, type HomeProduct } from "./consumer-home-model";
+import { ArrowRight, ArrowUpRight, Building2, CircleAlert, Gift, History, Mail, Package, Phone, ScanLine, ShieldCheck, ShoppingBag, UserRound, Wallet } from "lucide-react";
+import { consumerAccountContact, homeAccountStatusLabel, homeMembershipLabel, homeVerdictLabel, type ConsumerHomeModel, type HomeProduct } from "./consumer-home-model";
 import styles from "./consumer-home.module.css";
 
 export function ConsumerProductImage({ product, className = "" }: { product: HomeProduct; className?: string }) {
@@ -32,6 +32,7 @@ function SectionState({ unavailable, children }: { unavailable?: boolean; childr
 
 export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel }) {
   const account = model.account.status === "ready" ? model.account.data : null;
+  const contact = account?.contact || consumerAccountContact(null, null);
   const hasUnavailable = Object.values(model).some((source) => source.status === "unavailable");
   return (
     <div className={styles.home} data-testid="consumer-home">
@@ -104,8 +105,8 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
 
           <section className={styles.panel} aria-labelledby="home-account-title">
             <div className={styles.sectionHeading}><h2 id="home-account-title">Tu cuenta</h2><UserRound size={20} aria-hidden="true" /></div>
-            {model.account.status === "unavailable" ? <SectionState unavailable><strong>No se pudieron cargar tus datos.</strong><p>Reintentá para consultar el correo y el estado de tu cuenta.</p></SectionState>
-              : <div className={styles.accountDetails}><span className={styles.itemEyebrow}>Correo de tu cuenta</span><p className={styles.accountEmail}><Mail size={16} aria-hidden="true" />{account?.email || "Correo no informado"}</p><p className={styles.metadata}>{homeAccountStatusLabel(account?.status || null)}</p></div>}
+            {model.account.status === "unavailable" ? <SectionState unavailable><strong>No se pudieron cargar tus datos.</strong><p>Reintentá para consultar el contacto y el estado de tu cuenta.</p></SectionState>
+              : <div className={styles.accountDetails}><span className={styles.itemEyebrow}>{contact.label}</span><p className={styles.accountEmail}>{contact.kind === "email" ? <Mail size={16} aria-hidden="true" /> : contact.kind === "phone" ? <Phone size={16} aria-hidden="true" /> : <UserRound size={16} aria-hidden="true" />}{contact.value}</p><p className={styles.metadata}>{homeAccountStatusLabel(account?.status || null)}</p></div>}
             <nav className={styles.accountLinks} aria-label="Gestionar tu cuenta">
               <Link href="/me/privacy" prefetch={false}><ShieldCheck size={18} aria-hidden="true" /><span>Privacidad y permisos</span><ArrowRight size={16} aria-hidden="true" /></Link>
               <Link href="/me/security" prefetch={false}><UserRound size={18} aria-hidden="true" /><span>Seguridad de la cuenta</span><ArrowRight size={16} aria-hidden="true" /></Link>

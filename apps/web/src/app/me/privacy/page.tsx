@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { buildConsumerNextPath, readConsumerPrivacyPath, readConsumerSession } from "../_components/consumer-api";
 import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-client";
+import { consumerAccountContact } from "../_components/consumer-home-model";
 import { PortalShell } from "../_components/portal-shell";
 import recoveryStyles from "../_components/consumer-list-recovery.module.css";
 import styles from "../brands/brands.module.css";
@@ -57,6 +58,7 @@ export default async function PrivacyPage({ searchParams }: { searchParams?: Pro
   const privacy = privacyRead.status === "ready" ? privacyRead.data : null;
   const consentRows = privacy?.ok === true && Array.isArray(privacy.consents) && privacy.consents.every(record) ? privacy.consents : null;
   const consumer = record(privacy?.consumer) ? privacy.consumer : null;
+  const contact = consumerAccountContact(consumer?.email, consumer?.phone);
   const brands = reportedBrands(brandsRead.status === "ready" ? brandsRead.data : null);
   const groups = consentRows === null ? [] : groupedPermissions(consentRows, brands);
   const locales: Record<string, string> = { "es-AR": "Español (Argentina)", "pt-BR": "Português (Brasil)", en: "English", "en-US": "English (United States)" };
@@ -78,7 +80,7 @@ export default async function PrivacyPage({ searchParams }: { searchParams?: Pro
           <section className={styles.intro} aria-labelledby="privacy-account-title">
             <h2 id="privacy-account-title">La información de tu cuenta</h2>
             <p>Nombre: <strong>{text(consumer?.display_name) || "Nombre no informado"}</strong></p>
-            <p>Correo: <strong>{text(consumer?.email) || "Correo no informado"}</strong></p>
+            <p>{contact.label}: <strong>{contact.value}</strong></p>
             <p>Idioma preferido: <strong>{locale && Object.hasOwn(locales, locale) ? locales[locale] : "No informado"}</strong></p>
             <p>Esta vista muestra los permisos registrados. Consultarlos no modifica tus elecciones.</p>
             <Link className={styles.link} href="/me/brands" prefetch={false}>Ver mis marcas y clubes</Link>

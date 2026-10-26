@@ -4,6 +4,7 @@ import { marketplaceFixtureItems } from './consumer-marketplace-fixture.mjs';
 if(process.env.CONSUMER_PORTAL_QA!=='1')throw Error('consumer_portal_fixture_requires_explicit_local_qa');
 const original=globalThis.fetch;
 const date='2026-10-01T12:00:00Z';
+const syntheticConsumer={id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',phone:'+5491112345678',status:'verified'};
 const currentEditorial=(state='published')=>({protocol:'nexid.current-editorial.v1',source:'passport_studio',state,observedAt:'2026-10-05T15:00:00Z',version:3,publishedAt:'2026-10-04T15:00:00Z',contentDigest:'a'.repeat(64),
  document:{schemaVersion:'nexid.passport-editorial.v1',template:'agro',locale:'es-AR',identity:{product_name:'Ficha actual de ensayo',public_lot_label:'LOTE-PUBLICADO-QA',sku:null,winery:'Empresa publicada de ensayo',region:null,image_url:null},agro_product_profile:{technicalSheetUrl:'https://docs.example.test/current-qa.pdf',safetySheetUrl:null}}});
 const items=[
@@ -33,7 +34,8 @@ globalThis.fetch=async(input,init)=>{
   if(url.pathname.startsWith('/consumer/')){
    if(!authorized)return reply({ok:false},401);
    if(url.pathname==='/consumer/products')return reply({ok:true,items:photoQa?items.map((item,index)=>index===0?{...item,image_url:photoQa==='failed'?'/qa-photo/failed.svg':'/qa-photo/updated.svg'}:item):items});
-   if(url.pathname==='/consumer/me')return reply({ok:true,consumer:{id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',status:'verified'},stats:{products:items.length,taps:3}});
+   if(url.pathname==='/consumer/me')return reply({ok:true,consumer:syntheticConsumer,stats:{products:items.length,taps:3}});
+   if(url.pathname==='/consumer/privacy')return reply({ok:true,consumer:syntheticConsumer,consents:[]});
    // An explicit local-only partial-load state exposes the real router.refresh
    // control for the image recovery regression. No production data is queried.
    if(url.pathname==='/consumer/brands')return photoQa?reply({ok:false},503):reply({ok:true,items:[]});

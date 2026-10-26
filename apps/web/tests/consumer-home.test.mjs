@@ -62,8 +62,35 @@ test("account counts require explicit nonnegative safe integers and never derive
 
 test("the client model only contains required display fields, no raw consumer record or brand consents", () => {
   const data = model.buildConsumerHomeModel({ ...empty(), account: { ok: true, consumer: { id: "private-id", display_name: "Alex", email: "alex@example.test", status: "active", password_hash: "private-hash", provider_id: "private-provider" }, stats: { taps: 5 } }, brands: list([{ name: "Acme", consents: { phone: "private-phone" } }]) });
-  assert.deepEqual(data.account.data, { name: "Alex", email: "alex@example.test", status: "active", products: null, taps: 5 });
+  assert.deepEqual(data.account.data, { name: "Alex", email: "alex@example.test", contact: { kind: "email", label: "Correo de tu cuenta", value: "alex@example.test" }, status: "active", products: null, taps: 5 });
   assert.doesNotMatch(JSON.stringify(data), /private-|password_hash|provider_id|consents/);
+});
+
+test("phone-only accounts expose a masked contact in the actual home without serializing the phone or claiming a provider", () => {
+  const phone = "+5491112345678";
+  const payloads = { ...empty(), account: { ok: true, consumer: { phone, status: "registered" }, stats: {} } };
+  const data = model.buildConsumerHomeModel(payloads);
+  assert.deepEqual(data.account.data.contact, { kind: "phone", label: "Teléfono de tu cuenta", value: "Terminado en 5678" });
+  assert.doesNotMatch(JSON.stringify(data), /5491112345678|"phone"\s*:/);
+  const html = render(payloads);
+  assert.match(html, /Teléfono de tu cuenta/); assert.match(html, /Terminado en 5678/);
+  assert.match(html, /Cuenta registrada/);
+  assert.doesNotMatch(html, /Correo no informado|WhatsApp verificado|5491112345678/);
+});
+
+test("contact display preserves reported email and falls back neutrally for missing or malformed phones", () => {
+  const account = consumer => ({ ...empty(), account: { ok: true, consumer, stats: {} } });
+  const email = render(account({ email: "alex@example.test", phone: "+5491112345678" }));
+  assert.match(email, /Correo de tu cuenta/); assert.match(email, /alex@example.test/);
+  assert.doesNotMatch(email, /Terminado en/);
+  for (const phone of [undefined, null, "", "local-1234", "5491112345678", "+012345678", "+1234567", "+1234567890123456", {}, 5491112345678]) {
+    const data = model.buildConsumerHomeModel(account({ phone }));
+    const html = render(account({ phone }));
+    assert.equal(data.account.status, "ready");
+    assert.deepEqual(data.account.data.contact, { kind: "unreported", label: "Contacto de tu cuenta", value: "Contacto no disponible en esta consulta." });
+    assert.match(html, /Contacto no disponible en esta consulta/);
+    assert.doesNotMatch(html, /Correo no informado|No se pudieron cargar tus datos|Terminado en/);
+  }
 });
 
 test("private reading links preserve canonical PostgreSQL bigint strings and only safe legacy numbers", () => {
