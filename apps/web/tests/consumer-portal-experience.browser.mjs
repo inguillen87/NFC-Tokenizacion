@@ -34,7 +34,7 @@ async function accountContactScenarios(page,width,theme){
  for(const [path,selector] of [['/me','[aria-labelledby="home-account-title"]'],['/me/passport','#consumer-portal-content'],['/me/privacy','[aria-labelledby="privacy-account-title"]']]){
   await page.goto(base+path,{waitUntil:'networkidle'});const surface=page.locator(selector);await surface.waitFor();
   const text=await surface.innerText();
-  check(text.includes('Teléfono de tu cuenta')&&text.includes('Terminado en 5678')&&!text.includes('Correo no informado'),`${width}/${theme} ${path}: phone-only account has a meaningful masked contact`);
+  check(await surface.getByText('Teléfono de tu cuenta',{exact:true}).isVisible()&&await surface.getByText('Terminado en 5678',{exact:true}).isVisible()&&!text.toLocaleLowerCase().includes('correo no informado'),`${width}/${theme} ${path}: phone-only account has a meaningful masked contact`);
   check(!(await page.content()).includes('5491112345678'),`${width}/${theme} ${path}: full synthetic phone is absent from rendered HTML and RSC`);
   await noOverflow(page,`${width}/${theme} ${path}: account contact fits viewport`);
   await assessment(page,selector,'account-contact-'+path.split('/').at(-1),width,theme);
