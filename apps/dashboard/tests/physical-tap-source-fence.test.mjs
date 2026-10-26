@@ -5,6 +5,7 @@ import {PHYSICAL_TAP_SOURCE_BASE,PHYSICAL_TAP_REVIEWED_SOURCES,physicalTapPublis
 import {CRM_ORDER_REQUEST_REVIEWED_SOURCES,crmOrderRequestPublishedSourceHash} from './helpers/crm-order-request-reviewed-sources.mjs';
 import {readHistoricalBaseline,sourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 import {ticketStatusSyncPublishedSourceHash} from './helpers/ticket-status-sync-reviewed-sources.mjs';
+import {customerFeedbackPriorHash} from './helpers/customer-feedback-reviewed-sources.mjs';
 
 const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
 const paths=[
@@ -23,7 +24,7 @@ test('physical TAP overlay allows exactly three reviewed runtime paths on publis
 test('the three current sources match exact reviewed pins and return their independent prior origins',async()=>{
  for(const [path,pins]of Object.entries(PHYSICAL_TAP_REVIEWED_SOURCES)){
   const rawActual=sourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'));
-  const actual=ticketStatusSyncPublishedSourceHash(path,rawActual,baseline.expected[path]);
+  const actual=ticketStatusSyncPublishedSourceHash(path,customerFeedbackPriorHash(path,rawActual),baseline.expected[path]);
   assert.equal(actual,pins.after,path);
   assert.equal(physicalTapPublishedSourceHash(path,actual,baseline.expected[path]),pins.origin);
   assert.equal(crmOrderRequestPublishedSourceHash(path,physicalTapPublishedSourceHash(path,actual,baseline.expected[path]),baseline.expected[path]),baseline.expected[path]);
